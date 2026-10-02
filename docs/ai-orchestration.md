@@ -70,6 +70,21 @@ A second worker, `lab-service-inventory` (`lightup.workers.service_inventory`,
 capability `network-services`), connect-checks a bounded, explicit list of TCP
 ports on a lab host — no banners, no payloads — with the same double lab gate.
 
+A third worker, `lab-tls-baseline` (`lightup.workers.tls_baseline`, capability
+`cryptography`), performs one TLS handshake against a lab endpoint and
+evaluates protocol version, cipher strength and chain trust.
+
+## Planner role (`lightup.ai.planner`)
+
+The planner is the first role that *proposes* work: it receives a lab scenario
+plus the typed tool catalog and answers with a JSON plan. The plan is parsed
+strictly (only known tools, only declared parameters, only scenario targets,
+no duplicates — anything else raises `PlanRejected` before execution), and
+every accepted call still goes through the ToolExecutor's full policy gate.
+Denied calls are recorded as policy-violation metrics; elevation needs land in
+`elevation_requests` for a human. The planner influences what gets proposed,
+never what is allowed.
+
 ## Review pipeline (`lightup.ai.pipeline`)
 
 `AssessmentReviewPipeline` is the first consumer of the Model Gateway: per

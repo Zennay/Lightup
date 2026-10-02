@@ -70,6 +70,10 @@ class TenantIsolationError(PermissionError):
     """A context tried to touch another tenant's records."""
 
 
+class AccountLockedError(PermissionError):
+    """Too many failed sign-ins; the account is temporarily locked."""
+
+
 class RoleError(PermissionError):
     """A context lacks the role required for an action."""
 
@@ -229,6 +233,12 @@ CREATE TABLE IF NOT EXISTS sessions (
     created_at TEXT NOT NULL,
     expires_at TEXT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS login_failures (
+    email TEXT PRIMARY KEY,
+    failures INTEGER NOT NULL DEFAULT 0,
+    locked_until TEXT
 );
 """
 
@@ -458,6 +468,47 @@ class DomainStore:
             return None
         return UserRecord(row["user_id"], row["email"], row["display_name"],
                           Role(row["role"]), row["client_id"], row["created_at"])
+
+    LOGIN_MAX_FAILURES = 5
+    LOGIN_LOCKOUT_SECONDS = 900
+
+    def authenticate(self, email: str, password: str) -> UserRecord | None:
+        """verify_password plus brute-force lockout per email.
+
+        Raises :class:`AccountLockedError` while locked; successful sign-in
+        clears the failure counter.
+        """
+        email = email.strip().lower()
+        now = utcnow()
+        with self._connect() as con:
+            row = con.execute(
+                "SELECT failures, locked_until FROM login_failures WHERE email=?",
+                (email,),
+            ).fetchone()
+        if row is not None and row["locked_until"]:
+            locked_until = datetime.fromisoformat(row["locked_until"])
+            if locked_until > now:
+                raise AccountLockedError(
+                    "too many failed sign-ins; try again later"
+                )
+        user = self.verify_password(email, password)
+        with self._connect() as con:
+            if user is not None:
+                con.execute("DELETE FROM login_failures WHERE email=?", (email,))
+            else:
+                failures = (row["failures"] if row is not None else 0) + 1
+                locked_until = None
+                if failures >= self.LOGIN_MAX_FAILURES:
+                    locked_until = (now + timedelta(
+                        seconds=self.LOGIN_LOCKOUT_SECONDS)).isoformat()
+                    failures = 0
+                con.execute(
+                    "INSERT INTO login_failures(email,failures,locked_until) "
+                    "VALUES(?,?,?) ON CONFLICT(email) DO UPDATE SET "
+                    "failures=excluded.failures, locked_until=excluded.locked_until",
+                    (email, failures, locked_until),
+                )
+        return user
 
     @staticmethod
     def _token_hash(token: str) -> str:

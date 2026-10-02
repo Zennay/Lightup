@@ -27,8 +27,15 @@ The repository contains:
   (`lightup.workers.http_baseline`) wired end-to-end through the policy gate,
   evidence ledger, findings and benchmark scoring (`lightup.labrun`,
   CLI `lightup lab-baseline`);
-- a second capability worker: lab-only **TCP service inventory**
-  (`lightup.workers.service_inventory`);
+- further lab-only capability workers: **TCP service inventory**
+  (`lightup.workers.service_inventory`) and **TLS baseline**
+  (`lightup.workers.tls_baseline`: protocol, cipher, chain trust);
+- a **planner role** (`lightup.ai.planner`): the model proposes a typed
+  multi-lane plan that is strictly parsed and then executed call-by-call
+  behind the policy gate, with denials recorded as policy-violation metrics
+  and elevation needs routed to humans;
+- **login brute-force lockout** in the domain layer
+  (`DomainStore.authenticate`), surfaced as HTTP 429 in the web shell;
 - a **lab → product findings bridge** with an automated retest loop
   (`lightup.labsync`: fixed / fix_pending / regression semantics) and an
   **AI review pipeline** over findings via the Model Gateway
@@ -44,7 +51,7 @@ The repository contains:
   portal (`lightup.webapp`, see `docs/webapp.md`);
 - reporting/redaction helpers;
 - a loopback-only lab fixture;
-- CI safety tests (97 unit tests), including proofs that unauthorized active
+- CI safety tests (106 unit tests), including proofs that unauthorized active
   execution is impossible, risk escalation is blocked without new approval,
   tenants are isolated, passive Discovery cannot invoke active capabilities,
   lab workers fail closed on public targets, and the web shell rejects

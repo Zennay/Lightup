@@ -80,6 +80,16 @@ class WebAppTest(unittest.TestCase):
         self.assertEqual(status, "200 OK")
         self.assertIn("Active testing", body)
 
+    def test_lockout_returns_429(self):
+        for _ in range(DomainStore.LOGIN_MAX_FAILURES):
+            self.request("POST", "/login",
+                         {"email": "op@lightup.test", "password": "wrong-password"})
+        status, _, body = self.request(
+            "POST", "/login",
+            {"email": "op@lightup.test", "password": "operator-password"})
+        self.assertEqual(status, "429 Too Many Requests")
+        self.assertIn("Too many failed sign-ins", body)
+
     def test_bad_login_rejected(self):
         status, _, body = self.request(
             "POST", "/login", {"email": "op@lightup.test", "password": "wrong-password"})

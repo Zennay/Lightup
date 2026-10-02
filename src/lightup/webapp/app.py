@@ -36,6 +36,7 @@ from urllib.parse import parse_qs
 
 from ..domain import (
     AccessContext,
+    AccountLockedError,
     DomainStore,
     ProspectStatus,
     RequestStatus,
@@ -319,7 +320,14 @@ class LightUpWebApp:
         return Response(_page("LightUp — Sign in", "login", body, ANONYMOUS))
 
     def login_submit(self, auth: AuthState, form: dict[str, str]) -> Response:
-        user = self.store.verify_password(form.get("email", ""), form.get("password", ""))
+        try:
+            user = self.store.authenticate(form.get("email", ""), form.get("password", ""))
+        except AccountLockedError:
+            response = self.login_page(
+                ANONYMOUS, {}, error="Too many failed sign-ins; try again later.")
+            return Response(response.body.decode("utf-8"),
+                            status="429 Too Many Requests",
+                            extra_headers=[_session_cookie("", clear=True)])
         if user is None:
             response = self.login_page(ANONYMOUS, {}, error="Invalid email or password.")
             return Response(response.body.decode("utf-8"), status="401 Unauthorized",

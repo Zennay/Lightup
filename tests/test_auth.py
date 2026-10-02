@@ -52,6 +52,26 @@ class AuthTest(unittest.TestCase):
         self.assertIsNotNone(
             self.store.verify_password("op@lightup.test", "a-brand-new-password"))
 
+    def test_lockout_after_repeated_failures(self):
+        from lightup.domain import AccountLockedError
+
+        for _ in range(DomainStore.LOGIN_MAX_FAILURES):
+            self.assertIsNone(self.store.authenticate("op@lightup.test", "wrong-password"))
+        # Locked now — even the correct password is refused.
+        with self.assertRaises(AccountLockedError):
+            self.store.authenticate("op@lightup.test", "correct-horse-battery")
+        # A successful sign-in (other account path) clears counters: create a
+        # second user and show success resets failures.
+        client = self.store.create_client(self.op_ctx, "Acme BV")
+        user = self.store.create_user(self.op_ctx, "b@acme.test", "B",
+                                      Role.CLIENT_ADMIN, client.client_id)
+        self.store.set_password(self.op_ctx, user.user_id, "client-b-password")
+        for _ in range(DomainStore.LOGIN_MAX_FAILURES - 1):
+            self.assertIsNone(self.store.authenticate("b@acme.test", "nope-nope-nope"))
+        self.assertIsNotNone(self.store.authenticate("b@acme.test", "client-b-password"))
+        # Counter reset: new failures start from zero.
+        self.assertIsNone(self.store.authenticate("b@acme.test", "nope-nope-nope"))
+
     def test_client_cannot_set_other_users_password(self):
         client = self.store.create_client(self.op_ctx, "Acme BV")
         user = self.store.create_user(self.op_ctx, "a@acme.test", "A",
