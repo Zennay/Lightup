@@ -2,43 +2,68 @@
 
 ## Objective
 
-LightUp is designed as a broad AI-assisted security-testing platform for systems that are owned or explicitly authorized. The current release builds orchestration and evidence infrastructure only.
+LightUp is designed as a broad AI-assisted security platform with two hard-separated planes:
+
+- **Passive Discovery** for prospecting from public, non-intrusive information.
+- **Authorized Assessment** for active testing of owned or explicitly authorized systems.
+
+The current release builds orchestration, authorization, product-domain and evidence infrastructure only.
+
+## Product boundary
+
+An unauthenticated prospect can never become an active target automatically.
+
+```text
+Public information
+      |
+      v
+Passive Discovery ---> Prospect Profile ---> Human outreach
+                                              |
+                                              v
+                                      Digital authorization
+                                              |
+                                              v
+                                   Authorized Engagement
+                                              |
+                                              v
+                                      Assessment Engine
+```
+
+The execution layer must fail closed if a real-target action has no current authorization grant, exceeds the authorized risk level, uses an out-of-scope capability, or targets an asset outside scope.
 
 ## Control plane
 
-Every future active adapter must receive an `ExecutionPermit` from the shared activation gate. Adapters may not decide scope themselves.
+Every future active adapter must receive an `ExecutionPermit` from the shared activation gate and satisfy the product-level `ExecutionPolicy`. Adapters may not decide scope themselves.
 
 ```text
-                    +-------------------+
-Target + Auth ----> | Scope Supervisor  |
-                    +---------+---------+
-                              |
-                              v
-                    +-------------------+
-Owner activation -> | Activation Gate   |
-                    +---------+---------+
-                              |
-                         ExecutionPermit
-                              |
-               +--------------+--------------+
-               |              |              |
-               v              v              v
-          web/API lane   identity lane   cloud/host lane
-               \              |              /
-                +-------------+-------------+
-                              |
-                              v
-                      Evidence Ledger
-                              |
-                  +-----------+-----------+
-                  |                       |
-                  v                       v
-             Verification            Remediation
-                  |                       |
-                  +-----------+-----------+
-                              |
-                              v
-                            Retest
+Target + Auth + Risk -> Execution Policy -> Scope Supervisor
+                                             |
+                                             v
+                                   +-------------------+
+Operator activation --------------> | Activation Gate |
+                                   +---------+---------+
+                                             |
+                                        ExecutionPermit
+                                             |
+                              +--------------+--------------+
+                              |              |              |
+                              v              v              v
+                         web/API lane   identity lane   cloud/host lane
+                              \              |              /
+                               +-------------+-------------+
+                                             |
+                                             v
+                                     Evidence Ledger
+                                             |
+                                  +----------+----------+
+                                  |                     |
+                                  v                     v
+                             Verification          Remediation
+                                  |                     |
+                                  +----------+----------+
+                                             |
+                                             v
+                                           Retest
 ```
 
 ## Agent model
@@ -47,18 +72,20 @@ Workers specialize by capability rather than all sharing one giant prompt. The o
 
 Planned roles:
 
-- scope supervisor;
-- surface/assessment planner;
-- web/API auditor;
-- identity/access auditor;
-- network/service auditor;
-- cloud/IAM auditor;
-- host/container auditor;
-- supply-chain/CI auditor;
-- evidence verifier;
-- remediation engineer;
-- detection engineer;
-- report synthesizer.
+- orchestration/planning;
+- scope and policy supervision;
+- surface/architecture modeling;
+- specialized capability auditors;
+- evidence verification;
+- remediation engineering;
+- detection engineering;
+- report synthesis.
+
+The model is never the security boundary. Tool calls are typed and policy checked outside the model.
+
+## Model gateway
+
+The AI integration should remain provider-neutral. Planner, analyst, verifier and reporting roles can later be routed to different models without changing execution policy.
 
 ## Adapter contract
 
@@ -66,14 +93,21 @@ Future adapters should be small and capability-scoped. They receive immutable ru
 
 The project intentionally separates:
 
-- **planning** — safe to run without touching a target;
-- **lab execution** — limited to loopback/private lab targets;
-- **authorized execution** — requires both scope authorization and explicit owner activation.
+- **analysis-only** — no target interaction;
+- **passive discovery** — public/non-intrusive prospect intelligence only;
+- **lab execution** — isolated lab targets;
+- **authorized execution** — current authorization + scope + risk + operator activation.
 
 ## Evidence model
 
 Evidence metadata contains a SHA-256 digest, source label, capability, run id and timestamp. Raw evidence storage is deliberately separate so secrets can be redacted or access-controlled without breaking lineage.
 
+## Coverage model
+
+Coverage is tracked per domain as `assessed`, `partially_assessed`, `not_applicable`, `not_authorized` or `unknown`. See `docs/coverage-matrix.md`.
+
+Zero findings are not treated as proof of security when material coverage remains unknown.
+
 ## Non-goals in M0
 
-M0 does not implement network scanners, exploit modules, credential use, payload delivery, persistence or evasion. Those are not needed to prove the orchestration architecture.
+M0 does not implement real-target scanners, exploit modules, credential use, payload delivery, persistence or evasion. Those are not needed to prove the product and orchestration architecture.
