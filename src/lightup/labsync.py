@@ -58,19 +58,42 @@ def persist_lab_findings(
     """Store a lab run's findings as domain findings with evidence references."""
     records = []
     for finding in labrun_result["findings"]:
+        asset = finding.get("target") or labrun_result.get("target", "")
+        evidence_ids = tuple(finding.get("evidence_ids", ())) or (
+            (labrun_result["evidence_id"],) if "evidence_id" in labrun_result else ())
         records.append(
             store.record_finding(
                 ctx,
                 engagement_id,
                 title=finding["finding"],
                 severity=Severity(finding["severity"]),
-                asset=labrun_result["target"],
+                asset=asset,
                 impact=finding["impact"],
                 remediation=finding["fix"],
-                evidence_ids=(labrun_result["evidence_id"],),
+                evidence_ids=evidence_ids,
             )
         )
     return records
+
+
+def persist_coverage(
+    store: DomainStore,
+    ctx: AccessContext,
+    engagement_id: str,
+    coverage_domains: dict[str, str],
+) -> int:
+    """Record a run's non-unknown coverage statuses on the engagement.
+
+    Unknown stays unwritten: a later run must never downgrade an engagement's
+    recorded coverage back to unknown by simply not touching a domain.
+    """
+    written = 0
+    for capability_id, status in coverage_domains.items():
+        if status == "unknown":
+            continue
+        store.set_coverage(ctx, engagement_id, capability_id, status)
+        written += 1
+    return written
 
 
 def retest_finding(

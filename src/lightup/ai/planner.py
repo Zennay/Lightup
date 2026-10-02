@@ -127,7 +127,7 @@ def request_plan(gateway: ModelGateway, registry: ToolRegistry,
 class PlanExecution:
     """Outcome of executing a validated plan behind the policy gate."""
 
-    results: list[ToolResult] = field(default_factory=list)
+    results: list[tuple[PlannedCall, ToolResult]] = field(default_factory=list)
     denied: list[tuple[str, str]] = field(default_factory=list)  # (tool_id, reason)
     elevation_requests: list[str] = field(default_factory=list)
 
@@ -137,7 +137,7 @@ class PlanExecution:
 
     def assessed_capabilities(self) -> tuple[str, ...]:
         seen: list[str] = []
-        for result in self.results:
+        for _call, result in self.results:
             if result.capability_id not in seen:
                 seen.append(result.capability_id)
         return tuple(seen)
@@ -149,7 +149,7 @@ def execute_plan(executor: ToolExecutor, context: RunContext,
     execution = PlanExecution()
     for call in plan:
         try:
-            execution.results.append(executor.execute(context, call.to_tool_call()))
+            execution.results.append((call, executor.execute(context, call.to_tool_call())))
         except RiskElevationRequired as exc:
             execution.elevation_requests.append(str(exc))
         except ToolDenied as exc:

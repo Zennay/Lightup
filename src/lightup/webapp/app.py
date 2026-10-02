@@ -490,6 +490,10 @@ class LightUpWebApp:
             "open client portal</a></p>"
             "<h2>Engagements</h2>"
             + ("".join(engagement_cards) or "<p class=\"empty\">No engagements yet.</p>")
+            + "<h2>Coverage</h2>"
+            + ("".join(self._coverage_card(ctx, e.engagement_id, e.name)
+                       for e in engagements)
+               or "<p class=\"empty\">No engagements yet.</p>")
             + f"<h2>Findings</h2>{self._finding_cards(findings)}"
         )
         return Response(_page(f"LightUp — {client.name}", "clients", body, auth))
@@ -606,7 +610,11 @@ class LightUpWebApp:
             "<div class=\"kpi-label\">Assessment requests</div></div>"
             "</div>"
             f"<h2>Findings</h2>{self._finding_cards(findings, portal=True)}"
-            f"<h2>Your assessment requests</h2>{request_rows}"
+            "<h2>What has been assessed</h2>"
+            + ("".join(self._coverage_card(ctx, e.engagement_id, e.name)
+                       for e in self.store.list_engagements(ctx))
+               or "<p class=\"empty\">No engagements yet.</p>")
+            + f"<h2>Your assessment requests</h2>{request_rows}"
             "<h2>Request an assessment</h2>"
             "<div class=\"card\">"
             f"<form method=\"post\" action=\"/portal/{_e(client_id)}/requests\">"
@@ -644,6 +652,36 @@ class LightUpWebApp:
         return _redirect(f"/portal/{client_id}")
 
     # -- shared rendering ------------------------------------------------------
+
+    def _coverage_card(self, ctx: AccessContext, engagement_id: str,
+                       engagement_name: str) -> str:
+        from ..coverage import CoverageReport, CoverageStatus
+
+        stored = self.store.get_coverage(ctx, engagement_id)
+        report = CoverageReport.build(
+            {capability: CoverageStatus(status) for capability, status in stored.items()})
+        counts = report.counts()
+        known_rows = "".join(
+            f"<br>{_e(capability)}: {_e(status.value)}"
+            for capability, status in report.statuses
+            if status is not CoverageStatus.UNKNOWN
+        ) or "<br>—"
+        warning = ""
+        if report.is_materially_unknown:
+            warning = ("<p class=\"meta\">Coverage is materially unknown: zero "
+                       "findings is <strong>not</strong> a clean bill of health.</p>")
+        return (
+            "<div class=\"card\"><div class=\"row\">"
+            f"<strong>Coverage — {_e(engagement_name)}</strong>"
+            f"<span class=\"badge\">{counts['assessed']} assessed · "
+            f"{counts['partially_assessed']} partial · "
+            f"{counts['unknown']} unknown</span></div>"
+            f"{warning}"
+            "<details><summary>Per security domain</summary>"
+            f"<p class=\"meta\">{known_rows}<br>"
+            f"+ {counts['unknown']} domain(s) with unknown coverage</p></details>"
+            "</div>"
+        )
 
     def _finding_cards(self, findings, portal: bool = False) -> str:
         if not findings:

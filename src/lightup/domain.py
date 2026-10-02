@@ -240,6 +240,15 @@ CREATE TABLE IF NOT EXISTS login_failures (
     failures INTEGER NOT NULL DEFAULT 0,
     locked_until TEXT
 );
+
+CREATE TABLE IF NOT EXISTS coverage_entries (
+    engagement_id TEXT NOT NULL,
+    capability_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (engagement_id, capability_id),
+    FOREIGN KEY (engagement_id) REFERENCES engagements(engagement_id) ON DELETE CASCADE
+);
 """
 
 
@@ -997,6 +1006,36 @@ class DomainStore:
                 "SELECT * FROM findings WHERE finding_id=?", (finding_id,)
             ).fetchone()
         return self._finding_from_row(row)
+
+    # -- coverage ----------------------------------------------------------------
+
+    def set_coverage(
+        self, ctx: AccessContext, engagement_id: str, capability_id: str, status: str
+    ) -> None:
+        """Record per-domain coverage for an engagement (operator-only)."""
+        ctx.require_operator("set_coverage")
+        engagement = self.get_engagement(ctx, engagement_id)
+        from .coverage import CoverageStatus
+
+        CoverageStatus(status)  # validates
+        with self._connect() as con:
+            con.execute(
+                "INSERT INTO coverage_entries(engagement_id,capability_id,status,"
+                "updated_at) VALUES(?,?,?,?) "
+                "ON CONFLICT(engagement_id,capability_id) DO UPDATE SET "
+                "status=excluded.status, updated_at=excluded.updated_at",
+                (engagement.engagement_id, capability_id, status, utcnow().isoformat()),
+            )
+
+    def get_coverage(self, ctx: AccessContext, engagement_id: str) -> dict[str, str]:
+        """Coverage statuses stored for this engagement (tenant-scoped)."""
+        engagement = self.get_engagement(ctx, engagement_id)
+        with self._connect() as con:
+            rows = con.execute(
+                "SELECT capability_id,status FROM coverage_entries WHERE engagement_id=?",
+                (engagement.engagement_id,),
+            ).fetchall()
+        return {row["capability_id"]: row["status"] for row in rows}
 
     # -- prospects (passive discovery; operator-only) ---------------------------
 
