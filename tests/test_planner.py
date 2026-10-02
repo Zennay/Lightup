@@ -155,6 +155,23 @@ class PlannerTest(unittest.TestCase):
         self.assertEqual(len(execution.elevation_requests), 1)
         self.assertIn("destructive-sim", execution.elevation_requests[0])
 
+    def test_planner_receives_endpoint_port_and_path_without_changing_scope(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+
+        endpoint = self.url + "fixture?profile=exposed"
+        scenario = LabScenario("endpoint", "endpoint preservation", (endpoint,))
+        gateway = Mock()
+        gateway.complete.return_value = SimpleNamespace(content=self._plan_json([
+            {"tool_id": http_baseline.TOOL_ID, "asset": "127.0.0.1",
+             "arguments": {"url": endpoint}}]))
+        plan = request_plan(gateway, self.registry, scenario)
+        messages = gateway.complete.call_args.args[1]
+        payload = json.loads(messages[1].content)["scenario"]
+        self.assertEqual(payload["endpoints"], [endpoint])
+        self.assertEqual(payload["targets"], ["127.0.0.1"])
+        self.assertEqual(dict(plan[0].arguments)["url"], endpoint)
+
     def test_rejected_plan_never_executes(self):
         gateway = ModelGateway()
         gateway.register_provider(ScriptedProvider(

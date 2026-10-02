@@ -112,6 +112,7 @@ def request_plan(gateway: ModelGateway, registry: ToolRegistry,
     payload = json.dumps(
         {"scenario": {"scenario_id": scenario.scenario_id, "name": scenario.name,
                       "targets": list(scenario.targets),
+                      "endpoints": list(scenario.endpoints),
                       "description": scenario.description},
          "tool_catalog": catalog_for(registry)},
         sort_keys=True,

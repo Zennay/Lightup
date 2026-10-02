@@ -65,13 +65,16 @@ class LabScenario:
     scenario_id: str
     name: str
     targets: tuple[str, ...]
-    expected_findings: tuple[ExpectedFinding, ...] = ()
+    # None means unscored; an empty tuple is explicit zero-finding ground truth.
+    expected_findings: tuple[ExpectedFinding, ...] | None = None
     description: str = ""
+    endpoints: tuple[str, ...] = field(init=False)
 
     def __post_init__(self) -> None:
         if not self.targets:
             raise ValueError("a lab scenario requires at least one target")
         normalized = tuple(assert_lab_target(t) for t in self.targets)
+        object.__setattr__(self, "endpoints", tuple(self.targets))
         object.__setattr__(self, "targets", normalized)
 
 

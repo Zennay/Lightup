@@ -9,6 +9,9 @@ description = "Authorization-first defensive security lab orchestration"
 requires-python = ">=3.11"
 dependencies = []
 
+[project.optional-dependencies]
+anthropic = ["anthropic>=1.0"]
+
 [project.scripts]
 lightup = "lightup.cli:main"
 

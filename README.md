@@ -52,14 +52,22 @@ PYTHONPATH=src python -m lightup.cli serve --db lightup.db   # loopback-only web
 # End-to-end lab demo: fixture + baseline worker + evaluation
 python lab/http_fixture.py &  # loopback only
 PYTHONPATH=src python -m lightup.cli lab-baseline --expect-fixture
+
+# Planner-driven multi-lane assessment against a planted-weakness profile,
+# scored against the planted ground truth, with AI review. Offline by default
+# (deterministic scripted gateway); pass --gateway-config
+# config/gateway.example.json plus ANTHROPIC_API_KEY to use a real provider.
+python lab/vuln_fixture.py --profile exposed --port 18081 &  # loopback only
+PYTHONPATH=src python -m lightup.cli lab-assess http://127.0.0.1:18081/ \
+  --profile exposed
 ```
 
 The `plan` command is intentionally non-invasive: it only emits a structured plan.
 
 The web shell (`docs/webapp.md`) serves the operator dashboard on `/` and the
-client portal on `/portal/<client_id>`. It has no authentication yet and
-therefore refuses to bind to non-loopback addresses; it cannot trigger any
-target interaction.
+client portal on `/portal/<client_id>`, behind session authentication with
+CSRF protection. It refuses to bind to non-loopback addresses and cannot
+trigger any target interaction.
 
 ## Platform layers (M1)
 

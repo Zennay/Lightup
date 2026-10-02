@@ -75,11 +75,15 @@ class AssessmentReviewPipeline:
             gateway.binding_for(role)
 
     def review(self, labrun_result: dict) -> ReviewResult:
+        # Single-lane runs carry "target"; planner-driven runs carry "targets".
+        target_label = (labrun_result.get("target")
+                        or ", ".join(labrun_result.get("targets", [])))
         reviewed: list[ReviewedFinding] = []
         for finding in labrun_result.get("findings", []):
             payload = json.dumps(
                 {"finding": finding["finding"], "severity": finding["severity"],
-                 "impact": finding["impact"], "target": labrun_result.get("target", ""),
+                 "impact": finding["impact"],
+                 "target": finding.get("target", target_label),
                  "evidence_id": labrun_result.get("evidence_id", "")},
                 sort_keys=True,
             )
@@ -104,7 +108,7 @@ class AssessmentReviewPipeline:
             ModelRole.REPORT_SYNTHESIZER,
             (ModelMessage("system", _REPORT_SYSTEM),
              ModelMessage("user", json.dumps(
-                 {"target": labrun_result.get("target", ""),
+                 {"target": target_label,
                   "findings": [f.title for f in reviewed],
                   "coverage_counts": coverage_note}, sort_keys=True))),
         ).content

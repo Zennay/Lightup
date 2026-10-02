@@ -17,7 +17,11 @@ The repository contains:
   elevation approvals, findings/retest status and prospects, with tenant
   isolation enforced in code (`AccessContext`);
 - a provider-neutral **AI model gateway** with role abstractions
-  (`lightup.ai.gateway`, see `docs/ai-orchestration.md`);
+  (`lightup.ai.gateway`, see `docs/ai-orchestration.md`), a JSON
+  **configuration loader** (`lightup.ai.config`) with a shipped example config
+  (`config/gateway.example.json`) and a first real provider
+  adapter (`lightup.ai.providers.anthropic_provider`, optional extra
+  `lightup[anthropic]`, key via environment variable);
 - **typed AI orchestration contracts** with an immutable run context, a policy
   gate before every tool execution and a mandatory evidence ledger
   (`lightup.ai.orchestration`);
@@ -49,9 +53,15 @@ The repository contains:
   tokens, operator/client roles; bootstrap via `lightup create-operator`):
   operator dashboard (Overview/Discovery/Clients/Assessments) and client
   portal (`lightup.webapp`, see `docs/webapp.md`);
+- **planted-weakness lab fixture profiles** with hand-maintained ground truth
+  (`lightup.labfixtures`: exposed / partially-hardened / hardened,
+  `lab/vuln_fixture.py` serves them loopback-only) and a **`lightup
+  lab-assess` CLI** that runs the planner-driven assessment plus AI review
+  offline on a deterministic scripted gateway, or on a real provider via
+  `--gateway-config`;
 - reporting/redaction helpers;
 - a loopback-only lab fixture;
-- CI safety tests (106 unit tests), including proofs that unauthorized active
+- CI safety tests, including proofs that unauthorized active
   execution is impossible, risk escalation is blocked without new approval,
   tenants are isolated, passive Discovery cannot invoke active capabilities,
   lab workers fail closed on public targets, and the web shell rejects
