@@ -70,6 +70,24 @@ A second worker, `lab-service-inventory` (`lightup.workers.service_inventory`,
 capability `network-services`), connect-checks a bounded, explicit list of TCP
 ports on a lab host — no banners, no payloads — with the same double lab gate.
 
+## Review pipeline (`lightup.ai.pipeline`)
+
+`AssessmentReviewPipeline` is the first consumer of the Model Gateway: per
+finding the **verifier** role issues a verdict and the **remediation advisor**
+refines the fix; the **report synthesizer** writes the client-facing summary
+(always stating when coverage is materially unknown). All three roles must be
+bound before a review runs (fail-closed), and the pipeline only shapes text —
+it cannot execute tools or widen scope/risk.
+
+## Lab findings in the product (`lightup.labsync`)
+
+`persist_lab_findings` turns a lab run's results into regular domain findings
+(visible in dashboard and portal, with evidence references), and
+`retest_finding` re-observes the lab target with honest semantics: issue gone
+→ `fixed`; still present → `fix_pending`; back after a `fixed` verdict →
+`regression`. Retests reuse the lab-only baseline worker, so they fail closed
+on any non-lab asset.
+
 ## Coverage tracking (`lightup.coverage`)
 
 `CoverageReport` maps every registered capability to
