@@ -214,6 +214,10 @@ class LightUpWebApp:
             ("POST", re.compile(r"^/clients$"), self.create_client, "operator"),
             ("GET", re.compile(r"^/clients/(?P<client_id>[\w-]+)$"), self.client_detail,
              "operator"),
+            ("POST", re.compile(r"^/clients/(?P<client_id>[\w-]+)/engagements$"),
+             self.create_engagement, "operator"),
+            ("POST", re.compile(r"^/engagements/(?P<engagement_id>[\w-]+)/grants$"),
+             self.record_grant, "operator"),
             ("GET", re.compile(r"^/assessments$"), self.assessments, "operator"),
             ("POST", re.compile(r"^/assessments/requests/(?P<request_id>[\w-]+)/decision$"),
              self.decide_request, "operator"),
@@ -464,6 +468,7 @@ class LightUpWebApp:
         client = self.store.get_client(ctx, client_id)
         engagements = self.store.list_engagements(ctx, client_id)
         findings = self.store.list_findings(ctx, client_id=client_id)
+        csrf = self._csrf_field(auth)
         engagement_cards = []
         for eng in engagements:
             grant = self.store.get_current_grant(ctx, eng.engagement_id)
@@ -479,17 +484,52 @@ class LightUpWebApp:
                     f"<br>Valid {_e(grant.valid_from.date())} – {_e(grant.valid_until.date())}"
                     "</p></details>"
                 )
+            else:
+                grant_detail = (
+                    "<details><summary>Record authorization grant</summary>"
+                    f"<form method=\"post\" action=\"/engagements/{_e(eng.engagement_id)}/grants\">"
+                    f"{csrf}"
+                    "<label>Approved by (client signatory)</label>"
+                    "<input name=\"approved_by\" required>"
+                    "<label>Authorization reference</label>"
+                    "<input name=\"reference\" required placeholder=\"AUTH-2026-...\">"
+                    "<label>Authorized assets (comma-separated)</label>"
+                    "<input name=\"assets\" required>"
+                    "<label>Excluded assets (comma-separated, optional)</label>"
+                    "<input name=\"excluded_assets\">"
+                    "<label>Allowed capabilities (comma-separated ids; empty = all)</label>"
+                    "<input name=\"capabilities\">"
+                    "<label>Maximum risk level</label><select name=\"max_risk\">"
+                    "<option value=\"1\">1 — Passive</option>"
+                    "<option value=\"2\">2 — Low impact</option>"
+                    "<option value=\"3\" selected>3 — Standard</option>"
+                    "<option value=\"4\">4 — Elevated</option></select>"
+                    "<label>Valid for (days)</label>"
+                    "<input name=\"valid_days\" type=\"number\" min=\"1\" max=\"365\" value=\"30\">"
+                    "<button>Record grant</button>"
+                    "<p class=\"meta\">A grant only authorizes what is listed here. "
+                    "Destructive simulation (level 5) is lab-only and cannot be "
+                    "granted for client assets.</p></form></details>"
+                )
             engagement_cards.append(
                 "<div class=\"card\"><div class=\"row\">"
                 f"<strong>{_e(eng.name)}</strong>{grant_badge}</div>"
                 f"<p class=\"meta\">Status: {_e(eng.status.value)}</p>{grant_detail}</div>"
             )
+        new_engagement = (
+            "<div class=\"card\">"
+            f"<form method=\"post\" action=\"/clients/{_e(client.client_id)}/engagements\">"
+            f"{csrf}"
+            "<label>Engagement name</label><input name=\"name\" required>"
+            "<button>Create engagement</button></form></div>"
+        )
         body = (
             f"<h1>{_e(client.name)}</h1>"
             f"<p class=\"sub\">Portal: <a href=\"/portal/{_e(client.client_id)}\">"
             "open client portal</a></p>"
             "<h2>Engagements</h2>"
             + ("".join(engagement_cards) or "<p class=\"empty\">No engagements yet.</p>")
+            + f"<h2>New engagement</h2>{new_engagement}"
             + "<h2>Coverage</h2>"
             + ("".join(self._coverage_card(ctx, e.engagement_id, e.name)
                        for e in engagements)
@@ -497,6 +537,42 @@ class LightUpWebApp:
             + f"<h2>Findings</h2>{self._finding_cards(findings)}"
         )
         return Response(_page(f"LightUp — {client.name}", "clients", body, auth))
+
+    def create_engagement(self, auth: AuthState, form: dict[str, str],
+                          client_id: str) -> Response:
+        self.store.create_engagement(auth.context, client_id, form.get("name", ""))
+        return _redirect(f"/clients/{client_id}")
+
+    def record_grant(self, auth: AuthState, form: dict[str, str],
+                     engagement_id: str) -> Response:
+        from datetime import datetime, timedelta, timezone
+
+        from ..engagements import ScopeDefinition
+
+        def _csv(name: str) -> tuple[str, ...]:
+            return tuple(part.strip() for part in form.get(name, "").split(",")
+                         if part.strip())
+
+        max_risk = RiskLevel(int(form.get("max_risk", "3")))
+        if max_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
+            raise ValueError("destructive simulation cannot be granted for client assets")
+        valid_days = max(1, min(365, int(form.get("valid_days", "30"))))
+        now = datetime.now(timezone.utc)
+        scope = ScopeDefinition(
+            assets=_csv("assets"),
+            max_risk=max_risk,
+            allowed_capabilities=_csv("capabilities"),
+            excluded_assets=_csv("excluded_assets"),
+        )
+        engagement = self.store.get_engagement(auth.context, engagement_id)
+        self.store.record_authorization_grant(
+            auth.context, engagement_id,
+            approved_by=form.get("approved_by", ""),
+            reference=form.get("reference", ""),
+            scope=scope, valid_from=now,
+            valid_until=now + timedelta(days=valid_days),
+        )
+        return _redirect(f"/clients/{engagement.client_id}")
 
     def assessments(self, auth: AuthState, form: dict[str, str]) -> Response:
         ctx = auth.context

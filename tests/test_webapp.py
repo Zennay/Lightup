@@ -204,6 +204,48 @@ class WebAppTest(unittest.TestCase):
         self.assertEqual(decided.status.value, "approved")
         self.assertEqual(decided.decided_by, self.op_user.user_id)
 
+    def test_operator_creates_engagement_and_grant_via_ui(self):
+        status, headers, _ = self.request(
+            "POST", f"/clients/{self.client_a.client_id}/engagements",
+            {"name": "Q4 assessment"}, token=self.op_token, csrf=self.op_csrf)
+        self.assertEqual(status, "303 See Other")
+        self.assertEqual(headers["Location"], f"/clients/{self.client_a.client_id}")
+        engagement = self.store.list_engagements(self.operator,
+                                                 self.client_a.client_id)[0]
+        self.assertEqual(engagement.name, "Q4 assessment")
+
+        status, _, _ = self.request(
+            "POST", f"/engagements/{engagement.engagement_id}/grants",
+            {"approved_by": "CISO Acme", "reference": "AUTH-2026-007",
+             "assets": "app.acme.example, api.acme.example",
+             "excluded_assets": "legacy.acme.example",
+             "capabilities": "web-baseline", "max_risk": "3", "valid_days": "30"},
+            token=self.op_token, csrf=self.op_csrf)
+        self.assertEqual(status, "303 See Other")
+        grant = self.store.get_current_grant(self.operator, engagement.engagement_id)
+        self.assertIsNotNone(grant)
+        self.assertEqual(grant.reference, "AUTH-2026-007")
+        self.assertEqual(grant.scope.assets, ("app.acme.example", "api.acme.example"))
+        self.assertFalse(grant.scope.allows_asset("legacy.acme.example"))
+        _, _, body = self.request("GET", f"/clients/{self.client_a.client_id}",
+                                  token=self.op_token)
+        self.assertIn("Authorization current", body)
+
+        # Destructive risk cannot be granted through the UI.
+        status, _, _ = self.request(
+            "POST", f"/engagements/{engagement.engagement_id}/grants",
+            {"approved_by": "X", "reference": "R", "assets": "a",
+             "max_risk": "5", "valid_days": "30"},
+            token=self.op_token, csrf=self.op_csrf)
+        self.assertEqual(status, "400 Bad Request")
+
+    def test_client_session_cannot_create_engagement_or_grant(self):
+        status, _, _ = self.request(
+            "POST", f"/clients/{self.client_a.client_id}/engagements",
+            {"name": "Rogue"}, token=self.a_token, csrf=self.a_csrf)
+        self.assertEqual(status, "403 Forbidden")
+        self.assertEqual(self.store.list_engagements(self.operator), [])
+
     def test_output_is_escaped(self):
         self.store.add_prospect(self.operator, "<script>alert(1)</script>", "x", 0.5)
         _, _, body = self.request("GET", "/discovery", token=self.op_token)
