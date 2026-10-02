@@ -58,3 +58,28 @@ jobs:
           python -m lightup.cli plan 127.0.0.1 > /tmp/lightup-plan.json
           cat /tmp/lightup-plan.json
           grep -q '"execution_enabled": false' /tmp/lightup-plan.json
+
+      - name: Web shell canary (renders, stays locked, loopback-only)
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'EOF'
+          import io
+          from lightup.domain import DomainStore
+          from lightup.webapp import create_app
+          from lightup.webapp.__main__ import _loopback
+
+          app = create_app(DomainStore("/tmp/lightup-web.db"))
+          env = {"REQUEST_METHOD": "GET", "PATH_INFO": "/", "wsgi.input": io.BytesIO(b"")}
+          out = {}
+          body = b"".join(app(env, lambda s, h: out.update(status=s))).decode()
+          assert out["status"] == "200 OK", out
+          assert "Locked" in body and "no real-target execution path" in body
+          try:
+              _loopback("0.0.0.0")
+          except Exception:
+              print("non-loopback bind refused: OK")
+          else:
+              raise SystemExit("web shell accepted a non-loopback bind")
+          print("web shell canary: OK")
+          EOF

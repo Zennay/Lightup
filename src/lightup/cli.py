@@ -30,11 +30,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     plan = sub.add_parser("plan", parents=[shared])
     plan.add_argument("target")
+
+    serve = sub.add_parser("serve", help="run the loopback-only web shell")
+    serve.add_argument("--db", default="lightup.db")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8766)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+
+    if args.command == "serve":
+        from .webapp.__main__ import main as serve_main
+
+        return serve_main(["--db", args.db, "--host", args.host, "--port", str(args.port)])
+
     planner = Planner(_policy(args))
     target = Target(args.target)
     plan = planner.build(target)
