@@ -65,7 +65,8 @@ class LabScenario:
     scenario_id: str
     name: str
     targets: tuple[str, ...]
-    expected_findings: tuple[ExpectedFinding, ...] = ()
+    # None means unscored; an empty tuple is explicit zero-finding ground truth.
+    expected_findings: tuple[ExpectedFinding, ...] | None = None
     description: str = ""
 
     def __post_init__(self) -> None:

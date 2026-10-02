@@ -66,6 +66,29 @@ class PlantedGroundTruthTest(unittest.TestCase):
                 self.assertEqual({f["check_id"] for f in result["findings"]},
                                  set(profile.expected_check_ids))
 
+    def test_zero_finding_ground_truth_counts_unexpected_results(self):
+        with _serve(PROFILES["exposed"]) as url:
+            single = run_lab_baseline(url, self.base / "zero-single.db", expected=())
+            scenario = LabScenario("zero", "zero findings expected", (url,),
+                                   expected_findings=())
+            multi = run_planned_assessment(scripted_demo_gateway((url,)), scenario,
+                                           self.base / "zero-multi.db")
+        for result in (single, multi):
+            self.assertEqual(result["evaluation"]["metrics"]["invalid_findings"], 5)
+            self.assertEqual(result["evaluation"]["metrics"]["false_positive_rate"], 1.0)
+            self.assertIn("scored against", result["evaluation"]["notes"])
+
+    def test_unspecified_ground_truth_remains_unscored(self):
+        with _serve(PROFILES["exposed"]) as url:
+            single = run_lab_baseline(url, self.base / "unscored-single.db")
+            scenario = LabScenario("unknown", "unknown truth", (url,))
+            multi = run_planned_assessment(scripted_demo_gateway((url,)), scenario,
+                                           self.base / "unscored-multi.db")
+        for result in (single, multi):
+            self.assertIn("unscored", result["evaluation"]["notes"])
+            self.assertEqual(result["evaluation"]["metrics"]["invalid_findings"], 0)
+            self.assertEqual(len(result["findings"]), 5)
+
     def test_mismatched_truth_is_scored_honestly(self):
         # A hardened fixture scored against the exposed profile's truth must
         # report everything as missed — never as a clean pass.
@@ -128,6 +151,16 @@ class LabAssessCliTest(unittest.TestCase):
             self.assertEqual(metrics["valid_findings"], 3)
             self.assertEqual(metrics["missed_findings"], 0)
             self.assertIn("review", result)
+
+    def test_cli_hardened_profile_still_counts_unexpected_findings(self):
+        with tempfile.TemporaryDirectory() as tmp, _serve(PROFILES["exposed"]) as url:
+            stdout = io.StringIO()
+            with contextlib.redirect_stdout(stdout):
+                code = main_assess([url, "--db", str(Path(tmp) / "zero-cli.db"),
+                                    "--profile", "hardened", "--no-review"])
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(stdout.getvalue())["evaluation"]["metrics"]
+                             ["invalid_findings"], 5)
 
     def test_cli_fails_closed_on_public_target(self):
         stdout = io.StringIO()

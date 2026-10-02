@@ -26,6 +26,13 @@ fails loudly on unknown types, roles or empty bindings — model choice stays
 configuration, never business logic. A model refusal surfaces as a provider
 error; it never bypasses or weakens the policy gate.
 
+Provider names are configurable aliases (for example, separate planner/reviewer
+instances of the same adapter). The configured credential environment variable
+must be populated; the adapter never falls back to a different SDK credential.
+Requests have a 60-second SDK timeout and no automatic retries. API errors are
+sanitized, and empty, refused or incomplete output is rejected. A failed
+requested review preserves the assessment result but returns CLI exit code 2.
+
 A ready-made example lives at `config/gateway.example.json` (all roles bound
 to the Anthropic provider; the key comes from `ANTHROPIC_API_KEY`). The
 `lightup lab-assess` CLI takes it via `--gateway-config`; without one it
@@ -84,6 +91,9 @@ serves any profile on 127.0.0.1 only, and `lightup lab-assess --profile
 <name>` scores a run against that profile's planted truth. The test suite
 proves each profile scores perfectly against its own truth and that a
 mismatched truth is reported as missed findings — never as a clean pass.
+An explicit empty expected-findings tuple means zero findings are expected:
+unexpected results count as false positives. Only `None` means no ground truth
+was supplied and the finding counts are unscored.
 
 ## First capability worker (`lightup.workers.http_baseline`)
 

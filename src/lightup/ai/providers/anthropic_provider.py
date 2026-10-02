@@ -58,7 +58,7 @@ class AnthropicProvider(ModelProvider):
     """Routes gateway completions to the Anthropic Messages API."""
 
     def __init__(self, api_key_env: str = "ANTHROPIC_API_KEY",
-                 api_key: str | None = None):
+                 api_key: str | None = None, provider_id: str = "anthropic"):
         try:
             import anthropic
         except ImportError as exc:
@@ -67,35 +67,40 @@ class AnthropicProvider(ModelProvider):
                 "install LightUp with the optional extra: pip install lightup[anthropic]"
             ) from exc
         self._anthropic = anthropic
-        key = api_key or os.environ.get(api_key_env)
-        # The SDK also resolves credentials itself (env/auth profiles); only
-        # pass a key when we explicitly have one.
-        self._client = anthropic.Anthropic(api_key=key) if key else anthropic.Anthropic()
+        key = api_key if api_key is not None else os.environ.get(api_key_env)
+        if not isinstance(key, str) or not key.strip():
+            raise ModelProviderError("configured provider credential is missing")
+        self._provider_id = provider_id
+        try:
+            self._client = anthropic.Anthropic(api_key=key, timeout=60.0, max_retries=0)
+        except Exception:
+            # SDK diagnostics can contain credentials or request contents.
+            raise ModelProviderError("provider client initialization failed") from None
 
     @property
     def provider_id(self) -> str:
-        return "anthropic"
+        return self._provider_id
 
     def complete(self, request: ModelRequest) -> ModelResponse:
         anthropic = self._anthropic
         try:
             response = self._client.messages.create(**build_request_kwargs(request))
-        except anthropic.RateLimitError as exc:
-            raise ModelProviderError(f"anthropic rate limit: {exc}") from exc
+        except anthropic.RateLimitError:
+            raise ModelProviderError("anthropic rate limit") from None
         except anthropic.APIStatusError as exc:
-            raise ModelProviderError(
-                f"anthropic API error {exc.status_code}: {exc.message}") from exc
-        except anthropic.APIConnectionError as exc:
-            raise ModelProviderError(f"anthropic connection error: {exc}") from exc
+            raise ModelProviderError(f"anthropic API error (status {exc.status_code})") from None
+        except anthropic.APIConnectionError:
+            raise ModelProviderError("anthropic connection error") from None
 
-        if response.stop_reason == "refusal":
-            details = getattr(response, "stop_details", None)
-            category = getattr(details, "category", None) if details else None
-            raise ModelProviderError(
-                f"model declined the request (refusal, category={category})")
-
-        text = "".join(
-            block.text for block in response.content if block.type == "text")
+        # A refusal, tool request or truncated response is not completed analysis.
+        if getattr(response, "stop_reason", None) != "end_turn":
+            raise ModelProviderError("model did not return a completed text response")
+        try:
+            text = "".join(block.text for block in response.content if block.type == "text")
+        except (AttributeError, TypeError):
+            raise ModelProviderError("model returned invalid text content") from None
+        if not text.strip():
+            raise ModelProviderError("model returned empty text content")
         usage = response.usage
         return ModelResponse(
             provider_id=self.provider_id,

@@ -42,13 +42,16 @@ def _build_provider(name: str, spec: dict) -> ModelProvider:
         from .providers.anthropic_provider import AnthropicProvider, ModelProviderError
 
         try:
-            return AnthropicProvider(api_key_env=spec.get("api_key_env", "ANTHROPIC_API_KEY"))
+            return AnthropicProvider(api_key_env=spec.get("api_key_env", "ANTHROPIC_API_KEY"),
+                                     provider_id=name)
         except ModelProviderError as exc:
             raise GatewayConfigurationError(str(exc)) from exc
     raise GatewayConfigurationError(f"unknown provider type {provider_type!r}")
 
 
 def gateway_from_dict(config: dict) -> ModelGateway:
+    if not isinstance(config, dict):
+        raise GatewayConfigurationError("gateway config must be an object")
     gateway = ModelGateway()
     providers = config.get("providers")
     roles = config.get("roles")
@@ -58,8 +61,15 @@ def gateway_from_dict(config: dict) -> ModelGateway:
         raise GatewayConfigurationError("config requires a non-empty 'roles' object")
 
     for name, spec in providers.items():
+        if not isinstance(name, str) or not name.strip():
+            raise GatewayConfigurationError("provider name must be a non-empty string")
         if not isinstance(spec, dict):
             raise GatewayConfigurationError(f"provider {name!r} spec must be an object")
+        if "api_key" in spec:
+            raise GatewayConfigurationError("inline credentials are not allowed; use api_key_env")
+        key_env = spec.get("api_key_env", "ANTHROPIC_API_KEY")
+        if not isinstance(key_env, str) or not key_env.strip():
+            raise GatewayConfigurationError("api_key_env must be a non-empty string")
         gateway.register_provider(_build_provider(name, spec))
 
     for role_name, binding in roles.items():
@@ -69,7 +79,10 @@ def gateway_from_dict(config: dict) -> ModelGateway:
             raise GatewayConfigurationError(f"unknown role {role_name!r}") from None
         if not isinstance(binding, dict):
             raise GatewayConfigurationError(f"role {role_name!r} binding must be an object")
-        gateway.bind_role(role, binding.get("provider", ""), binding.get("model", ""))
+        provider_id, model_id = binding.get("provider"), binding.get("model")
+        if not isinstance(provider_id, str) or not isinstance(model_id, str):
+            raise GatewayConfigurationError("role provider and model must be strings")
+        gateway.bind_role(role, provider_id, model_id)
 
     return gateway
 

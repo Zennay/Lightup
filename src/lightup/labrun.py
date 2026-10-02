@@ -69,7 +69,7 @@ FIXTURE_EXPECTED: tuple[ExpectedFinding, ...] = tuple(
 def run_lab_baseline(
     url: str,
     state_path: str | Path,
-    expected: tuple[ExpectedFinding, ...] = (),
+    expected: tuple[ExpectedFinding, ...] | None = None,
     engine_version: str = "m1-dev",
 ) -> dict:
     """Run the HTTP baseline against one lab URL and return a full result dict."""
@@ -116,7 +116,7 @@ def run_lab_baseline(
                 metadata={"impact": impact, "check_id": check_id},
             )
         )
-    if expected:
+    if expected is not None:
         valid, invalid, missed = score_findings(expected, found_ids)
         notes = "scored against scenario ground truth"
     else:
@@ -260,7 +260,7 @@ def run_planned_assessment(
     counts = coverage.counts()
 
     found_ids = tuple(f.metadata["check_id"] for f in findings)
-    if scenario.expected_findings:
+    if scenario.expected_findings is not None:
         valid, invalid, missed = score_findings(scenario.expected_findings, found_ids)
         notes = "scored against scenario ground truth"
     else:
@@ -314,6 +314,7 @@ def main_assess(argv: list[str] | None = None) -> int:
     from .ai.gateway import GatewayConfigurationError
     from .ai.pipeline import AssessmentReviewPipeline
     from .ai.planner import PlanRejected
+    from .ai.providers.anthropic_provider import ModelProviderError
     from .labfixtures import PROFILES, expected_findings
 
     parser = argparse.ArgumentParser(prog="lightup-labassess")
@@ -329,7 +330,7 @@ def main_assess(argv: list[str] | None = None) -> int:
                         help="skip the verifier/remediation/report review pass")
     args = parser.parse_args(argv)
 
-    expected = expected_findings(PROFILES[args.profile]) if args.profile else ()
+    expected = expected_findings(PROFILES[args.profile]) if args.profile else None
     try:
         scenario = LabScenario(
             scenario_id="lab-assess",
@@ -340,20 +341,21 @@ def main_assess(argv: list[str] | None = None) -> int:
         gateway = (load_gateway(args.gateway_config) if args.gateway_config
                    else scripted_demo_gateway((args.url,)))
         result = run_planned_assessment(gateway, scenario, args.db)
-    except (GatewayConfigurationError, PlanRejected, PermissionError, ValueError) as exc:
+    except (GatewayConfigurationError, ModelProviderError, PlanRejected,
+            PermissionError, ValueError) as exc:
         print(json.dumps({"error": str(exc)}, indent=2))
         return 2
 
+    exit_code = 0
     if not args.no_review:
-        from .ai.providers.anthropic_provider import ModelProviderError
-
         try:
             result["review"] = AssessmentReviewPipeline(gateway).review(result).to_dict()
         except (GatewayConfigurationError, ModelProviderError) as exc:
             # A failed review never hides the gated assessment result.
             result["review_skipped"] = str(exc)
+            exit_code = 2
     print(json.dumps(result, indent=2))
-    return 0
+    return exit_code
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -366,7 +368,7 @@ def main(argv: list[str] | None = None) -> int:
                         help="score against the stock fixture's ground truth")
     args = parser.parse_args(argv)
 
-    expected = FIXTURE_EXPECTED if args.expect_fixture else ()
+    expected = FIXTURE_EXPECTED if args.expect_fixture else None
     try:
         result = run_lab_baseline(args.url, args.db, expected=expected)
     except PermissionError as exc:

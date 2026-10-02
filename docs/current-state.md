@@ -61,7 +61,7 @@ The repository contains:
   `--gateway-config`;
 - reporting/redaction helpers;
 - a loopback-only lab fixture;
-- CI safety tests (129 unit tests), including proofs that unauthorized active
+- CI safety tests, including proofs that unauthorized active
   execution is impossible, risk escalation is blocked without new approval,
   tenants are isolated, passive Discovery cannot invoke active capabilities,
   lab workers fail closed on public targets, and the web shell rejects
