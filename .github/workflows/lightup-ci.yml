@@ -58,3 +58,45 @@ jobs:
           python -m lightup.cli plan 127.0.0.1 > /tmp/lightup-plan.json
           cat /tmp/lightup-plan.json
           grep -q '"execution_enabled": false' /tmp/lightup-plan.json
+
+      - name: Web shell canary (auth required, stays locked, loopback-only)
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'EOF'
+          import io
+          from lightup.domain import DomainStore
+          from lightup.webapp import create_app
+          from lightup.webapp.__main__ import _loopback
+
+          store = DomainStore("/tmp/lightup-web.db")
+          app = create_app(store)
+
+          def get(path, cookie=None):
+              env = {"REQUEST_METHOD": "GET", "PATH_INFO": path,
+                     "wsgi.input": io.BytesIO(b"")}
+              if cookie:
+                  env["HTTP_COOKIE"] = cookie
+              out = {}
+              body = b"".join(app(env, lambda s, h: out.update(status=s, headers=dict(h))))
+              return out["status"], out["headers"], body.decode()
+
+          # Anonymous access is redirected to the login page.
+          status, headers, _ = get("/")
+          assert status == "303 See Other" and headers["Location"] == "/login", (status, headers)
+
+          # A signed-in operator sees the locked activation state.
+          user = store.bootstrap_operator("ci@lightup.test", "CI", "ci-canary-password")
+          token, _csrf = store.create_session(user.user_id)
+          status, _, body = get("/", cookie=f"lightup_session={token}")
+          assert status == "200 OK", status
+          assert "Locked" in body and "no real-target execution path" in body
+
+          try:
+              _loopback("0.0.0.0")
+          except Exception:
+              print("non-loopback bind refused: OK")
+          else:
+              raise SystemExit("web shell accepted a non-loopback bind")
+          print("web shell canary: OK")
+          EOF
