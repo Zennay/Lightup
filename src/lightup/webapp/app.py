@@ -29,10 +29,10 @@ from __future__ import annotations
 
 import html
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from http.cookies import SimpleCookie
 from typing import Callable, Iterable
-from urllib.parse import parse_qs
+from .forms import FormError, read_form
 
 from ..domain import (
     AccessContext,
@@ -121,6 +121,7 @@ def _risk(level: RiskLevel) -> str:
 class AuthState:
     context: AccessContext | None
     csrf: str | None
+    session_token: str | None = field(default=None, repr=False, compare=False)
 
     @property
     def signed_in(self) -> bool:
@@ -145,7 +146,10 @@ class Response:
             ("Content-Length", str(len(self.body))),
             ("X-Content-Type-Options", "nosniff"),
             ("Referrer-Policy", "no-referrer"),
-            ("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'"),
+            ("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; "
+             "frame-ancestors 'none'; base-uri 'none'; form-action 'self'"),
+            ("X-Frame-Options", "DENY"),
+            ("Cache-Control", "no-store"),
         ] + (extra_headers or [])
 
 
@@ -233,17 +237,13 @@ class LightUpWebApp:
     def __call__(self, environ, start_response) -> Iterable[bytes]:
         method = environ.get("REQUEST_METHOD", "GET").upper()
         path = environ.get("PATH_INFO", "/") or "/"
-        form: dict[str, str] = {}
-        if method == "POST":
-            try:
-                length = int(environ.get("CONTENT_LENGTH") or 0)
-            except ValueError:
-                length = 0
-            raw = environ["wsgi.input"].read(length) if length else b""
-            form = {k: v[0] for k, v in parse_qs(raw.decode("utf-8")).items()}
-
-        auth = self._authenticate(environ)
-        response = self._dispatch(method, path, form, auth)
+        try:
+            form = read_form(environ) if method == "POST" else {}
+        except FormError as exc:
+            response = Response("<h1>Invalid form request</h1>", status=exc.status)
+        else:
+            auth = self._authenticate(environ)
+            response = self._dispatch(method, path, form, auth)
         start_response(response.status, response.headers)
         return [response.body]
 
@@ -260,7 +260,7 @@ class LightUpWebApp:
         if resolved is None:
             return ANONYMOUS
         context, csrf = resolved
-        return AuthState(context, csrf)
+        return AuthState(context, csrf, morsel.value)
 
     def _dispatch(self, method: str, path: str, form: dict[str, str],
                   auth: AuthState) -> Response:
@@ -336,12 +336,16 @@ class LightUpWebApp:
             response = self.login_page(ANONYMOUS, {}, error="Invalid email or password.")
             return Response(response.body.decode("utf-8"), status="401 Unauthorized",
                             extra_headers=[_session_cookie("", clear=True)])
+        if auth.session_token:
+            self.store.revoke_session(auth.session_token)
         token, _csrf = self.store.create_session(user.user_id)
         context = self.store.context_for_user(user.user_id)
         return _redirect(self._home_for(context), [_session_cookie(token)])
 
     def logout(self, auth: AuthState, form: dict[str, str]) -> Response:
         # The dispatcher already verified the session and CSRF token.
+        if auth.session_token:
+            self.store.revoke_session(auth.session_token)
         return _redirect("/login", [_session_cookie("", clear=True)])
 
     # -- operator pages -------------------------------------------------------

@@ -41,6 +41,7 @@ class WebAppTest(unittest.TestCase):
             "REQUEST_METHOD": method,
             "PATH_INFO": path,
             "CONTENT_LENGTH": str(len(body)),
+            "CONTENT_TYPE": "application/x-www-form-urlencoded",
             "wsgi.input": io.BytesIO(body),
         }
         if token:
@@ -128,6 +129,72 @@ class WebAppTest(unittest.TestCase):
                                           csrf=self.op_csrf)
         self.assertEqual(status, "303 See Other")
         self.assertIn("Max-Age=0", headers["Set-Cookie"])
+        self.assertIsNone(self.store.session_context(self.op_token))
+        status, headers, _ = self.request("GET", "/", token=self.op_token)
+        self.assertEqual(status, "303 See Other")
+        self.assertEqual(headers["Location"], "/login")
+        # Revoking one browser must not sign out a different user.
+        self.assertIsNotNone(self.store.session_context(self.a_token))
+
+    def test_rejected_logout_keeps_session(self):
+        status, _, _ = self.request("POST", "/logout", token=self.op_token,
+                                    csrf="forged")
+        self.assertEqual(status, "403 Forbidden")
+        self.assertIsNotNone(self.store.session_context(self.op_token))
+
+    def test_successful_login_rotates_existing_session(self):
+        status, headers, _ = self.request(
+            "POST", "/login",
+            {"email": "op@lightup.test", "password": "operator-password"},
+            token=self.op_token)
+        self.assertEqual(status, "303 See Other")
+        self.assertIsNone(self.store.session_context(self.op_token))
+        fresh = headers["Set-Cookie"].split("lightup_session=")[1].split(";")[0]
+        self.assertIsNotNone(self.store.session_context(fresh))
+
+    def test_bad_login_does_not_revoke_existing_session(self):
+        self.request("POST", "/login",
+                     {"email": "op@lightup.test", "password": "wrong-password"},
+                     token=self.op_token)
+        self.assertIsNotNone(self.store.session_context(self.op_token))
+
+    def test_sensitive_responses_are_not_cached_or_framed(self):
+        for method, path, token in [
+            ("GET", "/login", None), ("GET", "/", self.op_token),
+            ("GET", "/", None), ("GET", "/", self.a_token),
+            ("GET", "/missing", self.op_token),
+            ("POST", "/logout", self.op_token),
+        ]:
+            with self.subTest(method=method, path=path, token=bool(token)):
+                _, headers, _ = self.request(method, path, token=token)
+                self.assertEqual(headers["Cache-Control"], "no-store")
+                self.assertEqual(headers["X-Frame-Options"], "DENY")
+                self.assertIn("frame-ancestors 'none'", headers["Content-Security-Policy"])
+                self.assertIn("form-action 'self'", headers["Content-Security-Policy"])
+                self.assertIn("base-uri 'none'", headers["Content-Security-Policy"])
+
+    def test_invalid_forms_do_not_mutate_or_authenticate(self):
+        from unittest.mock import patch
+        cases = [
+            (b"name=Bad", "-1", "application/x-www-form-urlencoded", "400"),
+            (b"name=%FF", "8", "application/x-www-form-urlencoded", "400"),
+            (b"name=Bad", "8", "text/plain", "415"),
+            (b"", "65537", "application/x-www-form-urlencoded", "413"),
+        ]
+        for raw, length, content_type, expected in cases:
+            with self.subTest(expected=expected, length=length):
+                env = {"REQUEST_METHOD": "POST", "PATH_INFO": "/clients",
+                       "CONTENT_LENGTH": length, "CONTENT_TYPE": content_type,
+                       "HTTP_COOKIE": f"lightup_session={self.op_token}",
+                       "wsgi.input": io.BytesIO(raw)}
+                out = {}
+                with patch.object(self.store, "session_context") as resolve:
+                    b"".join(self.app(env, lambda s, h: out.update(status=s, headers=dict(h))))
+                    resolve.assert_not_called()
+                self.assertTrue(out["status"].startswith(expected))
+                self.assertEqual(out["headers"]["Cache-Control"], "no-store")
+        self.assertEqual(len(self.store.list_clients(self.operator)), 2)
+
 
     # -- pages ----------------------------------------------------------------
 

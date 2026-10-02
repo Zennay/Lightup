@@ -1,7 +1,7 @@
 """Run the LightUp web shell: ``python -m lightup.webapp``.
 
-Binds to loopback only. There is no authentication layer yet, so refusing
-non-loopback binds is a hard safety default, not a convenience.
+Binds to loopback only. Session authentication is present, but TLS termination
+and production server limits are a separate deployment step.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ def _loopback(value: str) -> str:
     try:
         if not ip_address(value).is_loopback:
             raise argparse.ArgumentTypeError(
-                "the web shell has no authentication yet and only binds to loopback"
+                "the development web shell only binds to loopback"
             )
     except ValueError:
         raise argparse.ArgumentTypeError("host must be a loopback IP address") from None
