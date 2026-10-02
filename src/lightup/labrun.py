@@ -22,6 +22,7 @@ import time
 from pathlib import Path
 
 from .ai.orchestration import ToolCall, ToolExecutor, ToolRegistry
+from .coverage import CoverageReport, CoverageStatus
 from .labeval import (
     EvaluationMetrics,
     ExpectedFinding,
@@ -100,12 +101,14 @@ def run_lab_baseline(
         valid = invalid = missed = 0
         notes = "no ground truth supplied; finding counts are unscored"
 
+    coverage = CoverageReport.build({http_baseline.CAPABILITY_ID: CoverageStatus.ASSESSED})
+    coverage_counts = coverage.counts()
     metrics = EvaluationMetrics(
         valid_findings=valid,
         invalid_findings=invalid,
         missed_findings=missed,
-        coverage_assessed=1,
-        coverage_unknown=0,
+        coverage_assessed=coverage_counts[CoverageStatus.ASSESSED.value],
+        coverage_unknown=coverage_counts[CoverageStatus.UNKNOWN.value],
         evidence_quality=1.0 if findings else 0.0,
         reproducibility=1.0,
         scope_violations=0,
@@ -134,6 +137,7 @@ def run_lab_baseline(
             }
             for f in findings
         ],
+        "coverage": coverage.to_dict(),
         "evaluation": record.to_dict(),
         "report_markdown": render_markdown(findings),
     }

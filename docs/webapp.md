@@ -20,17 +20,27 @@ server-rendered web shell over the domain store.
 
 ## Security posture of this phase
 
-- **No authentication exists yet.** The server therefore refuses to bind to
-  anything but a loopback address. Do not reverse-proxy it to a network until
-  the auth package lands.
-- Tenant isolation is enforced in `lightup.domain` (`AccessContext`), not in
-  templates; the portal physically cannot query another client's rows.
+- **Every page requires a signed-in session.** Passwords are scrypt-hashed with
+  per-user salts; session tokens are stored server-side only as SHA-256 hashes
+  with an expiry; a password change revokes all sessions. Bootstrap the first
+  account with `lightup create-operator`, client accounts with
+  `lightup create-client-user`.
+- Admin pages require an operator session; the portal requires a session of
+  that client (or an operator viewing read-scoped as that client).
+- Every POST requires the session's CSRF token; the cookie is `HttpOnly` and
+  `SameSite=Strict`.
+- Tenant isolation is additionally enforced in `lightup.domain`
+  (`AccessContext`), not in templates; the portal physically cannot query
+  another client's rows even if the UI layer were wrong.
 - No route can trigger target interaction. The web layer only reads/writes the
   domain store; active execution stays behind the (still disabled) activation
   gate and execution policy.
 - All dynamic output is HTML-escaped and responses carry a restrictive CSP.
+- The dev server still binds to loopback only and speaks plain http, so the
+  cookie carries no `Secure` flag yet; TLS termination is part of a later
+  deployment package. Keep it off untrusted networks until then.
 
 ## Later
 
-Authentication/sessions, operator RBAC, CSRF tokens for the form posts, and a
+Operator RBAC granularity, password reset flows, rate limiting on login, and a
 richer front-end can replace this shell without touching the domain layer.

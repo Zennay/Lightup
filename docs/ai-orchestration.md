@@ -65,3 +65,15 @@ problems.
 - evidence lands in the ledger, findings come out as Finding → Impact → Fix →
   Retest, and the run is scored into an `EvaluationRecord` (against the stock
   fixture's ground truth with `--expect-fixture`).
+
+A second worker, `lab-service-inventory` (`lightup.workers.service_inventory`,
+capability `network-services`), connect-checks a bounded, explicit list of TCP
+ports on a lab host — no banners, no payloads — with the same double lab gate.
+
+## Coverage tracking (`lightup.coverage`)
+
+`CoverageReport` maps every registered capability to
+`assessed / partially_assessed / not_applicable / not_authorized / unknown`
+(default unknown). Lab runs attach it to their results, and when unknown
+domains outnumber assessed ones the report explicitly states that zero
+findings must not be read as a clean bill of health.

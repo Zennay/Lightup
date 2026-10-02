@@ -59,7 +59,7 @@ jobs:
           cat /tmp/lightup-plan.json
           grep -q '"execution_enabled": false' /tmp/lightup-plan.json
 
-      - name: Web shell canary (renders, stays locked, loopback-only)
+      - name: Web shell canary (auth required, stays locked, loopback-only)
         env:
           PYTHONPATH: src
         run: |
@@ -69,12 +69,29 @@ jobs:
           from lightup.webapp import create_app
           from lightup.webapp.__main__ import _loopback
 
-          app = create_app(DomainStore("/tmp/lightup-web.db"))
-          env = {"REQUEST_METHOD": "GET", "PATH_INFO": "/", "wsgi.input": io.BytesIO(b"")}
-          out = {}
-          body = b"".join(app(env, lambda s, h: out.update(status=s))).decode()
-          assert out["status"] == "200 OK", out
+          store = DomainStore("/tmp/lightup-web.db")
+          app = create_app(store)
+
+          def get(path, cookie=None):
+              env = {"REQUEST_METHOD": "GET", "PATH_INFO": path,
+                     "wsgi.input": io.BytesIO(b"")}
+              if cookie:
+                  env["HTTP_COOKIE"] = cookie
+              out = {}
+              body = b"".join(app(env, lambda s, h: out.update(status=s, headers=dict(h))))
+              return out["status"], out["headers"], body.decode()
+
+          # Anonymous access is redirected to the login page.
+          status, headers, _ = get("/")
+          assert status == "303 See Other" and headers["Location"] == "/login", (status, headers)
+
+          # A signed-in operator sees the locked activation state.
+          user = store.bootstrap_operator("ci@lightup.test", "CI", "ci-canary-password")
+          token, _csrf = store.create_session(user.user_id)
+          status, _, body = get("/", cookie=f"lightup_session={token}")
+          assert status == "200 OK", status
           assert "Locked" in body and "no real-target execution path" in body
+
           try:
               _loopback("0.0.0.0")
           except Exception:

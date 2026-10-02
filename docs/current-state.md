@@ -27,14 +27,24 @@ The repository contains:
   (`lightup.workers.http_baseline`) wired end-to-end through the policy gate,
   evidence ledger, findings and benchmark scoring (`lightup.labrun`,
   CLI `lightup lab-baseline`);
-- a dependency-free, loopback-only **web shell**: operator dashboard
-  (Overview/Discovery/Clients/Assessments) and client portal
-  (`lightup.webapp`, see `docs/webapp.md`);
+- a second capability worker: lab-only **TCP service inventory**
+  (`lightup.workers.service_inventory`);
+- explicit **coverage tracking** over the whole capability registry
+  (`lightup.coverage`): assessed / partially_assessed / not_applicable /
+  not_authorized / unknown, with an explicit "not a clean bill of health"
+  marker when coverage is materially unknown;
+- a dependency-free, loopback-only **web shell** with **session
+  authentication and CSRF protection** (scrypt passwords, hashed session
+  tokens, operator/client roles; bootstrap via `lightup create-operator`):
+  operator dashboard (Overview/Discovery/Clients/Assessments) and client
+  portal (`lightup.webapp`, see `docs/webapp.md`);
 - reporting/redaction helpers;
 - a loopback-only lab fixture;
-- CI safety tests (64 unit tests), including proofs that unauthorized active
+- CI safety tests (90 unit tests), including proofs that unauthorized active
   execution is impossible, risk escalation is blocked without new approval,
-  tenants are isolated and passive Discovery cannot invoke active capabilities.
+  tenants are isolated, passive Discovery cannot invoke active capabilities,
+  lab workers fail closed on public targets, and the web shell rejects
+  anonymous, cross-tenant and CSRF-less requests.
 
 Active real-target interaction remains intentionally unimplemented. No
 real-target network adapters exist; the web shell cannot trigger execution.

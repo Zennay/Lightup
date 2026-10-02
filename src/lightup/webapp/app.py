@@ -11,16 +11,26 @@ tests run. The UI follows ``docs/ui-principles.md``:
 
 Security posture of this phase:
 
-- no authentication exists yet, so the server binds to loopback only unless
-  explicitly overridden for a trusted lab network;
-- tenant isolation is enforced by :mod:`lightup.domain`, not by templates;
-- all dynamic output is HTML-escaped.
+- every page requires a signed-in session (cookie ``lightup_session``, stored
+  server-side as a SHA-256 hash with an expiry);
+- admin pages require an operator session; the portal requires a session of
+  that client (or an operator) — on top of the tenant isolation that
+  :mod:`lightup.domain` enforces regardless of the UI;
+- every POST requires the session's CSRF token;
+- all dynamic output is HTML-escaped and responses carry a restrictive CSP;
+- the server still binds to loopback only; the cookie is ``HttpOnly`` and
+  ``SameSite=Strict`` (no ``Secure`` flag yet: the dev shell speaks plain
+  http on loopback — TLS termination is part of a later deployment package).
+
+Bootstrap the first account with ``lightup create-operator``.
 """
 
 from __future__ import annotations
 
 import html
 import re
+from dataclasses import dataclass
+from http.cookies import SimpleCookie
 from typing import Callable, Iterable
 from urllib.parse import parse_qs
 
@@ -35,7 +45,7 @@ from ..domain import (
 from ..engagements import AssessmentMode, RiskLevel
 from ..models import RetestStatus
 
-OPERATOR_CONTEXT = AccessContext(user_id="operator-ui", role=Role.OPERATOR)
+SESSION_COOKIE = "lightup_session"
 
 _RISK_LABELS = {
     RiskLevel.ANALYSIS_ONLY: "0 — Analysis only",
@@ -58,9 +68,12 @@ header { background:var(--card); border-bottom:1px solid var(--line); }
 header .wrap { display:flex; flex-wrap:wrap; align-items:baseline; gap:18px;
                padding-top:14px; padding-bottom:14px; }
 .brand { font-weight:650; letter-spacing:.02em; }
-nav { display:flex; gap:14px; flex-wrap:wrap; }
+nav { display:flex; gap:14px; flex-wrap:wrap; align-items:baseline; }
 nav a { color:var(--muted); padding:2px 0; }
 nav a.active { color:var(--ink); border-bottom:2px solid var(--accent); }
+nav form { display:inline; }
+nav button { background:none; border:0; color:var(--muted); cursor:pointer;
+             font:inherit; padding:0; }
 main { padding:28px 0 64px; }
 h1 { font-size:1.35rem; margin:0 0 4px; }
 h2 { font-size:1.05rem; margin:28px 0 10px; }
@@ -90,6 +103,8 @@ label { font-size:.85rem; color:var(--muted); }
 .empty { color:var(--muted); font-style:italic; }
 .row { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
        align-items:baseline; }
+.auth { max-width:380px; margin:8vh auto 0; }
+.error { color:var(--lock); font-size:.9rem; }
 """
 
 
@@ -99,6 +114,23 @@ def _e(value: object) -> str:
 
 def _risk(level: RiskLevel) -> str:
     return _e(_RISK_LABELS[level])
+
+
+@dataclass(frozen=True)
+class AuthState:
+    context: AccessContext | None
+    csrf: str | None
+
+    @property
+    def signed_in(self) -> bool:
+        return self.context is not None
+
+    @property
+    def is_operator(self) -> bool:
+        return self.context is not None and self.context.is_operator
+
+
+ANONYMOUS = AuthState(None, None)
 
 
 class Response:
@@ -116,12 +148,27 @@ class Response:
         ] + (extra_headers or [])
 
 
-def _redirect(location: str) -> Response:
+def _redirect(location: str, extra_headers: list[tuple[str, str]] | None = None) -> Response:
     return Response("", status="303 See Other",
-                    extra_headers=[("Location", location)])
+                    extra_headers=[("Location", location)] + (extra_headers or []))
 
 
-def _page(title: str, nav: str, body: str, portal_client: str | None = None) -> str:
+def _session_cookie(value: str, clear: bool = False) -> tuple[str, str]:
+    attrs = "Path=/; HttpOnly; SameSite=Strict"
+    if clear:
+        return ("Set-Cookie", f"{SESSION_COOKIE}=; {attrs}; Max-Age=0")
+    return ("Set-Cookie", f"{SESSION_COOKIE}={value}; {attrs}")
+
+
+def _page(title: str, nav: str, body: str, auth: AuthState,
+          portal_client: str | None = None) -> str:
+    logout = ""
+    if auth.signed_in and auth.csrf:
+        logout = (
+            f'<form method="post" action="/logout">'
+            f'<input type="hidden" name="csrf" value="{_e(auth.csrf)}">'
+            "<button>Sign out</button></form>"
+        )
     if portal_client is None:
         links = [("overview", "/", "Overview"), ("discovery", "/discovery", "Discovery"),
                  ("clients", "/clients", "Clients"), ("assessments", "/assessments", "Assessments")]
@@ -133,7 +180,9 @@ def _page(title: str, nav: str, body: str, portal_client: str | None = None) -> 
     nav_html = "".join(
         f'<a href="{href}" class="{"active" if key == nav else ""}">{label}</a>'
         for key, href, label in links
-    )
+    ) + logout
+    if nav == "login":
+        nav_html = ""
     return (
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
@@ -147,23 +196,31 @@ def _page(title: str, nav: str, body: str, portal_client: str | None = None) -> 
 class LightUpWebApp:
     def __init__(self, store: DomainStore):
         self.store = store
-        self.routes: list[tuple[str, re.Pattern[str], Callable]] = [
-            ("GET", re.compile(r"^/$"), self.overview),
-            ("GET", re.compile(r"^/discovery$"), self.discovery),
-            ("POST", re.compile(r"^/discovery/prospects$"), self.add_prospect),
+        # access: "public" (login only), "operator", or "portal" (that client
+        # or an operator). The access level is enforced in dispatch, before
+        # any handler runs; handlers additionally act through the session's
+        # own AccessContext, so the domain layer re-checks everything.
+        self.routes: list[tuple[str, re.Pattern[str], Callable, str]] = [
+            ("GET", re.compile(r"^/login$"), self.login_page, "public"),
+            ("POST", re.compile(r"^/login$"), self.login_submit, "public"),
+            ("POST", re.compile(r"^/logout$"), self.logout, "portal"),
+            ("GET", re.compile(r"^/$"), self.overview, "operator"),
+            ("GET", re.compile(r"^/discovery$"), self.discovery, "operator"),
+            ("POST", re.compile(r"^/discovery/prospects$"), self.add_prospect, "operator"),
             ("POST", re.compile(r"^/discovery/prospects/(?P<prospect_id>[\w-]+)/status$"),
-             self.prospect_status),
-            ("GET", re.compile(r"^/clients$"), self.clients),
-            ("POST", re.compile(r"^/clients$"), self.create_client),
-            ("GET", re.compile(r"^/clients/(?P<client_id>[\w-]+)$"), self.client_detail),
-            ("GET", re.compile(r"^/assessments$"), self.assessments),
+             self.prospect_status, "operator"),
+            ("GET", re.compile(r"^/clients$"), self.clients, "operator"),
+            ("POST", re.compile(r"^/clients$"), self.create_client, "operator"),
+            ("GET", re.compile(r"^/clients/(?P<client_id>[\w-]+)$"), self.client_detail,
+             "operator"),
+            ("GET", re.compile(r"^/assessments$"), self.assessments, "operator"),
             ("POST", re.compile(r"^/assessments/requests/(?P<request_id>[\w-]+)/decision$"),
-             self.decide_request),
+             self.decide_request, "operator"),
             ("POST", re.compile(r"^/assessments/elevations/(?P<approval_id>[\w-]+)/decision$"),
-             self.decide_elevation),
-            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)$"), self.portal),
+             self.decide_elevation, "operator"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)$"), self.portal, "portal"),
             ("POST", re.compile(r"^/portal/(?P<client_id>[\w-]+)/requests$"),
-             self.portal_submit_request),
+             self.portal_submit_request, "portal"),
         ]
 
     # -- WSGI ---------------------------------------------------------------
@@ -180,29 +237,105 @@ class LightUpWebApp:
             raw = environ["wsgi.input"].read(length) if length else b""
             form = {k: v[0] for k, v in parse_qs(raw.decode("utf-8")).items()}
 
-        response = self._dispatch(method, path, form)
+        auth = self._authenticate(environ)
+        response = self._dispatch(method, path, form, auth)
         start_response(response.status, response.headers)
         return [response.body]
 
-    def _dispatch(self, method: str, path: str, form: dict[str, str]) -> Response:
-        for route_method, pattern, handler in self.routes:
+    def _authenticate(self, environ) -> AuthState:
+        cookie = SimpleCookie()
+        try:
+            cookie.load(environ.get("HTTP_COOKIE", ""))
+        except Exception:
+            return ANONYMOUS
+        morsel = cookie.get(SESSION_COOKIE)
+        if morsel is None:
+            return ANONYMOUS
+        resolved = self.store.session_context(morsel.value)
+        if resolved is None:
+            return ANONYMOUS
+        context, csrf = resolved
+        return AuthState(context, csrf)
+
+    def _dispatch(self, method: str, path: str, form: dict[str, str],
+                  auth: AuthState) -> Response:
+        for route_method, pattern, handler, access in self.routes:
             match = pattern.match(path)
-            if match and route_method == method:
-                try:
-                    return handler(form=form, **match.groupdict())
-                except TenantIsolationError:
-                    return Response(_page("Forbidden", "", "<h1>Forbidden</h1>"),
-                                    status="403 Forbidden")
-                except (KeyError, ValueError) as exc:
-                    body = f"<h1>Request failed</h1><p class=\"sub\">{_e(exc)}</p>"
-                    return Response(_page("Error", "", body), status="400 Bad Request")
-        return Response(_page("Not found", "", "<h1>Not found</h1>"),
+            if not match or route_method != method:
+                continue
+            params = match.groupdict()
+
+            if access != "public":
+                if not auth.signed_in:
+                    return _redirect("/login")
+                if method == "POST" and form.get("csrf") != auth.csrf:
+                    return Response(_page("Forbidden", "", "<h1>Invalid CSRF token</h1>",
+                                          auth), status="403 Forbidden")
+                if access == "operator" and not auth.is_operator:
+                    return Response(_page("Forbidden", "", "<h1>Operator access required</h1>",
+                                          auth), status="403 Forbidden")
+                if access == "portal" and not auth.is_operator:
+                    wanted = params.get("client_id")
+                    if wanted is not None and auth.context.client_id != wanted:
+                        return Response(_page("Forbidden", "", "<h1>Forbidden</h1>", auth),
+                                        status="403 Forbidden")
+            try:
+                return handler(auth=auth, form=form, **params)
+            except TenantIsolationError:
+                return Response(_page("Forbidden", "", "<h1>Forbidden</h1>", auth),
+                                status="403 Forbidden")
+            except (KeyError, ValueError) as exc:
+                body = f"<h1>Request failed</h1><p class=\"sub\">{_e(exc)}</p>"
+                return Response(_page("Error", "", body, auth), status="400 Bad Request")
+        return Response(_page("Not found", "", "<h1>Not found</h1>", ANONYMOUS),
                         status="404 Not Found")
+
+    @staticmethod
+    def _csrf_field(auth: AuthState) -> str:
+        return f'<input type="hidden" name="csrf" value="{_e(auth.csrf or "")}">'
+
+    @staticmethod
+    def _home_for(context: AccessContext) -> str:
+        return "/" if context.is_operator else f"/portal/{context.client_id}"
+
+    # -- auth pages -----------------------------------------------------------
+
+    def login_page(self, auth: AuthState, form: dict[str, str],
+                   error: str = "") -> Response:
+        if auth.signed_in:
+            return _redirect(self._home_for(auth.context))
+        error_html = f'<p class="error">{_e(error)}</p>' if error else ""
+        body = (
+            "<div class=\"auth\"><div class=\"card\">"
+            "<h1>Sign in</h1>"
+            "<p class=\"sub\">LightUp — authorization-first security assessments.</p>"
+            f"{error_html}"
+            "<form method=\"post\" action=\"/login\">"
+            "<label>Email</label><input name=\"email\" type=\"email\" required>"
+            "<label>Password</label><input name=\"password\" type=\"password\" required>"
+            "<button>Sign in</button></form>"
+            "</div></div>"
+        )
+        return Response(_page("LightUp — Sign in", "login", body, ANONYMOUS))
+
+    def login_submit(self, auth: AuthState, form: dict[str, str]) -> Response:
+        user = self.store.verify_password(form.get("email", ""), form.get("password", ""))
+        if user is None:
+            response = self.login_page(ANONYMOUS, {}, error="Invalid email or password.")
+            return Response(response.body.decode("utf-8"), status="401 Unauthorized",
+                            extra_headers=[_session_cookie("", clear=True)])
+        token, _csrf = self.store.create_session(user.user_id)
+        context = self.store.context_for_user(user.user_id)
+        return _redirect(self._home_for(context), [_session_cookie(token)])
+
+    def logout(self, auth: AuthState, form: dict[str, str]) -> Response:
+        # The dispatcher already verified the session and CSRF token.
+        return _redirect("/login", [_session_cookie("", clear=True)])
 
     # -- operator pages -------------------------------------------------------
 
-    def overview(self, form: dict[str, str]) -> Response:
-        ctx = OPERATOR_CONTEXT
+    def overview(self, auth: AuthState, form: dict[str, str]) -> Response:
+        ctx = auth.context
         clients = self.store.list_clients(ctx)
         requests = self.store.list_assessment_requests(ctx)
         open_requests = [r for r in requests
@@ -229,11 +362,11 @@ class LightUpWebApp:
             "Unauthorized targets remain passive-discovery only; active capability "
             "adapters arrive behind the activation gate in a later milestone.</p></div>"
         )
-        return Response(_page("LightUp — Overview", "overview", body))
+        return Response(_page("LightUp — Overview", "overview", body, auth))
 
-    def discovery(self, form: dict[str, str]) -> Response:
-        ctx = OPERATOR_CONTEXT
-        prospects = self.store.list_prospects(ctx)
+    def discovery(self, auth: AuthState, form: dict[str, str]) -> Response:
+        prospects = self.store.list_prospects(auth.context)
+        csrf = self._csrf_field(auth)
         cards = []
         for p in prospects:
             actions = ""
@@ -243,11 +376,11 @@ class LightUpWebApp:
                 label = "Contact" if p.status is ProspectStatus.NEW else "Request authorization"
                 actions = (
                     f'<form class="inline" method="post" '
-                    f'action="/discovery/prospects/{_e(p.prospect_id)}/status">'
+                    f'action="/discovery/prospects/{_e(p.prospect_id)}/status">{csrf}'
                     f'<input type="hidden" name="status" value="{_e(next_status.value)}">'
                     f"<button>{_e(label)}</button></form> "
                     f'<form class="inline" method="post" '
-                    f'action="/discovery/prospects/{_e(p.prospect_id)}/status">'
+                    f'action="/discovery/prospects/{_e(p.prospect_id)}/status">{csrf}'
                     '<input type="hidden" name="status" value="dismissed">'
                     "<button class=\"secondary\">Dismiss</button></form>"
                 )
@@ -270,7 +403,7 @@ class LightUpWebApp:
             "target without a recorded authorization grant.</p>"
             + ("".join(cards) or "<p class=\"empty\">No prospects recorded yet.</p>")
             + "<h2>Add prospect (manual, passive signals only)</h2>"
-            "<div class=\"card\"><form method=\"post\" action=\"/discovery/prospects\">"
+            f"<div class=\"card\"><form method=\"post\" action=\"/discovery/prospects\">{csrf}"
             "<label>Company</label><input name=\"company\" required>"
             "<label>Potential exposure (summary)</label>"
             "<input name=\"exposure_summary\" required>"
@@ -278,21 +411,22 @@ class LightUpWebApp:
             "<input name=\"confidence\" type=\"number\" min=\"0\" max=\"100\" value=\"50\">"
             "<button>Add prospect</button></form></div>"
         )
-        return Response(_page("LightUp — Discovery", "discovery", body))
+        return Response(_page("LightUp — Discovery", "discovery", body, auth))
 
-    def add_prospect(self, form: dict[str, str]) -> Response:
+    def add_prospect(self, auth: AuthState, form: dict[str, str]) -> Response:
         confidence = max(0.0, min(100.0, float(form.get("confidence", "50") or 50))) / 100.0
-        self.store.add_prospect(OPERATOR_CONTEXT, form.get("company", ""),
+        self.store.add_prospect(auth.context, form.get("company", ""),
                                 form.get("exposure_summary", ""), confidence)
         return _redirect("/discovery")
 
-    def prospect_status(self, form: dict[str, str], prospect_id: str) -> Response:
+    def prospect_status(self, auth: AuthState, form: dict[str, str],
+                        prospect_id: str) -> Response:
         status = ProspectStatus(form.get("status", ""))
-        self.store.set_prospect_status(OPERATOR_CONTEXT, prospect_id, status)
+        self.store.set_prospect_status(auth.context, prospect_id, status)
         return _redirect("/discovery")
 
-    def clients(self, form: dict[str, str]) -> Response:
-        ctx = OPERATOR_CONTEXT
+    def clients(self, auth: AuthState, form: dict[str, str]) -> Response:
+        ctx = auth.context
         rows = []
         for c in self.store.list_clients(ctx):
             engagements = self.store.list_engagements(ctx, c.client_id)
@@ -306,18 +440,19 @@ class LightUpWebApp:
             "<p class=\"sub\">Each client has an isolated portal and isolated data.</p>"
             + ("".join(rows) or "<p class=\"empty\">No clients yet.</p>")
             + "<h2>New client</h2><div class=\"card\">"
-            "<form method=\"post\" action=\"/clients\">"
+            f"<form method=\"post\" action=\"/clients\">{self._csrf_field(auth)}"
             "<label>Name</label><input name=\"name\" required>"
             "<button>Create client</button></form></div>"
         )
-        return Response(_page("LightUp — Clients", "clients", body))
+        return Response(_page("LightUp — Clients", "clients", body, auth))
 
-    def create_client(self, form: dict[str, str]) -> Response:
-        self.store.create_client(OPERATOR_CONTEXT, form.get("name", ""))
+    def create_client(self, auth: AuthState, form: dict[str, str]) -> Response:
+        self.store.create_client(auth.context, form.get("name", ""))
         return _redirect("/clients")
 
-    def client_detail(self, form: dict[str, str], client_id: str) -> Response:
-        ctx = OPERATOR_CONTEXT
+    def client_detail(self, auth: AuthState, form: dict[str, str],
+                      client_id: str) -> Response:
+        ctx = auth.context
         client = self.store.get_client(ctx, client_id)
         engagements = self.store.list_engagements(ctx, client_id)
         findings = self.store.list_findings(ctx, client_id=client_id)
@@ -349,10 +484,11 @@ class LightUpWebApp:
             + ("".join(engagement_cards) or "<p class=\"empty\">No engagements yet.</p>")
             + f"<h2>Findings</h2>{self._finding_cards(findings)}"
         )
-        return Response(_page(f"LightUp — {client.name}", "clients", body))
+        return Response(_page(f"LightUp — {client.name}", "clients", body, auth))
 
-    def assessments(self, form: dict[str, str]) -> Response:
-        ctx = OPERATOR_CONTEXT
+    def assessments(self, auth: AuthState, form: dict[str, str]) -> Response:
+        ctx = auth.context
+        csrf = self._csrf_field(auth)
         requests = self.store.list_assessment_requests(ctx)
         approvals = [a for a in self.store.list_risk_approvals(ctx)
                      if a.status.value == "pending"]
@@ -363,11 +499,11 @@ class LightUpWebApp:
             if r.status in {RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW}:
                 decision = (
                     f'<form class="inline" method="post" '
-                    f'action="/assessments/requests/{_e(r.request_id)}/decision">'
+                    f'action="/assessments/requests/{_e(r.request_id)}/decision">{csrf}'
                     '<input type="hidden" name="decision" value="approve">'
                     "<button>Approve</button></form> "
                     f'<form class="inline" method="post" '
-                    f'action="/assessments/requests/{_e(r.request_id)}/decision">'
+                    f'action="/assessments/requests/{_e(r.request_id)}/decision">{csrf}'
                     '<input type="hidden" name="decision" value="reject">'
                     "<button class=\"secondary\">Reject</button></form>"
                 )
@@ -393,11 +529,11 @@ class LightUpWebApp:
                 "<details><summary>Justification</summary>"
                 f"<p class=\"meta\">{_e(a.justification)}</p></details>"
                 f'<form class="inline" method="post" '
-                f'action="/assessments/elevations/{_e(a.approval_id)}/decision">'
+                f'action="/assessments/elevations/{_e(a.approval_id)}/decision">{csrf}'
                 '<input type="hidden" name="decision" value="approve">'
                 "<button>Approve elevation</button></form> "
                 f'<form class="inline" method="post" '
-                f'action="/assessments/elevations/{_e(a.approval_id)}/decision">'
+                f'action="/assessments/elevations/{_e(a.approval_id)}/decision">{csrf}'
                 '<input type="hidden" name="decision" value="deny">'
                 "<button class=\"secondary\">Deny</button></form></div>"
             )
@@ -410,27 +546,35 @@ class LightUpWebApp:
             + "<h2>Pending risk elevations</h2>"
             + ("".join(elevation_cards) or "<p class=\"empty\">No pending elevations.</p>")
         )
-        return Response(_page("LightUp — Assessments", "assessments", body))
+        return Response(_page("LightUp — Assessments", "assessments", body, auth))
 
-    def decide_request(self, form: dict[str, str], request_id: str) -> Response:
+    def decide_request(self, auth: AuthState, form: dict[str, str],
+                       request_id: str) -> Response:
         approve = form.get("decision") == "approve"
-        self.store.review_assessment_request(OPERATOR_CONTEXT, request_id, approve)
+        self.store.review_assessment_request(auth.context, request_id, approve)
         return _redirect("/assessments")
 
-    def decide_elevation(self, form: dict[str, str], approval_id: str) -> Response:
+    def decide_elevation(self, auth: AuthState, form: dict[str, str],
+                         approval_id: str) -> Response:
         approve = form.get("decision") == "approve"
-        self.store.decide_risk_elevation(OPERATOR_CONTEXT, approval_id, approve)
+        self.store.decide_risk_elevation(auth.context, approval_id, approve)
         return _redirect("/assessments")
 
     # -- client portal --------------------------------------------------------
 
-    @staticmethod
-    def _portal_context(client_id: str) -> AccessContext:
-        return AccessContext(user_id=f"portal-{client_id}", role=Role.CLIENT_ADMIN,
-                             client_id=client_id)
+    def _portal_context(self, auth: AuthState, client_id: str) -> AccessContext:
+        """The acting context for portal pages.
 
-    def portal(self, form: dict[str, str], client_id: str) -> Response:
-        ctx = self._portal_context(client_id)
+        Operators browse a portal with an explicit client-scoped view context;
+        clients act as themselves. Dispatch already rejected mismatched clients.
+        """
+        if auth.is_operator:
+            return AccessContext(user_id=auth.context.user_id, role=Role.CLIENT_ADMIN,
+                                 client_id=client_id)
+        return auth.context
+
+    def portal(self, auth: AuthState, form: dict[str, str], client_id: str) -> Response:
+        ctx = self._portal_context(auth, client_id)
         client = self.store.get_client(ctx, client_id)
         findings = self.store.list_findings(ctx)
         requests = self.store.list_assessment_requests(ctx)
@@ -458,6 +602,7 @@ class LightUpWebApp:
             "<h2>Request an assessment</h2>"
             "<div class=\"card\">"
             f"<form method=\"post\" action=\"/portal/{_e(client_id)}/requests\">"
+            f"{self._csrf_field(auth)}"
             "<label>Assets (comma-separated hostnames/systems you own)</label>"
             "<input name=\"assets\" required>"
             "<label>Requested risk level</label><select name=\"risk\">"
@@ -471,11 +616,12 @@ class LightUpWebApp:
             "begins only after you provide written authorization and an operator "
             "approves scope and risk.</p></form></div>"
         )
-        return Response(_page(f"LightUp — {client.name}", "portal", body,
+        return Response(_page(f"LightUp — {client.name}", "portal", body, auth,
                               portal_client=client_id))
 
-    def portal_submit_request(self, form: dict[str, str], client_id: str) -> Response:
-        ctx = self._portal_context(client_id)
+    def portal_submit_request(self, auth: AuthState, form: dict[str, str],
+                              client_id: str) -> Response:
+        ctx = self._portal_context(auth, client_id)
         assets = tuple(part.strip() for part in form.get("assets", "").split(",") if part.strip())
         risk = RiskLevel(int(form.get("risk", "3")))
         if risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:

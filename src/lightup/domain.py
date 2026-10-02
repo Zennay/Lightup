@@ -17,11 +17,14 @@ Until it exists, the web layer must only be exposed on loopback.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
+import secrets
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from uuid import uuid4
@@ -210,6 +213,23 @@ CREATE TABLE IF NOT EXISTS prospects (
     status TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS credentials (
+    user_id TEXT PRIMARY KEY,
+    salt BLOB NOT NULL,
+    password_hash BLOB NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    token_hash TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    csrf_token TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
 """
 
 
@@ -376,6 +396,113 @@ class DomainStore:
         if row is None:
             raise KeyError(f"unknown user {user_id!r}")
         return AccessContext(row["user_id"], Role(row["role"]), row["client_id"])
+
+    # -- credentials & sessions ----------------------------------------------
+    #
+    # Authentication primitives for the web shell. Passwords are scrypt-hashed
+    # with a per-user salt; session tokens are stored only as SHA-256 hashes,
+    # so a leaked database cannot be replayed into live sessions.
+
+    _SCRYPT = {"n": 2**14, "r": 8, "p": 1, "dklen": 32}
+
+    def _hash_password(self, password: str, salt: bytes) -> bytes:
+        if len(password) < 10:
+            raise ValueError("password must be at least 10 characters")
+        return hashlib.scrypt(password.encode("utf-8"), salt=salt, **self._SCRYPT)
+
+    def bootstrap_operator(self, email: str, display_name: str, password: str) -> UserRecord:
+        """Create the first operator account. Local-process only (CLI bootstrap)."""
+        with self._connect() as con:
+            row = con.execute(
+                "SELECT 1 FROM users WHERE role=?", (Role.OPERATOR.value,)
+            ).fetchone()
+        if row is not None:
+            raise ValueError("an operator already exists; use create_user instead")
+        system_ctx = AccessContext("bootstrap", Role.OPERATOR)
+        user = self.create_user(system_ctx, email, display_name, Role.OPERATOR)
+        self.set_password(system_ctx, user.user_id, password)
+        return user
+
+    def set_password(self, ctx: AccessContext, user_id: str, password: str) -> None:
+        if not ctx.is_operator and ctx.user_id != user_id:
+            raise RoleError("set_password requires an operator or the account owner")
+        self.context_for_user(user_id)  # ensures the user exists
+        salt = secrets.token_bytes(16)
+        digest = self._hash_password(password, salt)
+        with self._connect() as con:
+            con.execute(
+                "INSERT INTO credentials(user_id,salt,password_hash,updated_at) "
+                "VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET "
+                "salt=excluded.salt, password_hash=excluded.password_hash, "
+                "updated_at=excluded.updated_at",
+                (user_id, salt, digest, utcnow().isoformat()),
+            )
+            # Credential changes invalidate existing sessions.
+            con.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))
+
+    def verify_password(self, email: str, password: str) -> UserRecord | None:
+        """Return the user when email+password match; None otherwise (no oracle)."""
+        with self._connect() as con:
+            row = con.execute(
+                "SELECT u.user_id,u.email,u.display_name,u.role,u.client_id,"
+                "u.created_at,c.salt,c.password_hash FROM users u "
+                "JOIN credentials c ON c.user_id=u.user_id WHERE u.email=?",
+                (email.strip().lower(),),
+            ).fetchone()
+        if row is None:
+            # Burn comparable time so missing users are not distinguishable.
+            self._hash_password(password or "x" * 10, b"\x00" * 16)
+            return None
+        digest = self._hash_password(password, row["salt"])
+        if not hmac.compare_digest(digest, row["password_hash"]):
+            return None
+        return UserRecord(row["user_id"], row["email"], row["display_name"],
+                          Role(row["role"]), row["client_id"], row["created_at"])
+
+    @staticmethod
+    def _token_hash(token: str) -> str:
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    def create_session(self, user_id: str, ttl_seconds: int = 8 * 3600) -> tuple[str, str]:
+        """Return (session_token, csrf_token) for a verified user."""
+        if not 60 <= ttl_seconds <= 30 * 24 * 3600:
+            raise ValueError("session TTL out of range")
+        self.context_for_user(user_id)
+        token = secrets.token_urlsafe(32)
+        csrf = secrets.token_urlsafe(32)
+        now = utcnow()
+        with self._connect() as con:
+            con.execute(
+                "INSERT INTO sessions(token_hash,user_id,csrf_token,created_at,expires_at) "
+                "VALUES(?,?,?,?,?)",
+                (self._token_hash(token), user_id, csrf, now.isoformat(),
+                 (now + timedelta(seconds=ttl_seconds)).isoformat()),
+            )
+        return token, csrf
+
+    def session_context(self, token: str) -> tuple[AccessContext, str] | None:
+        """Resolve a session token to (AccessContext, csrf_token), or None."""
+        if not token:
+            return None
+        with self._connect() as con:
+            row = con.execute(
+                "SELECT user_id,csrf_token,expires_at FROM sessions WHERE token_hash=?",
+                (self._token_hash(token),),
+            ).fetchone()
+        if row is None:
+            return None
+        if datetime.fromisoformat(row["expires_at"]) <= utcnow():
+            self.revoke_session(token)
+            return None
+        try:
+            return self.context_for_user(row["user_id"]), row["csrf_token"]
+        except KeyError:
+            return None
+
+    def revoke_session(self, token: str) -> None:
+        with self._connect() as con:
+            con.execute("DELETE FROM sessions WHERE token_hash=?",
+                        (self._token_hash(token),))
 
     # -- assessment requests -------------------------------------------------
 
