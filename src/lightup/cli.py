@@ -42,6 +42,15 @@ def build_parser() -> argparse.ArgumentParser:
     lab.add_argument("--db", default="lightup-lab.db")
     lab.add_argument("--expect-fixture", action="store_true")
 
+    assess = sub.add_parser("lab-assess",
+                            help="planner-driven multi-lane lab assessment with "
+                                 "AI review (scripted demo gateway by default)")
+    assess.add_argument("url", nargs="?", default="http://127.0.0.1:18080/")
+    assess.add_argument("--db", default="lightup-lab.db")
+    assess.add_argument("--gateway-config")
+    assess.add_argument("--profile")
+    assess.add_argument("--no-review", action="store_true")
+
     boot = sub.add_parser("create-operator",
                           help="bootstrap the first operator account")
     boot.add_argument("--db", default="lightup.db")
@@ -93,6 +102,18 @@ def main(argv: list[str] | None = None) -> int:
         if args.expect_fixture:
             argv.append("--expect-fixture")
         return labrun_main(argv)
+
+    if args.command == "lab-assess":
+        from .labrun import main_assess
+
+        argv = [args.url, "--db", args.db]
+        if args.gateway_config:
+            argv += ["--gateway-config", args.gateway_config]
+        if args.profile:
+            argv += ["--profile", args.profile]
+        if args.no_review:
+            argv.append("--no-review")
+        return main_assess(argv)
 
     if args.command in {"create-operator", "create-client-user"}:
         return _account_command(args)

@@ -26,6 +26,14 @@ fails loudly on unknown types, roles or empty bindings — model choice stays
 configuration, never business logic. A model refusal surfaces as a provider
 error; it never bypasses or weakens the policy gate.
 
+A ready-made example lives at `config/gateway.example.json` (all roles bound
+to the Anthropic provider; the key comes from `ANTHROPIC_API_KEY`). The
+`lightup lab-assess` CLI takes it via `--gateway-config`; without one it
+builds `lightup.labrun.scripted_demo_gateway` — a deterministic scripted
+planner plus echo review roles — so demos and CI run fully offline. Which
+gateway serves the roles changes nothing about what may execute: both paths
+go through the identical policy gate.
+
 ## Orchestration contracts (`lightup.ai.orchestration`)
 
 ```text
@@ -63,6 +71,19 @@ Key invariants, each covered by `tests/test_orchestration.py`:
 The lab engine is benchmarked here before large-scale prospect discovery, so
 Discovery later learns which public signals actually correlate with real
 problems.
+
+### Planted-weakness fixture profiles (`lightup.labfixtures`)
+
+Serious benchmarks need ground truth that is independent of the engine.
+`FixtureProfile` describes exactly which defensive headers a loopback fixture
+serves and which checks are therefore *planted* — the expected check ids are
+hand-maintained, never derived from an engine run. Shipped profiles:
+`exposed` (all five baseline checks fire), `partially-hardened` (three
+remain) and `hardened` (ground truth is zero findings). `lab/vuln_fixture.py`
+serves any profile on 127.0.0.1 only, and `lightup lab-assess --profile
+<name>` scores a run against that profile's planted truth. The test suite
+proves each profile scores perfectly against its own truth and that a
+mismatched truth is reported as missed findings — never as a clean pass.
 
 ## First capability worker (`lightup.workers.http_baseline`)
 

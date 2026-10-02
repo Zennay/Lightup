@@ -21,7 +21,9 @@ import json
 import time
 from pathlib import Path
 
-from .ai.gateway import ModelGateway
+from urllib.parse import urlparse
+
+from .ai.gateway import ModelGateway, ModelRole, ScriptedProvider
 from .ai.orchestration import ToolCall, ToolExecutor, ToolRegistry
 from .ai.planner import execute_plan, request_plan
 from .coverage import CoverageReport, CoverageStatus
@@ -163,6 +165,46 @@ def run_lab_baseline(
     }
 
 
+def scripted_demo_gateway(endpoints: tuple[str, ...]) -> ModelGateway:
+    """Deterministic offline gateway for demos and CI.
+
+    The planner response is a scripted plan derived from the given lab
+    http(s) endpoints (header baseline + service inventory, plus TLS baseline
+    for https); the review roles fall back to the ScriptedProvider's echo.
+    Swap in a real gateway via ``lightup lab-assess --gateway-config`` — the
+    policy gate is identical either way. Assets are the lab-validated hosts,
+    matching the normalized targets of a scenario built from the same
+    endpoints.
+    """
+    from .labeval import assert_lab_target
+
+    calls: list[dict] = []
+    for endpoint in endpoints:
+        parsed = urlparse(endpoint)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            continue
+        asset = assert_lab_target(endpoint)
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        if parsed.scheme == "http":
+            calls.append({"tool_id": http_baseline.TOOL_ID, "asset": asset,
+                          "arguments": {"url": endpoint}})
+        calls.append({"tool_id": service_inventory.TOOL_ID, "asset": asset,
+                      "arguments": {"host": asset, "ports": str(port)}})
+        if parsed.scheme == "https":
+            calls.append({"tool_id": tls_baseline.TOOL_ID, "asset": asset,
+                          "arguments": {"host": asset, "port": port}})
+    if not calls:
+        raise ValueError("no plannable lab http(s) endpoints given")
+
+    gateway = ModelGateway()
+    gateway.register_provider(
+        ScriptedProvider("scripted", {ModelRole.PLANNER: [json.dumps(calls)]}))
+    for role in (ModelRole.PLANNER, ModelRole.VERIFIER,
+                 ModelRole.REMEDIATION_ADVISOR, ModelRole.REPORT_SYNTHESIZER):
+        gateway.bind_role(role, "scripted", "scripted-demo")
+    return gateway
+
+
 def run_planned_assessment(
     gateway: ModelGateway,
     scenario: LabScenario,
@@ -262,6 +304,56 @@ def run_planned_assessment(
         "evaluation": record.to_dict(),
         "report_markdown": render_markdown(findings),
     }
+
+
+def main_assess(argv: list[str] | None = None) -> int:
+    """CLI: planner-driven lab assessment with optional real gateway config."""
+    import argparse
+
+    from .ai.config import load_gateway
+    from .ai.gateway import GatewayConfigurationError
+    from .ai.pipeline import AssessmentReviewPipeline
+    from .ai.planner import PlanRejected
+    from .labfixtures import PROFILES, expected_findings
+
+    parser = argparse.ArgumentParser(prog="lightup-labassess")
+    parser.add_argument("url", nargs="?", default="http://127.0.0.1:18080/")
+    parser.add_argument("--db", default="lightup-lab.db")
+    parser.add_argument("--gateway-config",
+                        help="JSON gateway config (see config/gateway.example.json); "
+                             "omit for the deterministic scripted demo gateway")
+    parser.add_argument("--profile", choices=sorted(PROFILES),
+                        help="score against this lab fixture profile's planted "
+                             "ground truth (see lab/vuln_fixture.py)")
+    parser.add_argument("--no-review", action="store_true",
+                        help="skip the verifier/remediation/report review pass")
+    args = parser.parse_args(argv)
+
+    expected = expected_findings(PROFILES[args.profile]) if args.profile else ()
+    try:
+        scenario = LabScenario(
+            scenario_id="lab-assess",
+            name="Planner-driven lab assessment",
+            targets=(args.url,),
+            expected_findings=expected,
+        )
+        gateway = (load_gateway(args.gateway_config) if args.gateway_config
+                   else scripted_demo_gateway((args.url,)))
+        result = run_planned_assessment(gateway, scenario, args.db)
+    except (GatewayConfigurationError, PlanRejected, PermissionError, ValueError) as exc:
+        print(json.dumps({"error": str(exc)}, indent=2))
+        return 2
+
+    if not args.no_review:
+        from .ai.providers.anthropic_provider import ModelProviderError
+
+        try:
+            result["review"] = AssessmentReviewPipeline(gateway).review(result).to_dict()
+        except (GatewayConfigurationError, ModelProviderError) as exc:
+            # A failed review never hides the gated assessment result.
+            result["review_skipped"] = str(exc)
+    print(json.dumps(result, indent=2))
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
