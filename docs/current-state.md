@@ -17,7 +17,10 @@ The repository contains:
   elevation approvals, findings/retest status and prospects, with tenant
   isolation enforced in code (`AccessContext`);
 - a provider-neutral **AI model gateway** with role abstractions
-  (`lightup.ai.gateway`, see `docs/ai-orchestration.md`);
+  (`lightup.ai.gateway`, see `docs/ai-orchestration.md`), a JSON
+  **configuration loader** (`lightup.ai.config`) and a first real provider
+  adapter (`lightup.ai.providers.anthropic_provider`, optional extra
+  `lightup[anthropic]`, key via environment variable);
 - **typed AI orchestration contracts** with an immutable run context, a policy
   gate before every tool execution and a mandatory evidence ledger
   (`lightup.ai.orchestration`);
@@ -51,7 +54,7 @@ The repository contains:
   portal (`lightup.webapp`, see `docs/webapp.md`);
 - reporting/redaction helpers;
 - a loopback-only lab fixture;
-- CI safety tests (106 unit tests), including proofs that unauthorized active
+- CI safety tests (118 unit tests), including proofs that unauthorized active
   execution is impossible, risk escalation is blocked without new approval,
   tenants are isolated, passive Discovery cannot invoke active capabilities,
   lab workers fail closed on public targets, and the web shell rejects

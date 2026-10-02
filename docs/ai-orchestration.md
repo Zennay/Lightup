@@ -14,6 +14,18 @@ Provider-neutral routing of *roles* to configured providers:
 The gateway is **not** a security boundary. Whatever a model plans, execution
 still passes the policy gate below.
 
+### Providers and configuration
+
+Concrete adapters live in `lightup.ai.providers`; the first real one is
+`AnthropicProvider` (official `anthropic` SDK, installed as the optional extra
+`pip install lightup[anthropic]`, lazily imported so the core stays
+dependency-free). API keys are referenced by environment variable name
+(default `ANTHROPIC_API_KEY`), never stored in config. `lightup.ai.config`
+loads a JSON gateway config (providers + role→provider/model bindings) and
+fails loudly on unknown types, roles or empty bindings — model choice stays
+configuration, never business logic. A model refusal surfaces as a provider
+error; it never bypasses or weakens the policy gate.
+
 ## Orchestration contracts (`lightup.ai.orchestration`)
 
 ```text
