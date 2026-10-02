@@ -46,9 +46,10 @@ server-rendered web shell over the domain store.
   forms out of shared caches. CSP denies framing and base-URL injection, and
   permits form submissions only to the same origin; `X-Frame-Options: DENY`
   also protects older browsers.
-- The dev server still binds to loopback only and speaks plain http, so the
-  cookie carries no `Secure` flag yet; TLS termination is part of a later
-  deployment package. Keep it off untrusted networks until then.
+- The dev server binds to loopback and speaks HTTP. The separate production
+  factory enforces an explicit HTTPS origin and local proxy, checks Host and
+  POST Origin (including login), and sets Secure cookies and HSTS. See
+  `docs/deployment.md` for the Gunicorn/Nginx/systemd deployment package.
 
 ## Later
 

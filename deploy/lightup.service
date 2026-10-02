@@ -1,0 +1,25 @@
+[Unit]
+Description=LightUp web application
+After=network.target
+
+[Service]
+Type=simple
+User=lightup
+Group=lightup
+WorkingDirectory=/opt/lightup/current
+EnvironmentFile=/etc/lightup/web.env
+ExecStart=/opt/lightup/venv/bin/gunicorn --config deploy/gunicorn.conf.py 'lightup.webapp.production:create_production_app()'
+Restart=on-failure
+RestartSec=5
+StateDirectory=lightup
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/lightup
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

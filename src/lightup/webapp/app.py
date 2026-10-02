@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from http.cookies import SimpleCookie
 from typing import Callable, Iterable
 from .forms import FormError, read_form
+from .security import RequestRejected, WebSecurity
 
 from ..domain import (
     AccessContext,
@@ -158,8 +159,10 @@ def _redirect(location: str, extra_headers: list[tuple[str, str]] | None = None)
                     extra_headers=[("Location", location)] + (extra_headers or []))
 
 
-def _session_cookie(value: str, clear: bool = False) -> tuple[str, str]:
+def _session_cookie(value: str, clear: bool = False, secure: bool = False) -> tuple[str, str]:
     attrs = "Path=/; HttpOnly; SameSite=Strict"
+    if secure:
+        attrs += "; Secure"
     if clear:
         return ("Set-Cookie", f"{SESSION_COOKIE}=; {attrs}; Max-Age=0")
     return ("Set-Cookie", f"{SESSION_COOKIE}={value}; {attrs}")
@@ -199,8 +202,9 @@ def _page(title: str, nav: str, body: str, auth: AuthState,
 
 
 class LightUpWebApp:
-    def __init__(self, store: DomainStore):
+    def __init__(self, store: DomainStore, security: WebSecurity | None = None):
         self.store = store
+        self.security = security or WebSecurity()
         # access: "public" (login only), "operator", or "portal" (that client
         # or an operator). The access level is enforced in dispatch, before
         # any handler runs; handlers additionally act through the session's
@@ -238,12 +242,17 @@ class LightUpWebApp:
         method = environ.get("REQUEST_METHOD", "GET").upper()
         path = environ.get("PATH_INFO", "/") or "/"
         try:
+            self.security.validate(environ)
             form = read_form(environ) if method == "POST" else {}
+        except RequestRejected:
+            response = Response("<h1>Request rejected</h1>", status="403 Forbidden")
         except FormError as exc:
             response = Response("<h1>Invalid form request</h1>", status=exc.status)
         else:
             auth = self._authenticate(environ)
             response = self._dispatch(method, path, form, auth)
+        if self.security.production:
+            response.headers.append(("Strict-Transport-Security", "max-age=31536000"))
         start_response(response.status, response.headers)
         return [response.body]
 
@@ -331,22 +340,22 @@ class LightUpWebApp:
                 ANONYMOUS, {}, error="Too many failed sign-ins; try again later.")
             return Response(response.body.decode("utf-8"),
                             status="429 Too Many Requests",
-                            extra_headers=[_session_cookie("", clear=True)])
+                            extra_headers=[_session_cookie("", clear=True, secure=self.security.production)])
         if user is None:
             response = self.login_page(ANONYMOUS, {}, error="Invalid email or password.")
             return Response(response.body.decode("utf-8"), status="401 Unauthorized",
-                            extra_headers=[_session_cookie("", clear=True)])
+                            extra_headers=[_session_cookie("", clear=True, secure=self.security.production)])
         if auth.session_token:
             self.store.revoke_session(auth.session_token)
         token, _csrf = self.store.create_session(user.user_id)
         context = self.store.context_for_user(user.user_id)
-        return _redirect(self._home_for(context), [_session_cookie(token)])
+        return _redirect(self._home_for(context), [_session_cookie(token, secure=self.security.production)])
 
     def logout(self, auth: AuthState, form: dict[str, str]) -> Response:
         # The dispatcher already verified the session and CSRF token.
         if auth.session_token:
             self.store.revoke_session(auth.session_token)
-        return _redirect("/login", [_session_cookie("", clear=True)])
+        return _redirect("/login", [_session_cookie("", clear=True, secure=self.security.production)])
 
     # -- operator pages -------------------------------------------------------
 
@@ -795,5 +804,5 @@ class LightUpWebApp:
         return "".join(cards)
 
 
-def create_app(store: DomainStore) -> LightUpWebApp:
-    return LightUpWebApp(store)
+def create_app(store: DomainStore, security: WebSecurity | None = None) -> LightUpWebApp:
+    return LightUpWebApp(store, security)
