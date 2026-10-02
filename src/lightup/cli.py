@@ -56,7 +56,41 @@ def build_parser() -> argparse.ArgumentParser:
     cuser.add_argument("--name", required=True)
     cuser.add_argument("--client-id", required=True)
     cuser.add_argument("--password", help="omit to be prompted securely")
+
+    sub.add_parser(
+        "gateway-check",
+        help="show the configured model role->provider bindings (offline, no network)")
     return parser
+
+
+def _gateway_check() -> int:
+    """Report the role->provider/model bindings for the active model config.
+
+    Offline and read-only: it builds the gateway from ``LIGHTUP_MODEL_CONFIG``
+    (or the default scripted config) and prints the bindings. It never calls a
+    provider endpoint. Fail-closed configuration errors (e.g. a configured
+    provider whose credential env var is unset) are reported as such.
+    """
+    from .ai.config import MODEL_CONFIG_ENV, build_gateway, load_config_from_env
+    from .ai.gateway import GatewayConfigurationError
+
+    import os
+
+    source = os.environ.get(MODEL_CONFIG_ENV, "").strip() or "default scripted config"
+    try:
+        load_config_from_env()
+        gateway = build_gateway()
+    except GatewayConfigurationError as exc:
+        print(json.dumps({"config_source": source, "ok": False, "error": str(exc)},
+                         indent=2))
+        return 2
+    bindings = {
+        b.role.value: {"provider": b.provider_id, "model": b.model_id}
+        for b in gateway.bindings()
+    }
+    print(json.dumps({"config_source": source, "ok": True, "bindings": bindings},
+                     indent=2))
+    return 0
 
 
 def _account_command(args: argparse.Namespace) -> int:
@@ -96,6 +130,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command in {"create-operator", "create-client-user"}:
         return _account_command(args)
+
+    if args.command == "gateway-check":
+        return _gateway_check()
 
     planner = Planner(_policy(args))
     target = Target(args.target)

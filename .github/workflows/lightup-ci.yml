@@ -59,6 +59,44 @@ jobs:
           cat /tmp/lightup-plan.json
           grep -q '"execution_enabled": false' /tmp/lightup-plan.json
 
+      - name: Model gateway canary (offline default, fail-closed credentials)
+        env:
+          PYTHONPATH: src
+        run: |
+          # Default config: every role bound to the scripted provider, offline.
+          python -m lightup.cli gateway-check > /tmp/lightup-gw.json
+          cat /tmp/lightup-gw.json
+          python - <<'EOF'
+          import json
+          data = json.load(open("/tmp/lightup-gw.json"))
+          assert data["ok"] is True, data
+          roles = data["bindings"]
+          expected = {"planner", "surface_analyst", "security_analyst",
+                      "verifier", "remediation_advisor", "report_synthesizer"}
+          assert set(roles) == expected, roles
+          assert all(b["provider"] == "scripted" for b in roles.values()), roles
+          print("default gateway canary: OK")
+          EOF
+          # A real-provider config with no credential in the environment must
+          # fail closed, never silently fall back to a stub.
+          cat > /tmp/lightup-models.json <<'JSON'
+          {"providers":[{"id":"p","kind":"anthropic","api_key_env":"LIGHTUP_MISSING_KEY"}],
+           "roles":{"planner":{"provider":"p","model":"m"},
+                    "surface_analyst":{"provider":"p","model":"m"},
+                    "security_analyst":{"provider":"p","model":"m"},
+                    "verifier":{"provider":"p","model":"m"},
+                    "remediation_advisor":{"provider":"p","model":"m"},
+                    "report_synthesizer":{"provider":"p","model":"m"}}}
+          JSON
+          set +e
+          LIGHTUP_MODEL_CONFIG=/tmp/lightup-models.json \
+            python -m lightup.cli gateway-check > /tmp/lightup-gw-fail.json
+          code=$?
+          set -e
+          cat /tmp/lightup-gw-fail.json
+          test "$code" -eq 2
+          grep -q '"ok": false' /tmp/lightup-gw-fail.json
+
       - name: Web shell canary (auth required, stays locked, loopback-only)
         env:
           PYTHONPATH: src

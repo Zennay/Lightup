@@ -1,0 +1,20 @@
+{
+  "_comment": "Copy to a private path, set LIGHTUP_MODEL_CONFIG to point at it, and export the named API-key env vars. Credentials are never stored in this file. Configuring a provider does NOT enable real-target interaction; activation stays plan-only.",
+  "providers": [
+    {
+      "id": "anthropic-main",
+      "kind": "anthropic",
+      "api_key_env": "LIGHTUP_ANTHROPIC_API_KEY",
+      "endpoint": "https://api.anthropic.com/v1/messages",
+      "timeout": 60.0
+    }
+  ],
+  "roles": {
+    "planner": {"provider": "anthropic-main", "model": "claude-REPLACE-ME"},
+    "surface_analyst": {"provider": "anthropic-main", "model": "claude-REPLACE-ME"},
+    "security_analyst": {"provider": "anthropic-main", "model": "claude-REPLACE-ME"},
+    "verifier": {"provider": "anthropic-main", "model": "claude-REPLACE-ME"},
+    "remediation_advisor": {"provider": "anthropic-main", "model": "claude-REPLACE-ME"},
+    "report_synthesizer": {"provider": "anthropic-main", "model": "claude-REPLACE-ME"}
+  }
+}
