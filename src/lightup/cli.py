@@ -35,6 +35,12 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--db", default="lightup.db")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8766)
+
+    lab = sub.add_parser("lab-baseline",
+                         help="run the HTTP header baseline against a lab fixture")
+    lab.add_argument("url", nargs="?", default="http://127.0.0.1:18080/")
+    lab.add_argument("--db", default="lightup-lab.db")
+    lab.add_argument("--expect-fixture", action="store_true")
     return parser
 
 
@@ -45,6 +51,14 @@ def main(argv: list[str] | None = None) -> int:
         from .webapp.__main__ import main as serve_main
 
         return serve_main(["--db", args.db, "--host", args.host, "--port", str(args.port)])
+
+    if args.command == "lab-baseline":
+        from .labrun import main as labrun_main
+
+        argv = [args.url, "--db", args.db]
+        if args.expect_fixture:
+            argv.append("--expect-fixture")
+        return labrun_main(argv)
 
     planner = Planner(_policy(args))
     target = Target(args.target)

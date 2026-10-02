@@ -46,6 +46,10 @@ python -m unittest discover -s tests -v
 PYTHONPATH=src python -m lightup.cli scope-check 127.0.0.1
 PYTHONPATH=src python -m lightup.cli plan 127.0.0.1
 PYTHONPATH=src python -m lightup.cli serve --db lightup.db   # loopback-only web shell
+
+# End-to-end lab demo: fixture + baseline worker + evaluation
+python lab/http_fixture.py &  # loopback only
+PYTHONPATH=src python -m lightup.cli lab-baseline --expect-fixture
 ```
 
 The `plan` command is intentionally non-invasive: it only emits a structured plan.

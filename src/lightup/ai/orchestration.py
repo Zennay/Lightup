@@ -159,6 +159,7 @@ class ToolResult:
     summary: str
     evidence_id: str
     policy_reason: str
+    metadata: tuple[tuple[str, str], ...] = ()
 
 
 ToolHandler = Callable[[RunContext, dict[str, Any]], ToolOutput]
@@ -268,4 +269,5 @@ class ToolExecutor:
             summary=output.summary,
             evidence_id=evidence_id,
             policy_reason=decision.reason,
+            metadata=output.metadata,
         )

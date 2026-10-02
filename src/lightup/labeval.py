@@ -133,6 +133,15 @@ class EvaluationRecord:
         return json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
 
 
+def score_findings(
+    expected: tuple[ExpectedFinding, ...], found_identifiers: tuple[str, ...]
+) -> tuple[int, int, int]:
+    """Return (valid, invalid, missed) for found check identifiers vs ground truth."""
+    found = set(found_identifiers)
+    truth = {item.identifier for item in expected}
+    return len(found & truth), len(found - truth), len(truth - found)
+
+
 @dataclass
 class LabEvaluationHarness:
     """Creates lab-only run contexts and records benchmark results.

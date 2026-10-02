@@ -51,3 +51,17 @@ Key invariants, each covered by `tests/test_orchestration.py`:
 The lab engine is benchmarked here before large-scale prospect discovery, so
 Discovery later learns which public signals actually correlate with real
 problems.
+
+## First capability worker (`lightup.workers.http_baseline`)
+
+`lab-http-baseline` is the first worker to run the whole chain end-to-end
+(`lightup.labrun`, CLI: `lightup lab-baseline [--expect-fixture]`):
+
+- one HTTP GET against an isolated lab fixture, evaluated for defensive
+  response headers (CSP, nosniff, clickjacking, referrer policy, banner);
+- reachable only through the `ToolExecutor` (LAB_ACTIVE interaction), and the
+  handler independently re-validates the target with `assert_lab_target`, so
+  neither a mis-wired registry nor a direct call can point it at the internet;
+- evidence lands in the ledger, findings come out as Finding → Impact → Fix →
+  Retest, and the run is scored into an `EvaluationRecord` (against the stock
+  fixture's ground truth with `--expect-fixture`).

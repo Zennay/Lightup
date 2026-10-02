@@ -23,6 +23,10 @@ The repository contains:
   (`lightup.ai.orchestration`);
 - a **lab evaluation foundation** with a lab-only run path and a benchmark
   schema (`lightup.labeval`);
+- the **first capability worker**: a lab-only HTTP security-header baseline
+  (`lightup.workers.http_baseline`) wired end-to-end through the policy gate,
+  evidence ledger, findings and benchmark scoring (`lightup.labrun`,
+  CLI `lightup lab-baseline`);
 - a dependency-free, loopback-only **web shell**: operator dashboard
   (Overview/Discovery/Clients/Assessments) and client portal
   (`lightup.webapp`, see `docs/webapp.md`);
