@@ -46,6 +46,7 @@ CHECK_CATALOG = {
     for check_id, _header, title, severity, impact, remediation
     in http_baseline.BASELINE_CHECKS
 }
+CHECK_CATALOG.update(http_baseline.RESPONSE_POLICY_CHECKS)
 CHECK_CATALOG.update(tls_baseline.TLS_CHECKS)
 
 
@@ -96,11 +97,7 @@ def run_lab_baseline(
     result_meta = dict(result.metadata)
     status = int(result_meta.get("status", "0"))
     found_ids = tuple(i for i in result_meta.get("issues", "").split(",") if i)
-    issues_by_id = {
-        check_id: (title, severity, impact, remediation)
-        for check_id, _header, title, severity, impact, remediation
-        in http_baseline.BASELINE_CHECKS
-    }
+    issues_by_id = CHECK_CATALOG
     findings = []
     for check_id in found_ids:
         title, severity, impact, remediation = issues_by_id[check_id]

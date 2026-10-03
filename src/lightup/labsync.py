@@ -27,6 +27,10 @@ _CHECK_ID_BY_TITLE = {
     for check_id, _header, title, _severity, _impact, _remediation
     in http_baseline.BASELINE_CHECKS
 }
+_CHECK_ID_BY_TITLE.update(
+    {title: check_id
+     for check_id, (title, *_rest) in http_baseline.RESPONSE_POLICY_CHECKS.items()}
+)
 
 
 def ensure_lab_engagement(

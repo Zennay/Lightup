@@ -59,6 +59,13 @@ The repository contains:
   lab-assess` CLI** that runs the planner-driven assessment plus AI review
   offline on a deterministic scripted gateway, or on a real provider via
   `--gateway-config`;
+- **cookie and CORS checks** in the lab HTTP baseline (same single GET, with a
+  fixed probe `Origin`): missing HttpOnly/SameSite per cookie, wildcard CORS and
+  reflected origin with credentials; planted in the fixture profiles with
+  hand-maintained ground truth. `Secure` is not checked (lab speaks plain http);
+- a **local TLS-proxy deployment boundary** for the web app (`docs/deployment.md`,
+  `deploy/`, `scripts/smoke_web_deployment.py`): Secure cookies, host/origin
+  checks, server timeouts. Documented and smoke-tested, not deployed;
 - reporting/redaction helpers;
 - a loopback-only lab fixture;
 - CI safety tests, including proofs that unauthorized active

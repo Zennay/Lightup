@@ -19,11 +19,21 @@ from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler
 
 from .labeval import ExpectedFinding
-from .workers.http_baseline import BASELINE_CHECKS, CAPABILITY_ID
+from .workers.http_baseline import (
+    BASELINE_CHECKS,
+    CAPABILITY_ID,
+        RESPONSE_POLICY_CHECKS,
+)
 
 _KNOWN_CHECKS = {check_id: (title, severity)
                  for check_id, _header, title, severity, _impact, _remediation
                  in BASELINE_CHECKS}
+_KNOWN_CHECKS.update({check_id: (title, severity)
+                      for check_id, (title, severity, _i, _r)
+                      in RESPONSE_POLICY_CHECKS.items()})
+
+# CORS behaviours a profile can plant.
+CORS_NONE, CORS_WILDCARD, CORS_REFLECT = None, "wildcard", "reflect-with-credentials"
 
 
 @dataclass(frozen=True)
@@ -35,6 +45,8 @@ class FixtureProfile:
     headers: tuple[tuple[str, str], ...]
     server_banner: str | None  # None -> the Server banner is suppressed
     expected_check_ids: tuple[str, ...]
+    cookies: tuple[str, ...] = ()  # raw Set-Cookie values
+    cors: str | None = CORS_NONE
 
     def __post_init__(self) -> None:
         unknown = [c for c in self.expected_check_ids if c not in _KNOWN_CHECKS]
@@ -53,12 +65,17 @@ PROFILES: dict[str, FixtureProfile] = {
                         "every baseline check fires.",
             headers=(),
             server_banner="LightUpLab/0.1 Python/3",
+            cookies=("session=lab-demo; Path=/",),
+            cors=CORS_REFLECT,
             expected_check_ids=(
                 "missing-content-security-policy",
                 "missing-x-content-type-options",
                 "missing-x-frame-options",
                 "missing-referrer-policy",
                 "server-banner-disclosure",
+                "cookie-missing-httponly",
+                "cookie-missing-samesite",
+                "cors-reflected-origin-with-credentials",
             ),
         ),
         FixtureProfile(
@@ -70,10 +87,14 @@ PROFILES: dict[str, FixtureProfile] = {
                 ("X-Content-Type-Options", "nosniff"),
             ),
             server_banner="LightUpLab/0.1",
+            cookies=("session=lab-demo; Path=/; HttpOnly",),
+            cors=CORS_WILDCARD,
             expected_check_ids=(
                 "missing-x-frame-options",
                 "missing-referrer-policy",
                 "server-banner-disclosure",
+                "cookie-missing-samesite",
+                "cors-wildcard-origin",
             ),
         ),
         FixtureProfile(
@@ -87,6 +108,7 @@ PROFILES: dict[str, FixtureProfile] = {
                 ("Referrer-Policy", "no-referrer"),
             ),
             server_banner=None,
+            cookies=("session=lab-demo; Path=/; HttpOnly; SameSite=Strict",),
             expected_check_ids=(),
         ),
     )
@@ -117,6 +139,14 @@ def make_handler(profile: FixtureProfile) -> type[BaseHTTPRequestHandler]:
             self.send_header("Content-Length", str(len(body)))
             for name, value in profile.headers:
                 self.send_header(name, value)
+            for cookie in profile.cookies:
+                self.send_header("Set-Cookie", cookie)
+            origin = self.headers.get("Origin")
+            if profile.cors == CORS_WILDCARD:
+                self.send_header("Access-Control-Allow-Origin", "*")
+            elif profile.cors == CORS_REFLECT and origin:
+                self.send_header("Access-Control-Allow-Origin", origin)
+                self.send_header("Access-Control-Allow-Credentials", "true")
             self.end_headers()
             self.wfile.write(body)
 

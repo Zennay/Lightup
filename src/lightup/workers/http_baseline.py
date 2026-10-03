@@ -84,6 +84,42 @@ BASELINE_CHECKS: tuple[tuple[str, str, str, Severity, str, str], ...] = (
     ),
 )
 
+# Cookie and CORS checks evaluated on the same single response. They cannot be
+# header-presence checks: cookies repeat, and CORS depends on the probe Origin
+# the worker sends. check_id -> (title, severity, impact, remediation).
+# ``Secure`` is deliberately not checked: the lab speaks plain http only.
+RESPONSE_POLICY_CHECKS: dict[str, tuple[str, Severity, str, str]] = {
+    "cookie-missing-httponly": (
+        "Cookie set without HttpOnly",
+        Severity.MEDIUM,
+        "Script running in the page can read the cookie, so a single XSS "
+        "bug can steal the session.",
+        "Set the HttpOnly attribute on every session cookie.",
+    ),
+    "cookie-missing-samesite": (
+        "Cookie set without SameSite",
+        Severity.LOW,
+        "The cookie is sent on cross-site requests, widening CSRF exposure.",
+        "Set `SameSite=Lax` or `SameSite=Strict` on session cookies.",
+    ),
+    "cors-wildcard-origin": (
+        "CORS allows any origin",
+        Severity.LOW,
+        "Any website can read responses from this endpoint.",
+        "Return an explicit allowlisted origin instead of `*`.",
+    ),
+    "cors-reflected-origin-with-credentials": (
+        "CORS reflects arbitrary origin with credentials",
+        Severity.HIGH,
+        "Any website can make credentialed requests and read the "
+        "authenticated response.",
+        "Validate Origin against an allowlist; never reflect it while "
+        "sending Access-Control-Allow-Credentials.",
+    ),
+}
+
+PROBE_ORIGIN = "http://lightup-probe.invalid"
+
 
 @dataclass(frozen=True)
 class BaselineIssue:
@@ -127,6 +163,32 @@ def evaluate_headers(headers: dict[str, str]) -> tuple[BaselineIssue, ...]:
     return tuple(issues)
 
 
+def evaluate_response(
+    headers: tuple[tuple[str, str], ...], probe_origin: str = PROBE_ORIGIN,
+) -> tuple[BaselineIssue, ...]:
+    """Header-presence checks plus cookie and CORS policy checks."""
+    flagged: list[str] = []
+    cookies = [value for name, value in headers if name.lower() == "set-cookie"]
+    attrs = [{part.split("=", 1)[0].strip().lower() for part in cookie.split(";")[1:]}
+             for cookie in cookies]
+    if any("httponly" not in a for a in attrs):
+        flagged.append("cookie-missing-httponly")
+    if any("samesite" not in a for a in attrs):
+        flagged.append("cookie-missing-samesite")
+    first = {name.lower(): value.strip() for name, value in reversed(headers)}
+    allow_origin = first.get("access-control-allow-origin")
+    if allow_origin == "*":
+        flagged.append("cors-wildcard-origin")
+    elif (allow_origin == probe_origin
+          and first.get("access-control-allow-credentials", "").lower() == "true"):
+        flagged.append("cors-reflected-origin-with-credentials")
+    extra = tuple(
+        BaselineIssue(check_id, *RESPONSE_POLICY_CHECKS[check_id])
+        for check_id in flagged
+    )
+    return evaluate_headers(dict(headers)) + extra
+
+
 def _validated_lab_endpoint(url: str) -> tuple[str, int, str]:
     parsed = urlparse(url)
     if parsed.scheme != "http":
@@ -144,14 +206,15 @@ def observe(url: str, timeout: float = 5.0) -> BaselineObservation:
     host, port, path = _validated_lab_endpoint(url)
     connection = HTTPConnection(host, port, timeout=timeout)
     try:
-        connection.request("GET", path, headers={"User-Agent": "lightup-lab-baseline/0.1"})
+        connection.request("GET", path, headers={"User-Agent": "lightup-lab-baseline/0.1",
+                                              "Origin": PROBE_ORIGIN})
         response = connection.getresponse()
         headers = tuple((name, value) for name, value in response.getheaders())
         status = response.status
         response.read()
     finally:
         connection.close()
-    issues = evaluate_headers(dict(headers))
+    issues = evaluate_response(headers)
     return BaselineObservation(url=url, status=status, headers=headers, issues=issues)
 
 
