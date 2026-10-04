@@ -241,3 +241,28 @@ A later milestone should deliver:
 6. current-vs-future attack-path comparison;
 7. pre-merge/pre-deploy verdicts;
 8. remediation and automatic retest that update the twin.
+
+
+## Security Twin and Future Attack Graph
+
+The Security Twin is a persistent, evidence-backed model of a client's security-relevant state. It stores the relationships needed to reason about and validate attack paths over time.
+
+Current environment -> observe + assess -> evidence-backed Security Twin -> Current Attack Graph -> fix + retest -> proposed change -> Future-state Twin -> isolated adversarial simulation -> Future Attack Graph -> compare paths -> approve/block/remediate -> retest -> learn back into Twin.
+
+### Required twin inputs
+
+- application and API inventory;
+- identities, roles and privilege relationships;
+- cloud/IAM resources and trust edges;
+- network/service relationships;
+- repositories and relevant code/config/IaC changes;
+- data flows and sensitive-data boundaries;
+- findings, evidence, remediation and retest state;
+- coverage state and explicit unknowns;
+- proven attack paths and failed hypotheses.
+
+### Future Security verdict
+
+For an eligible proposed change, LightUp should report which attack paths are newly introduced, disappear or become more severe; which code/config/IAM/infra change introduced the delta; whether each claim is hypothesized, observed or validated; the recommended remediation; and whether the remediation passed automatic retest.
+
+This future-security layer does **not** replace present-day pentesting. It extends it with predictive, pre-merge/pre-deploy adversarial validation.
