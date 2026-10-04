@@ -2,12 +2,99 @@
 
 ## Product goal
 
-LightUp is an AI-assisted security platform for multi-client assessment workflows. It has two deliberately separated planes:
+LightUp is an AI-assisted security platform for multi-client security validation. Its core product promise is:
 
-1. **Passive Discovery** for finding prospects from public, non-intrusive signals.
-2. **Authorized Assessment** for active testing only after a valid authorization and scope grant exists.
+> **LightUp finds what is vulnerable today and proves whether the change you are about to ship makes you vulnerable tomorrow.**
 
-The boundary between these planes is a backend invariant, not a UI convention.
+LightUp therefore has two complementary security value lanes:
+
+1. **Current Security** — evidence-backed testing of the environment that exists now, including vulnerabilities, misconfigurations and attack paths on explicitly authorized systems.
+2. **Future Security** — adversarial simulation of proposed code, API, IaC, IAM, cloud and configuration changes before they reach production.
+
+These lanes are connected by a persistent **Security Twin**: an evidence-backed model of each client's assets, applications, APIs, identities, roles, cloud resources, trust relationships, data flows, findings, fixes, coverage and proven attack paths.
+
+LightUp also has two deliberately separated interaction planes:
+
+- **Passive Discovery** for finding prospects from public, non-intrusive signals.
+- **Authorized Assessment** for active testing only after a valid authorization and scope grant exists.
+
+The authorization boundary is a backend invariant, not a UI convention. Future-state simulation must never become a route around real-target authorization.
+
+## Product differentiation
+
+LightUp is not intended to be only an autonomous pentest scanner. The differentiating layer is continuous reasoning over both the **current** and **proposed future** security state.
+
+The long-term loop is:
+
+```text
+Observe current state
+  -> Test current vulnerabilities
+  -> Build/update evidence-backed attack graph
+  -> Remediate + retest
+  -> Observe proposed change
+  -> Build future-state twin
+  -> Run isolated adversarial simulation
+  -> Compare current vs future attack paths
+  -> Block/regress/approve change
+  -> Learn into the Security Twin
+```
+
+A Future Security result should answer concrete questions such as:
+
+- which new attack path is introduced by this pull request or infrastructure change?
+- which existing attack path disappears after the proposed fix?
+- does an IAM change increase blast radius?
+- does a new API route introduce cross-tenant or privilege-boundary risk?
+- which single proposed remediation removes the most proven exposure?
+
+## Security Twin
+
+The Security Twin is a durable customer-specific model, not a one-off scan result.
+
+It should eventually include:
+
+- assets and reachable services;
+- applications, APIs and exposed routes;
+- identities, roles, permissions and trust relationships;
+- cloud/IAM and infrastructure topology;
+- code/config/IaC references where available;
+- data flows and sensitive data boundaries;
+- findings and evidence lineage;
+- remediation and retest state;
+- assessed, unknown and unauthorized coverage;
+- proven attack paths and their prerequisites;
+- historical changes and regressions.
+
+The twin must distinguish observed facts, inferred relationships and verified findings. AI output alone is never treated as ground truth.
+
+## Future Security / adversarial change simulation
+
+A proposed change may create a **future-state twin** without mutating the current twin.
+
+Supported change inputs should eventually include:
+
+- source-code pull requests and commits;
+- API/OpenAPI/GraphQL changes;
+- Terraform, Kubernetes and other IaC diffs;
+- cloud/IAM and role-policy changes;
+- security group/firewall and network-policy changes;
+- application and service configuration changes.
+
+Where practical, LightUp should materialize the future state in an isolated representative environment and run the same evidence/verifier pipeline used by Current Security. When full materialization is not possible, LightUp must clearly mark the result as modelled/inferred rather than verified.
+
+The output is a current-vs-future delta:
+
+```text
+Change
+  -> Future-state model
+  -> Candidate security hypotheses
+  -> Isolated verification where possible
+  -> Current attack graph vs future attack graph
+  -> Introduced / removed / worsened / improved paths
+  -> Evidence + remediation
+  -> Automated retest
+  -> Pre-merge / pre-deploy verdict
+```
 
 ## Primary user journeys
 
@@ -21,22 +108,30 @@ The boundary between these planes is a backend invariant, not a UI convention.
 - approve the assessment;
 - monitor findings, evidence and remediation;
 - approve risk elevation when required;
-- schedule retests and later continuous assessments.
+- schedule retests and later continuous assessments;
+- review Security Twin changes and current-vs-future attack-path deltas;
+- approve, warn or block pre-deploy changes according to customer policy.
 
 ### Client
 
 - sign in to a dedicated client account;
 - request an assessment;
 - provide scope and authorization information;
-- review findings, impact and remediation;
+- review current findings, impact and remediation;
 - track remediation progress;
-- request or view retest results.
+- request or view retest results;
+- inspect which proposed changes introduce or remove proven exposure.
 
 ## Core domain hierarchy
 
 ```text
 Organization
   -> Client
+     -> SecurityTwin
+        -> CurrentState
+        -> ProposedFutureState
+        -> AttackGraph
+        -> ChangeDelta
      -> Engagement
         -> AuthorizationGrant
         -> ScopeDefinition
@@ -53,8 +148,9 @@ Organization
 
 - **Analysis only** — no target interaction.
 - **Passive discovery** — public/non-intrusive information only; no active verification.
-- **Lab autonomous** — isolated lab targets; used for agent R&D and evaluation.
-- **Authorized assessment** — active target interaction only with a current authorization grant.
+- **Lab autonomous** — isolated lab targets; used for agent R&D, benchmark evaluation and safe future-state simulation.
+- **Authorized assessment** — active Current Security target interaction only with a current authorization grant.
+- **Future simulation** — a proposed state is assessed in an isolated or modelled environment. It never grants permission to interact with a real target that is not otherwise authorized.
 
 ## Risk levels
 
@@ -77,25 +173,30 @@ The model is a planner/analyst, not the security boundary.
 Web UI
   -> Application API
   -> Authorization + Scope + Risk Policy
+  -> Security Twin / State Model
   -> AI Orchestrator
   -> Typed Tool Registry
   -> Capability Workers
   -> Evidence Ledger
   -> Verifier
-  -> Findings + Remediation
+  -> Attack Graph + Findings
+  -> Remediation + Retest
 ```
 
 Every future active tool call must carry immutable run context and pass policy enforcement before execution.
 
 ## Model gateway
 
-The AI layer must stay provider-neutral. A future model gateway can route separate roles to different models:
+The AI layer must stay provider-neutral. The model gateway can route separate roles to different models:
 
 - planner;
-- analyst;
+- surface analyst;
+- security analyst;
 - verifier;
+- attack-path reasoner;
+- remediation advisor;
 - report synthesizer;
-- remediation advisor.
+- change-impact analyst.
 
 Model choice must be configuration, not business logic.
 
@@ -108,14 +209,16 @@ Passive signals
   -> Client interest
   -> Digital authorization
   -> Authorized engagement
-  -> Active assessment
+  -> Current Security assessment
+  -> Security Twin
+  -> Continuous current + future validation
 ```
 
 A prospect never becomes an active target automatically.
 
 ## Subscription readiness
 
-Authorization records support future recurring retests. Continuous assessment must still honor:
+Authorization records support future recurring retests and continuous Current/Future Security. Continuous assessment must still honor:
 
 - authorization validity;
 - asset scope;
@@ -123,3 +226,18 @@ Authorization records support future recurring retests. Continuous assessment mu
 - maximum risk;
 - maintenance windows;
 - explicit step-up approval for higher-risk actions.
+
+## Roadmap implication
+
+The existing assessment engine remains core product functionality. Security Twin / Future Security is an additional strategic layer, not a replacement.
+
+A later milestone should deliver:
+
+1. persisted Security Twin primitives;
+2. current-state attack graph built from verified evidence;
+3. change ingestion for PR/config/IaC/IAM deltas;
+4. future-state twin generation;
+5. isolated future-state adversarial simulation;
+6. current-vs-future attack-path comparison;
+7. pre-merge/pre-deploy verdicts;
+8. remediation and automatic retest that update the twin.
