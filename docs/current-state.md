@@ -3,7 +3,7 @@
 LightUp is in **M1 — Platform skeleton**: the M0 guardrails are unchanged, and
 the first product layers now exist on top of them.
 
-Current activation mode: **plan-only**.
+Current activation mode: **plan-only / lab-only** for active execution.
 
 The repository contains:
 
@@ -40,7 +40,7 @@ The repository contains:
   and elevation needs routed to humans;
 - **login brute-force lockout** in the domain layer
   (`DomainStore.authenticate`), surfaced as HTTP 429 in the web shell;
-- a **lab → product findings bridge** with an automated retest loop
+- a **lab -> product findings bridge** with an automated retest loop
   (`lightup.labsync`: fixed / fix_pending / regression semantics) and an
   **AI review pipeline** over findings via the Model Gateway
   (`lightup.ai.pipeline`: verifier, remediation advisor, report synthesizer);
@@ -59,8 +59,9 @@ The repository contains:
   lab-assess` CLI** that runs the planner-driven assessment plus AI review
   offline on a deterministic scripted gateway, or on a real provider via
   `--gateway-config`;
+- production deployment boundaries for HTTPS proxying, Host/Origin checks,
+  Secure cookies, HSTS, Gunicorn and Nginx/systemd deployment templates;
 - reporting/redaction helpers;
-- a loopback-only lab fixture;
 - CI safety tests, including proofs that unauthorized active
   execution is impossible, risk escalation is blocked without new approval,
   tenants are isolated, passive Discovery cannot invoke active capabilities,
@@ -72,7 +73,38 @@ real-target network adapters exist; the web shell cannot trigger execution.
 
 ## Current product direction
 
-LightUp is a standalone, multi-client web product with:
+LightUp is a standalone, multi-client web product with **two complementary security value lanes**:
+
+### Current Security
+
+LightUp must eventually test the systems that exist **today** and produce
+evidence-backed vulnerabilities, misconfigurations and chained attack paths.
+This remains core product functionality and will compete directly with
+autonomous pentesting / exposure-validation platforms once explicitly
+authorized real-target adapters are activated.
+
+### Future Security
+
+LightUp will add a differentiating **Security Twin** layer that models a
+client's current security state and proposed future changes. Pull requests,
+API changes, IaC, cloud/IAM and configuration changes can create a
+future-state twin. LightUp should then compare the current and future attack
+graphs, verify candidate risks in an isolated environment where possible and
+produce a pre-merge/pre-deploy security verdict.
+
+The product promise is:
+
+> **LightUp finds what is vulnerable today and proves whether the change you are about to ship makes you vulnerable tomorrow.**
+
+The Future Security layer does **not** replace Current Security. Both lanes
+share the same scope, authorization, evidence, verifier, remediation and
+retest primitives.
+
+See `docs/product-architecture.md` and `docs/security-twin.md`.
+
+## Existing product workflow
+
+LightUp currently targets:
 
 - an operator/admin dashboard;
 - a minimal client portal;
@@ -90,5 +122,9 @@ The UI direction is deliberately minimal and uses progressive disclosure. See `d
 `UNAUTHORIZED -> PASSIVE DISCOVERY ONLY`
 
 No real-target active adapter may execute without a current authorization grant and successful scope/risk policy checks.
+
+Future Security must not weaken that invariant: a future-state model or isolated
+simulation never grants permission to interact with an otherwise unauthorized
+real system.
 
 Canonical project planning and handoff live in the LightUp Notion project pages. zCloud only registers and monitors this repository.
