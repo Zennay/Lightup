@@ -382,6 +382,32 @@ class FutureGraphResolutionTest(subject_tests.FutureSubjectResolutionTest):
                 AccessContext("reader", Role.CLIENT_MEMBER, "client-1"),
             )
 
+    def test_review_rejects_effect_semantics_tampering_after_graph_resolution(self):
+        resolved = apply_future_graph_resolution(
+            self.reviewed, self.graph, self.materialization, self.state
+        )
+        risk_fact_id = _effect_fact_id(
+            self.effect.effect_id, "future_effect.risk_direction"
+        )
+        forged = dataclasses.replace(
+            resolved,
+            facts=tuple(
+                dataclasses.replace(
+                    fact, value=RiskDirection.DECREASED.value
+                )
+                if fact.fact_id == risk_fact_id
+                else fact
+                for fact in resolved.facts
+            ),
+        )
+
+        with self.assertRaisesRegex(ValueError, "effect semantics digest"):
+            review_future_subjects(
+                forged,
+                self.state,
+                AccessContext("reader", Role.CLIENT_MEMBER, "client-1"),
+            )
+
     def test_exact_replay_is_idempotent(self):
         once = apply_future_graph_resolution(
             self.reviewed, self.graph, self.materialization, self.state
