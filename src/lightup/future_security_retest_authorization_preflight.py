@@ -195,6 +195,27 @@ def build_future_security_retest_authorization_preflight(
     if authorization.engagement_id != engagement_id:
         raise ValueError("authorization grant engagement does not match source lineage")
 
+    # A retest preflight must be auditable back to a concrete authorization
+    # record. Do not emit a policy-review-eligible artifact from an anonymous,
+    # unreferenced, or temporally malformed grant.
+    for field_name, value in (
+        ("grant_id", authorization.grant_id),
+        ("approved_by", authorization.approved_by),
+        ("reference", authorization.reference),
+    ):
+        if not value.strip():
+            raise ValueError(f"authorization grant requires non-empty {field_name}")
+    for field_name, value in (
+        ("valid_from", authorization.valid_from),
+        ("valid_until", authorization.valid_until),
+    ):
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError(
+                f"authorization grant {field_name} must be timezone-aware"
+            )
+    if authorization.valid_until < authorization.valid_from:
+        raise ValueError("authorization grant validity window is inverted")
+
     item_ids = tuple(item.resolution_id for item in request.items)
     expected_ids = set(item_ids)
     if len(expected_ids) != len(item_ids):
