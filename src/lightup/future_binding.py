@@ -102,6 +102,8 @@ def _normalized_candidate_paths(
         raw = attrs.get(key)
         if raw is None:
             continue
+        if not isinstance(raw, str):
+            continue
         try:
             paths.add(validate_repo_path(raw))
         except ValueError:
@@ -162,6 +164,9 @@ def _normalize_explicit_candidates(
         raw_ids = candidates.get(signal.signal_id, ())
         if isinstance(raw_ids, str):
             raise ValueError("candidate node IDs must be supplied as an iterable, not a string")
+        raw_ids = tuple(raw_ids)
+        if any(not isinstance(node_id, str) or not node_id.strip() for node_id in raw_ids):
+            raise ValueError("candidate node IDs must be non-empty strings")
         unique_ids = tuple(sorted(set(raw_ids)))
         for node_id in unique_ids:
             node = nodes.get(node_id)
