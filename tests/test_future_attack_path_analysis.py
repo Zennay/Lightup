@@ -12,6 +12,7 @@ from lightup.future_binding import bind_future_change_candidates
 from lightup.domain import AccessContext, Role, TenantIsolationError
 from lightup.future_attack_path_analysis import (
     analyze_future_attack_path_impact,
+    future_attack_path_impact_report_from_dict,
     validate_future_attack_path_impact_report,
 )
 from lightup.future_effects import (
@@ -512,6 +513,41 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
             validate_future_attack_path_impact_report(
                 dataclasses.replace(report, future_semantics="resolved")
             )
+
+    def test_serialized_report_round_trip_is_strict_and_digest_validated(self):
+        resolved = self._resolved_with(
+            (self.f.effect,),
+            graph_id="graph-impact-round-trip",
+        )
+        report = analyze_future_attack_path_impact(
+            resolved,
+            self.f.state,
+            self.client,
+            current=self.f.current,
+        )
+        payload = json.loads(json.dumps(report.as_dict()))
+        restored = future_attack_path_impact_report_from_dict(payload)
+        self.assertEqual(restored, report)
+
+        extra = dict(payload)
+        extra["unexpected"] = "field"
+        with self.assertRaisesRegex(ValueError, "schema mismatch"):
+            future_attack_path_impact_report_from_dict(extra)
+
+        missing = dict(payload)
+        missing.pop("changeset_id")
+        with self.assertRaisesRegex(ValueError, "schema mismatch"):
+            future_attack_path_impact_report_from_dict(missing)
+
+        tampered = json.loads(json.dumps(payload))
+        tampered["items"][0]["impact"] = "potential_improvement"
+        with self.assertRaisesRegex(ValueError, "digest mismatch"):
+            future_attack_path_impact_report_from_dict(tampered)
+
+        wrong_shape = json.loads(json.dumps(payload))
+        wrong_shape["items"] = {"not": "a list"}
+        with self.assertRaisesRegex(ValueError, "items must be a list"):
+            future_attack_path_impact_report_from_dict(wrong_shape)
 
     def test_deleted_graph_evidence_is_rejected_on_read(self):
         resolved = self._resolved_with(
