@@ -47,8 +47,7 @@ credentials, exploit steps or customer source/config.
 
 Items are canonically sorted by change, subject and resolution identity. The
 canonical request SHA-256 binds the full upstream report/plan lineage, every
-gap item and all safety flags. Rebuilding from unchanged live state is
-deterministic.
+gap item and all safety flags. Rebuilding from unchanged live state is deterministic. Persisted requests must be passed through `validate_future_security_evidence_collection_request`, which rebuilds the request from the live lineage and requires exact equality before follow-up use.
 
 ## Safety boundary
 
