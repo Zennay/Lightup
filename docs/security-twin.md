@@ -183,6 +183,23 @@ ingestion for GitHub PR/commit changes, followed by IaC/config adapters.
 - IaC/config ChangeSet adapters;
 - immutable future-state branch of the twin.
 
+Implementation status: **first ST2 slice implemented**. `lightup.changes`
+defines immutable, tenant-bound `ChangeSet` / `ChangeObject` primitives with a
+stable provenance digest. `lightup.github_changes` normalizes GitHub compare
+file metadata for PRs and commits into changed objects and conservatively
+classifies code, API specs, IaC, IAM, config, CI, tests and docs.
+
+The adapter intentionally does **not** infer permission, route, trust,
+reachability or attack-path changes from file statistics alone. Those effects
+remain explicit uncertainty until patch/content analysis or isolated
+materialization supplies evidence. A ChangeSet may derive a separate future
+Security Twin, but the current twin graph is copied unchanged and marked
+`future_semantics=unresolved`.
+
+Next ST2 slice: ingest patch/content context for supported GitHub changes and
+add semantic adapters for IaC/config/API changes while preserving provenance
+and uncertainty.
+
 ### ST3 — Future-state lab materialization
 
 - isolated environment builder for supported change types;
