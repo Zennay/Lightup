@@ -43,6 +43,7 @@ class FutureAttackPathGraphDiffPreviewTest(unittest.TestCase):
             proposal,
             classification,
             suffix=suffix,
+            capability_id="web-baseline",
         )
         resolution = verify_future_attack_path_transition(
             proposal,
@@ -50,7 +51,7 @@ class FutureAttackPathGraphDiffPreviewTest(unittest.TestCase):
             classification=classification,
             run_id=context.run_id,
             evidence_ids=(evidence_id,),
-            capability_ids=("web",),
+            capability_ids=("web-baseline",),
             context=context,
             state=self.state,
         )
@@ -100,6 +101,7 @@ class FutureAttackPathGraphDiffPreviewTest(unittest.TestCase):
             proposal,
             classification,
             suffix=suffix,
+            capability_id="web-baseline",
         )
         resolution = verify_future_attack_path_transition(
             proposal,
@@ -107,7 +109,7 @@ class FutureAttackPathGraphDiffPreviewTest(unittest.TestCase):
             classification=classification,
             run_id=context.run_id,
             evidence_ids=(evidence_id,),
-            capability_ids=("web",),
+            capability_ids=("web-baseline",),
             context=context,
             state=self.state,
         )
@@ -138,7 +140,7 @@ class FutureAttackPathGraphDiffPreviewTest(unittest.TestCase):
         )
         evidence_id = self.state.add_evidence(
             run_id,
-            "web",
+            "web-baseline",
             "future-transition-verification",
             "isolated-lab-fixture",
             f"collision proof {suffix}".encode("utf-8"),
@@ -150,7 +152,7 @@ class FutureAttackPathGraphDiffPreviewTest(unittest.TestCase):
             classification=classification,
             run_id=run_id,
             evidence_ids=(evidence_id,),
-            capability_ids=("web",),
+            capability_ids=("web-baseline",),
             context=context,
             state=self.state,
         )
