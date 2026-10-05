@@ -230,8 +230,18 @@ def build_future_security_retest_authorization_preflight(
         if not authorization.scope.allows_asset(binding.asset):
             reasons.append(f"asset_out_of_scope:{binding.resolution_id}")
 
+    # Retest authorization is intentionally stricter than the generic scope
+    # helper: issue #53 requires every requested capability to be explicitly
+    # present in the recurring-retest grant. An empty allowlist must therefore
+    # fail closed here rather than inheriting ScopeDefinition's generic
+    # "unspecified means unrestricted" behavior.
+    authorized_capabilities = {
+        capability_id.strip()
+        for capability_id in authorization.scope.allowed_capabilities
+        if capability_id.strip()
+    }
     for capability_id in request.requested_capability_ids:
-        if not authorization.scope.allows_capability(capability_id):
+        if capability_id not in authorized_capabilities:
             reasons.append(f"capability_out_of_scope:{capability_id}")
 
     reason_tuple = tuple(sorted(set(reasons)))
