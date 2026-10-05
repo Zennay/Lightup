@@ -1,0 +1,197 @@
+"""Read-only impact analysis over verified Future Security graph state.
+
+This layer consumes only canonical, evidence-backed subject/effect graph
+resolution. It does not execute capabilities, infer exploitability, authorize
+deployment, or mutate attack paths.
+"""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
+
+from .domain import AccessContext
+from .future_effects import RiskDirection, SecurityEffectKind, _fact_id as _effect_fact_id
+from .future_subject_review import review_future_subjects
+from .state import StateStore
+from .twin import FactProvenance, SecurityTwin
+
+
+_EFFECT_PREDICATES = (
+    "future_effect.kind",
+    "future_effect.risk_direction",
+    "future_effect.capability",
+    "future_effect.resolution_id",
+)
+
+
+@dataclass(frozen=True)
+class FutureAttackPathImpactItem:
+    change_node_id: str
+    subject_node_id: str
+    graph_resolution_id: str
+    effect_ids: tuple[str, ...]
+    effect_kinds: tuple[str, ...]
+    risk_directions: tuple[str, ...]
+    capability_ids: tuple[str, ...]
+    current_attack_path_ids: tuple[str, ...]
+    impact: str
+    evidence_refs: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class FutureAttackPathImpactReport:
+    client_id: str
+    twin_id: str
+    twin_version: int
+    changeset_id: str
+    items: tuple[FutureAttackPathImpactItem, ...]
+    analysis_complete: bool
+    future_semantics: str = "unresolved"
+    security_verdict: str = "not_evaluated"
+
+    def as_dict(self) -> dict:
+        """Return a detached JSON-serializable representation."""
+        return asdict(self)
+
+
+def _classify_risk(directions: set[RiskDirection]) -> str:
+    if RiskDirection.INCREASED in directions and RiskDirection.DECREASED in directions:
+        return "mixed"
+    if RiskDirection.INCREASED in directions:
+        return "potential_regression"
+    if RiskDirection.DECREASED in directions:
+        return "potential_improvement"
+    return "unchanged"
+
+
+def _attack_paths_touching_subject(
+    future: SecurityTwin,
+    subject_node_id: str,
+) -> tuple[str, ...]:
+    path_ids = {
+        path.path_id
+        for path in future.attack_paths
+        if any(
+            step.source_id == subject_node_id or step.target_id == subject_node_id
+            for step in path.steps
+        )
+    }
+    return tuple(sorted(path_ids))
+
+
+def analyze_future_attack_path_impact(
+    future: SecurityTwin,
+    state: StateStore,
+    context: AccessContext,
+    *,
+    client_id: str | None = None,
+) -> FutureAttackPathImpactReport:
+    """Classify verified future effects against existing attack-path membership.
+
+    This is deliberately conservative: normalized future effects can indicate a
+    potential regression or improvement, but they do not prove a new exploit
+    path, removal of an old one, or production safety.
+    """
+
+    review = review_future_subjects(
+        future,
+        state,
+        context,
+        client_id=client_id,
+    )
+    if not review.graph_resolution_complete:
+        raise ValueError(
+            "future attack-path impact analysis requires complete verified graph resolution"
+        )
+    if review.future_semantics != "unresolved":
+        raise ValueError(
+            "future attack-path impact analysis requires unresolved future semantics"
+        )
+
+    facts_by_id = {fact.fact_id: fact for fact in future.facts}
+    items: list[FutureAttackPathImpactItem] = []
+
+    for reviewed in review.items:
+        if (
+            reviewed.graph_resolution_status != "verified"
+            or reviewed.graph_resolution_id is None
+            or reviewed.verified_subject_id is None
+            or not reviewed.resolved_effect_ids
+        ):
+            raise ValueError(
+                "future attack-path impact analysis found incomplete verified graph state"
+            )
+
+        effect_kinds: set[SecurityEffectKind] = set()
+        directions: set[RiskDirection] = set()
+        capabilities: set[str] = set()
+        evidence_refs: set[str] = set(reviewed.evidence_refs)
+
+        for effect_id in reviewed.resolved_effect_ids:
+            effect_facts = {}
+            for predicate in _EFFECT_PREDICATES:
+                fact = facts_by_id.get(_effect_fact_id(effect_id, predicate))
+                if fact is None:
+                    raise ValueError(
+                        f"future attack-path impact is missing effect {effect_id!r}"
+                    )
+                if (
+                    fact.subject_id != reviewed.change_node_id
+                    or fact.predicate != predicate
+                    or fact.provenance is not FactProvenance.VERIFIED
+                    or fact.confidence != 1.0
+                ):
+                    raise ValueError(
+                        f"future attack-path impact effect {effect_id!r} is not canonical"
+                    )
+                effect_facts[predicate] = fact
+                evidence_refs.update(fact.evidence_refs)
+
+            try:
+                effect_kinds.add(
+                    SecurityEffectKind(effect_facts["future_effect.kind"].value)
+                )
+                directions.add(
+                    RiskDirection(effect_facts["future_effect.risk_direction"].value)
+                )
+            except ValueError as exc:
+                raise ValueError(
+                    f"future attack-path impact effect {effect_id!r} has invalid semantics"
+                ) from exc
+            capability = effect_facts["future_effect.capability"].value
+            if not capability.strip():
+                raise ValueError(
+                    f"future attack-path impact effect {effect_id!r} has empty capability"
+                )
+            capabilities.add(capability)
+
+        items.append(
+            FutureAttackPathImpactItem(
+                change_node_id=reviewed.change_node_id,
+                subject_node_id=reviewed.verified_subject_id,
+                graph_resolution_id=reviewed.graph_resolution_id,
+                effect_ids=tuple(sorted(reviewed.resolved_effect_ids)),
+                effect_kinds=tuple(sorted(item.value for item in effect_kinds)),
+                risk_directions=tuple(sorted(item.value for item in directions)),
+                capability_ids=tuple(sorted(capabilities)),
+                current_attack_path_ids=_attack_paths_touching_subject(
+                    future, reviewed.verified_subject_id
+                ),
+                impact=_classify_risk(directions),
+                evidence_refs=tuple(sorted(evidence_refs)),
+            )
+        )
+
+    if not items:
+        raise ValueError(
+            "future attack-path impact analysis requires at least one resolved change"
+        )
+
+    return FutureAttackPathImpactReport(
+        client_id=review.client_id,
+        twin_id=review.twin_id,
+        twin_version=review.twin_version,
+        changeset_id=review.changeset_id,
+        items=tuple(items),
+        analysis_complete=True,
+    )
