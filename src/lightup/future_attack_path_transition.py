@@ -61,6 +61,141 @@ class FutureAttackPathTransitionProposal:
         return asdict(self)
 
 
+_PROPOSAL_KEYS = {
+    "client_id",
+    "current_twin_id",
+    "current_twin_version",
+    "twin_id",
+    "twin_version",
+    "changeset_id",
+    "impact_analysis_sha256",
+    "items",
+    "proposal_complete",
+    "proposal_sha256",
+    "attack_path_mutation_allowed",
+    "future_semantics",
+    "security_verdict",
+}
+
+_PROPOSAL_ITEM_KEYS = {
+    "change_node_id",
+    "subject_node_id",
+    "graph_resolution_id",
+    "subject_decision_id",
+    "materialization_resolution_id",
+    "effect_ids",
+    "current_attack_path_ids",
+    "impact",
+    "review_action",
+    "evidence_refs",
+}
+
+
+def future_attack_path_transition_proposal_from_dict(
+    payload: dict,
+) -> FutureAttackPathTransitionProposal:
+    """Parse an exact serialized proposal and rerun all fail-closed validation."""
+    if not isinstance(payload, dict):
+        raise ValueError("future attack-path transition proposal payload must be an object")
+    if set(payload) != _PROPOSAL_KEYS:
+        raise ValueError("future attack-path transition proposal payload schema mismatch")
+    if not isinstance(payload["items"], list):
+        raise ValueError("future attack-path transition proposal items must be a list")
+
+    tuple_fields = {
+        "effect_ids",
+        "current_attack_path_ids",
+        "evidence_refs",
+    }
+    scalar_fields = _PROPOSAL_ITEM_KEYS - tuple_fields
+    items = []
+    for raw_item in payload["items"]:
+        if not isinstance(raw_item, dict) or set(raw_item) != _PROPOSAL_ITEM_KEYS:
+            raise ValueError("future attack-path transition proposal item schema mismatch")
+        if any(
+            not isinstance(raw_item[field], str) or not raw_item[field]
+            for field in scalar_fields
+        ):
+            raise ValueError(
+                "future attack-path transition proposal item string field is invalid"
+            )
+        parsed = {}
+        for field in tuple_fields:
+            value = raw_item[field]
+            if (
+                not isinstance(value, list)
+                or any(not isinstance(item, str) or not item for item in value)
+            ):
+                raise ValueError(
+                    f"future attack-path transition proposal item {field} "
+                    "must be a string list"
+                )
+            parsed[field] = tuple(value)
+        items.append(
+            FutureAttackPathTransitionProposalItem(
+                change_node_id=raw_item["change_node_id"],
+                subject_node_id=raw_item["subject_node_id"],
+                graph_resolution_id=raw_item["graph_resolution_id"],
+                subject_decision_id=raw_item["subject_decision_id"],
+                materialization_resolution_id=raw_item[
+                    "materialization_resolution_id"
+                ],
+                effect_ids=parsed["effect_ids"],
+                current_attack_path_ids=parsed["current_attack_path_ids"],
+                impact=raw_item["impact"],
+                review_action=raw_item["review_action"],
+                evidence_refs=parsed["evidence_refs"],
+            )
+        )
+
+    string_fields = (
+        "client_id",
+        "current_twin_id",
+        "twin_id",
+        "changeset_id",
+        "impact_analysis_sha256",
+        "proposal_sha256",
+        "future_semantics",
+        "security_verdict",
+    )
+    if any(
+        not isinstance(payload[field], str) or not payload[field]
+        for field in string_fields
+    ):
+        raise ValueError(
+            "future attack-path transition proposal string field is invalid"
+        )
+    for field in ("current_twin_version", "twin_version"):
+        value = payload[field]
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise ValueError(
+                "future attack-path transition proposal version is invalid"
+            )
+    for field in ("proposal_complete", "attack_path_mutation_allowed"):
+        if not isinstance(payload[field], bool):
+            raise ValueError(
+                f"future attack-path transition proposal {field} flag is invalid"
+            )
+
+    proposal = FutureAttackPathTransitionProposal(
+        client_id=payload["client_id"],
+        current_twin_id=payload["current_twin_id"],
+        current_twin_version=payload["current_twin_version"],
+        twin_id=payload["twin_id"],
+        twin_version=payload["twin_version"],
+        changeset_id=payload["changeset_id"],
+        impact_analysis_sha256=payload["impact_analysis_sha256"],
+        items=tuple(items),
+        proposal_complete=payload["proposal_complete"],
+        proposal_sha256=payload["proposal_sha256"],
+        attack_path_mutation_allowed=payload["attack_path_mutation_allowed"],
+        future_semantics=payload["future_semantics"],
+        security_verdict=payload["security_verdict"],
+    )
+    validate_future_attack_path_transition_proposal(proposal)
+    return proposal
+
+
 def _canonical_tuple(values: tuple[str, ...], field: str) -> tuple[str, ...]:
     if not values:
         return ()
