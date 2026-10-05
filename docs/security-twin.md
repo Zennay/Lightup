@@ -168,6 +168,14 @@ Future Security must **not** weaken Current Security safety boundaries.
 - create current attack graph;
 - expose explainable path queries.
 
+Implementation status: **in progress on the ST1 branch**. The first slice is
+read-only and tenant-isolated: evidence-backed domain findings become current
+twin finding/asset nodes, engagement coverage becomes observed twin facts, and
+active (not fixed) verified findings become evidence-linked one-step paths.
+Evidence-less findings are deliberately excluded from the verified graph.
+Path queries only explain stored graph edges; they do not invent inferred
+transitions or perform target interaction.
+
 ### ST2 — Change ingestion
 
 - GitHub PR/commit ChangeSet;
