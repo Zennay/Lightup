@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 import unittest
 from unittest.mock import patch
 
 import test_future_graph_resolution as graph_tests
+from lightup.changes import derive_future_twin
+from lightup.future_binding import bind_future_change_candidates
 from lightup.domain import AccessContext, Role, TenantIsolationError
 from lightup.future_attack_path_analysis import analyze_future_attack_path_impact
 from lightup.future_effects import (
@@ -18,6 +21,7 @@ from lightup.future_graph_resolution import (
     FutureGraphResolution,
     apply_future_graph_resolution,
 )
+from lightup.future_subject_resolution import apply_future_subject_resolution
 from lightup.twin import AttackPath, AttackStep
 
 
@@ -66,6 +70,73 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
             self.f.state,
         )
 
+    def _resolved_from_current(self, current, *, graph_id: str):
+        future = derive_future_twin(current, self.f.changeset)
+        bound, bindings = bind_future_change_candidates(
+            future, self.f.changeset
+        )
+        self.assertEqual(len(bindings), 1)
+        self.assertEqual(bindings[0].status.value, "single_candidate")
+        effected, materialization, effect = self.f._materialize_and_effect(
+            bound, suffix=graph_id
+        )
+        candidate = next(
+            relationship
+            for relationship in bound.relationships
+            if relationship.relation == "candidate_affects"
+            and relationship.source_id == self.f.change_node.node_id
+        )
+        candidate_digest = hashlib.sha256(
+            "\x1f".join(sorted(candidate.evidence_refs)).encode("utf-8")
+        ).hexdigest()
+        decision_id = f"decision-{graph_id}"
+        evidence_id = self.f.state.add_evidence(
+            self.f.run_id,
+            "future-subject-resolution",
+            "operator-review",
+            "operator",
+            f"review for {graph_id}".encode("utf-8"),
+            metadata={
+                "purpose": "future_subject_resolution",
+                "decision_id": decision_id,
+                "client_id": "client-1",
+                "future_twin_id": effected.twin_id,
+                "future_twin_version": str(effected.version),
+                "changeset_id": self.f.changeset.changeset_id,
+                "change_node_id": self.f.change_node.node_id,
+                "subject_node_id": self.f.subject.node_id,
+                "candidate_evidence_sha256": candidate_digest,
+                "resolution_basis": self.f.resolution.basis.value,
+                "rationale_sha256": hashlib.sha256(
+                    self.f.rationale.encode("utf-8")
+                ).hexdigest(),
+            },
+        )
+        subject_resolution = dataclasses.replace(
+            self.f.resolution,
+            decision_id=decision_id,
+            evidence_ids=(evidence_id,),
+        )
+        reviewed = apply_future_subject_resolution(
+            effected, subject_resolution, self.f.state
+        )
+        graph = FutureGraphResolution(
+            graph_resolution_id=graph_id,
+            client_id="client-1",
+            changeset_id=self.f.changeset.changeset_id,
+            change_node_id=self.f.change_node.node_id,
+            subject_node_id=self.f.subject.node_id,
+            subject_decision_id=decision_id,
+            materialization_resolution_id=materialization.resolution_id,
+            effect_ids=(effect.effect_id,),
+        )
+        return apply_future_graph_resolution(
+            reviewed,
+            graph,
+            materialization,
+            self.f.state,
+        )
+
     def _effect(
         self,
         effect_id: str,
@@ -86,10 +157,6 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
         )
 
     def test_increased_effect_reports_potential_regression_and_existing_path(self):
-        resolved = self._resolved_with(
-            (self.f.effect,),
-            graph_id="graph-impact-increased",
-        )
         path = AttackPath(
             path_id="path-existing-1",
             title="Existing path touching reviewed API",
@@ -102,12 +169,12 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
             ),
             evidence_refs=("evidence:existing-path",),
         )
-        current = dataclasses.replace(
-            self.f.current,
-            attack_paths=self.f.current.attack_paths + (path,),
+        current = self.f.current.next_snapshot(
+            attack_paths=self.f.current.attack_paths + (path,)
         )
-        resolved = resolved.next_snapshot(
-            attack_paths=resolved.attack_paths + (path,)
+        resolved = self._resolved_from_current(
+            current,
+            graph_id="graph-impact-increased",
         )
         before = dataclasses.asdict(resolved)
         report = analyze_future_attack_path_impact(
