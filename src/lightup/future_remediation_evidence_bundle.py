@@ -98,12 +98,11 @@ class FutureRemediationEvidenceBundle:
 
 
 def _validate_sha256(value: str, *, name: str) -> None:
-    if len(value) != 64:
-        raise ValueError(f"{name} must be a SHA-256 digest")
-    try:
-        int(value, 16)
-    except ValueError as exc:
-        raise ValueError(f"{name} must be a SHA-256 digest") from exc
+    if (
+        len(value) != 64
+        or any(char not in "0123456789abcdef" for char in value)
+    ):
+        raise ValueError(f"{name} must be a canonical lowercase SHA-256 digest")
 
 
 def _manifest_digest(evidence: tuple[RemediationEvidenceRef, ...]) -> str:
