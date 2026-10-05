@@ -69,12 +69,12 @@ def _classify_risk(directions: set[RiskDirection]) -> str:
 
 
 def _attack_paths_touching_subject(
-    future: SecurityTwin,
+    current: SecurityTwin,
     subject_node_id: str,
 ) -> tuple[str, ...]:
     path_ids = {
         path.path_id
-        for path in future.attack_paths
+        for path in current.attack_paths
         if any(
             step.source_id == subject_node_id or step.target_id == subject_node_id
             for step in path.steps
@@ -156,6 +156,19 @@ def analyze_future_attack_path_impact(
         ):
             raise ValueError(
                 "future attack-path impact analysis found incomplete verified graph state"
+            )
+
+        current_nodes = {node.node_id: node for node in current.nodes}
+        future_nodes = {node.node_id: node for node in future.nodes}
+        current_subject = current_nodes.get(reviewed.verified_subject_id)
+        future_subject = future_nodes.get(reviewed.verified_subject_id)
+        if current_subject is None:
+            raise ValueError(
+                "future attack-path impact verified subject is absent from current baseline"
+            )
+        if future_subject != current_subject:
+            raise ValueError(
+                "future attack-path impact verified subject drifted from current baseline"
             )
 
         graph_values = {
@@ -247,7 +260,7 @@ def analyze_future_attack_path_impact(
                 risk_directions=tuple(sorted(item.value for item in directions)),
                 capability_ids=tuple(sorted(capabilities)),
                 current_attack_path_ids=_attack_paths_touching_subject(
-                    future, reviewed.verified_subject_id
+                    current, reviewed.verified_subject_id
                 ),
                 impact=_classify_risk(directions),
                 evidence_refs=tuple(sorted(evidence_refs)),
