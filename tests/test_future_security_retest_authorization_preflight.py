@@ -133,6 +133,8 @@ class FutureSecurityRetestAuthorizationPreflightTest(unittest.TestCase):
         self.assertEqual(preflight.security_verdict, "not_evaluated")
         self.assertEqual(preflight.request_sha256, request.request_sha256)
         self.assertEqual(preflight.authorization_grant_id, grant.grant_id)
+        self.assertEqual(len(preflight.authorization_grant_sha256), 64)
+        int(preflight.authorization_grant_sha256, 16)
         self.assertEqual(preflight.bindings, (binding,))
 
     def test_missing_duplicate_and_wildcard_bindings_fail_closed(self):
@@ -464,6 +466,90 @@ class FutureSecurityRetestAuthorizationPreflightTest(unittest.TestCase):
             )
         )
 
+    def test_preflight_digest_binds_authorization_semantics(self):
+        (
+            _,
+            proposal,
+            context,
+            resolution,
+            preview,
+            report,
+            plan,
+            request,
+            binding,
+            grant,
+        ) = self._inputs(suffix="auth-semantic-digest")
+
+        baseline = build_future_security_retest_authorization_preflight(
+            request,
+            plan,
+            report,
+            preview,
+            proposal,
+            (resolution,),
+            (context,),
+            self.state,
+            grant,
+            (binding,),
+            self.checked_at,
+        )
+
+        variants = (
+            dataclasses.replace(
+                grant,
+                approved_by="alternate-security-owner@example.test",
+            ),
+            dataclasses.replace(
+                grant,
+                scope=dataclasses.replace(
+                    grant.scope,
+                    assets=(binding.asset, "additional.example.test"),
+                ),
+            ),
+            dataclasses.replace(
+                grant,
+                scope=dataclasses.replace(
+                    grant.scope,
+                    allowed_capabilities=(
+                        *grant.scope.allowed_capabilities,
+                        "additional-capability",
+                    ),
+                ),
+            ),
+            dataclasses.replace(
+                grant,
+                valid_until=self.checked_at + timedelta(hours=2),
+            ),
+        )
+
+        for variant in variants:
+            with self.subTest(variant=variant):
+                result = build_future_security_retest_authorization_preflight(
+                    request,
+                    plan,
+                    report,
+                    preview,
+                    proposal,
+                    (resolution,),
+                    (context,),
+                    self.state,
+                    variant,
+                    (binding,),
+                    self.checked_at,
+                )
+                self.assertEqual(
+                    result.status,
+                    FutureRetestAuthorizationStatus.ELIGIBLE_FOR_TOOL_POLICY_REVIEW,
+                )
+                self.assertNotEqual(
+                    baseline.authorization_grant_sha256,
+                    result.authorization_grant_sha256,
+                )
+                self.assertNotEqual(
+                    baseline.preflight_sha256,
+                    result.preflight_sha256,
+                )
+
     def test_preflight_is_deterministic_and_json_serializable(self):
         (
             current,
@@ -504,6 +590,10 @@ class FutureSecurityRetestAuthorizationPreflightTest(unittest.TestCase):
 
         exported = json.loads(first.to_json())
         self.assertEqual(exported["preflight_sha256"], first.preflight_sha256)
+        self.assertEqual(
+            exported["authorization_grant_sha256"],
+            first.authorization_grant_sha256,
+        )
         self.assertEqual(exported["status"], first.status.value)
         self.assertEqual(exported["execution_allowed"], False)
         self.assertEqual(exported["tool_policy_review_required"], True)
