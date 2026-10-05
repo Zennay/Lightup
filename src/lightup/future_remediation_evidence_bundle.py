@@ -332,3 +332,32 @@ def validate_future_remediation_evidence_bundle(
             "remediation evidence bundle does not match its live validated lineage"
         )
     return rebuilt
+
+
+def require_future_remediation_evidence_bundle_for_authoring(
+    bundle: FutureRemediationEvidenceBundle,
+    plan: FutureSecurityRemediationRetestPlan,
+    report: FutureAttackPathSecurityDeltaReport,
+    preview: FutureAttackPathGraphDiffPreview,
+    proposal: FutureAttackPathTransitionProposal,
+    resolutions: tuple[FutureAttackPathTransitionResolution, ...],
+    contexts: tuple[RunContext, ...],
+    state: StateStore,
+) -> FutureRemediationEvidenceBundle:
+    """Return only a live-valid, evidence-complete bundle for text authoring."""
+
+    validated = validate_future_remediation_evidence_bundle(
+        bundle,
+        plan,
+        report,
+        preview,
+        proposal,
+        resolutions,
+        contexts,
+        state,
+    )
+    if not validated.remediation_authoring_ready:
+        raise PermissionError(
+            "remediation evidence bundle is not ready for authoring"
+        )
+    return validated
