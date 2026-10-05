@@ -8,6 +8,8 @@ deployment, or mutate attack paths.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import hashlib
+import json
 
 from .domain import AccessContext, TenantIsolationError
 from .future_effects import RiskDirection, SecurityEffectKind, _fact_id as _effect_fact_id
@@ -50,12 +52,46 @@ class FutureAttackPathImpactReport:
     changeset_id: str
     items: tuple[FutureAttackPathImpactItem, ...]
     analysis_complete: bool
+    analysis_sha256: str
     future_semantics: str = "unresolved"
     security_verdict: str = "not_evaluated"
 
     def as_dict(self) -> dict:
         """Return a detached JSON-serializable representation."""
         return asdict(self)
+
+
+
+def _analysis_digest(
+    *,
+    client_id: str,
+    current_twin_id: str,
+    current_twin_version: int,
+    twin_id: str,
+    twin_version: int,
+    changeset_id: str,
+    items: tuple[FutureAttackPathImpactItem, ...],
+) -> str:
+    """Bind the handoff report to its exact verified inputs and semantics."""
+    payload = {
+        "client_id": client_id,
+        "current_twin_id": current_twin_id,
+        "current_twin_version": current_twin_version,
+        "twin_id": twin_id,
+        "twin_version": twin_version,
+        "changeset_id": changeset_id,
+        "items": [asdict(item) for item in items],
+        "analysis_complete": True,
+        "future_semantics": "unresolved",
+        "security_verdict": "not_evaluated",
+    }
+    canonical = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
 
 
 def _classify_risk(directions: set[RiskDirection]) -> str:
@@ -273,6 +309,16 @@ def analyze_future_attack_path_impact(
             "future attack-path impact analysis requires at least one resolved change"
         )
 
+    report_items = tuple(items)
+    analysis_sha256 = _analysis_digest(
+        client_id=review.client_id,
+        current_twin_id=current.twin_id,
+        current_twin_version=current.version,
+        twin_id=review.twin_id,
+        twin_version=review.twin_version,
+        changeset_id=review.changeset_id,
+        items=report_items,
+    )
     return FutureAttackPathImpactReport(
         client_id=review.client_id,
         current_twin_id=current.twin_id,
@@ -280,6 +326,7 @@ def analyze_future_attack_path_impact(
         twin_id=review.twin_id,
         twin_version=review.twin_version,
         changeset_id=review.changeset_id,
-        items=tuple(items),
+        items=report_items,
         analysis_complete=True,
+        analysis_sha256=analysis_sha256,
     )
