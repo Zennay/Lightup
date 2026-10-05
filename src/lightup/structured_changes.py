@@ -715,6 +715,40 @@ def enrich_changeset_with_structured_deltas(
             if content is not None and not isinstance(content, str):
                 raise ValueError(f"structured delta content for {path!r} must be text")
 
+        pair_complete = (
+            (obj.operation is ChangeOperation.ADDED and base is None and head is not None)
+            or (
+                obj.operation is ChangeOperation.REMOVED
+                and base is not None
+                and head is None
+            )
+            or (
+                obj.operation
+                in {
+                    ChangeOperation.MODIFIED,
+                    ChangeOperation.CHANGED,
+                    ChangeOperation.RENAMED,
+                    ChangeOperation.COPIED,
+                }
+                and base is not None
+                and head is not None
+            )
+        )
+        if not pair_complete:
+            metadata = dict(obj.metadata)
+            metadata.update(
+                {
+                    "structured_delta_analyzed": "false",
+                    "structured_delta_parser": "incomplete-pair",
+                }
+            )
+            replacements[path] = replace(
+                obj,
+                metadata=tuple(sorted(metadata.items())),
+            )
+            uncertainties.add(f"structured_delta_incomplete_pair:{path}")
+            continue
+
         base_digest = _document_digest(base)
         head_digest = _document_digest(head)
         base_ref = f"content-sha256:{base_digest}" if base_digest else None
