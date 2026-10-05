@@ -10,9 +10,13 @@ from lightup.future_attack_path_graph_diff_preview import (
     AttackPathGraphDiffAction,
     build_future_attack_path_graph_diff_preview,
 )
-from lightup.future_attack_path_transition import propose_future_attack_path_transitions
+from lightup.future_attack_path_transition import (
+    _proposal_digest,
+    propose_future_attack_path_transitions,
+)
 from lightup.future_attack_path_transition_resolution import (
     AttackPathTransitionClassification,
+    future_attack_path_transition_evidence_contract,
     verify_future_attack_path_transition,
 )
 from lightup.future_effects import RiskDirection
@@ -109,6 +113,49 @@ class FutureAttackPathGraphDiffPreviewTest(unittest.TestCase):
         )
         return current, proposal, context, resolution
 
+    def _resolve_change(
+        self,
+        proposal,
+        *,
+        change_node_id: str,
+        classification: AttackPathTransitionClassification,
+        suffix: str,
+    ):
+        run_id = self.state.create_run(
+            "127.0.0.1",
+            activation_mode="lab_autonomous",
+        )
+        context = RunContext.for_lab(
+            run_id,
+            engagement_id=f"preview-collision-{suffix}",
+            client_id="client-1",
+        )
+        metadata = future_attack_path_transition_evidence_contract(
+            proposal,
+            change_node_id=change_node_id,
+            classification=classification,
+            context=context,
+        )
+        evidence_id = self.state.add_evidence(
+            run_id,
+            "web",
+            "future-transition-verification",
+            "isolated-lab-fixture",
+            f"collision proof {suffix}".encode("utf-8"),
+            metadata=metadata,
+        )
+        resolution = verify_future_attack_path_transition(
+            proposal,
+            change_node_id=change_node_id,
+            classification=classification,
+            run_id=run_id,
+            evidence_ids=(evidence_id,),
+            capability_ids=("web",),
+            context=context,
+            state=self.state,
+        )
+        return context, resolution
+
     def test_introduced_preview_is_deterministic_and_read_only(self):
         proposal, context, resolution = self._resolved_preview_input(
             AttackPathTransitionClassification.INTRODUCED,
@@ -195,6 +242,65 @@ class FutureAttackPathGraphDiffPreviewTest(unittest.TestCase):
                 self.assertEqual(preview.security_verdict, "not_evaluated")
                 self.assertEqual(preview.future_semantics, "unresolved")
                 self.assertEqual(dataclasses.asdict(current), before)
+
+    def test_distinct_verified_changes_cannot_claim_the_same_current_path(self):
+        _, proposal, _, _ = self._existing_path_resolved_preview_input(
+            AttackPathTransitionClassification.WORSENED,
+            direction=RiskDirection.INCREASED,
+            suffix="collision-base",
+        )
+        first = proposal.items[0]
+        second = dataclasses.replace(
+            first,
+            change_node_id=f"{first.change_node_id}-collision-peer",
+            graph_resolution_id=f"{first.graph_resolution_id}-collision-peer",
+            subject_decision_id=f"{first.subject_decision_id}-collision-peer",
+            materialization_resolution_id=(
+                f"{first.materialization_resolution_id}-collision-peer"
+            ),
+        )
+        items = tuple(
+            sorted(
+                (first, second),
+                key=lambda item: (item.change_node_id, item.subject_node_id),
+            )
+        )
+        extended = dataclasses.replace(
+            proposal,
+            items=items,
+            proposal_sha256=_proposal_digest(
+                client_id=proposal.client_id,
+                current_twin_id=proposal.current_twin_id,
+                current_twin_version=proposal.current_twin_version,
+                twin_id=proposal.twin_id,
+                twin_version=proposal.twin_version,
+                changeset_id=proposal.changeset_id,
+                impact_analysis_sha256=proposal.impact_analysis_sha256,
+                items=items,
+            ),
+        )
+        contexts = []
+        resolutions = []
+        for index, item in enumerate(extended.items):
+            context, resolution = self._resolve_change(
+                extended,
+                change_node_id=item.change_node_id,
+                classification=AttackPathTransitionClassification.WORSENED,
+                suffix=str(index),
+            )
+            contexts.append(context)
+            resolutions.append(resolution)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "colliding claims on a current attack path",
+        ):
+            build_future_attack_path_graph_diff_preview(
+                extended,
+                tuple(resolutions),
+                tuple(contexts),
+                self.state,
+            )
 
     def test_insufficient_evidence_produces_no_graph_change_claim(self):
         proposal, context, resolution = self._resolved_preview_input(
