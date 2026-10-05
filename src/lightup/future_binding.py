@@ -160,6 +160,8 @@ def _normalize_explicit_candidates(
     normalized: dict[str, tuple[str, ...]] = {}
     for signal in changeset.semantic_signals:
         raw_ids = candidates.get(signal.signal_id, ())
+        if isinstance(raw_ids, str):
+            raise ValueError("candidate node IDs must be supplied as an iterable, not a string")
         unique_ids = tuple(sorted(set(raw_ids)))
         for node_id in unique_ids:
             node = nodes.get(node_id)
