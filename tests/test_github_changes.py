@@ -11,7 +11,13 @@ from lightup.github_changes import (
     github_commit_changeset,
     github_pull_request_changeset,
 )
-from lightup.twin import SecurityTwin, TwinNode, TwinNodeKind, TwinSnapshotKind
+from lightup.twin import (
+    FactProvenance,
+    SecurityTwin,
+    TwinNode,
+    TwinNodeKind,
+    TwinSnapshotKind,
+)
 
 
 class GitHubChangeSetTest(unittest.TestCase):
@@ -177,14 +183,62 @@ class GitHubChangeSetTest(unittest.TestCase):
         self.assertIs(future.kind, TwinSnapshotKind.FUTURE)
         self.assertNotEqual(future.twin_id, current.twin_id)
         self.assertEqual(future.parent_twin_id, current.twin_id)
-        self.assertEqual(future.nodes, current.nodes)
-        self.assertEqual(future.facts, current.facts)
+        self.assertEqual(future.nodes[: len(current.nodes)], current.nodes)
+        self.assertEqual(future.facts[: len(current.facts)], current.facts)
         self.assertEqual(future.relationships, current.relationships)
         self.assertEqual(future.attack_paths, current.attack_paths)
         metadata = dict(future.metadata)
         self.assertEqual(metadata["changeset_id"], changeset.changeset_id)
         self.assertEqual(metadata["future_semantics"], "unresolved")
         self.assertEqual(current.source_ref, None)
+
+    def test_semantic_signals_project_to_future_only_change_nodes_and_facts(self):
+        current = SecurityTwin.current("client-1")
+        changeset = github_pull_request_changeset(
+            client_id="client-1",
+            repository="Zennay/Lightup",
+            pr_number=43,
+            base_sha="a" * 40,
+            head_sha="b" * 40,
+            files=(
+                {
+                    "filename": "openapi.yaml",
+                    "status": "modified",
+                    "additions": 2,
+                    "deletions": 0,
+                    "patch": "@@ -1 +1,3 @@\n paths:\n+  /admin:\n+    get:\n",
+                },
+            ),
+        )
+
+        self.assertEqual(len(changeset.semantic_signals), 1)
+        future = derive_future_twin(current, changeset)
+
+        self.assertEqual(current.nodes, ())
+        self.assertEqual(current.facts, ())
+        change_nodes = [node for node in future.nodes if node.kind is TwinNodeKind.CHANGE]
+        self.assertEqual(len(change_nodes), 1)
+        self.assertEqual(dict(change_nodes[0].attributes)["object_path"], "openapi.yaml")
+
+        change_facts = [
+            fact for fact in future.facts if fact.subject_id == change_nodes[0].node_id
+        ]
+        self.assertEqual(
+            {fact.predicate for fact in change_facts},
+            {"change.signal_kind", "change.direction", "change.summary"},
+        )
+        self.assertTrue(
+            all(fact.provenance is FactProvenance.INFERRED for fact in change_facts)
+        )
+        self.assertTrue(all(fact.evidence_refs for fact in change_facts))
+        self.assertEqual(future.relationships, current.relationships)
+        self.assertEqual(future.attack_paths, current.attack_paths)
+
+        metadata = dict(future.metadata)
+        self.assertEqual(metadata["future_change_projection"], "inferred_only")
+        self.assertEqual(metadata["future_change_node_count"], "1")
+        self.assertEqual(metadata["future_change_fact_count"], "3")
+        self.assertEqual(metadata["future_semantics"], "unresolved")
 
     def test_changeset_cannot_cross_tenants(self):
         current = SecurityTwin.current("client-a")
