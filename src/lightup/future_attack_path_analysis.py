@@ -13,7 +13,7 @@ from .domain import AccessContext
 from .future_effects import RiskDirection, SecurityEffectKind, _fact_id as _effect_fact_id
 from .future_subject_review import review_future_subjects
 from .state import StateStore
-from .twin import FactProvenance, SecurityTwin
+from .twin import FactProvenance, SecurityTwin, TwinSnapshotKind
 
 
 _EFFECT_PREDICATES = (
@@ -43,6 +43,8 @@ class FutureAttackPathImpactItem:
 @dataclass(frozen=True)
 class FutureAttackPathImpactReport:
     client_id: str
+    current_twin_id: str
+    current_twin_version: int
     twin_id: str
     twin_version: int
     changeset_id: str
@@ -86,6 +88,7 @@ def analyze_future_attack_path_impact(
     state: StateStore,
     context: AccessContext,
     *,
+    current: SecurityTwin,
     client_id: str | None = None,
 ) -> FutureAttackPathImpactReport:
     """Classify verified future effects against existing attack-path membership.
@@ -95,12 +98,26 @@ def analyze_future_attack_path_impact(
     path, removal of an old one, or production safety.
     """
 
+    current.validate()
+    if current.kind is not TwinSnapshotKind.CURRENT:
+        raise ValueError(
+            "future attack-path impact analysis requires a current Security Twin baseline"
+        )
+
     review = review_future_subjects(
         future,
         state,
         context,
         client_id=client_id,
     )
+    if current.client_id != review.client_id:
+        raise ValueError(
+            "future attack-path impact current/future baselines cannot cross tenants"
+        )
+    if future.attack_paths != current.attack_paths:
+        raise ValueError(
+            "future attack-path impact requires attack paths unchanged from current baseline"
+        )
     if not review.graph_resolution_complete:
         raise ValueError(
             "future attack-path impact analysis requires complete verified graph resolution"
@@ -227,6 +244,8 @@ def analyze_future_attack_path_impact(
 
     return FutureAttackPathImpactReport(
         client_id=review.client_id,
+        current_twin_id=current.twin_id,
+        current_twin_version=current.version,
         twin_id=review.twin_id,
         twin_version=review.twin_version,
         changeset_id=review.changeset_id,
