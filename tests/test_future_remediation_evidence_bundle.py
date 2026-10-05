@@ -164,6 +164,13 @@ class FutureRemediationEvidenceBundleTest(unittest.TestCase):
             exported["items"][0]["classification"],
             AttackPathTransitionClassification.INTRODUCED.value,
         )
+        exported_evidence = exported["items"][0]["evidence"][0]
+        self.assertEqual(
+            set(exported_evidence),
+            {"evidence_id", "run_id", "capability_id", "kind", "sha256"},
+        )
+        self.assertNotIn("source", exported_evidence)
+        self.assertNotIn("metadata", exported_evidence)
 
     def test_tampered_plan_is_rejected_by_live_revalidation(self):
         (
@@ -218,7 +225,6 @@ class FutureRemediationEvidenceBundleTest(unittest.TestCase):
                 (context,),
                 self.state,
             )
-
 
     def test_noncanonical_ledger_digest_fails_closed(self):
         (
