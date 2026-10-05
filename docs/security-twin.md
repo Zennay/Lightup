@@ -215,6 +215,12 @@ cover supported OpenAPI JSON/YAML and Terraform inputs. Raw structured content
 is not retained; only SHA-256 evidence references and bounded parser metadata
 are stored. Semantic effects remain distinct from verified security state.
 
+For modified supported structured documents, base-to-head delta analysis is the
+preferred ST2 path. Identical OpenAPI/Terraform documents emit no new semantic
+signal; added, removed and modified operations/declarations are classified
+separately with content-hash evidence. Raw base/head content is not retained,
+and every resulting signal remains inferred-only.
+
 ### ST3 — Future-state lab materialization
 
 - isolated environment builder for supported change types;
