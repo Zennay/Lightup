@@ -294,6 +294,8 @@ def derive_future_twin(current: SecurityTwin, changeset: ChangeSet) -> SecurityT
             "future_change_node_count": str(len(projected_nodes)),
             "future_change_fact_count": str(len(projected_facts)),
             "future_change_projection": "inferred_only",
+            "future_base_twin_id": current.twin_id,
+            "future_base_twin_version": str(current.version),
             "future_semantics": "unresolved",
         }
     )
