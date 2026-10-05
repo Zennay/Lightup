@@ -23,6 +23,10 @@ from lightup.future_graph_resolution import (
     FutureGraphResolution, apply_future_graph_resolution,
 )
 from lightup.future_attack_path_analysis import analyze_future_attack_path_impact
+from lightup.future_attack_path_graph_diff_policy import (
+    GraphDiffPolicyDisposition,
+    decide_future_attack_path_graph_diff_policy,
+)
 from lightup.future_attack_path_graph_diff_preview import (
     AttackPathGraphDiffAction,
     build_future_attack_path_graph_diff_preview,
@@ -257,6 +261,13 @@ class RealBindingSubjectResolutionTest(subject_tests.FutureSubjectResolutionTest
             (transition_context,),
             self.state,
         )
+        decision = decide_future_attack_path_graph_diff_policy(
+            preview,
+            proposal,
+            (transition_resolution,),
+            (transition_context,),
+            self.state,
+        )
 
         self.assertEqual(dataclasses.asdict(current), before_current)
         self.assertEqual(resolved.attack_paths, before_future_paths)
@@ -267,6 +278,7 @@ class RealBindingSubjectResolutionTest(subject_tests.FutureSubjectResolutionTest
             preview,
             transition_context,
             transition_resolution,
+            decision,
         )
 
     def test_materialized_effects_then_subject_review_preserve_all_evidence(self):
@@ -369,7 +381,7 @@ class RealBindingSubjectResolutionTest(subject_tests.FutureSubjectResolutionTest
         self.assertEqual(impact.items[0].current_attack_path_ids, ())
         self.assertEqual(resolved.attack_paths, self.current.attack_paths)
 
-    def test_real_pipeline_reaches_graph_diff_preview_for_all_st4_outcomes(self):
+    def test_real_pipeline_reaches_st4_policy_and_report_for_all_outcomes(self):
         cases = (
             (
                 AttackPathTransitionClassification.INTRODUCED,
@@ -428,6 +440,7 @@ class RealBindingSubjectResolutionTest(subject_tests.FutureSubjectResolutionTest
                     preview,
                     transition_context,
                     transition_resolution,
+                    decision,
                 ) = self._graph_diff_preview_from_real_pipeline(
                         classification=classification,
                         direction=direction,
@@ -479,6 +492,16 @@ class RealBindingSubjectResolutionTest(subject_tests.FutureSubjectResolutionTest
                 self.assertFalse(report.attack_path_mutation_allowed)
                 self.assertEqual(report.future_semantics, "unresolved")
                 self.assertEqual(report.security_verdict, "not_evaluated")
+                expected_disposition = (
+                    GraphDiffPolicyDisposition.REQUIRES_MORE_EVIDENCE
+                    if expected_insufficient
+                    else GraphDiffPolicyDisposition.ELIGIBLE_FOR_OPERATOR_REVIEW
+                )
+                self.assertEqual(decision.disposition, expected_disposition)
+                self.assertEqual(decision.preview_sha256, preview.preview_sha256)
+                self.assertFalse(decision.attack_path_mutation_allowed)
+                self.assertEqual(decision.future_semantics, "unresolved")
+                self.assertEqual(decision.security_verdict, "not_evaluated")
                 self.assertEqual(dataclasses.asdict(current), before_current)
                 self.assertEqual(resolved.attack_paths, before_future_paths)
 
