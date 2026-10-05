@@ -11,6 +11,7 @@ from lightup.future_attack_path_transition_resolution import (
 from lightup.future_remediation_evidence_bundle import (
     BUNDLE_SCHEMA_VERSION,
     build_future_remediation_evidence_bundle,
+    require_future_remediation_evidence_bundle_for_authoring,
     validate_future_remediation_evidence_bundle,
 )
 
@@ -344,6 +345,63 @@ class FutureRemediationEvidenceBundleTest(unittest.TestCase):
                 proposal,
                 (resolution,),
                 (context,),
+                self.state,
+            )
+
+
+    def test_authoring_input_gate_requires_live_ready_bundle(self):
+        (
+            _,
+            proposal,
+            context,
+            resolution,
+            preview,
+            report,
+            plan,
+            bundle,
+        ) = self._bundle(
+            AttackPathTransitionClassification.INTRODUCED,
+            suffix="remediation-evidence-authoring-ready",
+        )
+        self.assertEqual(
+            require_future_remediation_evidence_bundle_for_authoring(
+                bundle,
+                plan,
+                report,
+                preview,
+                proposal,
+                (resolution,),
+                (context,),
+                self.state,
+            ),
+            bundle,
+        )
+
+        (
+            _,
+            gap_proposal,
+            gap_context,
+            gap_resolution,
+            gap_preview,
+            gap_report,
+            gap_plan,
+            gap_bundle,
+        ) = self._bundle(
+            AttackPathTransitionClassification.INSUFFICIENT_EVIDENCE,
+            suffix="remediation-evidence-authoring-gap",
+        )
+        with self.assertRaisesRegex(
+            PermissionError,
+            "not ready for authoring",
+        ):
+            require_future_remediation_evidence_bundle_for_authoring(
+                gap_bundle,
+                gap_plan,
+                gap_report,
+                gap_preview,
+                gap_proposal,
+                (gap_resolution,),
+                (gap_context,),
                 self.state,
             )
 
