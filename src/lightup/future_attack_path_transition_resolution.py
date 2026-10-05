@@ -230,6 +230,51 @@ def _validate_action_classification(
         )
 
 
+def future_attack_path_transition_evidence_contract(
+    proposal: FutureAttackPathTransitionProposal,
+    *,
+    change_node_id: str,
+    classification: AttackPathTransitionClassification,
+    context: RunContext,
+) -> dict[str, str]:
+    """Return the exact metadata contract fresh lab evidence must carry."""
+    validate_future_attack_path_transition_proposal(proposal)
+    _require_identifier("change_node_id", change_node_id)
+    if not isinstance(classification, AttackPathTransitionClassification):
+        raise ValueError("transition classification is invalid")
+    if not context.is_lab or context.mode is not AssessmentMode.LAB_AUTONOMOUS:
+        raise PermissionError("transition verification evidence must come from a lab run")
+    if context.client_id != proposal.client_id:
+        raise ValueError("transition verification RunContext belongs to another client")
+
+    item = _proposal_item(proposal, change_node_id)
+    _validate_action_classification(item, classification)
+    resolution_id = _resolution_identity(
+        proposal_sha256=proposal.proposal_sha256,
+        impact_analysis_sha256=proposal.impact_analysis_sha256,
+        item=item,
+        classification=classification,
+        run_id=context.run_id,
+    )
+    return {
+        "purpose": "future_attack_path_transition_verification",
+        "resolution_id": resolution_id,
+        "proposal_sha256": proposal.proposal_sha256,
+        "impact_analysis_sha256": proposal.impact_analysis_sha256,
+        "client_id": proposal.client_id,
+        "engagement_id": context.engagement_id,
+        "mode": context.mode.value,
+        "is_lab": "true",
+        "change_node_id": item.change_node_id,
+        "subject_node_id": item.subject_node_id,
+        "classification": classification.value,
+        "effect_ids_sha256": _tuple_digest(item.effect_ids),
+        "current_attack_path_ids_sha256": _tuple_digest(
+            item.current_attack_path_ids
+        ),
+    }
+
+
 def _validate_resolution_shape(
     proposal: FutureAttackPathTransitionProposal,
     item: FutureAttackPathTransitionProposalItem,
@@ -334,23 +379,12 @@ def validate_future_attack_path_transition_resolution(
     if prior_evidence_ids.intersection(resolution.evidence_ids):
         raise ValueError("transition resolution must use fresh evidence")
 
-    effect_ids_sha256 = _tuple_digest(item.effect_ids)
-    current_paths_sha256 = _tuple_digest(item.current_attack_path_ids)
-    expected_metadata = {
-        "purpose": "future_attack_path_transition_verification",
-        "resolution_id": resolution.resolution_id,
-        "proposal_sha256": proposal.proposal_sha256,
-        "impact_analysis_sha256": proposal.impact_analysis_sha256,
-        "client_id": proposal.client_id,
-        "engagement_id": context.engagement_id,
-        "mode": context.mode.value,
-        "is_lab": "true",
-        "change_node_id": item.change_node_id,
-        "subject_node_id": item.subject_node_id,
-        "classification": resolution.classification.value,
-        "effect_ids_sha256": effect_ids_sha256,
-        "current_attack_path_ids_sha256": current_paths_sha256,
-    }
+    expected_metadata = future_attack_path_transition_evidence_contract(
+        proposal,
+        change_node_id=item.change_node_id,
+        classification=resolution.classification,
+        context=context,
+    )
 
     evidence = tuple(state.get_evidence(evidence_id) for evidence_id in resolution.evidence_ids)
     for record in evidence:
