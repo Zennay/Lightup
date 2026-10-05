@@ -27,7 +27,10 @@ jobs:
 
           repo = os.environ["REPO"]
           token = os.environ["GH_TOKEN"]
-          protected = {37324181070, 37325680992}
+          protected_branches = {
+              "chatgpt/st3-explicit-subject-resolution-20261005",
+              "chatgpt/st3-future-attack-path-impact-20261005",
+          }
 
           def request(url, method="GET"):
               req = urllib.request.Request(
@@ -56,7 +59,7 @@ jobs:
               branch = run.get("head_branch")
               if name != "LightUp CI":
                   continue
-              if run_id in protected or branch == "main":
+              if branch in protected_branches:
                   kept.append((run_id, branch))
                   continue
               request(
