@@ -12,7 +12,7 @@ from enum import Enum
 from hashlib import sha256
 import json
 
-from .twin import SecurityTwin
+from .twin import FactProvenance, SecurityTwin
 
 
 class ChangeSourceKind(str, Enum):
@@ -39,6 +39,46 @@ class ChangeObjectKind(str, Enum):
     TEST = "test"
     DOC = "doc"
     OTHER = "other"
+
+
+class SemanticSignalKind(str, Enum):
+    API_SURFACE = "api_surface"
+    IAM_POLICY = "iam_policy"
+    NETWORK_BOUNDARY = "network_boundary"
+    SECURITY_CONFIG = "security_config"
+
+
+class SemanticSignalDirection(str, Enum):
+    ADDED = "added"
+    REMOVED = "removed"
+    MODIFIED = "modified"
+
+
+@dataclass(frozen=True)
+class SemanticChangeSignal:
+    """Evidence-linked hint about a proposed change, never a verified fact."""
+
+    signal_id: str
+    object_path: str
+    kind: SemanticSignalKind
+    direction: SemanticSignalDirection
+    summary: str
+    evidence_refs: tuple[str, ...]
+    confidence: float = 0.55
+    provenance: FactProvenance = FactProvenance.INFERRED
+
+    def validate(self) -> None:
+        if not self.signal_id.strip():
+            raise ValueError("semantic signal_id is required")
+        validate_repo_path(self.object_path)
+        if not self.summary.strip():
+            raise ValueError("semantic signal summary is required")
+        if not self.evidence_refs:
+            raise ValueError("semantic signals require evidence_refs")
+        if not 0.0 <= self.confidence <= 1.0:
+            raise ValueError("semantic signal confidence must be between 0 and 1")
+        if self.provenance is not FactProvenance.INFERRED:
+            raise ValueError("ChangeSet semantic signals must remain inferred")
 
 
 def validate_repo_path(path: str) -> str:
@@ -81,6 +121,7 @@ class ChangeSet:
     base_revision: str
     head_revision: str
     objects: tuple[ChangeObject, ...] = ()
+    semantic_signals: tuple[SemanticChangeSignal, ...] = ()
     uncertainties: tuple[str, ...] = ()
     metadata: tuple[tuple[str, str], ...] = field(default_factory=tuple)
 
@@ -107,6 +148,17 @@ class ChangeSet:
                 raise ValueError(f"duplicate change object path {obj.path!r}")
             paths.add(obj.path)
 
+        signal_ids: set[str] = set()
+        for signal in self.semantic_signals:
+            signal.validate()
+            if signal.signal_id in signal_ids:
+                raise ValueError(f"duplicate semantic signal_id {signal.signal_id!r}")
+            if signal.object_path not in paths:
+                raise ValueError(
+                    f"semantic signal references unknown change object {signal.object_path!r}"
+                )
+            signal_ids.add(signal.signal_id)
+
         if len(set(self.uncertainties)) != len(self.uncertainties):
             raise ValueError("uncertainties must be unique")
 
@@ -131,6 +183,19 @@ class ChangeSet:
                     "metadata": list(obj.metadata),
                 }
                 for obj in self.objects
+            ],
+            "semantic_signals": [
+                {
+                    "signal_id": signal.signal_id,
+                    "object_path": signal.object_path,
+                    "kind": signal.kind.value,
+                    "direction": signal.direction.value,
+                    "summary": signal.summary,
+                    "evidence_refs": list(signal.evidence_refs),
+                    "confidence": signal.confidence,
+                    "provenance": signal.provenance.value,
+                }
+                for signal in self.semantic_signals
             ],
             "uncertainties": list(self.uncertainties),
             "metadata": list(self.metadata),
@@ -163,6 +228,7 @@ def derive_future_twin(current: SecurityTwin, changeset: ChangeSet) -> SecurityT
             "changeset_source_kind": changeset.source_kind.value,
             "changeset_repository": changeset.repository,
             "changeset_object_count": str(len(changeset.objects)),
+            "changeset_signal_count": str(len(changeset.semantic_signals)),
             "changeset_uncertainty_count": str(len(changeset.uncertainties)),
             "future_semantics": "unresolved",
         }
