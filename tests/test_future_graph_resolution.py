@@ -327,6 +327,21 @@ class FutureGraphResolutionTest(subject_tests.FutureSubjectResolutionTest):
                 foreign, self.graph, self.materialization, self.state
             )
 
+    def test_deleted_materialization_evidence_fails_closed(self):
+        with self.state.connect() as con:
+            con.execute(
+                "DELETE FROM evidence WHERE evidence_id=?",
+                (self.materialization_evidence_id,),
+            )
+
+        with self.assertRaisesRegex(KeyError, "unknown evidence"):
+            apply_future_graph_resolution(
+                self.reviewed,
+                self.graph,
+                self.materialization,
+                self.state,
+            )
+
     def test_exact_replay_is_idempotent(self):
         once = apply_future_graph_resolution(
             self.reviewed, self.graph, self.materialization, self.state
