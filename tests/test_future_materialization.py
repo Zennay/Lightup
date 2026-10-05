@@ -57,7 +57,13 @@ class FutureMaterializationTest(unittest.TestCase):
             "future-materialization-observation",
             "lab-fixture",
             b'{"route":"/admin/export","observed":true}',
-            metadata={"asset": "127.0.0.1"},
+            metadata={
+                "asset": "127.0.0.1",
+                "client_id": "client-1",
+                "engagement_id": "future-materialization",
+                "mode": "lab_autonomous",
+                "is_lab": "true",
+            },
         )
 
     def tearDown(self):
@@ -165,6 +171,90 @@ class FutureMaterializationTest(unittest.TestCase):
             apply_future_materialization_resolution(
                 self.future,
                 self._resolution(evidence_ids=(other_evidence,)),
+                self.context,
+                self.state,
+            )
+
+    def test_evidence_context_metadata_must_match_client_and_engagement(self):
+        wrong_client = self.state.add_evidence(
+            self.run_id,
+            "web",
+            "future-materialization-observation",
+            "lab-fixture",
+            b"wrong-client",
+            metadata={
+                "asset": "127.0.0.1",
+                "client_id": "client-2",
+                "engagement_id": "future-materialization",
+                "mode": "lab_autonomous",
+                "is_lab": "true",
+            },
+        )
+        with self.assertRaises(ValueError):
+            apply_future_materialization_resolution(
+                self.future,
+                self._resolution(evidence_ids=(wrong_client,)),
+                self.context,
+                self.state,
+            )
+
+        wrong_engagement = self.state.add_evidence(
+            self.run_id,
+            "web",
+            "future-materialization-observation",
+            "lab-fixture",
+            b"wrong-engagement",
+            metadata={
+                "asset": "127.0.0.1",
+                "client_id": "client-1",
+                "engagement_id": "other-engagement",
+                "mode": "lab_autonomous",
+                "is_lab": "true",
+            },
+        )
+        with self.assertRaises(ValueError):
+            apply_future_materialization_resolution(
+                self.future,
+                self._resolution(evidence_ids=(wrong_engagement,)),
+                self.context,
+                self.state,
+            )
+
+    def test_unbound_or_non_lab_evidence_fails_closed(self):
+        unbound = self.state.add_evidence(
+            self.run_id,
+            "web",
+            "future-materialization-observation",
+            "lab-fixture",
+            b"unbound",
+            metadata={"asset": "127.0.0.1"},
+        )
+        with self.assertRaises(ValueError):
+            apply_future_materialization_resolution(
+                self.future,
+                self._resolution(evidence_ids=(unbound,)),
+                self.context,
+                self.state,
+            )
+
+        non_lab = self.state.add_evidence(
+            self.run_id,
+            "web",
+            "future-materialization-observation",
+            "lab-fixture",
+            b"not-lab",
+            metadata={
+                "asset": "127.0.0.1",
+                "client_id": "client-1",
+                "engagement_id": "future-materialization",
+                "mode": "lab_autonomous",
+                "is_lab": "false",
+            },
+        )
+        with self.assertRaises(PermissionError):
+            apply_future_materialization_resolution(
+                self.future,
+                self._resolution(evidence_ids=(non_lab,)),
                 self.context,
                 self.state,
             )
