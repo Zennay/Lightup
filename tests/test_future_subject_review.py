@@ -31,6 +31,11 @@ class FutureSubjectReviewTest(unittest.TestCase):
         self.assertEqual(item.next_action, "record_explicit_subject_review")
         self.assertIsNone(item.verified_subject_id)
         self.assertEqual(item.evidence_refs, ())
+        self.assertEqual(item.graph_resolution_status, "pending")
+        self.assertIsNone(item.graph_resolution_id)
+        self.assertEqual(item.resolved_effect_ids, ())
+        self.assertFalse(report.graph_resolution_complete)
+        self.assertEqual(report.unresolved_graph_count, 1)
         self.assertEqual(report.future_semantics, "unresolved")
         self.assertEqual(report.security_verdict, "not_evaluated")
 
@@ -48,6 +53,9 @@ class FutureSubjectReviewTest(unittest.TestCase):
         self.assertEqual(item.review_basis, "operator_reviewed")
         self.assertEqual(item.evidence_refs, (f"evidence:{self.f.evidence_id}",))
         self.assertEqual(item.next_action, "await_effect_graph_resolution")
+        self.assertEqual(item.graph_resolution_status, "pending")
+        self.assertFalse(report.graph_resolution_complete)
+        self.assertEqual(report.unresolved_graph_count, 1)
         self.assertEqual(report.security_verdict, "not_evaluated")
         exported = json.loads(json.dumps(report.as_dict()))
         exported["items"][0]["verified_subject_id"] = "mutated"
