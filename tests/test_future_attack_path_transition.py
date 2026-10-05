@@ -6,6 +6,7 @@ import unittest
 import test_future_attack_path_analysis as impact_tests
 from lightup.future_attack_path_analysis import analyze_future_attack_path_impact
 from lightup.future_attack_path_transition import (
+    future_attack_path_transition_proposal_from_dict,
     propose_future_attack_path_transitions,
     validate_future_attack_path_transition_proposal,
 )
@@ -163,6 +164,31 @@ class FutureAttackPathTransitionProposalTest(unittest.TestCase):
             with self.subTest(invalid=invalid):
                 with self.assertRaises(ValueError):
                     validate_future_attack_path_transition_proposal(invalid)
+
+    def test_serialized_proposal_round_trip_is_strict_and_validated(self):
+        report = self._report(RiskDirection.INCREASED, suffix="round-trip")
+        proposal = propose_future_attack_path_transitions(report)
+        payload = __import__("json").loads(
+            __import__("json").dumps(proposal.as_dict())
+        )
+
+        restored = future_attack_path_transition_proposal_from_dict(payload)
+        self.assertEqual(restored, proposal)
+
+        extra = dict(payload)
+        extra["unexpected"] = "field"
+        with self.assertRaisesRegex(ValueError, "schema mismatch"):
+            future_attack_path_transition_proposal_from_dict(extra)
+
+        tampered = __import__("json").loads(__import__("json").dumps(payload))
+        tampered["items"][0]["review_action"] = "create_attack_path"
+        with self.assertRaises(ValueError):
+            future_attack_path_transition_proposal_from_dict(tampered)
+
+        wrong_shape = __import__("json").loads(__import__("json").dumps(payload))
+        wrong_shape["items"] = {"not": "a list"}
+        with self.assertRaisesRegex(ValueError, "items must be a list"):
+            future_attack_path_transition_proposal_from_dict(wrong_shape)
 
     def test_proposal_boundary_cannot_claim_mutation_or_verdict(self):
         report = self._report(RiskDirection.INCREASED, suffix="boundary")
