@@ -54,6 +54,7 @@ class FutureSecurityRetestAuthorizationPreflight:
     request_sha256: str
     authorization_grant_id: str
     authorization_reference_sha256: str
+    authorization_grant_sha256: str
     checked_at: str
     bindings: tuple[FutureSecurityRetestAssetBinding, ...]
     requested_capability_ids: tuple[str, ...]
@@ -85,6 +86,52 @@ def _reference_digest(reference: str) -> str:
     return sha256(reference.encode("utf-8")).hexdigest()
 
 
+def _authorization_grant_digest(authorization: AuthorizationGrant) -> str:
+    scope = authorization.scope
+    payload = {
+        "grant_id": authorization.grant_id,
+        "client_id": authorization.client_id,
+        "engagement_id": authorization.engagement_id,
+        "approved_by": authorization.approved_by,
+        "authorization_reference_sha256": _reference_digest(authorization.reference),
+        "scope": {
+            "assets": sorted(
+                {
+                    asset.strip().lower()
+                    for asset in scope.assets
+                    if asset.strip()
+                }
+            ),
+            "excluded_assets": sorted(
+                {
+                    asset.strip().lower()
+                    for asset in scope.excluded_assets
+                    if asset.strip()
+                }
+            ),
+            "allowed_capabilities": sorted(
+                {
+                    capability_id.strip()
+                    for capability_id in scope.allowed_capabilities
+                    if capability_id.strip()
+                }
+            ),
+            "max_risk": int(scope.max_risk),
+        },
+        "valid_from": authorization.valid_from.isoformat(),
+        "valid_until": authorization.valid_until.isoformat(),
+        "recurring_retest_allowed": authorization.recurring_retest_allowed,
+    }
+    return sha256(
+        json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        ).encode("utf-8")
+    ).hexdigest()
+
+
 def _preflight_digest(
     *,
     request: FutureSecurityRetestRequest,
@@ -102,6 +149,7 @@ def _preflight_digest(
         "request_sha256": request.request_sha256,
         "authorization_grant_id": authorization.grant_id,
         "authorization_reference_sha256": _reference_digest(authorization.reference),
+        "authorization_grant_sha256": _authorization_grant_digest(authorization),
         "checked_at": checked_at.isoformat(),
         "bindings": [
             {"resolution_id": binding.resolution_id, "asset": binding.asset}
@@ -291,6 +339,7 @@ def build_future_security_retest_authorization_preflight(
         request_sha256=request.request_sha256,
         authorization_grant_id=authorization.grant_id,
         authorization_reference_sha256=_reference_digest(authorization.reference),
+        authorization_grant_sha256=_authorization_grant_digest(authorization),
         checked_at=checked_at.isoformat(),
         bindings=bindings,
         requested_capability_ids=request.requested_capability_ids,
