@@ -293,3 +293,370 @@ def validate_future_security_evidence_collection_request(
             "evidence collection request does not match its live validated lineage"
         )
     return rebuilt
+
+
+_REQUEST_KEYS = {
+    "schema_version",
+    "client_id",
+    "current_twin_id",
+    "current_twin_version",
+    "twin_id",
+    "twin_version",
+    "changeset_id",
+    "proposal_sha256",
+    "impact_analysis_sha256",
+    "preview_sha256",
+    "report_sha256",
+    "plan_sha256",
+    "items",
+    "evidence_gap_count",
+    "request_sha256",
+    "collection_authorized",
+    "capability_selected",
+    "tool_call_created",
+    "execution_allowed",
+    "target_interaction_allowed",
+    "remediation_authoring_allowed",
+    "future_state_retest_allowed",
+    "deployment_authorized",
+    "attack_path_mutation_allowed",
+    "future_semantics",
+    "security_verdict",
+}
+
+_REQUEST_ITEM_KEYS = {
+    "change_node_id",
+    "subject_node_id",
+    "resolution_id",
+    "resolution_sha256",
+    "current_attack_path_ids",
+    "effect_ids",
+    "prior_evidence_ids",
+    "prior_capability_ids",
+    "classification",
+    "graph_diff_action",
+    "collection_reason",
+    "fresh_evidence_required",
+    "fresh_run_required",
+    "remediation_authoring_allowed",
+    "future_state_retest_allowed",
+}
+
+
+def _is_canonical_sha256(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(char in "0123456789abcdef" for char in value)
+    )
+
+
+def _strict_string_tuple(value: object, *, field: str) -> tuple[str, ...]:
+    if (
+        not isinstance(value, list)
+        or not value
+        or any(not isinstance(item, str) or not item for item in value)
+    ):
+        raise ValueError(
+            f"evidence collection request item {field} must be a non-empty string list"
+        )
+    parsed = tuple(value)
+    if parsed != tuple(sorted(set(parsed))):
+        raise ValueError(
+            f"evidence collection request item {field} must be sorted and unique"
+        )
+    return parsed
+
+
+def _strict_optional_string_tuple(
+    value: object,
+    *,
+    field: str,
+) -> tuple[str, ...]:
+    if (
+        not isinstance(value, list)
+        or any(not isinstance(item, str) or not item for item in value)
+    ):
+        raise ValueError(
+            f"evidence collection request item {field} must be a string list"
+        )
+    parsed = tuple(value)
+    if parsed != tuple(sorted(set(parsed))):
+        raise ValueError(
+            f"evidence collection request item {field} must be sorted and unique"
+        )
+    return parsed
+
+
+def _request_digest_from_request(
+    request: FutureSecurityEvidenceCollectionRequest,
+) -> str:
+    payload = {
+        "schema_version": REQUEST_SCHEMA_VERSION,
+        "client_id": request.client_id,
+        "current_twin_id": request.current_twin_id,
+        "current_twin_version": request.current_twin_version,
+        "twin_id": request.twin_id,
+        "twin_version": request.twin_version,
+        "changeset_id": request.changeset_id,
+        "proposal_sha256": request.proposal_sha256,
+        "impact_analysis_sha256": request.impact_analysis_sha256,
+        "preview_sha256": request.preview_sha256,
+        "report_sha256": request.report_sha256,
+        "plan_sha256": request.plan_sha256,
+        "items": [
+            {
+                "change_node_id": item.change_node_id,
+                "subject_node_id": item.subject_node_id,
+                "resolution_id": item.resolution_id,
+                "resolution_sha256": item.resolution_sha256,
+                "current_attack_path_ids": list(item.current_attack_path_ids),
+                "effect_ids": list(item.effect_ids),
+                "prior_evidence_ids": list(item.prior_evidence_ids),
+                "prior_capability_ids": list(item.prior_capability_ids),
+                "classification": item.classification.value,
+                "graph_diff_action": item.graph_diff_action.value,
+                "collection_reason": item.collection_reason,
+                "fresh_evidence_required": True,
+                "fresh_run_required": True,
+                "remediation_authoring_allowed": False,
+                "future_state_retest_allowed": False,
+            }
+            for item in request.items
+        ],
+        "evidence_gap_count": len(request.items),
+        "collection_authorized": False,
+        "capability_selected": False,
+        "tool_call_created": False,
+        "execution_allowed": False,
+        "target_interaction_allowed": False,
+        "remediation_authoring_allowed": False,
+        "future_state_retest_allowed": False,
+        "deployment_authorized": False,
+        "attack_path_mutation_allowed": False,
+        "future_semantics": "unresolved",
+        "security_verdict": "not_evaluated",
+    }
+    return sha256(
+        json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def future_security_evidence_collection_request_from_dict(
+    payload: dict,
+) -> FutureSecurityEvidenceCollectionRequest:
+    """Parse an exact serialized request and verify its canonical digest."""
+
+    if not isinstance(payload, dict):
+        raise ValueError("evidence collection request payload must be an object")
+    if set(payload) != _REQUEST_KEYS:
+        raise ValueError("evidence collection request payload schema mismatch")
+    if payload["schema_version"] != REQUEST_SCHEMA_VERSION:
+        raise ValueError("evidence collection request schema version mismatch")
+
+    string_fields = (
+        "client_id",
+        "current_twin_id",
+        "twin_id",
+        "changeset_id",
+        "future_semantics",
+        "security_verdict",
+    )
+    if any(
+        not isinstance(payload[field], str) or not payload[field]
+        for field in string_fields
+    ):
+        raise ValueError("evidence collection request string field is invalid")
+
+    for field in (
+        "proposal_sha256",
+        "impact_analysis_sha256",
+        "preview_sha256",
+        "report_sha256",
+        "plan_sha256",
+        "request_sha256",
+    ):
+        if not _is_canonical_sha256(payload[field]):
+            raise ValueError(
+                f"evidence collection request {field} must be a canonical SHA-256"
+            )
+
+    for field in ("current_twin_version", "twin_version", "evidence_gap_count"):
+        value = payload[field]
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            raise ValueError(
+                f"evidence collection request {field} must be a non-negative integer"
+            )
+
+    for field in (
+        "collection_authorized",
+        "capability_selected",
+        "tool_call_created",
+        "execution_allowed",
+        "target_interaction_allowed",
+        "remediation_authoring_allowed",
+        "future_state_retest_allowed",
+        "deployment_authorized",
+        "attack_path_mutation_allowed",
+    ):
+        if payload[field] is not False:
+            raise ValueError(
+                f"evidence collection request safety flag {field} must remain false"
+            )
+    if payload["future_semantics"] != "unresolved":
+        raise ValueError("evidence collection request future semantics must be unresolved")
+    if payload["security_verdict"] != "not_evaluated":
+        raise ValueError(
+            "evidence collection request must not claim a security verdict"
+        )
+
+    raw_items = payload["items"]
+    if not isinstance(raw_items, list) or not raw_items:
+        raise ValueError("evidence collection request items must be a non-empty list")
+
+    items: list[FutureSecurityEvidenceCollectionItem] = []
+    for raw_item in raw_items:
+        if not isinstance(raw_item, dict) or set(raw_item) != _REQUEST_ITEM_KEYS:
+            raise ValueError("evidence collection request item schema mismatch")
+
+        for field in (
+            "change_node_id",
+            "subject_node_id",
+            "resolution_id",
+            "collection_reason",
+        ):
+            if not isinstance(raw_item[field], str) or not raw_item[field]:
+                raise ValueError(
+                    f"evidence collection request item {field} is invalid"
+                )
+        if not _is_canonical_sha256(raw_item["resolution_sha256"]):
+            raise ValueError(
+                "evidence collection request item resolution_sha256 is invalid"
+            )
+
+        try:
+            classification = AttackPathTransitionClassification(
+                raw_item["classification"]
+            )
+            graph_diff_action = AttackPathGraphDiffAction(
+                raw_item["graph_diff_action"]
+            )
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                "evidence collection request item enum value is invalid"
+            ) from exc
+        if classification is not AttackPathTransitionClassification.INSUFFICIENT_EVIDENCE:
+            raise ValueError(
+                "evidence collection request item must remain insufficient_evidence"
+            )
+        if graph_diff_action is not AttackPathGraphDiffAction.NO_GRAPH_CHANGE_CLAIM:
+            raise ValueError(
+                "evidence collection request item must retain no_graph_change_claim"
+            )
+        if raw_item["collection_reason"] != "insufficient_evidence":
+            raise ValueError(
+                "evidence collection request item collection reason is invalid"
+            )
+        if raw_item["fresh_evidence_required"] is not True:
+            raise ValueError(
+                "evidence collection request item must require fresh evidence"
+            )
+        if raw_item["fresh_run_required"] is not True:
+            raise ValueError(
+                "evidence collection request item must require a fresh run"
+            )
+        if raw_item["remediation_authoring_allowed"] is not False:
+            raise ValueError(
+                "evidence collection request item cannot authorize remediation"
+            )
+        if raw_item["future_state_retest_allowed"] is not False:
+            raise ValueError(
+                "evidence collection request item cannot authorize a retest"
+            )
+
+        items.append(
+            FutureSecurityEvidenceCollectionItem(
+                change_node_id=raw_item["change_node_id"],
+                subject_node_id=raw_item["subject_node_id"],
+                resolution_id=raw_item["resolution_id"],
+                resolution_sha256=raw_item["resolution_sha256"],
+                current_attack_path_ids=_strict_optional_string_tuple(
+                    raw_item["current_attack_path_ids"],
+                    field="current_attack_path_ids",
+                ),
+                effect_ids=_strict_string_tuple(
+                    raw_item["effect_ids"],
+                    field="effect_ids",
+                ),
+                prior_evidence_ids=_strict_string_tuple(
+                    raw_item["prior_evidence_ids"],
+                    field="prior_evidence_ids",
+                ),
+                prior_capability_ids=_strict_string_tuple(
+                    raw_item["prior_capability_ids"],
+                    field="prior_capability_ids",
+                ),
+                classification=classification,
+                graph_diff_action=graph_diff_action,
+            )
+        )
+
+    parsed_items = tuple(items)
+    item_keys = tuple(
+        (item.change_node_id, item.subject_node_id, item.resolution_id)
+        for item in parsed_items
+    )
+    if len(set(item_keys)) != len(item_keys):
+        raise ValueError("evidence collection request items must be unique")
+    canonical_items = tuple(
+        sorted(
+            parsed_items,
+            key=lambda item: (
+                item.change_node_id,
+                item.subject_node_id,
+                item.resolution_id,
+            ),
+        )
+    )
+    if parsed_items != canonical_items:
+        raise ValueError("evidence collection request items must be canonically ordered")
+    if payload["evidence_gap_count"] != len(parsed_items):
+        raise ValueError("evidence collection request gap count mismatch")
+
+    request = FutureSecurityEvidenceCollectionRequest(
+        schema_version=payload["schema_version"],
+        client_id=payload["client_id"],
+        current_twin_id=payload["current_twin_id"],
+        current_twin_version=payload["current_twin_version"],
+        twin_id=payload["twin_id"],
+        twin_version=payload["twin_version"],
+        changeset_id=payload["changeset_id"],
+        proposal_sha256=payload["proposal_sha256"],
+        impact_analysis_sha256=payload["impact_analysis_sha256"],
+        preview_sha256=payload["preview_sha256"],
+        report_sha256=payload["report_sha256"],
+        plan_sha256=payload["plan_sha256"],
+        items=parsed_items,
+        evidence_gap_count=payload["evidence_gap_count"],
+        request_sha256=payload["request_sha256"],
+        collection_authorized=False,
+        capability_selected=False,
+        tool_call_created=False,
+        execution_allowed=False,
+        target_interaction_allowed=False,
+        remediation_authoring_allowed=False,
+        future_state_retest_allowed=False,
+        deployment_authorized=False,
+        attack_path_mutation_allowed=False,
+        future_semantics=payload["future_semantics"],
+        security_verdict=payload["security_verdict"],
+    )
+    expected = _request_digest_from_request(request)
+    if request.request_sha256 != expected:
+        raise ValueError("evidence collection request digest mismatch")
+    return request
