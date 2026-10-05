@@ -79,7 +79,7 @@ Persisted or cross-stage JSON must be parsed with
 only the exact request/item schema, exact primitive types, canonical enum
 values, canonical sorted/unique lineage arrays and lowercase SHA-256 digests.
 It also requires every safety flag to remain false, the evidence gap count to
-match the items, canonical item ordering, and a recomputed matching
+match the items, canonical unique item identity/order, and a recomputed matching
 `request_sha256`.
 
 Strict parsing is an integrity boundary, not a trust boundary. After parsing,
