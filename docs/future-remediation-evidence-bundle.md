@@ -37,6 +37,19 @@ into the bundle.
 The builder fails closed when referenced evidence is missing, its digest is not a canonical lowercase SHA-256 value, its run is outside the supplied immutable run contexts, or its
 capability falls outside the plan item's lineage.
 
+
+## Live revalidation before use
+
+Persisted or transported bundles must be revalidated with
+`validate_future_remediation_evidence_bundle` immediately before remediation
+authoring consumes them. The validator rebuilds the exact bundle from the live
+ST4/ST5 lineage and current evidence ledger, then requires byte-for-byte
+dataclass equality with the supplied bundle.
+
+This catches post-build ledger drift even when a changed digest is still a
+syntactically valid lowercase SHA-256 value. Capability/run/metadata drift is
+rejected earlier by the existing live transition-evidence validation chain.
+
 ## Determinism
 
 Evidence is sorted by evidence ID and remediation items are canonically sorted
