@@ -34,7 +34,6 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
         self,
         effects: tuple[FutureSecurityEffect, ...],
         *,
-        include_existing_path: bool = False,
         graph_id: str = "graph-impact",
     ):
         future = self.f.reviewed
@@ -48,23 +47,6 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
                 future,
                 self.f.materialization,
                 new_effects,
-            )
-
-        if include_existing_path:
-            path = AttackPath(
-                path_id="path-existing-1",
-                title="Existing path through reviewed API",
-                steps=(
-                    AttackStep(
-                        source_id=self.f.subject.node_id,
-                        target_id=self.f.change_node.node_id,
-                        relation="existing_dependency",
-                    ),
-                ),
-                evidence_refs=("evidence:existing-path",),
-            )
-            future = future.next_snapshot(
-                attack_paths=future.attack_paths + (path,)
             )
 
         graph = FutureGraphResolution(
@@ -106,12 +88,29 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
     def test_increased_effect_reports_potential_regression_and_existing_path(self):
         resolved = self._resolved_with(
             (self.f.effect,),
-            include_existing_path=True,
             graph_id="graph-impact-increased",
+        )
+        path = AttackPath(
+            path_id="path-existing-1",
+            title="Existing path touching reviewed API",
+            steps=(
+                AttackStep(
+                    source_id=self.f.subject.node_id,
+                    target_id=self.f.subject.node_id,
+                    relation="existing_self_reference",
+                ),
+            ),
+            evidence_refs=("evidence:existing-path",),
+        )
+        current = self.f.current.next_snapshot(
+            attack_paths=self.f.current.attack_paths + (path,)
+        )
+        resolved = resolved.next_snapshot(
+            attack_paths=resolved.attack_paths + (path,)
         )
         before = dataclasses.asdict(resolved)
         report = analyze_future_attack_path_impact(
-            resolved, self.f.state, self.client, current=self.f.current
+            resolved, self.f.state, self.client, current=current
         )
 
         self.assertTrue(report.analysis_complete)
@@ -127,6 +126,8 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
             self.f.materialization.resolution_id,
         )
         self.assertEqual(item.current_attack_path_ids, ("path-existing-1",))
+        self.assertEqual(report.current_twin_id, current.twin_id)
+        self.assertEqual(report.current_twin_version, current.version)
         self.assertEqual(dataclasses.asdict(resolved), before)
         exported = json.loads(json.dumps(report.as_dict()))
         exported["items"][0]["impact"] = "mutated"
