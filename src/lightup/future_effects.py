@@ -19,6 +19,7 @@ from hashlib import sha256
 from .future_materialization import (
     FutureMaterializationResolution,
     MaterializationOutcome,
+    _resolution_facts,
 )
 from .twin import (
     FactProvenance,
@@ -109,20 +110,12 @@ def _assert_confirmed_materialization(
     if resolution.outcome is not MaterializationOutcome.CONFIRMED:
         raise ValueError("future security effects require confirmed materialization")
 
-    expected_refs = tuple(f"evidence:{item}" for item in resolution.evidence_ids)
-    outcomes = tuple(
-        fact
-        for fact in future.facts
-        if fact.subject_id == resolution.change_node_id
-        and fact.predicate == "materialization.outcome"
-        and fact.value == MaterializationOutcome.CONFIRMED.value
-        and fact.provenance is FactProvenance.VERIFIED
-        and fact.evidence_refs == expected_refs
-    )
-    if not outcomes:
+    expected_facts = _resolution_facts(resolution)
+    existing_by_id = {fact.fact_id: fact for fact in future.facts}
+    if any(existing_by_id.get(fact.fact_id) != fact for fact in expected_facts):
         raise ValueError(
-            "confirmed materialization must be applied to the future twin before "
-            "security effects can be recorded"
+            "the exact confirmed materialization resolution must be applied to "
+            "the future twin before security effects can be recorded"
         )
 
 
@@ -159,7 +152,6 @@ def apply_future_security_effects(
 
     allowed_evidence = set(resolution.evidence_ids)
     allowed_capabilities = set(resolution.capability_ids)
-    generated: list[TwinFact] = []
 
     for effect in effects:
         effect.validate()
@@ -179,8 +171,6 @@ def apply_future_security_effects(
             raise ValueError(
                 "future security effect evidence must come from materialization evidence"
             )
-        generated.extend(_effect_facts(effect))
-
     existing_by_id = {fact.fact_id: fact for fact in future.facts}
     new_facts: list[TwinFact] = []
     seen_effect_ids: set[str] = set()
