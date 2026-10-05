@@ -250,6 +250,26 @@ class FutureSubjectBindingTest(unittest.TestCase):
                 candidates={signal_id: (123,)},
             )
 
+    def test_candidate_mapping_and_attribute_key_shapes_fail_closed(self):
+        api = TwinNode("api-1", TwinNodeKind.API, "API")
+        current = SecurityTwin.current("client-1").next_snapshot(nodes=(api,))
+        changeset = self._changeset()
+        future = derive_future_twin(current, changeset)
+
+        with self.assertRaises(ValueError):
+            bind_future_change_candidates(
+                future,
+                changeset,
+                candidates=["api-1"],
+            )
+
+        with self.assertRaises(ValueError):
+            suggest_subject_candidates(
+                future,
+                changeset,
+                attribute_keys=("source_path", 123),
+            )
+
     def test_binding_requires_matching_future_changeset_pair(self):
         current = SecurityTwin.current("client-1")
         changeset = self._changeset()
