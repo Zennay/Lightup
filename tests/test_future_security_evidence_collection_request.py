@@ -12,6 +12,7 @@ from lightup.future_attack_path_transition_resolution import (
 from lightup.future_security_evidence_collection_request import (
     REQUEST_SCHEMA_VERSION,
     build_future_security_evidence_collection_request,
+    validate_future_security_evidence_collection_request,
 )
 
 
@@ -223,6 +224,47 @@ class FutureSecurityEvidenceCollectionRequestTest(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             build_future_security_evidence_collection_request(
+                plan,
+                report,
+                preview,
+                proposal,
+                (resolution,),
+                (context,),
+                self.state,
+            )
+
+
+    def test_persisted_request_must_match_live_rebuilt_lineage(self):
+        (
+            _,
+            proposal,
+            context,
+            resolution,
+            preview,
+            report,
+            plan,
+            request,
+        ) = self._request(
+            AttackPathTransitionClassification.INSUFFICIENT_EVIDENCE,
+            suffix="evidence-collection-persisted",
+        )
+
+        validated = validate_future_security_evidence_collection_request(
+            request,
+            plan,
+            report,
+            preview,
+            proposal,
+            (resolution,),
+            (context,),
+            self.state,
+        )
+        self.assertEqual(validated, request)
+
+        tampered = dataclasses.replace(request, request_sha256="0" * 64)
+        with self.assertRaisesRegex(ValueError, "live validated lineage"):
+            validate_future_security_evidence_collection_request(
+                tampered,
                 plan,
                 report,
                 preview,
