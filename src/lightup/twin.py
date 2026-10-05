@@ -34,6 +34,8 @@ class TwinNodeKind(str, Enum):
     ROLE = "role"
     RESOURCE = "resource"
     DATA = "data"
+    ENGAGEMENT = "engagement"
+    FINDING = "finding"
 
 
 @dataclass(frozen=True)
