@@ -192,6 +192,88 @@ class FutureAttackPathTransitionProposalTest(unittest.TestCase):
                 dataclasses.replace(proposal, items=(item,))
             )
 
+    def test_validator_requires_evidence_lineage(self):
+        report = self._report(RiskDirection.INCREASED, suffix="evidence-lineage")
+        proposal = propose_future_attack_path_transitions(report)
+        item = dataclasses.replace(proposal.items[0], evidence_refs=())
+
+        with self.assertRaisesRegex(ValueError, "requires evidence lineage"):
+            validate_future_attack_path_transition_proposal(
+                dataclasses.replace(proposal, items=(item,))
+            )
+
+    def test_validator_rejects_duplicate_and_noncanonical_items(self):
+        report = self._report(RiskDirection.INCREASED, suffix="canonical-items")
+        proposal = propose_future_attack_path_transitions(report)
+        item = proposal.items[0]
+
+        with self.assertRaisesRegex(ValueError, "duplicates a change"):
+            validate_future_attack_path_transition_proposal(
+                dataclasses.replace(proposal, items=(item, item))
+            )
+
+        later = dataclasses.replace(item, change_node_id="change:z")
+        earlier = dataclasses.replace(item, change_node_id="change:a")
+        with self.assertRaisesRegex(ValueError, "not canonically ordered"):
+            validate_future_attack_path_transition_proposal(
+                dataclasses.replace(proposal, items=(later, earlier))
+            )
+
+    def test_validator_rejects_invalid_top_level_identity_version_and_hashes(self):
+        report = self._report(RiskDirection.INCREASED, suffix="top-level")
+        proposal = propose_future_attack_path_transitions(report)
+
+        cases = (
+            (
+                dataclasses.replace(proposal, client_id=""),
+                "client_id is invalid",
+            ),
+            (
+                dataclasses.replace(proposal, current_twin_version=0),
+                "current_twin_version is invalid",
+            ),
+            (
+                dataclasses.replace(proposal, twin_version=True),
+                "twin_version is invalid",
+            ),
+            (
+                dataclasses.replace(proposal, impact_analysis_sha256="not-a-digest"),
+                "impact_analysis_sha256 is not a SHA-256 digest",
+            ),
+            (
+                dataclasses.replace(proposal, proposal_sha256="g" * 64),
+                "proposal_sha256 is not a SHA-256 digest",
+            ),
+        )
+        for candidate, message in cases:
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(ValueError, message):
+                    validate_future_attack_path_transition_proposal(candidate)
+
+    def test_validator_rejects_noncanonical_or_duplicate_lineage_tuples(self):
+        report = self._report(RiskDirection.INCREASED, suffix="lineage-tuples")
+        proposal = propose_future_attack_path_transitions(report)
+        item = proposal.items[0]
+
+        duplicated_effects = dataclasses.replace(
+            item,
+            effect_ids=(item.effect_ids[0], item.effect_ids[0]),
+        )
+        with self.assertRaisesRegex(ValueError, "effect_ids contains duplicates"):
+            validate_future_attack_path_transition_proposal(
+                dataclasses.replace(proposal, items=(duplicated_effects,))
+            )
+
+        reversed_evidence = dataclasses.replace(
+            item,
+            evidence_refs=tuple(reversed(item.evidence_refs)),
+        )
+        if reversed_evidence.evidence_refs != item.evidence_refs:
+            with self.assertRaisesRegex(ValueError, "evidence_refs is not canonically ordered"):
+                validate_future_attack_path_transition_proposal(
+                    dataclasses.replace(proposal, items=(reversed_evidence,))
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
