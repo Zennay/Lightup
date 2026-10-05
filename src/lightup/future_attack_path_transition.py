@@ -74,6 +74,25 @@ def _canonical_tuple(values: tuple[str, ...], field: str) -> tuple[str, ...]:
     return canonical
 
 
+def _require_nonempty_string(value: object, field: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"transition proposal {field} is invalid")
+    return value
+
+
+def _require_sha256(value: object, field: str) -> str:
+    value = _require_nonempty_string(value, field)
+    if len(value) != 64:
+        raise ValueError(f"transition proposal {field} is not a SHA-256 digest")
+    try:
+        int(value, 16)
+    except ValueError as exc:
+        raise ValueError(
+            f"transition proposal {field} is not a SHA-256 digest"
+        ) from exc
+    return value
+
+
 def _review_action(item: FutureAttackPathImpactItem) -> str:
     if item.impact == "potential_regression":
         if item.current_attack_path_ids:
@@ -139,27 +158,33 @@ def validate_future_attack_path_transition_proposal(
     proposal: FutureAttackPathTransitionProposal,
 ) -> None:
     """Fail closed unless a proposal preserves the read-only ST3 boundary."""
-    top_level_ids = (
-        proposal.client_id,
-        proposal.current_twin_id,
-        proposal.twin_id,
-        proposal.changeset_id,
-    )
-    if any(not isinstance(value, str) or not value.strip() for value in top_level_ids):
-        raise ValueError("future attack-path transition proposal identity is invalid")
-    if (
-        not isinstance(proposal.current_twin_version, int)
-        or isinstance(proposal.current_twin_version, bool)
-        or proposal.current_twin_version < 1
-        or not isinstance(proposal.twin_version, int)
-        or isinstance(proposal.twin_version, bool)
-        or proposal.twin_version < 1
+    if not isinstance(proposal, FutureAttackPathTransitionProposal):
+        raise ValueError("future attack-path transition proposal type is invalid")
+
+    for field, value in (
+        ("client_id", proposal.client_id),
+        ("current_twin_id", proposal.current_twin_id),
+        ("twin_id", proposal.twin_id),
+        ("changeset_id", proposal.changeset_id),
     ):
-        raise ValueError("future attack-path transition proposal version is invalid")
-    _validate_sha256(proposal.impact_analysis_sha256, "impact analysis digest")
-    _validate_sha256(proposal.proposal_sha256, "proposal digest")
-    if not proposal.proposal_complete:
+        _require_nonempty_string(value, field)
+
+    for field, value in (
+        ("current_twin_version", proposal.current_twin_version),
+        ("twin_version", proposal.twin_version),
+    ):
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise ValueError(f"transition proposal {field} is invalid")
+
+    _require_sha256(proposal.impact_analysis_sha256, "impact_analysis_sha256")
+    _require_sha256(proposal.proposal_sha256, "proposal_sha256")
+
+    if not isinstance(proposal.proposal_complete, bool) or not proposal.proposal_complete:
         raise ValueError("future attack-path transition proposal is incomplete")
+    if not isinstance(proposal.attack_path_mutation_allowed, bool):
+        raise ValueError(
+            "future attack-path transition proposal mutation flag is invalid"
+        )
     if proposal.attack_path_mutation_allowed:
         raise ValueError("future attack-path transition proposal cannot allow mutation")
     if proposal.future_semantics != "unresolved":
@@ -170,11 +195,24 @@ def validate_future_attack_path_transition_proposal(
         raise ValueError(
             "future attack-path transition proposal must not claim a security verdict"
         )
-    if not proposal.items:
+    if not isinstance(proposal.items, tuple) or not proposal.items:
         raise ValueError("future attack-path transition proposal requires items")
+
+    canonical_items = tuple(
+        sorted(
+            proposal.items,
+            key=lambda item: (item.change_node_id, item.subject_node_id),
+        )
+    )
+    if canonical_items != proposal.items:
+        raise ValueError(
+            "future attack-path transition proposal items are not canonically ordered"
+        )
 
     change_ids: set[str] = set()
     for item in proposal.items:
+        if not isinstance(item, FutureAttackPathTransitionProposalItem):
+            raise ValueError("future attack-path transition proposal item type is invalid")
         scalar_ids = (
             item.change_node_id,
             item.subject_node_id,
@@ -182,7 +220,10 @@ def validate_future_attack_path_transition_proposal(
             item.subject_decision_id,
             item.materialization_resolution_id,
         )
-        if any(not value.strip() for value in scalar_ids):
+        if any(
+            not isinstance(value, str) or not value.strip()
+            for value in scalar_ids
+        ):
             raise ValueError("future attack-path transition proposal identity is invalid")
         if item.change_node_id in change_ids:
             raise ValueError("future attack-path transition proposal duplicates a change")
@@ -211,6 +252,10 @@ def validate_future_attack_path_transition_proposal(
         if not item.effect_ids:
             raise ValueError(
                 "future attack-path transition proposal requires effect lineage"
+            )
+        if not item.evidence_refs:
+            raise ValueError(
+                "future attack-path transition proposal requires evidence lineage"
             )
         _canonical_tuple(item.effect_ids, "effect_ids")
         _canonical_tuple(item.current_attack_path_ids, "current_attack_path_ids")
@@ -246,6 +291,8 @@ def propose_future_attack_path_transitions(
             raise ValueError(f"unsupported future attack-path impact {impact.impact!r}")
         if not impact.effect_ids:
             raise ValueError("future attack-path impact item requires effect lineage")
+        if not impact.evidence_refs:
+            raise ValueError("future attack-path impact item requires evidence lineage")
 
         effect_ids = _canonical_tuple(impact.effect_ids, "effect_ids")
         path_ids = _canonical_tuple(
