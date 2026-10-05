@@ -209,9 +209,22 @@ a separate future Security Twin, but graph state remains unchanged and marked
 `future_semantics=unresolved` until later evidence-backed analysis or isolated
 materialization resolves the effect.
 
-Next ST2 slice: project inferred change signals into dedicated future-state
-change nodes/facts and add structured parsers for supported OpenAPI/Terraform
-inputs, while keeping semantic effects distinct from verified security state.
+The next ST2 layers now build on this boundary: inferred semantic signals are
+projected into dedicated future-only change nodes/facts, and structured
+OpenAPI/Terraform documents can add higher-confidence inferred context without
+retaining raw customer content.
+
+For modified structured documents, the preferred path is **base-to-head delta
+analysis**. Identical supported documents emit no new signal; added, removed or
+modified OpenAPI operations and Terraform security-relevant declarations are
+classified separately with content-hash evidence references. The older
+single-sided parser remains conservative context enrichment, but it is not a
+claim that every declaration in a modified file changed.
+
+Next ST2 slice after delta ingestion: map supported inferred change nodes to
+candidate current-twin subjects (asset/API/IAM/resource) with explicit
+ambiguity, then prepare isolated materialization without promoting inferred
+effects to verified state.
 
 ### ST3 — Future-state lab materialization
 
