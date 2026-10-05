@@ -110,5 +110,20 @@ class FutureSecurityEvidenceCollectionHandoffTest(unittest.TestCase):
             future_security_evidence_collection_request_from_dict(payload)
 
 
+    def test_empty_path_lineage_still_requires_a_real_list(self):
+        _, payload = self._payload()
+
+        none_paths = copy.deepcopy(payload)
+        none_paths["items"][0]["current_attack_path_ids"] = None
+        with self.assertRaisesRegex(ValueError, "must be a string list"):
+            future_security_evidence_collection_request_from_dict(none_paths)
+
+        string_paths = copy.deepcopy(payload)
+        string_paths["items"][0]["current_attack_path_ids"] = ""
+        with self.assertRaisesRegex(ValueError, "must be a string list"):
+            future_security_evidence_collection_request_from_dict(string_paths)
+
+
+
 if __name__ == "__main__":
     unittest.main()
