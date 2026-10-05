@@ -260,3 +260,36 @@ def build_future_security_evidence_collection_request(
         evidence_gap_count=len(items),
         request_sha256=request_sha256,
     )
+
+
+def validate_future_security_evidence_collection_request(
+    request: FutureSecurityEvidenceCollectionRequest,
+    plan: FutureSecurityRemediationRetestPlan,
+    report: FutureAttackPathSecurityDeltaReport,
+    preview: FutureAttackPathGraphDiffPreview,
+    proposal: FutureAttackPathTransitionProposal,
+    resolutions: tuple[FutureAttackPathTransitionResolution, ...],
+    contexts: tuple[RunContext, ...],
+    state: StateStore,
+) -> FutureSecurityEvidenceCollectionRequest:
+    """Rebuild a persisted request from live lineage before follow-up use."""
+
+    if not isinstance(request, FutureSecurityEvidenceCollectionRequest):
+        raise ValueError(
+            "request must be a FutureSecurityEvidenceCollectionRequest"
+        )
+
+    rebuilt = build_future_security_evidence_collection_request(
+        plan,
+        report,
+        preview,
+        proposal,
+        resolutions,
+        contexts,
+        state,
+    )
+    if rebuilt != request:
+        raise ValueError(
+            "evidence collection request does not match its live validated lineage"
+        )
+    return rebuilt
