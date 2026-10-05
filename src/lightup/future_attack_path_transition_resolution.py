@@ -228,6 +228,13 @@ def _validate_action_classification(
         raise ValueError(
             "transition classification requires referenced current attack paths"
         )
+    if (
+        classification is AttackPathTransitionClassification.INTRODUCED
+        and item.current_attack_path_ids
+    ):
+        raise ValueError(
+            "introduced transition cannot reference an existing attack path"
+        )
 
 
 def future_attack_path_transition_evidence_contract(
