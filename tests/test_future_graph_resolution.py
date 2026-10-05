@@ -137,7 +137,13 @@ class FutureGraphResolutionTest(subject_tests.FutureSubjectResolutionTest):
             effect_ids=(self.effect.effect_id,),
         )
 
-    def _materialize_and_effect(\n        self,\n        future,\n        *,\n        suffix: str,\n        direction: RiskDirection = RiskDirection.INCREASED,\n    ):
+    def _materialize_and_effect(
+        self,
+        future,
+        *,
+        suffix: str,
+        direction: RiskDirection = RiskDirection.INCREASED,
+    ):
         run_id = self.state.create_run(
             "127.0.0.1",
             activation_mode="lab_autonomous",
