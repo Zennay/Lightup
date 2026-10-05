@@ -50,20 +50,27 @@ class FutureRemediationEvidenceBundleTest(unittest.TestCase):
             AttackPathTransitionClassification.WORSENED,
         ):
             with self.subTest(classification=classification.value):
-                current = self.p.r.p.r.t.f.f.current
-                before = dataclasses.asdict(current)
                 (
-                    _,
-                    _,
+                    current,
+                    proposal,
                     context,
                     resolution,
-                    _,
-                    _,
+                    preview,
+                    report,
                     plan,
-                    bundle,
-                ) = self._bundle(
+                ) = self.p._plan(
                     classification,
                     suffix=f"remediation-evidence-{classification.value}",
+                )
+                before = dataclasses.asdict(current)
+                bundle = build_future_remediation_evidence_bundle(
+                    plan,
+                    report,
+                    preview,
+                    proposal,
+                    (resolution,),
+                    (context,),
+                    self.state,
                 )
 
                 self.assertEqual(bundle.schema_version, BUNDLE_SCHEMA_VERSION)
