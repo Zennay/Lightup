@@ -124,10 +124,40 @@ def _proposal_digest(
     return hashlib.sha256(canonical).hexdigest()
 
 
+def _validate_sha256(value: str, field: str) -> None:
+    if not isinstance(value, str) or len(value) != 64:
+        raise ValueError(f"future attack-path transition proposal {field} is invalid")
+    try:
+        int(value, 16)
+    except ValueError as exc:
+        raise ValueError(
+            f"future attack-path transition proposal {field} is invalid"
+        ) from exc
+
+
 def validate_future_attack_path_transition_proposal(
     proposal: FutureAttackPathTransitionProposal,
 ) -> None:
     """Fail closed unless a proposal preserves the read-only ST3 boundary."""
+    top_level_ids = (
+        proposal.client_id,
+        proposal.current_twin_id,
+        proposal.twin_id,
+        proposal.changeset_id,
+    )
+    if any(not isinstance(value, str) or not value.strip() for value in top_level_ids):
+        raise ValueError("future attack-path transition proposal identity is invalid")
+    if (
+        not isinstance(proposal.current_twin_version, int)
+        or isinstance(proposal.current_twin_version, bool)
+        or proposal.current_twin_version < 1
+        or not isinstance(proposal.twin_version, int)
+        or isinstance(proposal.twin_version, bool)
+        or proposal.twin_version < 1
+    ):
+        raise ValueError("future attack-path transition proposal version is invalid")
+    _validate_sha256(proposal.impact_analysis_sha256, "impact analysis digest")
+    _validate_sha256(proposal.proposal_sha256, "proposal digest")
     if not proposal.proposal_complete:
         raise ValueError("future attack-path transition proposal is incomplete")
     if proposal.attack_path_mutation_allowed:
