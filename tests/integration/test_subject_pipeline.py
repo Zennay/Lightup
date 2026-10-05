@@ -22,6 +22,7 @@ from lightup.future_materialization import (
 from lightup.future_graph_resolution import (
     FutureGraphResolution, apply_future_graph_resolution,
 )
+from lightup.future_attack_path_analysis import analyze_future_attack_path_impact
 from lightup.domain import AccessContext, Role
 from lightup.future_subject_resolution import apply_future_subject_resolution
 from lightup.future_subject_review import review_future_subjects
@@ -167,6 +168,31 @@ class RealBindingSubjectResolutionTest(subject_tests.FutureSubjectResolutionTest
             "await_attack_path_analysis",
         )
         self.assertEqual(report.security_verdict, "not_evaluated")
+
+        impact = analyze_future_attack_path_impact(
+            resolved,
+            self.state,
+            AccessContext("reader", Role.CLIENT_MEMBER, "client-1"),
+        )
+        self.assertTrue(impact.analysis_complete)
+        self.assertEqual(impact.security_verdict, "not_evaluated")
+        self.assertEqual(impact.future_semantics, "unresolved")
+        self.assertEqual(len(impact.items), 1)
+        self.assertEqual(impact.items[0].impact, "potential_regression")
+        self.assertEqual(
+            impact.items[0].materialization_resolution_id,
+            materialization.resolution_id,
+        )
+        self.assertEqual(
+            impact.items[0].subject_decision_id,
+            "graph-integration-review",
+        )
+        self.assertEqual(
+            impact.items[0].effect_ids,
+            ("effect-integration",),
+        )
+        self.assertEqual(impact.items[0].current_attack_path_ids, ())
+        self.assertEqual(resolved.attack_paths, self.current.attack_paths)
 
     def test_snapshot_bound_review_cannot_be_reused_after_materialization(self):
         effected = self._materialize(self.bound)
