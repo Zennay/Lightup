@@ -14,7 +14,8 @@ This ST3 slice is a read-only consumer of verified Future Security graph state.
 - an explicit current Security Twin baseline is supplied;
 - current and future belong to the same client;
 - the future twin's persisted `future_base_twin_id` and `future_base_twin_version` match that exact current snapshot;
-- the future twin's attack paths remain byte-for-byte identical to the supplied current baseline.
+- the future twin's attack paths remain byte-for-byte identical to the supplied current baseline;
+- every verified subject used by the graph still exists in the current twin with exactly the same node identity, kind, label and attributes.
 
 If any represented change is unresolved, or attack paths have already drifted from the current baseline, analysis fails closed rather than returning a partial or mislabeled security interpretation.
 
@@ -47,6 +48,8 @@ The report classifies only normalized verified risk directions:
 | decreased | `potential_improvement` |
 | increased + decreased | `mixed` |
 | unchanged only | `unchanged` |
+
+Path membership is computed from the current twin, never from a potentially mutated future path set.
 
 These labels are not exploitability findings. They do not prove that a new path exists, that an old path is removed, or that a deployment is safe.
 
