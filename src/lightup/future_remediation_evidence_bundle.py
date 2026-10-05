@@ -299,3 +299,36 @@ def build_future_remediation_evidence_bundle(
         remediation_authoring_ready=remediation_authoring_ready,
         bundle_sha256=bundle_sha256,
     )
+
+
+def validate_future_remediation_evidence_bundle(
+    bundle: FutureRemediationEvidenceBundle,
+    plan: FutureSecurityRemediationRetestPlan,
+    report: FutureAttackPathSecurityDeltaReport,
+    preview: FutureAttackPathGraphDiffPreview,
+    proposal: FutureAttackPathTransitionProposal,
+    resolutions: tuple[FutureAttackPathTransitionResolution, ...],
+    contexts: tuple[RunContext, ...],
+    state: StateStore,
+) -> FutureRemediationEvidenceBundle:
+    """Rebuild a persisted bundle from live lineage before remediation use."""
+
+    if not isinstance(bundle, FutureRemediationEvidenceBundle):
+        raise ValueError(
+            "bundle must be a FutureRemediationEvidenceBundle"
+        )
+
+    rebuilt = build_future_remediation_evidence_bundle(
+        plan,
+        report,
+        preview,
+        proposal,
+        resolutions,
+        contexts,
+        state,
+    )
+    if rebuilt != bundle:
+        raise ValueError(
+            "remediation evidence bundle does not match its live validated lineage"
+        )
+    return rebuilt
