@@ -252,13 +252,17 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
             twin_id="other-current",
             client_id="client-2",
         )
-        with self.assertRaisesRegex(ValueError, "cannot cross tenants"):
-            analyze_future_attack_path_impact(
-                resolved,
-                self.f.state,
-                self.client,
-                current=other_current,
-            )
+        with patch.object(self.f.state, "get_evidence") as lookup:
+            with self.assertRaisesRegex(
+                TenantIsolationError, "cannot cross tenants"
+            ):
+                analyze_future_attack_path_impact(
+                    resolved,
+                    self.f.state,
+                    self.client,
+                    current=other_current,
+                )
+            lookup.assert_not_called()
 
     def test_unresolved_graph_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "complete verified graph"):
