@@ -11,6 +11,7 @@ from lightup.future_attack_path_transition_resolution import (
 from lightup.future_remediation_evidence_bundle import (
     BUNDLE_SCHEMA_VERSION,
     build_future_remediation_evidence_bundle,
+    validate_future_remediation_evidence_bundle,
 )
 
 
@@ -248,6 +249,95 @@ class FutureRemediationEvidenceBundleTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "canonical lowercase SHA-256"):
             build_future_remediation_evidence_bundle(
+                plan,
+                report,
+                preview,
+                proposal,
+                (resolution,),
+                (context,),
+                self.state,
+            )
+
+
+    def test_live_validation_accepts_exact_bundle_and_rejects_digest_drift(self):
+        (
+            _,
+            proposal,
+            context,
+            resolution,
+            preview,
+            report,
+            plan,
+            bundle,
+        ) = self._bundle(
+            AttackPathTransitionClassification.INTRODUCED,
+            suffix="remediation-evidence-live-validation",
+        )
+
+        self.assertEqual(
+            validate_future_remediation_evidence_bundle(
+                bundle,
+                plan,
+                report,
+                preview,
+                proposal,
+                (resolution,),
+                (context,),
+                self.state,
+            ),
+            bundle,
+        )
+
+        evidence_id = plan.items[0].evidence_ids[0]
+        with self.state.connect() as con:
+            con.execute(
+                "UPDATE evidence SET sha256=? WHERE evidence_id=?",
+                ("f" * 64, evidence_id),
+            )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "does not match its live validated lineage",
+        ):
+            validate_future_remediation_evidence_bundle(
+                bundle,
+                plan,
+                report,
+                preview,
+                proposal,
+                (resolution,),
+                (context,),
+                self.state,
+            )
+
+    def test_live_validation_rejects_ledger_capability_drift(self):
+        (
+            _,
+            proposal,
+            context,
+            resolution,
+            preview,
+            report,
+            plan,
+            bundle,
+        ) = self._bundle(
+            AttackPathTransitionClassification.WORSENED,
+            suffix="remediation-evidence-capability-drift",
+        )
+
+        evidence_id = plan.items[0].evidence_ids[0]
+        with self.state.connect() as con:
+            con.execute(
+                "UPDATE evidence SET capability_id=? WHERE evidence_id=?",
+                ("unexpected-capability", evidence_id),
+            )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "capability_ids must exactly match fresh evidence",
+        ):
+            validate_future_remediation_evidence_bundle(
+                bundle,
                 plan,
                 report,
                 preview,
