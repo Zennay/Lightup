@@ -607,6 +607,12 @@ def future_security_evidence_collection_request_from_dict(
         )
 
     parsed_items = tuple(items)
+    item_keys = tuple(
+        (item.change_node_id, item.subject_node_id, item.resolution_id)
+        for item in parsed_items
+    )
+    if len(set(item_keys)) != len(item_keys):
+        raise ValueError("evidence collection request items must be unique")
     canonical_items = tuple(
         sorted(
             parsed_items,
