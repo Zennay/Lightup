@@ -10,11 +10,16 @@ This ST3 slice is a read-only consumer of verified Future Security graph state.
 - subject decisions are canonical and still backed by live ledger evidence;
 - every represented change has a verified graph resolution;
 - graph facts, graph relationships, effect semantics and evidence lineage pass the existing ST3 validators;
-- future semantics remain explicitly `unresolved`.
+- future semantics remain explicitly `unresolved`;
+- an explicit current Security Twin baseline is supplied;
+- current and future belong to the same client;
+- the future twin's attack paths remain byte-for-byte identical to the supplied current baseline.
 
-If any represented change is unresolved, analysis fails closed rather than returning a partial security interpretation.
+If any represented change is unresolved, or attack paths have already drifted from the current baseline, analysis fails closed rather than returning a partial or mislabeled security interpretation.
 
 ## Output contract
+
+The report records the exact current twin ID/version used as the baseline.
 
 Each item binds the analysis to:
 
