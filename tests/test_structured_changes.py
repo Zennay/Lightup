@@ -200,5 +200,36 @@ resource "aws_iam_role" "app" {
         self.assertIn("structured_sha256", metadata)
 
 
+    def test_terraform_single_line_security_block_is_valid(self):
+        changeset = github_pull_request_changeset(
+            client_id="client-1",
+            repository="Zennay/Lightup",
+            pr_number=96,
+            base_sha="a" * 40,
+            head_sha="b" * 40,
+            files=(
+                {
+                    "filename": "terraform/security.tf",
+                    "status": "added",
+                    "additions": 1,
+                    "deletions": 0,
+                },
+            ),
+        )
+
+        enriched = enrich_changeset_with_structured_documents(
+            changeset,
+            {"terraform/security.tf": 'resource "aws_security_group" "empty" {}'},
+        )
+
+        self.assertNotIn(
+            "structured_parse_failed:terraform/security.tf",
+            enriched.uncertainties,
+        )
+        self.assertTrue(
+            any(signal.kind.value == "network_boundary" for signal in enriched.semantic_signals)
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
