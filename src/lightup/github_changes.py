@@ -102,8 +102,12 @@ def classify_repository_path(path: str) -> ChangeObjectKind:
         return ChangeObjectKind.CI
     if name in _API_NAMES or suffix in {".graphql", ".gql"}:
         return ChangeObjectKind.API_SPEC
-    if suffix in _IAC_SUFFIXES or parts.intersection(
-        {"terraform", "pulumi", "cloudformation", "kubernetes", "k8s", "helm"}
+    if (
+        lower.endswith((".tf.json", ".tfvars.json"))
+        or suffix in _IAC_SUFFIXES
+        or parts.intersection(
+            {"terraform", "pulumi", "cloudformation", "kubernetes", "k8s", "helm"}
+        )
     ):
         return ChangeObjectKind.IAC
     if parts.intersection({"iam", "rbac"}) or name.startswith(("iam-", "rbac-")):
