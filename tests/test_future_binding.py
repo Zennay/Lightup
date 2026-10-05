@@ -218,6 +218,38 @@ class FutureSubjectBindingTest(unittest.TestCase):
             (),
         )
 
+    def test_non_string_path_metadata_is_ignored(self):
+        api = TwinNode(
+            "api-1",
+            TwinNodeKind.API,
+            "Malformed metadata",
+            attributes=(("source_path", 123),),
+        )
+        current = SecurityTwin.current("client-1").next_snapshot(nodes=(api,))
+        changeset = self._changeset()
+        future = derive_future_twin(current, changeset)
+
+        suggestions = suggest_subject_candidates(future, changeset)
+
+        self.assertEqual(
+            suggestions[changeset.semantic_signals[0].signal_id],
+            (),
+        )
+
+    def test_non_string_explicit_candidate_id_is_rejected(self):
+        api = TwinNode("api-1", TwinNodeKind.API, "API")
+        current = SecurityTwin.current("client-1").next_snapshot(nodes=(api,))
+        changeset = self._changeset()
+        future = derive_future_twin(current, changeset)
+        signal_id = changeset.semantic_signals[0].signal_id
+
+        with self.assertRaises(ValueError):
+            bind_future_change_candidates(
+                future,
+                changeset,
+                candidates={signal_id: (123,)},
+            )
+
     def test_binding_requires_matching_future_changeset_pair(self):
         current = SecurityTwin.current("client-1")
         changeset = self._changeset()
