@@ -374,6 +374,37 @@ class FutureSecurityRetestAuthorizationPreflightTest(unittest.TestCase):
             )
         )
 
+        implicit_allow_all = dataclasses.replace(
+            grant,
+            scope=dataclasses.replace(
+                grant.scope,
+                allowed_capabilities=(),
+            ),
+        )
+        implicit_allow_all_result = build_future_security_retest_authorization_preflight(
+            request,
+            plan,
+            report,
+            preview,
+            proposal,
+            (resolution,),
+            (context,),
+            self.state,
+            implicit_allow_all,
+            (binding,),
+            self.checked_at,
+        )
+        self.assertEqual(
+            implicit_allow_all_result.status,
+            FutureRetestAuthorizationStatus.REAUTHORIZATION_REQUIRED,
+        )
+        self.assertTrue(
+            any(
+                reason.startswith("capability_out_of_scope:")
+                for reason in implicit_allow_all_result.reasons
+            )
+        )
+
     def test_preflight_is_deterministic_and_json_serializable(self):
         (
             current,
