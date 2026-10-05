@@ -61,6 +61,38 @@ class FutureAttackPathImpactReport:
         return asdict(self)
 
 
+def validate_future_attack_path_impact_report(
+    report: FutureAttackPathImpactReport,
+) -> None:
+    """Fail closed unless a report exactly matches its canonical handoff digest."""
+    if not report.analysis_complete:
+        raise ValueError("future attack-path impact report is incomplete")
+    if report.future_semantics != "unresolved":
+        raise ValueError(
+            "future attack-path impact report must preserve unresolved future semantics"
+        )
+    if report.security_verdict != "not_evaluated":
+        raise ValueError(
+            "future attack-path impact report must not claim a security verdict"
+        )
+    if not report.items:
+        raise ValueError(
+            "future attack-path impact report requires at least one impact item"
+        )
+
+    expected = _analysis_digest(
+        client_id=report.client_id,
+        current_twin_id=report.current_twin_id,
+        current_twin_version=report.current_twin_version,
+        twin_id=report.twin_id,
+        twin_version=report.twin_version,
+        changeset_id=report.changeset_id,
+        items=report.items,
+    )
+    if report.analysis_sha256 != expected:
+        raise ValueError("future attack-path impact report digest mismatch")
+
+
 
 def _analysis_digest(
     *,
@@ -319,7 +351,7 @@ def analyze_future_attack_path_impact(
         changeset_id=review.changeset_id,
         items=report_items,
     )
-    return FutureAttackPathImpactReport(
+    report = FutureAttackPathImpactReport(
         client_id=review.client_id,
         current_twin_id=current.twin_id,
         current_twin_version=current.version,
@@ -330,3 +362,5 @@ def analyze_future_attack_path_impact(
         analysis_complete=True,
         analysis_sha256=analysis_sha256,
     )
+    validate_future_attack_path_impact_report(report)
+    return report
