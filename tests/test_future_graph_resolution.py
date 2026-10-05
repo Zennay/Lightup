@@ -6,6 +6,7 @@ import unittest
 
 import test_future_subject_resolution as subject_tests
 from lightup.ai.orchestration import RunContext
+from lightup.domain import AccessContext, Role
 from lightup.future_binding import bind_future_change_candidates
 from lightup.future_effects import (
     FutureSecurityEffect,
@@ -18,6 +19,7 @@ from lightup.future_graph_resolution import (
     FutureGraphResolution,
     apply_future_graph_resolution,
 )
+from lightup.future_subject_review import review_future_subjects
 from lightup.future_materialization import (
     EnvironmentEquivalence,
     FutureMaterializationResolution,
@@ -216,6 +218,27 @@ class FutureGraphResolutionTest(subject_tests.FutureSubjectResolutionTest):
             if fact.predicate == "future_graph.effect_id"
         }
         self.assertEqual(graph_effect_ids, {self.effect.effect_id})
+        report = review_future_subjects(
+            resolved,
+            self.state,
+            AccessContext("reader", Role.CLIENT_MEMBER, "client-1"),
+        )
+        self.assertTrue(report.graph_resolution_complete)
+        self.assertEqual(report.unresolved_graph_count, 0)
+        self.assertEqual(report.items[0].graph_resolution_status, "verified")
+        self.assertEqual(
+            report.items[0].graph_resolution_id,
+            self.graph.graph_resolution_id,
+        )
+        self.assertEqual(
+            report.items[0].resolved_effect_ids,
+            (self.effect.effect_id,),
+        )
+        self.assertEqual(
+            report.items[0].next_action,
+            "await_attack_path_analysis",
+        )
+        self.assertEqual(report.security_verdict, "not_evaluated")
 
     def test_graph_resolution_requires_explicit_verified_subject_decision(self):
         with self.assertRaisesRegex(ValueError, "explicit verified subject"):
@@ -340,6 +363,23 @@ class FutureGraphResolutionTest(subject_tests.FutureSubjectResolutionTest):
                 self.graph,
                 self.materialization,
                 self.state,
+            )
+
+    def test_review_revalidates_graph_evidence_after_resolution(self):
+        resolved = apply_future_graph_resolution(
+            self.reviewed, self.graph, self.materialization, self.state
+        )
+        with self.state.connect() as con:
+            con.execute(
+                "DELETE FROM evidence WHERE evidence_id=?",
+                (self.materialization_evidence_id,),
+            )
+
+        with self.assertRaisesRegex(KeyError, "unknown evidence"):
+            review_future_subjects(
+                resolved,
+                self.state,
+                AccessContext("reader", Role.CLIENT_MEMBER, "client-1"),
             )
 
     def test_exact_replay_is_idempotent(self):
