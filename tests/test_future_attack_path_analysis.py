@@ -188,7 +188,10 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
         item = report.items[0]
         self.assertEqual(item.impact, "potential_regression")
         self.assertEqual(item.risk_directions, ("increased",))
-        self.assertEqual(item.subject_decision_id, self.f.subject_decision_id)
+        self.assertEqual(
+            item.subject_decision_id,
+            "decision-graph-impact-increased",
+        )
         self.assertEqual(
             item.materialization_resolution_id,
             self.f.materialization.resolution_id,
@@ -407,7 +410,7 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(
                     ValueError,
-                    "current baseline does not match future lineage",
+                    "current baseline identity does not match future lineage",
                 ):
                     analyze_future_attack_path_impact(
                         resolved,
