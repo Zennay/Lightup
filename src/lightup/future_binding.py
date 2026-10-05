@@ -123,8 +123,11 @@ def suggest_subject_candidates(
     Multiple exact matches remain multiple candidates and therefore ambiguous.
     """
     _assert_changeset_future_pair(future, changeset)
-    if not attribute_keys or any(not key.strip() for key in attribute_keys):
-        raise ValueError("attribute_keys must contain non-empty names")
+    if (
+        not attribute_keys
+        or any(not isinstance(key, str) or not key.strip() for key in attribute_keys)
+    ):
+        raise ValueError("attribute_keys must contain non-empty string names")
 
     eligible: list[tuple[TwinNode, set[str]]] = []
     for node in future.nodes:
@@ -202,6 +205,8 @@ def bind_future_change_candidates(
         normalized = suggest_subject_candidates(future, changeset)
         binding_source = "exact_source_metadata"
     else:
+        if not isinstance(candidates, Mapping):
+            raise ValueError("candidates must be a mapping from signal IDs to node IDs")
         normalized = _normalize_explicit_candidates(future, changeset, candidates)
         binding_source = "explicit_candidates"
 
