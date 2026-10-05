@@ -428,6 +428,51 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
                 current=self.f.current,
             )
 
+    def test_analysis_digest_is_stable_and_binds_exact_impact_semantics(self):
+        increased = self._effect(
+            "effect-impact-digest-increased",
+            RiskDirection.INCREASED,
+        )
+        increased_future = self._resolved_with(
+            (increased,),
+            graph_id="graph-impact-digest-increased",
+        )
+        first = analyze_future_attack_path_impact(
+            increased_future,
+            self.f.state,
+            self.client,
+            current=self.f.current,
+        )
+        repeated = analyze_future_attack_path_impact(
+            increased_future,
+            self.f.state,
+            self.client,
+            current=self.f.current,
+        )
+
+        self.assertEqual(first.analysis_sha256, repeated.analysis_sha256)
+        self.assertEqual(len(first.analysis_sha256), 64)
+        int(first.analysis_sha256, 16)
+
+        decreased = self._effect(
+            "effect-impact-digest-decreased",
+            RiskDirection.DECREASED,
+        )
+        decreased_future = self._resolved_with(
+            (decreased,),
+            graph_id="graph-impact-digest-decreased",
+        )
+        second = analyze_future_attack_path_impact(
+            decreased_future,
+            self.f.state,
+            self.client,
+            current=self.f.current,
+        )
+
+        self.assertNotEqual(first.analysis_sha256, second.analysis_sha256)
+        self.assertEqual(first.items[0].impact, "potential_regression")
+        self.assertEqual(second.items[0].impact, "potential_improvement")
+
     def test_deleted_graph_evidence_is_rejected_on_read(self):
         resolved = self._resolved_with(
             (self.f.effect,),
