@@ -195,6 +195,7 @@ class ChangeSemanticIngestionTest(unittest.TestCase):
         self.assertEqual(metadata["future_change_projection"], "inferred_only")
         self.assertEqual(metadata["future_base_twin_id"], current.twin_id)
         self.assertEqual(metadata["future_base_twin_version"], str(current.version))
+        self.assertEqual(metadata["future_base_twin_sha256"], current.stable_digest())
         self.assertEqual(metadata["future_semantics"], "unresolved")
 
 
