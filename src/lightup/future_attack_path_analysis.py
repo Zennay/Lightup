@@ -145,6 +145,8 @@ def analyze_future_attack_path_impact(
         )
 
     facts_by_id = {fact.fact_id: fact for fact in future.facts}
+    current_nodes = {node.node_id: node for node in current.nodes}
+    future_nodes = {node.node_id: node for node in future.nodes}
     items: list[FutureAttackPathImpactItem] = []
 
     for reviewed in review.items:
@@ -158,8 +160,6 @@ def analyze_future_attack_path_impact(
                 "future attack-path impact analysis found incomplete verified graph state"
             )
 
-        current_nodes = {node.node_id: node for node in current.nodes}
-        future_nodes = {node.node_id: node for node in future.nodes}
         current_subject = current_nodes.get(reviewed.verified_subject_id)
         future_subject = future_nodes.get(reviewed.verified_subject_id)
         if current_subject is None:
