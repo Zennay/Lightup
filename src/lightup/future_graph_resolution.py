@@ -40,6 +40,7 @@ _FIXED_GRAPH_PREDICATES = (
     "future_graph.subject_decision_id",
     "future_graph.subject_node_id",
     "future_graph.materialization_resolution_id",
+    "future_graph.effect_semantics_sha256",
     "future_graph.effect_count",
 )
 _EFFECT_PREDICATES = (
@@ -83,6 +84,52 @@ def _validate_evidence_refs(name: str, refs: tuple[str, ...]) -> None:
         _bounded(f"{name} evidence ref", ref)
 
 
+def _effect_semantics_sha256(
+    future: SecurityTwin,
+    change_node_id: str,
+    effect_ids: tuple[str, ...],
+) -> str:
+    """Bind graph resolution to the exact verified effect semantics it consumed."""
+
+    facts_by_id = {fact.fact_id: fact for fact in future.facts}
+    records: list[str] = []
+    for effect_id in sorted(effect_ids):
+        values: list[str] = []
+        evidence_refs: tuple[str, ...] | None = None
+        for predicate in _EFFECT_PREDICATES:
+            fact = facts_by_id.get(_effect_fact_id(effect_id, predicate))
+            if fact is None:
+                raise ValueError(
+                    f"future graph effect semantics missing effect {effect_id!r}"
+                )
+            if (
+                fact.subject_id != change_node_id
+                or fact.predicate != predicate
+                or fact.provenance is not FactProvenance.VERIFIED
+                or fact.confidence != 1.0
+            ):
+                raise ValueError(
+                    f"future graph effect semantics for {effect_id!r} are not canonical"
+                )
+            _validate_evidence_refs(
+                f"future graph effect semantics {effect_id}", fact.evidence_refs
+            )
+            if evidence_refs is None:
+                evidence_refs = fact.evidence_refs
+            elif fact.evidence_refs != evidence_refs:
+                raise ValueError(
+                    f"future graph effect semantics for {effect_id!r} have "
+                    "inconsistent evidence lineage"
+                )
+            values.append(fact.value)
+        records.append(
+            "\x1e".join(
+                (effect_id, *values, *sorted(evidence_refs or ()))
+            )
+        )
+    return sha256("\x1f".join(records).encode("utf-8")).hexdigest()
+
+
 @dataclass(frozen=True)
 class FutureGraphResolution:
     graph_resolution_id: str
@@ -122,6 +169,7 @@ class FutureGraphResolution:
 def _graph_facts(
     resolution: FutureGraphResolution,
     evidence_refs: tuple[str, ...],
+    effect_semantics_sha256: str,
 ) -> tuple[TwinFact, ...]:
     values = (
         ("future_graph.resolution_id", resolution.graph_resolution_id),
@@ -131,6 +179,7 @@ def _graph_facts(
             "future_graph.materialization_resolution_id",
             resolution.materialization_resolution_id,
         ),
+        ("future_graph.effect_semantics_sha256", effect_semantics_sha256),
         ("future_graph.effect_count", str(len(resolution.effect_ids))),
     ) + tuple(
         ("future_graph.effect_id", effect_id)
@@ -274,6 +323,16 @@ def validate_future_graph_snapshot(
         )
         if effect_count != len(effect_ids):
             raise ValueError("future graph effect count does not match graph facts")
+        expected_semantics = _effect_semantics_sha256(
+            future, change_id, effect_ids
+        )
+        if (
+            fixed["future_graph.effect_semantics_sha256"].value
+            != expected_semantics
+        ):
+            raise ValueError(
+                "future graph effect semantics digest does not match current effect state"
+            )
 
         for fact in facts:
             if fact.fact_id != _stable_id(
@@ -507,10 +566,15 @@ def apply_future_graph_resolution(
     effect_refs = _effect_evidence_refs(
         future, resolution, materialization, state
     )
+    effect_semantics_sha256 = _effect_semantics_sha256(
+        future, resolution.change_node_id, resolution.effect_ids
+    )
     evidence_refs = tuple(sorted(set(subject_link.evidence_refs) | set(effect_refs)))
     _validate_evidence_refs("future graph resolution", evidence_refs)
 
-    facts = _graph_facts(resolution, evidence_refs)
+    facts = _graph_facts(
+        resolution, evidence_refs, effect_semantics_sha256
+    )
     relationship = _graph_relationship(resolution, evidence_refs)
     existing_facts = {fact.fact_id: fact for fact in future.facts}
     existing_relationships = {
