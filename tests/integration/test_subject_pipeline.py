@@ -27,6 +27,9 @@ from lightup.future_attack_path_graph_diff_preview import (
     AttackPathGraphDiffAction,
     build_future_attack_path_graph_diff_preview,
 )
+from lightup.future_attack_path_security_delta_report import (
+    build_future_attack_path_security_delta_report,
+)
 from lightup.future_attack_path_transition import propose_future_attack_path_transitions
 from lightup.future_attack_path_transition_resolution import (
     AttackPathTransitionClassification,
@@ -257,7 +260,14 @@ class RealBindingSubjectResolutionTest(subject_tests.FutureSubjectResolutionTest
 
         self.assertEqual(dataclasses.asdict(current), before_current)
         self.assertEqual(resolved.attack_paths, before_future_paths)
-        return current, proposal, preview
+        return (
+            current,
+            resolved,
+            proposal,
+            preview,
+            transition_context,
+            transition_resolution,
+        )
 
     def test_materialized_effects_then_subject_review_preserve_all_evidence(self):
         effected = self._materialize(self.bound)
@@ -411,13 +421,27 @@ class RealBindingSubjectResolutionTest(subject_tests.FutureSubjectResolutionTest
             suffix,
         ) in cases:
             with self.subTest(classification=classification.value):
-                current, proposal, preview = (
-                    self._graph_diff_preview_from_real_pipeline(
+                (
+                    current,
+                    resolved,
+                    proposal,
+                    preview,
+                    transition_context,
+                    transition_resolution,
+                ) = self._graph_diff_preview_from_real_pipeline(
                         classification=classification,
                         direction=direction,
                         suffix=suffix,
                         with_existing_path=with_existing_path,
                     )
+                before_current = dataclasses.asdict(current)
+                before_future_paths = resolved.attack_paths
+                report = build_future_attack_path_security_delta_report(
+                    preview,
+                    proposal,
+                    (transition_resolution,),
+                    (transition_context,),
+                    self.state,
                 )
                 self.assertTrue(preview.preview_complete)
                 self.assertEqual(
@@ -436,6 +460,27 @@ class RealBindingSubjectResolutionTest(subject_tests.FutureSubjectResolutionTest
                 self.assertFalse(preview.attack_path_mutation_allowed)
                 self.assertEqual(preview.future_semantics, "unresolved")
                 self.assertEqual(preview.security_verdict, "not_evaluated")
+                self.assertTrue(report.report_complete)
+                self.assertEqual(report.preview_sha256, preview.preview_sha256)
+                self.assertEqual(report.items[0].classification, classification)
+                self.assertEqual(report.items[0].action, expected_action)
+                self.assertEqual(
+                    report.items[0].evidence_ids,
+                    transition_resolution.evidence_ids,
+                )
+                self.assertEqual(
+                    report.items[0].capability_ids,
+                    transition_resolution.capability_ids,
+                )
+                self.assertEqual(
+                    report.contains_insufficient_evidence,
+                    expected_insufficient,
+                )
+                self.assertFalse(report.attack_path_mutation_allowed)
+                self.assertEqual(report.future_semantics, "unresolved")
+                self.assertEqual(report.security_verdict, "not_evaluated")
+                self.assertEqual(dataclasses.asdict(current), before_current)
+                self.assertEqual(resolved.attack_paths, before_future_paths)
 
     def test_snapshot_bound_review_cannot_be_reused_after_materialization(self):
         effected = self._materialize(self.bound)

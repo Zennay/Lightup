@@ -268,3 +268,32 @@ def build_future_attack_path_graph_diff_preview(
         contains_insufficient_evidence=contains_insufficient,
         preview_sha256=digest,
     )
+
+
+def validate_future_attack_path_graph_diff_preview(
+    preview: FutureAttackPathGraphDiffPreview,
+    proposal: FutureAttackPathTransitionProposal,
+    resolutions: tuple[FutureAttackPathTransitionResolution, ...],
+    contexts: tuple[RunContext, ...],
+    state: StateStore,
+) -> FutureAttackPathGraphDiffPreview:
+    """Rebuild and compare a preview against its live verified lineage.
+
+    Reporting and later policy stages must never trust a previously serialized
+    preview on its own. Rebuilding forces proposal, resolution, RunContext and
+    evidence validation to run again against current StateStore contents.
+    """
+    if not isinstance(preview, FutureAttackPathGraphDiffPreview):
+        raise ValueError("preview must be a FutureAttackPathGraphDiffPreview")
+
+    rebuilt = build_future_attack_path_graph_diff_preview(
+        proposal,
+        resolutions,
+        contexts,
+        state,
+    )
+    if rebuilt != preview:
+        raise ValueError(
+            "graph diff preview does not match its live validated lineage"
+        )
+    return rebuilt
