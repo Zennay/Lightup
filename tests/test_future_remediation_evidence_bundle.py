@@ -220,5 +220,37 @@ class FutureRemediationEvidenceBundleTest(unittest.TestCase):
             )
 
 
+    def test_noncanonical_ledger_digest_fails_closed(self):
+        (
+            _,
+            proposal,
+            context,
+            resolution,
+            preview,
+            report,
+            plan,
+        ) = self.p._plan(
+            AttackPathTransitionClassification.INTRODUCED,
+            suffix="remediation-evidence-bad-digest",
+        )
+        evidence_id = plan.items[0].evidence_ids[0]
+        with self.state.connect() as con:
+            con.execute(
+                "UPDATE evidence SET sha256=? WHERE evidence_id=?",
+                ("NOT-A-CANONICAL-DIGEST", evidence_id),
+            )
+
+        with self.assertRaisesRegex(ValueError, "canonical lowercase SHA-256"):
+            build_future_remediation_evidence_bundle(
+                plan,
+                report,
+                preview,
+                proposal,
+                (resolution,),
+                (context,),
+                self.state,
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
