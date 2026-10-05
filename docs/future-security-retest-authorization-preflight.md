@@ -44,9 +44,14 @@ The preflight requires the authorization grant to:
 Expired, non-recurring, asset-out-of-scope, or capability-incomplete grants
 produce `reauthorization_required` rather than an executable request.
 
-The deterministic preflight digest binds the request SHA, grant identity,
-hashed authorization reference, exact check time, ordered item bindings,
-requested capabilities, status, and reasons.
+The preflight also emits a canonical `authorization_grant_sha256` over the
+grant identity, approver, hashed authorization reference, normalized asset and
+capability scope, exclusions, maximum risk, exact validity window, and recurring
+retest flag. The deterministic preflight digest binds that semantic grant digest
+alongside the request SHA, exact check time, ordered item bindings, requested
+capabilities, status, and reasons. This prevents materially different grants
+from producing the same audit digest merely because they reach the same policy
+decision.
 
 This is the stacked planning package for issue #53. It must remain draft until
 issue #48 / PR #52 has merged and this branch is restacked onto the resulting
