@@ -8,8 +8,10 @@ project into and compare safely.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
+from dataclasses import asdict, dataclass, field, replace
 from enum import Enum
+from hashlib import sha256
+import json
 from uuid import uuid4
 
 
@@ -229,6 +231,17 @@ class SecurityTwin:
                         f"attack path {path.path_id!r} references an unknown node"
                     )
             path_ids.add(path.path_id)
+
+    def stable_digest(self) -> str:
+        """Return a deterministic digest of the exact validated snapshot."""
+        self.validate()
+        encoded = json.dumps(
+            asdict(self),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        ).encode("utf-8")
+        return sha256(encoded).hexdigest()
 
     def next_snapshot(
         self,
