@@ -74,7 +74,13 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
             self.f.state,
         )
 
-    def _resolved_from_current(self, current, *, graph_id: str):
+    def _resolved_from_current(
+        self,
+        current,
+        *,
+        graph_id: str,
+        direction: RiskDirection = RiskDirection.INCREASED,
+    ):
         future = derive_future_twin(current, self.f.changeset)
         bound, bindings = bind_future_change_candidates(
             future, self.f.changeset
@@ -82,7 +88,7 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
         self.assertEqual(len(bindings), 1)
         self.assertEqual(bindings[0].status.value, "single_candidate")
         effected, materialization, effect = self.f._materialize_and_effect(
-            bound, suffix=graph_id
+            bound, suffix=graph_id, direction=direction
         )
         candidate = next(
             relationship
