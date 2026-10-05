@@ -208,6 +208,48 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
                 current=self.f.current,
             )
 
+    def test_verified_subject_must_match_current_baseline_identity(self):
+        resolved = self._resolved_with(
+            (self.f.effect,),
+            graph_id="graph-impact-subject-drift",
+        )
+        forged_subject = dataclasses.replace(
+            self.f.subject,
+            label="Forged current subject identity",
+        )
+        forged = resolved.next_snapshot(
+            nodes=tuple(
+                forged_subject
+                if node.node_id == self.f.subject.node_id
+                else node
+                for node in resolved.nodes
+            )
+        )
+
+        with self.assertRaisesRegex(ValueError, "subject drifted"):
+            analyze_future_attack_path_impact(
+                forged,
+                self.f.state,
+                self.client,
+                current=self.f.current,
+            )
+
+        current_missing = dataclasses.replace(
+            self.f.current,
+            nodes=tuple(
+                node
+                for node in self.f.current.nodes
+                if node.node_id != self.f.subject.node_id
+            ),
+        )
+        with self.assertRaisesRegex(ValueError, "absent from current baseline"):
+            analyze_future_attack_path_impact(
+                resolved,
+                self.f.state,
+                self.client,
+                current=current_missing,
+            )
+
     def test_future_attack_path_drift_from_current_baseline_is_rejected(self):
         resolved = self._resolved_with(
             (self.f.effect,),
