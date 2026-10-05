@@ -195,6 +195,18 @@ def apply_future_materialization_resolution(
     evidence = tuple(state.get_evidence(item) for item in resolution.evidence_ids)
     if any(item.run_id != resolution.run_id for item in evidence):
         raise ValueError("materialization evidence belongs to a different run")
+
+    for item in evidence:
+        evidence_context = dict(item.metadata)
+        if evidence_context.get("client_id") != context.client_id:
+            raise ValueError("materialization evidence belongs to a different client")
+        if evidence_context.get("engagement_id") != context.engagement_id:
+            raise ValueError("materialization evidence belongs to a different engagement")
+        if evidence_context.get("mode") != context.mode.value:
+            raise ValueError("materialization evidence mode does not match RunContext")
+        if evidence_context.get("is_lab") != "true":
+            raise PermissionError("future materialization evidence is not lab-bound")
+
     evidence_capabilities = {item.capability_id for item in evidence}
     if evidence_capabilities != set(resolution.capability_ids):
         raise ValueError(
