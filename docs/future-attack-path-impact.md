@@ -42,6 +42,8 @@ The report also carries `analysis_sha256`: a canonical SHA-256 over the exact te
 
 `validate_future_attack_path_impact_report` is the required consumer gate for that handoff. It recomputes the canonical digest and fails closed if any bound identity, impact item, digest, completion flag, future-semantics boundary or security-verdict boundary has changed. Generation itself runs the same validator before returning a report.
 
+`future_attack_path_impact_report_from_dict` is the strict serialization boundary for persisted or cross-stage handoffs. It accepts only the exact report/item schema, converts JSON arrays back to immutable tuples, rejects extra/missing fields and invalid types, and then runs the same digest/boundary validator before returning a typed report.
+
 ## Conservative classifications
 
 The report classifies only normalized verified risk directions:
@@ -85,3 +87,4 @@ Regression coverage requires:
 - cross-tenant rejection before ledger inspection;
 - byte-for-byte read-only behavior for the input twin and its attack paths.
 - fail-closed consumer validation for digest tampering and attempts to change `future_semantics` or `security_verdict`.
+- strict JSON round-trip coverage, including rejection of schema drift, malformed item containers and post-serialization semantic tampering.
