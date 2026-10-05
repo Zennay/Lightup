@@ -205,7 +205,10 @@ def apply_future_materialization_resolution(
     existing_by_id = {fact.fact_id: fact for fact in future.facts}
     collisions = [fact for fact in facts if fact.fact_id in existing_by_id]
     if collisions:
-        if all(existing_by_id[fact.fact_id] == fact for fact in facts):
+        if all(
+            fact.fact_id in existing_by_id and existing_by_id[fact.fact_id] == fact
+            for fact in facts
+        ):
             return future
         raise ValueError("materialization resolution collides with existing twin facts")
 
