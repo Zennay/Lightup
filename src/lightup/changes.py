@@ -12,7 +12,7 @@ from enum import Enum
 from hashlib import sha256
 import json
 
-from .twin import FactProvenance, SecurityTwin
+from .twin import FactProvenance, SecurityTwin, TwinFact, TwinNode, TwinNodeKind
 
 
 class ChangeSourceKind(str, Enum):
@@ -206,6 +206,55 @@ class ChangeSet:
         return sha256(encoded).hexdigest()
 
 
+
+def _project_future_change_signals(
+    changeset: ChangeSet,
+) -> tuple[tuple[TwinNode, ...], tuple[TwinFact, ...]]:
+    """Represent inferred change signals in the future twin without asserting effects."""
+
+    nodes: list[TwinNode] = []
+    facts: list[TwinFact] = []
+    for signal in changeset.semantic_signals:
+        identity = sha256(
+            f"{changeset.changeset_id}\x1f{signal.signal_id}".encode("utf-8")
+        ).hexdigest()[:24]
+        node_id = f"change:{identity}"
+        nodes.append(
+            TwinNode(
+                node_id=node_id,
+                kind=TwinNodeKind.CHANGE,
+                label=signal.summary,
+                attributes=(
+                    ("changeset_id", changeset.changeset_id),
+                    ("object_path", signal.object_path),
+                    ("signal_id", signal.signal_id),
+                ),
+            )
+        )
+
+        for predicate, value in (
+            ("change.signal_kind", signal.kind.value),
+            ("change.direction", signal.direction.value),
+            ("change.summary", signal.summary),
+        ):
+            fact_identity = sha256(
+                f"{node_id}\x1f{predicate}\x1f{value}".encode("utf-8")
+            ).hexdigest()[:24]
+            facts.append(
+                TwinFact(
+                    fact_id=f"fact:{fact_identity}",
+                    subject_id=node_id,
+                    predicate=predicate,
+                    value=value,
+                    provenance=signal.provenance,
+                    confidence=signal.confidence,
+                    evidence_refs=signal.evidence_refs,
+                )
+            )
+
+    return tuple(nodes), tuple(facts)
+
+
 def derive_future_twin(current: SecurityTwin, changeset: ChangeSet) -> SecurityTwin:
     """Attach a ChangeSet to a separate future twin without inventing effects.
 
@@ -220,6 +269,18 @@ def derive_future_twin(current: SecurityTwin, changeset: ChangeSet) -> SecurityT
         )
 
     future = current.derive_future(changeset.source_ref)
+    projected_nodes, projected_facts = _project_future_change_signals(changeset)
+
+    current_node_ids = {node.node_id for node in future.nodes}
+    projected_node_ids = {node.node_id for node in projected_nodes}
+    if current_node_ids.intersection(projected_node_ids):
+        raise ValueError("future change projection collides with an existing node_id")
+
+    current_fact_ids = {fact.fact_id for fact in future.facts}
+    projected_fact_ids = {fact.fact_id for fact in projected_facts}
+    if current_fact_ids.intersection(projected_fact_ids):
+        raise ValueError("future change projection collides with an existing fact_id")
+
     metadata = dict(future.metadata)
     metadata.update(
         {
@@ -230,9 +291,17 @@ def derive_future_twin(current: SecurityTwin, changeset: ChangeSet) -> SecurityT
             "changeset_object_count": str(len(changeset.objects)),
             "changeset_signal_count": str(len(changeset.semantic_signals)),
             "changeset_uncertainty_count": str(len(changeset.uncertainties)),
+            "future_change_node_count": str(len(projected_nodes)),
+            "future_change_fact_count": str(len(projected_facts)),
+            "future_change_projection": "inferred_only",
             "future_semantics": "unresolved",
         }
     )
-    future = replace(future, metadata=tuple(sorted(metadata.items())))
+    future = replace(
+        future,
+        nodes=future.nodes + projected_nodes,
+        facts=future.facts + projected_facts,
+        metadata=tuple(sorted(metadata.items())),
+    )
     future.validate()
     return future

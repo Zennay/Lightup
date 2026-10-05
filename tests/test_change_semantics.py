@@ -171,12 +171,28 @@ class ChangeSemanticIngestionTest(unittest.TestCase):
         current = SecurityTwin.current("client-1")
         future = derive_future_twin(current, changeset)
 
-        self.assertEqual(future.nodes, current.nodes)
-        self.assertEqual(future.facts, current.facts)
+        self.assertEqual(future.nodes[: len(current.nodes)], current.nodes)
+        self.assertEqual(future.facts[: len(current.facts)], current.facts)
         self.assertEqual(future.relationships, current.relationships)
         self.assertEqual(future.attack_paths, current.attack_paths)
+
+        change_nodes = [
+            node for node in future.nodes[len(current.nodes) :]
+            if node.kind.value == "change"
+        ]
+        self.assertEqual(len(change_nodes), 1)
+        change_facts = [
+            fact for fact in future.facts[len(current.facts) :]
+            if fact.subject_id == change_nodes[0].node_id
+        ]
+        self.assertTrue(change_facts)
+        self.assertTrue(
+            all(fact.provenance is FactProvenance.INFERRED for fact in change_facts)
+        )
+
         metadata = dict(future.metadata)
         self.assertEqual(metadata["changeset_signal_count"], "1")
+        self.assertEqual(metadata["future_change_projection"], "inferred_only")
         self.assertEqual(metadata["future_semantics"], "unresolved")
 
 
