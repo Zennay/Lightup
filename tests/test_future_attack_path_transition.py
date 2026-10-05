@@ -148,6 +148,22 @@ class FutureAttackPathTransitionProposalTest(unittest.TestCase):
                 dataclasses.replace(report, analysis_sha256="0" * 64)
             )
 
+    def test_proposal_identity_versions_and_digests_fail_closed(self):
+        report = self._report(RiskDirection.INCREASED, suffix="identity")
+        proposal = propose_future_attack_path_transitions(report)
+
+        invalid_cases = (
+            dataclasses.replace(proposal, client_id=""),
+            dataclasses.replace(proposal, current_twin_version=0),
+            dataclasses.replace(proposal, twin_version=True),
+            dataclasses.replace(proposal, impact_analysis_sha256="not-a-digest"),
+            dataclasses.replace(proposal, proposal_sha256="g" * 64),
+        )
+        for invalid in invalid_cases:
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(ValueError):
+                    validate_future_attack_path_transition_proposal(invalid)
+
     def test_proposal_boundary_cannot_claim_mutation_or_verdict(self):
         report = self._report(RiskDirection.INCREASED, suffix="boundary")
         proposal = propose_future_attack_path_transitions(report)
