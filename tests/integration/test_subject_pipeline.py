@@ -19,6 +19,9 @@ from lightup.future_materialization import (
     EnvironmentEquivalence, FutureMaterializationResolution,
     MaterializationOutcome, apply_future_materialization_resolution,
 )
+from lightup.future_graph_resolution import (
+    FutureGraphResolution, apply_future_graph_resolution,
+)
 from lightup.domain import AccessContext, Role
 from lightup.future_subject_resolution import apply_future_subject_resolution
 from lightup.future_subject_review import review_future_subjects
@@ -51,7 +54,7 @@ class RealBindingSubjectResolutionTest(subject_tests.FutureSubjectResolutionTest
             self.resolution, decision_id=decision_id, evidence_ids=(evidence_id,)
         )
 
-    def _materialize(self, future):
+    def _materialize_bundle(self, future):
         run_id = self.state.create_run("127.0.0.1", activation_mode="lab_autonomous")
         context = RunContext.for_lab(
             run_id, engagement_id="integration-lab", client_id="client-1"
@@ -83,7 +86,13 @@ class RealBindingSubjectResolutionTest(subject_tests.FutureSubjectResolutionTest
             kind=SecurityEffectKind.ATTACK_SURFACE_ADDED,
             risk_direction=RiskDirection.INCREASED, evidence_ids=(evidence_id,),
         )
-        return apply_future_security_effects(materialized, resolution, (effect,))
+        effected = apply_future_security_effects(
+            materialized, resolution, (effect,)
+        )
+        return effected, resolution, effect
+
+    def _materialize(self, future):
+        return self._materialize_bundle(future)[0]
 
     def test_materialized_effects_then_subject_review_preserve_all_evidence(self):
         effected = self._materialize(self.bound)
@@ -101,6 +110,46 @@ class RealBindingSubjectResolutionTest(subject_tests.FutureSubjectResolutionTest
             fact.provenance is FactProvenance.INFERRED
             for fact in resolved.facts if fact.predicate.startswith("change.")
         ))
+
+    def test_real_pipeline_resolves_verified_effects_onto_reviewed_subject(self):
+        effected, materialization, effect = self._materialize_bundle(self.bound)
+        reviewed = apply_future_subject_resolution(
+            effected,
+            self._review(effected, "graph-integration-review"),
+            self.state,
+        )
+        graph = FutureGraphResolution(
+            graph_resolution_id="graph-integration",
+            client_id="client-1",
+            changeset_id=self.changeset.changeset_id,
+            change_node_id=self.change_node.node_id,
+            subject_node_id=self.subject.node_id,
+            subject_decision_id="graph-integration-review",
+            materialization_resolution_id=materialization.resolution_id,
+            effect_ids=(effect.effect_id,),
+        )
+
+        resolved = apply_future_graph_resolution(
+            reviewed, graph, materialization, self.state
+        )
+
+        self.assertEqual(resolved.attack_paths, self.current.attack_paths)
+        self.assertEqual(dict(resolved.metadata)["future_semantics"], "unresolved")
+        self.assertEqual(dict(resolved.metadata)["future_graph_resolution_count"], "1")
+        self.assertEqual(
+            [
+                relationship.target_id
+                for relationship in resolved.relationships
+                if relationship.relation == "verified_effects_on_subject"
+            ],
+            [self.subject.node_id],
+        )
+        self.assertIs(
+            apply_future_graph_resolution(
+                resolved, graph, materialization, self.state
+            ),
+            resolved,
+        )
 
     def test_snapshot_bound_review_cannot_be_reused_after_materialization(self):
         effected = self._materialize(self.bound)
