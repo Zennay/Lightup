@@ -10,7 +10,10 @@ import test_future_graph_resolution as graph_tests
 from lightup.changes import derive_future_twin
 from lightup.future_binding import bind_future_change_candidates
 from lightup.domain import AccessContext, Role, TenantIsolationError
-from lightup.future_attack_path_analysis import analyze_future_attack_path_impact
+from lightup.future_attack_path_analysis import (
+    analyze_future_attack_path_impact,
+    validate_future_attack_path_impact_report,
+)
 from lightup.future_effects import (
     FutureSecurityEffect,
     RiskDirection,
@@ -472,6 +475,43 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
         self.assertNotEqual(first.analysis_sha256, second.analysis_sha256)
         self.assertEqual(first.items[0].impact, "potential_regression")
         self.assertEqual(second.items[0].impact, "potential_improvement")
+
+    def test_report_validator_rejects_digest_and_boundary_tampering(self):
+        resolved = self._resolved_with(
+            (self.f.effect,),
+            graph_id="graph-impact-validator",
+        )
+        report = analyze_future_attack_path_impact(
+            resolved,
+            self.f.state,
+            self.client,
+            current=self.f.current,
+        )
+        validate_future_attack_path_impact_report(report)
+
+        with self.assertRaisesRegex(ValueError, "digest mismatch"):
+            validate_future_attack_path_impact_report(
+                dataclasses.replace(report, analysis_sha256="0" * 64)
+            )
+
+        tampered_item = dataclasses.replace(
+            report.items[0],
+            impact="potential_improvement",
+        )
+        with self.assertRaisesRegex(ValueError, "digest mismatch"):
+            validate_future_attack_path_impact_report(
+                dataclasses.replace(report, items=(tampered_item,))
+            )
+
+        with self.assertRaisesRegex(ValueError, "must not claim a security verdict"):
+            validate_future_attack_path_impact_report(
+                dataclasses.replace(report, security_verdict="approved")
+            )
+
+        with self.assertRaisesRegex(ValueError, "preserve unresolved"):
+            validate_future_attack_path_impact_report(
+                dataclasses.replace(report, future_semantics="resolved")
+            )
 
     def test_deleted_graph_evidence_is_rejected_on_read(self):
         resolved = self._resolved_with(
