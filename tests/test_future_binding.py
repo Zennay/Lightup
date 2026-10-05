@@ -186,6 +186,20 @@ class FutureSubjectBindingTest(unittest.TestCase):
                 candidates={"unknown-signal": ()},
             )
 
+    def test_scalar_candidate_mapping_is_rejected(self):
+        api = TwinNode("api-1", TwinNodeKind.API, "API")
+        current = SecurityTwin.current("client-1").next_snapshot(nodes=(api,))
+        changeset = self._changeset()
+        future = derive_future_twin(current, changeset)
+        signal_id = changeset.semantic_signals[0].signal_id
+
+        with self.assertRaises(ValueError):
+            bind_future_change_candidates(
+                future,
+                changeset,
+                candidates={signal_id: "api-1"},
+            )
+
     def test_suggestions_ignore_invalid_candidate_path_metadata(self):
         api = TwinNode(
             "api-1",
