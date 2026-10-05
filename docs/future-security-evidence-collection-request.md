@@ -70,3 +70,20 @@ collect the missing evidence. That later package must pass its own capability,
 scope, authorization and execution-policy gates.
 
 Refs #61.
+
+
+## Strict serialized handoff
+
+Persisted or cross-stage JSON must be parsed with
+`future_security_evidence_collection_request_from_dict`. The parser accepts
+only the exact request/item schema, exact primitive types, canonical enum
+values, canonical sorted/unique lineage arrays and lowercase SHA-256 digests.
+It also requires every safety flag to remain false, the evidence gap count to
+match the items, canonical item ordering, and a recomputed matching
+`request_sha256`.
+
+Strict parsing is an integrity boundary, not a trust boundary. After parsing,
+consumers must still call
+`validate_future_security_evidence_collection_request` with the live plan,
+report, preview, proposal, resolutions, run contexts and StateStore before any
+follow-up component may use the request.
