@@ -111,7 +111,7 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
         )
         before = dataclasses.asdict(resolved)
         report = analyze_future_attack_path_impact(
-            resolved, self.f.state, self.client
+            resolved, self.f.state, self.client, current=self.f.current
         )
 
         self.assertTrue(report.analysis_complete)
@@ -142,7 +142,7 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
             graph_id="graph-impact-decreased",
         )
         report = analyze_future_attack_path_impact(
-            resolved, self.f.state, self.client
+            resolved, self.f.state, self.client, current=self.f.current
         )
 
         self.assertEqual(report.items[0].impact, "potential_improvement")
@@ -159,7 +159,7 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
             graph_id="graph-impact-mixed",
         )
         mixed_report = analyze_future_attack_path_impact(
-            mixed, self.f.state, self.client
+            mixed, self.f.state, self.client, current=self.f.current
         )
         self.assertEqual(mixed_report.items[0].impact, "mixed")
 
@@ -173,7 +173,7 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
             graph_id="graph-impact-unchanged",
         )
         unchanged_report = analyze_future_attack_path_impact(
-            unchanged_resolved, self.f.state, self.client
+            unchanged_resolved, self.f.state, self.client, current=self.f.current
         )
         self.assertEqual(unchanged_report.items[0].impact, "unchanged")
 
@@ -205,12 +205,66 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
                 self.client,
             )
 
+    def test_future_attack_path_drift_from_current_baseline_is_rejected(self):
+        resolved = self._resolved_with(
+            (self.f.effect,),
+            graph_id="graph-impact-path-drift",
+        )
+        forged_path = AttackPath(
+            path_id="path-forged-future",
+            title="Unexpected future-only path",
+            steps=(
+                AttackStep(
+                    source_id=self.f.subject.node_id,
+                    target_id=self.f.change_node.node_id,
+                    relation="unexpected_future_transition",
+                ),
+            ),
+        )
+        forged = resolved.next_snapshot(
+            attack_paths=resolved.attack_paths + (forged_path,)
+        )
+
+        with self.assertRaisesRegex(ValueError, "unchanged from current baseline"):
+            analyze_future_attack_path_impact(
+                forged,
+                self.f.state,
+                self.client,
+                current=self.f.current,
+            )
+
+    def test_current_baseline_must_be_current_and_same_tenant(self):
+        resolved = self._resolved_with(
+            (self.f.effect,),
+            graph_id="graph-impact-current-baseline",
+        )
+        with self.assertRaisesRegex(ValueError, "current Security Twin baseline"):
+            analyze_future_attack_path_impact(
+                resolved,
+                self.f.state,
+                self.client,
+                current=self.f.future,
+            )
+        other_current = dataclasses.replace(
+            self.f.current,
+            twin_id="other-current",
+            client_id="client-2",
+        )
+        with self.assertRaisesRegex(ValueError, "cannot cross tenants"):
+            analyze_future_attack_path_impact(
+                resolved,
+                self.f.state,
+                self.client,
+                current=other_current,
+            )
+
     def test_unresolved_graph_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "complete verified graph"):
             analyze_future_attack_path_impact(
                 self.f.reviewed,
                 self.f.state,
                 self.client,
+                current=self.f.current,
             )
 
     def test_deleted_graph_evidence_is_rejected_on_read(self):
@@ -229,6 +283,7 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
                 resolved,
                 self.f.state,
                 self.client,
+                current=self.f.current,
             )
 
     def test_cross_tenant_access_fails_before_ledger_lookup(self):
@@ -243,6 +298,7 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
                     resolved,
                     self.f.state,
                     other,
+                    current=self.f.current,
                 )
             lookup.assert_not_called()
 
