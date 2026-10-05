@@ -204,6 +204,7 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
                 forged,
                 self.f.state,
                 self.client,
+                current=self.f.current,
             )
 
     def test_future_attack_path_drift_from_current_baseline_is_rejected(self):
