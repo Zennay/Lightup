@@ -38,6 +38,8 @@ Each item binds the analysis to:
 
 The report is immutable and JSON-serializable.
 
+The report also carries `analysis_sha256`: a canonical SHA-256 over the exact tenant, current/future twin lineage, ChangeSet identity, ordered impact items, conservative impact labels and the fixed `not_evaluated`/`unresolved` boundary. A later transition stage can therefore bind itself to one exact reviewed analysis instead of accepting a semantically similar but different report.
+
 ## Conservative classifications
 
 The report classifies only normalized verified risk directions:
