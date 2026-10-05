@@ -121,6 +121,11 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
         item = report.items[0]
         self.assertEqual(item.impact, "potential_regression")
         self.assertEqual(item.risk_directions, ("increased",))
+        self.assertEqual(item.subject_decision_id, self.f.subject_decision_id)
+        self.assertEqual(
+            item.materialization_resolution_id,
+            self.f.materialization.resolution_id,
+        )
         self.assertEqual(item.current_attack_path_ids, ("path-existing-1",))
         self.assertEqual(dataclasses.asdict(resolved), before)
         exported = json.loads(json.dumps(report.as_dict()))
@@ -171,6 +176,34 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
             unchanged_resolved, self.f.state, self.client
         )
         self.assertEqual(unchanged_report.items[0].impact, "unchanged")
+
+    def test_materialization_identity_mismatch_is_rejected(self):
+        resolved = self._resolved_with(
+            (self.f.effect,),
+            graph_id="graph-impact-materialization-mismatch",
+        )
+        materialization_fact = next(
+            fact
+            for fact in resolved.facts
+            if fact.subject_id == self.f.change_node.node_id
+            and fact.predicate == "future_graph.materialization_resolution_id"
+        )
+        forged = dataclasses.replace(
+            resolved,
+            facts=tuple(
+                dataclasses.replace(fact, value="materialization-forged")
+                if fact.fact_id == materialization_fact.fact_id
+                else fact
+                for fact in resolved.facts
+            ),
+        )
+
+        with self.assertRaises(ValueError):
+            analyze_future_attack_path_impact(
+                forged,
+                self.f.state,
+                self.client,
+            )
 
     def test_unresolved_graph_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "complete verified graph"):
