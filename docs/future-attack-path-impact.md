@@ -13,13 +13,14 @@ This ST3 slice is a read-only consumer of verified Future Security graph state.
 - future semantics remain explicitly `unresolved`;
 - an explicit current Security Twin baseline is supplied;
 - current and future belong to the same client;
+- the future twin's persisted `future_base_twin_id` and `future_base_twin_version` match that exact current snapshot;
 - the future twin's attack paths remain byte-for-byte identical to the supplied current baseline.
 
 If any represented change is unresolved, or attack paths have already drifted from the current baseline, analysis fails closed rather than returning a partial or mislabeled security interpretation.
 
 ## Output contract
 
-The report records the exact current twin ID/version used as the baseline.
+The report records the exact current twin ID/version used as the baseline. Future twins persist that original baseline identity when they are derived, so a same-tenant but unrelated current snapshot cannot be substituted later merely because its attack paths happen to match.
 
 Each item binds the analysis to:
 
