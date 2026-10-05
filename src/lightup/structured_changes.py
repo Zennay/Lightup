@@ -260,6 +260,8 @@ def _terraform_signals(
                 continue
             active_kind, active_type, active_name = match.groups()
             active_depth = line.count("{") - line.count("}")
+            if active_depth <= 0:
+                flush()
             continue
 
         attribute = _TF_ATTRIBUTE.match(line)
@@ -582,6 +584,8 @@ def _terraform_delta_model(content: str) -> dict[
             active_kind, active_type, active_name = match.groups()
             active_depth = line.count("{") - line.count("}")
             block_lines = [line.strip()]
+            if active_depth <= 0:
+                flush()
             continue
 
         block_lines.append(line.strip())
