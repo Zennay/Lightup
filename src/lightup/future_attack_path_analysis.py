@@ -114,6 +114,16 @@ def analyze_future_attack_path_impact(
         raise ValueError(
             "future attack-path impact analysis requires a current Security Twin baseline"
         )
+
+    future_metadata = dict(future.metadata)
+    if (
+        future_metadata.get("future_base_twin_id") != current.twin_id
+        or future_metadata.get("future_base_twin_version") != str(current.version)
+    ):
+        raise ValueError(
+            "future attack-path impact current baseline identity does not match future lineage"
+        )
+
     if future.attack_paths != current.attack_paths:
         raise ValueError(
             "future attack-path impact requires attack paths unchanged from current baseline"
