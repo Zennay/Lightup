@@ -190,6 +190,21 @@ class FutureSecurityEffectsTest(unittest.TestCase):
                 (self._effect(capability_id="cloud"),),
             )
 
+    def test_forged_resolution_cannot_expand_materialized_capabilities(self):
+        import dataclasses
+
+        forged = dataclasses.replace(
+            self.resolution,
+            capability_ids=("web", "cloud"),
+        )
+
+        with self.assertRaises(ValueError):
+            apply_future_security_effects(
+                self.materialized,
+                forged,
+                (self._effect(capability_id="cloud"),),
+            )
+
     def test_resolution_identity_and_tenant_must_match(self):
         with self.assertRaises(ValueError):
             apply_future_security_effects(
