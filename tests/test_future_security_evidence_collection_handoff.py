@@ -125,5 +125,15 @@ class FutureSecurityEvidenceCollectionHandoffTest(unittest.TestCase):
 
 
 
+    def test_duplicate_request_items_fail_closed(self):
+        _, payload = self._payload()
+        duplicate = copy.deepcopy(payload)
+        duplicate["items"].append(copy.deepcopy(duplicate["items"][0]))
+        duplicate["evidence_gap_count"] = 2
+        with self.assertRaisesRegex(ValueError, "items must be unique"):
+            future_security_evidence_collection_request_from_dict(duplicate)
+
+
+
 if __name__ == "__main__":
     unittest.main()
