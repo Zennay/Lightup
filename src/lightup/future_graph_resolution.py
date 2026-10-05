@@ -172,8 +172,11 @@ def _graph_relationship(
     )
 
 
-def validate_future_graph_snapshot(future: SecurityTwin) -> None:
-    """Reject partial or forged persisted graph-resolution state."""
+def validate_future_graph_snapshot(
+    future: SecurityTwin,
+    state: StateStore | None = None,
+) -> None:
+    """Reject partial, forged, or stale persisted graph-resolution state."""
 
     metadata = dict(future.metadata)
     if len(metadata) != len(future.metadata):
@@ -208,6 +211,9 @@ def validate_future_graph_snapshot(future: SecurityTwin) -> None:
         if fact.provenance is not FactProvenance.VERIFIED or fact.confidence != 1.0:
             raise ValueError("future graph facts must remain verified at confidence 1")
         _validate_evidence_refs("future graph fact", fact.evidence_refs)
+        if state is not None:
+            for ref in fact.evidence_refs:
+                state.get_evidence(ref[len("evidence:"):])
         facts_by_change.setdefault(fact.subject_id, []).append(fact)
     for relationship in graph_relationships:
         if (
@@ -220,6 +226,9 @@ def validate_future_graph_snapshot(future: SecurityTwin) -> None:
         _validate_evidence_refs(
             "future graph relationship", relationship.evidence_refs
         )
+        if state is not None:
+            for ref in relationship.evidence_refs:
+                state.get_evidence(ref[len("evidence:"):])
         relationships_by_change.setdefault(
             relationship.source_id, []
         ).append(relationship)
@@ -451,7 +460,7 @@ def apply_future_graph_resolution(
         client_id=resolution.client_id,
         changeset_id=resolution.changeset_id,
     )
-    validate_future_graph_snapshot(future)
+    validate_future_graph_snapshot(future, state)
 
     nodes = {node.node_id: node for node in future.nodes}
     change = nodes.get(resolution.change_node_id)
@@ -578,7 +587,7 @@ def apply_future_graph_resolution(
         metadata=tuple(sorted(metadata.items())),
     )
     snapshot.validate()
-    validate_future_graph_snapshot(snapshot)
+    validate_future_graph_snapshot(snapshot, state)
     if snapshot.attack_paths != future.attack_paths:
         raise AssertionError("future graph resolution must not mutate attack paths")
     return snapshot
