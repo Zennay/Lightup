@@ -65,7 +65,9 @@ Compatibility is constrained by the proposal action:
 | `no_transition_claim` | `insufficient_evidence` |
 
 `removed`, `worsened` and `improved` additionally require at least one
-referenced current attack path.
+referenced current attack path. Conversely, `introduced` is only valid when no
+current attack path is referenced; even manual review cannot label an existing
+path as newly introduced.
 
 ## Resolution identity
 
