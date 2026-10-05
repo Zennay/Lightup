@@ -40,6 +40,8 @@ The report is immutable and JSON-serializable.
 
 The report also carries `analysis_sha256`: a canonical SHA-256 over the exact tenant, current/future twin lineage, ChangeSet identity, ordered impact items, conservative impact labels and the fixed `not_evaluated`/`unresolved` boundary. A later transition stage can therefore bind itself to one exact reviewed analysis instead of accepting a semantically similar but different report.
 
+`validate_future_attack_path_impact_report` is the required consumer gate for that handoff. It recomputes the canonical digest and fails closed if any bound identity, impact item, digest, completion flag, future-semantics boundary or security-verdict boundary has changed. Generation itself runs the same validator before returning a report.
+
 ## Conservative classifications
 
 The report classifies only normalized verified risk directions:
@@ -82,3 +84,4 @@ Regression coverage requires:
 - exact graph, subject-decision and materialization identity binding;
 - cross-tenant rejection before ledger inspection;
 - byte-for-byte read-only behavior for the input twin and its attack paths.
+- fail-closed consumer validation for digest tampering and attempts to change `future_semantics` or `security_verdict`.
