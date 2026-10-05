@@ -194,7 +194,7 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
         )
         self.assertEqual(
             item.materialization_resolution_id,
-            self.f.materialization.resolution_id,
+            "materialization-graph-impact-increased",
         )
         self.assertEqual(item.current_attack_path_ids, ("path-existing-1",))
         self.assertEqual(report.current_twin_id, current.twin_id)
