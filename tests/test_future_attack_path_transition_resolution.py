@@ -8,6 +8,7 @@ from lightup.ai.orchestration import RunContext
 from lightup.future_attack_path_transition import propose_future_attack_path_transitions
 from lightup.future_attack_path_transition_resolution import (
     AttackPathTransitionClassification,
+    _validate_action_classification,
     future_attack_path_transition_evidence_contract,
     validate_future_attack_path_transition_resolution,
     verify_future_attack_path_transition,
@@ -172,6 +173,20 @@ class FutureAttackPathTransitionResolutionTest(unittest.TestCase):
                     engagement_id="transition-mapping",
                     client_id="client-1",
                 ),
+            )
+
+    def test_introduced_cannot_reference_an_existing_attack_path(self):
+        proposal = self._proposal(suffix="introduced-existing-path")
+        item = dataclasses.replace(
+            proposal.items[0],
+            review_action="manual_transition_review",
+            current_attack_path_ids=("path-existing",),
+        )
+
+        with self.assertRaisesRegex(ValueError, "cannot reference an existing attack path"):
+            _validate_action_classification(
+                item,
+                AttackPathTransitionClassification.INTRODUCED,
             )
 
     def test_cross_run_evidence_is_rejected(self):
