@@ -245,6 +245,65 @@ class FutureSecurityRetestAuthorizationPreflightTest(unittest.TestCase):
                 self.checked_at,
             )
 
+    def test_malformed_authorization_provenance_is_rejected(self):
+        (
+            _,
+            proposal,
+            context,
+            resolution,
+            preview,
+            report,
+            plan,
+            request,
+            binding,
+            grant,
+        ) = self._inputs(suffix="auth-provenance")
+
+        malformed_grants = (
+            (dataclasses.replace(grant, grant_id=""), "non-empty grant_id"),
+            (dataclasses.replace(grant, approved_by="   "), "non-empty approved_by"),
+            (dataclasses.replace(grant, reference=""), "non-empty reference"),
+            (
+                dataclasses.replace(
+                    grant,
+                    valid_from=self.checked_at.replace(tzinfo=None),
+                ),
+                "valid_from must be timezone-aware",
+            ),
+            (
+                dataclasses.replace(
+                    grant,
+                    valid_until=self.checked_at.replace(tzinfo=None),
+                ),
+                "valid_until must be timezone-aware",
+            ),
+            (
+                dataclasses.replace(
+                    grant,
+                    valid_from=self.checked_at + timedelta(hours=2),
+                    valid_until=self.checked_at + timedelta(hours=1),
+                ),
+                "validity window is inverted",
+            ),
+        )
+
+        for malformed, expected in malformed_grants:
+            with self.subTest(expected=expected):
+                with self.assertRaisesRegex(ValueError, expected):
+                    build_future_security_retest_authorization_preflight(
+                        request,
+                        plan,
+                        report,
+                        preview,
+                        proposal,
+                        (resolution,),
+                        (context,),
+                        self.state,
+                        malformed,
+                        (binding,),
+                        self.checked_at,
+                    )
+
     def test_expired_and_non_recurring_grants_require_reauthorization(self):
         *base, grant, _ = self._build(suffix="auth-window")
         (
