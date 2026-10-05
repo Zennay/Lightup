@@ -50,6 +50,17 @@ This catches post-build ledger drift even when a changed digest is still a
 syntactically valid lowercase SHA-256 value. Capability/run/metadata drift is
 rejected earlier by the existing live transition-evidence validation chain.
 
+
+## Authoring readiness gate
+
+Call `require_future_remediation_evidence_bundle_for_authoring` when the next
+step is remediation text authoring. It first performs the complete live bundle
+revalidation and then rejects any bundle whose
+`remediation_authoring_ready` flag is false.
+
+This is only an input-readiness gate. Passing it does **not** authorize code or
+configuration changes, target interaction, deployment, or attack-path mutation.
+
 ## Determinism
 
 Evidence is sorted by evidence ID and remediation items are canonically sorted
