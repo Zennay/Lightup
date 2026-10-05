@@ -180,6 +180,64 @@ resource "aws_security_group" "web" {{
         self.assertEqual(len(matches[0].evidence_refs), 1)
         self.assertTrue(matches[0].evidence_refs[0].startswith("content-sha256:"))
 
+    def test_modified_file_requires_both_base_and_head(self):
+        changeset = self._changeset("openapi.json", status="modified")
+        head = (
+            '{"openapi":"3.1.0","paths":'
+            '{"/new":{"get":{"responses":{}}}}}'
+        )
+
+        enriched = enrich_changeset_with_structured_deltas(
+            changeset,
+            {
+                "openapi.json": StructuredDocumentDelta(
+                    base_content=None,
+                    head_content=head,
+                )
+            },
+        )
+
+        self.assertIn(
+            "structured_delta_incomplete_pair:openapi.json",
+            enriched.uncertainties,
+        )
+        self.assertEqual(enriched.semantic_signals, changeset.semantic_signals)
+        metadata = dict(enriched.objects[0].metadata)
+        self.assertEqual(metadata["structured_delta_analyzed"], "false")
+        self.assertEqual(metadata["structured_delta_parser"], "incomplete-pair")
+
+    def test_added_and_removed_files_require_operation_consistent_pairs(self):
+        added = self._changeset("openapi.json", status="added")
+        document = '{"openapi":"3.1.0","paths":{}}'
+        added_bad = enrich_changeset_with_structured_deltas(
+            added,
+            {
+                "openapi.json": StructuredDocumentDelta(
+                    base_content=document,
+                    head_content=document,
+                )
+            },
+        )
+        self.assertIn(
+            "structured_delta_incomplete_pair:openapi.json",
+            added_bad.uncertainties,
+        )
+
+        removed = self._changeset("openapi.json", status="removed")
+        removed_bad = enrich_changeset_with_structured_deltas(
+            removed,
+            {
+                "openapi.json": StructuredDocumentDelta(
+                    base_content=document,
+                    head_content=document,
+                )
+            },
+        )
+        self.assertIn(
+            "structured_delta_incomplete_pair:openapi.json",
+            removed_bad.uncertainties,
+        )
+
     def test_invalid_head_content_records_uncertainty(self):
         changeset = self._changeset("openapi.json")
 
