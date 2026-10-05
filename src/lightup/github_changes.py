@@ -364,6 +364,7 @@ def github_compare_changeset(
         *file_uncertainties,
     }
     if any(item.startswith("patch_content_") for item in uncertainties):
+        uncertainties.add("patch_content_not_ingested")
         uncertainties.add("patch_content_not_fully_ingested")
     if too_large:
         uncertainties.add("github_compare_too_large")
