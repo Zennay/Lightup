@@ -221,6 +221,12 @@ signal; added, removed and modified operations/declarations are classified
 separately with content-hash evidence. Raw base/head content is not retained,
 and every resulting signal remains inferred-only.
 
+Candidate-subject binding links future CHANGE nodes only through exact
+repository-path metadata or explicit integration-supplied mappings. Bindings
+remain inferred, use the non-attack relation `candidate_affects`, and keep
+`no_candidate`, `single_candidate` and `ambiguous` states explicit. No
+candidate link mutates current-state data or attack paths.
+
 ### ST3 — Future-state lab materialization
 
 - isolated environment builder for supported change types;
