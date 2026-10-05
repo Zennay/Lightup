@@ -61,6 +61,140 @@ class FutureAttackPathImpactReport:
         return asdict(self)
 
 
+_REPORT_KEYS = {
+    "client_id",
+    "current_twin_id",
+    "current_twin_version",
+    "twin_id",
+    "twin_version",
+    "changeset_id",
+    "items",
+    "analysis_complete",
+    "analysis_sha256",
+    "future_semantics",
+    "security_verdict",
+}
+
+_ITEM_KEYS = {
+    "change_node_id",
+    "subject_node_id",
+    "graph_resolution_id",
+    "subject_decision_id",
+    "materialization_resolution_id",
+    "effect_ids",
+    "effect_kinds",
+    "risk_directions",
+    "capability_ids",
+    "current_attack_path_ids",
+    "impact",
+    "evidence_refs",
+}
+
+
+def future_attack_path_impact_report_from_dict(
+    payload: dict,
+) -> FutureAttackPathImpactReport:
+    """Parse a serialized report with an exact schema and validate its digest."""
+    if not isinstance(payload, dict):
+        raise ValueError("future attack-path impact report payload must be an object")
+    if set(payload) != _REPORT_KEYS:
+        raise ValueError("future attack-path impact report payload schema mismatch")
+
+    raw_items = payload["items"]
+    if not isinstance(raw_items, list):
+        raise ValueError("future attack-path impact report items must be a list")
+
+    items = []
+    tuple_fields = {
+        "effect_ids",
+        "effect_kinds",
+        "risk_directions",
+        "capability_ids",
+        "current_attack_path_ids",
+        "evidence_refs",
+    }
+    string_fields = _ITEM_KEYS - tuple_fields
+    for raw_item in raw_items:
+        if not isinstance(raw_item, dict) or set(raw_item) != _ITEM_KEYS:
+            raise ValueError("future attack-path impact item schema mismatch")
+        if any(
+            not isinstance(raw_item[field], str) or not raw_item[field]
+            for field in string_fields
+        ):
+            raise ValueError("future attack-path impact item string field is invalid")
+        parsed = {}
+        for field in tuple_fields:
+            value = raw_item[field]
+            if (
+                not isinstance(value, list)
+                or any(not isinstance(item, str) or not item for item in value)
+            ):
+                raise ValueError(
+                    f"future attack-path impact item {field} must be a string list"
+                )
+            parsed[field] = tuple(value)
+        items.append(
+            FutureAttackPathImpactItem(
+                change_node_id=raw_item["change_node_id"],
+                subject_node_id=raw_item["subject_node_id"],
+                graph_resolution_id=raw_item["graph_resolution_id"],
+                subject_decision_id=raw_item["subject_decision_id"],
+                materialization_resolution_id=raw_item[
+                    "materialization_resolution_id"
+                ],
+                effect_ids=parsed["effect_ids"],
+                effect_kinds=parsed["effect_kinds"],
+                risk_directions=parsed["risk_directions"],
+                capability_ids=parsed["capability_ids"],
+                current_attack_path_ids=parsed["current_attack_path_ids"],
+                impact=raw_item["impact"],
+                evidence_refs=parsed["evidence_refs"],
+            )
+        )
+
+    string_report_fields = (
+        "client_id",
+        "current_twin_id",
+        "twin_id",
+        "changeset_id",
+        "analysis_sha256",
+        "future_semantics",
+        "security_verdict",
+    )
+    if any(
+        not isinstance(payload[field], str) or not payload[field]
+        for field in string_report_fields
+    ):
+        raise ValueError("future attack-path impact report string field is invalid")
+    if (
+        not isinstance(payload["current_twin_version"], int)
+        or isinstance(payload["current_twin_version"], bool)
+        or payload["current_twin_version"] < 0
+        or not isinstance(payload["twin_version"], int)
+        or isinstance(payload["twin_version"], bool)
+        or payload["twin_version"] < 0
+    ):
+        raise ValueError("future attack-path impact report version is invalid")
+    if not isinstance(payload["analysis_complete"], bool):
+        raise ValueError("future attack-path impact report completion flag is invalid")
+
+    report = FutureAttackPathImpactReport(
+        client_id=payload["client_id"],
+        current_twin_id=payload["current_twin_id"],
+        current_twin_version=payload["current_twin_version"],
+        twin_id=payload["twin_id"],
+        twin_version=payload["twin_version"],
+        changeset_id=payload["changeset_id"],
+        items=tuple(items),
+        analysis_complete=payload["analysis_complete"],
+        analysis_sha256=payload["analysis_sha256"],
+        future_semantics=payload["future_semantics"],
+        security_verdict=payload["security_verdict"],
+    )
+    validate_future_attack_path_impact_report(report)
+    return report
+
+
 def validate_future_attack_path_impact_report(
     report: FutureAttackPathImpactReport,
 ) -> None:
