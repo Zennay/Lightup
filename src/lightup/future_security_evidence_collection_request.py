@@ -368,6 +368,26 @@ def _strict_string_tuple(value: object, *, field: str) -> tuple[str, ...]:
     return parsed
 
 
+def _strict_optional_string_tuple(
+    value: object,
+    *,
+    field: str,
+) -> tuple[str, ...]:
+    if (
+        not isinstance(value, list)
+        or any(not isinstance(item, str) or not item for item in value)
+    ):
+        raise ValueError(
+            f"evidence collection request item {field} must be a string list"
+        )
+    parsed = tuple(value)
+    if parsed != tuple(sorted(set(parsed))):
+        raise ValueError(
+            f"evidence collection request item {field} must be sorted and unique"
+        )
+    return parsed
+
+
 def _request_digest_from_request(
     request: FutureSecurityEvidenceCollectionRequest,
 ) -> str:
@@ -565,12 +585,10 @@ def future_security_evidence_collection_request_from_dict(
                 subject_node_id=raw_item["subject_node_id"],
                 resolution_id=raw_item["resolution_id"],
                 resolution_sha256=raw_item["resolution_sha256"],
-                current_attack_path_ids=_strict_string_tuple(
+                current_attack_path_ids=_strict_optional_string_tuple(
                     raw_item["current_attack_path_ids"],
                     field="current_attack_path_ids",
-                )
-                if raw_item["current_attack_path_ids"]
-                else (),
+                ),
                 effect_ids=_strict_string_tuple(
                     raw_item["effect_ids"],
                     field="effect_ids",
