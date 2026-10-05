@@ -180,12 +180,16 @@ class FutureSecurityEvidenceCollectionRequestTest(unittest.TestCase):
             exported["items"][0]["prior_evidence_ids"],
             list(resolution.evidence_ids),
         )
-        serialized = first.to_json()
-        self.assertNotIn("evidence_payload", serialized)
-        self.assertNotIn("source", serialized)
-        self.assertNotIn("metadata", serialized)
-        self.assertNotIn("target", serialized)
-        self.assertNotIn("arguments", serialized)
+        exported_item = exported["items"][0]
+        for forbidden_key in (
+            "evidence_payload",
+            "source",
+            "metadata",
+            "target",
+            "arguments",
+            "credentials",
+        ):
+            self.assertNotIn(forbidden_key, exported_item)
 
     def test_tampered_plan_is_rejected_by_live_revalidation(self):
         (
