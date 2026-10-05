@@ -314,6 +314,20 @@ def _validate_materialization(
     )
     if any(item.run_id != materialization.run_id for item in evidence):
         raise ValueError("graph resolution materialization evidence is stale")
+    for item in evidence:
+        evidence_context = dict(item.metadata)
+        if evidence_context.get("client_id") != resolution.client_id:
+            raise ValueError(
+                "graph resolution materialization evidence belongs to another client"
+            )
+        if evidence_context.get("mode") != "lab_autonomous":
+            raise ValueError(
+                "graph resolution materialization evidence is not lab-autonomous"
+            )
+        if evidence_context.get("is_lab") != "true":
+            raise PermissionError(
+                "graph resolution materialization evidence is not lab-bound"
+            )
     if {item.capability_id for item in evidence} != set(
         materialization.capability_ids
     ):
@@ -390,6 +404,19 @@ def _effect_evidence_refs(
             if item.run_id != materialization.run_id:
                 raise ValueError(
                     f"future effect {effect_id!r} evidence belongs to another run"
+                )
+            evidence_context = dict(item.metadata)
+            if evidence_context.get("client_id") != resolution.client_id:
+                raise ValueError(
+                    f"future effect {effect_id!r} evidence belongs to another client"
+                )
+            if evidence_context.get("mode") != "lab_autonomous":
+                raise ValueError(
+                    f"future effect {effect_id!r} evidence is not lab-autonomous"
+                )
+            if evidence_context.get("is_lab") != "true":
+                raise PermissionError(
+                    f"future effect {effect_id!r} evidence is not lab-bound"
                 )
         consumed_refs.update(refs)
     return tuple(sorted(consumed_refs))
