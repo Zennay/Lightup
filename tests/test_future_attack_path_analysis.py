@@ -309,9 +309,21 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
                 if node.node_id != self.f.subject.node_id
             ),
         )
+        missing_metadata = dict(resolved.metadata)
+        missing_metadata.update(
+            {
+                "future_base_twin_id": current_missing.twin_id,
+                "future_base_twin_version": str(current_missing.version),
+                "future_base_twin_sha256": current_missing.stable_digest(),
+            }
+        )
+        forged_missing = dataclasses.replace(
+            resolved,
+            metadata=tuple(sorted(missing_metadata.items())),
+        )
         with self.assertRaisesRegex(ValueError, "absent from current baseline"):
             analyze_future_attack_path_impact(
-                resolved,
+                forged_missing,
                 self.f.state,
                 self.client,
                 current=current_missing,
@@ -395,7 +407,7 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(
                     ValueError,
-                    "baseline identity does not match future lineage",
+                    "current baseline does not match future lineage",
                 ):
                     analyze_future_attack_path_impact(
                         resolved,
