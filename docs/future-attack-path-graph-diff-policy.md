@@ -65,5 +65,6 @@ Exact replay is deterministic.
 
 No target interaction, network execution, credentials, exploit execution,
 authorization widening, attack-path mutation, or deployment approval is added
-by this stage. The next ST4 reporting package may consume the same validated
-preview independently; ST5 deployment policy remains separate.
+by this stage. The sibling ST4 security-delta report is already merged and
+consumes the same validated preview independently; ST5 deployment policy remains
+separate.
