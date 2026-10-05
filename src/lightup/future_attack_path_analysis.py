@@ -29,6 +29,8 @@ class FutureAttackPathImpactItem:
     change_node_id: str
     subject_node_id: str
     graph_resolution_id: str
+    subject_decision_id: str
+    materialization_resolution_id: str
     effect_ids: tuple[str, ...]
     effect_kinds: tuple[str, ...]
     risk_directions: tuple[str, ...]
@@ -122,6 +124,32 @@ def analyze_future_attack_path_impact(
                 "future attack-path impact analysis found incomplete verified graph state"
             )
 
+        graph_values = {
+            fact.predicate: fact.value
+            for fact in future.facts
+            if fact.subject_id == reviewed.change_node_id
+            and fact.predicate in {
+                "future_graph.resolution_id",
+                "future_graph.subject_decision_id",
+                "future_graph.materialization_resolution_id",
+            }
+        }
+        if graph_values.get("future_graph.resolution_id") != reviewed.graph_resolution_id:
+            raise ValueError("future attack-path impact graph identity mismatch")
+        if (
+            reviewed.decision_id is None
+            or graph_values.get("future_graph.subject_decision_id")
+            != reviewed.decision_id
+        ):
+            raise ValueError("future attack-path impact subject decision mismatch")
+        materialization_resolution_id = graph_values.get(
+            "future_graph.materialization_resolution_id"
+        )
+        if not materialization_resolution_id:
+            raise ValueError(
+                "future attack-path impact is missing materialization identity"
+            )
+
         effect_kinds: set[SecurityEffectKind] = set()
         directions: set[RiskDirection] = set()
         capabilities: set[str] = set()
@@ -158,6 +186,14 @@ def analyze_future_attack_path_impact(
                 raise ValueError(
                     f"future attack-path impact effect {effect_id!r} has invalid semantics"
                 ) from exc
+            if (
+                effect_facts["future_effect.resolution_id"].value
+                != materialization_resolution_id
+            ):
+                raise ValueError(
+                    f"future attack-path impact effect {effect_id!r} belongs "
+                    "to another materialization"
+                )
             capability = effect_facts["future_effect.capability"].value
             if not capability.strip():
                 raise ValueError(
@@ -170,6 +206,8 @@ def analyze_future_attack_path_impact(
                 change_node_id=reviewed.change_node_id,
                 subject_node_id=reviewed.verified_subject_id,
                 graph_resolution_id=reviewed.graph_resolution_id,
+                subject_decision_id=reviewed.decision_id,
+                materialization_resolution_id=materialization_resolution_id,
                 effect_ids=tuple(sorted(reviewed.resolved_effect_ids)),
                 effect_kinds=tuple(sorted(item.value for item in effect_kinds)),
                 risk_directions=tuple(sorted(item.value for item in directions)),
