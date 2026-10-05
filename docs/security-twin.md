@@ -209,15 +209,30 @@ a separate future Security Twin, but graph state remains unchanged and marked
 `future_semantics=unresolved` until later evidence-backed analysis or isolated
 materialization resolves the effect.
 
-Next ST2 slice: project inferred change signals into dedicated future-state
-change nodes/facts and add structured parsers for supported OpenAPI/Terraform
-inputs, while keeping semantic effects distinct from verified security state.
+ST2 follow-up is implemented on PR #13: inferred change signals are projected
+into dedicated future-state CHANGE nodes/facts, and bounded structured parsers
+cover supported OpenAPI JSON/YAML and Terraform inputs. Raw structured content
+is not retained; only SHA-256 evidence references and bounded parser metadata
+are stored. Semantic effects remain distinct from verified security state.
 
 ### ST3 — Future-state lab materialization
 
 - isolated environment builder for supported change types;
 - explicit equivalence/limitations metadata;
 - targeted assessment planning based on the change.
+
+Implementation foundation is now staged after ST2. A
+`FutureMaterializationResolution` can attach an isolated-lab outcome only to
+an existing future CHANGE node and only when every referenced evidence record
+belongs to the same immutable lab RunContext and tenant. Outcomes, environment
+equivalence, tested capabilities and limitations are recorded separately from
+the original inferred change facts. A confirmed outcome with unknown
+environment equivalence fails closed.
+
+This first ST3 slice intentionally does **not** mutate relationships or attack
+paths and leaves `future_semantics=unresolved`. It proves the evidence gate
+needed before later graph-resolution work; a lab observation alone is not
+production reachability or authorization.
 
 ### ST4 — Attack graph diff
 
