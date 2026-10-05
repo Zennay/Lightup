@@ -41,9 +41,8 @@ jobs:
           python scripts/check_safety_canaries.py
           python scripts/check_safety_canaries.py
   integration:
-    # Temporary compatibility check for the staged resolver; never a merge receipt.
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 27
-    name: Pinned predecessor integration Python ${{ matrix.python }} (not VPS proof)
+    # Hosted diagnostic only; the required merge authority remains exact-head VPS CI.
+    name: Real producer integration Python ${{ matrix.python }} (not VPS proof)
     needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -60,15 +59,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - name: Compose pinned dependencies in disposable checkout only
-        run: |
-          git config user.name "LightUp integration preflight"
-          git config user.email "integration@lightup.invalid"
-          for dependency in 1b5e3f7f1537d399d1d9b1041980610926a21267 3109ef771fec3e5b96a1b43ff836dfa50080e4c6 8996cfb81801ac008ddb68b413c653f4ae1b6266; do
-            git fetch --no-tags origin "$dependency"
-            git merge --no-edit --no-ff "$dependency"
-          done
-          git log -4 --format='%H %s'
       - name: Combined unit suite and real producer integration
         env:
           PYTHONPATH: src:tests
@@ -77,4 +67,4 @@ jobs:
           python -m unittest discover -s tests -v
           python -m unittest discover -s tests/integration -v
       - name: State verification boundary
-        run: echo "Diagnostic composition only. No branch push or VPS merge receipt. Rebase after predecessor VPS gates pass."
+        run: echo "Hosted diagnostics only. Predecessors are merged in main; exact-head VPS CI remains the merge authority."
