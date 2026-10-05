@@ -221,10 +221,16 @@ classified separately with content-hash evidence references. The older
 single-sided parser remains conservative context enrichment, but it is not a
 claim that every declaration in a modified file changed.
 
-Next ST2 slice after delta ingestion: map supported inferred change nodes to
-candidate current-twin subjects (asset/API/IAM/resource) with explicit
-ambiguity, then prepare isolated materialization without promoting inferred
-effects to verified state.
+The candidate-subject binding layer now links future change nodes only through
+exact repository-path metadata or an explicit integration-supplied mapping.
+Bindings are always `inferred`, use the non-attack relation
+`candidate_affects`, and surface `no_candidate`, `single_candidate` or
+`ambiguous` instead of silently selecting a subject. Rebinding replaces prior
+candidate links without touching current-state data or attack paths.
+
+Next ST2/ST3 boundary: prepare isolated materialization for supported future
+changes and define the evidence contract required before any candidate effect
+can become verified graph state.
 
 ### ST3 — Future-state lab materialization
 
