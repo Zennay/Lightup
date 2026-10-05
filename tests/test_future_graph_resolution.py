@@ -137,7 +137,7 @@ class FutureGraphResolutionTest(subject_tests.FutureSubjectResolutionTest):
             effect_ids=(self.effect.effect_id,),
         )
 
-    def _materialize_and_effect(self, future, *, suffix: str):
+    def _materialize_and_effect(\n        self,\n        future,\n        *,\n        suffix: str,\n        direction: RiskDirection = RiskDirection.INCREASED,\n    ):
         run_id = self.state.create_run(
             "127.0.0.1",
             activation_mode="lab_autonomous",
@@ -182,7 +182,7 @@ class FutureGraphResolutionTest(subject_tests.FutureSubjectResolutionTest):
             change_node_id=self.change_node.node_id,
             capability_id="web",
             kind=SecurityEffectKind.ATTACK_SURFACE_ADDED,
-            risk_direction=RiskDirection.INCREASED,
+            risk_direction=direction,
             evidence_ids=(evidence_id,),
         )
         return (
