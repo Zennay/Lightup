@@ -39,7 +39,7 @@ class FutureRetestAuthorizationStatus(str, Enum):
 
 @dataclass(frozen=True)
 class FutureSecurityRetestAssetBinding:
-    change_node_id: str
+    resolution_id: str
     asset: str
 
     def as_dict(self) -> dict:
@@ -104,7 +104,7 @@ def _preflight_digest(
         "authorization_reference_sha256": _reference_digest(authorization.reference),
         "checked_at": checked_at.isoformat(),
         "bindings": [
-            {"change_node_id": binding.change_node_id, "asset": binding.asset}
+            {"resolution_id": binding.resolution_id, "asset": binding.asset}
             for binding in bindings
         ],
         "requested_capability_ids": list(request.requested_capability_ids),
@@ -195,27 +195,29 @@ def build_future_security_retest_authorization_preflight(
     if authorization.engagement_id != engagement_id:
         raise ValueError("authorization grant engagement does not match source lineage")
 
-    item_ids = tuple(item.change_node_id for item in request.items)
+    item_ids = tuple(item.resolution_id for item in request.items)
     expected_ids = set(item_ids)
     if len(expected_ids) != len(item_ids):
-        raise ValueError("retest request contains duplicate change-node identities")
+        raise ValueError("retest request contains duplicate resolution identities")
 
     normalized: list[FutureSecurityRetestAssetBinding] = []
     seen: set[str] = set()
     for binding in asset_bindings:
-        change_node_id = binding.change_node_id.strip()
+        resolution_id = binding.resolution_id.strip()
         asset = binding.asset.strip().lower()
-        if not change_node_id or not asset:
-            raise ValueError("asset bindings require non-empty change-node and asset")
-        if change_node_id in seen:
+        if not resolution_id or not asset:
+            raise ValueError("asset bindings require non-empty resolution and asset")
+        if any(token in asset for token in ("*", "?", "[", "]")):
+            raise ValueError("asset binding must name one explicit asset without wildcards")
+        if resolution_id in seen:
             raise ValueError("duplicate asset binding for retest item")
-        seen.add(change_node_id)
-        normalized.append(FutureSecurityRetestAssetBinding(change_node_id, asset))
+        seen.add(resolution_id)
+        normalized.append(FutureSecurityRetestAssetBinding(resolution_id, asset))
 
     if seen != expected_ids:
         raise ValueError("asset bindings must cover every retest item exactly once")
 
-    binding_by_id = {binding.change_node_id: binding for binding in normalized}
+    binding_by_id = {binding.resolution_id: binding for binding in normalized}
     bindings = tuple(binding_by_id[item_id] for item_id in item_ids)
 
     reasons: list[str] = []
@@ -226,7 +228,7 @@ def build_future_security_retest_authorization_preflight(
 
     for binding in bindings:
         if not authorization.scope.allows_asset(binding.asset):
-            reasons.append(f"asset_out_of_scope:{binding.change_node_id}")
+            reasons.append(f"asset_out_of_scope:{binding.resolution_id}")
 
     for capability_id in request.requested_capability_ids:
         if not authorization.scope.allows_capability(capability_id):
