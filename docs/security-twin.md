@@ -183,22 +183,35 @@ ingestion for GitHub PR/commit changes, followed by IaC/config adapters.
 - IaC/config ChangeSet adapters;
 - immutable future-state branch of the twin.
 
-Implementation status: **first ST2 slice implemented**. `lightup.changes`
+Implementation status: **second ST2 slice implemented**. `lightup.changes`
 defines immutable, tenant-bound `ChangeSet` / `ChangeObject` primitives with a
 stable provenance digest. `lightup.github_changes` normalizes GitHub compare
-file metadata for PRs and commits into changed objects and conservatively
-classifies code, API specs, IaC, IAM, config, CI, tests and docs.
+metadata for PRs and commits into changed objects and conservatively classifies
+code, API specs, IaC, IAM, config, CI, tests and docs.
 
-The adapter intentionally does **not** infer permission, route, trust,
-reachability or attack-path changes from file statistics alone. Those effects
-remain explicit uncertainty until patch/content analysis or isolated
-materialization supplies evidence. A ChangeSet may derive a separate future
-Security Twin, but the current twin graph is copied unchanged and marked
-`future_semantics=unresolved`.
+Optional unified-diff patch context is analyzed transiently. The ChangeSet
+stores a SHA-256 patch reference and bounded metadata, not the raw patch. This
+reduces unnecessary retention of customer code and secrets while preserving an
+evidence reference for later verification. Patches larger than 128 KiB per
+changed object are hashed but not semantically parsed.
 
-Next ST2 slice: ingest patch/content context for supported GitHub changes and
-add semantic adapters for IaC/config/API changes while preserving provenance
-and uncertainty.
+The first semantic adapters emit evidence-linked `inferred` signals for:
+- API route/schema declarations;
+- IaC network-boundary declarations;
+- IAM/trust declarations;
+- security-sensitive configuration such as TLS, auth, trusted-host, CORS,
+  cookie/session and bind/listen controls.
+
+These signals are deliberately **not verified facts** and cannot be promoted to
+verified provenance inside a ChangeSet. They do not mutate the current graph,
+grant authorization or prove that an attack path exists. A ChangeSet may derive
+a separate future Security Twin, but graph state remains unchanged and marked
+`future_semantics=unresolved` until later evidence-backed analysis or isolated
+materialization resolves the effect.
+
+Next ST2 slice: project inferred change signals into dedicated future-state
+change nodes/facts and add structured parsers for supported OpenAPI/Terraform
+inputs, while keeping semantic effects distinct from verified security state.
 
 ### ST3 — Future-state lab materialization
 
