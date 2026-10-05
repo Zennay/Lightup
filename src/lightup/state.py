@@ -43,6 +43,15 @@ CREATE TABLE IF NOT EXISTS evidence (
     created_at TEXT NOT NULL,
     FOREIGN KEY (run_id) REFERENCES runs(run_id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS future_attack_path_transition_resolutions (
+    resolution_id TEXT PRIMARY KEY,
+    resolution_sha256 TEXT NOT NULL,
+    client_id TEXT NOT NULL,
+    run_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (run_id) REFERENCES runs(run_id) ON DELETE CASCADE
+);
 """
 
 
@@ -165,6 +174,85 @@ class StateStore:
                 ),
             )
         return evidence_id
+
+    def record_future_attack_path_transition_resolution(
+        self,
+        resolution_id: str,
+        resolution_sha256: str,
+        client_id: str,
+        run_id: str,
+    ) -> bool:
+        """Record one immutable transition resolution.
+
+        Returns True when newly inserted and False for an exact replay.
+        Reusing a resolution ID with different semantics fails closed.
+        """
+        for name, value in (
+            ("resolution_id", resolution_id),
+            ("resolution_sha256", resolution_sha256),
+            ("client_id", client_id),
+            ("run_id", run_id),
+        ):
+            if not value.strip():
+                raise ValueError(f"{name} is required")
+
+        with self.connect() as con:
+            con.execute("BEGIN IMMEDIATE")
+            row = con.execute(
+                "SELECT resolution_sha256, client_id, run_id "
+                "FROM future_attack_path_transition_resolutions "
+                "WHERE resolution_id=?",
+                (resolution_id,),
+            ).fetchone()
+            if row is None:
+                con.execute(
+                    "INSERT INTO future_attack_path_transition_resolutions("
+                    "resolution_id,resolution_sha256,client_id,run_id,created_at"
+                    ") VALUES(?,?,?,?,?)",
+                    (
+                        resolution_id,
+                        resolution_sha256,
+                        client_id,
+                        run_id,
+                        utcnow().isoformat(),
+                    ),
+                )
+                con.execute("COMMIT")
+                return True
+
+            if (
+                row["resolution_sha256"] == resolution_sha256
+                and row["client_id"] == client_id
+                and row["run_id"] == run_id
+            ):
+                con.execute("COMMIT")
+                return False
+
+            con.execute("ROLLBACK")
+            raise ValueError(
+                "future attack-path transition resolution ID collision"
+            )
+
+    def get_future_attack_path_transition_resolution(
+        self,
+        resolution_id: str,
+    ) -> tuple[str, str, str] | None:
+        if not resolution_id.strip():
+            raise ValueError("resolution_id is required")
+        with self.connect() as con:
+            row = con.execute(
+                "SELECT resolution_sha256, client_id, run_id "
+                "FROM future_attack_path_transition_resolutions "
+                "WHERE resolution_id=?",
+                (resolution_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return (
+            row["resolution_sha256"],
+            row["client_id"],
+            row["run_id"],
+        )
 
     def get_evidence(self, evidence_id: str) -> EvidenceRecord:
         if not evidence_id.strip():
