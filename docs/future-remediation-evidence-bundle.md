@@ -34,8 +34,7 @@ For every remediation item the bundle retains only bounded provenance:
 Raw evidence payloads, raw customer source/config and patches are not copied
 into the bundle.
 
-The builder fails closed when referenced evidence is missing, its digest is not
-a SHA-256 value, its run is outside the supplied immutable run contexts, or its
+The builder fails closed when referenced evidence is missing, its digest is not a canonical lowercase SHA-256 value, its run is outside the supplied immutable run contexts, or its
 capability falls outside the plan item's lineage.
 
 ## Determinism
