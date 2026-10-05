@@ -49,18 +49,26 @@ class FutureSecurityEvidenceCollectionRequestTest(unittest.TestCase):
     def test_insufficient_evidence_produces_fresh_evidence_request_only(self):
         (
             current,
-            _,
-            _,
+            proposal,
+            context,
             resolution,
-            _,
-            _,
+            preview,
+            report,
             plan,
-            request,
-        ) = self._request(
+        ) = self.p._plan(
             AttackPathTransitionClassification.INSUFFICIENT_EVIDENCE,
             suffix="evidence-collection-gap",
         )
         before = dataclasses.asdict(current)
+        request = build_future_security_evidence_collection_request(
+            plan,
+            report,
+            preview,
+            proposal,
+            (resolution,),
+            (context,),
+            self.state,
+        )
 
         self.assertEqual(request.schema_version, REQUEST_SCHEMA_VERSION)
         self.assertEqual(request.plan_sha256, plan.plan_sha256)
