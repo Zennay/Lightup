@@ -58,6 +58,18 @@ class Lease:
     expires_at: datetime
 
 
+@dataclass(frozen=True)
+class EvidenceRecord:
+    evidence_id: str
+    run_id: str
+    capability_id: str
+    kind: str
+    source: str
+    sha256: str
+    metadata: tuple[tuple[str, str], ...]
+    created_at: str
+
+
 class StateStore:
     def __init__(self, path: str | Path):
         self.path = str(path)
@@ -153,3 +165,30 @@ class StateStore:
                 ),
             )
         return evidence_id
+
+    def get_evidence(self, evidence_id: str) -> EvidenceRecord:
+        if not evidence_id.strip():
+            raise ValueError("evidence_id is required")
+        with self.connect() as con:
+            row = con.execute(
+                "SELECT evidence_id,run_id,capability_id,kind,source,sha256,"
+                "metadata_json,created_at FROM evidence WHERE evidence_id=?",
+                (evidence_id,),
+            ).fetchone()
+        if row is None:
+            raise KeyError(f"unknown evidence {evidence_id!r}")
+        metadata_raw = json.loads(row["metadata_json"])
+        if not isinstance(metadata_raw, dict):
+            raise ValueError(f"evidence {evidence_id!r} has invalid metadata")
+        return EvidenceRecord(
+            evidence_id=row["evidence_id"],
+            run_id=row["run_id"],
+            capability_id=row["capability_id"],
+            kind=row["kind"],
+            source=row["source"],
+            sha256=row["sha256"],
+            metadata=tuple(
+                sorted((str(key), str(value)) for key, value in metadata_raw.items())
+            ),
+            created_at=row["created_at"],
+        )
