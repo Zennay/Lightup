@@ -259,7 +259,14 @@ class ToolExecutor:
             kind=output.evidence_kind,
             source=call.tool_id,
             payload=output.evidence_payload,
-            metadata={"asset": call.asset, **dict(output.metadata)},
+            metadata={
+                **dict(output.metadata),
+                "asset": call.asset,
+                "client_id": context.client_id,
+                "engagement_id": context.engagement_id,
+                "mode": context.mode.value,
+                "is_lab": "true" if context.is_lab else "false",
+            },
         )
 
         return ToolResult(
