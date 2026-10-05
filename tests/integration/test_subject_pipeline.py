@@ -173,6 +173,7 @@ class RealBindingSubjectResolutionTest(subject_tests.FutureSubjectResolutionTest
             resolved,
             self.state,
             AccessContext("reader", Role.CLIENT_MEMBER, "client-1"),
+            current=self.current,
         )
         self.assertTrue(impact.analysis_complete)
         self.assertEqual(impact.security_verdict, "not_evaluated")
