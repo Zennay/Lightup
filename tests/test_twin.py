@@ -125,6 +125,18 @@ class SecurityTwinTest(unittest.TestCase):
         twin.validate()
         self.assertEqual(twin.attack_paths[0].path_id, "path-1")
 
+    def test_stable_digest_is_deterministic_and_binds_snapshot_content(self):
+        current = SecurityTwin.current("client-1").next_snapshot(
+            nodes=(self.app, self.api)
+        )
+        same_digest = current.stable_digest()
+        self.assertEqual(current.stable_digest(), same_digest)
+
+        changed = current.next_snapshot(
+            nodes=(self.app, self.api, self.data)
+        )
+        self.assertNotEqual(changed.stable_digest(), same_digest)
+
     def test_future_twin_is_a_separate_branch_with_source_reference(self):
         current = SecurityTwin.current("client-1").next_snapshot(
             nodes=(self.app, self.api, self.data)
