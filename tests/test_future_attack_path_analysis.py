@@ -102,8 +102,9 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
             ),
             evidence_refs=("evidence:existing-path",),
         )
-        current = self.f.current.next_snapshot(
-            attack_paths=self.f.current.attack_paths + (path,)
+        current = dataclasses.replace(
+            self.f.current,
+            attack_paths=self.f.current.attack_paths + (path,),
         )
         resolved = resolved.next_snapshot(
             attack_paths=resolved.attack_paths + (path,)
@@ -263,6 +264,36 @@ class FutureAttackPathImpactAnalysisTest(unittest.TestCase):
                     current=other_current,
                 )
             lookup.assert_not_called()
+
+    def test_same_tenant_but_unrelated_current_baseline_is_rejected(self):
+        resolved = self._resolved_with(
+            (self.f.effect,),
+            graph_id="graph-impact-baseline-lineage",
+        )
+        wrong_id = dataclasses.replace(
+            self.f.current,
+            twin_id="unrelated-current-twin",
+        )
+        wrong_version = dataclasses.replace(
+            self.f.current,
+            version=self.f.current.version + 1,
+        )
+
+        for current in (wrong_id, wrong_version):
+            with self.subTest(
+                twin_id=current.twin_id,
+                version=current.version,
+            ):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "baseline identity does not match future lineage",
+                ):
+                    analyze_future_attack_path_impact(
+                        resolved,
+                        self.f.state,
+                        self.client,
+                        current=current,
+                    )
 
     def test_unresolved_graph_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "complete verified graph"):
