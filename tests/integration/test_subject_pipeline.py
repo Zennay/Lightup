@@ -150,6 +150,23 @@ class RealBindingSubjectResolutionTest(subject_tests.FutureSubjectResolutionTest
             ),
             resolved,
         )
+        report = review_future_subjects(
+            resolved,
+            self.state,
+            AccessContext("reader", Role.CLIENT_MEMBER, "client-1"),
+        )
+        self.assertTrue(report.graph_resolution_complete)
+        self.assertEqual(report.items[0].graph_resolution_status, "verified")
+        self.assertEqual(report.items[0].graph_resolution_id, "graph-integration")
+        self.assertEqual(
+            report.items[0].resolved_effect_ids,
+            ("effect-integration",),
+        )
+        self.assertEqual(
+            report.items[0].next_action,
+            "await_attack_path_analysis",
+        )
+        self.assertEqual(report.security_verdict, "not_evaluated")
 
     def test_snapshot_bound_review_cannot_be_reused_after_materialization(self):
         effected = self._materialize(self.bound)
