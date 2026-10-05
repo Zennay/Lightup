@@ -204,6 +204,53 @@ class FutureMaterializationTest(unittest.TestCase):
         self.assertEqual(metadata["future_materialization_confirmed_count"], "0")
         self.assertEqual(metadata["future_semantics"], "unresolved")
 
+    def test_current_twin_cannot_accept_future_materialization(self):
+        with self.assertRaises(ValueError):
+            apply_future_materialization_resolution(
+                self.current,
+                self._resolution(),
+                self.context,
+                self.state,
+            )
+
+    def test_partial_resolution_fact_collision_fails_closed(self):
+        import dataclasses
+
+        resolution = self._resolution()
+        resolved = apply_future_materialization_resolution(
+            self.future, resolution, self.context, self.state
+        )
+        materialization_facts = [
+            fact
+            for fact in resolved.facts
+            if fact.subject_id == self.change_node.node_id
+            and fact.predicate.startswith("materialization.")
+        ]
+        self.assertGreater(len(materialization_facts), 1)
+        damaged = dataclasses.replace(
+            resolved,
+            facts=tuple(
+                fact
+                for fact in resolved.facts
+                if fact.fact_id != materialization_facts[-1].fact_id
+            ),
+        )
+        damaged.validate()
+
+        with self.assertRaises(ValueError):
+            apply_future_materialization_resolution(
+                damaged, resolution, self.context, self.state
+            )
+
+    def test_unknown_evidence_fails_closed(self):
+        with self.assertRaises(KeyError):
+            apply_future_materialization_resolution(
+                self.future,
+                self._resolution(evidence_ids=("missing-evidence",)),
+                self.context,
+                self.state,
+            )
+
     def test_same_resolution_is_idempotent(self):
         resolution = self._resolution()
         resolved = apply_future_materialization_resolution(
