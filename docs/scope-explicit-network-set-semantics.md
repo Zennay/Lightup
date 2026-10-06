@@ -25,10 +25,15 @@ scope even when it carries a current authorization object.
 - duplicate entries do not bypass the authorization requirement;
 - network ordering does not change the resulting `ScopeDecision`;
 - overlapping CIDRs do not mint authorization;
-- IPv4 targets cannot match IPv6-only policy and IPv6 targets cannot match
+- IPv4 targets cannot match IPv6-only policy and bracketed IPv6 authorities cannot match
   IPv4-only policy;
-- a canonical public IPv6 target inside an explicit network still requires
+- a bracketed public IPv6 authority inside an explicit network still requires
   authorization and then resolves to `EXPLICIT_NETWORK`.
+
+During validation, bare IPv6 input exposed a separate parser-boundary gap: current
+schemeless parsing truncates the host token instead of preserving the full literal.
+That behavior fails closed in the observed case and is tracked separately as #291;
+this branch does not touch the actively owned `scope.py` implementation.
 
 ## Safety boundary
 
