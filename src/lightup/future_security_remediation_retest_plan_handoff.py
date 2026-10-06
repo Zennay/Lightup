@@ -109,22 +109,34 @@ def _string_tuple(value: object, *, field: str) -> tuple[str, ...]:
 
 def _expected_action(
     classification: AttackPathTransitionClassification,
-) -> tuple[FutureRemediationNextAction, bool, bool, bool]:
-    if classification in {
-        AttackPathTransitionClassification.INTRODUCED,
-        AttackPathTransitionClassification.WORSENED,
-    }:
+) -> tuple[AttackPathGraphDiffAction, FutureRemediationNextAction, bool, bool, bool]:
+    if classification is AttackPathTransitionClassification.INTRODUCED:
         return (
+            AttackPathGraphDiffAction.ADD_PATH_HYPOTHESIS,
             FutureRemediationNextAction.AUTHOR_REMEDIATION_THEN_RETEST,
             True,
             True,
             False,
         )
-    if classification in {
-        AttackPathTransitionClassification.IMPROVED,
-        AttackPathTransitionClassification.REMOVED,
-    }:
+    if classification is AttackPathTransitionClassification.WORSENED:
         return (
+            AttackPathGraphDiffAction.MODIFY_EXISTING_PATH_RISK_UP,
+            FutureRemediationNextAction.AUTHOR_REMEDIATION_THEN_RETEST,
+            True,
+            True,
+            False,
+        )
+    if classification is AttackPathTransitionClassification.IMPROVED:
+        return (
+            AttackPathGraphDiffAction.MODIFY_EXISTING_PATH_RISK_DOWN,
+            FutureRemediationNextAction.VERIFY_IMPROVEMENT_WITH_RETEST,
+            False,
+            True,
+            False,
+        )
+    if classification is AttackPathTransitionClassification.REMOVED:
+        return (
+            AttackPathGraphDiffAction.REMOVE_EXISTING_PATH_CANDIDATE,
             FutureRemediationNextAction.VERIFY_IMPROVEMENT_WITH_RETEST,
             False,
             True,
@@ -132,13 +144,13 @@ def _expected_action(
         )
     if classification is AttackPathTransitionClassification.INSUFFICIENT_EVIDENCE:
         return (
+            AttackPathGraphDiffAction.NO_GRAPH_CHANGE_CLAIM,
             FutureRemediationNextAction.COLLECT_MORE_EVIDENCE,
             False,
             False,
             True,
         )
     raise ValueError("unsupported remediation/retest classification")
-
 
 def _plan_digest_from_plan(plan: FutureSecurityRemediationRetestPlan) -> str:
     payload = {
@@ -307,6 +319,7 @@ def future_security_remediation_retest_plan_from_dict(
 
         expected = _expected_action(classification)
         actual = (
+            graph_diff_action,
             next_action,
             raw_item["remediation_required"],
             raw_item["future_state_retest_required"],
