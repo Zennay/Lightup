@@ -39,6 +39,8 @@ class ExecutionPolicy:
     """
 
     def decide(self, request: ExecutionRequest) -> PolicyDecision:
+        if not isinstance(request.interaction, InteractionKind):
+            return PolicyDecision(False, "interaction must be an InteractionKind")
         if not isinstance(request.requested_risk, RiskLevel):
             return PolicyDecision(False, "requested risk must be a RiskLevel")
 
@@ -56,6 +58,9 @@ class ExecutionPolicy:
             if not request.is_lab:
                 return PolicyDecision(False, "lab execution requires a lab target")
             return PolicyDecision(True, "isolated lab execution")
+
+        if request.interaction is not InteractionKind.TARGET_ACTIVE:
+            return PolicyDecision(False, "unsupported interaction kind")
 
         if request.requested_risk == RiskLevel.DESTRUCTIVE_LAB_ONLY:
             return PolicyDecision(False, "destructive risk is restricted to isolated labs")
