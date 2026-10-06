@@ -9,9 +9,24 @@ from lightup.future_remediation_authoring_request_handoff import (
     future_remediation_authoring_request_from_dict,
     future_remediation_authoring_request_from_json,
 )
+from lightup.future_remediation_text_proposal_handoff import (
+    future_remediation_text_proposal_from_json,
+)
+from lightup.future_remediation_text_review_request_handoff import (
+    future_remediation_text_review_request_from_json,
+)
 from lightup.future_remediation_text_review_handoff import (
     future_remediation_text_review_from_dict,
     future_remediation_text_review_from_json,
+)
+from lightup.future_remediation_text_revision_request_handoff import (
+    future_remediation_text_revision_request_from_json,
+)
+from lightup.future_remediation_text_revision_proposal_handoff import (
+    future_remediation_text_revision_proposal_from_json,
+)
+from lightup.future_remediation_text_revision_review_request_handoff import (
+    future_remediation_text_revision_review_request_from_json,
 )
 from lightup.future_remediation_text_revision_review_handoff import (
     future_remediation_text_revision_review_from_dict,
@@ -35,8 +50,24 @@ class FutureRemediationNestedSchemaIntegrityTest(unittest.TestCase):
         self.revised.setUp()
         self.addCleanup(self.revised.tearDown)
 
+    def _original_artifacts(self):
+        return (
+            self.original.base.base.request,
+            self.original.base.proposal,
+            self.original.base.review_request,
+            self.original.review,
+        )
+
+    def _revised_artifacts(self):
+        return (
+            self.revised.base.base.base.base.base.base.revision_request,
+            self.revised.base.base.base.base.base.proposal,
+            self.revised.base.base.base.request,
+            self.revised.review,
+        )
+
     def _authoring_request(self):
-        return self.original.base.base.request
+        return self._original_artifacts()[0]
 
     @staticmethod
     def _with_unknown_field(payload: dict) -> dict:
@@ -67,6 +98,49 @@ class FutureRemediationNestedSchemaIntegrityTest(unittest.TestCase):
             ),
             self.revised.review,
         )
+
+    def test_all_top_level_artifacts_reject_missing_required_fields(self):
+        artifacts_and_parsers = (
+            (
+                self._original_artifacts()[0],
+                future_remediation_authoring_request_from_json,
+            ),
+            (
+                self._original_artifacts()[1],
+                future_remediation_text_proposal_from_json,
+            ),
+            (
+                self._original_artifacts()[2],
+                future_remediation_text_review_request_from_json,
+            ),
+            (
+                self._original_artifacts()[3],
+                future_remediation_text_review_from_json,
+            ),
+            (
+                self._revised_artifacts()[0],
+                future_remediation_text_revision_request_from_json,
+            ),
+            (
+                self._revised_artifacts()[1],
+                future_remediation_text_revision_proposal_from_json,
+            ),
+            (
+                self._revised_artifacts()[2],
+                future_remediation_text_revision_review_request_from_json,
+            ),
+            (
+                self._revised_artifacts()[3],
+                future_remediation_text_revision_review_from_json,
+            ),
+        )
+
+        for artifact, parser in artifacts_and_parsers:
+            payload = json.loads(artifact.to_json())
+            payload.pop("schema_version")
+            with self.subTest(artifact=type(artifact).__name__):
+                with self.assertRaisesRegex(ValueError, "schema mismatch"):
+                    parser(json.dumps(payload))
 
     def test_authoring_item_rejects_unknown_and_missing_fields(self):
         request = self._authoring_request()
