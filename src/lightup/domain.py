@@ -597,6 +597,12 @@ class DomainStore:
         client_id: str | None = None,
     ) -> AssessmentRequestRecord:
         client_id = ctx.resolve_client(client_id, "submit_assessment_request")
+        if not isinstance(requested_mode, AssessmentMode):
+            raise ValueError("requested_mode must be an AssessmentMode")
+        if not isinstance(requested_risk, RiskLevel):
+            raise ValueError("requested_risk must be a RiskLevel")
+        if requested_risk == RiskLevel.DESTRUCTIVE_LAB_ONLY:
+            raise ValueError("destructive risk is lab-only and cannot be client-requested")
         assets = tuple(a.strip() for a in requested_assets if a.strip())
         if not assets:
             raise ValueError("at least one requested asset is required")
@@ -998,6 +1004,10 @@ class DomainStore:
         justification: str,
     ) -> RiskApprovalRecord:
         engagement = self.get_engagement(ctx, engagement_id)
+        if not isinstance(requested_risk, RiskLevel):
+            raise ValueError("requested_risk must be a RiskLevel")
+        if requested_risk == RiskLevel.DESTRUCTIVE_LAB_ONLY:
+            raise ValueError("destructive risk is lab-only and cannot be elevated")
         if not justification.strip():
             raise ValueError("risk elevation requires a justification")
         record = RiskApprovalRecord(
