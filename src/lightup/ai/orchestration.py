@@ -15,7 +15,7 @@ Design rules:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable
@@ -238,6 +238,7 @@ class ToolExecutor:
             raise RiskElevationRequired(call.tool_id, definition.min_risk, context.approved_risk)
 
         authorization = context.authorization
+        handler_context = context
         if definition.interaction is InteractionKind.TARGET_ACTIVE:
             if authorization is None:
                 raise ToolDenied("target-active execution requires authorization")
@@ -255,6 +256,10 @@ class ToolExecutor:
                 raise ToolDenied(
                     "live authorization resolver returned a different grant"
                 )
+            # The policy and the handler must see the same authoritative grant.
+            # Keep the caller's immutable snapshot unchanged, but never expose
+            # stale broader authorization metadata to a target-active handler.
+            handler_context = replace(context, authorization=authorization)
 
         request = ExecutionRequest(
             interaction=definition.interaction,
@@ -270,7 +275,7 @@ class ToolExecutor:
         if not decision.allowed:
             raise ToolDenied(f"policy denied tool {call.tool_id!r}: {decision.reason}")
 
-        output = handler(context, arguments)
+        output = handler(handler_context, arguments)
         if not isinstance(output, ToolOutput):
             raise OrchestrationError(
                 f"tool {call.tool_id!r} violated the evidence contract: "
