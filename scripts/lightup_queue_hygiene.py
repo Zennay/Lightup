@@ -4,7 +4,9 @@
 The utility is intentionally conservative:
 - dry-run by default;
 - protects the current default-branch head, current workflow run, and all open PR heads;
-- only stale queued runs with at least one queued self-hosted job can be cancelled;\n- apply mode has a hard cancellation cap and aborts before mutation when exceeded.\n"""
+- only stale queued runs with at least one queued self-hosted job can be cancelled;
+- apply mode has a hard cancellation cap and aborts before mutation when exceeded.
+"""
 
 from __future__ import annotations
 
