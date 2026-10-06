@@ -914,6 +914,28 @@ class DomainStore:
                 return grant
         return None
 
+    def resolve_authorization_for_execution(
+        self, grant: AuthorizationGrant, now: datetime | None = None
+    ) -> AuthorizationGrant | None:
+        """Re-read one exact grant for the execution plane, failing closed.
+
+        RunContext authorization is only a snapshot. This resolver binds the
+        grant id, client and engagement to durable state and returns the live
+        persisted record only while it is still current. Callers must evaluate
+        policy against this returned object rather than the stale snapshot.
+        """
+        now = now or utcnow()
+        with self._connect() as con:
+            row = con.execute(
+                "SELECT * FROM authorization_grants "
+                "WHERE grant_id=? AND client_id=? AND engagement_id=? LIMIT 1",
+                (grant.grant_id, grant.client_id, grant.engagement_id),
+            ).fetchone()
+        if row is None:
+            return None
+        persisted = self._grant_from_row(row)
+        return persisted if persisted.is_current(now) else None
+
     # -- risk elevation ---------------------------------------------------------
 
     def request_risk_elevation(
