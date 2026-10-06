@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import Enum
 
@@ -10,6 +11,9 @@ class CapabilityState(str, Enum):
     DISABLED = "disabled"
 
 
+_CAPABILITY_ID_PATTERN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+
+
 @dataclass(frozen=True)
 class Capability:
     capability_id: str
@@ -17,6 +21,34 @@ class Capability:
     description: str
     state: CapabilityState
     requires_explicit_activation: bool = True
+
+    def __post_init__(self) -> None:
+        if type(self.capability_id) is not str or not _CAPABILITY_ID_PATTERN.fullmatch(
+            self.capability_id
+        ):
+            raise ValueError(
+                "capability_id must be a canonical lowercase kebab-case string"
+            )
+        if type(self.name) is not str or not self.name.strip():
+            raise ValueError("capability name must be a non-empty string")
+        if type(self.description) is not str or not self.description.strip():
+            raise ValueError("capability description must be a non-empty string")
+        if type(self.state) is not CapabilityState:
+            raise ValueError("capability state must be a CapabilityState member")
+        if type(self.requires_explicit_activation) is not bool:
+            raise ValueError("requires_explicit_activation must be an exact bool")
+
+
+def _validate_registry(registry: tuple[Capability, ...]) -> None:
+    seen_ids: set[str] = set()
+    for capability in registry:
+        if type(capability) is not Capability:
+            raise ValueError("capability registry may contain only Capability records")
+        if capability.capability_id in seen_ids:
+            raise ValueError(
+                f"duplicate capability id in registry: {capability.capability_id}"
+            )
+        seen_ids.add(capability.capability_id)
 
 
 # High-level registry only. No exploit payloads or active target logic live here.
@@ -55,6 +87,9 @@ REGISTRY: tuple[Capability, ...] = (
     Capability("physical-security-lab", "Physical integrations lab", "Isolated access-control and device-integration assessment", CapabilityState.LAB_ONLY),
 )
 
+_validate_registry(REGISTRY)
+
 
 def get_capabilities() -> tuple[Capability, ...]:
+    _validate_registry(REGISTRY)
     return REGISTRY
