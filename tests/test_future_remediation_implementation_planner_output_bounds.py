@@ -97,6 +97,29 @@ class FutureRemediationImplementationPlannerOutputBoundsTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, message):
                     self.base._generate(gateway)
 
+    def test_surrounding_whitespace_normalizes_to_same_plan_digest(self):
+        clean_gateway, _ = self.base._gateway()
+        clean = self.base._generate(clean_gateway)
+
+        payload = json.loads(plan_tests._plan_json())
+        payload["summary"] = "  " + payload["summary"] + "  "
+        for field in ("plan_item_id", "intent", "verification_intent", "rollback_intent"):
+            payload["plan_items"][0][field] = (
+                "  " + payload["plan_items"][0][field] + "  "
+            )
+        payload["assumptions"] = [
+            "  " + item + "  " for item in payload["assumptions"]
+        ]
+
+        padded_gateway, _ = self._generate_from_payload(payload)
+        padded = self.base._generate(padded_gateway)
+
+        self.assertEqual(padded.summary, clean.summary)
+        self.assertEqual(padded.plan_items, clean.plan_items)
+        self.assertEqual(padded.assumptions, clean.assumptions)
+        self.assertEqual(padded.unresolved_questions, clean.unresolved_questions)
+        self.assertEqual(padded.plan_sha256, clean.plan_sha256)
+
     def test_assumptions_and_questions_require_bounded_lists(self):
         for field in ("assumptions", "unresolved_questions"):
             with self.subTest(field=field, case="type"):
@@ -118,6 +141,13 @@ class FutureRemediationImplementationPlannerOutputBoundsTest(unittest.TestCase):
                 payload[field] = ["x" * 801]
                 gateway, _ = self._generate_from_payload(payload)
                 with self.assertRaisesRegex(ValueError, "bounded size"):
+                    self.base._generate(gateway)
+
+            with self.subTest(field=field, case="empty"):
+                payload = json.loads(plan_tests._plan_json())
+                payload[field] = ["   "]
+                gateway, _ = self._generate_from_payload(payload)
+                with self.assertRaisesRegex(ValueError, "non-empty string"):
                     self.base._generate(gateway)
 
             with self.subTest(field=field, case="nul"):
