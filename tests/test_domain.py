@@ -93,6 +93,23 @@ class DomainStoreTest(unittest.TestCase):
                 RiskLevel.STANDARD, client_id=self.client_b.client_id,
             )
 
+    def test_assessment_request_rejects_invalid_or_destructive_risk(self):
+        invalid_cases = (
+            ("authorized_assessment", RiskLevel.STANDARD),
+            (AssessmentMode.AUTHORIZED_ASSESSMENT, 5),
+            (AssessmentMode.AUTHORIZED_ASSESSMENT, RiskLevel.DESTRUCTIVE_LAB_ONLY),
+        )
+        for index, (mode, risk) in enumerate(invalid_cases):
+            with self.subTest(index=index):
+                with self.assertRaises(ValueError):
+                    self.store.submit_assessment_request(
+                        self.ctx_a,
+                        ("app.acme.example",),
+                        mode,  # type: ignore[arg-type]
+                        risk,  # type: ignore[arg-type]
+                    )
+        self.assertEqual(self.store.list_assessment_requests(self.ctx_a), [])
+
     def test_request_review_is_operator_only(self):
         request = self.store.submit_assessment_request(
             self.ctx_a, ("app.acme.example",), AssessmentMode.AUTHORIZED_ASSESSMENT,
@@ -459,6 +476,24 @@ class DomainStoreTest(unittest.TestCase):
             con.close()
         self.assertTrue(
             {"revoked_at", "revoked_by", "revocation_reason"}.issubset(columns)
+        )
+
+    def test_risk_elevation_rejects_invalid_or_destructive_risk(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Risk intake boundary"
+        )
+        for index, risk in enumerate((5, RiskLevel.DESTRUCTIVE_LAB_ONLY)):
+            with self.subTest(index=index):
+                with self.assertRaises(ValueError):
+                    self.store.request_risk_elevation(
+                        self.ctx_a,
+                        engagement.engagement_id,
+                        risk,  # type: ignore[arg-type]
+                        "request that must fail before persistence",
+                    )
+        self.assertEqual(
+            self.store.list_risk_approvals(self.ctx_a, engagement.engagement_id),
+            [],
         )
 
     def test_risk_elevation_requires_second_operator(self):
