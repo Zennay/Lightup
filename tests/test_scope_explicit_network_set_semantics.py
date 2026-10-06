@@ -103,7 +103,7 @@ class ScopeExplicitNetworkSetSemanticsTests(unittest.TestCase):
         self.assertEqual(denied.reason, ScopeReason.AUTHORIZATION_MISSING)
 
         allowed = policy.decide(
-            Target("2606:4700:4700::1111", authorization=self.authorization)
+            Target("[2606:4700:4700::1111]", authorization=self.authorization)
         )
         self.assertTrue(allowed.allowed)
         self.assertEqual(allowed.reason, ScopeReason.EXPLICIT_NETWORK)
