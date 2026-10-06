@@ -29,7 +29,7 @@ class ScopeDecision:
 
 @dataclass(frozen=True)
 class ScopePolicy:
-    allow_private_lab: bool = True
+    allow_private_lab: bool = False
     explicit_hosts: frozenset[str] = frozenset()
     explicit_networks: tuple[str, ...] = ()
     require_authorization_for_public: bool = True
@@ -64,7 +64,14 @@ class ScopePolicy:
         if addr is not None:
             if addr.is_loopback:
                 return ScopeDecision(True, host, ScopeReason.LOOPBACK)
-            if self.allow_private_lab and (addr.is_private or addr.is_link_local):
+            private_lab_candidate = (
+                addr.is_private
+                and not addr.is_link_local
+                and not addr.is_multicast
+                and not addr.is_unspecified
+                and not addr.is_reserved
+            )
+            if self.allow_private_lab and private_lab_candidate:
                 return ScopeDecision(True, host, ScopeReason.PRIVATE_LAB)
             if any(addr in network for network in self._networks()):
                 if self.require_authorization_for_public:
