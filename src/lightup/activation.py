@@ -21,6 +21,14 @@ class ActivationPolicy:
     activation_reference: str | None = None
 
     def validate(self) -> None:
+        if not isinstance(self.mode, ActivationMode):
+            raise ValueError("activation mode must be an ActivationMode")
+        if self.mode not in {
+            ActivationMode.PLAN_ONLY,
+            ActivationMode.LAB_ONLY,
+            ActivationMode.AUTHORIZED,
+        }:
+            raise ValueError("unsupported activation mode")
         if self.mode is ActivationMode.AUTHORIZED and not self.activation_reference:
             raise ValueError("authorized mode requires an explicit activation_reference")
 
@@ -61,7 +69,7 @@ class ActivationGate:
                 raise PermissionError("lab-only mode cannot issue permits for public targets")
             reference = self.activation_policy.activation_reference or "LAB"
             authorization_reference = None
-        else:
+        elif self.activation_policy.mode is ActivationMode.AUTHORIZED:
             if target.authorization is None or not target.authorization.is_current():
                 raise PermissionError("authorized execution requires current target authorization")
             normalized_target = decision.normalized_host or target.value
@@ -71,6 +79,8 @@ class ActivationGate:
                 )
             reference = self.activation_policy.activation_reference or target.authorization.reference
             authorization_reference = target.authorization.reference
+        else:
+            raise PermissionError("unsupported activation mode")
 
         return ExecutionPermit(
             permit_id=token_urlsafe(24),
