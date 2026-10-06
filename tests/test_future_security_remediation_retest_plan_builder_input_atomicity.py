@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+from contextlib import ExitStack
 import unittest
+from unittest import mock
 
 import test_future_attack_path_security_delta_report as report_tests
 from lightup.future_attack_path_security_delta_report import (
@@ -85,6 +87,20 @@ class FutureSecurityRemediationRetestPlanBuilderInputAtomicityTest(unittest.Test
             )
         return runs, leases, evidence
 
+    def _forbid_state_writes(self):
+        stack = ExitStack()
+        for method_name in ("create_run", "acquire_lease", "add_evidence"):
+            stack.enter_context(
+                mock.patch.object(
+                    self.state,
+                    method_name,
+                    side_effect=AssertionError(
+                        f"unexpected StateStore write API call: {method_name}"
+                    ),
+                )
+            )
+        return stack
+
     def _inputs(self, classification, *, suffix):
         _, proposal, context, resolution, preview = self.r._inputs(
             classification,
@@ -101,7 +117,13 @@ class FutureSecurityRemediationRetestPlanBuilderInputAtomicityTest(unittest.Test
         )
         return report, preview, proposal, resolutions, contexts
 
-    def _assert_inputs_and_state_unchanged(self, inputs, before_values, before_ids, before_state):
+    def _assert_inputs_and_state_unchanged(
+        self,
+        inputs,
+        before_values,
+        before_ids,
+        before_state,
+    ):
         self.assertEqual(inputs, before_values)
         self.assertEqual(self._container_identities(inputs), before_ids)
         self.assertEqual(self._state_rows(), before_state)
@@ -126,22 +148,23 @@ class FutureSecurityRemediationRetestPlanBuilderInputAtomicityTest(unittest.Test
                 before_ids = self._container_identities(inputs)
                 before_state = self._state_rows()
 
-                first = build_future_security_remediation_retest_plan(
-                    report,
-                    preview,
-                    proposal,
-                    resolutions,
-                    contexts,
-                    self.state,
-                )
-                second = build_future_security_remediation_retest_plan(
-                    report,
-                    preview,
-                    proposal,
-                    resolutions,
-                    contexts,
-                    self.state,
-                )
+                with self._forbid_state_writes():
+                    first = build_future_security_remediation_retest_plan(
+                        report,
+                        preview,
+                        proposal,
+                        resolutions,
+                        contexts,
+                        self.state,
+                    )
+                    second = build_future_security_remediation_retest_plan(
+                        report,
+                        preview,
+                        proposal,
+                        resolutions,
+                        contexts,
+                        self.state,
+                    )
 
                 self.assertEqual(first, second)
                 self._assert_inputs_and_state_unchanged(
@@ -174,16 +197,17 @@ class FutureSecurityRemediationRetestPlanBuilderInputAtomicityTest(unittest.Test
         before_ids = self._container_identities(tampered_inputs)
         before_state = self._state_rows()
 
-        for _ in range(2):
-            with self.assertRaisesRegex(ValueError, "security delta report is stale"):
-                build_future_security_remediation_retest_plan(
-                    tampered_report,
-                    preview,
-                    proposal,
-                    resolutions,
-                    contexts,
-                    self.state,
-                )
+        with self._forbid_state_writes():
+            for _ in range(2):
+                with self.assertRaisesRegex(ValueError, "security delta report is stale"):
+                    build_future_security_remediation_retest_plan(
+                        tampered_report,
+                        preview,
+                        proposal,
+                        resolutions,
+                        contexts,
+                        self.state,
+                    )
 
         self._assert_inputs_and_state_unchanged(
             tampered_inputs,
