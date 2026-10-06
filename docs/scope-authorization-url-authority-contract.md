@@ -22,10 +22,12 @@ This tests/docs-only contract freezes the following fail-closed behavior:
 - DNS names that merely contain `localhost` or loopback-looking text are not
   treated as loopback.
 
-The regression module exercises only `ScopePolicy.decide` with in-memory
-`Target` objects. It performs no DNS lookup, socket connection, HTTP request,
-tool execution, scanning, target interaction, remediation/retest, deployment,
-or authorization widening.
+The regression module exercises `ScopePolicy.decide` and the upstream scope
+check inside `ActivationGate.issue` with in-memory `Target` objects. Deceptive
+userinfo must fail at scope before either AUTHORIZED or LAB_ONLY permit minting.
+It performs no DNS lookup, socket connection, HTTP request, tool execution,
+scanning, target interaction, remediation/retest, deployment, or authorization
+widening.
 
 ## Collision boundary
 
