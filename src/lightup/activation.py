@@ -64,6 +64,11 @@ class ActivationGate:
         else:
             if target.authorization is None or not target.authorization.is_current():
                 raise PermissionError("authorized execution requires current target authorization")
+            normalized_target = decision.normalized_host or target.value
+            if not target.authorization.allows_asset(normalized_target):
+                raise PermissionError(
+                    "authorized execution requires authorization bound to the exact target asset"
+                )
             reference = self.activation_policy.activation_reference or target.authorization.reference
             authorization_reference = target.authorization.reference
 
