@@ -60,6 +60,26 @@ they harden. For each row above:
 
 A green later-stage package does not waive an unproven earlier-stage consumer.
 
+## Authority-widening audit
+
+The composed-consumer PR diffs were audited together (#109, #128, #131, #136,
+#141, #145, #148, #150 and #154). Across their added lines there are no
+positive assignments that widen any of these authorities:
+
+- classification selection;
+- transition-resolution creation;
+- evidence collection authorization;
+- tool-call creation;
+- execution;
+- target interaction;
+- remediation authoring;
+- future-state retest;
+- deployment;
+- attack-path mutation.
+
+This is an additional integration check, not a substitute for the exact parser,
+live validator, hosted proof, canonical VPS proof or dependency/restack gates.
+
 ## Semantic stop line
 
 The evidence-remediation chain ends at the validated
