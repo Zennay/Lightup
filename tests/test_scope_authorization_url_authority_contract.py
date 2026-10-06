@@ -4,6 +4,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
+from lightup.activation import ActivationGate, ActivationMode, ActivationPolicy
 from lightup.models import Authorization, Target
 from lightup.scope import ScopePolicy, ScopeReason
 
@@ -97,6 +98,39 @@ class ScopeAuthorizationUrlAuthorityContractTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.normalized_host, "evil.invalid")
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_authorized_activation_cannot_mint_permit_from_userinfo_bait(self):
+        target = Target(
+            "https://security.example.test@evil.invalid/",
+            authorization=self.authorization,
+        )
+        gate = ActivationGate(
+            self.policy,
+            ActivationPolicy(
+                mode=ActivationMode.AUTHORIZED,
+                activation_reference="ACT-URL-AUTHORITY",
+            ),
+        )
+
+        with self.assertRaisesRegex(
+            PermissionError, "target denied by scope gate: out_of_scope"
+        ):
+            gate.issue(target, "web-baseline")
+
+    def test_lab_activation_cannot_mint_permit_from_localhost_userinfo_bait(self):
+        target = Target("https://localhost@evil.invalid/")
+        gate = ActivationGate(
+            ScopePolicy(),
+            ActivationPolicy(
+                mode=ActivationMode.LAB_ONLY,
+                activation_reference="LAB-URL-AUTHORITY",
+            ),
+        )
+
+        with self.assertRaisesRegex(
+            PermissionError, "target denied by scope gate: out_of_scope"
+        ):
+            gate.issue(target, "web-baseline")
 
     def test_localhost_in_userinfo_cannot_grant_loopback_trust(self):
         decision = ScopePolicy().decide(
