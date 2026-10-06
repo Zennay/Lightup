@@ -90,8 +90,16 @@ def _is_canonical_sha256(value: object) -> bool:
 
 
 def _non_empty_string(value: object, *, field: str) -> str:
-    if type(value) is not str or not value:
-        raise ValueError(f"future-state retest request {field} must be a non-empty string")
+    if (
+        type(value) is not str
+        or not value
+        or value != value.strip()
+        or len(value) > 256
+        or any(ord(character) < 32 or ord(character) == 127 for character in value)
+    ):
+        raise ValueError(
+            f"future-state retest request {field} must be a canonical non-empty string"
+        )
     return value
 
 
@@ -104,10 +112,8 @@ def _string_tuple(
 ) -> tuple[str, ...]:
     if not isinstance(value, list):
         raise ValueError(f"future-state retest request {field} must be a string list")
-    if any(type(item) is not str or not item for item in value):
-        raise ValueError(
-            f"future-state retest request {field} must contain non-empty strings"
-        )
+    for item in value:
+        _non_empty_string(item, field=field)
     parsed = tuple(value)
     if require_non_empty and not parsed:
         raise ValueError(f"future-state retest request {field} must not be empty")
@@ -282,7 +288,8 @@ def future_security_retest_request_from_dict(
         raise ValueError("future-state retest request items must be a non-empty list")
 
     items: list[FutureSecurityRetestRequestItem] = []
-    identities: set[tuple[str, str, str]] = set()
+    seen_changes: set[str] = set()
+    seen_resolutions: set[str] = set()
     for raw_item in raw_items:
         if not isinstance(raw_item, dict) or set(raw_item) != _ITEM_KEYS:
             raise ValueError("future-state retest request item schema mismatch")
@@ -343,10 +350,59 @@ def future_security_retest_request_from_dict(
                 "future-state retest request item graph/action/purpose semantics mismatch"
             )
 
-        identity = (change_node_id, subject_node_id, resolution_id)
-        if identity in identities:
-            raise ValueError("future-state retest request item identity must be unique")
-        identities.add(identity)
+        if change_node_id in seen_changes:
+            raise ValueError(
+                "future-state retest request change_node_id must be unique"
+            )
+        if resolution_id in seen_resolutions:
+            raise ValueError(
+                "future-state retest request resolution_id must be unique"
+            )
+        seen_changes.add(change_node_id)
+        seen_resolutions.add(resolution_id)
+
+        current_attack_path_ids = _string_tuple(
+            raw_item["current_attack_path_ids"],
+            field="item.current_attack_path_ids",
+            require_sorted=True,
+        )
+        effect_ids = _string_tuple(
+            raw_item["effect_ids"],
+            field="item.effect_ids",
+            require_non_empty=True,
+            require_sorted=True,
+        )
+        item_evidence_ids = _string_tuple(
+            raw_item["evidence_ids"],
+            field="item.evidence_ids",
+            require_non_empty=True,
+            require_sorted=True,
+        )
+        item_capability_ids = _string_tuple(
+            raw_item["capability_ids"],
+            field="item.capability_ids",
+            require_non_empty=True,
+            require_sorted=True,
+        )
+        if (
+            classification is AttackPathTransitionClassification.INTRODUCED
+            and current_attack_path_ids
+        ):
+            raise ValueError(
+                "introduced future-state retest item cannot reference a current attack path"
+            )
+        if (
+            classification
+            in {
+                AttackPathTransitionClassification.WORSENED,
+                AttackPathTransitionClassification.IMPROVED,
+                AttackPathTransitionClassification.REMOVED,
+            }
+            and not current_attack_path_ids
+        ):
+            raise ValueError(
+                "future-state retest item classification requires current attack paths"
+            )
 
         items.append(
             FutureSecurityRetestRequestItem(
@@ -359,22 +415,10 @@ def future_security_retest_request_from_dict(
                 source_next_action=source_next_action,
                 purpose=purpose,
                 remediation_required=raw_item["remediation_required"],
-                current_attack_path_ids=_string_tuple(
-                    raw_item["current_attack_path_ids"],
-                    field="item.current_attack_path_ids",
-                ),
-                effect_ids=_string_tuple(
-                    raw_item["effect_ids"],
-                    field="item.effect_ids",
-                ),
-                evidence_ids=_string_tuple(
-                    raw_item["evidence_ids"],
-                    field="item.evidence_ids",
-                ),
-                capability_ids=_string_tuple(
-                    raw_item["capability_ids"],
-                    field="item.capability_ids",
-                ),
+                current_attack_path_ids=current_attack_path_ids,
+                effect_ids=effect_ids,
+                evidence_ids=item_evidence_ids,
+                capability_ids=item_capability_ids,
             )
         )
 
