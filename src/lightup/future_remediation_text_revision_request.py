@@ -24,6 +24,7 @@ from .future_attack_path_transition_resolution import FutureAttackPathTransition
 from .future_remediation_authoring_request import FutureRemediationAuthoringRequest
 from .future_remediation_evidence_bundle import FutureRemediationEvidenceBundle
 from .future_remediation_text_review import RemediationTextReviewDecision
+from .future_remediation_text_review_request import REQUIRED_REVIEW_CHECKS
 from .future_remediation_text_review_handoff import (
     load_and_validate_future_remediation_text_review,
 )
@@ -34,6 +35,16 @@ from .state import StateStore
 REMEDIATION_TEXT_REVISION_REQUEST_SCHEMA_VERSION = (
     "st5.remediation_text_revision_request.v1"
 )
+
+
+def _require_revision_sha256(value: object, *, field: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise ValueError(f"{field} must be a canonical lowercase SHA-256 digest")
+    return value
 
 
 @dataclass(frozen=True)
@@ -59,8 +70,42 @@ class FutureRemediationTextRevisionRequest:
     security_verdict: str = "not_evaluated"
 
     def __post_init__(self) -> None:
+        if self.schema_version != REMEDIATION_TEXT_REVISION_REQUEST_SCHEMA_VERSION:
+            raise ValueError("remediation text revision request schema version mismatch")
+        for field in (
+            "review_sha256",
+            "review_request_sha256",
+            "proposal_sha256",
+            "content_sha256",
+            "revision_request_sha256",
+        ):
+            _require_revision_sha256(
+                getattr(self, field),
+                field=f"remediation text revision request {field}",
+            )
         if self.review_decision != RemediationTextReviewDecision.REVISION_REQUIRED.value:
             raise ValueError("remediation revision request review_decision must remain revision_required")
+        if not isinstance(self.revision_checks, tuple) or not self.revision_checks:
+            raise ValueError(
+                "remediation text revision request revision_checks must be a non-empty tuple"
+            )
+        if any(not isinstance(check, str) for check in self.revision_checks):
+            raise ValueError(
+                "remediation text revision request revision_checks must contain strings"
+            )
+        if len(set(self.revision_checks)) != len(self.revision_checks):
+            raise ValueError(
+                "remediation text revision request revision_checks must be unique"
+            )
+        canonical_checks = tuple(
+            check
+            for check in REQUIRED_REVIEW_CHECKS
+            if check in set(self.revision_checks)
+        )
+        if canonical_checks != self.revision_checks:
+            raise ValueError(
+                "remediation text revision request revision_checks are invalid or out of order"
+            )
         if self.revision_requested is not True:
             raise ValueError("revision_requested must remain true")
         if self.remediation_accepted is not False:
@@ -80,6 +125,14 @@ class FutureRemediationTextRevisionRequest:
             raise ValueError("future_semantics must remain unresolved")
         if self.security_verdict != "not_evaluated":
             raise ValueError("security_verdict must remain not_evaluated")
+        if self.revision_request_sha256 != _revision_request_digest(
+            review_sha256=self.review_sha256,
+            review_request_sha256=self.review_request_sha256,
+            proposal_sha256=self.proposal_sha256,
+            content_sha256=self.content_sha256,
+            revision_checks=self.revision_checks,
+        ):
+            raise ValueError("remediation text revision request digest mismatch")
 
     def as_dict(self) -> dict:
         return asdict(self)
