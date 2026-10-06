@@ -226,6 +226,9 @@ class LightUpWebApp:
              self.create_engagement, "operator"),
             ("POST", re.compile(r"^/engagements/(?P<engagement_id>[\w-]+)/grants$"),
              self.record_grant, "operator"),
+            ("POST", re.compile(
+                r"^/engagements/(?P<engagement_id>[\w-]+)/authorization/revoke$"
+            ), self.revoke_authorization, "operator"),
             ("GET", re.compile(r"^/assessments$"), self.assessments, "operator"),
             ("POST", re.compile(r"^/assessments/requests/(?P<request_id>[\w-]+)/decision$"),
              self.decide_request, "operator"),
@@ -495,7 +498,15 @@ class LightUpWebApp:
                     f"<br>Assets: {_e(', '.join(grant.scope.assets))}"
                     f"<br>Max risk: {_risk(grant.scope.max_risk)}"
                     f"<br>Valid {_e(grant.valid_from.date())} – {_e(grant.valid_until.date())}"
-                    "</p></details>"
+                    "</p>"
+                    f"<form method=\"post\" action=\"/engagements/{_e(eng.engagement_id)}/authorization/revoke\">"
+                    f"{csrf}"
+                    "<label>Revocation reason</label>"
+                    "<input name=\"reason\" required "
+                    "placeholder=\"Customer withdrew authorization\">"
+                    "<button class=\"secondary\">Revoke authorization</button>"
+                    "<p class=\"meta\">This immediately withdraws all current and "
+                    "scheduled grants for this engagement.</p></form></details>"
                 )
             else:
                 grant_detail = (
@@ -584,6 +595,14 @@ class LightUpWebApp:
             reference=form.get("reference", ""),
             scope=scope, valid_from=now,
             valid_until=now + timedelta(days=valid_days),
+        )
+        return _redirect(f"/clients/{engagement.client_id}")
+
+    def revoke_authorization(self, auth: AuthState, form: dict[str, str],
+                             engagement_id: str) -> Response:
+        engagement = self.store.get_engagement(auth.context, engagement_id)
+        self.store.revoke_engagement_authorization(
+            auth.context, engagement_id, form.get("reason", "")
         )
         return _redirect(f"/clients/{engagement.client_id}")
 
