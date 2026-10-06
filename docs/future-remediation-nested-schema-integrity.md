@@ -22,9 +22,9 @@ The regression covers:
 For each nested object kind, both an unexpected field and a missing required
 field fail closed at the strict parser boundary. Replacing a nested object with
 a list or scalar also fails closed before digest validation. The direct
-persisted-dict entry points reject both top-level and nested schema erosion,
-nested widening, and non-object top-level values, so callers cannot bypass the
-JSON path by pre-decoding input. Canonical baseline artifacts continue to
+persisted-dict entry points reject top-level schema widening and erosion,
+nested widening and erosion, and non-object top-level values, so callers cannot
+bypass the JSON path by pre-decoding input. Canonical baseline artifacts continue to
 round-trip unchanged.
 
 ## Collision boundary
