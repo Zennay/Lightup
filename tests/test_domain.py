@@ -175,6 +175,11 @@ class DomainStoreTest(unittest.TestCase):
                 max_risk=RiskLevel.DESTRUCTIVE_LAB_ONLY,
                 allowed_capabilities=("web-baseline",),
             ),
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=5,  # type: ignore[arg-type]
+                allowed_capabilities=("web-baseline",),
+            ),
         )
         for index, scope in enumerate(invalid_scopes):
             with self.subTest(index=index):
