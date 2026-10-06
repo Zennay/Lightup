@@ -100,8 +100,6 @@ class FutureRemediationNestedSchemaIntegrityTest(unittest.TestCase):
                     )
 
     def test_nested_schema_slots_reject_non_object_values(self):
-        request_payload = json.loads(self._authoring_request().to_json())
-
         item_payload = json.loads(self._authoring_request().to_json())
         item_payload["items"][0] = []
         with self.assertRaisesRegex(ValueError, "item schema mismatch"):
