@@ -83,17 +83,17 @@ class FutureRemediationRevisionLoopInvariantTest(unittest.TestCase):
 
     def test_live_evidence_drift_invalidates_final_persisted_review(self):
         evidence_id = (
-            self.base.base.base.base.base.base.base.base.bundle.items[0]
+            self.base.base.base.base.base.base.base.base.base.bundle.items[0]
             .evidence[0]
             .evidence_id
         )
         current_sha = (
-            self.base.base.base.base.base.base.base.base.bundle.items[0]
+            self.base.base.base.base.base.base.base.base.base.bundle.items[0]
             .evidence[0]
             .sha256
         )
         replacement = "f" * 64 if current_sha != "f" * 64 else "e" * 64
-        with self.base.base.base.base.base.base.base.base.state.connect() as con:
+        with self.base.base.base.base.base.base.base.base.base.state.connect() as con:
             con.execute(
                 "UPDATE evidence SET sha256=? WHERE evidence_id=?",
                 (replacement, evidence_id),
