@@ -14,6 +14,8 @@ For a public target to reach any future active execution path, every relevant bo
 4. **Mode boundary** — passive-public and analysis-only requests cannot request active risk.
 5. **Destructive boundary** — destructive risk never becomes target-active authority; it remains isolated-lab-only.
 6. **Gate-independence boundary** — an activation permit never substitutes for the durable execution grant, a durable execution grant never substitutes for public scope authorization, and an explicit asset exclusion wins over an allowlist entry.
+7. **Time boundary** — both legacy public-target authorization and durable grants must be current now; expired and not-yet-valid authorization fail closed.
+8. **Interaction boundary** — a durable grant cannot manufacture lab context, and a lab marker cannot convert destructive target-active risk into executable authority.
 
 The dedicated regression module is `tests/test_scope_authorization_defense_in_depth.py`. It uses only in-memory objects and documentation-only hostnames; it performs no socket, HTTP, DNS, subprocess, tool, or target interaction.
 

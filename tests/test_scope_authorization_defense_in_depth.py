@@ -66,6 +66,21 @@ class ScopeAuthorizationDefenseInDepthTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
 
+    def test_not_yet_valid_public_authorization_fails_before_activation(self):
+        now = datetime.now(timezone.utc)
+        target = Target(
+            PUBLIC_HOST,
+            authorization=Authorization(
+                owner="security-owner@example.test",
+                reference="AUTH-FUTURE",
+                valid_from=now + timedelta(hours=1),
+                valid_until=now + timedelta(hours=2),
+            ),
+        )
+        decision = self.public_scope.decide(target)
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+
     def test_plan_only_still_blocks_an_in_scope_public_target(self):
         target = Target(PUBLIC_HOST, authorization=_legacy_authorization())
         self.assertTrue(self.public_scope.decide(target).allowed)
@@ -183,6 +198,34 @@ class ScopeAuthorizationDefenseInDepthTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertIn("currently valid", decision.reason)
 
+    def test_not_yet_valid_durable_grant_is_denied(self):
+        now = datetime.now(timezone.utc)
+        grant = AuthorizationGrant(
+            grant_id="grant-future",
+            client_id="client-defense-in-depth",
+            engagement_id="engagement-defense-in-depth",
+            approved_by="security-owner@example.test",
+            reference="AUTH-FUTURE",
+            scope=ScopeDefinition(
+                assets=(PUBLIC_HOST,),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=(CAPABILITY,),
+            ),
+            valid_from=now + timedelta(hours=1),
+            valid_until=now + timedelta(hours=2),
+        )
+        decision = self.execution_policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset=PUBLIC_HOST,
+                capability_id=CAPABILITY,
+                requested_risk=RiskLevel.LOW_IMPACT,
+                authorization=grant,
+            )
+        )
+        self.assertFalse(decision.allowed)
+        self.assertIn("currently valid", decision.reason)
+
     def test_durable_grant_cannot_authorize_a_different_asset(self):
         decision = self.execution_policy.decide(
             ExecutionRequest(
@@ -259,6 +302,34 @@ class ScopeAuthorizationDefenseInDepthTests(unittest.TestCase):
                 capability_id=CAPABILITY,
                 requested_risk=RiskLevel.DESTRUCTIVE_LAB_ONLY,
                 authorization=_durable_grant(),
+            )
+        )
+        self.assertFalse(decision.allowed)
+        self.assertIn("isolated labs", decision.reason)
+
+    def test_lab_active_cannot_borrow_a_durable_grant_without_lab_context(self):
+        decision = self.execution_policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.LAB_ACTIVE,
+                asset=PUBLIC_HOST,
+                capability_id=CAPABILITY,
+                requested_risk=RiskLevel.LOW_IMPACT,
+                authorization=_durable_grant(),
+                is_lab=False,
+            )
+        )
+        self.assertFalse(decision.allowed)
+        self.assertIn("lab target", decision.reason)
+
+    def test_target_active_lab_flag_cannot_enable_destructive_risk(self):
+        decision = self.execution_policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset=PUBLIC_HOST,
+                capability_id=CAPABILITY,
+                requested_risk=RiskLevel.DESTRUCTIVE_LAB_ONLY,
+                authorization=_durable_grant(),
+                is_lab=True,
             )
         )
         self.assertFalse(decision.allowed)
