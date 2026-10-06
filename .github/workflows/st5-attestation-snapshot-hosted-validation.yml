@@ -1,0 +1,48 @@
+name: ST5 sufficiency-attestation snapshot hosted validation
+
+on:
+  push:
+    branches:
+      - "chatgpt/st5-attestation-snapshot-hosted-validation-20261006"
+    paths:
+      - ".github/workflows/st5-attestation-snapshot-hosted-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: st5-attestation-snapshot-hosted-validation
+  cancel-in-progress: true
+
+jobs:
+  exact-candidate:
+    name: Exact candidate Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: a05af39ecc8b88d07b8559ec3089654175b5367b
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile exact candidate
+        run: python -m compileall -q src tests
+      - name: Run attestation snapshot isolation
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests -p 'test_future_security_evidence_sufficiency_attestation_snapshot_isolation.py' -v
+      - name: Run strict attestation handoff
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests -p 'test_future_security_evidence_sufficiency_attestation_handoff.py' -v
+      - name: Run real producer integration
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests/integration -v
