@@ -26,6 +26,11 @@ For all eight top-level artifacts, the gate proves:
   accepted as false booleans;
 - every strict JSON parser rejects duplicate primary-digest keys before JSON
   last-value-wins behavior can normalize them;
+- every strict JSON parser rejects unknown top-level fields rather than silently
+  widening its schema;
+- persisted artifact structures remain bounded to lineage/provenance/review
+  metadata and contain no raw source, payload, credentials, target arguments,
+  authorization references, patches, commands, or tool-argument keys;
 - `future_semantics` remains `unresolved`;
 - `security_verdict` remains `not_evaluated`;
 - changing the artifact's primary canonical digest without rebuilding the
