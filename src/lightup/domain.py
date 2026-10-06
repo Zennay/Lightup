@@ -1002,6 +1002,17 @@ class DomainStore:
         if EngagementStatus(row["engagement_status"]) is EngagementStatus.CLOSED:
             return None
         persisted = self._grant_from_row(row)
+        if persisted.scope.max_risk == RiskLevel.DESTRUCTIVE_LAB_ONLY:
+            return None
+        capability_registry = {
+            capability.capability_id: capability for capability in get_capabilities()
+        }
+        if not persisted.scope.allowed_capabilities:
+            return None
+        for capability_id in persisted.scope.allowed_capabilities:
+            capability = capability_registry.get(capability_id)
+            if capability is None or capability.state is CapabilityState.LAB_ONLY:
+                return None
         return persisted if persisted.is_current(now) else None
 
     # -- risk elevation ---------------------------------------------------------
