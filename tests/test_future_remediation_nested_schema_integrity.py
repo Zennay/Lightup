@@ -142,6 +142,23 @@ class FutureRemediationNestedSchemaIntegrityTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "schema mismatch"):
                     parser(json.dumps(payload))
 
+    def test_all_top_level_json_parsers_reject_non_object_payloads(self):
+        parsers = (
+            future_remediation_authoring_request_from_json,
+            future_remediation_text_proposal_from_json,
+            future_remediation_text_review_request_from_json,
+            future_remediation_text_review_from_json,
+            future_remediation_text_revision_request_from_json,
+            future_remediation_text_revision_proposal_from_json,
+            future_remediation_text_revision_review_request_from_json,
+            future_remediation_text_revision_review_from_json,
+        )
+
+        for parser in parsers:
+            with self.subTest(parser=parser.__name__):
+                with self.assertRaises(ValueError):
+                    parser("[]")
+
     def test_authoring_item_rejects_unknown_and_missing_fields(self):
         request = self._authoring_request()
 
