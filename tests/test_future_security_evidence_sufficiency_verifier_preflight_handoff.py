@@ -211,5 +211,49 @@ class FutureSecurityEvidenceSufficiencyVerifierPreflightHandoffTest(unittest.Tes
             )
 
 
+    def test_export_is_bounded_and_cannot_claim_review_outcome(self):
+        values, payload = self._payload(suffix="handoff-bounded")
+        preflight = values[-1]
+
+        self.assertEqual(payload["verifier_role"], "operator")
+        self.assertTrue(payload["eligible_for_sufficiency_review"])
+        self.assertFalse(payload["sufficiency_decision_created"])
+        self.assertFalse(payload["evidence_sufficiency_evaluated"])
+        self.assertFalse(payload["classification_selected"])
+        self.assertEqual(payload["security_verdict"], "not_evaluated")
+        for forbidden in (
+            "metadata",
+            "payload",
+            "source",
+            "target",
+            "arguments",
+            "credentials",
+            "password",
+            "session",
+        ):
+            self.assertNotIn(forbidden, payload)
+        self.assertEqual(
+            future_security_evidence_sufficiency_verifier_preflight_from_dict(
+                payload
+            ),
+            preflight,
+        )
+
+    def test_noncanonical_sha_and_lineage_digest_drift_fail_closed(self):
+        _, payload = self._payload(suffix="handoff-sha")
+
+        uppercase = copy.deepcopy(payload)
+        uppercase["metadata_review_sha256"] = "A" * 64
+        with self.assertRaisesRegex(ValueError, "canonical lowercase SHA-256"):
+            future_security_evidence_sufficiency_verifier_preflight_from_dict(
+                uppercase
+            )
+
+        changed = copy.deepcopy(payload)
+        changed["subject_node_id"] = "different-subject"
+        with self.assertRaisesRegex(ValueError, "digest mismatch"):
+            future_security_evidence_sufficiency_verifier_preflight_from_dict(changed)
+
+
 if __name__ == "__main__":
     unittest.main()
