@@ -86,3 +86,27 @@ metadata, source locations, targets, arguments or credentials.
 - `security_verdict=not_evaluated`
 
 Refs #73.
+
+
+## Strict serialized handoff
+
+Persisted coverage JSON must be parsed with
+`future_security_evidence_freshness_coverage_from_dict`.
+
+The parser derives coverage semantics from item content rather than trusting
+stored counters:
+
+- covered items must carry a canonical admission SHA-256, candidate run ID and
+  non-empty sorted/unique candidate evidence IDs;
+- uncovered items must carry no admission digest, no candidate run and no
+  candidate evidence IDs;
+- item identities must be canonical and unique;
+- total, covered and missing counts are recomputed from the items;
+- `all_gaps_have_fresh_candidates` is recomputed rather than trusted;
+- every sufficiency, closure, classification and execution flag remains
+  fail-closed.
+
+The parser also recomputes `coverage_sha256`. Parsing proves serialization
+integrity only. Before use, consumers must still run
+`validate_future_security_evidence_freshness_coverage`, which revalidates the
+underlying admissions against live evidence.
