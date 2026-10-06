@@ -26,6 +26,19 @@ A caller must not receive a parsed object from the composed consumer unless
 all applicable stages pass. Direct use of a strict parser is serialization
 integrity only and is not sufficient for downstream trust.
 
+## Ownership / non-overlap
+
+Issue #157 remains the operational closure gate for live dependency, restack and
+proof status of the individual consumer PRs. This document does **not** replace
+that tracker and should not be used as a second mutable checklist.
+
+This repository document owns only the durable contract: what the composed
+consumer invariant is, which boundaries it applies to, what proof classes are
+required, and where evidence-remediation must stop semantically.
+
+The independent remediation-authoring/evidence-bundle lane (#60) and the
+future-state retest/authorization lanes are explicitly outside this package.
+
 ## Covered boundaries
 
 | Persisted boundary | Strict handoff | Composed consumer | Hosted exact-head proof | Canonical VPS gate |
