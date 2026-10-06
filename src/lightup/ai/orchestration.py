@@ -239,6 +239,8 @@ class ToolExecutor:
             asset=call.asset,
             capability_id=definition.capability_id,
             requested_risk=definition.min_risk,
+            client_id=context.client_id,
+            engagement_id=context.engagement_id,
             authorization=context.authorization,
             is_lab=context.is_lab,
         )
