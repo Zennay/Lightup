@@ -41,6 +41,21 @@ class ExecutionPolicyTests(unittest.TestCase):
         )
         self.assertTrue(decision.allowed)
 
+    def test_raw_integer_requested_risk_fails_closed(self):
+        decision = self.policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset="app.example.test",
+                capability_id="web-baseline",
+                requested_risk=5,  # type: ignore[arg-type]
+                client_id="client-1",
+                engagement_id="eng-1",
+                authorization=self.grant,
+            )
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, "requested risk must be a RiskLevel")
+
     def test_unauthorized_active_target_is_denied(self):
         decision = self.policy.decide(
             ExecutionRequest(

@@ -777,6 +777,8 @@ class DomainStore:
         recurring_retest_allowed: bool = False,
     ) -> AuthorizationGrant:
         ctx.require_operator("record_authorization_grant")
+        if not isinstance(scope.max_risk, RiskLevel):
+            raise ValueError("grant max_risk must be a RiskLevel")
         if valid_from.tzinfo is None or valid_until.tzinfo is None:
             raise ValueError("grant validity must be timezone-aware")
         if valid_until <= valid_from:
@@ -809,7 +811,7 @@ class DomainStore:
                 "client authorization cannot include lab-only capabilities: "
                 + ", ".join(lab_only)
             )
-        if scope.max_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
+        if scope.max_risk == RiskLevel.DESTRUCTIVE_LAB_ONLY:
             raise ValueError("destructive risk is lab-only and cannot be client-authorized")
         # Serialize the lifecycle check with grant persistence. If closure wins
         # the write lock first, issuance observes CLOSED and fails. If issuance
