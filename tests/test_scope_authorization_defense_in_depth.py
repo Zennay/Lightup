@@ -13,6 +13,8 @@ from lightup.scope import ScopePolicy, ScopeReason
 
 
 PUBLIC_HOST = "public.example.test"
+PUBLIC_IP = "198.51.100.10"
+PUBLIC_NETWORK = "198.51.100.0/24"
 CAPABILITY = "web-baseline"
 
 
@@ -58,6 +60,60 @@ class ScopeAuthorizationDefenseInDepthTests(unittest.TestCase):
         decision = self.public_scope.decide(Target(PUBLIC_HOST))
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_explicit_public_network_without_authorization_fails_closed(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=(PUBLIC_NETWORK,),
+        )
+        decision = policy.decide(Target(PUBLIC_IP))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_plan_only_blocks_authorized_explicit_public_network(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=(PUBLIC_NETWORK,),
+        )
+        target = Target(PUBLIC_IP, authorization=_legacy_authorization())
+        decision = policy.decide(target)
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_NETWORK)
+
+        gate = ActivationGate(
+            policy,
+            ActivationPolicy(mode=ActivationMode.PLAN_ONLY),
+        )
+        with self.assertRaisesRegex(PermissionError, "plan-only"):
+            gate.issue(target, CAPABILITY)
+
+    def test_public_network_activation_permit_still_needs_durable_grant(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=(PUBLIC_NETWORK,),
+        )
+        target = Target(PUBLIC_IP, authorization=_legacy_authorization())
+        gate = ActivationGate(
+            policy,
+            ActivationPolicy(
+                mode=ActivationMode.AUTHORIZED,
+                activation_reference="AUTH-NETWORK-DEFENSE-IN-DEPTH",
+            ),
+        )
+        permit = gate.issue(target, CAPABILITY)
+        self.assertEqual(permit.target, PUBLIC_IP)
+        self.assertEqual(permit.mode, ActivationMode.AUTHORIZED)
+
+        execution = self.execution_policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset=permit.target,
+                capability_id=permit.capability_id,
+                requested_risk=RiskLevel.LOW_IMPACT,
+            )
+        )
+        self.assertFalse(execution.allowed)
+        self.assertIn("authorization", execution.reason)
 
     def test_expired_public_authorization_fails_before_activation(self):
         decision = self.public_scope.decide(
