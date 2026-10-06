@@ -59,10 +59,63 @@ class ExecutionPolicyTests(unittest.TestCase):
                 asset="app.example.test",
                 capability_id="web-baseline",
                 requested_risk=RiskLevel.STANDARD,
+                client_id="client-1",
+                engagement_id="eng-1",
                 authorization=self.grant,
             )
         )
         self.assertTrue(decision.allowed)
+
+    def test_authorized_target_requires_execution_lineage(self):
+        decision = self.policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset="app.example.test",
+                capability_id="web-baseline",
+                requested_risk=RiskLevel.STANDARD,
+                authorization=self.grant,
+            )
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(
+            decision.reason,
+            "active target interaction requires client and engagement binding",
+        )
+
+    def test_cross_client_grant_reuse_is_denied(self):
+        decision = self.policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset="app.example.test",
+                capability_id="web-baseline",
+                requested_risk=RiskLevel.STANDARD,
+                client_id="client-2",
+                engagement_id="eng-1",
+                authorization=self.grant,
+            )
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(
+            decision.reason, "authorization client does not match execution client"
+        )
+
+    def test_cross_engagement_grant_reuse_is_denied(self):
+        decision = self.policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset="app.example.test",
+                capability_id="web-baseline",
+                requested_risk=RiskLevel.STANDARD,
+                client_id="client-1",
+                engagement_id="eng-2",
+                authorization=self.grant,
+            )
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(
+            decision.reason,
+            "authorization engagement does not match execution engagement",
+        )
 
     def test_empty_capability_scope_denies_active_capability(self):
         empty_scope = replace(
@@ -79,6 +132,8 @@ class ExecutionPolicyTests(unittest.TestCase):
                 asset="app.example.test",
                 capability_id="web-baseline",
                 requested_risk=RiskLevel.LOW_IMPACT,
+                client_id="client-1",
+                engagement_id="eng-1",
                 authorization=empty_scope,
             )
         )
@@ -98,6 +153,8 @@ class ExecutionPolicyTests(unittest.TestCase):
                 asset="app.example.test",
                 capability_id="web-baseline",
                 requested_risk=RiskLevel.STANDARD,
+                client_id="client-1",
+                engagement_id="eng-1",
                 authorization=revoked,
             )
         )
@@ -111,6 +168,8 @@ class ExecutionPolicyTests(unittest.TestCase):
                 asset="app.example.test",
                 capability_id="web-baseline",
                 requested_risk=RiskLevel.ELEVATED,
+                client_id="client-1",
+                engagement_id="eng-1",
                 authorization=self.grant,
             )
         )
@@ -123,6 +182,8 @@ class ExecutionPolicyTests(unittest.TestCase):
                 asset="app.example.test",
                 capability_id="web-baseline",
                 requested_risk=RiskLevel.DESTRUCTIVE_LAB_ONLY,
+                client_id="client-1",
+                engagement_id="eng-1",
                 authorization=self.grant,
             )
         )
