@@ -1,0 +1,192 @@
+name: LightUp hosted emergency queue sweep
+
+on:
+  push:
+    branches:
+      - "chatgpt/evidence-remediation-hosted-queue-sweep-20261006"
+    paths:
+      - ".github/workflows/lightup-hosted-emergency-queue-sweep.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+  pull-requests: read
+  statuses: write
+
+concurrency:
+  group: lightup-hosted-emergency-queue-sweep
+  cancel-in-progress: true
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Cancel only stale superseded self-hosted runs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          from datetime import datetime, timezone
+
+          repo = os.environ["REPO"]
+          token = os.environ["GH_TOKEN"]
+          current_run = int(os.environ["RUN_ID"])
+          current_sha = os.environ["SHA"]
+          now = datetime.now(timezone.utc)
+          minimum_age_seconds = 2 * 60 * 60
+          headers = {
+              "Authorization": f"Bearer {token}",
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28",
+              "User-Agent": "lightup-hosted-emergency-queue-sweep/1",
+          }
+
+          def request(path, method="GET", payload=None):
+              data = None if payload is None else json.dumps(payload).encode()
+              req = urllib.request.Request(
+                  "https://api.github.com" + path,
+                  data=data,
+                  method=method,
+                  headers=headers,
+              )
+              with urllib.request.urlopen(req, timeout=25) as response:
+                  raw = response.read()
+                  return json.loads(raw) if raw else {}
+
+          repo_info = request(f"/repos/{repo}")
+          default_branch = repo_info["default_branch"]
+          default_head = request(f"/repos/{repo}/commits/{urllib.parse.quote(default_branch, safe='')}")["sha"]
+
+          open_prs = request(f"/repos/{repo}/pulls?state=open&per_page=100")
+          protected_shas = {default_head, current_sha}
+          protected_prs = {}
+          for pr in open_prs:
+              sha = str((pr.get("head") or {}).get("sha") or "")
+              if sha:
+                  protected_shas.add(sha)
+                  protected_prs[sha] = int(pr["number"])
+
+          cancelled = []
+          retained = []
+          candidates = []
+
+          queued_runs = (
+              request(f"/repos/{repo}/actions/runs?status=queued&per_page=100")
+              .get("workflow_runs")
+              or []
+          )
+
+          for run in queued_runs:
+              run_id = int(run["id"])
+              if run_id == current_run:
+                  continue
+              head_sha = str(run.get("head_sha") or "")
+              name = str(run.get("name") or "")
+              path = str(run.get("path") or "")
+              created = datetime.fromisoformat(str(run["created_at"]).replace("Z", "+00:00"))
+              age_s = int((now - created).total_seconds())
+
+              if head_sha in protected_shas:
+                  retained.append({
+                      "id": run_id,
+                      "reason": "current-main-or-open-pr-head",
+                      "pr": protected_prs.get(head_sha),
+                      "head_sha": head_sha,
+                      "age_s": age_s,
+                      "name": name,
+                  })
+                  continue
+
+              if age_s < minimum_age_seconds:
+                  retained.append({
+                      "id": run_id,
+                      "reason": "too-recent",
+                      "head_sha": head_sha,
+                      "age_s": age_s,
+                      "name": name,
+                  })
+                  continue
+
+              jobs = (
+                  request(f"/repos/{repo}/actions/runs/{run_id}/jobs?filter=latest&per_page=100")
+                  .get("jobs")
+                  or []
+              )
+              queued_self_hosted = [
+                  job
+                  for job in jobs
+                  if str(job.get("status") or "") == "queued"
+                  and "self-hosted" in {str(label).lower() for label in (job.get("labels") or [])}
+              ]
+              if not queued_self_hosted:
+                  retained.append({
+                      "id": run_id,
+                      "reason": "not-queued-self-hosted",
+                      "head_sha": head_sha,
+                      "age_s": age_s,
+                      "name": name,
+                  })
+                  continue
+
+              candidates.append({
+                  "id": run_id,
+                  "head_sha": head_sha,
+                  "age_s": age_s,
+                  "name": name,
+                  "path": path,
+                  "jobs": [
+                      {
+                          "id": job.get("id"),
+                          "name": job.get("name"),
+                          "labels": job.get("labels"),
+                      }
+                      for job in queued_self_hosted
+                  ],
+              })
+
+          for item in candidates:
+              try:
+                  request(f"/repos/{repo}/actions/runs/{item['id']}/cancel", method="POST")
+                  cancelled.append(item)
+              except urllib.error.HTTPError as exc:
+                  if exc.code not in (409, 422):
+                      raise
+                  kept = dict(item)
+                  kept["reason"] = f"cancel-http-{exc.code}"
+                  retained.append(kept)
+
+          evidence = {
+              "ok": True,
+              "default_branch": default_branch,
+              "default_head": default_head,
+              "protected_open_pr_heads": len(protected_prs),
+              "minimum_age_seconds": minimum_age_seconds,
+              "cancelled_count": len(cancelled),
+              "cancelled": cancelled,
+              "retained_count": len(retained),
+          }
+          print("LIGHTUP_HOSTED_QUEUE_SWEEP=" + json.dumps(evidence, sort_keys=True))
+
+          payload = {
+              "state": "success",
+              "context": "lightup/hosted-queue-sweep",
+              "description": (
+                  f"sweep green; cancelled={len(cancelled)} protected_pr_heads={len(protected_prs)}"
+              )[:140],
+              "target_url": f"{os.environ['SERVER_URL']}/{repo}/actions/runs/{current_run}",
+          }
+          request(f"/repos/{repo}/statuses/{current_sha}", method="POST", payload=payload)
+          PY
