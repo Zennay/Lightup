@@ -136,5 +136,48 @@ class FutureRemediationImplementationPlanReviewChainInvariantTest(unittest.TestC
         self.assertEqual(payload["security_verdict"], "not_evaluated")
 
 
+    def test_verifier_keeps_plan_content_in_untrusted_user_channel(self):
+        gateway, provider = self.base._review_gateway(review_tests._review_json())
+        review = self.base._review(gateway)
+
+        self.assertEqual(len(provider.requests), 1)
+        request = provider.requests[0]
+        system = request.messages[0].content.lower()
+        user = request.messages[1].content
+
+        self.assertIn("untrusted data", system)
+        for guard in (
+            "do not invoke tools",
+            "generate code",
+            "patches",
+            "commands",
+            "perform a retest",
+            "authorize deployment",
+            "security verdict",
+        ):
+            self.assertIn(guard, system)
+
+        self.assertNotIn(self.base.implementation_plan.summary, request.messages[0].content)
+        self.assertIn(self.base.implementation_plan.summary, user)
+
+        payload = json.loads(user)
+        self.assertEqual(
+            payload["plan_sha256"],
+            self.base.implementation_plan.plan_sha256,
+        )
+        for forbidden_key in (
+            "command",
+            "commands",
+            "patch",
+            "code",
+            "tool_arguments",
+            "target_arguments",
+            "credentials",
+        ):
+            self.assertNotIn(forbidden_key, payload)
+
+        self._assert_non_executable(review, accepted=True)
+
+
 if __name__ == "__main__":
     unittest.main()
