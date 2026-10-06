@@ -28,7 +28,7 @@ def _legacy_authorization(*, expired: bool = False) -> Authorization:
     )
 
 
-def _durable_grant() -> AuthorizationGrant:
+def _durable_grant(*, asset: str = PUBLIC_HOST) -> AuthorizationGrant:
     now = datetime.now(timezone.utc)
     return AuthorizationGrant(
         grant_id="grant-defense-in-depth",
@@ -37,7 +37,7 @@ def _durable_grant() -> AuthorizationGrant:
         approved_by="security-owner@example.test",
         reference="AUTH-DEFENSE-IN-DEPTH",
         scope=ScopeDefinition(
-            assets=(PUBLIC_HOST,),
+            assets=(asset,),
             max_risk=RiskLevel.STANDARD,
             allowed_capabilities=(CAPABILITY,),
         ),
@@ -114,6 +114,87 @@ class ScopeAuthorizationDefenseInDepthTests(unittest.TestCase):
         )
         self.assertFalse(execution.allowed)
         self.assertIn("authorization", execution.reason)
+
+    def test_lab_only_cannot_relabel_authorized_explicit_public_network_as_lab(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=(PUBLIC_NETWORK,),
+        )
+        target = Target(PUBLIC_IP, authorization=_legacy_authorization())
+        self.assertEqual(policy.decide(target).reason, ScopeReason.EXPLICIT_NETWORK)
+
+        gate = ActivationGate(
+            policy,
+            ActivationPolicy(
+                mode=ActivationMode.LAB_ONLY,
+                activation_reference="LAB-NETWORK-DEFENSE-IN-DEPTH",
+            ),
+        )
+        with self.assertRaisesRegex(PermissionError, "public targets"):
+            gate.issue(target, CAPABILITY)
+
+    def test_relaxed_scope_auth_switch_cannot_bypass_authorized_activation(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=(PUBLIC_NETWORK,),
+            require_authorization_for_public=False,
+        )
+        target = Target(PUBLIC_IP)
+        decision = policy.decide(target)
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_NETWORK)
+
+        gate = ActivationGate(
+            policy,
+            ActivationPolicy(
+                mode=ActivationMode.AUTHORIZED,
+                activation_reference="AUTH-NETWORK-DEFENSE-IN-DEPTH",
+            ),
+        )
+        with self.assertRaisesRegex(PermissionError, "current target authorization"):
+            gate.issue(target, CAPABILITY)
+
+    def test_explicit_public_network_all_gates_agree_on_bounded_authorized_path(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=(PUBLIC_NETWORK,),
+        )
+        target = Target(PUBLIC_IP, authorization=_legacy_authorization())
+        scope_decision = policy.decide(target)
+        self.assertTrue(scope_decision.allowed)
+        self.assertEqual(scope_decision.reason, ScopeReason.EXPLICIT_NETWORK)
+
+        gate = ActivationGate(
+            policy,
+            ActivationPolicy(
+                mode=ActivationMode.AUTHORIZED,
+                activation_reference="AUTH-NETWORK-DEFENSE-IN-DEPTH",
+            ),
+        )
+        permit = gate.issue(target, CAPABILITY)
+
+        execution = self.execution_policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset=permit.target,
+                capability_id=permit.capability_id,
+                requested_risk=RiskLevel.LOW_IMPACT,
+                authorization=_durable_grant(asset=PUBLIC_IP),
+            )
+        )
+        self.assertTrue(execution.allowed)
+        self.assertEqual(execution.reason, "authorized active assessment")
+
+    def test_authorized_target_outside_explicit_public_network_still_fails_scope(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=(PUBLIC_NETWORK,),
+        )
+        decision = policy.decide(
+            Target("203.0.113.10", authorization=_legacy_authorization())
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
     def test_expired_public_authorization_fails_before_activation(self):
         decision = self.public_scope.decide(
