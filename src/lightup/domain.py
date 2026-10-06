@@ -738,10 +738,29 @@ class DomainStore:
         ctx.require_operator("set_engagement_status")
         record = self.get_engagement(ctx, engagement_id)
         with self._connect() as con:
-            con.execute(
-                "UPDATE engagements SET status=? WHERE engagement_id=?",
-                (status.value, record.engagement_id),
-            )
+            con.execute("BEGIN IMMEDIATE")
+            try:
+                con.execute(
+                    "UPDATE engagements SET status=? WHERE engagement_id=?",
+                    (status.value, record.engagement_id),
+                )
+                if status is EngagementStatus.CLOSED:
+                    closed_at = utcnow().isoformat()
+                    con.execute(
+                        "UPDATE authorization_grants "
+                        "SET revoked_at=?, revoked_by=?, revocation_reason=? "
+                        "WHERE engagement_id=? AND revoked_at IS NULL",
+                        (
+                            closed_at,
+                            ctx.user_id,
+                            "engagement closed",
+                            record.engagement_id,
+                        ),
+                    )
+                con.execute("COMMIT")
+            except Exception:
+                con.execute("ROLLBACK")
+                raise
         return self.get_engagement(ctx, engagement_id)
 
     # -- authorization grants --------------------------------------------------
@@ -793,6 +812,8 @@ class DomainStore:
         if scope.max_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
             raise ValueError("destructive risk is lab-only and cannot be client-authorized")
         engagement = self.get_engagement(ctx, engagement_id)
+        if engagement.status is EngagementStatus.CLOSED:
+            raise ValueError("closed engagement cannot receive authorization grants")
         grant = AuthorizationGrant(
             grant_id=str(uuid4()),
             client_id=engagement.client_id,
@@ -915,7 +936,7 @@ class DomainStore:
         return None
 
     def resolve_authorization_for_execution(
-        self, grant: AuthorizationGrant, now: datetime | None = None
+        self, grant: AuthorizationGrant
     ) -> AuthorizationGrant | None:
         """Re-read one exact grant for the execution plane, failing closed.
 
@@ -924,7 +945,7 @@ class DomainStore:
         persisted record only while it is still current. Callers must evaluate
         policy against this returned object rather than the stale snapshot.
         """
-        now = now or utcnow()
+        now = utcnow()
         with self._connect() as con:
             row = con.execute(
                 "SELECT g.*, e.status AS engagement_status "
