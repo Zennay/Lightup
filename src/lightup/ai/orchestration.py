@@ -245,10 +245,15 @@ class ToolExecutor:
                 raise ToolDenied(
                     "target-active execution requires live authorization revalidation"
                 )
+            snapshot_grant_id = authorization.grant_id
             authorization = self.authorization_resolver(authorization)
             if authorization is None:
                 raise ToolDenied(
                     "authorization grant is not live in authoritative state"
+                )
+            if authorization.grant_id != snapshot_grant_id:
+                raise ToolDenied(
+                    "live authorization resolver returned a different grant"
                 )
 
         request = ExecutionRequest(
