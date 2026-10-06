@@ -122,6 +122,13 @@ def retest_finding(
     engagement = _require_internal_lab_engagement(store, ctx, finding.engagement_id)
     if finding.client_id != engagement.client_id:
         raise LabIsolationError("lab finding client does not match its engagement")
+    check_id = _CHECK_ID_BY_TITLE.get(finding.title)
+    if check_id is None:
+        raise ValueError(
+            f"finding {finding.finding_id!r} is not a known baseline check; "
+            "automated retest is not available for it"
+        )
+
     persisted = next(
         (
             item
@@ -135,13 +142,6 @@ def retest_finding(
     if persisted != finding:
         raise LabIsolationError("retest requires the exact current persisted lab finding")
     finding = persisted
-
-    check_id = _CHECK_ID_BY_TITLE.get(finding.title)
-    if check_id is None:
-        raise ValueError(
-            f"finding {finding.finding_id!r} is not a known baseline check; "
-            "automated retest is not available for it"
-        )
     observation = http_baseline.observe(finding.asset)
     still_present = check_id in {issue.check_id for issue in observation.issues}
     if not still_present:
