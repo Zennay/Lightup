@@ -39,10 +39,50 @@ _MAX_REVIEW_OUTPUT_TOKENS = 800
 _ALLOWED_CHECK_RESULTS = {"pass", "fail", "unclear"}
 
 
+def _canonical_sha256(value: object, *, field: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise ValueError(f"{field} must be a canonical lowercase SHA-256 digest")
+    return value
+
+
+def _non_empty_string(value: object, *, field: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{field} must be a non-empty string")
+    return value
+
+
 class RemediationTextReviewDecision(str, Enum):
     APPROVED = "approved"
     REVISION_REQUIRED = "revision_required"
     INSUFFICIENT_EVIDENCE = "insufficient_evidence"
+
+
+def _validate_decision_checks(
+    decision: RemediationTextReviewDecision,
+    checks: tuple["RemediationTextReviewCheck", ...],
+) -> None:
+    results = tuple(check.result for check in checks)
+    if decision is RemediationTextReviewDecision.APPROVED and any(
+        result != "pass" for result in results
+    ):
+        raise ValueError("approved remediation text review requires every check to pass")
+    if decision is RemediationTextReviewDecision.REVISION_REQUIRED and all(
+        result == "pass" for result in results
+    ):
+        raise ValueError(
+            "revision_required remediation text review requires a non-pass check"
+        )
+    if (
+        decision is RemediationTextReviewDecision.INSUFFICIENT_EVIDENCE
+        and "unclear" not in results
+    ):
+        raise ValueError(
+            "insufficient_evidence remediation text review requires an unclear check"
+        )
 
 
 @dataclass(frozen=True)
@@ -79,8 +119,63 @@ class FutureRemediationTextReview:
     security_verdict: str = "not_evaluated"
 
     def __post_init__(self) -> None:
+        if self.schema_version != REMEDIATION_TEXT_REVIEW_SCHEMA_VERSION:
+            raise ValueError("remediation text review schema version mismatch")
+        for field in (
+            "review_request_sha256",
+            "proposal_sha256",
+            "content_sha256",
+            "review_sha256",
+        ):
+            _canonical_sha256(
+                getattr(self, field),
+                field=f"remediation text review {field}",
+            )
+        _non_empty_string(
+            self.reviewer_provider_id,
+            field="remediation text review reviewer_provider_id",
+        )
+        _non_empty_string(
+            self.reviewer_model_id,
+            field="remediation text review reviewer_model_id",
+        )
         if not isinstance(self.decision, RemediationTextReviewDecision):
-            raise ValueError("remediation review decision must be a RemediationTextReviewDecision")
+            raise ValueError(
+                "remediation review decision must be a RemediationTextReviewDecision"
+            )
+        if not isinstance(self.checks, tuple):
+            raise ValueError("remediation text review checks must be a tuple")
+        if len(self.checks) != len(REQUIRED_REVIEW_CHECKS):
+            raise ValueError("remediation text review checks count mismatch")
+        for index, check in enumerate(self.checks):
+            if type(check) is not RemediationTextReviewCheck:
+                raise ValueError(
+                    "remediation text review checks must use RemediationTextReviewCheck"
+                )
+            expected = REQUIRED_REVIEW_CHECKS[index]
+            if check.check != expected:
+                raise ValueError(
+                    "remediation text review check order or name mismatch"
+                )
+            if check.result not in _ALLOWED_CHECK_RESULTS:
+                raise ValueError(
+                    f"remediation text review result for {expected!r} is invalid"
+                )
+        _validate_decision_checks(self.decision, self.checks)
+        _non_empty_string(
+            self.summary,
+            field="remediation text review summary",
+        )
+        if self.summary != self.summary.strip():
+            raise ValueError(
+                "remediation text review summary must be canonical trimmed text"
+            )
+        if "\x00" in self.summary:
+            raise ValueError("remediation text review summary contains NUL")
+        if len(self.summary) > _MAX_REVIEW_SUMMARY_CHARS:
+            raise ValueError(
+                "remediation text review summary exceeds bounded size"
+            )
         expected_accepted = self.decision is RemediationTextReviewDecision.APPROVED
         if self.remediation_accepted is not expected_accepted:
             raise ValueError("remediation review remediation_accepted mismatch")
@@ -101,6 +196,18 @@ class FutureRemediationTextReview:
             raise ValueError("future_semantics must remain unresolved")
         if self.security_verdict != "not_evaluated":
             raise ValueError("security_verdict must remain not_evaluated")
+        expected_review_sha256 = _review_digest(
+            review_request_sha256=self.review_request_sha256,
+            proposal_sha256=self.proposal_sha256,
+            content_sha256=self.content_sha256,
+            reviewer_provider_id=self.reviewer_provider_id,
+            reviewer_model_id=self.reviewer_model_id,
+            decision=self.decision,
+            checks=self.checks,
+            summary=self.summary,
+        )
+        if self.review_sha256 != expected_review_sha256:
+            raise ValueError("remediation text review digest mismatch")
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -169,24 +276,9 @@ def _parse_reviewer_content(
     if len(summary) > _MAX_REVIEW_SUMMARY_CHARS:
         raise ValueError("remediation text reviewer summary exceeds bounded size")
 
-    results = tuple(item.result for item in checks)
-    if decision is RemediationTextReviewDecision.APPROVED and any(
-        result != "pass" for result in results
-    ):
-        raise ValueError("approved remediation text review requires every check to pass")
-    if decision is RemediationTextReviewDecision.REVISION_REQUIRED and all(
-        result == "pass" for result in results
-    ):
-        raise ValueError("revision_required remediation text review requires a non-pass check")
-    if (
-        decision is RemediationTextReviewDecision.INSUFFICIENT_EVIDENCE
-        and "unclear" not in results
-    ):
-        raise ValueError(
-            "insufficient_evidence remediation text review requires an unclear check"
-        )
-
-    return decision, tuple(checks), summary
+    parsed_checks = tuple(checks)
+    _validate_decision_checks(decision, parsed_checks)
+    return decision, parsed_checks, summary
 
 
 def _review_messages(review_request, proposal) -> tuple[ModelMessage, ...]:
