@@ -49,12 +49,11 @@ class FutureSecurityRemediationRetestBlankLineageIdentityTest(unittest.TestCase)
 
         parsed = future_security_remediation_retest_plan_from_dict(payload)
 
-        self.assertEqual(parsed.as_dict(), self.base._plan(
-            AttackPathTransitionClassification.INTRODUCED,
-            suffix="handoff-blank-lineage",
-        ).as_dict())
+        self.assertEqual(json.loads(parsed.to_json()), payload)
 
     def test_whitespace_only_top_level_lineage_ids_fail_closed_after_resigning(self):
+        baseline = self._payload()
+
         for field in (
             "client_id",
             "current_twin_id",
@@ -62,7 +61,7 @@ class FutureSecurityRemediationRetestBlankLineageIdentityTest(unittest.TestCase)
             "changeset_id",
         ):
             with self.subTest(field=field):
-                payload = self._payload()
+                payload = copy.deepcopy(baseline)
                 payload[field] = " \t "
                 payload = self._resign(payload)
 
@@ -70,13 +69,15 @@ class FutureSecurityRemediationRetestBlankLineageIdentityTest(unittest.TestCase)
                     future_security_remediation_retest_plan_from_dict(payload)
 
     def test_whitespace_only_item_ids_fail_closed_after_resigning(self):
+        baseline = self._payload()
+
         for field in (
             "change_node_id",
             "subject_node_id",
             "resolution_id",
         ):
             with self.subTest(field=field):
-                payload = self._payload()
+                payload = copy.deepcopy(baseline)
                 payload["items"][0][field] = "   "
                 payload = self._resign(payload)
 
@@ -84,6 +85,8 @@ class FutureSecurityRemediationRetestBlankLineageIdentityTest(unittest.TestCase)
                     future_security_remediation_retest_plan_from_dict(payload)
 
     def test_whitespace_only_lineage_collection_entries_fail_closed_after_resigning(self):
+        baseline = self._payload()
+
         for field in (
             "current_attack_path_ids",
             "effect_ids",
@@ -91,7 +94,7 @@ class FutureSecurityRemediationRetestBlankLineageIdentityTest(unittest.TestCase)
             "capability_ids",
         ):
             with self.subTest(field=field):
-                payload = self._payload()
+                payload = copy.deepcopy(baseline)
                 payload["items"][0][field] = [" \n "]
                 payload = self._resign(payload)
 
