@@ -20,6 +20,7 @@ The dedicated regressions prove that:
 
 - repeated `to_json()` calls are byte-for-byte deterministic;
 - canonical JSON and JSON-derived dictionaries restore the exact typed request;
+- the strict parser is side-effect-free for caller-owned nested payloads: repeated parsing leaves the input dictionary byte-for-byte-equivalent in structure and values;
 - top-level and nested item mutation in a producer `as_dict()` snapshot cannot mutate the source request or future JSON;
 - independently returned snapshots do not alias nested item dictionaries;
 - caller-owned mutable effect/path/evidence/capability lists are copied during strict parsing, so later mutation cannot alter the parsed request;
