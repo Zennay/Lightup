@@ -185,6 +185,52 @@ class ExecutionPolicyTests(unittest.TestCase):
         )
         self.assertTrue(decision.allowed)
 
+    def test_equivalent_ipv6_spelling_cannot_bypass_exclusion(self):
+        grant = replace(
+            self.grant,
+            scope=ScopeDefinition(
+                assets=("2001:0db8:0:0:0:0:0:1",),
+                excluded_assets=("2001:db8::1",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("web-baseline",),
+            ),
+        )
+        decision = self.policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset="2001:0db8:0:0:0:0:0:1",
+                capability_id="web-baseline",
+                requested_risk=RiskLevel.STANDARD,
+                client_id="client-1",
+                engagement_id="eng-1",
+                authorization=grant,
+            )
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, "asset is outside the authorized scope")
+
+    def test_equivalent_ipv6_spelling_is_authorized_when_not_excluded(self):
+        grant = replace(
+            self.grant,
+            scope=ScopeDefinition(
+                assets=("2001:db8::1",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("web-baseline",),
+            ),
+        )
+        decision = self.policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset="2001:0db8:0:0:0:0:0:1",
+                capability_id="web-baseline",
+                requested_risk=RiskLevel.STANDARD,
+                client_id="client-1",
+                engagement_id="eng-1",
+                authorization=grant,
+            )
+        )
+        self.assertTrue(decision.allowed)
+
     def test_empty_capability_scope_denies_active_capability(self):
         empty_scope = replace(
             self.grant,

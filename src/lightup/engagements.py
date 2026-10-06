@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum, IntEnum
+from ipaddress import ip_address
 
 
 class EngagementStatus(str, Enum):
@@ -40,10 +41,14 @@ class ScopeDefinition:
 
     @staticmethod
     def _canonical_asset(asset: str) -> str:
-        # DNS hostnames with/without a terminal dot are the same authority.
-        # Canonicalize that spelling difference before allow/exclude comparison
-        # so an exclusion cannot be bypassed by adding or removing the dot.
-        return asset.strip().rstrip(".").lower()
+        normalized = asset.strip().rstrip(".").lower()
+        # Equivalent IP literal spellings are the same target authority.
+        # Canonicalize only values that are valid IP literals; opaque asset
+        # identifiers keep their exact normalized spelling.
+        try:
+            return str(ip_address(normalized))
+        except ValueError:
+            return normalized
 
     def allows_asset(self, asset: str) -> bool:
         normalized = self._canonical_asset(asset)
