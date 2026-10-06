@@ -10,7 +10,8 @@ That means:
 
 - `xn--bcher-kva.example` does not authorize `bücher.example`;
 - `bücher.example` does not authorize `xn--bcher-kva.example`;
-- case and a terminal ASCII dot remain equivalent within the same declared Unicode spelling;
+- composed and decomposed Unicode normalization forms do not silently share authority;
+- case and a terminal ASCII dot remain equivalent within the same declared Unicode or punycode spelling;
 - Unicode dot/lookalike separators do not inherit authority from an ASCII hostname;
 - unknown Unicode hostnames remain out of scope.
 
