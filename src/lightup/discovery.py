@@ -23,11 +23,15 @@ class ProspectSignal:
     requires_target_interaction: bool = False
 
     def validate_for_unauthorized_discovery(self) -> None:
+        if type(self.public_source) is not bool:
+            raise ValueError("public_source must be an exact bool")
+        if type(self.requires_target_interaction) is not bool:
+            raise ValueError("requires_target_interaction must be an exact bool")
         if not 0.0 <= self.confidence <= 1.0:
             raise ValueError("confidence must be between 0 and 1")
-        if not self.public_source:
+        if self.public_source is not True:
             raise PermissionError("unauthorized discovery requires a public source")
-        if self.requires_target_interaction:
+        if self.requires_target_interaction is not False:
             raise PermissionError("unauthorized discovery cannot require target interaction")
 
 
