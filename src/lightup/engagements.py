@@ -45,7 +45,9 @@ class ScopeDefinition:
         return normalized in allowed and normalized not in excluded
 
     def allows_capability(self, capability_id: str) -> bool:
-        return not self.allowed_capabilities or capability_id in self.allowed_capabilities
+        # Empty means no active capability authority. Authorization must never
+        # silently expand when new capabilities are added to the registry.
+        return capability_id in self.allowed_capabilities
 
 
 @dataclass(frozen=True)
