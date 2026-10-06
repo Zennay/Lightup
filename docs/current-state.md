@@ -131,6 +131,8 @@ Authorization lineage is bound at execution policy as well as persistence: every
 
 Private address space is not implicit proof of lab ownership. Generic scope policy and CLI default to denying arbitrary private IPs; broad private-lab trust requires an explicit opt-in used by the isolated lab harness. Link-local, unspecified, reserved and multicast addresses are excluded from that private-lab shortcut.
 
+The legacy `Target` / `ActivationGate` authorization primitive is target-bound too: it carries explicit assets, empty assets authorize nothing, and both explicit-host and explicit-network scope paths require the normalized target to match the authorization asset list.
+
 Future Security must not weaken that invariant: a future-state model or isolated
 simulation never grants permission to interact with an otherwise unauthorized
 real system.
