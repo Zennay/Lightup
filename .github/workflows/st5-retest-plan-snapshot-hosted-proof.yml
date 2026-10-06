@@ -1,0 +1,46 @@
+name: LightUp ST5 remediation/retest snapshot hosted proof
+
+on:
+  push:
+    branches:
+      - "ops/st5-retest-plan-snapshot-hosted-proof-20261006"
+    paths:
+      - ".github/workflows/st5-retest-plan-snapshot-hosted-proof.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lightup-st5-retest-plan-snapshot-hosted-proof
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: e6caab71871ae1d4d88cfbdd306236ad74dbeb97
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify exact snapshot candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          test "${actual_sha}" = "e6caab71871ae1d4d88cfbdd306236ad74dbeb97"
+          export PYTHONPATH=src:tests
+          python -m compileall -q src tests
+          python -m unittest discover -s tests             -p 'test_future_security_remediation_retest_plan_snapshot_isolation.py' -v
+          python -m unittest discover -s tests             -p 'test_future_security_remediation_retest_plan_handoff.py' -v
+          python -m unittest discover -s tests             -p 'test_future_security_remediation_retest_plan.py' -v
+          python -m unittest discover -s tests/integration -v
+          printf 'LIGHTUP_ST5_RETEST_PLAN_SNAPSHOT_HOSTED_PROOF python=%s target_sha=%s\n'             "${{ matrix.python-version }}" "${actual_sha}"
