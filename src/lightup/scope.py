@@ -35,6 +35,12 @@ class ScopePolicy:
     explicit_networks: tuple[str, ...] = ()
     require_authorization_for_public: bool = True
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.allow_private_lab, bool):
+            raise TypeError("allow_private_lab must be a bool")
+        if not isinstance(self.require_authorization_for_public, bool):
+            raise TypeError("require_authorization_for_public must be a bool")
+
     def _networks(self):
         return tuple(ip_network(item, strict=False) for item in self.explicit_networks)
 
