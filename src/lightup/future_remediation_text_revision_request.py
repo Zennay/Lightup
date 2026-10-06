@@ -58,6 +58,29 @@ class FutureRemediationTextRevisionRequest:
     future_semantics: str = "unresolved"
     security_verdict: str = "not_evaluated"
 
+    def __post_init__(self) -> None:
+        if self.review_decision != RemediationTextReviewDecision.REVISION_REQUIRED.value:
+            raise ValueError("remediation revision request review_decision must remain revision_required")
+        if self.revision_requested is not True:
+            raise ValueError("revision_requested must remain true")
+        if self.remediation_accepted is not False:
+            raise ValueError("remediation_accepted must remain false")
+        for field in (
+            "code_change_authorized",
+            "tool_call_created",
+            "execution_allowed",
+            "target_interaction_allowed",
+            "future_state_retest_allowed",
+            "deployment_authorized",
+            "attack_path_mutation_allowed",
+        ):
+            if getattr(self, field) is not False:
+                raise ValueError(f"authority flag {field} must remain false")
+        if self.future_semantics != "unresolved":
+            raise ValueError("future_semantics must remain unresolved")
+        if self.security_verdict != "not_evaluated":
+            raise ValueError("security_verdict must remain not_evaluated")
+
     def as_dict(self) -> dict:
         return asdict(self)
 
