@@ -717,6 +717,38 @@ class DomainStoreTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.store.decide_risk_elevation(other, approval.approval_id, False)
 
+    def test_risk_elevation_decision_is_one_shot_and_auditable(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Atomic risk decision"
+        )
+        approval = self.store.request_risk_elevation(
+            self.ctx_a,
+            engagement.engagement_id,
+            RiskLevel.ELEVATED,
+            "requires one operator decision",
+        )
+        first = AccessContext("op-first", Role.OPERATOR)
+        second = AccessContext("op-second", Role.OPERATOR)
+
+        decided = self.store.decide_risk_elevation(
+            first, approval.approval_id, True
+        )
+        self.assertIs(decided.status, ApprovalStatus.APPROVED)
+        self.assertEqual(decided.decided_by, first.user_id)
+        decided_at = decided.decided_at
+
+        with self.assertRaisesRegex(ValueError, "already decided"):
+            self.store.decide_risk_elevation(
+                second, approval.approval_id, False
+            )
+
+        persisted = self.store.list_risk_approvals(
+            self.ctx_a, engagement.engagement_id
+        )[0]
+        self.assertIs(persisted.status, ApprovalStatus.APPROVED)
+        self.assertEqual(persisted.decided_by, first.user_id)
+        self.assertEqual(persisted.decided_at, decided_at)
+
     def test_retest_status_updates(self):
         engagement = self.store.create_engagement(self.operator, self.client_a.client_id, "Q4")
         finding = self.store.record_finding(
