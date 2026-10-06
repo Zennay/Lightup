@@ -190,6 +190,10 @@ class ToolRegistry:
                 f"tool {definition.tool_id!r} references unknown capability "
                 f"{definition.capability_id!r}"
             )
+        if capability.state is CapabilityState.DISABLED:
+            raise OrchestrationError(
+                f"capability {definition.capability_id!r} is disabled"
+            )
         if (
             capability.state is CapabilityState.LAB_ONLY
             and definition.interaction is not InteractionKind.LAB_ACTIVE
