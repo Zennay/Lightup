@@ -29,8 +29,13 @@ the real ST4 report and then snapshots:
 - all persisted `runs`, `capability_leases` and `evidence` rows in the live
   `StateStore`.
 
+During the builder calls, the write-capable `StateStore` APIs `create_run`,
+`acquire_lease`, and `add_evidence` are replaced with fail-fast sentinels.
+Any attempted write through those public mutation paths fails the regression
+immediately rather than being hidden by a later rollback or compensating write.
+
 Two consecutive remediation/retest plan builds must return equal plans while
-all three snapshots remain unchanged.
+all snapshots and write sentinels remain untouched.
 
 This establishes that deterministic planning is a read-only derivation rather
 than an implicit lineage/state update.
@@ -45,7 +50,8 @@ Repeated rejection must leave:
 
 - the tampered caller-owned report and every other typed input unchanged;
 - nested caller-owned container identities unchanged;
-- all live ledger rows unchanged.
+- all live ledger rows unchanged;
+- every write-capable `StateStore` sentinel uncalled.
 
 So fail-closed live revalidation does not acquire a hidden write side effect.
 
