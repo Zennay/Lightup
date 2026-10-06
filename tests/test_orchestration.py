@@ -20,9 +20,11 @@ from lightup.ai.orchestration import (
     ToolParameter,
     ToolRegistry,
 )
+from lightup.domain import AccessContext, DomainStore, Role
 from lightup.engagements import (
     AssessmentMode,
     AuthorizationGrant,
+    EngagementStatus,
     RiskLevel,
     ScopeDefinition,
 )
@@ -92,7 +94,9 @@ class OrchestrationTest(unittest.TestCase):
             ),
             _active_tool,
         )
-        self.executor = ToolExecutor(self.registry, self.state)
+        self.executor = ToolExecutor(
+            self.registry, self.state, authorization_resolver=lambda grant: grant
+        )
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -154,6 +158,274 @@ class OrchestrationTest(unittest.TestCase):
             "authorization engagement does not match execution engagement",
             str(caught.exception),
         )
+
+    def test_target_active_requires_live_authorization_resolver(self):
+        executor = ToolExecutor(self.registry, self.state)
+        context = _context(
+            AssessmentMode.AUTHORIZED_ASSESSMENT,
+            RiskLevel.STANDARD,
+            authorization=_grant("allowed.test"),
+        )
+        with self.assertRaises(ToolDenied) as caught:
+            executor.execute(context, ToolCall("service-probe", "allowed.test"))
+        self.assertIn("live authorization revalidation", str(caught.exception))
+
+    def test_live_resolver_cannot_substitute_a_different_grant(self):
+        calls: list[str] = []
+        registry = ToolRegistry()
+        registry.register(
+            ToolDefinition(
+                "grant-substitution-probe",
+                "network-services",
+                InteractionKind.TARGET_ACTIVE,
+                RiskLevel.STANDARD,
+                "test-only target-active handler",
+            ),
+            lambda context, arguments: (
+                calls.append("ran")
+                or ToolOutput("ran", "probe", b"evidence")
+            ),
+        )
+        snapshot = _grant("allowed.test")
+        replacement = dataclasses.replace(snapshot, grant_id="g2")
+        executor = ToolExecutor(
+            registry,
+            self.state,
+            authorization_resolver=lambda grant: replacement,
+        )
+        context = _context(
+            AssessmentMode.AUTHORIZED_ASSESSMENT,
+            RiskLevel.STANDARD,
+            authorization=snapshot,
+        )
+
+        with self.assertRaises(ToolDenied) as caught:
+            executor.execute(
+                context, ToolCall("grant-substitution-probe", "allowed.test")
+            )
+        self.assertIn("different grant", str(caught.exception))
+        self.assertEqual(calls, [])
+
+    def test_revocation_after_run_start_denies_before_handler(self):
+        domain = DomainStore(Path(self.tmp.name) / "authorization.db")
+        operator = AccessContext("operator", Role.OPERATOR)
+        client = domain.create_client(operator, "Runtime revocation client")
+        engagement = domain.create_engagement(
+            operator, client.client_id, "Runtime revocation engagement"
+        )
+        now = datetime.now(timezone.utc)
+        grant = domain.record_authorization_grant(
+            operator,
+            engagement.engagement_id,
+            approved_by="client signatory",
+            reference="AUTH-RUNTIME-1",
+            scope=ScopeDefinition(
+                assets=("allowed.test",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("network-services",),
+            ),
+            valid_from=now - timedelta(minutes=5),
+            valid_until=now + timedelta(hours=1),
+        )
+        context = RunContext(
+            run_id=str(uuid4()),
+            client_id=client.client_id,
+            engagement_id=engagement.engagement_id,
+            mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
+            approved_risk=RiskLevel.STANDARD,
+            authorization=grant,
+            is_lab=False,
+            created_at=now,
+        )
+        calls: list[str] = []
+        registry = ToolRegistry()
+        registry.register(
+            ToolDefinition(
+                "runtime-revocation-probe",
+                "network-services",
+                InteractionKind.TARGET_ACTIVE,
+                RiskLevel.STANDARD,
+                "test-only target-active handler",
+            ),
+            lambda context, arguments: (
+                calls.append("ran")
+                or ToolOutput("ran", "probe", b"evidence")
+            ),
+        )
+        executor = ToolExecutor(
+            registry,
+            self.state,
+            authorization_resolver=domain.resolve_authorization_for_execution,
+        )
+
+        executor.execute(
+            context, ToolCall("runtime-revocation-probe", "allowed.test")
+        )
+        self.assertEqual(calls, ["ran"])
+
+        domain.revoke_engagement_authorization(
+            operator,
+            engagement.engagement_id,
+            "client withdrew authorization while run was active",
+        )
+
+        with self.assertRaises(ToolDenied) as caught:
+            executor.execute(
+                context, ToolCall("runtime-revocation-probe", "allowed.test")
+            )
+        self.assertIn("not live in authoritative state", str(caught.exception))
+        self.assertEqual(
+            calls,
+            ["ran"],
+            "revoked stale RunContext must be denied before handler invocation",
+        )
+
+    def test_closed_engagement_denies_stale_run_before_handler(self):
+        domain = DomainStore(Path(self.tmp.name) / "closed-engagement.db")
+        operator = AccessContext("closed-operator", Role.OPERATOR)
+        client = domain.create_client(operator, "Closed engagement client")
+        engagement = domain.create_engagement(
+            operator, client.client_id, "Close while run is active"
+        )
+        now = datetime.now(timezone.utc)
+        grant = domain.record_authorization_grant(
+            operator,
+            engagement.engagement_id,
+            approved_by="client signatory",
+            reference="AUTH-CLOSE-RUNTIME",
+            scope=ScopeDefinition(
+                assets=("allowed.test",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("network-services",),
+            ),
+            valid_from=now - timedelta(minutes=5),
+            valid_until=now + timedelta(hours=1),
+        )
+        context = RunContext(
+            run_id=str(uuid4()),
+            client_id=client.client_id,
+            engagement_id=engagement.engagement_id,
+            mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
+            approved_risk=RiskLevel.STANDARD,
+            authorization=grant,
+            is_lab=False,
+            created_at=now,
+        )
+        calls: list[str] = []
+        registry = ToolRegistry()
+        registry.register(
+            ToolDefinition(
+                "closed-engagement-probe",
+                "network-services",
+                InteractionKind.TARGET_ACTIVE,
+                RiskLevel.STANDARD,
+                "test-only target-active handler",
+            ),
+            lambda context, arguments: (
+                calls.append("ran")
+                or ToolOutput("ran", "probe", b"evidence")
+            ),
+        )
+        executor = ToolExecutor(
+            registry,
+            self.state,
+            authorization_resolver=domain.resolve_authorization_for_execution,
+        )
+        executor.execute(
+            context, ToolCall("closed-engagement-probe", "allowed.test")
+        )
+        self.assertEqual(calls, ["ran"])
+
+        domain.set_engagement_status(
+            operator, engagement.engagement_id, EngagementStatus.CLOSED
+        )
+
+        with self.assertRaises(ToolDenied) as caught:
+            executor.execute(
+                context, ToolCall("closed-engagement-probe", "allowed.test")
+            )
+        self.assertIn("not live in authoritative state", str(caught.exception))
+        self.assertEqual(calls, ["ran"])
+
+        domain.set_engagement_status(
+            operator, engagement.engagement_id, EngagementStatus.DRAFT
+        )
+        with self.assertRaises(ToolDenied):
+            executor.execute(
+                context, ToolCall("closed-engagement-probe", "allowed.test")
+            )
+        self.assertEqual(
+            calls,
+            ["ran"],
+            "reopening must not revive the historical authorization snapshot",
+        )
+
+    def test_live_resolver_overrides_broader_stale_snapshot_scope(self):
+        domain = DomainStore(Path(self.tmp.name) / "scope-authority.db")
+        operator = AccessContext("scope-operator", Role.OPERATOR)
+        client = domain.create_client(operator, "Scope authority client")
+        engagement = domain.create_engagement(
+            operator, client.client_id, "Scope authority engagement"
+        )
+        now = datetime.now(timezone.utc)
+        persisted = domain.record_authorization_grant(
+            operator,
+            engagement.engagement_id,
+            approved_by="client signatory",
+            reference="AUTH-SCOPE-AUTHORITY",
+            scope=ScopeDefinition(
+                assets=("allowed.test",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("network-services",),
+            ),
+            valid_from=now - timedelta(minutes=5),
+            valid_until=now + timedelta(hours=1),
+        )
+        stale_broader_snapshot = dataclasses.replace(
+            persisted,
+            scope=ScopeDefinition(
+                assets=("allowed.test", "outside.test"),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("network-services",),
+            ),
+        )
+        context = RunContext(
+            run_id=str(uuid4()),
+            client_id=client.client_id,
+            engagement_id=engagement.engagement_id,
+            mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
+            approved_risk=RiskLevel.STANDARD,
+            authorization=stale_broader_snapshot,
+            is_lab=False,
+            created_at=now,
+        )
+        calls: list[str] = []
+        registry = ToolRegistry()
+        registry.register(
+            ToolDefinition(
+                "scope-authority-probe",
+                "network-services",
+                InteractionKind.TARGET_ACTIVE,
+                RiskLevel.STANDARD,
+                "test-only target-active handler",
+            ),
+            lambda context, arguments: (
+                calls.append("ran")
+                or ToolOutput("ran", "probe", b"evidence")
+            ),
+        )
+        executor = ToolExecutor(
+            registry,
+            self.state,
+            authorization_resolver=domain.resolve_authorization_for_execution,
+        )
+
+        with self.assertRaises(ToolDenied) as caught:
+            executor.execute(
+                context, ToolCall("scope-authority-probe", "outside.test")
+            )
+        self.assertIn("asset is outside the authorized scope", str(caught.exception))
+        self.assertEqual(calls, [])
 
     def test_out_of_scope_asset_denied(self):
         context = _context(AssessmentMode.AUTHORIZED_ASSESSMENT, RiskLevel.STANDARD,

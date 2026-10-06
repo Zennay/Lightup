@@ -15,7 +15,12 @@ from lightup.domain import (
     RoleError,
     TenantIsolationError,
 )
-from lightup.engagements import AssessmentMode, RiskLevel, ScopeDefinition
+from lightup.engagements import (
+    AssessmentMode,
+    EngagementStatus,
+    RiskLevel,
+    ScopeDefinition,
+)
 from lightup.models import RetestStatus, Severity
 
 
@@ -250,6 +255,136 @@ class DomainStoreTest(unittest.TestCase):
                 self.operator, engagement.engagement_id, "repeat withdrawal"
             ),
             (),
+        )
+
+    def test_execution_resolver_reloads_live_grant_and_revocation(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Execution resolver"
+        )
+        valid_from, valid_until = _grant_window()
+        snapshot = self.store.record_authorization_grant(
+            self.operator,
+            engagement.engagement_id,
+            "CISO Acme",
+            "AUTH-LIVE-RESOLVE",
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("web-baseline",),
+            ),
+            valid_from,
+            valid_until,
+        )
+
+        live = self.store.resolve_authorization_for_execution(snapshot)
+        self.assertIsNotNone(live)
+        self.assertEqual(live.grant_id, snapshot.grant_id)
+        self.assertFalse(live.is_revoked)
+
+        self.store.revoke_engagement_authorization(
+            self.operator,
+            engagement.engagement_id,
+            "client withdrew authorization",
+        )
+        self.assertIsNone(
+            self.store.resolve_authorization_for_execution(snapshot),
+            "stale in-memory grant must not survive durable revocation",
+        )
+
+    def test_execution_resolver_denies_closed_engagement(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Closed execution boundary"
+        )
+        valid_from, valid_until = _grant_window()
+        snapshot = self.store.record_authorization_grant(
+            self.operator,
+            engagement.engagement_id,
+            "CISO Acme",
+            "AUTH-CLOSED-ENGAGEMENT",
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("web-baseline",),
+            ),
+            valid_from,
+            valid_until,
+        )
+        self.assertIsNotNone(
+            self.store.resolve_authorization_for_execution(snapshot)
+        )
+
+        self.store.set_engagement_status(
+            self.operator, engagement.engagement_id, EngagementStatus.CLOSED
+        )
+        self.assertIsNone(
+            self.store.resolve_authorization_for_execution(snapshot),
+            "closed engagement must invalidate target-active authorization",
+        )
+        closed_grant = self.store.list_authorization_grants(
+            self.operator, engagement.engagement_id
+        )[0]
+        self.assertTrue(closed_grant.is_revoked)
+        self.assertEqual(closed_grant.revoked_by, self.operator.user_id)
+        self.assertEqual(closed_grant.revocation_reason, "engagement closed")
+
+        # Reopening the lifecycle record cannot revive historical authorization.
+        self.store.set_engagement_status(
+            self.operator, engagement.engagement_id, EngagementStatus.DRAFT
+        )
+        self.assertIsNone(
+            self.store.resolve_authorization_for_execution(snapshot)
+        )
+        self.assertIsNone(
+            self.store.get_current_grant(self.operator, engagement.engagement_id)
+        )
+
+    def test_closed_engagement_rejects_new_grants_until_reopened(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Closed grant boundary"
+        )
+        self.store.set_engagement_status(
+            self.operator, engagement.engagement_id, EngagementStatus.CLOSED
+        )
+        valid_from, valid_until = _grant_window()
+        with self.assertRaisesRegex(
+            ValueError, "closed engagement cannot receive authorization grants"
+        ):
+            self.store.record_authorization_grant(
+                self.operator,
+                engagement.engagement_id,
+                "CISO Acme",
+                "AUTH-AFTER-CLOSE",
+                ScopeDefinition(
+                    assets=("app.acme.example",),
+                    max_risk=RiskLevel.STANDARD,
+                    allowed_capabilities=("web-baseline",),
+                ),
+                valid_from,
+                valid_until,
+            )
+
+        # A deliberately reopened engagement can only gain authority from a new grant.
+        self.store.set_engagement_status(
+            self.operator, engagement.engagement_id, EngagementStatus.DRAFT
+        )
+        fresh = self.store.record_authorization_grant(
+            self.operator,
+            engagement.engagement_id,
+            "CISO Acme",
+            "AUTH-AFTER-REOPEN",
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("web-baseline",),
+            ),
+            valid_from,
+            valid_until,
+        )
+        self.assertEqual(
+            self.store.get_current_grant(
+                self.operator, engagement.engagement_id
+            ).grant_id,
+            fresh.grant_id,
         )
 
     def test_authorization_revocation_is_operator_only_and_requires_reason(self):

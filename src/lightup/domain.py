@@ -738,10 +738,29 @@ class DomainStore:
         ctx.require_operator("set_engagement_status")
         record = self.get_engagement(ctx, engagement_id)
         with self._connect() as con:
-            con.execute(
-                "UPDATE engagements SET status=? WHERE engagement_id=?",
-                (status.value, record.engagement_id),
-            )
+            con.execute("BEGIN IMMEDIATE")
+            try:
+                con.execute(
+                    "UPDATE engagements SET status=? WHERE engagement_id=?",
+                    (status.value, record.engagement_id),
+                )
+                if status is EngagementStatus.CLOSED:
+                    closed_at = utcnow().isoformat()
+                    con.execute(
+                        "UPDATE authorization_grants "
+                        "SET revoked_at=?, revoked_by=?, revocation_reason=? "
+                        "WHERE engagement_id=? AND revoked_at IS NULL",
+                        (
+                            closed_at,
+                            ctx.user_id,
+                            "engagement closed",
+                            record.engagement_id,
+                        ),
+                    )
+                con.execute("COMMIT")
+            except Exception:
+                con.execute("ROLLBACK")
+                raise
         return self.get_engagement(ctx, engagement_id)
 
     # -- authorization grants --------------------------------------------------
@@ -792,32 +811,59 @@ class DomainStore:
             )
         if scope.max_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
             raise ValueError("destructive risk is lab-only and cannot be client-authorized")
-        engagement = self.get_engagement(ctx, engagement_id)
-        grant = AuthorizationGrant(
-            grant_id=str(uuid4()),
-            client_id=engagement.client_id,
-            engagement_id=engagement.engagement_id,
-            approved_by=approved_by.strip(),
-            reference=reference.strip(),
-            scope=scope,
-            valid_from=valid_from,
-            valid_until=valid_until,
-            recurring_retest_allowed=recurring_retest_allowed,
-        )
+        # Serialize the lifecycle check with grant persistence. If closure wins
+        # the write lock first, issuance observes CLOSED and fails. If issuance
+        # wins first, a subsequent closure sees and revokes this grant.
         with self._connect() as con:
-            con.execute(
-                "INSERT INTO authorization_grants("
-                "grant_id,client_id,engagement_id,approved_by,reference,assets_json,"
-                "excluded_assets_json,allowed_capabilities_json,max_risk,valid_from,"
-                "valid_until,recurring_retest_allowed,created_at) "
-                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (grant.grant_id, grant.client_id, grant.engagement_id, grant.approved_by,
-                 grant.reference, json.dumps(list(scope.assets)),
-                 json.dumps(list(scope.excluded_assets)),
-                 json.dumps(list(scope.allowed_capabilities)), int(scope.max_risk),
-                 valid_from.isoformat(), valid_until.isoformat(),
-                 1 if recurring_retest_allowed else 0, utcnow().isoformat()),
-            )
+            con.execute("BEGIN IMMEDIATE")
+            try:
+                row = con.execute(
+                    "SELECT client_id,status FROM engagements WHERE engagement_id=?",
+                    (engagement_id,),
+                ).fetchone()
+                if row is None:
+                    raise KeyError(f"unknown engagement {engagement_id!r}")
+                if EngagementStatus(row["status"]) is EngagementStatus.CLOSED:
+                    raise ValueError(
+                        "closed engagement cannot receive authorization grants"
+                    )
+                grant = AuthorizationGrant(
+                    grant_id=str(uuid4()),
+                    client_id=row["client_id"],
+                    engagement_id=engagement_id,
+                    approved_by=approved_by.strip(),
+                    reference=reference.strip(),
+                    scope=scope,
+                    valid_from=valid_from,
+                    valid_until=valid_until,
+                    recurring_retest_allowed=recurring_retest_allowed,
+                )
+                con.execute(
+                    "INSERT INTO authorization_grants("
+                    "grant_id,client_id,engagement_id,approved_by,reference,assets_json,"
+                    "excluded_assets_json,allowed_capabilities_json,max_risk,valid_from,"
+                    "valid_until,recurring_retest_allowed,created_at) "
+                    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        grant.grant_id,
+                        grant.client_id,
+                        grant.engagement_id,
+                        grant.approved_by,
+                        grant.reference,
+                        json.dumps(list(scope.assets)),
+                        json.dumps(list(scope.excluded_assets)),
+                        json.dumps(list(scope.allowed_capabilities)),
+                        int(scope.max_risk),
+                        valid_from.isoformat(),
+                        valid_until.isoformat(),
+                        1 if recurring_retest_allowed else 0,
+                        utcnow().isoformat(),
+                    ),
+                )
+                con.execute("COMMIT")
+            except Exception:
+                con.execute("ROLLBACK")
+                raise
         return grant
 
     @staticmethod
@@ -913,6 +959,32 @@ class DomainStore:
             if grant.is_current(now):
                 return grant
         return None
+
+    def resolve_authorization_for_execution(
+        self, grant: AuthorizationGrant
+    ) -> AuthorizationGrant | None:
+        """Re-read one exact grant for the execution plane, failing closed.
+
+        RunContext authorization is only a snapshot. This resolver binds the
+        grant id, client and engagement to durable state and returns the live
+        persisted record only while it is still current. Callers must evaluate
+        policy against this returned object rather than the stale snapshot.
+        """
+        now = utcnow()
+        with self._connect() as con:
+            row = con.execute(
+                "SELECT g.*, e.status AS engagement_status "
+                "FROM authorization_grants AS g "
+                "JOIN engagements AS e ON e.engagement_id=g.engagement_id "
+                "WHERE g.grant_id=? AND g.client_id=? AND g.engagement_id=? LIMIT 1",
+                (grant.grant_id, grant.client_id, grant.engagement_id),
+            ).fetchone()
+        if row is None:
+            return None
+        if EngagementStatus(row["engagement_status"]) is EngagementStatus.CLOSED:
+            return None
+        persisted = self._grant_from_row(row)
+        return persisted if persisted.is_current(now) else None
 
     # -- risk elevation ---------------------------------------------------------
 
