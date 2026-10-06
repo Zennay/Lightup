@@ -53,12 +53,17 @@ live validator.
 The parent #398–#402 pack is independently permanent-VPS proven on
 `vps-bb300bba`. #405 is independently hosted expected-RED proven on Python
 3.11 and 3.14 at exact head
-`edb83f2e1cd119b05406c17011c12fa34c5d4d9a`; its permanent-VPS carrier is
-zCloud #793 / run `37547085717`.
+`edb83f2e1cd119b05406c17011c12fa34c5d4d9a`. Its permanent-VPS proof is also green:
+zCloud run `37547085717` succeeded on `vps-bb300bba` for Python 3.11 and 3.14,
+with the parent #194 handoff green, exactly 12 #405 expected-RED failures per
+interpreter, canonical producer control green, safety canaries green, and zero
+production-source changes. Receipt artifact `11451530786` has digest
+`sha256:f2fadd6f233c327652d0ccb25dfdf54e6dec4630d87a5c520b223ef0913e146c`;
+validation-only zCloud PR #793 is closed unmerged.
 
-Do not promote this forward composition until #405 permanent-VPS proof is green
-and the #194 source owner has absorbed the full invariant set and produced an
-exact updated-head green proof.
+This forward composition may now be proven as one combined acceptance head, but
+must not be promoted as a source fix. The #194 source owner still needs to absorb
+the full invariant set and produce an exact updated-head green proof.
 
 ## Safety
 
