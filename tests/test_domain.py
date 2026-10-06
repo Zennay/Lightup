@@ -15,7 +15,12 @@ from lightup.domain import (
     RoleError,
     TenantIsolationError,
 )
-from lightup.engagements import AssessmentMode, RiskLevel, ScopeDefinition
+from lightup.engagements import (
+    AssessmentMode,
+    EngagementStatus,
+    RiskLevel,
+    ScopeDefinition,
+)
 from lightup.models import RetestStatus, Severity
 
 
@@ -284,6 +289,36 @@ class DomainStoreTest(unittest.TestCase):
         self.assertIsNone(
             self.store.resolve_authorization_for_execution(snapshot),
             "stale in-memory grant must not survive durable revocation",
+        )
+
+    def test_execution_resolver_denies_closed_engagement(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Closed execution boundary"
+        )
+        valid_from, valid_until = _grant_window()
+        snapshot = self.store.record_authorization_grant(
+            self.operator,
+            engagement.engagement_id,
+            "CISO Acme",
+            "AUTH-CLOSED-ENGAGEMENT",
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("web-baseline",),
+            ),
+            valid_from,
+            valid_until,
+        )
+        self.assertIsNotNone(
+            self.store.resolve_authorization_for_execution(snapshot)
+        )
+
+        self.store.set_engagement_status(
+            self.operator, engagement.engagement_id, EngagementStatus.CLOSED
+        )
+        self.assertIsNone(
+            self.store.resolve_authorization_for_execution(snapshot),
+            "closed engagement must invalidate target-active authorization",
         )
 
     def test_authorization_revocation_is_operator_only_and_requires_reason(self):
