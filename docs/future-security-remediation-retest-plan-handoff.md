@@ -25,8 +25,10 @@ that the source report, preview, transition resolutions, run contexts, or
 StateStore evidence are still current.
 
 Any consumer that uses a parsed plan for a later evidence/remediation workflow
-must still rebuild the plan from the live lineage with
-`build_future_security_remediation_retest_plan` and require exact equality
+must immediately call
+`validate_future_security_remediation_retest_plan_handoff`. That validator
+rebuilds the plan from the live lineage with
+`build_future_security_remediation_retest_plan` and requires exact equality
 before follow-up use.
 
 ## Safety invariants
