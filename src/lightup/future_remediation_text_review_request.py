@@ -36,6 +36,28 @@ REQUIRED_REVIEW_CHECKS = (
 )
 
 
+def _canonical_sha256(value: object, *, field: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise ValueError(f"{field} must be a canonical lowercase SHA-256 digest")
+    return value
+
+
+def _non_empty_string(value: object, *, field: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{field} must be a non-empty string")
+    return value
+
+
+def _positive_int(value: object, *, field: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+        raise ValueError(f"{field} must be a positive integer")
+    return value
+
+
 @dataclass(frozen=True)
 class FutureRemediationTextReviewRequest:
     schema_version: str
@@ -61,6 +83,39 @@ class FutureRemediationTextReviewRequest:
     security_verdict: str = "not_evaluated"
 
     def __post_init__(self) -> None:
+        if self.schema_version != REMEDIATION_TEXT_REVIEW_REQUEST_SCHEMA_VERSION:
+            raise ValueError("remediation text review request schema version mismatch")
+        for field in (
+            "request_sha256",
+            "bundle_sha256",
+            "proposal_sha256",
+            "content_sha256",
+            "review_request_sha256",
+        ):
+            _canonical_sha256(
+                getattr(self, field),
+                field=f"remediation text review request {field}",
+            )
+        _non_empty_string(
+            self.provider_id,
+            field="remediation text review request provider_id",
+        )
+        _non_empty_string(
+            self.model_id,
+            field="remediation text review request model_id",
+        )
+        _positive_int(
+            self.item_count,
+            field="remediation text review request item_count",
+        )
+        if not isinstance(self.required_checks, tuple):
+            raise ValueError(
+                "remediation text review request required_checks must be a tuple"
+            )
+        if self.required_checks != REQUIRED_REVIEW_CHECKS:
+            raise ValueError(
+                "remediation text review request required_checks mismatch"
+            )
         if self.review_requested is not True:
             raise ValueError("review_requested must remain true")
         if self.remediation_accepted is not False:
@@ -80,6 +135,17 @@ class FutureRemediationTextReviewRequest:
             raise ValueError("future_semantics must remain unresolved")
         if self.security_verdict != "not_evaluated":
             raise ValueError("security_verdict must remain not_evaluated")
+        expected_review_request_sha256 = _review_request_digest(
+            request_sha256=self.request_sha256,
+            bundle_sha256=self.bundle_sha256,
+            proposal_sha256=self.proposal_sha256,
+            content_sha256=self.content_sha256,
+            provider_id=self.provider_id,
+            model_id=self.model_id,
+            item_count=self.item_count,
+        )
+        if self.review_request_sha256 != expected_review_request_sha256:
+            raise ValueError("remediation text review request digest mismatch")
 
     def as_dict(self) -> dict:
         return asdict(self)
