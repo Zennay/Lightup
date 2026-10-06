@@ -87,19 +87,19 @@ class FutureRemediationImplementationPlanReviewTest(unittest.TestCase):
         return review_future_remediation_implementation_plan(
             self.review_request.to_json(),
             self.implementation_plan.to_json(),
-            self.base.base.base.planning_request.to_json(),
-            self.base.base.base.base.review.to_json(),
-            self.base.base.base.base.base.review_request.to_json(),
-            self.base.base.base.base.base.proposal.to_json(),
-            self.base.base.base.base.base.base.request,
-            self.base.base.base.base.base.base.bundle,
-            self.base.base.base.base.base.base.plan,
-            self.base.base.base.base.base.base.report,
-            self.base.base.base.base.base.base.preview,
-            self.base.base.base.base.base.base.transition_proposal,
-            (self.base.base.base.base.base.base.resolution,),
-            (self.base.base.base.base.base.base.context,),
-            self.base.base.base.base.base.base.state,
+            self.base.base.base.base.planning_request.to_json(),
+            self.base.base.base.base.base.review.to_json(),
+            self.base.base.base.base.base.base.review_request.to_json(),
+            self.base.base.base.base.base.base.proposal.to_json(),
+            self.base.base.base.base.base.base.base.request,
+            self.base.base.base.base.base.base.base.bundle,
+            self.base.base.base.base.base.base.base.plan,
+            self.base.base.base.base.base.base.base.report,
+            self.base.base.base.base.base.base.base.preview,
+            self.base.base.base.base.base.base.base.transition_proposal,
+            (self.base.base.base.base.base.base.base.resolution,),
+            (self.base.base.base.base.base.base.base.context,),
+            self.base.base.base.base.base.base.base.state,
             gateway,
         )
 
@@ -230,9 +230,11 @@ class FutureRemediationImplementationPlanReviewTest(unittest.TestCase):
 
     def test_live_evidence_drift_fails_before_reviewer_invocation(self):
         gateway, provider = self._review_gateway(_review_json())
-        evidence = self.base.base.base.base.base.base.bundle.items[0].evidence[0]
+        evidence = (
+            self.base.base.base.base.base.base.base.bundle.items[0].evidence[0]
+        )
         replacement = "f" * 64 if evidence.sha256 != "f" * 64 else "e" * 64
-        with self.base.base.base.base.base.base.state.connect() as con:
+        with self.base.base.base.base.base.base.base.state.connect() as con:
             con.execute(
                 "UPDATE evidence SET sha256=? WHERE evidence_id=?",
                 (replacement, evidence.evidence_id),
