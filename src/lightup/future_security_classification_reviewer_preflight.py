@@ -60,6 +60,25 @@ CLASSIFICATION_REVIEWER_PREFLIGHT_SCHEMA_VERSION = (
 )
 
 
+def _canonical_preflight_text(field: str, value: object) -> str:
+    if not isinstance(value, str) or not value or value != value.strip():
+        raise ValueError(f"{field} must be a canonical non-empty string")
+    if len(value) > 256 or any(ord(char) < 32 or ord(char) == 127 for char in value):
+        raise ValueError(f"{field} must be canonical")
+    return value
+
+
+def _canonical_preflight_sha256(field: str, value: object) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or value != value.lower()
+        or any(char not in "0123456789abcdef" for char in value)
+    ):
+        raise ValueError(f"{field} must be canonical lowercase SHA-256")
+    return value
+
+
 @dataclass(frozen=True)
 class FutureSecurityClassificationReviewerPreflight:
     schema_version: str
@@ -98,6 +117,104 @@ class FutureSecurityClassificationReviewerPreflight:
     attack_path_mutation_allowed: bool = False
     future_semantics: str = "unresolved"
     security_verdict: str = "not_evaluated"
+
+    def __post_init__(self) -> None:
+        if self.schema_version != CLASSIFICATION_REVIEWER_PREFLIGHT_SCHEMA_VERSION:
+            raise ValueError("schema_version must match classification reviewer preflight schema")
+
+        for field in (
+            "client_id",
+            "source_resolution_id",
+            "change_node_id",
+            "subject_node_id",
+            "candidate_run_id",
+            "sufficiency_verifier_user_id",
+            "classification_reviewer_user_id",
+        ):
+            _canonical_preflight_text(field, getattr(self, field))
+
+        for field in (
+            "classification_review_request_sha256",
+            "evidence_collection_request_sha256",
+            "freshness_constraints_sha256",
+            "admission_sha256",
+            "metadata_review_sha256",
+            "sufficiency_request_sha256",
+            "sufficiency_verifier_preflight_sha256",
+            "attestation_sha256",
+            "preflight_sha256",
+        ):
+            _canonical_preflight_sha256(field, getattr(self, field))
+
+        for field in ("candidate_evidence_ids", "candidate_capability_ids"):
+            values = getattr(self, field)
+            if type(values) is not tuple or not values:
+                raise ValueError(f"{field} must be a non-empty tuple")
+            for value in values:
+                _canonical_preflight_text(field, value)
+            if len(set(values)) != len(values):
+                raise ValueError(f"{field} must contain unique values")
+            if values != tuple(sorted(values)):
+                raise ValueError(f"{field} must be canonically sorted")
+
+        if not isinstance(
+            self.candidate_classification_claim,
+            AttackPathTransitionClassification,
+        ):
+            raise ValueError(
+                "candidate_classification_claim must be AttackPathTransitionClassification"
+            )
+
+        if self.sufficiency_verifier_user_id == self.classification_reviewer_user_id:
+            raise ValueError(
+                "classification_reviewer_user_id must differ from sufficiency_verifier_user_id"
+            )
+        if self.classification_reviewer_role != "operator":
+            raise ValueError("classification_reviewer_role must be operator")
+
+        for field in (
+            "independent_reviewer_verified",
+            "eligible_for_classification_review",
+        ):
+            if getattr(self, field) is not True:
+                raise ValueError(f"{field} must be true")
+
+        for field in (
+            "classification_decision_created",
+            "classification_selected",
+            "transition_resolution_created",
+            "collection_authorized",
+            "tool_call_created",
+            "execution_allowed",
+            "target_interaction_allowed",
+            "remediation_authoring_allowed",
+            "future_state_retest_allowed",
+            "deployment_authorized",
+            "attack_path_mutation_allowed",
+        ):
+            if getattr(self, field) is not False:
+                raise ValueError(f"{field} must be false")
+
+        if self.future_semantics != "unresolved":
+            raise ValueError("future_semantics must remain unresolved")
+        if self.security_verdict != "not_evaluated":
+            raise ValueError("security_verdict must remain not_evaluated")
+
+        digest_payload = asdict(self)
+        digest_payload.pop("preflight_sha256")
+        digest_payload["candidate_classification_claim"] = (
+            self.candidate_classification_claim.value
+        )
+        expected_digest = sha256(
+            json.dumps(
+                digest_payload,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=True,
+            ).encode("utf-8")
+        ).hexdigest()
+        if self.preflight_sha256 != expected_digest:
+            raise ValueError("preflight_sha256 does not match typed preflight state")
 
     def as_dict(self) -> dict:
         payload = asdict(self)
