@@ -1,6 +1,8 @@
+import ast
 import os
 import sys
 import unittest
+from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -57,6 +59,22 @@ class TargetLabelNonAuthorityTests(unittest.TestCase):
         self.assertEqual(labeled_public.reason, ScopeReason.OUT_OF_SCOPE)
         self.assertTrue(unlabeled_loopback.allowed)
         self.assertEqual(unlabeled_loopback.reason, ScopeReason.LOOPBACK)
+
+    def test_scope_module_never_reads_labels_as_authority_input(self):
+        scope_path = Path(__file__).resolve().parents[1] / "src" / "lightup" / "scope.py"
+        tree = ast.parse(scope_path.read_text(encoding="utf-8"), filename=str(scope_path))
+
+        label_reads = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Attribute) and node.attr == "labels"
+        ]
+
+        self.assertEqual(
+            label_reads,
+            [],
+            "scope.py must not read *.labels; Target.labels is descriptive metadata only",
+        )
 
 
 if __name__ == "__main__":
