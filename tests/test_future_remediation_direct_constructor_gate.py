@@ -97,6 +97,51 @@ class FutureRemediationDirectConstructorGateTest(unittest.TestCase):
         self.assertEqual(self.original._load(), self.original.review)
         self.assertEqual(self.revised._load(), self.revised.review)
 
+    def test_structural_parsing_does_not_replace_live_evidence_validation(self):
+        original_evidence = self.original.base.base.bundle.items[0].evidence[0]
+        original_replacement = (
+            "f" * 64 if original_evidence.sha256 != "f" * 64 else "e" * 64
+        )
+        with self.original.base.base.state.connect() as con:
+            con.execute(
+                "UPDATE evidence SET sha256=? WHERE evidence_id=?",
+                (original_replacement, original_evidence.evidence_id),
+            )
+
+        self.assertEqual(
+            future_remediation_text_review_from_json(
+                self.original.review.to_json()
+            ),
+            self.original.review,
+        )
+        with self.assertRaises(ValueError):
+            self.original._load()
+
+        revised_evidence = (
+            self.revised.base.base.base.base.base.base.base.base.bundle.items[0]
+            .evidence[0]
+        )
+        revised_replacement = (
+            "f" * 64 if revised_evidence.sha256 != "f" * 64 else "e" * 64
+        )
+        with (
+            self.revised.base.base.base.base.base.base.base.base.state.connect()
+            as con
+        ):
+            con.execute(
+                "UPDATE evidence SET sha256=? WHERE evidence_id=?",
+                (revised_replacement, revised_evidence.evidence_id),
+            )
+
+        self.assertEqual(
+            future_remediation_text_revision_review_from_json(
+                self.revised.review.to_json()
+            ),
+            self.revised.review,
+        )
+        with self.assertRaises(ValueError):
+            self.revised._load()
+
     def test_all_top_level_artifacts_reject_every_authority_widening(self):
         for artifact in self._all_artifacts():
             for field in _AUTHORITY_FLAGS:
