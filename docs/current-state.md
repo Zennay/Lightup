@@ -123,6 +123,8 @@ The UI direction is deliberately minimal and uses progressive disclosure. See `d
 
 No real-target active adapter may execute without a current authorization grant and successful scope/risk policy checks.
 
+Authorization withdrawal is fail-closed: an operator can revoke an engagement's authorization, which invalidates every current and scheduled grant for that engagement. Revocation records actor, timestamp and reason; a revoked grant can never become current again and cannot pass execution policy.
+
 Future Security must not weaken that invariant: a future-state model or isolated
 simulation never grants permission to interact with an otherwise unauthorized
 real system.
