@@ -47,6 +47,30 @@ class ScopeIdnaAliasBoundaryTests(unittest.TestCase):
         self.assertEqual(decision.normalized_host, "bücher.example")
         self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
 
+    def test_punycode_case_and_trailing_dot_normalize_within_same_identity(self):
+        policy = ScopePolicy(
+            explicit_hosts=frozenset({"xn--bcher-kva.example"})
+        )
+
+        decision = policy.decide(
+            Target("https://XN--BCHER-KVA.EXAMPLE./status", authorization=self.auth)
+        )
+
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.normalized_host, "xn--bcher-kva.example")
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+
+    def test_unicode_normalization_forms_do_not_share_authority(self):
+        policy = ScopePolicy(explicit_hosts=frozenset({"café.example"}))
+
+        decision = policy.decide(
+            Target("cafe\u0301.example", authorization=self.auth)
+        )
+
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.normalized_host, "cafe\u0301.example")
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
     def test_unicode_dot_separator_does_not_inherit_ascii_host_authority(self):
         policy = ScopePolicy(explicit_hosts=frozenset({"security.example.test"}))
 
