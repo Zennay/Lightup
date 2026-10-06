@@ -25,6 +25,7 @@ class RetestStatus(str, Enum):
 class Authorization:
     owner: str
     reference: str
+    assets: tuple[str, ...] = ()
     valid_from: datetime | None = None
     valid_until: datetime | None = None
     revoked_at: datetime | None = None
@@ -34,6 +35,14 @@ class Authorization:
     @property
     def is_revoked(self) -> bool:
         return self.revoked_at is not None
+
+    def allows_asset(self, asset: str) -> bool:
+        normalized = asset.strip().rstrip(".").lower()
+        return normalized in {
+            item.strip().rstrip(".").lower()
+            for item in self.assets
+            if item.strip()
+        }
 
     def is_current(self, now: datetime | None = None) -> bool:
         now = now or datetime.now(timezone.utc)
