@@ -25,9 +25,9 @@ class RetestStatus(str, Enum):
 class Authorization:
     owner: str
     reference: str
-    assets: tuple[str, ...] = ()
     valid_from: datetime | None = None
     valid_until: datetime | None = None
+    assets: tuple[str, ...] = ()
     revoked_at: datetime | None = None
     revoked_by: str | None = None
     revocation_reason: str | None = None
