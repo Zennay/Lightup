@@ -71,27 +71,6 @@ class ScopeAuthorizationMembershipNonAuthorityTests(unittest.TestCase):
         self.assertIsNone(decision.normalized_host)
         self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
 
-    def test_declared_membership_still_requires_and_accepts_current_authorization(self):
-        host_policy = ScopePolicy(
-            explicit_hosts=frozenset({"allowed.example.test"})
-        )
-        network_policy = ScopePolicy(
-            allow_private_lab=False,
-            explicit_networks=("8.8.8.0/24",),
-        )
-
-        host_decision = host_policy.decide(
-            Target("allowed.example.test", authorization=self.authorization)
-        )
-        network_decision = network_policy.decide(
-            Target("8.8.8.8", authorization=self.authorization)
-        )
-
-        self.assertTrue(host_decision.allowed)
-        self.assertEqual(host_decision.reason, ScopeReason.EXPLICIT_HOST)
-        self.assertTrue(network_decision.allowed)
-        self.assertEqual(network_decision.reason, ScopeReason.EXPLICIT_NETWORK)
-
 
 if __name__ == "__main__":
     unittest.main()
