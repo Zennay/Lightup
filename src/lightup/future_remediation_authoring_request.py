@@ -33,6 +33,68 @@ from .state import StateStore
 AUTHORING_REQUEST_SCHEMA_VERSION = "st5.remediation_authoring_request.v1"
 
 
+_ALLOWED_AUTHORING_CLASSIFICATIONS = {
+    AttackPathTransitionClassification.INTRODUCED,
+    AttackPathTransitionClassification.WORSENED,
+}
+
+
+def _require_non_empty_string(value: object, *, field: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{field} must be a non-empty string")
+    return value
+
+
+def _require_canonical_sha256(value: object, *, field: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise ValueError(f"{field} must be a canonical lowercase SHA-256 digest")
+    return value
+
+
+def _require_string_tuple(
+    value: object,
+    *,
+    field: str,
+    require_non_empty: bool = False,
+) -> tuple[str, ...]:
+    if not isinstance(value, tuple):
+        raise ValueError(f"{field} must be a tuple")
+    if require_non_empty and not value:
+        raise ValueError(f"{field} must not be empty")
+    if any(not isinstance(item, str) or not item for item in value):
+        raise ValueError(f"{field} must contain non-empty strings")
+    if len(set(value)) != len(value):
+        raise ValueError(f"{field} must not contain duplicates")
+    return value
+
+
+def _authoring_evidence_manifest_digest(
+    evidence: tuple["RemediationAuthoringEvidenceRef", ...],
+) -> str:
+    payload = [
+        {
+            "evidence_id": record.evidence_id,
+            "run_id": record.run_id,
+            "capability_id": record.capability_id,
+            "kind": record.kind,
+            "sha256": record.sha256,
+        }
+        for record in evidence
+    ]
+    return sha256(
+        json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        ).encode("utf-8")
+    ).hexdigest()
+
+
 @dataclass(frozen=True)
 class RemediationAuthoringEvidenceRef:
     evidence_id: str
@@ -62,6 +124,94 @@ class FutureRemediationAuthoringRequestItem:
     future_state_retest_required: bool = True
 
     def __post_init__(self) -> None:
+        for field in ("change_node_id", "subject_node_id", "resolution_id"):
+            _require_non_empty_string(
+                getattr(self, field),
+                field=f"remediation authoring item {field}",
+            )
+        _require_canonical_sha256(
+            self.resolution_sha256,
+            field="remediation authoring item resolution_sha256",
+        )
+        _require_canonical_sha256(
+            self.evidence_manifest_sha256,
+            field="remediation authoring item evidence_manifest_sha256",
+        )
+        if not isinstance(self.classification, AttackPathTransitionClassification):
+            raise ValueError(
+                "remediation authoring item classification must be "
+                "an AttackPathTransitionClassification"
+            )
+        if self.classification not in _ALLOWED_AUTHORING_CLASSIFICATIONS:
+            raise ValueError(
+                "remediation authoring item classification is not authoring eligible"
+            )
+        _require_string_tuple(
+            self.current_attack_path_ids,
+            field="remediation authoring item current_attack_path_ids",
+        )
+        _require_string_tuple(
+            self.effect_ids,
+            field="remediation authoring item effect_ids",
+        )
+        capability_ids = _require_string_tuple(
+            self.capability_ids,
+            field="remediation authoring item capability_ids",
+            require_non_empty=True,
+        )
+        if not isinstance(self.evidence, tuple) or not self.evidence:
+            raise ValueError(
+                "remediation authoring item evidence must be a non-empty tuple"
+            )
+        evidence_ids: list[str] = []
+        for record in self.evidence:
+            if type(record) is not RemediationAuthoringEvidenceRef:
+                raise ValueError(
+                    "remediation authoring item evidence records must use "
+                    "RemediationAuthoringEvidenceRef"
+                )
+            _require_non_empty_string(
+                record.evidence_id,
+                field="remediation authoring evidence evidence_id",
+            )
+            _require_non_empty_string(
+                record.run_id,
+                field="remediation authoring evidence run_id",
+            )
+            _require_non_empty_string(
+                record.capability_id,
+                field="remediation authoring evidence capability_id",
+            )
+            _require_non_empty_string(
+                record.kind,
+                field="remediation authoring evidence kind",
+            )
+            _require_canonical_sha256(
+                record.sha256,
+                field="remediation authoring evidence sha256",
+            )
+            if record.capability_id not in capability_ids:
+                raise ValueError(
+                    "remediation authoring evidence capability is outside item lineage"
+                )
+            evidence_ids.append(record.evidence_id)
+        if len(set(evidence_ids)) != len(evidence_ids):
+            raise ValueError("remediation authoring evidence IDs must be unique")
+        if evidence_ids != sorted(evidence_ids):
+            raise ValueError(
+                "remediation authoring evidence must be canonically ordered"
+            )
+        if (
+            self.evidence_manifest_sha256
+            != _authoring_evidence_manifest_digest(self.evidence)
+        ):
+            raise ValueError(
+                "remediation authoring evidence manifest digest mismatch"
+            )
+        if self.requested_output != "remediation_text_proposal":
+            raise ValueError(
+                "requested_output must remain remediation_text_proposal"
+            )
         if self.remediation_required is not True:
             raise ValueError("remediation_required must remain true")
         if self.future_state_retest_required is not True:
