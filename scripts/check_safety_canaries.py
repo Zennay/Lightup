@@ -169,9 +169,13 @@ def main() -> None:
             asset=request.asset,
             capability_id=request.capability_id,
             requested_risk=request.requested_risk,
+            client_id=request.client_id,
+            engagement_id=request.engagement_id,
             authorization=revoked,
         )
-        assert policy.decide(revoked_request).allowed is False
+        revoked_decision = policy.decide(revoked_request)
+        assert revoked_decision.allowed is False
+        assert revoked_decision.reason == "authorization is not currently valid"
         assert store.get_current_grant(operator, engagement.engagement_id) is None
 
         try:
