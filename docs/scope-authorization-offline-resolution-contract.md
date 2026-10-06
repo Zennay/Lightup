@@ -22,10 +22,11 @@ This keeps the scope boundary independent from DNS rebinding, split-horizon DNS,
 The cases prove that:
 
 1. an unknown hostname remains `OUT_OF_SCOPE` without DNS;
-2. a loopback-looking DNS name such as `127.0.0.1.rebind.example.test` is not promoted to loopback;
-3. an explicitly authorized hostname is accepted as `EXPLICIT_HOST` without DNS;
-4. an explicitly authorized public documentation-network literal is accepted as `EXPLICIT_NETWORK` without DNS;
-5. `localhost` remains `LOOPBACK` without DNS.
+2. an explicitly authorized hostname is accepted as `EXPLICIT_HOST` without DNS;
+3. an explicitly authorized public documentation-network literal is accepted as `EXPLICIT_NETWORK` without DNS or reverse lookup;
+4. `localhost` remains `LOOPBACK` without DNS.
+
+URL authority confusion, lookalike-host parsing, and userinfo/query/fragment bait are intentionally excluded here because they are owned by #267.
 
 ## Collision boundary
 
