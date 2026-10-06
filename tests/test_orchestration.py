@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import tempfile
 import unittest
+from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -20,6 +21,7 @@ from lightup.ai.orchestration import (
     ToolParameter,
     ToolRegistry,
 )
+from lightup.capabilities import Capability, CapabilityState
 from lightup.domain import AccessContext, DomainStore, Role
 from lightup.engagements import (
     AssessmentMode,
@@ -172,6 +174,31 @@ class OrchestrationTest(unittest.TestCase):
             tuple(definition.tool_id for definition in registry.definitions()),
             ("wireless-lab-sim",),
         )
+
+    def test_registry_rejects_disabled_capability(self):
+        registry = ToolRegistry()
+        disabled = Capability(
+            "disabled-capability",
+            "Disabled capability",
+            "test-only disabled capability",
+            CapabilityState.DISABLED,
+        )
+        with patch(
+            "lightup.ai.orchestration.get_capabilities",
+            return_value=(disabled,),
+        ):
+            with self.assertRaisesRegex(OrchestrationError, "is disabled"):
+                registry.register(
+                    ToolDefinition(
+                        "disabled-probe",
+                        disabled.capability_id,
+                        InteractionKind.ANALYSIS,
+                        RiskLevel.ANALYSIS_ONLY,
+                        "must never register",
+                    ),
+                    _active_tool,
+                )
+        self.assertEqual(registry.definitions(), ())
 
     def test_run_context_is_immutable(self):
         context = _context(AssessmentMode.PASSIVE_DISCOVERY, RiskLevel.PASSIVE)
