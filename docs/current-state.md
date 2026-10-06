@@ -127,6 +127,8 @@ Authorization withdrawal is fail-closed: an operator can revoke an engagement's 
 
 Capability authorization is also fail-closed: client grants must enumerate explicit, known, non-lab capability IDs. An empty capability list authorizes nothing, so adding a new platform capability cannot silently widen an existing grant. Destructive risk and lab-only capabilities cannot be persisted as client authorization.
 
+Authorization lineage is bound at execution policy as well as persistence: every real-target request must name the client and engagement, and both must match the grant. A grant from one tenant or engagement cannot be reused in another run even when the asset, capability and risk happen to match.
+
 Future Security must not weaken that invariant: a future-state model or isolated
 simulation never grants permission to interact with an otherwise unauthorized
 real system.
