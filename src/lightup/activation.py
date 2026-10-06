@@ -69,6 +69,10 @@ class ActivationGate:
                 raise PermissionError(
                     "authorized execution requires authorization bound to the exact target asset"
                 )
+            if not target.authorization.allows_capability(capability_id):
+                raise PermissionError(
+                    "authorized execution requires an explicitly authorized capability"
+                )
             reference = self.activation_policy.activation_reference or target.authorization.reference
             authorization_reference = target.authorization.reference
 
