@@ -29,6 +29,7 @@ from enum import Enum
 from pathlib import Path
 from uuid import uuid4
 
+from .capabilities import CapabilityState, get_capabilities
 from .engagements import (
     AssessmentMode,
     AuthorizationGrant,
@@ -763,8 +764,34 @@ class DomainStore:
             raise ValueError("grant validity window is empty")
         if not reference.strip() or not approved_by.strip():
             raise ValueError("grant requires approved_by and a reference")
-        if not scope.assets:
-            raise ValueError("grant scope requires at least one asset")
+        if not scope.assets or any(not asset.strip() for asset in scope.assets):
+            raise ValueError("grant scope requires explicit non-empty assets")
+        if not scope.allowed_capabilities:
+            raise ValueError("grant scope requires explicit capabilities")
+        if any(not capability_id.strip() for capability_id in scope.allowed_capabilities):
+            raise ValueError("grant capability ids must be non-empty")
+        known_capabilities = {
+            capability.capability_id: capability for capability in get_capabilities()
+        }
+        unknown = sorted(
+            set(scope.allowed_capabilities).difference(known_capabilities)
+        )
+        if unknown:
+            raise ValueError(
+                "grant scope contains unknown capabilities: " + ", ".join(unknown)
+            )
+        lab_only = sorted(
+            capability_id
+            for capability_id in set(scope.allowed_capabilities)
+            if known_capabilities[capability_id].state is CapabilityState.LAB_ONLY
+        )
+        if lab_only:
+            raise ValueError(
+                "client authorization cannot include lab-only capabilities: "
+                + ", ".join(lab_only)
+            )
+        if scope.max_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
+            raise ValueError("destructive risk is lab-only and cannot be client-authorized")
         engagement = self.get_engagement(ctx, engagement_id)
         grant = AuthorizationGrant(
             grant_id=str(uuid4()),
