@@ -83,12 +83,21 @@ class FutureAttackPathSecurityDeltaReportDirectConstructionTest(unittest.TestCas
             ("proposal_sha256", "A" * 64),
             ("items", list(report.items)),
             ("contains_insufficient_evidence", True),
-            ("report_sha256", "0" * 64),
+            ("report_sha256", "A" * 64),
         )
         for field, value in mutations:
             with self.subTest(field=field):
                 with self.assertRaises(ValueError):
                     dataclasses.replace(report, **{field: value})
+
+    def test_stale_canonical_digest_remains_constructible_for_live_consumer_tests(self):
+        report = self._report(
+            AttackPathTransitionClassification.INTRODUCED,
+            suffix="direct-stale-digest",
+        )
+        stale = dataclasses.replace(report, report_sha256="0" * 64)
+        self.assertEqual(stale.report_sha256, "0" * 64)
+        self.assertNotEqual(stale, report)
 
     def test_direct_item_requires_exact_enum_and_classification_action_pair(self):
         report = self._report(
