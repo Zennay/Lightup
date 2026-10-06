@@ -37,10 +37,9 @@ server-rendered web shell over the domain store.
   domain mutations.
 - Authorization-bearing forms fail closed on ambiguity: grant/request risk must
   be an explicit canonical level 1–4, grant validity must be an explicit
-  whole-number 1–365 day window, grant capabilities must be explicitly listed,
-  and approval/denial controls accept only their exact enumerated decision
-  values. Missing or malformed authority fields never receive defaults and do
-  not mutate durable request, approval, or grant state.
+  whole-number 1–365 day window, and approval/denial controls accept only their
+  exact enumerated decision values. Missing or malformed authority fields never
+  receive defaults and do not mutate durable request, approval, or grant state.
 - Tenant isolation is additionally enforced in `lightup.domain`
   (`AccessContext`), not in templates; the portal physically cannot query
   another client's rows even if the UI layer were wrong.
