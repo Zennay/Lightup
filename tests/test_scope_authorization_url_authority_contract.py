@@ -98,6 +98,33 @@ class ScopeAuthorizationUrlAuthorityContractTests(unittest.TestCase):
         self.assertEqual(decision.normalized_host, "evil.invalid")
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
+    def test_localhost_in_userinfo_cannot_grant_loopback_trust(self):
+        decision = ScopePolicy().decide(
+            Target("https://localhost@evil.invalid/")
+        )
+
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.normalized_host, "evil.invalid")
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_loopback_ip_in_userinfo_cannot_grant_loopback_trust(self):
+        decision = ScopePolicy().decide(
+            Target("https://127.0.0.1@evil.invalid/")
+        )
+
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.normalized_host, "evil.invalid")
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_private_ip_in_userinfo_cannot_grant_private_lab_trust(self):
+        decision = ScopePolicy().decide(
+            Target("https://10.20.30.40@evil.invalid/")
+        )
+
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.normalized_host, "evil.invalid")
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
     def test_localhost_lookalike_dns_name_is_not_loopback(self):
         decision = ScopePolicy().decide(
             Target("https://localhost.evil.invalid/")
