@@ -10,6 +10,16 @@ from lightup.scope import ScopePolicy, ScopeReason
 
 
 class ScopeAuthorizationOfflineResolutionContractTests(unittest.TestCase):
+    @staticmethod
+    def _authorization_for(*assets: str) -> Authorization:
+        kwargs = {
+            "owner": "security-team",
+            "reference": "AUTH-OFFLINE-SCOPE",
+        }
+        if "assets" in Authorization.__dataclass_fields__:
+            kwargs["assets"] = tuple(assets)
+        return Authorization(**kwargs)
+
     def _decide_without_network(self, policy: ScopePolicy, target: Target):
         forbidden = AssertionError("scope classification must not perform DNS or socket I/O")
         with (
@@ -62,15 +72,11 @@ class ScopeAuthorizationOfflineResolutionContractTests(unittest.TestCase):
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
     def test_explicit_authorized_host_is_decided_without_dns(self):
-        authorization = Authorization(
-            owner="security-team",
-            reference="AUTH-OFFLINE-HOST",
-        )
         decision = self._decide_without_network(
             ScopePolicy(explicit_hosts=frozenset({"security.example.test"})),
             Target(
                 "https://security.example.test/path",
-                authorization=authorization,
+                authorization=self._authorization_for("security.example.test"),
             ),
         )
 
@@ -79,16 +85,15 @@ class ScopeAuthorizationOfflineResolutionContractTests(unittest.TestCase):
         self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
 
     def test_explicit_public_network_literal_is_decided_without_dns(self):
-        authorization = Authorization(
-            owner="security-team",
-            reference="AUTH-OFFLINE-NET",
-        )
         decision = self._decide_without_network(
             ScopePolicy(
                 allow_private_lab=False,
                 explicit_networks=("203.0.113.0/24",),
             ),
-            Target("203.0.113.17", authorization=authorization),
+            Target(
+                "203.0.113.17",
+                authorization=self._authorization_for("203.0.113.17"),
+            ),
         )
 
         self.assertTrue(decision.allowed)
