@@ -103,6 +103,47 @@ class ScopeAuthorizationDefenseInDepthTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertIn("authorization", decision.reason)
 
+    def test_exact_durable_grant_allows_only_the_bounded_standard_path(self):
+        decision = self.execution_policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset=PUBLIC_HOST,
+                capability_id=CAPABILITY,
+                requested_risk=RiskLevel.STANDARD,
+                authorization=_durable_grant(),
+            )
+        )
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, "authorized active assessment")
+
+    def test_expired_durable_grant_is_denied(self):
+        now = datetime.now(timezone.utc)
+        grant = AuthorizationGrant(
+            grant_id="grant-expired",
+            client_id="client-defense-in-depth",
+            engagement_id="engagement-defense-in-depth",
+            approved_by="security-owner@example.test",
+            reference="AUTH-EXPIRED",
+            scope=ScopeDefinition(
+                assets=(PUBLIC_HOST,),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=(CAPABILITY,),
+            ),
+            valid_from=now - timedelta(hours=2),
+            valid_until=now - timedelta(hours=1),
+        )
+        decision = self.execution_policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset=PUBLIC_HOST,
+                capability_id=CAPABILITY,
+                requested_risk=RiskLevel.LOW_IMPACT,
+                authorization=grant,
+            )
+        )
+        self.assertFalse(decision.allowed)
+        self.assertIn("currently valid", decision.reason)
+
     def test_durable_grant_cannot_authorize_a_different_asset(self):
         decision = self.execution_policy.decide(
             ExecutionRequest(
