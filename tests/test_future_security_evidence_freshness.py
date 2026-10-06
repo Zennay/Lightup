@@ -63,16 +63,29 @@ class FutureSecurityEvidenceFreshnessConstraintsTest(unittest.TestCase):
     def test_live_gap_binds_prior_evidence_and_run_as_forbidden(self):
         (
             current,
-            _,
+            proposal,
             context,
             resolution,
-            _,
-            _,
-            _,
+            preview,
+            report,
+            plan,
             request,
-            constraints,
-        ) = self._constraints(suffix="freshness-live")
-        before = dataclasses.asdict(current)
+        ) = self.base._request(
+            AttackPathTransitionClassification.INSUFFICIENT_EVIDENCE,
+            suffix="freshness-live",
+        )
+        current_before = dataclasses.asdict(current)
+        request_before = dataclasses.asdict(request)
+        constraints = build_future_security_evidence_freshness_constraints(
+            request,
+            plan,
+            report,
+            preview,
+            proposal,
+            (resolution,),
+            (context,),
+            self.state,
+        )
 
         self.assertEqual(constraints.schema_version, FRESHNESS_SCHEMA_VERSION)
         self.assertEqual(constraints.request_sha256, request.request_sha256)
@@ -104,7 +117,8 @@ class FutureSecurityEvidenceFreshnessConstraintsTest(unittest.TestCase):
             {record.capability_id for record in item.prior_evidence},
             set(resolution.capability_ids),
         )
-        self.assertEqual(dataclasses.asdict(current), before)
+        self.assertEqual(dataclasses.asdict(current), current_before)
+        self.assertEqual(dataclasses.asdict(request), request_before)
 
     def test_constraints_are_deterministic_and_export_provenance_only(self):
         (
