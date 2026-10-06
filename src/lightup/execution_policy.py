@@ -19,10 +19,10 @@ class ExecutionRequest:
     asset: str
     capability_id: str
     requested_risk: RiskLevel
-    client_id: str | None = None
-    engagement_id: str | None = None
     authorization: AuthorizationGrant | None = None
     is_lab: bool = False
+    client_id: str | None = None
+    engagement_id: str | None = None
 
 
 @dataclass(frozen=True)
