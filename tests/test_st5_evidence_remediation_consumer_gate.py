@@ -42,26 +42,44 @@ class PersistedEvidenceRemediationGateContractTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.text = GATE_DOC.read_text(encoding="utf-8")
 
-    def _covered_boundary_rows(self) -> dict[str, str]:
+    def _covered_boundary_rows(self) -> dict[str, tuple[str, str, str, str]]:
         section = self.text.split("## Covered boundaries", 1)[1].split(
             "## Merge-order gate", 1
         )[0]
-        rows: dict[str, str] = {}
+        rows: dict[str, tuple[str, str, str, str]] = {}
         for line in section.splitlines():
             if not line.startswith("|") or "---" in line or "Persisted boundary" in line:
                 continue
             columns = [column.strip() for column in line.strip("|").split("|")]
             self.assertEqual(5, len(columns), line)
-            boundary, _handoff, consumer, _hosted, _canonical = columns
+            boundary, handoff, consumer, hosted, canonical = columns
             self.assertNotIn(boundary, rows, f"duplicate covered boundary: {boundary}")
-            rows[boundary] = consumer
+            rows[boundary] = (handoff, consumer, hosted, canonical)
         return rows
 
     def test_covered_boundary_set_and_consumers_are_exact(self) -> None:
         rows = self._covered_boundary_rows()
         self.assertEqual(set(EXPECTED_CONSUMERS), set(rows))
         for boundary, consumer in EXPECTED_CONSUMERS.items():
-            self.assertIn(consumer, rows[boundary], boundary)
+            self.assertIn(consumer, rows[boundary][1], boundary)
+
+    def test_proof_rows_keep_exact_head_and_run_receipts(self) -> None:
+        for boundary, (_handoff, _consumer, hosted, canonical) in (
+            self._covered_boundary_rows().items()
+        ):
+            self.assertRegex(
+                hosted,
+                re.compile(
+                    r"`[0-9a-f]{40}`\s*/\s*run\s+`[0-9]+`\s+success",
+                    re.IGNORECASE,
+                ),
+                boundary,
+            )
+            self.assertRegex(
+                canonical,
+                re.compile(r"run\s+`[0-9]+`", re.IGNORECASE),
+                boundary,
+            )
 
     def test_non_bypassable_consumer_stage_order_is_explicit(self) -> None:
         invariant = self.text.split(
