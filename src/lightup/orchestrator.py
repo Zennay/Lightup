@@ -30,6 +30,14 @@ class Planner:
 
     def build(self, target: Target) -> AssessmentPlan:
         decision = self.scope_policy.decide(target)
+        allowed_reasons = {
+            ScopeReason.LOOPBACK,
+            ScopeReason.PRIVATE_LAB,
+            ScopeReason.EXPLICIT_HOST,
+            ScopeReason.EXPLICIT_NETWORK,
+        }
+        if decision.allowed != (decision.reason in allowed_reasons):
+            raise ValueError("scope policy returned an inconsistent allow decision")
         if not decision.allowed:
             return AssessmentPlan(target.value, decision, ())
         allowed_states = {CapabilityState.PLANNING}
