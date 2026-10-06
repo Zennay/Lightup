@@ -1,0 +1,44 @@
+name: ST5 evidence parser input-purity hosted validation
+
+on:
+  push:
+    branches:
+      - "chatgpt/st5-parser-input-purity-hosted-validation-20261006"
+    paths:
+      - ".github/workflows/st5-parser-input-purity-hosted-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: st5-parser-input-purity-hosted-validation
+  cancel-in-progress: true
+
+jobs:
+  exact-candidate:
+    name: Exact candidate Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 26ca6a9186a865939fc592d8b8a5128392793f74
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile exact candidate
+        run: python -m compileall -q src tests
+      - name: Run parser input-purity invariant
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests -p 'test_evidence_remediation_parser_input_purity.py' -v
+      - name: Run real producer integration
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests/integration -v
