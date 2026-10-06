@@ -164,7 +164,7 @@ class FutureRemediationNestedSchemaIntegrityTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     parser("[]")
 
-    def test_all_top_level_dict_parsers_reject_schema_erosion_and_nonobjects(self):
+    def test_all_top_level_dict_parsers_reject_schema_drift_and_nonobjects(self):
         artifacts_and_parsers = (
             (
                 self._original_artifacts()[0],
@@ -201,11 +201,18 @@ class FutureRemediationNestedSchemaIntegrityTest(unittest.TestCase):
         )
 
         for artifact, parser in artifacts_and_parsers:
-            payload = json.loads(artifact.to_json())
-            payload.pop("schema_version")
+            missing = json.loads(artifact.to_json())
+            missing.pop("schema_version")
             with self.subTest(artifact=type(artifact).__name__, case="missing"):
                 with self.assertRaisesRegex(ValueError, "schema mismatch"):
-                    parser(payload)
+                    parser(missing)
+
+            widened = json.loads(artifact.to_json())
+            widened["unexpected_top_level_field"] = "forged"
+            with self.subTest(artifact=type(artifact).__name__, case="unknown"):
+                with self.assertRaisesRegex(ValueError, "schema mismatch"):
+                    parser(widened)
+
             with self.subTest(artifact=type(artifact).__name__, case="nonobject"):
                 with self.assertRaises(ValueError):
                     parser([])
