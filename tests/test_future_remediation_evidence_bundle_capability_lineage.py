@@ -25,10 +25,10 @@ def _manifest_digest(records: list[dict]) -> str:
     ).hexdigest()
 
 
-def _bundle_digest(payload: dict) -> str:
+def _rehash_bundle(payload: dict) -> None:
     digest_payload = copy.deepcopy(payload)
     digest_payload.pop("bundle_sha256")
-    return sha256(
+    payload["bundle_sha256"] = sha256(
         json.dumps(
             digest_payload,
             sort_keys=True,
@@ -88,9 +88,26 @@ class FutureRemediationEvidenceBundleCapabilityLineageAcceptanceTest(
 
         item["evidence"][0]["capability_id"] = forged_capability
         item["evidence_manifest_sha256"] = _manifest_digest(item["evidence"])
-        payload["bundle_sha256"] = _bundle_digest(payload)
+        _rehash_bundle(payload)
 
-        with self.assertRaisesRegex(ValueError, "capability|lineage|outside"):
+        with self.assertRaisesRegex(ValueError, "capability|lineage|outside|match"):
+            future_remediation_evidence_bundle_from_dict(payload)
+
+    def test_unevidenced_item_capability_fails_with_matching_bundle_digest(self):
+        _, payload = self._payload(
+            AttackPathTransitionClassification.WORSENED,
+            suffix="bundle-capability-lineage-unevidenced",
+        )
+        item = payload["items"][0]
+        forged_capability = "capability:forged-without-evidence"
+        self.assertNotIn(forged_capability, item["capability_ids"])
+
+        item["capability_ids"] = sorted(
+            [*item["capability_ids"], forged_capability]
+        )
+        _rehash_bundle(payload)
+
+        with self.assertRaisesRegex(ValueError, "capability|lineage|evidence|match"):
             future_remediation_evidence_bundle_from_dict(payload)
 
 
