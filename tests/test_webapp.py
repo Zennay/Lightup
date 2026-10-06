@@ -325,6 +325,9 @@ class WebAppTest(unittest.TestCase):
             "GET", f"/clients/{self.client_a.client_id}", token=self.op_token
         )
         self.assertIn("No current authorization", body)
+        self.assertIn("Revoked authorization history", body)
+        self.assertIn("Customer withdrew authorization", body)
+        self.assertIn("AUTH-2026-007", body)
 
         # Capability scope is mandatory; omission fails closed.
         status, _, _ = self.request(
