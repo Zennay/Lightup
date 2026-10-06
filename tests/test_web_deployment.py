@@ -103,6 +103,27 @@ class SecurityBoundaryTest(unittest.TestCase):
                     "HTTP_X_FORWARDED_FOR": "127.0.0.1",
                 })
 
+    def test_remote_development_peer_rejected_before_body_or_session(self):
+        store = Mock()
+        stream = Mock()
+        app = create_app(store, WebSecurity())
+        env = {
+            "HTTP_HOST": "localhost:8766",
+            "REMOTE_ADDR": "198.51.100.9",
+            "HTTP_X_FORWARDED_FOR": "127.0.0.1",
+            "REQUEST_METHOD": "POST",
+            "PATH_INFO": "/login",
+            "CONTENT_LENGTH": "4",
+            "CONTENT_TYPE": "application/x-www-form-urlencoded",
+            "wsgi.input": stream,
+        }
+        captured = {}
+        b"".join(app(env, lambda s, h: captured.update(status=s, headers=dict(h))))
+        self.assertEqual(captured["status"], "403 Forbidden")
+        self.assertEqual(captured["headers"]["Cache-Control"], "no-store")
+        stream.read.assert_not_called()
+        self.assertEqual(store.mock_calls, [])
+
     def test_rejection_happens_before_reading_body_or_session(self):
         store = Mock()
         stream = Mock()
