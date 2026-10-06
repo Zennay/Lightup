@@ -163,6 +163,7 @@ class ToolResult:
 
 
 ToolHandler = Callable[[RunContext, dict[str, Any]], ToolOutput]
+AuthorizationResolver = Callable[[AuthorizationGrant], AuthorizationGrant | None]
 
 
 @dataclass
@@ -201,12 +202,14 @@ class ToolExecutor:
         registry: ToolRegistry,
         state: StateStore,
         policy: ExecutionPolicy | None = None,
+        authorization_resolver: AuthorizationResolver | None = None,
     ):
         if state is None:
             raise OrchestrationError("the evidence ledger (StateStore) is mandatory")
         self.registry = registry
         self.policy = policy or ExecutionPolicy()
         self.state = state
+        self.authorization_resolver = authorization_resolver
 
     def execute(self, context: RunContext, call: ToolCall) -> ToolResult:
         definition, handler = self.registry.get(call.tool_id)
@@ -234,6 +237,20 @@ class ToolExecutor:
         if definition.min_risk > context.approved_risk:
             raise RiskElevationRequired(call.tool_id, definition.min_risk, context.approved_risk)
 
+        authorization = context.authorization
+        if definition.interaction is InteractionKind.TARGET_ACTIVE:
+            if authorization is None:
+                raise ToolDenied("target-active execution requires authorization")
+            if self.authorization_resolver is None:
+                raise ToolDenied(
+                    "target-active execution requires live authorization revalidation"
+                )
+            authorization = self.authorization_resolver(authorization)
+            if authorization is None:
+                raise ToolDenied(
+                    "authorization grant is not live in authoritative state"
+                )
+
         request = ExecutionRequest(
             interaction=definition.interaction,
             asset=call.asset,
@@ -241,7 +258,7 @@ class ToolExecutor:
             requested_risk=definition.min_risk,
             client_id=context.client_id,
             engagement_id=context.engagement_id,
-            authorization=context.authorization,
+            authorization=authorization,
             is_lab=context.is_lab,
         )
         decision = self.policy.decide(request)
