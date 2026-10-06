@@ -430,6 +430,53 @@ class DomainStoreTest(unittest.TestCase):
             "stale in-memory grant must not survive durable revocation",
         )
 
+    def test_execution_resolver_rejects_legacy_or_corrupt_widened_scope(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Persisted execution safety"
+        )
+        valid_from, valid_until = _grant_window()
+        snapshot = self.store.record_authorization_grant(
+            self.operator,
+            engagement.engagement_id,
+            "CISO Acme",
+            "AUTH-PERSISTED-SAFETY",
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("web-baseline",),
+            ),
+            valid_from,
+            valid_until,
+        )
+        self.assertIsNotNone(
+            self.store.resolve_authorization_for_execution(snapshot)
+        )
+
+        mutations = (
+            ("max_risk", int(RiskLevel.DESTRUCTIVE_LAB_ONLY), int(RiskLevel.STANDARD)),
+            ("allowed_capabilities_json", '[]', '["web-baseline"]'),
+            ("allowed_capabilities_json", '["wireless-lab"]', '["web-baseline"]'),
+            ("allowed_capabilities_json", '["future-unknown-capability"]', '["web-baseline"]'),
+        )
+        for column, invalid_value, restore_value in mutations:
+            with self.subTest(column=column, invalid_value=invalid_value):
+                with self.store._connect() as con:
+                    con.execute(
+                        f"UPDATE authorization_grants SET {column}=? WHERE grant_id=?",
+                        (invalid_value, snapshot.grant_id),
+                    )
+                self.assertIsNone(
+                    self.store.resolve_authorization_for_execution(snapshot)
+                )
+                with self.store._connect() as con:
+                    con.execute(
+                        f"UPDATE authorization_grants SET {column}=? WHERE grant_id=?",
+                        (restore_value, snapshot.grant_id),
+                    )
+                self.assertIsNotNone(
+                    self.store.resolve_authorization_for_execution(snapshot)
+                )
+
     def test_execution_resolver_denies_closed_engagement(self):
         engagement = self.store.create_engagement(
             self.operator, self.client_a.client_id, "Closed execution boundary"
