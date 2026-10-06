@@ -11,6 +11,22 @@ from lightup.scope import ScopePolicy
 
 
 class ActivationTests(unittest.TestCase):
+    def test_raw_string_plan_only_mode_is_rejected(self):
+        with self.assertRaises(ValueError) as caught:
+            ActivationGate(
+                ScopePolicy(),
+                ActivationPolicy(mode="plan_only"),  # type: ignore[arg-type]
+            )
+        self.assertIn("activation mode must be an ActivationMode", str(caught.exception))
+
+    def test_raw_string_authorized_mode_cannot_bypass_activation_reference(self):
+        with self.assertRaises(ValueError) as caught:
+            ActivationGate(
+                ScopePolicy(),
+                ActivationPolicy(mode="authorized"),  # type: ignore[arg-type]
+            )
+        self.assertIn("activation mode must be an ActivationMode", str(caught.exception))
+
     def test_plan_only_never_issues_execution_permit(self):
         gate = ActivationGate(ScopePolicy(), ActivationPolicy())
         with self.assertRaises(PermissionError):
