@@ -69,7 +69,7 @@ class FutureSecurityRemediationRetestRequiredLineageAcceptanceTest(unittest.Test
         parsed = future_security_remediation_retest_plan_from_dict(
             copy.deepcopy(payload)
         )
-        self.assertEqual(parsed.as_dict(), payload)
+        self.assertEqual(json.loads(parsed.to_json()), payload)
 
     def test_required_upstream_lineage_collections_cannot_be_erased(self):
         payload = self._canonical_payload()
