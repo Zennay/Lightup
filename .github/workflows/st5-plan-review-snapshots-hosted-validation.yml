@@ -38,10 +38,14 @@ jobs:
         env:
           PYTHONPATH: src:tests
         run: python -m unittest discover -s tests -p 'test_future_remediation_implementation_plan_review_snapshot_isolation.py' -v
-      - name: Run strict review handoff
+      - name: Run downstream review-chain invariant
         env:
           PYTHONPATH: src:tests
-        run: python -m unittest discover -s tests -p 'test_future_remediation_implementation_plan_review_handoff.py' -v
+        run: python -m unittest discover -s tests -p 'test_future_remediation_implementation_plan_review_chain_invariant.py' -v
+      - name: Run real producer integration
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests/integration -v
 
   review-request-snapshot:
     name: Review-request snapshot Python ${{ matrix.python }}
