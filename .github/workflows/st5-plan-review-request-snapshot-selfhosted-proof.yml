@@ -1,4 +1,4 @@
-name: ST5 plan-review request snapshot self-hosted proof
+name: ST5 plan-review request snapshot proof cleanup
 
 on:
   push:
@@ -15,31 +15,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  exact-candidate:
-    name: Exact candidate Python ${{ matrix.python }}
-    runs-on: [self-hosted, ftmo-research]
-    timeout-minutes: 12
-    strategy:
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        python: ["3.11", "3.14"]
+  superseded:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: 27f7cb736c453b1b619567605c50b057221810f9
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
-      - name: Compile exact candidate
-        run: python -m compileall -q src tests
-      - name: Run review-request snapshot-isolation regression
-        env:
-          PYTHONPATH: src:tests
-        run: python -m unittest discover -s tests -p 'test_future_remediation_implementation_plan_review_request_snapshot_isolation.py' -v
-      - name: Run review-request handoff regression
-        env:
-          PYTHONPATH: src:tests
-        run: python -m unittest discover -s tests -p 'test_future_remediation_implementation_plan_review_request_handoff.py' -v
+      - run: echo "Superseded by zCloud VPS proof run 37503919542 for exact #303 head 27f7cb736c453b1b619567605c50b057221810f9; no LightUp project test is executed here."
