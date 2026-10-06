@@ -1,0 +1,74 @@
+name: ST5 snapshot hosted validation
+
+on:
+  push:
+    branches:
+      - "chatgpt/st5-snapshot-hosted-validation-20261006"
+    paths:
+      - ".github/workflows/st5-snapshot-hosted-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: st5-snapshot-hosted-validation
+  cancel-in-progress: true
+
+jobs:
+  exact-candidates:
+    name: Exact candidates Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Verify exact candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          verify_candidate() {
+            local branch="$1"
+            local expected_sha="$2"
+            local pattern="$3"
+            local run_integration="$4"
+
+            git fetch --no-tags origin               "+refs/heads/${branch}:refs/remotes/origin/${branch}"
+            local target_sha
+            target_sha="$(git rev-parse "refs/remotes/origin/${branch}^{commit}")"
+            test "${target_sha}" = "${expected_sha}"
+
+            local tmp_root snapshot
+            tmp_root="$(mktemp -d)"
+            snapshot="${tmp_root}/lightup"
+            mkdir -p "${snapshot}"
+            git archive "${target_sha}" | tar -x -C "${snapshot}"
+
+            (
+              cd "${snapshot}"
+              export PYTHONPATH=src:tests
+              python -m compileall -q src tests
+              python -m unittest discover -s tests -p "${pattern}" -v
+              if [ "${run_integration}" = "yes" ]; then
+                python -m unittest discover -s tests                   -p 'test_future_remediation_implementation_plan_review_chain_invariant.py' -v
+                python -m unittest discover -s tests/integration -v
+              fi
+            )
+
+            rm -rf "${tmp_root}"
+            printf 'LIGHTUP_ST5_HOSTED_PROOF branch=%s target_sha=%s python=%s\n'               "${branch}" "${target_sha}" "$(python --version 2>&1)"
+          }
+
+          verify_candidate             "chatgpt/st5-implementation-plan-review-snapshot-isolation-20261006"             "afbbf3c6973553e46b7f74b668d2c2981939eda2"             "test_future_remediation_implementation_plan_review_snapshot_isolation.py"             "yes"
+
+          verify_candidate             "chatgpt/st5-plan-review-request-snapshot-isolation-20261006"             "6f3219d623d6247168c41f87a34a89a832e4d189"             "test_future_remediation_implementation_plan_review_request_snapshot_isolation.py"             "no"
