@@ -13,7 +13,8 @@ The proof executes the current isolated-lab chain:
 3. freshness constraints that forbid the prior evidence and run identities;
 4. admission of live `StateStore` evidence from a genuinely new lab run;
 5. aggregate freshness coverage;
-6. strict persisted coverage round-trip.
+6. strict persisted coverage round-trip;
+7. immediate live revalidation of that restored coverage against the current StateStore and full upstream lineage.
 
 ## Required lineage
 
@@ -26,7 +27,10 @@ The integration test requires exact digest continuity:
 
 The admitted candidate evidence is read back from `StateStore` and must belong
 to the new candidate run. Reuse of the prior run/evidence identities remains
-forbidden by the upstream constraints/admission gates.
+forbidden by the upstream constraints/admission gates. A persisted coverage
+object that still parses cleanly is also proven to fail live revalidation after
+the underlying evidence ledger drifts, so serialization integrity can never
+stand in for current evidence validity.
 
 ## Safety invariant
 
