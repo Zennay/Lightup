@@ -79,6 +79,43 @@ class FutureSecurityRemediationRetestNestedSchemaIntegrityTest(unittest.TestCase
                 with self.assertRaisesRegex(ValueError, "must be a string list"):
                     future_security_remediation_retest_plan_from_dict(eroded)
 
+    def test_nested_lineage_entries_must_be_non_empty_strings(self):
+        _, payload = self._payload()
+
+        for field in (
+            "current_attack_path_ids",
+            "effect_ids",
+            "evidence_ids",
+            "capability_ids",
+        ):
+            for invalid in ("", 7, False, None):
+                with self.subTest(field=field, invalid=invalid):
+                    type_confused = copy.deepcopy(payload)
+                    type_confused["items"][0][field].append(invalid)
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "must contain non-empty strings",
+                    ):
+                        future_security_remediation_retest_plan_from_dict(type_confused)
+
+    def test_nested_lineage_entries_must_be_unique(self):
+        _, payload = self._payload()
+
+        for field in (
+            "current_attack_path_ids",
+            "effect_ids",
+            "evidence_ids",
+            "capability_ids",
+        ):
+            values = payload["items"][0][field]
+            if not values:
+                continue
+            with self.subTest(field=field):
+                duplicated = copy.deepcopy(payload)
+                duplicated["items"][0][field].append(values[0])
+                with self.assertRaisesRegex(ValueError, "must not contain duplicates"):
+                    future_security_remediation_retest_plan_from_dict(duplicated)
+
 
 if __name__ == "__main__":
     unittest.main()
