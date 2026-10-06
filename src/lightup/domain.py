@@ -788,6 +788,8 @@ class DomainStore:
         recurring_retest_allowed: bool = False,
     ) -> AuthorizationGrant:
         ctx.require_operator("record_authorization_grant")
+        if not isinstance(recurring_retest_allowed, bool):
+            raise ValueError("recurring_retest_allowed must be a bool")
         if not isinstance(scope.max_risk, RiskLevel):
             raise ValueError("grant max_risk must be a RiskLevel")
         if valid_from.tzinfo is None or valid_until.tzinfo is None:
