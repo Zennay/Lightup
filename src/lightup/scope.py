@@ -14,6 +14,7 @@ class ScopeReason(str, Enum):
     EXPLICIT_HOST = "explicit_host"
     EXPLICIT_NETWORK = "explicit_network"
     AUTHORIZATION_MISSING = "authorization_missing"
+    AUTHORIZATION_REVOKED = "authorization_revoked"
     AUTHORIZATION_EXPIRED = "authorization_expired"
     OUT_OF_SCOPE = "out_of_scope"
     INVALID_TARGET = "invalid_target"
@@ -69,6 +70,8 @@ class ScopePolicy:
                 if self.require_authorization_for_public:
                     if target.authorization is None:
                         return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_MISSING)
+                    if target.authorization.is_revoked:
+                        return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_REVOKED)
                     if not target.authorization.is_current():
                         return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_EXPIRED)
                 return ScopeDecision(True, host, ScopeReason.EXPLICIT_NETWORK)
@@ -78,6 +81,8 @@ class ScopePolicy:
             if self.require_authorization_for_public:
                 if target.authorization is None:
                     return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_MISSING)
+                if target.authorization.is_revoked:
+                    return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_REVOKED)
                 if not target.authorization.is_current():
                     return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_EXPIRED)
             return ScopeDecision(True, host, ScopeReason.EXPLICIT_HOST)
