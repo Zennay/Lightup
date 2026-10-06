@@ -331,6 +331,79 @@ class FutureSecurityEvidenceMetadataContractReviewTest(unittest.TestCase):
                 state=self.state,
             )
 
+    def test_valid_but_incompatible_classification_claim_fails_closed(self):
+        (
+            _,
+            proposal,
+            source_context,
+            resolution,
+            preview,
+            report,
+            plan,
+            request,
+            constraints,
+            candidate_context,
+            admission,
+        ) = self._fixture(
+            suffix="metadata-review-incompatible",
+            metadata_overrides=({"classification": "removed"},),
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "incompatible|requires referenced current attack paths",
+        ):
+            review_future_security_evidence_metadata_contract(
+                admission,
+                constraints,
+                candidate_context=candidate_context,
+                request=request,
+                plan=plan,
+                report=report,
+                preview=preview,
+                proposal=proposal,
+                resolutions=(resolution,),
+                source_contexts=(source_context,),
+                state=self.state,
+            )
+
+    def test_live_admission_gate_rejects_candidate_capability_drift(self):
+        (
+            _,
+            proposal,
+            source_context,
+            resolution,
+            preview,
+            report,
+            plan,
+            request,
+            constraints,
+            candidate_context,
+            admission,
+        ) = self._fixture(suffix="metadata-review-capability-drift")
+        evidence_id = admission.candidate_evidence_ids[0]
+
+        with self.state.connect() as con:
+            con.execute(
+                "UPDATE evidence SET capability_id=? WHERE evidence_id=?",
+                ("drifted-capability", evidence_id),
+            )
+
+        with self.assertRaisesRegex(ValueError, "live validated evidence"):
+            review_future_security_evidence_metadata_contract(
+                admission,
+                constraints,
+                candidate_context=candidate_context,
+                request=request,
+                plan=plan,
+                report=report,
+                preview=preview,
+                proposal=proposal,
+                resolutions=(resolution,),
+                source_contexts=(source_context,),
+                state=self.state,
+            )
+
     def test_review_is_deterministic_and_live_validator_rejects_metadata_drift(self):
         (
             _,
