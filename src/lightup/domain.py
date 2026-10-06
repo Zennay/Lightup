@@ -1098,27 +1098,43 @@ class DomainStore:
         if not isinstance(approve, bool):
             raise ValueError("risk elevation decision must be a bool")
         with self._connect() as con:
-            row = con.execute(
-                "SELECT * FROM risk_approvals WHERE approval_id=?", (approval_id,)
-            ).fetchone()
-            if row is None:
-                raise KeyError(f"unknown risk approval {approval_id!r}")
-            record = self._approval_from_row(row)
-            if record.status is not ApprovalStatus.PENDING:
-                raise ValueError("risk approval already decided")
-            if approve and record.requested_risk == RiskLevel.DESTRUCTIVE_LAB_ONLY:
-                raise ValueError("destructive lab risk cannot be approved for a client engagement")
-            if record.requested_by == ctx.user_id:
-                raise RoleError("risk elevation cannot be self-approved")
-            status = ApprovalStatus.APPROVED if approve else ApprovalStatus.DENIED
-            con.execute(
-                "UPDATE risk_approvals SET status=?, decided_by=?, decided_at=? "
-                "WHERE approval_id=?",
-                (status.value, ctx.user_id, utcnow().isoformat(), approval_id),
-            )
-            row = con.execute(
-                "SELECT * FROM risk_approvals WHERE approval_id=?", (approval_id,)
-            ).fetchone()
+            con.execute("BEGIN IMMEDIATE")
+            try:
+                row = con.execute(
+                    "SELECT * FROM risk_approvals WHERE approval_id=?", (approval_id,)
+                ).fetchone()
+                if row is None:
+                    raise KeyError(f"unknown risk approval {approval_id!r}")
+                record = self._approval_from_row(row)
+                if record.status is not ApprovalStatus.PENDING:
+                    raise ValueError("risk approval already decided")
+                if approve and record.requested_risk == RiskLevel.DESTRUCTIVE_LAB_ONLY:
+                    raise ValueError(
+                        "destructive lab risk cannot be approved for a client engagement"
+                    )
+                if record.requested_by == ctx.user_id:
+                    raise RoleError("risk elevation cannot be self-approved")
+                status = ApprovalStatus.APPROVED if approve else ApprovalStatus.DENIED
+                updated = con.execute(
+                    "UPDATE risk_approvals SET status=?, decided_by=?, decided_at=? "
+                    "WHERE approval_id=? AND status=?",
+                    (
+                        status.value,
+                        ctx.user_id,
+                        utcnow().isoformat(),
+                        approval_id,
+                        ApprovalStatus.PENDING.value,
+                    ),
+                ).rowcount
+                if updated != 1:
+                    raise ValueError("risk approval decision lost pending-state race")
+                row = con.execute(
+                    "SELECT * FROM risk_approvals WHERE approval_id=?", (approval_id,)
+                ).fetchone()
+                con.execute("COMMIT")
+            except Exception:
+                con.execute("ROLLBACK")
+                raise
         return self._approval_from_row(row)
 
     # -- findings -------------------------------------------------------------
