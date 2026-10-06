@@ -250,6 +250,51 @@ class FutureSecurityEvidenceSufficiencyReviewRequestTest(unittest.TestCase):
                 state=self.state,
             )
 
+    def test_persisted_request_cannot_forge_review_or_authority_semantics(self):
+        (
+            _,
+            proposal,
+            source_context,
+            resolution,
+            preview,
+            report,
+            plan,
+            request,
+            constraints,
+            candidate_context,
+            admission,
+            review,
+            result,
+        ) = self._request(suffix="sufficiency-request-forged-semantics")
+
+        forged = (
+            dataclasses.replace(result, evidence_sufficiency_evaluated=True),
+            dataclasses.replace(result, classification_selected=True),
+            dataclasses.replace(result, execution_allowed=True),
+            dataclasses.replace(
+                result,
+                required_checks=("evidence_sufficiency",),
+            ),
+        )
+        for tampered in forged:
+            with self.subTest(tampered=tampered):
+                with self.assertRaisesRegex(ValueError, "live validated lineage"):
+                    validate_future_security_evidence_sufficiency_review_request(
+                        tampered,
+                        review,
+                        admission,
+                        constraints,
+                        candidate_context=candidate_context,
+                        request=request,
+                        plan=plan,
+                        report=report,
+                        preview=preview,
+                        proposal=proposal,
+                        resolutions=(resolution,),
+                        source_contexts=(source_context,),
+                        state=self.state,
+                    )
+
     def test_persisted_request_must_match_live_rebuilt_lineage(self):
         (
             _,
