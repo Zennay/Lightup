@@ -31,9 +31,9 @@ The canonical ST4 report builder already rebuilds a graph-diff preview against l
 - exact `attack_path_mutation_allowed=false`;
 - `future_semantics=unresolved`;
 - `security_verdict=not_evaluated`;
-- an exact canonical report digest recomputed from the immutable typed state.
+- a canonical lowercase SHA-256 representation for `report_sha256`.
 
-The canonical builder and direct-construction validator share the same producer-side digest function, so direct validation cannot drift into a second digest dialect.
+A deliberately stale but syntactically canonical report digest remains constructible. Existing downstream live-lineage regressions rely on creating exactly that stale artifact and proving the consumer rejects it. Digest **recomputation/equality** therefore stays at the established live consumer boundary rather than being silently moved into the dataclass constructor.
 
 ## Safety
 
