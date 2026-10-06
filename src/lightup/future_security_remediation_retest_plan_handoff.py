@@ -10,7 +10,6 @@ against the live ST4 lineage and StateStore via
 
 from __future__ import annotations
 
-from dataclasses import replace
 from hashlib import sha256
 import json
 
