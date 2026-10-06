@@ -57,20 +57,24 @@ class FutureRemediationEvidenceBundlePositiveVersionAcceptanceTest(
             bundle,
         )
 
-    def test_zero_versions_fail_closed_with_matching_bundle_digest(self):
-        for field in ("current_twin_version", "twin_version"):
-            with self.subTest(field=field):
-                _, payload = self._payload(
-                    suffix=f"bundle-positive-version-zero-{field}"
-                )
-                payload[field] = 0
-                _rehash(payload)
+    def _assert_zero_version_fails(self, field: str) -> None:
+        _, payload = self._payload(
+            suffix=f"bundle-positive-version-zero-{field}"
+        )
+        payload[field] = 0
+        _rehash(payload)
 
-                with self.assertRaisesRegex(
-                    ValueError,
-                    "positive|version|integer",
-                ):
-                    future_remediation_evidence_bundle_from_dict(payload)
+        with self.assertRaisesRegex(
+            ValueError,
+            "positive|version|integer",
+        ):
+            future_remediation_evidence_bundle_from_dict(payload)
+
+    def test_zero_current_twin_version_fails_with_matching_bundle_digest(self):
+        self._assert_zero_version_fails("current_twin_version")
+
+    def test_zero_twin_version_fails_with_matching_bundle_digest(self):
+        self._assert_zero_version_fails("twin_version")
 
 
 if __name__ == "__main__":
