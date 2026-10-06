@@ -75,6 +75,16 @@ class BlankDurableAssetAcceptanceTests(unittest.TestCase):
         with self.assertRaises((TypeError, ValueError)):
             self._record(scope, "AUTH-NONSTRING-ALLOW")
 
+    def test_non_string_excluded_asset_is_rejected_before_persistence(self):
+        scope = ScopeDefinition(
+            assets=("app.example.test",),
+            excluded_assets=(123,),  # type: ignore[arg-type]
+            max_risk=RiskLevel.STANDARD,
+            allowed_capabilities=("web-baseline",),
+        )
+        with self.assertRaises((TypeError, ValueError)):
+            self._record(scope, "AUTH-NONSTRING-EXCLUDE")
+
     def test_invalid_scope_writes_no_grant_rows(self):
         scope = ScopeDefinition(
             assets=(" ",),
