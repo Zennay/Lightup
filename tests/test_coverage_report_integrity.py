@@ -57,6 +57,28 @@ class CoverageReportIntegrityTests(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, "immutable tuple"):
             CoverageReport(list(self.canonical))  # type: ignore[arg-type]
 
+    def test_build_rejects_pair_sequence_before_duplicate_collapse(self):
+        forged = [
+            ("web-baseline", CoverageStatus.ASSESSED),
+            ("web-baseline", CoverageStatus.NOT_AUTHORIZED),
+        ]
+
+        with self.assertRaisesRegex(TypeError, "exact dict"):
+            CoverageReport.build(forged)  # type: ignore[arg-type]
+
+    def test_build_rejects_dict_subclass(self):
+        class ForgedCoverage(dict):
+            pass
+
+        with self.assertRaisesRegex(TypeError, "exact dict"):
+            CoverageReport.build(
+                ForgedCoverage({"web-baseline": CoverageStatus.ASSESSED})
+            )
+
+    def test_build_rejects_non_string_capability_id(self):
+        with self.assertRaisesRegex(TypeError, "capability_id"):
+            CoverageReport.build({1: CoverageStatus.ASSESSED})  # type: ignore[dict-item]
+
 
 if __name__ == "__main__":
     unittest.main()
