@@ -122,21 +122,36 @@ def _string_tuple(
 
 def _expected_item_semantics(
     classification: AttackPathTransitionClassification,
-) -> tuple[FutureRemediationNextAction, FutureStateRetestPurpose, bool]:
-    if classification in {
-        AttackPathTransitionClassification.INTRODUCED,
-        AttackPathTransitionClassification.WORSENED,
-    }:
+) -> tuple[
+    AttackPathGraphDiffAction,
+    FutureRemediationNextAction,
+    FutureStateRetestPurpose,
+    bool,
+]:
+    if classification is AttackPathTransitionClassification.INTRODUCED:
         return (
+            AttackPathGraphDiffAction.ADD_PATH_HYPOTHESIS,
             FutureRemediationNextAction.AUTHOR_REMEDIATION_THEN_RETEST,
             FutureStateRetestPurpose.REMEDIATION_VALIDATION,
             True,
         )
-    if classification in {
-        AttackPathTransitionClassification.IMPROVED,
-        AttackPathTransitionClassification.REMOVED,
-    }:
+    if classification is AttackPathTransitionClassification.WORSENED:
         return (
+            AttackPathGraphDiffAction.MODIFY_EXISTING_PATH_RISK_UP,
+            FutureRemediationNextAction.AUTHOR_REMEDIATION_THEN_RETEST,
+            FutureStateRetestPurpose.REMEDIATION_VALIDATION,
+            True,
+        )
+    if classification is AttackPathTransitionClassification.IMPROVED:
+        return (
+            AttackPathGraphDiffAction.MODIFY_EXISTING_PATH_RISK_DOWN,
+            FutureRemediationNextAction.VERIFY_IMPROVEMENT_WITH_RETEST,
+            FutureStateRetestPurpose.IMPROVEMENT_VERIFICATION,
+            False,
+        )
+    if classification is AttackPathTransitionClassification.REMOVED:
+        return (
+            AttackPathGraphDiffAction.REMOVE_EXISTING_PATH_CANDIDATE,
             FutureRemediationNextAction.VERIFY_IMPROVEMENT_WITH_RETEST,
             FutureStateRetestPurpose.IMPROVEMENT_VERIFICATION,
             False,
@@ -318,13 +333,14 @@ def future_security_retest_request_from_dict(
 
         expected = _expected_item_semantics(classification)
         actual = (
+            graph_diff_action,
             source_next_action,
             purpose,
             raw_item["remediation_required"],
         )
         if actual != expected:
             raise ValueError(
-                "future-state retest request item action/purpose semantics mismatch"
+                "future-state retest request item graph/action/purpose semantics mismatch"
             )
 
         identity = (change_node_id, subject_node_id, resolution_id)
