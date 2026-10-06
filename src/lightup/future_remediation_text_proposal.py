@@ -34,6 +34,28 @@ _MAX_MODEL_OUTPUT_CHARS = 16_000
 _MAX_OUTPUT_TOKENS = 1_200
 
 
+def _require_proposal_sha256(value: object, *, field: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise ValueError(f"{field} must be a canonical lowercase SHA-256 digest")
+    return value
+
+
+def _require_proposal_string(value: object, *, field: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{field} must be a non-empty string")
+    return value
+
+
+def _require_positive_item_count(value: object) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+        raise ValueError("remediation text proposal item_count must be a positive integer")
+    return value
+
+
 @dataclass(frozen=True)
 class FutureRemediationTextProposal:
     schema_version: str
@@ -57,6 +79,39 @@ class FutureRemediationTextProposal:
     security_verdict: str = "not_evaluated"
 
     def __post_init__(self) -> None:
+        if self.schema_version != REMEDIATION_TEXT_PROPOSAL_SCHEMA_VERSION:
+            raise ValueError("remediation text proposal schema version mismatch")
+        for field in (
+            "request_sha256",
+            "bundle_sha256",
+            "content_sha256",
+            "proposal_sha256",
+        ):
+            _require_proposal_sha256(
+                getattr(self, field),
+                field=f"remediation text proposal {field}",
+            )
+        _require_positive_item_count(self.item_count)
+        _require_proposal_string(
+            self.provider_id,
+            field="remediation text proposal provider_id",
+        )
+        _require_proposal_string(
+            self.model_id,
+            field="remediation text proposal model_id",
+        )
+        _require_proposal_string(
+            self.content,
+            field="remediation text proposal content",
+        )
+        if "\x00" in self.content:
+            raise ValueError("remediation text proposal content contains NUL")
+        if len(self.content) > _MAX_MODEL_OUTPUT_CHARS:
+            raise ValueError(
+                "remediation text proposal content exceeds the bounded output size"
+            )
+        if _content_digest(self.content) != self.content_sha256:
+            raise ValueError("remediation text proposal content digest mismatch")
         if self.remediation_proposal_created is not True:
             raise ValueError("remediation_proposal_created must remain true")
         for field in (
@@ -74,6 +129,8 @@ class FutureRemediationTextProposal:
             raise ValueError("future_semantics must remain unresolved")
         if self.security_verdict != "not_evaluated":
             raise ValueError("security_verdict must remain not_evaluated")
+        if _direct_proposal_digest(self) != self.proposal_sha256:
+            raise ValueError("remediation text proposal digest mismatch")
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -89,6 +146,39 @@ class FutureRemediationTextProposal:
 
 def _content_digest(content: str) -> str:
     return sha256(content.encode("utf-8")).hexdigest()
+
+
+def _direct_proposal_digest(
+    proposal: "FutureRemediationTextProposal",
+) -> str:
+    payload = {
+        "schema_version": REMEDIATION_TEXT_PROPOSAL_SCHEMA_VERSION,
+        "request_sha256": proposal.request_sha256,
+        "bundle_sha256": proposal.bundle_sha256,
+        "item_count": proposal.item_count,
+        "provider_id": proposal.provider_id,
+        "model_id": proposal.model_id,
+        "content": proposal.content,
+        "content_sha256": proposal.content_sha256,
+        "remediation_proposal_created": True,
+        "code_change_authorized": False,
+        "tool_call_created": False,
+        "execution_allowed": False,
+        "target_interaction_allowed": False,
+        "future_state_retest_allowed": False,
+        "deployment_authorized": False,
+        "attack_path_mutation_allowed": False,
+        "future_semantics": "unresolved",
+        "security_verdict": "not_evaluated",
+    }
+    return sha256(
+        json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        ).encode("utf-8")
+    ).hexdigest()
 
 
 def _proposal_digest(
