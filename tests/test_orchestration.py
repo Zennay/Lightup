@@ -20,6 +20,7 @@ from lightup.ai.orchestration import (
     ToolParameter,
     ToolRegistry,
 )
+from lightup.domain import AccessContext, DomainStore, Role
 from lightup.engagements import (
     AssessmentMode,
     AuthorizationGrant,
@@ -92,7 +93,9 @@ class OrchestrationTest(unittest.TestCase):
             ),
             _active_tool,
         )
-        self.executor = ToolExecutor(self.registry, self.state)
+        self.executor = ToolExecutor(
+            self.registry, self.state, authorization_resolver=lambda grant: grant
+        )
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -153,6 +156,91 @@ class OrchestrationTest(unittest.TestCase):
         self.assertIn(
             "authorization engagement does not match execution engagement",
             str(caught.exception),
+        )
+
+    def test_target_active_requires_live_authorization_resolver(self):
+        executor = ToolExecutor(self.registry, self.state)
+        context = _context(
+            AssessmentMode.AUTHORIZED_ASSESSMENT,
+            RiskLevel.STANDARD,
+            authorization=_grant("allowed.test"),
+        )
+        with self.assertRaises(ToolDenied) as caught:
+            executor.execute(context, ToolCall("service-probe", "allowed.test"))
+        self.assertIn("live authorization revalidation", str(caught.exception))
+
+    def test_revocation_after_run_start_denies_before_handler(self):
+        domain = DomainStore(Path(self.tmp.name) / "authorization.db")
+        operator = AccessContext("operator", Role.OPERATOR)
+        client = domain.create_client(operator, "Runtime revocation client")
+        engagement = domain.create_engagement(
+            operator, client.client_id, "Runtime revocation engagement"
+        )
+        now = datetime.now(timezone.utc)
+        grant = domain.record_authorization_grant(
+            operator,
+            engagement.engagement_id,
+            approved_by="client signatory",
+            reference="AUTH-RUNTIME-1",
+            scope=ScopeDefinition(
+                assets=("allowed.test",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("network-services",),
+            ),
+            valid_from=now - timedelta(minutes=5),
+            valid_until=now + timedelta(hours=1),
+        )
+        context = RunContext(
+            run_id=str(uuid4()),
+            client_id=client.client_id,
+            engagement_id=engagement.engagement_id,
+            mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
+            approved_risk=RiskLevel.STANDARD,
+            authorization=grant,
+            is_lab=False,
+            created_at=now,
+        )
+        calls: list[str] = []
+        registry = ToolRegistry()
+        registry.register(
+            ToolDefinition(
+                "runtime-revocation-probe",
+                "network-services",
+                InteractionKind.TARGET_ACTIVE,
+                RiskLevel.STANDARD,
+                "test-only target-active handler",
+            ),
+            lambda context, arguments: (
+                calls.append("ran")
+                or ToolOutput("ran", "probe", b"evidence")
+            ),
+        )
+        executor = ToolExecutor(
+            registry,
+            self.state,
+            authorization_resolver=domain.resolve_authorization_for_execution,
+        )
+
+        executor.execute(
+            context, ToolCall("runtime-revocation-probe", "allowed.test")
+        )
+        self.assertEqual(calls, ["ran"])
+
+        domain.revoke_engagement_authorization(
+            operator,
+            engagement.engagement_id,
+            "client withdrew authorization while run was active",
+        )
+
+        with self.assertRaises(ToolDenied) as caught:
+            executor.execute(
+                context, ToolCall("runtime-revocation-probe", "allowed.test")
+            )
+        self.assertIn("not live in authoritative state", str(caught.exception))
+        self.assertEqual(
+            calls,
+            ["ran"],
+            "revoked stale RunContext must be denied before handler invocation",
         )
 
     def test_out_of_scope_asset_denied(self):
