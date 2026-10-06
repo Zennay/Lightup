@@ -22,7 +22,10 @@ For all eight top-level artifacts, the gate proves:
   after evidence-ledger SHA drift, the unchanged final review still parses
   structurally while its complete live-lineage validator rejects reuse;
 - every code/tool/execution/target/retest/deploy/attack-path authority field is
-  fixed false;
+  fixed false, and integer lookalikes such as `0` are rejected rather than
+  accepted as false booleans;
+- every strict JSON parser rejects duplicate primary-digest keys before JSON
+  last-value-wins behavior can normalize them;
 - `future_semantics` remains `unresolved`;
 - `security_verdict` remains `not_evaluated`;
 - changing the artifact's primary canonical digest without rebuilding the
