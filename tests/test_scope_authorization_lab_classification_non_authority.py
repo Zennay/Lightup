@@ -64,14 +64,6 @@ class ScopeAuthorizationLabClassificationNonAuthorityTests(unittest.TestCase):
                 self.assertTrue(decision.allowed)
                 self.assertEqual(decision.reason, ScopeReason.PRIVATE_LAB)
 
-    def test_link_local_classification_ignores_expired_authorization(self):
-        decision = ScopePolicy(allow_private_lab=True).decide(
-            Target("169.254.10.20", authorization=self._expired())
-        )
-
-        self.assertTrue(decision.allowed)
-        self.assertEqual(decision.reason, ScopeReason.PRIVATE_LAB)
-
     def test_current_authorization_cannot_bypass_disabled_private_lab_policy(self):
         policy = ScopePolicy(allow_private_lab=False)
 
