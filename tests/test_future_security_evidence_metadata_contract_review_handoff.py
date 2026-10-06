@@ -191,33 +191,68 @@ class FutureSecurityEvidenceMetadataContractReviewHandoffTest(unittest.TestCase)
 
     def test_verified_freshness_and_safety_semantics_fail_closed(self):
         _, payload = self._payload()
-        not_verified = copy.deepcopy(payload)
-        not_verified["metadata_contract_verified"] = False
-        with self.assertRaisesRegex(ValueError, "retain verified metadata contract"):
-            future_security_evidence_metadata_contract_review_from_dict(not_verified)
-        stale = copy.deepcopy(payload)
-        stale["freshness_check_passed"] = False
-        with self.assertRaisesRegex(ValueError, "retain passed freshness check"):
-            future_security_evidence_metadata_contract_review_from_dict(stale)
-        classified = copy.deepcopy(payload)
-        classified["classification_selected"] = True
-        with self.assertRaisesRegex(ValueError, "classification_selected must remain false"):
-            future_security_evidence_metadata_contract_review_from_dict(classified)
-        executable = copy.deepcopy(payload)
-        executable["execution_allowed"] = True
-        with self.assertRaisesRegex(ValueError, "execution_allowed must remain false"):
-            future_security_evidence_metadata_contract_review_from_dict(executable)
-        closed = copy.deepcopy(payload)
-        closed["transition_resolution_created"] = True
-        with self.assertRaisesRegex(
-            ValueError,
-            "transition_resolution_created must remain false",
+
+        for field in ("metadata_contract_verified", "freshness_check_passed"):
+            forged = copy.deepcopy(payload)
+            forged[field] = False
+            with self.subTest(field=field):
+                with self.assertRaises(ValueError):
+                    future_security_evidence_metadata_contract_review_from_dict(
+                        forged
+                    )
+
+        for field in (
+            "evidence_sufficiency_evaluated",
+            "classification_selected",
+            "transition_resolution_created",
+            "collection_authorized",
+            "tool_call_created",
+            "execution_allowed",
+            "target_interaction_allowed",
+            "remediation_authoring_allowed",
+            "future_state_retest_allowed",
+            "deployment_authorized",
+            "attack_path_mutation_allowed",
         ):
-            future_security_evidence_metadata_contract_review_from_dict(closed)
+            forged = copy.deepcopy(payload)
+            forged[field] = True
+            with self.subTest(field=field):
+                with self.assertRaisesRegex(ValueError, f"{field} must remain false"):
+                    future_security_evidence_metadata_contract_review_from_dict(
+                        forged
+                    )
+
+        semantics = copy.deepcopy(payload)
+        semantics["future_semantics"] = "verified"
+        with self.assertRaisesRegex(ValueError, "must remain unresolved"):
+            future_security_evidence_metadata_contract_review_from_dict(semantics)
+
         verdict = copy.deepcopy(payload)
         verdict["security_verdict"] = "secure"
         with self.assertRaisesRegex(ValueError, "must not claim a security verdict"):
             future_security_evidence_metadata_contract_review_from_dict(verdict)
+
+    def test_export_is_bounded_and_decision_free(self):
+        review, payload = self._payload()
+        self.assertTrue(payload["metadata_contract_verified"])
+        self.assertTrue(payload["freshness_check_passed"])
+        self.assertFalse(payload["evidence_sufficiency_evaluated"])
+        self.assertFalse(payload["classification_selected"])
+        self.assertFalse(payload["transition_resolution_created"])
+        self.assertEqual(payload["security_verdict"], "not_evaluated")
+        for forbidden in (
+            "metadata",
+            "payload",
+            "source",
+            "target",
+            "arguments",
+            "credentials",
+        ):
+            self.assertNotIn(forbidden, payload)
+        self.assertEqual(
+            future_security_evidence_metadata_contract_review_from_dict(payload),
+            review,
+        )
 
     def test_noncanonical_sha_and_digest_tampering_fail_closed(self):
         _, payload = self._payload()
