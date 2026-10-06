@@ -173,6 +173,10 @@ class ToolRegistry:
     def register(self, definition: ToolDefinition, handler: ToolHandler) -> None:
         if definition.tool_id in self._tools:
             raise OrchestrationError(f"tool {definition.tool_id!r} is already registered")
+        if not isinstance(definition.interaction, InteractionKind):
+            raise OrchestrationError(
+                f"tool {definition.tool_id!r} interaction must be an InteractionKind"
+            )
         if not isinstance(definition.min_risk, RiskLevel):
             raise OrchestrationError(
                 f"tool {definition.tool_id!r} min_risk must be a RiskLevel"
