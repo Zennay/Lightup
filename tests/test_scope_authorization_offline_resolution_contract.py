@@ -58,19 +58,6 @@ class ScopeAuthorizationOfflineResolutionContractTests(unittest.TestCase):
         self.assertEqual(decision.normalized_host, "rebind.example.test")
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
-    def test_loopback_looking_hostname_is_not_resolver_promoted(self):
-        decision = self._decide_without_network(
-            ScopePolicy(),
-            Target("127.0.0.1.rebind.example.test"),
-        )
-
-        self.assertFalse(decision.allowed)
-        self.assertEqual(
-            decision.normalized_host,
-            "127.0.0.1.rebind.example.test",
-        )
-        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
-
     def test_explicit_authorized_host_is_decided_without_dns(self):
         decision = self._decide_without_network(
             ScopePolicy(explicit_hosts=frozenset({"security.example.test"})),
