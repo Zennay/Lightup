@@ -226,12 +226,21 @@ class ToolExecutor:
                 f"mode {context.mode.value!r} cannot invoke active tool {call.tool_id!r}"
             )
 
-        # Lab tools never run outside a lab context; real-target tools never
-        # run inside one (lab results must not masquerade as target evidence).
-        if definition.interaction is InteractionKind.LAB_ACTIVE and not context.is_lab:
-            raise ToolDenied(f"tool {call.tool_id!r} is lab-only")
-        if definition.interaction is InteractionKind.TARGET_ACTIVE and context.is_lab:
-            raise ToolDenied(f"lab runs cannot invoke real-target tool {call.tool_id!r}")
+        # Active interaction kind and run mode must agree. Treat both the
+        # enum mode and is_lab flag as security-relevant, and fail closed when
+        # a manually constructed RunContext makes them disagree.
+        if definition.interaction is InteractionKind.LAB_ACTIVE:
+            if context.mode is not AssessmentMode.LAB_AUTONOMOUS or not context.is_lab:
+                raise ToolDenied(
+                    f"tool {call.tool_id!r} requires lab-autonomous lab context"
+                )
+        if definition.interaction is InteractionKind.TARGET_ACTIVE:
+            if context.mode is not AssessmentMode.AUTHORIZED_ASSESSMENT:
+                raise ToolDenied(
+                    f"tool {call.tool_id!r} requires authorized-assessment mode"
+                )
+            if context.is_lab:
+                raise ToolDenied(f"lab runs cannot invoke real-target tool {call.tool_id!r}")
 
         # Risk ceiling: elevation is a human decision, never an AI one.
         if definition.min_risk > context.approved_risk:
