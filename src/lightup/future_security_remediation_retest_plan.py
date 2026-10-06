@@ -38,63 +38,31 @@ class FutureRemediationNextAction(str, Enum):
     COLLECT_MORE_EVIDENCE = "collect_more_evidence"
 
 
-@dataclass(frozen=True)
-class FutureSecurityRemediationRetestPlanItem:
-    change_node_id: str
-    subject_node_id: str
-    resolution_id: str
-    resolution_sha256: str
-    classification: AttackPathTransitionClassification
-    graph_diff_action: AttackPathGraphDiffAction
-    next_action: FutureRemediationNextAction
-    remediation_required: bool
-    future_state_retest_required: bool
-    evidence_required: bool
-    current_attack_path_ids: tuple[str, ...]
-    effect_ids: tuple[str, ...]
-    evidence_ids: tuple[str, ...]
-    capability_ids: tuple[str, ...]
-
-    def as_dict(self) -> dict:
-        return asdict(self)
+def _is_canonical_sha256(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
 
 
-@dataclass(frozen=True)
-class FutureSecurityRemediationRetestPlan:
-    schema_version: str
-    client_id: str
-    current_twin_id: str
-    current_twin_version: int
-    twin_id: str
-    twin_version: int
-    changeset_id: str
-    proposal_sha256: str
-    impact_analysis_sha256: str
-    preview_sha256: str
-    report_sha256: str
-    items: tuple[FutureSecurityRemediationRetestPlanItem, ...]
-    remediation_item_count: int
-    retest_item_count: int
-    evidence_gap_count: int
-    plan_complete: bool
-    contains_insufficient_evidence: bool
-    plan_sha256: str
-    execution_allowed: bool = False
-    deployment_authorized: bool = False
-    attack_path_mutation_allowed: bool = False
-    future_semantics: str = "unresolved"
-    security_verdict: str = "not_evaluated"
+def _require_non_empty_string(value: object, *, field: str) -> None:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"remediation/retest plan {field} must be a non-empty string")
 
-    def as_dict(self) -> dict:
-        return asdict(self)
 
-    def to_json(self) -> str:
-        return json.dumps(
-            self.as_dict(),
-            sort_keys=True,
-            separators=(",", ":"),
-            ensure_ascii=True,
+def _require_string_tuple(value: object, *, field: str) -> tuple[str, ...]:
+    if not isinstance(value, tuple):
+        raise ValueError(f"remediation/retest plan item {field} must be a tuple")
+    if any(not isinstance(item, str) or not item for item in value):
+        raise ValueError(
+            f"remediation/retest plan item {field} must contain non-empty strings"
         )
+    if len(set(value)) != len(value):
+        raise ValueError(
+            f"remediation/retest plan item {field} must not contain duplicates"
+        )
+    return value
 
 
 def _planning_action(
@@ -130,26 +98,105 @@ def _planning_action(
     raise ValueError("unsupported ST4 attack-path classification")
 
 
-def _plan_digest(
+@dataclass(frozen=True)
+class FutureSecurityRemediationRetestPlanItem:
+    change_node_id: str
+    subject_node_id: str
+    resolution_id: str
+    resolution_sha256: str
+    classification: AttackPathTransitionClassification
+    graph_diff_action: AttackPathGraphDiffAction
+    next_action: FutureRemediationNextAction
+    remediation_required: bool
+    future_state_retest_required: bool
+    evidence_required: bool
+    current_attack_path_ids: tuple[str, ...]
+    effect_ids: tuple[str, ...]
+    evidence_ids: tuple[str, ...]
+    capability_ids: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        for field in ("change_node_id", "subject_node_id", "resolution_id"):
+            _require_non_empty_string(getattr(self, field), field=f"item.{field}")
+        if not _is_canonical_sha256(self.resolution_sha256):
+            raise ValueError(
+                "remediation/retest plan item resolution_sha256 must be canonical"
+            )
+        if not isinstance(self.classification, AttackPathTransitionClassification):
+            raise ValueError(
+                "remediation/retest plan item classification must be an enum member"
+            )
+        if not isinstance(self.graph_diff_action, AttackPathGraphDiffAction):
+            raise ValueError(
+                "remediation/retest plan item graph_diff_action must be an enum member"
+            )
+        if not isinstance(self.next_action, FutureRemediationNextAction):
+            raise ValueError(
+                "remediation/retest plan item next_action must be an enum member"
+            )
+        for field in (
+            "remediation_required",
+            "future_state_retest_required",
+            "evidence_required",
+        ):
+            if type(getattr(self, field)) is not bool:
+                raise ValueError(
+                    f"remediation/retest plan item {field} must be boolean"
+                )
+        expected = _planning_action(self.classification)
+        actual = (
+            self.next_action,
+            self.remediation_required,
+            self.future_state_retest_required,
+            self.evidence_required,
+        )
+        if actual != expected:
+            raise ValueError(
+                "remediation/retest plan item action/requirement semantics mismatch"
+            )
+        for field in (
+            "current_attack_path_ids",
+            "effect_ids",
+            "evidence_ids",
+            "capability_ids",
+        ):
+            _require_string_tuple(getattr(self, field), field=field)
+
+    def as_dict(self) -> dict:
+        return asdict(self)
+
+
+def _canonical_plan_digest(
     *,
-    report: FutureAttackPathSecurityDeltaReport,
+    schema_version: str,
+    client_id: str,
+    current_twin_id: str,
+    current_twin_version: int,
+    twin_id: str,
+    twin_version: int,
+    changeset_id: str,
+    proposal_sha256: str,
+    impact_analysis_sha256: str,
+    preview_sha256: str,
+    report_sha256: str,
     items: tuple[FutureSecurityRemediationRetestPlanItem, ...],
     remediation_item_count: int,
     retest_item_count: int,
     evidence_gap_count: int,
+    contains_insufficient_evidence: bool,
 ) -> str:
     payload = {
-        "schema_version": PLAN_SCHEMA_VERSION,
-        "client_id": report.client_id,
-        "current_twin_id": report.current_twin_id,
-        "current_twin_version": report.current_twin_version,
-        "twin_id": report.twin_id,
-        "twin_version": report.twin_version,
-        "changeset_id": report.changeset_id,
-        "proposal_sha256": report.proposal_sha256,
-        "impact_analysis_sha256": report.impact_analysis_sha256,
-        "preview_sha256": report.preview_sha256,
-        "report_sha256": report.report_sha256,
+        "schema_version": schema_version,
+        "client_id": client_id,
+        "current_twin_id": current_twin_id,
+        "current_twin_version": current_twin_version,
+        "twin_id": twin_id,
+        "twin_version": twin_version,
+        "changeset_id": changeset_id,
+        "proposal_sha256": proposal_sha256,
+        "impact_analysis_sha256": impact_analysis_sha256,
+        "preview_sha256": preview_sha256,
+        "report_sha256": report_sha256,
         "items": [
             {
                 "change_node_id": item.change_node_id,
@@ -173,7 +220,7 @@ def _plan_digest(
         "retest_item_count": retest_item_count,
         "evidence_gap_count": evidence_gap_count,
         "plan_complete": True,
-        "contains_insufficient_evidence": report.contains_insufficient_evidence,
+        "contains_insufficient_evidence": contains_insufficient_evidence,
         "execution_allowed": False,
         "deployment_authorized": False,
         "attack_path_mutation_allowed": False,
@@ -188,6 +235,183 @@ def _plan_digest(
             ensure_ascii=True,
         ).encode("utf-8")
     ).hexdigest()
+
+
+@dataclass(frozen=True)
+class FutureSecurityRemediationRetestPlan:
+    schema_version: str
+    client_id: str
+    current_twin_id: str
+    current_twin_version: int
+    twin_id: str
+    twin_version: int
+    changeset_id: str
+    proposal_sha256: str
+    impact_analysis_sha256: str
+    preview_sha256: str
+    report_sha256: str
+    items: tuple[FutureSecurityRemediationRetestPlanItem, ...]
+    remediation_item_count: int
+    retest_item_count: int
+    evidence_gap_count: int
+    plan_complete: bool
+    contains_insufficient_evidence: bool
+    plan_sha256: str
+    execution_allowed: bool = False
+    deployment_authorized: bool = False
+    attack_path_mutation_allowed: bool = False
+    future_semantics: str = "unresolved"
+    security_verdict: str = "not_evaluated"
+
+    def __post_init__(self) -> None:
+        if self.schema_version != PLAN_SCHEMA_VERSION:
+            raise ValueError("remediation/retest plan schema version mismatch")
+        for field in (
+            "client_id",
+            "current_twin_id",
+            "twin_id",
+            "changeset_id",
+        ):
+            _require_non_empty_string(getattr(self, field), field=field)
+        for field in (
+            "proposal_sha256",
+            "impact_analysis_sha256",
+            "preview_sha256",
+            "report_sha256",
+            "plan_sha256",
+        ):
+            if not _is_canonical_sha256(getattr(self, field)):
+                raise ValueError(
+                    f"remediation/retest plan {field} must be a canonical SHA-256"
+                )
+        for field in (
+            "current_twin_version",
+            "twin_version",
+            "remediation_item_count",
+            "retest_item_count",
+            "evidence_gap_count",
+        ):
+            value = getattr(self, field)
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                raise ValueError(
+                    f"remediation/retest plan {field} must be a non-negative integer"
+                )
+        if not isinstance(self.items, tuple) or not self.items:
+            raise ValueError("remediation/retest plan items must be a non-empty tuple")
+        if any(type(item) is not FutureSecurityRemediationRetestPlanItem for item in self.items):
+            raise ValueError(
+                "remediation/retest plan items must contain exact plan-item values"
+            )
+        identities = [
+            (item.change_node_id, item.subject_node_id, item.resolution_id)
+            for item in self.items
+        ]
+        if len(set(identities)) != len(identities):
+            raise ValueError("remediation/retest plan item identity must be unique")
+
+        remediation_count = sum(item.remediation_required for item in self.items)
+        retest_count = sum(item.future_state_retest_required for item in self.items)
+        gap_count = sum(item.evidence_required for item in self.items)
+        if self.remediation_item_count != remediation_count:
+            raise ValueError("remediation/retest plan remediation count mismatch")
+        if self.retest_item_count != retest_count:
+            raise ValueError("remediation/retest plan retest count mismatch")
+        if self.evidence_gap_count != gap_count:
+            raise ValueError("remediation/retest plan evidence-gap count mismatch")
+        if self.plan_complete is not True:
+            raise ValueError("remediation/retest plan must remain complete")
+        if type(self.contains_insufficient_evidence) is not bool:
+            raise ValueError(
+                "remediation/retest plan contains_insufficient_evidence must be boolean"
+            )
+        contains_insufficient = any(
+            item.classification
+            is AttackPathTransitionClassification.INSUFFICIENT_EVIDENCE
+            for item in self.items
+        )
+        if self.contains_insufficient_evidence != contains_insufficient:
+            raise ValueError(
+                "remediation/retest plan insufficient-evidence state mismatch"
+            )
+        if bool(gap_count) != contains_insufficient:
+            raise ValueError(
+                "remediation/retest plan evidence-gap semantics are inconsistent"
+            )
+        for field in (
+            "execution_allowed",
+            "deployment_authorized",
+            "attack_path_mutation_allowed",
+        ):
+            if getattr(self, field) is not False:
+                raise ValueError(
+                    f"remediation/retest plan safety flag {field} must remain false"
+                )
+        if self.future_semantics != "unresolved":
+            raise ValueError(
+                "remediation/retest plan future semantics must remain unresolved"
+            )
+        if self.security_verdict != "not_evaluated":
+            raise ValueError("remediation/retest plan must not claim a security verdict")
+
+        expected_digest = _canonical_plan_digest(
+            schema_version=self.schema_version,
+            client_id=self.client_id,
+            current_twin_id=self.current_twin_id,
+            current_twin_version=self.current_twin_version,
+            twin_id=self.twin_id,
+            twin_version=self.twin_version,
+            changeset_id=self.changeset_id,
+            proposal_sha256=self.proposal_sha256,
+            impact_analysis_sha256=self.impact_analysis_sha256,
+            preview_sha256=self.preview_sha256,
+            report_sha256=self.report_sha256,
+            items=self.items,
+            remediation_item_count=self.remediation_item_count,
+            retest_item_count=self.retest_item_count,
+            evidence_gap_count=self.evidence_gap_count,
+            contains_insufficient_evidence=self.contains_insufficient_evidence,
+        )
+        if self.plan_sha256 != expected_digest:
+            raise ValueError("remediation/retest plan digest mismatch")
+
+    def as_dict(self) -> dict:
+        return asdict(self)
+
+    def to_json(self) -> str:
+        return json.dumps(
+            self.as_dict(),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        )
+
+
+def _plan_digest(
+    *,
+    report: FutureAttackPathSecurityDeltaReport,
+    items: tuple[FutureSecurityRemediationRetestPlanItem, ...],
+    remediation_item_count: int,
+    retest_item_count: int,
+    evidence_gap_count: int,
+) -> str:
+    return _canonical_plan_digest(
+        schema_version=PLAN_SCHEMA_VERSION,
+        client_id=report.client_id,
+        current_twin_id=report.current_twin_id,
+        current_twin_version=report.current_twin_version,
+        twin_id=report.twin_id,
+        twin_version=report.twin_version,
+        changeset_id=report.changeset_id,
+        proposal_sha256=report.proposal_sha256,
+        impact_analysis_sha256=report.impact_analysis_sha256,
+        preview_sha256=report.preview_sha256,
+        report_sha256=report.report_sha256,
+        items=items,
+        remediation_item_count=remediation_item_count,
+        retest_item_count=retest_item_count,
+        evidence_gap_count=evidence_gap_count,
+        contains_insufficient_evidence=report.contains_insufficient_evidence,
+    )
 
 
 def build_future_security_remediation_retest_plan(
