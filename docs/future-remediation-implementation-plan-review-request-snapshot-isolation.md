@@ -17,6 +17,7 @@ The dedicated regressions prove that:
 - mutating top-level snapshot fields cannot change the source request or later JSON;
 - independently returned snapshots do not alias;
 - replacing, reordering, or truncating `required_checks` in a caller snapshot cannot affect the source and forged persisted forms fail closed;
+- the strict parser copies a caller-owned mutable `required_checks` list into canonical typed state, so later list mutation cannot alter the parsed request;
 - forged plan acceptance, action-authority flags, resolved future semantics, or a positive security verdict fail closed;
 - after strict parsing, later mutation of the caller-owned persisted dictionary cannot mutate the parsed request.
 
