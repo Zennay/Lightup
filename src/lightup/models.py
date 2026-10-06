@@ -31,6 +31,7 @@ class Authorization:
     revoked_at: datetime | None = None
     revoked_by: str | None = None
     revocation_reason: str | None = None
+    capabilities: tuple[str, ...] = ()
 
     @property
     def is_revoked(self) -> bool:
@@ -43,6 +44,11 @@ class Authorization:
             for item in self.assets
             if item.strip()
         }
+
+    def allows_capability(self, capability_id: str) -> bool:
+        # Empty means no active capability authority. Keep this legacy target
+        # authorization fail-closed just like durable AuthorizationGrant scope.
+        return capability_id in self.capabilities
 
     def is_current(self, now: datetime | None = None) -> bool:
         now = now or datetime.now(timezone.utc)
