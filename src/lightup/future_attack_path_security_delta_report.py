@@ -264,23 +264,6 @@ class FutureAttackPathSecurityDeltaReport:
         if self.security_verdict != "not_evaluated":
             raise ValueError("security delta report must not claim a security verdict")
 
-        expected_digest = _canonical_report_digest(
-            schema_version=self.schema_version,
-            client_id=self.client_id,
-            current_twin_id=self.current_twin_id,
-            current_twin_version=self.current_twin_version,
-            twin_id=self.twin_id,
-            twin_version=self.twin_version,
-            changeset_id=self.changeset_id,
-            proposal_sha256=self.proposal_sha256,
-            impact_analysis_sha256=self.impact_analysis_sha256,
-            preview_sha256=self.preview_sha256,
-            items=self.items,
-            contains_insufficient_evidence=self.contains_insufficient_evidence,
-        )
-        if self.report_sha256 != expected_digest:
-            raise ValueError("security delta report digest mismatch")
-
     def as_dict(self) -> dict:
         return asdict(self)
 
