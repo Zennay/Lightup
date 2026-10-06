@@ -101,6 +101,22 @@ class OrchestrationTest(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def test_registry_rejects_raw_integer_tool_risk(self):
+        registry = ToolRegistry()
+        with self.assertRaises(OrchestrationError) as caught:
+            registry.register(
+                ToolDefinition(
+                    "raw-risk-probe",
+                    "network-services",
+                    InteractionKind.TARGET_ACTIVE,
+                    5,  # type: ignore[arg-type]
+                    "test-only raw integer risk",
+                ),
+                _active_tool,
+            )
+        self.assertIn("min_risk must be a RiskLevel", str(caught.exception))
+        self.assertEqual(registry.definitions(), ())
+
     def test_run_context_is_immutable(self):
         context = _context(AssessmentMode.PASSIVE_DISCOVERY, RiskLevel.PASSIVE)
         with self.assertRaises(dataclasses.FrozenInstanceError):
