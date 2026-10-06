@@ -35,6 +35,28 @@ REMEDIATION_IMPLEMENTATION_PLAN_REQUEST_SCHEMA_VERSION = (
 )
 
 
+def _require_canonical_sha256(value: object, *, field: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise ValueError(f"{field} must be a canonical lowercase SHA-256 digest")
+    return value
+
+
+def _require_non_empty_string(value: object, *, field: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{field} must be a non-empty string")
+    return value
+
+
+def _require_positive_int(value: object, *, field: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+        raise ValueError(f"{field} must be a positive integer")
+    return value
+
+
 @dataclass(frozen=True)
 class FutureRemediationImplementationPlanRequest:
     schema_version: str
@@ -57,6 +79,77 @@ class FutureRemediationImplementationPlanRequest:
     attack_path_mutation_allowed: bool = False
     future_semantics: str = "unresolved"
     security_verdict: str = "not_evaluated"
+
+    def __post_init__(self) -> None:
+        if self.schema_version != REMEDIATION_IMPLEMENTATION_PLAN_REQUEST_SCHEMA_VERSION:
+            raise ValueError("implementation-planning request schema version mismatch")
+        for field in (
+            "review_sha256",
+            "review_request_sha256",
+            "proposal_sha256",
+            "content_sha256",
+            "implementation_request_sha256",
+        ):
+            _require_canonical_sha256(
+                getattr(self, field),
+                field=f"implementation-planning request {field}",
+            )
+        _require_non_empty_string(
+            self.reviewer_provider_id,
+            field="implementation-planning request reviewer_provider_id",
+        )
+        _require_non_empty_string(
+            self.reviewer_model_id,
+            field="implementation-planning request reviewer_model_id",
+        )
+        _require_positive_int(
+            self.item_count,
+            field="implementation-planning request item_count",
+        )
+        if self.implementation_planning_requested is not True:
+            raise ValueError(
+                "implementation-planning request "
+                "implementation_planning_requested must remain true"
+            )
+        if self.implementation_plan_created is not False:
+            raise ValueError(
+                "implementation-planning request "
+                "implementation_plan_created must remain false"
+            )
+        for field in (
+            "code_change_authorized",
+            "tool_call_created",
+            "execution_allowed",
+            "target_interaction_allowed",
+            "future_state_retest_allowed",
+            "deployment_authorized",
+            "attack_path_mutation_allowed",
+        ):
+            if getattr(self, field) is not False:
+                raise ValueError(
+                    f"implementation-planning request authority flag "
+                    f"{field} must remain false"
+                )
+        if self.future_semantics != "unresolved":
+            raise ValueError(
+                "implementation-planning request future_semantics must remain unresolved"
+            )
+        if self.security_verdict != "not_evaluated":
+            raise ValueError(
+                "implementation-planning request "
+                "security_verdict must remain not_evaluated"
+            )
+        expected_digest = _request_digest(
+            review_sha256=self.review_sha256,
+            review_request_sha256=self.review_request_sha256,
+            proposal_sha256=self.proposal_sha256,
+            content_sha256=self.content_sha256,
+            reviewer_provider_id=self.reviewer_provider_id,
+            reviewer_model_id=self.reviewer_model_id,
+            item_count=self.item_count,
+        )
+        if self.implementation_request_sha256 != expected_digest:
+            raise ValueError("implementation-planning request digest mismatch")
 
     def as_dict(self) -> dict:
         return asdict(self)
