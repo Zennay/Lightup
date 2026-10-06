@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import ast
 import json
+from pathlib import Path
 import unittest
 
 import test_future_remediation_implementation_plan_review as review_tests
@@ -177,6 +179,59 @@ class FutureRemediationImplementationPlanReviewChainInvariantTest(unittest.TestC
             self.assertNotIn(forbidden_key, payload)
 
         self._assert_non_executable(review, accepted=True)
+
+
+    def test_review_module_has_no_direct_execution_or_network_imports(self):
+        module_path = (
+            Path(__file__).resolve().parents[1]
+            / "src"
+            / "lightup"
+            / "future_remediation_implementation_plan_review.py"
+        )
+        tree = ast.parse(module_path.read_text(encoding="utf-8"))
+        forbidden_roots = {
+            "subprocess",
+            "socket",
+            "requests",
+            "httpx",
+            "urllib",
+            "http.client",
+            "paramiko",
+            "asyncssh",
+        }
+        forbidden_lightup_fragments = (
+            ".workers",
+            ".executor",
+            ".execution",
+            ".activation",
+        )
+        found = []
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if any(
+                        alias.name == root or alias.name.startswith(f"{root}.")
+                        for root in forbidden_roots
+                    ):
+                        found.append(alias.name)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                if any(
+                    node.module == root or node.module.startswith(f"{root}.")
+                    for root in forbidden_roots
+                ):
+                    found.append(node.module)
+                if node.level and any(
+                    fragment in f".{node.module}"
+                    for fragment in forbidden_lightup_fragments
+                ):
+                    found.append(f"lightup:{node.module}")
+
+        self.assertEqual(
+            found,
+            [],
+            "implementation-plan reviewer must remain free of direct execution/network imports",
+        )
 
 
 if __name__ == "__main__":
