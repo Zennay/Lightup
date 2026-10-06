@@ -487,9 +487,26 @@ class LightUpWebApp:
         csrf = self._csrf_field(auth)
         engagement_cards = []
         for eng in engagements:
-            grant = self.store.get_current_grant(ctx, eng.engagement_id)
+            grants = self.store.list_authorization_grants(ctx, eng.engagement_id)
+            grant = next((item for item in grants if item.is_current()), None)
             grant_badge = ("<span class=\"badge ok\">Authorization current</span>" if grant
                            else "<span class=\"badge warn\">No current authorization</span>")
+            revoked_history = [item for item in grants if item.is_revoked][:5]
+            history_detail = ""
+            if revoked_history:
+                rows = []
+                for item in revoked_history:
+                    revoked_at = item.revoked_at.isoformat() if item.revoked_at else "unknown"
+                    rows.append(
+                        f"<p class=\"meta\"><strong>{_e(item.reference)}</strong> · "
+                        f"revoked {_e(revoked_at)} by {_e(item.revoked_by or 'unknown')}"
+                        f"<br>Reason: {_e(item.revocation_reason or 'not recorded')}</p>"
+                    )
+                history_detail = (
+                    "<details><summary>Revoked authorization history</summary>"
+                    + "".join(rows)
+                    + "</details>"
+                )
             grant_detail = ""
             if grant:
                 grant_detail = (
@@ -539,7 +556,8 @@ class LightUpWebApp:
             engagement_cards.append(
                 "<div class=\"card\"><div class=\"row\">"
                 f"<strong>{_e(eng.name)}</strong>{grant_badge}</div>"
-                f"<p class=\"meta\">Status: {_e(eng.status.value)}</p>{grant_detail}</div>"
+                f"<p class=\"meta\">Status: {_e(eng.status.value)}</p>"
+                f"{grant_detail}{history_detail}</div>"
             )
         new_engagement = (
             "<div class=\"card\">"
