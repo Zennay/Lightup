@@ -96,6 +96,71 @@ class FutureSecurityRetestRequestHandoffTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "security verdict"):
             future_security_retest_request_from_dict(verdict)
 
+    def test_canonical_identifiers_lineage_and_path_shape_fail_closed(self):
+        *_, worsened_request = self._request(
+            AttackPathTransitionClassification.WORSENED,
+            suffix="retest-handoff-canonical-lineage",
+        )
+        worsened = json.loads(worsened_request.to_json())
+
+        whitespace_id = copy.deepcopy(worsened)
+        whitespace_id["client_id"] = f" {whitespace_id['client_id']}"
+        with self.assertRaisesRegex(ValueError, "canonical non-empty string"):
+            future_security_retest_request_from_dict(whitespace_id)
+
+        control_id = copy.deepcopy(worsened)
+        control_id["items"][0]["resolution_id"] = "bad\\nresolution"
+        with self.assertRaisesRegex(ValueError, "canonical non-empty string"):
+            future_security_retest_request_from_dict(control_id)
+
+        too_long_id = copy.deepcopy(worsened)
+        too_long_id["items"][0]["subject_node_id"] = "x" * 257
+        with self.assertRaisesRegex(ValueError, "canonical non-empty string"):
+            future_security_retest_request_from_dict(too_long_id)
+
+        unsorted_effects = copy.deepcopy(worsened)
+        unsorted_effects["items"][0]["effect_ids"] = ["z-effect", "a-effect"]
+        with self.assertRaisesRegex(ValueError, "canonical sorted order"):
+            future_security_retest_request_from_dict(unsorted_effects)
+
+        empty_evidence = copy.deepcopy(worsened)
+        empty_evidence["items"][0]["evidence_ids"] = []
+        with self.assertRaisesRegex(ValueError, "must not be empty"):
+            future_security_retest_request_from_dict(empty_evidence)
+
+        empty_capabilities = copy.deepcopy(worsened)
+        empty_capabilities["items"][0]["capability_ids"] = []
+        with self.assertRaisesRegex(ValueError, "must not be empty"):
+            future_security_retest_request_from_dict(empty_capabilities)
+
+        missing_current_path = copy.deepcopy(worsened)
+        missing_current_path["items"][0]["current_attack_path_ids"] = []
+        with self.assertRaisesRegex(ValueError, "requires current attack paths"):
+            future_security_retest_request_from_dict(missing_current_path)
+
+        duplicate_change = copy.deepcopy(worsened)
+        duplicate_change_item = copy.deepcopy(duplicate_change["items"][0])
+        duplicate_change_item["resolution_id"] = "other-resolution"
+        duplicate_change["items"].append(duplicate_change_item)
+        with self.assertRaisesRegex(ValueError, "change_node_id must be unique"):
+            future_security_retest_request_from_dict(duplicate_change)
+
+        duplicate_resolution = copy.deepcopy(worsened)
+        duplicate_resolution_item = copy.deepcopy(duplicate_resolution["items"][0])
+        duplicate_resolution_item["change_node_id"] = "other-change"
+        duplicate_resolution["items"].append(duplicate_resolution_item)
+        with self.assertRaisesRegex(ValueError, "resolution_id must be unique"):
+            future_security_retest_request_from_dict(duplicate_resolution)
+
+        *_, introduced_request = self._request(
+            AttackPathTransitionClassification.INTRODUCED,
+            suffix="retest-handoff-introduced-path-shape",
+        )
+        introduced = json.loads(introduced_request.to_json())
+        introduced["items"][0]["current_attack_path_ids"] = ["existing-path"]
+        with self.assertRaisesRegex(ValueError, "cannot reference a current attack path"):
+            future_security_retest_request_from_dict(introduced)
+
     def test_item_semantics_and_aggregate_lineage_fail_closed(self):
         *_, request = self._request(
             AttackPathTransitionClassification.WORSENED,
@@ -125,7 +190,7 @@ class FutureSecurityRetestRequestHandoffTest(unittest.TestCase):
 
         duplicate_item = copy.deepcopy(payload)
         duplicate_item["items"].append(copy.deepcopy(duplicate_item["items"][0]))
-        with self.assertRaisesRegex(ValueError, "identity must be unique"):
+        with self.assertRaisesRegex(ValueError, "change_node_id must be unique"):
             future_security_retest_request_from_dict(duplicate_item)
 
         forged_capabilities = copy.deepcopy(payload)
