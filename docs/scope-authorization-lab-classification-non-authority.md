@@ -2,7 +2,7 @@
 
 LightUp keeps the public-authorization gate separate from loopback/private-lab classification.
 
-Attaching a legacy `Authorization` object to a target must not make that object an input to lab classification. Loopback and private/link-local membership are derived from normalized target identity and the explicit `allow_private_lab` policy switch. Public authorization metadata cannot upgrade, downgrade, or otherwise steer those classifications.
+Attaching a legacy `Authorization` object to a target must not make that object an input to lab classification. Loopback membership and explicitly enabled private-lab membership are derived from normalized target identity plus lab policy. Public authorization metadata cannot upgrade, downgrade, or otherwise steer those decisions.
 
 ## Contract
 
@@ -10,13 +10,14 @@ The dedicated regression proves:
 
 - loopback remains `LOOPBACK` with no, current, future, or expired legacy Authorization attached;
 - `localhost` remains a syntactic loopback decision even with expired authorization;
-- private targets remain `PRIVATE_LAB` when `allow_private_lab=True`, independent of authorization state;
-- link-local lab targets follow the same rule;
-- a current Authorization cannot bypass `allow_private_lab=False`: private/link-local targets remain `OUT_OF_SCOPE`.
+- an ordinary private target remains `PRIVATE_LAB` when `allow_private_lab=True`, independent of authorization state;
+- a current Authorization cannot bypass `allow_private_lab=False`: private and link-local targets remain `OUT_OF_SCOPE`.
+
+The invariant deliberately does **not** define link-local/reserved/multicast/unspecified addresses as positive private-lab members. The active #100 hardening lane owns that classification narrowing and excludes those special ranges from the private-lab shortcut.
 
 The precedence is therefore:
 
-`normalize identity -> classify loopback/private policy -> public membership/auth checks`
+`normalize identity -> apply lab identity/policy classification -> public membership/auth checks`
 
 Legacy public authorization is not a lab-classification signal.
 
