@@ -4,7 +4,7 @@ from unittest.mock import patch
 from lightup.capabilities import Capability, CapabilityState, get_capabilities
 from lightup.models import Authorization, Target
 from lightup.orchestrator import Planner
-from lightup.scope import ScopePolicy, ScopeReason
+from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason
 
 
 class PlannerScopeCapabilityBoundaryTest(unittest.TestCase):
@@ -78,6 +78,24 @@ class PlannerScopeCapabilityBoundaryTest(unittest.TestCase):
         self.assertFalse(plan.scope.allowed)
         self.assertEqual(plan.capability_ids, ())
         self.assertFalse(plan.execution_enabled)
+
+    def test_inconsistent_scope_decision_fails_closed(self):
+        class InconsistentPolicy:
+            def __init__(self, decision):
+                self.decision = decision
+
+            def decide(self, _target):
+                return self.decision
+
+        cases = (
+            ScopeDecision(True, "8.8.8.8", ScopeReason.OUT_OF_SCOPE),
+            ScopeDecision(True, "8.8.8.8", ScopeReason.AUTHORIZATION_MISSING),
+            ScopeDecision(False, "127.0.0.1", ScopeReason.LOOPBACK),
+            ScopeDecision(False, "security.example.test", ScopeReason.EXPLICIT_HOST),
+        )
+        for decision in cases:
+            with self.subTest(decision=decision), self.assertRaises(ValueError):
+                Planner(InconsistentPolicy(decision)).build(Target("example.test"))
 
 
     def test_disabled_capability_is_never_planned(self):
