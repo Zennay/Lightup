@@ -59,8 +59,7 @@ def _review_json(
 class FutureRemediationImplementationPlanReviewTest(unittest.TestCase):
     def setUp(self):
         self.base = (
-            request_handoff_tests.
-            FutureRemediationImplementationPlanReviewRequestHandoffTest(
+            request_handoff_tests.FutureRemediationImplementationPlanReviewRequestHandoffTest(
                 "test_json_and_dict_round_trip_require_live_plan_lineage"
             )
         )
@@ -324,7 +323,7 @@ class FutureRemediationImplementationPlanReviewTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "decision must be"):
             replace(review, decision="approved")
 
-    def test_canonical_dict_reconstructs_exact_review(self):
+    def test_canonical_typed_fields_reconstruct_exact_review(self):
         gateway, _ = self._review_gateway(_review_json())
         review = self._review(gateway)
 
