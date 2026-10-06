@@ -1,0 +1,44 @@
+name: ST5 remediation evidence-bundle snapshot hosted validation
+
+on:
+  push:
+    branches:
+      - "chatgpt/st5-remediation-evidence-bundle-snapshot-hosted-validation-20261006"
+    paths:
+      - ".github/workflows/st5-remediation-evidence-bundle-snapshot-hosted-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: st5-remediation-evidence-bundle-snapshot-hosted-validation
+  cancel-in-progress: true
+
+jobs:
+  exact-candidate:
+    name: Exact candidate Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 6014ae8e486d06c02c42b991cc671ba9e6520205
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile exact candidate
+        run: python -m compileall -q src tests
+      - name: Run evidence-bundle snapshot isolation
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests -p 'test_future_remediation_evidence_bundle_snapshot_isolation.py' -v
+      - name: Run strict evidence-bundle handoff
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests -p 'test_future_remediation_evidence_bundle_handoff.py' -v
