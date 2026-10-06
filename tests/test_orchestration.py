@@ -427,6 +427,80 @@ class OrchestrationTest(unittest.TestCase):
         self.assertIn("asset is outside the authorized scope", str(caught.exception))
         self.assertEqual(calls, [])
 
+    def test_target_active_handler_receives_live_persisted_authorization(self):
+        domain = DomainStore(Path(self.tmp.name) / "handler-authority.db")
+        operator = AccessContext("handler-operator", Role.OPERATOR)
+        client = domain.create_client(operator, "Handler authority client")
+        engagement = domain.create_engagement(
+            operator, client.client_id, "Handler authority engagement"
+        )
+        now = datetime.now(timezone.utc)
+        persisted = domain.record_authorization_grant(
+            operator,
+            engagement.engagement_id,
+            approved_by="client signatory",
+            reference="AUTH-HANDLER-AUTHORITY",
+            scope=ScopeDefinition(
+                assets=("allowed.test",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("network-services",),
+            ),
+            valid_from=now - timedelta(minutes=5),
+            valid_until=now + timedelta(hours=1),
+        )
+        stale_broader_snapshot = dataclasses.replace(
+            persisted,
+            scope=ScopeDefinition(
+                assets=("allowed.test", "outside.test"),
+                max_risk=RiskLevel.ELEVATED,
+                allowed_capabilities=("network-services", "identity-access"),
+            ),
+        )
+        context = RunContext(
+            run_id=str(uuid4()),
+            client_id=client.client_id,
+            engagement_id=engagement.engagement_id,
+            mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
+            approved_risk=RiskLevel.STANDARD,
+            authorization=stale_broader_snapshot,
+            is_lab=False,
+            created_at=now,
+        )
+        observed_authorizations: list[AuthorizationGrant | None] = []
+        registry = ToolRegistry()
+
+        def capture_live_authority(handler_context, arguments):
+            observed_authorizations.append(handler_context.authorization)
+            return ToolOutput("ran", "probe", b"evidence")
+
+        registry.register(
+            ToolDefinition(
+                "handler-authority-probe",
+                "network-services",
+                InteractionKind.TARGET_ACTIVE,
+                RiskLevel.STANDARD,
+                "test-only target-active handler",
+            ),
+            capture_live_authority,
+        )
+        executor = ToolExecutor(
+            registry,
+            self.state,
+            authorization_resolver=domain.resolve_authorization_for_execution,
+        )
+
+        executor.execute(
+            context, ToolCall("handler-authority-probe", "allowed.test")
+        )
+
+        self.assertEqual(observed_authorizations, [persisted])
+        self.assertEqual(context.authorization, stale_broader_snapshot)
+        self.assertNotEqual(
+            observed_authorizations[0].scope,
+            stale_broader_snapshot.scope,
+            "handler must not inherit stale broader authorization metadata",
+        )
+
     def test_out_of_scope_asset_denied(self):
         context = _context(AssessmentMode.AUTHORIZED_ASSESSMENT, RiskLevel.STANDARD,
                            authorization=_grant("allowed.test"))
