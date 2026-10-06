@@ -59,11 +59,22 @@ class AuthorizationGrant:
     valid_from: datetime
     valid_until: datetime
     recurring_retest_allowed: bool = False
+    revoked_at: datetime | None = None
+    revoked_by: str | None = None
+    revocation_reason: str | None = None
+
+    @property
+    def is_revoked(self) -> bool:
+        return self.revoked_at is not None
 
     def is_current(self, now: datetime | None = None) -> bool:
         now = now or datetime.now(timezone.utc)
         if now.tzinfo is None:
             raise ValueError("authorization time must be timezone-aware")
+        if self.revoked_at is not None:
+            if self.revoked_at.tzinfo is None:
+                raise ValueError("authorization revocation time must be timezone-aware")
+            return False
         return self.valid_from <= now <= self.valid_until
 
 
