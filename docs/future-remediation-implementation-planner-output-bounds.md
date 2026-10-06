@@ -16,7 +16,8 @@ The regressions prove:
 - plan-item IDs reject empty values and lengths above 128 characters;
 - intent, verification-intent, and rollback-intent text reject NUL characters and lengths above 1,200 characters;
 - assumptions and unresolved questions must be lists with at most 20 entries;
-- assumption/question text rejects NUL characters and lengths above 800 characters.
+- assumption/question text rejects empty/whitespace-only values, NUL characters and lengths above 800 characters;
+- surrounding whitespace is canonicalized before hashing, so semantically identical padded output yields the same plan content and plan digest.
 
 ## Collision and safety boundary
 
