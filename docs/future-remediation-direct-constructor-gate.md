@@ -18,6 +18,9 @@ For all eight top-level artifacts, the gate proves:
 
 - the directly constructed object serializes and round-trips through its strict
   persisted parser without normalization drift;
+- strict structural parsing remains deliberately weaker than live validation:
+  after evidence-ledger SHA drift, the unchanged final review still parses
+  structurally while its complete live-lineage validator rejects reuse;
 - every code/tool/execution/target/retest/deploy/attack-path authority field is
   fixed false;
 - `future_semantics` remains `unresolved`;
