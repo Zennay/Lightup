@@ -23,6 +23,7 @@ class ActivationTests(unittest.TestCase):
         )
         permit = gate.issue(Target("10.10.0.5"), "web-baseline")
         self.assertEqual(permit.mode, ActivationMode.LAB_ONLY)
+        self.assertIsNone(permit.authorization_reference)
 
     def test_authorized_public_permit_requires_bound_asset(self):
         policy = ScopePolicy(
@@ -47,6 +48,8 @@ class ActivationTests(unittest.TestCase):
             "web-baseline",
         )
         self.assertEqual(permit.mode, ActivationMode.AUTHORIZED)
+        self.assertEqual(permit.activation_reference, "ACTIVE-TEST")
+        self.assertEqual(permit.authorization_reference, "AUTH-1")
         with self.assertRaises(PermissionError):
             gate.issue(
                 Target("other.example.test", authorization=auth),
