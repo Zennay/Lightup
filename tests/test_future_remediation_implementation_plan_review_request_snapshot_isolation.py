@@ -140,6 +140,24 @@ class FutureRemediationImplementationPlanReviewRequestSnapshotIsolationTest(
         self.assertEqual(parsed.required_checks, self.request.required_checks)
         self.assertFalse(parsed.execution_allowed)
 
+    def test_parser_detaches_from_mutable_required_checks_list(self):
+        persisted = self.request.as_dict()
+        mutable_checks = list(persisted["required_checks"])
+        persisted["required_checks"] = mutable_checks
+
+        parsed = future_remediation_implementation_plan_review_request_from_dict(
+            persisted
+        )
+        parsed_json = parsed.to_json()
+
+        mutable_checks[0] = "forged-after-parse"
+        mutable_checks.append("execute_now")
+
+        self.assertEqual(parsed.to_json(), parsed_json)
+        self.assertEqual(parsed.required_checks, self.request.required_checks)
+        self.assertNotIn("forged-after-parse", parsed.required_checks)
+        self.assertNotIn("execute_now", parsed.required_checks)
+
 
 if __name__ == "__main__":
     unittest.main()
