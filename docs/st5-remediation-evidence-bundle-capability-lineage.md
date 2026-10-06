@@ -7,9 +7,7 @@ the canonical remediation-evidence producer when a bundle crosses the persisted
 ## Producer contract
 
 The #60 producer rereads every evidence record from live `StateStore` and
-fails closed if the record's `capability_id` is outside the remediation item's
-declared `capability_ids`. A canonical bundle therefore cannot contain an
-evidence reference whose capability is absent from its enclosing item lineage.
+requires the fresh evidence capability set to exactly match the transition-resolution capability lineage. The remediation bundle copies that same item lineage. A canonical bundle therefore cannot contain an evidence capability outside its enclosing item, nor an item capability with no supporting evidence record.
 
 The strict #194 parser currently validates both structures independently and
 recomputes the evidence-manifest and bundle digests, but it does not reassert
@@ -19,10 +17,7 @@ that membership relationship.
 
 The positive control round-trips real INTRODUCED and WORSENED producer bundles.
 
-The forged case changes only one nested evidence `capability_id` to a different
-non-empty identifier that is absent from the item's `capability_ids`, then
-recomputes both `evidence_manifest_sha256` and `bundle_sha256`. Strict
-persisted parsing must still fail closed.
+The first forged case changes one nested evidence `capability_id` to a different non-empty identifier that is absent from the item's `capability_ids`, then recomputes both `evidence_manifest_sha256` and `bundle_sha256`. The second adds a new item capability that no evidence record supports and recomputes the bundle digest. Strict persisted parsing must fail closed in both directions.
 
 The parser must reject this contradiction rather than widening the item
 capability union or normalizing the caller input. Full ledger freshness and
