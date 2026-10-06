@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -22,6 +23,28 @@ class ActivationTests(unittest.TestCase):
         )
         permit = gate.issue(Target("10.10.0.5"), "web-baseline")
         self.assertEqual(permit.mode, ActivationMode.LAB_ONLY)
+
+    def test_revoked_public_authorization_never_issues_permit(self):
+        policy = ScopePolicy(explicit_hosts=frozenset({"authorized.example.test"}))
+        gate = ActivationGate(
+            policy,
+            ActivationPolicy(
+                mode=ActivationMode.AUTHORIZED,
+                activation_reference="ACTIVE-TEST",
+            ),
+        )
+        target = Target(
+            "authorized.example.test",
+            authorization=Authorization(
+                owner="owner",
+                reference="AUTH-1",
+                revoked_at=datetime.now(timezone.utc),
+                revoked_by="op-1",
+                revocation_reason="scope withdrawn",
+            ),
+        )
+        with self.assertRaises(PermissionError):
+            gate.issue(target, "web-baseline")
 
     def test_lab_only_rejects_explicit_public_target(self):
         policy = ScopePolicy(explicit_hosts=frozenset({"authorized.example.test"}))
