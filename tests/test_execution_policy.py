@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -62,6 +63,25 @@ class ExecutionPolicyTests(unittest.TestCase):
             )
         )
         self.assertTrue(decision.allowed)
+
+    def test_revoked_authorization_is_denied(self):
+        revoked = replace(
+            self.grant,
+            revoked_at=datetime.now(timezone.utc),
+            revoked_by="op-2",
+            revocation_reason="scope withdrawn",
+        )
+        decision = self.policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset="app.example.test",
+                capability_id="web-baseline",
+                requested_risk=RiskLevel.STANDARD,
+                authorization=revoked,
+            )
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, "authorization is not currently valid")
 
     def test_risk_escalation_is_denied(self):
         decision = self.policy.decide(
