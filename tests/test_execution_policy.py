@@ -41,6 +41,21 @@ class ExecutionPolicyTests(unittest.TestCase):
         )
         self.assertTrue(decision.allowed)
 
+    def test_raw_string_target_interaction_fails_closed(self):
+        decision = self.policy.decide(
+            ExecutionRequest(
+                interaction="target_active",  # type: ignore[arg-type]
+                asset="app.example.test",
+                capability_id="web-baseline",
+                requested_risk=RiskLevel.STANDARD,
+                client_id="client-1",
+                engagement_id="eng-1",
+                authorization=self.grant,
+            )
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, "interaction must be an InteractionKind")
+
     def test_raw_integer_requested_risk_fails_closed(self):
         decision = self.policy.decide(
             ExecutionRequest(
