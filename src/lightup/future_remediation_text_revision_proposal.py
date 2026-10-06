@@ -41,6 +41,22 @@ _MAX_MODEL_OUTPUT_CHARS = 16_000
 _MAX_OUTPUT_TOKENS = 1_200
 
 
+def _canonical_sha256(value: object, *, field: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise ValueError(f"{field} must be a canonical lowercase SHA-256 digest")
+    return value
+
+
+def _non_empty_string(value: object, *, field: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{field} must be a non-empty string")
+    return value
+
+
 @dataclass(frozen=True)
 class FutureRemediationTextRevisionProposal:
     schema_version: str
@@ -66,6 +82,44 @@ class FutureRemediationTextRevisionProposal:
     security_verdict: str = "not_evaluated"
 
     def __post_init__(self) -> None:
+        if self.schema_version != REMEDIATION_TEXT_REVISION_PROPOSAL_SCHEMA_VERSION:
+            raise ValueError("remediation text revision proposal schema version mismatch")
+        for field in (
+            "revision_request_sha256",
+            "prior_review_sha256",
+            "prior_proposal_sha256",
+            "prior_content_sha256",
+            "content_sha256",
+            "revision_proposal_sha256",
+        ):
+            _canonical_sha256(
+                getattr(self, field),
+                field=f"remediation text revision proposal {field}",
+            )
+        _non_empty_string(
+            self.provider_id,
+            field="remediation text revision proposal provider_id",
+        )
+        _non_empty_string(
+            self.model_id,
+            field="remediation text revision proposal model_id",
+        )
+        _non_empty_string(
+            self.content,
+            field="remediation text revision proposal content",
+        )
+        if self.content != self.content.strip():
+            raise ValueError(
+                "remediation text revision proposal content must be canonical trimmed text"
+            )
+        if "\x00" in self.content:
+            raise ValueError("remediation text revision proposal content contains NUL")
+        if len(self.content) > _MAX_MODEL_OUTPUT_CHARS:
+            raise ValueError(
+                "remediation text revision proposal content exceeds the bounded output size"
+            )
+        if _content_digest(self.content) != self.content_sha256:
+            raise ValueError("remediation text revision proposal content digest mismatch")
         if self.remediation_revision_proposal_created is not True:
             raise ValueError("remediation_revision_proposal_created must remain true")
         if self.remediation_accepted is not False:
@@ -85,6 +139,17 @@ class FutureRemediationTextRevisionProposal:
             raise ValueError("future_semantics must remain unresolved")
         if self.security_verdict != "not_evaluated":
             raise ValueError("security_verdict must remain not_evaluated")
+        expected_revision_proposal_sha256 = _revision_proposal_digest(
+            revision_request_sha256=self.revision_request_sha256,
+            prior_review_sha256=self.prior_review_sha256,
+            prior_proposal_sha256=self.prior_proposal_sha256,
+            prior_content_sha256=self.prior_content_sha256,
+            provider_id=self.provider_id,
+            model_id=self.model_id,
+            content=self.content,
+        )
+        if self.revision_proposal_sha256 != expected_revision_proposal_sha256:
+            raise ValueError("remediation text revision proposal digest mismatch")
 
     def as_dict(self) -> dict:
         return asdict(self)
