@@ -25,7 +25,11 @@ a list or scalar also fails closed before digest validation. The direct
 persisted-dict entry points reject top-level schema widening and erosion,
 nested widening and erosion, and non-object top-level values, so callers cannot
 bypass the JSON path by pre-decoding input. Canonical baseline artifacts continue to
-round-trip unchanged.
+round-trip unchanged. Seven non-authoring top-level artifacts also round-trip
+directly from their public `as_dict()` representation through the strict
+`from_dict()` parser. The authoring request is intentionally excluded from
+that positive assertion because its tuple/list representation mismatch is
+tracked separately as #268 under the existing #198/#256 ownership.
 
 ## Collision boundary
 
