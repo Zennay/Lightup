@@ -133,6 +133,46 @@ class OrchestrationTest(unittest.TestCase):
         self.assertIn("min_risk must be a RiskLevel", str(caught.exception))
         self.assertEqual(registry.definitions(), ())
 
+    def test_registry_rejects_lab_only_capability_outside_lab_interaction(self):
+        for interaction in (
+            InteractionKind.TARGET_ACTIVE,
+            InteractionKind.PASSIVE_PUBLIC,
+            InteractionKind.ANALYSIS,
+        ):
+            with self.subTest(interaction=interaction):
+                registry = ToolRegistry()
+                with self.assertRaisesRegex(
+                    OrchestrationError, "requires LAB_ACTIVE interaction"
+                ):
+                    registry.register(
+                        ToolDefinition(
+                            f"wireless-{interaction.value}",
+                            "wireless-lab",
+                            interaction,
+                            RiskLevel.STANDARD,
+                            "test-only semantic mismatch",
+                        ),
+                        _active_tool,
+                    )
+                self.assertEqual(registry.definitions(), ())
+
+    def test_registry_allows_lab_only_capability_for_lab_interaction(self):
+        registry = ToolRegistry()
+        registry.register(
+            ToolDefinition(
+                "wireless-lab-sim",
+                "wireless-lab",
+                InteractionKind.LAB_ACTIVE,
+                RiskLevel.DESTRUCTIVE_LAB_ONLY,
+                "isolated wireless lab simulation",
+            ),
+            _active_tool,
+        )
+        self.assertEqual(
+            tuple(definition.tool_id for definition in registry.definitions()),
+            ("wireless-lab-sim",),
+        )
+
     def test_run_context_is_immutable(self):
         context = _context(AssessmentMode.PASSIVE_DISCOVERY, RiskLevel.PASSIVE)
         with self.assertRaises(dataclasses.FrozenInstanceError):
