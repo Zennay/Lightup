@@ -811,34 +811,59 @@ class DomainStore:
             )
         if scope.max_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
             raise ValueError("destructive risk is lab-only and cannot be client-authorized")
-        engagement = self.get_engagement(ctx, engagement_id)
-        if engagement.status is EngagementStatus.CLOSED:
-            raise ValueError("closed engagement cannot receive authorization grants")
-        grant = AuthorizationGrant(
-            grant_id=str(uuid4()),
-            client_id=engagement.client_id,
-            engagement_id=engagement.engagement_id,
-            approved_by=approved_by.strip(),
-            reference=reference.strip(),
-            scope=scope,
-            valid_from=valid_from,
-            valid_until=valid_until,
-            recurring_retest_allowed=recurring_retest_allowed,
-        )
+        # Serialize the lifecycle check with grant persistence. If closure wins
+        # the write lock first, issuance observes CLOSED and fails. If issuance
+        # wins first, a subsequent closure sees and revokes this grant.
         with self._connect() as con:
-            con.execute(
-                "INSERT INTO authorization_grants("
-                "grant_id,client_id,engagement_id,approved_by,reference,assets_json,"
-                "excluded_assets_json,allowed_capabilities_json,max_risk,valid_from,"
-                "valid_until,recurring_retest_allowed,created_at) "
-                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (grant.grant_id, grant.client_id, grant.engagement_id, grant.approved_by,
-                 grant.reference, json.dumps(list(scope.assets)),
-                 json.dumps(list(scope.excluded_assets)),
-                 json.dumps(list(scope.allowed_capabilities)), int(scope.max_risk),
-                 valid_from.isoformat(), valid_until.isoformat(),
-                 1 if recurring_retest_allowed else 0, utcnow().isoformat()),
-            )
+            con.execute("BEGIN IMMEDIATE")
+            try:
+                row = con.execute(
+                    "SELECT client_id,status FROM engagements WHERE engagement_id=?",
+                    (engagement_id,),
+                ).fetchone()
+                if row is None:
+                    raise KeyError(f"unknown engagement {engagement_id!r}")
+                if EngagementStatus(row["status"]) is EngagementStatus.CLOSED:
+                    raise ValueError(
+                        "closed engagement cannot receive authorization grants"
+                    )
+                grant = AuthorizationGrant(
+                    grant_id=str(uuid4()),
+                    client_id=row["client_id"],
+                    engagement_id=engagement_id,
+                    approved_by=approved_by.strip(),
+                    reference=reference.strip(),
+                    scope=scope,
+                    valid_from=valid_from,
+                    valid_until=valid_until,
+                    recurring_retest_allowed=recurring_retest_allowed,
+                )
+                con.execute(
+                    "INSERT INTO authorization_grants("
+                    "grant_id,client_id,engagement_id,approved_by,reference,assets_json,"
+                    "excluded_assets_json,allowed_capabilities_json,max_risk,valid_from,"
+                    "valid_until,recurring_retest_allowed,created_at) "
+                    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (
+                        grant.grant_id,
+                        grant.client_id,
+                        grant.engagement_id,
+                        grant.approved_by,
+                        grant.reference,
+                        json.dumps(list(scope.assets)),
+                        json.dumps(list(scope.excluded_assets)),
+                        json.dumps(list(scope.allowed_capabilities)),
+                        int(scope.max_risk),
+                        valid_from.isoformat(),
+                        valid_until.isoformat(),
+                        1 if recurring_retest_allowed else 0,
+                        utcnow().isoformat(),
+                    ),
+                )
+                con.execute("COMMIT")
+            except Exception:
+                con.execute("ROLLBACK")
+                raise
         return grant
 
     @staticmethod
