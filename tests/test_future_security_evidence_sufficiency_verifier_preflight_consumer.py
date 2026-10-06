@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import unittest
 
 import test_future_security_evidence_sufficiency_verifier_preflight as preflight_tests
@@ -89,7 +90,7 @@ class FutureSecurityEvidenceSufficiencyVerifierPreflightConsumerTest(unittest.Te
     def test_strict_digest_tampering_fails_before_live_acceptance(self):
         produced = self._producer(suffix="preflight-consumer-tamper")
         preflight = produced[-1]
-        payload = preflight.as_dict()
+        payload = json.loads(preflight.to_json())
         payload["preflight_sha256"] = "0" * 64
         with self.assertRaisesRegex(ValueError, "digest mismatch"):
             self._consume(payload, produced)
