@@ -1,0 +1,72 @@
+name: ST5 plan-review snapshots hosted validation
+
+on:
+  push:
+    branches:
+      - "chatgpt/st5-plan-review-snapshots-hosted-validation-20261006"
+    paths:
+      - ".github/workflows/st5-plan-review-snapshots-hosted-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: st5-plan-review-snapshots-hosted-validation
+  cancel-in-progress: true
+
+jobs:
+  review-snapshot:
+    name: Review snapshot Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: afbbf3c6973553e46b7f74b668d2c2981939eda2
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile exact candidate
+        run: python -m compileall -q src tests
+      - name: Run review snapshot isolation
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests -p 'test_future_remediation_implementation_plan_review_snapshot_isolation.py' -v
+      - name: Run strict review handoff
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests -p 'test_future_remediation_implementation_plan_review_handoff.py' -v
+
+  review-request-snapshot:
+    name: Review-request snapshot Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 6f3219d623d6247168c41f87a34a89a832e4d189
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile exact candidate
+        run: python -m compileall -q src tests
+      - name: Run review-request snapshot isolation
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests -p 'test_future_remediation_implementation_plan_review_request_snapshot_isolation.py' -v
+      - name: Run strict review-request handoff
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests -p 'test_future_remediation_implementation_plan_review_request_handoff.py' -v
