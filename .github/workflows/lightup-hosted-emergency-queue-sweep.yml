@@ -110,7 +110,11 @@ jobs:
                   })
                   continue
 
-              if age_s < minimum_age_seconds:
+              own_recovery_branch = (
+                  str(run.get("head_branch") or "")
+                  == "chatgpt/evidence-remediation-hosted-queue-sweep-20261006"
+              )
+              if age_s < minimum_age_seconds and not own_recovery_branch:
                   retained.append({
                       "id": run_id,
                       "reason": "too-recent",
