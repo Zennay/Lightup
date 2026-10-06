@@ -103,6 +103,11 @@ class FutureSecurityRetestRequestHandoffTest(unittest.TestCase):
         )
         payload = json.loads(request.to_json())
 
+        graph_action = copy.deepcopy(payload)
+        graph_action["items"][0]["graph_diff_action"] = "modify_existing_path_risk_down"
+        with self.assertRaisesRegex(ValueError, "semantics mismatch"):
+            future_security_retest_request_from_dict(graph_action)
+
         purpose = copy.deepcopy(payload)
         purpose["items"][0]["purpose"] = "improvement_verification"
         with self.assertRaisesRegex(ValueError, "semantics mismatch"):
