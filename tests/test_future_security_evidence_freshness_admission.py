@@ -97,21 +97,36 @@ class FutureSecurityEvidenceFreshnessAdmissionTest(unittest.TestCase):
     def test_fresh_new_run_evidence_passes_without_security_classification(self):
         (
             current,
-            _,
+            proposal,
             source_context,
             resolution,
-            _,
-            _,
-            _,
+            preview,
+            report,
+            plan,
             request,
             constraints,
-            candidate_context,
-            evidence_id,
-            admission,
-        ) = self._admission(suffix="admission-fresh")
+        ) = self.base._constraints(suffix="admission-fresh")
+        candidate_context, evidence_id = self._candidate(
+            source_context,
+            suffix="admission-fresh-candidate",
+        )
         current_before = dataclasses.asdict(current)
         request_before = dataclasses.asdict(request)
         constraints_before = dataclasses.asdict(constraints)
+        admission = admit_future_security_evidence_freshness(
+            constraints,
+            source_resolution_id=resolution.resolution_id,
+            candidate_evidence_ids=(evidence_id,),
+            candidate_context=candidate_context,
+            request=request,
+            plan=plan,
+            report=report,
+            preview=preview,
+            proposal=proposal,
+            resolutions=(resolution,),
+            source_contexts=(source_context,),
+            state=self.state,
+        )
 
         self.assertEqual(admission.schema_version, ADMISSION_SCHEMA_VERSION)
         self.assertEqual(admission.constraints_sha256, constraints.constraints_sha256)
