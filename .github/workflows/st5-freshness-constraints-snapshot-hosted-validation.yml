@@ -1,0 +1,44 @@
+name: ST5 freshness constraints snapshot hosted validation
+
+on:
+  push:
+    branches:
+      - "chatgpt/st5-freshness-constraints-snapshot-hosted-validation-20261006"
+    paths:
+      - ".github/workflows/st5-freshness-constraints-snapshot-hosted-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: st5-freshness-constraints-snapshot-hosted-validation
+  cancel-in-progress: true
+
+jobs:
+  exact-candidate:
+    name: Exact candidate Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 9360b8b5688a2f49207634cfaa118ad782fa78d5
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile exact candidate
+        run: python -m compileall -q src tests
+      - name: Run freshness constraints snapshot isolation
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests -p 'test_future_security_evidence_freshness_constraints_snapshot_isolation.py' -v
+      - name: Run strict constraints consumer regression
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests -p 'test_future_security_evidence_freshness_constraints_consumer.py' -v
