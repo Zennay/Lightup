@@ -25,7 +25,8 @@ from ..ai.orchestration import (
 )
 from ..engagements import RiskLevel
 from ..execution_policy import InteractionKind
-from ..labeval import LabIsolationError, assert_lab_target
+from ..lab_context import require_lab_worker_context
+from ..labeval import assert_lab_target
 
 TOOL_ID = "lab-service-inventory"
 CAPABILITY_ID = "network-services"
@@ -64,8 +65,7 @@ def inventory(host: str, ports: tuple[int, ...], timeout: float = 0.5) -> dict[i
 
 
 def run_service_inventory(context: RunContext, arguments: dict[str, Any]) -> ToolOutput:
-    if not context.is_lab:
-        raise LabIsolationError("the service inventory worker only runs in lab contexts")
+    require_lab_worker_context(context)
     host = str(arguments["host"])
     ports = parse_ports(str(arguments["ports"]))
     results = inventory(host, ports)
