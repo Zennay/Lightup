@@ -32,7 +32,7 @@ class ScopeCanonicalCidrAcceptanceTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             policy.decide(
                 Target(
-                    "2001:4860:4860::8844",
+                    "[2001:4860:4860::8844]",
                     authorization=self._authorization(),
                 )
             )
@@ -74,13 +74,13 @@ class ScopeCanonicalCidrAcceptanceTest(unittest.TestCase):
         )
         inside = policy.decide(
             Target(
-                "2001:4860:4860::8888",
+                "[2001:4860:4860::8888]",
                 authorization=self._authorization(),
             )
         )
         outside = policy.decide(
             Target(
-                "2001:4860:4860::8844",
+                "[2001:4860:4860::8844]",
                 authorization=self._authorization(),
             )
         )
