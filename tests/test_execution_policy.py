@@ -117,6 +117,44 @@ class ExecutionPolicyTests(unittest.TestCase):
             "authorization engagement does not match execution engagement",
         )
 
+    def test_trailing_dot_cannot_bypass_excluded_asset(self):
+        grant = replace(
+            self.grant,
+            scope=ScopeDefinition(
+                assets=("app.example.test.",),
+                excluded_assets=("app.example.test",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("web-baseline",),
+            ),
+        )
+        decision = self.policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset="app.example.test.",
+                capability_id="web-baseline",
+                requested_risk=RiskLevel.STANDARD,
+                client_id="client-1",
+                engagement_id="eng-1",
+                authorization=grant,
+            )
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, "asset is outside the authorized scope")
+
+    def test_trailing_dot_is_equivalent_for_authorized_dns_asset(self):
+        decision = self.policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset="app.example.test.",
+                capability_id="web-baseline",
+                requested_risk=RiskLevel.STANDARD,
+                client_id="client-1",
+                engagement_id="eng-1",
+                authorization=self.grant,
+            )
+        )
+        self.assertTrue(decision.allowed)
+
     def test_empty_capability_scope_denies_active_capability(self):
         empty_scope = replace(
             self.grant,
