@@ -85,6 +85,27 @@ class WebAuthorizationInputStrictnessTest(unittest.TestCase):
             [],
         )
 
+    def test_missing_capabilities_never_means_all(self):
+        engagement = self._engagement()
+        status, _, _ = self.request(
+            "POST",
+            f"/engagements/{engagement.engagement_id}/grants",
+            {
+                "approved_by": "CISO",
+                "reference": "AUTH-1",
+                "assets": "app.acme.example",
+                "max_risk": "3",
+                "valid_days": "30",
+            },
+            token=self.operator_token,
+            csrf=self.operator_csrf,
+        )
+        self.assertEqual(status, "400 Bad Request")
+        self.assertEqual(
+            self.store.list_authorization_grants(self.operator, engagement.engagement_id),
+            [],
+        )
+
     def test_grant_validity_is_rejected_instead_of_clamped(self):
         engagement = self._engagement()
         for raw_days in ("0", "366", "-1", "1.5", ""):
