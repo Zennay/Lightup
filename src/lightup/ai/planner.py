@@ -23,6 +23,7 @@ from ..ai.orchestration import (
     ToolCall,
     ToolDenied,
     ToolExecutor,
+    ToolDefinition,
     ToolRegistry,
     ToolResult,
 )
