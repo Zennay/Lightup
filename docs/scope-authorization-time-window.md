@@ -30,6 +30,14 @@ the exact target asset only when the active model includes PR #100's
 current `main` and the active #100 legacy-authorization hardening without
 modifying or claiming #100-owned source.
 
+## Compatibility proof
+
+The same seven-test temporal contract was executed against active PR #100 exact
+head `ef553b6e0aa0c99855e9907f4b2dee9edc5aac0f`, including its `assets`,
+revocation, and asset-binding logic. All temporal invariants remained green and
+future/expired public-host authorization still failed at
+`AUTHORIZATION_EXPIRED` before asset acceptance.
+
 ## Safety
 
 All checks are deterministic datetime comparisons or in-memory
