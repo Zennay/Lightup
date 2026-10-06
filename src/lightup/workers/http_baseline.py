@@ -34,6 +34,7 @@ from ..ai.orchestration import (
 )
 from ..engagements import RiskLevel
 from ..execution_policy import InteractionKind
+from ..lab_context import require_lab_worker_context
 from ..labeval import LabIsolationError, assert_lab_target
 from ..models import Severity
 
@@ -157,8 +158,7 @@ def observe(url: str, timeout: float = 5.0) -> BaselineObservation:
 
 def run_http_baseline(context: RunContext, arguments: dict[str, Any]) -> ToolOutput:
     """ToolHandler: lab-only HTTP baseline with defense-in-depth lab checks."""
-    if not context.is_lab:
-        raise LabIsolationError("the HTTP baseline worker only runs in lab contexts")
+    require_lab_worker_context(context)
     observation = observe(str(arguments["url"]))
     missing = ", ".join(i.check_id for i in observation.issues) or "none"
     return ToolOutput(

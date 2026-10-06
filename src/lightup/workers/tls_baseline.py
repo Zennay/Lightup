@@ -28,7 +28,8 @@ from ..ai.orchestration import (
 )
 from ..engagements import RiskLevel
 from ..execution_policy import InteractionKind
-from ..labeval import LabIsolationError, assert_lab_target
+from ..lab_context import require_lab_worker_context
+from ..labeval import assert_lab_target
 from ..models import Severity
 
 TOOL_ID = "lab-tls-baseline"
@@ -136,8 +137,7 @@ def observe(host: str, port: int, timeout: float = 5.0) -> TlsObservation:
 
 
 def run_tls_baseline(context: RunContext, arguments: dict[str, Any]) -> ToolOutput:
-    if not context.is_lab:
-        raise LabIsolationError("the TLS baseline worker only runs in lab contexts")
+    require_lab_worker_context(context)
     observation = observe(str(arguments["host"]), int(arguments["port"]))
     found = ", ".join(i.check_id for i in observation.issues) or "none"
     return ToolOutput(
