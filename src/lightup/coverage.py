@@ -61,7 +61,17 @@ class CoverageReport:
 
     @staticmethod
     def build(assessed: dict[str, CoverageStatus] | None = None) -> "CoverageReport":
-        assessed = dict(assessed or {})
+        if assessed is None:
+            assessed = {}
+        elif type(assessed) is not dict:
+            raise TypeError("assessed coverage must be an exact dict")
+
+        for capability_id, status in assessed.items():
+            if type(capability_id) is not str or not capability_id:
+                raise TypeError("assessed capability_id must be a non-empty string")
+            if type(status) is not CoverageStatus:
+                raise TypeError("assessed status must be an exact CoverageStatus member")
+
         capabilities = get_capabilities()
         known_ids = {capability.capability_id for capability in capabilities}
         unknown_keys = set(assessed) - known_ids
