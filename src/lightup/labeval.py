@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from .ai.orchestration import RunContext
+from .engagements import AssessmentMode
 from .scope import ScopePolicy, ScopeReason
 
 _LAB_REASONS = {ScopeReason.LOOPBACK, ScopeReason.PRIVATE_LAB}
@@ -155,11 +156,17 @@ class LabEvaluationHarness:
 
     engine_version: str = "m1-dev"
     records: list[EvaluationRecord] = field(default_factory=list)
+    _contexts: dict[str, RunContext] = field(default_factory=dict, init=False, repr=False)
 
     def start_run(self, scenario: LabScenario) -> RunContext:
         for target in scenario.targets:
             assert_lab_target(target)
-        return RunContext.for_lab(run_id=str(uuid4()), engagement_id=scenario.scenario_id)
+        context = RunContext.for_lab(
+            run_id=str(uuid4()),
+            engagement_id=scenario.scenario_id,
+        )
+        self._contexts[context.run_id] = context
+        return context
 
     def record(
         self,
@@ -169,8 +176,23 @@ class LabEvaluationHarness:
         model_bindings: tuple[tuple[str, str], ...] = (),
         notes: str = "",
     ) -> EvaluationRecord:
-        if not context.is_lab:
-            raise LabIsolationError("evaluation records are lab-only")
+        expected_context = self._contexts.get(context.run_id)
+        if expected_context is None:
+            raise LabIsolationError(
+                "evaluation records require a context created by this harness"
+            )
+        if context != expected_context:
+            raise LabIsolationError(
+                "evaluation RunContext no longer matches the harness-minted context"
+            )
+        if context.engagement_id != scenario.scenario_id:
+            raise LabIsolationError(
+                "evaluation RunContext belongs to another lab scenario"
+            )
+        if context.is_lab is not True or context.mode is not AssessmentMode.LAB_AUTONOMOUS:
+            raise LabIsolationError("evaluation records require an exact lab context")
+        if context.authorization is not None:
+            raise LabIsolationError("lab evaluation contexts cannot carry authorization")
         metrics.validate()
         record = EvaluationRecord(
             record_id=str(uuid4()),
