@@ -16,6 +16,7 @@ The regression contract proves:
 - nested original/revised review-check dictionaries produced by `as_dict()` are detached copies;
 - a mutated snapshot cannot poison the canonical JSON retained by the source artifact;
 - the untouched canonical JSON still round-trips through the corresponding strict parser after snapshot mutation;
+- if a detached snapshot is forged and reserialized, every strict parser rejects action-authority, future-semantics and security-verdict widening;
 - independently requested snapshots do not share their top-level dictionary.
 
 ## Boundary
