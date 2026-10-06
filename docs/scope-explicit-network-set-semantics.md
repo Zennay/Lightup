@@ -25,6 +25,8 @@ scope even when it carries a current authorization object.
 - duplicate entries do not bypass the authorization requirement;
 - network ordering does not change the resulting `ScopeDecision`;
 - overlapping CIDRs do not mint authorization;
+- disabling the public-authorization requirement does not widen membership beyond the declared CIDR;
+- malformed string CIDRs are not silently ignored, regardless of their position in the configured tuple;
 - IPv4 targets cannot match IPv6-only policy and bracketed IPv6 authorities cannot match
   IPv4-only policy;
 - a bracketed public IPv6 authority inside an explicit network still requires
@@ -32,8 +34,10 @@ scope even when it carries a current authorization object.
 
 During validation, bare IPv6 input exposed a separate parser-boundary gap: current
 schemeless parsing truncates the host token instead of preserving the full literal.
-That behavior fails closed in the observed case and is tracked separately as #291;
-this branch does not touch the actively owned `scope.py` implementation.
+That behavior fails closed in the observed case and is tracked separately as #291.
+Validation also found that non-string `explicit_networks` entries can be coerced by
+`ip_network()` into real networks; that authority-minting type-confusion gap is tracked
+as #292. This branch does not touch the actively owned `scope.py` implementation.
 
 ## Safety boundary
 
