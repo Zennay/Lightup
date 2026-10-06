@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable
 
-from ..capabilities import get_capabilities
+from ..capabilities import CapabilityState, get_capabilities
 from ..engagements import AssessmentMode, AuthorizationGrant, RiskLevel
 from ..execution_policy import ExecutionPolicy, ExecutionRequest, InteractionKind
 from ..state import StateStore
@@ -181,10 +181,25 @@ class ToolRegistry:
             raise OrchestrationError(
                 f"tool {definition.tool_id!r} min_risk must be a RiskLevel"
             )
-        if definition.capability_id not in {c.capability_id for c in get_capabilities()}:
+        capabilities = {
+            capability.capability_id: capability for capability in get_capabilities()
+        }
+        capability = capabilities.get(definition.capability_id)
+        if capability is None:
             raise OrchestrationError(
                 f"tool {definition.tool_id!r} references unknown capability "
                 f"{definition.capability_id!r}"
+            )
+        if capability.state is CapabilityState.DISABLED:
+            raise OrchestrationError(
+                f"capability {definition.capability_id!r} is disabled"
+            )
+        if (
+            capability.state is CapabilityState.LAB_ONLY
+            and definition.interaction is not InteractionKind.LAB_ACTIVE
+        ):
+            raise OrchestrationError(
+                f"lab-only capability {definition.capability_id!r} requires LAB_ACTIVE interaction"
             )
         self._tools[definition.tool_id] = (definition, handler)
 

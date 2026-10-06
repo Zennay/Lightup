@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import tempfile
 import unittest
+from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -20,6 +21,7 @@ from lightup.ai.orchestration import (
     ToolParameter,
     ToolRegistry,
 )
+from lightup.capabilities import Capability, CapabilityState
 from lightup.domain import AccessContext, DomainStore, Role
 from lightup.engagements import (
     AssessmentMode,
@@ -131,6 +133,71 @@ class OrchestrationTest(unittest.TestCase):
                 _active_tool,
             )
         self.assertIn("min_risk must be a RiskLevel", str(caught.exception))
+        self.assertEqual(registry.definitions(), ())
+
+    def test_registry_rejects_lab_only_capability_outside_lab_interaction(self):
+        for interaction in (
+            InteractionKind.TARGET_ACTIVE,
+            InteractionKind.PASSIVE_PUBLIC,
+            InteractionKind.ANALYSIS,
+        ):
+            with self.subTest(interaction=interaction):
+                registry = ToolRegistry()
+                with self.assertRaisesRegex(
+                    OrchestrationError, "requires LAB_ACTIVE interaction"
+                ):
+                    registry.register(
+                        ToolDefinition(
+                            f"wireless-{interaction.value}",
+                            "wireless-lab",
+                            interaction,
+                            RiskLevel.STANDARD,
+                            "test-only semantic mismatch",
+                        ),
+                        _active_tool,
+                    )
+                self.assertEqual(registry.definitions(), ())
+
+    def test_registry_allows_lab_only_capability_for_lab_interaction(self):
+        registry = ToolRegistry()
+        registry.register(
+            ToolDefinition(
+                "wireless-lab-sim",
+                "wireless-lab",
+                InteractionKind.LAB_ACTIVE,
+                RiskLevel.DESTRUCTIVE_LAB_ONLY,
+                "isolated wireless lab simulation",
+            ),
+            _active_tool,
+        )
+        self.assertEqual(
+            tuple(definition.tool_id for definition in registry.definitions()),
+            ("wireless-lab-sim",),
+        )
+
+    def test_registry_rejects_disabled_capability(self):
+        registry = ToolRegistry()
+        disabled = Capability(
+            "disabled-capability",
+            "Disabled capability",
+            "test-only disabled capability",
+            CapabilityState.DISABLED,
+        )
+        with patch(
+            "lightup.ai.orchestration.get_capabilities",
+            return_value=(disabled,),
+        ):
+            with self.assertRaisesRegex(OrchestrationError, "is disabled"):
+                registry.register(
+                    ToolDefinition(
+                        "disabled-probe",
+                        disabled.capability_id,
+                        InteractionKind.ANALYSIS,
+                        RiskLevel.ANALYSIS_ONLY,
+                        "must never register",
+                    ),
+                    _active_tool,
+                )
         self.assertEqual(registry.definitions(), ())
 
     def test_run_context_is_immutable(self):
