@@ -331,6 +331,11 @@ class OrchestrationTest(unittest.TestCase):
             self.state,
             authorization_resolver=domain.resolve_authorization_for_execution,
         )
+        executor.execute(
+            context, ToolCall("closed-engagement-probe", "allowed.test")
+        )
+        self.assertEqual(calls, ["ran"])
+
         domain.set_engagement_status(
             operator, engagement.engagement_id, EngagementStatus.CLOSED
         )
@@ -340,7 +345,20 @@ class OrchestrationTest(unittest.TestCase):
                 context, ToolCall("closed-engagement-probe", "allowed.test")
             )
         self.assertIn("not live in authoritative state", str(caught.exception))
-        self.assertEqual(calls, [])
+        self.assertEqual(calls, ["ran"])
+
+        domain.set_engagement_status(
+            operator, engagement.engagement_id, EngagementStatus.DRAFT
+        )
+        with self.assertRaises(ToolDenied):
+            executor.execute(
+                context, ToolCall("closed-engagement-probe", "allowed.test")
+            )
+        self.assertEqual(
+            calls,
+            ["ran"],
+            "reopening must not revive the historical authorization snapshot",
+        )
 
     def test_live_resolver_overrides_broader_stale_snapshot_scope(self):
         domain = DomainStore(Path(self.tmp.name) / "scope-authority.db")
