@@ -1,7 +1,9 @@
+import ast
 import os
 import socket
 import sys
 import unittest
+from pathlib import Path
 from contextlib import ExitStack
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
@@ -19,6 +21,8 @@ class ScopeDnsIndependenceTests(unittest.TestCase):
             "getaddrinfo",
             "gethostbyname",
             "gethostbyname_ex",
+            "gethostbyaddr",
+            "getfqdn",
             "getnameinfo",
             "create_connection",
             "socket",
@@ -33,6 +37,41 @@ class ScopeDnsIndependenceTests(unittest.TestCase):
                 )
             )
         return stack
+
+    def test_scope_module_has_no_network_or_dns_client_imports(self):
+        scope_path = (
+            Path(__file__).resolve().parents[1] / "src" / "lightup" / "scope.py"
+        )
+        tree = ast.parse(scope_path.read_text(encoding="utf-8"))
+        forbidden_modules = (
+            "socket",
+            "http.client",
+            "urllib.request",
+            "requests",
+            "httpx",
+            "dns",
+        )
+        found = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if any(
+                        alias.name == module or alias.name.startswith(f"{module}.")
+                        for module in forbidden_modules
+                    ):
+                        found.append(alias.name)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                if any(
+                    node.module == module or node.module.startswith(f"{module}.")
+                    for module in forbidden_modules
+                ):
+                    found.append(node.module)
+
+        self.assertEqual(
+            found,
+            [],
+            "scope policy must stay syntactic/local and import no network clients",
+        )
 
     def test_unknown_hostname_cannot_gain_loopback_scope_from_dns(self):
         policy = ScopePolicy()
