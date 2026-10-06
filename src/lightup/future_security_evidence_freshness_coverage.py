@@ -341,3 +341,339 @@ def validate_future_security_evidence_freshness_coverage(
     if rebuilt != coverage:
         raise ValueError("evidence freshness coverage does not match live validated state")
     return rebuilt
+
+
+_COVERAGE_KEYS = {
+    "schema_version",
+    "client_id",
+    "current_twin_id",
+    "current_twin_version",
+    "twin_id",
+    "twin_version",
+    "changeset_id",
+    "request_sha256",
+    "constraints_sha256",
+    "items",
+    "total_gap_count",
+    "covered_gap_count",
+    "missing_gap_count",
+    "all_gaps_have_fresh_candidates",
+    "coverage_sha256",
+    "evidence_sufficiency_evaluated",
+    "gap_closed",
+    "classification_selected",
+    "transition_resolution_created",
+    "collection_authorized",
+    "tool_call_created",
+    "execution_allowed",
+    "target_interaction_allowed",
+    "remediation_authoring_allowed",
+    "future_state_retest_allowed",
+    "deployment_authorized",
+    "attack_path_mutation_allowed",
+    "future_semantics",
+    "security_verdict",
+}
+
+_COVERAGE_ITEM_KEYS = {
+    "change_node_id",
+    "subject_node_id",
+    "source_resolution_id",
+    "fresh_candidate_present",
+    "admission_sha256",
+    "candidate_run_id",
+    "candidate_evidence_ids",
+}
+
+
+def _strict_identifier(value: object, *, name: str) -> str:
+    if not isinstance(value, str) or not value or value != value.strip():
+        raise ValueError(f"{name} must be a canonical non-empty string")
+    if len(value) > 256 or any(ord(char) < 32 or ord(char) == 127 for char in value):
+        raise ValueError(f"{name} is not canonical")
+    return value
+
+
+def _strict_sha256(value: object, *, name: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(char not in "0123456789abcdef" for char in value)
+    ):
+        raise ValueError(f"{name} must be a canonical lowercase SHA-256")
+    return value
+
+
+def _strict_id_list(
+    value: object,
+    *,
+    name: str,
+    allow_empty: bool,
+) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        raise ValueError(f"{name} must be a string list")
+    if not value and not allow_empty:
+        raise ValueError(f"{name} must be a non-empty string list")
+    parsed = tuple(_strict_identifier(item, name=name) for item in value)
+    if parsed != tuple(sorted(set(parsed))):
+        raise ValueError(f"{name} must be sorted and unique")
+    return parsed
+
+
+def _coverage_digest_from_coverage(
+    coverage: FutureSecurityEvidenceFreshnessCoverage,
+) -> str:
+    payload = {
+        "schema_version": COVERAGE_SCHEMA_VERSION,
+        "client_id": coverage.client_id,
+        "current_twin_id": coverage.current_twin_id,
+        "current_twin_version": coverage.current_twin_version,
+        "twin_id": coverage.twin_id,
+        "twin_version": coverage.twin_version,
+        "changeset_id": coverage.changeset_id,
+        "request_sha256": coverage.request_sha256,
+        "constraints_sha256": coverage.constraints_sha256,
+        "items": [
+            {
+                "change_node_id": item.change_node_id,
+                "subject_node_id": item.subject_node_id,
+                "source_resolution_id": item.source_resolution_id,
+                "fresh_candidate_present": item.fresh_candidate_present,
+                "admission_sha256": item.admission_sha256,
+                "candidate_run_id": item.candidate_run_id,
+                "candidate_evidence_ids": list(item.candidate_evidence_ids),
+            }
+            for item in coverage.items
+        ],
+        "total_gap_count": len(coverage.items),
+        "covered_gap_count": sum(
+            1 for item in coverage.items if item.fresh_candidate_present
+        ),
+        "missing_gap_count": sum(
+            1 for item in coverage.items if not item.fresh_candidate_present
+        ),
+        "all_gaps_have_fresh_candidates": bool(coverage.items)
+        and all(item.fresh_candidate_present for item in coverage.items),
+        "evidence_sufficiency_evaluated": False,
+        "gap_closed": False,
+        "classification_selected": False,
+        "transition_resolution_created": False,
+        "collection_authorized": False,
+        "tool_call_created": False,
+        "execution_allowed": False,
+        "target_interaction_allowed": False,
+        "remediation_authoring_allowed": False,
+        "future_state_retest_allowed": False,
+        "deployment_authorized": False,
+        "attack_path_mutation_allowed": False,
+        "future_semantics": "unresolved",
+        "security_verdict": "not_evaluated",
+    }
+    return sha256(
+        json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def future_security_evidence_freshness_coverage_from_dict(
+    payload: dict,
+) -> FutureSecurityEvidenceFreshnessCoverage:
+    """Parse exact freshness coverage JSON and verify all derived semantics."""
+
+    if not isinstance(payload, dict):
+        raise ValueError("evidence freshness coverage payload must be an object")
+    if set(payload) != _COVERAGE_KEYS:
+        raise ValueError("evidence freshness coverage payload schema mismatch")
+    if payload["schema_version"] != COVERAGE_SCHEMA_VERSION:
+        raise ValueError("evidence freshness coverage schema version mismatch")
+
+    for field in (
+        "client_id",
+        "current_twin_id",
+        "twin_id",
+        "changeset_id",
+    ):
+        _strict_identifier(payload[field], name=f"coverage {field}")
+    for field in ("request_sha256", "constraints_sha256", "coverage_sha256"):
+        _strict_sha256(payload[field], name=f"coverage {field}")
+
+    for field in (
+        "current_twin_version",
+        "twin_version",
+        "total_gap_count",
+        "covered_gap_count",
+        "missing_gap_count",
+    ):
+        value = payload[field]
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            raise ValueError(f"coverage {field} must be a non-negative integer")
+
+    if not isinstance(payload["all_gaps_have_fresh_candidates"], bool):
+        raise ValueError("coverage all_gaps_have_fresh_candidates must be boolean")
+
+    for field in (
+        "evidence_sufficiency_evaluated",
+        "gap_closed",
+        "classification_selected",
+        "transition_resolution_created",
+        "collection_authorized",
+        "tool_call_created",
+        "execution_allowed",
+        "target_interaction_allowed",
+        "remediation_authoring_allowed",
+        "future_state_retest_allowed",
+        "deployment_authorized",
+        "attack_path_mutation_allowed",
+    ):
+        if payload[field] is not False:
+            raise ValueError(f"coverage safety flag {field} must remain false")
+    if payload["future_semantics"] != "unresolved":
+        raise ValueError("coverage future semantics must remain unresolved")
+    if payload["security_verdict"] != "not_evaluated":
+        raise ValueError("coverage must not claim a security verdict")
+
+    raw_items = payload["items"]
+    if not isinstance(raw_items, list) or not raw_items:
+        raise ValueError("evidence freshness coverage items must be non-empty")
+
+    items: list[FutureSecurityEvidenceFreshnessCoverageItem] = []
+    for raw_item in raw_items:
+        if not isinstance(raw_item, dict) or set(raw_item) != _COVERAGE_ITEM_KEYS:
+            raise ValueError("evidence freshness coverage item schema mismatch")
+        change_node_id = _strict_identifier(
+            raw_item["change_node_id"],
+            name="coverage change_node_id",
+        )
+        subject_node_id = _strict_identifier(
+            raw_item["subject_node_id"],
+            name="coverage subject_node_id",
+        )
+        source_resolution_id = _strict_identifier(
+            raw_item["source_resolution_id"],
+            name="coverage source_resolution_id",
+        )
+        present = raw_item["fresh_candidate_present"]
+        if not isinstance(present, bool):
+            raise ValueError("coverage fresh_candidate_present must be boolean")
+
+        if present:
+            admission_sha256 = _strict_sha256(
+                raw_item["admission_sha256"],
+                name="coverage admission_sha256",
+            )
+            candidate_run_id = _strict_identifier(
+                raw_item["candidate_run_id"],
+                name="coverage candidate_run_id",
+            )
+            candidate_evidence_ids = _strict_id_list(
+                raw_item["candidate_evidence_ids"],
+                name="coverage candidate_evidence_ids",
+                allow_empty=False,
+            )
+        else:
+            if raw_item["admission_sha256"] is not None:
+                raise ValueError(
+                    "uncovered freshness item cannot carry an admission digest"
+                )
+            if raw_item["candidate_run_id"] is not None:
+                raise ValueError(
+                    "uncovered freshness item cannot carry a candidate run"
+                )
+            candidate_evidence_ids = _strict_id_list(
+                raw_item["candidate_evidence_ids"],
+                name="coverage candidate_evidence_ids",
+                allow_empty=True,
+            )
+            if candidate_evidence_ids:
+                raise ValueError(
+                    "uncovered freshness item cannot carry candidate evidence"
+                )
+            admission_sha256 = None
+            candidate_run_id = None
+
+        items.append(
+            FutureSecurityEvidenceFreshnessCoverageItem(
+                change_node_id=change_node_id,
+                subject_node_id=subject_node_id,
+                source_resolution_id=source_resolution_id,
+                fresh_candidate_present=present,
+                admission_sha256=admission_sha256,
+                candidate_run_id=candidate_run_id,
+                candidate_evidence_ids=candidate_evidence_ids,
+            )
+        )
+
+    parsed_items = tuple(items)
+    identities = tuple(
+        (item.change_node_id, item.subject_node_id, item.source_resolution_id)
+        for item in parsed_items
+    )
+    if len(set(identities)) != len(identities):
+        raise ValueError("coverage item identities must be unique")
+    canonical_items = tuple(
+        sorted(
+            parsed_items,
+            key=lambda item: (
+                item.change_node_id,
+                item.subject_node_id,
+                item.source_resolution_id,
+            ),
+        )
+    )
+    if parsed_items != canonical_items:
+        raise ValueError("coverage items must be canonically ordered")
+
+    total = len(parsed_items)
+    covered = sum(1 for item in parsed_items if item.fresh_candidate_present)
+    missing = total - covered
+    all_covered = bool(total) and covered == total
+    if payload["total_gap_count"] != total:
+        raise ValueError("coverage total gap count mismatch")
+    if payload["covered_gap_count"] != covered:
+        raise ValueError("coverage covered gap count mismatch")
+    if payload["missing_gap_count"] != missing:
+        raise ValueError("coverage missing gap count mismatch")
+    if payload["all_gaps_have_fresh_candidates"] is not all_covered:
+        raise ValueError("coverage all-gaps flag mismatch")
+
+    coverage = FutureSecurityEvidenceFreshnessCoverage(
+        schema_version=payload["schema_version"],
+        client_id=payload["client_id"],
+        current_twin_id=payload["current_twin_id"],
+        current_twin_version=payload["current_twin_version"],
+        twin_id=payload["twin_id"],
+        twin_version=payload["twin_version"],
+        changeset_id=payload["changeset_id"],
+        request_sha256=payload["request_sha256"],
+        constraints_sha256=payload["constraints_sha256"],
+        items=parsed_items,
+        total_gap_count=payload["total_gap_count"],
+        covered_gap_count=payload["covered_gap_count"],
+        missing_gap_count=payload["missing_gap_count"],
+        all_gaps_have_fresh_candidates=payload[
+            "all_gaps_have_fresh_candidates"
+        ],
+        coverage_sha256=payload["coverage_sha256"],
+        evidence_sufficiency_evaluated=False,
+        gap_closed=False,
+        classification_selected=False,
+        transition_resolution_created=False,
+        collection_authorized=False,
+        tool_call_created=False,
+        execution_allowed=False,
+        target_interaction_allowed=False,
+        remediation_authoring_allowed=False,
+        future_state_retest_allowed=False,
+        deployment_authorized=False,
+        attack_path_mutation_allowed=False,
+        future_semantics=payload["future_semantics"],
+        security_verdict=payload["security_verdict"],
+    )
+    expected = _coverage_digest_from_coverage(coverage)
+    if coverage.coverage_sha256 != expected:
+        raise ValueError("evidence freshness coverage digest mismatch")
+    return coverage
