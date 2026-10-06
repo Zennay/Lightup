@@ -5,6 +5,9 @@ import json
 import unittest
 
 import test_future_security_evidence_freshness_admission as admission_tests
+from lightup.future_security_evidence_freshness_admission import (
+    validate_future_security_evidence_freshness_admission,
+)
 from lightup.future_security_evidence_freshness_admission_handoff import (
     future_security_evidence_freshness_admission_from_dict,
 )
@@ -90,6 +93,47 @@ class FutureSecurityEvidenceFreshnessAdmissionHandoffTest(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "canonically ordered"):
             future_security_evidence_freshness_admission_from_dict(noncanonical)
+
+    def test_parsed_admission_still_requires_live_validation(self):
+        (
+            _,
+            proposal,
+            source_context,
+            resolution,
+            preview,
+            report,
+            plan,
+            request,
+            constraints,
+            candidate_context,
+            evidence_id,
+            admission,
+        ) = self.base._admission(suffix="admission-handoff-live-gate")
+        restored = future_security_evidence_freshness_admission_from_dict(
+            json.loads(admission.to_json())
+        )
+        self.assertEqual(restored, admission)
+
+        with self.base.state.connect() as con:
+            con.execute(
+                "UPDATE evidence SET sha256=? WHERE evidence_id=?",
+                ("0" * 64, evidence_id),
+            )
+
+        with self.assertRaisesRegex(ValueError, "live validated evidence"):
+            validate_future_security_evidence_freshness_admission(
+                restored,
+                constraints,
+                candidate_context=candidate_context,
+                request=request,
+                plan=plan,
+                report=report,
+                preview=preview,
+                proposal=proposal,
+                resolutions=(resolution,),
+                source_contexts=(source_context,),
+                state=self.base.state,
+            )
 
     def test_safety_semantics_and_digest_fail_closed(self):
         _, payload = self._payload()
