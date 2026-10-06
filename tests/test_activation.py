@@ -18,7 +18,7 @@ class ActivationTests(unittest.TestCase):
 
     def test_lab_only_can_issue_private_permit(self):
         gate = ActivationGate(
-            ScopePolicy(),
+            ScopePolicy(allow_private_lab=True),
             ActivationPolicy(mode=ActivationMode.LAB_ONLY, activation_reference="LAB-TEST"),
         )
         permit = gate.issue(Target("10.10.0.5"), "web-baseline")
@@ -45,6 +45,14 @@ class ActivationTests(unittest.TestCase):
         )
         with self.assertRaises(PermissionError):
             gate.issue(target, "web-baseline")
+
+    def test_lab_only_default_scope_rejects_private_target(self):
+        gate = ActivationGate(
+            ScopePolicy(),
+            ActivationPolicy(mode=ActivationMode.LAB_ONLY, activation_reference="LAB-TEST"),
+        )
+        with self.assertRaises(PermissionError):
+            gate.issue(Target("10.10.0.5"), "web-baseline")
 
     def test_lab_only_rejects_explicit_public_target(self):
         policy = ScopePolicy(explicit_hosts=frozenset({"authorized.example.test"}))
