@@ -110,6 +110,36 @@ class DomainStoreTest(unittest.TestCase):
                     )
         self.assertEqual(self.store.list_assessment_requests(self.ctx_a), [])
 
+    def test_assessment_decision_requires_bool_and_revalidates_legacy_risk(self):
+        request = self.store.submit_assessment_request(
+            self.ctx_a,
+            ("app.acme.example",),
+            AssessmentMode.AUTHORIZED_ASSESSMENT,
+            RiskLevel.STANDARD,
+        )
+        with self.assertRaisesRegex(ValueError, "decision must be a bool"):
+            self.store.review_assessment_request(
+                self.operator, request.request_id, "false"  # type: ignore[arg-type]
+            )
+        self.assertIs(
+            self.store.get_assessment_request(self.operator, request.request_id).status,
+            RequestStatus.SUBMITTED,
+        )
+
+        with self.store._connect() as con:
+            con.execute(
+                "UPDATE assessment_requests SET requested_risk=? WHERE request_id=?",
+                (int(RiskLevel.DESTRUCTIVE_LAB_ONLY), request.request_id),
+            )
+        with self.assertRaisesRegex(ValueError, "destructive lab risk"):
+            self.store.review_assessment_request(
+                self.operator, request.request_id, True
+            )
+        self.assertIs(
+            self.store.get_assessment_request(self.operator, request.request_id).status,
+            RequestStatus.SUBMITTED,
+        )
+
     def test_request_review_is_operator_only(self):
         request = self.store.submit_assessment_request(
             self.ctx_a, ("app.acme.example",), AssessmentMode.AUTHORIZED_ASSESSMENT,
@@ -494,6 +524,45 @@ class DomainStoreTest(unittest.TestCase):
         self.assertEqual(
             self.store.list_risk_approvals(self.ctx_a, engagement.engagement_id),
             [],
+        )
+
+    def test_risk_decision_requires_bool_and_revalidates_legacy_risk(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Risk decision boundary"
+        )
+        approval = self.store.request_risk_elevation(
+            self.ctx_a,
+            engagement.engagement_id,
+            RiskLevel.ELEVATED,
+            "request pending operator review",
+        )
+        reviewer = AccessContext("op-reviewer", Role.OPERATOR)
+
+        with self.assertRaisesRegex(ValueError, "decision must be a bool"):
+            self.store.decide_risk_elevation(
+                reviewer, approval.approval_id, "false"  # type: ignore[arg-type]
+            )
+        self.assertIs(
+            self.store.list_risk_approvals(
+                self.ctx_a, engagement.engagement_id
+            )[0].status,
+            ApprovalStatus.PENDING,
+        )
+
+        with self.store._connect() as con:
+            con.execute(
+                "UPDATE risk_approvals SET requested_risk=? WHERE approval_id=?",
+                (int(RiskLevel.DESTRUCTIVE_LAB_ONLY), approval.approval_id),
+            )
+        with self.assertRaisesRegex(ValueError, "destructive lab risk"):
+            self.store.decide_risk_elevation(
+                reviewer, approval.approval_id, True
+            )
+        self.assertIs(
+            self.store.list_risk_approvals(
+                self.ctx_a, engagement.engagement_id
+            )[0].status,
+            ApprovalStatus.PENDING,
         )
 
     def test_risk_elevation_requires_second_operator(self):
