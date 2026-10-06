@@ -21,6 +21,7 @@ class ScopeDnsIndependenceTests(unittest.TestCase):
             "gethostbyname_ex",
             "getnameinfo",
             "create_connection",
+            "socket",
         ):
             stack.enter_context(
                 patch.object(
@@ -41,6 +42,31 @@ class ScopeDnsIndependenceTests(unittest.TestCase):
 
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.normalized_host, "rebinding.example.test")
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_resolver_answers_cannot_convert_unknown_hostname_to_local_authority(self):
+        fake_answers = [
+            (
+                socket.AF_INET,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                ("127.0.0.1", 443),
+            ),
+            (
+                socket.AF_INET,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP,
+                "",
+                ("10.20.30.40", 443),
+            ),
+        ]
+        with patch.object(socket, "getaddrinfo", return_value=fake_answers) as resolver:
+            decision = ScopePolicy().decide(Target("mutable.example.test"))
+
+        resolver.assert_not_called()
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.normalized_host, "mutable.example.test")
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
     def test_explicit_hostname_authorization_is_syntactic_and_offline(self):
