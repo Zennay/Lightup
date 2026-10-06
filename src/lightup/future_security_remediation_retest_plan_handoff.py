@@ -13,16 +13,25 @@ from __future__ import annotations
 from hashlib import sha256
 import json
 
-from .future_attack_path_graph_diff_preview import AttackPathGraphDiffAction
+from .ai.orchestration import RunContext
+from .future_attack_path_graph_diff_preview import (
+    AttackPathGraphDiffAction,
+    FutureAttackPathGraphDiffPreview,
+)
+from .future_attack_path_security_delta_report import FutureAttackPathSecurityDeltaReport
+from .future_attack_path_transition import FutureAttackPathTransitionProposal
 from .future_attack_path_transition_resolution import (
     AttackPathTransitionClassification,
+    FutureAttackPathTransitionResolution,
 )
 from .future_security_remediation_retest_plan import (
     PLAN_SCHEMA_VERSION,
     FutureRemediationNextAction,
     FutureSecurityRemediationRetestPlan,
     FutureSecurityRemediationRetestPlanItem,
+    build_future_security_remediation_retest_plan,
 )
+from .state import StateStore
 
 
 _PLAN_KEYS = {
@@ -399,6 +408,36 @@ def future_security_remediation_retest_plan_from_dict(
     if plan.plan_sha256 != _plan_digest_from_plan(plan):
         raise ValueError("remediation/retest plan digest mismatch")
     return plan
+
+
+def validate_future_security_remediation_retest_plan_handoff(
+    plan: FutureSecurityRemediationRetestPlan,
+    report: FutureAttackPathSecurityDeltaReport,
+    preview: FutureAttackPathGraphDiffPreview,
+    proposal: FutureAttackPathTransitionProposal,
+    resolutions: tuple[FutureAttackPathTransitionResolution, ...],
+    contexts: tuple[RunContext, ...],
+    state: StateStore,
+) -> FutureSecurityRemediationRetestPlan:
+    """Require exact equality with a plan rebuilt from live ST4 lineage."""
+
+    if not isinstance(plan, FutureSecurityRemediationRetestPlan):
+        raise ValueError(
+            "plan must be a FutureSecurityRemediationRetestPlan"
+        )
+    rebuilt = build_future_security_remediation_retest_plan(
+        report,
+        preview,
+        proposal,
+        resolutions,
+        contexts,
+        state,
+    )
+    if rebuilt != plan:
+        raise ValueError(
+            "remediation/retest plan does not match its live validated lineage"
+        )
+    return rebuilt
 
 
 def _reject_duplicate_json_keys(pairs: list[tuple[str, object]]) -> dict:
