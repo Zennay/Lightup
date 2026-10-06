@@ -92,6 +92,15 @@ class FutureSecurityEvidenceSufficiencyReviewRequestConsumerTest(unittest.TestCa
         with self.assertRaisesRegex(ValueError, "digest mismatch"):
             self._consume(payload, produced)
 
+    def test_object_input_cannot_bypass_strict_review_obligations(self):
+        produced = self._producer(suffix="sufficiency-request-consumer-object")
+        request = produced[-1]
+        payload = json.loads(request.to_json())
+        payload["review_required"] = False
+
+        with self.assertRaisesRegex(ValueError, "review_required must remain true"):
+            self._consume(payload, produced)
+
     def test_live_candidate_capability_drift_fails_after_strict_parse(self):
         produced = self._producer(suffix="sufficiency-request-consumer-live-drift")
         admission = produced[10]
