@@ -58,7 +58,15 @@ class WebSecurity:
             if actual != expected:
                 raise ValueError("host mismatch")
         else:
-            # Missing Host is accepted only for direct in-process WSGI use.
+            # Missing Host/peer are accepted only for direct in-process WSGI use.
+            # A real development server must remain a loopback-only trust boundary:
+            # a remote peer cannot become local merely by sending Host: localhost.
+            peer = environ.get("REMOTE_ADDR")
+            if peer is not None:
+                if not isinstance(peer, str) or not peer:
+                    raise ValueError("development peer must be a loopback IP")
+                if not ip_address(peer).is_loopback:
+                    raise ValueError("development peer must be loopback")
             host = environ.get("HTTP_HOST") or environ.get("SERVER_NAME", "localhost")
             actual = origin("http://" + host)
             if actual[1] not in {"localhost", "127.0.0.1", "::1"}:
