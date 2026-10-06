@@ -43,6 +43,8 @@ class ExecutionPolicy:
             return PolicyDecision(False, "interaction must be an InteractionKind")
         if not isinstance(request.requested_risk, RiskLevel):
             return PolicyDecision(False, "requested risk must be a RiskLevel")
+        if not isinstance(request.is_lab, bool):
+            return PolicyDecision(False, "lab context marker must be a bool")
 
         if request.interaction is InteractionKind.ANALYSIS:
             if request.requested_risk is not RiskLevel.ANALYSIS_ONLY:
