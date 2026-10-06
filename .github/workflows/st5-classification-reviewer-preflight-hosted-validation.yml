@@ -1,0 +1,48 @@
+name: ST5 classification-reviewer preflight hosted validation
+
+on:
+  push:
+    branches:
+      - "chatgpt/st5-classification-reviewer-preflight-hosted-validation-20261006"
+    paths:
+      - ".github/workflows/st5-classification-reviewer-preflight-hosted-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: st5-classification-reviewer-preflight-hosted-validation
+  cancel-in-progress: true
+
+jobs:
+  exact-candidate:
+    name: Exact candidate Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 899ab25950d9656ed11fc1dcd6fa3d9c98f9ffb2
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile exact candidate
+        run: python -m compileall -q src tests
+      - name: Run classification-reviewer preflight regression
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests -p 'test_future_security_classification_reviewer_preflight.py' -v
+      - name: Run strict classification-review request consumer
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests -p 'test_future_security_classification_review_request_consumer.py' -v
+      - name: Run real producer integration
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests/integration -v
