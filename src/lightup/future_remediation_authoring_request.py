@@ -61,6 +61,12 @@ class FutureRemediationAuthoringRequestItem:
     remediation_required: bool = True
     future_state_retest_required: bool = True
 
+    def __post_init__(self) -> None:
+        if self.remediation_required is not True:
+            raise ValueError("remediation_required must remain true")
+        if self.future_state_retest_required is not True:
+            raise ValueError("future_state_retest_required must remain true")
+
     def as_dict(self) -> dict:
         return asdict(self)
 
