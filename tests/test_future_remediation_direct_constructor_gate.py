@@ -93,6 +93,10 @@ class FutureRemediationDirectConstructorGateTest(unittest.TestCase):
             with self.subTest(artifact=type(artifact).__name__):
                 self.assertEqual(parser(artifact.to_json()), artifact)
 
+    def test_final_reviews_still_pass_complete_live_lineage_validation(self):
+        self.assertEqual(self.original._load(), self.original.review)
+        self.assertEqual(self.revised._load(), self.revised.review)
+
     def test_all_top_level_artifacts_reject_every_authority_widening(self):
         for artifact in self._all_artifacts():
             for field in _AUTHORITY_FLAGS:
