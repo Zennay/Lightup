@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import unittest
 
@@ -47,6 +48,19 @@ class FutureSecurityEvidenceCollectionRequestSnapshotIsolationTest(
             json.loads(first)
         )
         self.assertEqual(restored, self.request)
+
+    def test_strict_parser_is_side_effect_free_for_caller_owned_payload(self):
+        persisted = self._persisted_dict()
+        original = copy.deepcopy(persisted)
+
+        first = future_security_evidence_collection_request_from_dict(persisted)
+        self.assertEqual(persisted, original)
+
+        second = future_security_evidence_collection_request_from_dict(persisted)
+        self.assertEqual(persisted, original)
+        self.assertEqual(first, self.request)
+        self.assertEqual(second, self.request)
+        self.assertEqual(first.to_json(), second.to_json())
 
     def test_producer_snapshot_nested_mutation_cannot_change_source_request(self):
         original_json = self.request.to_json()
