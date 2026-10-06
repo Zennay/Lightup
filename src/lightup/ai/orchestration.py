@@ -173,6 +173,10 @@ class ToolRegistry:
     def register(self, definition: ToolDefinition, handler: ToolHandler) -> None:
         if definition.tool_id in self._tools:
             raise OrchestrationError(f"tool {definition.tool_id!r} is already registered")
+        if not isinstance(definition.min_risk, RiskLevel):
+            raise OrchestrationError(
+                f"tool {definition.tool_id!r} min_risk must be a RiskLevel"
+            )
         if definition.capability_id not in {c.capability_id for c in get_capabilities()}:
             raise OrchestrationError(
                 f"tool {definition.tool_id!r} references unknown capability "
