@@ -106,6 +106,48 @@ class WebAuthorizationInputStrictnessTest(unittest.TestCase):
             [],
         )
 
+    def test_grant_risk_type_confusion_fails_closed(self):
+        for raw_risk in ("03", " 3 ", "3.0", "+3", "true"):
+            with self.subTest(raw_risk=raw_risk):
+                engagement = self._engagement()
+                status, _, _ = self.request(
+                    "POST",
+                    f"/engagements/{engagement.engagement_id}/grants",
+                    {
+                        "approved_by": "CISO",
+                        "reference": "AUTH-1",
+                        "assets": "app.acme.example",
+                        "capabilities": "web-baseline",
+                        "max_risk": raw_risk,
+                        "valid_days": "30",
+                    },
+                    token=self.operator_token,
+                    csrf=self.operator_csrf,
+                )
+                self.assertEqual(status, "400 Bad Request")
+                self.assertEqual(
+                    self.store.list_authorization_grants(
+                        self.operator, engagement.engagement_id
+                    ),
+                    [],
+                )
+
+    def test_request_risk_type_confusion_fails_closed(self):
+        for raw_risk in ("03", " 3 ", "3.0", "+3", "true"):
+            with self.subTest(raw_risk=raw_risk):
+                status, _, _ = self.request(
+                    "POST",
+                    f"/portal/{self.client.client_id}/requests",
+                    {
+                        "assets": "app.acme.example",
+                        "risk": raw_risk,
+                    },
+                    token=self.client_token,
+                    csrf=self.client_csrf,
+                )
+                self.assertEqual(status, "400 Bad Request")
+        self.assertEqual(self.store.list_assessment_requests(self.operator), [])
+
     def test_grant_validity_is_rejected_instead_of_clamped(self):
         engagement = self._engagement()
         for raw_days in ("0", "366", "-1", "1.5", ""):
