@@ -27,16 +27,52 @@ class CoverageReport:
 
     statuses: tuple[tuple[str, CoverageStatus], ...]
 
+    def __post_init__(self) -> None:
+        if type(self.statuses) is not tuple:
+            raise TypeError("coverage statuses must be an immutable tuple")
+
+        expected_ids = tuple(capability.capability_id for capability in get_capabilities())
+        expected_id_set = set(expected_ids)
+        actual_ids: list[str] = []
+
+        for row in self.statuses:
+            if type(row) is not tuple or len(row) != 2:
+                raise TypeError("coverage rows must be exact (capability_id, status) tuples")
+            capability_id, status = row
+            if type(capability_id) is not str or not capability_id:
+                raise TypeError("coverage capability_id must be a non-empty string")
+            if type(status) is not CoverageStatus:
+                raise TypeError("coverage status must be an exact CoverageStatus member")
+            actual_ids.append(capability_id)
+
+        if len(set(actual_ids)) != len(actual_ids):
+            raise ValueError("coverage capability ids must be unique")
+
+        unknown_ids = set(actual_ids) - expected_id_set
+        if unknown_ids:
+            raise ValueError(f"unknown capability ids: {sorted(unknown_ids)}")
+
+        missing_ids = expected_id_set - set(actual_ids)
+        if missing_ids:
+            raise ValueError(f"missing capability ids: {sorted(missing_ids)}")
+
+        if tuple(actual_ids) != expected_ids:
+            raise ValueError("coverage rows must follow canonical registry order")
+
     @staticmethod
     def build(assessed: dict[str, CoverageStatus] | None = None) -> "CoverageReport":
         assessed = dict(assessed or {})
-        known_ids = {c.capability_id for c in get_capabilities()}
+        capabilities = get_capabilities()
+        known_ids = {capability.capability_id for capability in capabilities}
         unknown_keys = set(assessed) - known_ids
         if unknown_keys:
             raise ValueError(f"unknown capability ids: {sorted(unknown_keys)}")
         statuses = tuple(
-            (c.capability_id, assessed.get(c.capability_id, CoverageStatus.UNKNOWN))
-            for c in get_capabilities()
+            (
+                capability.capability_id,
+                assessed.get(capability.capability_id, CoverageStatus.UNKNOWN),
+            )
+            for capability in capabilities
         )
         return CoverageReport(statuses)
 
