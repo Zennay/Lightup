@@ -501,6 +501,103 @@ class OrchestrationTest(unittest.TestCase):
             "handler must not inherit stale broader authorization metadata",
         )
 
+    def test_revocation_between_policy_and_dispatch_denies_handler(self):
+        snapshot = _grant("allowed.test")
+        resolver_calls = 0
+        handler_calls: list[str] = []
+        registry = ToolRegistry()
+
+        def resolver(grant):
+            nonlocal resolver_calls
+            resolver_calls += 1
+            return grant if resolver_calls == 1 else None
+
+        registry.register(
+            ToolDefinition(
+                "dispatch-revocation-probe",
+                "network-services",
+                InteractionKind.TARGET_ACTIVE,
+                RiskLevel.STANDARD,
+                "test-only target-active handler",
+            ),
+            lambda context, arguments: (
+                handler_calls.append("ran")
+                or ToolOutput("ran", "probe", b"evidence")
+            ),
+        )
+        executor = ToolExecutor(
+            registry,
+            self.state,
+            authorization_resolver=resolver,
+        )
+        context = _context(
+            AssessmentMode.AUTHORIZED_ASSESSMENT,
+            RiskLevel.STANDARD,
+            authorization=snapshot,
+        )
+
+        with self.assertRaises(ToolDenied) as caught:
+            executor.execute(
+                context, ToolCall("dispatch-revocation-probe", "allowed.test")
+            )
+
+        self.assertIn("ceased to be live before target-active dispatch", str(caught.exception))
+        self.assertEqual(resolver_calls, 2)
+        self.assertEqual(handler_calls, [])
+
+    def test_scope_narrowing_between_policy_and_dispatch_is_rechecked(self):
+        first_live = _grant("allowed.test")
+        narrower = dataclasses.replace(
+            first_live,
+            scope=ScopeDefinition(
+                assets=("different.test",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("network-services",),
+            ),
+        )
+        resolver_calls = 0
+        handler_calls: list[str] = []
+        registry = ToolRegistry()
+
+        def resolver(grant):
+            nonlocal resolver_calls
+            resolver_calls += 1
+            return first_live if resolver_calls == 1 else narrower
+
+        registry.register(
+            ToolDefinition(
+                "dispatch-scope-narrowing-probe",
+                "network-services",
+                InteractionKind.TARGET_ACTIVE,
+                RiskLevel.STANDARD,
+                "test-only target-active handler",
+            ),
+            lambda context, arguments: (
+                handler_calls.append("ran")
+                or ToolOutput("ran", "probe", b"evidence")
+            ),
+        )
+        executor = ToolExecutor(
+            registry,
+            self.state,
+            authorization_resolver=resolver,
+        )
+        context = _context(
+            AssessmentMode.AUTHORIZED_ASSESSMENT,
+            RiskLevel.STANDARD,
+            authorization=first_live,
+        )
+
+        with self.assertRaises(ToolDenied) as caught:
+            executor.execute(
+                context, ToolCall("dispatch-scope-narrowing-probe", "allowed.test")
+            )
+
+        self.assertIn("after live authorization refresh", str(caught.exception))
+        self.assertIn("asset is outside the authorized scope", str(caught.exception))
+        self.assertEqual(resolver_calls, 2)
+        self.assertEqual(handler_calls, [])
+
     def test_out_of_scope_asset_denied(self):
         context = _context(AssessmentMode.AUTHORIZED_ASSESSMENT, RiskLevel.STANDARD,
                            authorization=_grant("allowed.test"))
