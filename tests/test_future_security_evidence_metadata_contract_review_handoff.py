@@ -6,12 +6,14 @@ from hashlib import sha256
 import json
 import unittest
 
+import test_future_security_evidence_metadata_contract_review as review_tests
 from lightup.future_attack_path_transition_resolution import (
     AttackPathTransitionClassification,
 )
 from lightup.future_security_evidence_metadata_contract_review import (
     REVIEW_SCHEMA_VERSION,
     FutureSecurityEvidenceMetadataContractReview,
+    validate_future_security_evidence_metadata_contract_review,
 )
 from lightup.future_security_evidence_metadata_contract_review_handoff import (
     future_security_evidence_metadata_contract_review_from_dict,
@@ -63,6 +65,78 @@ class FutureSecurityEvidenceMetadataContractReviewHandoffTest(unittest.TestCase)
         review, payload = self._payload()
         restored = future_security_evidence_metadata_contract_review_from_dict(payload)
         self.assertEqual(restored, review)
+
+    def test_real_producer_round_trip_still_requires_live_validation(self):
+        base = review_tests.FutureSecurityEvidenceMetadataContractReviewTest(
+            "test_valid_metadata_contract_is_reviewed_without_selecting_classification"
+        )
+        base.setUp()
+        self.addCleanup(base.doCleanups)
+        (
+            _,
+            proposal,
+            source_context,
+            resolution,
+            preview,
+            report,
+            plan,
+            request,
+            constraints,
+            candidate_context,
+            admission,
+            review,
+        ) = base._review(suffix="metadata-review-handoff-real")
+
+        restored = future_security_evidence_metadata_contract_review_from_dict(
+            json.loads(review.to_json())
+        )
+        self.assertEqual(restored, review)
+        self.assertEqual(
+            validate_future_security_evidence_metadata_contract_review(
+                restored,
+                admission,
+                constraints,
+                candidate_context=candidate_context,
+                request=request,
+                plan=plan,
+                report=report,
+                preview=preview,
+                proposal=proposal,
+                resolutions=(resolution,),
+                source_contexts=(source_context,),
+                state=base.state,
+            ),
+            restored,
+        )
+
+        evidence_id = admission.candidate_evidence_ids[0]
+        record = base.state.get_evidence(evidence_id)
+        metadata = dict(record.metadata)
+        metadata["proposal_sha256"] = "0" * 64
+        with base.state.connect() as con:
+            con.execute(
+                "UPDATE evidence SET metadata_json=? WHERE evidence_id=?",
+                (
+                    json.dumps(metadata, sort_keys=True, separators=(",", ":")),
+                    evidence_id,
+                ),
+            )
+
+        with self.assertRaisesRegex(ValueError, "metadata contract mismatch"):
+            validate_future_security_evidence_metadata_contract_review(
+                restored,
+                admission,
+                constraints,
+                candidate_context=candidate_context,
+                request=request,
+                plan=plan,
+                report=report,
+                preview=preview,
+                proposal=proposal,
+                resolutions=(resolution,),
+                source_contexts=(source_context,),
+                state=base.state,
+            )
 
     def test_extra_missing_and_bad_primitive_fields_fail_closed(self):
         _, payload = self._payload()
