@@ -66,7 +66,7 @@ class ScopeExplicitNetworkSetSemanticsTests(unittest.TestCase):
 
         ipv4_only = ScopePolicy(explicit_networks=("8.8.8.0/24",))
         ipv6_decision = ipv4_only.decide(
-            Target("2606:4700:4700::1111", authorization=self.authorization)
+            Target("[2606:4700:4700::1111]", authorization=self.authorization)
         )
         self.assertFalse(ipv6_decision.allowed)
         self.assertEqual(ipv6_decision.reason, ScopeReason.OUT_OF_SCOPE)
@@ -74,7 +74,7 @@ class ScopeExplicitNetworkSetSemanticsTests(unittest.TestCase):
     def test_ipv6_in_network_target_uses_explicit_network_path(self):
         policy = ScopePolicy(explicit_networks=("2606:4700:4700::/48",))
 
-        denied = policy.decide(Target("2606:4700:4700::1111"))
+        denied = policy.decide(Target("[2606:4700:4700::1111]"))
         self.assertFalse(denied.allowed)
         self.assertEqual(denied.reason, ScopeReason.AUTHORIZATION_MISSING)
 
