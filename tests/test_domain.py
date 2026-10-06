@@ -143,6 +143,53 @@ class DomainStoreTest(unittest.TestCase):
                 valid_from, valid_until,
             )
 
+    def test_persisted_grant_requires_explicit_known_non_lab_capabilities(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Strict scope"
+        )
+        valid_from, valid_until = _grant_window()
+
+        invalid_scopes = (
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=(),
+            ),
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("future-unknown-capability",),
+            ),
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("wireless-lab",),
+            ),
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.DESTRUCTIVE_LAB_ONLY,
+                allowed_capabilities=("web-baseline",),
+            ),
+        )
+        for index, scope in enumerate(invalid_scopes):
+            with self.subTest(index=index):
+                with self.assertRaises(ValueError):
+                    self.store.record_authorization_grant(
+                        self.operator,
+                        engagement.engagement_id,
+                        "CISO Acme",
+                        f"AUTH-INVALID-{index}",
+                        scope,
+                        valid_from,
+                        valid_until,
+                    )
+        self.assertEqual(
+            self.store.list_authorization_grants(
+                self.operator, engagement.engagement_id
+            ),
+            [],
+        )
+
     def test_revoke_engagement_authorization_revokes_current_and_future_grants(self):
         engagement = self.store.create_engagement(
             self.operator, self.client_a.client_id, "Emergency scope"
@@ -216,7 +263,9 @@ class DomainStoreTest(unittest.TestCase):
             "CISO Acme",
             "AUTH-REVOKE",
             ScopeDefinition(
-                assets=("app.acme.example",), max_risk=RiskLevel.STANDARD
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("web-baseline",),
             ),
             valid_from,
             valid_until,
