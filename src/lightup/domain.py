@@ -677,6 +677,11 @@ class DomainStore:
         self, ctx: AccessContext, request_id: str, approve: bool
     ) -> AssessmentRequestRecord:
         ctx.require_operator("review_assessment_request")
+        if not isinstance(approve, bool):
+            raise ValueError("assessment decision must be a bool")
+        record = self.get_assessment_request(ctx, request_id)
+        if approve and record.requested_risk == RiskLevel.DESTRUCTIVE_LAB_ONLY:
+            raise ValueError("destructive lab risk cannot be approved for a client assessment")
         status = RequestStatus.APPROVED if approve else RequestStatus.REJECTED
         with self._connect() as con:
             updated = con.execute(
@@ -1074,6 +1079,8 @@ class DomainStore:
     ) -> RiskApprovalRecord:
         """Only an operator may decide, and never on their own request."""
         ctx.require_operator("decide_risk_elevation")
+        if not isinstance(approve, bool):
+            raise ValueError("risk elevation decision must be a bool")
         with self._connect() as con:
             row = con.execute(
                 "SELECT * FROM risk_approvals WHERE approval_id=?", (approval_id,)
@@ -1083,6 +1090,8 @@ class DomainStore:
             record = self._approval_from_row(row)
             if record.status is not ApprovalStatus.PENDING:
                 raise ValueError("risk approval already decided")
+            if approve and record.requested_risk == RiskLevel.DESTRUCTIVE_LAB_ONLY:
+                raise ValueError("destructive lab risk cannot be approved for a client engagement")
             if record.requested_by == ctx.user_id:
                 raise RoleError("risk elevation cannot be self-approved")
             status = ApprovalStatus.APPROVED if approve else ApprovalStatus.DENIED
