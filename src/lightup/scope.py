@@ -14,7 +14,9 @@ class ScopeReason(str, Enum):
     EXPLICIT_HOST = "explicit_host"
     EXPLICIT_NETWORK = "explicit_network"
     AUTHORIZATION_MISSING = "authorization_missing"
+    AUTHORIZATION_REVOKED = "authorization_revoked"
     AUTHORIZATION_EXPIRED = "authorization_expired"
+    AUTHORIZATION_ASSET_MISMATCH = "authorization_asset_mismatch"
     OUT_OF_SCOPE = "out_of_scope"
     INVALID_TARGET = "invalid_target"
 
@@ -28,7 +30,7 @@ class ScopeDecision:
 
 @dataclass(frozen=True)
 class ScopePolicy:
-    allow_private_lab: bool = True
+    allow_private_lab: bool = False
     explicit_hosts: frozenset[str] = frozenset()
     explicit_networks: tuple[str, ...] = ()
     require_authorization_for_public: bool = True
@@ -63,14 +65,27 @@ class ScopePolicy:
         if addr is not None:
             if addr.is_loopback:
                 return ScopeDecision(True, host, ScopeReason.LOOPBACK)
-            if self.allow_private_lab and (addr.is_private or addr.is_link_local):
+            private_lab_candidate = (
+                addr.is_private
+                and not addr.is_link_local
+                and not addr.is_multicast
+                and not addr.is_unspecified
+                and not addr.is_reserved
+            )
+            if self.allow_private_lab and private_lab_candidate:
                 return ScopeDecision(True, host, ScopeReason.PRIVATE_LAB)
             if any(addr in network for network in self._networks()):
                 if self.require_authorization_for_public:
                     if target.authorization is None:
                         return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_MISSING)
+                    if target.authorization.is_revoked:
+                        return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_REVOKED)
                     if not target.authorization.is_current():
                         return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_EXPIRED)
+                    if not target.authorization.allows_asset(host):
+                        return ScopeDecision(
+                            False, host, ScopeReason.AUTHORIZATION_ASSET_MISMATCH
+                        )
                 return ScopeDecision(True, host, ScopeReason.EXPLICIT_NETWORK)
             return ScopeDecision(False, host, ScopeReason.OUT_OF_SCOPE)
 
@@ -78,8 +93,14 @@ class ScopePolicy:
             if self.require_authorization_for_public:
                 if target.authorization is None:
                     return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_MISSING)
+                if target.authorization.is_revoked:
+                    return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_REVOKED)
                 if not target.authorization.is_current():
                     return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_EXPIRED)
+                if not target.authorization.allows_asset(host):
+                    return ScopeDecision(
+                        False, host, ScopeReason.AUTHORIZATION_ASSET_MISMATCH
+                    )
             return ScopeDecision(True, host, ScopeReason.EXPLICIT_HOST)
 
         return ScopeDecision(False, host, ScopeReason.OUT_OF_SCOPE)

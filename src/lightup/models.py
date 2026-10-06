@@ -27,11 +27,31 @@ class Authorization:
     reference: str
     valid_from: datetime | None = None
     valid_until: datetime | None = None
+    assets: tuple[str, ...] = ()
+    revoked_at: datetime | None = None
+    revoked_by: str | None = None
+    revocation_reason: str | None = None
+
+    @property
+    def is_revoked(self) -> bool:
+        return self.revoked_at is not None
+
+    def allows_asset(self, asset: str) -> bool:
+        normalized = asset.strip().rstrip(".").lower()
+        return normalized in {
+            item.strip().rstrip(".").lower()
+            for item in self.assets
+            if item.strip()
+        }
 
     def is_current(self, now: datetime | None = None) -> bool:
         now = now or datetime.now(timezone.utc)
         if now.tzinfo is None:
             raise ValueError("authorization time must be timezone-aware")
+        if self.revoked_at is not None:
+            if self.revoked_at.tzinfo is None:
+                raise ValueError("authorization revocation time must be timezone-aware")
+            return False
         if self.valid_from and now < self.valid_from:
             return False
         if self.valid_until and now > self.valid_until:

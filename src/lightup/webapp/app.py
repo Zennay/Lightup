@@ -226,6 +226,9 @@ class LightUpWebApp:
              self.create_engagement, "operator"),
             ("POST", re.compile(r"^/engagements/(?P<engagement_id>[\w-]+)/grants$"),
              self.record_grant, "operator"),
+            ("POST", re.compile(
+                r"^/engagements/(?P<engagement_id>[\w-]+)/authorization/revoke$"
+            ), self.revoke_authorization, "operator"),
             ("GET", re.compile(r"^/assessments$"), self.assessments, "operator"),
             ("POST", re.compile(r"^/assessments/requests/(?P<request_id>[\w-]+)/decision$"),
              self.decide_request, "operator"),
@@ -484,9 +487,26 @@ class LightUpWebApp:
         csrf = self._csrf_field(auth)
         engagement_cards = []
         for eng in engagements:
-            grant = self.store.get_current_grant(ctx, eng.engagement_id)
+            grants = self.store.list_authorization_grants(ctx, eng.engagement_id)
+            grant = next((item for item in grants if item.is_current()), None)
             grant_badge = ("<span class=\"badge ok\">Authorization current</span>" if grant
                            else "<span class=\"badge warn\">No current authorization</span>")
+            revoked_history = [item for item in grants if item.is_revoked][:5]
+            history_detail = ""
+            if revoked_history:
+                rows = []
+                for item in revoked_history:
+                    revoked_at = item.revoked_at.isoformat() if item.revoked_at else "unknown"
+                    rows.append(
+                        f"<p class=\"meta\"><strong>{_e(item.reference)}</strong> · "
+                        f"revoked {_e(revoked_at)} by {_e(item.revoked_by or 'unknown')}"
+                        f"<br>Reason: {_e(item.revocation_reason or 'not recorded')}</p>"
+                    )
+                history_detail = (
+                    "<details><summary>Revoked authorization history</summary>"
+                    + "".join(rows)
+                    + "</details>"
+                )
             grant_detail = ""
             if grant:
                 grant_detail = (
@@ -495,7 +515,15 @@ class LightUpWebApp:
                     f"<br>Assets: {_e(', '.join(grant.scope.assets))}"
                     f"<br>Max risk: {_risk(grant.scope.max_risk)}"
                     f"<br>Valid {_e(grant.valid_from.date())} – {_e(grant.valid_until.date())}"
-                    "</p></details>"
+                    "</p>"
+                    f"<form method=\"post\" action=\"/engagements/{_e(eng.engagement_id)}/authorization/revoke\">"
+                    f"{csrf}"
+                    "<label>Revocation reason</label>"
+                    "<input name=\"reason\" required "
+                    "placeholder=\"Customer withdrew authorization\">"
+                    "<button class=\"secondary\">Revoke authorization</button>"
+                    "<p class=\"meta\">This immediately withdraws all current and "
+                    "scheduled grants for this engagement.</p></form></details>"
                 )
             else:
                 grant_detail = (
@@ -510,8 +538,9 @@ class LightUpWebApp:
                     "<input name=\"assets\" required>"
                     "<label>Excluded assets (comma-separated, optional)</label>"
                     "<input name=\"excluded_assets\">"
-                    "<label>Allowed capabilities (comma-separated ids; empty = all)</label>"
-                    "<input name=\"capabilities\">"
+                    "<label>Allowed capabilities (comma-separated ids)</label>"
+                    "<input name=\"capabilities\" required "
+                    "placeholder=\"web-baseline, api-baseline\">"
                     "<label>Maximum risk level</label><select name=\"max_risk\">"
                     "<option value=\"1\">1 — Passive</option>"
                     "<option value=\"2\">2 — Low impact</option>"
@@ -527,7 +556,8 @@ class LightUpWebApp:
             engagement_cards.append(
                 "<div class=\"card\"><div class=\"row\">"
                 f"<strong>{_e(eng.name)}</strong>{grant_badge}</div>"
-                f"<p class=\"meta\">Status: {_e(eng.status.value)}</p>{grant_detail}</div>"
+                f"<p class=\"meta\">Status: {_e(eng.status.value)}</p>"
+                f"{grant_detail}{history_detail}</div>"
             )
         new_engagement = (
             "<div class=\"card\">"
@@ -584,6 +614,14 @@ class LightUpWebApp:
             reference=form.get("reference", ""),
             scope=scope, valid_from=now,
             valid_until=now + timedelta(days=valid_days),
+        )
+        return _redirect(f"/clients/{engagement.client_id}")
+
+    def revoke_authorization(self, auth: AuthState, form: dict[str, str],
+                             engagement_id: str) -> Response:
+        engagement = self.store.get_engagement(auth.context, engagement_id)
+        self.store.revoke_engagement_authorization(
+            auth.context, engagement_id, form.get("reason", "")
         )
         return _redirect(f"/clients/{engagement.client_id}")
 

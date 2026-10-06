@@ -33,7 +33,7 @@ The execution layer must fail closed if a real-target action has no current auth
 
 ## Control plane
 
-Every future active adapter must receive an `ExecutionPermit` from the shared activation gate and satisfy the product-level `ExecutionPolicy`. Adapters may not decide scope themselves.
+Every future active adapter must receive an `ExecutionPermit` from the shared activation gate and satisfy the product-level `ExecutionPolicy`. Adapters may not decide scope themselves. Authorized permits preserve two distinct audit references: the operator activation reference and the client authorization reference; lab permits have no client authorization reference.
 
 ```text
 Target + Auth + Risk -> Execution Policy -> Scope Supervisor

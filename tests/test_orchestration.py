@@ -44,7 +44,11 @@ def _grant(asset: str, max_risk: RiskLevel = RiskLevel.STANDARD) -> Authorizatio
     return AuthorizationGrant(
         grant_id="g1", client_id="c1", engagement_id="e1",
         approved_by="op", reference="AUTH-1",
-        scope=ScopeDefinition(assets=(asset,), max_risk=max_risk),
+        scope=ScopeDefinition(
+            assets=(asset,),
+            max_risk=max_risk,
+            allowed_capabilities=("network-services", "identity-access", "web-baseline"),
+        ),
         valid_from=now - timedelta(hours=1), valid_until=now + timedelta(days=1),
     )
 
@@ -118,6 +122,38 @@ class OrchestrationTest(unittest.TestCase):
                            authorization=None)
         with self.assertRaises(ToolDenied):
             self.executor.execute(context, ToolCall("service-probe", "example.test"))
+
+    def test_cross_tenant_authorization_grant_is_denied(self):
+        context = _context(
+            AssessmentMode.AUTHORIZED_ASSESSMENT,
+            RiskLevel.STANDARD,
+            authorization=_grant("allowed.test"),
+        )
+        context = dataclasses.replace(context, client_id="c2")
+        with self.assertRaises(ToolDenied) as caught:
+            self.executor.execute(
+                context, ToolCall("service-probe", "allowed.test")
+            )
+        self.assertIn(
+            "authorization client does not match execution client",
+            str(caught.exception),
+        )
+
+    def test_cross_engagement_authorization_grant_is_denied(self):
+        context = _context(
+            AssessmentMode.AUTHORIZED_ASSESSMENT,
+            RiskLevel.STANDARD,
+            authorization=_grant("allowed.test"),
+        )
+        context = dataclasses.replace(context, engagement_id="e2")
+        with self.assertRaises(ToolDenied) as caught:
+            self.executor.execute(
+                context, ToolCall("service-probe", "allowed.test")
+            )
+        self.assertIn(
+            "authorization engagement does not match execution engagement",
+            str(caught.exception),
+        )
 
     def test_out_of_scope_asset_denied(self):
         context = _context(AssessmentMode.AUTHORIZED_ASSESSMENT, RiskLevel.STANDARD,
