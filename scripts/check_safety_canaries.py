@@ -104,6 +104,8 @@ def main() -> None:
             asset="canary.example.test",
             capability_id="web-baseline",
             requested_risk=RiskLevel.LOW_IMPACT,
+            client_id=client.client_id,
+            engagement_id=engagement.engagement_id,
             authorization=grant,
         )
         assert policy.decide(request).allowed is True
