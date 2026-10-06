@@ -66,6 +66,25 @@ def main() -> None:
         )
         from datetime import datetime, timedelta, timezone
         now = datetime.now(timezone.utc)
+        try:
+            store.record_authorization_grant(
+                operator,
+                engagement.engagement_id,
+                approved_by="CI signatory",
+                reference="CI-AUTH-EMPTY-CAPABILITIES",
+                scope=ScopeDefinition(
+                    assets=("canary.example.test",),
+                    max_risk=RiskLevel.LOW_IMPACT,
+                    allowed_capabilities=(),
+                ),
+                valid_from=now - timedelta(minutes=1),
+                valid_until=now + timedelta(minutes=5),
+            )
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("empty capability scope was accepted as authorization")
+
         grant = store.record_authorization_grant(
             operator,
             engagement.engagement_id,
@@ -116,7 +135,7 @@ def main() -> None:
         "public_target_denied": True, "execution_enabled": False,
         "authentication_required": True, "activation_locked": True,
         "non_loopback_refused": True, "authorization_revocation_enforced": True,
-        "temporary_state_removed": True,
+        "explicit_capability_scope_enforced": True, "temporary_state_removed": True,
     }, sort_keys=True))
 
 
