@@ -8,6 +8,20 @@ import unittest
 import test_future_security_classification_review_request_consumer as consumer_tests
 
 
+_AUTHORITY_FLAGS = (
+    "classification_selected",
+    "transition_resolution_created",
+    "collection_authorized",
+    "tool_call_created",
+    "execution_allowed",
+    "target_interaction_allowed",
+    "remediation_authoring_allowed",
+    "future_state_retest_allowed",
+    "deployment_authorized",
+    "attack_path_mutation_allowed",
+)
+
+
 class FutureSecurityClassificationReviewConsumerRejectionPurityTest(unittest.TestCase):
     def setUp(self):
         self.base = consumer_tests.FutureSecurityClassificationReviewRequestConsumerTest(
@@ -33,6 +47,15 @@ class FutureSecurityClassificationReviewConsumerRejectionPurityTest(unittest.Tes
                 )
         return identities
 
+    def _assert_stop_line_unchanged(self, payload):
+        for field in _AUTHORITY_FLAGS:
+            if field in payload:
+                self.assertIs(payload[field], False, field)
+        if "future_semantics" in payload:
+            self.assertEqual(payload["future_semantics"], "unresolved")
+        if "security_verdict" in payload:
+            self.assertEqual(payload["security_verdict"], "not_evaluated")
+
     def _assert_rejection_is_input_atomic(
         self,
         payload,
@@ -49,10 +72,13 @@ class FutureSecurityClassificationReviewConsumerRejectionPurityTest(unittest.Tes
             sort_keys=False,
         )
 
+        self._assert_stop_line_unchanged(payload)
+        messages = []
         for attempt in range(2):
             with self.subTest(attempt=attempt + 1):
-                with self.assertRaisesRegex(ValueError, message_pattern):
+                with self.assertRaisesRegex(ValueError, message_pattern) as raised:
                     self.base._consume(payload, produced)
+                messages.append(str(raised.exception))
                 self.assertEqual(payload, before)
                 self.assertEqual(
                     self._container_identities(payload),
@@ -67,6 +93,9 @@ class FutureSecurityClassificationReviewConsumerRejectionPurityTest(unittest.Tes
                     ),
                     json_before,
                 )
+                self._assert_stop_line_unchanged(payload)
+
+        self.assertEqual(messages[0], messages[1])
 
     def test_strict_digest_rejection_leaves_persisted_dict_untouched(self):
         produced = self.base._producer(
