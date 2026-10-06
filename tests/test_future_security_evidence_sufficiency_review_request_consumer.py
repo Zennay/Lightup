@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import unittest
 
 import test_future_security_evidence_sufficiency_review_request as request_tests
@@ -86,7 +87,7 @@ class FutureSecurityEvidenceSufficiencyReviewRequestConsumerTest(unittest.TestCa
     def test_strict_digest_tampering_fails_before_live_acceptance(self):
         produced = self._producer(suffix="sufficiency-request-consumer-tamper")
         request = produced[-1]
-        payload = request.as_dict()
+        payload = json.loads(request.to_json())
         payload["sufficiency_request_sha256"] = "0" * 64
         with self.assertRaisesRegex(ValueError, "digest mismatch"):
             self._consume(payload, produced)
