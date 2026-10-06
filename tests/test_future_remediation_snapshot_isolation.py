@@ -103,6 +103,37 @@ class FutureRemediationSnapshotIsolationTest(unittest.TestCase):
                     self.assertFalse(getattr(artifact, field))
                 self.assertEqual(parser(baseline), artifact)
 
+    def test_forged_snapshot_json_fails_closed_at_strict_parsers(self):
+        for artifact, parser in self._artifacts_and_parsers():
+            for field in _AUTHORITY_FLAGS:
+                with self.subTest(artifact=type(artifact).__name__, field=field):
+                    snapshot = artifact.as_dict()
+                    snapshot[field] = True
+                    forged = json.dumps(
+                        snapshot,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                        ensure_ascii=True,
+                    )
+                    with self.assertRaises(ValueError):
+                        parser(forged)
+
+            for field, value in (
+                ("future_semantics", "resolved"),
+                ("security_verdict", "pass"),
+            ):
+                with self.subTest(artifact=type(artifact).__name__, field=field):
+                    snapshot = artifact.as_dict()
+                    snapshot[field] = value
+                    forged = json.dumps(
+                        snapshot,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                        ensure_ascii=True,
+                    )
+                    with self.assertRaises(ValueError):
+                        parser(forged)
+
     def test_authoring_item_and_evidence_snapshot_mutation_is_deeply_isolated(self):
         request = self.gate._original_artifacts()[0]
         baseline = request.to_json()
