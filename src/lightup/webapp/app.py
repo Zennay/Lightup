@@ -510,8 +510,8 @@ class LightUpWebApp:
                     "<input name=\"assets\" required>"
                     "<label>Excluded assets (comma-separated, optional)</label>"
                     "<input name=\"excluded_assets\">"
-                    "<label>Allowed capabilities (comma-separated ids)</label>"
-                    "<input name=\"capabilities\" required>"
+                    "<label>Allowed capabilities (comma-separated ids; empty = all)</label>"
+                    "<input name=\"capabilities\">"
                     "<label>Maximum risk level</label><select name=\"max_risk\">"
                     "<option value=\"1\">1 — Passive</option>"
                     "<option value=\"2\">2 — Low impact</option>"
@@ -583,15 +583,11 @@ class LightUpWebApp:
         valid_days = int(raw_valid_days)
         if not 1 <= valid_days <= 365:
             raise ValueError("grant validity must be between 1 and 365 days")
-        capabilities = _csv("capabilities")
-        if not capabilities:
-            raise ValueError("at least one authorized capability is required")
-
         now = datetime.now(timezone.utc)
         scope = ScopeDefinition(
             assets=_csv("assets"),
             max_risk=max_risk,
-            allowed_capabilities=capabilities,
+            allowed_capabilities=_csv("capabilities"),
             excluded_assets=_csv("excluded_assets"),
         )
         engagement = self.store.get_engagement(auth.context, engagement_id)
