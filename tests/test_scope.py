@@ -15,10 +15,20 @@ class ScopePolicyTests(unittest.TestCase):
         self.assertTrue(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.LOOPBACK)
 
-    def test_private_lab_allowed_by_default(self):
+    def test_private_network_is_denied_by_default(self):
         decision = ScopePolicy().decide(Target("10.20.30.40"))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_private_lab_requires_explicit_opt_in(self):
+        decision = ScopePolicy(allow_private_lab=True).decide(Target("10.20.30.40"))
         self.assertTrue(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.PRIVATE_LAB)
+
+    def test_link_local_is_not_accepted_by_private_lab_shortcut(self):
+        decision = ScopePolicy(allow_private_lab=True).decide(Target("169.254.169.254"))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
     def test_unknown_public_ip_fails_closed(self):
         decision = ScopePolicy().decide(Target("8.8.8.8"))
