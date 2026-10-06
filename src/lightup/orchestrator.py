@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass
 
 from .capabilities import CapabilityState, get_capabilities
 from .models import Target
-from .scope import ScopeDecision, ScopePolicy
+from .scope import ScopeDecision, ScopePolicy, ScopeReason
 
 
 class ExecutionDisabled(RuntimeError):
@@ -32,10 +32,13 @@ class Planner:
         decision = self.scope_policy.decide(target)
         if not decision.allowed:
             return AssessmentPlan(target.value, decision, ())
+        allowed_states = {CapabilityState.PLANNING}
+        if decision.reason in {ScopeReason.LOOPBACK, ScopeReason.PRIVATE_LAB}:
+            allowed_states.add(CapabilityState.LAB_ONLY)
         capabilities = tuple(
             item.capability_id
             for item in get_capabilities()
-            if item.state in {CapabilityState.PLANNING, CapabilityState.LAB_ONLY}
+            if item.state in allowed_states
         )
         return AssessmentPlan(target.value, decision, capabilities)
 
