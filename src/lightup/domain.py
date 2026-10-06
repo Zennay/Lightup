@@ -927,11 +927,15 @@ class DomainStore:
         now = now or utcnow()
         with self._connect() as con:
             row = con.execute(
-                "SELECT * FROM authorization_grants "
-                "WHERE grant_id=? AND client_id=? AND engagement_id=? LIMIT 1",
+                "SELECT g.*, e.status AS engagement_status "
+                "FROM authorization_grants AS g "
+                "JOIN engagements AS e ON e.engagement_id=g.engagement_id "
+                "WHERE g.grant_id=? AND g.client_id=? AND g.engagement_id=? LIMIT 1",
                 (grant.grant_id, grant.client_id, grant.engagement_id),
             ).fetchone()
         if row is None:
+            return None
+        if EngagementStatus(row["engagement_status"]) is EngagementStatus.CLOSED:
             return None
         persisted = self._grant_from_row(row)
         return persisted if persisted.is_current(now) else None
