@@ -39,6 +39,9 @@ class ExecutionPolicy:
     """
 
     def decide(self, request: ExecutionRequest) -> PolicyDecision:
+        if not isinstance(request.requested_risk, RiskLevel):
+            return PolicyDecision(False, "requested risk must be a RiskLevel")
+
         if request.interaction is InteractionKind.ANALYSIS:
             if request.requested_risk is not RiskLevel.ANALYSIS_ONLY:
                 return PolicyDecision(False, "analysis mode cannot request active risk")
@@ -54,7 +57,7 @@ class ExecutionPolicy:
                 return PolicyDecision(False, "lab execution requires a lab target")
             return PolicyDecision(True, "isolated lab execution")
 
-        if request.requested_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
+        if request.requested_risk == RiskLevel.DESTRUCTIVE_LAB_ONLY:
             return PolicyDecision(False, "destructive risk is restricted to isolated labs")
 
         grant = request.authorization
