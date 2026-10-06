@@ -40,8 +40,9 @@ class FutureSecurityClassificationReviewerPreflightTest(unittest.TestCase):
         *,
         suffix: str,
         classification_reviewer: AccessContext | None = None,
+        produced: tuple | None = None,
     ):
-        produced = self._inputs(suffix=suffix)
+        produced = produced or self._inputs(suffix=suffix)
         (
             _,
             proposal,
@@ -158,8 +159,9 @@ class FutureSecurityClassificationReviewerPreflightTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "must be independent"):
             self._preflight(
-                suffix="classification-preflight-independence-second",
+                suffix="classification-preflight-independence",
                 classification_reviewer=sufficiency_verifier,
+                produced=produced,
             )
 
     def test_empty_or_noncanonical_reviewer_identity_fails_closed(self):
