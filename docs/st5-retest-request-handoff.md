@@ -19,17 +19,27 @@ The handoff requires:
   flag to remain false;
 - unresolved future semantics and no security verdict.
 
-Item classification, source next action, retest purpose and
+Item classification, graph-diff action, source next action, retest purpose and
 `remediation_required` must agree:
 
-- introduced/worsened -> author remediation then retest -> remediation
-  validation;
-- improved/removed -> verify improvement with retest -> improvement
-  verification;
+- introduced -> add-path hypothesis -> author remediation then retest ->
+  remediation validation;
+- worsened -> risk-up modification -> author remediation then retest ->
+  remediation validation;
+- improved -> risk-down modification -> verify improvement with retest ->
+  improvement verification;
+- removed -> remove-path candidate -> verify improvement with retest ->
+  improvement verification;
 - insufficient evidence cannot become a retest request.
 
-Item identities are unique. Item evidence/capability collections reject
-duplicates.
+Identifiers follow the upstream ST4 canonical contract: non-empty, already
+trimmed, at most 256 characters and free of ASCII control characters. Lineage
+lists are unique and canonically sorted. Evidence, capability and effect
+lineage is non-empty per item.
+
+Change-node IDs and resolution IDs are each globally unique inside one request.
+Introduced items cannot reference a current attack path; worsened, improved and
+removed items must reference at least one current attack path.
 
 ## Aggregate lineage
 
