@@ -117,6 +117,15 @@ class FutureSecurityEvidenceFreshnessCoverageConsumerTest(unittest.TestCase):
                 produced,
             )
 
+        coverage = produced[-1]
+        duplicate_nested = coverage.to_json().replace(
+            '"fresh_candidate_present":true',
+            '"fresh_candidate_present":true,"fresh_candidate_present":false',
+            1,
+        )
+        with self.assertRaisesRegex(ValueError, "duplicate object keys"):
+            self._consume(duplicate_nested, produced)
+
         with self.assertRaisesRegex(ValueError, "persisted payload must be an object"):
             self._consume("[]", produced)
 
