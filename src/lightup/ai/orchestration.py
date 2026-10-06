@@ -15,7 +15,7 @@ Design rules:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable
@@ -238,6 +238,8 @@ class ToolExecutor:
             raise RiskElevationRequired(call.tool_id, definition.min_risk, context.approved_risk)
 
         authorization = context.authorization
+        handler_context = context
+        snapshot_grant_id: str | None = None
         if definition.interaction is InteractionKind.TARGET_ACTIVE:
             if authorization is None:
                 raise ToolDenied("target-active execution requires authorization")
@@ -270,7 +272,34 @@ class ToolExecutor:
         if not decision.allowed:
             raise ToolDenied(f"policy denied tool {call.tool_id!r}: {decision.reason}")
 
-        output = handler(context, arguments)
+        if definition.interaction is InteractionKind.TARGET_ACTIVE:
+            assert self.authorization_resolver is not None
+            assert snapshot_grant_id is not None
+            dispatch_authorization = self.authorization_resolver(authorization)
+            if dispatch_authorization is None:
+                raise ToolDenied(
+                    "authorization grant ceased to be live before target-active dispatch"
+                )
+            if dispatch_authorization.grant_id != snapshot_grant_id:
+                raise ToolDenied(
+                    "live authorization resolver returned a different grant before dispatch"
+                )
+            if dispatch_authorization != authorization:
+                # Scope can narrow between the first policy check and dispatch.
+                # Re-evaluate the exact call against the newest persisted grant.
+                request = replace(request, authorization=dispatch_authorization)
+                decision = self.policy.decide(request)
+                if not decision.allowed:
+                    raise ToolDenied(
+                        f"policy denied tool {call.tool_id!r} after live "
+                        f"authorization refresh: {decision.reason}"
+                    )
+            authorization = dispatch_authorization
+            # The policy and handler now share the final authoritative grant.
+            # The caller's immutable RunContext keeps its original snapshot.
+            handler_context = replace(context, authorization=authorization)
+
+        output = handler(handler_context, arguments)
         if not isinstance(output, ToolOutput):
             raise OrchestrationError(
                 f"tool {call.tool_id!r} violated the evidence contract: "
