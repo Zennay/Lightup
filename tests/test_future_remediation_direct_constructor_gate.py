@@ -149,6 +149,69 @@ class FutureRemediationDirectConstructorGateTest(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, "authority flag"):
                         replace(artifact, **{field: True})
 
+    def test_all_artifact_structures_remain_bounded_and_payload_free(self):
+        forbidden_keys = {
+            "source",
+            "metadata",
+            "payload",
+            "credentials",
+            "target_arguments",
+            "arguments",
+            "authorization_ref",
+            "patch",
+            "command",
+            "tool_arguments",
+        }
+
+        def collect_keys(value):
+            keys = set()
+            if isinstance(value, dict):
+                keys.update(value)
+                for nested in value.values():
+                    keys.update(collect_keys(nested))
+            elif isinstance(value, (list, tuple)):
+                for nested in value:
+                    keys.update(collect_keys(nested))
+            return keys
+
+        for artifact in self._all_artifacts():
+            with self.subTest(artifact=type(artifact).__name__):
+                self.assertTrue(forbidden_keys.isdisjoint(collect_keys(artifact.as_dict())))
+
+    def test_all_strict_json_parsers_reject_unknown_top_level_fields(self):
+        artifacts_and_parsers = (
+            (self._original_artifacts()[0], future_remediation_authoring_request_from_json),
+            (self._original_artifacts()[1], future_remediation_text_proposal_from_json),
+            (
+                self._original_artifacts()[2],
+                future_remediation_text_review_request_from_json,
+            ),
+            (self._original_artifacts()[3], future_remediation_text_review_from_json),
+            (
+                self._revised_artifacts()[0],
+                future_remediation_text_revision_request_from_json,
+            ),
+            (
+                self._revised_artifacts()[1],
+                future_remediation_text_revision_proposal_from_json,
+            ),
+            (
+                self._revised_artifacts()[2],
+                future_remediation_text_revision_review_request_from_json,
+            ),
+            (
+                self._revised_artifacts()[3],
+                future_remediation_text_revision_review_from_json,
+            ),
+        )
+
+        for artifact, parser in artifacts_and_parsers:
+            raw = artifact.to_json()
+            widened = raw[:-1] + ',"unexpected_field":"forged"}'
+            with self.subTest(artifact=type(artifact).__name__):
+                with self.assertRaisesRegex(ValueError, "schema mismatch"):
+                    parser(widened)
+
     def test_all_strict_json_parsers_reject_duplicate_primary_digest_keys(self):
         artifacts_parsers_and_fields = (
             (
