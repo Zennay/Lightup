@@ -28,8 +28,10 @@ dictionary, then proves two distinct failures:
    live validation rejects reuse.
 
 For both paths, the same caller-owned dictionary is rejected twice. Its value,
-JSON key/list ordering, and recursive dictionary/list identities must remain
-unchanged after every rejection.
+JSON key/list ordering, recursive dictionary/list identities, and planning-only
+non-authority stop line must remain unchanged after every rejection. Repeated
+rejection must also return the same failure message, proving deterministic
+failure semantics as well as input atomicity.
 
 ## Safety stop line
 
