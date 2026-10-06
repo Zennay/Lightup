@@ -101,12 +101,21 @@ class FutureSecurityRemediationRetestPlanDirectConstructionTest(unittest.TestCas
             ("retest_item_count", plan.retest_item_count + 1),
             ("evidence_gap_count", plan.evidence_gap_count + 1),
             ("contains_insufficient_evidence", True),
-            ("plan_sha256", "0" * 64),
+            ("plan_sha256", "A" * 64),
         )
         for field, value in mutations:
             with self.subTest(field=field):
                 with self.assertRaises(ValueError):
                     dataclasses.replace(plan, **{field: value})
+
+    def test_stale_canonical_digest_remains_constructible_for_live_consumers(self):
+        plan = self._plan(
+            AttackPathTransitionClassification.INTRODUCED,
+            suffix="direct-stale-plan-digest",
+        )
+        stale = dataclasses.replace(plan, plan_sha256="0" * 64)
+        self.assertEqual(stale.plan_sha256, "0" * 64)
+        self.assertNotEqual(stale, plan)
 
     def test_direct_item_identity_enum_and_boolean_confusion_fail_closed(self):
         plan = self._plan(
