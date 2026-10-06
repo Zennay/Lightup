@@ -30,6 +30,17 @@ from lightup.future_remediation_text_revision_review_handoff import (
 )
 
 
+_AUTHORITY_FLAGS = (
+    "code_change_authorized",
+    "tool_call_created",
+    "execution_allowed",
+    "target_interaction_allowed",
+    "future_state_retest_allowed",
+    "deployment_authorized",
+    "attack_path_mutation_allowed",
+)
+
+
 class FutureRemediationSnapshotIsolationTest(unittest.TestCase):
     def setUp(self):
         self.gate = gate_tests.FutureRemediationDirectConstructorGateTest(
@@ -80,7 +91,16 @@ class FutureRemediationSnapshotIsolationTest(unittest.TestCase):
                 snapshot = artifact.as_dict()
                 snapshot["future_semantics"] = "resolved"
                 snapshot["security_verdict"] = "pass"
+                for field in _AUTHORITY_FLAGS:
+                    snapshot[field] = True
+                if "remediation_accepted" in snapshot:
+                    snapshot["remediation_accepted"] = not snapshot["remediation_accepted"]
+
                 self.assertEqual(artifact.to_json(), baseline)
+                self.assertEqual(artifact.future_semantics, "unresolved")
+                self.assertEqual(artifact.security_verdict, "not_evaluated")
+                for field in _AUTHORITY_FLAGS:
+                    self.assertFalse(getattr(artifact, field))
                 self.assertEqual(parser(baseline), artifact)
 
     def test_authoring_item_and_evidence_snapshot_mutation_is_deeply_isolated(self):
