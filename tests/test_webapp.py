@@ -297,6 +297,34 @@ class WebAppTest(unittest.TestCase):
         _, _, body = self.request("GET", f"/clients/{self.client_a.client_id}",
                                   token=self.op_token)
         self.assertIn("Authorization current", body)
+        self.assertIn("Revoke authorization", body)
+
+        status, headers, _ = self.request(
+            "POST",
+            f"/engagements/{engagement.engagement_id}/authorization/revoke",
+            {"reason": "Customer withdrew authorization"},
+            token=self.op_token,
+            csrf=self.op_csrf,
+        )
+        self.assertEqual(status, "303 See Other")
+        self.assertEqual(headers["Location"], f"/clients/{self.client_a.client_id}")
+        self.assertIsNone(
+            self.store.get_current_grant(self.operator, engagement.engagement_id)
+        )
+        grants = self.store.list_authorization_grants(
+            self.operator, engagement.engagement_id
+        )
+        self.assertTrue(all(grant.is_revoked for grant in grants))
+        self.assertTrue(
+            all(
+                grant.revocation_reason == "Customer withdrew authorization"
+                for grant in grants
+            )
+        )
+        _, _, body = self.request(
+            "GET", f"/clients/{self.client_a.client_id}", token=self.op_token
+        )
+        self.assertIn("No current authorization", body)
 
         # Destructive risk cannot be granted through the UI.
         status, _, _ = self.request(
@@ -312,6 +340,19 @@ class WebAppTest(unittest.TestCase):
             {"name": "Rogue"}, token=self.a_token, csrf=self.a_csrf)
         self.assertEqual(status, "403 Forbidden")
         self.assertEqual(self.store.list_engagements(self.operator), [])
+
+    def test_client_session_cannot_revoke_authorization(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Authorized"
+        )
+        status, _, _ = self.request(
+            "POST",
+            f"/engagements/{engagement.engagement_id}/authorization/revoke",
+            {"reason": "rogue revoke"},
+            token=self.a_token,
+            csrf=self.a_csrf,
+        )
+        self.assertEqual(status, "403 Forbidden")
 
     def test_output_is_escaped(self):
         self.store.add_prospect(self.operator, "<script>alert(1)</script>", "x", 0.5)
