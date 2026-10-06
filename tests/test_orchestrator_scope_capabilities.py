@@ -1,6 +1,7 @@
 import unittest
+from unittest.mock import patch
 
-from lightup.capabilities import CapabilityState, get_capabilities
+from lightup.capabilities import Capability, CapabilityState, get_capabilities
 from lightup.models import Authorization, Target
 from lightup.orchestrator import Planner
 from lightup.scope import ScopePolicy, ScopeReason
@@ -25,6 +26,15 @@ class PlannerScopeCapabilityBoundaryTest(unittest.TestCase):
         self.assertTrue(plan.scope.allowed)
         self.assertEqual(plan.scope.reason, ScopeReason.LOOPBACK)
         self.assertTrue(self.lab_only_ids)
+        self.assertTrue(self.lab_only_ids.issubset(set(plan.capability_ids)))
+        self.assertTrue(self.planning_ids.issubset(set(plan.capability_ids)))
+        self.assertFalse(plan.execution_enabled)
+
+    def test_private_lab_plan_may_include_lab_only_capabilities(self):
+        plan = Planner(ScopePolicy()).build(Target("10.20.30.40"))
+
+        self.assertTrue(plan.scope.allowed)
+        self.assertEqual(plan.scope.reason, ScopeReason.PRIVATE_LAB)
         self.assertTrue(self.lab_only_ids.issubset(set(plan.capability_ids)))
         self.assertTrue(self.planning_ids.issubset(set(plan.capability_ids)))
         self.assertFalse(plan.execution_enabled)
@@ -68,6 +78,31 @@ class PlannerScopeCapabilityBoundaryTest(unittest.TestCase):
         self.assertFalse(plan.scope.allowed)
         self.assertEqual(plan.capability_ids, ())
         self.assertFalse(plan.execution_enabled)
+
+
+    def test_disabled_capability_is_never_planned(self):
+        disabled = Capability(
+            "disabled-test",
+            "Disabled test",
+            "Disabled capability fixture",
+            CapabilityState.DISABLED,
+        )
+        with patch(
+            "lightup.orchestrator.get_capabilities",
+            return_value=get_capabilities() + (disabled,),
+        ):
+            lab_plan = Planner(ScopePolicy()).build(Target("127.0.0.1"))
+            public_plan = Planner(
+                ScopePolicy(explicit_hosts=frozenset({"security.example.test"}))
+            ).build(
+                Target(
+                    "security.example.test",
+                    authorization=Authorization("client", "AUTH-203-DISABLED"),
+                )
+            )
+
+        self.assertNotIn(disabled.capability_id, lab_plan.capability_ids)
+        self.assertNotIn(disabled.capability_id, public_plan.capability_ids)
 
 
 if __name__ == "__main__":
