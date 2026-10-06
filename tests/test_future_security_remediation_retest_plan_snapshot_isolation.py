@@ -121,6 +121,9 @@ class FutureSecurityRemediationRetestPlanSnapshotIsolationTest(unittest.TestCase
             AttackPathTransitionClassification.WORSENED,
             suffix="snapshot-independent",
         )
+        baseline = plan.to_json()
+        original_subject = plan.items[0].subject_node_id
+        original_effects = plan.items[0].effect_ids
         first = plan.as_dict()
         second = plan.as_dict()
 
@@ -140,7 +143,9 @@ class FutureSecurityRemediationRetestPlanSnapshotIsolationTest(unittest.TestCase
             first["items"][0]["effect_ids"],
             second["items"][0]["effect_ids"],
         )
-        self.assertEqual(plan.subject_node_id if hasattr(plan, "subject_node_id") else plan.items[0].subject_node_id, plan.items[0].subject_node_id)
+        self.assertEqual(plan.to_json(), baseline)
+        self.assertEqual(plan.items[0].subject_node_id, original_subject)
+        self.assertEqual(plan.items[0].effect_ids, original_effects)
 
     def test_parser_detaches_from_caller_owned_mutable_json_containers(self):
         plan = self._plan(
