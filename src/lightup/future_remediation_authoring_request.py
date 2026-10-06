@@ -55,6 +55,12 @@ def _require_canonical_sha256(value: object, *, field: str) -> str:
     return value
 
 
+def _require_non_negative_int(value: object, *, field: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise ValueError(f"{field} must be a non-negative integer")
+    return value
+
+
 def _require_string_tuple(
     value: object,
     *,
@@ -249,6 +255,60 @@ class FutureRemediationAuthoringRequest:
     security_verdict: str = "not_evaluated"
 
     def __post_init__(self) -> None:
+        if self.schema_version != AUTHORING_REQUEST_SCHEMA_VERSION:
+            raise ValueError("remediation authoring request schema version mismatch")
+        for field in (
+            "client_id",
+            "current_twin_id",
+            "twin_id",
+            "changeset_id",
+        ):
+            _require_non_empty_string(
+                getattr(self, field),
+                field=f"remediation authoring request {field}",
+            )
+        for field in ("current_twin_version", "twin_version", "item_count"):
+            _require_non_negative_int(
+                getattr(self, field),
+                field=f"remediation authoring request {field}",
+            )
+        for field in (
+            "report_sha256",
+            "plan_sha256",
+            "bundle_sha256",
+            "request_sha256",
+        ):
+            _require_canonical_sha256(
+                getattr(self, field),
+                field=f"remediation authoring request {field}",
+            )
+        if not isinstance(self.items, tuple) or not self.items:
+            raise ValueError(
+                "remediation authoring request items must be a non-empty tuple"
+            )
+        identities: list[tuple[str, str, str]] = []
+        for item in self.items:
+            if type(item) is not FutureRemediationAuthoringRequestItem:
+                raise ValueError(
+                    "remediation authoring request items must use "
+                    "FutureRemediationAuthoringRequestItem"
+                )
+            identity = (
+                item.change_node_id,
+                item.subject_node_id,
+                item.resolution_id,
+            )
+            if identity in identities:
+                raise ValueError(
+                    "remediation authoring request item identity must be unique"
+                )
+            identities.append(identity)
+        if identities != sorted(identities):
+            raise ValueError(
+                "remediation authoring request items must be canonically ordered"
+            )
+        if self.item_count != len(self.items):
+            raise ValueError("remediation authoring request item count mismatch")
         if self.authoring_requested is not True:
             raise ValueError("authoring_requested must remain true")
         if self.remediation_proposal_created is not False:
@@ -268,6 +328,8 @@ class FutureRemediationAuthoringRequest:
             raise ValueError("future_semantics must remain unresolved")
         if self.security_verdict != "not_evaluated":
             raise ValueError("security_verdict must remain not_evaluated")
+        if self.request_sha256 != _direct_request_digest(self):
+            raise ValueError("remediation authoring request digest mismatch")
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -279,6 +341,61 @@ class FutureRemediationAuthoringRequest:
             separators=(",", ":"),
             ensure_ascii=True,
         )
+
+
+def _direct_request_digest(
+    request: "FutureRemediationAuthoringRequest",
+) -> str:
+    payload = {
+        "schema_version": AUTHORING_REQUEST_SCHEMA_VERSION,
+        "client_id": request.client_id,
+        "current_twin_id": request.current_twin_id,
+        "current_twin_version": request.current_twin_version,
+        "twin_id": request.twin_id,
+        "twin_version": request.twin_version,
+        "changeset_id": request.changeset_id,
+        "report_sha256": request.report_sha256,
+        "plan_sha256": request.plan_sha256,
+        "bundle_sha256": request.bundle_sha256,
+        "items": [
+            {
+                "change_node_id": item.change_node_id,
+                "subject_node_id": item.subject_node_id,
+                "resolution_id": item.resolution_id,
+                "resolution_sha256": item.resolution_sha256,
+                "classification": item.classification.value,
+                "current_attack_path_ids": list(item.current_attack_path_ids),
+                "effect_ids": list(item.effect_ids),
+                "capability_ids": list(item.capability_ids),
+                "evidence": [record.as_dict() for record in item.evidence],
+                "evidence_manifest_sha256": item.evidence_manifest_sha256,
+                "requested_output": "remediation_text_proposal",
+                "remediation_required": True,
+                "future_state_retest_required": True,
+            }
+            for item in request.items
+        ],
+        "item_count": request.item_count,
+        "authoring_requested": True,
+        "remediation_proposal_created": False,
+        "code_change_authorized": False,
+        "tool_call_created": False,
+        "execution_allowed": False,
+        "target_interaction_allowed": False,
+        "future_state_retest_allowed": False,
+        "deployment_authorized": False,
+        "attack_path_mutation_allowed": False,
+        "future_semantics": "unresolved",
+        "security_verdict": "not_evaluated",
+    }
+    return sha256(
+        json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        ).encode("utf-8")
+    ).hexdigest()
 
 
 def _request_digest(
