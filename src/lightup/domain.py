@@ -788,6 +788,8 @@ class DomainStore:
         recurring_retest_allowed: bool = False,
     ) -> AuthorizationGrant:
         ctx.require_operator("record_authorization_grant")
+        if not isinstance(recurring_retest_allowed, bool):
+            raise ValueError("recurring_retest_allowed must be a bool")
         if not isinstance(scope.max_risk, RiskLevel):
             raise ValueError("grant max_risk must be a RiskLevel")
         if valid_from.tzinfo is None or valid_until.tzinfo is None:
@@ -881,6 +883,9 @@ class DomainStore:
 
     @staticmethod
     def _grant_from_row(row: sqlite3.Row) -> AuthorizationGrant:
+        raw_recurring_retest = row["recurring_retest_allowed"]
+        if type(raw_recurring_retest) is not int or raw_recurring_retest not in (0, 1):
+            raise ValueError("persisted recurring_retest_allowed must be 0 or 1")
         scope = ScopeDefinition(
             assets=tuple(json.loads(row["assets_json"])),
             max_risk=RiskLevel(row["max_risk"]),
@@ -896,7 +901,7 @@ class DomainStore:
             scope=scope,
             valid_from=datetime.fromisoformat(row["valid_from"]),
             valid_until=datetime.fromisoformat(row["valid_until"]),
-            recurring_retest_allowed=bool(row["recurring_retest_allowed"]),
+            recurring_retest_allowed=raw_recurring_retest == 1,
             revoked_at=(
                 datetime.fromisoformat(row["revoked_at"])
                 if row["revoked_at"] is not None else None
