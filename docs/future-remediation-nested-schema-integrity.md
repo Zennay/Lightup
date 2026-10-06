@@ -18,8 +18,9 @@ The regression covers:
 - revised remediation review checks.
 
 For each nested object kind, both an unexpected field and a missing required
-field fail closed at the strict parser boundary. Canonical baseline artifacts
-continue to round-trip unchanged.
+field fail closed at the strict parser boundary. Replacing a nested object with
+a list or scalar also fails closed before digest validation. Canonical baseline
+artifacts continue to round-trip unchanged.
 
 ## Collision boundary
 
