@@ -17,6 +17,7 @@ from lightup.future_security_remediation_retest_plan import (
 from lightup.future_security_remediation_retest_plan_handoff import (
     future_security_remediation_retest_plan_from_dict,
     future_security_remediation_retest_plan_from_json,
+    validate_future_security_remediation_retest_plan_handoff,
 )
 
 
@@ -162,6 +163,62 @@ class FutureSecurityRemediationRetestPlanHandoffTest(unittest.TestCase):
         fake_retest["items"][0]["future_state_retest_required"] = True
         with self.assertRaisesRegex(ValueError, "semantics mismatch"):
             future_security_remediation_retest_plan_from_dict(fake_retest)
+
+    def test_parsed_plan_must_match_live_rebuilt_lineage(self):
+        _, proposal, context, resolution, preview = self.r._inputs(
+            AttackPathTransitionClassification.INTRODUCED,
+            suffix="handoff-live",
+        )
+        report = build_future_attack_path_security_delta_report(
+            preview,
+            proposal,
+            (resolution,),
+            (context,),
+            self.state,
+        )
+        plan = build_future_security_remediation_retest_plan(
+            report,
+            preview,
+            proposal,
+            (resolution,),
+            (context,),
+            self.state,
+        )
+        parsed = future_security_remediation_retest_plan_from_json(plan.to_json())
+        validated = validate_future_security_remediation_retest_plan_handoff(
+            parsed,
+            report,
+            preview,
+            proposal,
+            (resolution,),
+            (context,),
+            self.state,
+        )
+        self.assertEqual(validated, plan)
+
+        _, other_proposal, other_context, other_resolution, other_preview = (
+            self.r._inputs(
+                AttackPathTransitionClassification.INTRODUCED,
+                suffix="handoff-live-other",
+            )
+        )
+        other_report = build_future_attack_path_security_delta_report(
+            other_preview,
+            other_proposal,
+            (other_resolution,),
+            (other_context,),
+            self.state,
+        )
+        with self.assertRaisesRegex(ValueError, "does not match its live validated lineage"):
+            validate_future_security_remediation_retest_plan_handoff(
+                parsed,
+                other_report,
+                other_preview,
+                other_proposal,
+                (other_resolution,),
+                (other_context,),
+                self.state,
+            )
 
 
 if __name__ == "__main__":
