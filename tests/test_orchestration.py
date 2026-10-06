@@ -159,6 +159,74 @@ class OrchestrationTest(unittest.TestCase):
             str(caught.exception),
         )
 
+    def test_lab_autonomous_context_cannot_dispatch_target_active_tool(self):
+        handler_calls: list[str] = []
+        registry = ToolRegistry()
+        registry.register(
+            ToolDefinition(
+                "mode-confusion-target-probe",
+                "network-services",
+                InteractionKind.TARGET_ACTIVE,
+                RiskLevel.STANDARD,
+                "test-only target-active handler",
+            ),
+            lambda context, arguments: (
+                handler_calls.append("ran")
+                or ToolOutput("ran", "probe", b"evidence")
+            ),
+        )
+        executor = ToolExecutor(
+            registry,
+            self.state,
+            authorization_resolver=lambda grant: grant,
+        )
+        context = _context(
+            AssessmentMode.LAB_AUTONOMOUS,
+            RiskLevel.STANDARD,
+            authorization=_grant("allowed.test"),
+            is_lab=False,
+        )
+
+        with self.assertRaises(ToolDenied) as caught:
+            executor.execute(
+                context, ToolCall("mode-confusion-target-probe", "allowed.test")
+            )
+
+        self.assertIn("requires authorized-assessment mode", str(caught.exception))
+        self.assertEqual(handler_calls, [])
+
+    def test_authorized_assessment_context_cannot_dispatch_lab_active_tool(self):
+        handler_calls: list[str] = []
+        registry = ToolRegistry()
+        registry.register(
+            ToolDefinition(
+                "mode-confusion-lab-probe",
+                "web-baseline",
+                InteractionKind.LAB_ACTIVE,
+                RiskLevel.LOW_IMPACT,
+                "test-only lab-active handler",
+            ),
+            lambda context, arguments: (
+                handler_calls.append("ran")
+                or ToolOutput("ran", "probe", b"evidence")
+            ),
+        )
+        executor = ToolExecutor(registry, self.state)
+        context = _context(
+            AssessmentMode.AUTHORIZED_ASSESSMENT,
+            RiskLevel.LOW_IMPACT,
+            authorization=None,
+            is_lab=True,
+        )
+
+        with self.assertRaises(ToolDenied) as caught:
+            executor.execute(
+                context, ToolCall("mode-confusion-lab-probe", "127.0.0.1")
+            )
+
+        self.assertIn("requires lab-autonomous lab context", str(caught.exception))
+        self.assertEqual(handler_calls, [])
+
     def test_target_active_requires_live_authorization_resolver(self):
         executor = ToolExecutor(self.registry, self.state)
         context = _context(
