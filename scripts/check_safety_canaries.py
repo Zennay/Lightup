@@ -12,7 +12,9 @@ import subprocess
 import sys
 import tempfile
 
-from lightup.domain import DomainStore
+from lightup.domain import AccessContext, DomainStore, Role
+from lightup.engagements import RiskLevel, ScopeDefinition
+from lightup.execution_policy import ExecutionPolicy, ExecutionRequest, InteractionKind
 from lightup.webapp import create_app
 from lightup.webapp.__main__ import _loopback
 
@@ -57,6 +59,51 @@ def main() -> None:
         assert status == "200 OK", status
         assert "Locked" in body and "no real-target execution path" in body
 
+        operator = AccessContext(user.user_id, Role.OPERATOR)
+        client = store.create_client(operator, "CI Authorization Canary")
+        engagement = store.create_engagement(
+            operator, client.client_id, "Revocation canary"
+        )
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        grant = store.record_authorization_grant(
+            operator,
+            engagement.engagement_id,
+            approved_by="CI signatory",
+            reference="CI-AUTH-REVOCATION",
+            scope=ScopeDefinition(
+                assets=("canary.example.test",),
+                max_risk=RiskLevel.LOW_IMPACT,
+                allowed_capabilities=("web-baseline",),
+            ),
+            valid_from=now - timedelta(minutes=1),
+            valid_until=now + timedelta(minutes=5),
+        )
+        policy = ExecutionPolicy()
+        request = ExecutionRequest(
+            interaction=InteractionKind.TARGET_ACTIVE,
+            asset="canary.example.test",
+            capability_id="web-baseline",
+            requested_risk=RiskLevel.LOW_IMPACT,
+            authorization=grant,
+        )
+        assert policy.decide(request).allowed is True
+        store.revoke_engagement_authorization(
+            operator, engagement.engagement_id, "CI revocation canary"
+        )
+        revoked = store.list_authorization_grants(
+            operator, engagement.engagement_id
+        )[0]
+        revoked_request = ExecutionRequest(
+            interaction=request.interaction,
+            asset=request.asset,
+            capability_id=request.capability_id,
+            requested_risk=request.requested_risk,
+            authorization=revoked,
+        )
+        assert policy.decide(revoked_request).allowed is False
+        assert store.get_current_grant(operator, engagement.engagement_id) is None
+
         try:
             _loopback("0.0.0.0")
         except Exception:
@@ -68,7 +115,8 @@ def main() -> None:
     print(json.dumps({
         "public_target_denied": True, "execution_enabled": False,
         "authentication_required": True, "activation_locked": True,
-        "non_loopback_refused": True, "temporary_state_removed": True,
+        "non_loopback_refused": True, "authorization_revocation_enforced": True,
+        "temporary_state_removed": True,
     }, sort_keys=True))
 
 
