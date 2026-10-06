@@ -91,6 +91,45 @@ class ScopeAuthorizationDefenseInDepthTests(unittest.TestCase):
         with self.assertRaisesRegex(PermissionError, "public targets"):
             gate.issue(target, CAPABILITY)
 
+    def test_activation_permit_does_not_replace_durable_execution_grant(self):
+        target = Target(PUBLIC_HOST, authorization=_legacy_authorization())
+        gate = ActivationGate(
+            self.public_scope,
+            ActivationPolicy(
+                mode=ActivationMode.AUTHORIZED,
+                activation_reference="AUTH-DEFENSE-IN-DEPTH",
+            ),
+        )
+        permit = gate.issue(target, CAPABILITY)
+        self.assertEqual(permit.mode, ActivationMode.AUTHORIZED)
+
+        decision = self.execution_policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset=permit.target,
+                capability_id=permit.capability_id,
+                requested_risk=RiskLevel.LOW_IMPACT,
+            )
+        )
+        self.assertFalse(decision.allowed)
+        self.assertIn("authorization", decision.reason)
+
+    def test_durable_execution_grant_does_not_replace_public_scope_authorization(self):
+        execution_decision = self.execution_policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset=PUBLIC_HOST,
+                capability_id=CAPABILITY,
+                requested_risk=RiskLevel.LOW_IMPACT,
+                authorization=_durable_grant(),
+            )
+        )
+        self.assertTrue(execution_decision.allowed)
+
+        scope_decision = self.public_scope.decide(Target(PUBLIC_HOST))
+        self.assertFalse(scope_decision.allowed)
+        self.assertEqual(scope_decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
     def test_target_active_without_durable_grant_fails_at_execution_policy(self):
         decision = self.execution_policy.decide(
             ExecutionRequest(
@@ -152,6 +191,35 @@ class ScopeAuthorizationDefenseInDepthTests(unittest.TestCase):
                 capability_id=CAPABILITY,
                 requested_risk=RiskLevel.LOW_IMPACT,
                 authorization=_durable_grant(),
+            )
+        )
+        self.assertFalse(decision.allowed)
+        self.assertIn("asset", decision.reason)
+
+    def test_explicit_asset_exclusion_overrides_the_grant_allowlist(self):
+        now = datetime.now(timezone.utc)
+        grant = AuthorizationGrant(
+            grant_id="grant-excluded-asset",
+            client_id="client-defense-in-depth",
+            engagement_id="engagement-defense-in-depth",
+            approved_by="security-owner@example.test",
+            reference="AUTH-EXCLUDED-ASSET",
+            scope=ScopeDefinition(
+                assets=(PUBLIC_HOST,),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=(CAPABILITY,),
+                excluded_assets=(PUBLIC_HOST,),
+            ),
+            valid_from=now - timedelta(minutes=5),
+            valid_until=now + timedelta(hours=1),
+        )
+        decision = self.execution_policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset=PUBLIC_HOST,
+                capability_id=CAPABILITY,
+                requested_risk=RiskLevel.LOW_IMPACT,
+                authorization=grant,
             )
         )
         self.assertFalse(decision.allowed)
