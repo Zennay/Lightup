@@ -326,6 +326,14 @@ class WebAppTest(unittest.TestCase):
         )
         self.assertIn("No current authorization", body)
 
+        # Capability scope is mandatory; omission fails closed.
+        status, _, _ = self.request(
+            "POST", f"/engagements/{engagement.engagement_id}/grants",
+            {"approved_by": "CISO Acme", "reference": "AUTH-NO-CAPS",
+             "assets": "app.acme.example", "max_risk": "3", "valid_days": "30"},
+            token=self.op_token, csrf=self.op_csrf)
+        self.assertEqual(status, "400 Bad Request")
+
         # Destructive risk cannot be granted through the UI.
         status, _, _ = self.request(
             "POST", f"/engagements/{engagement.engagement_id}/grants",
