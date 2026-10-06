@@ -64,6 +64,27 @@ class ExecutionPolicyTests(unittest.TestCase):
         )
         self.assertTrue(decision.allowed)
 
+    def test_empty_capability_scope_denies_active_capability(self):
+        empty_scope = replace(
+            self.grant,
+            scope=ScopeDefinition(
+                assets=("app.example.test",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=(),
+            ),
+        )
+        decision = self.policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset="app.example.test",
+                capability_id="web-baseline",
+                requested_risk=RiskLevel.LOW_IMPACT,
+                authorization=empty_scope,
+            )
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, "capability is outside the authorized scope")
+
     def test_revoked_authorization_is_denied(self):
         revoked = replace(
             self.grant,
