@@ -95,7 +95,7 @@ class SecurityBoundaryTest(unittest.TestCase):
         # Omitted REMOTE_ADDR is reserved for direct in-process WSGI tests.
         dev.validate({"HTTP_HOST": "localhost:8766"})
 
-        for peer in ("", "192.0.2.8", "203.0.113.10"):
+        for peer in ("", None, 127, "192.0.2.8", "203.0.113.10"):
             with self.subTest(peer=peer), self.assertRaises(RequestRejected):
                 dev.validate({
                     "HTTP_HOST": "localhost:8766",
