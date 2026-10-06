@@ -243,6 +243,73 @@ class OrchestrationTest(unittest.TestCase):
             "revoked stale RunContext must be denied before handler invocation",
         )
 
+    def test_live_resolver_overrides_broader_stale_snapshot_scope(self):
+        domain = DomainStore(Path(self.tmp.name) / "scope-authority.db")
+        operator = AccessContext("scope-operator", Role.OPERATOR)
+        client = domain.create_client(operator, "Scope authority client")
+        engagement = domain.create_engagement(
+            operator, client.client_id, "Scope authority engagement"
+        )
+        now = datetime.now(timezone.utc)
+        persisted = domain.record_authorization_grant(
+            operator,
+            engagement.engagement_id,
+            approved_by="client signatory",
+            reference="AUTH-SCOPE-AUTHORITY",
+            scope=ScopeDefinition(
+                assets=("allowed.test",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("network-services",),
+            ),
+            valid_from=now - timedelta(minutes=5),
+            valid_until=now + timedelta(hours=1),
+        )
+        stale_broader_snapshot = dataclasses.replace(
+            persisted,
+            scope=ScopeDefinition(
+                assets=("allowed.test", "outside.test"),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("network-services",),
+            ),
+        )
+        context = RunContext(
+            run_id=str(uuid4()),
+            client_id=client.client_id,
+            engagement_id=engagement.engagement_id,
+            mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
+            approved_risk=RiskLevel.STANDARD,
+            authorization=stale_broader_snapshot,
+            is_lab=False,
+            created_at=now,
+        )
+        calls: list[str] = []
+        registry = ToolRegistry()
+        registry.register(
+            ToolDefinition(
+                "scope-authority-probe",
+                "network-services",
+                InteractionKind.TARGET_ACTIVE,
+                RiskLevel.STANDARD,
+                "test-only target-active handler",
+            ),
+            lambda context, arguments: (
+                calls.append("ran")
+                or ToolOutput("ran", "probe", b"evidence")
+            ),
+        )
+        executor = ToolExecutor(
+            registry,
+            self.state,
+            authorization_resolver=domain.resolve_authorization_for_execution,
+        )
+
+        with self.assertRaises(ToolDenied) as caught:
+            executor.execute(
+                context, ToolCall("scope-authority-probe", "outside.test")
+            )
+        self.assertIn("asset is outside the authorized scope", str(caught.exception))
+        self.assertEqual(calls, [])
+
     def test_out_of_scope_asset_denied(self):
         context = _context(AssessmentMode.AUTHORIZED_ASSESSMENT, RiskLevel.STANDARD,
                            authorization=_grant("allowed.test"))
