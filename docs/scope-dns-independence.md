@@ -26,4 +26,4 @@ If scope classification depended on name resolution, mutable DNS could change th
 3. a literal address in an explicit network is classified locally;
 4. `localhost` is a syntactic special case, not resolver-derived trust.
 
-The tests are offline and in-memory. They do not resolve DNS, open sockets, scan targets, or widen activation/execution authority.
+The tests are offline and in-memory. They also parse `src/lightup/scope.py` with Python's AST and fail if the scope module imports network/DNS-capable clients such as `socket`, `http.client`, `urllib.request`, `requests`, `httpx`, or `dns`. This prevents a future direct-import alias from bypassing runtime monkeypatch coverage. They do not resolve DNS, open sockets, scan targets, or widen activation/execution authority.
