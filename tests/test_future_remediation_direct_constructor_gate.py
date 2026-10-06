@@ -149,6 +149,71 @@ class FutureRemediationDirectConstructorGateTest(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, "authority flag"):
                         replace(artifact, **{field: True})
 
+    def test_all_strict_json_parsers_reject_duplicate_primary_digest_keys(self):
+        artifacts_parsers_and_fields = (
+            (
+                self._original_artifacts()[0],
+                future_remediation_authoring_request_from_json,
+                "request_sha256",
+            ),
+            (
+                self._original_artifacts()[1],
+                future_remediation_text_proposal_from_json,
+                "proposal_sha256",
+            ),
+            (
+                self._original_artifacts()[2],
+                future_remediation_text_review_request_from_json,
+                "review_request_sha256",
+            ),
+            (
+                self._original_artifacts()[3],
+                future_remediation_text_review_from_json,
+                "review_sha256",
+            ),
+            (
+                self._revised_artifacts()[0],
+                future_remediation_text_revision_request_from_json,
+                "revision_request_sha256",
+            ),
+            (
+                self._revised_artifacts()[1],
+                future_remediation_text_revision_proposal_from_json,
+                "revision_proposal_sha256",
+            ),
+            (
+                self._revised_artifacts()[2],
+                future_remediation_text_revision_review_request_from_json,
+                "review_request_sha256",
+            ),
+            (
+                self._revised_artifacts()[3],
+                future_remediation_text_revision_review_from_json,
+                "review_sha256",
+            ),
+        )
+
+        for artifact, parser, field in artifacts_parsers_and_fields:
+            raw = artifact.to_json()
+            duplicate = (
+                raw[:-1]
+                + ',"'
+                + field
+                + '":"'
+                + getattr(artifact, field)
+                + '"}'
+            )
+            with self.subTest(artifact=type(artifact).__name__, field=field):
+                with self.assertRaisesRegex(ValueError, "duplicate JSON key"):
+                    parser(duplicate)
+
+    def test_all_top_level_artifacts_reject_integer_authority_lookalikes(self):
+        for artifact in self._all_artifacts():
+            for field in _AUTHORITY_FLAGS:
+                with self.subTest(artifact=type(artifact).__name__, field=field):
+                    with self.assertRaisesRegex(ValueError, "authority flag"):
+                        replace(artifact, **{field: 0})
+
     def test_all_top_level_artifacts_reject_future_state_or_verdict_forgery(self):
         for artifact in self._all_artifacts():
             with self.subTest(artifact=type(artifact).__name__, field="future_semantics"):
