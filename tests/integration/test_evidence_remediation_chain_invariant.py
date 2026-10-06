@@ -8,6 +8,7 @@ import test_future_security_evidence_freshness_coverage as coverage_tests
 from lightup.future_security_evidence_freshness_coverage import (
     build_future_security_evidence_freshness_coverage,
     future_security_evidence_freshness_coverage_from_dict,
+    validate_future_security_evidence_freshness_coverage,
 )
 
 
@@ -89,6 +90,21 @@ class EvidenceRemediationChainInvariantIntegrationTest(unittest.TestCase):
             admission.admission_sha256,
         )
         self.assertEqual(restored, coverage)
+        live_validated = validate_future_security_evidence_freshness_coverage(
+            restored,
+            constraints,
+            (admission,),
+            (candidate_context,),
+            request=request,
+            plan=plan,
+            report=report,
+            preview=preview,
+            proposal=proposal,
+            resolutions=(resolution,),
+            source_contexts=(source_context,),
+            state=self.state,
+        )
+        self.assertEqual(live_validated, coverage)
 
         # 100% freshness coverage is only a freshness fact. It must never
         # imply sufficiency, closure, classification, or any action authority.
@@ -111,7 +127,7 @@ class EvidenceRemediationChainInvariantIntegrationTest(unittest.TestCase):
             "deployment_authorized",
             "attack_path_mutation_allowed",
         )
-        for artifact in (coverage, restored):
+        for artifact in (coverage, restored, live_validated):
             for field in false_flags:
                 with self.subTest(artifact=type(artifact).__name__, field=field):
                     self.assertFalse(getattr(artifact, field))
@@ -141,6 +157,66 @@ class EvidenceRemediationChainInvariantIntegrationTest(unittest.TestCase):
         self.assertEqual(dataclasses.asdict(current), current_before)
         self.assertEqual(dataclasses.asdict(request), request_before)
         self.assertEqual(dataclasses.asdict(constraints), constraints_before)
+
+    def test_persisted_full_coverage_rejects_live_evidence_drift(self):
+        (
+            _,
+            proposal,
+            source_context,
+            resolution,
+            preview,
+            report,
+            plan,
+            request,
+            constraints,
+            candidate_context,
+            evidence_id,
+            admission,
+        ) = self.base._admission_base(
+            suffix="integration-evidence-remediation-live-drift"
+        )
+
+        coverage = build_future_security_evidence_freshness_coverage(
+            constraints,
+            (admission,),
+            (candidate_context,),
+            request=request,
+            plan=plan,
+            report=report,
+            preview=preview,
+            proposal=proposal,
+            resolutions=(resolution,),
+            source_contexts=(source_context,),
+            state=self.state,
+        )
+        restored = future_security_evidence_freshness_coverage_from_dict(
+            json.loads(coverage.to_json())
+        )
+
+        # The persisted object remains internally canonical, but a later live
+        # evidence-ledger change must invalidate it before any consumer can
+        # treat complete freshness coverage as current.
+        with self.state.connect() as con:
+            con.execute(
+                "UPDATE evidence SET sha256=? WHERE evidence_id=?",
+                ("0" * 64, evidence_id),
+            )
+
+        with self.assertRaises(ValueError):
+            validate_future_security_evidence_freshness_coverage(
+                restored,
+                constraints,
+                (admission,),
+                (candidate_context,),
+                request=request,
+                plan=plan,
+                report=report,
+                preview=preview,
+                proposal=proposal,
+                resolutions=(resolution,),
+                source_contexts=(source_context,),
+                state=self.state,
+            )
 
 
 if __name__ == "__main__":
