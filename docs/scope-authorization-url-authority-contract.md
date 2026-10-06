@@ -17,6 +17,8 @@ This tests/docs-only contract freezes the following fail-closed behavior:
   host allowlist;
 - percent-encoded display/userinfo text cannot replace the parsed destination
   authority;
+- URL userinfo containing `localhost`, a loopback IP or a private IP cannot
+  grant loopback/private-lab trust to the real destination authority;
 - DNS names that merely contain `localhost` or loopback-looking text are not
   treated as loopback.
 
