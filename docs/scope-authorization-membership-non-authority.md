@@ -2,7 +2,7 @@
 
 LightUp treats authorization and scope membership as separate fail-closed questions.
 
-A legacy `Authorization` may satisfy the authorization requirement for a public target **only after** that target already matches an explicitly declared host or CIDR. Merely attaching a current authorization object must never create host/network membership, rescue malformed target identity, or reinterpret an undeclared public target as allowed scope.
+A legacy `Authorization` may be evaluated only after a target has independently matched declared public scope. Merely attaching an authorization object must never create host/network membership, rescue malformed target identity, or reinterpret an undeclared public target as allowed scope.
 
 ## Contract
 
@@ -11,14 +11,15 @@ The dedicated regression proves:
 - a current authorization cannot turn an undeclared public hostname into `EXPLICIT_HOST`;
 - a current authorization cannot turn an address outside every declared CIDR into `EXPLICIT_NETWORK`;
 - setting `require_authorization_for_public=False` removes only the authorization check for already-declared public membership; it does not create membership;
-- an invalid/empty target remains `INVALID_TARGET` even when authorization is attached;
-- an actually declared host or CIDR still accepts the existing current-authorization path.
+- an invalid/empty target remains `INVALID_TARGET` even when authorization is attached.
 
-This fixes the precedence as:
+The invariant intentionally does **not** prescribe what fields make an authorization sufficient after membership is established. That positive authorization contract is owned by the active #100 legacy-target-binding/revocation lane, which adds exact asset binding and related provenance checks.
 
-`normalize target -> establish membership -> apply public authorization gate -> allow`
+The precedence remains:
 
-not:
+`normalize target -> establish membership -> apply the current public authorization contract -> allow or deny`
+
+never:
 
 `authorization present -> create membership`.
 
