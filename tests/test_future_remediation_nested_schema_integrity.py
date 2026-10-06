@@ -10,9 +10,11 @@ from lightup.future_remediation_authoring_request_handoff import (
     future_remediation_authoring_request_from_json,
 )
 from lightup.future_remediation_text_proposal_handoff import (
+    future_remediation_text_proposal_from_dict,
     future_remediation_text_proposal_from_json,
 )
 from lightup.future_remediation_text_review_request_handoff import (
+    future_remediation_text_review_request_from_dict,
     future_remediation_text_review_request_from_json,
 )
 from lightup.future_remediation_text_review_handoff import (
@@ -20,12 +22,15 @@ from lightup.future_remediation_text_review_handoff import (
     future_remediation_text_review_from_json,
 )
 from lightup.future_remediation_text_revision_request_handoff import (
+    future_remediation_text_revision_request_from_dict,
     future_remediation_text_revision_request_from_json,
 )
 from lightup.future_remediation_text_revision_proposal_handoff import (
+    future_remediation_text_revision_proposal_from_dict,
     future_remediation_text_revision_proposal_from_json,
 )
 from lightup.future_remediation_text_revision_review_request_handoff import (
+    future_remediation_text_revision_review_request_from_dict,
     future_remediation_text_revision_review_request_from_json,
 )
 from lightup.future_remediation_text_revision_review_handoff import (
@@ -158,6 +163,52 @@ class FutureRemediationNestedSchemaIntegrityTest(unittest.TestCase):
             with self.subTest(parser=parser.__name__):
                 with self.assertRaises(ValueError):
                     parser("[]")
+
+    def test_all_top_level_dict_parsers_reject_schema_erosion_and_nonobjects(self):
+        artifacts_and_parsers = (
+            (
+                self._original_artifacts()[0],
+                future_remediation_authoring_request_from_dict,
+            ),
+            (
+                self._original_artifacts()[1],
+                future_remediation_text_proposal_from_dict,
+            ),
+            (
+                self._original_artifacts()[2],
+                future_remediation_text_review_request_from_dict,
+            ),
+            (
+                self._original_artifacts()[3],
+                future_remediation_text_review_from_dict,
+            ),
+            (
+                self._revised_artifacts()[0],
+                future_remediation_text_revision_request_from_dict,
+            ),
+            (
+                self._revised_artifacts()[1],
+                future_remediation_text_revision_proposal_from_dict,
+            ),
+            (
+                self._revised_artifacts()[2],
+                future_remediation_text_revision_review_request_from_dict,
+            ),
+            (
+                self._revised_artifacts()[3],
+                future_remediation_text_revision_review_from_dict,
+            ),
+        )
+
+        for artifact, parser in artifacts_and_parsers:
+            payload = json.loads(artifact.to_json())
+            payload.pop("schema_version")
+            with self.subTest(artifact=type(artifact).__name__, case="missing"):
+                with self.assertRaisesRegex(ValueError, "schema mismatch"):
+                    parser(payload)
+            with self.subTest(artifact=type(artifact).__name__, case="nonobject"):
+                with self.assertRaises(ValueError):
+                    parser([])
 
     def test_authoring_item_rejects_unknown_and_missing_fields(self):
         request = self._authoring_request()
