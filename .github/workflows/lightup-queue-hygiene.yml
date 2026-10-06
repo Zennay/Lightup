@@ -1,0 +1,66 @@
+name: LightUp hosted queue hygiene
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Cancel stale superseded queued self-hosted runs"
+        required: true
+        default: false
+        type: boolean
+      minimum_age_hours:
+        description: "Minimum queued age before a superseded run is eligible"
+        required: true
+        default: "2"
+        type: string
+      max_cancellations:
+        description: "Hard cap; abort before mutation if candidate count exceeds this"
+        required: true
+        default: "25"
+        type: string
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  actions: write
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: lightup-hosted-queue-hygiene
+  cancel-in-progress: true
+
+jobs:
+  queue-hygiene:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Classify queue and optionally cancel stale superseded runs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPLY: ${{ github.event_name == 'workflow_dispatch' && inputs.apply || false }}
+          MINIMUM_AGE_HOURS: ${{ github.event_name == 'workflow_dispatch' && inputs.minimum_age_hours || '2' }}
+          MAX_CANCELLATIONS: ${{ github.event_name == 'workflow_dispatch' && inputs.max_cancellations || '25' }}
+        run: |
+          set -euo pipefail
+          case "$MINIMUM_AGE_HOURS" in
+            ''|*[!0-9]*) echo "minimum_age_hours must be a non-negative integer" >&2; exit 2 ;;
+          esac
+          case "$MAX_CANCELLATIONS" in
+            ''|*[!0-9]*) echo "max_cancellations must be a positive integer" >&2; exit 2 ;;
+          esac
+          if [ "$MAX_CANCELLATIONS" -lt 1 ]; then
+            echo "max_cancellations must be at least 1" >&2
+            exit 2
+          fi
+          minimum_age_seconds=$((MINIMUM_AGE_HOURS * 3600))
+          args=(--minimum-age-seconds "$minimum_age_seconds" --max-cancellations "$MAX_CANCELLATIONS")
+          if [ "$APPLY" = "true" ]; then
+            args+=(--apply)
+          fi
+          python scripts/lightup_queue_hygiene.py "${args[@]}"
