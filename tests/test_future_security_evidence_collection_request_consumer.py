@@ -105,18 +105,18 @@ class FutureSecurityEvidenceCollectionRequestConsumerTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "digest mismatch"):
             self._consume(payload, produced)
 
-    def test_live_prior_evidence_drift_fails_after_strict_parse(self):
+    def test_deleted_live_evidence_fails_after_strict_parse(self):
         produced = self._producer(suffix="collection-consumer-live-drift")
         resolution = produced[3]
         request = produced[-1]
 
         with self.state.connect() as con:
             con.execute(
-                "UPDATE evidence SET sha256=? WHERE evidence_id=?",
-                ("0" * 64, resolution.evidence_ids[0]),
+                "DELETE FROM evidence WHERE evidence_id=?",
+                (resolution.evidence_ids[0],),
             )
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(KeyError):
             self._consume(request.to_json(), produced)
 
 
