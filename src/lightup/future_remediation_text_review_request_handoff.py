@@ -154,8 +154,10 @@ def future_remediation_text_review_request_from_dict(
     )
 
     raw_checks = payload["required_checks"]
-    if not isinstance(raw_checks, list):
-        raise ValueError("remediation text review request required_checks must be a list")
+    if not isinstance(raw_checks, (list, tuple)):
+        raise ValueError(
+            "remediation text review request required_checks must be a list or tuple"
+        )
     if tuple(raw_checks) != REQUIRED_REVIEW_CHECKS:
         raise ValueError("remediation text review request required_checks mismatch")
 
