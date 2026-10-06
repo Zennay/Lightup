@@ -61,8 +61,8 @@ class WebSecurity:
             # Missing Host/peer are accepted only for direct in-process WSGI use.
             # A real development server must remain a loopback-only trust boundary:
             # a remote peer cannot become local merely by sending Host: localhost.
-            peer = environ.get("REMOTE_ADDR")
-            if peer is not None:
+            if "REMOTE_ADDR" in environ:
+                peer = environ["REMOTE_ADDR"]
                 if not isinstance(peer, str) or not peer:
                     raise ValueError("development peer must be a loopback IP")
                 if not ip_address(peer).is_loopback:
