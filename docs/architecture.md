@@ -33,7 +33,7 @@ The execution layer must fail closed if a real-target action has no current auth
 
 ## Control plane
 
-Every future active adapter must receive an `ExecutionPermit` from the shared activation gate and satisfy the product-level `ExecutionPolicy`. Adapters may not decide scope themselves. Authorized permits preserve two distinct audit references: the operator activation reference and the client authorization reference; lab permits have no client authorization reference.
+Every future active adapter must receive an `ExecutionPermit` from the shared activation gate and satisfy the product-level `ExecutionPolicy`. Adapters may not decide scope themselves. Authorized permits preserve two distinct audit references: the operator activation reference and the client authorization reference; lab permits have no client authorization reference. Immediately before any `TARGET_ACTIVE` handler dispatch, the executor must re-resolve the exact grant from authoritative `DomainStore` state. A missing resolver or a missing, revoked, expired, or lineage-mismatched durable grant fails closed before the handler runs, including for run contexts created before revocation.
 
 ```text
 Target + Auth + Risk -> Execution Policy -> Scope Supervisor
