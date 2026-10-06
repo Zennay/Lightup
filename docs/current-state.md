@@ -125,6 +125,8 @@ No real-target active adapter may execute without a current authorization grant 
 
 Authorization withdrawal is fail-closed: an operator can revoke an engagement's authorization, which invalidates every current and scheduled grant for that engagement. Revocation records actor, timestamp and reason; a revoked grant can never become current again and cannot pass execution policy.
 
+Capability authorization is also fail-closed: client grants must enumerate explicit, known, non-lab capability IDs. An empty capability list authorizes nothing, so adding a new platform capability cannot silently widen an existing grant. Destructive risk and lab-only capabilities cannot be persisted as client authorization.
+
 Future Security must not weaken that invariant: a future-state model or isolated
 simulation never grants permission to interact with an otherwise unauthorized
 real system.
