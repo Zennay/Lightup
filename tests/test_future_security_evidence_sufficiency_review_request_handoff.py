@@ -205,6 +205,13 @@ class FutureSecurityEvidenceSufficiencyReviewRequestHandoffTest(unittest.TestCas
                 missing_check
             )
 
+        tuple_checks = copy.deepcopy(payload)
+        tuple_checks["required_checks"] = REQUIRED_SUFFICIENCY_REVIEW_CHECKS
+        with self.assertRaisesRegex(ValueError, "required_checks must be a list"):
+            future_security_evidence_sufficiency_review_request_from_dict(
+                tuple_checks
+            )
+
     def test_classification_claim_is_existing_enum_only(self):
         request, payload = self._payload()
         restored = future_security_evidence_sufficiency_review_request_from_dict(
@@ -270,6 +277,32 @@ class FutureSecurityEvidenceSufficiencyReviewRequestHandoffTest(unittest.TestCas
         verdict["security_verdict"] = "secure"
         with self.assertRaisesRegex(ValueError, "must not claim a security verdict"):
             future_security_evidence_sufficiency_review_request_from_dict(verdict)
+
+    def test_export_is_bounded_and_cannot_claim_a_decision(self):
+        request, payload = self._payload()
+        self.assertEqual(
+            payload["required_checks"],
+            list(REQUIRED_SUFFICIENCY_REVIEW_CHECKS),
+        )
+        self.assertTrue(payload["review_required"])
+        self.assertTrue(payload["independent_verifier_required"])
+        self.assertFalse(payload["evidence_sufficiency_evaluated"])
+        self.assertFalse(payload["classification_selected"])
+        self.assertEqual(payload["security_verdict"], "not_evaluated")
+        for forbidden in (
+            "metadata",
+            "payload",
+            "source",
+            "target",
+            "arguments",
+            "credentials",
+            "sufficiency_decision_created",
+        ):
+            self.assertNotIn(forbidden, payload)
+        self.assertEqual(
+            future_security_evidence_sufficiency_review_request_from_dict(payload),
+            request,
+        )
 
     def test_noncanonical_sha_and_digest_tampering_fail_closed(self):
         _, payload = self._payload()
