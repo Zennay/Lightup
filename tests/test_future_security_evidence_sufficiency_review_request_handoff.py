@@ -275,9 +275,7 @@ class FutureSecurityEvidenceSufficiencyReviewRequestHandoffTest(unittest.TestCas
         _, payload = self._payload()
 
         uppercase = copy.deepcopy(payload)
-        uppercase["metadata_review_sha256"] = uppercase[
-            "metadata_review_sha256"
-        ].upper()
+        uppercase["metadata_review_sha256"] = "A" * 64
         with self.assertRaisesRegex(ValueError, "canonical lowercase SHA-256"):
             future_security_evidence_sufficiency_review_request_from_dict(
                 uppercase
