@@ -1,0 +1,44 @@
+name: ST5 sufficiency review-request snapshot hosted validation
+
+on:
+  push:
+    branches:
+      - "chatgpt/st5-sufficiency-review-request-snapshot-hosted-validation-20261006"
+    paths:
+      - ".github/workflows/st5-sufficiency-review-request-snapshot-hosted-validation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: st5-sufficiency-review-request-snapshot-hosted-validation
+  cancel-in-progress: true
+
+jobs:
+  exact-candidate:
+    name: Exact candidate Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: b7bf074bc1e8dda84a3f125869fbbdb480b5352b
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile exact candidate
+        run: python -m compileall -q src tests
+      - name: Run snapshot-isolation regression
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests -p 'test_future_security_evidence_sufficiency_review_request_snapshot_isolation.py' -v
+      - name: Run strict sufficiency review-request handoff regression
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests -p 'test_future_security_evidence_sufficiency_review_request_handoff.py' -v
