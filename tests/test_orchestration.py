@@ -101,6 +101,22 @@ class OrchestrationTest(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def test_registry_rejects_raw_string_interaction_kind(self):
+        registry = ToolRegistry()
+        with self.assertRaises(OrchestrationError) as caught:
+            registry.register(
+                ToolDefinition(
+                    "raw-interaction-probe",
+                    "network-services",
+                    "target_active",  # type: ignore[arg-type]
+                    RiskLevel.STANDARD,
+                    "test-only raw interaction kind",
+                ),
+                _active_tool,
+            )
+        self.assertIn("interaction must be an InteractionKind", str(caught.exception))
+        self.assertEqual(registry.definitions(), ())
+
     def test_registry_rejects_raw_integer_tool_risk(self):
         registry = ToolRegistry()
         with self.assertRaises(OrchestrationError) as caught:
