@@ -129,6 +129,8 @@ Capability authorization is also fail-closed: client grants must enumerate expli
 
 Authorization lineage is bound at execution policy as well as persistence: every real-target request must name the client and engagement, and both must match the grant. A grant from one tenant or engagement cannot be reused in another run even when the asset, capability and risk happen to match.
 
+Private address space is not implicit proof of lab ownership. Generic scope policy and CLI default to denying arbitrary private IPs; broad private-lab trust requires an explicit opt-in used by the isolated lab harness. Link-local, unspecified, reserved and multicast addresses are excluded from that private-lab shortcut.
+
 Future Security must not weaken that invariant: a future-state model or isolated
 simulation never grants permission to interact with an otherwise unauthorized
 real system.
