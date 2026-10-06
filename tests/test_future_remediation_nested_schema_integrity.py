@@ -99,6 +99,37 @@ class FutureRemediationNestedSchemaIntegrityTest(unittest.TestCase):
                         json.dumps(payload)
                     )
 
+    def test_nested_schema_slots_reject_non_object_values(self):
+        request_payload = json.loads(self._authoring_request().to_json())
+
+        item_payload = json.loads(self._authoring_request().to_json())
+        item_payload["items"][0] = []
+        with self.assertRaisesRegex(ValueError, "item schema mismatch"):
+            future_remediation_authoring_request_from_json(
+                json.dumps(item_payload)
+            )
+
+        evidence_payload = json.loads(self._authoring_request().to_json())
+        evidence_payload["items"][0]["evidence"][0] = "forged"
+        with self.assertRaisesRegex(ValueError, "evidence schema mismatch"):
+            future_remediation_authoring_request_from_json(
+                json.dumps(evidence_payload)
+            )
+
+        original_review_payload = json.loads(self.original.review.to_json())
+        original_review_payload["checks"][0] = ["evidence_alignment", "pass"]
+        with self.assertRaisesRegex(ValueError, "check schema mismatch"):
+            future_remediation_text_review_from_json(
+                json.dumps(original_review_payload)
+            )
+
+        revised_review_payload = json.loads(self.revised.review.to_json())
+        revised_review_payload["checks"][0] = ["evidence_alignment", "pass"]
+        with self.assertRaisesRegex(ValueError, "check schema mismatch"):
+            future_remediation_text_revision_review_from_json(
+                json.dumps(revised_review_payload)
+            )
+
     def test_original_review_check_rejects_unknown_and_missing_fields(self):
         for mutation in ("unknown", "missing"):
             payload = json.loads(self.original.review.to_json())
