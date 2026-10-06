@@ -12,6 +12,8 @@ inside nested structures, not only at the top level.
 
 The regression covers:
 
+- all eight original/revised top-level remediation artifacts for required-field
+  schema erosion;
 - remediation authoring items;
 - authoring evidence references;
 - original remediation review checks;
