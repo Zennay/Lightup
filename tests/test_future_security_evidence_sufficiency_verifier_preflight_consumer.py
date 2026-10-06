@@ -95,6 +95,15 @@ class FutureSecurityEvidenceSufficiencyVerifierPreflightConsumerTest(unittest.Te
         with self.assertRaisesRegex(ValueError, "digest mismatch"):
             self._consume(payload, produced)
 
+    def test_object_input_cannot_bypass_strict_operator_role(self):
+        produced = self._producer(suffix="preflight-consumer-object")
+        preflight = produced[-1]
+        payload = json.loads(preflight.to_json())
+        payload["verifier_role"] = "client_admin"
+
+        with self.assertRaisesRegex(ValueError, "role must remain operator"):
+            self._consume(payload, produced)
+
     def test_changed_live_verifier_identity_fails_after_strict_parse(self):
         produced = self._producer(suffix="preflight-consumer-verifier-drift")
         preflight = produced[-1]
