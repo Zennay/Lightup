@@ -169,6 +169,42 @@ class OrchestrationTest(unittest.TestCase):
             executor.execute(context, ToolCall("service-probe", "allowed.test"))
         self.assertIn("live authorization revalidation", str(caught.exception))
 
+    def test_live_resolver_cannot_substitute_a_different_grant(self):
+        calls: list[str] = []
+        registry = ToolRegistry()
+        registry.register(
+            ToolDefinition(
+                "grant-substitution-probe",
+                "network-services",
+                InteractionKind.TARGET_ACTIVE,
+                RiskLevel.STANDARD,
+                "test-only target-active handler",
+            ),
+            lambda context, arguments: (
+                calls.append("ran")
+                or ToolOutput("ran", "probe", b"evidence")
+            ),
+        )
+        snapshot = _grant("allowed.test")
+        replacement = dataclasses.replace(snapshot, grant_id="g2")
+        executor = ToolExecutor(
+            registry,
+            self.state,
+            authorization_resolver=lambda grant: replacement,
+        )
+        context = _context(
+            AssessmentMode.AUTHORIZED_ASSESSMENT,
+            RiskLevel.STANDARD,
+            authorization=snapshot,
+        )
+
+        with self.assertRaises(ToolDenied) as caught:
+            executor.execute(
+                context, ToolCall("grant-substitution-probe", "allowed.test")
+            )
+        self.assertIn("different grant", str(caught.exception))
+        self.assertEqual(calls, [])
+
     def test_revocation_after_run_start_denies_before_handler(self):
         domain = DomainStore(Path(self.tmp.name) / "authorization.db")
         operator = AccessContext("operator", Role.OPERATOR)
