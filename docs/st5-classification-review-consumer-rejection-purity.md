@@ -1,6 +1,6 @@
 # ST5 classification-review consumer rejection purity
 
-Issue: #331
+Issue: #332
 
 This contract proves failure atomicity at the composed persisted classification-
 review consumer boundary from PR #109. It is intentionally separate from the
