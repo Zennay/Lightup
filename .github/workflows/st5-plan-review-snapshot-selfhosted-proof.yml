@@ -1,0 +1,45 @@
+name: ST5 plan-review snapshot self-hosted proof
+
+on:
+  push:
+    branches:
+      - "chatgpt/st5-plan-review-snapshot-selfhosted-proof-20261006"
+    paths:
+      - ".github/workflows/st5-plan-review-snapshot-selfhosted-proof.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: st5-plan-review-snapshot-selfhosted-proof
+  cancel-in-progress: true
+
+jobs:
+  exact-candidate:
+    name: Exact candidate Python ${{ matrix.python }}
+    runs-on: [self-hosted, ftmo-research]
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: afbbf3c6973553e46b7f74b668d2c2981939eda2
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile exact candidate
+        run: python -m compileall -q src tests
+      - name: Run snapshot-isolation regression
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests -p 'test_future_remediation_implementation_plan_review_snapshot_isolation.py' -v
+      - name: Run real producer integration
+        env:
+          PYTHONPATH: src:tests
+        run: python -m unittest discover -s tests/integration -v
