@@ -32,8 +32,8 @@ class ExecutionPermit:
     capability_id: str
     mode: ActivationMode
     activation_reference: str
-    authorization_reference: str | None
     issued_at: datetime
+    authorization_reference: str | None = None
 
 
 class ActivationGate:
