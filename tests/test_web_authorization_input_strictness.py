@@ -163,26 +163,31 @@ class WebAuthorizationInputStrictnessTest(unittest.TestCase):
         self.assertEqual(status, "400 Bad Request")
         self.assertEqual(self.store.list_assessment_requests(self.operator), [])
 
-    def test_unknown_assessment_decision_does_not_mutate_request(self):
+    def test_missing_or_unknown_assessment_decision_does_not_mutate_request(self):
         request = self.store.submit_assessment_request(
             self.client_context,
             ("app.acme.example",),
             AssessmentMode.AUTHORIZED_ASSESSMENT,
             RiskLevel.LOW_IMPACT,
         )
-        status, _, _ = self.request(
-            "POST",
-            f"/assessments/requests/{request.request_id}/decision",
-            {"decision": "approved"},
-            token=self.operator_token,
-            csrf=self.operator_csrf,
-        )
-        self.assertEqual(status, "400 Bad Request")
-        stored = self.store.get_assessment_request(self.operator, request.request_id)
-        self.assertEqual(stored.status.value, "submitted")
-        self.assertIsNone(stored.decided_by)
+        for decision in (None, "", "approved", "Approve"):
+            with self.subTest(decision=decision):
+                form = {} if decision is None else {"decision": decision}
+                status, _, _ = self.request(
+                    "POST",
+                    f"/assessments/requests/{request.request_id}/decision",
+                    form,
+                    token=self.operator_token,
+                    csrf=self.operator_csrf,
+                )
+                self.assertEqual(status, "400 Bad Request")
+                stored = self.store.get_assessment_request(
+                    self.operator, request.request_id
+                )
+                self.assertEqual(stored.status.value, "submitted")
+                self.assertIsNone(stored.decided_by)
 
-    def test_unknown_risk_elevation_decision_does_not_mutate_approval(self):
+    def test_missing_or_unknown_risk_elevation_decision_does_not_mutate_approval(self):
         engagement = self._engagement()
         approval = self.store.request_risk_elevation(
             self.client_context,
@@ -190,19 +195,22 @@ class WebAuthorizationInputStrictnessTest(unittest.TestCase):
             RiskLevel.ELEVATED,
             "Need the operator to review elevated risk",
         )
-        status, _, _ = self.request(
-            "POST",
-            f"/assessments/elevations/{approval.approval_id}/decision",
-            {"decision": "approved"},
-            token=self.operator_token,
-            csrf=self.operator_csrf,
-        )
-        self.assertEqual(status, "400 Bad Request")
-        stored = self.store.list_risk_approvals(
-            self.operator, engagement.engagement_id
-        )[0]
-        self.assertEqual(stored.status.value, "pending")
-        self.assertIsNone(stored.decided_by)
+        for decision in (None, "", "approved", "Approve"):
+            with self.subTest(decision=decision):
+                form = {} if decision is None else {"decision": decision}
+                status, _, _ = self.request(
+                    "POST",
+                    f"/assessments/elevations/{approval.approval_id}/decision",
+                    form,
+                    token=self.operator_token,
+                    csrf=self.operator_csrf,
+                )
+                self.assertEqual(status, "400 Bad Request")
+                stored = self.store.list_risk_approvals(
+                    self.operator, engagement.engagement_id
+                )[0]
+                self.assertEqual(stored.status.value, "pending")
+                self.assertIsNone(stored.decided_by)
 
 
 if __name__ == "__main__":
