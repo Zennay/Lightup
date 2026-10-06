@@ -136,6 +136,7 @@ class QueueHygieneExecutionTests(unittest.TestCase):
             repo="Zennay/Lightup",
             apply=False,
             minimum_age_seconds=7200,
+            max_cancellations=25,
             current_run_id=None,
             current_sha="queue-guard-head",
             now=NOW,
@@ -152,6 +153,7 @@ class QueueHygieneExecutionTests(unittest.TestCase):
             repo="Zennay/Lightup",
             apply=True,
             minimum_age_seconds=7200,
+            max_cancellations=25,
             current_run_id=None,
             current_sha="queue-guard-head",
             now=NOW,
@@ -162,6 +164,37 @@ class QueueHygieneExecutionTests(unittest.TestCase):
         )
         self.assertEqual(1, receipt["cancelled_count"])
         self.assertEqual("apply", receipt["mode"])
+
+    def test_apply_aborts_before_mutation_when_candidate_cap_is_exceeded(self):
+        class TwoCandidateApi(self.FakeApi):
+            def paged(self, path, *, key=None):
+                if path == "/repos/Zennay/Lightup/pulls?state=open":
+                    return []
+                if path == "/repos/Zennay/Lightup/actions/runs?status=queued":
+                    return [
+                        queued_run(run_id=21, sha="superseded-a"),
+                        queued_run(run_id=22, sha="superseded-b"),
+                    ]
+                if path in {
+                    "/repos/Zennay/Lightup/actions/runs/21/jobs?filter=latest",
+                    "/repos/Zennay/Lightup/actions/runs/22/jobs?filter=latest",
+                }:
+                    return [self_hosted_job()]
+                raise AssertionError(path)
+
+        api = TwoCandidateApi()
+        with self.assertRaisesRegex(RuntimeError, "cap is 1"):
+            queue_hygiene.execute(
+                api=api,
+                repo="Zennay/Lightup",
+                apply=True,
+                minimum_age_seconds=7200,
+                max_cancellations=1,
+                current_run_id=None,
+                current_sha="queue-guard-head",
+                now=NOW,
+            )
+        self.assertEqual([], api.posted)
 
 
 if __name__ == "__main__":

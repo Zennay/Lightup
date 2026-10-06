@@ -4,8 +4,7 @@
 The utility is intentionally conservative:
 - dry-run by default;
 - protects the current default-branch head, current workflow run, and all open PR heads;
-- only stale queued runs with at least one queued self-hosted job can be cancelled.
-"""
+- only stale queued runs with at least one queued self-hosted job can be cancelled;\n- apply mode has a hard cancellation cap and aborts before mutation when exceeded.\n"""
 
 from __future__ import annotations
 
@@ -122,6 +121,7 @@ def execute(
     repo: str,
     apply: bool,
     minimum_age_seconds: int,
+    max_cancellations: int,
     current_run_id: int | None,
     current_sha: str | None,
     now: datetime,
@@ -130,6 +130,8 @@ def execute(
         raise ValueError("repo must be in owner/name form")
     if minimum_age_seconds < 0:
         raise ValueError("minimum_age_seconds must be non-negative")
+    if max_cancellations < 1:
+        raise ValueError("max_cancellations must be at least 1")
 
     repo_info = api.request(f"/repos/{repo}")
     default_branch = str(repo_info["default_branch"])
@@ -192,6 +194,11 @@ def execute(
     cancelled: list[dict[str, Any]] = []
     cancellation_conflicts: list[dict[str, Any]] = []
 
+    if apply and len(candidates) > max_cancellations:
+        raise RuntimeError(
+            f"refusing to cancel {len(candidates)} runs; cap is {max_cancellations}"
+        )
+
     if apply:
         for candidate in candidates:
             try:
@@ -215,6 +222,7 @@ def execute(
         "default_head": default_head,
         "protected_open_pr_heads": len(protected_pr_heads),
         "minimum_age_seconds": minimum_age_seconds,
+        "max_cancellations": max_cancellations,
         "queued_run_count": len(queued_runs),
         "candidate_count": len(candidates),
         "candidates": candidates,
@@ -230,6 +238,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY", ""))
     parser.add_argument("--minimum-age-seconds", type=int, default=7200)
+    parser.add_argument("--max-cancellations", type=int, default=25)
     parser.add_argument("--apply", action="store_true")
     parser.add_argument(
         "--current-run-id",
@@ -248,6 +257,7 @@ def main() -> int:
         repo=args.repo,
         apply=args.apply,
         minimum_age_seconds=args.minimum_age_seconds,
+        max_cancellations=args.max_cancellations,
         current_run_id=args.current_run_id,
         current_sha=args.current_sha,
         now=datetime.now(timezone.utc),
