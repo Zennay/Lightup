@@ -65,6 +65,33 @@ class ScopeTargetLabelNonAuthorityTests(unittest.TestCase):
         self.assertTrue(labelled_loopback.allowed)
         self.assertEqual(labelled_loopback.reason, ScopeReason.LOOPBACK)
 
+    def test_label_order_duplicates_and_content_do_not_change_decision(self):
+        cases = (
+            (ScopePolicy(), "unknown.example.test"),
+            (
+                ScopePolicy(explicit_hosts=frozenset({"security.example.test"})),
+                "security.example.test",
+            ),
+            (ScopePolicy(explicit_networks=("8.8.8.0/24",)), "8.8.8.8"),
+            (ScopePolicy(), "127.0.0.1"),
+        )
+        label_sets = (
+            (),
+            ("lab",),
+            ("authorized", "localhost"),
+            ("authorized", "authorized", "private_lab", "8.8.8.0/24"),
+            ("8.8.8.0/24", "private_lab", "authorized"),
+        )
+
+        for policy, target_value in cases:
+            with self.subTest(target=target_value):
+                expected = policy.decide(Target(target_value))
+                for labels in label_sets:
+                    self.assertEqual(
+                        policy.decide(Target(target_value, labels=labels)),
+                        expected,
+                    )
+
     def test_scope_decision_does_not_read_target_labels(self):
         source = textwrap.dedent(inspect.getsource(ScopePolicy.decide))
         tree = ast.parse(source)
