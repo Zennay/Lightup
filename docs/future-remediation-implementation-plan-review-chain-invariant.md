@@ -29,7 +29,7 @@ The artifact also remains `future_semantics = "unresolved"` and `security_verdic
 2. revision-required and insufficient-evidence outcomes remain non-executable;
 3. producing and strictly reloading a review does not mutate the upstream planning request, remediation review, review request, or implementation plan;
 4. the persisted review carries no command, patch, code, tool-argument, target-argument, credential, deployment-plan, retest-result, or positive security-verdict payload surface;
-5. the acceptance boolean cannot be reused as a proxy for any action-authority flag.
+5. the acceptance boolean cannot be reused as a proxy for any action-authority flag;\n6. implementation-plan content stays in the verifier's untrusted user-data channel while the system message explicitly forbids tools, code/patch/command generation, retesting, deployment and security-verdict creation.
 
 ## Boundary
 
