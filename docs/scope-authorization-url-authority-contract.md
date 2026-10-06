@@ -13,6 +13,10 @@ This tests/docs-only contract freezes the following fail-closed behavior:
 - the same userinfo rule applies to schemeless target input;
 - an allowlisted hostname appearing only in query or fragment data is ignored
   for scope;
+- parent-suffix and subdomain lookalikes are not implicitly included by an exact
+  host allowlist;
+- percent-encoded display/userinfo text cannot replace the parsed destination
+  authority;
 - DNS names that merely contain `localhost` or loopback-looking text are not
   treated as loopback.
 
