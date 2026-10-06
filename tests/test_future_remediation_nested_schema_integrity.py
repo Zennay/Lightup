@@ -104,6 +104,42 @@ class FutureRemediationNestedSchemaIntegrityTest(unittest.TestCase):
             self.revised.review,
         )
 
+    def test_non_authoring_artifacts_round_trip_direct_as_dict(self):
+        artifacts_and_parsers = (
+            (
+                self._original_artifacts()[1],
+                future_remediation_text_proposal_from_dict,
+            ),
+            (
+                self._original_artifacts()[2],
+                future_remediation_text_review_request_from_dict,
+            ),
+            (
+                self._original_artifacts()[3],
+                future_remediation_text_review_from_dict,
+            ),
+            (
+                self._revised_artifacts()[0],
+                future_remediation_text_revision_request_from_dict,
+            ),
+            (
+                self._revised_artifacts()[1],
+                future_remediation_text_revision_proposal_from_dict,
+            ),
+            (
+                self._revised_artifacts()[2],
+                future_remediation_text_revision_review_request_from_dict,
+            ),
+            (
+                self._revised_artifacts()[3],
+                future_remediation_text_revision_review_from_dict,
+            ),
+        )
+
+        for artifact, parser in artifacts_and_parsers:
+            with self.subTest(artifact=type(artifact).__name__):
+                self.assertEqual(parser(artifact.as_dict()), artifact)
+
     def test_all_top_level_artifacts_reject_missing_required_fields(self):
         artifacts_and_parsers = (
             (
