@@ -144,6 +144,46 @@ class FutureRemediationNestedSchemaIntegrityTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "schema mismatch"):
                     parser(payload)
 
+    def test_direct_dict_path_rejects_nested_schema_erosion(self):
+        authoring_item = json.loads(self._authoring_request().to_json())
+        authoring_item["items"][0].pop("requested_output")
+
+        authoring_evidence = json.loads(self._authoring_request().to_json())
+        authoring_evidence["items"][0]["evidence"][0].pop("kind")
+
+        original_review = json.loads(self.original.review.to_json())
+        original_review["checks"][0].pop("result")
+
+        revised_review = json.loads(self.revised.review.to_json())
+        revised_review["checks"][0].pop("result")
+
+        cases = (
+            (
+                "authoring item",
+                future_remediation_authoring_request_from_dict,
+                authoring_item,
+            ),
+            (
+                "authoring evidence",
+                future_remediation_authoring_request_from_dict,
+                authoring_evidence,
+            ),
+            (
+                "original review check",
+                future_remediation_text_review_from_dict,
+                original_review,
+            ),
+            (
+                "revised review check",
+                future_remediation_text_revision_review_from_dict,
+                revised_review,
+            ),
+        )
+        for name, parser, payload in cases:
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(ValueError, "schema mismatch"):
+                    parser(payload)
+
     def test_nested_schema_slots_reject_non_object_values(self):
         item_payload = json.loads(self._authoring_request().to_json())
         item_payload["items"][0] = []
