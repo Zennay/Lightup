@@ -69,6 +69,35 @@ class ScopeAuthorizationUrlAuthorityContractTests(unittest.TestCase):
         self.assertEqual(decision.normalized_host, "evil.invalid")
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
+    def test_allowlisted_host_as_parent_suffix_cannot_authorize_destination(self):
+        decision = self.decide(
+            "https://security.example.test.evil.invalid/"
+        )
+
+        self.assertFalse(decision.allowed)
+        self.assertEqual(
+            decision.normalized_host, "security.example.test.evil.invalid"
+        )
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_subdomain_of_allowlisted_host_is_not_implicitly_authorized(self):
+        decision = self.decide(
+            "https://admin.security.example.test/"
+        )
+
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.normalized_host, "admin.security.example.test")
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_percent_encoded_userinfo_cannot_authorize_destination(self):
+        decision = self.decide(
+            "https://security.example.test%40display@evil.invalid/"
+        )
+
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.normalized_host, "evil.invalid")
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
     def test_localhost_lookalike_dns_name_is_not_loopback(self):
         decision = ScopePolicy().decide(
             Target("https://localhost.evil.invalid/")
