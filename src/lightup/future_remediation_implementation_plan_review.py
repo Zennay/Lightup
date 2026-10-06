@@ -39,6 +39,7 @@ REMEDIATION_IMPLEMENTATION_PLAN_REVIEW_SCHEMA_VERSION = (
     "st5.remediation_implementation_plan_review.v1"
 )
 _MAX_REVIEW_SUMMARY_CHARS = 4_000
+_MAX_REVIEWER_PROVENANCE_CHARS = 256
 _MAX_REVIEW_OUTPUT_TOKENS = 900
 _ALLOWED_CHECK_RESULTS = {"pass", "fail", "unclear"}
 
@@ -56,6 +57,15 @@ def _require_canonical_sha256(value: object, *, field: str) -> str:
 def _require_non_empty_string(value: object, *, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{field} must be a non-empty string")
+    return value
+
+
+def _require_reviewer_provenance(value: object, *, field: str) -> str:
+    value = _require_non_empty_string(value, field=field)
+    if "\x00" in value:
+        raise ValueError(f"{field} contains NUL")
+    if len(value) > _MAX_REVIEWER_PROVENANCE_CHARS:
+        raise ValueError(f"{field} exceeds bounded size")
     return value
 
 
@@ -139,11 +149,11 @@ class FutureRemediationImplementationPlanReview:
                 getattr(self, field),
                 field=f"implementation plan review {field}",
             )
-        _require_non_empty_string(
+        _require_reviewer_provenance(
             self.reviewer_provider_id,
             field="implementation plan review reviewer_provider_id",
         )
-        _require_non_empty_string(
+        _require_reviewer_provenance(
             self.reviewer_model_id,
             field="implementation plan review reviewer_model_id",
         )
@@ -491,6 +501,14 @@ def review_future_remediation_implementation_plan(
             "implementation plan reviewer returned the wrong model identity"
         )
 
+    reviewer_provider_id = _require_reviewer_provenance(
+        response.provider_id,
+        field="implementation plan review reviewer_provider_id",
+    )
+    reviewer_model_id = _require_reviewer_provenance(
+        response.model_id,
+        field="implementation plan review reviewer_model_id",
+    )
     decision, checks, summary = _parse_reviewer_content(response.content)
     review_sha256 = _review_digest(
         review_request_sha256=review_request.review_request_sha256,
@@ -498,8 +516,8 @@ def review_future_remediation_implementation_plan(
         implementation_request_sha256=(
             implementation_plan.implementation_request_sha256
         ),
-        reviewer_provider_id=response.provider_id,
-        reviewer_model_id=response.model_id,
+        reviewer_provider_id=reviewer_provider_id,
+        reviewer_model_id=reviewer_model_id,
         decision=decision,
         checks=checks,
         summary=summary,
@@ -511,8 +529,8 @@ def review_future_remediation_implementation_plan(
         implementation_request_sha256=(
             implementation_plan.implementation_request_sha256
         ),
-        reviewer_provider_id=response.provider_id,
-        reviewer_model_id=response.model_id,
+        reviewer_provider_id=reviewer_provider_id,
+        reviewer_model_id=reviewer_model_id,
         decision=decision,
         checks=checks,
         summary=summary,
