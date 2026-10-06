@@ -252,6 +252,40 @@ class DomainStoreTest(unittest.TestCase):
             (),
         )
 
+    def test_execution_resolver_reloads_live_grant_and_revocation(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Execution resolver"
+        )
+        valid_from, valid_until = _grant_window()
+        snapshot = self.store.record_authorization_grant(
+            self.operator,
+            engagement.engagement_id,
+            "CISO Acme",
+            "AUTH-LIVE-RESOLVE",
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("web-baseline",),
+            ),
+            valid_from,
+            valid_until,
+        )
+
+        live = self.store.resolve_authorization_for_execution(snapshot)
+        self.assertIsNotNone(live)
+        self.assertEqual(live.grant_id, snapshot.grant_id)
+        self.assertFalse(live.is_revoked)
+
+        self.store.revoke_engagement_authorization(
+            self.operator,
+            engagement.engagement_id,
+            "client withdrew authorization",
+        )
+        self.assertIsNone(
+            self.store.resolve_authorization_for_execution(snapshot),
+            "stale in-memory grant must not survive durable revocation",
+        )
+
     def test_authorization_revocation_is_operator_only_and_requires_reason(self):
         engagement = self.store.create_engagement(
             self.operator, self.client_a.client_id, "Revocation boundary"
