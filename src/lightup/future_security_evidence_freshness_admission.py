@@ -245,6 +245,9 @@ def admit_future_security_evidence_freshness(
 
     if not isinstance(candidate_context, RunContext):
         raise ValueError("candidate_context must be a RunContext")
+    _require_identifier(candidate_context.run_id, name="candidate run_id")
+    _require_identifier(candidate_context.client_id, name="candidate client_id")
+    _require_identifier(candidate_context.engagement_id, name="candidate engagement_id")
     if (
         not candidate_context.is_lab
         or candidate_context.mode is not AssessmentMode.LAB_AUTONOMOUS
@@ -263,6 +266,10 @@ def admit_future_security_evidence_freshness(
     capabilities: set[str] = set()
     for evidence_id in candidate_evidence_ids:
         record = state.get_evidence(evidence_id)
+        _require_identifier(record.evidence_id, name="candidate evidence_id")
+        _require_identifier(record.run_id, name="candidate evidence run_id")
+        _require_identifier(record.capability_id, name="candidate evidence capability_id")
+        _require_identifier(record.kind, name="candidate evidence kind")
         _require_sha256(
             record.sha256,
             name=f"candidate evidence {evidence_id!r} sha256",
