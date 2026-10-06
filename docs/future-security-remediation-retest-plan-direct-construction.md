@@ -31,9 +31,9 @@ The strict #190 persisted handoff already rejects malformed or widened remediati
 - execution, deployment and attack-path mutation authority remain exact false;
 - future semantics remain `unresolved`;
 - security verdict remains `not_evaluated`;
-- the canonical plan digest recomputes exactly from the immutable typed state.
+- `plan_sha256` remains a canonical lowercase SHA-256 value.
 
-The builder and direct constructor now share the same canonical digest implementation, avoiding a second producer-side digest dialect.
+A deliberately stale but syntactically canonical plan digest remains constructible. Open downstream consumers #52 and #60 intentionally create `dataclasses.replace(plan, plan_sha256="0"*64)` and prove live revalidation rejects that artifact. Digest **equality/recomputation** therefore remains at the established live-consumer boundary rather than being silently moved into this constructor.
 
 ## Safety
 
