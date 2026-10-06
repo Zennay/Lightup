@@ -1,0 +1,27 @@
+# Scope authorization defense-in-depth contract
+
+LightUp treats public active-target authorization as a chain of independent gates, not as a single boolean approval.
+
+This regression package is deliberately tests/docs-only. It does not add target adapters, network activity, capability execution, authorization widening, remediation/retest execution, deployment, or attack-path mutation.
+
+## Contract
+
+For a public target to reach any future active execution path, every relevant boundary must still agree:
+
+1. **Scope boundary** — unknown public targets fail closed; explicitly listed public hosts and public-network addresses still require current authorization.
+2. **Activation boundary** — `PLAN_ONLY` never emits an execution permit, and `LAB_ONLY` cannot reinterpret a public target as an isolated lab.
+3. **Execution-policy boundary** — target-active requests require a durable grant and remain bounded by the grant's asset, capability, and risk scope.
+4. **Mode boundary** — passive-public and analysis-only requests cannot request active risk.
+5. **Destructive boundary** — destructive risk never becomes target-active authority; it remains isolated-lab-only.
+6. **Gate-independence boundary** — an activation permit never substitutes for the durable execution grant, a durable execution grant never substitutes for public scope authorization, an explicit asset exclusion wins over an allowlist entry, and relaxing the scope-policy authorization switch still cannot bypass the independent AUTHORIZED activation check.
+7. **Time boundary** — both legacy public-target authorization and durable grants must be current now; expired and not-yet-valid authorization fail closed.
+8. **Interaction boundary** — a durable grant cannot manufacture lab context, and a lab marker cannot convert destructive target-active risk into executable authority.
+9. **Public-network boundary** — explicit CIDR allowlisting never becomes lab trust; an address outside the exact network remains out of scope, while the in-memory positive path is allowed only when scope, activation, and the exact durable asset/capability/risk grant all agree.
+
+The dedicated regression module is `tests/test_scope_authorization_defense_in_depth.py`. It uses only in-memory objects, documentation-only hostnames, and RFC 5737 documentation IP ranges with private-lab shortcuts disabled; it performs no socket, HTTP, DNS, subprocess, tool, or target interaction.
+
+## Collision boundary
+
+This package intentionally does not modify the production files currently owned by parallel scope-authorization work, including scope, activation, execution policy, domain/state, web security, capability metadata, lab workers, coverage, planner argument binding, or evidence/remediation code.
+
+The test contract may be restacked later if those production branches land, but it must continue to prove the same semantic invariant: no single approval artifact is sufficient to create public active-target authority. Scope acceptance, activation, and durable execution authorization are intentionally independent fail-closed requirements rather than interchangeable approval tokens.
