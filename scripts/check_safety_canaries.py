@@ -15,6 +15,8 @@ import tempfile
 from lightup.domain import AccessContext, DomainStore, Role
 from lightup.engagements import RiskLevel, ScopeDefinition
 from lightup.execution_policy import ExecutionPolicy, ExecutionRequest, InteractionKind
+from lightup.models import Authorization, Target
+from lightup.scope import ScopePolicy, ScopeReason
 from lightup.webapp import create_app
 from lightup.webapp.__main__ import _loopback
 
@@ -55,6 +57,23 @@ def main() -> None:
     )
     assert link_local.returncode == 2
     assert json.loads(link_local.stdout)["allowed"] is False
+
+    legacy_policy = ScopePolicy(
+        explicit_hosts=frozenset({"a.example.test", "b.example.test"})
+    )
+    legacy_auth = Authorization(
+        owner="CI owner",
+        reference="CI-LEGACY-ASSET",
+        assets=("a.example.test",),
+    )
+    assert legacy_policy.decide(
+        Target("a.example.test", authorization=legacy_auth)
+    ).allowed is True
+    mismatched = legacy_policy.decide(
+        Target("b.example.test", authorization=legacy_auth)
+    )
+    assert mismatched.allowed is False
+    assert mismatched.reason is ScopeReason.AUTHORIZATION_ASSET_MISMATCH
 
     plan = subprocess.run(
         [sys.executable, "-m", "lightup.cli", "plan", "127.0.0.1"],
@@ -167,6 +186,7 @@ def main() -> None:
         "public_target_denied": True, "execution_enabled": False,
         "private_network_default_denied": True, "private_lab_opt_in_required": True,
         "link_local_private_lab_denied": True,
+        "legacy_authorization_asset_bound": True,
         "authentication_required": True, "activation_locked": True,
         "non_loopback_refused": True, "authorization_revocation_enforced": True,
         "explicit_capability_scope_enforced": True, "temporary_state_removed": True,
