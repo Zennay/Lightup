@@ -329,7 +329,20 @@ class FutureRemediationImplementationPlanReviewTest(unittest.TestCase):
         review = self._review(gateway)
 
         reconstructed = FutureRemediationImplementationPlanReview(
-            **review.as_dict()
+            schema_version=review.schema_version,
+            review_request_sha256=review.review_request_sha256,
+            plan_sha256=review.plan_sha256,
+            implementation_request_sha256=review.implementation_request_sha256,
+            reviewer_provider_id=review.reviewer_provider_id,
+            reviewer_model_id=review.reviewer_model_id,
+            decision=review.decision,
+            checks=review.checks,
+            summary=review.summary,
+            review_sha256=review.review_sha256,
+            implementation_plan_review_completed=(
+                review.implementation_plan_review_completed
+            ),
+            implementation_plan_accepted=review.implementation_plan_accepted,
         )
         self.assertEqual(reconstructed, review)
 
