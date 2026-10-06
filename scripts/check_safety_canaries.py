@@ -26,6 +26,36 @@ def main() -> None:
     )
     assert denied.returncode == 2, (denied.returncode, denied.stdout, denied.stderr)
     assert json.loads(denied.stdout)["allowed"] is False
+
+    private_denied = subprocess.run(
+        [sys.executable, "-m", "lightup.cli", "scope-check", "10.20.30.40"],
+        capture_output=True, text=True, check=False,
+    )
+    assert private_denied.returncode == 2
+    private_payload = json.loads(private_denied.stdout)
+    assert private_payload["allowed"] is False
+    assert private_payload["reason"] == "out_of_scope"
+
+    private_opt_in = subprocess.run(
+        [
+            sys.executable, "-m", "lightup.cli", "scope-check",
+            "--allow-private-lab", "10.20.30.40",
+        ],
+        capture_output=True, text=True, check=False,
+    )
+    assert private_opt_in.returncode == 0
+    assert json.loads(private_opt_in.stdout)["reason"] == "private_lab"
+
+    link_local = subprocess.run(
+        [
+            sys.executable, "-m", "lightup.cli", "scope-check",
+            "--allow-private-lab", "169.254.169.254",
+        ],
+        capture_output=True, text=True, check=False,
+    )
+    assert link_local.returncode == 2
+    assert json.loads(link_local.stdout)["allowed"] is False
+
     plan = subprocess.run(
         [sys.executable, "-m", "lightup.cli", "plan", "127.0.0.1"],
         capture_output=True, text=True, check=True,
@@ -135,6 +165,8 @@ def main() -> None:
     assert not Path(directory).exists(), "canary state was not cleaned up"
     print(json.dumps({
         "public_target_denied": True, "execution_enabled": False,
+        "private_network_default_denied": True, "private_lab_opt_in_required": True,
+        "link_local_private_lab_denied": True,
         "authentication_required": True, "activation_locked": True,
         "non_loopback_refused": True, "authorization_revocation_enforced": True,
         "explicit_capability_scope_enforced": True, "temporary_state_removed": True,
