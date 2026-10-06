@@ -7,7 +7,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 from lightup.domain import DomainStore, Role
-from lightup.engagements import RiskLevel
+from lightup.engagements import AssessmentMode, RiskLevel
 from lightup.webapp import create_app
 
 
@@ -123,7 +123,7 @@ class WebAuthorizationInputStrictnessTest(unittest.TestCase):
         request = self.store.submit_assessment_request(
             self.client_context,
             ("app.acme.example",),
-            __import__("lightup.engagements", fromlist=["AssessmentMode"]).AssessmentMode.AUTHORIZED_ASSESSMENT,
+            AssessmentMode.AUTHORIZED_ASSESSMENT,
             RiskLevel.LOW_IMPACT,
         )
         status, _, _ = self.request(
