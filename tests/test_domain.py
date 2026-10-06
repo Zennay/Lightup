@@ -305,6 +305,35 @@ class DomainStoreTest(unittest.TestCase):
         self.assertFalse(persisted[false_grant.grant_id].recurring_retest_allowed)
         self.assertTrue(persisted[true_grant.grant_id].recurring_retest_allowed)
 
+    def test_invalid_persisted_recurring_retest_flag_fails_closed(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Persisted retest flag boundary"
+        )
+        valid_from, valid_until = _grant_window()
+        grant = self.store.record_authorization_grant(
+            self.operator,
+            engagement.engagement_id,
+            "CISO Acme",
+            "AUTH-RETEST-PERSISTED",
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("web-baseline",),
+            ),
+            valid_from,
+            valid_until,
+            recurring_retest_allowed=False,
+        )
+        with self.store._connect() as con:
+            con.execute(
+                "UPDATE authorization_grants SET recurring_retest_allowed=? WHERE grant_id=?",
+                (2, grant.grant_id),
+            )
+        with self.assertRaisesRegex(ValueError, "persisted recurring_retest_allowed"):
+            self.store.list_authorization_grants(
+                self.operator, engagement.engagement_id
+            )
+
     def test_revoke_engagement_authorization_revokes_current_and_future_grants(self):
         engagement = self.store.create_engagement(
             self.operator, self.client_a.client_id, "Emergency scope"
