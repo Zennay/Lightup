@@ -38,6 +38,20 @@ class ScopePolicyTests(unittest.TestCase):
         self.assertTrue(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
 
+    def test_revoked_authorization_denied(self):
+        now = datetime.now(timezone.utc)
+        auth = Authorization(
+            owner="example-owner",
+            reference="AUTH-REVOKED",
+            revoked_at=now,
+            revoked_by="op-1",
+            revocation_reason="scope withdrawn",
+        )
+        policy = ScopePolicy(explicit_hosts=frozenset({"security.example.test"}))
+        decision = policy.decide(Target("security.example.test", authorization=auth))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_REVOKED)
+
     def test_expired_authorization_denied(self):
         auth = Authorization(
             owner="example-owner",
