@@ -16,6 +16,7 @@ class ScopeReason(str, Enum):
     AUTHORIZATION_MISSING = "authorization_missing"
     AUTHORIZATION_REVOKED = "authorization_revoked"
     AUTHORIZATION_EXPIRED = "authorization_expired"
+    AUTHORIZATION_ASSET_MISMATCH = "authorization_asset_mismatch"
     OUT_OF_SCOPE = "out_of_scope"
     INVALID_TARGET = "invalid_target"
 
@@ -81,6 +82,10 @@ class ScopePolicy:
                         return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_REVOKED)
                     if not target.authorization.is_current():
                         return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_EXPIRED)
+                    if not target.authorization.allows_asset(host):
+                        return ScopeDecision(
+                            False, host, ScopeReason.AUTHORIZATION_ASSET_MISMATCH
+                        )
                 return ScopeDecision(True, host, ScopeReason.EXPLICIT_NETWORK)
             return ScopeDecision(False, host, ScopeReason.OUT_OF_SCOPE)
 
@@ -92,6 +97,10 @@ class ScopePolicy:
                     return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_REVOKED)
                 if not target.authorization.is_current():
                     return ScopeDecision(False, host, ScopeReason.AUTHORIZATION_EXPIRED)
+                if not target.authorization.allows_asset(host):
+                    return ScopeDecision(
+                        False, host, ScopeReason.AUTHORIZATION_ASSET_MISMATCH
+                    )
             return ScopeDecision(True, host, ScopeReason.EXPLICIT_HOST)
 
         return ScopeDecision(False, host, ScopeReason.OUT_OF_SCOPE)
