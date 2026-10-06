@@ -71,6 +71,30 @@ class ScopeExplicitNetworkSetSemanticsTests(unittest.TestCase):
         self.assertFalse(ipv6_decision.allowed)
         self.assertEqual(ipv6_decision.reason, ScopeReason.OUT_OF_SCOPE)
 
+    def test_disabling_public_authorization_does_not_widen_network_membership(self):
+        policy = ScopePolicy(
+            explicit_networks=("8.8.8.8/32",),
+            require_authorization_for_public=False,
+        )
+
+        inside = policy.decide(Target("8.8.8.8"))
+        self.assertTrue(inside.allowed)
+        self.assertEqual(inside.reason, ScopeReason.EXPLICIT_NETWORK)
+
+        outside = policy.decide(Target("8.8.8.9"))
+        self.assertFalse(outside.allowed)
+        self.assertEqual(outside.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_malformed_network_configuration_is_not_silently_ignored(self):
+        for networks in (
+            ("not-a-cidr", "8.8.8.0/24"),
+            ("8.8.8.0/24", "not-a-cidr"),
+        ):
+            with self.subTest(networks=networks):
+                policy = ScopePolicy(explicit_networks=networks)
+                with self.assertRaises(ValueError):
+                    policy.decide(Target("8.8.8.8", authorization=self.authorization))
+
     def test_ipv6_in_network_target_uses_explicit_network_path(self):
         policy = ScopePolicy(explicit_networks=("2606:4700:4700::/48",))
 
