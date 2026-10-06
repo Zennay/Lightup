@@ -24,6 +24,7 @@ from lightup.domain import AccessContext, DomainStore, Role
 from lightup.engagements import (
     AssessmentMode,
     AuthorizationGrant,
+    EngagementStatus,
     RiskLevel,
     ScopeDefinition,
 )
@@ -278,6 +279,68 @@ class OrchestrationTest(unittest.TestCase):
             ["ran"],
             "revoked stale RunContext must be denied before handler invocation",
         )
+
+    def test_closed_engagement_denies_stale_run_before_handler(self):
+        domain = DomainStore(Path(self.tmp.name) / "closed-engagement.db")
+        operator = AccessContext("closed-operator", Role.OPERATOR)
+        client = domain.create_client(operator, "Closed engagement client")
+        engagement = domain.create_engagement(
+            operator, client.client_id, "Close while run is active"
+        )
+        now = datetime.now(timezone.utc)
+        grant = domain.record_authorization_grant(
+            operator,
+            engagement.engagement_id,
+            approved_by="client signatory",
+            reference="AUTH-CLOSE-RUNTIME",
+            scope=ScopeDefinition(
+                assets=("allowed.test",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("network-services",),
+            ),
+            valid_from=now - timedelta(minutes=5),
+            valid_until=now + timedelta(hours=1),
+        )
+        context = RunContext(
+            run_id=str(uuid4()),
+            client_id=client.client_id,
+            engagement_id=engagement.engagement_id,
+            mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
+            approved_risk=RiskLevel.STANDARD,
+            authorization=grant,
+            is_lab=False,
+            created_at=now,
+        )
+        calls: list[str] = []
+        registry = ToolRegistry()
+        registry.register(
+            ToolDefinition(
+                "closed-engagement-probe",
+                "network-services",
+                InteractionKind.TARGET_ACTIVE,
+                RiskLevel.STANDARD,
+                "test-only target-active handler",
+            ),
+            lambda context, arguments: (
+                calls.append("ran")
+                or ToolOutput("ran", "probe", b"evidence")
+            ),
+        )
+        executor = ToolExecutor(
+            registry,
+            self.state,
+            authorization_resolver=domain.resolve_authorization_for_execution,
+        )
+        domain.set_engagement_status(
+            operator, engagement.engagement_id, EngagementStatus.CLOSED
+        )
+
+        with self.assertRaises(ToolDenied) as caught:
+            executor.execute(
+                context, ToolCall("closed-engagement-probe", "allowed.test")
+            )
+        self.assertIn("not live in authoritative state", str(caught.exception))
+        self.assertEqual(calls, [])
 
     def test_live_resolver_overrides_broader_stale_snapshot_scope(self):
         domain = DomainStore(Path(self.tmp.name) / "scope-authority.db")
