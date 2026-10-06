@@ -1,4 +1,4 @@
-name: ST5 review snapshot hosted validation
+name: ST5 review schema hosted validation
 
 on:
   push:
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   exact-candidate:
-    name: Exact #298 Python ${{ matrix.python }}
+    name: Exact #305 Python ${{ matrix.python }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     strategy:
@@ -32,12 +32,12 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Verify exact #298 candidate
+      - name: Verify exact #305 candidate
         shell: bash
         run: |
           set -euo pipefail
-          BRANCH="chatgpt/st5-implementation-plan-review-snapshot-isolation-20261006"
-          EXPECTED_SHA="afbbf3c6973553e46b7f74b668d2c2981939eda2"
+          BRANCH="chatgpt/st5-plan-review-schema-erosion-20261006"
+          EXPECTED_SHA="233c37d159ec06b6e266e4e513acda18d94c5892"
 
           git fetch --no-tags origin             "+refs/heads/${BRANCH}:refs/remotes/origin/${BRANCH}"
           TARGET_SHA="$(git rev-parse "refs/remotes/origin/${BRANCH}^{commit}")"
@@ -52,8 +52,7 @@ jobs:
           cd "${SNAPSHOT}"
           export PYTHONPATH=src:tests
           python -m compileall -q src tests
-          python -m unittest discover -s tests             -p 'test_future_remediation_implementation_plan_review_snapshot_isolation.py' -v
-          python -m unittest discover -s tests             -p 'test_future_remediation_implementation_plan_review_chain_invariant.py' -v
+          python -m unittest discover -s tests             -p 'test_future_remediation_implementation_plan_review_schema_erosion.py' -v
           python -m unittest discover -s tests/integration -v
 
-          printf 'LIGHTUP_ST5_HOSTED_PROOF issue=298 target_sha=%s python=%s\n'             "${TARGET_SHA}" "$(python --version 2>&1)"
+          printf 'LIGHTUP_ST5_HOSTED_PROOF issue=305 target_sha=%s python=%s\n'             "${TARGET_SHA}" "$(python --version 2>&1)"
