@@ -44,7 +44,11 @@ def _grant(asset: str, max_risk: RiskLevel = RiskLevel.STANDARD) -> Authorizatio
     return AuthorizationGrant(
         grant_id="g1", client_id="c1", engagement_id="e1",
         approved_by="op", reference="AUTH-1",
-        scope=ScopeDefinition(assets=(asset,), max_risk=max_risk),
+        scope=ScopeDefinition(
+            assets=(asset,),
+            max_risk=max_risk,
+            allowed_capabilities=("network-services", "identity-access", "web-baseline"),
+        ),
         valid_from=now - timedelta(hours=1), valid_until=now + timedelta(days=1),
     )
 
