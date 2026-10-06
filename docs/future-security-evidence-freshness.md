@@ -75,3 +75,27 @@ evidence. It must reject the forbidden evidence/run identities and independently
 pass the existing authorization/tool-policy boundaries.
 
 Refs #65.
+
+
+## Strict serialized handoff
+
+Persisted or cross-stage freshness JSON must be parsed with
+`future_security_evidence_freshness_constraints_from_dict`.
+
+The parser rejects missing or extra fields, malformed primitive types,
+non-canonical SHA-256 values, non-list lineage, duplicate/non-canonical arrays,
+duplicate item identities and any safety flag that attempts to enable
+collection or execution.
+
+It also enforces semantic equivalence between the embedded prior-evidence
+fingerprints and the explicit non-reuse sets:
+
+- `forbidden_evidence_ids` must exactly equal the prior evidence IDs;
+- `forbidden_run_ids` must exactly equal the unique prior run IDs;
+- `prior_capability_ids` must exactly equal the capabilities represented by
+  prior evidence.
+
+The parser recomputes `constraints_sha256` before returning a typed object.
+This is only a serialization-integrity boundary. Consumers must still run
+`validate_future_security_evidence_freshness_constraints` against the live
+request, source lineage and StateStore before use.
