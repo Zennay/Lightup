@@ -46,26 +46,70 @@ class FutureRemediationAuthoringRequestPersistedScalarTypesTest(unittest.TestCas
         parsed = future_remediation_authoring_request_from_dict(payload)
         self.assertEqual(parsed, self.request)
 
-        self.assertIs(type(payload["schema_version"]), str)
-        self.assertIs(type(payload["client_id"]), str)
-        self.assertIs(type(payload["request_sha256"]), str)
-        self.assertIs(type(payload["twin_version"]), int)
-
-        item = payload["items"][0]
-        self.assertIs(type(item["change_node_id"]), str)
-        self.assertIs(type(item["classification"]), str)
-        self.assertIs(type(item["requested_output"]), str)
-        self.assertIs(type(item["resolution_sha256"]), str)
-        self.assertIs(type(item["capability_ids"][0]), str)
-
-        evidence = item["evidence"][0]
-        self.assertIs(type(evidence["evidence_id"]), str)
-        self.assertIs(type(evidence["kind"]), str)
-        self.assertIs(type(evidence["sha256"]), str)
-
-    def test_fixed_top_level_string_subclasses_fail_closed(self):
         for field in (
             "schema_version",
+            "client_id",
+            "current_twin_id",
+            "twin_id",
+            "changeset_id",
+            "report_sha256",
+            "plan_sha256",
+            "bundle_sha256",
+            "request_sha256",
+            "future_semantics",
+            "security_verdict",
+        ):
+            with self.subTest(scope="top-level-string", field=field):
+                self.assertIs(type(payload[field]), str)
+
+        for field in ("current_twin_version", "twin_version", "item_count"):
+            with self.subTest(scope="top-level-int", field=field):
+                self.assertIs(type(payload[field]), int)
+
+        item = payload["items"][0]
+        for field in (
+            "change_node_id",
+            "subject_node_id",
+            "resolution_id",
+            "resolution_sha256",
+            "classification",
+            "evidence_manifest_sha256",
+            "requested_output",
+        ):
+            with self.subTest(scope="item-string", field=field):
+                self.assertIs(type(item[field]), str)
+
+        for field in (
+            "current_attack_path_ids",
+            "effect_ids",
+            "capability_ids",
+        ):
+            with self.subTest(scope="item-list-strings", field=field):
+                self.assertTrue(item[field])
+                self.assertTrue(all(type(value) is str for value in item[field]))
+
+        evidence = item["evidence"][0]
+        for field in (
+            "evidence_id",
+            "run_id",
+            "capability_id",
+            "kind",
+            "sha256",
+        ):
+            with self.subTest(scope="evidence-string", field=field):
+                self.assertIs(type(evidence[field]), str)
+
+    def test_all_top_level_string_subclasses_fail_closed(self):
+        for field in (
+            "schema_version",
+            "client_id",
+            "current_twin_id",
+            "twin_id",
+            "changeset_id",
+            "report_sha256",
+            "plan_sha256",
+            "bundle_sha256",
+            "request_sha256",
             "future_semantics",
             "security_verdict",
         ):
@@ -74,27 +118,22 @@ class FutureRemediationAuthoringRequestPersistedScalarTypesTest(unittest.TestCas
                 payload[field] = _StringSubclass(payload[field])
                 self._assert_rejected_unchanged(payload)
 
-    def test_top_level_identifier_and_sha_subclasses_fail_closed(self):
-        for field in (
-            "client_id",
-            "request_sha256",
-        ):
+    def test_all_top_level_integer_subclasses_fail_closed(self):
+        for field in ("current_twin_version", "twin_version", "item_count"):
             with self.subTest(field=field):
                 payload = copy.deepcopy(self.payload)
-                payload[field] = _StringSubclass(payload[field])
+                payload[field] = _IntSubclass(payload[field])
                 self._assert_rejected_unchanged(payload)
 
-    def test_top_level_integer_subclass_fails_closed(self):
-        payload = copy.deepcopy(self.payload)
-        payload["twin_version"] = _IntSubclass(payload["twin_version"])
-        self._assert_rejected_unchanged(payload)
-
-    def test_item_scalar_string_subclasses_fail_closed(self):
+    def test_all_item_scalar_string_subclasses_fail_closed(self):
         for field in (
             "change_node_id",
-            "classification",
-            "requested_output",
+            "subject_node_id",
+            "resolution_id",
             "resolution_sha256",
+            "classification",
+            "evidence_manifest_sha256",
+            "requested_output",
         ):
             with self.subTest(field=field):
                 payload = copy.deepcopy(self.payload)
@@ -103,15 +142,23 @@ class FutureRemediationAuthoringRequestPersistedScalarTypesTest(unittest.TestCas
                 )
                 self._assert_rejected_unchanged(payload)
 
-    def test_string_list_entry_subclass_fails_closed(self):
-        payload = copy.deepcopy(self.payload)
-        capability = payload["items"][0]["capability_ids"][0]
-        payload["items"][0]["capability_ids"][0] = _StringSubclass(capability)
-        self._assert_rejected_unchanged(payload)
+    def test_all_string_list_entry_subclasses_fail_closed(self):
+        for field in (
+            "current_attack_path_ids",
+            "effect_ids",
+            "capability_ids",
+        ):
+            with self.subTest(field=field):
+                payload = copy.deepcopy(self.payload)
+                value = payload["items"][0][field][0]
+                payload["items"][0][field][0] = _StringSubclass(value)
+                self._assert_rejected_unchanged(payload)
 
-    def test_evidence_scalar_string_subclasses_fail_closed(self):
+    def test_all_evidence_scalar_string_subclasses_fail_closed(self):
         for field in (
             "evidence_id",
+            "run_id",
+            "capability_id",
             "kind",
             "sha256",
         ):
