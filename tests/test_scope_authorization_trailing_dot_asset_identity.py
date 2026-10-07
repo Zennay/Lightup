@@ -50,6 +50,14 @@ class DurableTrailingDotAssetIdentityTest(unittest.TestCase):
         )
         self.assertTrue(scope.allows_asset(" example.test "))
 
+    def test_multiple_terminal_dots_do_not_collapse_into_authority(self) -> None:
+        scope = ScopeDefinition(
+            assets=("example.test.",),
+            max_risk=RiskLevel.STANDARD,
+            allowed_capabilities=("web-baseline",),
+        )
+        self.assertFalse(scope.allows_asset("example.test.."))
+
     def test_unrelated_host_remains_denied(self) -> None:
         scope = ScopeDefinition(
             assets=("example.test.",),
