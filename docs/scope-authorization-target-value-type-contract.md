@@ -1,0 +1,29 @@
+# Scope authorization: non-string Target value contract
+
+Tracking issue: #494.
+
+## Boundary
+
+`Target.value` is an authorization identity input. Runtime type annotations do not prevent callers from constructing `Target` with non-string values, so the scope boundary itself must fail closed before host normalization.
+
+This acceptance child is intentionally tests/docs-only. It does not modify the active `scope.py`, model, activation, execution-policy, domain/state, webapp, or target-capable source owners.
+
+## Required behavior
+
+For every non-string `Target.value`:
+
+- the decision is denied;
+- `normalized_host` is `None`;
+- the reason is exactly `ScopeReason.INVALID_TARGET`;
+- no implicit string conversion creates a host identity;
+- no parser/type exception escapes the scope boundary.
+
+Canonical string behavior stays unchanged: blank input remains invalid, loopback remains loopback, private lab addresses retain their existing policy path, and unknown public addresses remain out of scope.
+
+## Expected current result
+
+On parent commit `1abc16a66fc490b1ba7272890dfbf498482fca9c`, the non-string cases are expected RED. Values without `.strip()` leak `AttributeError`; bytes-like values can fail later during URL parsing. The canonical string controls remain green.
+
+## Safety
+
+Offline/in-memory authorization-input validation only. No DNS, network requests, target interaction, scanning, execution, remediation/retest execution, deployment, verdict creation, or attack-path mutation.
