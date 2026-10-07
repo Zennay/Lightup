@@ -63,6 +63,33 @@ class ExecutionPolicyTests(unittest.TestCase):
         )
         self.assertTrue(decision.allowed)
 
+    def test_empty_capability_scope_denies_target_active_execution(self):
+        now = datetime.now(timezone.utc)
+        grant = AuthorizationGrant(
+            grant_id="grant-empty-capabilities",
+            client_id="client-1",
+            engagement_id="eng-1",
+            approved_by="security-owner@example.test",
+            reference="signed-roE-empty",
+            scope=ScopeDefinition(
+                assets=("app.example.test",),
+                max_risk=RiskLevel.STANDARD,
+            ),
+            valid_from=now - timedelta(minutes=5),
+            valid_until=now + timedelta(hours=1),
+        )
+        decision = self.policy.decide(
+            ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset="app.example.test",
+                capability_id="web-baseline",
+                requested_risk=RiskLevel.LOW_IMPACT,
+                authorization=grant,
+            )
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, "capability is outside the authorized scope")
+
     def test_risk_escalation_is_denied(self):
         decision = self.policy.decide(
             ExecutionRequest(
