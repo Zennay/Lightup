@@ -1,6 +1,6 @@
 # Offline authorization denial review matrix
 
-The machine-readable fixture at `docs/fixtures/scope-authorization-offline-review-v1.json` is a **review aid**, not an authorization grant, execution policy or source of truth. Its asset names are synthetic and must never be resolved or contacted.
+The machine-readable fixture at `docs/fixtures/scope-authorization-offline-review-v1.json` is a **review aid**, not an authorization grant, execution policy or source of truth. Its asset names use reserved `.example.invalid` identities only; local `.local` names and actual routable identities are forbidden. These names must never be resolved or contacted.
 
 ## Intended proof boundary
 
@@ -10,7 +10,7 @@ The machine-readable fixture at `docs/fixtures/scope-authorization-offline-revie
 
 ## Review protocol
 
-1. Keep the fixture and tests offline; never resolve fixture asset names.
+1. Keep the fixture and tests offline; never resolve fixture asset names. Preserve the exclusive `.example.invalid` naming rule.
 2. For each negative row, link a specific runtime test with a fail-closed assertion before treating it as implemented.
 3. Confirm analysis-only mode cannot acquire target/network access.
 4. Do not change a row from `DENY` to an execution-allowing value merely to make a suite green.
