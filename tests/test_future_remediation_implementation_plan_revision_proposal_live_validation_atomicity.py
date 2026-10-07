@@ -7,6 +7,7 @@ import unittest
 from unittest import mock
 
 import test_future_remediation_implementation_plan_revision_proposal_handoff as handoff_tests
+from lightup.ai.gateway import ModelGateway
 from lightup.future_remediation_implementation_plan_revision_proposal_handoff import (
     load_and_validate_future_remediation_implementation_plan_revision_proposal,
 )
@@ -143,6 +144,13 @@ class FutureRemediationImplementationPlanRevisionProposalLiveValidationAtomicity
                     "revised-plan validation must not add evidence"
                 ),
             ),
+            mock.patch.object(
+                ModelGateway,
+                "complete",
+                side_effect=AssertionError(
+                    "revised-plan consumer validation must not invoke a model"
+                ),
+            ),
         )
 
     def test_successful_live_validation_is_repeatable_and_input_atomic(self):
@@ -155,8 +163,8 @@ class FutureRemediationImplementationPlanRevisionProposalLiveValidationAtomicity
             self.root.state.get_evidence(evidence_id)
         )
 
-        run_patch, lease_patch, evidence_patch = self._write_sentinels()
-        with run_patch, lease_patch, evidence_patch:
+        run_patch, lease_patch, evidence_patch, model_patch = self._write_sentinels()
+        with run_patch, lease_patch, evidence_patch, model_patch:
             first = self._load(payloads)
             second = self._load(payloads)
 
@@ -193,8 +201,8 @@ class FutureRemediationImplementationPlanRevisionProposalLiveValidationAtomicity
         )
 
         messages: list[str] = []
-        run_patch, lease_patch, evidence_patch = self._write_sentinels()
-        with run_patch, lease_patch, evidence_patch:
+        run_patch, lease_patch, evidence_patch, model_patch = self._write_sentinels()
+        with run_patch, lease_patch, evidence_patch, model_patch:
             for _ in range(2):
                 with self.assertRaises(ValueError) as caught:
                     self._load(payloads)
