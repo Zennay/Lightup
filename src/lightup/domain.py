@@ -745,6 +745,8 @@ class DomainStore:
             raise ValueError("grant requires approved_by and a reference")
         if not scope.assets:
             raise ValueError("grant scope requires at least one asset")
+        if not scope.allowed_capabilities:
+            raise ValueError("grant scope requires at least one allowed capability")
         engagement = self.get_engagement(ctx, engagement_id)
         grant = AuthorizationGrant(
             grant_id=str(uuid4()),
