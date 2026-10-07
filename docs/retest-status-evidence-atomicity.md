@@ -21,9 +21,11 @@ A finding whose persisted evidence cannot cross the canonical evidence-integrity
 The focused acceptance module proves:
 
 - canonical evidence still permits a normal retest-status transition;
-- malformed persisted evidence raises the deterministic evidence-integrity `ValueError` owned by #856;
-- the rejected call leaves `retest_status` unchanged;
-- the rejected call also leaves the original corrupt `evidence_ids_json` bytes unchanged;
+- a JSON string shape that would otherwise be normalized into characters rejects before mutation;
+- a `null` top-level value rejects before mutation;
+- syntactically invalid JSON rejects before mutation;
+- all malformed forms converge on the deterministic evidence-integrity `ValueError` owned by #856/#886;
+- every rejected call leaves both `retest_status` and the original corrupt `evidence_ids_json` bytes unchanged;
 - no repair, normalization, deletion or partial write is allowed.
 
 ## Composition and ownership
@@ -41,7 +43,7 @@ The future source fix should validate/reconstruct the current finding **before**
 
 ## Expected RED
 
-On the pinned source, `set_retest_status()` updates first and decodes second. Once #856's deterministic evidence decoder lands, this regression is expected to expose the partial-write ordering until the mutation path is made atomic.
+On the pinned source, `set_retest_status()` updates first and decodes second. The string-shaped payload is currently normalized rather than rejected; invalid JSON leaks the decoder failure after the update; and `null` fails after the update. Once #856/#886's deterministic evidence decoder lands, these regressions should still expose the partial-write ordering until the mutation path is made atomic.
 
 ## Safety
 
