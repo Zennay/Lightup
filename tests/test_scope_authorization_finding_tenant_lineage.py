@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -52,6 +53,22 @@ class FindingTenantLineageTest(unittest.TestCase):
                 "UPDATE findings SET client_id=? WHERE finding_id=?",
                 (self.client_b.client_id, self.finding.finding_id),
             )
+
+    def _orphan_engagement_lineage(self) -> None:
+        with sqlite3.connect(self.store.path) as con:
+            con.execute("PRAGMA foreign_keys=OFF")
+            con.execute(
+                "UPDATE findings SET engagement_id=? WHERE finding_id=?",
+                ("missing-engagement", self.finding.finding_id),
+            )
+
+    def test_orphaned_finding_is_hidden_from_client_reads(self) -> None:
+        self._orphan_engagement_lineage()
+        before = self._row()
+
+        self.assertEqual(self.store.list_findings(self.ctx_a), [])
+
+        self.assertEqual(self._row(), before)
 
     def test_canonical_finding_remains_tenant_scoped(self) -> None:
         self.assertEqual(
