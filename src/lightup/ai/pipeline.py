@@ -37,6 +37,7 @@ _REPORT_SYSTEM = (
 _VERDICT_TOKENS = ("CONFIRMED", "UNCERTAIN", "REJECTED")
 _MAX_EVIDENCE_SUMMARY_CHARS = 4096
 _MAX_EVIDENCE_REFS = 64
+_MAX_EVIDENCE_REF_CHARS = 256
 
 
 def _validated_verifier_verdict(value: str) -> str:
@@ -98,11 +99,18 @@ class AssessmentReviewPipeline:
         reviewed: list[ReviewedFinding] = []
         for finding in labrun_result.get("findings", []):
             evidence_summary = finding.get("evidence_summary")
-            evidence_ids = tuple(finding.get("evidence_ids", ()))
-            if not evidence_ids:
+            finding_evidence_ids = finding.get("evidence_ids")
+            if finding_evidence_ids is None:
                 top_level_evidence_id = labrun_result.get("evidence_id")
-                if top_level_evidence_id:
-                    evidence_ids = (top_level_evidence_id,)
+                evidence_ids = (
+                    (top_level_evidence_id,) if top_level_evidence_id else ()
+                )
+            else:
+                if type(finding_evidence_ids) is not list:
+                    raise ValueError(
+                        "review finding evidence references must be a JSON list"
+                    )
+                evidence_ids = tuple(finding_evidence_ids)
             if (
                 type(evidence_summary) is not str
                 or not evidence_summary.strip()
@@ -115,7 +123,9 @@ class AssessmentReviewPipeline:
                 not evidence_ids
                 or len(evidence_ids) > _MAX_EVIDENCE_REFS
                 or any(
-                    type(evidence_id) is not str or not evidence_id.strip()
+                    type(evidence_id) is not str
+                    or not evidence_id.strip()
+                    or len(evidence_id) > _MAX_EVIDENCE_REF_CHARS
                     for evidence_id in evidence_ids
                 )
             ):
