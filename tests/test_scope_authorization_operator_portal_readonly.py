@@ -24,6 +24,7 @@ class OperatorPortalWriteBoundaryTests(unittest.TestCase):
         )
         self.operator = self.store.context_for_user(self.operator_user.user_id)
         self.client = self.store.create_client(self.operator, "Acme BV")
+        self.other_client = self.store.create_client(self.operator, "Globex NV")
         self.client_user = self.store.create_user(
             self.operator,
             "admin@acme.test",
@@ -34,12 +35,25 @@ class OperatorPortalWriteBoundaryTests(unittest.TestCase):
         self.store.set_password(
             self.operator, self.client_user.user_id, "client-admin-password"
         )
+        self.other_client_user = self.store.create_user(
+            self.operator,
+            "admin@globex.test",
+            "Globex Admin",
+            Role.CLIENT_ADMIN,
+            self.other_client.client_id,
+        )
+        self.store.set_password(
+            self.operator, self.other_client_user.user_id, "other-client-password"
+        )
 
         self.operator_token, self.operator_csrf = self.store.create_session(
             self.operator_user.user_id
         )
         self.client_token, self.client_csrf = self.store.create_session(
             self.client_user.user_id
+        )
+        self.other_client_token, self.other_client_csrf = self.store.create_session(
+            self.other_client_user.user_id
         )
 
     def tearDown(self):
@@ -108,6 +122,28 @@ class OperatorPortalWriteBoundaryTests(unittest.TestCase):
                 },
                 token=self.operator_token,
                 csrf=self.operator_csrf,
+            )
+
+        submit.assert_not_called()
+        self.assertEqual(status, "403 Forbidden")
+        self.assertEqual(self.store.list_assessment_requests(self.operator), [])
+
+    def test_other_client_cannot_submit_request_for_this_client(self):
+        with patch.object(
+            self.store,
+            "submit_assessment_request",
+            wraps=self.store.submit_assessment_request,
+        ) as submit:
+            status, _, _ = self.request(
+                "POST",
+                f"/portal/{self.client.client_id}/requests",
+                {
+                    "assets": "app.acme.example",
+                    "risk": "2",
+                    "notes": "cross-tenant request must fail before handler",
+                },
+                token=self.other_client_token,
+                csrf=self.other_client_csrf,
             )
 
         submit.assert_not_called()
