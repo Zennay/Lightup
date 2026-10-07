@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import dataclasses
+import json
 import unittest
 
 import test_future_remediation_text_proposal as proposal_tests
-from lightup.future_remediation_text_proposal import _authoring_messages
+from lightup.future_remediation_text_proposal import (
+    _authoring_messages,
+    _authoring_payload,
+)
 
 
 MODEL_INPUT_CHAR_LIMIT = 65_536
@@ -54,6 +58,19 @@ class RemediationTextModelInputBoundAcceptanceTest(unittest.TestCase):
             item_count=len(items),
         )
         before = dataclasses.asdict(oversized)
+        serialized_payload = json.dumps(
+            _authoring_payload(oversized),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        )
+        final_user_content = (
+            "Draft remediation guidance for this exact authoring request. Preserve "
+            "the distinction between introduced/worsened findings and future retest "
+            "requirements. Evidence-bound request JSON follows:\n"
+            + serialized_payload
+        )
+        self.assertGreater(len(final_user_content), MODEL_INPUT_CHAR_LIMIT)
 
         with self.assertRaisesRegex(ValueError, "model input|input payload|input size"):
             _authoring_messages(oversized)
