@@ -870,8 +870,9 @@ class DomainStore:
             if engagement_id is not None:
                 engagement = self.get_engagement(ctx, engagement_id)
                 rows = con.execute(
-                    "SELECT * FROM risk_approvals WHERE engagement_id=? ORDER BY created_at DESC",
-                    (engagement.engagement_id,),
+                    "SELECT * FROM risk_approvals "
+                    "WHERE engagement_id=? AND client_id=? ORDER BY created_at DESC",
+                    (engagement.engagement_id, engagement.client_id),
                 ).fetchall()
             elif ctx.is_operator:
                 rows = con.execute(
@@ -879,8 +880,11 @@ class DomainStore:
                 ).fetchall()
             else:
                 rows = con.execute(
-                    "SELECT * FROM risk_approvals WHERE client_id=? ORDER BY created_at DESC",
-                    (ctx.client_id,),
+                    "SELECT r.* FROM risk_approvals AS r "
+                    "JOIN engagements AS e ON e.engagement_id=r.engagement_id "
+                    "WHERE r.client_id=? AND e.client_id=? "
+                    "ORDER BY r.created_at DESC",
+                    (ctx.client_id, ctx.client_id),
                 ).fetchall()
         return [self._approval_from_row(r) for r in rows]
 
