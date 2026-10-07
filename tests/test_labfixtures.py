@@ -6,6 +6,7 @@ import json
 import tempfile
 import threading
 import unittest
+from collections import Counter
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from lightup.ai.pipeline import AssessmentReviewPipeline
 from lightup.labeval import LabScenario
 from lightup.labfixtures import PROFILES, FixtureProfile, expected_findings, make_handler
 from lightup.labrun import main_assess, run_lab_baseline, run_planned_assessment, scripted_demo_gateway
+from lightup.workers.http_baseline import BASELINE_CHECKS
 
 
 @contextlib.contextmanager
@@ -29,10 +31,36 @@ def _serve(profile: FixtureProfile):
 
 class ProfileDefinitionTest(unittest.TestCase):
     def test_profiles_are_well_formed(self):
-        self.assertEqual(set(PROFILES), {"exposed", "partially-hardened", "hardened"})
+        self.assertEqual(
+            set(PROFILES),
+            {
+                "exposed",
+                "partially-hardened",
+                "hardened",
+                "single-missing-content-security-policy",
+                "single-missing-x-content-type-options",
+                "single-missing-x-frame-options",
+                "single-missing-referrer-policy",
+                "single-server-banner-disclosure",
+            },
+        )
         for name, profile in PROFILES.items():
             self.assertEqual(name, profile.profile_id)
             self.assertTrue(profile.description)
+
+    def test_single_signal_profiles_cover_every_baseline_check_once(self):
+        calibration = {
+            name: profile
+            for name, profile in PROFILES.items()
+            if name.startswith("single-")
+        }
+        self.assertEqual(len(calibration), len(BASELINE_CHECKS))
+        expected_ids = [check_id for check_id, *_rest in BASELINE_CHECKS]
+        planted_ids = []
+        for profile in calibration.values():
+            self.assertEqual(len(profile.expected_check_ids), 1)
+            planted_ids.extend(profile.expected_check_ids)
+        self.assertEqual(Counter(planted_ids), Counter(expected_ids))
 
     def test_unknown_planted_check_is_rejected(self):
         with self.assertRaises(ValueError):
@@ -65,6 +93,23 @@ class PlantedGroundTruthTest(unittest.TestCase):
                 self.assertEqual(metrics["missed_findings"], 0)
                 self.assertEqual({f["check_id"] for f in result["findings"]},
                                  set(profile.expected_check_ids))
+
+    def test_single_signal_profiles_score_exactly_one_true_positive(self):
+        for name, profile in PROFILES.items():
+            if not name.startswith("single-"):
+                continue
+            with self.subTest(profile=name), _serve(profile) as url:
+                result = run_lab_baseline(
+                    url,
+                    self.base / f"{name}-single.db",
+                    expected=expected_findings(profile),
+                )
+                metrics = result["evaluation"]["metrics"]
+                self.assertEqual(metrics["valid_findings"], 1)
+                self.assertEqual(metrics["invalid_findings"], 0)
+                self.assertEqual(metrics["missed_findings"], 0)
+                self.assertEqual(metrics["precision"], 1.0)
+                self.assertEqual(metrics["recall"], 1.0)
 
     def test_zero_finding_ground_truth_counts_unexpected_results(self):
         with _serve(PROFILES["exposed"]) as url:
