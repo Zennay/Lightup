@@ -4,20 +4,25 @@ Issue #623 isolates a persistence-type boundary above strict remediation-text re
 
 ## Contract
 
-The canonical direct-object control is `json.loads(review.to_json())`. Persisted JSON decoding yields exact built-in dictionaries, lists and strings. The direct `future_remediation_text_review_from_dict` path must reject equivalent-content Python subclasses rather than normalize them into trusted review state.
+Both built-in producer forms already exercised by the strict handoff must remain green:
 
-The acceptance regression requires exact built-in types for:
+- `json.loads(review.to_json())`, where `checks` is an exact built-in list;
+- `review.as_dict()`, where the dataclass preserves `checks` as an exact built-in tuple.
+
+The direct `future_remediation_text_review_from_dict` path must reject equivalent-content Python subclasses rather than normalize them into trusted review state.
+
+The acceptance regression covers:
 
 - the top-level mapping and all top-level schema keys;
-- the `checks` sequence container;
+- both supported `checks` container types;
 - every nested check mapping and nested schema key;
 - review-request/proposal/content/review SHA-256 lineage;
 - reviewer provider/model provenance;
 - schema/future/verdict metadata;
 - persisted decision, check-name and check-result strings;
-- the review summary, before trimming/canonicalization.
+- the review summary before trimming/canonicalization.
 
-Canonical JSON-decoded producer state must continue to reconstruct the exact review. Rejection must leave caller-owned persisted input value-equivalent to its pre-call snapshot.
+Rejection must leave caller-owned persisted input value-equivalent to its pre-call snapshot.
 
 ## Separation from existing owners
 
@@ -29,4 +34,4 @@ This is persistence-integrity acceptance only. It invokes no model, interacts wi
 
 ## Expected state
 
-The exact #220 parser currently uses broad `isinstance`, schema/value equality, enum conversion, nested traversal and summary `.strip()` canonicalization at these boundaries. The new tests are intentionally expected RED until the #220 source owner narrows the persisted-object contract.
+The exact #220 parser currently uses broad `isinstance`, schema/value equality, enum conversion, list/tuple and nested-mapping checks, plus summary `.strip()` canonicalization. The new tests are intentionally expected RED only for producer-impossible subclasses while both supported built-in forms stay green.
