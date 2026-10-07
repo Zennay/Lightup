@@ -40,6 +40,7 @@ jobs:
           import urllib.error
           import urllib.parse
           import urllib.request
+          import time
           from datetime import datetime, timezone
 
           repo = os.environ["REPO"]
@@ -58,15 +59,22 @@ jobs:
 
           def request(path, method="GET", payload=None):
               data = None if payload is None else json.dumps(payload).encode()
-              req = urllib.request.Request(
-                  "https://api.github.com" + path,
-                  data=data,
-                  method=method,
-                  headers=headers,
-              )
-              with urllib.request.urlopen(req, timeout=25) as response:
-                  raw = response.read()
-                  return json.loads(raw) if raw else {}
+              for attempt in range(4):
+                  req = urllib.request.Request(
+                      "https://api.github.com" + path,
+                      data=data,
+                      method=method,
+                      headers=headers,
+                  )
+                  try:
+                      with urllib.request.urlopen(req, timeout=25) as response:
+                          raw = response.read()
+                          return json.loads(raw) if raw else {}
+                  except urllib.error.HTTPError as exc:
+                      if exc.code not in (502, 503, 504) or attempt == 3:
+                          raise
+                      time.sleep(1.5 * (attempt + 1))
+              raise RuntimeError("unreachable GitHub request retry state")
 
           def paged(path_prefix, *, max_pages=20):
               items = []
