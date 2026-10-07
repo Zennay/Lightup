@@ -127,6 +127,30 @@ class RedactionTests(unittest.TestCase):
             "client_secret=[REDACTED]",
         )
 
+    def test_aws_credential_assignments_are_redacted_by_key(self):
+        cases = (
+            (
+                "aws_secret_access_key=secret123&region=eu-west-1",
+                "aws_secret_access_key=[REDACTED]&region=eu-west-1",
+            ),
+            ("aws-session-token='temporary-token'", "aws-session-token=[REDACTED]"),
+            ("aws_access_key_id=ASIAABCDEFGHIJKLMNOP", "aws_access_key_id=[REDACTED]"),
+        )
+        for value, expected in cases:
+            with self.subTest(value=value):
+                self.assertEqual(redact_text(value), expected)
+
+    def test_quoted_json_aws_credential_is_redacted(self):
+        value = '{"aws_secret_access_key":"secret123","aws_region":"eu-west-1"}'
+        self.assertEqual(
+            redact_text(value),
+            '{"aws_secret_access_key":"[REDACTED]","aws_region":"eu-west-1"}',
+        )
+
+    def test_unrelated_aws_configuration_is_unchanged(self):
+        value = "aws_region=eu-west-1"
+        self.assertEqual(redact_text(value), value)
+
     def test_unrelated_compound_key_is_unchanged(self):
         value = "session_tokenizer=ordinary-value"
         self.assertEqual(redact_text(value), value)
