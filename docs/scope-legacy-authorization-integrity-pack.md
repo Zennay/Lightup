@@ -13,15 +13,18 @@ Included issues:
 - #301: exact timezone-aware datetime-or-None stored time boundaries;
 - #302: exact trusted Authorization object boundary;
 - #403: explicit evaluation-time input must be datetime-or-None and malformed
-  caller clocks fail closed.
+  caller clocks fail closed;
+- #721: terminal DNS-root-dot canonicalization removes at most one dot, so
+  malformed multi-dot host text cannot inherit canonical asset authority.
 
 ## Validation posture
 
 The canonical #100 scope/activation smoke suite remains the green control. The
-five acceptance modules are expected RED until the source owner absorbs their
+six acceptance modules are expected RED until the source owner absorbs their
 narrowing guards. Historical #299-#302 proof established exactly 17 expected
-failures per Python interpreter; #403 adds exactly 5, for a combined expected
-count of 22 failures per interpreter.
+failures per Python interpreter; #403 adds exactly 5; #721 adds exactly 2
+malformed multi-dot failures while its canonical single-root-dot control stays
+green, for a combined expected count of 24 failures per interpreter.
 
 ## Ownership and stop line
 
