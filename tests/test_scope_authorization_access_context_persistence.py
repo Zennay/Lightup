@@ -12,6 +12,14 @@ class _ForgedOperatorRole:
     value = "operator"
 
 
+class _EqualitySpoofedUserId(str):
+    def __eq__(self, other: object) -> bool:
+        return True
+
+    def __ne__(self, other: object) -> bool:
+        return False
+
+
 class AccessContextPersistenceBoundaryTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -32,6 +40,39 @@ class AccessContextPersistenceBoundaryTests(unittest.TestCase):
             row = con.execute("SELECT COUNT(*) FROM users WHERE email=?", (email,)).fetchone()
         assert row is not None
         return int(row[0])
+
+    def test_password_change_rejects_equality_spoofed_user_selector(self):
+        client = self.store.create_client(self.operator, "Password Boundary Client")
+        attacker = self.store.create_user(
+            self.operator,
+            "attacker@acme.test",
+            "Attacker",
+            Role.CLIENT_MEMBER,
+            client.client_id,
+        )
+        victim = self.store.create_user(
+            self.operator,
+            "victim@acme.test",
+            "Victim",
+            Role.CLIENT_MEMBER,
+            client.client_id,
+        )
+        attacker_ctx = self.store.context_for_user(attacker.user_id)
+        self.store.set_password(self.operator, victim.user_id, "victim-original-password")
+
+        forged = _EqualitySpoofedUserId(victim.user_id)
+        self.assertEqual(str(forged), victim.user_id)
+        self.assertTrue(forged == attacker_ctx.user_id)
+
+        with self.assertRaisesRegex(ValueError, "user_id must be an exact string"):
+            self.store.set_password(attacker_ctx, forged, "attacker-chosen-password")
+
+        self.assertIsNotNone(
+            self.store.verify_password("victim@acme.test", "victim-original-password")
+        )
+        self.assertIsNone(
+            self.store.verify_password("victim@acme.test", "attacker-chosen-password")
+        )
 
     def test_create_user_rejects_forged_operator_role_before_persistence(self):
         client = self.store.create_client(self.operator, "Role Intake Client")
