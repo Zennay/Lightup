@@ -27,7 +27,7 @@ _PATTERNS: tuple[tuple[re.Pattern[str], object], ...] = (
     (re.compile(r"\bAKIA[0-9A-Z]{16}\b"), "[REDACTED_AWS_ACCESS_KEY]"),
     (
         re.compile(
-            r'''(?i)(["'])((?:(?:access|refresh|id|auth)[_-]?token|client[_-]?secret|api[_-]?key|token|secret|password))\1(\s*:\s*)(["'])((?:\\.|(?!\4)[^\\\r\n])*)\4'''
+            r'''(?i)(["'])((?:(?:access|refresh|id|auth)[_-]?token|client[_-]?secret|aws[_-]?(?:secret[_-]?access[_-]?key|access[_-]?key[_-]?id|session[_-]?token)|api[_-]?key|token|secret|password))\1(\s*:\s*)(["'])((?:\\.|(?!\4)[^\\\r\n])*)\4'''
         ),
         lambda m: (
             f"{m.group(1)}{m.group(2)}{m.group(1)}{m.group(3)}"
@@ -36,7 +36,7 @@ _PATTERNS: tuple[tuple[re.Pattern[str], object], ...] = (
     ),
     (
         re.compile(
-            r'''(?i)\b((?:access|refresh|id|auth)[_-]?token|client[_-]?secret)\b\s*[:=]\s*(["']?)[^\s,&"']+\2'''
+            r'''(?i)\b((?:access|refresh|id|auth)[_-]?token|client[_-]?secret|aws[_-]?(?:secret[_-]?access[_-]?key|access[_-]?key[_-]?id|session[_-]?token))\b\s*[:=]\s*(["']?)[^\s,&"']+\2'''
         ),
         lambda m: f"{m.group(1)}=[REDACTED]",
     ),
