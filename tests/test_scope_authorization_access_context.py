@@ -49,6 +49,24 @@ class AccessContextAuthorizationBoundaryTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     AccessContext("user-1", Role.CLIENT_MEMBER, client_id)  # type: ignore[arg-type]
 
+    def test_resolve_client_rejects_noncanonical_selector_identity(self):
+        operator = AccessContext("operator-1", Role.OPERATOR)
+        client = AccessContext("user-1", Role.CLIENT_ADMIN, "client-1")
+
+        invalid = (
+            "",
+            " client-1",
+            "client-1 ",
+            "client\x00-1",
+            _SpoofedString("client-1"),
+        )
+        for client_id in invalid:
+            with self.subTest(client_id=repr(client_id)):
+                with self.assertRaises(ValueError):
+                    operator.resolve_client(client_id, "read")
+                with self.assertRaises(ValueError):
+                    client.resolve_client(client_id, "read")
+
     def test_operator_cannot_carry_client_identity(self):
         with self.assertRaisesRegex(ValueError, "operator contexts are not bound to a client"):
             AccessContext("operator-1", Role.OPERATOR, "client-1")
