@@ -1,4 +1,4 @@
-# Durable grant falsy evaluation-time acceptance
+# Durable grant malformed evaluation-time acceptance
 
 Tracked by #735.
 
@@ -6,16 +6,25 @@ Tracked by #735.
 
 `AuthorizationGrant.is_current(now=...)` must distinguish omission from malformed caller input.
 
-`None` is the only omission sentinel. A supplied falsy value such as `False`, `0`, or an empty string is still caller input and must fail closed rather than being replaced with the wall clock.
+`None` is the only omission sentinel. Every supplied non-`datetime` value is still explicit caller input and must fail closed rather than being replaced with the wall clock or leaking an incidental attribute/type error.
 
 ## Required behavior
 
-- `None` preserves the existing omitted-clock behavior;
-- an exact built-in timezone-aware `datetime` preserves the existing explicit-clock behavior;
-- `False`, `0`, and `""` are rejected with a controlled authorization-time validation error;
-- no malformed supplied value may be silently converted into a different authorization instant.
+Canonical controls:
 
-Current source is expected RED for the three falsy-input cases because it uses `now = now or datetime.now(timezone.utc)`.
+- `None` preserves the existing omitted-clock behavior;
+- an exact built-in timezone-aware `datetime` preserves the existing explicit-clock behavior.
+
+Malformed explicit inputs must all produce a controlled authorization-time `ValueError`:
+
+- falsy `False`;
+- falsy `0`;
+- falsy empty text;
+- truthy positive integer;
+- truthy non-empty text;
+- an arbitrary plain object.
+
+Current source is expected RED for exactly **6** malformed-input methods. The three falsy shapes are silently replaced because source uses `now = now or datetime.now(timezone.utc)`; the three truthy non-datetime shapes reach incidental attribute access instead of the controlled validation boundary.
 
 ## Non-overlap
 
