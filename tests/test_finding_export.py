@@ -37,7 +37,7 @@ class FindingCsvExportTests(unittest.TestCase):
         for field in ("finding_id", "title", "remediation"):
             for payload in ("=1+1", "+1+1", "-1+1", "@SUM(1)",
                             "   =1+1", "\t=1+1", "\r=1+1",
-                            "\n=1+1", "\x00=1+1"):
+                            "\n=1+1", "\x00=1+1", "\u00a0=1+1", "\x1f=1+1"):
                 with self.subTest(field=field, payload=payload):
                     row = parse([sample(**{field: payload})])[0]
                     self.assertEqual(row[field], "'" + payload)
