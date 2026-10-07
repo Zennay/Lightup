@@ -70,11 +70,9 @@ class ScopeExactTargetObjectContractTests(unittest.TestCase):
         self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
 
     def test_exact_target_behavior_is_unchanged(self):
-        policy = ScopePolicy()
-
-        loopback = policy.decide(Target("127.0.0.1"))
-        private_lab = policy.decide(Target("10.20.30.40"))
-        public = policy.decide(Target("8.8.8.8"))
+        loopback = ScopePolicy().decide(Target("127.0.0.1"))
+        private_lab = ScopePolicy(allow_private_lab=True).decide(Target("10.20.30.40"))
+        public = ScopePolicy().decide(Target("8.8.8.8"))
 
         self.assertTrue(loopback.allowed)
         self.assertEqual(loopback.reason, ScopeReason.LOOPBACK)
