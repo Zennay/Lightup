@@ -15,9 +15,9 @@ class FindingExportWebApp(LightUpWebApp):
     def __init__(self, store: DomainStore, security: WebSecurity | None = None):
         super().__init__(store, security)
         self.routes.extend([
-            ("GET", re.compile(r"^/portal/(?P<client_id>[\\w-]+)/findings.csv$"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[A-Za-z0-9_-]+)/findings[.]csv$"),
              self.download_findings, "portal"),
-            ("GET", re.compile(r"^/portal/(?P<client_id>[\\w-]+)/engagements/(?P<engagement_id>[\\w-]+)/findings.csv$"),
+            ("GET", re.compile(r"^/portal/(?P<client_id>[A-Za-z0-9_-]+)/engagements/(?P<engagement_id>[A-Za-z0-9_-]+)/findings[.]csv$"),
              self.download_findings, "portal"),
         ])
 
