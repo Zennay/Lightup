@@ -121,6 +121,8 @@ class FutureSecurityEvidenceCollectionDirectConstructionTest(unittest.TestCase):
             dataclasses.replace(request, items=())
         with self.assertRaises(ValueError):
             dataclasses.replace(request, items=list(request.items))
+        with self.assertRaises(ValueError):
+            dataclasses.replace(request, items=(object(),))
 
     def test_direct_request_digest_and_lineage_drift_are_rejected(self):
         request = self._request(suffix="direct-request-digest")
@@ -199,6 +201,16 @@ class FutureSecurityEvidenceCollectionDirectConstructionTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             dataclasses.replace(
                 item,
+                current_attack_path_ids=list(item.current_attack_path_ids),
+            )
+        with self.assertRaises(ValueError):
+            dataclasses.replace(
+                item,
+                effect_ids=list(item.effect_ids),
+            )
+        with self.assertRaises(ValueError):
+            dataclasses.replace(
+                item,
                 prior_evidence_ids=list(item.prior_evidence_ids),
             )
         with self.assertRaises(ValueError):
@@ -214,7 +226,11 @@ class FutureSecurityEvidenceCollectionDirectConstructionTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             dataclasses.replace(request, collection_authorized=0)
         with self.assertRaises(ValueError):
+            dataclasses.replace(request, execution_allowed=0)
+        with self.assertRaises(ValueError):
             dataclasses.replace(item, fresh_evidence_required=1)
+        with self.assertRaises(ValueError):
+            dataclasses.replace(item, remediation_authoring_allowed=0)
 
 
 if __name__ == "__main__":
