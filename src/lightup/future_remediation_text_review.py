@@ -35,6 +35,7 @@ from .state import StateStore
 
 REMEDIATION_TEXT_REVIEW_SCHEMA_VERSION = "st5.remediation_text_review.v1"
 _MAX_REVIEW_SUMMARY_CHARS = 4_000
+_MAX_RAW_REVIEW_RESPONSE_CHARS = 32_768
 _MAX_REVIEW_OUTPUT_TOKENS = 800
 _ALLOWED_CHECK_RESULTS = {"pass", "fail", "unclear"}
 
@@ -108,6 +109,8 @@ def _parse_reviewer_content(
 ]:
     if not isinstance(raw, str) or not raw.strip():
         raise ValueError("remediation text reviewer returned empty content")
+    if len(raw) > _MAX_RAW_REVIEW_RESPONSE_CHARS:
+        raise ValueError("remediation text reviewer response exceeds bounded size")
     try:
         payload = json.loads(raw, object_pairs_hook=_reject_duplicate_json_keys)
     except json.JSONDecodeError as exc:
