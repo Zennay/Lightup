@@ -28,17 +28,21 @@ class FutureRemediationTextRevisionRequestLiveValidationAtomicityTest(
             return dataclasses.asdict(value)
         return copy.deepcopy(value)
 
-    def _upstream(self):
+    def _review_layer(self):
         return self.base.base.base
 
+    def _upstream(self):
+        return self.base.base.base.base
+
     def _snapshot_lineage(self) -> tuple:
+        review_layer = self._review_layer()
         upstream = self._upstream()
         return tuple(
             self._snapshot_value(value)
             for value in (
                 self.base.review,
-                self.base.base.review_request,
-                self.base.base.proposal,
+                review_layer.review_request,
+                review_layer.proposal,
                 upstream.request,
                 upstream.bundle,
                 upstream.plan,
@@ -51,11 +55,12 @@ class FutureRemediationTextRevisionRequestLiveValidationAtomicityTest(
         )
 
     def _persisted_payloads(self) -> tuple[dict, dict, dict, dict]:
+        review_layer = self._review_layer()
         return (
             json.loads(self.base.request.to_json()),
             json.loads(self.base.review.to_json()),
-            json.loads(self.base.base.review_request.to_json()),
-            json.loads(self.base.base.proposal.to_json()),
+            json.loads(review_layer.review_request.to_json()),
+            json.loads(review_layer.proposal.to_json()),
         )
 
     def _load(self, payloads: tuple[dict, dict, dict, dict]):
