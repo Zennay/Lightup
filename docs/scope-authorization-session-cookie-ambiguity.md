@@ -17,7 +17,7 @@ When multiple valid session tokens are supplied, parser selection can choose whi
 ## Acceptance
 
 - one valid `lightup_session` retains existing authentication and authorization behavior;
-- unrelated cookies may coexist with that one session cookie;
+- unrelated cookies, including names that merely contain `lightup_session` as a substring, may coexist with that one exact session cookie;
 - two different `lightup_session` occurrences fail closed;
 - two identical `lightup_session` occurrences also fail closed;
 - rejection happens before `DomainStore.session_context()`;
@@ -28,7 +28,7 @@ When multiple valid session tokens are supplied, parser selection can choose whi
 
 Against current `main`, both duplicate-cookie tests are expected RED. `SimpleCookie` accepts the raw header, exposes one selected morsel under `lightup_session`, and `_authenticate()` passes that value to `session_context()`.
 
-The two single-session controls are expected green.
+The single-session, unrelated-cookie and exact-name controls are expected green.
 
 ## Collision boundary
 
