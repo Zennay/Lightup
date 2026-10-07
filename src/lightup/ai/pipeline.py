@@ -34,6 +34,21 @@ _REPORT_SYSTEM = (
     "explicitly when coverage is materially unknown; never claim everything "
     "was tested."
 )
+_VERDICT_TOKENS = ("CONFIRMED", "UNCERTAIN", "REJECTED")
+
+
+def _validated_verifier_verdict(value: str) -> str:
+    """Require the verifier's declared decision before remediation is derived."""
+
+    first_line = value.split("\n", 1)[0]
+    if not any(
+        first_line == token or first_line.startswith(f"{token} ")
+        for token in _VERDICT_TOKENS
+    ):
+        raise ValueError(
+            "verifier verdict must start with CONFIRMED, UNCERTAIN or REJECTED"
+        )
+    return value
 
 
 @dataclass(frozen=True)
@@ -87,10 +102,12 @@ class AssessmentReviewPipeline:
                  "evidence_id": labrun_result.get("evidence_id", "")},
                 sort_keys=True,
             )
-            verdict = self.gateway.complete(
-                ModelRole.VERIFIER,
-                (ModelMessage("system", _VERIFIER_SYSTEM), ModelMessage("user", payload)),
-            ).content
+            verdict = _validated_verifier_verdict(
+                self.gateway.complete(
+                    ModelRole.VERIFIER,
+                    (ModelMessage("system", _VERIFIER_SYSTEM), ModelMessage("user", payload)),
+                ).content
+            )
             advice = self.gateway.complete(
                 ModelRole.REMEDIATION_ADVISOR,
                 (ModelMessage("system", _REMEDIATION_SYSTEM),
