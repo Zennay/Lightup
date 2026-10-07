@@ -26,7 +26,7 @@ class UnauthorizedDiscoveryCategoryBoundaryTest(unittest.TestCase):
 
         profile.add_signal(signal)
 
-        self.assertEqual(profile.signals, [signal])
+        self.assertEqual(profile.signals, (signal,))
 
     def test_raw_string_category_is_rejected_before_profile_mutation(self):
         profile = ProspectProfile("prospect-1", "Example")
@@ -38,7 +38,7 @@ class UnauthorizedDiscoveryCategoryBoundaryTest(unittest.TestCase):
         ):
             profile.add_signal(signal)
 
-        self.assertEqual(profile.signals, [])
+        self.assertEqual(profile.signals, ())
 
     def test_string_subclass_category_is_rejected_without_coercion(self):
         profile = ProspectProfile("prospect-1", "Example")
@@ -52,7 +52,7 @@ class UnauthorizedDiscoveryCategoryBoundaryTest(unittest.TestCase):
             profile.add_signal(signal)
 
         self.assertIs(signal.category, category)
-        self.assertEqual(profile.signals, [])
+        self.assertEqual(profile.signals, ())
 
     def test_unrelated_category_object_is_rejected_before_profile_mutation(self):
         profile = ProspectProfile("prospect-1", "Example")
@@ -66,7 +66,7 @@ class UnauthorizedDiscoveryCategoryBoundaryTest(unittest.TestCase):
             profile.add_signal(signal)
 
         self.assertIs(signal.category, category)
-        self.assertEqual(profile.signals, [])
+        self.assertEqual(profile.signals, ())
 
 
 if __name__ == "__main__":
