@@ -73,8 +73,19 @@ class SemanticChangeSignal:
         validate_repo_path(self.object_path)
         if not self.summary.strip():
             raise ValueError("semantic signal summary is required")
+        if type(self.evidence_refs) is not tuple:
+            raise ValueError("semantic signal evidence_refs must be an exact tuple")
         if not self.evidence_refs:
             raise ValueError("semantic signals require evidence_refs")
+        seen_evidence_refs: set[str] = set()
+        for evidence_ref in self.evidence_refs:
+            if type(evidence_ref) is not str or not evidence_ref.strip():
+                raise ValueError(
+                    "semantic signal evidence_refs must contain exact non-blank strings"
+                )
+            if evidence_ref in seen_evidence_refs:
+                raise ValueError("semantic signal evidence_refs must be unique")
+            seen_evidence_refs.add(evidence_ref)
         if not 0.0 <= self.confidence <= 1.0:
             raise ValueError("semantic signal confidence must be between 0 and 1")
         if self.provenance is not FactProvenance.INFERRED:
