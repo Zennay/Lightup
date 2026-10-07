@@ -1025,14 +1025,21 @@ class DomainStore:
         }
         if capability_id not in known_capabilities:
             raise ValueError(f"unknown coverage capability_id {capability_id!r}")
-        CoverageStatus(status)  # validates
+        if type(status) is not str:
+            raise ValueError("coverage status must be an exact canonical string")
+        canonical_status = CoverageStatus(status).value
         with self._connect() as con:
             con.execute(
                 "INSERT INTO coverage_entries(engagement_id,capability_id,status,"
                 "updated_at) VALUES(?,?,?,?) "
                 "ON CONFLICT(engagement_id,capability_id) DO UPDATE SET "
                 "status=excluded.status, updated_at=excluded.updated_at",
-                (engagement.engagement_id, capability_id, status, utcnow().isoformat()),
+                (
+                    engagement.engagement_id,
+                    capability_id,
+                    canonical_status,
+                    utcnow().isoformat(),
+                ),
             )
 
     def get_coverage(self, ctx: AccessContext, engagement_id: str) -> dict[str, str]:
