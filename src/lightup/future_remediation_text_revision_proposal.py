@@ -251,16 +251,18 @@ def generate_future_remediation_text_revision_proposal(
         raise ValueError("remediation revision advisor returned the wrong model role")
     if response.model_id != binding.model_id:
         raise ValueError("remediation revision advisor returned the wrong model identity")
-    if not isinstance(response.content, str) or not response.content.strip():
+    if not isinstance(response.content, str):
+        raise ValueError("remediation revision advisor returned empty content")
+    if len(response.content) > _MAX_MODEL_OUTPUT_CHARS:
+        raise ValueError(
+            "remediation revision advisor content exceeds the bounded output size"
+        )
+    if not response.content.strip():
         raise ValueError("remediation revision advisor returned empty content")
 
     content = response.content.strip()
     if "\x00" in content:
         raise ValueError("remediation revision advisor content contains NUL")
-    if len(content) > _MAX_MODEL_OUTPUT_CHARS:
-        raise ValueError(
-            "remediation revision advisor content exceeds the bounded output size"
-        )
 
     content_sha256 = _content_digest(content)
     revision_proposal_sha256 = _revision_proposal_digest(
