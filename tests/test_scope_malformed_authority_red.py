@@ -5,7 +5,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from lightup.models import Target
+from lightup.models import Authorization, Target
 from lightup.scope import ScopePolicy, ScopeReason
 
 
@@ -24,6 +24,21 @@ class MalformedAuthorityTests(unittest.TestCase):
         ):
             with self.subTest(candidate=candidate):
                 decision = policy.decide(Target(candidate))
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+
+    def test_malformed_port_cannot_reuse_an_existing_public_grant(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset({"example.test"}),
+        )
+        grant = Authorization(owner="fixture-owner", reference="fixture-grant")
+        for candidate in (
+            "https://example.test:invalid/path",
+            "https://example.test:999999/path",
+        ):
+            with self.subTest(candidate=candidate):
+                decision = policy.decide(Target(candidate, authorization=grant))
                 self.assertFalse(decision.allowed)
                 self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
 
