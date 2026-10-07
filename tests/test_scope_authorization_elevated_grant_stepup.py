@@ -41,11 +41,15 @@ class ElevatedGrantStepUpApprovalTest(unittest.TestCase):
             valid_until=now + timedelta(days=1),
         )
 
-    def _approve_elevation(self, engagement_id: str):
+    def _approve_risk(
+        self,
+        engagement_id: str,
+        risk: RiskLevel = RiskLevel.ELEVATED,
+    ):
         approval = self.store.request_risk_elevation(
             self.operator,
             engagement_id,
-            RiskLevel.ELEVATED,
+            risk,
             "approved deeper assessment",
         )
         return self.store.decide_risk_elevation(
@@ -125,7 +129,7 @@ class ElevatedGrantStepUpApprovalTest(unittest.TestCase):
         )
 
         other = self._engagement("other-approved")
-        self._approve_elevation(other.engagement_id)
+        self._approve_risk(other.engagement_id)
         target = self._engagement("cross-engagement-target")
         with self.assertRaises((PermissionError, ValueError)):
             self._record_grant(target.engagement_id, RiskLevel.ELEVATED)
@@ -137,9 +141,21 @@ class ElevatedGrantStepUpApprovalTest(unittest.TestCase):
             [],
         )
 
+        underpowered = self._engagement("underpowered-approved")
+        self._approve_risk(underpowered.engagement_id, RiskLevel.STANDARD)
+        with self.assertRaises((PermissionError, ValueError)):
+            self._record_grant(underpowered.engagement_id, RiskLevel.ELEVATED)
+        self.assertEqual(
+            self.store.list_authorization_grants(
+                self.operator,
+                underpowered.engagement_id,
+            ),
+            [],
+        )
+
     def test_elevated_grant_accepts_approved_same_engagement_step_up(self):
         engagement = self._engagement("approved")
-        self._approve_elevation(engagement.engagement_id)
+        self._approve_risk(engagement.engagement_id)
 
         grant = self._record_grant(
             engagement.engagement_id,
