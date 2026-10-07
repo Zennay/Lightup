@@ -1,6 +1,6 @@
 # Direct grant policy integrity acceptance pack
 
-Tracked by #742.
+Tracked by #742; extended by #744.
 
 ## Pinned source owner
 
@@ -18,18 +18,20 @@ PR #100 retains all production ownership for the direct `AuthorizationGrant` / `
 - #737 — revocation provenance coherence;
 - #738 — stored validity datetime exactness;
 - #740 — direct scope object exactness;
-- #741 — outer authorization-grant object exactness.
+- #741 — outer authorization-grant object exactness;
+- #743 — direct grant client/engagement lineage exact string identity.
 
 ## Expected partition on the pinned source
 
-Expected RED total: **14**.
+Expected RED total: **18**.
 
 - #734: 2;
 - #735: 3;
 - #737: 3;
 - #738: 2;
 - #740: 2;
-- #741: 2.
+- #741: 2;
+- #743: 4.
 
 All #347 methods and all canonical controls are expected GREEN. No unexpected errors are accepted.
 
@@ -42,7 +44,8 @@ Keep production repair with PR #100:
 3. distinguish omitted `now=None` from explicit malformed evaluation input;
 4. require exact built-in aware datetime values for explicit and stored grant times;
 5. fail closed on stale revocation actor/reason provenance without `revoked_at`;
-6. preserve current exact-grant lineage, scope, inclusive-window and revocation behavior.
+6. require exact built-in, non-empty grant-side `client_id` / `engagement_id` before lineage comparison;
+7. preserve current exact-grant lineage, scope, inclusive-window and revocation behavior.
 
 #646/#647 remain issuance ownership and #106 remains canonical live resolver ownership.
 
