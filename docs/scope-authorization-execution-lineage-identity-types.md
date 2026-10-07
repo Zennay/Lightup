@@ -12,6 +12,9 @@ binds it to `RunContext.client_id` and `RunContext.engagement_id` through
 Those two context fields are Python type hints, not runtime guards. A `str`
 subclass can carry a different underlying tenant/engagement identity while
 overriding equality and inequality so a value comparison reports a match.
+Even a subclass whose underlying text exactly matches the durable identifier is
+still a non-canonical runtime identity object and must not cross an
+authorization boundary.
 
 That is different from stale-grant or resolver substitution: the resolver still
 returns the correct real durable grant. The type-confused context identity is
@@ -28,6 +31,10 @@ TARGET_ACTIVE execution must preserve all of these properties:
   live grant binding;
 - a `str` subclass carrying another engagement identity cannot equality-spoof
   the live grant binding;
+- a `str` subclass is rejected even when its underlying text exactly matches
+  the live client identity;
+- a `str` subclass is rejected even when its underlying text exactly matches
+  the live engagement identity;
 - malformed lineage identities are denied before handler dispatch.
 
 The dedicated acceptance module uses the real `DomainStore` live resolver and
@@ -38,13 +45,15 @@ value comparison.
 ## Expected state
 
 `tests/test_scope_authorization_execution_lineage_identity_types.py` contains
-three canonical green controls and two polymorphic identity rejection cases.
+three canonical green controls and four polymorphic identity rejection cases.
 
-Against the pinned #554 source, the two polymorphic cases are expected RED:
+Against the pinned #554 source, all four polymorphic cases are expected RED:
 the equality-spoofing string subclass can make the current
 `grant.client_id != request.client_id` or
-`grant.engagement_id != request.engagement_id` comparison report no mismatch
-even though the stored string value is a different identity.
+`grant.engagement_id != request.engagement_id` comparison report no mismatch.
+The matching-text cases additionally prove that value equality alone is
+insufficient: authorization lineage identifiers themselves must be exact
+built-in strings.
 
 ## Collision boundary
 
