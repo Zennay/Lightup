@@ -59,6 +59,8 @@ class FutureRemediationAuthoringRequestPathSemanticsAcceptanceTest(
         self.assertEqual(introduced["items"][0]["current_attack_path_ids"], [])
         self.assertTrue(worsened["items"][0]["current_attack_path_ids"])
 
+        cases = []
+
         forged_introduced = deepcopy(introduced)
         forged_introduced["items"][0]["current_attack_path_ids"] = deepcopy(
             worsened["items"][0]["current_attack_path_ids"]
@@ -66,22 +68,31 @@ class FutureRemediationAuthoringRequestPathSemanticsAcceptanceTest(
         forged_introduced["request_sha256"] = _recompute_request_sha256(
             forged_introduced
         )
-        with self.assertRaisesRegex(
-            ValueError,
-            "introduced remediation authoring item must not carry current attack-path lineage",
-        ):
-            future_remediation_authoring_request_from_dict(forged_introduced)
+        cases.append(
+            (
+                "introduced-with-current-path",
+                forged_introduced,
+                "introduced remediation authoring item must not carry current attack-path lineage",
+            )
+        )
 
         forged_worsened = deepcopy(worsened)
         forged_worsened["items"][0]["current_attack_path_ids"] = []
         forged_worsened["request_sha256"] = _recompute_request_sha256(
             forged_worsened
         )
-        with self.assertRaisesRegex(
-            ValueError,
-            "worsened remediation authoring item must retain current attack-path lineage",
-        ):
-            future_remediation_authoring_request_from_dict(forged_worsened)
+        cases.append(
+            (
+                "worsened-without-current-path",
+                forged_worsened,
+                "worsened remediation authoring item must retain current attack-path lineage",
+            )
+        )
+
+        for name, forged, message in cases:
+            with self.subTest(case=name):
+                with self.assertRaisesRegex(ValueError, message):
+                    future_remediation_authoring_request_from_dict(forged)
 
 
 if __name__ == "__main__":
