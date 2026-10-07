@@ -52,12 +52,24 @@ class PersistedGrantTemporalIntegrityTest(unittest.TestCase):
         self._set_persisted("valid_from", "2026-10-07T00:00:00")
         self.assertIsNone(self.store.resolve_authorization_for_execution(self.grant))
 
+    def test_malformed_valid_from_fails_closed_without_exception(self) -> None:
+        self._set_persisted("valid_from", "not-a-timestamp")
+        self.assertIsNone(self.store.resolve_authorization_for_execution(self.grant))
+
+    def test_offsetless_valid_until_fails_closed_without_exception(self) -> None:
+        self._set_persisted("valid_until", "2026-10-08T00:00:00")
+        self.assertIsNone(self.store.resolve_authorization_for_execution(self.grant))
+
     def test_malformed_valid_until_fails_closed_without_exception(self) -> None:
         self._set_persisted("valid_until", "not-a-timestamp")
         self.assertIsNone(self.store.resolve_authorization_for_execution(self.grant))
 
     def test_offsetless_revocation_time_fails_closed_without_exception(self) -> None:
         self._set_persisted("revoked_at", "2026-10-07T00:00:00")
+        self.assertIsNone(self.store.resolve_authorization_for_execution(self.grant))
+
+    def test_malformed_revocation_time_fails_closed_without_exception(self) -> None:
+        self._set_persisted("revoked_at", "not-a-timestamp")
         self.assertIsNone(self.store.resolve_authorization_for_execution(self.grant))
 
 
