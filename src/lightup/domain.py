@@ -406,11 +406,13 @@ class DomainStore:
         client_id: str | None = None,
     ) -> UserRecord:
         ctx.require_operator("create_user")
+        if type(role) is not Role:
+            raise ValueError("user role must be a Role member")
         if role is Role.OPERATOR:
             if client_id is not None:
                 raise ValueError("operator users are not bound to a client")
-        elif not client_id:
-            raise ValueError("client users require a client_id")
+        else:
+            client_id = ctx.resolve_client(client_id, "create_user")
         record = UserRecord(
             str(uuid4()), email.strip().lower(), display_name.strip(), role, client_id, utcnow().isoformat()
         )
