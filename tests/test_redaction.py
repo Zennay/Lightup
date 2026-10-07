@@ -85,6 +85,31 @@ class RedactionTests(unittest.TestCase):
             "X-Trace: keep\ncookie: [REDACTED]\nContent-Type: text/plain",
         )
 
+    def test_quoted_json_compound_credential_is_redacted(self):
+        value = '{"access_token":"abc123","scope":"read"}'
+        self.assertEqual(
+            redact_text(value),
+            '{"access_token":"[REDACTED]","scope":"read"}',
+        )
+
+    def test_quoted_json_common_secret_preserves_spacing_and_quotes(self):
+        value = "{'client-secret': 'abc123', 'mode': 'read'}"
+        self.assertEqual(
+            redact_text(value),
+            "{'client-secret': '[REDACTED]', 'mode': 'read'}",
+        )
+
+    def test_quoted_json_escaped_credential_value_is_fully_redacted(self):
+        value = '{"api_key": "sec\\\"ret", "x": 1}'
+        self.assertEqual(
+            redact_text(value),
+            '{"api_key": "[REDACTED]", "x": 1}',
+        )
+
+    def test_unrelated_quoted_json_field_is_unchanged(self):
+        value = '{"credential_hint":"access_token","scope":"read"}'
+        self.assertEqual(redact_text(value), value)
+
     def test_compound_token_assignments_are_redacted_without_consuming_query_tail(self):
         cases = (
             ("access_token=abc123&scope=read", "access_token=[REDACTED]&scope=read"),
