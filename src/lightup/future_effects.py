@@ -70,10 +70,19 @@ class FutureSecurityEffect:
                 raise ValueError(f"{name} is required")
         if not self.change_node_id.startswith("change:"):
             raise ValueError("future security effect must target a change node")
+        if type(self.evidence_ids) is not tuple:
+            raise ValueError("future security effect evidence_ids must be an exact tuple")
         if not self.evidence_ids:
             raise ValueError("future security effect requires evidence")
-        if len(set(self.evidence_ids)) != len(self.evidence_ids):
-            raise ValueError("future security effect evidence_ids must be unique")
+        seen_evidence_ids: set[str] = set()
+        for evidence_id in self.evidence_ids:
+            if type(evidence_id) is not str or not evidence_id.strip():
+                raise ValueError(
+                    "future security effect evidence_ids must contain exact non-blank strings"
+                )
+            if evidence_id in seen_evidence_ids:
+                raise ValueError("future security effect evidence_ids must be unique")
+            seen_evidence_ids.add(evidence_id)
 
 
 def _fact_id(effect_id: str, predicate: str) -> str:
