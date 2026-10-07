@@ -60,6 +60,7 @@ def _validated_verifier_verdict(value: str) -> str:
 class ReviewedFinding:
     title: str
     severity: str
+    target: str
     verdict: str
     remediation_advice: str
 
@@ -73,8 +74,8 @@ class ReviewResult:
     def to_dict(self) -> dict:
         return {
             "findings": [
-                {"finding": f.title, "severity": f.severity, "verdict": f.verdict,
-                 "remediation_advice": f.remediation_advice}
+                {"finding": f.title, "severity": f.severity, "target": f.target,
+                 "verdict": f.verdict, "remediation_advice": f.remediation_advice}
                 for f in self.findings
             ],
             "report": self.report,
@@ -167,7 +168,7 @@ class AssessmentReviewPipeline:
             ).content
             reviewed.append(ReviewedFinding(
                 title=finding["finding"], severity=finding["severity"],
-                verdict=verdict, remediation_advice=advice,
+                target=finding_target, verdict=verdict, remediation_advice=advice,
             ))
 
         coverage_counts = labrun_result.get("coverage", {}).get("counts", {})
@@ -175,6 +176,7 @@ class AssessmentReviewPipeline:
             {
                 "finding": finding.title,
                 "severity": finding.severity,
+                "target": finding.target,
                 "verdict": finding.verdict,
                 "remediation_advice": finding.remediation_advice,
             }
