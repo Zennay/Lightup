@@ -928,6 +928,17 @@ class DomainStore:
         engagement = self.get_engagement(ctx, engagement_id)
         if not title.strip() or not remediation.strip():
             raise ValueError("finding requires a title and remediation")
+        if type(evidence_ids) is not tuple:
+            raise ValueError("finding evidence_ids must be an exact tuple")
+        if any(
+            type(evidence_id) is not str or not evidence_id.strip()
+            for evidence_id in evidence_ids
+        ):
+            raise ValueError(
+                "finding evidence_ids must contain exact non-blank strings"
+            )
+        if len(set(evidence_ids)) != len(evidence_ids):
+            raise ValueError("finding evidence_ids must be unique")
         record = FindingRecord(
             finding_id=str(uuid4()),
             client_id=engagement.client_id,
@@ -938,7 +949,7 @@ class DomainStore:
             impact=impact.strip(),
             remediation=remediation.strip(),
             retest_status=RetestStatus.NOT_TESTED,
-            evidence_ids=tuple(evidence_ids),
+            evidence_ids=evidence_ids,
             created_at=utcnow().isoformat(),
         )
         with self._connect() as con:
