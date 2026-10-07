@@ -12,7 +12,9 @@ Included issues:
 - #725: capability scope is snapshotted immutably and cannot be widened/narrowed
   by later mutation of a caller-owned collection;
 - #726: the requested activation capability identity must be an exact built-in
-  string before membership is trusted or an ExecutionPermit is created.
+  string before membership is trusted or an ExecutionPermit is created;
+- #728: the stored capability scope container and entries must use exact built-in
+  tuple/string types so membership semantics cannot be overridden.
 
 ## Expected partition
 
@@ -24,10 +26,16 @@ Included issues:
 - matching-text `str` subclass currently crosses ordinary equality;
 - non-string equality-spoofing object can claim allowlisted membership.
 
-Canonical exact-tuple scope, exact allowlisted built-in capability, and ordinary
-foreign built-in capability denial remain green controls.
+#728 contributes two expected-RED methods:
+- a tuple subclass can override `__contains__` and authorize a foreign capability;
+- a stored polymorphic string entry can equality-spoof a different canonical
+  capability.
 
-Combined expected acceptance RED count: **4 test methods**.
+Canonical exact-tuple scope, exact built-in scope entries, exact allowlisted
+built-in capability, and ordinary foreign built-in capability denial remain
+green controls.
+
+Combined expected acceptance RED count: **6 test methods**.
 
 ## Ownership and stop line
 
@@ -37,4 +45,5 @@ It does not modify durable grants/ScopeDefinition, execution policy, webapp,
 target-capable workers, remediation/retest, deployment, verdict or attack-path
 code.
 
-No capability handler is invoked; permit construction is in-memory only.
+No capability handler is invoked; permit construction and membership proofs are
+in-memory only.
