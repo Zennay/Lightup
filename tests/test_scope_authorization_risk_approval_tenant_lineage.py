@@ -51,6 +51,22 @@ class RiskApprovalTenantLineageTest(unittest.TestCase):
         )
         self.assertEqual(self.store.list_risk_approvals(self.ctx_b), [])
 
+    def test_explicit_engagement_read_rejects_mismatched_client_lineage(self) -> None:
+        approval = self._new_approval()
+        with self.store._connect() as con:
+            con.execute(
+                "UPDATE risk_approvals SET client_id=? WHERE approval_id=?",
+                (self.client_b.client_id, approval.approval_id),
+            )
+
+        self.assertEqual(
+            self.store.list_risk_approvals(
+                self.ctx_a,
+                self.engagement_a.engagement_id,
+            ),
+            [],
+        )
+
     def test_corrupt_denormalized_client_id_cannot_cross_tenant_boundary(self) -> None:
         approval = self._new_approval()
         with self.store._connect() as con:
