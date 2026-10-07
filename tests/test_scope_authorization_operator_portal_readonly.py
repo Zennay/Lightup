@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -92,18 +93,24 @@ class OperatorPortalWriteBoundaryTests(unittest.TestCase):
         self.assertEqual(self.store.list_assessment_requests(self.operator), [])
 
     def test_operator_cannot_submit_client_portal_assessment_request(self):
-        status, _, _ = self.request(
-            "POST",
-            f"/portal/{self.client.client_id}/requests",
-            {
-                "assets": "app.acme.example",
-                "risk": "2",
-                "notes": "operator must not impersonate a client requester",
-            },
-            token=self.operator_token,
-            csrf=self.operator_csrf,
-        )
+        with patch.object(
+            self.store,
+            "submit_assessment_request",
+            wraps=self.store.submit_assessment_request,
+        ) as submit:
+            status, _, _ = self.request(
+                "POST",
+                f"/portal/{self.client.client_id}/requests",
+                {
+                    "assets": "app.acme.example",
+                    "risk": "2",
+                    "notes": "operator must not impersonate a client requester",
+                },
+                token=self.operator_token,
+                csrf=self.operator_csrf,
+            )
 
+        submit.assert_not_called()
         self.assertEqual(status, "403 Forbidden")
         self.assertEqual(self.store.list_assessment_requests(self.operator), [])
 
