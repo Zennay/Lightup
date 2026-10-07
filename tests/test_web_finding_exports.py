@@ -8,10 +8,12 @@ from lightup.webapp.finding_exports import create_app_with_exports
 from lightup.webapp.security import WebSecurity
 
 
-class FindingExportWebTests(base.WebAppTest):
-    # Inherits the existing authentication/CSRF/portal safety suite as canaries.
+class FindingExportWebTests(unittest.TestCase):
+    request = base.WebAppTest.request
+    tearDown = base.WebAppTest.tearDown
+
     def setUp(self):
-        super().setUp()
+        base.WebAppTest.setUp(self)
         self.app = create_app_with_exports(self.store)
         self.eng_a = self.store.create_engagement(self.operator, self.client_a.client_id, "Export A")
         self.eng_b = self.store.create_engagement(self.operator, self.client_b.client_id, "Export B")
