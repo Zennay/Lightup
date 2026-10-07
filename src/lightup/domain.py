@@ -1015,8 +1015,16 @@ class DomainStore:
         """Record per-domain coverage for an engagement (operator-only)."""
         ctx.require_operator("set_coverage")
         engagement = self.get_engagement(ctx, engagement_id)
+        from .capabilities import get_capabilities
         from .coverage import CoverageStatus
 
+        if type(capability_id) is not str or not capability_id:
+            raise ValueError("coverage capability_id must be a non-empty canonical string")
+        known_capabilities = {
+            capability.capability_id for capability in get_capabilities()
+        }
+        if capability_id not in known_capabilities:
+            raise ValueError(f"unknown coverage capability_id {capability_id!r}")
         CoverageStatus(status)  # validates
         with self._connect() as con:
             con.execute(
