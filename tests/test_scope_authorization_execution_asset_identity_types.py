@@ -21,10 +21,33 @@ from lightup.execution_policy import InteractionKind
 from lightup.state import StateStore
 
 
-class CanonicalizationSpoof(str):
-    """Foreign underlying asset that lies during scope canonicalization."""
+class StripSpoof(str):
+    """Foreign underlying asset that lies at the first canonicalization step."""
 
     def strip(self, chars: str | None = None) -> str:
+        return "allowed.test"
+
+
+class RstripSpoof(str):
+    """Foreign underlying asset that lies at the trailing-dot normalization step."""
+
+    def strip(self, chars: str | None = None) -> str:
+        return self
+
+    def rstrip(self, chars: str | None = None) -> str:
+        return "allowed.test"
+
+
+class LowerSpoof(str):
+    """Foreign underlying asset that lies at the case-normalization step."""
+
+    def strip(self, chars: str | None = None) -> str:
+        return self
+
+    def rstrip(self, chars: str | None = None) -> str:
+        return self
+
+    def lower(self) -> str:
         return "allowed.test"
 
 
@@ -66,7 +89,9 @@ class ExecutionAssetIdentityTypeAcceptanceTest(unittest.TestCase):
         registry = ToolRegistry()
 
         def handler(context: RunContext, arguments: dict[str, object]) -> ToolOutput:
-            self.observed.append(context.authorization.grant_id if context.authorization else "")
+            self.observed.append(
+                context.authorization.grant_id if context.authorization else ""
+            )
             return ToolOutput("ran", "probe", b"asset-type-evidence")
 
         registry.register(
@@ -125,10 +150,27 @@ class ExecutionAssetIdentityTypeAcceptanceTest(unittest.TestCase):
     def test_plain_foreign_asset_remains_denied(self) -> None:
         self._assert_denied_without_state_write("foreign.test")
 
-    def test_polymorphic_foreign_asset_cannot_spoof_canonicalization(self) -> None:
-        forged = CanonicalizationSpoof("foreign.test")
+    def test_polymorphic_foreign_asset_cannot_spoof_strip(self) -> None:
+        forged = StripSpoof("foreign.test")
         self.assertEqual(str(forged), "foreign.test")
         self.assertEqual(forged.strip(), "allowed.test")
+        self.assertIsNot(type(forged), str)
+        self._assert_denied_without_state_write(forged)
+
+    def test_polymorphic_foreign_asset_cannot_spoof_rstrip(self) -> None:
+        forged = RstripSpoof("foreign.test")
+        self.assertEqual(str(forged), "foreign.test")
+        self.assertIs(forged.strip(), forged)
+        self.assertEqual(forged.rstrip("."), "allowed.test")
+        self.assertIsNot(type(forged), str)
+        self._assert_denied_without_state_write(forged)
+
+    def test_polymorphic_foreign_asset_cannot_spoof_lower(self) -> None:
+        forged = LowerSpoof("foreign.test")
+        self.assertEqual(str(forged), "foreign.test")
+        self.assertIs(forged.strip(), forged)
+        self.assertIs(forged.rstrip("."), forged)
+        self.assertEqual(forged.lower(), "allowed.test")
         self.assertIsNot(type(forged), str)
         self._assert_denied_without_state_write(forged)
 
