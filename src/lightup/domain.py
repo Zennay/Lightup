@@ -110,8 +110,13 @@ class AccessContext:
 
     def resolve_client(self, client_id: str | None, action: str) -> str:
         """Resolve which client this action applies to, fail-closed."""
+        if client_id is not None:
+            if type(client_id) is not str:
+                raise ValueError(f"{action}: client_id must be an exact string")
+            if not client_id or client_id != client_id.strip() or "\x00" in client_id:
+                raise ValueError(f"{action}: client_id must be canonical non-empty text")
         if self.is_operator:
-            if not client_id:
+            if client_id is None:
                 raise ValueError(f"{action}: operator context must name a client_id")
             return client_id
         if client_id is not None and client_id != self.client_id:
