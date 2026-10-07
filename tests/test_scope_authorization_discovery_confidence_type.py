@@ -29,7 +29,7 @@ class PassiveDiscoveryConfidenceTypeTests(unittest.TestCase):
 
                 profile.add_signal(signal)
 
-                self.assertEqual(profile.signals, [signal])
+                self.assertEqual(profile.signals, (signal,))
                 self.assertIs(type(profile.signals[0].confidence), float)
 
     def test_exact_out_of_range_float_remains_rejected(self) -> None:
@@ -43,7 +43,7 @@ class PassiveDiscoveryConfidenceTypeTests(unittest.TestCase):
                 ):
                     profile.add_signal(_signal(confidence))
 
-                self.assertEqual(profile.signals, [])
+                self.assertEqual(profile.signals, ())
 
     def test_noncanonical_numeric_confidence_fails_before_admission(self) -> None:
         invalid_values = (
@@ -64,7 +64,7 @@ class PassiveDiscoveryConfidenceTypeTests(unittest.TestCase):
                 ):
                     profile.add_signal(signal)
 
-                self.assertEqual(profile.signals, [])
+                self.assertEqual(profile.signals, ())
 
 
 if __name__ == "__main__":
