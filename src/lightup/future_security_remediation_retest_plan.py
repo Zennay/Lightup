@@ -403,6 +403,11 @@ def build_future_security_remediation_retest_plan(
 ) -> FutureSecurityRemediationRetestPlan:
     """Build immutable follow-up planning metadata from live-validated ST4 output."""
 
+    if type(report) is not FutureAttackPathSecurityDeltaReport:
+        raise ValueError(
+            "report must be an exact FutureAttackPathSecurityDeltaReport"
+        )
+
     live_report = build_future_attack_path_security_delta_report(
         preview,
         proposal,
