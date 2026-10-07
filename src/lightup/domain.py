@@ -987,11 +987,16 @@ class DomainStore:
         grant id, client and engagement to durable state and returns the live
         persisted record only while it is still current. Callers must evaluate
         policy against this returned object rather than the stale snapshot.
+
+        Execution resolution deliberately validates durable producer invariants
+        more strictly than audit/listing paths: corrupted historical rows must
+        deny execution without being normalized or rewritten.
         """
         now = utcnow()
         with self._connect() as con:
             row = con.execute(
-                "SELECT g.*, e.status AS engagement_status "
+                "SELECT g.*, e.status AS engagement_status, "
+                "e.client_id AS engagement_client_id "
                 "FROM authorization_grants AS g "
                 "JOIN engagements AS e ON e.engagement_id=g.engagement_id "
                 "WHERE g.grant_id=? AND g.client_id=? AND g.engagement_id=? LIMIT 1",
@@ -999,9 +1004,69 @@ class DomainStore:
             ).fetchone()
         if row is None:
             return None
-        if EngagementStatus(row["engagement_status"]) is EngagementStatus.CLOSED:
+
+        # The durable engagement remains part of the authorization lineage.
+        # A historical grant cannot survive cross-tenant ownership drift.
+        if row["engagement_client_id"] != row["client_id"]:
             return None
-        persisted = self._grant_from_row(row)
+
+        try:
+            engagement_status = EngagementStatus(row["engagement_status"])
+        except (TypeError, ValueError):
+            return None
+        if engagement_status is EngagementStatus.CLOSED:
+            return None
+
+        # Issuance requires non-blank approval provenance. Durable corruption
+        # must not be repaired or whitespace-normalized on the execution path.
+        for provenance_field in ("approved_by", "reference"):
+            value = row[provenance_field]
+            if type(value) is not str or not value.strip():
+                return None
+
+        # Scope JSON is persisted as arrays. Reject malformed or object-shaped
+        # state before _grant_from_row can coerce dict keys through tuple(...).
+        for json_field in (
+            "assets_json",
+            "excluded_assets_json",
+            "allowed_capabilities_json",
+        ):
+            raw_value = row[json_field]
+            if type(raw_value) is not str:
+                return None
+            try:
+                decoded = json.loads(raw_value)
+            except (TypeError, ValueError):
+                return None
+            if type(decoded) is not list:
+                return None
+
+        # Validate enum/time encodings before reconstruction so parse or
+        # timezone errors never escape the execution authorization boundary.
+        try:
+            RiskLevel(row["max_risk"])
+            valid_from = datetime.fromisoformat(row["valid_from"])
+            valid_until = datetime.fromisoformat(row["valid_until"])
+            revoked_at = (
+                datetime.fromisoformat(row["revoked_at"])
+                if row["revoked_at"] is not None
+                else None
+            )
+        except (TypeError, ValueError):
+            return None
+
+        temporal_values = (valid_from, valid_until)
+        if revoked_at is not None:
+            temporal_values += (revoked_at,)
+        for value in temporal_values:
+            if value.tzinfo is None or value.utcoffset() is None:
+                return None
+
+        try:
+            persisted = self._grant_from_row(row)
+        except (TypeError, ValueError):
+            return None
+
         if persisted.scope.max_risk == RiskLevel.DESTRUCTIVE_LAB_ONLY:
             return None
         capability_registry = {
