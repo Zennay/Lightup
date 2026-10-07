@@ -15,6 +15,7 @@ identity.
   trimmed, and NUL-free.
 - invalid contexts fail at construction and cannot reach grant, approval,
   revocation, finding, coverage, or other tenant-scoped domain operations.
+- contexts reconstructed from durable user/session state pass the same constructor gate; corrupted persisted identity is rejected rather than normalized.
 
 ## Safety boundary
 
