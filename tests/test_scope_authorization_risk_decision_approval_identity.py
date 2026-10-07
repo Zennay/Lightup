@@ -24,6 +24,10 @@ class _SwitchingApprovalId:
         return self.first if self.calls == 1 else self.later
 
 
+class _ApprovalIdSubclass(str):
+    pass
+
+
 class RiskDecisionApprovalIdentityTest(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
@@ -48,6 +52,14 @@ class RiskDecisionApprovalIdentityTest(unittest.TestCase):
             f"risk elevation request {suffix}",
         )
 
+    def _approval(self, approval_id: str):
+        return {
+            record.approval_id: record
+            for record in self.store.list_risk_approvals(
+                self.client_ctx, self.engagement.engagement_id
+            )
+        }[approval_id]
+
     def test_switching_sqlite_identity_is_rejected_before_first_bind(self) -> None:
         safe = self._pending(self.client_ctx, "safe-read")
         reviewer = AccessContext("op-reviewer", Role.OPERATOR)
@@ -66,16 +78,36 @@ class RiskDecisionApprovalIdentityTest(unittest.TestCase):
             0,
             "non-canonical approval identity must fail before SQLite adaptation",
         )
-        approvals = {
-            record.approval_id: record
-            for record in self.store.list_risk_approvals(
-                self.client_ctx, self.engagement.engagement_id
-            )
-        }
         for approval_id in (safe.approval_id, self_owned.approval_id):
-            self.assertIs(approvals[approval_id].status, ApprovalStatus.PENDING)
-            self.assertIsNone(approvals[approval_id].decided_by)
-            self.assertIsNone(approvals[approval_id].decided_at)
+            persisted = self._approval(approval_id)
+            self.assertIs(persisted.status, ApprovalStatus.PENDING)
+            self.assertIsNone(persisted.decided_by)
+            self.assertIsNone(persisted.decided_at)
+
+    def test_string_subclass_identity_is_rejected_without_mutation(self) -> None:
+        pending = self._pending(self.client_ctx, "string-subclass")
+        reviewer = AccessContext("op-reviewer-subclass", Role.OPERATOR)
+
+        with self.assertRaises(ValueError):
+            self.store.decide_risk_elevation(
+                reviewer,
+                _ApprovalIdSubclass(pending.approval_id),
+                True,
+            )
+
+        persisted = self._approval(pending.approval_id)
+        self.assertIs(persisted.status, ApprovalStatus.PENDING)
+        self.assertIsNone(persisted.decided_by)
+        self.assertIsNone(persisted.decided_at)
+
+    def test_blank_exact_string_identity_is_rejected_as_input(self) -> None:
+        reviewer = AccessContext("op-reviewer-blank", Role.OPERATOR)
+        for approval_id in ("", "   "):
+            with self.subTest(approval_id=approval_id):
+                with self.assertRaises(ValueError):
+                    self.store.decide_risk_elevation(
+                        reviewer, approval_id, True
+                    )
 
     def test_exact_string_identity_preserves_atomic_and_self_approval_controls(self) -> None:
         requester = AccessContext("op-requester", Role.OPERATOR)
