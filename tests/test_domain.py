@@ -142,6 +142,28 @@ class DomainStoreTest(unittest.TestCase):
                 valid_from, valid_until,
             )
 
+    def test_grant_rejects_empty_capability_scope(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Q4"
+        )
+        valid_from, valid_until = _grant_window()
+        scope = ScopeDefinition(
+            assets=("app.acme.example",),
+            max_risk=RiskLevel.STANDARD,
+        )
+        with self.assertRaisesRegex(
+            ValueError, "at least one allowed capability"
+        ):
+            self.store.record_authorization_grant(
+                self.operator,
+                engagement.engagement_id,
+                "CISO Acme",
+                "AUTH-EMPTY-CAPS",
+                scope,
+                valid_from,
+                valid_until,
+            )
+
     def test_risk_elevation_requires_second_operator(self):
         engagement = self.store.create_engagement(self.operator, self.client_a.client_id, "Q4")
         approval = self.store.request_risk_elevation(
