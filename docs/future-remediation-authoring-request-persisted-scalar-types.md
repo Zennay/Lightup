@@ -11,15 +11,21 @@ scalar runtime types that canonical JSON decoding produces and reject
 producer-impossible subclasses before equality, enum conversion, iteration,
 length checks, digest validation, or typed reconstruction can observe them.
 
-This acceptance slice covers representative scalar families:
+The acceptance regression exhaustively covers every persisted non-boolean
+scalar family in the #198 schema:
 
-- fixed metadata strings: `schema_version`, `future_semantics`,
-  `security_verdict`;
-- a top-level identifier and SHA-256 digest;
-- a persisted non-negative integer;
-- item identifier, classification, requested-output and SHA-256 strings;
-- a nested string-list entry;
-- evidence identifier, kind and SHA-256 strings.
+- all top-level string fields: schema/future/verdict metadata, client/twin/
+  changeset identifiers, and report/plan/bundle/request SHA-256 values;
+- all top-level integer fields: current/future twin versions and item count;
+- all item scalar strings: change/subject/resolution IDs, resolution and
+  evidence-manifest SHA-256, classification and requested output;
+- one element in each item string-list field:
+  `current_attack_path_ids`, `effect_ids`, and `capability_ids`;
+- all nested evidence strings: evidence/run/capability IDs, kind and SHA-256.
+
+Boolean authority/lifecycle fields are already identity-checked with
+`is True`/`is False`; Python also does not permit subclassing `bool`.
+They therefore do not need an expected-RED subclass case.
 
 Canonical producer JSON remains green. Rejected caller-owned payloads must stay
 unchanged.
@@ -29,9 +35,9 @@ unchanged.
 At exact #198 head
 `7f41af2dcbecd84eee7830cae8b05c6acecdb923`, helper validation uses
 `isinstance(value, str/int)`; fixed strings are compared by value; and
-classification is reconstructed through Enum conversion. A subclass carrying
-the canonical value can therefore pass validation even though canonical JSON
-persistence cannot produce that runtime type.
+classification is reconstructed through Enum conversion. Equal-content
+subclasses can therefore pass validation even though canonical JSON persistence
+cannot produce those runtime types.
 
 #198 should absorb exact built-in scalar guards locally and reject rather than
 normalize or coerce.
