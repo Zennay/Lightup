@@ -18,7 +18,7 @@ When multiple valid session tokens are supplied, parser selection can choose whi
 
 - one valid `lightup_session` retains existing authentication and authorization behavior;
 - unrelated cookies, including names that merely contain `lightup_session` as a substring, may coexist with that one exact session cookie;
-- two different `lightup_session` occurrences fail closed;
+- two different `lightup_session` occurrences fail closed across normal semicolon-separated and comma-combined header forms;
 - two identical `lightup_session` occurrences also fail closed;
 - rejection happens before `DomainStore.session_context()`;
 - ambiguous GETs resolve as unauthenticated and redirect to `/login`;
@@ -26,7 +26,7 @@ When multiple valid session tokens are supplied, parser selection can choose whi
 
 ## Current expected state
 
-Against current `main`, both duplicate-cookie tests are expected RED. `SimpleCookie` accepts the raw header, exposes one selected morsel under `lightup_session`, and `_authenticate()` passes that value to `session_context()`.
+Against current `main`, duplicate-cookie cases are expected RED. `SimpleCookie` accepts both semicolon-separated duplicates and comma-combined duplicate header forms, exposes one selected morsel under `lightup_session`, and `_authenticate()` passes that value to `session_context()`.
 
 The single-session, unrelated-cookie and exact-name controls are expected green.
 
