@@ -77,6 +77,18 @@ class SessionCookieAmbiguityTests(unittest.TestCase):
 
         self.assertEqual(status, "200 OK")
 
+    def test_session_cookie_name_matching_is_exact(self):
+        status, _, _ = self.request(
+            "/",
+            (
+                f"lightup_session_backup={self.client_token}; "
+                f"xlightup_session={self.client_token}; "
+                f"lightup_session={self.operator_token}"
+            ),
+        )
+
+        self.assertEqual(status, "200 OK")
+
     def test_two_different_session_cookies_fail_before_session_resolution(self):
         for raw_cookie in (
             f"lightup_session={self.client_token}; lightup_session={self.operator_token}",
