@@ -3,8 +3,10 @@ from __future__ import annotations
 import copy
 import json
 import unittest
+from unittest import mock
 
 import test_future_security_evidence_collection_request_consumer as consumer_tests
+import lightup.future_security_evidence_collection_request_consumer as consumer_module
 
 
 class _PersistedText(str):
@@ -65,6 +67,42 @@ class FutureSecurityEvidenceCollectionConsumerPersistedTypeTest(unittest.TestCas
 
         self.assertIs(type(persisted), _PersistedObject)
         self.assertEqual(persisted, original)
+
+    def test_text_subclass_is_rejected_before_json_decode_dispatch(self):
+        produced = self._producer(suffix="consumer-persisted-text-dispatch")
+        persisted = _PersistedText(produced[-1].to_json())
+
+        with mock.patch.object(
+            consumer_module.json,
+            "loads",
+            side_effect=AssertionError("JSON decode must not run for a str subclass"),
+        ) as decode:
+            with self.assertRaisesRegex(
+                ValueError,
+                "persisted value must be JSON text or object",
+            ):
+                self.base._consume(persisted, produced)
+
+        decode.assert_not_called()
+
+    def test_mapping_subclass_is_rejected_before_request_parser_dispatch(self):
+        produced = self._producer(suffix="consumer-persisted-object-dispatch")
+        persisted = _PersistedObject(json.loads(produced[-1].to_json()))
+
+        with mock.patch.object(
+            consumer_module,
+            "future_security_evidence_collection_request_from_dict",
+            side_effect=AssertionError(
+                "strict request parser must not run for a dict subclass"
+            ),
+        ) as parser:
+            with self.assertRaisesRegex(
+                ValueError,
+                "persisted value must be JSON text or object",
+            ):
+                self.base._consume(persisted, produced)
+
+        parser.assert_not_called()
 
 
 if __name__ == "__main__":
