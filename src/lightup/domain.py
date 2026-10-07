@@ -1050,7 +1050,26 @@ class DomainStore:
                 "SELECT capability_id,status FROM coverage_entries WHERE engagement_id=?",
                 (engagement.engagement_id,),
             ).fetchall()
-        return {row["capability_id"]: row["status"] for row in rows}
+
+        from .capabilities import get_capabilities
+        from .coverage import CoverageStatus
+
+        known_capabilities = {
+            capability.capability_id for capability in get_capabilities()
+        }
+        coverage: dict[str, str] = {}
+        for row in rows:
+            capability_id = row["capability_id"]
+            status = row["status"]
+            if type(capability_id) is not str or capability_id not in known_capabilities:
+                raise ValueError(
+                    f"corrupt persisted coverage capability_id {capability_id!r}"
+                )
+            if type(status) is not str:
+                raise ValueError("corrupt persisted coverage status type")
+            canonical_status = CoverageStatus(status).value
+            coverage[capability_id] = canonical_status
+        return coverage
 
     # -- prospects (passive discovery; operator-only) ---------------------------
 
