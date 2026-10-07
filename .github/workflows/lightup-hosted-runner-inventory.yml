@@ -47,13 +47,18 @@ jobs:
                   payload = json.loads(response.read())
           except urllib.error.HTTPError as exc:
               body = exc.read().decode("utf-8", errors="replace")[:500]
+              evidence = {
+                  "ok": False,
+                  "status": "access_denied" if exc.code == 403 else "http_error",
+                  "http_status": exc.code,
+                  "body": body,
+              }
               print(
                   "LIGHTUP_RUNNER_INVENTORY_ACCESS="
-                  + json.dumps(
-                      {"ok": False, "http_status": exc.code, "body": body},
-                      sort_keys=True,
-                  )
+                  + json.dumps(evidence, sort_keys=True)
               )
+              if exc.code == 403:
+                  raise SystemExit(0)
               raise
 
           runners = []
