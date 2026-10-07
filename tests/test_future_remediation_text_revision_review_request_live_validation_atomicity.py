@@ -30,19 +30,31 @@ class FutureRemediationTextRevisionReviewRequestLiveValidationAtomicityTest(
             return dataclasses.asdict(value)
         return copy.deepcopy(value)
 
-    def _upstream(self):
+    def _revision_proposal_handoff(self):
+        return self.base.base.base
+
+    def _revision_layer(self):
+        return self.base.base.base.base
+
+    def _prior_review_layer(self):
         return self.base.base.base.base.base.base
 
+    def _upstream(self):
+        return self.base.base.base.base.base.base.base
+
     def _snapshot_lineage(self) -> tuple:
+        revision_proposal_handoff = self._revision_proposal_handoff()
+        revision_layer = self._revision_layer()
+        prior_review_layer = self._prior_review_layer()
         upstream = self._upstream()
         return tuple(
             self._snapshot_value(value)
             for value in (
-                self.base.base.proposal,
-                self.base.base.base.revision_request,
-                self.base.base.base.review,
-                self.base.base.base.base.base.review_request,
-                self.base.base.base.base.base.proposal,
+                revision_proposal_handoff.proposal,
+                revision_layer.revision_request,
+                revision_layer.review,
+                prior_review_layer.review_request,
+                prior_review_layer.proposal,
                 upstream.request,
                 upstream.bundle,
                 upstream.plan,
@@ -57,13 +69,16 @@ class FutureRemediationTextRevisionReviewRequestLiveValidationAtomicityTest(
     def _persisted_payloads(
         self,
     ) -> tuple[dict, dict, dict, dict, dict, dict]:
+        revision_proposal_handoff = self._revision_proposal_handoff()
+        revision_layer = self._revision_layer()
+        prior_review_layer = self._prior_review_layer()
         return (
             json.loads(self.base.request.to_json()),
-            json.loads(self.base.base.proposal.to_json()),
-            json.loads(self.base.base.base.revision_request.to_json()),
-            json.loads(self.base.base.base.review.to_json()),
-            json.loads(self.base.base.base.base.base.review_request.to_json()),
-            json.loads(self.base.base.base.base.base.proposal.to_json()),
+            json.loads(revision_proposal_handoff.proposal.to_json()),
+            json.loads(revision_layer.revision_request.to_json()),
+            json.loads(revision_layer.review.to_json()),
+            json.loads(prior_review_layer.review_request.to_json()),
+            json.loads(prior_review_layer.proposal.to_json()),
         )
 
     def _load(
