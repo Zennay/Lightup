@@ -30,6 +30,7 @@ from .state import StateStore
 
 
 REMEDIATION_TEXT_PROPOSAL_SCHEMA_VERSION = "st5.remediation_text_proposal.v1"
+_MAX_MODEL_INPUT_CHARS = 65_536
 _MAX_MODEL_OUTPUT_CHARS = 16_000
 _MAX_OUTPUT_TOKENS = 1_200
 
@@ -152,6 +153,14 @@ def _authoring_messages(
         separators=(",", ":"),
         ensure_ascii=True,
     )
+    user_content = (
+        "Draft remediation guidance for this exact authoring request. Preserve "
+        "the distinction between introduced/worsened findings and future retest "
+        "requirements. Evidence-bound request JSON follows:\n" + payload
+    )
+    if len(user_content) > _MAX_MODEL_INPUT_CHARS:
+        raise ValueError("remediation advisor model input exceeds the bounded input size")
+
     return (
         ModelMessage(
             role="system",
@@ -167,14 +176,7 @@ def _authoring_messages(
                 "review and carries no execution authority."
             ),
         ),
-        ModelMessage(
-            role="user",
-            content=(
-                "Draft remediation guidance for this exact authoring request. Preserve "
-                "the distinction between introduced/worsened findings and future retest "
-                "requirements. Evidence-bound request JSON follows:\n" + payload
-            ),
-        ),
+        ModelMessage(role="user", content=user_content),
     )
 
 
@@ -224,14 +226,16 @@ def generate_future_remediation_text_proposal(
         raise ValueError("remediation advisor returned the wrong model role")
     if response.model_id != binding.model_id:
         raise ValueError("remediation advisor returned the wrong model identity")
-    if not isinstance(response.content, str) or not response.content.strip():
+    if not isinstance(response.content, str):
+        raise ValueError("remediation advisor returned empty content")
+    if len(response.content) > _MAX_MODEL_OUTPUT_CHARS:
+        raise ValueError("remediation advisor content exceeds the bounded output size")
+    if not response.content.strip():
         raise ValueError("remediation advisor returned empty content")
 
     content = response.content.strip()
     if "\x00" in content:
         raise ValueError("remediation advisor content contains NUL")
-    if len(content) > _MAX_MODEL_OUTPUT_CHARS:
-        raise ValueError("remediation advisor content exceeds the bounded output size")
 
     content_sha256 = _content_digest(content)
     proposal_sha256 = _proposal_digest(
