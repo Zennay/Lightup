@@ -26,7 +26,7 @@ class UnauthorizedDiscoverySourceBoundaryTest(unittest.TestCase):
 
         profile.add_signal(signal)
 
-        self.assertEqual(profile.signals, [signal])
+        self.assertEqual(profile.signals, (signal,))
 
     def test_non_string_source_is_rejected_before_profile_mutation(self):
         for source in (None, 1, object()):
@@ -41,7 +41,7 @@ class UnauthorizedDiscoverySourceBoundaryTest(unittest.TestCase):
                     profile.add_signal(signal)
 
                 self.assertIs(signal.source, source)
-                self.assertEqual(profile.signals, [])
+                self.assertEqual(profile.signals, ())
 
     def test_string_subclass_source_is_rejected_without_coercion(self):
         profile = ProspectProfile("prospect-1", "Example")
@@ -55,7 +55,7 @@ class UnauthorizedDiscoverySourceBoundaryTest(unittest.TestCase):
             profile.add_signal(signal)
 
         self.assertIs(signal.source, source)
-        self.assertEqual(profile.signals, [])
+        self.assertEqual(profile.signals, ())
 
     def test_blank_source_is_rejected_without_normalization(self):
         for source in ("", " ", "\t\n"):
@@ -70,7 +70,7 @@ class UnauthorizedDiscoverySourceBoundaryTest(unittest.TestCase):
                     profile.add_signal(signal)
 
                 self.assertEqual(signal.source, source)
-                self.assertEqual(profile.signals, [])
+                self.assertEqual(profile.signals, ())
 
 
 if __name__ == "__main__":
