@@ -93,6 +93,8 @@ class SessionCookieAmbiguityTests(unittest.TestCase):
         for raw_cookie in (
             f"lightup_session={self.client_token}; lightup_session={self.operator_token}",
             f"lightup_session={self.operator_token}; lightup_session={self.client_token}",
+            f"lightup_session={self.client_token}, lightup_session={self.operator_token}",
+            f"lightup_session={self.operator_token}, lightup_session={self.client_token}",
         ):
             with self.subTest(raw_cookie=raw_cookie):
                 with patch.object(
