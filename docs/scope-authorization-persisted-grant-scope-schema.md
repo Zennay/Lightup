@@ -17,21 +17,23 @@ At execution resolution:
 - canonical array-shaped assets/exclusions/capabilities and a known risk enum remain accepted;
 - malformed persisted scope JSON is non-executable without parser exceptions escaping;
 - object-shaped JSON is rejected even when its keys happen to equal valid assets or capability IDs;
+- object-shaped exclusion data cannot erase or substitute the canonical exclusion set;
 - unknown persisted `max_risk` enum values are non-executable without exception leakage;
 - validation does not rewrite or normalize durable state.
 
-Object rejection is authorization-significant because `tuple(json.loads(object_json))` yields the object's keys. Without an exact array-shape check, a malformed object can masquerade as a valid allowlist.
+Object rejection is authorization-significant because `tuple(json.loads(object_json))` yields the object's keys. Without an exact array-shape check, a malformed object can masquerade as an allowlist or replace the exclusion set with unrelated object keys.
 
 ## Acceptance cases
 
-`tests/test_scope_authorization_persisted_grant_scope_schema.py` contains one canonical positive control plus six expected-RED durable-corruption cases:
+`tests/test_scope_authorization_persisted_grant_scope_schema.py` contains one canonical positive control plus seven expected-RED durable-corruption cases:
 
 1. malformed `assets_json`;
 2. object-shaped `assets_json` keyed by the authorized asset;
 3. malformed `allowed_capabilities_json`;
 4. object-shaped `allowed_capabilities_json` keyed by a real capability;
 5. malformed `excluded_assets_json`;
-6. invalid persisted `max_risk`.
+6. object-shaped `excluded_assets_json` that drops the canonical blocked asset;
+7. invalid persisted `max_risk`.
 
 This is separate from #376, which owns issuance-time durable asset identity validation, and from #142's existing value-level risk/capability checks.
 
