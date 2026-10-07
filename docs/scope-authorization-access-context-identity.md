@@ -16,6 +16,7 @@ identity.
 - invalid contexts fail at construction and cannot reach grant, approval,
   revocation, finding, coverage, or other tenant-scoped domain operations.
 - contexts reconstructed from durable user/session state pass the same constructor gate; corrupted persisted identity is rejected rather than normalized.
+- authenticated session reconstruction treats missing or non-canonical durable user identity as an invalid session; corruption cannot escape as an authorization-bearing context or web-layer exception.
 - caller-supplied tenant selectors passed to `resolve_client()` must also be exact canonical strings before operator selection or client-tenant comparison.
 
 ## Safety boundary
