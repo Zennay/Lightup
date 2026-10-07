@@ -26,7 +26,8 @@ cross-tenant finding row trustworthy.
 
 An operator-wide read with no client filter remains intentionally unchanged. That
 view may expose an incoherent legacy row so an operator can diagnose or repair it.
-This contract narrows client visibility only.
+When an operator supplies an explicit client filter, that read is tenant-scoped and
+must enforce the same finding/engagement lineage coherence as a client context.
 
 ## Non-goals
 
@@ -46,5 +47,6 @@ This change does not alter:
 - a corrupted row whose duplicate `client_id` is changed to another tenant;
 - generic client listing;
 - explicit engagement-scoped listing;
+- operator reads with an explicit client filter;
 - durable-state immutability on rejection;
-- unchanged operator-wide audit visibility.
+- unchanged unfiltered operator-wide audit visibility.

@@ -104,6 +104,19 @@ class FindingTenantLineageTest(unittest.TestCase):
 
         self.assertEqual(self._row(), before)
 
+    def test_operator_explicit_client_filter_revalidates_lineage(self) -> None:
+        self._corrupt_client_lineage()
+        before = self._row()
+
+        self.assertEqual(
+            self.store.list_findings(
+                self.operator, client_id=self.client_b.client_id
+            ),
+            [],
+        )
+
+        self.assertEqual(self._row(), before)
+
     def test_operator_wide_audit_visibility_is_unchanged(self) -> None:
         self._corrupt_client_lineage()
 
