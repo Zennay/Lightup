@@ -38,7 +38,12 @@ class FutureRemediationImplementationPlanRequestScalarTypesTest(unittest.TestCas
         for field in (
             "schema_version",
             "review_sha256",
+            "review_request_sha256",
+            "proposal_sha256",
+            "content_sha256",
+            "implementation_request_sha256",
             "reviewer_provider_id",
+            "reviewer_model_id",
             "future_semantics",
             "security_verdict",
         ):
@@ -49,7 +54,12 @@ class FutureRemediationImplementationPlanRequestScalarTypesTest(unittest.TestCas
         for field in (
             "schema_version",
             "review_sha256",
+            "review_request_sha256",
+            "proposal_sha256",
+            "content_sha256",
+            "implementation_request_sha256",
             "reviewer_provider_id",
+            "reviewer_model_id",
             "future_semantics",
             "security_verdict",
         ):
