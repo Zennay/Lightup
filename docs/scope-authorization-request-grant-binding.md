@@ -31,6 +31,8 @@ Pending, rejected, missing, wrong-client, wrong-mode, asset-widening, or risk-wi
 - expected-RED denial when no approved request exists;
 - expected-RED denial for a pending request;
 - expected-RED denial for a rejected request;
+- expected-RED denial when only another client's approved request exists;
+- expected-RED denial when the approved request is not `AUTHORIZED_ASSESSMENT`;
 - expected-RED denial when the grant widens the approved asset set;
 - expected-RED denial when the grant exceeds approved risk.
 
