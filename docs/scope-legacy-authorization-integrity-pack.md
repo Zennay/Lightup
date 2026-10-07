@@ -15,16 +15,20 @@ Included issues:
 - #403: explicit evaluation-time input must be datetime-or-None and malformed
   caller clocks fail closed;
 - #721: terminal DNS-root-dot canonicalization removes at most one dot, so
-  malformed multi-dot host text cannot inherit canonical asset authority.
+  malformed multi-dot host text cannot inherit canonical asset authority;
+- #722: stale revocation actor/reason provenance without `revoked_at` cannot
+  retain public-scope authority.
 
 ## Validation posture
 
 The canonical #100 scope/activation smoke suite remains the green control. The
-six acceptance modules are expected RED until the source owner absorbs their
+seven acceptance modules are expected RED until the source owner absorbs their
 narrowing guards. Historical #299-#302 proof established exactly 17 expected
 failures per Python interpreter; #403 adds exactly 5; #721 adds exactly 2
-malformed multi-dot failures while its canonical single-root-dot control stays
-green, for a combined expected count of 24 failures per interpreter.
+malformed multi-dot failures; #722 adds exactly 3 stale-revocation-provenance
+failures. Canonical single-root-dot, canonical unrevoked, and canonical revoked
+controls remain green, for a combined expected count of 27 failures per
+interpreter.
 
 ## Ownership and stop line
 
