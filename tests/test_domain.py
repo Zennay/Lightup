@@ -244,6 +244,59 @@ class DomainStoreTest(unittest.TestCase):
             {"web-baseline": "partially_assessed"},
         )
 
+    def test_coverage_read_rejects_corrupt_durable_rows_without_repair(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Coverage read boundary"
+        )
+        corrupt_cases = (
+            ("unknown-capability", "assessed"),
+            ("web-baseline", "not-a-status"),
+        )
+
+        for index, (capability_id, status) in enumerate(corrupt_cases):
+            with self.subTest(index=index):
+                with self.store._connect() as con:
+                    con.execute(
+                        "INSERT INTO coverage_entries("
+                        "engagement_id,capability_id,status,updated_at"
+                        ") VALUES(?,?,?,?)",
+                        (
+                            engagement.engagement_id,
+                            capability_id,
+                            status,
+                            "2026-10-07T00:00:00+00:00",
+                        ),
+                    )
+
+                with self.assertRaises(ValueError):
+                    self.store.get_coverage(self.ctx_a, engagement.engagement_id)
+
+                with self.store._connect() as con:
+                    persisted = con.execute(
+                        "SELECT capability_id,status FROM coverage_entries "
+                        "WHERE engagement_id=?",
+                        (engagement.engagement_id,),
+                    ).fetchall()
+                    self.assertEqual(
+                        [(row["capability_id"], row["status"]) for row in persisted],
+                        [(capability_id, status)],
+                    )
+                    con.execute(
+                        "DELETE FROM coverage_entries WHERE engagement_id=?",
+                        (engagement.engagement_id,),
+                    )
+
+        self.store.set_coverage(
+            self.operator,
+            engagement.engagement_id,
+            "web-baseline",
+            "assessed",
+        )
+        self.assertEqual(
+            self.store.get_coverage(self.ctx_a, engagement.engagement_id),
+            {"web-baseline": "assessed"},
+        )
+
     def test_prospects_are_operator_only(self):
         self.store.add_prospect(self.operator, "Initech", "Exposed admin panel signal", 0.6)
         with self.assertRaises(RoleError):
