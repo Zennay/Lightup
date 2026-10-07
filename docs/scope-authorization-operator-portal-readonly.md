@@ -21,7 +21,7 @@ This acceptance slice intentionally does not decide later request → grant sema
 
 ## Acceptance
 
-- the broad `portal` access class is read-only: every route using it is GET-only;
+- client-scoped `/portal/...` routes using the broad `portal` access class are read-only; authenticated shared actions such as `POST /logout` remain allowed;
 - operator GET `/portal/<client_id>` remains allowed;
 - operator POST `/portal/<client_id>/requests` returns `403 Forbidden`;
 - rejected operator POST is stopped before `submit_assessment_request()` is called and leaves assessment-request storage unchanged;
@@ -32,7 +32,7 @@ This acceptance slice intentionally does not decide later request → grant sema
 
 ## Current expected state
 
-Against current `main`, the structural read-only check and operator-write rejection regressions are expected RED because the shared `portal` access class is attached to both GET and POST routes, admits operators, and `_portal_context()` creates a synthetic `CLIENT_ADMIN` context for the selected client.
+Against current `main`, the client-scoped read-only check and operator-write rejection regressions are expected RED because the broad `portal` access class is attached to both GET `/portal/<client_id>` and POST `/portal/<client_id>/requests`, admits operators, and `_portal_context()` creates a synthetic `CLIENT_ADMIN` context for the selected client. Shared authenticated actions outside `/portal/...`, including `POST /logout`, are intentionally outside this invariant.
 
 The source repair should remain with the web authorization owner after active web work is composed. This branch does not modify production source.
 
