@@ -8,6 +8,11 @@ from lightup.models import Target
 from lightup.scope import ScopePolicy, ScopeReason
 
 
+class _SpoofingTargetValue(str):
+    def strip(self):
+        return "127.0.0.1"
+
+
 class ScopeTargetValueTypeContractTests(unittest.TestCase):
     def test_non_string_target_values_fail_closed_as_invalid_target(self):
         policy = ScopePolicy()
@@ -29,6 +34,16 @@ class ScopeTargetValueTypeContractTests(unittest.TestCase):
                 self.assertFalse(decision.allowed)
                 self.assertIsNone(decision.normalized_host)
                 self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+
+    def test_string_subclass_cannot_spoof_a_different_scope_identity(self):
+        policy = ScopePolicy()
+        value = _SpoofingTargetValue("8.8.8.8")
+
+        decision = policy.decide(Target(value=value))
+
+        self.assertFalse(decision.allowed)
+        self.assertIsNone(decision.normalized_host)
+        self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
 
     def test_blank_string_remains_invalid_target(self):
         decision = ScopePolicy().decide(Target(value="   "))
