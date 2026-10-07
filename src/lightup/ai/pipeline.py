@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from .gateway import ModelGateway, ModelMessage, ModelRole
+from .gateway import (\n    GatewayConfigurationError,\n    ModelGateway,\n    ModelMessage,\n    ModelRole,\n)
 
 _VERIFIER_SYSTEM = (
     "You are the verifier of a security assessment. Judge whether the finding "
@@ -74,6 +74,27 @@ class AssessmentReviewPipeline:
         for role in self.ROLES:
             gateway.binding_for(role)
 
+    def _complete_text(
+        self,
+        role: ModelRole,
+        messages: tuple[ModelMessage, ...],
+    ) -> str:
+        """Return only response text bound to the configured role/model identity."""
+
+        binding = self.gateway.binding_for(role)
+        response = self.gateway.complete(role, messages)
+        if response.role is not role:
+            raise GatewayConfigurationError(
+                f"{role.value} response returned the wrong model role"
+            )
+        if type(response.model_id) is not str or response.model_id != binding.model_id:
+            raise GatewayConfigurationError(
+                f"{role.value} response returned the wrong model identity"
+            )
+        if type(response.content) is not str or not response.content.strip():
+            raise ValueError(f"{role.value} response content must be a non-empty string")
+        return response.content
+
     def review(self, labrun_result: dict) -> ReviewResult:
         # Single-lane runs carry "target"; planner-driven runs carry "targets".
         target_label = (labrun_result.get("target")
@@ -87,31 +108,31 @@ class AssessmentReviewPipeline:
                  "evidence_id": labrun_result.get("evidence_id", "")},
                 sort_keys=True,
             )
-            verdict = self.gateway.complete(
+            verdict = self._complete_text(
                 ModelRole.VERIFIER,
                 (ModelMessage("system", _VERIFIER_SYSTEM), ModelMessage("user", payload)),
-            ).content
-            advice = self.gateway.complete(
+            )
+            advice = self._complete_text(
                 ModelRole.REMEDIATION_ADVISOR,
                 (ModelMessage("system", _REMEDIATION_SYSTEM),
                  ModelMessage("user", json.dumps(
                      {"finding": finding["finding"], "current_fix": finding["fix"]},
                      sort_keys=True))),
-            ).content
+            )
             reviewed.append(ReviewedFinding(
                 title=finding["finding"], severity=finding["severity"],
                 verdict=verdict, remediation_advice=advice,
             ))
 
         coverage_note = json.dumps(labrun_result.get("coverage", {}).get("counts", {}))
-        report = self.gateway.complete(
+        report = self._complete_text(
             ModelRole.REPORT_SYNTHESIZER,
             (ModelMessage("system", _REPORT_SYSTEM),
              ModelMessage("user", json.dumps(
                  {"target": target_label,
                   "findings": [f.title for f in reviewed],
                   "coverage_counts": coverage_note}, sort_keys=True))),
-        ).content
+        )
 
         bindings = tuple(
             (binding.role.value, f"{binding.provider_id}/{binding.model_id}")
