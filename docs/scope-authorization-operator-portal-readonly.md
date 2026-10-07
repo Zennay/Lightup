@@ -23,7 +23,7 @@ This acceptance slice intentionally does not decide later request → grant sema
 
 - operator GET `/portal/<client_id>` remains allowed;
 - operator POST `/portal/<client_id>/requests` returns `403 Forbidden`;
-- rejected operator POST leaves assessment-request storage unchanged;
+- rejected operator POST is stopped before `submit_assessment_request()` is called and leaves assessment-request storage unchanged;
 - a matching real client session can still submit;
 - the persisted `requested_by` for that successful client request is the client's real user ID;
 - cross-tenant, CSRF and operator decision behavior stay under their existing owners.
