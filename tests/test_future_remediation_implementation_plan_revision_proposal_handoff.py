@@ -152,7 +152,10 @@ class FutureRemediationImplementationPlanRevisionProposalHandoffTest(
             )
 
         padded_assumption = self.revised_plan.as_dict()
-        padded_assumption["assumptions"][0] += " "
+        padded_assumption["assumptions"] = (
+            padded_assumption["assumptions"][0] + " ",
+            *padded_assumption["assumptions"][1:],
+        )
         with self.assertRaisesRegex(ValueError, "canonical trimmed"):
             future_remediation_implementation_plan_revision_proposal_from_dict(
                 padded_assumption
