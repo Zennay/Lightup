@@ -23,6 +23,28 @@ class AccessContextPersistenceBoundaryTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def test_corrupt_persisted_identity_invalidates_existing_session(self):
+        client = self.store.create_client(self.operator, "Session Client")
+        user = self.store.create_user(
+            self.operator,
+            "session-admin@acme.test",
+            "Session Admin",
+            Role.CLIENT_ADMIN,
+            client.client_id,
+        )
+        token, _csrf = self.store.create_session(user.user_id)
+        self.assertIsNotNone(self.store.session_context(token))
+
+        with sqlite3.connect(self.db_path) as con:
+            con.execute(
+                "UPDATE users SET client_id=? WHERE user_id=?",
+                (" " + client.client_id, user.user_id),
+            )
+
+        # Durable identity corruption must become unauthenticated state rather
+        # than bubbling a ValueError through the web authorization boundary.
+        self.assertIsNone(self.store.session_context(token))
+
     def test_corrupt_persisted_client_identity_cannot_reconstruct_context(self):
         client = self.store.create_client(self.operator, "Acme BV")
         user = self.store.create_user(
