@@ -85,6 +85,24 @@ class GatewayConfigurationError(RuntimeError):
     pass
 
 
+_MAX_IDENTITY_CHARS = 256
+
+
+def _require_canonical_identity(value: object, *, field: str) -> str:
+    if (
+        type(value) is not str
+        or not value
+        or value != value.strip()
+        or "\x00" in value
+        or len(value) > _MAX_IDENTITY_CHARS
+    ):
+        raise GatewayConfigurationError(
+            f"{field} must be canonical non-empty trimmed text "
+            f"without NUL and at most {_MAX_IDENTITY_CHARS} characters"
+        )
+    return value
+
+
 class ScriptedProvider(ModelProvider):
     """Deterministic provider for tests and lab evaluation.
 
@@ -125,18 +143,22 @@ class ModelGateway:
     _bindings: dict[ModelRole, RoleBinding] = field(default_factory=dict)
 
     def register_provider(self, provider: ModelProvider) -> None:
-        if provider.provider_id in self._providers:
+        provider_id = _require_canonical_identity(
+            provider.provider_id,
+            field="provider_id",
+        )
+        if provider_id in self._providers:
             raise GatewayConfigurationError(
-                f"provider {provider.provider_id!r} is already registered"
+                f"provider {provider_id!r} is already registered"
             )
-        self._providers[provider.provider_id] = provider
+        self._providers[provider_id] = provider
 
     def bind_role(self, role: ModelRole, provider_id: str, model_id: str) -> None:
+        provider_id = _require_canonical_identity(provider_id, field="provider_id")
+        model_id = _require_canonical_identity(model_id, field="model_id")
         if provider_id not in self._providers:
             raise GatewayConfigurationError(f"unknown provider {provider_id!r}")
-        if not model_id.strip():
-            raise GatewayConfigurationError("model_id is required")
-        self._bindings[role] = RoleBinding(role, provider_id, model_id.strip())
+        self._bindings[role] = RoleBinding(role, provider_id, model_id)
 
     def binding_for(self, role: ModelRole) -> RoleBinding:
         binding = self._bindings.get(role)
