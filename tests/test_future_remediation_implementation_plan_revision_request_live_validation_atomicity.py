@@ -50,10 +50,10 @@ class FutureRemediationImplementationPlanRevisionRequestLiveValidationAtomicityT
                 self.review.to_json(),
                 self.base.review_request.to_json(),
                 self.base.implementation_plan.to_json(),
-                self.base.base.base.base.planning_request.to_json(),
-                self.base.base.base.base.base.review.to_json(),
-                self.base.base.base.base.base.base.review_request.to_json(),
-                self.base.base.base.base.base.base.proposal.to_json(),
+                self.base.base.base.base.base.planning_request.to_json(),
+                self.base.base.base.base.base.base.review.to_json(),
+                self.base.base.base.base.base.base.base.review_request.to_json(),
+                self.base.base.base.base.base.base.base.proposal.to_json(),
                 root.request,
                 root.bundle,
                 root.plan,
@@ -67,7 +67,7 @@ class FutureRemediationImplementationPlanRevisionRequestLiveValidationAtomicityT
         )
 
     def _root(self):
-        return self.base.base.base.base.base.base.base
+        return self.base.base.base.base.base.base.base.base
 
     @staticmethod
     def _snapshot_value(value):
@@ -81,10 +81,10 @@ class FutureRemediationImplementationPlanRevisionRequestLiveValidationAtomicityT
             json.loads(self.review.to_json()),
             json.loads(self.base.review_request.to_json()),
             json.loads(self.base.implementation_plan.to_json()),
-            json.loads(self.base.base.base.base.planning_request.to_json()),
-            json.loads(self.base.base.base.base.base.review.to_json()),
-            json.loads(self.base.base.base.base.base.base.review_request.to_json()),
-            json.loads(self.base.base.base.base.base.base.proposal.to_json()),
+            json.loads(self.base.base.base.base.base.planning_request.to_json()),
+            json.loads(self.base.base.base.base.base.base.review.to_json()),
+            json.loads(self.base.base.base.base.base.base.base.review_request.to_json()),
+            json.loads(self.base.base.base.base.base.base.base.proposal.to_json()),
         )
 
     def _snapshot_lineage(self) -> tuple:
@@ -96,10 +96,10 @@ class FutureRemediationImplementationPlanRevisionRequestLiveValidationAtomicityT
                 self.review,
                 self.base.review_request,
                 self.base.implementation_plan,
-                self.base.base.base.base.planning_request,
-                self.base.base.base.base.base.review,
-                self.base.base.base.base.base.base.review_request,
-                self.base.base.base.base.base.base.proposal,
+                self.base.base.base.base.base.planning_request,
+                self.base.base.base.base.base.base.review,
+                self.base.base.base.base.base.base.base.review_request,
+                self.base.base.base.base.base.base.base.proposal,
                 root.request,
                 root.bundle,
                 root.plan,
