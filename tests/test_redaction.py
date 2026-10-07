@@ -67,6 +67,33 @@ class RedactionTests(unittest.TestCase):
             "X-Trace: keep\ncookie: [REDACTED]\nContent-Type: text/plain",
         )
 
+    def test_compound_token_assignments_are_redacted_without_consuming_query_tail(self):
+        cases = (
+            ("access_token=abc123&scope=read", "access_token=[REDACTED]&scope=read"),
+            ("refresh-token=def456&next=1", "refresh-token=[REDACTED]&next=1"),
+            ("id_token: ghi789", "id_token=[REDACTED]"),
+            ("auth-token='jkl012'", "auth-token=[REDACTED]"),
+        )
+        for value, expected in cases:
+            with self.subTest(value=value):
+                self.assertEqual(redact_text(value), expected)
+
+    def test_client_secret_assignment_is_redacted(self):
+        self.assertEqual(
+            redact_text('client_secret="supersecret"'),
+            "client_secret=[REDACTED]",
+        )
+
+    def test_unrelated_compound_key_is_unchanged(self):
+        value = "session_tokenizer=ordinary-value"
+        self.assertEqual(redact_text(value), value)
+
+    def test_common_secret_assignment_preserves_query_tail(self):
+        self.assertEqual(
+            redact_text("api_key=supersecret&next=1"),
+            "api_key=[REDACTED]&next=1",
+        )
+
     def test_common_secret_assignment_is_redacted(self):
         output = redact_text("api_key=supersecret")
         self.assertNotIn("supersecret", output)
