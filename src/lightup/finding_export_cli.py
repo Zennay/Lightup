@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import argparse
-from getpass import getpass
+from getpass import GetPassWarning, getpass
 from pathlib import Path
 import sqlite3
 import sys
+import warnings
 
 from .domain import AccountLockedError, DomainStore
 from .finding_export_service import render_client_findings_csv
@@ -27,7 +28,9 @@ def main(argv: list[str] | None = None) -> int:
         print("Interactive terminal required for secure password entry.", file=sys.stderr)
         return 2
     try:
-        password = getpass("LightUp password: ")
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", GetPassWarning)
+            password = getpass("LightUp password: ")
         store = DomainStore(args.db)
         user = store.authenticate(args.email, password)
         del password
@@ -38,6 +41,9 @@ def main(argv: list[str] | None = None) -> int:
         ctx = store.context_for_user(user.user_id)
         output = render_client_findings_csv(
             store, ctx, args.client_id, engagement_id=args.engagement_id)
+    except GetPassWarning:
+        print("Secure password entry unavailable.", file=sys.stderr)
+        return 2
     except AccountLockedError:
         print("Sign-in temporarily locked.", file=sys.stderr)
         return 2
