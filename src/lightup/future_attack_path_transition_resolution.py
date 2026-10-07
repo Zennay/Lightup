@@ -113,6 +113,15 @@ def _canonical_tuple(name: str, values: tuple[str, ...], *, allow_empty: bool) -
     return values
 
 
+def _require_exact_transition_evidence_ids(values: object) -> tuple[str, ...]:
+    if type(values) is not tuple:
+        raise ValueError("evidence_ids must be an exact built-in tuple")
+    for value in values:
+        if type(value) is not str:
+            raise ValueError("evidence_ids entries must be exact built-in strings")
+    return values
+
+
 def _tuple_digest(values: tuple[str, ...]) -> str:
     encoded = json.dumps(
         list(values),
@@ -306,6 +315,7 @@ def _validate_resolution_shape(
     if resolution.security_verdict != "not_evaluated":
         raise ValueError("transition resolution cannot claim a security verdict")
 
+    _require_exact_transition_evidence_ids(resolution.evidence_ids)
     _canonical_tuple("evidence_ids", resolution.evidence_ids, allow_empty=False)
     _canonical_tuple("capability_ids", resolution.capability_ids, allow_empty=False)
     _canonical_tuple("effect_ids", resolution.effect_ids, allow_empty=False)
@@ -433,6 +443,7 @@ def verify_future_attack_path_transition(
 
     item = _proposal_item(proposal, change_node_id)
     _validate_action_classification(item, classification)
+    _require_exact_transition_evidence_ids(evidence_ids)
     evidence_ids = tuple(sorted(evidence_ids))
     capability_ids = tuple(sorted(capability_ids))
 
