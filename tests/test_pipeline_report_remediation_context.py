@@ -88,12 +88,14 @@ class PipelineReportRemediationContextTest(unittest.TestCase):
                 {
                     "finding": "Missing Content-Security-Policy header",
                     "severity": "medium",
+                    "target": "http://127.0.0.1:18080/",
                     "verdict": "CONFIRMED first evidence matches",
                     "remediation_advice": "Apply CSP before retesting.",
                 },
                 {
                     "finding": "Server software banner disclosed",
                     "severity": "info",
+                    "target": "http://127.0.0.1:18080/",
                     "verdict": "UNCERTAIN second evidence needs follow-up",
                     "remediation_advice": "Reduce banner detail and verify again.",
                 },
