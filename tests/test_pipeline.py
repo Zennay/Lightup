@@ -16,10 +16,12 @@ LABRUN_RESULT = {
     "findings": [
         {"finding": "Missing Content-Security-Policy header", "severity": "medium",
          "impact": "Unrestricted script execution", "fix": "Serve a restrictive CSP",
-         "retest": "not_tested", "check_id": "missing-content-security-policy"},
+         "retest": "not_tested", "check_id": "missing-content-security-policy",
+         "evidence_summary": "HTTP baseline observed missing CSP."},
         {"finding": "Server software banner disclosed", "severity": "info",
          "impact": "Easier exploit matching", "fix": "Strip the Server header",
-         "retest": "not_tested", "check_id": "server-banner-disclosure"},
+         "retest": "not_tested", "check_id": "server-banner-disclosure",
+         "evidence_summary": "HTTP baseline observed a server banner."},
     ],
     "coverage": {"counts": {"assessed": 1, "unknown": 30}},
 }
