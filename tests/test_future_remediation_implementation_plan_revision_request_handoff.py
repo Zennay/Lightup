@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from hashlib import sha256
 import json
 import unittest
@@ -211,6 +212,34 @@ class FutureRemediationImplementationPlanRevisionRequestHandoffTest(
                 empty
             )
 
+    def test_dict_parser_is_input_pure_on_success_and_rejection(self):
+        payload = self.request.as_dict()
+        snapshot = deepcopy(payload)
+
+        first = future_remediation_implementation_plan_revision_request_from_dict(
+            payload
+        )
+        second = future_remediation_implementation_plan_revision_request_from_dict(
+            payload
+        )
+
+        self.assertEqual(first, self.request)
+        self.assertEqual(second, self.request)
+        self.assertEqual(payload, snapshot)
+
+        rejected = self.request.as_dict()
+        rejected["required_revisions"] = [
+            REQUIRED_IMPLEMENTATION_PLAN_REVIEW_CHECKS[1],
+            REQUIRED_IMPLEMENTATION_PLAN_REVIEW_CHECKS[0],
+        ]
+        rejected_snapshot = deepcopy(rejected)
+        for _ in range(2):
+            with self.assertRaisesRegex(ValueError, "invalid or out of order"):
+                future_remediation_implementation_plan_revision_request_from_dict(
+                    rejected
+                )
+            self.assertEqual(rejected, rejected_snapshot)
+
     def test_duplicate_json_keys_are_rejected_before_decode(self):
         raw = self.request.to_json()
         duplicate = (
@@ -259,6 +288,23 @@ class FutureRemediationImplementationPlanRevisionRequestHandoffTest(
                     self.request.as_dict(),
                     *args,
                 )
+
+    def test_invalid_persisted_request_fails_before_live_rebuild(self):
+        args = [object() for _ in range(16)]
+        invalid = self.request.as_dict()
+        invalid["revision_request_sha256"] = "0" * 64
+
+        with patch(
+            "lightup.future_remediation_implementation_plan_revision_request_handoff."
+            "build_future_remediation_implementation_plan_revision_request"
+        ) as builder:
+            with self.assertRaisesRegex(ValueError, "digest mismatch"):
+                load_and_validate_future_remediation_implementation_plan_revision_request(
+                    invalid,
+                    *args,
+                )
+
+        builder.assert_not_called()
 
     def test_persisted_value_type_is_exactly_json_text_or_object(self):
         args = [object() for _ in range(16)]
