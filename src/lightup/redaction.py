@@ -4,6 +4,10 @@ import re
 
 _PATTERNS: tuple[tuple[re.Pattern[str], object], ...] = (
     (
+        re.compile(r"(?i)\b(https?://)[^\s/@]+@"),
+        r"\1[REDACTED]@",
+    ),
+    (
         re.compile(
             r"(?i)\b(authorization:\s*(?:bearer|basic)\s+)[A-Za-z0-9._~+\-/]+=*"
         ),
