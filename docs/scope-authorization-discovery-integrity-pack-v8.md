@@ -21,6 +21,7 @@ This branch composes nine fail-closed passive-discovery admission/provenance con
 - `src/lightup/discovery.py` remains owned by PR #175.
 - Earlier composition branches remain unchanged; v8 is a child composition only.
 - This branch contains tests/docs acceptance evidence only.
+- Composition-layer snapshot assertions are canonicalized to exact tuples across all inherited tests; standalone child branches remain unchanged.
 - Malformed identity/summary fails before signal admission or profile mutation.
 - Rejected input/mutation is never coerced, repaired or normalized into trusted profile state.
 - No active discovery, DNS/network I/O, target interaction, capability execution, remediation/retest execution, deployment or authorization widening is allowed.
