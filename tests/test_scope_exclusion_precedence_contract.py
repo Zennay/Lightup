@@ -46,6 +46,29 @@ class ScopeExclusionPrecedenceTests(unittest.TestCase):
         self.assertTrue(scope.allows_asset("a.example.test"))
         self.assertFalse(scope.allows_asset("b.example.test"))
 
+    def test_empty_allowlist_never_authorizes_excluded_or_unlisted_assets(self):
+        scope = self.scope((), ("app.example.test",))
+        for candidate in ("app.example.test", "other.example.test", ""):
+            with self.subTest(candidate=candidate):
+                self.assertFalse(scope.allows_asset(candidate))
+
+    def test_duplicate_allow_entries_cannot_override_an_exclusion(self):
+        scope = self.scope(
+            ("app.example.test", "APP.EXAMPLE.TEST", "app.example.test"),
+            (" app.example.test ",),
+        )
+        self.assertFalse(scope.allows_asset("app.example.test"))
+
+    def test_lookalike_prefix_suffix_and_trailing_dot_are_not_granted(self):
+        scope = self.scope(("app.example.test",), ())
+        for candidate in (
+            "app.example.test.evil.test",
+            "not-app.example.test",
+            "app.example.test.",
+        ):
+            with self.subTest(candidate=candidate):
+                self.assertFalse(scope.allows_asset(candidate))
+
     def test_repeated_evaluation_does_not_mutate_scope(self):
         assets = (" APP.EXAMPLE.TEST ", "other.example.test")
         exclusions = (" app.example.test ",)
