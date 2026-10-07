@@ -44,7 +44,7 @@ class PassiveDiscoverySignalObjectTests(unittest.TestCase):
 
         profile.add_signal(signal)
 
-        self.assertEqual(profile.signals, [signal])
+        self.assertEqual(profile.signals, (signal,))
         self.assertIs(type(profile.signals[0]), ProspectSignal)
 
     def test_exact_interactive_signal_remains_denied(self) -> None:
@@ -55,7 +55,7 @@ class PassiveDiscoverySignalObjectTests(unittest.TestCase):
                 _canonical_signal(requires_target_interaction=True)
             )
 
-        self.assertEqual(profile.signals, [])
+        self.assertEqual(profile.signals, ())
 
     def test_exact_nonpublic_signal_remains_denied(self) -> None:
         profile = ProspectProfile("p-signal", "Example")
@@ -63,7 +63,7 @@ class PassiveDiscoverySignalObjectTests(unittest.TestCase):
         with self.assertRaises(PermissionError):
             profile.add_signal(_canonical_signal(public_source=False))
 
-        self.assertEqual(profile.signals, [])
+        self.assertEqual(profile.signals, ())
 
     def test_signal_subclass_cannot_replace_authorization_validator(self) -> None:
         profile = ProspectProfile("p-signal", "Example")
@@ -82,7 +82,7 @@ class PassiveDiscoverySignalObjectTests(unittest.TestCase):
         ):
             profile.add_signal(signal)
 
-        self.assertEqual(profile.signals, [])
+        self.assertEqual(profile.signals, ())
 
     def test_duck_signal_cannot_supply_custom_authorization_validator(self) -> None:
         profile = ProspectProfile("p-signal", "Example")
@@ -93,7 +93,7 @@ class PassiveDiscoverySignalObjectTests(unittest.TestCase):
         ):
             profile.add_signal(DuckSignal())  # type: ignore[arg-type]
 
-        self.assertEqual(profile.signals, [])
+        self.assertEqual(profile.signals, ())
 
 
 if __name__ == "__main__":
