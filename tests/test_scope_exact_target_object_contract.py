@@ -4,7 +4,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from lightup.models import Target
+from lightup.models import Authorization, Target
 from lightup.scope import ScopePolicy, ScopeReason
 
 
@@ -13,10 +13,17 @@ class _DuckTarget:
     authorization = None
 
 
-class _SpoofingTarget(Target):
+class _IdentitySpoofingTarget(Target):
     def __getattribute__(self, name):
         if name == "value":
             return "127.0.0.1"
+        return super().__getattribute__(name)
+
+
+class _AuthorizationSpoofingTarget(Target):
+    def __getattribute__(self, name):
+        if name == "authorization":
+            return Authorization(owner="spoofed-owner", reference="SPOOFED-AUTH")
         return super().__getattribute__(name)
 
 
@@ -40,9 +47,21 @@ class ScopeExactTargetObjectContractTests(unittest.TestCase):
 
     def test_target_subclass_cannot_override_scope_identity(self):
         policy = ScopePolicy()
-        target = _SpoofingTarget("8.8.8.8")
+        target = _IdentitySpoofingTarget("8.8.8.8")
 
         self.assertEqual(object.__getattribute__(target, "__dict__")["value"], "8.8.8.8")
+
+        decision = policy.decide(target)
+
+        self.assertFalse(decision.allowed)
+        self.assertIsNone(decision.normalized_host)
+        self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+
+    def test_target_subclass_cannot_inject_authorization(self):
+        policy = ScopePolicy(explicit_hosts=frozenset({"security.example.test"}))
+        target = _AuthorizationSpoofingTarget("security.example.test", authorization=None)
+
+        self.assertIsNone(object.__getattribute__(target, "__dict__")["authorization"])
 
         decision = policy.decide(target)
 
