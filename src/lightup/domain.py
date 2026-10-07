@@ -85,11 +85,20 @@ class AccessContext:
     client_id: str | None = None
 
     def __post_init__(self) -> None:
+        if type(self.user_id) is not str:
+            raise ValueError("access context user_id must be an exact string")
+        if not self.user_id or self.user_id != self.user_id.strip() or "\x00" in self.user_id:
+            raise ValueError("access context user_id must be canonical non-empty text")
+        if type(self.role) is not Role:
+            raise ValueError("access context role must be a Role member")
         if self.role is Role.OPERATOR:
             if self.client_id is not None:
                 raise ValueError("operator contexts are not bound to a client")
-        elif not self.client_id:
-            raise ValueError("client contexts require a client_id")
+        else:
+            if type(self.client_id) is not str:
+                raise ValueError("client contexts require an exact client_id string")
+            if not self.client_id or self.client_id != self.client_id.strip() or "\x00" in self.client_id:
+                raise ValueError("client contexts require a canonical client_id")
 
     @property
     def is_operator(self) -> bool:
