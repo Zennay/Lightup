@@ -27,6 +27,18 @@ class TwinSnapshotKind(str, Enum):
     FUTURE = "future"
 
 
+def _validate_evidence_refs(refs: tuple[str, ...]) -> None:
+    if type(refs) is not tuple:
+        raise ValueError("evidence_refs must be an exact tuple")
+    seen: set[str] = set()
+    for ref in refs:
+        if type(ref) is not str or not ref.strip():
+            raise ValueError("evidence_refs must contain exact non-blank strings")
+        if ref in seen:
+            raise ValueError("evidence_refs must be unique")
+        seen.add(ref)
+
+
 class TwinNodeKind(str, Enum):
     ASSET = "asset"
     SERVICE = "service"
@@ -72,6 +84,7 @@ class TwinFact:
             raise ValueError("fact subject_id is required")
         if not self.predicate.strip():
             raise ValueError("fact predicate is required")
+        _validate_evidence_refs(self.evidence_refs)
         if not 0.0 <= self.confidence <= 1.0:
             raise ValueError("fact confidence must be between 0 and 1")
         if self.provenance is FactProvenance.VERIFIED and not self.evidence_refs:
@@ -95,6 +108,7 @@ class TwinRelationship:
             raise ValueError("relationship endpoints are required")
         if not self.relation.strip():
             raise ValueError("relationship relation is required")
+        _validate_evidence_refs(self.evidence_refs)
         if not 0.0 <= self.confidence <= 1.0:
             raise ValueError("relationship confidence must be between 0 and 1")
         if self.provenance is FactProvenance.VERIFIED and not self.evidence_refs:
@@ -113,6 +127,7 @@ class AttackStep:
             raise ValueError("attack step endpoints are required")
         if not self.relation.strip():
             raise ValueError("attack step relation is required")
+        _validate_evidence_refs(self.evidence_refs)
 
 
 @dataclass(frozen=True)
@@ -127,6 +142,7 @@ class AttackPath:
             raise ValueError("path_id is required")
         if not self.title.strip():
             raise ValueError("attack path title is required")
+        _validate_evidence_refs(self.evidence_refs)
         if not self.steps:
             raise ValueError("attack path requires at least one step")
         for step in self.steps:
