@@ -26,7 +26,7 @@ _PATTERNS: tuple[tuple[re.Pattern[str], object], ...] = (
     ),
     (
         re.compile(
-            r'''(?i)\b(api[_-]?key|token|secret|password)\b\s*[:=]\s*(["']?)[^\s,"']+\2'''
+            r'''(?i)\b(api[_-]?key|token|secret|password)\b\s*[:=]\s*(["']?)[^\s,&"']+\2'''
         ),
         lambda m: f"{m.group(1)}=[REDACTED]",
     ),
