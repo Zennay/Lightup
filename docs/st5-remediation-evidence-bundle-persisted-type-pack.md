@@ -6,14 +6,15 @@ Mode: composition-only tests/docs acceptance
 
 ## Included contracts
 
-This branch composes the independent persisted Python type-fidelity contracts
-that share the exact #194 source head:
+This branch composes the independent persisted type-fidelity contracts that
+share the exact #194 source head:
 
 - #577 — exact built-in schema-key strings;
 - #578 — exact built-in mapping/list containers;
 - #579 — exact built-in fixed metadata/classification strings;
 - #580 — exact built-in SHA-256 strings;
 - #581 — exact built-in count integers;
+- #582 — exact built-in raw JSON text;
 - #663 — exact built-in remaining lineage/evidence strings.
 
 Each source slice keeps its own dedicated regression and contract document. The
@@ -31,11 +32,10 @@ This pack does not absorb or redefine:
 - #402 evidence-kind value semantics;
 - #405/#407 canonical identifier content and ordering;
 - #429 cross-item ownership;
-- #582 raw JSON-text identity;
 - direct-construction, snapshot, parser-purity or live-validation owners.
 
-Those remain independent contracts and should not be conflated with Python
-persisted-object type fidelity.
+Those remain independent contracts and should not be conflated with persisted
+runtime type fidelity.
 
 ## Promotion use
 
