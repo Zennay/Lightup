@@ -14,6 +14,16 @@ from lightup.workers import http_baseline
 
 
 class EqualitySpoofFinding(FindingRecord):
+    def __getattribute__(self, name: str):
+        if name == "title":
+            reads = object.__getattribute__(self, "__dict__").get("_title_reads", 0)
+            object.__setattr__(self, "_title_reads", reads + 1)
+        return super().__getattribute__(name)
+
+    @property
+    def title_reads(self) -> int:
+        return object.__getattribute__(self, "__dict__").get("_title_reads", 0)
+
     def __eq__(self, other: object) -> bool:
         return True
 
@@ -64,9 +74,10 @@ class LabRetestFindingExactTypeTest(unittest.TestCase):
             created_at=persisted.created_at,
         )
         forged_snapshot = tuple(
-            getattr(forged, field)
+            object.__getattribute__(forged, field)
             for field in FindingRecord.__dataclass_fields__
         )
+        self.assertEqual(forged.title_reads, 0)
 
         observation = SimpleNamespace(
             issues=(SimpleNamespace(check_id=second_check_id),)
@@ -78,8 +89,12 @@ class LabRetestFindingExactTypeTest(unittest.TestCase):
                 retest_finding(self.store, self.operator, forged)
 
         observe.assert_not_called()
+        self.assertEqual(forged.title_reads, 0)
         self.assertEqual(
-            tuple(getattr(forged, field) for field in FindingRecord.__dataclass_fields__),
+            tuple(
+                object.__getattribute__(forged, field)
+                for field in FindingRecord.__dataclass_fields__
+            ),
             forged_snapshot,
         )
         self.assertEqual(
