@@ -158,14 +158,23 @@ class AssessmentReviewPipeline:
                 verdict=verdict, remediation_advice=advice,
             ))
 
-        coverage_note = json.dumps(labrun_result.get("coverage", {}).get("counts", {}))
+        coverage_counts = labrun_result.get("coverage", {}).get("counts", {})
+        report_findings = [
+            {
+                "finding": finding.title,
+                "severity": finding.severity,
+                "verdict": finding.verdict,
+                "remediation_advice": finding.remediation_advice,
+            }
+            for finding in reviewed
+        ]
         report = self.gateway.complete(
             ModelRole.REPORT_SYNTHESIZER,
             (ModelMessage("system", _REPORT_SYSTEM),
              ModelMessage("user", json.dumps(
                  {"target": target_label,
-                  "findings": [f.title for f in reviewed],
-                  "coverage_counts": coverage_note}, sort_keys=True))),
+                  "findings": report_findings,
+                  "coverage_counts": coverage_counts}, sort_keys=True))),
         ).content
 
         bindings = tuple(
