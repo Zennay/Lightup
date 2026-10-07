@@ -49,6 +49,7 @@ _MAX_LIST_ITEMS = 20
 _MAX_SUMMARY_CHARS = 4_000
 _MAX_PLAN_TEXT_CHARS = 1_200
 _MAX_LIST_TEXT_CHARS = 800
+_MAX_RAW_RESPONSE_CHARS = 65_536
 _MAX_OUTPUT_TOKENS = 2_000
 
 
@@ -150,6 +151,8 @@ def _parse_model_content(
 ]:
     if not isinstance(raw, str) or not raw.strip():
         raise ValueError("implementation planner returned empty content")
+    if len(raw) > _MAX_RAW_RESPONSE_CHARS:
+        raise ValueError("implementation planner raw response exceeds bounded response size")
     try:
         payload = json.loads(raw, object_pairs_hook=_reject_duplicate_json_keys)
     except json.JSONDecodeError as exc:
