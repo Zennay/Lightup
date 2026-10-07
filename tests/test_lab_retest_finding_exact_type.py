@@ -41,6 +41,32 @@ class LabRetestFindingExactTypeTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.tmp.cleanup()
 
+    def test_exact_finding_control_reaches_observation(self):
+        check_id, _header, title, *_ = http_baseline.BASELINE_CHECKS[0]
+        persisted = self.store.record_finding(
+            self.operator,
+            self.engagement.engagement_id,
+            title=title,
+            severity=Severity.MEDIUM,
+            asset="http://127.0.0.1:18080/",
+            impact="Fixture impact",
+            remediation="Fixture remediation",
+        )
+        observation = SimpleNamespace(issues=())
+
+        with patch(
+            "lightup.labsync.http_baseline.observe", return_value=observation
+        ) as observe:
+            updated = retest_finding(self.store, self.operator, persisted)
+
+        observe.assert_called_once_with(persisted.asset)
+        self.assertIs(updated.retest_status, RetestStatus.FIXED)
+        self.assertEqual(updated.finding_id, persisted.finding_id)
+        self.assertNotIn(
+            check_id, {issue.check_id for issue in observation.issues}
+        )
+
+
     def test_polymorphic_finding_rejects_before_check_selection_or_observation(self):
         first_check_id, _first_header, first_title, *_ = http_baseline.BASELINE_CHECKS[0]
         second_check_id, _second_header, second_title, *_ = http_baseline.BASELINE_CHECKS[1]
