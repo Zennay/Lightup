@@ -63,8 +63,13 @@ class FindingPersistenceEvidenceIntegrityAcceptanceTest(unittest.TestCase):
         self.assertEqual(len(stored), 1)
         self.assertEqual(stored[0].evidence_ids, record.evidence_ids)
 
-    def test_empty_evidence_tuple_is_rejected(self):
-        self._assert_rejected_without_write(())
+    def test_exact_empty_tuple_remains_green_for_manual_findings(self):
+        record = self._record(())
+
+        self.assertEqual(record.evidence_ids, ())
+        stored = self._stored()
+        self.assertEqual(len(stored), 1)
+        self.assertEqual(stored[0].evidence_ids, ())
 
     def test_list_input_is_not_normalized_to_tuple(self):
         self._assert_rejected_without_write(["evidence:one"])
