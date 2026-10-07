@@ -19,19 +19,22 @@ Included issues:
 - #722: stale revocation actor/reason provenance without `revoked_at` cannot
   retain public-scope authority;
 - #729: legacy owner/reference provenance must be exact built-in strings, so
-  polymorphic string subclasses cannot spoof canonical-looking validation.
+  polymorphic string subclasses cannot spoof canonical-looking validation;
+- #730: legacy asset scope requires an exact built-in tuple of exact built-in
+  strings, blocking tuple-iteration and asset-string canonicalization spoofing.
 
 ## Validation posture
 
 The canonical #100 scope/activation smoke suite remains the green control. The
-eight acceptance modules are expected RED until the source owner absorbs their
+nine acceptance modules are expected RED until the source owner absorbs their
 narrowing guards. Historical #299-#302 proof established exactly 17 expected
 failures per Python interpreter; #403 adds exactly 5; #721 adds exactly 2
 malformed multi-dot failures; #722 adds exactly 3 stale-revocation-provenance
-failures; #729 adds exactly 2 polymorphic-provenance failures. Canonical
-single-root-dot, canonical unrevoked/revoked, and canonical exact-provenance
-controls remain green, for a combined expected count of 29 failures per
-interpreter.
+failures; #729 adds exactly 2 polymorphic-provenance failures; #730 adds exactly
+2 canonical asset-scope type failures. Canonical single-root-dot,
+canonical unrevoked/revoked, canonical exact-provenance, ordinary foreign asset,
+and canonical exact asset-scope controls remain green, for a combined expected
+count of 31 failures per interpreter.
 
 ## Ownership and stop line
 
