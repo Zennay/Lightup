@@ -4,24 +4,32 @@ Tracked by #738.
 
 ## Boundary
 
-`AuthorizationGrant.is_current()` must not let polymorphic objects stored in `valid_from` or `valid_until` participate in authorization-window comparisons.
+`AuthorizationGrant.is_current()` must validate the stored `valid_from` / `valid_until` objects before they participate in authorization-window comparisons.
 
 The canonical issuance path is separately hardened by #647. This acceptance covers a directly constructed in-memory `AuthorizationGrant`, including the object form that `ExecutionPolicy` can receive directly.
 
 ## Required behavior
 
-- an exact built-in future `valid_from` remains non-current;
-- an exact built-in expired `valid_until` remains non-current;
-- a `datetime` subclass in `valid_from` is rejected before it can override the lower-bound comparison;
-- a `datetime` subclass in `valid_until` is rejected before reflected comparison can override the upper bound;
-- rejection does not mutate the grant.
+Canonical controls:
 
-Current PR #100 source is expected RED for the two polymorphic stored-boundary methods because `AuthorizationGrant.is_current()` does not require exact built-in validity datetime types.
+- an exact built-in aware future `valid_from` remains non-current;
+- an exact built-in aware expired `valid_until` remains non-current.
+
+Malformed stored boundaries must be rejected through a controlled `ValueError` before comparison:
+
+- a `datetime` subclass in `valid_from`;
+- a `datetime` subclass in `valid_until`;
+- a timezone-naive exact `datetime` in `valid_from`;
+- a timezone-naive exact `datetime` in `valid_until`;
+- an ordinary non-datetime `valid_from`;
+- an ordinary non-datetime `valid_until`.
+
+Current PR #100 source is expected RED for exactly **6** malformed-boundary methods: subtype comparisons can spoof authority, while naive/non-datetime boundaries currently reach incidental comparison errors instead of the explicit authorization validation boundary.
 
 ## Non-overlap
 
 - #647 owns issuance/persistence exact datetime typing;
-- #734 owns the caller-supplied `now=` datetime subtype;
+- #734/#735 own the caller-supplied `now=` boundary;
 - #731 owns the equivalent legacy `models.Authorization` stored-boundary contract.
 
 This branch is tests/docs only and is pinned to PR #100 exact head `ef553b6e0aa0c99855e9907f4b2dee9edc5aac0f`.
