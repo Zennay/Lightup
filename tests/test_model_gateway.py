@@ -111,6 +111,50 @@ class ModelGatewayTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.gateway.complete(ModelRole.PLANNER, ())
 
+    def test_provider_identity_requires_canonical_bounded_text(self):
+        exact_limit = "p" * 256
+        gateway = ModelGateway()
+        gateway.register_provider(ScriptedProvider(exact_limit))
+        gateway.bind_role(ModelRole.PLANNER, exact_limit, "m")
+        self.assertEqual(
+            gateway.binding_for(ModelRole.PLANNER).provider_id,
+            exact_limit,
+        )
+
+        for invalid in (
+            " padded-provider",
+            "provider-with-nul\x00",
+            "p" * 257,
+            EqualitySpoofProviderId(),
+        ):
+            with self.subTest(invalid=repr(invalid)):
+                with self.assertRaises(GatewayConfigurationError):
+                    ModelGateway().register_provider(ScriptedProvider(invalid))
+
+    def test_model_identity_requires_canonical_bounded_text(self):
+        exact_limit = "m" * 256
+        gateway = ModelGateway()
+        gateway.register_provider(ScriptedProvider("bounded-provider"))
+        gateway.bind_role(ModelRole.PLANNER, "bounded-provider", exact_limit)
+        self.assertEqual(
+            gateway.binding_for(ModelRole.PLANNER).model_id,
+            exact_limit,
+        )
+
+        for invalid in (
+            " padded-model",
+            "model-with-nul\x00",
+            "m" * 257,
+            EqualitySpoofModelId(),
+        ):
+            with self.subTest(invalid=repr(invalid)):
+                with self.assertRaises(GatewayConfigurationError):
+                    gateway.bind_role(
+                        ModelRole.VERIFIER,
+                        "bounded-provider",
+                        invalid,
+                    )
+
     def test_response_provider_identity_requires_exact_string(self):
         provider = ResponseProviderSpoof()
         gateway = ModelGateway()
