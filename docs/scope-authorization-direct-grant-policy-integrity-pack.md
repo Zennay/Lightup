@@ -14,20 +14,20 @@ PR #100 retains all production ownership for the direct `AuthorizationGrant` / `
 
 - #347 — canonical durable grant time-window semantics;
 - #734 — explicit evaluation datetime exactness;
-- #735 — falsy explicit evaluation inputs;
+- #735 — all malformed explicit non-datetime evaluation inputs;
 - #737 — revocation provenance coherence;
-- #738 — stored validity datetime exactness;
+- #738 — stored validity datetime exactness and timezone-awareness;
 - #740 — direct scope object exactness;
 - #741 — outer authorization-grant object exactness.
 
 ## Expected partition on the pinned source
 
-Expected RED total: **14**.
+Expected RED total: **21**.
 
 - #734: 2;
-- #735: 3;
+- #735: 6;
 - #737: 3;
-- #738: 2;
+- #738: 6;
 - #740: 2;
 - #741: 2.
 
@@ -40,9 +40,10 @@ Keep production repair with PR #100:
 1. require an exact canonical `AuthorizationGrant` before policy reads any grant field or method;
 2. require an exact canonical `ScopeDefinition` before policy reads risk or membership;
 3. distinguish omitted `now=None` from explicit malformed evaluation input;
-4. require exact built-in aware datetime values for explicit and stored grant times;
+4. require exact built-in timezone-aware datetime values for explicit and stored grant times;
 5. fail closed on stale revocation actor/reason provenance without `revoked_at`;
-6. preserve current exact-grant lineage, scope, inclusive-window and revocation behavior.
+6. reject malformed time state through controlled validation rather than incidental attribute/comparison errors;
+7. preserve current exact-grant lineage, scope, inclusive-window and canonical revocation behavior.
 
 #646/#647 remain issuance ownership and #106 remains canonical live resolver ownership.
 
