@@ -570,7 +570,10 @@ class DomainStore:
             return None
         try:
             return self.context_for_user(row["user_id"]), row["csrf_token"]
-        except KeyError:
+        except (KeyError, ValueError):
+            # Missing or non-canonical durable identity cannot authenticate a
+            # session. Treat corruption as an invalid session, never as an
+            # exception that can escape into the authorization-aware web layer.
             return None
 
     def revoke_session(self, token: str) -> None:
