@@ -10,10 +10,10 @@ execution path passes it into `ScopeDefinition.allows_asset()` after live
 authorization revalidation, but it does not first require the asset identity to
 be an exact built-in `str`.
 
-`ScopeDefinition._canonical_asset()` then calls `.strip()`, `.rstrip()`,
-and `.lower()`. Those methods are overridable on a `str` subclass. A foreign
-underlying asset can therefore return an allowlisted hostname during
-canonicalization even though its actual stored text remains different.
+`ScopeDefinition._canonical_asset()` calls `.strip()`, `.rstrip()`, and
+`.lower()`. Each operation can be overridden by a `str` subclass. A foreign
+underlying asset can therefore retain different stored text while returning the
+allowlisted hostname from any step in the canonicalization chain.
 
 The durable grant itself stays canonical in this contract. The gap is only the
 untrusted runtime execution asset crossing a trusted authorization comparison.
@@ -25,7 +25,7 @@ TARGET_ACTIVE execution must preserve all of these properties:
 - an exact built-in allowlisted asset remains executable;
 - an ordinary foreign exact string remains denied;
 - a `str` subclass carrying a foreign underlying asset cannot override
-  canonicalization to inherit allowlisted authority;
+  `.strip()`, `.rstrip()`, or `.lower()` to inherit allowlisted authority;
 - a `str` subclass is denied even when its underlying text exactly equals the
   allowlisted asset;
 - every denied case is rejected before handler dispatch;
@@ -44,13 +44,14 @@ boundary rather than only calling `ScopeDefinition` in isolation.
 
 - one canonical exact-string green control;
 - one ordinary foreign-string green denial control;
-- one expected-RED canonicalization-spoof case;
+- three expected-RED foreign-asset canonicalization spoof cases, one for each
+  overridable normalization step;
 - one expected-RED matching-text subclass case.
 
-Against the pinned #554 source, the ordinary foreign asset is denied. The
+Against the pinned #554 source, the ordinary foreign asset is denied. Each
 canonicalization-spoof case can currently cross scope because the subclass
-returns `allowed.test` from `.strip()`. The matching-text subclass also crosses
-because the boundary has no exact-type guard.
+returns `allowed.test` during the normalization chain. The matching-text
+subclass also crosses because the boundary has no exact-type guard.
 
 The intended repair is authorization narrowing only: require a canonical
 built-in string asset before any polymorphic string behavior can participate in
