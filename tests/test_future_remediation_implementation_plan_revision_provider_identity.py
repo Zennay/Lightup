@@ -4,6 +4,7 @@ import unittest
 
 import test_future_remediation_implementation_plan_revision_proposal as revision_tests
 from lightup.ai.gateway import (
+    GatewayConfigurationError,
     ModelGateway,
     ModelProvider,
     ModelRequest,
@@ -53,7 +54,7 @@ class FutureRemediationImplementationPlanRevisionProviderIdentityTest(
         self.assertFalse(result.target_interaction_allowed)
         self.assertFalse(result.deployment_authorized)
 
-    def test_response_provider_identity_substitution_fails_closed(self):
+    def test_gateway_rejects_response_provider_identity_substitution(self):
         provider = ProviderIdentitySpoofProvider(revision_tests._revision_plan_json())
         gateway = ModelGateway()
         gateway.register_provider(provider)
@@ -63,7 +64,10 @@ class FutureRemediationImplementationPlanRevisionProviderIdentityTest(
             "implementation-plan-revision-v1",
         )
 
-        with self.assertRaisesRegex(ValueError, "wrong provider identity"):
+        with self.assertRaisesRegex(
+            GatewayConfigurationError,
+            "provider returned a response under a different provider_id",
+        ):
             self.base._generate(gateway)
 
         self.assertEqual(len(provider.requests), 1)
