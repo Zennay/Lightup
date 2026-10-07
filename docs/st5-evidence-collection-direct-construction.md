@@ -15,8 +15,8 @@ For `FutureSecurityEvidenceCollectionRequest`:
 - schema version is exact;
 - lineage SHA-256 fields and `request_sha256` are canonical;
 - the request digest remains coherent with the complete typed request;
-- item container is an exact non-empty tuple and `evidence_gap_count` equals its
-  length;
+- item container is an exact non-empty tuple of exact evidence-collection item
+  objects and `evidence_gap_count` equals its length;
 - twin versions and gap count are exact non-negative integers, never booleans;
 - every collection/tool/execution/target/remediation/retest/deployment/attack-path
   authority flag is exactly the built-in boolean `False`;
@@ -26,14 +26,15 @@ For `FutureSecurityEvidenceCollectionRequest`:
 For `FutureSecurityEvidenceCollectionItem`:
 
 - identity fields are non-empty and the resolution digest is canonical;
-- effect, prior-evidence and prior-capability provenance stay non-empty immutable
-  tuples;
+- current-path lineage stays tuple-backed, while effect, prior-evidence and
+  prior-capability provenance stay non-empty immutable tuples;
 - `classification` remains exactly `insufficient_evidence`;
 - `graph_diff_action` remains exactly `no_graph_change_claim`;
 - `collection_reason` remains exactly `insufficient_evidence`;
-- fresh evidence and a fresh run are exactly the built-in boolean `True`;
+- fresh evidence and a fresh run are exactly the built-in boolean `True`, never
+  integer lookalikes;
 - remediation authoring and future-state retest authority are exactly the built-in
-  boolean `False`.
+  boolean `False`, never integer lookalikes.
 
 The canonical builder output is the green control. Directly widened, weakened or
 structurally incoherent typed artifacts must fail during construction rather than
