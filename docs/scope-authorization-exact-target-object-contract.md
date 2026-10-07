@@ -20,7 +20,7 @@ All other objects, including `None`, strings, dictionaries, duck-typed objects a
 
 No exception may escape. Duck typing must not create scope authority. A subclass must not be able to replace either the dataclass's stored target identity or its stored authorization with a different value through overridden attribute access.
 
-Canonical exact `Target` objects retain existing loopback, private-lab and public out-of-scope behavior.
+Canonical exact `Target` behavior stays intact: loopback remains loopback, an explicitly enabled private-lab policy still classifies an ordinary private address as private lab, and an unknown public address remains out of scope. The control intentionally does not pin the default value of `allow_private_lab`; #103/#100 own that policy default and special-address narrowing.
 
 ## Expected current result
 
@@ -31,6 +31,8 @@ On exact parent `1abc16a66fc490b1ba7272890dfbf498482fca9c`:
 - a `Target` subclass whose stored dataclass value is `8.8.8.8` can override attribute access so the policy evaluates `127.0.0.1` and allows loopback;
 - a second `Target` subclass can store `authorization=None` yet override authorization access to return a fresh current `Authorization`, allowing an explicit public host without the authorization stored on the target;
 - exact `Target` controls remain green.
+
+These exact Target-object gaps are still present on active source-owner PR #100 head `ef553b6e0aa0c99855e9907f4b2dee9edc5aac0f`. The control uses explicit private-lab opt-in so it composes with #100's intentional default-deny change rather than competing with it.
 
 The future source repair belongs to the active scope source owner. This acceptance child does not edit production code.
 
