@@ -21,6 +21,14 @@ class DuckResponse:
         self.content = "bounded defensive guidance"
 
 
+class ExplosiveDuckResponse:
+    @property
+    def provider_id(self):
+        raise AssertionError(
+            "gateway must reject a non-ModelResponse before reading provider attributes"
+        )
+
+
 class SubclassedModelResponse(ModelResponse):
     pass
 
@@ -36,6 +44,8 @@ class ResponseShapeProvider(ModelProvider):
     def complete(self, request: ModelRequest) -> ModelResponse:
         if self.mode == "duck":
             return DuckResponse(request)  # type: ignore[return-value]
+        if self.mode == "explosive-duck":
+            return ExplosiveDuckResponse()  # type: ignore[return-value]
         if self.mode == "subclass":
             return SubclassedModelResponse(
                 provider_id=self.provider_id,
@@ -83,6 +93,10 @@ class ModelGatewayResponseObjectIdentityTest(unittest.TestCase):
     def test_duck_typed_provider_response_fails_closed(self):
         with self.assertRaises(GatewayConfigurationError):
             self._complete(self._gateway("duck"))
+
+    def test_non_response_fails_before_provider_attribute_access(self):
+        with self.assertRaises(GatewayConfigurationError):
+            self._complete(self._gateway("explosive-duck"))
 
     def test_model_response_subclass_fails_closed(self):
         with self.assertRaises(GatewayConfigurationError):
