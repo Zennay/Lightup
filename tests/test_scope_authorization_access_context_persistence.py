@@ -8,6 +8,10 @@ from pathlib import Path
 from lightup.domain import DomainStore, Role
 
 
+class _ForgedOperatorRole:
+    value = "operator"
+
+
 class AccessContextPersistenceBoundaryTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -22,6 +26,42 @@ class AccessContextPersistenceBoundaryTests(unittest.TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
+
+    def _user_count(self, email: str) -> int:
+        with sqlite3.connect(self.db_path) as con:
+            row = con.execute("SELECT COUNT(*) FROM users WHERE email=?", (email,)).fetchone()
+        assert row is not None
+        return int(row[0])
+
+    def test_create_user_rejects_forged_operator_role_before_persistence(self):
+        client = self.store.create_client(self.operator, "Role Intake Client")
+        before = self._user_count("forged-role@acme.test")
+
+        with self.assertRaisesRegex(ValueError, "role must be a Role member"):
+            self.store.create_user(
+                self.operator,
+                "forged-role@acme.test",
+                "Forged Role",
+                _ForgedOperatorRole(),  # type: ignore[arg-type]
+                client.client_id,
+            )
+
+        self.assertEqual(self._user_count("forged-role@acme.test"), before)
+
+    def test_create_user_rejects_noncanonical_client_selector_before_persistence(self):
+        client = self.store.create_client(self.operator, "Selector Intake Client")
+        before = self._user_count("bad-selector@acme.test")
+
+        with self.assertRaisesRegex(ValueError, "client_id must be canonical"):
+            self.store.create_user(
+                self.operator,
+                "bad-selector@acme.test",
+                "Bad Selector",
+                Role.CLIENT_ADMIN,
+                " " + client.client_id,
+            )
+
+        self.assertEqual(self._user_count("bad-selector@acme.test"), before)
 
     def test_corrupt_persisted_identity_invalidates_existing_session(self):
         client = self.store.create_client(self.operator, "Session Client")
