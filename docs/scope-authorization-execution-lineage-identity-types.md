@@ -35,25 +35,32 @@ TARGET_ACTIVE execution must preserve all of these properties:
   the live client identity;
 - a `str` subclass is rejected even when its underlying text exactly matches
   the live engagement identity;
-- malformed lineage identities are denied before handler dispatch.
+- every denied lineage case is rejected before handler dispatch;
+- denial is state-atomic: `runs`, `capability_leases`, and `evidence` row
+  counts remain unchanged.
 
 The dedicated acceptance module uses the real `DomainStore` live resolver and
 an inert in-process target-active handler. It therefore exercises the composed
 resolver → execution-policy → handler boundary rather than only a standalone
-value comparison.
+value comparison. Each deny-path also snapshots the three execution-state
+tables before and after the call so a future repair cannot accidentally trade a
+dispatch denial for a ledger side effect.
 
 ## Expected state
 
 `tests/test_scope_authorization_execution_lineage_identity_types.py` contains
-three canonical green controls and four polymorphic identity rejection cases.
+three canonical controls and four polymorphic identity rejection cases.
 
-Against the pinned #554 source, all four polymorphic cases are expected RED:
-the equality-spoofing string subclass can make the current
+Against the pinned #554 source, the two plain mismatch controls remain green,
+while all four polymorphic cases are expected RED: the equality-spoofing string
+subclass can make the current
 `grant.client_id != request.client_id` or
 `grant.engagement_id != request.engagement_id` comparison report no mismatch.
 The matching-text cases additionally prove that value equality alone is
 insufficient: authorization lineage identifiers themselves must be exact
 built-in strings.
+
+All deny-path controls also require no execution-state mutation.
 
 ## Collision boundary
 
