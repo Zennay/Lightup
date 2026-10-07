@@ -172,6 +172,37 @@ class DomainStoreTest(unittest.TestCase):
             self.operator, finding.finding_id, RetestStatus.FIXED)
         self.assertIs(updated.retest_status, RetestStatus.FIXED)
 
+    def test_coverage_rejects_unknown_capability_before_persistence(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Coverage boundary"
+        )
+
+        for capability_id in ("", "unknown-capability"):
+            with self.subTest(capability_id=capability_id):
+                with self.assertRaises(ValueError):
+                    self.store.set_coverage(
+                        self.operator,
+                        engagement.engagement_id,
+                        capability_id,
+                        "assessed",
+                    )
+
+        self.assertEqual(
+            self.store.get_coverage(self.ctx_a, engagement.engagement_id),
+            {},
+        )
+
+        self.store.set_coverage(
+            self.operator,
+            engagement.engagement_id,
+            "web-baseline",
+            "assessed",
+        )
+        self.assertEqual(
+            self.store.get_coverage(self.ctx_a, engagement.engagement_id),
+            {"web-baseline": "assessed"},
+        )
+
     def test_prospects_are_operator_only(self):
         self.store.add_prospect(self.operator, "Initech", "Exposed admin panel signal", 0.6)
         with self.assertRaises(RoleError):
