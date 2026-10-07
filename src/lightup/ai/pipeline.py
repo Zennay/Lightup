@@ -35,6 +35,8 @@ _REPORT_SYSTEM = (
     "was tested."
 )
 _VERDICT_TOKENS = ("CONFIRMED", "UNCERTAIN", "REJECTED")
+_MAX_EVIDENCE_SUMMARY_CHARS = 4096
+_MAX_EVIDENCE_REFS = 64
 
 
 def _validated_verifier_verdict(value: str) -> str:
@@ -95,11 +97,37 @@ class AssessmentReviewPipeline:
                         or ", ".join(labrun_result.get("targets", [])))
         reviewed: list[ReviewedFinding] = []
         for finding in labrun_result.get("findings", []):
+            evidence_summary = finding.get("evidence_summary")
+            evidence_ids = tuple(finding.get("evidence_ids", ()))
+            if not evidence_ids:
+                top_level_evidence_id = labrun_result.get("evidence_id")
+                if top_level_evidence_id:
+                    evidence_ids = (top_level_evidence_id,)
+            if (
+                type(evidence_summary) is not str
+                or not evidence_summary.strip()
+                or len(evidence_summary) > _MAX_EVIDENCE_SUMMARY_CHARS
+            ):
+                raise ValueError(
+                    "review findings require a bounded non-empty evidence summary"
+                )
+            if (
+                not evidence_ids
+                or len(evidence_ids) > _MAX_EVIDENCE_REFS
+                or any(
+                    type(evidence_id) is not str or not evidence_id.strip()
+                    for evidence_id in evidence_ids
+                )
+            ):
+                raise ValueError(
+                    "review findings require bounded non-empty evidence references"
+                )
             payload = json.dumps(
                 {"finding": finding["finding"], "severity": finding["severity"],
                  "impact": finding["impact"],
                  "target": finding.get("target", target_label),
-                 "evidence_id": labrun_result.get("evidence_id", "")},
+                 "evidence_ids": evidence_ids,
+                 "evidence_summary": evidence_summary},
                 sort_keys=True,
             )
             verdict = _validated_verifier_verdict(
