@@ -48,6 +48,25 @@ class RedactionTests(unittest.TestCase):
         value = "https://example.test/path?contact=ops@example.test#status"
         self.assertEqual(redact_text(value), value)
 
+    def test_cookie_header_value_is_redacted(self):
+        value = "Cookie: session=abc123; csrf=def456"
+        self.assertEqual(redact_text(value), "Cookie: [REDACTED]")
+
+    def test_set_cookie_header_value_and_attributes_are_redacted(self):
+        value = "Set-Cookie: session=abc123; Path=/; HttpOnly; Secure; SameSite=Strict"
+        self.assertEqual(redact_text(value), "Set-Cookie: [REDACTED]")
+
+    def test_cookie_redaction_is_case_insensitive_and_line_bounded(self):
+        value = (
+            "X-Trace: keep\n"
+            "cookie: session=abc123\n"
+            "Content-Type: text/plain"
+        )
+        self.assertEqual(
+            redact_text(value),
+            "X-Trace: keep\ncookie: [REDACTED]\nContent-Type: text/plain",
+        )
+
     def test_common_secret_assignment_is_redacted(self):
         output = redact_text("api_key=supersecret")
         self.assertNotIn("supersecret", output)
