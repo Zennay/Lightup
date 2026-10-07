@@ -14,18 +14,18 @@ PR #100 retains all production ownership for `AuthorizationGrant.is_current()`.
 
 - #347 — canonical time-window semantics;
 - #734 — exact built-in explicit evaluation datetime;
-- #735 — falsy explicit evaluation inputs fail closed;
+- #735 — malformed explicit non-datetime evaluation inputs fail closed;
 - #737 — stale revocation provenance fails closed;
-- #738 — exact built-in stored validity datetime boundaries.
+- #738 — exact built-in timezone-aware stored validity datetime boundaries.
 
 ## Expected partition on the pinned source
 
-Expected RED total: **10**.
+Expected RED total: **17**.
 
 - #734: 2 evaluation-datetime subtype cases;
-- #735: 3 falsy-input cases;
+- #735: 6 malformed explicit non-datetime cases;
 - #737: 3 stale-revocation-provenance cases;
-- #738: 2 stored-datetime subtype cases.
+- #738: 6 malformed stored-datetime cases.
 
 All #347 methods and all canonical controls in the four hardening slices are expected GREEN. No unexpected errors are accepted.
 
@@ -38,7 +38,7 @@ Keep the repair inside PR #100:
 3. require exact built-in aware `datetime` for stored `valid_from` / `valid_until`;
 4. fail closed on revocation actor/reason provenance without `revoked_at`;
 5. preserve canonical inclusive window semantics and canonical revocation behavior;
-6. reject rather than normalize malformed authorization state.
+6. reject malformed authorization state through controlled validation rather than incidental attribute/comparison errors.
 
 #647 remains issuance/persistence datetime ownership. #560/#562 remain persisted revocation reconstruction/coherence.
 
