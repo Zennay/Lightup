@@ -25,8 +25,10 @@ _VERIFIER_SYSTEM = (
     "CONFIRMED, UNCERTAIN or REJECTED, then a short reason."
 )
 _REMEDIATION_SYSTEM = (
-    "You are the remediation advisor. Improve the proposed fix: concrete "
-    "steps, order of operations, and how to verify the fix afterwards."
+    "You are the remediation advisor. Improve the proposed fix using the "
+    "finding's verified evidence context: concrete steps, order of operations, "
+    "and how to verify the fix afterwards. Treat UNCERTAIN or REJECTED verifier "
+    "decisions as evidence-status context; do not present them as confirmed."
 )
 _REPORT_SYSTEM = (
     "You are the report synthesizer. Write a short, calm, client-facing "
@@ -132,10 +134,11 @@ class AssessmentReviewPipeline:
                 raise ValueError(
                     "review findings require bounded non-empty evidence references"
                 )
+            finding_target = finding.get("target", target_label)
             payload = json.dumps(
                 {"finding": finding["finding"], "severity": finding["severity"],
                  "impact": finding["impact"],
-                 "target": finding.get("target", target_label),
+                 "target": finding_target,
                  "evidence_ids": evidence_ids,
                  "evidence_summary": evidence_summary},
                 sort_keys=True,
@@ -150,7 +153,16 @@ class AssessmentReviewPipeline:
                 ModelRole.REMEDIATION_ADVISOR,
                 (ModelMessage("system", _REMEDIATION_SYSTEM),
                  ModelMessage("user", json.dumps(
-                     {"finding": finding["finding"], "current_fix": finding["fix"]},
+                     {
+                         "finding": finding["finding"],
+                         "severity": finding["severity"],
+                         "impact": finding["impact"],
+                         "target": finding_target,
+                         "current_fix": finding["fix"],
+                         "verifier_verdict": verdict,
+                         "evidence_ids": evidence_ids,
+                         "evidence_summary": evidence_summary,
+                     },
                      sort_keys=True))),
             ).content
             reviewed.append(ReviewedFinding(
