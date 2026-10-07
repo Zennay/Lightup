@@ -12,9 +12,9 @@ Revocation is one atomic authorization fact with three persisted fields:
 | --- | --- | --- | --- | --- |
 | canonical unrevoked | NULL | NULL | NULL | may remain eligible |
 | canonical revoked | aware timestamp | non-blank actor | non-blank reason | denied |
-| partial/corrupt | NULL | actor and/or reason | denied | denied |
+| partial/corrupt | NULL | populated or NULL | populated or NULL | denied |
 
-A durable row with no revocation timestamp but residual revocation provenance is
+A durable row with no revocation timestamp but at least one populated revocation provenance field is
 not canonical unrevoked state. The execution resolver must fail closed rather
 than let `AuthorizationGrant.is_current()` reinterpret that row as active.
 
