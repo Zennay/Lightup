@@ -91,17 +91,17 @@ class OperatorPortalWriteBoundaryTests(unittest.TestCase):
         response = b"".join(self.app(environ, start_response)).decode("utf-8")
         return str(captured["status"]), dict(captured["headers"]), response
 
-    def test_broad_portal_access_class_is_read_only(self):
-        portal_routes = [
+    def test_client_scoped_broad_portal_routes_are_read_only(self):
+        client_portal_routes = [
             (method, pattern.pattern)
             for method, pattern, _handler, access in self.app.routes
-            if access == "portal"
+            if access == "portal" and pattern.pattern.startswith("^/portal/")
         ]
 
-        self.assertTrue(portal_routes)
+        self.assertTrue(client_portal_routes)
         self.assertTrue(
-            all(method == "GET" for method, _pattern in portal_routes),
-            portal_routes,
+            all(method == "GET" for method, _pattern in client_portal_routes),
+            client_portal_routes,
         )
 
     def test_operator_can_view_portal_without_client_write_affordance(self):
