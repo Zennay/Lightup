@@ -77,7 +77,7 @@ class FutureRemediationImplementationPlanRevisionProposalTest(unittest.TestCase)
             self.base.base.base.base.base.base.base.review_request
         )
         self.proposal = self.base.base.base.base.base.base.base.proposal
-        self.root = self.base.base.base.base.base.base.base
+        self.root = self.base.base.base.base.base.base.base.base
 
         self.revision_request = (
             build_future_remediation_implementation_plan_revision_request(
