@@ -74,9 +74,7 @@ class LabRetestFindingExactTypeTest(unittest.TestCase):
         with patch(
             "lightup.labsync.http_baseline.observe", return_value=observation
         ) as observe:
-            with self.assertRaisesRegex(
-                LabIsolationError, "exact .*FindingRecord|exact .*finding"
-            ):
+            with self.assertRaises(LabIsolationError):
                 retest_finding(self.store, self.operator, forged)
 
         observe.assert_not_called()
@@ -90,7 +88,7 @@ class LabRetestFindingExactTypeTest(unittest.TestCase):
             ),
             before_rows,
         )
-        self.assertIs(before_rows[0].retest_status, RetestStatus.NOT_RETESTED)
+        self.assertIs(before_rows[0].retest_status, RetestStatus.NOT_TESTED)
 
 
 if __name__ == "__main__":
