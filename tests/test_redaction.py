@@ -30,6 +30,24 @@ class RedactionTests(unittest.TestCase):
         output = redact_text(value)
         self.assertEqual(output, "Proxy-Authorization: Basic [REDACTED]")
 
+    def test_url_userinfo_credentials_are_redacted_without_losing_target_context(self):
+        value = "https://alice:secret@example.test:8443/path?q=1#frag"
+        output = redact_text(value)
+        self.assertEqual(
+            output,
+            "https://[REDACTED]@example.test:8443/path?q=1#frag",
+        )
+        self.assertNotIn("alice:secret", output)
+
+    def test_url_username_only_userinfo_is_redacted(self):
+        value = "http://opaque-token@example.test/resource"
+        output = redact_text(value)
+        self.assertEqual(output, "http://[REDACTED]@example.test/resource")
+
+    def test_url_without_userinfo_is_unchanged_even_when_query_contains_at_sign(self):
+        value = "https://example.test/path?contact=ops@example.test#status"
+        self.assertEqual(redact_text(value), value)
+
     def test_common_secret_assignment_is_redacted(self):
         output = redact_text("api_key=supersecret")
         self.assertNotIn("supersecret", output)
