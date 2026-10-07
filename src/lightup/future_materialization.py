@@ -66,10 +66,19 @@ class FutureMaterializationResolution:
 
         if not self.change_node_id.startswith("change:"):
             raise ValueError("materialization resolution must target a change node")
+        if type(self.evidence_ids) is not tuple:
+            raise ValueError("materialization evidence_ids must be an exact tuple")
         if not self.evidence_ids:
             raise ValueError("materialization resolution requires evidence")
-        if len(set(self.evidence_ids)) != len(self.evidence_ids):
-            raise ValueError("materialization evidence_ids must be unique")
+        seen_evidence_ids: set[str] = set()
+        for evidence_id in self.evidence_ids:
+            if type(evidence_id) is not str or not evidence_id.strip():
+                raise ValueError(
+                    "materialization evidence_ids must contain exact non-blank strings"
+                )
+            if evidence_id in seen_evidence_ids:
+                raise ValueError("materialization evidence_ids must be unique")
+            seen_evidence_ids.add(evidence_id)
         if not self.capability_ids or any(not item.strip() for item in self.capability_ids):
             raise ValueError("materialization resolution requires capability_ids")
         if len(set(self.capability_ids)) != len(self.capability_ids):
