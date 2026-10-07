@@ -25,9 +25,13 @@ class PersistedGrantScopeSchemaAcceptanceTest(unittest.TestCase):
             "CISO Scope Schema",
             "AUTH-SCOPE-SCHEMA-001",
             ScopeDefinition(
-                assets=("app.scope-schema.example",),
+                assets=(
+                    "app.scope-schema.example",
+                    "blocked.scope-schema.example",
+                ),
                 max_risk=RiskLevel.STANDARD,
                 allowed_capabilities=("web-baseline",),
+                excluded_assets=("blocked.scope-schema.example",),
             ),
             now - timedelta(hours=1),
             now + timedelta(hours=1),
@@ -46,8 +50,14 @@ class PersistedGrantScopeSchemaAcceptanceTest(unittest.TestCase):
     def test_canonical_array_scope_remains_executable(self) -> None:
         live = self.store.resolve_authorization_for_execution(self.grant)
         self.assertIsNotNone(live)
-        self.assertEqual(live.scope.assets, ("app.scope-schema.example",))
+        self.assertEqual(
+            live.scope.assets,
+            ("app.scope-schema.example", "blocked.scope-schema.example"),
+        )
         self.assertEqual(live.scope.allowed_capabilities, ("web-baseline",))
+        self.assertEqual(
+            live.scope.excluded_assets, ("blocked.scope-schema.example",)
+        )
 
     def test_malformed_assets_json_is_non_executable_without_exception(self) -> None:
         self._set_persisted("assets_json", "{not-json")
@@ -71,6 +81,12 @@ class PersistedGrantScopeSchemaAcceptanceTest(unittest.TestCase):
 
     def test_malformed_excluded_assets_json_is_non_executable_without_exception(self) -> None:
         self._set_persisted("excluded_assets_json", "{not-json")
+        self.assertIsNone(self.store.resolve_authorization_for_execution(self.grant))
+
+    def test_object_shaped_exclusions_cannot_drop_canonical_exclusion(self) -> None:
+        self._set_persisted(
+            "excluded_assets_json", '{"unrelated.scope-schema.example": false}'
+        )
         self.assertIsNone(self.store.resolve_authorization_for_execution(self.grant))
 
     def test_invalid_persisted_max_risk_is_non_executable_without_exception(self) -> None:
