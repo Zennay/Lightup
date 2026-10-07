@@ -66,6 +66,38 @@ def ensure_lab_engagement(
     return engagement
 
 
+def _canonical_finding_evidence_ids(
+    finding: dict,
+    labrun_result: dict,
+) -> tuple[str, ...]:
+    """Resolve one finding's canonical evidence references without normalization."""
+    if "evidence_ids" in finding:
+        raw_evidence_ids = finding["evidence_ids"]
+        if type(raw_evidence_ids) is not list:
+            raise ValueError("finding evidence_ids must be an exact list")
+        if raw_evidence_ids:
+            if any(
+                type(evidence_id) is not str or not evidence_id.strip()
+                for evidence_id in raw_evidence_ids
+            ):
+                raise ValueError(
+                    "finding evidence_ids must contain exact non-blank strings"
+                )
+            if len(set(raw_evidence_ids)) != len(raw_evidence_ids):
+                raise ValueError("finding evidence_ids must be unique")
+            return tuple(raw_evidence_ids)
+
+    if "evidence_id" in labrun_result:
+        evidence_id = labrun_result["evidence_id"]
+        if type(evidence_id) is not str or not evidence_id.strip():
+            raise ValueError(
+                "top-level evidence_id must be an exact non-blank string"
+            )
+        return (evidence_id,)
+
+    raise ValueError("lab finding requires at least one evidence reference")
+
+
 def persist_lab_findings(
     store: DomainStore,
     ctx: AccessContext,
@@ -77,8 +109,7 @@ def persist_lab_findings(
     records = []
     for finding in labrun_result["findings"]:
         asset = finding.get("target") or labrun_result.get("target", "")
-        evidence_ids = tuple(finding.get("evidence_ids", ())) or (
-            (labrun_result["evidence_id"],) if "evidence_id" in labrun_result else ())
+        evidence_ids = _canonical_finding_evidence_ids(finding, labrun_result)
         records.append(
             store.record_finding(
                 ctx,
