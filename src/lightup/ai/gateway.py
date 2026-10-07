@@ -171,4 +171,11 @@ class ModelGateway:
             raise GatewayConfigurationError(
                 "provider returned a response under a different provider_id"
             )
+        if (
+            type(response.model_id) is not str
+            or response.model_id != binding.model_id
+        ):
+            raise GatewayConfigurationError(
+                "provider returned a response under a different model_id"
+            )
         return response
