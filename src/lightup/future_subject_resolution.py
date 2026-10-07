@@ -378,6 +378,8 @@ class FutureSubjectResolution:
             )
         if not self.change_node_id.startswith("change:"):
             raise ValueError("subject resolution must target a future change node")
+        if type(self.evidence_ids) is not tuple:
+            raise ValueError("subject resolution evidence_ids must be an exact tuple")
         if not self.evidence_ids:
             raise ValueError("subject resolution requires evidence")
         if len(self.evidence_ids) > _MAX_RESOLUTION_EVIDENCE_IDS:
@@ -386,6 +388,10 @@ class FutureSubjectResolution:
             )
         try:
             for item in self.evidence_ids:
+                if type(item) is not str:
+                    raise ValueError(
+                        "subject resolution evidence_id must be an exact string"
+                    )
                 _validate_bounded_identifier(
                     "subject resolution evidence_id",
                     item,
