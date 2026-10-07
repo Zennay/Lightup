@@ -108,8 +108,8 @@ class PlantedGroundTruthTest(unittest.TestCase):
                 self.assertEqual(metrics["valid_findings"], 1)
                 self.assertEqual(metrics["invalid_findings"], 0)
                 self.assertEqual(metrics["missed_findings"], 0)
-                self.assertEqual(metrics["precision"], 1.0)
-                self.assertEqual(metrics["recall"], 1.0)
+                self.assertEqual(metrics["false_positive_rate"], 0.0)
+                self.assertEqual(metrics["evidence_quality"], 1.0)
 
     def test_zero_finding_ground_truth_counts_unexpected_results(self):
         with _serve(PROFILES["exposed"]) as url:
