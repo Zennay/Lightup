@@ -8,6 +8,12 @@ They must never raise a parsing exception into an authorization caller, and must
 never normalize to a different admitted hostname. The decision is a pure
 in-memory operation; it may not perform DNS, HTTP, socket calls or target work.
 
+A valid pre-existing public-host grant must **not** cause a malformed
+authority such as `example.test:invalid` or `example.test:999999` to be
+accepted. The hostname portion alone is insufficient to certify valid target
+identity. This is an authorization-boundary regression, not just input
+sanitization.
+
 This branch intentionally owns **tests and documentation only**. Production
 `src/lightup/scope.py` belongs to other parallel scope workers. The regression
 is expected to be red on an implementation that propagates `urlparse` errors
