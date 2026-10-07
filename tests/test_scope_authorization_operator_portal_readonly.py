@@ -76,7 +76,7 @@ class OperatorPortalWriteBoundaryTests(unittest.TestCase):
         response = b"".join(self.app(environ, start_response)).decode("utf-8")
         return str(captured["status"]), dict(captured["headers"]), response
 
-    def test_operator_can_still_view_client_portal(self):
+    def test_operator_can_view_portal_without_client_write_affordance(self):
         status, _, body = self.request(
             "GET",
             f"/portal/{self.client.client_id}",
@@ -85,6 +85,10 @@ class OperatorPortalWriteBoundaryTests(unittest.TestCase):
 
         self.assertEqual(status, "200 OK")
         self.assertIn("Acme BV", body)
+        self.assertNotIn(
+            f'action="/portal/{self.client.client_id}/requests"',
+            body,
+        )
         self.assertEqual(self.store.list_assessment_requests(self.operator), [])
 
     def test_operator_cannot_submit_client_portal_assessment_request(self):
@@ -103,7 +107,18 @@ class OperatorPortalWriteBoundaryTests(unittest.TestCase):
         self.assertEqual(status, "403 Forbidden")
         self.assertEqual(self.store.list_assessment_requests(self.operator), [])
 
-    def test_matching_client_session_keeps_request_provenance(self):
+    def test_matching_client_session_keeps_write_affordance_and_request_provenance(self):
+        get_status, _, get_body = self.request(
+            "GET",
+            f"/portal/{self.client.client_id}",
+            token=self.client_token,
+        )
+        self.assertEqual(get_status, "200 OK")
+        self.assertIn(
+            f'action="/portal/{self.client.client_id}/requests"',
+            get_body,
+        )
+
         status, headers, _ = self.request(
             "POST",
             f"/portal/{self.client.client_id}/requests",
