@@ -15,26 +15,30 @@ class FutureRemediationImplementationPlanReviewerProducerInputAtomicityTest(
     unittest.TestCase
 ):
     def setUp(self):
-        self.base = review_tests.FutureRemediationImplementationPlanReviewTest(
-            "test_all_pass_review_accepts_plan_without_action_authority"
+        self.review_fixture = (
+            review_tests.FutureRemediationImplementationPlanReviewTest(
+                "test_all_pass_review_accepts_plan_without_action_authority"
+            )
         )
-        self.base.setUp()
-        self.addCleanup(self.base.tearDown)
+        self.review_fixture.setUp()
+        self.addCleanup(self.review_fixture.tearDown)
 
-        self.persisted_review_request = self.base.review_request.to_json()
-        self.persisted_plan = self.base.implementation_plan.to_json()
+        fixture = self.review_fixture
+        self.persisted_review_request = fixture.review_request.to_json()
+        self.persisted_plan = fixture.implementation_plan.to_json()
         self.persisted_planning_request = (
-            self.base.base.base.base.planning_request.to_json()
+            fixture.base.base.base.base.planning_request.to_json()
         )
         self.persisted_remediation_review = (
-            self.base.base.base.base.base.review.to_json()
+            fixture.base.base.base.base.base.review.to_json()
         )
         self.persisted_remediation_review_request = (
-            self.base.base.base.base.base.base.review_request.to_json()
+            fixture.base.base.base.base.base.base.review_request.to_json()
         )
         self.persisted_proposal = (
-            self.base.base.base.base.base.base.proposal.to_json()
+            fixture.base.base.base.base.base.base.proposal.to_json()
         )
+        self.lineage = fixture.base.base.base.base.base.base.base
 
     @staticmethod
     def _snapshot_value(value):
@@ -53,17 +57,19 @@ class FutureRemediationImplementationPlanReviewerProducerInputAtomicityTest(
         )
 
     def _snapshot_lineage(self) -> tuple:
-        lineage = (
-            self.base.base.base.base.base.base.base.request,
-            self.base.base.base.base.base.base.base.bundle,
-            self.base.base.base.base.base.base.base.plan,
-            self.base.base.base.base.base.base.base.report,
-            self.base.base.base.base.base.base.base.preview,
-            self.base.base.base.base.base.base.base.transition_proposal,
-            self.base.base.base.base.base.base.base.resolution,
-            self.base.base.base.base.base.base.base.context,
+        return tuple(
+            self._snapshot_value(value)
+            for value in (
+                self.lineage.request,
+                self.lineage.bundle,
+                self.lineage.plan,
+                self.lineage.report,
+                self.lineage.preview,
+                self.lineage.transition_proposal,
+                self.lineage.resolution,
+                self.lineage.context,
+            )
         )
-        return tuple(self._snapshot_value(value) for value in lineage)
 
     def _review(self, gateway):
         return review_future_remediation_implementation_plan(
@@ -73,37 +79,36 @@ class FutureRemediationImplementationPlanReviewerProducerInputAtomicityTest(
             self.persisted_remediation_review,
             self.persisted_remediation_review_request,
             self.persisted_proposal,
-            self.base.base.base.base.base.base.base.request,
-            self.base.base.base.base.base.base.base.bundle,
-            self.base.base.base.base.base.base.base.plan,
-            self.base.base.base.base.base.base.base.report,
-            self.base.base.base.base.base.base.base.preview,
-            self.base.base.base.base.base.base.base.transition_proposal,
-            (self.base.base.base.base.base.base.base.resolution,),
-            (self.base.base.base.base.base.base.base.context,),
-            self.base.base.base.base.base.base.base.state,
+            self.lineage.request,
+            self.lineage.bundle,
+            self.lineage.plan,
+            self.lineage.report,
+            self.lineage.preview,
+            self.lineage.transition_proposal,
+            (self.lineage.resolution,),
+            (self.lineage.context,),
+            self.lineage.state,
             gateway,
         )
 
     def _write_sentinels(self):
-        state = self.base.base.base.base.base.base.base.state
         return (
             mock.patch.object(
-                state,
+                self.lineage.state,
                 "create_run",
                 side_effect=AssertionError(
                     "implementation-plan reviewer must not create runs"
                 ),
             ),
             mock.patch.object(
-                state,
+                self.lineage.state,
                 "acquire_lease",
                 side_effect=AssertionError(
                     "implementation-plan reviewer must not acquire leases"
                 ),
             ),
             mock.patch.object(
-                state,
+                self.lineage.state,
                 "add_evidence",
                 side_effect=AssertionError(
                     "implementation-plan reviewer must not add evidence"
@@ -114,17 +119,15 @@ class FutureRemediationImplementationPlanReviewerProducerInputAtomicityTest(
     def test_successful_review_is_repeatable_and_input_atomic(self):
         persisted_before = self._snapshot_persisted()
         lineage_before = self._snapshot_lineage()
-        evidence = self.base.base.base.base.base.base.base.bundle.items[0].evidence[0]
+        evidence = self.lineage.bundle.items[0].evidence[0]
         evidence_before = dataclasses.asdict(
-            self.base.base.base.base.base.base.base.state.get_evidence(
-                evidence.evidence_id
-            )
+            self.lineage.state.get_evidence(evidence.evidence_id)
         )
 
-        first_gateway, first_provider = self.base._review_gateway(
+        first_gateway, first_provider = self.review_fixture._review_gateway(
             review_tests._review_json()
         )
-        second_gateway, second_provider = self.base._review_gateway(
+        second_gateway, second_provider = self.review_fixture._review_gateway(
             review_tests._review_json()
         )
 
@@ -141,9 +144,7 @@ class FutureRemediationImplementationPlanReviewerProducerInputAtomicityTest(
         self.assertEqual(self._snapshot_lineage(), lineage_before)
         self.assertEqual(
             dataclasses.asdict(
-                self.base.base.base.base.base.base.base.state.get_evidence(
-                    evidence.evidence_id
-                )
+                self.lineage.state.get_evidence(evidence.evidence_id)
             ),
             evidence_before,
         )
@@ -163,17 +164,15 @@ class FutureRemediationImplementationPlanReviewerProducerInputAtomicityTest(
     def test_live_rejection_is_repeatable_atomic_and_pre_model(self):
         persisted_before = self._snapshot_persisted()
         lineage_before = self._snapshot_lineage()
-        evidence = self.base.base.base.base.base.base.base.bundle.items[0].evidence[0]
+        evidence = self.lineage.bundle.items[0].evidence[0]
         replacement = "f" * 64 if evidence.sha256 != "f" * 64 else "e" * 64
-        with self.base.base.base.base.base.base.base.state.connect() as con:
+        with self.lineage.state.connect() as con:
             con.execute(
                 "UPDATE evidence SET sha256=? WHERE evidence_id=?",
                 (replacement, evidence.evidence_id),
             )
         stale_evidence_before = dataclasses.asdict(
-            self.base.base.base.base.base.base.base.state.get_evidence(
-                evidence.evidence_id
-            )
+            self.lineage.state.get_evidence(evidence.evidence_id)
         )
 
         messages: list[str] = []
@@ -181,7 +180,7 @@ class FutureRemediationImplementationPlanReviewerProducerInputAtomicityTest(
         run_patch, lease_patch, evidence_patch = self._write_sentinels()
         with run_patch, lease_patch, evidence_patch:
             for _ in range(2):
-                gateway, provider = self.base._review_gateway(
+                gateway, provider = self.review_fixture._review_gateway(
                     review_tests._review_json()
                 )
                 providers.append(provider)
@@ -195,9 +194,7 @@ class FutureRemediationImplementationPlanReviewerProducerInputAtomicityTest(
         self.assertEqual(self._snapshot_lineage(), lineage_before)
         self.assertEqual(
             dataclasses.asdict(
-                self.base.base.base.base.base.base.base.state.get_evidence(
-                    evidence.evidence_id
-                )
+                self.lineage.state.get_evidence(evidence.evidence_id)
             ),
             stale_evidence_before,
         )
