@@ -23,6 +23,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Guard exact recovery revision
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
       - name: Cancel only stale superseded LightUp CI runs
         shell: bash
         env:
@@ -37,11 +44,18 @@ jobs:
           python3 - <<'PY'
           import json
           import os
+          import time
           import urllib.error
           import urllib.parse
           import urllib.request
-          import time
           from datetime import datetime, timezone
+
+          from scripts.lightup_hosted_queue_sweep import (
+              cancellation_candidate,
+              paged,
+              protected_shas,
+              queued_self_hosted_jobs,
+          )
 
           repo = os.environ["REPO"]
           token = os.environ["GH_TOKEN"]
@@ -76,158 +90,110 @@ jobs:
                       time.sleep(1.5 * (attempt + 1))
               raise RuntimeError("unreachable GitHub request retry state")
 
-          def paged(path_prefix, *, max_pages=20):
-              items = []
-              for page in range(1, max_pages + 1):
-                  separator = "&" if "?" in path_prefix else "?"
-                  page_items = request(
-                      f"{path_prefix}{separator}per_page=100&page={page}"
-                  )
-                  if not isinstance(page_items, list):
-                      page_items = page_items.get("workflow_runs") or []
-                  items.extend(page_items)
-                  if len(page_items) < 100:
-                      return items, page, False
-              return items, max_pages, True
-
           repo_info = request(f"/repos/{repo}")
           default_branch = repo_info["default_branch"]
           default_head = request(
               f"/repos/{repo}/commits/{urllib.parse.quote(default_branch, safe='')}"
           )["sha"]
 
-          open_prs, pr_pages, pr_truncated = paged(
+          open_prs, pr_pages = paged(
+              request,
               f"/repos/{repo}/pulls?state=open",
               max_pages=20,
           )
-          if pr_truncated:
-              raise RuntimeError(
-                  "open PR pagination hit safety cap; refusing to cancel any runs"
-              )
+          protected, protected_prs = protected_shas(
+              default_head=default_head,
+              current_sha=current_sha,
+              explicit_evidence_sha=protected_evidence_sha,
+              open_prs=open_prs,
+          )
 
-          protected_shas = {default_head, current_sha, protected_evidence_sha}
-          protected_prs = {}
-          for pr in open_prs:
-              sha = str((pr.get("head") or {}).get("sha") or "")
-              if sha:
-                  protected_shas.add(sha)
-                  protected_prs[sha] = int(pr["number"])
-
-          queued_runs, run_pages, run_truncated = paged(
+          queued_runs, run_pages = paged(
+              request,
               f"/repos/{repo}/actions/runs?status=queued",
               max_pages=10,
           )
-          if run_truncated:
-              raise RuntimeError(
-                  "queued-run pagination hit safety cap; refusing partial sweep"
-              )
 
           cancelled = []
           retained = []
-          candidates = []
 
           for run in queued_runs:
               run_id = int(run["id"])
               if run_id == current_run:
                   continue
+
               head_sha = str(run.get("head_sha") or "")
-              name = str(run.get("name") or "")
-              path = str(run.get("path") or "")
-              created = datetime.fromisoformat(
-                  str(run["created_at"]).replace("Z", "+00:00")
+              jobs = []
+              preliminary, reason = cancellation_candidate(
+                  run,
+                  protected=protected,
+                  now=now,
+                  minimum_age_seconds=minimum_age_seconds,
+                  jobs=[],
               )
-              age_s = int((now - created).total_seconds())
+              if reason == "not-queued-self-hosted":
+                  jobs = (
+                      request(
+                          f"/repos/{repo}/actions/runs/{run_id}/jobs?filter=latest&per_page=100"
+                      ).get("jobs")
+                      or []
+                  )
+                  preliminary, reason = cancellation_candidate(
+                      run,
+                      protected=protected,
+                      now=now,
+                      minimum_age_seconds=minimum_age_seconds,
+                      jobs=jobs,
+                  )
 
-              if name != "LightUp CI" or path != ".github/workflows/lightup-ci.yml":
-                  retained.append({
-                      "id": run_id,
-                      "reason": "not-canonical-lightup-ci",
-                      "head_sha": head_sha,
-                      "age_s": age_s,
-                      "name": name,
-                  })
-                  continue
+              age_s = None
+              created_raw = str(run.get("created_at") or "")
+              if created_raw:
+                  try:
+                      created = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
+                      age_s = int((now - created).total_seconds())
+                  except ValueError:
+                      pass
 
-              if head_sha in protected_shas:
-                  retained.append({
-                      "id": run_id,
-                      "reason": "current-main-open-pr-or-root-evidence-head",
-                      "pr": protected_prs.get(head_sha),
-                      "head_sha": head_sha,
-                      "age_s": age_s,
-                      "name": name,
-                  })
-                  continue
-
-              if age_s < minimum_age_seconds:
-                  retained.append({
-                      "id": run_id,
-                      "reason": "too-recent",
-                      "head_sha": head_sha,
-                      "age_s": age_s,
-                      "name": name,
-                  })
-                  continue
-
-              jobs = (
-                  request(
-                      f"/repos/{repo}/actions/runs/{run_id}/jobs?filter=latest&per_page=100"
-                  ).get("jobs")
-                  or []
-              )
-              queued_self_hosted = [
-                  job
-                  for job in jobs
-                  if str(job.get("status") or "") == "queued"
-                  and "self-hosted"
-                  in {str(label).lower() for label in (job.get("labels") or [])}
-              ]
-              if not queued_self_hosted:
-                  retained.append({
-                      "id": run_id,
-                      "reason": "not-queued-self-hosted",
-                      "head_sha": head_sha,
-                      "age_s": age_s,
-                      "name": name,
-                  })
-                  continue
-
-              candidates.append({
+              item = {
                   "id": run_id,
                   "head_sha": head_sha,
                   "age_s": age_s,
-                  "name": name,
-                  "path": path,
-                  "jobs": [
-                      {
-                          "id": job.get("id"),
-                          "name": job.get("name"),
-                          "labels": job.get("labels"),
-                      }
-                      for job in queued_self_hosted
-                  ],
-              })
+                  "name": str(run.get("name") or ""),
+                  "path": str(run.get("path") or ""),
+              }
+              if not preliminary:
+                  item["reason"] = reason
+                  item["pr"] = protected_prs.get(head_sha)
+                  retained.append(item)
+                  continue
 
-          for item in candidates:
+              item["jobs"] = [
+                  {
+                      "id": job.get("id"),
+                      "name": job.get("name"),
+                      "labels": job.get("labels"),
+                  }
+                  for job in queued_self_hosted_jobs(jobs)
+              ]
               try:
                   request(
-                      f"/repos/{repo}/actions/runs/{item['id']}/cancel",
+                      f"/repos/{repo}/actions/runs/{run_id}/cancel",
                       method="POST",
                   )
                   cancelled.append(item)
               except urllib.error.HTTPError as exc:
                   if exc.code not in (409, 422):
                       raise
-                  kept = dict(item)
-                  kept["reason"] = f"cancel-http-{exc.code}"
-                  retained.append(kept)
+                  item["reason"] = f"cancel-http-{exc.code}"
+                  retained.append(item)
 
           evidence = {
               "ok": True,
               "default_branch": default_branch,
               "default_head": default_head,
               "protected_open_pr_heads": len(protected_prs),
-              "protected_shas": len(protected_shas),
+              "protected_shas": len(protected),
               "open_pr_pages": pr_pages,
               "queued_run_pages": run_pages,
               "queued_runs_scanned": len(queued_runs),
