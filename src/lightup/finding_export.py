@@ -20,7 +20,9 @@ def _cell(value: str) -> str:
     # Redact before presentation escaping; neither operation mutates the finding.
     value = redact_text(value)
     # Spreadsheet parsers may skip leading whitespace/control characters.
-    probe = value.lstrip(" \t\r\n\v\f\x00")
+    probe = value
+    while probe and (probe[0].isspace() or ord(probe[0]) < 32):
+        probe = probe[1:]
     if probe.startswith(("=", "+", "-", "@")) or value.startswith(("\t", "\r", "\n")):
         return "'" + value
     return value
