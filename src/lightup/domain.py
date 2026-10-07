@@ -459,6 +459,10 @@ class DomainStore:
         return user
 
     def set_password(self, ctx: AccessContext, user_id: str, password: str) -> None:
+        if type(user_id) is not str:
+            raise ValueError("password user_id must be an exact string")
+        if not user_id or user_id != user_id.strip() or "\x00" in user_id:
+            raise ValueError("password user_id must be canonical non-empty text")
         if not ctx.is_operator and ctx.user_id != user_id:
             raise RoleError("set_password requires an operator or the account owner")
         self.context_for_user(user_id)  # ensures the user exists
