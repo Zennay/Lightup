@@ -19,6 +19,7 @@ identity.
 - authenticated session reconstruction treats missing or non-canonical durable user identity as an invalid session; corruption cannot escape as an authorization-bearing context or web-layer exception.
 - caller-supplied tenant selectors passed to `resolve_client()` must also be exact canonical strings before operator selection or client-tenant comparison.
 - `DomainStore.create_user()` accepts only an actual `Role` member and routes every client-bound user through the same canonical tenant-selector gate before persistence; forged role objects cannot mint operator identity.
+- self-service password changes validate the supplied `user_id` as exact canonical text before owner equality is evaluated, so polymorphic string equality cannot redirect account authority.
 
 ## Safety boundary
 
