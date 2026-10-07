@@ -21,3 +21,7 @@ The machine-readable fixture at `docs/fixtures/scope-authorization-offline-revie
 `python -m unittest discover -s tests -p 'test_scope_authorization_offline_review_fixture.py' -v`
 
 No production modules, active targets, network operations, workflow configuration or worker ownership are changed by this addition.
+
+## Mutation resistance
+
+`tests/test_scope_authorization_review_schema_mutations.py` adds fixture-schema checks and negative mutation probes. Changes that turn on network/execution flags, change analysis-only mode, insert/remove/duplicate scenarios or change a denial to an execution allowance are rejected. These are **review-data guards**, not evidence of runtime authorization enforcement.
