@@ -9,6 +9,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
+from .activation import ActivationMode
+
 
 SCHEMA = """
 PRAGMA journal_mode=WAL;
@@ -85,18 +87,54 @@ class StateStore:
         finally:
             con.close()
 
+    @staticmethod
+    def _canonical_activation_mode(activation_mode: ActivationMode | str) -> ActivationMode:
+        if type(activation_mode) is ActivationMode:
+            return activation_mode
+        if type(activation_mode) is not str:
+            raise ValueError("activation_mode must be a canonical ActivationMode or exact string")
+        try:
+            return ActivationMode(activation_mode)
+        except ValueError as exc:
+            raise ValueError(f"unknown activation_mode {activation_mode!r}") from exc
+
+    @staticmethod
+    def _canonical_authorization_ref(authorization_ref: str | None) -> str:
+        if type(authorization_ref) is not str:
+            raise ValueError("authorized mode requires an exact authorization_ref string")
+        if not authorization_ref or authorization_ref != authorization_ref.strip():
+            raise ValueError("authorized mode requires a canonical non-empty authorization_ref")
+        return authorization_ref
+
     def create_run(
         self,
         target: str,
-        activation_mode: str = "plan_only",
+        activation_mode: ActivationMode | str = ActivationMode.PLAN_ONLY,
         authorization_ref: str | None = None,
     ) -> str:
+        mode = self._canonical_activation_mode(activation_mode)
+        if mode is ActivationMode.AUTHORIZED:
+            canonical_authorization_ref = self._canonical_authorization_ref(authorization_ref)
+        else:
+            if authorization_ref is not None:
+                raise ValueError(
+                    f"{mode.value} runs cannot carry authorization_ref"
+                )
+            canonical_authorization_ref = None
+
         run_id = str(uuid4())
         with self.connect() as con:
             con.execute(
                 "INSERT INTO runs(run_id,target,authorization_ref,activation_mode,status,created_at) "
                 "VALUES(?,?,?,?,?,?)",
-                (run_id, target, authorization_ref, activation_mode, "planned", utcnow().isoformat()),
+                (
+                    run_id,
+                    target,
+                    canonical_authorization_ref,
+                    mode.value,
+                    "planned",
+                    utcnow().isoformat(),
+                ),
             )
         return run_id
 
