@@ -21,6 +21,7 @@ LABRUN_RESULT = {
             "severity": "medium",
             "impact": "Unrestricted script execution",
             "fix": "Serve a restrictive CSP",
+            "evidence_summary": "HTTP baseline observed missing CSP.",
         }
     ],
     "coverage": {"counts": {"assessed": 1, "unknown": 30}},
