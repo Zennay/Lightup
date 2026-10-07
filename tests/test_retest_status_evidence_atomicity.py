@@ -47,6 +47,19 @@ class RetestStatusEvidenceAtomicityAcceptanceTest(unittest.TestCase):
                 (raw, self.finding.finding_id),
             )
 
+    def _assert_corrupt_rejected_without_mutation(self, raw: str) -> None:
+        self._replace_evidence_json(raw)
+        before = self._raw_row()
+
+        with self.assertRaisesRegex(ValueError, "evidence"):
+            self.store.set_retest_status(
+                self.operator,
+                self.finding.finding_id,
+                RetestStatus.FIXED,
+            )
+
+        self.assertEqual(self._raw_row(), before)
+
     def test_canonical_finding_can_transition_retest_status(self) -> None:
         updated = self.store.set_retest_status(
             self.operator,
@@ -60,19 +73,14 @@ class RetestStatusEvidenceAtomicityAcceptanceTest(unittest.TestCase):
             (RetestStatus.FIX_PENDING.value, '["evidence:one"]'),
         )
 
-    def test_corrupt_evidence_rejects_without_partial_retest_status_mutation(self) -> None:
-        corrupt = '"evidence:one"'
-        self._replace_evidence_json(corrupt)
-        before = self._raw_row()
+    def test_string_shaped_evidence_rejects_without_partial_mutation(self) -> None:
+        self._assert_corrupt_rejected_without_mutation('"evidence:one"')
 
-        with self.assertRaisesRegex(ValueError, "evidence"):
-            self.store.set_retest_status(
-                self.operator,
-                self.finding.finding_id,
-                RetestStatus.FIXED,
-            )
+    def test_null_evidence_rejects_without_partial_mutation(self) -> None:
+        self._assert_corrupt_rejected_without_mutation("null")
 
-        self.assertEqual(self._raw_row(), before)
+    def test_invalid_json_rejects_without_partial_mutation(self) -> None:
+        self._assert_corrupt_rejected_without_mutation('["evidence:one"')
 
 
 if __name__ == "__main__":
