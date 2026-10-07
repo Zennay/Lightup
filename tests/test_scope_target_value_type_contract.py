@@ -54,7 +54,9 @@ class ScopeTargetValueTypeContractTests(unittest.TestCase):
 
     def test_canonical_string_behavior_is_unchanged(self):
         loopback = ScopePolicy().decide(Target(value="127.0.0.1"))
-        private_lab = ScopePolicy().decide(Target(value="10.20.30.40"))
+        private_lab = ScopePolicy(allow_private_lab=True).decide(
+            Target(value="10.20.30.40")
+        )
         public = ScopePolicy().decide(Target(value="8.8.8.8"))
 
         self.assertTrue(loopback.allowed)
