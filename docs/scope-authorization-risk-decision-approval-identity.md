@@ -11,23 +11,29 @@ validated for pending state, destructive-risk policy and self-approval must be
 the same approval row that is mutated and returned.
 
 The caller-supplied `approval_id` therefore cannot remain a reusable
-annotation-only SQLite parameter. It must be accepted only as one exact,
-non-blank built-in string identity before any database bind occurs.
+annotation-only SQLite parameter. It must be accepted only as an exact built-in
+string with non-blank canonical content before any database bind occurs.
+String subclasses, adapter objects, blank strings and whitespace-only strings
+are invalid decision identities.
 
 ## Regression
 
-`tests/test_scope_authorization_risk_decision_approval_identity.py` constructs
-an object implementing SQLite's adaptation protocol. Its first bind resolves to
-a request made by a different actor, while later binds resolve to a request made
-by the reviewer themselves.
+`tests/test_scope_authorization_risk_decision_approval_identity.py` covers four
+parts of the contract.
 
-On the pinned #146 source, the first row can pass the self-approval check and a
-later bind can target the reviewer's own row. The desired behavior is to reject
-the non-canonical identity before SQLite calls its adapter, leaving both rows
-PENDING and all decision audit fields empty.
+- A SQLite-adaptable object exposes approval A for the safety read and approval B
+  for later binds. The authority-shaped case makes B a request created by the
+  reviewer themselves.
+- An equal-content `str` subclass is rejected rather than treated as a
+  canonical decision identity.
+- Blank and whitespace-only exact strings are rejected as malformed input.
+- Canonical exact-string behavior remains intact: self-approval is denied and
+  an unrelated operator can still approve once.
 
-The companion green control preserves canonical exact-string behavior:
-self-approval is denied and an unrelated operator can still approve once.
+On the pinned #146 source, the stateful adapter can make the first row pass the
+self-approval check and a later bind target the reviewer's own row. The desired
+behavior is rejection before SQLite calls the adapter, leaving every involved
+row PENDING and all decision audit fields empty.
 
 ## Ownership and safety
 
