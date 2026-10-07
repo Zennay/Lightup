@@ -4,18 +4,23 @@ Issue #622 isolates a persistence-type boundary above strict remediation-text re
 
 ## Contract
 
-The canonical direct-object control is `json.loads(review_request.to_json())`. Persisted JSON decoding yields exact built-in dictionaries, lists, strings, integers and booleans. The direct `future_remediation_text_review_request_from_dict` path must reject Python subclasses that cannot originate from canonical JSON.
+Both built-in producer forms supported by the handoff must remain green:
 
-The acceptance regression requires exact built-in types for:
+- `json.loads(review_request.to_json())`, where `required_checks` is an exact built-in list;
+- `review_request.as_dict()`, where the dataclass preserves `required_checks` as an exact built-in tuple.
+
+The direct `future_remediation_text_review_request_from_dict` path must reject equivalent-content Python subclasses rather than accepting or normalizing them.
+
+The acceptance regression covers:
 
 - the top-level mapping and all schema keys;
 - schema/future/verdict metadata;
 - request, bundle, proposal, content and review-request SHA-256 lineage;
 - provider/model provenance;
 - positive `item_count`;
-- the `required_checks` list container and every check-name string.
+- both supported built-in `required_checks` container types and every check-name string.
 
-Canonical JSON-decoded producer state must continue to reconstruct the exact review request. Rejection must leave caller-owned input value-equivalent to its pre-call snapshot.
+Rejection must leave caller-owned input value-equivalent to its pre-call snapshot.
 
 ## Separation from existing owners
 
@@ -27,4 +32,4 @@ This is persistence-integrity acceptance only. It invokes no model, performs no 
 
 ## Expected state
 
-The exact #215 parser currently admits these subclasses through broad `isinstance`, schema equality, tuple coercion, string/SHA helpers and integer checks. The new tests are intentionally expected RED until the #215 source owner narrows the programmatic persisted-object boundary.
+The exact #215 parser currently admits subclasses through broad `isinstance`, schema equality, tuple/list coercion, string/SHA helpers and integer checks. The new tests are intentionally expected RED only for subclasses; both exact built-in producer forms remain green.
