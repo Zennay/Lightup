@@ -108,6 +108,26 @@ class FindingExportCliTests(unittest.TestCase):
         self.assertEqual(output, "")
         self.assertIn("temporarily locked", error)
 
+    def test_getpass_echo_fallback_is_denied_before_authentication(self):
+        import warnings
+        from getpass import GetPassWarning
+
+        def unsafe_prompt(*args, **kwargs):
+            warnings.warn("echo fallback", GetPassWarning)
+            raise AssertionError("fallback must stop before reading a password")
+
+        out, err = io.StringIO(), io.StringIO()
+        with patch("sys.stdin.isatty", return_value=True), \
+             patch("lightup.finding_export_cli.getpass", side_effect=unsafe_prompt), \
+             patch.object(DomainStore, "authenticate") as authenticate, \
+             redirect_stdout(out), redirect_stderr(err):
+            code = main(["--db", str(self.db), "--email", "op@example.test",
+                         "--client-id", self.a.client_id])
+        self.assertEqual(code, 2)
+        self.assertEqual(out.getvalue(), "")
+        self.assertIn("Secure password entry unavailable", err.getvalue())
+        authenticate.assert_not_called()
+
     def test_cli_has_no_password_or_role_override_argument(self):
         with redirect_stderr(io.StringIO()):
             for flag in ("--password", "--role"):
