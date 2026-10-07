@@ -6,6 +6,8 @@ This add-only contract protects the pure `ScopeDefinition.allows_asset()` bounda
 - A matching exclusion always overrides an allowlist entry, including differences in ASCII case or surrounding whitespace.
 - No implicit parent, subdomain, or lookalike hostname authorization is inferred.
 - Excluding one asset does not exclude an unrelated allowed sibling.
+- Empty allowlists deny every candidate, including empty identity; repeated allow entries cannot override exclusions.
+- Exact allowlist matching must not implicitly admit lookalike suffixes/prefixes or a trailing-dot hostname variant.
 - Repeated evaluations are deterministic and do not rewrite the declared allow/exclude tuples.
 
 The contract intentionally documents the current exact-string matching semantics; it does **not** assert hostname canonicalization, wildcard expansion, IP-range containment, IDNA treatment, or DNS resolution. Those concerns require separate security review and authorization gates.
