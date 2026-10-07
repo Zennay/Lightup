@@ -29,6 +29,8 @@ def render_client_findings_csv(
     if type(ctx.role) is not Role:
         raise ValueError("canonical access role required")
     _identity(ctx.user_id, "user_id")
+    if ctx.role is not Role.OPERATOR:
+        _identity(ctx.client_id, "context client_id")
     requested = _identity(client_id, "client_id")
     scoped = ctx.resolve_client(requested, "export_findings")
     if scoped != requested:
