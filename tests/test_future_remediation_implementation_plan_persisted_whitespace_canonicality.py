@@ -33,22 +33,38 @@ class FutureRemediationImplementationPlanPersistedWhitespaceCanonicalityTest(
 
     def test_persisted_top_level_text_whitespace_is_tampering_not_normalization(self):
         for field in ("provider_id", "model_id", "summary"):
-            with self.subTest(field=field):
-                payload = self.plan.as_dict()
-                canonical = payload[field]
-                payload[field] = self._surround(canonical)
-                before = dict(payload)
+            for boundary in (" ", "\t", "\n"):
+                with self.subTest(field=field, boundary=repr(boundary)):
+                    payload = self.plan.as_dict()
+                    canonical = payload[field]
+                    payload[field] = f"{boundary}{canonical}{boundary}"
+                    before = dict(payload)
 
-                with self.assertRaises(ValueError):
-                    future_remediation_implementation_plan_from_dict(payload)
+                    with self.assertRaises(ValueError):
+                        future_remediation_implementation_plan_from_dict(payload)
 
-                self.assertEqual(payload, before)
-                self.assertEqual(payload[field], self._surround(canonical))
-                self.assertEqual(
-                    payload["plan_sha256"],
-                    self.plan.plan_sha256,
-                    "tamper case must retain the original persisted digest",
-                )
+                    self.assertEqual(payload, before)
+                    self.assertEqual(
+                        payload[field],
+                        f"{boundary}{canonical}{boundary}",
+                    )
+                    self.assertEqual(
+                        payload["plan_sha256"],
+                        self.plan.plan_sha256,
+                        "tamper case must retain the original persisted digest",
+                    )
+
+    def test_raw_persisted_summary_size_cannot_be_hidden_by_trimming(self):
+        payload = self.plan.as_dict()
+        canonical = payload["summary"]
+        payload["summary"] = (" " * 4_001) + canonical
+        before = dict(payload)
+
+        with self.assertRaises(ValueError):
+            future_remediation_implementation_plan_from_dict(payload)
+
+        self.assertEqual(payload, before)
+        self.assertEqual(payload["plan_sha256"], self.plan.plan_sha256)
 
     def test_persisted_plan_item_text_whitespace_is_tampering_not_normalization(self):
         for field in (
