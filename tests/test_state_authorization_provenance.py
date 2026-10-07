@@ -5,7 +5,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from lightup.activation import ActivationMode
+from lightup.engagements import AssessmentMode
 from lightup.state import StateStore
 
 
@@ -31,37 +31,67 @@ class RunAuthorizationProvenanceTests(unittest.TestCase):
         self.assertEqual(rows[0]["activation_mode"], "plan_only")
         self.assertIsNone(rows[0]["authorization_ref"])
 
-    def test_lab_only_enum_stores_canonical_mode_without_authorization(self):
-        self.store.create_run("lab-target", activation_mode=ActivationMode.LAB_ONLY)
+    def test_non_authorized_assessment_modes_persist_without_authorization(self):
+        for mode in (
+            AssessmentMode.ANALYSIS_ONLY,
+            AssessmentMode.PASSIVE_DISCOVERY,
+            AssessmentMode.LAB_AUTONOMOUS,
+        ):
+            with self.subTest(mode=mode):
+                self.store.create_run(f"target-{mode.value}", activation_mode=mode)
 
         rows = self._runs()
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["activation_mode"], "lab_only")
-        self.assertIsNone(rows[0]["authorization_ref"])
+        self.assertEqual(
+            [row["activation_mode"] for row in rows],
+            ["analysis_only", "passive_discovery", "lab_autonomous"],
+        )
+        self.assertTrue(all(row["authorization_ref"] is None for row in rows))
 
-    def test_existing_exact_canonical_string_mode_remains_supported(self):
-        self.store.create_run("legacy-plan", activation_mode="plan_only")
+    def test_existing_exact_canonical_string_modes_remain_supported(self):
+        for mode in (
+            "plan_only",
+            "analysis_only",
+            "passive_discovery",
+            "lab_autonomous",
+        ):
+            with self.subTest(mode=mode):
+                self.store.create_run(f"target-{mode}", activation_mode=mode)
 
-        rows = self._runs()
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["activation_mode"], "plan_only")
+        self.assertEqual(
+            [row["activation_mode"] for row in self._runs()],
+            ["plan_only", "analysis_only", "passive_discovery", "lab_autonomous"],
+        )
 
-    def test_authorized_run_requires_canonical_reference(self):
+    def test_authorized_assessment_requires_canonical_reference(self):
         run_id = self.store.create_run(
             "authorized-target",
-            activation_mode=ActivationMode.AUTHORIZED,
+            activation_mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
             authorization_ref="approval-123",
         )
 
         self.assertTrue(run_id)
         rows = self._runs()
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["activation_mode"], "authorized")
+        self.assertEqual(rows[0]["activation_mode"], "authorized_assessment")
         self.assertEqual(rows[0]["authorization_ref"], "approval-123")
 
-    def test_unknown_mode_fails_before_persistence(self):
-        with self.assertRaises(ValueError):
-            self.store.create_run("target", activation_mode="authorized_assessment")
+    def test_authorized_assessment_exact_string_mode_is_supported(self):
+        self.store.create_run(
+            "authorized-target",
+            activation_mode="authorized_assessment",
+            authorization_ref="approval-456",
+        )
+
+        rows = self._runs()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["activation_mode"], "authorized_assessment")
+        self.assertEqual(rows[0]["authorization_ref"], "approval-456")
+
+    def test_unknown_or_legacy_activation_mode_fails_before_persistence(self):
+        for mode in ("authorized", "lab_only", "unexpected"):
+            with self.subTest(mode=mode):
+                with self.assertRaises(ValueError):
+                    self.store.create_run("target", activation_mode=mode)
 
         self.assertEqual(self._runs(), [])
 
@@ -70,12 +100,18 @@ class RunAuthorizationProvenanceTests(unittest.TestCase):
             pass
 
         with self.assertRaises(ValueError):
-            self.store.create_run("target", activation_mode=ConfusedMode("plan_only"))
+            self.store.create_run("target", activation_mode=ConfusedMode("lab_autonomous"))
 
         self.assertEqual(self._runs(), [])
 
     def test_non_authorized_modes_reject_authorization_reference(self):
-        for mode in (ActivationMode.PLAN_ONLY, ActivationMode.LAB_ONLY, "plan_only", "lab_only"):
+        modes = (
+            "plan_only",
+            AssessmentMode.ANALYSIS_ONLY,
+            AssessmentMode.PASSIVE_DISCOVERY,
+            AssessmentMode.LAB_AUTONOMOUS,
+        )
+        for mode in modes:
             with self.subTest(mode=mode):
                 with self.assertRaises(ValueError):
                     self.store.create_run(
@@ -86,7 +122,7 @@ class RunAuthorizationProvenanceTests(unittest.TestCase):
 
         self.assertEqual(self._runs(), [])
 
-    def test_authorized_mode_rejects_missing_blank_or_noncanonical_reference(self):
+    def test_authorized_assessment_rejects_missing_blank_or_noncanonical_reference(self):
         class ReferenceSubclass(str):
             pass
 
@@ -103,7 +139,7 @@ class RunAuthorizationProvenanceTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.store.create_run(
                         "target",
-                        activation_mode=ActivationMode.AUTHORIZED,
+                        activation_mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
                         authorization_ref=reference,
                     )
 
