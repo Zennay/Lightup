@@ -117,6 +117,20 @@ class ExecutionLineageIdentityTypeAcceptanceTest(unittest.TestCase):
             ToolCall("lineage-type-probe", "allowed.test"),
         )
 
+    def _state_counts(self) -> tuple[int, int, int]:
+        with self.state.connect() as con:
+            return tuple(
+                con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                for table in ("runs", "capability_leases", "evidence")
+            )
+
+    def _assert_denied_without_state_write(self, context: RunContext) -> None:
+        before = self._state_counts()
+        with self.assertRaises(ToolDenied):
+            self._execute(context)
+        self.assertEqual(self.observed, [])
+        self.assertEqual(self._state_counts(), before)
+
     def test_canonical_exact_lineage_remains_executable(self) -> None:
         self._execute(self._context())
         self.assertEqual(
@@ -125,80 +139,36 @@ class ExecutionLineageIdentityTypeAcceptanceTest(unittest.TestCase):
         )
 
     def test_plain_cross_client_identity_remains_denied(self) -> None:
-        with self.assertRaises(ToolDenied):
-            self._execute(self._context(client_id="foreign-client"))
-        self.assertEqual(self.observed, [])
+        self._assert_denied_without_state_write(
+            self._context(client_id="foreign-client")
+        )
 
     def test_plain_cross_engagement_identity_remains_denied(self) -> None:
-        with self.assertRaises(ToolDenied):
-            self._execute(self._context(engagement_id="foreign-engagement"))
-        self.assertEqual(self.observed, [])
+        self._assert_denied_without_state_write(
+            self._context(engagement_id="foreign-engagement")
+        )
 
     def test_polymorphic_client_identity_cannot_equality_spoof_binding(self) -> None:
         forged = EqualitySpoof("foreign-client")
         self.assertNotEqual(str(forged), self.client.client_id)
-
-        try:
-            self._execute(self._context(client_id=forged))
-        except ToolDenied:
-            pass
-        else:
-            self.fail(
-                "polymorphic foreign client_id crossed TARGET_ACTIVE binding; "
-                f"handler observed {self.observed!r}"
-            )
-
-        self.assertEqual(self.observed, [])
+        self._assert_denied_without_state_write(self._context(client_id=forged))
 
     def test_polymorphic_engagement_identity_cannot_equality_spoof_binding(self) -> None:
         forged = EqualitySpoof("foreign-engagement")
         self.assertNotEqual(str(forged), self.engagement.engagement_id)
-
-        try:
-            self._execute(self._context(engagement_id=forged))
-        except ToolDenied:
-            pass
-        else:
-            self.fail(
-                "polymorphic foreign engagement_id crossed TARGET_ACTIVE binding; "
-                f"handler observed {self.observed!r}"
-            )
-
-        self.assertEqual(self.observed, [])
+        self._assert_denied_without_state_write(self._context(engagement_id=forged))
 
     def test_polymorphic_matching_client_identity_is_still_denied(self) -> None:
         forged = EqualitySpoof(self.client.client_id)
         self.assertEqual(str(forged), self.client.client_id)
         self.assertIsNot(type(forged), str)
-
-        try:
-            self._execute(self._context(client_id=forged))
-        except ToolDenied:
-            pass
-        else:
-            self.fail(
-                "polymorphic matching client_id crossed TARGET_ACTIVE type boundary; "
-                f"handler observed {self.observed!r}"
-            )
-
-        self.assertEqual(self.observed, [])
+        self._assert_denied_without_state_write(self._context(client_id=forged))
 
     def test_polymorphic_matching_engagement_identity_is_still_denied(self) -> None:
         forged = EqualitySpoof(self.engagement.engagement_id)
         self.assertEqual(str(forged), self.engagement.engagement_id)
         self.assertIsNot(type(forged), str)
-
-        try:
-            self._execute(self._context(engagement_id=forged))
-        except ToolDenied:
-            pass
-        else:
-            self.fail(
-                "polymorphic matching engagement_id crossed TARGET_ACTIVE type boundary; "
-                f"handler observed {self.observed!r}"
-            )
-
-        self.assertEqual(self.observed, [])
+        self._assert_denied_without_state_write(self._context(engagement_id=forged))
 
 
 if __name__ == "__main__":
