@@ -378,11 +378,19 @@ class FutureSubjectResolution:
             )
         if not self.change_node_id.startswith("change:"):
             raise ValueError("subject resolution must target a future change node")
+        if type(self.evidence_ids) is not tuple:
+            raise ValueError(
+                "subject resolution evidence_ids must be an exact built-in tuple"
+            )
         if not self.evidence_ids:
             raise ValueError("subject resolution requires evidence")
         if len(self.evidence_ids) > _MAX_RESOLUTION_EVIDENCE_IDS:
             raise ValueError(
                 f"subject resolution accepts at most {_MAX_RESOLUTION_EVIDENCE_IDS} evidence ids"
+            )
+        if any(type(item) is not str for item in self.evidence_ids):
+            raise ValueError(
+                "subject resolution evidence_ids must contain exact built-in strings"
             )
         try:
             for item in self.evidence_ids:
