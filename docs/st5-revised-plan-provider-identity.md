@@ -10,13 +10,15 @@ It isolates provider identity provenance only. It does not modify the #503 sourc
 
 A model response used to create a revised implementation plan must originate from the exact provider bound to `ModelRole.REMEDIATION_ADVISOR`.
 
-The producer already rejects a wrong role and wrong model identity. The provider identity must receive the same fail-closed treatment: a response may not substitute a different `provider_id` while preserving the bound model ID and role.
+The producer already rejects a wrong role and wrong model identity. The gateway also enforces provider identity before the producer receives the response.
 
-## Expected RED
+## Proven guard
 
 The adversarial provider is registered under the canonical provider ID but returns a `ModelResponse` whose `provider_id` is `forged-revision-provider`. The response keeps the exact requested model ID and role.
 
-At the #503 source head this response is accepted and the forged provider ID is incorporated into the revised-plan artifact and digest. The rejection test therefore remains intentionally RED until the #503 owner absorbs the provider-identity check.
+`ModelGateway.complete()` rejects that response with `GatewayConfigurationError` before #503 can construct or digest a revised-plan artifact. The paired canonical control proves that the legitimate bound provider continues to produce the same non-executable revised plan.
+
+This closes the suspected provider-substitution gap at the shared gateway layer; no #503 source change is required.
 
 ## Safety
 
