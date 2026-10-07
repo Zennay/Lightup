@@ -18,23 +18,26 @@ that:
 - exclusions are canonicalized by the same rule and continue to win;
 - existing case-folding and surrounding-whitespace normalization remains;
 - exact scope stays exact: canonicalizing the terminal dot must not authorize
-  child/suffix hosts such as `api.example.test`.
+  child/suffix hosts such as `api.example.test`;
+- exactly one terminal DNS root dot is removed; malformed multi-dot spellings
+  such as `example.test..` remain distinct and cannot inherit authority.
 
-## Expected current result
+## Implementation
 
-Exact current `main` normalizes durable scope entries with only
-`strip().lower()`. It does not remove a single terminal DNS dot. The four
-equivalence/exclusion cases are therefore expected RED while the existing
-case/whitespace and unrelated-host controls remain green.
+The child repair branch centralizes durable asset canonicalization in
+`ScopeDefinition._canonical_asset()`: surrounding whitespace is removed,
+case is folded, and exactly one terminal DNS root dot is removed with
+`removesuffix(".")`.
+
+Allowlist entries, exclusions, and the caller-supplied asset all use that same
+canonicalizer before membership is evaluated, so exclusions still win after
+normalization.
 
 ## Collision boundary
 
-This branch is tests/docs only. It does not edit
-`src/lightup/engagements.py`, `domain.py`, `scope.py`, activation,
+This repair edits only `src/lightup/engagements.py` plus the dedicated #117
+regression/doc paths. It does not edit `domain.py`, `scope.py`, activation,
 execution policy, webapp, orchestration, or any target-capable source.
-
-The production repair belongs to the existing durable asset-identity source
-owner; this branch only defines the acceptance boundary for #117.
 
 ## Safety
 
