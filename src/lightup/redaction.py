@@ -4,6 +4,10 @@ import re
 
 _PATTERNS: tuple[tuple[re.Pattern[str], object], ...] = (
     (
+        re.compile(r"(?im)^([ \t]*(?:set-cookie|cookie):[ \t]*)[^\r\n]*$"),
+        r"\1[REDACTED]",
+    ),
+    (
         re.compile(r"(?i)\b(https?://)[^\s/@]+@"),
         r"\1[REDACTED]@",
     ),
