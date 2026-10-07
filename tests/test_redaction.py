@@ -88,6 +88,12 @@ class RedactionTests(unittest.TestCase):
         value = "session_tokenizer=ordinary-value"
         self.assertEqual(redact_text(value), value)
 
+    def test_common_secret_assignment_preserves_query_tail(self):
+        self.assertEqual(
+            redact_text("api_key=supersecret&next=1"),
+            "api_key=[REDACTED]&next=1",
+        )
+
     def test_common_secret_assignment_is_redacted(self):
         output = redact_text("api_key=supersecret")
         self.assertNotIn("supersecret", output)
