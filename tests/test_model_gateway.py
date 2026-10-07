@@ -25,6 +25,17 @@ class EqualitySpoofProviderId(str):
         return False
 
 
+class EqualitySpoofModelId(str):
+    def __new__(cls):
+        return super().__new__(cls, "forged-model")
+
+    def __eq__(self, other):
+        return other == "lab-model"
+
+    def __ne__(self, other):
+        return False
+
+
 class ResponseProviderSpoof(ModelProvider):
     @property
     def provider_id(self) -> str:
@@ -34,6 +45,20 @@ class ResponseProviderSpoof(ModelProvider):
         return ModelResponse(
             provider_id=EqualitySpoofProviderId(),
             model_id=request.model_id,
+            role=request.role,
+            content="ok",
+        )
+
+
+class ResponseModelSpoof(ModelProvider):
+    @property
+    def provider_id(self) -> str:
+        return "model-spoof-provider"
+
+    def complete(self, request: ModelRequest) -> ModelResponse:
+        return ModelResponse(
+            provider_id=self.provider_id,
+            model_id=EqualitySpoofModelId(),
             role=request.role,
             content="ok",
         )
@@ -95,6 +120,21 @@ class ModelGatewayTest(unittest.TestCase):
         with self.assertRaisesRegex(
             GatewayConfigurationError,
             "provider returned a response under a different provider_id",
+        ):
+            gateway.complete(
+                ModelRole.PLANNER,
+                (ModelMessage("user", "make a plan"),),
+            )
+
+    def test_response_model_identity_requires_exact_string(self):
+        provider = ResponseModelSpoof()
+        gateway = ModelGateway()
+        gateway.register_provider(provider)
+        gateway.bind_role(ModelRole.PLANNER, provider.provider_id, "lab-model")
+
+        with self.assertRaisesRegex(
+            GatewayConfigurationError,
+            "provider returned a response under a different model_id",
         ):
             gateway.complete(
                 ModelRole.PLANNER,
