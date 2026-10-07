@@ -156,6 +156,7 @@ def run_lab_baseline(
                 "fix": f.remediation,
                 "retest": f.retest_status.value,
                 "check_id": f.metadata["check_id"],
+                "evidence_summary": result.summary,
             }
             for f in findings
         ],
@@ -232,6 +233,7 @@ def run_planned_assessment(
     runtime = time.monotonic() - started
 
     findings = []
+    evidence_summaries: dict[str, str] = {}
     for call, result in execution.results:
         meta = dict(result.metadata)
         arguments = dict(call.arguments)
@@ -240,19 +242,19 @@ def run_planned_assessment(
         target = str(arguments.get("url") or call.asset)
         for check_id in (c for c in meta.get("issues", "").split(",") if c):
             title, severity, impact, remediation = CHECK_CATALOG[check_id]
-            findings.append(
-                Finding(
-                    finding_id=f"{context.run_id[:8]}-{check_id}",
-                    title=title,
-                    severity=severity,
-                    target=target,
-                    evidence=[f"evidence:{result.evidence_id}"],
-                    remediation=remediation,
-                    retest_status=RetestStatus.NOT_TESTED,
-                    metadata={"impact": impact, "check_id": check_id,
-                              "capability_id": result.capability_id},
-                )
+            finding = Finding(
+                finding_id=f"{context.run_id[:8]}-{check_id}",
+                title=title,
+                severity=severity,
+                target=target,
+                evidence=[f"evidence:{result.evidence_id}"],
+                remediation=remediation,
+                retest_status=RetestStatus.NOT_TESTED,
+                metadata={"impact": impact, "check_id": check_id,
+                          "capability_id": result.capability_id},
             )
+            findings.append(finding)
+            evidence_summaries[finding.finding_id] = result.summary
 
     assessed = {capability: CoverageStatus.ASSESSED
                 for capability in execution.assessed_capabilities()}
@@ -297,7 +299,8 @@ def run_planned_assessment(
              "impact": f.metadata["impact"], "fix": f.remediation,
              "retest": f.retest_status.value, "check_id": f.metadata["check_id"],
              "capability_id": f.metadata["capability_id"], "target": f.target,
-             "evidence_ids": list(f.evidence)}
+             "evidence_ids": list(f.evidence),
+             "evidence_summary": evidence_summaries[f.finding_id]}
             for f in findings
         ],
         "coverage": coverage.to_dict(),
