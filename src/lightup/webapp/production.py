@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 from ..domain import DomainStore
-from .app import create_app
+from .finding_exports import create_app_with_exports as create_app
 from .security import WebSecurity
 
 

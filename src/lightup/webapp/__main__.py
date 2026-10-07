@@ -11,7 +11,7 @@ from ipaddress import ip_address
 from wsgiref.simple_server import make_server
 
 from ..domain import DomainStore
-from .app import create_app
+from .finding_exports import create_app_with_exports as create_app
 
 
 def _loopback(value: str) -> str:
