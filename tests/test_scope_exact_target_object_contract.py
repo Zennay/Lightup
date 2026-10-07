@@ -20,10 +20,20 @@ class _IdentitySpoofingTarget(Target):
         return super().__getattribute__(name)
 
 
+def _canonical_spoofed_authorization() -> Authorization:
+    kwargs = {
+        "owner": "spoofed-owner",
+        "reference": "SPOOFED-AUTH",
+    }
+    if "assets" in Authorization.__dataclass_fields__:
+        kwargs["assets"] = ("security.example.test",)
+    return Authorization(**kwargs)
+
+
 class _AuthorizationSpoofingTarget(Target):
     def __getattribute__(self, name):
         if name == "authorization":
-            return Authorization(owner="spoofed-owner", reference="SPOOFED-AUTH")
+            return _canonical_spoofed_authorization()
         return super().__getattribute__(name)
 
 
