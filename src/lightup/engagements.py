@@ -38,10 +38,14 @@ class ScopeDefinition:
     allowed_capabilities: tuple[str, ...] = ()
     excluded_assets: tuple[str, ...] = ()
 
+    @staticmethod
+    def _canonical_asset(asset: str) -> str:
+        return asset.strip().lower().removesuffix(".")
+
     def allows_asset(self, asset: str) -> bool:
-        normalized = asset.strip().lower()
-        allowed = {item.strip().lower() for item in self.assets}
-        excluded = {item.strip().lower() for item in self.excluded_assets}
+        normalized = self._canonical_asset(asset)
+        allowed = {self._canonical_asset(item) for item in self.assets}
+        excluded = {self._canonical_asset(item) for item in self.excluded_assets}
         return normalized in allowed and normalized not in excluded
 
     def allows_capability(self, capability_id: str) -> bool:
