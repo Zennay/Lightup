@@ -5,21 +5,23 @@ Pinned parent: PR #163 exact head `3dfacdcf2d939cd5e19bf9ce143f03a0b16a4274`
 
 ## Boundary
 
-`ExecutionPolicy.decide()` is an authorization boundary. Before reading request fields or selecting an interaction-specific path, it must establish that the caller supplied the canonical immutable request object:
+`ExecutionPolicy.decide()` is an authorization boundary. Before reading **any request field** or selecting an interaction-specific path, it must establish that the caller supplied the canonical immutable request object:
 
 ```python
 type(request) is ExecutionRequest
 ```
 
-Structural compatibility is not sufficient.
+Structural compatibility is not sufficient. The outer-object gate must run before caller-controlled attribute dispatch.
 
 ## Acceptance matrix
 
 - exact `ExecutionRequest` + ANALYSIS + ANALYSIS_ONLY: green control;
-- duck-typed object exposing all expected fields: fail closed;
-- `ExecutionRequest` subclass with canonical-looking values: fail closed.
+- duck-typed object exposing all expected fields: fail closed with **zero request-field reads**;
+- `ExecutionRequest` subclass with canonical-looking values: fail closed with **zero request-field reads**.
 
-The two non-canonical cases are intentionally expected RED on the pinned #163 source because `ExecutionPolicy.decide()` currently validates fields but not the outer request object.
+The two non-canonical cases are intentionally expected RED on the pinned #163 source. The source has field-level guards, but it reads `interaction`, `requested_risk`, and `is_lab` before establishing the outer request object's identity.
+
+The access-log assertions make the ordering contract explicit: a future repair that merely rejects the object *after* reading polymorphic fields is still insufficient.
 
 ## Why this is separate
 
