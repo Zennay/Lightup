@@ -22,13 +22,20 @@ contract.
 ## Acceptance
 
 The dedicated regression keeps both canonical forms green and requires
-equal-content subclasses to fail closed before decode or strict object parsing:
+equal-content subclasses to fail closed at the outer consumer boundary:
 
 - exact built-in JSON text: accepted;
 - exact built-in decoded object: accepted;
 - `str` subclass carrying byte-identical JSON: rejected;
 - top-level `dict` subclass carrying the canonical decoded payload: rejected;
-- rejected caller-owned values remain unchanged.
+- rejected caller-owned values remain unchanged;
+- a `str` subclass is rejected before `json.loads` is dispatched;
+- a `dict` subclass is rejected before the strict #64 request parser is
+  dispatched.
+
+The pre-dispatch assertions are deliberate. They prove this consumer owns the
+runtime-type boundary instead of relying on deeper parser behavior to reject an
+in-process object that canonical persistence cannot produce.
 
 On the pinned #136 source head these subclass cases are intentionally expected
 RED because `_persisted_payload()` uses broad `isinstance` checks.
