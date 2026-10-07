@@ -17,11 +17,14 @@ Pinned production source owner: draft PR #670 exact head
 - #906 — persisted unlocked login-failure counters stay inside the canonical
   integer domain. Negative, at/above-threshold, REAL or TEXT counters fail
   closed before credential verification and are not silently reset.
+- #910 — concurrent failed authentications serialize durable failure accounting.
+  Two failures from an empty counter must persist two failures, never collapse
+  to one stale lost update.
 
 ## Composition boundary
 
-This pack carries only the eight dedicated regression/contract files from
-#803/#806/#903/#906 plus this manifest. It changes no production source.
+This pack carries only the ten dedicated regression/contract files from
+#803/#806/#903/#906/#910 plus this manifest. It changes no production source.
 
 PR #670 remains the sole production owner for the relevant
 `src/lightup/domain.py` boundaries.
@@ -33,5 +36,5 @@ separate and unchanged.
 
 No target interaction, capability execution, remediation/retest execution,
 deployment, verdict or attack-path authority is introduced. This pack only
-narrows local credential/session authentication inputs and durable lockout
-state.
+narrows local credential/session authentication inputs, durable lockout state,
+and failure-accounting concurrency.
