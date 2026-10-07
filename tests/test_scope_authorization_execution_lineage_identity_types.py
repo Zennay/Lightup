@@ -166,6 +166,40 @@ class ExecutionLineageIdentityTypeAcceptanceTest(unittest.TestCase):
 
         self.assertEqual(self.observed, [])
 
+    def test_polymorphic_matching_client_identity_is_still_denied(self) -> None:
+        forged = EqualitySpoof(self.client.client_id)
+        self.assertEqual(str(forged), self.client.client_id)
+        self.assertIsNot(type(forged), str)
+
+        try:
+            self._execute(self._context(client_id=forged))
+        except ToolDenied:
+            pass
+        else:
+            self.fail(
+                "polymorphic matching client_id crossed TARGET_ACTIVE type boundary; "
+                f"handler observed {self.observed!r}"
+            )
+
+        self.assertEqual(self.observed, [])
+
+    def test_polymorphic_matching_engagement_identity_is_still_denied(self) -> None:
+        forged = EqualitySpoof(self.engagement.engagement_id)
+        self.assertEqual(str(forged), self.engagement.engagement_id)
+        self.assertIsNot(type(forged), str)
+
+        try:
+            self._execute(self._context(engagement_id=forged))
+        except ToolDenied:
+            pass
+        else:
+            self.fail(
+                "polymorphic matching engagement_id crossed TARGET_ACTIVE type boundary; "
+                f"handler observed {self.observed!r}"
+            )
+
+        self.assertEqual(self.observed, [])
+
 
 if __name__ == "__main__":
     unittest.main()
