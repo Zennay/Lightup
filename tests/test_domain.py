@@ -177,7 +177,14 @@ class DomainStoreTest(unittest.TestCase):
             self.operator, self.client_a.client_id, "Coverage boundary"
         )
 
-        for capability_id in ("", "unknown-capability"):
+        class ForgedCapabilityId(str):
+            pass
+
+        for capability_id in (
+            "",
+            "unknown-capability",
+            ForgedCapabilityId("web-baseline"),
+        ):
             with self.subTest(capability_id=capability_id):
                 with self.assertRaises(ValueError):
                     self.store.set_coverage(
