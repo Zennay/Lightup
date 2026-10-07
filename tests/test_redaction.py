@@ -30,6 +30,24 @@ class RedactionTests(unittest.TestCase):
         output = redact_text(value)
         self.assertEqual(output, "Proxy-Authorization: Basic [REDACTED]")
 
+    def test_arbitrary_authorization_scheme_payload_is_redacted(self):
+        value = (
+            'Authorization: Digest username="alice", realm="admin", '
+            'response="0123456789abcdef"'
+        )
+        self.assertEqual(redact_text(value), "Authorization: Digest [REDACTED]")
+
+    def test_proxy_authorization_scheme_payload_is_redacted(self):
+        value = "proxy-authorization: Negotiate TlRMTVNTUAABAAAAB4IIAAAAAAAAAAAAAAAAAAAAAAA="
+        self.assertEqual(
+            redact_text(value),
+            "proxy-authorization: Negotiate [REDACTED]",
+        )
+
+    def test_authorization_word_in_unrelated_text_is_unchanged(self):
+        value = "authorization status: denied"
+        self.assertEqual(redact_text(value), value)
+
     def test_url_userinfo_credentials_are_redacted_without_losing_target_context(self):
         value = "https://alice:secret@example.test:8443/path?q=1#frag"
         output = redact_text(value)

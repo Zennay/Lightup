@@ -8,6 +8,13 @@ _PATTERNS: tuple[tuple[re.Pattern[str], object], ...] = (
         r"\1[REDACTED]",
     ),
     (
+        re.compile(
+            r"(?im)^([ \t]*(?:proxy-)?authorization:[ \t]*"
+            r"[A-Za-z][A-Za-z0-9._~+\-]*[ \t]+)[^\r\n]*$"
+        ),
+        r"\1[REDACTED]",
+    ),
+    (
         re.compile(r"(?i)\b(https?://)[^\s/@]+@"),
         r"\1[REDACTED]@",
     ),
