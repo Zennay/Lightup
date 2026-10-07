@@ -71,12 +71,12 @@ class FutureRemediationImplementationPlanRevisionProposalTest(unittest.TestCase)
         self.review = self.base._review(review_gateway)
         self.prior_plan = self.base.implementation_plan
         self.plan_review_request = self.base.review_request
-        self.planning_request = self.base.base.base.base.planning_request
-        self.remediation_review = self.base.base.base.base.base.review
+        self.planning_request = self.base.base.base.base.base.planning_request
+        self.remediation_review = self.base.base.base.base.base.base.review
         self.remediation_review_request = (
-            self.base.base.base.base.base.base.review_request
+            self.base.base.base.base.base.base.base.review_request
         )
-        self.proposal = self.base.base.base.base.base.base.proposal
+        self.proposal = self.base.base.base.base.base.base.base.proposal
         self.root = self.base.base.base.base.base.base.base
 
         self.revision_request = (
