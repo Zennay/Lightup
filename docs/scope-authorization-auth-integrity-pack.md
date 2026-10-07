@@ -14,11 +14,14 @@ Pinned production source owner: draft PR #670 exact head
 - #903 — persisted login-lockout timestamps are canonical aware datetimes.
   Malformed or naive durable state fails closed as authentication lockout rather
   than leaking parser/runtime behavior.
+- #906 — persisted unlocked login-failure counters stay inside the canonical
+  integer domain. Negative, at/above-threshold, REAL or TEXT counters fail
+  closed before credential verification and are not silently reset.
 
 ## Composition boundary
 
-This pack carries only the six dedicated regression/contract files from
-#803/#806/#903 plus this manifest. It changes no production source.
+This pack carries only the eight dedicated regression/contract files from
+#803/#806/#903/#906 plus this manifest. It changes no production source.
 
 PR #670 remains the sole production owner for the relevant
 `src/lightup/domain.py` boundaries.
