@@ -17,6 +17,15 @@ class ToolCallDuplicateArgumentsTests(unittest.TestCase):
         with self.assertRaises((OrchestrationError, ValueError)):
             call.arguments_dict()
 
+    def test_identical_duplicate_key_is_also_ambiguous(self):
+        call = ToolCall(
+            tool_id="offline-example",
+            asset="offline.invalid",
+            arguments=(("limit", 1), ("limit", 1)),
+        )
+        with self.assertRaises((OrchestrationError, ValueError)):
+            call.arguments_dict()
+
     def test_distinct_arguments_remain_available(self):
         call = ToolCall(
             tool_id="offline-example",
