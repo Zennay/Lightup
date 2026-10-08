@@ -15,3 +15,7 @@ Additional offline subcases pin the current/future twin identifiers and versions
 ## Counts and input immutability
 
 The reference suite additionally asserts the remediation/retest/evidence-gap counters and item membership affect the digest, and hashing leaves the supplied report and frozen item references unchanged. These low-level digest assertions do not replace producer-side consistency validation; a digest can bind inconsistent counters if the producer supplies them. The normal public builder remains responsible for rejecting inconsistent planning state.
+
+## Independent canonical reconstruction
+
+A separate test constructs a complete canonical ST5 JSON payload (including all three deny-authority flags, unresolved future semantics, and not-evaluated verdict) and independently computes SHA-256. It checks the production helper against the explicit fixture encoding without invoking any target or producing authorization. This catches accidental serialization key/flag changes, but does not prove an authenticated evidence ledger or retest outcome.
