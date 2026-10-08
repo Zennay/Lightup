@@ -81,5 +81,30 @@ class RevocationTransitionMatrixTest(unittest.TestCase):
                 self.assertTrue(case.strip() and result.strip() and guard.strip())
 
 
+    def test_case_results_and_guards_use_closed_vocabulary(self):
+        # Prevent a future fixture edit from silently weakening expected outcomes.
+        allowed = {
+            "revoked_before_dispatch": ("deny", "zero_handler_calls"),
+            "expired_in_queue": ("deny", "zero_handler_calls"),
+            "resolver_missing_or_error": ("deny", "zero_handler_calls"),
+            "asset_narrowed": ("deny", "zero_handler_calls"),
+            "capability_or_risk_broadened": ("deny", "new_run_required"),
+            "validity_window_broadened": ("deny", "new_run_required"),
+            "revoked_between_steps": ("halt_before_next_step", "cancellation_checkpoint"),
+            "retry_after_revocation": ("deny", "fresh_revalidation"),
+            "cross_tenant_isolation": ("tenant_specific", "no_cross_tenant_authority"),
+            "denial_audit_sink_failed": ("deny", "no_permission_fallback"),
+            "analysis_only_non_target": ("analysis_only", "no_target_dispatch"),
+        }
+        actual = {case: (result, guard) for case, result, guard in self.matrix["scenarios"]}
+        self.assertEqual(actual, allowed)
+
+    def test_fixture_does_not_accidentally_authorize_any_target(self):
+        for case, result, guard in self.matrix["scenarios"]:
+            with self.subTest(case=case):
+                self.assertNotIn(result, {"allow", "permit", "execute", "authorized"})
+                self.assertNotIn(guard, {"skip_revalidation", "ignore_revocation", "fallback_allow"})
+
+
 if __name__ == "__main__":
     unittest.main()
