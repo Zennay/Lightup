@@ -58,6 +58,11 @@ class RemediationReceiptTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 validate_remediation_receipt(receipt(evidence_sha256=value))
 
+    def test_control_characters_in_finding_identity_denied(self):
+        for value in ("a\\nb", "a\\x00b", "a\\x7fb", " a", "a "):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                validate_remediation_receipt(receipt(finding_id=value))
+
     def test_status_subclass_denied(self):
         class Status(str):
             pass
