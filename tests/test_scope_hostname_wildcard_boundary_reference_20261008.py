@@ -7,7 +7,7 @@ import re
 import ipaddress
 import unittest
 
-_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\Z", re.ASCII)
+_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z", re.ASCII)
 
 
 def exact_dns_selector(value: object) -> bool:
