@@ -72,5 +72,32 @@ class ApprovalEnvelopeReferenceTests(unittest.TestCase):
             with self.subTest(grant=grant):
                 self.assertFalse(reference_decision(self.candidate, grant, NOW))
 
+
+    def test_approval_inputs_unchanged_after_denied_attempt(self):
+        before = (self.candidate, self.grant)
+        denied = replace(self.candidate, tenant="foreign-tenant")
+        self.assertFalse(reference_decision(denied, self.grant, NOW))
+        self.assertEqual((self.candidate, self.grant), before)
+
+    def test_reapproval_does_not_transfer_to_old_revision(self):
+        newer = replace(self.grant, revision="r2")
+        self.assertFalse(reference_decision(self.candidate, newer, NOW))
+        self.assertTrue(reference_decision(replace(self.candidate, revision="r2"), newer, NOW))
+
+    def test_untrusted_outer_identity_denied(self):
+        class SpoofedCandidate(Candidate):
+            pass
+        class SpoofedApproval(ApprovalEnvelope):
+            pass
+        self.assertFalse(reference_decision(SpoofedCandidate(**vars(self.candidate)), self.grant, NOW))
+        self.assertFalse(reference_decision(self.candidate, SpoofedApproval(**vars(self.grant)), NOW))
+
+    def test_canonical_offset_aware_window_acceptance(self):
+        offset = timezone(timedelta(hours=2))
+        local_time = NOW.astimezone(offset)
+        self.assertTrue(reference_decision(self.candidate, self.grant, local_time))
+        self.assertFalse(reference_decision(self.candidate, self.grant,
+                                            NOW - timedelta(hours=2)))
+
 if __name__ == "__main__":
     unittest.main()
