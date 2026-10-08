@@ -1,0 +1,5 @@
+# ST5 remediation-plan digest offline regression contract
+
+This additive test suite pins deterministic ST5 plan SHA-256 generation and ensures changing tenant, changeset, report, evidence, resolution, capability, action or item order changes the digest. It additionally pins planning classification outcomes for introduced, worsened, removed, improved and insufficient-evidence transitions, and requires unknown classifications to be rejected.
+
+Run `PYTHONPATH=src python -m unittest tests.test_st5_remediation_plan_digest_reference -v` or via `unittest discover` on the canonical runner. This is an isolated reference regression of existing helpers, **not** an independently verified persisted or authenticated receipt, cryptographic signature, production authorization decision, or execution guarantee. No active network, target, capability, remediation or retest operation is performed. Existing source owners, adjacent evidence-remediation PRs, and production entrypoints are unchanged. Keep draft until exact-head CI and permanent VPS proof, review and integration.
