@@ -111,6 +111,39 @@ class RemediationPlanDigestBoundaryTests(unittest.TestCase):
             with self.subTest(changed=changed):
                 self.assertNotEqual(original, digest(items=(changed,)))
 
+    def test_counter_and_membership_changes_alter_digest(self):
+        baseline = digest()
+        for counters in (
+            (0, 1, 0),
+            (1, 0, 0),
+            (1, 1, 1),
+        ):
+            with self.subTest(counters=counters):
+                candidate = _plan_digest(
+                    report=report(), items=(item(),),
+                    remediation_item_count=counters[0],
+                    retest_item_count=counters[1],
+                    evidence_gap_count=counters[2],
+                )
+                self.assertNotEqual(baseline, candidate)
+        self.assertNotEqual(
+            baseline,
+            _plan_digest(
+                report=report(), items=(),
+                remediation_item_count=1, retest_item_count=1,
+                evidence_gap_count=0,
+            ),
+        )
+
+    def test_digest_does_not_mutate_input_references(self):
+        r = report()
+        entries = (item(),)
+        before_report = vars(r).copy()
+        before_item = entries[0].as_dict()
+        digest(r=r, items=entries)
+        self.assertEqual(vars(r), before_report)
+        self.assertEqual(entries[0].as_dict(), before_item)
+
     def test_order_is_lineage_significant(self):
         other = replace(item(), resolution_id="resolution-b")
         self.assertNotEqual(digest(items=(item(), other)), digest(items=(other, item())))
