@@ -35,6 +35,12 @@ class LabRiskIdentityAcceptance(unittest.TestCase):
     def test_canonical_lab_risk_remains_permitted(self):
         self.assertTrue(self.decide(RiskLevel.LOW_IMPACT).allowed)
 
+    def test_all_canonical_lab_risk_members_keep_existing_policy_behavior(self):
+        # Risk identity hardening must not accidentally block real enum members.
+        for risk in RiskLevel:
+            with self.subTest(risk=risk.name):
+                self.assertTrue(self.decide(risk).allowed)
+
     def test_non_lab_target_remains_denied(self):
         self.assertFalse(self.decide(RiskLevel.LOW_IMPACT, is_lab=False).allowed)
 
