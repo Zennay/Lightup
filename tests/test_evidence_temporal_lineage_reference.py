@@ -100,6 +100,31 @@ class TemporalEvidenceLineageReferenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "evidence temporal integrity"):
             validate_lineage(DictSubclass(self.rows[0]), *self.rows[1:])
 
+    def test_timestamp_subclass_rejected(self):
+        class StrSubclass(str):
+            pass
+        self.reject("at", StrSubclass("2026-10-08T11:00:00+00:00"), 1)
+
+    def test_empty_timestamp_rejected(self):
+        self.reject("at", "", 1)
+
+    def test_oversized_timestamp_rejected(self):
+        self.reject("at", "2" * 41, 1)
+
+    def test_noncanonical_finding_identity_rejected(self):
+        self.reject("finding_id", " finding-1", 1)
+
+    def test_same_evidence_id_on_adjacent_steps_rejected(self):
+        self.reject("evidence_id", "fix-a", 2)
+
+    def test_retest_equal_to_fix_rejected(self):
+        self.reject("at", self.rows[1]["at"], 2)
+
+    def test_canonical_inputs_unchanged(self):
+        snapshot = repr(self.rows)
+        validate_lineage(*self.rows)
+        self.assertEqual(repr(self.rows), snapshot)
+
     def test_extra_authority_fields_rejected(self):
         rows = [dict(r) for r in self.rows]
         rows[2]["approved"] = True
