@@ -5,7 +5,7 @@ These tests intentionally do not exercise a production authorization grant.
 import re
 import unittest
 
-IDENTIFIER = re.compile(r"[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?\\Z", re.ASCII)
+IDENTIFIER = re.compile(r"[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?\Z", re.ASCII)
 
 def reference_identifier(value):
     # No implicit coercion, whitespace repair, case folding or Unicode normalization.
@@ -19,9 +19,9 @@ class IdentifierBoundaryContract(unittest.TestCase):
 
     def test_noncanonical_or_ambiguous_identifiers_deny(self):
         for value in ("", " ", " tenant", "tenant ", "Tenant", "a.b", "a/b",
-                      "a\\\\b", "a:b", "a@b", "_abc", "-abc", "abc_", "abc-",
-                      "a" * 65, "a\\n", "a\\x00", "a\\t", "a\\r", "a\\u200b",
-                      "a\\u00e9", "a\\u0430", "a\\uff41", "a\\u212a"):
+                      "a\\b", "a:b", "a@b", "_abc", "-abc", "abc_", "abc-",
+                      "a" * 65, "a\n", "a\x00", "a\t", "a\r", "a\u200b",
+                      "a\u00e9", "a\u0430", "a\uff41", "a\u212a"):
             with self.subTest(value=repr(value)):
                 self.assertFalse(reference_identifier(value))
 
@@ -37,7 +37,7 @@ class IdentifierBoundaryContract(unittest.TestCase):
                 self.assertFalse(reference_identifier(value))
 
     def test_identity_does_not_silently_canonicalize(self):
-        for value in ("Tenant", "tenant ", "t\\u0435nant", "Ｔenant"):
+        for value in ("Tenant", "tenant ", "t\u0435nant", "Ｔenant"):
             self.assertFalse(reference_identifier(value))
             self.assertNotEqual(value, "tenant")
 
