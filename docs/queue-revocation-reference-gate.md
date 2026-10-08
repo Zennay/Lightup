@@ -2,7 +2,7 @@
 
 This is an **independent executable reference model**, not LightUp production code, an integration test, or permission to contact targets. It does not import or modify the production executor.
 
-The six deterministic unittest cases cover revocation between enqueue and dispatch, retries after revocation, reapproval under a reused identifier, tenant-separated identifiers, absent live authority, and unchanged valid model authority. No sockets, DNS, real handlers, scanners, credentials, or external services are used.
+The ten deterministic unittest cases cover revocation between enqueue and dispatch, retries after revocation, reapproval under a reused identifier, tenant-separated identifiers, absent live authority, unchanged valid model authority, invalid tenant selectors, isolated revocation of a different tenant, inter-step denial, and same-revision inactive replacement. No sockets, DNS, real handlers, scanners, credentials, or external services are used.
 
 ## Required production contract
 
@@ -15,3 +15,7 @@ The six deterministic unittest cases cover revocation between enqueue and dispat
 - Green results for this model alone must never enable active-target execution.
 
 Run locally without network access: `python -m unittest discover -s tests -p test_queue_revocation_reference_gate.py -v`.
+
+## Reference-model limitation
+
+Python dataclass equality compares field values; it is **not a secure grant-lineage primitive**. The production implementation must validate exact issuer-owned lineage, immutable authorized scope and revocation epoch, not trust an attacker-supplied equivalent object or integer revision. The tests do not demonstrate that stronger property. The inter-step test verifies only a newly dispatched model action, not asynchronous interruption of a running handler.
