@@ -118,6 +118,30 @@ class EnvelopeBoundsReferenceTests(unittest.TestCase):
         raw = b'{"a":' * 300 + b'null' + b'}' * 300
         self.assertFalse(bounded_envelope(raw, max_bytes=10000))
 
+    def test_duplicate_keys_nested_or_escaped_denied(self):
+        for raw in (
+            b'{"outer":{"x":1,"x":2}}',
+            b'{"a":1,"\\\\u0061":2}',
+            b'{"entries":[{"x":1,"x":2}]}',
+        ):
+            with self.subTest(raw=raw):
+                self.assertFalse(bounded_envelope(raw))
+
+    def test_noncanonical_document_boundaries_denied(self):
+        for raw in (
+            b'', b'   ', b'{}{}', b'{} true',
+            bytes([0xef, 0xbb, 0xbf]) + b'{}',
+            b'{"ok":true} trailing',
+        ):
+            with self.subTest(raw=raw):
+                self.assertFalse(bounded_envelope(raw))
+
+    def test_max_nodes_inclusive_for_nested_containers(self):
+        document = b'{"items":[true,null]}'
+        self.assertTrue(bounded_envelope(document, max_nodes=4, max_depth=3))
+        self.assertFalse(bounded_envelope(document, max_nodes=3, max_depth=3))
+        self.assertFalse(bounded_envelope(document, max_nodes=4, max_depth=2))
+
     def test_no_mutation_of_caller_buffer(self):
         raw = b'{"nested":{"active":false}}'
         snapshot = raw[:]
