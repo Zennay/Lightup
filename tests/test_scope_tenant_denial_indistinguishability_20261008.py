@@ -57,6 +57,36 @@ class TenantDenialIndistinguishabilityTests(unittest.TestCase):
                     PUBLIC_DENIAL,
                 )
 
+    def test_malformed_each_authorization_flag_denied(self):
+        from dataclasses import replace
+        valid = TenantDecision(True, True, True, True)
+        for field in ("exists", "caller_matches", "active_grant", "scope_matches"):
+            for bad in (1, "yes", None):
+                with self.subTest(field=field, bad=repr(bad)):
+                    self.assertEqual(
+                        reference_response(replace(valid, **{field: bad})),
+                        PUBLIC_DENIAL,
+                    )
+
+    def test_dataclass_subclass_cannot_claim_authority(self):
+        class ImpersonatedDecision(TenantDecision):
+            pass
+
+        self.assertEqual(
+            reference_response(ImpersonatedDecision(True, True, True, True)),
+            PUBLIC_DENIAL,
+        )
+
+    def test_denial_input_unchanged(self):
+        from dataclasses import fields
+        candidate = TenantDecision(True, False, True, False)
+        before = tuple(getattr(candidate, field.name) for field in fields(candidate))
+        self.assertEqual(reference_response(candidate), PUBLIC_DENIAL)
+        self.assertEqual(
+            tuple(getattr(candidate, field.name) for field in fields(candidate)),
+            before,
+        )
+
     def test_invalid_container_denied(self):
         self.assertEqual(reference_response({"exists": True}), PUBLIC_DENIAL)
 
