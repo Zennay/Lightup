@@ -49,3 +49,20 @@ def verify_artifact_manifest(manifest, blobs):
         if len(data) != size or hashlib.sha256(data).hexdigest() != digest:
             return False
     return set(blobs) == seen
+
+
+def verify_artifact_manifest_for_context(manifest, blobs, *, tenant_id, finding_id, remediation_id):
+    """Match caller-provided expected IDs before verifying bytes.
+
+    Expected IDs MUST come from an authenticated, trusted production context.
+    The function cannot establish the trustworthiness of that context.
+    """
+    expected = (tenant_id, finding_id, remediation_id)
+    if any(type(value) is not str or not _ID.fullmatch(value) for value in expected):
+        return False
+    if type(manifest) is not dict:
+        return False
+    if any(type(manifest.get(key)) is not str or manifest[key] != value
+           for key, value in zip(("tenant_id", "finding_id", "remediation_id"), expected)):
+        return False
+    return verify_artifact_manifest(manifest, blobs)
