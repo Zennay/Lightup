@@ -10,9 +10,9 @@ audit, and dispatch. No active target interaction is permitted by this change.
 - Reject duplicate object members at **every nesting level**, after JSON escape
   decoding, before mapping to a typed approval or grant. First-wins and
   last-wins behavior are both forbidden for authorization-bearing documents.
-- Reject non-standard NaN and Infinity tokens, trailing JSON documents,
+- Reject non-standard NaN and Infinity tokens, finite-looking exponent overflows/underflows (for example `1e10000` and `1e-10000`), trailing JSON documents,
   malformed JSON and non-object roots.
-- After strict parsing, enforce a versioned allowlist schema, exact primitive
+- The reference parser uses decimal representation for finite fractions rather than silently converting JSON numbers to binary floating-point; the production owner must define explicit per-field numeric ranges and reject unbounded integer values. Numeric syntax acceptance is not a risk-policy decision.\n- After strict parsing, enforce a versioned allowlist schema, exact primitive
   types, canonical tenant/asset/capability identifiers, bounded document depth
   and size, trusted signer/issuer lineage, immutable revision, and live
   revocation checks. Successful parsing by itself must never grant permission.
