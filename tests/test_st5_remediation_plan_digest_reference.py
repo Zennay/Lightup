@@ -31,7 +31,7 @@ def item():
         change_node_id="change-node", subject_node_id="subject",
         resolution_id="resolution-a", resolution_sha256="e" * 64,
         classification=AttackPathTransitionClassification.INTRODUCED,
-        graph_diff_action=AttackPathGraphDiffAction.ADD,
+        graph_diff_action=AttackPathGraphDiffAction.ADD_PATH_HYPOTHESIS,
         next_action=FutureRemediationNextAction.AUTHOR_REMEDIATION_THEN_RETEST,
         remediation_required=True, future_state_retest_required=True,
         evidence_required=False, current_attack_path_ids=("path-a",),
