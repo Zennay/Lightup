@@ -18,7 +18,7 @@ def verify_payload(expected_sha256: object, payload: object, *, max_bytes: int =
 
 class EvidenceContentHashReferenceTests(unittest.TestCase):
     def setUp(self):
-        self.payload = b"evidence\\x00artifact\\r\\n"
+        self.payload = b"evidence\x00artifact\r\n"
         self.digest = hashlib.sha256(self.payload).hexdigest()
 
     def test_exact_payload_passes(self):
@@ -27,6 +27,14 @@ class EvidenceContentHashReferenceTests(unittest.TestCase):
     def test_empty_payload_can_be_valid(self):
         payload = b""
         self.assertTrue(verify_payload(hashlib.sha256(payload).hexdigest(), payload))
+
+    def test_binary_control_bytes_present(self):
+        self.assertIn(0, self.payload)
+        self.assertTrue(self.payload.endswith(bytes((13, 10))))
+
+    def test_text_normalization_must_not_match(self):
+        normalized = self.payload.replace(bytes((13, 10)), bytes((10,)))
+        self.assertFalse(verify_payload(self.digest, normalized))
 
     def test_mutated_bytes_denied(self):
         self.assertFalse(verify_payload(self.digest, self.payload + b"!"))
