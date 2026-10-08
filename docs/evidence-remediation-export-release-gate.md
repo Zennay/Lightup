@@ -28,3 +28,19 @@ A tenant-bound remediation evidence export MUST fail closed unless ALL condition
 
 ## Production integration gate
 The production source owner must wire these requirements into the authenticated export pathway, add integration tests for trust boundaries, and obtain exact-head hosted and canonical permanent VPS green proof before considering promotion. Reference acceptance is not production enforcement. No real targets, network activity, scanning, remediation execution or permission widening are authorized by this document.
+
+## Synthetic all-or-nothing bundle reference
+The standalone `eligible_bundle(records, tenant=..., review=...)` example rejects
+empty, polymorphic and malformed containers, invalid members, duplicate exact
+finding/remediation pairs, and mixed tenant/review membership. It returns only
+a boolean; it never constructs a partial export, calls I/O or changes records.
+
+Run 20 offline unittest methods:
+```sh
+PYTHONPATH=tests python -m unittest discover -s tests -p 'test_evidence_remediation_export_gate_synthetic.py' -v
+```
+
+**Trust limitation:** successful synthetic structure checks are *not* evidence
+of actual reviewer approval, trustworthy digest contents, verified linkage,
+redaction, release authority or a safe production endpoint. All of those
+must be enforced and reviewed at the authenticated production boundary.
