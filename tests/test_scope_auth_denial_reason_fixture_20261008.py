@@ -39,5 +39,35 @@ class DenialReasonFixtureTests(unittest.TestCase):
         approvals = [case for case in CASES if case[3]]
         self.assertEqual([case[0] for case in approvals], ["current_exact_grant_control"])
 
+
+    def test_real_execution_policy_missing_grant_denies(self):
+        from dataclasses import replace
+        from lightup.execution_policy import (
+            ExecutionPolicy, ExecutionRequest, InteractionKind
+        )
+        from lightup.engagements import RiskLevel
+
+        request = ExecutionRequest(
+            interaction=InteractionKind.TARGET_ACTIVE,
+            asset="service.example.test",
+            capability_id="web-baseline",
+            requested_risk=RiskLevel.PASSIVE,
+            authorization=None,
+        )
+        decision = ExecutionPolicy().decide(request)
+        self.assertIs(decision.allowed, False)
+        for reason in ("authorized active assessment", "", "autorisé", "unknown"):
+            with self.subTest(reason=reason):
+                self.assertIs(replace(decision, reason=reason).allowed, False)
+
+    def test_real_scope_denial_reason_cannot_change_allow_flag(self):
+        from dataclasses import replace
+        from lightup.scope import ScopeDecision, ScopeReason
+
+        denied = ScopeDecision(False, "service.example.test", ScopeReason.OUT_OF_SCOPE)
+        for reason in ScopeReason:
+            with self.subTest(reason=reason):
+                self.assertIs(replace(denied, reason=reason).allowed, False)
+
 if __name__ == "__main__":
     unittest.main()
