@@ -49,8 +49,7 @@ def transition(previous, proposed, *, expected_prior_hash):
         raise ValueError("evidence digest rewritten")
     if previous.kind == "tombstone" or proposed.kind != "tombstone":
         raise ValueError("illegal lifecycle transition")
-    if type(proposed.reason) is not str or not proposed.reason.strip() or len(proposed.reason) > 256:
-        raise ValueError("tombstone reason missing or oversized")
+    if (type(proposed.reason) is not str or not proposed.reason.strip()\n            or len(proposed.reason) > 256\n            or any(ord(ch) < 32 or ord(ch) == 127 or ch in "\\u2028\\u2029" for ch in proposed.reason)):\n        raise ValueError("tombstone reason missing or oversized")
     return seal(proposed)
 
 
@@ -79,6 +78,15 @@ class EvidenceTombstoneReferenceTests(unittest.TestCase):
         for reason in ("", "  ", None, "x" * 257):
             with self.subTest(reason=reason), self.assertRaises(ValueError):
                 transition(self.source, dataclasses.replace(self.deleted, reason=reason), expected_prior_hash=self.prev)
+
+    def test_reason_control_character_injection_denied(self):
+        for reason in ("valid\\nforged event", "valid\\rforged", "valid\\tfield", "valid\\u2028line", "valid\\u2029line", "valid\\x00byte", "valid\\x7fdel"):
+            with self.subTest(reason=repr(reason)), self.assertRaises(ValueError):
+                transition(self.source, dataclasses.replace(self.deleted, reason=reason), expected_prior_hash=self.prev)
+
+    def test_reason_unicode_plain_text_allowed(self):
+        proposed = dataclasses.replace(self.deleted, reason="Rétention terminée")
+        self.assertEqual(transition(self.source, proposed, expected_prior_hash=self.prev), seal(proposed))
 
     def test_stale_predecessor_denied(self):
         with self.assertRaises(ValueError):
