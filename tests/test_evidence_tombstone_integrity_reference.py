@@ -49,7 +49,10 @@ def transition(previous, proposed, *, expected_prior_hash):
         raise ValueError("evidence digest rewritten")
     if previous.kind == "tombstone" or proposed.kind != "tombstone":
         raise ValueError("illegal lifecycle transition")
-    if (type(proposed.reason) is not str or not proposed.reason.strip()\n            or len(proposed.reason) > 256\n            or any(ord(ch) < 32 or ord(ch) == 127 or ch in "\\u2028\\u2029" for ch in proposed.reason)):\n        raise ValueError("tombstone reason missing or oversized")
+    if (type(proposed.reason) is not str or not proposed.reason.strip()
+            or len(proposed.reason) > 256
+            or any(ord(ch) < 32 or ord(ch) == 127 or ch in "\u2028\u2029" for ch in proposed.reason)):
+        raise ValueError("tombstone reason missing or oversized")
     return seal(proposed)
 
 
