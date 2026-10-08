@@ -18,3 +18,16 @@ Run offline: `PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope
 No target contact, DNS, sockets, scans, credentials, execution grants or
 production-source modifications. Coordinate with #107 and existing host-input
 owners before integrating any production fix. Distinct new test/docs files only.
+
+## Added boundary cases
+
+- Reject both nonempty and empty userinfo (`user@host` and `@host`),
+  including `user:password@host`; an empty username is not an exemption.
+- Reject userinfo even when the parsed host is an explicitly allowlisted
+  name; an unadorned approved host must retain its existing decision.
+- Keep credential *redaction* (existing PR #675) separate from **scope
+  admission**: masking text is not an authorization decision.
+- These are contract tests against the legacy pure policy. They do not
+  demonstrate exploitability of any runtime HTTP client, which could parse
+  or block targets differently. The production owner must trace the real
+  entrypoint before changing admission semantics.
