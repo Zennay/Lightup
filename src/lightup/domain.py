@@ -85,11 +85,20 @@ class AccessContext:
     client_id: str | None = None
 
     def __post_init__(self) -> None:
+        if type(self.user_id) is not str:
+            raise ValueError("access context user_id must be an exact string")
+        if not self.user_id or self.user_id != self.user_id.strip() or "\x00" in self.user_id:
+            raise ValueError("access context user_id must be canonical non-empty text")
+        if type(self.role) is not Role:
+            raise ValueError("access context role must be a Role member")
         if self.role is Role.OPERATOR:
             if self.client_id is not None:
                 raise ValueError("operator contexts are not bound to a client")
-        elif not self.client_id:
-            raise ValueError("client contexts require a client_id")
+        else:
+            if type(self.client_id) is not str:
+                raise ValueError("client contexts require an exact client_id string")
+            if not self.client_id or self.client_id != self.client_id.strip() or "\x00" in self.client_id:
+                raise ValueError("client contexts require a canonical client_id")
 
     @property
     def is_operator(self) -> bool:
@@ -101,8 +110,13 @@ class AccessContext:
 
     def resolve_client(self, client_id: str | None, action: str) -> str:
         """Resolve which client this action applies to, fail-closed."""
+        if client_id is not None:
+            if type(client_id) is not str:
+                raise ValueError(f"{action}: client_id must be an exact string")
+            if not client_id or client_id != client_id.strip() or "\x00" in client_id:
+                raise ValueError(f"{action}: client_id must be canonical non-empty text")
         if self.is_operator:
-            if not client_id:
+            if client_id is None:
                 raise ValueError(f"{action}: operator context must name a client_id")
             return client_id
         if client_id is not None and client_id != self.client_id:
@@ -392,11 +406,13 @@ class DomainStore:
         client_id: str | None = None,
     ) -> UserRecord:
         ctx.require_operator("create_user")
+        if type(role) is not Role:
+            raise ValueError("user role must be a Role member")
         if role is Role.OPERATOR:
             if client_id is not None:
                 raise ValueError("operator users are not bound to a client")
-        elif not client_id:
-            raise ValueError("client users require a client_id")
+        else:
+            client_id = ctx.resolve_client(client_id, "create_user")
         record = UserRecord(
             str(uuid4()), email.strip().lower(), display_name.strip(), role, client_id, utcnow().isoformat()
         )
@@ -443,6 +459,10 @@ class DomainStore:
         return user
 
     def set_password(self, ctx: AccessContext, user_id: str, password: str) -> None:
+        if type(user_id) is not str:
+            raise ValueError("password user_id must be an exact string")
+        if not user_id or user_id != user_id.strip() or "\x00" in user_id:
+            raise ValueError("password user_id must be canonical non-empty text")
         if not ctx.is_operator and ctx.user_id != user_id:
             raise RoleError("set_password requires an operator or the account owner")
         self.context_for_user(user_id)  # ensures the user exists
@@ -556,7 +576,10 @@ class DomainStore:
             return None
         try:
             return self.context_for_user(row["user_id"]), row["csrf_token"]
-        except KeyError:
+        except (KeyError, ValueError):
+            # Missing or non-canonical durable identity cannot authenticate a
+            # session. Treat corruption as an invalid session, never as an
+            # exception that can escape into the authorization-aware web layer.
             return None
 
     def revoke_session(self, token: str) -> None:
