@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "stage": "ST5_PLAN_LAB_ONLY",
+  "default_decision": "DENY",
+  "production_authority": false,
+  "ci": {
+    "requires_exact_source_sha": true,
+    "requires_exact_test_sha": true,
+    "requires_canonical_self_hosted_success": true,
+    "reject_conclusions": [
+      "queued",
+      "cancelled",
+      "skipped",
+      "failure",
+      "timed_out",
+      "stale_head"
+    ]
+  },
+  "gates": [
+    {
+      "id": "tenant_lineage",
+      "dependencies": [
+        146
+      ],
+      "negative": "cross_tenant_reference",
+      "positive": "same_tenant_current_record"
+    },
+    {
+      "id": "elevated_issuance",
+      "dependencies": [
+        881,
+        887
+      ],
+      "negative": "missing_or_wrong_engagement_step_up",
+      "positive": "approved_matching_step_up"
+    },
+    {
+      "id": "activation_current_grant",
+      "dependencies": [
+        884,
+        887
+      ],
+      "negative": "missing_revoked_expired_foreign_grant",
+      "positive": "current_matching_grant"
+    },
+    {
+      "id": "durable_read_integrity",
+      "dependencies": [
+        877,
+        879,
+        880
+      ],
+      "negative": "malformed_persisted_provenance",
+      "positive": "canonical_persisted_provenance"
+    },
+    {
+      "id": "executor_canonical_objects",
+      "dependencies": [
+        948,
+        949,
+        950
+      ],
+      "negative": "substituted_ledger_or_grant",
+      "positive": "exact_ledger_and_grant"
+    },
+    {
+      "id": "live_authority_monotonic",
+      "dependencies": [
+        951,
+        953,
+        954
+      ],
+      "negative": "expanded_scope_or_validity",
+      "positive": "narrowed_live_intersection"
+    },
+    {
+      "id": "time_argument_exactness",
+      "dependencies": [
+        890
+      ],
+      "negative": "falsy_non_datetime_now",
+      "positive": "aware_datetime"
+    },
+    {
+      "id": "scope_membership_precedes_authorization",
+      "dependencies": [
+        364,
+        100
+      ],
+      "negative": "out_of_scope_public_target",
+      "positive": "predeclared_scope_with_authorization"
+    }
+  ],
+  "on_denial": {
+    "target_handler_calls": 0,
+    "network_calls": 0,
+    "unauthorized_state_mutations": 0
+  },
+  "note": "This catalog is descriptive evidence metadata, not an executable policy or approval."
+}
