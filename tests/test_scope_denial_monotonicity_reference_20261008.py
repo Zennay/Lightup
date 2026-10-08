@@ -55,6 +55,34 @@ class DenialMonotonicityReferenceTests(unittest.TestCase):
             self.assertFalse(reference_admission(state))
         self.assertFalse(reference_admission({**baseline, "bypass": True}))
 
+
+    def test_gate_order_does_not_change_admission(self):
+        baseline = dict.fromkeys(GATES, True)
+        for order in itertools.permutations(GATES):
+            self.assertTrue(reference_admission({name: baseline[name] for name in order}))
+            denied = {name: (name != "not_revoked") for name in order}
+            self.assertFalse(reference_admission(denied))
+
+    def test_no_coercion_of_hostile_truthiness(self):
+        class HostileTruth:
+            def __bool__(self):
+                raise AssertionError("authorization must not coerce untrusted values")
+
+        for name in GATES:
+            state = dict.fromkeys(GATES, True)
+            state[name] = HostileTruth()
+            self.assertFalse(reference_admission(state))
+
+    def test_non_dict_containers_fail_closed(self):
+        baseline = dict.fromkeys(GATES, True)
+        for candidate in (list(baseline.items()), tuple(baseline.items()), None):
+            self.assertFalse(reference_admission(candidate))
+
+        class DictSubclass(dict):
+            pass
+
+        self.assertFalse(reference_admission(DictSubclass(baseline)))
+
     def test_no_input_mutation(self):
         state = dict.fromkeys(GATES, True)
         before = state.copy()
