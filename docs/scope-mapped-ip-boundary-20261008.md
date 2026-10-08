@@ -5,3 +5,7 @@ This isolated regression pack pins **representation-sensitive network authorizat
 Run offline with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_mapped_ipv4_boundary_20261008.py' -v`.
 
 No real targets are accessed. Documentation IP addresses are in-memory string fixtures only. This pack does not change production policy, grant semantics, executor paths, or network behavior, and it is **not evidence of complete authorization enforcement**. Keep promotion contingent on exact-head CI/self-hosted proof and source-owner review. Production ownership remains with the existing policy/executor PRs.
+
+## Additional validity-window regressions
+
+The same explicit mapped IPv6 CIDR must reject grants with a past `valid_until` and with a future `valid_from`. These controls use timezone-aware local fixture timestamps and make no external calls. The seven focused methods constitute a boundary regression, not a full identity canonicalization or deployment attestation.
