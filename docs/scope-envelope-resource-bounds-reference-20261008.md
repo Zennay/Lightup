@@ -8,7 +8,7 @@ to executable authorization.
 Proposed owner-reviewed contract:
 
 - Apply a strict encoded-byte ceiling **before decoding or parsing**.
-- Reject invalid UTF-8, JSON duplicate members, nonfinite numeric constants,
+- Reject invalid UTF-8, JSON duplicate members, nonfinite numeric constants,\n  **and finite-looking numeric literals that overflow to infinity** (e.g. `1e999`),
   and non-object outer envelopes.
 - Bound container nesting and total traversed nodes, without recursive walking.\n- Reject zero, negative, Boolean, non-integer or missing budget configuration; do not silently interpret `true` as integer `1`.\n- Use inclusive ceilings: precisely-at-budget input is structurally eligible, while the next byte, node or depth level must be denied.\n- Reject parser recursion failures rather than allowing them to escape into runtime dispatch.
 - Treat a parser failure, oversized body, or exhausted budget as denial.
