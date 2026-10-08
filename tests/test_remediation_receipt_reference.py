@@ -77,6 +77,14 @@ class RemediationReceiptTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 validate_remediation_receipt(receipt(retest_status="passed", retest_evidence_sha256=value))
 
+    def test_polymorphic_field_key_denied(self):
+        class Key(str):
+            pass
+        value = receipt()
+        value[Key("finding_id")] = value.pop("finding_id")
+        with self.assertRaises(ValueError):
+            validate_remediation_receipt(value)
+
     def test_status_subclass_denied(self):
         class Status(str):
             pass
