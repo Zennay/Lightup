@@ -5,6 +5,15 @@ from pathlib import Path
 import unittest
 
 
+def reject_duplicate_keys(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 FIXTURE = (
     Path(__file__).resolve().parents[1]
     / "docs"
@@ -25,7 +34,13 @@ EXPECTED = {
 
 class IncidentFixtureContractTests(unittest.TestCase):
     def setUp(self):
-        self.data = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        self.data = json.loads(FIXTURE.read_text(encoding="utf-8"), object_pairs_hook=reject_duplicate_keys)
+
+    def test_duplicate_keys_fail_closed(self):
+        with self.assertRaisesRegex(ValueError, "duplicate JSON key"):
+            json.loads('{"schema_version":1,"schema_version":2}', object_pairs_hook=reject_duplicate_keys)
+        with self.assertRaisesRegex(ValueError, "duplicate JSON key"):
+            json.loads('{"exercises":[{"id":"one","id":"two"}]}', object_pairs_hook=reject_duplicate_keys)
 
     def test_closed_schema(self):
         self.assertEqual(set(self.data), {"schema_version", "purpose", "exercises"})
