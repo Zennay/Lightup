@@ -3,7 +3,7 @@
 This is an acceptance oracle, NOT LightUp's production authorization policy.
 """
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 
 
 @dataclass(frozen=True)
@@ -40,7 +40,9 @@ def reference_decision(
         return False
     if grant is None or type(grant) is not ApprovalEnvelope:
         return False
-    if not grant.active or candidate.mode != "active":
+    if type(grant.active) is not bool or grant.active is not True:
+        return False
+    if type(candidate.mode) is not str or candidate.mode != "active":
         return False
     strings = (candidate.tenant, candidate.revision, candidate.asset,
                candidate.capability, grant.tenant, grant.revision,
