@@ -33,6 +33,10 @@ def validate_example(record):
                           ("reason_code", _REASONS)):
         if type(record[key]) is not str or record[key] not in accepted:
             return False
+    # An allow result must never be paired with a denial reason, or vice versa.
+    allowed_reasons = {"authorized", "analysis_only", "passive_only", "lab_only"}
+    if (record["reason_code"] in allowed_reasons) != (record["decision"] == "allow"):
+        return False
     if type(record["correlation_id"]) is not str:
         return False
     token = record["correlation_id"]
@@ -83,6 +87,14 @@ class AuditSchemaFixtureTests(unittest.TestCase):
         for patch in invalid:
             with self.subTest(patch=patch):
                 self.assertFalse(validate_example({**self.record, **patch}))
+
+    def test_decision_reason_coherence(self):
+        self.assertFalse(validate_example({**self.record, "decision": "allow"}))
+        self.assertFalse(validate_example({**self.record, "reason_code": "authorized"}))
+        self.assertTrue(validate_example({**self.record, "decision": "allow",
+                                          "reason_code": "authorized"}))
+        self.assertTrue(validate_example({**self.record, "decision": "deny",
+                                          "reason_code": "risk_denied"}))
 
     def test_missing_fields_and_non_dict_denied(self):
         for key in _ALLOWED:
