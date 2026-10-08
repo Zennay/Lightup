@@ -68,5 +68,29 @@ class TenantReplayReferenceTests(unittest.TestCase):
                 self.assertFalse(eligible({**base, **change}))
 
 
+    def test_no_implicit_identity_normalization(self):
+        base = next(c for c in self.cases if c["id"] == "same_tenant_same_revision")
+        for alias in ["TENANT-A", "tenant-a ", " tenant-a", "tenant-a\\n",
+                      "tenant-а", "tenant-a\\x00"]:
+            with self.subTest(alias=repr(alias)):
+                self.assertFalse(eligible({**base, "grant_tenant": alias}))
+
+    def test_string_subclasses_cannot_supply_tenant_identity(self):
+        class ForgedTenant(str):
+            pass
+
+        base = next(c for c in self.cases if c["id"] == "same_tenant_same_revision")
+        for key in ("run_tenant", "grant_tenant"):
+            with self.subTest(key=key):
+                self.assertFalse(eligible({**base, key: ForgedTenant("tenant-a")}))
+
+    def test_pure_evaluation_never_mutates_supplied_case(self):
+        base = next(c for c in self.cases if c["id"] == "same_tenant_same_revision")
+        for case in self.cases + [{**base, "grant_tenant": "tenant-b"}]:
+            with self.subTest(case=case["id"]):
+                before = json.dumps(case, sort_keys=True)
+                eligible(case)
+                self.assertEqual(json.dumps(case, sort_keys=True), before)
+
 if __name__ == "__main__":
     unittest.main()
