@@ -49,5 +49,29 @@ class ExportGateTests(unittest.TestCase):
         self.assertEqual(record, before)
 
 
+    def test_blank_or_padded_identities(self):
+        for field in ("tenant", "review", "finding", "remediation"):
+            for value in ("", " ", " value", "value "):
+                with self.subTest(field=field, value=value):
+                    self.assertFalse(self.check(dict(self.ok, **{field: value})))
+
+    def test_string_subclass_rejected(self):
+        class UntrustedText(str):
+            pass
+        for field in ("tenant", "review", "finding", "remediation", "digest"):
+            with self.subTest(field=field):
+                self.assertFalse(self.check(dict(self.ok, **{field: UntrustedText(self.ok[field])})))
+
+    def test_invalid_trusted_context(self):
+        for tenant, review in ((True, "r"), ("a", False), (" ", "r"), ("a", "")):
+            with self.subTest(tenant=tenant, review=review):
+                self.assertFalse(eligible(self.ok, tenant=tenant, review=review))
+
+    def test_wrong_record_type(self):
+        class UntrustedDict(dict):
+            pass
+        self.assertFalse(self.check(UntrustedDict(self.ok)))
+        self.assertFalse(self.check(None))
+
 if __name__ == "__main__":
     unittest.main()
