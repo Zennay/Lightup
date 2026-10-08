@@ -17,7 +17,7 @@ def validate_remediation_receipt(receipt: object) -> dict[str, str | None]:
     if type(receipt) is not dict or set(receipt) != _KEYS:
         raise ValueError("invalid remediation receipt schema")
     finding = receipt["finding_id"]
-    if type(finding) is not str or not finding or len(finding) > 128 or finding.strip() != finding:
+    if type(finding) is not str or not finding or len(finding) > 128 or finding.strip() != finding or any(ord(ch) < 32 or ord(ch) == 127 for ch in finding):
         raise ValueError("invalid finding identity")
     for field in ("evidence_sha256", "remediation_sha256"):
         value = receipt[field]
