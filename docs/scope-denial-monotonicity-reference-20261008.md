@@ -10,7 +10,7 @@ Boolean type**. Missing/extra gate keys or non-Boolean values deny.
 For any admission state, replacing one or more `True` gates by `False`
 must never turn a denial into an allowance. The suite exhaustively checks
 32 initial Boolean combinations and 32 restriction masks per combination,
-plus malformed inputs, absent/extra keys and no mutation.
+plus 120 possible gate orders, hostile objects that raise on truthiness,\nnon-dictionary containers, absent/extra keys and no mutation.
 
 ## Trust and integration boundary
 
