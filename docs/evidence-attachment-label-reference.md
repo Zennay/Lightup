@@ -4,7 +4,7 @@ This independent M7/ST5 contract proposes a **display-name-only** guard at the b
 
 ## Proposed rejection conditions
 
-Reject untrusted non-string and overlong labels; path separators or drive markers; percent-encoded path aliases; control and bidirectional format characters; non-NFC Unicode and nonportable characters; Windows device names; leading dot/hyphen/space and trailing dot/space. Keep the raw evidence identifier separate from the display label. Do not silently sanitize two different names into the same authoritative identity.
+Reject untrusted non-string and overlong labels; path separators or drive markers; percent-encoded path aliases; control and bidirectional format characters; non-NFC Unicode and nonportable characters; Windows device names; leading dot/hyphen/space and trailing dot/space. Keep the raw evidence identifier separate from the display label. Do not silently sanitize two different names into the same authoritative identity. As a conservative cross-platform reference, a collection is rejected if two labels collide under ASCII case-insensitive comparison (for example, `Evidence.JSON` and `evidence.json`); the caller's original ordering and values remain unchanged. This is a presentation-ambiguity check only, not a storage uniqueness guarantee.
 
 This deliberately restrictive ASCII reference is not a final product naming policy. Production owners must decide how legitimate international filenames are displayed without treating a label as a storage key or a trusted URI.
 
