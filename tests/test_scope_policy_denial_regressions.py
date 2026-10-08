@@ -60,5 +60,25 @@ class ScopePolicyDenialRegressions(unittest.TestCase):
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
 
+    def test_explicit_public_host_without_grant_is_denied(self):
+        policy = ScopePolicy(explicit_hosts=frozenset({"allowed.example.test"}))
+        decision = policy.decide(Target("https://allowed.example.test/report"))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_neighboring_public_address_outside_explicit_network_is_denied(self):
+        current = Authorization(owner="lab-owner", reference="net-grant")
+        policy = ScopePolicy(explicit_networks=("8.8.8.0/25",))
+        decision = policy.decide(Target("8.8.8.200", authorization=current))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_link_local_address_denied_when_private_lab_disabled(self):
+        policy = ScopePolicy(allow_private_lab=False)
+        decision = policy.decide(Target("169.254.20.30"))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+
 if __name__ == "__main__":
     unittest.main()
