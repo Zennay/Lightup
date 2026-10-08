@@ -121,7 +121,7 @@ class EnvelopeBoundsReferenceTests(unittest.TestCase):
     def test_duplicate_keys_nested_or_escaped_denied(self):
         for raw in (
             b'{"outer":{"x":1,"x":2}}',
-            b'{"a":1,"\\\\u0061":2}',
+            b'{"a":1,"\\u0061":2}',
             b'{"entries":[{"x":1,"x":2}]}',
         ):
             with self.subTest(raw=raw):
