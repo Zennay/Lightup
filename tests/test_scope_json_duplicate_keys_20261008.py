@@ -3,7 +3,7 @@
 Reference parser only; NOT a production authorization decision or endpoint.
 """
 import json
-import math
+from decimal import Decimal, InvalidOperation
 import unittest
 
 
@@ -26,10 +26,20 @@ def strict_reference_parse(payload):
     def reject_constant(value):
         raise AmbiguousAuthorizationJSON("non-finite JSON number")
 
+    def reject_nonfinite_float(value):
+        try:
+            parsed = Decimal(value)
+        except InvalidOperation as exc:
+            raise AmbiguousAuthorizationJSON("invalid numeric value") from exc
+        if not parsed.is_finite() or parsed.adjusted() > 308 or parsed.adjusted() < -324:
+            raise AmbiguousAuthorizationJSON("out-of-range JSON number")
+        return parsed
+
     try:
         document = json.loads(
             payload, object_pairs_hook=reject_duplicate_pairs,
             parse_constant=reject_constant,
+            parse_float=reject_nonfinite_float,
         )
     except (json.JSONDecodeError, RecursionError) as exc:
         raise AmbiguousAuthorizationJSON("invalid JSON") from exc
@@ -62,6 +72,23 @@ class AuthorizationJSONAmbiguityTests(unittest.TestCase):
     def test_infinity_denied(self):
         with self.assertRaises(AmbiguousAuthorizationJSON):
             strict_reference_parse('{"risk":Infinity}')
+
+    def test_overflow_float_denied(self):
+        for payload in ('{"risk":1e10000}', '{"risk":-1e10000}'):
+            with self.subTest(payload=payload), self.assertRaises(AmbiguousAuthorizationJSON):
+                strict_reference_parse(payload)
+
+    def test_underflow_float_denied(self):
+        with self.assertRaises(AmbiguousAuthorizationJSON):
+            strict_reference_parse('{"risk":1e-10000}')
+
+    def test_negative_infinity_token_denied(self):
+        with self.assertRaises(AmbiguousAuthorizationJSON):
+            strict_reference_parse('{"risk":-Infinity}')
+
+    def test_finite_fraction_preserves_decimal_reference(self):
+        parsed = strict_reference_parse('{"risk":0.125}')
+        self.assertEqual(parsed["risk"], Decimal('0.125'))
 
     def test_root_array_denied(self):
         with self.assertRaises(AmbiguousAuthorizationJSON):
