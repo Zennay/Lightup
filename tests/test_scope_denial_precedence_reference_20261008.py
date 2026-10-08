@@ -80,5 +80,23 @@ class DenialPrecedenceReferenceTests(unittest.TestCase):
         self.assertEqual(repr(sample), snapshot)
 
 
+    def test_all_128_boolean_combinations_preserve_first_denial(self):
+        from itertools import product
+        for flags in product((False, True), repeat=len(CHECKS)):
+            with self.subTest(flags=flags):
+                expected = next(
+                    ((False, reason) for flag, (_, reason) in zip(flags, CHECKS) if not flag),
+                    (True, "conditionally_eligible"),
+                )
+                self.assertEqual(decide(Input(*flags)), expected)
+
+    def test_only_literal_true_can_advance_a_gate(self):
+        for impostor in (True, 1, "true", [True], False, None):
+            flags = [True] * len(CHECKS)
+            flags[0] = impostor
+            with self.subTest(impostor=repr(impostor)):
+                expected = (True, "conditionally_eligible") if impostor is True else (False, "unauthenticated")
+                self.assertEqual(decide(Input(*flags)), expected)
+
 if __name__ == "__main__":
     unittest.main()
