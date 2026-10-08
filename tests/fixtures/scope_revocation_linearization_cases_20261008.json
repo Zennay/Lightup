@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "purpose": "Offline, non-executing revocation linearization acceptance cases; no authority is granted by this fixture.",
+  "cases": [
+    {"id":"revoke-before-dispatch","order":["resolve","revoke_commit","dispatch"],"expected_handler_calls":0,"expected":"deny"},
+    {"id":"close-before-dispatch","order":["resolve","close_commit","dispatch"],"expected_handler_calls":0,"expected":"deny"},
+    {"id":"close-before-issue","order":["close_commit","issue_grant"],"expected_handler_calls":0,"expected":"deny_issue"},
+    {"id":"issue-before-close","order":["issue_grant","close_commit","dispatch"],"expected_handler_calls":0,"expected":"deny"},
+    {"id":"reopen-does-not-revive","order":["issue_grant","close_commit","reopen","dispatch_old_grant"],"expected_handler_calls":0,"expected":"deny"},
+    {"id":"tenant-substitution","order":["resolve_tenant_a","substitute_tenant_b","dispatch"],"expected_handler_calls":0,"expected":"deny"},
+    {"id":"expiry-between-checks","order":["resolve_before_expiry","advance_clock_after_expiry","dispatch"],"expected_handler_calls":0,"expected":"deny"},
+    {"id":"durable-scope-narrowing","order":["resolve_broad_snapshot","narrow_durable_scope","dispatch_excluded_asset"],"expected_handler_calls":0,"expected":"deny"},
+    {"id":"valid-current-grant-control","order":["issue_current_grant","resolve_live","dispatch_fake_handler"],"expected_handler_calls":1,"expected":"allow"},
+    {"id":"revocation-race","order":["concurrent_dispatch_and_revoke","record_linearization_order"],"expected_handler_calls":null,"expected":"ordered_by_linearization_point"}
+  ],
+  "safety": {"network":false,"real_targets":false,"active_scans":false,"production_changes":false}
+}
