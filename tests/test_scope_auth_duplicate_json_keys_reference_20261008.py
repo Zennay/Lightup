@@ -75,6 +75,24 @@ class DuplicateKeyBoundaryTests(unittest.TestCase):
         with self.assertRaises(AmbiguousAuthorizationInput):
             parse_authorization_envelope(b'{"tenant":"a"}')
 
+    def test_duplicate_approval_claim(self):
+        self.assert_denied('{"approval":{"approved":false,"approved":true}}')
+
+    def test_duplicate_across_nested_array_object(self):
+        self.assert_denied('{"scope":{"targets":[{"host":"a","host":"b"}]}}')
+
+    def test_duplicate_unicode_escaped_full_key(self):
+        self.assert_denied('{"tenant":"a","\\u0074enant":"b"}')
+
+    def test_multiple_top_level_documents(self):
+        self.assert_denied('{"allow":false} {"allow":true}')
+
+    def test_positive_infinity_constant(self):
+        self.assert_denied('{"expiry":Infinity}')
+
+    def test_negative_infinity_constant(self):
+        self.assert_denied('{"expiry":-Infinity}')
+
     def test_distinct_case_keys_do_not_alias_in_parser(self):
         result = parse_authorization_envelope('{"tenant":"a","Tenant":"b"}')
         self.assertEqual(len(result), 2)
