@@ -2,7 +2,9 @@
 import copy
 import hashlib
 import unittest
-from lightup.evidence_manifest_reference import verify_artifact_manifest
+from lightup.evidence_manifest_reference import (
+    verify_artifact_manifest, verify_artifact_manifest_for_context,
+)
 
 
 def record(data=b"fixed"):
@@ -147,6 +149,44 @@ class EvidenceManifestReferenceTests(unittest.TestCase):
         m["artifacts"] = type("ArtifactList", (list,), {})(m["artifacts"])
         self.assertFalse(verify_artifact_manifest(m, b))
 
+
+    def test_bound_context_matching(self):
+        m, b = fixture()
+        self.assertTrue(verify_artifact_manifest_for_context(
+            m, b, tenant_id="tenant-a", finding_id="finding-a",
+            remediation_id="fix-a"))
+
+    def test_bound_context_rejects_tenant_substitution(self):
+        m, b = fixture()
+        m["tenant_id"] = "tenant-b"
+        self.assertFalse(verify_artifact_manifest_for_context(
+            m, b, tenant_id="tenant-a", finding_id="finding-a",
+            remediation_id="fix-a"))
+
+    def test_bound_context_rejects_finding_substitution(self):
+        m, b = fixture()
+        self.assertFalse(verify_artifact_manifest_for_context(
+            m, b, tenant_id="tenant-a", finding_id="finding-other",
+            remediation_id="fix-a"))
+
+    def test_bound_context_rejects_remediation_substitution(self):
+        m, b = fixture()
+        self.assertFalse(verify_artifact_manifest_for_context(
+            m, b, tenant_id="tenant-a", finding_id="finding-a",
+            remediation_id="fix-other"))
+
+    def test_bound_context_rejects_truthy_expected_type(self):
+        m, b = fixture()
+        self.assertFalse(verify_artifact_manifest_for_context(
+            m, b, tenant_id=True, finding_id="finding-a",
+            remediation_id="fix-a"))
+
+    def test_bound_context_rejects_tampered_bytes(self):
+        m, b = fixture()
+        b["proof-1"] = b"wrong"
+        self.assertFalse(verify_artifact_manifest_for_context(
+            m, b, tenant_id="tenant-a", finding_id="finding-a",
+            remediation_id="fix-a"))
 
 if __name__ == "__main__":
     unittest.main()
