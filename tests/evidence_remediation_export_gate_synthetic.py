@@ -26,3 +26,18 @@ def eligible(record, *, tenant, review):
         return False
     digest = record["digest"]
     return len(digest) == 64 and all(c in "0123456789abcdef" for c in digest)
+
+
+def eligible_bundle(records, *, tenant, review):
+    """Fail closed for an entire synthetic export; never return partial records."""
+    if type(records) is not list or not records:
+        return False
+    seen = set()
+    for record in records:
+        if not eligible(record, tenant=tenant, review=review):
+            return False
+        identity = (record["finding"], record["remediation"])
+        if identity in seen:
+            return False
+        seen.add(identity)
+    return True
