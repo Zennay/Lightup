@@ -25,6 +25,20 @@ class UnicodeHostIdentityContract(unittest.TestCase):
             f"host identity silently mismatched: {decision.reason}",
         )
 
+    def test_exact_ascii_allowlist_remains_usable(self):
+        policy = ScopePolicy(explicit_hosts=frozenset({"xn--bcher-kva.example.test"}),
+                             require_authorization_for_public=False)
+        decision = policy.decide(Target("https://xn--bcher-kva.example.test"))
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+
+    def test_unlisted_unicode_confusable_never_inherits_ascii_grant(self):
+        policy = ScopePolicy(explicit_hosts=frozenset({"paypal.example.test"}),
+                             require_authorization_for_public=False)
+        decision = policy.decide(Target("https://pаypal.example.test"))
+        # Second letter of the target is Cyrillic, not ASCII.
+        self.assertFalse(decision.allowed)
+
     def test_unicode_explicit_host_must_not_become_unreachable_alias(self):
         policy = ScopePolicy(explicit_hosts=frozenset({"bücher.example.test"}),
                              require_authorization_for_public=False)
