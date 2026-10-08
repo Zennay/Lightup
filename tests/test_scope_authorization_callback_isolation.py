@@ -54,5 +54,19 @@ class ScopeAuthorizationCallbackIsolationTests(unittest.TestCase):
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
 
+    def test_loopback_membership_does_not_consult_public_authorization(self):
+        decision = ScopePolicy().decide(
+            Target("127.0.0.1", authorization=ExplodingAuthorization())
+        )
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.LOOPBACK)
+
+    def test_private_lab_membership_does_not_consult_public_authorization(self):
+        decision = ScopePolicy().decide(
+            Target("10.20.30.40", authorization=ExplodingAuthorization())
+        )
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.PRIVATE_LAB)
+
 if __name__ == "__main__":
     unittest.main()
