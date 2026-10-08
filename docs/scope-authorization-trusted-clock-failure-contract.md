@@ -25,6 +25,9 @@ Authorization windows are authority boundaries, not scheduling hints. An unavail
 | Exactly at valid_from (inclusive) | Clock gate may allow |
 | Missing/throwing source | Deny |
 | Naive datetime, string, NaN epoch | Deny |
+| Naive/non-UTC grant boundary, wrong boundary type | Deny |
+| Empty or reversed authorization interval | Deny |
+| Invalid previous trusted observation | Deny |
 | Trusted clock rolls backward after a previous observation | Deny/suspend until reconciliation |
 | Live valid_until extends snapshot | Deny after original snapshot expiry |
 | Step 1 admitted, step 2 clock unavailable | Step 2 never dispatches |
