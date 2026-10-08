@@ -164,7 +164,10 @@ class ModelGateway:
             metadata=metadata,
         )
         response = provider.complete(request)
-        if response.provider_id != binding.provider_id:
+        if (
+            type(response.provider_id) is not str
+            or response.provider_id != binding.provider_id
+        ):
             raise GatewayConfigurationError(
                 "provider returned a response under a different provider_id"
             )
