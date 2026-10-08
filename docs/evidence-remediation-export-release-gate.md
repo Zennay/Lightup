@@ -44,3 +44,12 @@ PYTHONPATH=tests python -m unittest discover -s tests -p 'test_evidence_remediat
 of actual reviewer approval, trustworthy digest contents, verified linkage,
 redaction, release authority or a safe production endpoint. All of those
 must be enforced and reviewed at the authenticated production boundary.
+
+## Reference resource ceilings
+The synthetic shape reference now bounds each identity/digest string at 256
+code points and rejects a bundle with more than 100 records; the exact
+100-record positive boundary is covered by an offline test. These are
+illustrative unit-test limits, **not** an agreed production resource policy.
+The production owner must separately choose measured byte-size, decoding,
+record-count and output-size limits before implementation. Rejections must be
+atomic and must not disclose raw input or secrets.
