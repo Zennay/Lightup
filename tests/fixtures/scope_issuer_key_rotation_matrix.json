@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "contract": "issuer-key-rotation-fail-closed",
+  "cases": [
+    {
+      "id": "current_exact_grant",
+      "expected": "conditional",
+      "requires_live_trust_check": true
+    },
+    {
+      "id": "unknown_issuer",
+      "expected": "deny",
+      "requires_live_trust_check": true
+    },
+    {
+      "id": "missing_kid",
+      "expected": "deny",
+      "requires_live_trust_check": true
+    },
+    {
+      "id": "duplicate_kid",
+      "expected": "deny",
+      "requires_live_trust_check": true
+    },
+    {
+      "id": "retired_key",
+      "expected": "deny",
+      "requires_live_trust_check": true
+    },
+    {
+      "id": "rotation_after_queue_admission",
+      "expected": "deny",
+      "requires_live_trust_check": true
+    },
+    {
+      "id": "unsigned_algorithm",
+      "expected": "deny",
+      "requires_live_trust_check": true
+    },
+    {
+      "id": "algorithm_substitution",
+      "expected": "deny",
+      "requires_live_trust_check": true
+    },
+    {
+      "id": "cross_tenant_key",
+      "expected": "deny",
+      "requires_live_trust_check": true
+    },
+    {
+      "id": "future_key",
+      "expected": "deny",
+      "requires_live_trust_check": true
+    },
+    {
+      "id": "issued_outside_key_window",
+      "expected": "deny",
+      "requires_live_trust_check": true
+    },
+    {
+      "id": "ambiguous_signed_claim",
+      "expected": "deny",
+      "requires_live_trust_check": true
+    },
+    {
+      "id": "revoked_issuer",
+      "expected": "deny",
+      "requires_live_trust_check": true
+    },
+    {
+      "id": "trust_store_unavailable",
+      "expected": "deny",
+      "requires_live_trust_check": true
+    },
+    {
+      "id": "rotation_during_retry",
+      "expected": "deny",
+      "requires_live_trust_check": true
+    },
+    {
+      "id": "audit_persistence_failed",
+      "expected": "deny",
+      "requires_live_trust_check": true
+    }
+  ]
+}
