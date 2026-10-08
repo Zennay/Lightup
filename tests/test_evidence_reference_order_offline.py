@@ -60,6 +60,26 @@ class EvidenceReferenceOrderReferenceTests(unittest.TestCase):
             with self.subTest(invalid=repr(invalid)), self.assertRaises(ValueError):
                 reference_digest(invalid, "f1", ["a"])
 
+    def test_collection_limit_fails_closed(self):
+        with self.assertRaises(ValueError):
+            reference_digest("t1", "f1", [str(i) for i in range(65)])
+
+    def test_tuple_and_list_are_equivalent(self):
+        self.assertEqual(reference_digest("t1", "f1", ("b", "a")),
+                         reference_digest("t1", "f1", ["a", "b"]))
+
+    def test_reference_case_remains_distinct(self):
+        self.assertNotEqual(reference_digest("t1", "f1", ["EV"]),
+                            reference_digest("t1", "f1", ["ev"]))
+
+    def test_unicode_normalization_not_silent(self):
+        self.assertNotEqual(reference_digest("t1", "f1", ["é"]),
+                            reference_digest("t1", "f1", ["e\u0301"]))
+
+    def test_delimiter_injection_is_unambiguous(self):
+        self.assertNotEqual(reference_digest("tenant", "finding", ["a,b"]),
+                            reference_digest("tenant", "finding", ["a", "b"]))
+
     def test_does_not_mutate_inputs(self):
         ids = ["z", "a"]
         reference_digest("t1", "f1", ids)
