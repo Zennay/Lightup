@@ -1,5 +1,5 @@
 import unittest
-from evidence_remediation_export_gate_synthetic import eligible
+from evidence_remediation_export_gate_synthetic import eligible, eligible_bundle
 
 
 class ExportGateTests(unittest.TestCase):
@@ -72,6 +72,34 @@ class ExportGateTests(unittest.TestCase):
             pass
         self.assertFalse(self.check(UntrustedDict(self.ok)))
         self.assertFalse(self.check(None))
+
+
+    def test_bundle_two_distinct_records(self):
+        other = dict(self.ok, finding="f2", remediation="m2")
+        self.assertTrue(eligible_bundle([self.ok, other], tenant="a", review="r"))
+
+    def test_bundle_atomic_cross_tenant_denial(self):
+        other = dict(self.ok, finding="f2", remediation="m2", tenant="b")
+        records = [dict(self.ok), other]
+        before = [dict(x) for x in records]
+        self.assertFalse(eligible_bundle(records, tenant="a", review="r"))
+        self.assertEqual(records, before)
+
+    def test_bundle_duplicate_identity_denial(self):
+        self.assertFalse(eligible_bundle([dict(self.ok), dict(self.ok)], tenant="a", review="r"))
+
+    def test_bundle_invalid_container(self):
+        for value in ([], (), None, {}, "abc"):
+            with self.subTest(value=value):
+                self.assertFalse(eligible_bundle(value, tenant="a", review="r"))
+
+    def test_bundle_invalid_member(self):
+        self.assertFalse(eligible_bundle([self.ok, None], tenant="a", review="r"))
+
+    def test_bundle_subclass_container(self):
+        class UntrustedList(list):
+            pass
+        self.assertFalse(eligible_bundle(UntrustedList([self.ok]), tenant="a", review="r"))
 
 if __name__ == "__main__":
     unittest.main()
