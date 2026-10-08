@@ -6,7 +6,7 @@ On the inspected `main` source, `ExecutionPolicy.decide()` enters the `Interacti
 
 ## Required behavior
 
-- Accept a canonical `RiskLevel.LOW_IMPACT` on an explicit lab-only request, subject to existing lab restrictions.
+- Preserve the current policy decision for every canonical `RiskLevel` member on an explicit lab-only request. This includes the destructive-lab-only enum value **only within the lab lane**, without granting any authority over target-active or client flows.
 - Deny canonical lab risk on `is_lab=False`.
 - Deny every foreign risk identity, including numeric lookalikes, `True`, `False`, strings, null, and arbitrary objects, before granting lab permission.
 - Keep this check distinct from constraints on `TARGET_ACTIVE` and `PASSIVE_PUBLIC`.
