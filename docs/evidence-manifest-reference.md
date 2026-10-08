@@ -10,3 +10,9 @@ Promotion requires source-owner integration with trusted persisted evidence, ten
 
 ## Explicit tenant substitution negative assurance
 A manifest whose tenant label is replaced by another syntactically valid tenant still passes this **byte-integrity-only** check. This is intentional and regression-tested: the verifier does **not** possess a trusted authenticated tenant context and therefore must never be used as a tenant authorization guard. A production consumer must bind the authenticated tenant, finding and remediation record to trusted persisted records before interpreting evidence.
+
+## Explicit expected-context binding reference
+
+Call `verify_artifact_manifest_for_context(manifest, blobs, tenant_id=..., finding_id=..., remediation_id=...)` when trusted expected identifiers are available. It rejects mismatch of any of the three identity dimensions before evaluating integrity and keeps exact-type/lexical checks for the expected IDs. Six synthetic tests exercise matching context, tenant/finding/remediation substitution, invalid expected identity type and tampered payloads.
+
+**Security limitation:** parameters passed to this helper are caller claims. The helper does not authenticate sessions, resolve tenant ownership, verify issuer signatures, or fetch/revalidate current authoritative records. Never derive expected identifiers from the untrusted manifest itself. Production adoption must obtain expected IDs from a separately authenticated tenant-scoped source and revalidate state according to the owner's policy.
