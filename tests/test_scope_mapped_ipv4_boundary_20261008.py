@@ -3,6 +3,7 @@
 These tests never resolve DNS or connect to a target.
 """
 import unittest
+from datetime import datetime, timedelta, timezone
 
 from lightup.models import Authorization, Target
 from lightup.scope import ScopePolicy, ScopeReason
@@ -39,6 +40,34 @@ class MappedIPv4ScopeBoundaryTests(unittest.TestCase):
         result = policy.decide(Target("http://[::ffff:8.8.8.8]/"))
         self.assertFalse(result.allowed)
         self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_expired_mapped_network_authorization_denied(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=("::ffff:8.8.8.0/120",),
+        )
+        expired = Authorization(
+            owner="offline-test",
+            reference="expired-fixture",
+            valid_until=datetime.now(timezone.utc) - timedelta(days=1),
+        )
+        result = policy.decide(Target("http://[::ffff:8.8.8.8]/", authorization=expired))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+
+    def test_future_mapped_network_authorization_denied(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=("::ffff:8.8.8.0/120",),
+        )
+        future = Authorization(
+            owner="offline-test",
+            reference="future-fixture",
+            valid_from=datetime.now(timezone.utc) + timedelta(days=1),
+        )
+        result = policy.decide(Target("http://[::ffff:8.8.8.8]/", authorization=future))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_EXPIRED)
 
     def test_exact_mapped_network_and_authorization_permit_only_the_network(self):
         policy = ScopePolicy(
