@@ -7,6 +7,7 @@ This test-only contract protects the separation of **decision evaluation** from 
 - Replaying the same eligible request returns the same decision without modifying its request, grant or scope.
 - An allowed request must never prime a different request: excluded assets, unlisted capabilities and above-limit risk remain denied even when interleaved with successful evaluations.
 - A separate active request with no grant is denied even after a successful authorized evaluation.
+- Expired and not-yet-valid grants remain denied when their decisions are interleaved with decisions for a valid grant; successful evaluation must not cache time authority across requests.
 - Test identifiers use reserved `.example.test` and do not resolve or contact any address.
 
 The test suite pins existing product behavior, not a new source implementation. It does not cover the mutable authorization/resolver/executor lifetime boundaries owned by other branches. It intentionally avoids `src/lightup/execution_policy.py`, `src/lightup/engagements.py`, `src/lightup/domain.py`, `src/lightup/tool_executor.py` and deployment files.
