@@ -14,7 +14,7 @@ _KEYS = frozenset({"finding_id", "evidence_sha256", "remediation_sha256", "retes
 
 def validate_remediation_receipt(receipt: object) -> dict[str, str | None]:
     """Return an isolated canonical snapshot or fail closed on ambiguous evidence."""
-    if type(receipt) is not dict or set(receipt) != _KEYS:
+    if (type(receipt) is not dict or len(receipt) != len(_KEYS)\n            or any(type(key) is not str for key in receipt)\n            or set(receipt) != _KEYS):
         raise ValueError("invalid remediation receipt schema")
     finding = receipt["finding_id"]
     if type(finding) is not str or not finding or len(finding) > 128 or finding.strip() != finding or any(ord(ch) < 32 or ord(ch) == 127 for ch in finding):
