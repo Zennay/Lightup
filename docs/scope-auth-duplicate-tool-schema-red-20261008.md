@@ -6,7 +6,7 @@
 
 At `ToolRegistry.register` admission, a `ToolDefinition.parameters` schema must have unique parameter names, independent of parameter kind or required flag. A duplicate name makes argument validation ambiguous: `ToolDefinition.validate_arguments` currently builds `known = {p.name: p for p in self.parameters}` (last wins) while sequential validation still iterates both definitions. Reject ambiguous definitions **before registry mutation**. This is distinct from duplicated entries in an incoming `ToolCall.arguments` (#966).
 
-The two negative controls use a registered capability (`web-baseline`), ANALYSIS interaction, and inert handlers: one conflicting kind pair, one identical-kind pair with different requiredness. Both require `OrchestrationError`, zero registration side effects, and no handler execution. The test is deliberately RED against current main; do not weaken assertions to make CI green.
+The two negative controls use a registered capability (`web-baseline`), ANALYSIS interaction, and inert handlers: one conflicting kind pair, one identical-kind pair with different requiredness. Both require `OrchestrationError`, zero registration side effects, and no handler execution. Two positive controls require that unique optional/required parameter names and an empty parameter tuple still register successfully and preserve normal argument validation. The test is deliberately RED against current main; do not weaken assertions to make CI green.
 
 ## Verification and handoff
 
