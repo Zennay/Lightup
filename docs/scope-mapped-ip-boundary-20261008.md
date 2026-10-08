@@ -9,3 +9,7 @@ No real targets are accessed. Documentation IP addresses are in-memory string fi
 ## Additional validity-window regressions
 
 The same explicit mapped IPv6 CIDR must reject grants with a past `valid_until` and with a future `valid_from`. These controls use timezone-aware local fixture timestamps and make no external calls. The seven focused methods constitute a boundary regression, not a full identity canonicalization or deployment attestation.
+
+## Address-family separation controls
+
+An IPv4-mapped `::ffff:127.0.0.1` literal is not implicitly the native IPv6 `::1` loopback exemption. With private-lab admission disabled it is denied. Likewise, an IPv4-only `192.168.1.0/24` CIDR does not independently authorize the mapped IPv6 form of its members. These are identity-boundary checks only and do not define production-wide address canonicalization.
