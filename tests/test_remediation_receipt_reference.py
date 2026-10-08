@@ -59,9 +59,23 @@ class RemediationReceiptTests(unittest.TestCase):
                 validate_remediation_receipt(receipt(evidence_sha256=value))
 
     def test_control_characters_in_finding_identity_denied(self):
-        for value in ("a\\nb", "a\\x00b", "a\\x7fb", " a", "a "):
+        for value in ("a" + chr(10) + "b", "a" + chr(0) + "b", "a" + chr(127) + "b", " a", "a "):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 validate_remediation_receipt(receipt(finding_id=value))
+
+    def test_hash_subclasses_and_remediation_hash_rejected(self):
+        class Digest(str):
+            pass
+        for key, value in (("evidence_sha256", Digest(H1)),
+                           ("remediation_sha256", Digest(H2)),
+                           ("remediation_sha256", "SHA256:" + H2)):
+            with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                validate_remediation_receipt(receipt(**{key: value}))
+
+    def test_completed_retest_evidence_shape_rejected(self):
+        for value in (H3.upper(), "sha256:" + H3, H3[:-1], 4, True):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                validate_remediation_receipt(receipt(retest_status="passed", retest_evidence_sha256=value))
 
     def test_status_subclass_denied(self):
         class Status(str):
