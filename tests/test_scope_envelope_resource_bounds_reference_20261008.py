@@ -3,6 +3,7 @@
 This is not the production authorization parser or a grant issuer.
 """
 import json
+import math
 import unittest
 
 
@@ -38,7 +39,10 @@ def bounded_envelope(raw: object, *, max_bytes: int = 4096, max_depth: int = 8,
                 stack.append((child, depth + 1))
         elif type(node) is list:
             stack.extend((child, depth + 1) for child in node)
-        elif type(node) not in (str, int, float, bool, type(None)):
+        elif type(node) is float:
+            if not math.isfinite(node):
+                return False
+        elif type(node) not in (str, int, bool, type(None)):
             return False
     return True
 
@@ -82,6 +86,16 @@ class EnvelopeBoundsReferenceTests(unittest.TestCase):
 
     def test_non_finite_number_denied(self):
         self.assertFalse(bounded_envelope(b'{"risk":NaN}'))
+
+    def test_nonfinite_exponent_overflow_denied(self):
+        # Python JSON accepts exponent overflow as inf without parse_constant.
+        for raw in (b'{"risk":1e999}', b'{"risk":-1e999}',
+                    b'{"nested":[1e999]}'):
+            with self.subTest(raw=raw):
+                self.assertFalse(bounded_envelope(raw))
+
+    def test_finite_decimal_allowed_as_shape_only(self):
+        self.assertTrue(bounded_envelope(b'{"risk":1.25}'))
 
     def test_wrong_input_type_denied(self):
         for raw in ('{}', bytearray(b'{}'), memoryview(b'{}'), None):
