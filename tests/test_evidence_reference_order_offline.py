@@ -101,6 +101,28 @@ class EvidenceReferenceOrderReferenceTests(unittest.TestCase):
         self.assertNotEqual(reference_digest("t", "f", ["e\\n"]),
                             reference_digest("t", "f", ["e\n"]))
 
+    def test_identity_upper_bound_is_accepted(self):
+        self.assertEqual(
+            reference_digest("t" * 128, "f" * 128, ["e" * 128]),
+            reference_digest("t" * 128, "f" * 128, ("e" * 128,)),
+        )
+
+    def test_finding_identity_invalid_independently(self):
+        for invalid in (None, False, 0, "", "f" * 129):
+            with self.subTest(invalid=repr(invalid)), self.assertRaises(ValueError):
+                reference_digest("tenant", invalid, ["e"])
+
+    def test_evidence_identity_escape_is_distinct(self):
+        self.assertNotEqual(
+            reference_digest("t", "f", ['"e"']),
+            reference_digest("t", "f", ["e"]),
+        )
+
+    def test_repeated_digest_is_deterministic(self):
+        first = reference_digest("tenant", "finding", ["β", "α"])
+        for _ in range(10):
+            self.assertEqual(first, reference_digest("tenant", "finding", ["α", "β"]))
+
     def test_does_not_mutate_inputs(self):
         ids = ["z", "a"]
         reference_digest("t1", "f1", ids)
