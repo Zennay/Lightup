@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "classification": "offline_acceptance_contract_only",
+  "execution_allowed": false,
+  "cases": [
+    {
+      "id": "self_approval",
+      "expected": "deny"
+    },
+    {
+      "id": "same_human_alias",
+      "expected": "deny"
+    },
+    {
+      "id": "missing_principal",
+      "expected": "deny"
+    },
+    {
+      "id": "approval_before_revision",
+      "expected": "deny"
+    },
+    {
+      "id": "revision_changed",
+      "expected": "deny"
+    },
+    {
+      "id": "cross_tenant",
+      "expected": "deny"
+    },
+    {
+      "id": "scope_expanded",
+      "expected": "deny"
+    },
+    {
+      "id": "missing_permission",
+      "expected": "deny"
+    },
+    {
+      "id": "revoked",
+      "expected": "deny"
+    },
+    {
+      "id": "malformed_proof",
+      "expected": "deny"
+    },
+    {
+      "id": "distinct_verified_exact_revision",
+      "expected": "conditionally_eligible"
+    }
+  ]
+}
