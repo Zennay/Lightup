@@ -86,5 +86,50 @@ class EvidenceManifestReferenceTests(unittest.TestCase):
         self.assertTrue(verify_artifact_manifest(m, b))
 
 
+    def test_blob_bytearray_denied(self):
+        m, b = fixture()
+        b["proof-1"] = bytearray(b"fixed")
+        self.assertFalse(verify_artifact_manifest(m, b))
+
+    def test_nested_dict_subclass_denied(self):
+        m, b = fixture()
+        m["artifacts"][0] = type("PretendArtifact", (dict,), {})(m["artifacts"][0])
+        self.assertFalse(verify_artifact_manifest(m, b))
+
+    def test_oversized_declared_artifact_denied(self):
+        m, b = fixture()
+        m["artifacts"][0]["size"] = 1048577
+        self.assertFalse(verify_artifact_manifest(m, b))
+
+    def test_oversized_artifact_count_denied(self):
+        m, b = fixture()
+        m["artifacts"] = [
+            {"artifact_id": f"item-{n}", "media_type": "text/plain",
+             "size": 0, "sha256": hashlib.sha256(b"").hexdigest()}
+            for n in range(33)
+        ]
+        blobs = {f"item-{n}": b"" for n in range(33)}
+        self.assertFalse(verify_artifact_manifest(m, blobs))
+
+    def test_noncanonical_unicode_identity_denied(self):
+        m, b = fixture()
+        m["finding_id"] = "finding-é"
+        self.assertFalse(verify_artifact_manifest(m, b))
+
+    def test_zero_width_identity_denied(self):
+        m, b = fixture()
+        m["remediation_id"] = "fix-\\u200b1"
+        self.assertFalse(verify_artifact_manifest(m, b))
+
+    def test_wrong_artifact_list_container_denied(self):
+        m, b = fixture()
+        m["artifacts"] = tuple(m["artifacts"])
+        self.assertFalse(verify_artifact_manifest(m, b))
+
+    def test_blob_dictionary_subclass_denied(self):
+        m, b = fixture()
+        self.assertFalse(verify_artifact_manifest(m, type("BlobMap", (dict,), {})(b)))
+
+
 if __name__ == "__main__":
     unittest.main()
