@@ -16,7 +16,7 @@ class DuplicateToolSchemaAdmissionTests(unittest.TestCase):
         registry = ToolRegistry()
         definition = ToolDefinition(
             tool_id="duplicate-schema",
-            capability_id="http_headers",
+            capability_id="web-baseline",
             interaction=InteractionKind.ANALYSIS,
             min_risk=RiskLevel.PASSIVE,
             description="Offline duplicate-schema sentinel",
@@ -34,7 +34,7 @@ class DuplicateToolSchemaAdmissionTests(unittest.TestCase):
         registry = ToolRegistry()
         definition = ToolDefinition(
             tool_id="duplicate-same-kind",
-            capability_id="http_headers",
+            capability_id="web-baseline",
             interaction=InteractionKind.ANALYSIS,
             min_risk=RiskLevel.PASSIVE,
             description="Offline duplicate-schema sentinel",
