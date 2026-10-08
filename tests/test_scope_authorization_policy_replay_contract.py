@@ -89,5 +89,37 @@ class ScopeAuthorizationReplayContract(unittest.TestCase):
             self.assertEqual(decision.reason, "active target interaction requires authorization")
 
 
+    def test_expired_grant_remains_denied_after_valid_grant_decision(self):
+        from dataclasses import replace
+
+        now = datetime.now(timezone.utc)
+        expired = replace(
+            self.grant,
+            valid_from=now - timedelta(days=3),
+            valid_until=now - timedelta(days=1),
+        )
+        self.assertTrue(self.policy.decide(self.request()).allowed)
+        for _ in range(4):
+            denied = self.policy.decide(self.request(grant=expired))
+            self.assertFalse(denied.allowed)
+            self.assertEqual(denied.reason, "authorization is not currently valid")
+            self.assertTrue(self.policy.decide(self.request()).allowed)
+
+    def test_future_grant_remains_denied_after_valid_grant_decision(self):
+        from dataclasses import replace
+
+        now = datetime.now(timezone.utc)
+        future = replace(
+            self.grant,
+            valid_from=now + timedelta(days=1),
+            valid_until=now + timedelta(days=3),
+        )
+        self.assertTrue(self.policy.decide(self.request()).allowed)
+        for _ in range(4):
+            denied = self.policy.decide(self.request(grant=future))
+            self.assertFalse(denied.allowed)
+            self.assertEqual(denied.reason, "authorization is not currently valid")
+            self.assertTrue(self.policy.decide(self.request()).allowed)
+
 if __name__ == "__main__":
     unittest.main()
