@@ -17,11 +17,11 @@ def safe_attachment_label(value):
         raise ValueError("ambiguous name")
     if value.endswith((" ", ".")):
         raise ValueError("ambiguous suffix")
-    if "/" in value or "\\\\" in value or ":" in value or "%" in value:
+    if "/" in value or chr(92) in value or ":" in value or "%" in value:
         raise ValueError("path or encoding token")
     if any(unicodedata.category(char)[0] == "C" for char in value):
         raise ValueError("control or format character")
-    if any(char in "<>\\"|?*" for char in value):
+    if any(char in (chr(60), chr(62), chr(34), chr(124), chr(63), chr(42)) for char in value):
         raise ValueError("filesystem metacharacter")
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._ -]*", value, flags=re.ASCII):
         raise ValueError("nonportable label")
