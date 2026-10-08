@@ -94,5 +94,29 @@ class SeparationOfDutiesContractTests(unittest.TestCase):
         self.assertFalse(is_independent_review(self.request, [UntrustedApproval(**dataclasses.asdict(self.approval))]))
 
 
+    def test_required_reviewer_count_is_strict(self):
+        for count in (0, -1, True, 1.0, "1", None):
+            with self.subTest(count=count):
+                self.assertFalse(is_independent_review(self.request, [self.approval], required=count))
+
+    def test_untrusted_approval_shapes_do_not_supply_authority(self):
+        for payload in (None, {}, (), [object()], ["user-B"], [dataclasses.asdict(self.approval)]):
+            with self.subTest(payload=repr(payload)):
+                self.assertFalse(is_independent_review(self.request, payload))
+
+    def test_approval_collection_and_reference_request_are_not_mutated(self):
+        approvals = [self.approval]
+        before = tuple(approvals)
+        request_before = dataclasses.asdict(self.request)
+        self.assertTrue(is_independent_review(self.request, approvals))
+        self.assertEqual(tuple(approvals), before)
+        self.assertEqual(dataclasses.asdict(self.request), request_before)
+
+    def test_invalid_reviewer_principal_never_counts(self):
+        for reviewer in ("", "   ", None, True, 42):
+            with self.subTest(reviewer=reviewer):
+                self.assertFalse(is_independent_review(self.request, [dataclasses.replace(self.approval, reviewer=reviewer)]))
+
+
 if __name__ == "__main__":
     unittest.main()
