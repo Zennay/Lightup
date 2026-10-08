@@ -101,9 +101,7 @@ class TrustedClockReferenceContract(unittest.TestCase):
             lambda: self.start, self.start.astimezone(plus_one), self.end))
 
     def test_invalid_previous_observation_fails_closed(self):
-        for previous in ("bad", dt.datetime(2026, 10, 8), None):
-            if previous is None:
-                continue  # None is the documented initial observation sentinel.
+        for previous in ("bad", dt.datetime(2026, 10, 8), 1):
             with self.subTest(previous=previous):
                 self.assertFalse(clock_allows(
                     lambda: self.start, self.start, self.end,
