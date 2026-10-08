@@ -50,6 +50,36 @@ class RevocationTransitionMatrixTest(unittest.TestCase):
         self.assertEqual(cases["revoked_between_steps"],
                          ["halt_before_next_step", "cancellation_checkpoint"])
 
+    def test_contract_lists_every_machine_scenario(self):
+        contract = (Path(__file__).resolve().parents[1] / "docs" /
+                    "scope-authorization-revocation-transition-contract.md").read_text(
+                        encoding="utf-8"
+                    ).lower()
+        markers = {
+            "revoked_before_dispatch": "revoked before dispatch",
+            "expired_in_queue": "expires while job is queued",
+            "resolver_missing_or_error": "resolver errors",
+            "asset_narrowed": "narrowed to exclude requested asset",
+            "capability_or_risk_broadened": "broadened capability or risk",
+            "validity_window_broadened": "validity starts earlier or expires later",
+            "revoked_between_steps": "revoked during a multi-step run",
+            "retry_after_revocation": "retries after revocation",
+            "cross_tenant_isolation": "tenant a revoked, tenant b still valid",
+            "denial_audit_sink_failed": "denial ledger unavailable",
+            "analysis_only_non_target": "analysis-only operation with no target i/o",
+        }
+        for case, phrase in markers.items():
+            with self.subTest(case=case):
+                self.assertIn(phrase, contract)
+
+    def test_every_case_has_nonempty_expected_result_and_guard(self):
+        for case, result, guard in self.matrix["scenarios"]:
+            with self.subTest(case=case):
+                self.assertIs(type(case), str)
+                self.assertIs(type(result), str)
+                self.assertIs(type(guard), str)
+                self.assertTrue(case.strip() and result.strip() and guard.strip())
+
 
 if __name__ == "__main__":
     unittest.main()
