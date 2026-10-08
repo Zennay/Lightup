@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "purpose": "Offline approval replay acceptance contract; no production runtime claim",
+  "cases": [
+    {
+      "id": "fresh_approval_once",
+      "request_id": "req-a",
+      "approval_id": "ap-a",
+      "tenant": "tenant-a",
+      "revision": 1,
+      "event": "first_consume",
+      "expect": "conditionally_eligible"
+    },
+    {
+      "id": "duplicate_same_request",
+      "request_id": "req-a",
+      "approval_id": "ap-a",
+      "tenant": "tenant-a",
+      "revision": 1,
+      "event": "second_consume",
+      "expect": "deny_replay"
+    },
+    {
+      "id": "cross_request_reuse",
+      "request_id": "req-b",
+      "approval_id": "ap-a",
+      "tenant": "tenant-a",
+      "revision": 1,
+      "event": "first_consume",
+      "expect": "deny_request_mismatch"
+    },
+    {
+      "id": "cross_tenant_reuse",
+      "request_id": "req-a",
+      "approval_id": "ap-a",
+      "tenant": "tenant-b",
+      "revision": 1,
+      "event": "first_consume",
+      "expect": "deny_tenant_mismatch"
+    },
+    {
+      "id": "stale_revision",
+      "request_id": "req-a",
+      "approval_id": "ap-a",
+      "tenant": "tenant-a",
+      "revision": 2,
+      "event": "first_consume",
+      "expect": "deny_revision_mismatch"
+    },
+    {
+      "id": "unrelated_approval",
+      "request_id": "req-c",
+      "approval_id": "ap-c",
+      "tenant": "tenant-a",
+      "revision": 1,
+      "event": "first_consume",
+      "expect": "conditionally_eligible"
+    }
+  ]
+}
