@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "classification": "offline_contract_only",
+  "default_active_dispatch": "deny",
+  "cases": [
+    {
+      "id": "pending_request",
+      "approval_state": "pending",
+      "expected_active_dispatch": "deny",
+      "reason": "no human approval"
+    },
+    {
+      "id": "same_tenant_exact_revision",
+      "approval_state": "approved_exact",
+      "expected_active_dispatch": "conditionally_allow",
+      "reason": "all other gates still required"
+    },
+    {
+      "id": "changed_request_revision",
+      "approval_state": "approved_stale_revision",
+      "expected_active_dispatch": "deny",
+      "reason": "approval does not follow edited scope"
+    },
+    {
+      "id": "cross_tenant_approval",
+      "approval_state": "approved_other_tenant",
+      "expected_active_dispatch": "deny",
+      "reason": "tenant binding mismatch"
+    },
+    {
+      "id": "requester_claims_reviewer",
+      "approval_state": "self_attested",
+      "expected_active_dispatch": "deny",
+      "reason": "free text cannot establish role"
+    },
+    {
+      "id": "ai_recommends_approval",
+      "approval_state": "model_output",
+      "expected_active_dispatch": "deny",
+      "reason": "AI text is not approval"
+    },
+    {
+      "id": "revoked_approval",
+      "approval_state": "revoked",
+      "expected_active_dispatch": "deny",
+      "reason": "live revocation invalidates permission"
+    },
+    {
+      "id": "outside_approval_window",
+      "approval_state": "expired_or_future",
+      "expected_active_dispatch": "deny",
+      "reason": "temporal validity mismatch"
+    },
+    {
+      "id": "asset_or_capability_expansion",
+      "approval_state": "broader_request",
+      "expected_active_dispatch": "deny",
+      "reason": "active request exceeds approved envelope"
+    },
+    {
+      "id": "analysis_only_with_approval",
+      "approval_state": "analysis_only",
+      "expected_active_dispatch": "deny",
+      "reason": "mode must remain non-active"
+    },
+    {
+      "id": "risk_ceiling_expansion",
+      "approval_state": "higher_risk",
+      "expected_active_dispatch": "deny",
+      "reason": "requested risk exceeds approval"
+    },
+    {
+      "id": "missing_provenance",
+      "approval_state": "missing_reviewer_or_lineage",
+      "expected_active_dispatch": "deny",
+      "reason": "missing trusted approval origin"
+    }
+  ]
+}
