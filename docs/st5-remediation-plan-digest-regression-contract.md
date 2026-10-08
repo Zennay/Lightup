@@ -7,3 +7,7 @@ Run `PYTHONPATH=src python -m unittest tests.test_st5_remediation_plan_digest_re
 ## Enum coercion clarification
 
 `AttackPathTransitionClassification` derives from `str` and `Enum`: the Python value `"introduced"` compares equal to the canonical member. It must **not** be used as a negative unknown-classification fixture. The negative regression instead supplies an unsupported value, and the test establishes only that unknown values fail closed. Tightening exact enum type identity is a separate production-owner decision, not implied by this reference suite.
+
+## Complete lineage sensitivity matrix
+
+Additional offline subcases pin the current/future twin identifiers and versions, all four upstream report digests, change/subject/resolution identifiers, transition classification, graph action, evidence-required flag, and all reference ID collections. A single-field mutation must alter the plan digest. These are deterministic serialization regressions; they do not authenticate evidence provenance or grant authority.
