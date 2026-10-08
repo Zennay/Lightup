@@ -49,6 +49,27 @@ class DenialObservabilityFixtureTests(unittest.TestCase):
                 with self.subTest(case=case["id"]):
                     self.assertEqual(case["external"], "generic")
 
+    def test_decisions_and_external_channels_are_closed_vocabularies(self):
+        allowed_decisions = {"deny", "no_authority_change", "cannot_grant"}
+        allowed_externals = {"generic", "none"}
+        for case in self.data["cases"]:
+            with self.subTest(case=case["id"]):
+                self.assertIs(type(case["id"]), str)
+                self.assertIs(type(case["boundary"]), str)
+                self.assertIs(type(case["decision"]), str)
+                self.assertIs(type(case["external"]), str)
+                self.assertIn(case["decision"], allowed_decisions)
+                self.assertIn(case["external"], allowed_externals)
+                self.assertIs(type(case["dispatch"]), bool)
+                self.assertIs(type(case["raw_input_logged"]), bool)
+
+    def test_denial_outcome_cannot_masquerade_as_non_denial(self):
+        exceptional = {"replayed_denial": "no_authority_change",
+                       "authorized_request": "cannot_grant"}
+        for case in self.data["cases"]:
+            with self.subTest(case=case["id"]):
+                self.assertEqual(case["decision"], exceptional.get(case["id"], "deny"))
+
     def test_replay_and_authorized_cases_cannot_derive_authority(self):
         by_id = {case["id"]: case for case in self.data["cases"]}
         self.assertEqual(by_id["replayed_denial"]["decision"], "no_authority_change")
