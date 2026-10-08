@@ -81,6 +81,36 @@ class RemediationPlanDigestBoundaryTests(unittest.TestCase):
             with self.subTest(changed=changed):
                 self.assertNotEqual(original, digest(items=(changed,)))
 
+    def test_all_report_digest_lineage_fields_are_bound(self):
+        original = digest()
+        for field, value in (
+            ("proposal_sha256", "f" * 64),
+            ("impact_analysis_sha256", "f" * 64),
+            ("preview_sha256", "f" * 64),
+            ("current_twin_id", "current-b"),
+            ("twin_id", "future-b"),
+            ("twin_version", 3),
+        ):
+            with self.subTest(field=field):
+                r = report()
+                setattr(r, field, value)
+                self.assertNotEqual(original, digest(r=r))
+
+    def test_all_item_reference_collections_are_bound(self):
+        original = digest()
+        for changed in (
+            replace(item(), current_attack_path_ids=("path-b",)),
+            replace(item(), effect_ids=("effect-b",)),
+            replace(item(), change_node_id="other-change-node"),
+            replace(item(), subject_node_id="other-subject"),
+            replace(item(), resolution_id="other-resolution"),
+            replace(item(), graph_diff_action=AttackPathGraphDiffAction.NO_GRAPH_CHANGE_CLAIM),
+            replace(item(), evidence_required=True),
+            replace(item(), classification=AttackPathTransitionClassification.WORSENED),
+        ):
+            with self.subTest(changed=changed):
+                self.assertNotEqual(original, digest(items=(changed,)))
+
     def test_order_is_lineage_significant(self):
         other = replace(item(), resolution_id="resolution-b")
         self.assertNotEqual(digest(items=(item(), other)), digest(items=(other, item())))
