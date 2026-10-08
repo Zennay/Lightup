@@ -104,7 +104,7 @@ class RemediationPlanDigestBoundaryTests(unittest.TestCase):
 
     def test_unknown_classification_rejected(self):
         with self.assertRaises(ValueError):
-            _planning_action("introduced")
+            _planning_action("unsupported_classification")
 
 
 if __name__ == "__main__":
