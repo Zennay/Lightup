@@ -69,6 +69,34 @@ class IncidentTabletopFixtureTests(unittest.TestCase):
         self.assertIn("terminal_state_unproven", scenarios["cancellation-ack-only"])
         self.assertIn("child_terminal_state_verified", scenarios["expired-during-run"])
 
+    def test_revocation_denies_dispatch_and_retry(self):
+        scenarios = {s["id"]: set(s["expected"]) for s in self.data["scenarios"]}
+        self.assertGreaterEqual(
+            scenarios["revoked-before-dispatch"],
+            {"dispatch_denied", "retry_denied"},
+        )
+
+    def test_narrowing_cannot_resume_implicitly(self):
+        scenarios = {s["id"]: set(s["expected"]) for s in self.data["scenarios"]}
+        self.assertGreaterEqual(
+            scenarios["narrowed-after-approval"],
+            {"excluded_authority_denied", "resumption_requires_review"},
+        )
+
+    def test_expiry_denies_continuation_and_retry(self):
+        scenarios = {s["id"]: set(s["expected"]) for s in self.data["scenarios"]}
+        self.assertGreaterEqual(
+            scenarios["expired-during-run"],
+            {"next_step_denied", "retry_denied", "child_terminal_state_verified"},
+        )
+
+    def test_fixture_has_no_unreviewed_keys(self):
+        self.assertEqual(
+            set(self.data),
+            {"schema_version", "purpose", "default_containment",
+             "required_closure_fields", "scenarios", "non_authority"},
+        )
+
     def test_outage_and_cross_tenant_fail_closed(self):
         scenarios = {s["id"]: set(s["expected"]) for s in self.data["scenarios"]}
         self.assertGreaterEqual(
