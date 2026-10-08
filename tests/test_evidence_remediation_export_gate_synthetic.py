@@ -101,5 +101,18 @@ class ExportGateTests(unittest.TestCase):
             pass
         self.assertFalse(eligible_bundle(UntrustedList([self.ok]), tenant="a", review="r"))
 
+
+    def test_oversized_identity_denied(self):
+        for field in ("tenant", "review", "finding", "remediation"):
+            with self.subTest(field=field):
+                self.assertFalse(self.check(dict(self.ok, **{field: "x" * 257})))
+
+    def test_bundle_exact_ceiling(self):
+        records = [dict(self.ok, finding="f" + str(i), remediation="m" + str(i))
+                   for i in range(100)]
+        self.assertTrue(eligible_bundle(records, tenant="a", review="r"))
+        self.assertFalse(eligible_bundle(records + [dict(self.ok, finding="last")],
+                                         tenant="a", review="r"))
+
 if __name__ == "__main__":
     unittest.main()
