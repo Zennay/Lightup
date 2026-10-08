@@ -56,5 +56,34 @@ class ScopePolicyPurityTests(unittest.TestCase):
                              ScopeReason.AUTHORIZATION_MISSING)
 
 
+    def test_distinct_policies_cannot_share_explicit_host_authority(self):
+        restrictive = ScopePolicy(allow_private_lab=False)
+        configured = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset({"example.test"}),
+        )
+        target = Target(value="example.test")
+        self.assertIs(configured.decide(target).reason,
+                      ScopeReason.AUTHORIZATION_MISSING)
+        self.assertIs(restrictive.decide(target).reason,
+                      ScopeReason.OUT_OF_SCOPE)
+        self.assertIs(configured.decide(target).reason,
+                      ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_same_policy_unknown_host_remains_denied_after_matching_host(self):
+        policy = ScopePolicy(allow_private_lab=False,
+                             explicit_hosts=frozenset({"approved.example.test"}))
+        matched = Target(value="approved.example.test")
+        unknown = Target(value="other.example.test")
+        self.assertIs(policy.decide(matched).reason,
+                      ScopeReason.AUTHORIZATION_MISSING)
+        self.assertIs(policy.decide(unknown).reason,
+                      ScopeReason.OUT_OF_SCOPE)
+        self.assertIs(policy.decide(matched).reason,
+                      ScopeReason.AUTHORIZATION_MISSING)
+        self.assertIs(policy.decide(unknown).reason,
+                      ScopeReason.OUT_OF_SCOPE)
+
+
 if __name__ == "__main__":
     unittest.main()
