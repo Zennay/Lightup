@@ -4,6 +4,7 @@ This is a conservative *reference* validator, not executable authorization.
 The production scope owner must decide whether and how to integrate it.
 """
 import re
+import ipaddress
 import unittest
 
 _LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\Z", re.ASCII)
@@ -17,6 +18,12 @@ def exact_dns_selector(value: object) -> bool:
     if type(value) is not str or not 1 <= len(value) <= 253:
         return False
     labels = value.split(".")
+    try:
+        ipaddress.ip_address(value)
+    except ValueError:
+        pass
+    else:
+        return False
     return len(labels) >= 2 and all(_LABEL.fullmatch(label) for label in labels)
 
 
