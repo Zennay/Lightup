@@ -80,5 +80,22 @@ class ScopePolicyDenialRegressions(unittest.TestCase):
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
 
+    def test_private_ipv6_denied_when_private_lab_disabled(self):
+        policy = ScopePolicy(allow_private_lab=False)
+        decision = policy.decide(Target("[fd00::5]"))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_unlisted_public_ipv6_address_stays_out_of_scope_with_grant(self):
+        current = Authorization(owner="lab-owner", reference="ipv6-grant")
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=("2001:4860:4860::/48",),
+        )
+        decision = policy.decide(Target("[2606:4700:4700::1111]", authorization=current))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+
 if __name__ == "__main__":
     unittest.main()
