@@ -48,5 +48,37 @@ class DuplicateToolSchemaAdmissionTests(unittest.TestCase):
         self.assertEqual((), registry.definitions())
 
 
+    def test_unique_parameters_remain_admissible(self):
+        registry = ToolRegistry()
+        definition = ToolDefinition(
+            tool_id="unique-schema",
+            capability_id="web-baseline",
+            interaction=InteractionKind.ANALYSIS,
+            min_risk=RiskLevel.PASSIVE,
+            description="Positive control: two distinct names",
+            parameters=(
+                ToolParameter("target", ParamKind.STRING),
+                ToolParameter("limit", ParamKind.INTEGER, required=False),
+            ),
+        )
+        registry.register(definition, lambda _ctx, _args: self.fail("handler executed"))
+        self.assertEqual((definition,), registry.definitions())
+        definition.validate_arguments({"target": "offline.example.test", "limit": 3})
+
+    def test_empty_parameter_schema_remains_admissible(self):
+        registry = ToolRegistry()
+        definition = ToolDefinition(
+            tool_id="no-params",
+            capability_id="web-baseline",
+            interaction=InteractionKind.ANALYSIS,
+            min_risk=RiskLevel.PASSIVE,
+            description="Positive control: empty schema",
+            parameters=(),
+        )
+        registry.register(definition, lambda _ctx, _args: self.fail("handler executed"))
+        self.assertEqual((definition,), registry.definitions())
+        definition.validate_arguments({})
+
+
 if __name__ == "__main__":
     unittest.main()
