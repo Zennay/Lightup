@@ -13,3 +13,11 @@ The matrix lives at `tests/fixtures/scope_approval_replay_matrix.json`; `tests/t
 PR #107 owns ToolExecutor production integration, while existing revocation/provenance/release PRs remain untouched. The source owner must decide whether approval is single-use or whether explicitly authorized bounded multiple invocations are intended; this fixture specifies the **single-use candidate model**, not an adopted production policy. Do not promote it as a security control without design review, production integration and exact-head hosted/permanent-VPS evidence.
 
 No real targets, network requests, scans, capabilities, credentials, or deployment are involved.
+
+## Concurrency / durability candidate-model follow-up
+
+`tests/test_scope_approval_replay_interleavings.py` specifies an **in-memory reference** using a lock to show that eight contenders for one identical key should obtain at most one conditional success. This is neither a production implementation nor a distributed atomicity proof: multiple worker processes, process crashes, storage rollback, duplicate messages, and network partitions are not modeled.
+
+The revision-change example deliberately shows a weakness of tuple-only replay keys: changing an untrusted revision creates a fresh key. Production must resolve a canonical issuer-owned approval identity and validate signed or otherwise trusted revision lineage **before** durable atomic consumption. Never treat caller-supplied tuple fields as authority.
+
+Acceptance for the source owner: define approval-use cardinality; ensure a single durable issuer-controlled consumption transaction or explicitly bounded-use grant, lock/transaction boundaries, crash/retry semantics and denial audit requirements; verify exact-head integration and VPS proof without contacting targets during this test lane.
