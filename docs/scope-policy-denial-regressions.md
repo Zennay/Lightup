@@ -2,7 +2,7 @@
 
 This additive test pack pins the existing `ScopePolicy.decide` fail-closed boundary without changing production implementation, adding active testing, or authorizing any target.
 
-The five deterministic cases cover: expired authorization for an explicitly listed public IPv4 network; not-yet-valid authorization for a normalized explicit hostname; private-address refusal with private lab mode disabled; missing authorization for an explicitly listed public IPv6 network; and refusal of a different hostname even when the request carries an otherwise-current authorization.
+The eight deterministic cases cover: expired authorization for an explicitly listed public IPv4 network; not-yet-valid authorization for a normalized explicit hostname; private-address refusal with private lab mode disabled; missing authorization for an explicitly listed public IPv6 network; refusal of a different hostname even when the request carries an otherwise-current authorization; a named host without any grant; refusal of a neighboring address outside the listed CIDR; and refusal of a link-local address when private lab mode is disabled.
 
 Run with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_policy_denial_regressions.py' -v`.
 
