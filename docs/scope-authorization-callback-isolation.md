@@ -12,7 +12,9 @@ on an attached authorization object. This also holds when
 
 `tests/test_scope_authorization_callback_isolation.py` covers an undeclared
 public hostname, an address outside the declared public network, a blank
-target and disabled public authorization requirement. An adversarial
+target and disabled public authorization requirement. Two additional control
+cases ensure loopback and private-lab decisions remain independent of the
+public authorization callback, preserving their existing classification. An adversarial
 authorization object raises from its `is_current`, `is_revoked` and
 `allows_asset` hooks to detect inappropriate invocation. Expected outcomes:
 `OUT_OF_SCOPE` and `INVALID_TARGET`, with no callbacks executed.
