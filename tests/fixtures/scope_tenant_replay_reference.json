@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "description": "Offline tenant-isolation reference fixtures; no production executor coverage",
+  "cases": [
+    {
+      "id": "same_tenant_same_revision",
+      "run_tenant": "tenant-a",
+      "grant_tenant": "tenant-a",
+      "snapshot_revision": 7,
+      "live_revision": 7,
+      "grant_active": true,
+      "expect_eligible": true
+    },
+    {
+      "id": "foreign_tenant_same_revision",
+      "run_tenant": "tenant-a",
+      "grant_tenant": "tenant-b",
+      "snapshot_revision": 7,
+      "live_revision": 7,
+      "grant_active": true,
+      "expect_eligible": false
+    },
+    {
+      "id": "foreign_tenant_higher_revision",
+      "run_tenant": "tenant-a",
+      "grant_tenant": "tenant-b",
+      "snapshot_revision": 7,
+      "live_revision": 8,
+      "grant_active": true,
+      "expect_eligible": false
+    },
+    {
+      "id": "same_tenant_revoked",
+      "run_tenant": "tenant-a",
+      "grant_tenant": "tenant-a",
+      "snapshot_revision": 7,
+      "live_revision": 8,
+      "grant_active": false,
+      "expect_eligible": false
+    },
+    {
+      "id": "same_tenant_revision_replaced",
+      "run_tenant": "tenant-a",
+      "grant_tenant": "tenant-a",
+      "snapshot_revision": 7,
+      "live_revision": 8,
+      "grant_active": true,
+      "expect_eligible": false
+    },
+    {
+      "id": "confusable_tenant_case",
+      "run_tenant": "tenant-a",
+      "grant_tenant": "Tenant-a",
+      "snapshot_revision": 7,
+      "live_revision": 7,
+      "grant_active": true,
+      "expect_eligible": false
+    }
+  ]
+}
