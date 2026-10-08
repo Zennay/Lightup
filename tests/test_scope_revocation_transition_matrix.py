@@ -106,5 +106,38 @@ class RevocationTransitionMatrixTest(unittest.TestCase):
                 self.assertNotIn(guard, {"skip_revalidation", "ignore_revocation", "fallback_allow"})
 
 
+    def test_fixture_schema_rejects_unknown_fields(self):
+        # Extra keys must be reviewed rather than silently interpreted as authority.
+        self.assertEqual(
+            set(self.matrix),
+            {"schema_version", "kind", "implementation_verified",
+             "requires_real_target", "scenarios"},
+        )
+        self.assertIs(type(self.matrix["schema_version"]), int)
+        self.assertIs(type(self.matrix["kind"]), str)
+        self.assertIs(type(self.matrix["implementation_verified"]), bool)
+        self.assertIs(type(self.matrix["requires_real_target"]), bool)
+        self.assertIs(type(self.matrix["scenarios"]), list)
+
+    def test_denial_cases_cannot_advertise_implicit_permission(self):
+        # Controls protect the acceptance fixture, not execution behavior.
+        for case, expected, guard in self.matrix["scenarios"]:
+            with self.subTest(case=case):
+                self.assertEqual(type(case), str)
+                self.assertEqual(type(expected), str)
+                self.assertEqual(type(guard), str)
+                self.assertEqual(case, case.strip())
+                self.assertEqual(expected, expected.strip())
+                self.assertEqual(guard, guard.strip())
+                if case in DENIAL_CASES:
+                    self.assertEqual(expected, "deny")
+                if case == "analysis_only_non_target":
+                    self.assertEqual((expected, guard),
+                                     ("analysis_only", "no_target_dispatch"))
+                if case == "cross_tenant_isolation":
+                    self.assertEqual((expected, guard),
+                                     ("tenant_specific", "no_cross_tenant_authority"))
+
+
 if __name__ == "__main__":
     unittest.main()
