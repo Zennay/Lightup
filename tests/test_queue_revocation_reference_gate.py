@@ -75,5 +75,30 @@ class QueueRevocationReferenceTest(unittest.TestCase):
         self.assertEqual(self.gate.handler_calls, [("tenant-a", "inert")])
 
 
+    def test_same_revision_replaced_grant_is_not_equivalent(self):
+        # Issuer must bind stronger lineage than an integer revision alone.
+        # A forged same-value object is a known LIMITATION of this reference model.
+        replacement = Grant("tenant-a", "same-id", 1, False)
+        self.gate.publish(replacement)
+        self.assertEqual(self.gate.dispatch(self.grant, "tenant-a", "revoked"), "denied")
+        self.assertEqual(self.gate.handler_calls, [])
+
+    def test_missing_tenant_is_denied_without_side_effects(self):
+        for invalid in (None, "", 0, True, ["tenant-a"]):
+            with self.subTest(invalid=repr(invalid)):
+                self.assertEqual(self.gate.dispatch(self.grant, invalid, "inert"), "denied")
+        self.assertEqual(self.gate.handler_calls, [])
+
+    def test_revocation_of_other_tenant_cannot_modify_this_tenants_grant(self):
+        self.gate.publish(Grant("tenant-b", "same-id", 2, False))
+        self.assertEqual(self.gate.dispatch(self.grant, "tenant-a", "inert"), "executed")
+        self.assertEqual(self.gate.handler_calls, [("tenant-a", "inert")])
+
+    def test_second_action_is_denied_after_interstep_revocation(self):
+        self.assertEqual(self.gate.dispatch(self.grant, "tenant-a", "step-one"), "executed")
+        self.gate.publish(Grant("tenant-a", "same-id", 2, False))
+        self.assertEqual(self.gate.dispatch(self.grant, "tenant-a", "step-two"), "denied")
+        self.assertEqual(self.gate.handler_calls, [("tenant-a", "step-one")])
+
 if __name__ == "__main__":
     unittest.main()
