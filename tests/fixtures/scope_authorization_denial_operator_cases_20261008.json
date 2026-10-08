@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "mode": "OFFLINE_REFERENCE_ONLY",
+  "activation_permitted": false,
+  "examples": [
+    {
+      "id": "expired_prior_success",
+      "synthetic": true,
+      "reason": "EXPIRED_OR_NOT_YET_VALID",
+      "expected": "DENY",
+      "target_io": false,
+      "capability_dispatch": false,
+      "may_reuse_prior_decision": false,
+      "requires_fresh_authoritative_evaluation": true
+    },
+    {
+      "id": "revocation_store_unavailable",
+      "synthetic": true,
+      "reason": "STORE_UNAVAILABLE",
+      "expected": "DENY",
+      "target_io": false,
+      "capability_dispatch": false,
+      "may_reuse_prior_decision": false,
+      "requires_fresh_authoritative_evaluation": true
+    },
+    {
+      "id": "cross_tenant_binding",
+      "synthetic": true,
+      "reason": "INVALID_IDENTITY",
+      "expected": "DENY",
+      "target_io": false,
+      "capability_dispatch": false,
+      "may_reuse_prior_decision": false,
+      "requires_fresh_authoritative_evaluation": true
+    },
+    {
+      "id": "cross_engagement_binding",
+      "synthetic": true,
+      "reason": "INVALID_IDENTITY",
+      "expected": "DENY",
+      "target_io": false,
+      "capability_dispatch": false,
+      "may_reuse_prior_decision": false,
+      "requires_fresh_authoritative_evaluation": true
+    },
+    {
+      "id": "risk_above_grant",
+      "synthetic": true,
+      "reason": "RISK_EXCEEDS_GRANT",
+      "expected": "DENY",
+      "target_io": false,
+      "capability_dispatch": false,
+      "may_reuse_prior_decision": false,
+      "requires_fresh_authoritative_evaluation": true
+    },
+    {
+      "id": "audit_persistence_failed",
+      "synthetic": true,
+      "reason": "AUDIT_UNAVAILABLE",
+      "expected": "DENY",
+      "target_io": false,
+      "capability_dispatch": false,
+      "may_reuse_prior_decision": false,
+      "requires_fresh_authoritative_evaluation": true
+    },
+    {
+      "id": "support_ticket_ack_only",
+      "synthetic": true,
+      "reason": "APPROVAL_UNVERIFIED",
+      "expected": "DENY",
+      "target_io": false,
+      "capability_dispatch": false,
+      "may_reuse_prior_decision": false,
+      "requires_fresh_authoritative_evaluation": true
+    },
+    {
+      "id": "clock_source_untrusted",
+      "synthetic": true,
+      "reason": "CLOCK_UNTRUSTED",
+      "expected": "DENY",
+      "target_io": false,
+      "capability_dispatch": false,
+      "may_reuse_prior_decision": false,
+      "requires_fresh_authoritative_evaluation": true
+    },
+    {
+      "id": "asset_out_of_scope",
+      "synthetic": true,
+      "reason": "SCOPE_MISMATCH",
+      "expected": "DENY",
+      "target_io": false,
+      "capability_dispatch": false,
+      "may_reuse_prior_decision": false,
+      "requires_fresh_authoritative_evaluation": true
+    },
+    {
+      "id": "conflicting_policies",
+      "synthetic": true,
+      "reason": "POLICY_CONFLICT",
+      "expected": "DENY",
+      "target_io": false,
+      "capability_dispatch": false,
+      "may_reuse_prior_decision": false,
+      "requires_fresh_authoritative_evaluation": true
+    },
+    {
+      "id": "missing_current_grant",
+      "synthetic": true,
+      "reason": "MISSING_AUTHORITY",
+      "expected": "DENY",
+      "target_io": false,
+      "capability_dispatch": false,
+      "may_reuse_prior_decision": false,
+      "requires_fresh_authoritative_evaluation": true
+    },
+    {
+      "id": "malformed_approval_provenance",
+      "synthetic": true,
+      "reason": "APPROVAL_UNVERIFIED",
+      "expected": "DENY",
+      "target_io": false,
+      "capability_dispatch": false,
+      "may_reuse_prior_decision": false,
+      "requires_fresh_authoritative_evaluation": true
+    },
+    {
+      "id": "new_grant_during_stopped_request",
+      "synthetic": true,
+      "reason": "MISSING_AUTHORITY",
+      "expected": "DENY",
+      "target_io": false,
+      "capability_dispatch": false,
+      "may_reuse_prior_decision": false,
+      "requires_fresh_authoritative_evaluation": true
+    }
+  ]
+}
