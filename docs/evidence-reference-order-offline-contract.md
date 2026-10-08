@@ -13,4 +13,4 @@ This reference isolates an evidence/remediation integrity question: a finding's 
 
 ## Limitations and handoff
 
-Nine stdlib-only offline reference tests. No source changes, network access, real target assessment, CI-green claim, production enforcement, or authorization expansion. Production source owners must establish collection semantics, evidence provenance and retest synchronization before integration. Require exact-head hosted and permanent VPS validation before promoting the draft.
+Fourteen stdlib-only offline reference tests. Additional vectors cover a 64-member upper bound, tuple/list parity, case-sensitive identity, composed versus decomposed Unicode and JSON delimiter ambiguity. No source changes, network access, real target assessment, CI-green claim, production enforcement, or authorization expansion. Production source owners must establish collection semantics, evidence provenance and retest synchronization before integration. Require exact-head hosted and permanent VPS validation before promoting the draft.
