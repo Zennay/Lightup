@@ -34,3 +34,7 @@ Status: proposed acceptance contract; **not proof of implementation**. Scope: M7
 - Avoid collisions: PR #107 owns ToolExecutor source; #954 owns executor grant-integrity composition; PR #982 owns release-gate receipts. This contract adds no code in those areas.
 - This document is **not** an implementation claim. Promotion requires source-owner adoption, focused tests on an exact commit, both hosted and permanent VPS checks, review, and recorded release evidence. Never infer permission from green CI alone.
 - A real-target action still needs a new explicit operator instruction, exact asset/scope, valid authorization reference and active risk approval.
+
+## Machine-readable outcomes are immutable acceptance targets
+
+The fixture's expected result and guard for each case are fixed by `test_case_results_and_guards_use_closed_vocabulary`. A change from denial to permission, or from fresh validation to a permissive fallback, must not silently pass merely because the scenario identifier remains present. The offline matrix is an acceptance contract only: passing it does **not** prove executor implementation, an authorization grant, target consent, hosted CI, or permanent VPS validation. Any production behavior must be validated separately by the source-owning PR and pinned-head CI before promotion.
