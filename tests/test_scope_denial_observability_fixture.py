@@ -50,7 +50,7 @@ class DenialObservabilityFixtureTests(unittest.TestCase):
                     self.assertEqual(case["external"], "generic")
 
     def test_decisions_and_external_channels_are_closed_vocabularies(self):
-        allowed_decisions = {"deny", "no_authority_change", "cannot_grant"}
+        allowed_decisions = {"deny", "bounded", "no_authority_change", "cannot_grant"}
         allowed_externals = {"generic", "none"}
         for case in self.data["cases"]:
             with self.subTest(case=case["id"]):
@@ -64,7 +64,8 @@ class DenialObservabilityFixtureTests(unittest.TestCase):
                 self.assertIs(type(case["raw_input_logged"]), bool)
 
     def test_denial_outcome_cannot_masquerade_as_non_denial(self):
-        exceptional = {"replayed_denial": "no_authority_change",
+        exceptional = {"denial_flood": "bounded",
+                       "replayed_denial": "no_authority_change",
                        "authorized_request": "cannot_grant"}
         for case in self.data["cases"]:
             with self.subTest(case=case["id"]):
