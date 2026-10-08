@@ -32,6 +32,9 @@ class ApprovalEnvelopeReferenceTests(unittest.TestCase):
             replace(self.candidate, risk=3),
             replace(self.candidate, mode="analysis"),
             replace(self.candidate, risk=True),
+            replace(self.candidate, risk=-1),
+            replace(self.candidate, mode=1),
+            replace(self.candidate, mode="ACTIVE"),
         ]
         for candidate in variants:
             with self.subTest(candidate=candidate):
@@ -60,6 +63,8 @@ class ApprovalEnvelopeReferenceTests(unittest.TestCase):
     def test_malformed_grants_deny(self):
         for grant in (
             replace(self.grant, max_risk=True),
+            replace(self.grant, max_risk=-1),
+            replace(self.grant, max_risk="2"),
             replace(self.grant, assets={"lab.test"}),
             replace(self.grant, capabilities={"header-check"}),
             replace(self.grant, valid_until=self.grant.valid_from),
