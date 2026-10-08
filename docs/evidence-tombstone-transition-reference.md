@@ -10,7 +10,8 @@ A finding/evidence record may become unavailable because of retention expiry, co
 
 1. Bind the transition to the **same tenant and exact evidence identifier**, not a name/substring/normalized alias.
 2. Keep the previously attested evidence digest as a historical *commitment* where lawful; the tombstone must **never** contain deleted raw evidence.
-3. Accept a transition only from an exact `active` predecessor, with nonnegative integer sequence and canonical lowercase 64-character SHA-256 hex commitment. Do not treat this syntactic validation as cryptographic authenticity.\n4. Include a bounded, nonempty deletion reason and an explicit monotonic sequence; reject boolean, string or skipped sequence values.
+3. Accept a transition only from an exact `active` predecessor, with nonnegative integer sequence and canonical lowercase 64-character SHA-256 hex commitment. Do not treat this syntactic validation as cryptographic authenticity.
+4. Include a bounded, nonempty deletion reason and an explicit monotonic sequence; reject boolean, string or skipped sequence values.
 5. Bind the new receipt to the exact predecessor receipt seal, rejecting stale predecessors and rewritten hashes.
 6. A tombstoned entry is terminal: no resurrection or second deletion under the same identity. New evidence requires a new ID and normal admission/authorization.
 7. Searches, exports, twin materialization, remediation context and retests must **fail closed** when the referenced record is tombstoned; never substitute another tenant's or another version's evidence.
