@@ -53,7 +53,6 @@ class ScopeAuthorizationCallbackIsolationTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
-
     def test_loopback_membership_does_not_consult_public_authorization(self):
         decision = ScopePolicy().decide(
             Target("127.0.0.1", authorization=ExplodingAuthorization())
@@ -67,6 +66,22 @@ class ScopeAuthorizationCallbackIsolationTests(unittest.TestCase):
         )
         self.assertTrue(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.PRIVATE_LAB)
+
+    def test_private_address_with_lab_disabled_stays_out_of_scope(self):
+        policy = ScopePolicy(allow_private_lab=False)
+        decision = policy.decide(
+            Target("10.20.30.40", authorization=ExplodingAuthorization())
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_undeclared_ipv6_never_consults_authorization(self):
+        policy = ScopePolicy(allow_private_lab=False, explicit_networks=("2001:db8:1::/64",))
+        decision = policy.decide(
+            Target("https://[2001:db8:2::1]/", authorization=ExplodingAuthorization())
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
 if __name__ == "__main__":
     unittest.main()
