@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "authoritative": false,
+  "cases": [
+    {
+      "id": "foreign_tenant",
+      "boundary": "tenant",
+      "decision": "deny",
+      "external": "generic",
+      "dispatch": false,
+      "raw_input_logged": false
+    },
+    {
+      "id": "revoked_grant",
+      "boundary": "grant",
+      "decision": "deny",
+      "external": "generic",
+      "dispatch": false,
+      "raw_input_logged": false
+    },
+    {
+      "id": "expired_grant",
+      "boundary": "grant",
+      "decision": "deny",
+      "external": "generic",
+      "dispatch": false,
+      "raw_input_logged": false
+    },
+    {
+      "id": "future_grant",
+      "boundary": "grant",
+      "decision": "deny",
+      "external": "generic",
+      "dispatch": false,
+      "raw_input_logged": false
+    },
+    {
+      "id": "narrowed_grant",
+      "boundary": "grant",
+      "decision": "deny",
+      "external": "generic",
+      "dispatch": false,
+      "raw_input_logged": false
+    },
+    {
+      "id": "invalid_capability",
+      "boundary": "capability",
+      "decision": "deny",
+      "external": "generic",
+      "dispatch": false,
+      "raw_input_logged": false
+    },
+    {
+      "id": "invalid_risk",
+      "boundary": "risk",
+      "decision": "deny",
+      "external": "generic",
+      "dispatch": false,
+      "raw_input_logged": false
+    },
+    {
+      "id": "mandatory_audit_failure",
+      "boundary": "audit",
+      "decision": "deny",
+      "external": "generic",
+      "dispatch": false,
+      "raw_input_logged": false
+    },
+    {
+      "id": "secret_exception",
+      "boundary": "telemetry",
+      "decision": "deny",
+      "external": "generic",
+      "dispatch": false,
+      "raw_input_logged": false
+    },
+    {
+      "id": "replayed_denial",
+      "boundary": "audit",
+      "decision": "no_authority_change",
+      "external": "none",
+      "dispatch": false,
+      "raw_input_logged": false
+    },
+    {
+      "id": "denial_flood",
+      "boundary": "telemetry",
+      "decision": "bounded",
+      "external": "generic",
+      "dispatch": false,
+      "raw_input_logged": false
+    },
+    {
+      "id": "authorized_request",
+      "boundary": "audit",
+      "decision": "cannot_grant",
+      "external": "none",
+      "dispatch": false,
+      "raw_input_logged": false
+    }
+  ]
+}
