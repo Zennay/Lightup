@@ -38,3 +38,7 @@ Status: proposed acceptance contract; **not proof of implementation**. Scope: M7
 ## Machine-readable outcomes are immutable acceptance targets
 
 The fixture's expected result and guard for each case are fixed by `test_case_results_and_guards_use_closed_vocabulary`. A change from denial to permission, or from fresh validation to a permissive fallback, must not silently pass merely because the scenario identifier remains present. The offline matrix is an acceptance contract only: passing it does **not** prove executor implementation, an authorization grant, target consent, hosted CI, or permanent VPS validation. Any production behavior must be validated separately by the source-owning PR and pinned-head CI before promotion.
+
+## Fixture drift gate
+
+The offline test suite requires exactly five top-level JSON keys and canonical built-in JSON-decoded field types. Unknown metadata is rejected pending review; all scenario result/guard pairs are pinned to the enumerated fail-closed acceptance outcomes. This is **fixture integrity**, not production behavior testing, and cannot be interpreted as an execution authorization. An explicit source-owner integration test must separately exercise revocation between queueing, dispatch, retry, and multi-step execution before release.
