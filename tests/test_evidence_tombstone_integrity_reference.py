@@ -31,6 +31,12 @@ def transition(previous, proposed, *, expected_prior_hash):
     for value in (previous.tenant, previous.evidence_id, proposed.tenant, proposed.evidence_id):
         if type(value) is not str or not value or len(value) > 128:
             raise ValueError("invalid identity")
+    if previous.kind != "active":
+        raise ValueError("non-active source receipt")
+    if type(previous.sequence) is not int or previous.sequence < 0:
+        raise ValueError("invalid source sequence")
+    if type(previous.digest) is not str or len(previous.digest) != 64 or any(ch not in "0123456789abcdef" for ch in previous.digest):
+        raise ValueError("invalid source digest")
     if proposed.tenant != previous.tenant or proposed.evidence_id != previous.evidence_id:
         raise ValueError("cross-boundary transition")
     if type(proposed.sequence) is not int or proposed.sequence != previous.sequence + 1:
@@ -103,6 +109,23 @@ class EvidenceTombstoneReferenceTests(unittest.TestCase):
             transition(self.source, ForgedReceipt(**dataclasses.asdict(self.deleted)), expected_prior_hash=self.prev)
         with self.assertRaises(ValueError):
             transition(self.source, dataclasses.replace(self.deleted, evidence_id=""), expected_prior_hash=self.prev)
+
+    def test_non_active_source_denied(self):
+        for kind in ("pending", "unknown", "", None):
+            with self.subTest(kind=kind), self.assertRaises(ValueError):
+                transition(dataclasses.replace(self.source, kind=kind), self.deleted, expected_prior_hash=seal(dataclasses.replace(self.source, kind=kind)))
+
+    def test_invalid_source_sequence_denied(self):
+        for sequence in (-1, True, "4"):
+            source = dataclasses.replace(self.source, sequence=sequence)
+            with self.subTest(sequence=sequence), self.assertRaises(ValueError):
+                transition(source, self.deleted, expected_prior_hash=seal(source))
+
+    def test_noncanonical_source_digest_denied(self):
+        for digest in ("A" * 64, "g" * 64, "a" * 63, None):
+            source = dataclasses.replace(self.source, digest=digest)
+            with self.subTest(digest=digest), self.assertRaises(ValueError):
+                transition(source, self.deleted, expected_prior_hash=seal(source))
 
     def test_original_receipt_not_mutated(self):
         original = dataclasses.asdict(self.source)
