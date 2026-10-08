@@ -12,6 +12,10 @@ Status: **reference acceptance contract only**. This document and its fixture ar
 6. Reject unknown action, missing tenant, untrusted identity, and malformed role values **before** fetching, reading, exporting, or deleting any record.
 7. Records should preserve immutable provenance (issuer, grant/revision, event time, event type and evidence reference) while minimizing personal data. Do not treat hash-like identifiers as proof of issuer authenticity.
 
+## Identity/type confusion invariant
+
+The reference rejects non-exact `str` tenant, role and action values before equality or membership checks. This is important because a Python `str` subclass may override equality and impersonate a recognized role, tenant or action. Tests cover forged action and role strings; the fixture contract does **not** attest to production caller validation.
+
 ## Offline acceptance pack
 
 `tests/fixtures/scope_audit_retention_boundary.json` describes eight example decision cases, exercised by `tests/test_scope_audit_retention_boundary_contract.py`. The reference function is intentionally isolated from the application. Neither it nor the fixture proves actual tenant isolation, runtime revocation, export redaction or compliant retention.
