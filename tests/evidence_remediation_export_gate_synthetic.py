@@ -16,7 +16,7 @@ def eligible(record, *, tenant, review):
         return False
     identities = ("tenant", "review", "finding", "remediation", "digest")
     if any(type(record[k]) is not str or not record[k].strip()
-           or record[k] != record[k].strip() for k in identities):
+           or record[k] != record[k].strip() or len(record[k]) > 256 for k in identities):
         return False
     if record["tenant"] != tenant or record["review"] != review:
         return False
@@ -30,7 +30,7 @@ def eligible(record, *, tenant, review):
 
 def eligible_bundle(records, *, tenant, review):
     """Fail closed for an entire synthetic export; never return partial records."""
-    if type(records) is not list or not records:
+    if type(records) is not list or not records or len(records) > 100:
         return False
     seen = set()
     for record in records:
