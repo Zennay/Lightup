@@ -47,3 +47,7 @@ LightUp must remain passive-first. No real-world target interaction is authorize
 ## Safe validation of this document
 
 Review the rendered Markdown and confirm the checklist references the correct integration PRs at release time. No checks are claimed to have run from creating this file.
+
+## Evidence collection worksheet
+
+Use the [blank promotion evidence template](scope-authorization-promotion-evidence-template.md) for every candidate integration. Its defaults are HOLD / NOT RUN; filling it is not proof until independently reviewed against exact-head hosted and permanent-VPS results. A release approval does not substitute for separately approved target scope.
