@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "scope": "offline-denial-audit-privacy",
+  "release_authorizing": false,
+  "required_event_fields": [
+    "event_id",
+    "timestamp",
+    "tenant_correlation_id",
+    "reason_code",
+    "policy_version"
+  ],
+  "forbidden_event_fields": [
+    "url",
+    "target",
+    "headers",
+    "body",
+    "password",
+    "secret",
+    "cookie",
+    "authorization",
+    "access_token",
+    "exception",
+    "stack_trace"
+  ],
+  "cases": [
+    {
+      "id": "AUD-01",
+      "condition": "wrong_tenant",
+      "expected_decision": "DENY",
+      "raw_sensitive_data_emitted": false
+    },
+    {
+      "id": "AUD-02",
+      "condition": "revoked_grant",
+      "expected_decision": "DENY",
+      "raw_sensitive_data_emitted": false
+    },
+    {
+      "id": "AUD-03",
+      "condition": "token_bearing_url",
+      "expected_decision": "DENY",
+      "raw_sensitive_data_emitted": false
+    },
+    {
+      "id": "AUD-04",
+      "condition": "secret_in_exception",
+      "expected_decision": "DENY",
+      "raw_sensitive_data_emitted": false
+    },
+    {
+      "id": "AUD-05",
+      "condition": "audit_sink_unavailable",
+      "expected_decision": "DENY",
+      "raw_sensitive_data_emitted": false
+    },
+    {
+      "id": "AUD-06",
+      "condition": "cross_tenant_read",
+      "expected_decision": "DENY",
+      "raw_sensitive_data_emitted": false
+    },
+    {
+      "id": "AUD-07",
+      "condition": "unknown_event_field",
+      "expected_decision": "DENY",
+      "raw_sensitive_data_emitted": false
+    },
+    {
+      "id": "AUD-08",
+      "condition": "malformed_target",
+      "expected_decision": "DENY",
+      "raw_sensitive_data_emitted": false
+    }
+  ]
+}
