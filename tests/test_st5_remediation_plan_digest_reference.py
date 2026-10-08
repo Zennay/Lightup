@@ -144,6 +144,56 @@ class RemediationPlanDigestBoundaryTests(unittest.TestCase):
         self.assertEqual(vars(r), before_report)
         self.assertEqual(entries[0].as_dict(), before_item)
 
+    def test_digest_matches_independent_canonical_json_reconstruction(self):
+        from hashlib import sha256
+        import json
+
+        r = report()
+        entry = item()
+        payload = {
+            "schema_version": "st5.remediation_retest_plan.v1",
+            "client_id": r.client_id,
+            "current_twin_id": r.current_twin_id,
+            "current_twin_version": r.current_twin_version,
+            "twin_id": r.twin_id,
+            "twin_version": r.twin_version,
+            "changeset_id": r.changeset_id,
+            "proposal_sha256": r.proposal_sha256,
+            "impact_analysis_sha256": r.impact_analysis_sha256,
+            "preview_sha256": r.preview_sha256,
+            "report_sha256": r.report_sha256,
+            "items": [{
+                "change_node_id": entry.change_node_id,
+                "subject_node_id": entry.subject_node_id,
+                "resolution_id": entry.resolution_id,
+                "resolution_sha256": entry.resolution_sha256,
+                "classification": entry.classification.value,
+                "graph_diff_action": entry.graph_diff_action.value,
+                "next_action": entry.next_action.value,
+                "remediation_required": entry.remediation_required,
+                "future_state_retest_required": entry.future_state_retest_required,
+                "evidence_required": entry.evidence_required,
+                "current_attack_path_ids": list(entry.current_attack_path_ids),
+                "effect_ids": list(entry.effect_ids),
+                "evidence_ids": list(entry.evidence_ids),
+                "capability_ids": list(entry.capability_ids),
+            }],
+            "remediation_item_count": 1,
+            "retest_item_count": 1,
+            "evidence_gap_count": 0,
+            "plan_complete": True,
+            "contains_insufficient_evidence": False,
+            "execution_allowed": False,
+            "deployment_authorized": False,
+            "attack_path_mutation_allowed": False,
+            "future_semantics": "unresolved",
+            "security_verdict": "not_evaluated",
+        }
+        expected = sha256(json.dumps(
+            payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+        ).encode("utf-8")).hexdigest()
+        self.assertEqual(digest(), expected)
+
     def test_order_is_lineage_significant(self):
         other = replace(item(), resolution_id="resolution-b")
         self.assertNotEqual(digest(items=(item(), other)), digest(items=(other, item())))
