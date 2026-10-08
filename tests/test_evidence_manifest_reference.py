@@ -118,7 +118,7 @@ class EvidenceManifestReferenceTests(unittest.TestCase):
 
     def test_zero_width_identity_denied(self):
         m, b = fixture()
-        m["remediation_id"] = "fix-\\u200b1"
+        m["remediation_id"] = "fix-\u200b1"
         self.assertFalse(verify_artifact_manifest(m, b))
 
     def test_wrong_artifact_list_container_denied(self):
@@ -129,6 +129,23 @@ class EvidenceManifestReferenceTests(unittest.TestCase):
     def test_blob_dictionary_subclass_denied(self):
         m, b = fixture()
         self.assertFalse(verify_artifact_manifest(m, type("BlobMap", (dict,), {})(b)))
+
+
+    def test_cross_tenant_manifest_label_change_not_trusted(self):
+        m, b = fixture()
+        m["tenant_id"] = "tenant-b"
+        # Integrity of bytes alone does NOT authenticate tenant ownership.
+        self.assertTrue(verify_artifact_manifest(m, b))
+
+    def test_zero_width_artifact_identity_denied(self):
+        m, b = fixture()
+        m["artifacts"][0]["artifact_id"] = "proof-\u200b1"
+        self.assertFalse(verify_artifact_manifest(m, b))
+
+    def test_manifest_list_subclass_denied(self):
+        m, b = fixture()
+        m["artifacts"] = type("ArtifactList", (list,), {})(m["artifacts"])
+        self.assertFalse(verify_artifact_manifest(m, b))
 
 
 if __name__ == "__main__":
