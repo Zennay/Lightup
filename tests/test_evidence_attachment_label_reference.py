@@ -31,6 +31,22 @@ def safe_attachment_label(value):
     return value
 
 
+def validate_unique_attachment_labels(values):
+    """Reference-only: reject case-insensitive collisions rather than renaming."""
+    if type(values) not in (list, tuple):
+        raise ValueError("invalid collection")
+    if len(values) > 1000:
+        raise ValueError("too many labels")
+    identities = set()
+    for value in values:
+        label = safe_attachment_label(value)
+        identity = label.casefold()
+        if identity in identities:
+            raise ValueError("ambiguous duplicate attachment label")
+        identities.add(identity)
+    return tuple(values)
+
+
 class AttachmentNameReferenceTests(unittest.TestCase):
     def test_positive(self):
         for name in ("evidence-001.json", "retest screenshot 2.png", "finding_42.txt"):
@@ -84,6 +100,23 @@ class AttachmentNameReferenceTests(unittest.TestCase):
         before = value
         self.assertEqual(safe_attachment_label(value), before)
         self.assertEqual(value, before)
+
+    def test_case_insensitive_collision_rejected(self):
+        for values in (["Evidence.JSON", "evidence.json"], ["a.txt", "a.txt"]):
+            with self.subTest(values=values):
+                with self.assertRaises(ValueError):
+                    validate_unique_attachment_labels(values)
+
+    def test_distinct_labels_stay_ordered(self):
+        source = ["one.txt", "two.txt"]
+        self.assertEqual(validate_unique_attachment_labels(source), tuple(source))
+        self.assertEqual(source, ["one.txt", "two.txt"])
+
+    def test_invalid_label_collection_denied(self):
+        for value in (None, "a.txt", {"a.txt"}, ["valid.txt", 7], ["a.txt"] * 1001):
+            with self.subTest(value=type(value).__name__):
+                with self.assertRaises(ValueError):
+                    validate_unique_attachment_labels(value)
 
 
 if __name__ == "__main__":
