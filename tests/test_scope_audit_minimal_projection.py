@@ -44,6 +44,16 @@ class MinimalScopeDecisionTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 project_scope_decision({**GOOD, "reason_code": value})
 
+    def test_identifier_metacharacters_rejected(self):
+        for value in ("https://target.example", "user@example.com", "token=secret", "../escape", "x y", "a\\\\b", "{json}", "x?y"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                project_scope_decision({**GOOD, "grant_id": value})
+
+    def test_reason_requires_ascii_letter_prefix(self):
+        for reason in ("_revoked", "123", "0", ""):
+            with self.subTest(reason=reason), self.assertRaises(ValueError):
+                project_scope_decision({**GOOD, "reason_code": reason})
+
     def test_control_characters_and_overlength_rejected(self):
         for value in ("line\nbreak", "leading space", "é", "x" * 129):
             with self.subTest(value=repr(value)), self.assertRaises(ValueError):
