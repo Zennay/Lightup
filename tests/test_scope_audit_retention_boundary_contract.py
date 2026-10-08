@@ -14,7 +14,9 @@ def reference_decision(request_tenant, event_tenant, role, action):
         return "deny"
     if request_tenant != event_tenant:
         return "deny"
-    if role not in ("client", "operator") or type(role) is not str:
+    if type(role) is not str or role not in ("client", "operator"):
+        return "deny"
+    if type(action) is not str:
         return "deny"
     if action == "read":
         return "allow"
@@ -52,6 +54,22 @@ class AuditRetentionBoundaryContract(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertEqual(reference_decision(value, "tenant-a", "operator", "read"), "deny")
                 self.assertEqual(reference_decision("tenant-a", value, "operator", "read"), "deny")
+
+    def test_polymorphic_identity_and_action_are_rejected(self):
+        class ForgedStr(str):
+            def __eq__(self, other):
+                return True
+
+            __hash__ = str.__hash__
+
+        forged = ForgedStr("tenant-a")
+        for position in ("request", "event"):
+            with self.subTest(position=position):
+                request, event = (forged, "tenant-a") if position == "request" else ("tenant-a", forged)
+                self.assertEqual(reference_decision(request, event, "operator", "read"), "deny")
+        self.assertEqual(reference_decision("tenant-a", "tenant-a", ForgedStr("operator"), "export"), "deny")
+        self.assertEqual(reference_decision("tenant-a", "tenant-a", "operator", ForgedStr("read")), "deny")
+        self.assertEqual(reference_decision("tenant-a", "tenant-a", "operator", ForgedStr("export")), "deny")
 
     def test_unknown_roles_and_actions_denied(self):
         for role in ("admin", "auditor", "", None, True):
