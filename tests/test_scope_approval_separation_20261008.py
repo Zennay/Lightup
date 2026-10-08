@@ -118,5 +118,22 @@ class SeparationOfDutiesContractTests(unittest.TestCase):
                 self.assertFalse(is_independent_review(self.request, [dataclasses.replace(self.approval, reviewer=reviewer)]))
 
 
+    def test_foreign_tenant_approval_cannot_complete_quorum(self):
+        foreign = dataclasses.replace(self.approval, tenant="tenant-2", reviewer="user-C")
+        self.assertFalse(is_independent_review(self.request, [self.approval, foreign], required=2))
+
+    def test_expanded_request_risk_needs_fresh_matching_authority(self):
+        expanded = dataclasses.replace(self.request, risk=4)
+        self.assertFalse(is_independent_review(expanded, [self.approval]))
+        raised = dataclasses.replace(self.approval, max_risk=4)
+        self.assertTrue(is_independent_review(expanded, [raised]))
+
+    def test_request_subclass_is_not_canonical(self):
+        class UntrustedRequest(Request):
+            pass
+        spoofed = UntrustedRequest(**dataclasses.asdict(self.request))
+        self.assertFalse(is_independent_review(spoofed, [self.approval]))
+
+
 if __name__ == "__main__":
     unittest.main()
