@@ -20,10 +20,11 @@ Downloads carry `text/csv; charset=utf-8`, a fixed attachment filename,
 `Cache-Control: no-store`, nosniff and the normal restrictive CSP/frame headers.
 Production HSTS remains provided by the inherited WSGI boundary.
 
-This package is an optional factory; the default app/deployment entry point is
-not switched. A caller can choose the new factory after its normal database
-and WebSecurity setup. No target action, active testing route, model call,
-authorization grant or security verdict is created. Existing app.py and other
+The package, development and production factories use this extension through
+#963; see `docs/finding-export-entrypoints.md`. The explicit extension factory
+also remains available after normal database and WebSecurity setup.
+Changing the factory does not start or deploy the application. No target action,
+active testing route, model call, authorization grant or security verdict is created. Existing app.py and other
 workers' source files are untouched.
 
 The full existing web suite remains part of standard CI; eleven new WSGI
