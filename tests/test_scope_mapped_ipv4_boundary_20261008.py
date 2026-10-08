@@ -22,6 +22,23 @@ class MappedIPv4ScopeBoundaryTests(unittest.TestCase):
         self.assertFalse(result.allowed)
         self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
 
+    def test_mapped_loopback_cannot_inherit_ipv6_loopback_exemption(self):
+        # IPv4-mapped loopback is not the native ::1 loopback identity.
+        policy = ScopePolicy(allow_private_lab=False)
+        result = policy.decide(Target("http://[::ffff:127.0.0.1]/"))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_mapped_private_address_does_not_inherit_ipv4_cidr_grant(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=("192.168.1.0/24",),
+            require_authorization_for_public=False,
+        )
+        result = policy.decide(Target("http://[::ffff:192.168.1.10]/"))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
+
     def test_unrelated_ipv4_network_does_not_admit_mapped_public_address(self):
         policy = ScopePolicy(
             allow_private_lab=False,
