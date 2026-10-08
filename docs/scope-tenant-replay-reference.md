@@ -18,3 +18,7 @@ No production code is changed. The executor implementation belongs to PR #107; h
 Run: `python -m unittest discover -s tests -p test_scope_tenant_replay_reference.py -v`
 
 Offline only; no DNS, sockets, targets, scanning, authorization minting or executable capability dispatch.
+
+## Adversarial identity fixtures
+
+The dedicated regressions also reject case-folded tenant aliases, leading/trailing whitespace, embedded control characters, visually confusable Unicode substitutions and `str` subclasses. The reference check leaves its input mapping unchanged. These checks are deliberately local and must not be interpreted as a canonical identity normalization implementation. Production needs an issuer-controlled tenant identifier rather than trusting caller-supplied spelling.
