@@ -9,7 +9,10 @@ import unittest
 def bounded_envelope(raw: object, *, max_bytes: int = 4096, max_depth: int = 8,
                      max_nodes: int = 128) -> bool:
     """Reject excessive shape before downstream use; never grant authority."""
-    if type(raw) is not bytes or len(raw) > max_bytes:
+    if (type(raw) is not bytes
+            or any(type(limit) is not int or limit < 1 for limit in
+                   (max_bytes, max_depth, max_nodes))
+            or len(raw) > max_bytes):
         return False
     try:
         value = json.loads(
@@ -84,6 +87,22 @@ class EnvelopeBoundsReferenceTests(unittest.TestCase):
         for raw in ('{}', bytearray(b'{}'), memoryview(b'{}'), None):
             with self.subTest(t=type(raw).__name__):
                 self.assertFalse(bounded_envelope(raw))
+
+    def test_invalid_budget_configuration_fails_closed(self):
+        for name in ("max_bytes", "max_depth", "max_nodes"):
+            for invalid in (0, -1, True, False, 1.5, "100", None):
+                with self.subTest(name=name, invalid=invalid):
+                    self.assertFalse(bounded_envelope(b'{}', **{name: invalid}))
+
+    def test_exact_root_node_and_depth_boundaries(self):
+        self.assertTrue(bounded_envelope(b'{}', max_nodes=1, max_depth=1))
+        self.assertFalse(bounded_envelope(b'{"a":1}', max_nodes=1))
+        self.assertFalse(bounded_envelope(b'{"a":1}', max_depth=1))
+        self.assertTrue(bounded_envelope(b'{"a":1}', max_nodes=2, max_depth=2))
+
+    def test_deeply_nested_input_never_raises(self):
+        raw = b'{"a":' * 300 + b'null' + b'}' * 300
+        self.assertFalse(bounded_envelope(raw, max_bytes=10000))
 
     def test_no_mutation_of_caller_buffer(self):
         raw = b'{"nested":{"active":false}}'
