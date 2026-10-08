@@ -19,6 +19,14 @@ class SchemeAdmissionContract(unittest.TestCase):
                 self.assertFalse(decision.allowed)
                 self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
 
+    def test_unsupported_schemes_cannot_inherit_loopback_or_private_lab_shortcuts(self):
+        policy = ScopePolicy()
+        for value in ("ftp://localhost/fixture", "file://127.0.0.1/etc/passwd", "custom://10.1.2.3/path"):
+            with self.subTest(value=value):
+                decision = policy.decide(Target(value))
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+
     def test_supported_web_scheme_retains_existing_host_membership(self):
         for value in ("https://allowed.example.test/a", "http://allowed.example.test/b"):
             with self.subTest(value=value):
