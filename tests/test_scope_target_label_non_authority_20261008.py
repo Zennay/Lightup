@@ -75,5 +75,44 @@ class TargetLabelNonAuthorityTests(unittest.TestCase):
         self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
 
 
+    def test_labels_cannot_expand_unknown_public_ip_network(self):
+        policy = ScopePolicy(
+            allow_private_lab=False, explicit_networks=("8.8.8.0/24",),
+        )
+        authorization = Authorization(owner="owner", reference="AUTH-NET")
+        decision = policy.decide(Target(
+            "9.9.9.9", authorization=authorization,
+            labels=("scope:9.9.9.0/24", "approved"),
+        ))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_labels_cannot_activate_future_public_authorization(self):
+        policy = ScopePolicy(explicit_hosts=frozenset({"approved.example.test"}))
+        future = Authorization(
+            owner="owner", reference="AUTH-FUTURE",
+            valid_from=datetime.now(timezone.utc) + timedelta(days=1),
+        )
+        decision = policy.decide(Target(
+            "approved.example.test", authorization=future,
+            labels=("approved-now", "valid_from:yesterday"),
+        ))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+
+    def test_labels_do_not_change_valid_explicit_network_decision(self):
+        policy = ScopePolicy(
+            allow_private_lab=False, explicit_networks=("8.8.8.0/24",),
+        )
+        authorization = Authorization(owner="owner", reference="AUTH-NET")
+        baseline = policy.decide(Target("8.8.8.8", authorization=authorization))
+        labeled = policy.decide(Target(
+            "8.8.8.8", authorization=authorization,
+            labels=("denied", "risk:critical", "scope:unknown.example.test"),
+        ))
+        self.assertEqual(baseline, labeled)
+        self.assertTrue(labeled.allowed)
+        self.assertEqual(labeled.reason, ScopeReason.EXPLICIT_NETWORK)
+
 if __name__ == "__main__":
     unittest.main()
