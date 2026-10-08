@@ -80,6 +80,27 @@ class EvidenceReferenceOrderReferenceTests(unittest.TestCase):
         self.assertNotEqual(reference_digest("tenant", "finding", ["a,b"]),
                             reference_digest("tenant", "finding", ["a", "b"]))
 
+    def test_collection_at_limit_is_accepted(self):
+        ids = [f"e{i:02d}" for i in range(64)]
+        self.assertEqual(reference_digest("t", "f", ids),
+                         reference_digest("t", "f", list(reversed(ids))))
+
+    def test_reference_whitespace_is_not_silently_stripped(self):
+        self.assertNotEqual(reference_digest("t", "f", ["ev"]),
+                            reference_digest("t", "f", [" ev "]))
+
+    def test_identity_field_boundaries_are_unambiguous(self):
+        self.assertNotEqual(reference_digest("a:b", "c", ["d"]),
+                            reference_digest("a", "b:c", ["d"]))
+
+    def test_membership_extension_changes_digest(self):
+        self.assertNotEqual(reference_digest("t", "f", ["a"]),
+                            reference_digest("t", "f", ["a", "b"]))
+
+    def test_surrogate_and_control_references_are_not_silently_aliased(self):
+        self.assertNotEqual(reference_digest("t", "f", ["e\\n"]),
+                            reference_digest("t", "f", ["e\n"]))
+
     def test_does_not_mutate_inputs(self):
         ids = ["z", "a"]
         reference_digest("t1", "f1", ids)
