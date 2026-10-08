@@ -38,6 +38,18 @@ class HostControlCharacterAdmissionTests(unittest.TestCase):
     def test_embedded_control_without_url_scheme_must_not_inherit_allowlist(self):
         self.assertFalse(self._decide("author\tized.example.test").allowed)
 
+    def test_embedded_tab_must_not_promote_to_loopback_hostname(self):
+        self.assertFalse(ScopePolicy().decide(Target("local\thost")).allowed)
+
+    def test_embedded_tab_must_not_promote_to_loopback_address(self):
+        self.assertFalse(ScopePolicy().decide(Target("127.0.0.\t1")).allowed)
+
+    def test_embedded_tab_must_not_promote_to_private_lab_address(self):
+        self.assertFalse(ScopePolicy().decide(Target("10.\t0.0.1")).allowed)
+
+    def test_exact_loopback_still_allowed(self):
+        self.assertTrue(ScopePolicy().decide(Target("127.0.0.1")).allowed)
+
 
 if __name__ == "__main__":
     unittest.main()
