@@ -11,3 +11,7 @@ Run `PYTHONPATH=src python -m unittest tests.test_st5_remediation_plan_digest_re
 ## Complete lineage sensitivity matrix
 
 Additional offline subcases pin the current/future twin identifiers and versions, all four upstream report digests, change/subject/resolution identifiers, transition classification, graph action, evidence-required flag, and all reference ID collections. A single-field mutation must alter the plan digest. These are deterministic serialization regressions; they do not authenticate evidence provenance or grant authority.
+
+## Counts and input immutability
+
+The reference suite additionally asserts the remediation/retest/evidence-gap counters and item membership affect the digest, and hashing leaves the supplied report and frozen item references unchanged. These low-level digest assertions do not replace producer-side consistency validation; a digest can bind inconsistent counters if the producer supplies them. The normal public builder remains responsible for rejecting inconsistent planning state.
