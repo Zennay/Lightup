@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "description": "Synthetic-only contradictory approval evidence. Must never be treated as an issued grant.",
+  "base": {
+    "request_id": "r1",
+    "approval_request_id": "r1",
+    "tenant_id": "t1",
+    "approval_tenant_id": "t1",
+    "asset_id": "a1",
+    "approval_asset_id": "a1",
+    "capability": "web-baseline",
+    "approval_capability": "web-baseline",
+    "revision": "v1",
+    "approval_revision": "v1",
+    "approved": true,
+    "revoked": false
+  },
+  "cases": [
+    {
+      "id": "consistent-reference",
+      "patch": {},
+      "admitted": true
+    },
+    {
+      "id": "request-mismatch",
+      "patch": {
+        "approval_request_id": "r2"
+      },
+      "admitted": false
+    },
+    {
+      "id": "tenant-mismatch",
+      "patch": {
+        "approval_tenant_id": "t2"
+      },
+      "admitted": false
+    },
+    {
+      "id": "asset-mismatch",
+      "patch": {
+        "approval_asset_id": "a2"
+      },
+      "admitted": false
+    },
+    {
+      "id": "capability-mismatch",
+      "patch": {
+        "approval_capability": "other"
+      },
+      "admitted": false
+    },
+    {
+      "id": "revision-mismatch",
+      "patch": {
+        "approval_revision": "v2"
+      },
+      "admitted": false
+    },
+    {
+      "id": "revoked-historical-approval",
+      "patch": {
+        "revoked": true
+      },
+      "admitted": false
+    },
+    {
+      "id": "approval-string-confusion",
+      "patch": {
+        "approved": "true"
+      },
+      "admitted": false
+    },
+    {
+      "id": "revocation-integer-confusion",
+      "patch": {
+        "revoked": 0
+      },
+      "admitted": false
+    },
+    {
+      "id": "combined-conflict",
+      "patch": {
+        "approval_tenant_id": "t2",
+        "approval_revision": "v2"
+      },
+      "admitted": false
+    },
+    {
+      "id": "missing-approval",
+      "drop": [
+        "approved"
+      ],
+      "patch": {},
+      "admitted": false
+    },
+    {
+      "id": "missing-request-binding",
+      "drop": [
+        "approval_request_id"
+      ],
+      "patch": {},
+      "admitted": false
+    }
+  ]
+}
