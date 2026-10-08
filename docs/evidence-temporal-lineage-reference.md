@@ -16,6 +16,9 @@ A finding can carry apparently valid evidence references while its remediation o
 ## Ownership and promotion
 This addition intentionally contains only `tests/test_evidence_temporal_lineage_reference.py` and this document. It does not edit existing evidence / finding / reporting / remediation / retest implementations or overlap source-owning PRs. Runtime production owners must decide trusted timestamp origin, persistence transaction guarantees, delayed/out-of-order ingestion semantics and whether a remediation event is applicable. A source-owner integration, exact-head hosted CI and canonical permanent VPS CI plus review are required before claiming production coverage.
 
+## Offline regression coverage
+The reference suite contains 20 tests covering strict event ordering, equal-time rejection, input and identity type confusion, cross-finding references, duplicate evidence, timestamp bounds, caller immutability, and unknown authority-bearing fields. These checks are pure stdlib unit tests; they do not exercise production persistence or retest dispatch.
+
 Offline invocation: `python -m unittest discover -s tests -p 'test_evidence_temporal_lineage_reference.py' -v`.
 
 No DNS, sockets, scanning, assessment execution, target contact, grant activation, active remediation, deployment or verdict mutation.
