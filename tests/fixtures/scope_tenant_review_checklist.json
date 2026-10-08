@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "purpose": "offline reviewer negative-evidence inventory; not executable authorization",
+  "cases": [
+    {
+      "id": "cross_tenant_grant",
+      "given": "same grant identifier, different tenant",
+      "expect": "deny_before_dispatch"
+    },
+    {
+      "id": "cross_engagement_approval",
+      "given": "approval for another engagement",
+      "expect": "deny_before_dispatch"
+    },
+    {
+      "id": "stale_revision",
+      "given": "reapproved grant invalidates old revision",
+      "expect": "deny_before_dispatch"
+    },
+    {
+      "id": "narrowed_capability",
+      "given": "live grant removes queued capability",
+      "expect": "deny_before_dispatch"
+    },
+    {
+      "id": "revoked_multistep",
+      "given": "grant revoked between steps",
+      "expect": "deny_next_step_and_cancel"
+    },
+    {
+      "id": "audit_store_failure",
+      "given": "authorization decision cannot be durably audited",
+      "expect": "deny_before_dispatch"
+    },
+    {
+      "id": "passive_mode_confusion",
+      "given": "passive prospect coerced to active mode",
+      "expect": "deny_before_dispatch"
+    },
+    {
+      "id": "persisted_tenant_mismatch",
+      "given": "grant tenant mismatches engagement tenant",
+      "expect": "deny_before_dispatch"
+    }
+  ]
+}
