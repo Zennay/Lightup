@@ -85,5 +85,35 @@ class TrustedClockReferenceContract(unittest.TestCase):
                                       previous=self.start))
 
 
+    def test_invalid_grant_window_types_fail_closed(self):
+        invalid = (None, "2026-10-08", dt.datetime(2026, 10, 8),
+                   float("nan"))
+        for value in invalid:
+            with self.subTest(value=value):
+                self.assertFalse(clock_allows(lambda: self.start, value, self.end))
+                self.assertFalse(clock_allows(lambda: self.start, self.start, value))
+
+    def test_non_utc_offset_is_rejected(self):
+        plus_one = dt.timezone(dt.timedelta(hours=1))
+        self.assertFalse(clock_allows(
+            lambda: self.start.astimezone(plus_one), self.start, self.end))
+        self.assertFalse(clock_allows(
+            lambda: self.start, self.start.astimezone(plus_one), self.end))
+
+    def test_invalid_previous_observation_fails_closed(self):
+        for previous in ("bad", dt.datetime(2026, 10, 8), None):
+            if previous is None:
+                continue  # None is the documented initial observation sentinel.
+            with self.subTest(previous=previous):
+                self.assertFalse(clock_allows(
+                    lambda: self.start, self.start, self.end,
+                    previous=previous))
+
+    def test_malformed_or_inverted_grant_window(self):
+        self.assertFalse(clock_allows(
+            lambda: self.start, self.end, self.start))
+        self.assertFalse(clock_allows(
+            lambda: self.start, self.start, self.start))
+
 if __name__ == "__main__":
     unittest.main()
