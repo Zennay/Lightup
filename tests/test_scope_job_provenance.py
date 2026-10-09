@@ -119,6 +119,14 @@ class OfflineJobProvenanceTests(unittest.TestCase):
         evidence[2]["name"] = "LightUp unrelated task"
         self.assertTrue(any("expected job label" in error for error in module.check(proof(), evidence, runs())))
 
+    def test_incomplete_or_malformed_run_record_is_denied(self):
+        for missing in ("id", "head_sha", "status", "conclusion"):
+            with self.subTest(missing=missing):
+                snapshot = runs()
+                del snapshot[0][missing]
+                self.assertTrue(module.check(proof(), jobs(), snapshot))
+        self.assertTrue(module.check(proof(), jobs(), runs() + [None]))
+
     def test_run_snapshot_wrong_commit_or_failure_rejected(self):
         for key, value in (("head_sha", "b" * 40), ("conclusion", "failure"), ("status", "queued")):
             with self.subTest(key=key):
