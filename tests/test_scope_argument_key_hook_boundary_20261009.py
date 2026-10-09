@@ -121,5 +121,36 @@ class ArgumentKeyHookBoundaryTests(unittest.TestCase):
         self.assertEqual(effects, [])
 
 
+    def test_malformed_nested_pair_subclass_cannot_run_unpack_hooks(self):
+        events = []
+        class TrapPair(list):
+            def __len__(self):
+                events.append("len")
+                raise AssertionError("untrusted pair length hook executed")
+            def __iter__(self):
+                events.append("iter")
+                raise AssertionError("untrusted pair iterator executed")
+        with self.assertRaisesRegex(OrchestrationError, "entry must contain exactly two"):
+            validate_unambiguous_arguments(
+                self.definition, (TrapPair(["label", "safe"]),)
+            )
+        self.assertEqual(events, [])
+
+    def test_malformed_registry_precedes_argument_container_hooks(self):
+        events = []
+        class TrapArguments(list):
+            def __iter__(self):
+                events.append("iter")
+                raise AssertionError("untrusted arguments iterator executed")
+        malformed = ToolDefinition(
+            "bad-registry", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "synthetic registry",
+            (ToolParameter("label", "string"),),
+        )
+        with self.assertRaisesRegex(OrchestrationError, "invalid kind or required"):
+            validate_unambiguous_arguments(malformed, TrapArguments([("label", "safe")]))
+        self.assertEqual(events, [])
+
+
 if __name__ == "__main__":
     unittest.main()
