@@ -53,7 +53,7 @@ class DuplicateCapabilityReferenceTests(unittest.TestCase):
                     CapabilityGrant("tenant-1", "grant-1", ("http.headers", capability)), self.registry))
 
     def test_case_and_space_aliases_denied(self):
-        for capability in ("HTTP.HEADERS", "http.headers ", " http.headers", "http.headers\\n"):
+        for capability in ("HTTP.HEADERS", "http.headers ", " http.headers", "http.headers\n"):
             with self.subTest(capability=capability):
                 self.assertFalse(validate_capability_grant(
                     CapabilityGrant("tenant-1", "grant-1", (capability,)), self.registry))
@@ -66,10 +66,26 @@ class DuplicateCapabilityReferenceTests(unittest.TestCase):
                     CapabilityGrant("tenant-1", "grant-1", values), self.registry))
 
     def test_unicode_and_ascii_controls_denied(self):
-        for capability in ("http.headérs", "http.headers\\x00", "http.headers\\x7f", "http.headers\\t"):
+        for capability in ("http.headérs", "http.headers\x00", "http.headers\x7f", "http.headers\t"):
             with self.subTest(capability=capability):
                 self.assertFalse(validate_capability_grant(
                     CapabilityGrant("tenant-1", "grant-1", (capability,)), self.registry))
+
+    def test_identity_controls_fail_closed(self):
+        for tenant, grant_id in (("", "grant-1"), ("tenant-1", ""),
+                                 (" tenant-1", "grant-1"),
+                                 ("tenant-1", "grant-1\\n"),
+                                 ("tenant-1\\x00", "grant-1"),
+                                 (True, "grant-1"), ("tenant-1", 7)):
+            with self.subTest(tenant=tenant, grant_id=grant_id):
+                self.assertFalse(validate_capability_grant(
+                    CapabilityGrant(tenant, grant_id, ("http.headers",)), self.registry))
+
+    def test_no_duplicate_normalization_even_with_other_valid_values(self):
+        self.assertFalse(validate_capability_grant(
+            CapabilityGrant("tenant-1", "grant-1",
+                            ("http.headers", "tls.baseline", "http.headers")),
+            self.registry))
 
     def test_duplicate_reject_does_not_mutate_input(self):
         grant = CapabilityGrant("tenant-1", "grant-1", ("http.headers", "http.headers"))
