@@ -39,6 +39,17 @@ class ProofManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             py_compile.compile(str(MODULE), cfile=str(Path(directory) / "verifier.pyc"), doraise=True)
 
+    def test_distinct_jobs_required_even_when_hosted_runs_separate(self):
+        for field in ("hosted_py314_job_id", "permanent_vps_job_id"):
+            with self.subTest(field=field):
+                obj = fixture()
+                obj[field] = obj["hosted_py311_job_id"]
+                with tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / "duplicate-job.json"
+                    path.write_text(json.dumps(obj), encoding="utf-8")
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        self.assertEqual(module.main(["verify", str(path)]), 1)
+
     def test_vps_collision_with_each_hosted_run_fails_at_cli(self):
         for field in ("hosted_py311_run_id", "hosted_py314_run_id"):
             with self.subTest(field=field):
