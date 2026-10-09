@@ -24,7 +24,9 @@ def matches_consent(consent: Consent, *, tenant_id: str, engagement_id: str,
               consent.asset_id, consent.capability_id)
     requested = (tenant_id, engagement_id, owner_id, asset_id, capability_id)
     if any(type(value) is not str or not value.strip() or
-           any(ord(char) < 32 or ord(char) == 127 or\n               0xD800 <= ord(char) <= 0xDFFF or\n               ord(char) in (0x200B, 0x202E) for char in value)
+           any(ord(char) < 32 or ord(char) == 127 or
+               0xD800 <= ord(char) <= 0xDFFF or
+               ord(char) in (0x200B, 0x202E) for char in value)
            for value in fields + requested):
         return False
     if type(consent.revision) is not int or type(revision) is not int:
