@@ -14,7 +14,7 @@ a positive result must **never** be interpreted as consent.
 `compare_grant_attenuation(approved, proposal)` requires exact built-in
 `AuthorizationGrant` and `ScopeDefinition` shapes and exact `RiskLevel`
 instances. Missing or polymorphic identities, bad flags, invalid calendar windows,
-duplicated/invalid scope members or unbounded collections reject.
+duplicated/invalid scope members or unbounded collections reject. Both time\nvalues must be native `datetime` with a built-in fixed-offset `timezone`; custom\n`tzinfo` implementations are denied before their callbacks can run.
 
 A proposal cannot change grant/client/engagement/operator/reference identities;
 add assets; remove exclusions; increase maximum risk; extend authorization
