@@ -1,0 +1,109 @@
+"""Offline reference invariants for binding remediation retest proof to a finding.
+
+This is a reference contract, NOT a production verification or authorization gate.
+No filesystem, network, assessment, or target execution occurs.
+"""
+import hashlib
+import json
+import unittest
+
+
+def digest(payload):
+    if type(payload) is not dict:
+        return None
+    try:
+        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False)
+    except (TypeError, ValueError):
+        return None
+    return hashlib.sha256(canonical.encode("ascii")).hexdigest()
+
+
+def verified_retest(finding, proof):
+    """Only exact, immutable-link-shaped retest evidence can support closure."""
+    if type(finding) is not dict or type(proof) is not dict:
+        return False
+    if set(finding) != {"tenant_id", "finding_id", "revision", "evidence_sha256"}:
+        return False
+    required = {"tenant_id", "finding_id", "revision", "prior_evidence_sha256",
+                "retest_evidence_sha256", "result", "method", "verified"}
+    if set(proof) != required:
+        return False
+    for obj in (finding, proof):
+        if type(obj["tenant_id"]) is not str or not obj["tenant_id"] or len(obj["tenant_id"]) > 128:
+            return False
+        if type(obj["finding_id"]) is not str or not obj["finding_id"] or len(obj["finding_id"]) > 128:
+            return False
+        if type(obj["revision"]) is not int or obj["revision"] < 1:
+            return False
+    if any(proof[k] != finding[k] for k in ("tenant_id", "finding_id", "revision")):
+        return False
+    for value in (finding["evidence_sha256"], proof["prior_evidence_sha256"], proof["retest_evidence_sha256"]):
+        if type(value) is not str or len(value) != 64 or any(c not in "0123456789abcdef" for c in value):
+            return False
+    if proof["prior_evidence_sha256"] != finding["evidence_sha256"]:
+        return False
+    if proof["retest_evidence_sha256"] == proof["prior_evidence_sha256"]:
+        return False
+    return (proof["result"] == "passed" and type(proof["result"]) is str
+            and proof["verified"] is True and type(proof["method"]) is str
+            and proof["method"] in ("offline_lab", "authorized_retest"))
+
+
+class RetestProofBindingReference(unittest.TestCase):
+    def setUp(self):
+        self.finding = {"tenant_id": "tenant-a", "finding_id": "f-1", "revision": 2,
+                        "evidence_sha256": "a" * 64}
+        self.proof = {"tenant_id": "tenant-a", "finding_id": "f-1", "revision": 2,
+                      "prior_evidence_sha256": "a" * 64,
+                      "retest_evidence_sha256": "b" * 64,
+                      "result": "passed", "method": "offline_lab", "verified": True}
+
+    def test_exact_positive_reference(self):
+        self.assertTrue(verified_retest(self.finding, self.proof))
+
+    def test_cross_tenant_denied(self):
+        self.assertFalse(verified_retest(self.finding, {**self.proof, "tenant_id": "tenant-b"}))
+
+    def test_wrong_finding_denied(self):
+        self.assertFalse(verified_retest(self.finding, {**self.proof, "finding_id": "f-2"}))
+
+    def test_stale_revision_denied(self):
+        self.assertFalse(verified_retest(self.finding, {**self.proof, "revision": 1}))
+
+    def test_bool_revision_denied(self):
+        self.assertFalse(verified_retest(self.finding, {**self.proof, "revision": True}))
+
+    def test_wrong_prior_evidence_denied(self):
+        self.assertFalse(verified_retest(self.finding, {**self.proof, "prior_evidence_sha256": "c" * 64}))
+
+    def test_reused_evidence_denied(self):
+        self.assertFalse(verified_retest(self.finding, {**self.proof, "retest_evidence_sha256": "a" * 64}))
+
+    def test_unverified_denied(self):
+        self.assertFalse(verified_retest(self.finding, {**self.proof, "verified": 1}))
+
+    def test_unrecognized_method_denied(self):
+        self.assertFalse(verified_retest(self.finding, {**self.proof, "method": "unknown"}))
+
+    def test_extra_fields_denied(self):
+        self.assertFalse(verified_retest(self.finding, {**self.proof, "override": True}))
+
+    def test_uppercase_digest_denied(self):
+        self.assertFalse(verified_retest(self.finding, {**self.proof, "retest_evidence_sha256": "B" * 64}))
+
+    def test_failed_retest_denied(self):
+        self.assertFalse(verified_retest(self.finding, {**self.proof, "result": "failed"}))
+
+    def test_subclass_containers_denied(self):
+        class Fake(dict):
+            pass
+        self.assertFalse(verified_retest(self.finding, Fake(self.proof)))
+
+    def test_inputs_remain_unchanged(self):
+        before = (digest(self.finding), digest(self.proof))
+        verified_retest(self.finding, self.proof)
+        self.assertEqual(before, (digest(self.finding), digest(self.proof)))
+
+
+if __name__ == "__main__":
+    unittest.main()
