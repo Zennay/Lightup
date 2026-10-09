@@ -112,6 +112,21 @@ class BooleanArgumentBoundaryTests(unittest.TestCase):
                         self.schema.validate_arguments({"enabled": value})
                 self.assertEqual(self.schema.parameters, before)
 
+    def test_truthiness_trap_never_invoked_for_boolean_admission(self):
+        # Untrusted values must not gain BOOLEAN authority by __bool__ coercion.
+        class TruthinessTrap:
+            calls = 0
+
+            def __bool__(self):
+                self.calls += 1
+                raise AssertionError("untrusted __bool__ must not execute")
+
+        candidate = TruthinessTrap()
+        with self.assertRaises(OrchestrationError):
+            self.schema.validate_arguments({"enabled": candidate})
+        self.assertEqual(candidate.calls, 0)
+        self.schema.validate_arguments({"enabled": False})
+
     def test_missing_boolean_rejected(self):
         with self.assertRaises(OrchestrationError):
             self.schema.validate_arguments({})
