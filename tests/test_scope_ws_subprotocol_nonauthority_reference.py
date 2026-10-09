@@ -149,6 +149,20 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
         self.assertFalse(reference_decide(other, decomposed,
             {"Sec-WebSocket-Protocol": "normalize=true"}))
 
+    def test_control_fixtures_are_actual_codepoints(self):
+        expected = (
+            ("newline", "\\n", "Cc"),
+            ("nul", "\\x00", "Cc"),
+            ("zero_width", "\\u200b", "Cf"),
+            ("line_separator", "\\u2028", "Zl"),
+            ("surrogate", "\\ud800", "Cs"),
+        )
+        for label, value, category in expected:
+            with self.subTest(label=label):
+                self.assertEqual(len(value), 1)
+                self.assertEqual(unicodedata.category(value), category)
+                self.assertFalse(valid_identity("tenant-a" + value))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
