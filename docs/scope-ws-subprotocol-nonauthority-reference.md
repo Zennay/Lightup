@@ -102,3 +102,7 @@ Two added offline tests exercise denied mock executor effects after revocation e
 ## Structural type rejection and negotiation-header access isolation
 
 Two offline methods cover six malformed stored/request grant shapes (twelve deny assertions) and verify that deliberately hostile header mappings cannot be read as authorization inputs for rejected or accepted reference grants. Total **47 offline unittest methods**; no production ToolExecutor binding.
+
+## Mutable negotiation-header invariance
+
+Two extra offline methods verify denied trusted consent remains denied while the same caller-owned header mapping is repeatedly mutated, and valid matching consent remains allowed irrespective of five such changes. Total **49 offline unittest methods**. This is reference-only, not a claim that the real production gateway ignores headers.
