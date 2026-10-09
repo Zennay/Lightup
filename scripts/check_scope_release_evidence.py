@@ -6,6 +6,7 @@ Use only after an independent owner has verified source/run provenance.
 from __future__ import annotations
 
 import json
+import os
 import stat
 import sys
 from pathlib import Path
@@ -102,9 +103,13 @@ def main(argv: list[str]) -> int:
         return 2
     try:
         source = Path(argv[1])
-        if not stat.S_ISREG(source.lstat().st_mode):
-            raise ValueError("evidence must be a regular file (no symlinks or devices)")
-        with source.open("rb") as stream:
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        if not hasattr(os, "O_NOFOLLOW"):
+            raise ValueError("safe no-follow file opening is unavailable")
+        fd = os.open(source, flags)
+        with os.fdopen(fd, "rb") as stream:
+            if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                raise ValueError("evidence must be a regular file")
             raw = stream.read(MAX_EVIDENCE_BYTES + 1)
         if len(raw) > MAX_EVIDENCE_BYTES:
             raise ValueError("evidence exceeds 64 KiB bound")
