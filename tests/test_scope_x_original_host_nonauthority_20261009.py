@@ -432,5 +432,26 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_EXPIRED)
 
 
+    def test_header_claimed_operator_approval_does_not_supply_grant(self):
+        for claim in ("operator_approved=true", "approval_id=fixture",
+                      "risk_level=0", "mode=analysis_only"):
+            with self.subTest(claim=claim):
+                result = self.policy.decide(Target(
+                    "approved.example",
+                    labels=("X-Original-Host: approved.example; " + claim,),
+                ))
+                self.assertFalse(result.allowed)
+                self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_different_host_remains_denied_under_claimed_operator_approval(self):
+        result = self.policy.decide(Target(
+            "unlisted.example",
+            authorization=Authorization(owner="fixture", reference="NOT-TRUSTED"),
+            labels=("X-Original-Host: approved.example; operator_approved=true",),
+        ))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
+
+
 if __name__ == "__main__":
     unittest.main()
