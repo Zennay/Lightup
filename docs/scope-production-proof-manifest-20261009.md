@@ -94,3 +94,6 @@ The supplied-job comparison now requires exact runtime field types for job ID, r
 
 ## Snapshot field exact type enforcement
 The structural observed-job checker also requires exact built-in strings for status, conclusion, runner class and interpreter version. Polymorphic equality or custom string subclasses cannot satisfy these fields by comparing equal to a trusted literal. This is still only an offline comparison of caller-provided snapshots, not verified CI provenance.
+
+## String-subclass snapshot regression
+The latest reference regression constructs a fully populated synthetic job evidence set, confirms its offline positive control, and mutates each observed text field into a `str` subclass with identical text. The comparison must deny polymorphic values for `status`, `conclusion`, `python_version`, `runner_class`, `run_url` and `sha`. This does not authenticate GitHub records or authorize real-target activity; exact-head CI and production-owner review remain required.
