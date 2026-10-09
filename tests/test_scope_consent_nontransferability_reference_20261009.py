@@ -289,7 +289,7 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
                 self.assertFalse(matches_consent(changed, **self.request))
 
     def test_reject_unicode_line_and_paragraph_separators(self):
-        for separator in ("\\u2028", "\\u2029"):
+        for separator in map(chr, (0x2028, 0x2029)):
             for field in ("tenant_id", "engagement_id", "owner_id", "asset_id", "capability_id"):
                 with self.subTest(field=field, codepoint=ascii(separator)):
                     self.assertFalse(matches_consent(
