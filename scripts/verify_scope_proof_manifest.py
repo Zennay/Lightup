@@ -9,7 +9,7 @@ import re
 import sys
 from pathlib import Path
 
-REQUIRED = ("implementation_sha", "base_sha", "trusted_grant_reviewed",
+REQUIRED = ("schema_version", "implementation_sha", "base_sha", "trusted_grant_reviewed",
             "revocation_race_passed", "denied_side_effects_zero",
             "positive_loopback_control_passed", "hosted_py311_sha",
             "hosted_py314_sha", "permanent_vps_sha", "owner_review_sha",
@@ -24,6 +24,8 @@ def verify(data):
     if type(data) is not dict:
         return ["manifest must be an object"]
     errors = [f"missing {key}" for key in REQUIRED if key not in data]
+    if type(data.get("schema_version")) is not int or data["schema_version"] != 1:
+        errors.append("schema_version: must be integer 1")
     # Unknown fields are rejected: a misspelled or forged authority field must
     # not quietly appear in an otherwise passing evidence index.
     allowed = set(REQUIRED) | {"denial_side_effect_counts"}
