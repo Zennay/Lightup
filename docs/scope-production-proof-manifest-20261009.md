@@ -166,3 +166,6 @@ The hosted job classifier regression matrix now covers duplicate Python 3.14 rec
 
 ## NUL-contaminated job names
 The supplied hosted-job classifier now fails closed on job names containing an embedded NUL, including otherwise valid interpreter labels. Regression coverage prevents such malformed raw text from being mistaken for a valid CI job identity. This remains caller-supplied structural evidence, not GitHub API authentication or VPS proof.
+
+## First-page connector safety adapter
+`classify_first_page_only_jobs` explicitly models the GitHub connector's first-page-only job-list limitation. It never asserts verified pagination, so it always denies complete hosted CI classification even for two apparently successful synthetic jobs. The paired positive control demonstrates that a *separately established* completeness assertion would be required; the supplied adapter itself cannot establish that assertion. Real-target release remains HOLD.
