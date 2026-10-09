@@ -170,7 +170,7 @@ class ApprovalContextReplayContract(unittest.TestCase):
         for field in fields:
             original = getattr(self.receipt, field)
             for candidate in (original.upper(), original + " ", " " + original,
-                              original + "\\u200b", original + "\\u0301"):
+                              original + chr(0x200B), original + chr(0x0301)):
                 if candidate == original:
                     continue
                 with self.subTest(field=field, candidate=repr(candidate)):
