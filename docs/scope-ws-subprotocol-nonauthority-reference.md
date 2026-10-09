@@ -144,3 +144,7 @@ Before promotion the owning implementation worker must attach evidence at one ex
 ## Offline multi-boundary side-effect instrumentation
 
 The **60th reference unittest method** records simulated handler, socket, queue, and action-evidence side effects: revoked and unapproved stored grants result in zero of all four, while the authorized positive control reaches each exactly once. These are local counters only, **not a real ToolExecutor, network or storage integration test**.
+
+## Distinguish denial audit from action evidence
+
+The **61st offline unit test** captures an ordered synthetic gateway event trace. Revoked and unapproved requests may record a narrowly-scoped `denial_audit` marker while emitting **zero** `handler` and `action_evidence` events; a matching authorized request emits the two action events only. This is an offline mock, not a real gateway, logging subsystem or storage proof. Production source owners must verify actual persisted audit/evidence separation before promotion.
