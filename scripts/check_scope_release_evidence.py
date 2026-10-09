@@ -26,6 +26,7 @@ def valid_run_url(value: object) -> bool:
     parts = parsed.path.split("/")
     return (
         value.isascii()
+        and not value.startswith("https://github.com//")
         and parsed.scheme == "https"
         and parsed.netloc == "github.com"
         and parsed.query == ""
@@ -35,6 +36,7 @@ def valid_run_url(value: object) -> bool:
         and parts[5].isascii()
         and parts[5].isdecimal()
         and len(parts[5]) <= 20
+        and (parts[5] == "0" or not parts[5].startswith("0"))
         and int(parts[5]) > 0
     )
 
