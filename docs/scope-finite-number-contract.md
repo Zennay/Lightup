@@ -54,3 +54,7 @@ A normal regression now snapshots the persisted evidence identity and provenance
 ## Full persisted row equality
 
 A further offline real-ToolExecutor test snapshots all columns in the existing evidence row using SQLite schema metadata, then submits three malformed values (numeric-looking string, null, boolean). None may mutate or replace any stored column, invoke the handler, or append a row. This assertion covers the whole evidence row rather than selected provenance fields. It is a local regression, not a substitute for durable consent/revocation or destination checks.
+
+## SQLite reconnection proof
+
+A dedicated passing-contract integration test reopens the evidence database through separate `StateStore.connect()` contexts before and after three rejected calls. It compares the persisted row tuple and total row count after reconnecting, so the test does not rely solely on an in-memory counter or a shared cursor. This is local evidence integrity only, not grant persistence or durable revocation proof.
