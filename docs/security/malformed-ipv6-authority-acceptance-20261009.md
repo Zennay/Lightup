@@ -17,7 +17,7 @@ structured denial. This is not approval to execute target work.
    writes, or executor calls for invalid authorities.
 4. Preserve valid explicitly authorized and unlisted-host behavior;
    distinguish synthetic fixture authorization from trusted consent.
-5. Do not swallow exceptions from downstream authorization policies as malformed URL errors; policy infrastructure failures must remain distinguishable while handlers stay uncalled. A handler failure after a legitimate reference delegation must also propagate rather than be silently converted into an INVALID_TARGET denial. Malformed input must not inspect authorization or labels. Brackets appearing only in path, query, or fragment components must not be treated as authority delimiters; use the parsed netloc rather than splitting the raw URL on `/`.\n6. Convert each `expectedFailure` in
+5. Do not swallow exceptions from downstream authorization policies as malformed URL errors; policy infrastructure failures must remain distinguishable while handlers stay uncalled. A handler failure after a legitimate reference delegation must also propagate rather than be silently converted into an INVALID_TARGET denial. Malformed input must not inspect authorization or labels. A closing IPv6 authority bracket must be followed only by an optional port separator and valid port, never arbitrary trailing text. Brackets appearing only in path, query, or fragment components must not be treated as authority delimiters; use the parsed netloc rather than splitting the raw URL on `/`.\n6. Convert each `expectedFailure` in
    `tests/test_scope_malformed_ipv6_bracket_contract_20261009.py` to ordinary
    passing tests after the production fix. An XFAIL result is **not** a green
    security acceptance signal.
