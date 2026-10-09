@@ -160,3 +160,6 @@ A single passing hosted Python job (a plausible truncated first-page snapshot) c
 
 ## Duplicate interpreter-lane evidence
 Regression coverage now rejects a second successful Python 3.11 hosted preflight job even if it carries a distinct job ID. A complete workflow snapshot must contain exactly one matching successful 3.11 job and exactly one matching 3.14 job. This is local structural validation, not GitHub authentication or permanent VPS evidence; release remains HOLD.
+
+## Symmetric hosted interpreter lane regressions
+The hosted job classifier regression matrix now covers duplicate Python 3.14 records with distinct job IDs as well as a truncated job list containing only Python 3.11. These are offline negative tests of lane cardinality; they do not prove GitHub API provenance, pagination exhaustion or permanent VPS execution.
