@@ -291,7 +291,7 @@ class GuardedProductionFactoryTests(unittest.TestCase):
         return out["status"], out["headers"], data
 
     def test_opt_in_gunicorn_factory_denies_route_confusion_before_body_or_session(self):
-        for bad in ("/clients\\n", "/logout\\n", b"/clients", _RouteStringSubclass("/clients")):
+        for bad in ("/clients\n", "/logout\n", b"/clients", _RouteStringSubclass("/clients")):
             with self.subTest(bad=repr(bad)):
                 with patch.object(self.factory._app.store, "session_context") as lookup:
                     status, headers, body = self._call(
@@ -301,7 +301,7 @@ class GuardedProductionFactoryTests(unittest.TestCase):
                 self.assertEqual(status, "400 Bad Request")
                 self.assertEqual(headers["Strict-Transport-Security"], "max-age=31536000")
                 self.assertEqual(headers["Cache-Control"], "no-store")
-                self.assertEqual(body, b"Invalid request path\\n")
+                self.assertEqual(body, b"Invalid request path\n")
                 self.assertEqual(self.store.list_clients(self.ctx), [])
                 self.assertIsNotNone(self.store.session_context(self.cookie))
 
