@@ -163,6 +163,27 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
                 self.assertEqual(unicodedata.category(value), category)
                 self.assertFalse(valid_identity("tenant-a" + value))
 
+    def test_header_cannot_repair_missing_grant_object(self):
+        for grant, request in ((None, self.valid), (self.valid, None),
+                               ({"approved": True}, self.valid),
+                               (self.valid, {"approved": True})):
+            with self.subTest(grant=type(grant).__name__, request=type(request).__name__):
+                self.assertFalse(reference_decide(grant, request,
+                    {"Sec-WebSocket-Protocol": "admin, approved, read-only"}))
+
+    def test_rejected_request_revision_cannot_be_hidden_by_header(self):
+        for revision in (None, False, 0, -1, 3.0, "3", [], {}):
+            request = Grant("tenant-a", "lab-asset", "read-only", revision, True, False)
+            with self.subTest(revision=revision):
+                self.assertFalse(reference_decide(self.valid, request,
+                    {"Sec-WebSocket-Protocol": "revision=3, approved"}))
+
+    def test_grant_decisions_ignore_presentation_value_shapes(self):
+        for headers in (None, False, 42, "", [], {"Sec-WebSocket-Protocol": object()},
+                        {"Sec-WebSocket-Protocol": ["admin", {"approved": True}]}):
+            with self.subTest(header_type=type(headers).__name__):
+                self.assertTrue(reference_decide(self.valid, self.valid, headers))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
