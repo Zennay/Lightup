@@ -85,3 +85,6 @@ Two additional legacy policy tests confirm that an allowlisted public IP with **
 
 ## Public IP expiry asymmetry
 The explicit public-network route now has isolated start **and** end timestamp characterization. A falsy corrupt `valid_until` (`0`, `False`, empty string) is silently skipped and currently yields `EXPLICIT_NETWORK`; a truthy malformed expiry produces `TypeError`. Both outcomes are unsafe as production permission evidence. The owner of issue #1128 must reject both malformed types as a non-executable denial, including at pre-dispatch revalidation. No target I/O is performed by these tests.
+
+## Missing authorization provenance on the legacy allowlist gate
+Two new offline controls demonstrate that a synthetic `Authorization(owner="", reference="")` with unbounded times still reaches `EXPLICIT_HOST` and `EXPLICIT_NETWORK` for explicitly allowlisted public targets. This is not trusted consent: `Authorization.is_current()` only evaluates time, not owner, issuer signature, grant authenticity, tenant, capability or revocation. Production issue #1128 requires a verified, durable grant at dispatch and a fail-closed denial for absent or unverified provenance, regardless of legacy policy output. No network I/O, approvals or production changes are included.
