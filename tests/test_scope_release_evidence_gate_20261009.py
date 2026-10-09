@@ -266,6 +266,16 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
                 case["jobs"]["permanent_vps"]["run_url"] = candidate
                 self.assertFalse(evaluate(case)[0])
 
+    def test_workflow_url_rejects_ports(self):
+        for url in (
+            "https://github.com:443/Zennay/Lightup/actions/runs/123",
+            "https://github.com:8443/Zennay/Lightup/actions/runs/123",
+        ):
+            with self.subTest(url=url):
+                case = sample()
+                case["jobs"]["permanent_vps"]["run_url"] = url
+                self.assertFalse(evaluate(case)[0])
+
     def test_workflow_url_rejects_userinfo(self):
         for url in (
             "https://user@github.com/Zennay/Lightup/actions/runs/123",
