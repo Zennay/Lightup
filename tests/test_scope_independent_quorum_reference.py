@@ -147,14 +147,14 @@ class IndependentReviewerQuorumReference(unittest.TestCase):
             Review("alice", "tenant", "req", 4, "current", True),)))
 
     def test_request_identity_is_strict(self):
-        for field, value in (("operator", "operator\\n"), ("tenant", "tenant\\x00"),
-                             ("request", "req\\u200b"), ("purpose", "future\\r")):
+        for field, value in (("operator", "operator\n"), ("tenant", "tenant\x00"),
+                             ("request", "req\u200b"), ("purpose", "future\r")):
             with self.subTest(field=field):
                 self.assertFalse(self.check(request=ApprovalRequest(
                     **{**self.request.__dict__, field: value})))
 
     def test_malformed_roster_and_revision(self):
-        for roster in (frozenset({"alice", "bob\\n"}), frozenset({"alice", 2}),
+        for roster in (frozenset({"alice", "bob\n"}), frozenset({"alice", 2}),
                        frozenset({"alice"})):
             with self.subTest(roster=repr(roster)):
                 self.assertFalse(self.check(roster=roster))
