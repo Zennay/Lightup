@@ -58,6 +58,27 @@ class PurposeBindingReferenceTests(unittest.TestCase):
         self.assertFalse(self.check(grant))
         self.assertTrue(self.check(grant, purpose="future-simulation"))
 
+    def test_lab_evaluation_never_authorizes_current_or_future(self):
+        grant = PurposeGrant("tenant-1", "request-1", "lab-evaluation", True)
+        self.assertTrue(self.check(grant, purpose="lab-evaluation"))
+        self.assertFalse(self.check(grant, purpose="current-assessment"))
+        self.assertFalse(self.check(grant, purpose="future-simulation"))
+
+    def test_malformed_grant_identity_never_mints_eligibility(self):
+        for tenant_id, request_id in (
+            ("tenant-1 ", "request-1"),
+            ("tenant-1", "request-1\\n"),
+            ("tenant-1", "request-1\\x00"),
+            ("", "request-1"),
+            ("tenant-1", ""),
+            ("x" * 129, "request-1"),
+            (1, "request-1"),
+            ("tenant-1", None),
+        ):
+            with self.subTest(tenant_id=tenant_id, request_id=request_id):
+                grant = PurposeGrant(tenant_id, request_id, "current-assessment", True)
+                self.assertFalse(self.check(grant))
+
     def test_cross_tenant_and_request_are_denied(self):
         self.assertFalse(self.check(tenant_id="tenant-2"))
         self.assertFalse(self.check(request_id="request-2"))
