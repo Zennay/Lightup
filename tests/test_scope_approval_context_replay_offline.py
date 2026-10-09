@@ -221,5 +221,32 @@ class ApprovalContextReplayContract(unittest.TestCase):
                                            revoked=False))
 
 
+    def test_denied_reference_dispatch_never_invokes_handler(self):
+        from dataclasses import replace
+        calls = []
+
+        def guarded_dispatch(stored, requested, revoked):
+            if not admission(stored, requested, revoked=revoked):
+                return "denied"
+            calls.append((requested.asset, requested.capability))
+            return "executed"
+
+        rejected = (
+            (self.receipt, replace(self.receipt, tenant="other"), False),
+            (self.receipt, replace(self.receipt, run_id="other"), False),
+            (self.receipt, replace(self.receipt, approved_risk=3), False),
+            (self.receipt, replace(self.receipt, revision=8), False),
+            (self.receipt, self.receipt, True),
+            (self.receipt, self.receipt, None),
+        )
+        for stored, requested, revoked in rejected:
+            with self.subTest(requested=requested, revoked=revoked):
+                self.assertEqual(guarded_dispatch(stored, requested, revoked), "denied")
+                self.assertEqual(calls, [])
+        self.assertEqual(guarded_dispatch(self.receipt, self.receipt, False),
+                         "executed")
+        self.assertEqual(calls, [("asset-a", "http-baseline")])
+
+
 if __name__ == "__main__":
     unittest.main()
