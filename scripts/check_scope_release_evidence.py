@@ -34,6 +34,7 @@ def valid_run_url(value: object) -> bool:
         and parsed.netloc == "github.com"
         and parsed.username is None
         and parsed.password is None
+        and parsed.port is None
         and parsed.query == ""
         and parsed.fragment == ""
         and len(parts) == 6
