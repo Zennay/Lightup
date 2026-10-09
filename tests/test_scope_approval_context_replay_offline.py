@@ -248,5 +248,51 @@ class ApprovalContextReplayContract(unittest.TestCase):
         self.assertEqual(calls, [("asset-a", "http-baseline")])
 
 
+    def test_denied_dispatch_matrix_never_touches_mock_handler(self):
+        from dataclasses import replace
+        calls = []
+
+        def handler(requested):
+            calls.append(requested)
+            return "executed"
+
+        def dispatch(stored, requested, revoked):
+            if not admission(stored, requested, revoked=revoked):
+                return "denied"
+            return handler(requested)
+
+        for field in ("tenant", "engagement", "asset", "capability",
+                      "run_id", "operator_id"):
+            altered = replace(self.receipt, **{
+                field: getattr(self.receipt, field) + "-replay"
+            })
+            with self.subTest(field=field):
+                self.assertEqual(dispatch(self.receipt, altered, False), "denied")
+                self.assertEqual(len(calls), 0)
+
+        for risk in range(6):
+            stored = replace(self.receipt, approved_risk=risk)
+            for higher in range(risk + 1, 6):
+                with self.subTest(risk=risk, requested=higher):
+                    altered = replace(stored, approved_risk=higher)
+                    self.assertEqual(dispatch(stored, altered, False), "denied")
+                    self.assertEqual(len(calls), 0)
+
+        for revision in range(1, 5):
+            altered = replace(self.receipt, revision=revision + 1)
+            with self.subTest(revision=revision):
+                self.assertEqual(dispatch(self.receipt, altered, False), "denied")
+                self.assertEqual(len(calls), 0)
+
+        for revoked in (True, None, 0, "false"):
+            with self.subTest(revoked=repr(revoked)):
+                self.assertEqual(dispatch(self.receipt, self.receipt, revoked),
+                                 "denied")
+                self.assertEqual(len(calls), 0)
+
+        self.assertEqual(dispatch(self.receipt, self.receipt, False), "executed")
+        self.assertEqual(len(calls), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
