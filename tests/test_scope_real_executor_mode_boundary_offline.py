@@ -381,5 +381,14 @@ class RealExecutorModeBoundaryTests(unittest.TestCase):
         self.handler.assert_called_once()
         self.state.add_evidence.assert_called_once()
 
+    def test_invalid_handler_output_never_writes_evidence(self):
+        # The real executor must refuse malformed evidence without persisting it.
+        self.handler.return_value = None
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            with self.assertRaisesRegex(Exception, "handlers must return a ToolOutput"):
+                self.executor.execute(self.context(AssessmentMode.LAB_AUTONOMOUS), self.call)
+        self.handler.assert_called_once()
+        self.state.add_evidence.assert_not_called()
+
 if __name__ == "__main__":
     unittest.main()
