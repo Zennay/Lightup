@@ -85,3 +85,7 @@ The verification CLI reads only a regular file, rejects symbolic links/directori
 ## Missing or ineffective OS capability flags
 
 `O_NOFOLLOW` and `O_NONBLOCK` must be actual nonzero integer bit masks on the executing platform. A missing, `None` or zero-valued flag is rejected before opening the proof path; no fallback to ordinary `open()` is permitted. This is an offline file-integrity defense only, not production authorization evidence.
+
+## Recursive JSON parser failure
+
+JSON payloads with excessive nesting may raise `RecursionError` before structural schema validation. The CLI treats this as malformed input (`HOLD`, exit 2), emits no stack trace or user-controlled content, and never interprets partial JSON as proof. This defense does not turn the evidence index into trusted authorization.
