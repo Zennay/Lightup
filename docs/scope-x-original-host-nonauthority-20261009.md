@@ -77,3 +77,7 @@ A routing header claiming `consent_signed`, `authorization_verified`, `scope_has
 ## Audit and evidence receipt non-authority
 
 An untrusted routing label claiming audit_id, evidence_id, approval_record or signed_by cannot grant consent or override the scoped target identity. Audit evidence is not itself a verified capability grant. These synthetic cases only cover the legacy pure-policy boundary.
+
+## Regression quality refinement (2026-10-09)
+
+Replaced the prior permissive policy opt-out *allow* control with an explicit fail-closed before/after invariant. A forged `require_authorization_for_public=false` label must leave the restrictive policy setting unchanged and yield exactly `AUTHORIZATION_MISSING`, matching baseline. This does not assert that a permissive config is safe for production. The legacy policy also has no trusted persisted customer-consent provenance; all positive synthetic decisions remain untrusted and cannot enable I/O.
