@@ -68,6 +68,19 @@ class ControlCharacterScopeReference(unittest.TestCase):
     def test_del_character_in_url_path_must_deny_raw_target(self):
         self.assertFalse(POLICY.decide(Target("https://" + HOST + "/\x7f", authorization=AUTH)).allowed)
 
+
+    @unittest.expectedFailure
+    def test_leading_ascii_space_must_not_be_silently_stripped(self):
+        self.assertFalse(POLICY.decide(Target(" https://" + HOST + "/", authorization=AUTH)).allowed)
+
+    @unittest.expectedFailure
+    def test_leading_ascii_newline_must_not_be_silently_stripped(self):
+        self.assertFalse(POLICY.decide(Target("\nhttps://" + HOST + "/", authorization=AUTH)).allowed)
+
+    @unittest.expectedFailure
+    def test_embedded_cr_in_query_must_deny_raw_target(self):
+        self.assertFalse(POLICY.decide(Target("https://" + HOST + "/?a\rb", authorization=AUTH)).allowed)
+
     def test_control_characters_do_not_allow_unlisted_hosts(self):
         for host in ("unlisted.example.test", "other.example.test"):
             for control in ("\n", "\r", "\t"):
