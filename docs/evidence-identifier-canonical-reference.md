@@ -75,3 +75,7 @@ The reference suite now issues two evidence records against distinct plan-only l
 ## Existence is separate from syntax
 
 A canonical-looking UUID4 is not proof that the evidence row exists. A new offline regression asks the real `StateStore` to retrieve an absent but lexically valid identifier and requires a failure with zero evidence rows created. This reference tolerates current `KeyError`/`ValueError` not-found behavior; no production error API changes or provenance claims are made.
+
+## Content identity is not record identity
+
+A new isolated fixture stores the same byte payload twice on one plan-only run. Both rows must retain distinct UUID4 evidence identifiers while sharing the same SHA-256 payload digest. This guards against incorrectly treating content-hash equality as evidence-record identity or provenance equality. It does not prove permissions, issuer trust or cross-tenant isolation.
