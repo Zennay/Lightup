@@ -1,0 +1,68 @@
+"""Offline proof-manifest verifier. No network, filesystem writes or target execution.
+
+Usage: PYTHONPATH=src python scripts/verify_scope_proof_manifest.py evidence.json
+This script only checks an evidence *index*; it cannot prove the referenced
+artifacts are authentic. Independent review of the immutable SHA is mandatory.
+"""
+import json
+import re
+import sys
+from pathlib import Path
+
+REQUIRED = ("implementation_sha", "base_sha", "trusted_grant_reviewed",
+            "revocation_race_passed", "denied_side_effects_zero",
+            "positive_loopback_control_passed", "hosted_py311_sha",
+            "hosted_py314_sha", "permanent_vps_sha", "owner_review_sha",
+            "real_target_activation_disabled")
+SHA = re.compile(r"[0-9a-f]{40}\Z")
+
+
+def verify(data):
+    if type(data) is not dict:
+        return ["manifest must be an object"]
+    errors = [f"missing {key}" for key in REQUIRED if key not in data]
+    sha = data.get("implementation_sha")
+    for key in ("implementation_sha", "base_sha", "hosted_py311_sha",
+                "hosted_py314_sha", "permanent_vps_sha", "owner_review_sha"):
+        value = data.get(key)
+        if type(value) is not str or SHA.fullmatch(value) is None:
+            errors.append(f"{key}: expected lowercase 40-character commit SHA")
+    if type(sha) is str and SHA.fullmatch(sha):
+        for key in ("hosted_py311_sha", "hosted_py314_sha", "permanent_vps_sha", "owner_review_sha"):
+            if data.get(key) != sha:
+                errors.append(f"{key}: does not match implementation_sha")
+    for key in ("trusted_grant_reviewed", "revocation_race_passed",
+                "denied_side_effects_zero", "positive_loopback_control_passed",
+                "real_target_activation_disabled"):
+        if data.get(key) is not True:
+            errors.append(f"{key}: must be literal true")
+    side_effects = data.get("denial_side_effect_counts")
+    if type(side_effects) is not dict:
+        errors.append("denial_side_effect_counts: missing object")
+    else:
+        for boundary in ("handler", "socket", "queue", "action_evidence"):
+            if type(side_effects.get(boundary)) is not int or side_effects[boundary] != 0:
+                errors.append(f"denial_side_effect_counts.{boundary}: must be integer 0")
+    return errors
+
+
+def main(argv):
+    if len(argv) != 2:
+        print("usage: verify_scope_proof_manifest.py path/to/evidence.json", file=sys.stderr)
+        return 2
+    try:
+        data = json.loads(Path(argv[1]).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        print(f"HOLD: invalid manifest: {exc}", file=sys.stderr)
+        return 2
+    errors = verify(data)
+    if errors:
+        print("HOLD: " + "; ".join(errors))
+        return 1
+    print("INDEX CHECK PASS ONLY: evidence references are internally consistent; "
+          "not authorization or release approval")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))
