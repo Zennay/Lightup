@@ -46,3 +46,5 @@ Revision-binding checks also vary stored and requested revisions independently. 
 Unicode line and paragraph separators (Zl/Zp: U+2028/U+2029) are rejected in consent identifiers to prevent audit or serialization boundary confusion. Fixtures use actual characters from chr(), not literal backslash sequences.
 
 Stored-record Unicode Zl/Zp separator contamination is denied even if a submitted request exactly repeats the same contaminated identifier; exact equality alone never validates malformed identity metadata.
+
+Exhaustive ASCII control matrix: U+0000–U+001F and U+007F are exercised against each of five identifiers both as request-only mutation and as identical persisted/request mutation (33 × 5 × 2 denial assertions); no target or network I/O.
