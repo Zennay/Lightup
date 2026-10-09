@@ -155,5 +155,27 @@ class TooEarlyNonauthorityTests(unittest.TestCase):
                     self.assertFalse(necessary_scope_consistency(changed, BASE, status, "1"))
 
 
+    def test_retry_does_not_accept_truthy_dispatch_activation(self):
+        # A retry must re-check both sides with exact boolean types.
+        for value in (1, "true", [True], {"active": True}, None):
+            with self.subTest(value=repr(value)):
+                invalid = replace(BASE, active=value)
+                self.assertFalse(necessary_scope_consistency(BASE, invalid, 425, "1"))
+                self.assertFalse(necessary_scope_consistency(invalid, BASE, 200, "0"))
+
+    def test_no_transport_metadata_mutation_or_coercion(self):
+        class Hostile(dict):
+            def __getitem__(self, key):
+                raise AssertionError("transport metadata accessed")
+            def get(self, key, default=None):
+                raise AssertionError("transport metadata accessed")
+            def __bool__(self):
+                raise AssertionError("transport metadata checked")
+        status, hint = Hostile({"status": 425}), Hostile({"Early-Data": "1"})
+        before = (dict(status), dict(hint))
+        self.assertTrue(necessary_scope_consistency(BASE, BASE, status, hint))
+        self.assertEqual((dict(status), dict(hint)), before)
+
+
 if __name__ == "__main__":
     unittest.main()
