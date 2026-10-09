@@ -159,6 +159,29 @@ class TestContentDispositionNonAuthority(unittest.TestCase):
                     "attachment; filename=grant",
                 ))
 
+    def test_header_cannot_revoke_valid_synthetic_consistency(self):
+        # A response label is irrelevant in both directions, not merely denial cases.
+        for header in ("", "attachment; filename=deny", "inline; filename=revoked",
+                       "\r\nX-Scope: revoked", False, [], b"approved"):
+            with self.subTest(header=header):
+                self.assertTrue(reference_consistency(self.grant, self.dispatch, header))
+
+    def test_mixed_valid_and_invalid_identity_types_fail_closed(self):
+        class SpoofedString(str):
+            pass
+        for field in ("tenant", "request", "asset", "capability"):
+            original = getattr(self.grant, field)
+            for invalid in (SpoofedString(original), None, True):
+                with self.subTest(field=field, invalid=invalid):
+                    self.assertFalse(reference_consistency(
+                        replace(self.grant, **{field: invalid}), self.dispatch,
+                        'attachment; filename="approved"',
+                    ))
+                    self.assertFalse(reference_consistency(
+                        self.grant, replace(self.dispatch, **{field: invalid}),
+                        'attachment; filename="approved"',
+                    ))
+
     def test_grant_and_dispatch_immutable(self):
         grant, dispatch = self.grant, self.dispatch
         reference_consistency(grant, dispatch, "attachment; filename=ignored")
