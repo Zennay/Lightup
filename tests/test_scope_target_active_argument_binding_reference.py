@@ -45,7 +45,9 @@ def _canonical_endpoint(value: object) -> tuple[str, int | None] | None:
     if not host or "%" in host:
         return None
 
-    canonical_host = host.rstrip(".").lower()
+    if host.endswith(".."):
+        return None
+    canonical_host = (host[:-1] if host.endswith(".") else host).lower()
     if not canonical_host:
         return None
 
@@ -147,6 +149,15 @@ class TargetActiveArgumentBindingReferenceTests(unittest.TestCase):
             declared_network_arguments_match_asset(
                 "example.test.",
                 (("host", "EXAMPLE.TEST"),),
+                network_argument_names=self.NETWORK_KEYS,
+            )
+        )
+
+    def test_multiple_trailing_dots_are_rejected_as_noncanonical(self):
+        self.assertFalse(
+            declared_network_arguments_match_asset(
+                "example.test",
+                (("url", "https://example.test../a"),),
                 network_argument_names=self.NETWORK_KEYS,
             )
         )
