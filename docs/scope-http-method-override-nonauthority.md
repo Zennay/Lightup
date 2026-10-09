@@ -25,6 +25,14 @@ Every single-header case is repeated for the three common aliases. Positive cont
 
 Run locally (no network target): `PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_http_method_override_non_authority.py' -v`.
 
+## Production-mode in-process acceptance
+
+The same eight WSGI checks are inherited by a second fixture using `WebSecurity(public_origin="https://security.example.test", trusted_proxy_ip="127.0.0.1")`. The fixture simulates trusted-loopback WSGI ingress with exact `Host`, `X-Forwarded-Proto=https` and same-origin `Origin` metadata. It does not open an HTTP listener or exercise a real reverse proxy.
+
+Four additional production-denial controls pair a client-supplied method-override header with **valid** operator/CSRF metadata and respectively an untrusted `Origin`, HTTP (not HTTPS) forwarding, an untrusted `REMOTE_ADDR`, or a wrong `Host`. Each must return 403 without adding a client. With eight base + eight inherited production tests + four production-specific tests, the dedicated module covers **20 regression methods**.
+
+These controls distinguish method-override non-authority from independent production Host/Origin/proxy/HTTPS admission. Upstream rewrite behavior remains separately tracked by [#1154](https://github.com/Zennay/Lightup/issues/1154); a green in-process WSGI suite is **not** actual ingress proof.
+
 ## Collision/ownership
 
 Only a new regression module and this document are changed. Does **not** edit `webapp/app.py`, `webapp/security.py`, `domain.py`, `execution_policy.py`, `scope.py`, `orchestration.py`, active authorization source-owner #107, duplicate arguments #966, lab marker #1150, typed arguments #1146, deployment or any other active worker branch.
