@@ -266,6 +266,17 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
                 case["jobs"]["permanent_vps"]["run_url"] = candidate
                 self.assertFalse(evaluate(case)[0])
 
+    def test_workflow_url_rejects_userinfo(self):
+        for url in (
+            "https://user@github.com/Zennay/Lightup/actions/runs/123",
+            "https://user:secret@github.com/Zennay/Lightup/actions/runs/123",
+            "https://github.com@evil.example/Zennay/Lightup/actions/runs/123",
+        ):
+            with self.subTest(url=url):
+                case = sample()
+                case["jobs"]["permanent_vps"]["run_url"] = url
+                self.assertFalse(evaluate(case)[0])
+
     def test_sha_requires_full_lowercase_digest(self):
         for invalid in (None, "", "abc", "A" * 40, 3):
             with self.subTest(invalid=invalid):
