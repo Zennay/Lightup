@@ -113,6 +113,30 @@ class ImportReplayReferenceTests(unittest.TestCase):
         self.assertFalse(eligible_for_review(self.snapshot, DerivedLive(**vars(self.live))))
         self.assertFalse(eligible_for_review(vars(self.snapshot), vars(self.live)))
 
+    def test_malformed_live_identity_is_not_trusted(self):
+        from dataclasses import replace
+        for field in ("tenant", "request", "grant"):
+            for value in (None, 7, "value\\n", " value", "é", "x" * 129, ""):
+                with self.subTest(field=field, value=value):
+                    self.assertFalse(eligible_for_review(
+                        self.snapshot, replace(self.live, **{field: value})
+                    ))
+
+    def test_revision_and_digest_limits(self):
+        from dataclasses import replace
+        for value in (-1, 0, True, False, "3", 3.0):
+            with self.subTest(revision=value):
+                self.assertFalse(eligible_for_review(
+                    replace(self.snapshot, revision=value), self.live
+                ))
+                self.assertFalse(eligible_for_review(
+                    self.snapshot, replace(self.live, revision=value)
+                ))
+        for digest in ("a" * 65, "a" * 63, "0" * 63 + "z", b"a" * 64):
+            self.assertFalse(eligible_for_review(
+                replace(self.snapshot, export_digest=digest), self.live
+            ))
+
     def test_reference_is_pure(self):
         original_snapshot, original_live = repr(self.snapshot), repr(self.live)
         eligible_for_review(self.snapshot, self.live)
