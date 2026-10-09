@@ -70,6 +70,45 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
             with self.subTest(headers=headers):
                 self.assertTrue(reference_decide(self.valid, self.valid, headers))
 
+    def test_malformed_stored_grant_cannot_gain_authority_from_header(self):
+        variants = (
+            Grant("", "lab-asset", "read-only", 3, True, False),
+            Grant("tenant-a", "", "read-only", 3, True, False),
+            Grant("tenant-a", "lab-asset", "", 3, True, False),
+            Grant("tenant-a", "lab-asset", "read-only", 0, True, False),
+            Grant("tenant-a", "lab-asset", "read-only", True, True, False),
+            Grant("tenant-a", "lab-asset", "read-only", "3", True, False),
+            Grant("tenant-a", "lab-asset", "read-only", 3, 1, False),
+            Grant("tenant-a", "lab-asset", "read-only", 3, True, 0),
+            Grant(42, "lab-asset", "read-only", 3, True, False),
+        )
+        for variant in variants:
+            with self.subTest(variant=variant):
+                self.assertFalse(reference_decide(variant, variant,
+                    {"Sec-WebSocket-Protocol": "approved, admin, read-only"}))
+
+    def test_grant_object_subclass_cannot_impersonate_exact_grant(self):
+        class DerivedGrant(Grant):
+            pass
+        forged = DerivedGrant("tenant-a", "lab-asset", "read-only", 3, True, False)
+        self.assertFalse(reference_decide(forged, forged,
+            {"Sec-WebSocket-Protocol": "authorized"}))
+        self.assertFalse(reference_decide(self.valid, forged,
+            {"Sec-WebSocket-Protocol": "authorized"}))
+
+    def test_replayed_old_revision_denied_even_with_matching_header(self):
+        old = Grant("tenant-a", "lab-asset", "read-only", 2, True, False)
+        self.assertFalse(reference_decide(self.valid, old,
+            {"Sec-WebSocket-Protocol": "revision=3"}))
+        self.assertFalse(reference_decide(old, self.valid,
+            {"Sec-WebSocket-Protocol": "revision=2"}))
+
+    def test_header_input_is_not_modified(self):
+        headers = {"Sec-WebSocket-Protocol": ["json", "admin"], "Other": {"x": 1}}
+        before = repr(headers)
+        self.assertTrue(reference_decide(self.valid, self.valid, headers))
+        self.assertEqual(repr(headers), before)
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
