@@ -38,6 +38,9 @@ def valid_run_url(value: object) -> bool:
     )
 
 
+MAX_EVIDENCE_BYTES = 64 * 1024
+
+
 REQUIRED_JOBS = ("py311_unit", "py314_unit", "py311_producer", "py314_producer", "permanent_vps")
 
 
@@ -87,12 +90,17 @@ def main(argv: list[str]) -> int:
         print("Usage: python scripts/check_scope_release_evidence.py evidence.json", file=sys.stderr)
         return 2
     try:
+        source = Path(argv[1])
+        with source.open("rb") as stream:
+            raw = stream.read(MAX_EVIDENCE_BYTES + 1)
+        if len(raw) > MAX_EVIDENCE_BYTES:
+            raise ValueError("evidence exceeds 64 KiB bound")
         evidence = json.loads(
-            Path(argv[1]).read_text(encoding="utf-8"),
+            raw.decode("utf-8"),
             object_pairs_hook=reject_duplicate_keys,
             parse_constant=reject_nonfinite_constant,
         )
-    except (OSError, ValueError) as exc:
+    except (OSError, UnicodeError, ValueError) as exc:
         print(f"HOLD: unreadable evidence: {exc}", file=sys.stderr)
         return 2
     allowed, reasons = evaluate(evidence)
