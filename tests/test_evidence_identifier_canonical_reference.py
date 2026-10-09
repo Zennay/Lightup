@@ -8,7 +8,7 @@ import re
 import tempfile
 import unittest
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 _PATTERN = re.compile(
     r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
@@ -94,6 +94,19 @@ class EvidenceIdentifierReferenceTests(unittest.TestCase):
         other = "12345678-1234-4234-8234-123456789abd"
         self.assertNotEqual(canonical_evidence_id(self.VALID),
                             canonical_evidence_id(other))
+
+    def test_standard_uuid_parser_is_not_a_canonicality_gate(self):
+        # uuid.UUID accepts aliases that the strict reference must deny.
+        alias = self.VALID.upper()
+        self.assertEqual(str(UUID(alias)), self.VALID)
+        self.assertRejected(alias)
+        compact = self.VALID.replace("-", "")
+        self.assertEqual(str(UUID(compact)), self.VALID)
+        self.assertRejected(compact)
+
+    def test_nil_and_max_uuid_are_rejected(self):
+        self.assertRejected(str(UUID(int=0)))
+        self.assertRejected(str(UUID(int=(1 << 128) - 1)))
 
     def test_uppercase_uuid_alias_is_rejected(self):
         self.assertRejected(self.VALID.upper())
