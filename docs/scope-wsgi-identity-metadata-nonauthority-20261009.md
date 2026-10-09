@@ -22,6 +22,8 @@ PYTHONPATH=src python -m unittest discover -s tests -p test_scope_wsgi_identity_
 - Real operator session + CSRF supplied **only by `X-CSRF-Token`** (or invalid body CSRF): POST forbidden, no client created.
 - Anonymous POST logout + identity-looking metadata: does not revoke active operator or client sessions, and emits no logout cookie.
 - Revoked operator session + spoofed WSGI identity: no protected read; cannot revive a revoked session.
+- A **real** operator cookie copied into `X-Forwarded-Cookie`, `X-Original-Cookie`, `X-Auth-Request-Cookie` or `Cookie2` (without a canonical `Cookie`) grants no session or client write.
+- The actual operator-only **authorization-grant recording WSGI route**, using a disposable in-memory-context/temporary-SQLite engagement, must reject anonymous and client-role callers with forged identity metadata; no grant rows are recorded. The positive operator/session/form-CSRF route may record only the local synthetic fixture grant; this does **not** constitute consent to contact `fixture.invalid` or any target.
 - Positive control: genuine operator cookie **and** genuine body CSRF can create one synthetic client in each mode even with contradictory client-looking headers; protecting the boundary does not accidentally disable legitimate operator actions.
 
 The fixture tests `REMOTE_USER`, `AUTH_TYPE`, `Authorization`, `X-Remote-User`, `X-Auth-Request-User`, `X-Forwarded-User`, `X-Forwarded-Email`, `X-User` and `X-Api-Key`, plus a standalone forged `X-CSRF-Token`. These fields are not alternative login channels. A request that includes a valid **cookie** still follows normal cookie/session rules; this is not a ban on all requests containing these headers.
