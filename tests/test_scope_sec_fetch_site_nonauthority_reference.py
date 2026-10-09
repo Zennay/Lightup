@@ -169,5 +169,36 @@ class SecFetchSiteNonAuthority(unittest.TestCase):
                     reference_decision(grant, self.dispatch, None),
                     reference_decision(grant, self.dispatch, hint))
 
+
+    def test_metadata_object_protocols_are_never_invoked(self):
+        class PoisonMetadata:
+            def __iter__(self):
+                raise AssertionError("transport hint iteration")
+            def __len__(self):
+                raise AssertionError("transport hint length")
+            def __repr__(self):
+                raise AssertionError("transport hint representation")
+            def __eq__(self, other):
+                raise AssertionError("transport hint comparison")
+        hint = PoisonMetadata()
+        self.assertTrue(reference_decision(self.grant, self.dispatch, hint))
+        revoked = Grant("tenant", "request", "asset", "web-baseline", 2, False, True)
+        self.assertFalse(reference_decision(revoked, self.dispatch, hint))
+
+    def test_dispatch_revision_subclass_fails_closed(self):
+        class PretendInt(int):
+            pass
+        self.assertFalse(reference_decision(
+            self.grant, dict(self.dispatch, revision=PretendInt(2)), "none"))
+        grant = Grant("tenant", "request", "asset", "web-baseline",
+                      PretendInt(2), True, True)
+        self.assertFalse(reference_decision(grant, self.dispatch, "none"))
+
+    def test_untrusted_hint_never_changes_immutable_grant(self):
+        before = dict(self.grant.__dict__)
+        for hint in ("same-site", {"Sec-Fetch-Site": "same-origin"}, HostileLabel()):
+            self.assertTrue(reference_decision(self.grant, self.dispatch, hint))
+            self.assertEqual(dict(self.grant.__dict__), before)
+
 if __name__ == "__main__":
     unittest.main()
