@@ -5,7 +5,7 @@ import copy
 import json
 import tempfile
 from pathlib import Path
-from contextlib import redirect_stdout
+from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 import unittest
 
@@ -79,6 +79,20 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
                     exit_code = main(["check_scope_release_evidence.py", str(evidence_path)])
                 self.assertEqual(exit_code, 2)
                 self.assertIn("HOLD:", output.getvalue())
+
+    def test_cli_does_not_echo_sensitive_duplicate_key(self):
+        secret = "private-approval-token-DO-NOT-ECHO"
+        payload = json.dumps({secret: 1})[:-1] + ',' + json.dumps(secret) + ':2}'
+        with tempfile.TemporaryDirectory() as directory:
+            evidence_path = Path(directory) / "evidence.json"
+            evidence_path.write_text(payload, encoding="utf-8")
+            output = StringIO()
+            errors = StringIO()
+            with redirect_stdout(output), redirect_stderr(errors):
+                exit_code = main(["check_scope_release_evidence.py", str(evidence_path)])
+            self.assertEqual(exit_code, 2)
+            self.assertIn("HOLD:", errors.getvalue())
+            self.assertNotIn(secret, errors.getvalue() + output.getvalue())
 
     def test_missing_evidence_holds(self):
         self.assertFalse(evaluate(None)[0])
