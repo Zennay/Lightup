@@ -122,3 +122,7 @@ Two offline tests confirm caller-supplied WebSocket tokens cannot repair a wrong
 ## Request approval replay and capability escalation
 
 Two new offline tests reject ten attempts to replay an approved request against unapproved stored consent with zero mock handler calls, and reject any client-provided subprotocol capability claims that seek active-scan privileges beyond a read-only stored grant. Total **57 offline unittest methods**; production execution remains unverified.
+
+## Repeatable denial and strict capability binding
+
+Two additional offline methods assert identical denied grants remain denied after mutation of the same caller-owned header mapping, and active-scan claims cannot widen trusted read-only capability while the legitimate read-only positive control remains allowed. Total: **59 offline unittest methods**. This is no proof of a production pre-I/O gate.
