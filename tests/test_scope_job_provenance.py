@@ -87,6 +87,11 @@ class OfflineJobProvenanceTests(unittest.TestCase):
                 evidence[index]["name"] = f"Unrelated Python {version} integration"
                 self.assertTrue(any("expected job label" in e for e in module.check(proof(), evidence)))
 
+    def test_generic_lightup_job_is_not_vps_safety_proof(self):
+        evidence = jobs()
+        evidence[2]["name"] = "LightUp unrelated task"
+        self.assertTrue(any("expected job label" in error for error in module.check(proof(), evidence)))
+
     def test_valid_matrix_and_distinct_vps(self):
         self.assertEqual(module.check(proof(), jobs()), [])
 
