@@ -6,7 +6,7 @@ Run with `python -m unittest discover -s tests -p test_scope_approval_context_re
 
 The fixture in `tests/test_scope_approval_context_replay_offline.py` locks down these expectations:
 
-- An explicit approval must match the **tenant, engagement, asset, capability, run ID and operator ID** exactly. A receipt from another context cannot be replayed.
+- Both stored and requested receipts must be canonical `ApprovalReceipt` instances, not subclasses; all six identity fields must be exact, nonempty built-in strings. Even an identically corrupted receipt/request pair must deny.\n- An explicit approval must match the **tenant, engagement, asset, capability, run ID and operator ID** exactly. A receipt from another context cannot be replayed.
 - Revocation is fail-closed: only the literal boolean `False` constitutes a non-revoked receipt. Unknown, missing or coercible values deny.
 - Both revisions must be positive exact integers and equal. Boolean/int coercion cannot authorize.
 - Requested risk cannot exceed approved risk, and the risk fields must be exact integers within the 0–5 policy range.
