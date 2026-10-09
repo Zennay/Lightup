@@ -24,14 +24,14 @@ def strict_window_eligible(start, end, now):
         try:
             if bound.utcoffset() is None:
                 return False
-        except (TypeError, ValueError, OverflowError):
+        except Exception:
             return False
     try:
         normalized_start = start.astimezone(timezone.utc)
         normalized_end = end.astimezone(timezone.utc)
         normalized_now = now.astimezone(timezone.utc)
         return normalized_start < normalized_end and normalized_start <= normalized_now < normalized_end
-    except (TypeError, ValueError, OverflowError):
+    except Exception:
         return False
 
 
