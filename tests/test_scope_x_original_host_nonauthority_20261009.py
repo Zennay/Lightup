@@ -778,5 +778,22 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         dispatch.assert_not_called()
 
 
+    def test_missing_grant_denial_does_not_inspect_hostile_labels(self):
+        class PoisonLabels:
+            def __iter__(self):
+                raise AssertionError("untrusted metadata must not be iterated")
+            def __len__(self):
+                raise AssertionError("untrusted metadata must not be measured")
+            def __bool__(self):
+                raise AssertionError("untrusted metadata must not be coerced")
+
+        decision = self.policy.decide(Target(
+            "https://approved.example/", labels=PoisonLabels(),
+        ))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+        self.assertEqual(decision.normalized_host, "approved.example")
+
+
 if __name__ == "__main__":
     unittest.main()
