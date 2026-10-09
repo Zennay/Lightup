@@ -17,7 +17,7 @@ def reference_digest(tenant, finding, evidence_ids):
         raise ValueError("invalid evidence reference")
     if len(set(evidence_ids)) != len(evidence_ids):
         raise ValueError("duplicate evidence reference")
-    payload = json.dumps(
+    # Unpaired surrogate code points cannot represent valid UTF-8 identifiers.\n    if any(0xD800 <= ord(ch) <= 0xDFFF for value in (tenant, finding, *evidence_ids) for ch in value):\n        raise ValueError("invalid surrogate in reference identity")\n    payload = json.dumps(
         {"schema": "lightup.evidence-set.v1", "tenant": tenant, "finding": finding, "evidence": sorted(evidence_ids)},
         sort_keys=True, ensure_ascii=True, separators=(",", ":"),
     ).encode("ascii")
@@ -139,6 +139,28 @@ class EvidenceReferenceOrderReferenceTests(unittest.TestCase):
         ).encode("ascii")
         self.assertNotEqual(reference_digest("t", "f", ["a"]),
                             hashlib.sha256(legacy).hexdigest())
+
+    def test_unpaired_surrogates_fail_closed(self):
+        for malformed in ("\\ud800", "\\udfff"):
+            with self.subTest(malformed=ascii(malformed)):
+                for position in ("tenant", "finding", "evidence"):
+                    with self.subTest(position=position), self.assertRaises(ValueError):
+                        parts = {"tenant": "t", "finding": "f", "evidence_ids": ["e"]}
+                        parts["evidence_ids" if position == "evidence" else position] = (
+                            [malformed] if position == "evidence" else malformed
+                        )
+                        reference_digest(**parts)
+
+    def test_valid_supplementary_unicode_identity(self):
+        self.assertEqual(reference_digest("t", "f", ["🔒"]),
+                         reference_digest("t", "f", ("🔒",)))
+
+    def test_distinct_canonical_json_values_cannot_share_digest(self):
+        samples = [("t", "f", ["a"]), ("t", "f", ["a", "b"]),
+                   ("t", "f2", ["a"]), ("t2", "f", ["a"]),
+                   ("t", "f", ["A"]), ("t", "f", ["a "])]
+        self.assertEqual(len({reference_digest(*case) for case in samples}),
+                         len(samples))
 
     def test_does_not_mutate_inputs(self):
         ids = ["z", "a"]
