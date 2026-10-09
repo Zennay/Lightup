@@ -28,7 +28,7 @@ def check(proof, jobs, runs):
     expected_runs = {proof["hosted_py311_run_id"], proof["hosted_py314_run_id"], proof["permanent_vps_run_id"]}
     if any(type(run) is not dict for run in runs):
         errors.append("all workflow runs must be objects")
-    required_run_keys = {"id", "head_sha", "status", "conclusion"}
+    required_run_keys = {"id", "head_sha", "status", "conclusion", "name"}
     for run in runs:
         if type(run) is dict and not required_run_keys.issubset(run):
             errors.append("workflow run missing required metadata")
@@ -40,6 +40,11 @@ def check(proof, jobs, runs):
             errors.append("missing or duplicate referenced workflow run")
             continue
         run = matching[0]
+        # A successful unrelated workflow is not a substitute for safety CI.
+        expected_name = ("LightUp CI" if run_id == proof["permanent_vps_run_id"]
+                         else "LightUp offline preflight")
+        if (type(run.get("name")) is not str or run["name"] != expected_name):
+            errors.append("workflow run name does not match proof lane")
         if (type(run.get("head_sha")) is not str or
                 run["head_sha"] != proof["implementation_sha"] or
                 run.get("status") != "completed" or run.get("conclusion") != "success"):
