@@ -1,0 +1,5 @@
+# BOOLEAN tool argument boundary (offline acceptance)
+
+This branch adds `tests/test_scope_boolean_argument_boundary_20261009.py` against current `main` without changing production code. Run with `PYTHONPATH=src python -m unittest tests/test_scope_boolean_argument_boundary_20261009.py` (or unittest discovery). `ParamKind.BOOLEAN` must accept the exact Python `True` and `False`, reject integer/float/string lookalikes and missing required arguments, and reject unknown keys without mutating caller data.
+
+This is a **schema-only, offline positive/negative regression**, not evidence that persisted customer consent, trusted destination binding, revocation checks or actual executor dispatch are safe. No handlers, grants, scanning, network or deployment are involved. This test-only branch intentionally avoids source currently owned by #107 and #156, the duplicate-key lane #966 and Draft #1146. Keep DRAFT/HOLD and do not promote to target execution absent production owner integration, source review and exact-head hosted plus canonical permanent VPS evidence. No CI runs have been claimed for this branch.
