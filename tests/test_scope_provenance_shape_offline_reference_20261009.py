@@ -15,7 +15,8 @@ from lightup.models import Authorization
 def _well_formed_identity(value: object) -> bool:
     if type(value) is not str or not value or value != value.strip():
         return False
-    if any(unicodedata.category(ch) in {"Cc", "Cf", "Cs", "Zl", "Zp"} or\n           (unicodedata.category(ch) == "Zs" and ch != " ") for ch in value):
+    if any(unicodedata.category(ch) in {"Cc", "Cf", "Cs", "Zl", "Zp"} or
+           (unicodedata.category(ch) == "Zs" and ch != " ") for ch in value):
         return False
     return any(not ch.isspace() for ch in value)
 
