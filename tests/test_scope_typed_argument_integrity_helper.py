@@ -383,5 +383,34 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
                         validate_unambiguous_arguments(self.definition, (("value", value),))
 
 
+    def test_unknown_key_denial_preempts_nonfinite_value_validation(self):
+        from unittest.mock import patch
+        with patch.object(
+            ToolDefinition, "validate_arguments",
+            side_effect=AssertionError("schema called"),
+        ):
+            for value in (float("nan"), float("inf"), float("-inf")):
+                with self.subTest(value=repr(value)):
+                    with self.assertRaisesRegex(OrchestrationError, "unknown tool argument"):
+                        validate_unambiguous_arguments(
+                            self.definition, (("unknown", value),)
+                        )
+
+    def test_finite_number_input_identity_preserved_after_schema_validation(self):
+        from unittest.mock import patch
+        original = ToolDefinition.validate_arguments
+        calls = []
+        def capture(definition, arguments):
+            calls.append(arguments["value"])
+            return original(definition, arguments)
+        huge = 10 ** 1000
+        with patch.object(ToolDefinition, "validate_arguments", capture):
+            result = validate_unambiguous_arguments(
+                self.definition, (("value", huge),)
+            )
+        self.assertIs(result["value"], huge)
+        self.assertEqual(calls, [huge])
+
+
 if __name__ == "__main__":
     unittest.main()
