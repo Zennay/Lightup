@@ -11,7 +11,7 @@ This is a **pure stdlib offline synthetic reference**, not the production author
 ## Regression fixture
 `python -m unittest discover -s tests -p 'test_scope_http_425_nonauthority_reference.py' -v`
 
-Thirteen offline tests exercise revoked grants, cross-tenant/request/asset/capability boundaries, stale revision and strict types, control characters, polymorphic envelopes, hostile transport metadata, and immutability. Two explicit retry-sequence regressions demonstrate that a previously matching grant cannot bypass later revision changes or consent withdrawal. Positive synthetic consistency is only a *necessary* condition; it does not authenticate a real issuer or enable any capability.
+Fifteen offline tests exercise revoked grants, cross-tenant/request/asset/capability boundaries, stale revision and strict types, control characters, polymorphic envelopes, hostile transport metadata, oversized and zero-width/tab identifiers, HTTP-status-independent cross-binding denials, and immutability. Two explicit retry-sequence regressions demonstrate that a previously matching grant cannot bypass later revision changes or consent withdrawal. Positive synthetic consistency is only a *necessary* condition; it does not authenticate a real issuer or enable any capability.
 
 ## Merge gate
 Draft until exact-current-head hosted Python 3.11/3.14 and canonical permanent VPS CI pass and production scope owner reviews integration. Never treat this reference as evidence of real-target authorization. No network, DNS, scanning, permission activation, production executor modifications or deployment.
