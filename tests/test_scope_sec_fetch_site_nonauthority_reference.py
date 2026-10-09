@@ -101,5 +101,39 @@ class SecFetchSiteNonAuthority(unittest.TestCase):
         self.assertEqual(before, self.dispatch)
 
 
+    def test_grant_revision_must_be_exact_nonnegative_integer(self):
+        for revision in (True, 2.0, "2", -1, None):
+            grant = Grant("tenant", "request", "asset", "web-baseline",
+                          revision, True, True)
+            self.assertFalse(reference_decision(grant, self.dispatch, "same-origin"))
+        zero = Grant("tenant", "request", "asset", "web-baseline", 0, True, True)
+        self.assertTrue(reference_decision(
+            zero, dict(self.dispatch, revision=0), "cross-site"))
+
+    def test_missing_and_extra_binding_keys_fail_closed(self):
+        for key in self.dispatch:
+            missing = dict(self.dispatch)
+            del missing[key]
+            self.assertFalse(reference_decision(self.grant, missing, "none"))
+        self.assertFalse(reference_decision(
+            self.grant, dict(self.dispatch, injected=True), "same-origin"))
+
+    def test_string_subclass_identity_is_not_trusted(self):
+        class PretendString(str):
+            pass
+        for key in ("tenant", "request", "asset", "capability"):
+            spoof = PretendString(self.dispatch[key])
+            self.assertFalse(reference_decision(
+                self.grant, dict(self.dispatch, **{key: spoof}), "same-site"))
+            self.assertFalse(reference_decision(
+                Grant(**dict(self.grant.__dict__, **{key: spoof})),
+                self.dispatch, "same-origin"))
+
+    def test_verified_flag_requires_exact_boolean(self):
+        for flag in (1, "true", object()):
+            grant = Grant("tenant", "request", "asset", "web-baseline", 2, True, flag)
+            self.assertFalse(reference_decision(grant, self.dispatch, "same-origin"))
+
+
 if __name__ == "__main__":
     unittest.main()
