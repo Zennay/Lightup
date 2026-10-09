@@ -74,5 +74,64 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
 
 
+    def test_original_host_is_not_inspected_as_a_label_object(self):
+        class PoisonLabels:
+            def __iter__(self):
+                raise AssertionError("untrusted labels must not be inspected")
+            def __len__(self):
+                raise AssertionError("untrusted labels must not be measured")
+            def __bool__(self):
+                raise AssertionError("untrusted labels must not be evaluated")
+
+        result = self.policy.decide(
+            Target("unknown.example", labels=PoisonLabels())
+        )
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_expired_grant_cannot_be_revived_by_original_host(self):
+        from datetime import datetime, timedelta, timezone
+
+        expired = Authorization(
+            owner="fixture", reference="NOT-TRUSTED",
+            valid_until=datetime.now(timezone.utc) - timedelta(days=1),
+        )
+        result = self.policy.decide(Target(
+            "approved.example", authorization=expired,
+            labels=("X-Original-Host: approved.example",),
+        ))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+
+    def test_future_grant_cannot_be_activated_by_original_host(self):
+        from datetime import datetime, timedelta, timezone
+
+        future = Authorization(
+            owner="fixture", reference="NOT-TRUSTED",
+            valid_from=datetime.now(timezone.utc) + timedelta(days=1),
+        )
+        result = self.policy.decide(Target(
+            "approved.example", authorization=future,
+            labels=("X-Original-Host: approved.example",),
+        ))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+
+    def test_original_host_cannot_change_network_allowlist_identity(self):
+        network_policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=("203.0.113.0/24",),
+        )
+        synthetic = Authorization(owner="fixture", reference="NOT-TRUSTED")
+        for label in ("X-Original-Host: 203.0.113.8",
+                      "X-Original-Host: approved.example"):
+            with self.subTest(label=label):
+                result = network_policy.decide(Target(
+                    "198.51.100.8", authorization=synthetic, labels=(label,),
+                ))
+                self.assertFalse(result.allowed)
+                self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
+
+
 if __name__ == "__main__":
     unittest.main()
