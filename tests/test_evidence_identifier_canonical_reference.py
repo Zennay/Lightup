@@ -1,85 +1,83 @@
-"""Offline reference contract for unambiguous evidence identifiers.
+"""Offline lexical acceptance reference for LightUp's uuid4 evidence IDs.
 
-This intentionally does not implement production authorization, persistence, or
-retest dispatch. Only exact ASCII canonical identifiers are accepted.
+Source observation: src/lightup/state.py add_evidence() issues str(uuid4()).
+These tests do not establish issuer provenance, tenant isolation or read authority.
 """
 import re
 import unittest
 
-_PATTERN = re.compile(r"ev-[0-9a-f]{64}", re.ASCII)
+_PATTERN = re.compile(
+    r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
+    re.ASCII,
+)
 
 
 def canonical_evidence_id(value):
-    if type(value) is not str:
-        raise ValueError("noncanonical evidence identifier")
-    if len(value) != 67 or _PATTERN.fullmatch(value) is None:
+    if type(value) is not str or len(value) != 36 or _PATTERN.fullmatch(value) is None:
         raise ValueError("noncanonical evidence identifier")
     return value
 
 
 class EvidenceIdentifierReferenceTests(unittest.TestCase):
-    def test_canonical_lowercase_hash(self):
-        value = "ev-" + "a0" * 32
-        self.assertEqual(canonical_evidence_id(value), value)
+    VALID = "12345678-1234-4234-8234-123456789abc"
 
-    def test_case_alias_rejected(self):
-        with self.assertRaisesRegex(ValueError, "noncanonical"):
-            canonical_evidence_id("EV-" + "a0" * 32)
-        with self.assertRaisesRegex(ValueError, "noncanonical"):
-            canonical_evidence_id("ev-" + "A0" * 32)
-
-    def test_unicode_confusables_rejected(self):
-        for value in ("еv-" + "a0" * 32, "ev-" + "ａ0" * 32,
-                      "ev-" + "a0" * 31 + "а0"):
-            with self.subTest(value=value), self.assertRaises(ValueError):
-                canonical_evidence_id(value)
-
-    def test_whitespace_and_control_rejected(self):
-        base = "ev-" + "a0" * 32
-        for value in (" " + base, base + "\n", base + "\x00", base + "\u2028"):
-            with self.subTest(value=repr(value)), self.assertRaises(ValueError):
-                canonical_evidence_id(value)
-
-    def test_truncated_and_oversized_rejected(self):
-        for value in ("ev-" + "a0" * 31, "ev-" + "a0" * 33, "ev-"):
-            with self.subTest(value=value), self.assertRaises(ValueError):
-                canonical_evidence_id(value)
-
-    def test_type_confusion_rejected(self):
-        class StrAlias(str):
-            pass
-        for value in (None, 42, b"ev-" + b"a0" * 32,
-                      StrAlias("ev-" + "a0" * 32)):
-            with self.subTest(type=type(value)), self.assertRaises(ValueError):
-                canonical_evidence_id(value)
-
-    def test_no_normalization_or_mutation(self):
-        alias = "ev-" + "A0" * 32
-        with self.assertRaises(ValueError):
-            canonical_evidence_id(alias)
-        self.assertEqual(alias, "ev-" + "A0" * 32)
-
+    def test_canonical_uuid4_accepted_without_normalization(self):
+        self.assertEqual(canonical_evidence_id(self.VALID), self.VALID)
 
     def test_distinct_canonical_ids_remain_distinct(self):
-        first = "ev-" + "0" * 64
-        second = "ev-" + "0" * 63 + "1"
-        self.assertNotEqual(canonical_evidence_id(first),
-                            canonical_evidence_id(second))
+        other = "12345678-1234-4234-8234-123456789abd"
+        self.assertNotEqual(canonical_evidence_id(self.VALID),
+                            canonical_evidence_id(other))
 
-    def test_rejected_aliases_share_stable_exception_contract(self):
-        for value in ("ev-" + "F" * 64, "ev-" + "0" * 63 + "g",
-                      "ev-" + "0" * 63 + "/", None, True):
-            with self.subTest(value=repr(value)):
-                with self.assertRaises(ValueError) as caught:
-                    canonical_evidence_id(value)
-                self.assertEqual(str(caught.exception),
-                                 "noncanonical evidence identifier")
+    def test_uppercase_uuid_alias_is_rejected(self):
+        self.assertRejected(self.VALID.upper())
 
-    def test_invalid_ascii_punctuation_rejected(self):
-        for separator in ("_", "/", ".", ":", "%", "#", "\\"):
-            value = "ev-" + "0" * 63 + separator
-            with self.subTest(separator=separator), self.assertRaises(ValueError):
+    def test_uuid_urn_braces_and_compact_aliases_rejected(self):
+        for value in ("urn:uuid:" + self.VALID, "{" + self.VALID + "}",
+                      self.VALID.replace("-", "")):
+            self.assertRejected(value)
+
+    def test_other_uuid_versions_rejected(self):
+        for version in ("1", "3", "5", "7"):
+            self.assertRejected(self.VALID[:14] + version + self.VALID[15:])
+
+    def test_non_rfc4122_variant_rejected(self):
+        for variant in ("0", "4", "7", "c", "f"):
+            self.assertRejected(self.VALID[:19] + variant + self.VALID[20:])
+
+    def test_unicode_confusables_rejected(self):
+        self.assertRejected(self.VALID.replace("a", "а"))
+        self.assertRejected(self.VALID.replace("1", "１"))
+
+    def test_whitespace_and_controls_rejected(self):
+        for value in (" " + self.VALID, self.VALID + "\n",
+                      self.VALID + "\x00", self.VALID + "\u2028"):
+            self.assertRejected(value)
+
+    def test_wrong_length_and_separators_rejected(self):
+        for value in (self.VALID[:-1], self.VALID + "0",
+                      self.VALID.replace("-", "_"),
+                      self.VALID.replace("-", "/")):
+            self.assertRejected(value)
+
+    def test_exact_builtin_string_required(self):
+        class StrAlias(str):
+            pass
+        for value in (None, True, 42, self.VALID.encode(), StrAlias(self.VALID)):
+            self.assertRejected(value)
+
+    def test_rejected_input_not_mutated(self):
+        value = self.VALID.upper()
+        self.assertRejected(value)
+        self.assertEqual(value, self.VALID.upper())
+
+    def assertRejected(self, value):
+        with self.subTest(value=repr(value)):
+            with self.assertRaises(ValueError) as caught:
                 canonical_evidence_id(value)
+            self.assertEqual(str(caught.exception),
+                             "noncanonical evidence identifier")
+
 
 if __name__ == "__main__":
     unittest.main()
