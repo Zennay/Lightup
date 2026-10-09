@@ -253,6 +253,21 @@ class MalformedAuthorityNoHandlerReference(unittest.TestCase):
         policy.decide.assert_not_called()
         handler.assert_not_called()
 
+    def test_userinfo_before_bracketed_ipv6_does_not_bypass_validation(self):
+        policy = Mock(spec=ScopePolicy)
+        handler = Mock()
+        for raw in (
+            "https://user@[::1]evil/",
+            "https://user:pass@[::1]suffix/",
+        ):
+            with self.subTest(raw=raw):
+                decision = reference_preflight(policy, Target(raw), handler)
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+                self.assertIsNone(decision.normalized_host)
+        policy.decide.assert_not_called()
+        handler.assert_not_called()
+
     def test_valid_explicit_port_preserves_denial(self):
         policy = Mock(spec=ScopePolicy)
         policy.decide.return_value = ScopeDecision(
