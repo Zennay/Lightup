@@ -110,7 +110,7 @@ def verify_observed_ci_jobs(manifest: dict, observed: dict) -> bool:
                 (lane == "permanent_vps" and ("not vps proof" in run["job_name"].lower() or
                                                "offline preflight" in run["job_name"].lower()))):
             return False
-        if type(run["python_version"]) is not str or ("Python " + run["python_version"]) not in run["job_name"]:
+        if type(run["python_version"]) is not str or not re.search(r"(?<![A-Za-z0-9.])Python " + re.escape(run["python_version"]) + r"(?![0-9.])", run["job_name"]):
             return False
         if (type(run["status"]) is not str or run["status"] != "completed" or
                 type(run["conclusion"]) is not str or run["conclusion"] != "success"):
@@ -265,6 +265,12 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         wrong_version_name = json.loads(json.dumps(observed))
         wrong_version_name["hosted_python_311"]["job_name"] = "Offline preflight Python 3.14"
         self.assertFalse(verify_observed_ci_jobs(manifest, wrong_version_name))
+        suffix_spoof = json.loads(json.dumps(observed))
+        suffix_spoof["hosted_python_311"]["job_name"] = "Offline preflight Python 3.110"
+        self.assertFalse(verify_observed_ci_jobs(manifest, suffix_spoof))
+        prefix_spoof = json.loads(json.dumps(observed))
+        prefix_spoof["hosted_python_311"]["job_name"] = "Offline preflight MyPython 3.11"
+        self.assertFalse(verify_observed_ci_jobs(manifest, prefix_spoof))
 
         preflight = json.loads(json.dumps(observed))
         preflight["permanent_vps"]["job_name"] = "Offline preflight Python 3.11"
