@@ -169,7 +169,24 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
             with self.subTest(payload=repr(payload)):
                 self.assertFalse(is_release_evidence_complete(payload))
 
-        raw = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        sha = "a" * 40
+        run = {"sha": sha, "conclusion": "success",
+               "run_url": "https://github.com/example/repo/actions/runs/1"}
+        trace = {"sha": sha, "artifact_url": "https://example.invalid/evidence"}
+        raw = {
+            "schema_version": 2, "release_gate": "REVIEWED",
+            "implementation_sha": sha, "real_target_activation": False,
+            "owner_review_url": "https://github.com/example/repo/pull/1",
+            "hosted_python_311": {**run, "job_id": 11},
+            "hosted_python_314": {**run, "job_id": 12},
+            "permanent_vps": {**run, "job_id": 13,
+                              "run_url": "https://github.com/example/repo/actions/runs/2"},
+            "negative_real_executor_trace": {**trace, **{k: 0 for k in COUNTERS}},
+            "positive_loopback_lab_trace": {**trace, "handler_calls": 1},
+            "persistent_revocation_proof": trace.copy(),
+            "trusted_destination_metadata_proof": trace.copy(),
+        }
+        self.assertTrue(is_release_evidence_complete(raw))
         for key in ("hosted_python_311", "hosted_python_314", "permanent_vps",
                     "negative_real_executor_trace", "positive_loopback_lab_trace",
                     "persistent_revocation_proof", "trusted_destination_metadata_proof"):
