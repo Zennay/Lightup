@@ -15,7 +15,7 @@ from lightup.models import Authorization
 def _well_formed_identity(value: object) -> bool:
     if type(value) is not str or not value or value != value.strip():
         return False
-    if any(unicodedata.category(ch) in {"Cc", "Cf", "Cs", "Zl", "Zp"} for ch in value):
+    if any(unicodedata.category(ch) in {"Cc", "Cf", "Cs", "Zl", "Zp"} or\n           (unicodedata.category(ch) == "Zs" and ch != " ") for ch in value):
         return False
     return any(not ch.isspace() for ch in value)
 
@@ -93,6 +93,19 @@ class ReferenceProvenanceShapeTests(unittest.TestCase):
                 kwargs[field] = "safe" + marker + "text"
                 with self.subTest(marker=repr(marker), field=field):
                     self.assertFalse(reference_provenance_shape(Authorization(**kwargs)))
+
+    def test_rejects_nonstandard_unicode_spaces_inside_provenance(self):
+        for marker in ("\\u00a0", "\\u2007", "\\u202f", "\\u3000"):
+            for field in ("owner", "reference"):
+                kwargs = {"owner": "owner-1", "reference": "consent-1"}
+                kwargs[field] = "safe" + marker + "text"
+                with self.subTest(marker=repr(marker), field=field):
+                    self.assertFalse(reference_provenance_shape(Authorization(**kwargs)))
+
+    def test_allows_ordinary_internal_ascii_spaces(self):
+        self.assertTrue(reference_provenance_shape(
+            Authorization(owner="Acme Security Team", reference="consent ticket 123")
+        ))
 
     def test_no_external_policy_or_handler_calls(self):
         handler = Mock()
