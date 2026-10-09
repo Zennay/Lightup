@@ -139,6 +139,22 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
             mutated[lane]["job_id"] = "111"
             self.assertFalse(is_release_evidence_complete(mutated), lane)
 
+    def test_observed_hosted_job_names_are_not_vps_proof(self):
+        """Observed run/job identity is not an authorization grant."""
+        observed = (
+            {"id": 113817670080, "name": "Offline preflight Python 3.14 (not VPS proof)",
+             "status": "in_progress", "conclusion": None},
+            {"id": 113817670400, "name": "Offline preflight Python 3.11 (not VPS proof)",
+             "status": "in_progress", "conclusion": None},
+        )
+        for job in observed:
+            with self.subTest(job_id=job["id"]):
+                self.assertNotEqual(job["conclusion"], "success")
+                self.assertIn("not VPS proof", job["name"])
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        self.assertIsNone(manifest["permanent_vps"]["job_id"])
+        self.assertFalse(is_release_evidence_complete(manifest))
+
     def test_current_manifest_is_explicitly_held_and_incomplete(self):
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         self.assertEqual(manifest["release_gate"], "HOLD")
