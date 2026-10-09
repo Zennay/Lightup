@@ -126,3 +126,17 @@ Two new offline tests reject ten attempts to replay an approved request against 
 ## Repeatable denial and strict capability binding
 
 Two additional offline methods assert identical denied grants remain denied after mutation of the same caller-owned header mapping, and active-scan claims cannot widen trusted read-only capability while the legitimate read-only positive control remains allowed. Total: **59 offline unittest methods**. This is no proof of a production pre-I/O gate.
+
+## Evidence-based production handoff / release gate (2026-10-09)
+
+These 59 methods exercise an isolated pure reference function. They **do not test** the actual WebSocket upgrade path, authenticated grant source, production ToolExecutor, persistent revocation store or outward effects. Method count must not be interpreted as production confidence.
+
+Before promotion the owning implementation worker must attach evidence at one exact reviewed implementation commit:
+1. Server-derived principal and trusted owner-approved grant, exact tenant/asset/capability binding; never source authorization from negotiation headers.
+2. Durable revocation and revision re-check at the actual pre-I/O boundary, including a simulated concurrent withdrawal between admission and dispatch.
+3. Instrument real handler entry, DNS/socket open, queued jobs and action evidence writes. Denied requests must cause **zero** of each (denial-only audit logs may still be permitted).
+4. Include an explicitly approved owned lab positive control that performs only the permitted action.
+5. Attach Python 3.11 and 3.14 hosted preflight **and permanent VPS** CI passing on this exact implementation commit. A previous-HEAD success or queued/cancelled VPS run is insufficient.
+6. Source-owner review of any real-code modification and integration paths. This PR remains draft reference-only; do not take files from concurrent production workers.
+
+**Release decision: HOLD.** Neither this document nor a passing mock test authorizes target I/O, merge or deployment.
