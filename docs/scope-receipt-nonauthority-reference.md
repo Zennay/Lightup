@@ -9,3 +9,9 @@ Acceptance for a future production owner: deny with no handler invocation, netwo
 Ownership: tests/docs only. Do not modify active ToolExecutor (#107), policy (#100), approval, revocation, registry, target-capable worker, activation, or persistence source branches. No real assets, DNS, sockets or target interactions.
 
 Validation: `python -m unittest discover -s tests -p 'test_scope_receipt_nonauthority_reference.py' -v`. Exact-head hosted Python and canonical permanent VPS CI are required before any promotion. This reference is not evidence of production enforcement.
+
+## Additional offline regression coverage
+
+The reference now checks exact built-in string identities on grant tenant/request/capability fields and requires a positive exact-int grant revision. Subclass strings and malformed revisions deny. Changing an audit receipt's outcome between allowed/denied/revoked/approved/empty cannot independently grant or revoke execution: the synthetic current grant still controls this illustration. This does not validate cryptographic authenticity or grant issuer lineage.
+
+Acceptance evidence must identify the exact commit SHA and run both Python 3.11 and 3.14 offline unit tests, followed by canonical permanent VPS proof and the production owner's integration review. Until then it is a branch-only reference with no production safety gate installed.
