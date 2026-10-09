@@ -337,5 +337,31 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
                 self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
 
 
+    def test_synthetic_grant_cannot_follow_header_to_other_domain(self):
+        grant = Authorization(owner="fixture", reference="NOT-TRUSTED")
+        for host in ("unlisted.example", "other.example"):
+            with self.subTest(host=host):
+                result = self.policy.decide(Target(
+                    "https://" + host + "/",
+                    authorization=grant,
+                    labels=("X-Original-Host: approved.example",),
+                ))
+                self.assertFalse(result.allowed)
+                self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
+                self.assertEqual(result.normalized_host, host)
+
+    def test_original_host_label_cannot_inject_authorization_window(self):
+        for label in (
+            "X-Original-Host: approved.example; valid_until=2999-01-01",
+            "X-Original-Host: approved.example; valid_from=2000-01-01",
+        ):
+            with self.subTest(label=label):
+                result = self.policy.decide(Target(
+                    "approved.example", labels=(label,),
+                ))
+                self.assertFalse(result.allowed)
+                self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+
 if __name__ == "__main__":
     unittest.main()
