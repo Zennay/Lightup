@@ -83,3 +83,7 @@ A new isolated fixture stores the same byte payload twice on one plan-only run. 
 ## Pre-lookup denial ordering
 
 A spy-backed offline acceptance test models lexical validation **before** evidence-store lookup. Hostile aliases and non-string inputs must not call the reference store even once, while an accepted canonical selector is forwarded exactly once and unchanged. This is a proposed source-owner integration gate; it does not assert that production `StateStore.get_evidence()` already enforces the ordering.
+
+## Real-store pre-lookup reference test
+
+The acceptance suite now wraps a real plan-only temporary-SQLite StateStore in a recording read-spy, verifying that the **proposed caller-side** strict validation denies uppercase alias input before a real store lookup and forwards the valid issued identifier exactly once. The production StateStore remains unchanged and is not claimed to enforce this policy internally.
