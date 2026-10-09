@@ -46,3 +46,7 @@ Additional `expectedFailure` coverage now models one successful finite lab invoc
 ## Repeated-denial persistence stability
 
 Two regular (not expected-failure) real-ToolExecutor regression methods repeat malformed calls 20 times each. They verify zero evidence on an otherwise empty isolated run, and exactly one unchanged evidence row when a prior finite control succeeded. These canaries establish that the existing malformed-value rejection has no accumulating evidence side effects. They are not substitutes for fixing NaN/Infinity or duplicate-key inputs, which still require owner changes (#1143, #1147).
+
+## Exact evidence identity preservation
+
+A normal regression now snapshots the persisted evidence identity and provenance columns (`evidence_id`, `run_id`, `capability_id`, `kind`, `source`) after an allowed offline finite-number invocation. A subsequent rejected numeric-looking string must leave the exact row unchanged, not merely preserve row count. This checks existing denial behavior and does not close the separate pre-I/O consent/destination gaps.
