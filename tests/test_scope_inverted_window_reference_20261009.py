@@ -335,5 +335,21 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
             authorization=self.grant(None, "")))
         self.assertFalse(decision.allowed)
 
+    @unittest.expectedFailure
+    def test_required_public_host_denial_without_provenance(self):
+        # RED contract: allowlist plus unverified empty issuer is not consent.
+        grant = Authorization(owner="", reference="", valid_from=None, valid_until=None)
+        decision = self.policy.decide(Target(
+            "https://authorized.example", authorization=grant))
+        self.assertFalse(decision.allowed)
+
+    @unittest.expectedFailure
+    def test_required_public_network_denial_without_provenance(self):
+        # RED contract: a synthetic network grant must not authorize dispatch.
+        policy = ScopePolicy(explicit_networks=("8.8.8.0/24",))
+        grant = Authorization(owner="", reference="", valid_from=None, valid_until=None)
+        decision = policy.decide(Target("https://8.8.8.8", authorization=grant))
+        self.assertFalse(decision.allowed)
+
 if __name__ == "__main__":
     unittest.main()
