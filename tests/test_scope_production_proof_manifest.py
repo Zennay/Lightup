@@ -125,6 +125,31 @@ def verify_observed_ci_jobs(manifest: dict, observed: dict) -> bool:
     return True
 
 
+def classify_authenticated_run_jobs(run: dict, jobs: list, expected_sha: str) -> dict:
+    """Classify API-sourced hosted jobs only; never assert VPS identity from labels."""
+    if (type(run) is not dict or type(jobs) is not list or
+            type(expected_sha) is not str or not SHA.fullmatch(expected_sha)):
+        return {}
+    if (type(run.get("head_sha")) is not str or run["head_sha"] != expected_sha or
+            type(run.get("id")) is not int or run["id"] <= 0 or
+            run.get("status") != "completed" or run.get("conclusion") != "success"):
+        return {}
+    result = {}
+    for version in ("3.11", "3.14"):
+        matches = [job for job in jobs if type(job) is dict and
+                   type(job.get("name")) is str and
+                   job["name"] == "Offline preflight Python " + version + " (not VPS proof)" and
+                   type(job.get("id")) is int and job["id"] > 0 and
+                   type(job.get("run_id")) is int and job["run_id"] == run["id"] and
+                   job.get("status") == "completed" and job.get("conclusion") == "success"]
+        if len(matches) != 1:
+            return {}
+        result[version] = matches[0]["id"]
+    if result["3.11"] == result["3.14"]:
+        return {}
+    return {"hosted_python_311": result["3.11"], "hosted_python_314": result["3.14"]}
+
+
 class ScopeProductionProofManifestTests(unittest.TestCase):
     def test_artifact_url_rejects_spoofed_or_ambiguous_locations(self):
         self.assertTrue(_valid_artifact_url("https://evidence.example.org/evidence"))
