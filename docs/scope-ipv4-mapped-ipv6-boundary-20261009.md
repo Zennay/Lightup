@@ -7,3 +7,7 @@ An explicit IPv6-mapped /128 CIDR with a synthetic `Authorization` exercises **l
 Run: `PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_ipv4_mapped_ipv6_boundary_20261009.py' -v`
 
 Release: **DRAFT/HOLD** pending exact-head hosted Python 3.11/3.14 + canonical permanent VPS proof, source-owner review and verified zero-handler-call pre-I/O gate. No production changes, real targets, scanning or grant issuance.
+
+## Extended negative controls
+
+The nine synthetic test methods now distinguish an IPv4 allowlist from an IPv4-mapped IPv6 /120 network, reject a neighboring mapped address outside that network, and require a grant for a mapped literal *inside* the network. Network matching remains necessary but never sufficient to authorize production dispatch. This suite does not validate effective socket destination identity after DNS resolution or platform IPv4-mapped socket handling; that is an independent pre-I/O production gate owned by #107/#1128.
