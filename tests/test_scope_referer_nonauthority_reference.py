@@ -181,7 +181,7 @@ class RefererCannotGrantAuthority(unittest.TestCase):
                          asset=self.call.asset, capability=self.call.capability)
         for field in canonical:
             for candidate in (" ", "\\t", "\\r", "\\x00", "\\x1f", "\\x7f",
-                              "leading space", "trailing space "):
+                               " + "leading", "trailing" + " "):
                 with self.subTest(field=field, candidate=repr(candidate)):
                     values = dict(canonical)
                     values[field] = candidate
