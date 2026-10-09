@@ -80,6 +80,26 @@ class BooleanArgumentBoundaryTests(unittest.TestCase):
                     self.schema.validate_arguments(payload)
                 self.assertEqual(payload, before)
 
+    def test_boolean_schema_isolation_from_string_schema(self):
+        # Tool-specific schemas must not be reused for a different tool.
+        string_schema = ToolDefinition(
+            tool_id="offline-string-contract",
+            capability_id="offline-only",
+            interaction=InteractionKind.ANALYSIS,
+            min_risk=RiskLevel.ANALYSIS_ONLY,
+            description="Separate inert string schema",
+            parameters=(ToolParameter("enabled", ParamKind.STRING, required=True),),
+        )
+        self.schema.validate_arguments({"enabled": True})
+        string_schema.validate_arguments({"enabled": "true"})
+        for schema, payload in (
+            (self.schema, {"enabled": "true"}),
+            (string_schema, {"enabled": True}),
+        ):
+            with self.subTest(tool_id=schema.tool_id):
+                with self.assertRaises(OrchestrationError):
+                    schema.validate_arguments(payload)
+
     def test_missing_boolean_rejected(self):
         with self.assertRaises(OrchestrationError):
             self.schema.validate_arguments({})
