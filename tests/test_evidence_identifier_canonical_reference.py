@@ -132,6 +132,27 @@ class EvidenceIdentifierReferenceTests(unittest.TestCase):
                 count = con.execute("SELECT count(*) FROM evidence").fetchone()[0]
             self.assertEqual(count, 0)
 
+    def test_duplicate_payloads_have_distinct_issued_ids_but_same_digest(self):
+        from lightup.state import StateStore
+
+        payload = b"identical offline fixture bytes"
+        with tempfile.TemporaryDirectory() as directory:
+            store = StateStore(Path(directory) / "duplicate-payload.db")
+            run_id = store.create_run(target="local-fixture", activation_mode="plan_only")
+            ids = [
+                store.add_evidence(
+                    run_id=run_id, capability_id="fixture", kind="reference",
+                    source="offline", payload=payload,
+                )
+                for _ in range(2)
+            ]
+            self.assertNotEqual(ids[0], ids[1])
+            records = [store.get_evidence(identifier) for identifier in ids]
+            expected_digest = hashlib.sha256(payload).hexdigest()
+            self.assertEqual([record.sha256 for record in records],
+                             [expected_digest, expected_digest])
+            self.assertEqual([record.evidence_id for record in records], ids)
+
     def test_actual_uuid4_issuer_samples_roundtrip(self):
         # Standard-library issuer path used by StateStore.add_evidence.
         for _ in range(32):
