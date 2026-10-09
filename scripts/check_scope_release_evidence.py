@@ -103,9 +103,9 @@ def main(argv: list[str]) -> int:
         return 2
     try:
         source = Path(argv[1])
-        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_CLOEXEC", 0)
-        if not hasattr(os, "O_NOFOLLOW"):
-            raise ValueError("safe no-follow file opening is unavailable")
+        if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_NONBLOCK"):
+            raise ValueError("safe nonblocking no-follow opening is unavailable")
+        flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
         fd = os.open(source, flags)
         try:
             stream = os.fdopen(fd, "rb")
