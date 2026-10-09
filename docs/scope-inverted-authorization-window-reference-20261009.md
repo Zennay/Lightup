@@ -38,3 +38,21 @@ Three new regression methods verify the actual legacy `ScopePolicy.decide` resul
 
 ## Complete falsy-bound public-host matrix
 The offline reference now checks all six combinations of `0`, `False`, and empty string appearing as either start or end of a synthetic grant against an explicitly allowlisted host. All currently yield `EXPLICIT_HOST` under legacy `ScopePolicy`. Parallel controls confirm none of these values can override the host allowlist. This exposes a narrow legacy temporal-validation weakness, not authenticated approval or a production dispatch bypass. Reject malformed values explicitly in the production owner's pre-I/O gate.
+
+## Production repair acceptance handoff — issue #1128
+
+Implementation belongs to the production enforcement owner (#107), not this test branch. Before changing execution permission, the owner must establish a trusted source of grant records and explicit issuer verification. No legacy `Authorization.is_current()` success may be interpreted as permission to dispatch.
+
+| Input / condition | Required executable result | Regression oracle |
+| --- | --- | --- |
+| `valid_from` or `valid_until` is `0`, `False`, or empty string | Deny with stable invalid-grant reason, no exception escape and no I/O | Legacy characterization matrix in this PR; new production tests must assert denial |
+| Stored bound is string, integer, boolean, or naive datetime | Deny before scope execution | Malformed-bound cases |
+| Both dates are aware but reversed or have an invalid interval | Deny without touching target | Inverted-window cases |
+| Timestamp comparison or persistence decode fails | Deny deterministically; never default to unbounded | Exception characterization |
+| Public host is not explicitly listed | Deny regardless of claimed grant | Existing out-of-scope controls |
+| Grant absent, revoked, outside live window, or lacks issuer/tenant/asset/capability binding | Deny before any I/O | Owner-owned persisted-grant and dispatch-time acceptance |
+| Fully authenticated in-scope grant with reviewed allowable capability | Eligibility only until exact dispatch-time gate succeeds | Owner-owned positive synthetic control; no live targets |
+
+**Do not blindly change end-boundary semantics.** The legacy dataclass treats `valid_until` as inclusive, while related approval-window PRs may use exclusive expiry. The owner must specify the executable contract and migrate callers without accidentally widening authorization.
+
+Review gates: pin implementation head; run focused failing-then-passing production acceptance, hosted Python 3.11/3.14, permanent VPS CI on that exact head; review overlap with #999, #1058 and #1125; obtain owner approval. No deploy or real-target activation is authorized by this handoff. Tracking: https://github.com/Zennay/Lightup/issues/1128.
