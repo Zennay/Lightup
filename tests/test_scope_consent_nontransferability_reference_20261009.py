@@ -27,7 +27,7 @@ def matches_consent(consent: Consent, *, tenant_id: str, engagement_id: str,
     if any(type(value) is not str or not value.strip() or
            any(ord(char) < 32 or ord(char) == 127 or
                0xD800 <= ord(char) <= 0xDFFF or
-               unicodedata.category(char) in ("Cc", "Cf", "Cs") for char in value)
+               unicodedata.category(char) in ("Cc", "Cf", "Cs", "Zl", "Zp") for char in value)
            for value in fields + requested):
         return False
     if type(consent.revision) is not int or type(revision) is not int:
@@ -287,6 +287,13 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
                 changed = Consent("tenant-A", "engagement-A", "owner-A",
                                   "asset-A", "web-baseline", 3, approval)
                 self.assertFalse(matches_consent(changed, **self.request))
+
+    def test_reject_unicode_line_and_paragraph_separators(self):
+        for separator in ("\\u2028", "\\u2029"):
+            for field in ("tenant_id", "engagement_id", "owner_id", "asset_id", "capability_id"):
+                with self.subTest(field=field, codepoint=ascii(separator)):
+                    self.assertFalse(matches_consent(
+                        self.consent, **(self.request | {field: self.request[field] + separator})))
 
 
 if __name__ == "__main__":
