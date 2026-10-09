@@ -127,6 +127,36 @@ class ScopeUiStatusNonAuthorityTests(unittest.TestCase):
                 self.assertFalse(self.eligible(decision=TrustedDecision(
                     bad, "request-a", 3, "web-baseline", True, True)))
 
+    def test_request_and_capability_claims_fail_closed(self):
+        for position in (1, 3):
+            for bad in (" request-a", "request-a ", "request\\n-a", "réquest-a",
+                        "", "a" * 129):
+                with self.subTest(position=position, bad=repr(bad)):
+                    args = list(self.args)
+                    args[position] = bad
+                    self.assertFalse(reference_eligible(
+                        *args, self.issued, self.green))
+
+    def test_request_and_capability_issuer_fields_fail_closed(self):
+        for field in ("request_id", "capability"):
+            for bad in (" request-a", "request-a ", "request\\r-a", "réquest-a",
+                        "", "a" * 129):
+                with self.subTest(field=field, bad=repr(bad)):
+                    values = dict(tenant_id="tenant-a", request_id="request-a",
+                                  revision=3, capability="web-baseline",
+                                  active=True, issuer_verified=True)
+                    values[field] = bad
+                    self.assertFalse(self.eligible(decision=TrustedDecision(**values)))
+
+    def test_visual_states_cannot_change_issuer_decision(self):
+        for label, approved in (("Approved", True), ("Denied", False),
+                                ("Pending", True), ("Revoked", False)):
+            for ref in ("grant-a", "another-tenant/grant-b", "", "forged"):
+                view = DisplayState(label, "green", approved, ref)
+                with self.subTest(label=label, ref=ref):
+                    self.assertTrue(self.eligible(display=view))
+                    self.assertFalse(self.eligible(decision=False, display=view))
+
     def test_boolean_revision_does_not_pass_as_one(self):
         self.assertFalse(reference_eligible(
             "tenant-a", "request-a", True, "web-baseline", self.issued, self.green))
