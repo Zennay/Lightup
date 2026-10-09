@@ -27,6 +27,7 @@ class RealExecutorModeBoundaryTests(unittest.TestCase):
         self.registry = Mock()
         self.definition = ToolDefinition(
             tool_id="synthetic-lab", capability_id="http_headers",
+            description="Offline-only synthetic execution boundary",
             interaction=InteractionKind.LAB_ACTIVE, min_risk=RiskLevel.LOW_IMPACT,
         )
         self.registry.get.return_value = (self.definition, self.handler)
