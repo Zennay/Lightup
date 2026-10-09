@@ -103,7 +103,7 @@ class EvidenceDowngradeReferenceTests(unittest.TestCase):
         self.assertFalse(evidence_satisfies_request(self.good.__dict__, **self.claim))
 
     def test_matched_invalid_identity_never_becomes_authority(self):
-        for value in ("tenantA ", "tenantA\\n", "tenantA\\x00", "ténantA", ""):
+        for value in ("tenantA ", "tenantA\n", "tenantA\x00", "ténantA", "")
             with self.subTest(value=value):
                 bad = Evidence(value, self.good.request, self.good.revision,
                                self.good.issuer, TRUSTED_SOURCE, True, False)
