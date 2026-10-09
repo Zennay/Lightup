@@ -16,3 +16,7 @@ Run the isolated tests with `python -m unittest tests/test_scope_risk_budget_ref
 ## Explicit reference limitations
 
 The pure `reserve` function is deterministic and immutable, but **not** an atomic storage operation. Two callers reading the same stale `used` value could both receive a successful result. Production must use a serializable transaction or compare-and-swap on the same authorization grant and revision, re-reading revocation inside that transaction; the supplied tests are not concurrency proof. Budget units must be defined by the issuing authority and may not be inferred from a UI label or a client-supplied cost. Reject stale reservations when the authorization revision changes. Do not retry a rejected operation automatically with fresh identifiers.
+
+## Sequential regression coverage
+
+The isolated reference suite additionally checks three sequential reservations against one immutable budget snapshot chain, a complete five-unit spend, exhaustion, and a revision-change rejection. A successful reference result means **only** that the supplied synthetic inputs pass the predicate. The tests do not exercise real concurrent persistence, retry deduplication, API admission, an authenticated issuer or any live target. The production implementation must test these independently before activation.
