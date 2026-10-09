@@ -113,3 +113,7 @@ An unlisted HTTPS hostname with a forged signed-consent routing label must be de
 ## Missing grant and hostile label collection
 
 A public allowlisted URL without an Authorization must be denied `AUTHORIZATION_MISSING` without iterating, sizing, or coercing untrusted label objects. This is strictly a pure-policy ordering assertion; real ingress and trusted consent verification are separate owner responsibilities.
+
+## Expired grant: hostile label non-inspection
+
+With an allowlisted URL and expired synthetic Authorization, the pure scope policy must deny `AUTHORIZATION_EXPIRED` without iterating or coercing untrusted header labels. This is a unit-layer fail-closed invariant, not proof that production ingress, executor, or evidence store performs the corresponding gate.
