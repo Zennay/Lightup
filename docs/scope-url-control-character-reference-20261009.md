@@ -45,3 +45,7 @@ The offline reference now contains eight ordinary tests, including mock-backed c
 ## Raw-vs-encoded input fidelity
 
 The offline reference now includes ten normal tests. New mock-backed assertions preserve the original immutable `Target` (including labels and authorization reference) and distinguish literal raw ASCII controls from percent-encoded byte sequences (`%0A`, `%0d`, `%09`, `%7F`). The pre-parser specimen delegates percent-encoded values unchanged; it **does not approve** them for dispatch. Production must separately validate canonicalized authority/path semantics, redirect reauthorization and verified permission before all target I/O. This prevents double-decoding or accidental implicit grant issuance from being treated as a permitted scope transition.
+
+## Unicode invisible-character policy specimen
+
+The offline raw pre-parser now rejects all Unicode whitespace and Unicode general categories `Cc`, `Cf` and `Cs` anywhere in the raw target, including zero-width joiners, bidi overrides/isolates and BOM-like format characters. Three additional ordinary tests cover 18 format-character/position combinations, five internal-whitespace cases and unchanged percent-encoded Unicode control sequences. Percent-encoded strings are not authorized by this check: decoded target semantics must be validated independently before real I/O. The reference is still not production enforcement.
