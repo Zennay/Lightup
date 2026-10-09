@@ -191,6 +191,21 @@ class RedirectScopeReferenceTests(unittest.TestCase):
         destination = urljoin(source, "https://outside.example.test/path?next=approved.example.test")
         self.assertEqual(self.decide(destination, self.grant).reason, ScopeReason.OUT_OF_SCOPE)
 
+    def test_same_host_https_to_http_downgrade_is_not_blocked_by_legacy_scope(self):
+        # Gap characterization, NOT a safe redirect-dispatch approval:
+        # ScopePolicy is host-only and does not enforce scheme transitions.
+        source = "https://approved.example.test/start"
+        destination = urljoin(source, "http://approved.example.test/next")
+        self.assertTrue(self.decide(source, self.grant).allowed)
+        self.assertTrue(self.decide(destination, self.grant).allowed)
+
+    def test_same_host_port_transition_is_not_blocked_by_legacy_scope(self):
+        # The HTTP adapter must enforce separately approved ports before I/O.
+        source = "https://approved.example.test/start"
+        destination = urljoin(source, "https://approved.example.test:9443/next")
+        self.assertTrue(self.decide(source, self.grant).allowed)
+        self.assertTrue(self.decide(destination, self.grant).allowed)
+
     def test_each_redirect_hop_rechecks_target_identity(self):
         hops = [
             "https://approved.example.test/start",
