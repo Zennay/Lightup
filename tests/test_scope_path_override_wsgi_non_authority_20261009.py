@@ -175,7 +175,7 @@ class PathOverrideNonAuthorityTest(unittest.TestCase):
                 status, _, _ = self.send(
                     production, "POST", "/clients",
                     token=self.op_token, csrf=self.op_csrf,
-                    form={"name": "Legitimate"},
+                    form={"name": "Legitimate production" if production else "Legitimate development"},
                     hints={name: "/nonexistent" for name in PATH_HINTS}
                 )
                 self.assertEqual(status, "303 See Other")
