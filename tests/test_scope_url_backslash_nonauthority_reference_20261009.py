@@ -39,7 +39,7 @@ class BackslashNonauthorityTests(unittest.TestCase):
             r"https://example.test/path\..\admin",
             r"https://example.test/?next=\\other.test",
             r"https://example.test/#\\other.test",
-            r"\\example.test\",
+            "\\\\example.test\\",
             r"http:\\example.test",
         )
         for candidate in candidates:
