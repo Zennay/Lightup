@@ -100,3 +100,6 @@ The latest reference regression constructs a fully populated synthetic job evide
 
 ## Proof-manifest polymorphic value hardening
 Run-level SHA and conclusion, and all artifact-trace SHA fields now require exact built-in strings before any equality check. A same-text `str` subclass is rejected even if its comparison equals the expected SHA or `success`. The synthetic acceptance fixture tests each run and trace lane independently. These offline checks do not authenticate artifacts, replace owner approval, or enable targets.
+
+## Gate-state exact identity tests
+Synthetic positive fixture and negative controls now verify that `REVIEWED` cannot be supplied by a `str` subclass and schema version cannot be a boolean, while an activated target flag or polymorphic implementation SHA is denied. The checker remains local-only; source-controlled evidence and real-target authorization are independent.
