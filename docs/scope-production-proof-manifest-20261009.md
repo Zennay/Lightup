@@ -145,3 +145,6 @@ Hosted CI classification now refuses a workflow snapshot if *any* included job i
 
 ## Malformed names in unrelated CI jobs
 The hosted workflow classifier now rejects empty, whitespace-only, non-string or missing job names anywhere in the supplied run snapshot, not only in the selected Python jobs. Regression cases cover null, blank, numeric and boolean names on an unrelated successful job. This remains offline evidence consistency validation; independently authenticated API provenance and permanent VPS proof are still required.
+
+## Unrelated job polymorphic status safeguards
+Regression tests now explicitly reject `str` subclasses used for status or conclusion in unrelated CI jobs. The classifier treats the entire caller-supplied run snapshot as untrusted data and requires exact primitive success fields, not equality-coercible surrogates. GitHub API authentication, permanent VPS identity and owner release review remain separate gates.
