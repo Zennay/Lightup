@@ -356,6 +356,20 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
                 self.assertFalse(reference_decide(stored, self.valid,
                     {"Sec-WebSocket-Protocol": "revision=3"}))
 
+    def test_denied_grant_remains_denied_under_all_header_case_variants(self):
+        denied = Grant("tenant-a", "lab-asset", "read-only", 3, False, False)
+        for key in ("Sec-WebSocket-Protocol", "sec-websocket-protocol",
+                    "SEC-WEBSOCKET-PROTOCOL", "sEc-WeBsOcKeT-pRoToCoL"):
+            with self.subTest(key=key):
+                self.assertFalse(reference_decide(denied, denied,
+                    {key: "admin, approved, revoked=false"}))
+
+    def test_unsupported_grant_object_is_denied_without_header_access(self):
+        class ExplodingHeaders:
+            def __iter__(self):
+                raise AssertionError("header should not be inspected")
+        self.assertFalse(reference_decide(None, self.valid, ExplodingHeaders()))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
