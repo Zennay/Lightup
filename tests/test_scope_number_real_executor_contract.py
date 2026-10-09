@@ -378,6 +378,41 @@ class OfflineExecutorNumberTests(unittest.TestCase):
             self.assertEqual(len(self.calls), before_calls)
             self.assertEqual(self.evidence_count(), before_evidence)
 
+    def test_bridge_rejects_malformed_registered_required_flag_before_effects(self):
+        """A malformed trusted tool schema must fail closed before lab effects."""
+        recorded = []
+
+        def malformed_handler(context, arguments):
+            recorded.append(arguments)
+            return ToolOutput("should never execute", "fixture", b"unexpected")
+
+        self.registry.register(
+            ToolDefinition(
+                "invalid-schema-lab-only", "web-baseline",
+                InteractionKind.LAB_ACTIVE, RiskLevel.DESTRUCTIVE_LAB_ONLY,
+                "Offline malformed registry fixture",
+                (ToolParameter("value", ParamKind.NUMBER, "yes"),),
+            ),
+            malformed_handler,
+        )
+
+        def bridge(call):
+            definition, _handler = self.registry.get(call.tool_id)
+            return validate_unambiguous_arguments(definition, call.arguments)
+
+        with patch.object(ToolCall, "arguments_dict", bridge):
+            with self.assertRaisesRegex(OrchestrationError, "invalid kind or required"):
+                self.executor.execute(
+                    self.context,
+                    ToolCall(
+                        "invalid-schema-lab-only", "127.0.0.1",
+                        (("value", 2.5),),
+                    ),
+                )
+        self.assertEqual(recorded, [])
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), 0)
+
     @unittest.expectedFailure
     def test_nan_denied_before_handler_and_evidence(self):
         with self.assertRaises(OrchestrationError):
