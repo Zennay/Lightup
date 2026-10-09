@@ -12,7 +12,7 @@ The offline model in `tests/test_scope_policy_revision_antirollback_reference.py
 
 - Same revision and newer revision only pass this **necessary** reference predicate.
 - Lower revision, disabled current record, tenant/grant swap, invalid type, negative/boolean revision and dataclass subclass deny.
-- Malformed identities deny; offline tests never open sockets or dispatch tools.
+- Malformed identities deny, including embedded ASCII controls, Unicode direction/line separators, path separators, overlong inputs and malformed *saved* identities. The reference uses an illustrative conservative 1–128-character ASCII identity grammar; production issuer-owned canonical identity policy must be specified independently. Offline tests never open sockets or dispatch tools.
 - Production acceptance must separately prove atomic read/revalidate/dispatch behavior, revocation visibility, policy lineage, expiry, capability/risk monotonicity and zero effects on denial.
 
 ## Coordination and evidence
