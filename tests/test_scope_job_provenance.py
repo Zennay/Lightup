@@ -80,6 +80,13 @@ class OfflineJobProvenanceTests(unittest.TestCase):
             jobs_path.write_text(json.dumps(jobs() + [dict(id=999)]), encoding="utf-8")
             self.assertEqual(module.main(["verify", str(proof_path), str(jobs_path)]), 1)
 
+    def test_unrelated_python_job_name_cannot_impersonate_preflight(self):
+        for index, version in ((0, "3.11"), (1, "3.14")):
+            with self.subTest(version=version):
+                evidence = jobs()
+                evidence[index]["name"] = f"Unrelated Python {version} integration"
+                self.assertTrue(any("expected job label" in e for e in module.check(proof(), evidence)))
+
     def test_valid_matrix_and_distinct_vps(self):
         self.assertEqual(module.check(proof(), jobs()), [])
 
