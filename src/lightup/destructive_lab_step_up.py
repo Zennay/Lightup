@@ -177,6 +177,20 @@ class DestructiveLabStepUpExecutor:
                 raise ToolDenied("destructive lab tool arguments lack a reviewed scope binding")
             if type(call.arguments) is not tuple or call.arguments:
                 raise ToolDenied("destructive lab tool arguments are not authorized")
+            # Reject malformed run/call identity before *any* trusted resolver
+            # or lab-verification callback receives an untrusted envelope.
+            if (
+                context.mode is not AssessmentMode.LAB_AUTONOMOUS
+                or context.is_lab is not True
+                or context.approved_risk is not RiskLevel.DESTRUCTIVE_LAB_ONLY
+                or context.authorization is not None
+                or not all(_valid_identity(value) for value in (
+                    context.run_id, context.client_id, context.engagement_id,
+                    call.asset,
+                ))
+                or not _valid_timestamp(context.created_at)
+            ):
+                raise ToolDenied("invalid destructive-lab admission context")
             if self._approval_resolver is None:
                 raise ToolDenied("explicit destructive-lab operator approval required")
             try:
