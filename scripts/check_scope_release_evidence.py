@@ -8,6 +8,25 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
+
+
+def valid_run_url(value: object) -> bool:
+    if type(value) is not str:
+        return False
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        return False
+    parts = parsed.path.split("/")
+    return (parsed.scheme == "https" and parsed.netloc == "github.com"
+            and parsed.username is None and parsed.password is None
+            and parsed.query == "" and parsed.fragment == ""
+            and len(parts) == 7 and parts[:5] == ["", "Zennay", "Lightup", "actions", "runs"]
+            and parts[5].isascii() and parts[5].isdecimal() and parts[6] == "") or (parsed.scheme == "https" and parsed.netloc == "github.com"
+            and parsed.query == "" and parsed.fragment == ""
+            and len(parts) == 6 and parts[:5] == ["", "Zennay", "Lightup", "actions", "runs"]
+            and parts[5].isascii() and parts[5].isdecimal())
 
 
 REQUIRED_JOBS = ("py311_unit", "py314_unit", "py311_producer", "py314_producer", "permanent_vps")
@@ -36,7 +55,7 @@ def evaluate(evidence: object) -> tuple[bool, list[str]]:
     else:
         for name in REQUIRED_JOBS:
             job = jobs.get(name)
-            if type(job) is not dict or job.get("conclusion") != "success" or job.get("head_sha") != sha or type(job.get("run_url")) is not str or not job["run_url"].startswith("https://github.com/"):
+            if type(job) is not dict or job.get("conclusion") != "success" or job.get("head_sha") != sha or not valid_run_url(job.get("run_url")):
                 reasons.append(f"{name}: missing success, exact SHA or GitHub run reference")
     return not reasons, reasons
 
