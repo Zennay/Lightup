@@ -79,3 +79,7 @@ A canonical-looking UUID4 is not proof that the evidence row exists. A new offli
 ## Content identity is not record identity
 
 A new isolated fixture stores the same byte payload twice on one plan-only run. Both rows must retain distinct UUID4 evidence identifiers while sharing the same SHA-256 payload digest. This guards against incorrectly treating content-hash equality as evidence-record identity or provenance equality. It does not prove permissions, issuer trust or cross-tenant isolation.
+
+## Pre-lookup denial ordering
+
+A spy-backed offline acceptance test models lexical validation **before** evidence-store lookup. Hostile aliases and non-string inputs must not call the reference store even once, while an accepted canonical selector is forwarded exactly once and unchanged. This is a proposed source-owner integration gate; it does not assert that production `StateStore.get_evidence()` already enforces the ordering.
