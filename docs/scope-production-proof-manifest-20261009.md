@@ -85,3 +85,6 @@ The offline `verify_observed_ci_jobs` predicate now compares a structurally comp
 
 ## Observed-job positive and negative controls
 The job comparison now has a synthetic passing case covering hosted Python 3.11/3.14 and a distinct permanent VPS record. Negative controls mutate interpreter version, runner classification, completion status, result, SHA and job ID individually and require denial. These are in-memory fixtures, not externally authenticated attestations, and the production release gate remains HOLD.
+
+## Snapshot lane completeness
+Offline observed-job validation now requires exactly the three declared lanes, rejects missing or unknown lanes, rejects extra fields in each lane and detects swapped Python records. This is only structural comparison of supplied snapshots; independent authenticated GitHub provenance remains mandatory before source-owner review or release.
