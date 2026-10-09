@@ -13,3 +13,9 @@ The included pure Python reference uses an immutable receipt and exact built-in 
 A source owner must establish authenticated issuer lineage and persisted evidence existence; enforce authorization and tenant scoping independently; validate digest against actual immutable evidence bytes; check current revocation and live scope; and ensure evidence cannot be reassigned by mutable database fields. Document legacy compatibility before strict admission and test that failures perform zero persisted mutations. A digest string equality check is **not** cryptographic verification.
 
 Integrate only with owner coordination, then require exact-head hosted and canonical permanent VPS verification before promotion. Do not call external targets, DNS, services, assessment scanners or active capabilities as part of this reference.
+
+## Adversarial compatibility / limitations
+
+The expanded reference tests exercise exact 256-character length acceptance, 257-character rejection, malformed built-in types in every receipt field and consumer selector, plus case/whitespace alias rejection. The fixture deliberately demonstrates a **coherently forged** receipt: changing both its tenant and the consumer selector passes this shape-only model. This is a **negative trust result**, not a successful provenance check.
+
+The production admission boundary must bind receipts to an independently authenticated tenant/run/finding source, trusted issuer identity, immutable content bytes and evidence-store ownership rather than relying on attacker-supplied matching strings. Cross-tenant reassignment must be prohibited even when all fields agree. Keep this PR draft while this is unresolved.
