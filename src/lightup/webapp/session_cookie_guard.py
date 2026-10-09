@@ -6,6 +6,7 @@ production-factory owners must explicitly integrate it after review.
 from __future__ import annotations
 
 import re
+from http.cookies import CookieError, SimpleCookie
 from typing import Callable
 
 from .app import SESSION_COOKIE
@@ -47,6 +48,7 @@ def validate_cookie_envelope(environ: dict) -> None:
         return
 
     session_seen = False
+    session_value = None
     for item in raw.split(";"):
         piece = item.strip(" ")
         if not piece:
@@ -67,6 +69,21 @@ def validate_cookie_envelope(environ: dict) -> None:
             if not _SESSION_TOKEN.fullmatch(value):
                 raise ValueError("noncanonical LightUp session token")
             session_seen = True
+            session_value = value
+
+    # A cookie may look syntactically harmless but be reinterpreted by the
+    # application's SimpleCookie implementation. Demand exact agreement for
+    # the only credential used by LightUp; never accept a parser-dependent
+    # alternative identity.
+    if session_seen:
+        jar = SimpleCookie()
+        try:
+            jar.load(raw)
+        except (CookieError, ValueError, TypeError) as exc:
+            raise ValueError("session cookie parser disagreement") from exc
+        morsel = jar.get(SESSION_COOKIE)
+        if morsel is None or morsel.value != session_value:
+            raise ValueError("session cookie parser disagreement")
 
 
 class CookieEnvelopeGuard:
