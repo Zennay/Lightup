@@ -33,6 +33,9 @@ from backup signatures alone, copied timestamps, cached eligibility or these tes
 - Same-revision inactive current grant against saved active record: **deny**.
 - Reissued grant, cross-tenant or cross-grant restore: **deny**.
 - Future/forged revision, bool-as-int, truthy approval, malformed envelope: **deny**.
+- Identifier with ASCII controls, Unicode separators, slash or excessive length: **deny**.
+- Identity reference accepts only an explicitly narrow ASCII lexical form; production
+  issuer-owned canonical IDs and resource-specific rules may be stricter.
 - Exactly matching active typed values: *reference conditionally eligible only*,
   never proof of actual permission or a production authorization decision.
 - Issuer unreachable or both sources restored together: **deny** in production,
