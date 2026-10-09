@@ -33,3 +33,7 @@ Run offline: `PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope
 
 **HOLD**: No live targets, DNS, scanning, permission issuance, production
 executor edits, deployment, or automatic merge are authorized by this reference.
+
+## Concrete fail-closed offline reference
+
+`tests/test_scope_raw_target_preparser_reference_20261009.py` now contains six additional, **ordinary (non-XFAIL)** offline unit methods with a pure `validate_raw_target` / `reference_decide` specimen. Its table-driven test checks all 33 ASCII control/DEL codepoints across leading, authority, path and query positions (132 denial combinations), plus leading Unicode whitespace, invalid types, and controls for clean allowlisted, unauthorized and unlisted inputs. The reference is intentionally not wired into production; owner of #107 must adopt equivalent raw-input rejection in the trusted pre-I/O path before any real assessment. A passing reference suite does not close the twelve legacy RED cases or prove a verified grant.
