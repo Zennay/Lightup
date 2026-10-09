@@ -21,3 +21,7 @@ Three additional in-memory unittest methods cover absent/dict-like grants, malfo
 ## Denied-dispatch matrix and positive control
 
 Two additional standalone tests exercise eight denied grant/request combinations and assert zero mock handler calls, plus one fully matching approved control that reaches the mock handler once. Total: 18 offline unittest methods. These assertions prove only this in-memory reference, not the real production ToolExecutor, its I/O order, or durable revocation.
+
+## Complete ASCII control and explicit authority-token deny matrix
+
+Two more offline tests cover all 33 ASCII C0/DEL codepoints across the three grant identity roles when stored and requested values match (99 denial assertions), and ten authority-sounding WebSocket subprotocol values against explicitly unapproved consent. Total: 20 standalone unittest methods. Still reference-only, no production authorization evidence.
