@@ -164,6 +164,33 @@ class RedirectScopeReferenceTests(unittest.TestCase):
             ScopeReason.AUTHORIZATION_MISSING,
         )
 
+    def test_redirect_chain_stops_at_first_denied_hop(self):
+        hops = [
+            "https://approved.example.test/first",
+            "https://outside.example.test/denied",
+            "https://approved.example.test/must-not-reach",
+        ]
+        visited = []
+        for hop in hops:
+            decision = self.decide(hop, self.grant)
+            visited.append((hop, decision.allowed))
+            if not decision.allowed:
+                break
+        self.assertEqual(visited, [
+            (hops[0], True),
+            (hops[1], False),
+        ])
+
+    def test_fragment_redirect_to_unlisted_host_still_denied(self):
+        source = "https://approved.example.test/start"
+        destination = urljoin(source, "//outside.example.test/path#fragment")
+        self.assertEqual(self.decide(destination, self.grant).reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_query_redirect_to_unlisted_host_still_denied(self):
+        source = "https://approved.example.test/start"
+        destination = urljoin(source, "https://outside.example.test/path?next=approved.example.test")
+        self.assertEqual(self.decide(destination, self.grant).reason, ScopeReason.OUT_OF_SCOPE)
+
     def test_each_redirect_hop_rechecks_target_identity(self):
         hops = [
             "https://approved.example.test/start",
