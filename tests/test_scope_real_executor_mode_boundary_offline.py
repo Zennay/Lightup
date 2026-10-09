@@ -57,6 +57,15 @@ class RealExecutorModeBoundaryTests(unittest.TestCase):
         self.handler.assert_not_called()
         self.state.add_evidence.assert_not_called()
 
+    def test_policy_denial_never_dispatches_or_writes_evidence(self):
+        self.policy.decide.return_value = Mock(allowed=False, reason="denied")
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            with self.assertRaises(ToolDenied):
+                self.executor.execute(self.context(AssessmentMode.LAB_AUTONOMOUS), self.call)
+        self.policy.decide.assert_called_once()
+        self.handler.assert_not_called()
+        self.state.add_evidence.assert_not_called()
+
     def test_approved_synthetic_lab_positive_control(self):
         with patch("socket.socket", side_effect=AssertionError("network attempted")):
             result = self.executor.execute(self.context(AssessmentMode.LAB_AUTONOMOUS), self.call)
