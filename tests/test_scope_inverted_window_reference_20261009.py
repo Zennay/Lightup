@@ -234,5 +234,21 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
                 self.assertFalse(decision.allowed)
                 self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
+    def test_falsy_corrupt_bounds_pass_legacy_public_network_gate(self):
+        policy = ScopePolicy(explicit_networks=("8.8.8.0/24",))
+        for corrupt in (0, False, ""):
+            with self.subTest(corrupt=repr(corrupt)):
+                decision = policy.decide(
+                    Target("https://8.8.8.8", authorization=self.grant(corrupt, None)))
+                self.assertTrue(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.EXPLICIT_NETWORK)
+
+    def test_falsy_corrupt_bounds_cannot_expand_public_network_allowlist(self):
+        policy = ScopePolicy(explicit_networks=("8.8.8.0/24",))
+        decision = policy.decide(
+            Target("https://1.1.1.1", authorization=self.grant(False, "")))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
 if __name__ == "__main__":
     unittest.main()
