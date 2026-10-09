@@ -55,3 +55,7 @@ isolated local fixture, not a production migration, authorization
 decision, tenant proof, active assessment or real-target execution.
 
 Run with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_evidence_identifier_canonical_reference.py' -v`.
+
+## Rejected-alias persistence immutability
+
+A further offline temporary-SQLite regression takes a full stored evidence-row snapshot, rejects the uppercase lexical alias, and verifies the stored row remains byte/value-equivalent with the evidence table still containing exactly one record. This is a **reference parser non-mutation test**, not evidence that production `get_evidence()` currently performs lexical validation: the latter must be separately integrated and reviewed by its source owner.
