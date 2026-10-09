@@ -10,7 +10,7 @@ against the exact tenant, request, current scope revision, grant identity and
 unique attempt identifier. A changed attempt must require a fresh authorized
 decision, even when all other fields are identical.
 
-The offline reference deliberately rejects inactive grants, non-boolean
+The fixture distinguishes a missing override from an explicitly null grant, so\nnull, mapping, and boolean impostor envelopes are exercised as real negative cases.\n\nThe offline reference deliberately rejects inactive grants, non-boolean
 approval flags, malformed identifiers, subclasses of the grant envelope, and
 negative issuer and claimed revisions, and revision type confusion. It treats matching values as **necessary but not
 sufficient**: an attacker can fabricate every reference field.
