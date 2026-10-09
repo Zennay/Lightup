@@ -10,7 +10,7 @@ Before any future target-capable dispatch, the production scope gate must indepe
 
 ## Offline contract
 
-`tests/test_scope_content_disposition_nonauthority_reference.py` exercises 10 pure-stdlib `unittest` cases: spoofed approval filenames, RFC 5987-style parameters, control bytes, untrusted object protocols, revoked and unverified grants, field mismatches on either side, matched-invalid fields, type-confused revisions, forged subclasses and immutable fixture envelopes.
+`tests/test_scope_content_disposition_nonauthority_reference.py` exercises 13 pure-stdlib `unittest` methods: spoofed approval filenames, RFC 5987-style parameters, control bytes, untrusted object protocols, revoked and unverified grants, field mismatches on either side, matched-invalid fields, type-confused grant and dispatch revisions, matching non-string identities, string-subclass identity spoofing, forged envelope subclasses and immutable fixture envelopes.
 
 Run:
 
