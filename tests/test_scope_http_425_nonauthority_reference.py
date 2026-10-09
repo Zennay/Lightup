@@ -141,7 +141,7 @@ class TooEarlyNonauthorityTests(unittest.TestCase):
 
     def test_identity_length_boundary_is_fail_closed(self):
         for field in ("tenant", "request", "asset", "capability"):
-            for bad in ("x" * 129, b"tenant-a", "x\\tunsafe", "x\\u200bhidden"):
+            for bad in ("x" * 129, b"tenant-a", "x" + chr(9) + "unsafe", "x" + chr(0x200b) + "hidden"):
                 with self.subTest(field=field, bad=repr(bad)):
                     malformed = replace(BASE, **{field: bad})
                     self.assertFalse(necessary_scope_consistency(malformed, malformed, 425, "1"))
