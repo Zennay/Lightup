@@ -49,3 +49,7 @@ Forged `capability` values in original-host routing metadata cannot supply missi
 ## Operator approval and risk mode hints
 
 An `operator_approved=true`, `approval_id`, `risk_level` or `mode=analysis_only` string inside routing metadata does not constitute an operator approval or a trusted scope grant. These offline tests do not claim that the production operator workflow is implemented.
+
+## Loopback and mode isolation
+
+A spoofed original-host claim for localhost, 127.0.0.1 or [::1] must not reclassify an unlisted HTTPS host as local. Claimed `plan_only`, `lab_only`, `active`, or `passive` strings also cannot replace an authorization grant for a publicly allowlisted URL. This is legacy pure-policy reference only.
