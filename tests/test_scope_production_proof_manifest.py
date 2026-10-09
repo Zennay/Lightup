@@ -103,7 +103,7 @@ def verify_observed_ci_jobs(manifest: dict, observed: dict) -> bool:
             return False
         if any(type(run.get(key)) is not type(expected[key]) or run[key] != expected[key] for key in ("job_id", "run_url", "sha")):
             return False
-        if type(run["job_name"]) is not str or not run["job_name"].strip() or (lane == "permanent_vps" and "not vps proof" in run["job_name"].lower()):
+        if type(run["job_name"]) is not str or not run["job_name"].strip() or (lane == "permanent_vps" and ("not vps proof" in run["job_name"].lower() or "offline preflight" in run["job_name"].lower())):
             return False
         if (type(run["status"]) is not str or run["status"] != "completed" or
                 type(run["conclusion"]) is not str or run["conclusion"] != "success"):
@@ -248,6 +248,9 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         self.assertFalse(verify_observed_ci_jobs(manifest, misleading))
         marked["permanent_vps"]["job_name"] = "Offline preflight Python 3.11 (not VPS proof)"
         self.assertFalse(verify_observed_ci_jobs(manifest, marked))
+        preflight = json.loads(json.dumps(observed))
+        preflight["permanent_vps"]["job_name"] = "Offline preflight Python 3.11"
+        self.assertFalse(verify_observed_ci_jobs(manifest, preflight))
         for lane in ("hosted_python_311", "hosted_python_314", "permanent_vps"):
             missing = json.loads(json.dumps(observed))
             missing.pop(lane)
