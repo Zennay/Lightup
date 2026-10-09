@@ -351,5 +351,23 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
         decision = policy.decide(Target("https://8.8.8.8", authorization=grant))
         self.assertFalse(decision.allowed)
 
+    @unittest.expectedFailure
+    def test_required_public_host_denial_with_reference_only(self):
+        # RED: nonempty reference cannot replace authenticated issuer identity.
+        grant = Authorization(owner="", reference="unverified-string",
+                              valid_from=None, valid_until=None)
+        decision = self.policy.decide(Target(
+            "https://authorized.example", authorization=grant))
+        self.assertFalse(decision.allowed)
+
+    @unittest.expectedFailure
+    def test_required_public_network_denial_with_owner_only(self):
+        # RED: display owner text is not durable verified grant provenance.
+        policy = ScopePolicy(explicit_networks=("8.8.8.0/24",))
+        grant = Authorization(owner="unverified-text", reference="",
+                              valid_from=None, valid_until=None)
+        decision = policy.decide(Target("https://8.8.8.8", authorization=grant))
+        self.assertFalse(decision.allowed)
+
 if __name__ == "__main__":
     unittest.main()
