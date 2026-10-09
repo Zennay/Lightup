@@ -310,5 +310,32 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(decision.normalized_host, "approved.example")
 
 
+    def test_untrusted_host_header_cannot_override_explicit_network_deny(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=("198.51.100.0/24",),
+        )
+        for target_host in ("203.0.113.7", "192.0.2.8"):
+            with self.subTest(target_host=target_host):
+                decision = policy.decide(Target(
+                    target_host,
+                    labels=("X-Original-Host: 198.51.100.9",),
+                ))
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_missing_grant_cannot_be_supplied_as_header_label(self):
+        for label in (
+            "X-Original-Host: approved.example; authorization=fixture",
+            "X-Original-Host: approved.example; approved=true",
+        ):
+            with self.subTest(label=label):
+                decision = self.policy.decide(Target(
+                    "approved.example", labels=(label,),
+                ))
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+
 if __name__ == "__main__":
     unittest.main()
