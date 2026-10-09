@@ -370,6 +370,23 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
                 raise AssertionError("header should not be inspected")
         self.assertFalse(reference_decide(None, self.valid, ExplodingHeaders()))
 
+    def test_stored_approval_does_not_inherit_request_authority(self):
+        calls = []
+        for approved, revoked in ((False, False), (False, True), (True, True)):
+            stored = Grant("tenant-a", "lab-asset", "read-only", 3, approved, revoked)
+            request = self.valid
+            if reference_decide(stored, request,
+                                {"Sec-WebSocket-Protocol": "approved, revocation=false"}):
+                calls.append((approved, revoked))
+        self.assertEqual(calls, [])
+
+    def test_consistent_valid_grant_header_fuzz_is_presentation_only(self):
+        for value in (None, object(), False, 123, ["scope:all"],
+                      {"admin": True}, "revoked=true", "tenant=other"):
+            with self.subTest(value_type=type(value).__name__):
+                self.assertTrue(reference_decide(self.valid, self.valid,
+                    {"Sec-WebSocket-Protocol": value}))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
