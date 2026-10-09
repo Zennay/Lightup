@@ -184,6 +184,9 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         self.assertEqual(classify_supplied_hosted_run_jobs(run, truncated, sha), {})
         self.assertEqual(classify_supplied_hosted_run_jobs(run, truncated, sha, all_pages_verified=True), {})
         self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs, sha, all_pages_verified=1), {})
+        ambiguous = [dict(job) for job in jobs]
+        ambiguous.append({**ambiguous[0], "id": 999})
+        self.assertEqual(classify_supplied_hosted_run_jobs(run, ambiguous, sha, all_pages_verified=True), {})
         for incomplete in (None, False, 0, "", "true", [], {}):
             self.assertEqual(classify_supplied_hosted_run_jobs(
                 run, jobs, sha, all_pages_verified=incomplete), {})
