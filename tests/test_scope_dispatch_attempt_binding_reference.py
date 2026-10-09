@@ -92,6 +92,23 @@ class AttemptBindingReferenceTests(unittest.TestCase):
         self.check()
         self.assertEqual(original, (dataclasses.asdict(self.grant), self.claim))
 
+    def test_negative_revision_is_never_authority(self):
+        self.assertFalse(self.check(grant=dataclasses.replace(self.grant, scope_revision=-1), revision=-1))
+
+    def test_all_grant_identity_fields_are_validated(self):
+        for field in ("tenant", "request", "attempt", "grant_id"):
+            with self.subTest(field=field):
+                self.assertFalse(self.check(grant=dataclasses.replace(self.grant, **{field: "bad token"})))
+
+    def test_all_claim_identity_fields_are_validated(self):
+        for field in ("tenant", "request", "attempt", "grant_id"):
+            with self.subTest(field=field):
+                self.assertFalse(self.check(**{field: "bad\\tvalue"}))
+
+    def test_invalid_grant_envelopes_are_denied(self):
+        self.assertFalse(self.check(grant=None))
+        self.assertFalse(self.check(grant=dataclasses.asdict(self.grant)))
+
 
 if __name__ == "__main__":
     unittest.main()
