@@ -209,6 +209,21 @@ class OfflineExecutorNumberTests(unittest.TestCase):
         self.assertEqual(self.evidence_count(), 2)
         self.assertEqual(self.calls, [1.0, 2.0])
 
+    def test_mixed_valid_and_denied_calls_keep_only_valid_evidence(self):
+        """Alternating malformed inputs must not contaminate valid evidence."""
+        expected = []
+        for value in (1.0, "not-numeric", 2.0, None, 3.0, False):
+            if isinstance(value, bool) or value is None or isinstance(value, str):
+                with self.assertRaises(OrchestrationError):
+                    self.invoke(value)
+            else:
+                expected.append(self.invoke(value).evidence_id)
+        self.assertEqual(self.calls, [1.0, 2.0, 3.0])
+        self.assertEqual(len(set(expected)), 3)
+        with self.state.connect() as db:
+            actual = {row[0] for row in db.execute("SELECT evidence_id FROM evidence")}
+        self.assertEqual(actual, set(expected))
+
     @unittest.expectedFailure
     def test_duplicate_argument_name_must_not_silently_override(self):
         """ToolCall.arguments_dict currently collapses duplicate tuple keys."""
