@@ -132,6 +132,7 @@ class SessionCookieGuardTest(unittest.TestCase):
                     f"lightup_session={client_token}; lightup_session={op_token}",
                     f"lightup_session={op_token}; lightup_session={client_token}",
                     f"lightup_session={op_token}, lightup_session={client_token}",
+                    f"lightup_session={client_token} lightup_session={op_token}",
                     f"lightup_session={op_token}\nX-Admin: true",
                     b"lightup_session=foreign",
                     "lightup_session=x" * 2000,
