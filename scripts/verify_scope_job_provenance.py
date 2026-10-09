@@ -57,7 +57,8 @@ def check(proof, jobs):
         name = job.get("name")
         # Permit only the exact job title or a versioned matrix suffix.
         if (type(name) is not str or
-                not (name == expected_label or name.startswith(expected_label + " ("))):
+                not (name == expected_label or
+                     (name.startswith(expected_label + " (") and name.endswith(")")))):
             errors.append(f"{lane}: expected job label missing")
     return errors
 
