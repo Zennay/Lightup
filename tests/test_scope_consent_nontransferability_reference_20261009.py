@@ -165,7 +165,7 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
 
     def test_reject_control_characters_in_stored_and_requested_identities(self):
         for field in ("tenant_id", "engagement_id", "owner_id", "asset_id", "capability_id"):
-            for suffix in ("\\x00", "\\n", "\\r", "\\t", "\\x7f"):
+            for suffix in map(chr, (0, 9, 10, 13, 127)):
                 with self.subTest(field=field, suffix=repr(suffix)):
                     self.assertFalse(matches_consent(
                         self.consent, **(self.request | {field: self.request[field] + suffix})))
@@ -178,6 +178,12 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
                     data[field] += suffix
                     self.assertFalse(matches_consent(
                         Consent(**data), **(self.request | {field: data[field]})))
+
+    def test_control_character_fixture_is_real_codepoint(self):
+        for value in map(chr, (0, 9, 10, 13, 127)):
+            with self.subTest(codepoint=ord(value)):
+                self.assertEqual(len(value), 1)
+                self.assertTrue(ord(value) < 32 or ord(value) == 127)
 
 
 if __name__ == "__main__":
