@@ -113,7 +113,7 @@ class MediaTypeNonAuthority(unittest.TestCase):
 
     def test_every_identity_field_rejects_matching_control_bytes(self):
         for field in ("tenant", "request", "capability"):
-            for bad in ("valid\\nname", "valid\\rname", "valid\\x00name", "valid\\x7fname"):
+            for bad in ("valid\nname", "valid\rname", "valid\x00name", "valid\x7fname"):
                 with self.subTest(field=field, bad=repr(bad)):
                     grant = {**vars(self.grant), field: bad}
                     dispatch = {**vars(self.dispatch), field: bad}
