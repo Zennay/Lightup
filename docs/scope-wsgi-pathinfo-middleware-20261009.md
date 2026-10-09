@@ -28,6 +28,14 @@ All methods use temporary SQLite and real `create_app` in development or simulat
 - Exact valid operator GET/POST remains functional; client impersonation hints and invalid CSRF remain denied independently of the route guard.
 - A trailing-LF variant of `/logout` does not revoke a real operator session; a trailing-LF variant of `/portal/<client_id>/requests` does not add a tenant assessment request, in either WSGI environment. Both denial paths preserve session integrity.
 
+## Isolated opt-in production factory
+
+`src/lightup/webapp/guarded_production.py` provides `create_guarded_production_app(environ=None)`. It delegates mandatory HTTPS/public-origin/absolute-database validation to the existing `create_production_app`, then returns `CanonicalPathInfoGuard(existing_app, production=True)`. This is a **ready-to-select but inactive Gunicorn factory**; it does not edit `production.py`, `deploy/lightup.service`, Nginx, Gunicorn configuration, or a running service.
+
+The factory can be manually selected **only after source/ingress owner review and approval** as the WSGI application expression `lightup.webapp.guarded_production:create_guarded_production_app()`. This is an integration option, not a deploy instruction or a default. The existing production service still points to the unguarded factory until the deployment owner authorizes a change.
+
+Dedicated real-database factory tests confirm that the optional entrypoint rejects trailing-LF and noncanonical paths before session/body operations, preserves HSTS and existing sessions, passes a legitimate operator+CSRF client write unchanged, and keeps invalid production origin/configuration fail-closed. No installed Gunicorn process is run by these unit tests.
+
 ## Production ownership and integration handoff
 
 For app owner [#182](https://github.com/Zennay/Lightup/pull/182), suggested minimal integration (owner decides whether to wrap `create_app` or directly call the pure helper at the earliest line of `__call__`):
