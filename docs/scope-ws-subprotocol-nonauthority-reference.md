@@ -41,3 +41,7 @@ Two extra offline methods reject request-side self-approval against an unapprove
 ## Control-codepoint mock-dispatch and malformed header container (2026-10-09)
 
 Two additional offline methods assert 99 C0/DEL identity-role mutation denials lead to **zero fake dispatches** and verify revoked grants remain denied with arbitrary header-container shapes. Total 28 methods. This remains a self-contained reference, not real ToolExecutor enforcement.
+
+## Sequential revocation and revision transitions
+
+Two new offline tests demonstrate that a local reference grants one handler call before revocation but none after a stored revocation transition, and a new stored revision rejects the old request until a matching request exists. These are illustrative sequential checks, **not** evidence of concurrent or durable production revocation. Total: 30 unittest methods.
