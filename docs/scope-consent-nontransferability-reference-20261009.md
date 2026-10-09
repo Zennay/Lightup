@@ -42,3 +42,5 @@ Positive/negative Unicode controls: ordinary letters and combining marks are acc
 Further offline edge controls exercise both ends of the Unicode surrogate range and verify that combining-mark suffixes on tenant, engagement, asset or capability IDs cannot silently inherit exact-match consent.
 
 Revision-binding checks also vary stored and requested revisions independently. Approval status must be an exact builtin boolean; numeric, string, missing, and container-shaped impostors fail closed even if they look truthy or falsey.
+
+Unicode line and paragraph separators (Zl/Zp: U+2028/U+2029) are rejected in consent identifiers to prevent audit or serialization boundary confusion. Fixtures use actual characters from chr(), not literal backslash sequences.
