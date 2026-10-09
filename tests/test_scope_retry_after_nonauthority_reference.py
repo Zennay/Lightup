@@ -122,6 +122,45 @@ class RetryAfterNonauthorityTests(unittest.TestCase):
             pass
         self.assertFalse(consistent_for_dispatch(Derived(**dataclasses.asdict(VALID)), VALID, "0"))
 
+    def test_invalid_grant_fields_are_rejected_even_when_dispatch_matches(self):
+        cases = (
+            ("tenant", "other-tenant"),
+            ("request", "other-request"),
+            ("asset", "other-asset"),
+            ("capability", "other-capability"),
+            ("revision", 99),
+            ("current", False),
+        )
+        for key, value in cases:
+            with self.subTest(field=key):
+                changed = dataclasses.replace(VALID, **{key: value})
+                self.assertFalse(consistent_for_dispatch(changed, VALID, "0"))
+
+    def test_retry_after_transport_variations_never_modify_decision(self):
+        # Retry hints include malformed, unbounded and forged objects.
+        hints = ("", "0", "-1", "999999999999999999999",
+                 "Fri, 09 Oct 2026 12:00:00 GMT", "not-a-date",
+                 {"status": 202, "retry_after": 0}, ["0"], False, 0)
+        denied = dataclasses.replace(VALID, current=False)
+        for hint in hints:
+            with self.subTest(hint=repr(hint)):
+                self.assertTrue(consistent_for_dispatch(VALID, VALID, hint))
+                self.assertFalse(consistent_for_dispatch(VALID, denied, hint))
+
+    def test_matching_str_subclasses_cannot_mint_authority(self):
+        class Label(str):
+            pass
+        for field in ("tenant", "request", "asset", "capability"):
+            with self.subTest(field=field):
+                invalid = dataclasses.replace(VALID, **{field: Label(getattr(VALID, field))})
+                self.assertFalse(consistent_for_dispatch(invalid, invalid, "0"))
+
+    def test_zero_or_noncanonical_grant_revision_denied(self):
+        for revision in (0, -2, True, 2.0, "2"):
+            with self.subTest(revision=repr(revision)):
+                grant = dataclasses.replace(VALID, revision=revision)
+                self.assertFalse(consistent_for_dispatch(grant, VALID, "0"))
+
     def test_reference_has_no_input_mutation(self):
         before = dataclasses.asdict(VALID)
         consistent_for_dispatch(VALID, VALID, "0")
