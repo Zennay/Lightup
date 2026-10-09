@@ -55,6 +55,32 @@ class OfflineExecutorNumberTests(unittest.TestCase):
         self.assertEqual(self.calls, [])
         self.assertEqual(self.evidence_count(), 0)
 
+    def test_missing_number_argument_does_not_dispatch_or_write_evidence(self):
+        with self.assertRaises(OrchestrationError):
+            self.executor.execute(
+                self.context, ToolCall("number-lab-only", "127.0.0.1")
+            )
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), 0)
+
+    def test_unknown_argument_does_not_dispatch_or_write_evidence(self):
+        with self.assertRaises(OrchestrationError):
+            self.executor.execute(
+                self.context,
+                ToolCall("number-lab-only", "127.0.0.1",
+                         (("value", 1.0), ("untrusted_extra", 1))),
+            )
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), 0)
+
+    def test_denial_after_success_does_not_add_evidence(self):
+        self.invoke(1.5)
+        before_calls, before_evidence = len(self.calls), self.evidence_count()
+        with self.assertRaises(OrchestrationError):
+            self.invoke(False)
+        self.assertEqual(len(self.calls), before_calls)
+        self.assertEqual(self.evidence_count(), before_evidence)
+
     @unittest.expectedFailure
     def test_nan_denied_before_handler_and_evidence(self):
         with self.assertRaises(OrchestrationError):
