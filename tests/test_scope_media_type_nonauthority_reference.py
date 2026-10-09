@@ -111,6 +111,33 @@ class MediaTypeNonAuthority(unittest.TestCase):
         self.assertFalse(allowed(Grant("tenant-a", "request-a", 0, "header-review", True, True),
                                  Dispatch("tenant-a", "request-a", 0, "header-review")))
 
+    def test_every_identity_field_rejects_matching_control_bytes(self):
+        for field in ("tenant", "request", "capability"):
+            for bad in ("valid\\nname", "valid\\rname", "valid\\x00name", "valid\\x7fname"):
+                with self.subTest(field=field, bad=repr(bad)):
+                    grant = {**vars(self.grant), field: bad}
+                    dispatch = {**vars(self.dispatch), field: bad}
+                    self.assertFalse(allowed(Grant(**grant), Dispatch(**dispatch)))
+
+    def test_dispatch_revision_type_and_bounds(self):
+        for invalid in (True, False, 0, -1, "7", 7.0, None):
+            with self.subTest(invalid=repr(invalid)):
+                self.assertFalse(allowed(self.grant,
+                                         Dispatch("tenant-a", "request-a", invalid, "header-review")))
+
+    def test_grant_revision_type_and_bounds(self):
+        for invalid in (False, 0, -1, "7", 7.0, None):
+            with self.subTest(invalid=repr(invalid)):
+                self.assertFalse(allowed(Grant("tenant-a", "request-a", invalid, "header-review", True, True),
+                                         self.dispatch))
+
+    def test_input_records_remain_unchanged(self):
+        grant_before, dispatch_before = vars(self.grant).copy(), vars(self.dispatch).copy()
+        self.assertTrue(allowed(self.grant, self.dispatch, media_type=object(),
+                                parser_success=False, content_digest_verified=False))
+        self.assertEqual(vars(self.grant), grant_before)
+        self.assertEqual(vars(self.dispatch), dispatch_before)
+
     def test_transport_claims_do_not_change_validity(self):
         for typ in ("application/json", "text/html", None, object()):
             for parsed in (True, False, "true"):
