@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 
 from lightup.ai.orchestration import (
     RunContext, ToolCall, ToolDefinition, ToolDenied, ToolExecutor, ToolOutput,
-    RiskElevationRequired,
+    RiskElevationRequired, ToolRegistry,
 )
 from lightup.engagements import AssessmentMode, AuthorizationGrant, RiskLevel, ScopeDefinition
 from lightup.execution_policy import ExecutionPolicy, InteractionKind
@@ -403,6 +403,21 @@ class RealExecutorModeBoundaryTests(unittest.TestCase):
         self.policy.decide.assert_not_called()
         self.handler.assert_not_called()
         self.state.add_evidence.assert_not_called()
+
+    def test_real_registry_and_executor_preserve_lab_boundary(self):
+        # Exercise the production registry lookup rather than a mocked get().
+        registry = ToolRegistry()
+        registry.register(self.definition, self.handler)
+        executor = ToolExecutor(registry, self.state, ExecutionPolicy())
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            with self.assertRaises(ToolDenied):
+                executor.execute(self.context(AssessmentMode.ANALYSIS_ONLY), self.call)
+            self.handler.assert_not_called()
+            self.state.add_evidence.assert_not_called()
+            result = executor.execute(self.context(AssessmentMode.LAB_AUTONOMOUS), self.call)
+        self.assertEqual(result.evidence_id, "synthetic-evidence")
+        self.handler.assert_called_once()
+        self.state.add_evidence.assert_called_once()
 
 if __name__ == "__main__":
     unittest.main()
