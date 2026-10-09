@@ -76,6 +76,25 @@ class PublicScopeAuthorizationWindowTests(unittest.TestCase):
         self.assertTrue(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
 
+    def test_public_ip_not_yet_valid_grant_is_denied(self):
+        decision = self.ip_policy.decide(
+            Target(PUBLIC, grant(valid_from=self.now + timedelta(days=1)))
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+
+    def test_public_host_expired_grant_is_denied(self):
+        decision = self.host_policy.decide(
+            Target(HOST, grant(valid_until=self.now - timedelta(days=1)))
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+
+    def test_public_host_with_port_still_requires_authorization(self):
+        decision = self.host_policy.decide(Target("https://example.test:8443/check"))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
     def test_unlisted_public_ip_is_denied_even_with_synthetic_grant(self):
         decision = self.ip_policy.decide(
             Target("9.9.9.9", grant(valid_until=self.now + timedelta(days=1)))
