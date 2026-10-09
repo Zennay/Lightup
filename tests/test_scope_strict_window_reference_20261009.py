@@ -130,6 +130,17 @@ class StrictWindowReferenceTests(unittest.TestCase):
         self.assertTrue(strict_window_eligible(local_first, local_end, first))
         self.assertFalse(strict_window_eligible(local_first, local_end, end))
 
+    def test_utc_conversion_overflow_of_current_clock_denies(self):
+        # A valid window cannot turn a non-representable instant into approval.
+        extreme_now = datetime.max.replace(
+            tzinfo=timezone(timedelta(hours=-14)))
+        self.assertFalse(strict_window_eligible(self.start, self.end, extreme_now))
+
+    def test_utc_conversion_overflow_of_end_bound_denies(self):
+        extreme_end = datetime.max.replace(
+            tzinfo=timezone(timedelta(hours=-14)))
+        self.assertFalse(strict_window_eligible(self.start, extreme_end, self.now))
+
     def test_invalid_now_types_deny(self):
         for bad in (None, "", 0, False, True, self.now.isoformat()):
             with self.subTest(bad=repr(bad)):
