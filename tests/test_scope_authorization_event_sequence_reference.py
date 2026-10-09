@@ -11,18 +11,26 @@ class Event:
     kind: str
 
 
+MAX_SEQUENCE = (1 << 63) - 1
+
+
+def canonical_identity(value):
+    return (type(value) is str and 1 <= len(value) <= 128
+            and value.isascii() and all(char.isalnum() or char in "-_" for char in value))
+
+
 def contiguous(events, tenant, grant, starting_sequence):
     """Reject gaps, duplicates, reordering, identity swaps and malformed input."""
-    if type(events) is not tuple or type(tenant) is not str or not tenant or type(grant) is not str or not grant:
+    if type(events) is not tuple or not canonical_identity(tenant) or not canonical_identity(grant):
         return False
-    if type(starting_sequence) is not int or starting_sequence < 0:
+    if type(starting_sequence) is not int or not 0 <= starting_sequence <= MAX_SEQUENCE:
         return False
-    if not events:
+    if not events or len(events) > 1024 or starting_sequence + len(events) > MAX_SEQUENCE:
         return False
     for offset, event in enumerate(events):
         if type(event) is not Event:
             return False
-        if (type(event.tenant) is not str or type(event.grant) is not str
+        if (not canonical_identity(event.tenant) or not canonical_identity(event.grant)
                 or event.tenant != tenant or event.grant != grant
                 or type(event.sequence) is not int
                 or event.sequence != starting_sequence + offset + 1
@@ -75,6 +83,22 @@ class SequenceReferenceTests(unittest.TestCase):
         self.assertFalse(contiguous(self.events, "", "grant-a", 10))
         self.assertFalse(contiguous(self.events, "tenant-a", "", 10))
         self.assertFalse(contiguous(self.events, "tenant-a", "grant-a", -1))
+
+    def test_noncanonical_identity_denied(self):
+        for invalid in (" tenant-a", "tenant-a ", "tenant\\na", "ténant", "tenant/a", "x" * 129):
+            with self.subTest(invalid=invalid):
+                self.assertFalse(contiguous(self.events, invalid, "grant-a", 10))
+                self.assertFalse(contiguous((Event(invalid, "grant-a", 11, "issued"),), invalid, "grant-a", 10))
+
+    def test_sequence_overflow_denied(self):
+        self.assertFalse(contiguous((Event("tenant-a", "grant-a", MAX_SEQUENCE, "issued"),
+                                     Event("tenant-a", "grant-a", MAX_SEQUENCE + 1, "approved")),
+                                    "tenant-a", "grant-a", MAX_SEQUENCE - 1))
+        self.assertFalse(contiguous(self.events, "tenant-a", "grant-a", MAX_SEQUENCE + 1))
+
+    def test_oversize_batch_denied(self):
+        many = tuple(Event("tenant-a", "grant-a", i + 1, "issued") for i in range(1025))
+        self.assertFalse(contiguous(many, "tenant-a", "grant-a", 0))
 
     def test_input_not_mutated(self):
         snapshot = repr(self.events)
