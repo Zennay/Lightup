@@ -7,6 +7,7 @@ separate from source-owner integration in src/lightup/scope.py.
 import os
 import sys
 import unittest
+import unicodedata
 from unittest.mock import Mock
 from urllib.parse import urlparse
 
@@ -17,8 +18,7 @@ from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason
 
 def reference_preflight(policy, target, handler):
     """Deny parser errors before any downstream policy/handler invocation."""
-    if type(target.value) is not str:
-        return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
+    if type(target.value) is not str or not target.value or any(\n        char.isspace() or unicodedata.category(char) in {"Cc", "Cf", "Cs"}\n        for char in target.value\n    ):\n        return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
     try:
         parsed = urlparse(target.value if "://" in target.value else "//" + target.value)
         # The authority is netloc, not a raw split which can include query or fragment.
@@ -243,6 +243,23 @@ class MalformedAuthorityNoHandlerReference(unittest.TestCase):
         decision = reference_preflight(policy, target, handler)
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
         policy.decide.assert_called_once_with(target)
+        handler.assert_not_called()
+
+    def test_raw_control_and_unicode_format_characters_never_reach_policy(self):
+        policy = Mock(spec=ScopePolicy)
+        handler = Mock()
+        for character in ("\\n", "\\t", "\\r", "\\u200b", "\\u202e", "\\ud800"):
+            for placement in ("prefix", "authority", "path"):
+                raw = {
+                    "prefix": character + "https://unlisted.example.test/",
+                    "authority": "https://unlisted" + character + ".example.test/",
+                    "path": "https://unlisted.example.test/a" + character,
+                }[placement]
+                with self.subTest(character=ascii(character), placement=placement):
+                    decision = reference_preflight(policy, Target(raw), handler)
+                    self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+                    self.assertFalse(decision.allowed)
+        policy.decide.assert_not_called()
         handler.assert_not_called()
 
     def test_normal_denial_preserves_zero_handler_calls(self):
