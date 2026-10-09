@@ -157,6 +157,27 @@ class OfflineExecutorNumberTests(unittest.TestCase):
         self.assertEqual(self.calls, [7.0])
         self.assertEqual(self.evidence_count(), 1)
 
+    def test_denials_do_not_change_prior_evidence_payload(self):
+        """Evidence bytes must remain stable across denied malformed calls."""
+        self.invoke(9.0)
+        with self.state.connect() as db:
+            before = db.execute(
+                "SELECT * FROM evidence ORDER BY evidence_id"
+            ).fetchone()
+            column_names = [col[1] for col in db.execute("PRAGMA table_info(evidence)")]
+            before_values = tuple(before[name] for name in column_names)
+        for value in ("9.0", None, False):
+            with self.assertRaises(OrchestrationError):
+                self.invoke(value)
+        with self.state.connect() as db:
+            after = db.execute(
+                "SELECT * FROM evidence ORDER BY evidence_id"
+            ).fetchone()
+            after_values = tuple(after[name] for name in column_names)
+        self.assertEqual(before_values, after_values)
+        self.assertEqual(self.calls, [9.0])
+        self.assertEqual(self.evidence_count(), 1)
+
     @unittest.expectedFailure
     def test_duplicate_argument_name_must_not_silently_override(self):
         """ToolCall.arguments_dict currently collapses duplicate tuple keys."""
