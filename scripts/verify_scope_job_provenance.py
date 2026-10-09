@@ -13,7 +13,7 @@ from verify_scope_proof_manifest import verify, reject_duplicate_keys
 LANES = (
     ("hosted_py311", "Offline preflight Python 3.11"),
     ("hosted_py314", "Offline preflight Python 3.14"),
-    ("permanent_vps", "LightUp"),
+    ("permanent_vps", "LightUp plan-only safety tests"),
 )
 
 
@@ -55,8 +55,7 @@ def check(proof, jobs):
         if job.get("status") != "completed" or job.get("conclusion") != "success":
             errors.append(f"{lane}: job not successful")
         name = job.get("name")
-        if (type(name) is not str or not name.startswith(expected_label)
-                and not (lane == "permanent_vps" and name.startswith("LightUp plan-only safety tests"))):
+        if type(name) is not str or not name.startswith(expected_label):
             errors.append(f"{lane}: expected job label missing")
     return errors
 
