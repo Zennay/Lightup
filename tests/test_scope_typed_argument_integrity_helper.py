@@ -303,5 +303,29 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
                         )
         self.assertEqual(events, [])
 
+    def test_finite_number_reaches_schema_once(self):
+        from unittest.mock import patch
+        events = []
+        original = ToolDefinition.validate_arguments
+        def capture(definition, arguments):
+            events.append(dict(arguments))
+            return original(definition, arguments)
+        with patch.object(ToolDefinition, "validate_arguments", capture):
+            result = validate_unambiguous_arguments(
+                self.definition, (("value", 2.5),)
+            )
+        self.assertEqual(result, {"value": 2.5})
+        self.assertEqual(events, [{"value": 2.5}])
+
+    def test_nonfinite_rejection_preserves_input_pairs(self):
+        for number in (float("nan"), float("inf"), float("-inf")):
+            pairs = [("value", number)]
+            with self.subTest(number=repr(number)):
+                with self.assertRaises(OrchestrationError):
+                    validate_unambiguous_arguments(self.definition, pairs)
+                self.assertIs(pairs[0][1], number)
+                self.assertEqual(len(pairs), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
