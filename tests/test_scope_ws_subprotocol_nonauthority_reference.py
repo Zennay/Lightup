@@ -647,6 +647,19 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
         self.assertEqual(trace, ["denial_audit"] * 12)
         self.assertNotIn("action", trace)
 
+    def test_denial_audit_keeps_action_evidence_absent_during_revision_replay(self):
+        """Synthetic trace must separate denial records from action evidence."""
+        stored = Grant("tenant-a", "lab-asset", "read-only", 5, True, False)
+        outdated = Grant("tenant-a", "lab-asset", "read-only", 4, True, False)
+        events = []
+        for _ in range(8):
+            if reference_decide(stored, outdated,
+                                {"Sec-WebSocket-Protocol": "revision=5,approved"}):
+                events.append("action_evidence")
+            else:
+                events.append("denial_audit")
+        self.assertEqual(events, ["denial_audit"] * 8)
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
