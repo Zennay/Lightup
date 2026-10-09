@@ -26,7 +26,8 @@ def reference_attempt_bound(grant, *, tenant, request, revision, attempt, grant_
     """Reference equality predicate only; caller must authenticate grant provenance."""
     if type(grant) is not AttemptGrant or type(grant.active) is not bool or grant.active is not True:
         return False
-    if type(grant.scope_revision) is not int or type(revision) is not int or revision < 0:
+    if (type(grant.scope_revision) is not int or grant.scope_revision < 0
+            or type(revision) is not int or revision < 0):
         return False
     for value in (grant.tenant, grant.request, grant.attempt, grant.grant_id,
                   tenant, request, attempt, grant_id):
@@ -94,6 +95,9 @@ class AttemptBindingReferenceTests(unittest.TestCase):
 
     def test_negative_revision_is_never_authority(self):
         self.assertFalse(self.check(grant=dataclasses.replace(self.grant, scope_revision=-1), revision=-1))
+
+    def test_negative_grant_revision_is_denied_even_with_valid_claim(self):
+        self.assertFalse(self.check(grant=dataclasses.replace(self.grant, scope_revision=-1)))
 
     def test_all_grant_identity_fields_are_validated(self):
         for field in ("tenant", "request", "attempt", "grant_id"):
