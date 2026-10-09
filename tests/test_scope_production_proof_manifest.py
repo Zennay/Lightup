@@ -25,12 +25,16 @@ def is_release_evidence_complete(m: dict) -> bool:
         return False  # evidence approval never flips activation
     if not isinstance(m.get("owner_review_url"), str) or not m["owner_review_url"].startswith("https://github.com/"):
         return False
+    run_urls = set()
     for name in ("hosted_python_311", "hosted_python_314", "permanent_vps"):
         run = m.get(name)
         if type(run) is not dict or run.get("sha") != sha or run.get("conclusion") != "success":
             return False
-        if not isinstance(run.get("run_url"), str) or not run["run_url"].startswith("https://github.com/"):
+        if type(run.get("run_url")) is not str or not re.fullmatch(r"https://github\.com/[^/]+/[^/]+/actions/runs/[1-9][0-9]*", run["run_url"]):
             return False
+        if run["run_url"] in run_urls:
+            return False
+        run_urls.add(run["run_url"])
     negative = m.get("negative_real_executor_trace")
     positive = m.get("positive_loopback_lab_trace")
     for trace in (negative, positive, m.get("persistent_revocation_proof"),
@@ -61,14 +65,21 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
             "schema_version": 1, "release_gate": "REVIEWED", "implementation_sha": sha,
             "real_target_activation": False,
             "owner_review_url": "https://github.com/example/repo/pull/1",
-            "hosted_python_311": run.copy(), "hosted_python_314": run.copy(),
-            "permanent_vps": run.copy(),
+            "hosted_python_311": {**run, "run_url": "https://github.com/example/repo/actions/runs/1"},
+            "hosted_python_314": {**run, "run_url": "https://github.com/example/repo/actions/runs/2"},
+            "permanent_vps": {**run, "run_url": "https://github.com/example/repo/actions/runs/3"},
             "negative_real_executor_trace": {**trace, **{key: 0 for key in COUNTERS}},
             "positive_loopback_lab_trace": {**trace, "handler_calls": 1},
             "persistent_revocation_proof": trace.copy(),
             "trusted_destination_metadata_proof": trace.copy(),
         }
         self.assertTrue(is_release_evidence_complete(manifest))
+        changed = json.loads(json.dumps(manifest))
+        changed["hosted_python_314"]["run_url"] = changed["hosted_python_311"]["run_url"]
+        self.assertFalse(is_release_evidence_complete(changed))
+        changed = json.loads(json.dumps(manifest))
+        changed["permanent_vps"]["run_url"] = "https://github.com/example/repo/actions/runs/3/extra"
+        self.assertFalse(is_release_evidence_complete(changed))
         for status in ("HOLD", "PENDING", None, True):
             changed = json.loads(json.dumps(manifest))
             changed["release_gate"] = status
