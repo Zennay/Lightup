@@ -3,6 +3,7 @@
 This model is deliberately not a production authorization service.
 """
 from dataclasses import dataclass
+import unicodedata
 import unittest
 
 
@@ -14,13 +15,20 @@ class Grant:
     active: bool
 
 
+def canonical_identity(value):
+    """Reject ambiguous tenant/grant claims rather than silently normalizing them."""
+    return (type(value) is str and 1 <= len(value) <= 128
+            and value.isascii() and all(ch.isalnum() or ch in "-_." for ch in value)
+            and not any(unicodedata.category(ch).startswith("C") for ch in value))
+
+
 def restore_eligible(snapshot, issuer_state):
     """Admit a snapshot only if the current issuer-owned state still matches."""
     if type(snapshot) is not Grant or type(issuer_state) is not Grant:
         return False
-    if any(type(value) is not str or not value or value.strip() != value
-           for value in (snapshot.tenant, snapshot.grant_id,
-                         issuer_state.tenant, issuer_state.grant_id)):
+    if not all(canonical_identity(value)
+               for value in (snapshot.tenant, snapshot.grant_id,
+                             issuer_state.tenant, issuer_state.grant_id)):
         return False
     if type(snapshot.revision) is not int or type(issuer_state.revision) is not int:
         return False
@@ -83,6 +91,15 @@ class RestoreRollbackReferenceTests(unittest.TestCase):
                                           self.current))
         self.assertFalse(restore_eligible(Grant("tenant-a", "", 5, True),
                                           self.current))
+
+    def test_control_unicode_and_overlong_identity_denied(self):
+        for identity in ("tenant\\nadmin", "tenant\\x00admin", "tenant/admin",
+                         "ténant-a", "tenant\\u2028admin", "a" * 129):
+            with self.subTest(identity=repr(identity)):
+                self.assertFalse(restore_eligible(Grant(identity, "grant-a", 5, True),
+                                                  self.current))
+                self.assertFalse(restore_eligible(self.current,
+                                                  Grant(identity, "grant-a", 5, True)))
 
     def test_polymorphic_and_untrusted_restore_envelopes_denied(self):
         class DerivedGrant(Grant):
