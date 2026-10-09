@@ -189,6 +189,18 @@ class ProofManifestTests(unittest.TestCase):
             path.write_bytes(bytes([0xff, 0xfe]))
             self.assertEqual(module.main(["verify", str(path)]), 2)
 
+    def test_symlink_proof_input_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            original = Path(directory) / "proof.json"
+            original.write_text(json.dumps(fixture()), encoding="utf-8")
+            link = Path(directory) / "linked.json"
+            link.symlink_to(original)
+            self.assertEqual(module.main(["verify", str(link)]), 2)
+
+    def test_directory_proof_input_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertEqual(module.main(["verify", directory]), 2)
+
     def test_cli_valid_index_is_structural_only(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "valid.json"
