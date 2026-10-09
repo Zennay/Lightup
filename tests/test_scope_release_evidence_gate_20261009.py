@@ -101,10 +101,22 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
             output = StringIO()
             with redirect_stdout(output):
                 result = main(["check_scope_release_evidence.py", str(path)])
-            self.assertEqual(result, 0)
+            self.assertEqual(result, 3)
             self.assertIn("STRUCTURE-ONLY PASS", output.getvalue())
             self.assertIn("unverified", output.getvalue())
             self.assertIn("NOT release authorization", output.getvalue())
+
+    def test_cli_exit_status_distinguishes_structural_and_denied(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "evidence.json"
+            for payload, expected in ((sample(), 3), ({}, 1)):
+                with self.subTest(expected=expected):
+                    path.write_text(json.dumps(payload), encoding="utf-8")
+                    with redirect_stdout(StringIO()):
+                        self.assertEqual(
+                            main(["check_scope_release_evidence.py", str(path)]),
+                            expected,
+                        )
 
     def test_missing_evidence_holds(self):
         self.assertFalse(evaluate(None)[0])
