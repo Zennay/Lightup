@@ -54,13 +54,19 @@ class CanonicalPathInfoGuard:
     composed outside the LightUpWebApp when the web source owner integrates it.
     """
 
-    def __init__(self, app: Callable):
+    def __init__(self, app: Callable, *, production: bool = False):
+        if type(production) is not bool:
+            raise TypeError("production must be a built-in boolean")
         self._app = app
+        self._production = production
 
     def __call__(self, environ, start_response) -> Iterable[bytes]:
         try:
             canonical_path_info(environ)
         except InvalidPathInfo:
-            start_response("400 Bad Request", list(_ERROR_HEADERS))
+            headers = list(_ERROR_HEADERS)
+            if self._production:
+                headers.append(("Strict-Transport-Security", "max-age=31536000"))
+            start_response("400 Bad Request", headers)
             return [_ERROR_BODY]
         return self._app(environ, start_response)
