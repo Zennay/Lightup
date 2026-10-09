@@ -324,6 +324,27 @@ class BackslashNonauthorityTests(unittest.TestCase):
         self.assertEqual(target, original)
         policy.assert_called_once_with(original)
 
+
+    def test_authority_backslash_with_encoded_userinfo_is_raw_denial(self):
+        for target in (
+            "https://trusted.example" + chr(92) + "%40other.example/path",
+            "https://trusted.example%40user" + chr(92) + "other.example/path",
+        ):
+            with self.subTest(target=target):
+                policy = Mock(return_value="ALLOW")
+                with patch(__name__ + ".urlsplit", side_effect=AssertionError("parser called")) as parser:
+                    self.assertEqual(reference_dispatch(target, policy), "INVALID_TARGET")
+                parser.assert_not_called()
+                policy.assert_not_called()
+
+    def test_literal_backslash_remains_denied_with_encoded_slashes(self):
+        for encoded_slash in ("%2f", "%2F"):
+            target = "https://example.test/" + encoded_slash + chr(92) + "admin"
+            with self.subTest(encoded_slash=encoded_slash):
+                policy = Mock(return_value="ALLOW")
+                self.assertEqual(reference_dispatch(target, policy), "INVALID_TARGET")
+                policy.assert_not_called()
+
     def test_nonstring_input_must_not_invoke_user_string_conversion(self):
         class Hostile:
             def __str__(self):
