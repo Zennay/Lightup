@@ -11,12 +11,16 @@ SHA = re.compile(r"^[0-9a-f]{40}$")
 COUNTERS = ("handler_calls", "dns_calls", "socket_opens", "http_calls",
             "subprocess_calls", "retry_submissions", "queue_submissions",
             "action_evidence_writes")
+MANIFEST_KEYS = frozenset(("schema_version", "release_gate", "real_target_activation",
+    "implementation_sha", "owner_review_url", "hosted_python_311", "hosted_python_314",
+    "permanent_vps", "negative_real_executor_trace", "positive_loopback_lab_trace",
+    "persistent_revocation_proof", "trusted_destination_metadata_proof"))
 
 
 def is_release_evidence_complete(m: dict) -> bool:
     if type(m) is not dict or type(m.get("schema_version")) is not int or m["schema_version"] != 2:
         return False
-    if m.get("release_gate") != "REVIEWED":
+    if set(m) != MANIFEST_KEYS or type(m.get("release_gate")) is not str or m["release_gate"] != "REVIEWED":
         return False
     sha = m.get("implementation_sha")
     if type(sha) is not str or not SHA.fullmatch(sha):
@@ -162,6 +166,34 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         self.assertFalse(is_release_evidence_complete(changed))
 
 
+
+    def test_unknown_and_missing_top_level_evidence_fields_fail_closed(self):
+        sha = "a" * 40
+        run = {"sha": sha, "conclusion": "success",
+               "run_url": "https://github.com/example/repo/actions/runs/1"}
+        trace = {"sha": sha, "artifact_url": "https://example.invalid/evidence"}
+        valid = {
+            "schema_version": 2, "release_gate": "REVIEWED",
+            "implementation_sha": sha, "real_target_activation": False,
+            "owner_review_url": "https://github.com/example/repo/pull/1",
+            "hosted_python_311": {**run, "job_id": 11},
+            "hosted_python_314": {**run, "job_id": 12},
+            "permanent_vps": {**run, "job_id": 13,
+                "run_url": "https://github.com/example/repo/actions/runs/2"},
+            "negative_real_executor_trace": {**trace, **{k: 0 for k in COUNTERS}},
+            "positive_loopback_lab_trace": {**trace, "handler_calls": 1},
+            "persistent_revocation_proof": trace.copy(),
+            "trusted_destination_metadata_proof": trace.copy(),
+        }
+        self.assertTrue(is_release_evidence_complete(valid))
+        for key in MANIFEST_KEYS:
+            with self.subTest(missing=key):
+                missing = dict(valid)
+                del missing[key]
+                self.assertFalse(is_release_evidence_complete(missing))
+        extra = dict(valid)
+        extra["review_override"] = True
+        self.assertFalse(is_release_evidence_complete(extra))
 
     def test_malformed_manifest_shapes_fail_closed_without_exceptions(self):
         """Untrusted evidence envelopes must never crash the release checker."""
