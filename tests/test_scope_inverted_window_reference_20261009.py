@@ -317,5 +317,23 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
         self.assertTrue(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.EXPLICIT_NETWORK)
 
+    @unittest.expectedFailure
+    def test_required_public_host_denial_of_corrupt_bound(self):
+        # RED contract: expected failure on legacy implementation, until #1128.
+        # Keep independent of real networks and any dispatch.
+        decision = self.policy.decide(Target(
+            "https://authorized.example",
+            authorization=self.grant(False, None)))
+        self.assertFalse(decision.allowed)
+
+    @unittest.expectedFailure
+    def test_required_public_network_denial_of_corrupt_expiry(self):
+        # RED contract: fail-closed behavior required from production owner.
+        policy = ScopePolicy(explicit_networks=("8.8.8.0/24",))
+        decision = policy.decide(Target(
+            "https://8.8.8.8",
+            authorization=self.grant(None, "")))
+        self.assertFalse(decision.allowed)
+
 if __name__ == "__main__":
     unittest.main()
