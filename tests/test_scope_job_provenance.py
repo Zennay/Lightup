@@ -111,6 +111,13 @@ class OfflineJobProvenanceTests(unittest.TestCase):
         evidence.append(None)
         self.assertTrue(any("all job records" in error for error in module.check(proof(), evidence)))
 
+    def test_each_missing_job_metadata_field_fails_closed(self):
+        for key in ("id", "run_id", "head_sha", "name", "status", "conclusion"):
+            with self.subTest(key=key):
+                evidence = jobs()
+                del evidence[0][key]
+                self.assertTrue(module.check(proof(), evidence))
+
     def test_malformed_jobs_fail(self):
         for value in (None, {}, "jobs", [None]):
             with self.subTest(value=value):
