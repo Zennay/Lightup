@@ -106,3 +106,6 @@ Synthetic positive fixture and negative controls now verify that `REVIEWED` cann
 
 ## HOLD immutability and fabricated CI evidence (2026-10-09)
 Added regression coverage that a held, incomplete persisted manifest remains unchanged after observational checks, and cannot be promoted by caller-supplied `completed/success` snapshots. This specifically separates observation from authorization. Verified GitHub API run/job provenance, same implementation SHA, permanent VPS execution and owner review remain unfulfilled release gates. No active targets, dispatch or production executor changes.
+
+## Actual GitHub job observation and VPS false-positive guard
+Observed GitHub Actions run `37931523743` reports jobs `113823282481` (Python 3.11) and `113823282961` (Python 3.14), both explicitly named `Offline preflight Python ... (not VPS proof)` and in progress at observation time. These are **not permanent VPS proof**. The offline snapshot comparison now additionally requires `job_name`, and rejects an explicitly `not VPS proof` job if assigned to the VPS lane. This negative guard is not positive VPS attestation: a label can be forged in a caller-provided snapshot. Reviewers still need authenticated GitHub job metadata, verified permanent runner identity and exact-SHA success.
