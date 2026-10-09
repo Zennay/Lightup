@@ -109,3 +109,15 @@ Two new `@unittest.expectedFailure` checks assert the **desired** denied decisio
 
 ## Explicit RED provenance-denial contracts
 Two additional `@unittest.expectedFailure` tests assert the desired `allowed=False` for an allowlisted public hostname and an allowlisted public IP network when the synthetic grant has empty `owner` and `reference` and no time bounds. These expected failures document absent trusted provenance, not just corrupt timestamps. The old scope implementation currently returns allowed; XFAIL means **NOT FIXED** and a green hosted run does not grant production safety. Source owner should replace these with normal passing, negative authorization tests against the verified production execution boundary and remove conflicting legacy behavior assertions once #1128 is repaired.
+
+## Production merge migration runbook — 2026-10-09
+
+Do **not** merge this characterization file as if every assertion represented approved security behavior. Its 42 legacy tests document observed permissive or exception-raising behavior and will intentionally conflict with #1128's repair. Follow this sequence on a separately reviewed integration branch owned by #107/#1128:
+
+1. Pin the production implementation commit after #100 -> #107 dependency review. Preserve the four RED denial assertions as **requirements**, but remove `@unittest.expectedFailure` on the production acceptance copy and assert rejection at the actual pre-dispatch entry point, with zero calls to a fake handler and zero writes to a fake evidence store.
+2. Replace/retire legacy `assertTrue(decision.allowed)` examples for malformed 0/False/empty bounds, missing owner/reference, and unbounded synthetic consent. Replace exception-characterization `assertRaises(TypeError)` with stable, non-executable denials. Keep independently valid out-of-scope/missing-grant tests as regressions.
+3. Preserve a separate strict temporal-only reference: it cannot confer issuer consent. Align the production end-boundary policy explicitly (legacy inclusive vs reference exclusive) and test exact endpoint, offset, DST fold and overflow.
+4. Test authenticated issuer/client/engagement/asset/capability/revocation binding from durable state, including revoked-after-context-creation, and verify the permission check is repeated **immediately before handler I/O**. Positive controls use only synthetic fixtures and a stubbed handler, never public traffic.
+5. On the final exact implementation SHA, demand Python 3.11/3.14 hosted preflight, **canonical** `LightUp CI` using `[self-hosted, zcloud, vps]` with all jobs success, and source-owner review. Queued/cancelled runs and XFAIL-green runs do **not** satisfy these gates.
+
+Handoff acceptance: report counts of replaced legacy assertions, 4 RED requirements now regular passing negative tests, zero handler invocations for all denied inputs, and exact SHA plus permanent VPS run link. Do not edit #100/#107 branches or activate targets from this reference branch.
