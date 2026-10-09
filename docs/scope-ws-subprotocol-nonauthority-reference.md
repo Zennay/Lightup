@@ -17,3 +17,7 @@ Hosted preflight `37914098987` failed (Python 3.11 and 3.14 `Compile and unit su
 ## Missing grant and presentation shape rejection
 
 Three additional in-memory unittest methods cover absent/dict-like grants, malformed **requested** revision types, and header objects of arbitrary shape. The reference intentionally does not parse headers, because handshake negotiation metadata must never repair missing authorization evidence. **16 test methods** now exist in this standalone test file. This is not production enforcement; the real dispatcher and websocket gateway require source-owner verification and exact-head CI.
+
+## Denied-dispatch matrix and positive control
+
+Two additional standalone tests exercise eight denied grant/request combinations and assert zero mock handler calls, plus one fully matching approved control that reaches the mock handler once. Total: 18 offline unittest methods. These assertions prove only this in-memory reference, not the real production ToolExecutor, its I/O order, or durable revocation.
