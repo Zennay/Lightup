@@ -62,3 +62,7 @@ Dedicated assertions verify that Unicode test fixtures are genuine single-codepo
 ## Forged object boundaries
 
 Two additional offline tests reject a subclass of the Authorization model and a hostile mapping object without introspecting its keys or invoking user-provided methods. These explicitly test the strict-type boundary of the reference helper, not the production grant issuer.
+
+## Unicode separator completeness
+
+One additional normal offline test enumerates Unicode code points classified `Zs` and proves all non-ASCII-space separators are rejected when embedded in an identity. Ordinary ASCII spaces remain permitted. This is still shape-only verification, not authorization to access targets.
