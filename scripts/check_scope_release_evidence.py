@@ -112,7 +112,7 @@ def main(argv: list[str]) -> int:
         print(f"HOLD: invalid or unreadable evidence ({type(exc).__name__})")
         return 2
     allowed, reasons = evaluate(evidence)
-    print("REVIEW-ELIGIBLE (not authorization)" if allowed else "HOLD: " + "; ".join(reasons))
+    print("STRUCTURE-ONLY PASS: unverified claims; NOT release authorization" if allowed else "HOLD: " + "; ".join(reasons))
     return 0 if allowed else 1
 
 
