@@ -81,6 +81,27 @@ class OfflineExecutorNumberTests(unittest.TestCase):
         self.assertEqual(len(self.calls), before_calls)
         self.assertEqual(self.evidence_count(), before_evidence)
 
+    def test_string_value_denied_before_handler_and_evidence(self):
+        with self.assertRaises(OrchestrationError):
+            self.invoke("2.5")
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), 0)
+
+    def test_none_value_denied_before_handler_and_evidence(self):
+        with self.assertRaises(OrchestrationError):
+            self.invoke(None)
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), 0)
+
+    def test_optional_number_argument_cannot_be_replaced_by_unknown_key(self):
+        with self.assertRaises(OrchestrationError):
+            self.executor.execute(
+                self.context,
+                ToolCall("number-lab-only", "127.0.0.1", (("limit", 2.5),)),
+            )
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), 0)
+
     @unittest.expectedFailure
     def test_nan_denied_before_handler_and_evidence(self):
         with self.assertRaises(OrchestrationError):
