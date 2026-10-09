@@ -131,6 +131,23 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
                 ambiguous, (("value", 5.0),)
             )
 
+    def test_custom_sequence_subclasses_are_not_evaluated(self):
+        """Do not call user-defined __iter__ or __len__ during parsing."""
+        activity = []
+        class TrapList(list):
+            def __iter__(self):
+                activity.append("iterated")
+                raise AssertionError("untrusted subclass iterator ran")
+            def __len__(self):
+                activity.append("measured")
+                raise AssertionError("untrusted subclass length ran")
+        for argument in (TrapList([("value", 3.0)]),
+                         (TrapList(["value", 3.0]),)):
+            with self.subTest(kind=type(argument[0]).__name__):
+                with self.assertRaises(OrchestrationError):
+                    validate_unambiguous_arguments(self.definition, argument)
+        self.assertEqual(activity, [])
+
 
 if __name__ == "__main__":
     unittest.main()
