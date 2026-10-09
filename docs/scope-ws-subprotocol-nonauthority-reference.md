@@ -148,3 +148,19 @@ The **60th reference unittest method** records simulated handler, socket, queue,
 ## Distinguish denial audit from action evidence
 
 The **61st offline unit test** captures an ordered synthetic gateway event trace. Revoked and unapproved requests may record a narrowly-scoped `denial_audit` marker while emitting **zero** `handler` and `action_evidence` events; a matching authorized request emits the two action events only. This is an offline mock, not a real gateway, logging subsystem or storage proof. Production source owners must verify actual persisted audit/evidence separation before promotion.
+
+## CI evidence checklist (fill using real owner-owned integration runs)
+
+Evidence is acceptable only when every check below references the **same source commit**. The standalone reference's passing results do not satisfy the integrated executor gate.
+
+| Proof | Evidence to attach | Unacceptable substitute |
+| --- | --- | --- |
+| Trusted principal and grant | integration test path and log proving server-side grant lookup | copying `Sec-WebSocket-Protocol` or client fields |
+| Revocation fence | durable storage epoch + pre-I/O test covering concurrent withdrawal | only checking revocation at admission |
+| Denied real side effects | zero handler, DNS/socket, queue and action-evidence counts in real implementation logs | counts from the mock reference here |
+| Authorized positive control | exact approved lab target and allowed action, confirmed by owner | a live unknown target |
+| Hosted validation | Python 3.11 and 3.14 green workflows for reviewed commit | partial/in-progress or preceding head |
+| Permanent VPS validation | green canonical VPS workflow for reviewed commit | queued, cancelled, retriggered but incomplete run |
+| Code owner approval | approved production PR and conflict-free change ownership | draft or unrelated review |
+
+Until the owner provides all seven evidence artifacts, keep this standalone PR as **DRAFT/HOLD** and avoid any production activation.
