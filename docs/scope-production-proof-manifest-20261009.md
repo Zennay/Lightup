@@ -91,3 +91,6 @@ Offline observed-job validation now requires exactly the three declared lanes, r
 
 ## Snapshot type-integrity regression (2026-10-09)
 The supplied-job comparison now requires exact runtime field types for job ID, run URL and commit SHA before comparing them with the manifest. This closes Python equality-coercion ambiguity such as `True == 1` or `11.0 == 11` when comparing purported job IDs. Regression cases cover boolean and floating IDs as well as malformed status/version/classification fields. The validator still only checks untrusted, caller-provided snapshots. The mandatory authenticated GitHub API attestation and real-executor zero-I/O tests remain separate owner gates; no real-target authority is issued.
+
+## Snapshot field exact type enforcement
+The structural observed-job checker also requires exact built-in strings for status, conclusion, runner class and interpreter version. Polymorphic equality or custom string subclasses cannot satisfy these fields by comparing equal to a trusted literal. This is still only an offline comparison of caller-provided snapshots, not verified CI provenance.
