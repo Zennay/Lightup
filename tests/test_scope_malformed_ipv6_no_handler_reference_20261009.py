@@ -25,9 +25,10 @@ def reference_preflight(policy, target, handler):
         authority = target.value.split("://", 1)[-1].split("/", 1)[0]
         if authority.count("[") != authority.count("]") or authority.count("[") > 1:
             return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
-        decision = policy.decide(target)
     except ValueError:
         return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
+    # Policy failures are not parser failures: never relabel them as safe denies.
+    decision = policy.decide(target)
     if not decision.allowed:
         return decision
     handler(target)
@@ -66,6 +67,27 @@ class MalformedAuthorityNoHandlerReference(unittest.TestCase):
         self.assertIsNone(decision.normalized_host)
         self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
         policy.decide.assert_not_called()
+        handler.assert_not_called()
+
+    def test_policy_valueerror_is_not_disguised_as_invalid_target(self):
+        policy = Mock(spec=ScopePolicy)
+        policy.decide.side_effect = ValueError("policy infrastructure failed")
+        handler = Mock()
+        with self.assertRaisesRegex(ValueError, "policy infrastructure failed"):
+            reference_preflight(policy, Target("https://authorized.example.test/"), handler)
+        policy.decide.assert_called_once()
+        handler.assert_not_called()
+
+    def test_path_brackets_do_not_change_authority_identity(self):
+        policy = Mock(spec=ScopePolicy)
+        policy.decide.return_value = ScopeDecision(
+            False, "unlisted.example.test", ScopeReason.OUT_OF_SCOPE
+        )
+        handler = Mock()
+        target = Target("https://unlisted.example.test/path[fragment]")
+        decision = reference_preflight(policy, target, handler)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+        policy.decide.assert_called_once_with(target)
         handler.assert_not_called()
 
     def test_normal_denial_preserves_zero_handler_calls(self):
