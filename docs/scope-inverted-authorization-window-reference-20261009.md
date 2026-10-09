@@ -56,3 +56,11 @@ Implementation belongs to the production enforcement owner (#107), not this test
 **Do not blindly change end-boundary semantics.** The legacy dataclass treats `valid_until` as inclusive, while related approval-window PRs may use exclusive expiry. The owner must specify the executable contract and migrate callers without accidentally widening authorization.
 
 Review gates: pin implementation head; run focused failing-then-passing production acceptance, hosted Python 3.11/3.14, permanent VPS CI on that exact head; review overlap with #999, #1058 and #1125; obtain owner approval. No deploy or real-target activation is authorized by this handoff. Tracking: https://github.com/Zennay/Lightup/issues/1128.
+
+## Strict-window offline reference (separate from production)
+
+`tests/test_scope_strict_window_reference_20261009.py` adds nine isolated reference tests for a pure fail-closed temporal predicate. This is a proposed **temporal eligibility** contract only, not verified authorization. It denies unbounded windows, wrong types (including all falsy malformed values), naive clocks, invalid intervals, and clock-boundary overflow. For this reference the end is exclusive, deliberately contrasting with the existing inclusive `Authorization.is_current` semantics. Production owner must choose the correct migration contract for each grant type; do not transplant this predicate blindly.
+
+Run: `PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_strict_window_reference_20261009.py' -v`.
+
+The strict reference cannot authenticate issuer, owner, tenant, capability, revocation, persisted integrity or request intent. It must never be called as a stand-alone permission to scan. Production repair is tracked in #1128 under the #107 owner's surface.
