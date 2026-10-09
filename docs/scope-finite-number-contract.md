@@ -42,3 +42,7 @@ An additional real-ToolExecutor regression verifies that after one accepted synt
 ## Nonfinite replay and evidence invariants
 
 Additional `expectedFailure` coverage now models one successful finite lab invocation followed by a NaN invocation. Required behavior is a denial with no new handler call and no additional evidence, preserving the earlier valid evidence row. This supplements the single-call NaN/+Inf/-Inf tripwires; it is still RED characterization rather than enforcement. The test formerly mislabeled an unknown-key check as an optional parameter is renamed to describe its required-parameter contract accurately.
+
+## Repeated-denial persistence stability
+
+Two regular (not expected-failure) real-ToolExecutor regression methods repeat malformed calls 20 times each. They verify zero evidence on an otherwise empty isolated run, and exactly one unchanged evidence row when a prior finite control succeeded. These canaries establish that the existing malformed-value rejection has no accumulating evidence side effects. They are not substitutes for fixing NaN/Infinity or duplicate-key inputs, which still require owner changes (#1143, #1147).
