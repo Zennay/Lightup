@@ -100,6 +100,18 @@ class BooleanArgumentBoundaryTests(unittest.TestCase):
                 with self.assertRaises(OrchestrationError):
                     schema.validate_arguments(payload)
 
+    def test_repeated_admission_does_not_change_boolean_schema(self):
+        # Reusing the same definition across calls must preserve its contract.
+        before = self.schema.parameters
+        for value in (True, False, "true", 1, None, False, True):
+            with self.subTest(value=repr(value)):
+                if type(value) is bool:
+                    self.schema.validate_arguments({"enabled": value})
+                else:
+                    with self.assertRaises(OrchestrationError):
+                        self.schema.validate_arguments({"enabled": value})
+                self.assertEqual(self.schema.parameters, before)
+
     def test_missing_boolean_rejected(self):
         with self.assertRaises(OrchestrationError):
             self.schema.validate_arguments({})
