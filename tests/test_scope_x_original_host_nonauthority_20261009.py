@@ -187,5 +187,39 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(denied.reason, ScopeReason.OUT_OF_SCOPE)
 
 
+    def test_forged_original_host_denial_never_resolves_or_connects(self):
+        from unittest.mock import patch
+
+        def forbidden(*args, **kwargs):
+            raise AssertionError("scope decision must not perform target I/O")
+
+        with (
+            patch("socket.getaddrinfo", side_effect=forbidden) as lookup,
+            patch("socket.gethostbyname", side_effect=forbidden) as resolve,
+            patch("socket.create_connection", side_effect=forbidden) as connect,
+        ):
+            decision = self.policy.decide(Target(
+                "unknown.example",
+                labels=("X-Original-Host: approved.example",),
+            ))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+        lookup.assert_not_called()
+        resolve.assert_not_called()
+        connect.assert_not_called()
+
+    def test_original_host_hint_does_not_make_grant_lookups_on_deny(self):
+        class PoisonAuthorization:
+            def __getattribute__(self, name):
+                raise AssertionError("unlisted target must not inspect grant")
+
+        result = self.policy.decide(Target(
+            "unknown.example", authorization=PoisonAuthorization(),
+            labels=("X-Original-Host: approved.example",),
+        ))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
+
+
 if __name__ == "__main__":
     unittest.main()
