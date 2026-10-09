@@ -267,6 +267,18 @@ class BackslashNonauthorityTests(unittest.TestCase):
                 parser.assert_not_called()
                 policy.assert_not_called()
 
+
+    def test_literal_backslash_denial_is_independent_of_policy_type(self):
+        target = "https://example.test/path" + chr(92) + "subpath"
+        for policy in (None, object(), Mock(side_effect=AssertionError("policy called"))):
+            with self.subTest(policy_type=type(policy).__name__):
+                self.assertEqual(reference_dispatch(target, policy), "INVALID_TARGET")
+
+    def test_valid_url_requires_a_callable_downstream_policy(self):
+        target = "https://example.test/"
+        with self.assertRaises(TypeError):
+            reference_dispatch(target, None)
+
     def test_nonstring_input_must_not_invoke_user_string_conversion(self):
         class Hostile:
             def __str__(self):
