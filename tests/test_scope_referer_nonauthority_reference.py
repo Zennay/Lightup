@@ -34,7 +34,11 @@ def permitted(grant, call):
     if not all(type(getattr(grant, key)) is str and type(getattr(call, key)) is str
                for key in ("tenant", "request", "asset", "capability")):
         return False
-    if not all(getattr(obj, key) and not any(ord(c) < 32 or ord(c) == 127 for c in getattr(obj, key))\n               for obj in (grant, call)\n               for key in ("tenant", "request", "asset", "capability")):\n        return False\n    if not all(getattr(grant, flag) is True for flag in
+    if not all(getattr(obj, key) and not any(ord(c) < 32 or ord(c) == 127 for c in getattr(obj, key))
+               for obj in (grant, call)
+               for key in ("tenant", "request", "asset", "capability")):
+        return False
+    if not all(getattr(grant, flag) is True for flag in
                ("approved", "active", "issuer_verified")):
         return False
     return all(getattr(grant, key) == getattr(call, key)
