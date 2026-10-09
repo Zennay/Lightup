@@ -76,6 +76,24 @@ class EvidenceIdentifierReferenceTests(unittest.TestCase):
             self.assertEqual(before, after)
             self.assertEqual(count, 1)
 
+    def test_issuer_uuid_identity_is_stable_across_reopen(self):
+        from lightup.state import StateStore
+
+        payload = b"offline reopen identity fixture"
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "reopen.db"
+            store = StateStore(database)
+            run_id = store.create_run(target="local-fixture", activation_mode="plan_only")
+            evidence_id = store.add_evidence(
+                run_id=run_id, capability_id="fixture", kind="reference",
+                source="offline", payload=payload,
+            )
+            reopened = StateStore(database)
+            record = reopened.get_evidence(evidence_id)
+            self.assertEqual(record.evidence_id, canonical_evidence_id(evidence_id))
+            self.assertEqual(record.sha256, hashlib.sha256(payload).hexdigest())
+            self.assertEqual(record.run_id, run_id)
+
     def test_actual_uuid4_issuer_samples_roundtrip(self):
         # Standard-library issuer path used by StateStore.add_evidence.
         for _ in range(32):
