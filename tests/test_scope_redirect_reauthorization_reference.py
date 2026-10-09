@@ -301,6 +301,24 @@ class RedirectScopeReferenceTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
 
+    def test_ipv6_explicit_network_rejects_future_grant(self):
+        policy = ScopePolicy(allow_private_lab=False, explicit_networks=("2606:4700:4700::1111/128",))
+        future = Authorization(
+            owner="synthetic-test-only",
+            reference="FUTURE-IPV6-NOT-CONSENT",
+            valid_from=datetime.now(timezone.utc) + timedelta(days=1),
+        )
+        decision = policy.decide(Target("https://[2606:4700:4700::1111]/", authorization=future))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+
+    def test_ipv6_scheme_relative_redirect_outside_allowlist_denied(self):
+        source = "https://approved.example.test/start"
+        destination = urljoin(source, "//[2606:4700:4700::1111]/next")
+        decision = self.decide(destination, self.grant)
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
     def test_each_redirect_hop_rechecks_target_identity(self):
         hops = [
             "https://approved.example.test/start",
