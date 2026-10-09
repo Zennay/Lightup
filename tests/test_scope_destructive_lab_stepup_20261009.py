@@ -482,6 +482,50 @@ class DestructiveLabStepUpIntegrationTests(unittest.TestCase):
         self.assertEqual(result.tool_id, self.call.tool_id)
         self.assertEqual(self.invocations, [self.context.run_id])
 
+    def test_invalid_high_risk_envelope_is_rejected_before_trusted_callbacks(self):
+        callbacks = []
+        wrapper = DestructiveLabStepUpExecutor(
+            self.executor,
+            lambda run_id: callbacks.append(("approval", run_id)) or self.approval,
+            isolation_verifier=lambda context, call: callbacks.append(
+                ("isolation", call.asset)
+            ) or True,
+        )
+        bad_contexts = (
+            replace(self.context, mode=AssessmentMode.ANALYSIS_ONLY),
+            replace(self.context, is_lab=False),
+            replace(self.context, approved_risk=RiskLevel.LOW_IMPACT),
+            replace(self.context, authorization=object()),
+            replace(self.context, run_id="run\x00invalid"),
+            replace(self.context, client_id="client\ninvalid"),
+            replace(self.context, created_at=datetime.now()),
+        )
+        for context in bad_contexts:
+            with self.subTest(context=str(context.run_id)):
+                self.assert_denied_without_effect(wrapper, context=context)
+                self.assertEqual(callbacks, [])
+        self.assert_denied_without_effect(
+            wrapper,
+            call=ToolCall(self.call.tool_id, "lab\nother"),
+        )
+        self.assertEqual(callbacks, [])
+
+    def test_parameterized_destructive_tool_does_not_query_authority(self):
+        calls = []
+        wrapper = DestructiveLabStepUpExecutor(
+            self.executor,
+            lambda run_id: calls.append("approval") or self.approval,
+            isolation_verifier=lambda context, call: calls.append("isolation") or True,
+        )
+        self.assert_denied_without_effect(
+            wrapper,
+            call=ToolCall(
+                self.call.tool_id, self.call.asset,
+                arguments=(("host", "outside-lab.example.test"),),
+            ),
+        )
+        self.assertEqual(calls, [])
+
 
 if __name__ == "__main__":
     unittest.main()
