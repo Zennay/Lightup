@@ -57,3 +57,14 @@ Two additional offline methods cover 35 attempts to replay seven authority-sound
 ## Header casing and no header-access dependency
 
 Two isolated offline methods ensure an unapproved stored grant is denied under four alternate `Sec-WebSocket-Protocol` header casings and absent grants are denied without reading a hostile header object. Total: **36 offline unittest methods**. The reference's explicit ignore-header design cannot substitute for gateway or ToolExecutor integration proof.
+
+## Production integration acceptance handoff
+
+Reference test count: **38**. The latest additions test a stored grant's independent authority even when caller request claims approval, and valid grants remain unaffected by unusual subprotocol presentation values.
+
+**Source-owned integration gate (not implemented by this PR):**
+1. Bind the server-side authenticated grant to tenant, asset, capability and revision; reject missing or malformed provenance before invoking any ToolExecutor, handler, DNS or socket operation.
+2. Re-read revocation from a durable trusted source immediately before dispatch; never infer from a WebSocket subprotocol value.
+3. In the real gateway and ToolExecutor integration tests, track handler and evidence writes for denied requests and require exactly zero; include a fully authorized positive control.
+4. Execute Python 3.11/3.14 hosted preflight and permanent VPS suite on the **same reviewed implementation SHA**, then obtain source-owner review.
+5. Preserve analysis-only posture until all gates pass. This PR does not activate assets or prove production safety.
