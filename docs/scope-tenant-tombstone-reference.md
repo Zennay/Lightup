@@ -6,7 +6,7 @@ A deleted tenant must never retain active assessment authority just because a ca
 
 ## Proposed contract for the production owner
 
-- Keep an issuer-owned, monotonically increasing **tenant incarnation/generation** and durable deletion tombstone; never infer deletion from an absent or user-supplied UI field.
+- Keep an issuer-owned, monotonically increasing **tenant incarnation/generation** in the inclusive signed-64-bit range `1..2^63-1` (fail closed at exhaustion; never wrap or recycle) and durable deletion tombstone; never infer deletion from an absent or user-supplied UI field.
 - Bind every issued grant to tenant identity **and incarnation**. On delete, revoke/cancel in-flight leases and deny later dispatch. Re-creation must receive a new incarnation.
 - At **admission and immediately before every dispatch**, read trusted current tenant lifecycle, grant revision/revocation, independent approvals, capability, risk, target and execution-window state. Any lookup error, timeout, stale cache or mismatch denies.
 - Make tombstone writes, grant invalidation and work-queue cancellation atomic or implement a fail-closed barrier that denies dispatch while they converge. Record audit receipts without tenant-sensitive payloads.
@@ -16,7 +16,7 @@ A deleted tenant must never retain active assessment authority just because a ca
 
 `python -m unittest discover -s tests -p 'test_scope_tenant_tombstone_reference.py' -v`
 
-Sixteen stdlib-only cases test deletion denial, tenant reincarnation, older snapshots, tenant swaps, inactive/truthy flags, malformed identities and types, subclassed grant/state records, generation boundaries, grant identifier rejection and input immutability. Passing the positive reference case is **not permission to run a scanner**.
+Twenty stdlib-only cases test deletion denial, tenant reincarnation, older snapshots, tenant swaps, inactive/truthy flags, malformed identities and types, subclassed grant/state records, generation boundaries, grant identifier rejection, overflow and non-integer generations, signed-64-bit boundary and input immutability. Passing the positive reference case is **not permission to run a scanner**.
 
 ## Ownership / safety
 
