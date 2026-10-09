@@ -40,7 +40,8 @@ def check(proof, jobs, runs):
             errors.append("missing or duplicate referenced workflow run")
             continue
         run = matching[0]
-        if (run.get("head_sha") != proof["implementation_sha"] or
+        if (type(run.get("head_sha")) is not str or
+                run["head_sha"] != proof["implementation_sha"] or
                 run.get("status") != "completed" or run.get("conclusion") != "success"):
             errors.append("workflow run SHA or outcome mismatch")
     # Require an exact three-job snapshot; extra entries could conceal a
