@@ -151,6 +151,30 @@ def classify_authenticated_run_jobs(run: dict, jobs: list, expected_sha: str) ->
 
 
 class ScopeProductionProofManifestTests(unittest.TestCase):
+    def test_authenticated_hosted_classifier_never_asserts_vps(self):
+        sha = "a" * 40
+        run = {"id": 91, "head_sha": sha, "status": "completed", "conclusion": "success"}
+        jobs = [
+            {"id": 100, "run_id": 91, "name": "Offline preflight Python 3.11 (not VPS proof)",
+             "status": "completed", "conclusion": "success"},
+            {"id": 101, "run_id": 91, "name": "Offline preflight Python 3.14 (not VPS proof)",
+             "status": "completed", "conclusion": "success"},
+        ]
+        expected = {"hosted_python_311": 100, "hosted_python_314": 101}
+        self.assertEqual(classify_authenticated_run_jobs(run, jobs, sha), expected)
+        self.assertNotIn("permanent_vps", expected)
+        for mutation in ("queued", "failure"):
+            changed = dict(run)
+            changed["status" if mutation == "queued" else "conclusion"] = mutation
+            self.assertEqual(classify_authenticated_run_jobs(changed, jobs, sha), {})
+        for index, key, wrong in ((0, "run_id", 92), (1, "conclusion", "failure"),
+                                  (0, "name", "Permanent VPS Python 3.11"),
+                                  (1, "id", 100)):
+            changed = [dict(j) for j in jobs]
+            changed[index][key] = wrong
+            self.assertEqual(classify_authenticated_run_jobs(run, changed, sha), {})
+        self.assertEqual(classify_authenticated_run_jobs(run, jobs, "b" * 40), {})
+
     def test_artifact_url_rejects_spoofed_or_ambiguous_locations(self):
         self.assertTrue(_valid_artifact_url("https://evidence.example.org/evidence"))
         for candidate in (
