@@ -76,7 +76,8 @@ def main(argv):
         print("usage: verify_scope_proof_manifest.py path/to/evidence.json", file=sys.stderr)
         return 2
     try:
-        raw = Path(argv[1]).read_bytes()
+        with Path(argv[1]).open("rb") as stream:
+            raw = stream.read(MAX_MANIFEST_BYTES + 1)
         if len(raw) > MAX_MANIFEST_BYTES:
             raise ValueError("proof manifest exceeds maximum byte length")
         data = json.loads(raw.decode("utf-8"),
