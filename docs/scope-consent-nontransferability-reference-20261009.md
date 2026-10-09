@@ -14,6 +14,7 @@ The companion test uses an in-memory frozen tuple-shaped consent model and check
 - owner-transfer round trip cannot resurrect an earlier approval: fresh authorization revision is required;
 - matching revision cannot override an independently revoked authorization;
 - revision identifiers must be positive exact integers, never zero, negative or bool;
+- identity bindings containing ASCII control characters or DEL must fail closed on either side, including when both sides carry the same malformed identifier;
 - strict booleans, integer revision and exact built-in string identity types;
 - empty identity and malformed revocation denial;
 - false-y nonboolean revocation status, denied approvals and forged stored owner identity;
