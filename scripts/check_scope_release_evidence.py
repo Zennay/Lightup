@@ -25,7 +25,8 @@ def valid_run_url(value: object) -> bool:
         return False
     parts = parsed.path.split("/")
     return (
-        parsed.scheme == "https"
+        value.isascii()
+        and parsed.scheme == "https"
         and parsed.netloc == "github.com"
         and parsed.query == ""
         and parsed.fragment == ""
