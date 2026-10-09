@@ -12,6 +12,8 @@ A rendered status (green badge, `Approved` label, frontend `approved` boolean, l
 - A display link pointing to a different tenant cannot move authority.
 - Previous revisions and other capabilities cannot inherit a green badge.
 - Truthy flags, subclass envelopes and unverified issuers do not pass the reference predicate.
+- Both claimed and issuer identity strings must be exact printable ASCII without surrounding whitespace, control bytes, Unicode confusables, empty values or values over 128 characters. This reference-only grammar is intentionally restrictive and must not be silently treated as the production canonicalization policy.
+- Boolean revision values are rejected even though Python treats `True == 1`.
 - Presentation data is not even dereferenced by the authorization predicate; display objects may be malformed or hostile.
 - Valid synthetic issuer decisions do not depend on cosmetic state.
 
