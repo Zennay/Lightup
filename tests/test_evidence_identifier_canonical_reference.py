@@ -48,6 +48,37 @@ class EvidenceIdentifierReferenceTests(unittest.TestCase):
         self.assertEqual(reference_lookup(store, self.VALID), self.VALID)
         self.assertEqual(store.lookups, [self.VALID])
 
+    def test_reference_lookup_rejects_alias_without_calling_real_store(self):
+        from lightup.state import StateStore
+
+        with tempfile.TemporaryDirectory() as directory:
+            store = StateStore(Path(directory) / "lookup-order.db")
+            run_id = store.create_run(target="local-fixture", activation_mode="plan_only")
+            identifier = store.add_evidence(
+                run_id=run_id, capability_id="fixture", kind="reference",
+                source="offline", payload=b"lookup ordering",
+            )
+
+            class ReadSpy:
+                def __init__(self, wrapped):
+                    self.wrapped = wrapped
+                    self.calls = []
+
+                def get_evidence(self, evidence_id):
+                    self.calls.append(evidence_id)
+                    return self.wrapped.get_evidence(evidence_id)
+
+            spy = ReadSpy(store)
+
+            def reference_read(value):
+                return spy.get_evidence(canonical_evidence_id(value))
+
+            with self.assertRaisesRegex(ValueError, "noncanonical"):
+                reference_read(identifier.upper())
+            self.assertEqual(spy.calls, [])
+            self.assertEqual(reference_read(identifier).evidence_id, identifier)
+            self.assertEqual(spy.calls, [identifier])
+
     def test_canonical_uuid4_accepted_without_normalization(self):
         self.assertEqual(canonical_evidence_id(self.VALID), self.VALID)
 
