@@ -26,3 +26,6 @@ Maintain DRAFT/HOLD until production owner #107/#1128 completes end-to-end tests
 The pure policy reference separately tests that `require_authorization_for_public=False` is an explicit trusted policy configuration, never a value inferred from `X-Original-Host`, and that 1/10/100 repeated spoofed labels cannot mutate configured allowlists. These tests are NOT an endorsement of disabling consent requirements in the production dispatcher.
 
 ## Alias and expiry isolation\n\nCase variants and underscore aliases of original-host routing metadata remain mere labels. A URL with an expired synthetic authorization remains denied even if a routing hint claims localhost. This offline legacy-policy reference is not a real ingress or tool-executor security proof.\n
+## Header is not a network grant
+
+A forged X-Original-Host naming an explicitly allowlisted IP cannot transfer authority to another public IP. Text strings such as `authorization=fixture` or `approved=true` embedded in a hint cannot replace a required authorization object. Both tests operate only on the pure offline policy; production trust provenance and pre-I/O enforcement are still pending.
