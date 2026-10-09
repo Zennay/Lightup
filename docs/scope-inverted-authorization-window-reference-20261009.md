@@ -97,3 +97,6 @@ The pure strict temporal reference now checks 21 combinations: seven instants su
 
 ## Untrusted timezone callback errors
 The offline strict reference now treats ordinary `Exception` subclasses from timezone metadata and UTC conversion as temporal rejection rather than escaping the validation boundary. A custom `tzinfo` raising `RuntimeError` is exercised at start, expiry and current-clock positions; `BaseException` process interrupts are intentionally not swallowed. This reference does not issue consent or change production behavior.
+
+## Follow-up correction: exceptions in all three temporal phases
+Review of the earlier timezone hardening identified two remaining narrow `except (TypeError, ValueError, OverflowError)` handlers on stored start/end validation and UTC conversion. The first guard on the current-clock offset had already been expanded, but `RuntimeError` could still escape from the other two paths. Updated the isolated reference so all three phases catch ordinary `Exception` and deny safely while still propagating `BaseException` process interrupts. The existing three-position crashing timezone regression now covers the complete correction; this is not a production fix or grant authority.
