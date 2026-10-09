@@ -230,6 +230,27 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
             )
         self.assertEqual(observed, [])
 
+    def test_integer_subclass_rejected_before_execution(self):
+        """INTEGER values cannot rely on custom int-subclass behavior."""
+        integer_definition = ToolDefinition(
+            "integer-only", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "offline integer only",
+            (ToolParameter("count", ParamKind.INTEGER),),
+        )
+        class TrapInt(int):
+            def __index__(self):
+                raise AssertionError("custom index hook must not be used")
+        with self.assertRaisesRegex(OrchestrationError, "built-in integer"):
+            validate_unambiguous_arguments(
+                integer_definition, (("count", TrapInt(7)),)
+            )
+        self.assertEqual(
+            validate_unambiguous_arguments(integer_definition, (("count", 7),)),
+            {"count": 7},
+        )
+        with self.assertRaises(OrchestrationError):
+            validate_unambiguous_arguments(integer_definition, (("count", True),))
+
     def test_invalid_registry_kind_and_required_flag_rejected(self):
         for kind, required in ((None, True), ("number", True),
                                (ParamKind.NUMBER, 1),
