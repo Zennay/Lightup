@@ -61,3 +61,7 @@ A fake operator approval embedded in a routing label cannot grant a bracketed IP
 ## Mapping-shaped header inputs
 
 Additional offline regressions treat a mapping of claimed host/approval/reference header values as untrusted metadata, not a grant. A hostile mapping implementing raising dictionary accessors must not be inspected when an external target is denied. This is not a production HTTP ingress test and cannot prove trusted pre-dispatch authorization.
+
+## Composite forged consent and hostile mapping
+
+Tests assert a group of untrusted issuer/client/engagement/asset/capability/revocation hints cannot jointly create a grant, and that a hostile mapping cannot be inspected even for allowlisted hosts missing authorization. This still covers only the pure policy layer; true persisted consent is a separate production gate.
