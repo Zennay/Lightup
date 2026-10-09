@@ -60,7 +60,7 @@ def validate_unambiguous_arguments(
     # Canonical tool NUMBER arguments are built-in int/float, not subclass hooks.
     for name, value in result.items():
         if name not in parameter_by_name:
-            continue
+            raise OrchestrationError(f"unknown tool argument name {name!r}")
         kind = parameter_by_name[name].kind
         if kind is ParamKind.NUMBER and type(value) not in (int, float):
             raise OrchestrationError(f"tool argument {name!r} must be a built-in number")
