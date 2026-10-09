@@ -22,7 +22,7 @@ another. The explicit reference vocabulary is `current-assessment`,
 ## Evidence boundaries
 
 `tests/test_scope_purpose_binding_reference.py` contains a **pure in-memory
-reference** with sixteen independent unittest regressions. A positive result means
+reference** with eighteen independent unittest regressions. A positive result means
 only that this tiny reference predicate's purpose and identity fields agree;
 the reference intentionally restricts identity fields to printable ASCII to avoid\nUnicode confusables and invisible separators; the production owner must decide\na canonical identity grammar. It does not establish authentic provenance, valid consent, authorization for
 targets, or permission to execute a capability.
@@ -37,3 +37,11 @@ Purpose aliases and duck-typed grant dictionaries are explicitly rejected.\nAddi
 The production scope-executor owner must decide how to integrate this separate
 contract. Keep this PR draft pending exact-head hosted 3.11/3.14 and permanent
 VPS checks plus source-owner review.
+
+## Full purpose matrix
+
+The offline reference checks all nine granted-purpose/requested-purpose
+combinations, permitting only the three diagonal cases. It also verifies that
+issuer and request values containing ASCII newline, carriage return, NUL or
+DEL are refused even if a caller supplies the very same malformed value.
+These checks do not establish provenance and never enable execution.
