@@ -17,13 +17,13 @@ class Grant:
 
 
 def allowed(grant, *, tenant, request, asset, capability, accept_language):
-    # No coercion: all authority-bearing identifiers must be exact strings.
+    if type(grant) is not Grant:\n        return False\n    # No coercion: all authority-bearing identifiers must be exact strings.
     identities = (grant.tenant, grant.request, grant.asset, grant.capability,
                   tenant, request, asset, capability)
     if any(type(x) is not str or not x or x != x.strip() for x in identities):
         return False
     # Header intentionally ignored, including malformed or adversarial content.
-    return (type(grant) is Grant and type(grant.active) is bool
+    return (type(grant.active) is bool
             and type(grant.issuer_verified) is bool
             and grant.active and grant.issuer_verified
             and (tenant, request, asset, capability) ==
@@ -74,6 +74,28 @@ class ScopeAcceptLanguageNonAuthorityTests(unittest.TestCase):
             grant = Grant("tenant-1", "request-1", "example.invalid", "headers",
                           active, verified)
             self.assertFalse(self.evaluate(grant, accept_language="en-GB"))
+
+    def test_missing_or_polymorphic_grant_rejected_without_property_access(self):
+        class ForgedGrant:
+            @property
+            def tenant(self):
+                raise AssertionError("untrusted grant attributes accessed")
+        class GrantSubclass(Grant):
+            pass
+        for invalid in (object(), ForgedGrant(), GrantSubclass(
+                "tenant-1", "request-1", "example.invalid", "headers", True, True)):
+            with self.subTest(grant=type(invalid).__name__):
+                self.assertFalse(self.evaluate(invalid, accept_language="en-GB"))
+
+    def test_matching_malformed_identity_fails_closed(self):
+        for field in self.context:
+            for invalid in ("", "bad\\nvalue", "bad\\rvalue", " bad", "bad "):
+                values = dict(self.context)
+                values[field] = invalid
+                grant_values = {name: values[name] for name in self.context}
+                grant = Grant(**grant_values, active=True, issuer_verified=True)
+                with self.subTest(field=field, invalid=repr(invalid)):
+                    self.assertFalse(self.evaluate(grant, accept_language="approved", **values))
 
     def test_header_object_is_not_inspected_or_executed(self):
         class HostileHeader:
