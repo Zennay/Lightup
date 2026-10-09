@@ -4,7 +4,7 @@ No network, DNS, credentials or trusted grants. Production integration remains
 owned by the pre-I/O source owner; this reference cannot authorize execution.
 """
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from urllib.parse import urlsplit
 
 
@@ -123,6 +123,35 @@ class BackslashNonauthorityTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "policy unavailable"):
             reference_dispatch("https://example.test/path", policy)
         policy.assert_called_once_with("https://example.test/path")
+
+
+    def test_literal_backslash_rejected_before_parser_or_policy(self):
+        cases = (
+            r"https://example.test\\admin",
+            r"https:\\example.test/path",
+            "https://example.test/" + chr(92),
+        )
+        for target in cases:
+            with self.subTest(target=target):
+                downstream = Mock(return_value="ALLOW")
+                with patch(__name__ + ".urlsplit", side_effect=AssertionError("parser called")) as parser:
+                    self.assertEqual(reference_dispatch(target, downstream), "INVALID_TARGET")
+                parser.assert_not_called()
+                downstream.assert_not_called()
+
+    def test_hostile_nonstring_rejected_before_parser_and_policy(self):
+        class Trap:
+            def __bool__(self):
+                raise AssertionError("untrusted truthiness")
+
+            def __str__(self):
+                raise AssertionError("untrusted coercion")
+
+        downstream = Mock(return_value="ALLOW")
+        with patch(__name__ + ".urlsplit", side_effect=AssertionError("parser called")) as parser:
+            self.assertEqual(reference_dispatch(Trap(), downstream), "INVALID_TARGET")
+        parser.assert_not_called()
+        downstream.assert_not_called()
 
     def test_nonstring_input_must_not_invoke_user_string_conversion(self):
         class Hostile:
