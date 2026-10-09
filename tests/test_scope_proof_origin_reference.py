@@ -29,7 +29,7 @@ def eligible(x: DecisionInput) -> bool:
         x.proof_origin, x.proof_tenant, x.proof_request,
         x.proof_issuer, x.proof_authorization_ref,
     )
-    if any(type(v) is not str or not v or len(v) > 128 for v in fields):
+    if any(\n        type(v) is not str\n        or not v\n        or len(v) > 128\n        or v != v.strip()\n        or any(ord(char) < 0x20 or ord(char) == 0x7f for char in v)\n        for v in fields\n    ):
         return False
     if x.proof_origin != "trusted_authorization_register":
         return False
@@ -78,7 +78,7 @@ class ProofOriginReferenceTests(unittest.TestCase):
             with self.subTest(value=repr(value)):
                 self.assertFalse(eligible(replace(self.good, proof_tenant=value)))
 
-    def test_subclass_is_not_a_trusted_envelope(self):
+    def test_control_characters_and_ambiguous_whitespace_are_denied(self):\n        from dataclasses import replace\n        for field in ("tenant", "request", "issuer", "authorization_ref", "proof_tenant", "proof_request", "proof_issuer", "proof_authorization_ref"):\n            for value in (" tenant", "tenant ", "tenant\\nother", "tenant\\rhidden", "tenant\\tother", "tenant\\x00other", "tenant\\x7fother"):\n                with self.subTest(field=field, value=repr(value)):\n                    self.assertFalse(eligible(replace(self.good, **{field: value})))\n\n    def test_invalid_control_character_in_proof_origin(self):\n        from dataclasses import replace\n        self.assertFalse(eligible(replace(self.good, proof_origin="trusted_authorization_register\\n")))\n\n    def test_subclass_is_not_a_trusted_envelope(self):
         class Derived(DecisionInput):
             pass
         self.assertFalse(eligible(Derived(**vars(self.good))))
