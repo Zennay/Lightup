@@ -184,6 +184,32 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
             with self.subTest(header_type=type(headers).__name__):
                 self.assertTrue(reference_decide(self.valid, self.valid, headers))
 
+    def test_denial_matrix_has_no_mock_handler_side_effects(self):
+        denied = (
+            (Grant("tenant-a", "lab-asset", "read-only", 3, False, False),
+             Grant("tenant-a", "lab-asset", "read-only", 3, False, False)),
+            (Grant("tenant-a", "lab-asset", "read-only", 3, True, True),
+             Grant("tenant-a", "lab-asset", "read-only", 3, True, True)),
+            (self.valid, Grant("tenant-b", "lab-asset", "read-only", 3, True, False)),
+            (self.valid, Grant("tenant-a", "other-asset", "read-only", 3, True, False)),
+            (self.valid, Grant("tenant-a", "lab-asset", "active-scan", 3, True, False)),
+            (self.valid, Grant("tenant-a", "lab-asset", "read-only", 2, True, False)),
+            (None, self.valid),
+            (self.valid, None),
+        )
+        calls = []
+        for stored, request in denied:
+            if reference_decide(stored, request,
+                                {"Sec-WebSocket-Protocol": "admin, approved"}):
+                calls.append((stored, request))
+        self.assertEqual(calls, [])
+
+    def test_valid_control_can_reach_mock_handler_once(self):
+        calls = []
+        if reference_decide(self.valid, self.valid, {"Sec-WebSocket-Protocol": "json"}):
+            calls.append("executed")
+        self.assertEqual(calls, ["executed"])
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
