@@ -295,6 +295,20 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
                     self.assertFalse(matches_consent(
                         self.consent, **(self.request | {field: self.request[field] + separator})))
 
+    def test_reject_unicode_separator_in_stored_and_requested_binding(self):
+        for codepoint in (0x2028, 0x2029):
+            for field in ("tenant_id", "engagement_id", "owner_id", "asset_id", "capability_id"):
+                with self.subTest(field=field, codepoint=hex(codepoint)):
+                    record = dict(tenant_id=self.consent.tenant_id,
+                                  engagement_id=self.consent.engagement_id,
+                                  owner_id=self.consent.owner_id,
+                                  asset_id=self.consent.asset_id,
+                                  capability_id=self.consent.capability_id,
+                                  revision=3, approved=True)
+                    record[field] += chr(codepoint)
+                    self.assertFalse(matches_consent(
+                        Consent(**record), **(self.request | {field: record[field]})))
+
 
 if __name__ == "__main__":
     unittest.main()
