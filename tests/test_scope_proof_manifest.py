@@ -112,6 +112,17 @@ class ProofManifestTests(unittest.TestCase):
             path.write_text(json.dumps(obj), encoding="utf-8")
             self.assertEqual(module.main(["verify", str(path)]), 1)
 
+    def test_cli_missing_required_fields_are_rejected(self):
+        for field in module.REQUIRED:
+            with self.subTest(field=field):
+                obj = fixture()
+                del obj[field]
+                with tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / "missing.json"
+                    path.write_text(json.dumps(obj), encoding="utf-8")
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        self.assertEqual(module.main(["verify", str(path)]), 1)
+
     def test_valid_index_only(self):
         self.assertEqual(module.verify(fixture()), [])
 
