@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import unittest
 from dataclasses import replace
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 
 from lightup.engagements import AuthorizationGrant, RiskLevel, ScopeDefinition
 from lightup.execution_policy import ExecutionPolicy, ExecutionRequest, InteractionKind
@@ -219,6 +219,18 @@ class GrantAttenuationTests(unittest.TestCase):
         decision = compare_grant_attenuation(old, changed)
         self.assertTrue(decision.nonexpanding)
         self.assertFalse(decision.grants_execution_authority)
+
+    def test_custom_timezone_callbacks_are_never_invoked(self):
+        class TrappingTimezone(tzinfo):
+            def utcoffset(self, dt):
+                raise AssertionError("untrusted tzinfo must not execute")
+            def dst(self, dt):
+                raise AssertionError("untrusted tzinfo must not execute")
+            def tzname(self, dt):
+                raise AssertionError("untrusted tzinfo must not execute")
+        old = approved()
+        trap_date = datetime(2026, 10, 9, tzinfo=TrappingTimezone())
+        self.assert_rejected(replace(old, valid_from=trap_date), "invalid_time_window")
 
     def test_grant_identity_subclasses_deny_without_coercion(self):
         class PretendId(str):
