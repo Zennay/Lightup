@@ -12,7 +12,7 @@ from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import urlencode
 
-from lightup.domain import DomainStore
+from lightup.domain import DomainStore, Role
 from lightup.webapp import create_app
 from lightup.webapp.security import WebSecurity
 
@@ -137,6 +137,59 @@ class WSGIFramingAuthorityTests(unittest.TestCase):
                     production, "forged-http-length",
                     length="+10", extra={"HTTP_CONTENT_LENGTH": str(len(body))},
                 )
+
+
+    def test_truncated_body_and_duplicate_csrf_deny_before_session_lookup(self):
+        """Valid operator cookies cannot rescue broken framing or duplicate CSRF."""
+        for production in (False, True):
+            for case, body, length in (
+                ("truncated", b"csrf=good", "999"),
+                ("duplicate-csrf", b"csrf=first&csrf=second&name=Unsafe", None),
+                ("encoded-duplicate-csrf", b"csrf=first&%63srf=second&name=Unsafe", None),
+            ):
+                with self.subTest(production=production, case=case):
+                    before = len(self.store.list_clients(self.ctx))
+                    with patch.object(self.store, "session_context") as lookup:
+                        status, headers, _ = self.request(
+                            production, body=body, length=length
+                        )
+                        lookup.assert_not_called()
+                    self.assertEqual(status, "400 Bad Request")
+                    self.assertEqual(headers["Cache-Control"], "no-store")
+                    self.assertEqual(len(self.store.list_clients(self.ctx)), before)
+                    self.assertIsNotNone(self.store.session_context(self.token))
+
+    def test_valid_framing_and_client_csrf_cannot_create_operator_resources(self):
+        """Even correct framing plus a *different role's* CSRF stays denied."""
+        client = self.store.create_client(self.ctx, "Tenant for framing isolation")
+        user = self.store.create_user(
+            self.ctx, "client-framing@lightup.test", "Restricted Client",
+            Role.CLIENT_ADMIN, client.client_id,
+        )
+        self.store.set_password(self.ctx, user.user_id, "client-password-safe")
+        client_token, client_csrf = self.store.create_session(user.user_id)
+        for production in (False, True):
+            with self.subTest(production=production):
+                before = len(self.store.list_clients(self.ctx))
+                raw = urlencode({
+                    "csrf": client_csrf,
+                    "name": "Unauthorized creation attempt",
+                }).encode()
+                status, headers, _ = self.request(
+                    production,
+                    body=raw,
+                    extra={
+                        "HTTP_COOKIE": f"lightup_session={client_token}",
+                        "HTTP_CONTENT_LENGTH": str(len(raw)),
+                        "HTTP_X_FORWARDED_USER": "framing@lightup.test",
+                        "HTTP_X_FORWARDED_ROLE": "operator",
+                    },
+                )
+                self.assertEqual(status, "403 Forbidden")
+                self.assertEqual(headers["Cache-Control"], "no-store")
+                self.assertEqual(len(self.store.list_clients(self.ctx)), before)
+                self.assertIsNotNone(self.store.session_context(client_token))
+                self.assertIsNotNone(self.store.session_context(self.token))
 
     def test_valid_framing_never_bypasses_role_or_csrf(self):
         for production in (False, True):
