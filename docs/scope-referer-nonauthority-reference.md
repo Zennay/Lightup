@@ -18,7 +18,7 @@ CSRF/session gates, UI display and audit-correlation behavior.
 ## Offline proof
 
 Run `python -m unittest discover -s tests -p 'test_scope_referer_nonauthority_reference.py' -v`.
-This exercises nine pure-stdlib unittest methods, including matching-invalid grant/call fields, polymorphic identities, envelope subclasses and transport-label mutation, with no network, DNS, handler or target side effects.
+This exercises ten pure-stdlib unittest methods, including matching-invalid grant/call fields, polymorphic identities, envelope subclasses and transport-label mutation and hostile Referer protocol objects, with no network, DNS, handler or target side effects.
 
 ## Production gate / collision rules
 
