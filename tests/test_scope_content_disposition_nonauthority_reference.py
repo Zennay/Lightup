@@ -182,6 +182,29 @@ class TestContentDispositionNonAuthority(unittest.TestCase):
                         'attachment; filename="approved"',
                     ))
 
+    def test_revision_zero_and_identifier_boundary_are_not_header_controlled(self):
+        grant = replace(self.grant, revision=0, tenant="t" * 128)
+        dispatch = replace(self.dispatch, revision=0, tenant="t" * 128)
+        self.assertTrue(reference_consistency(grant, dispatch, "attachment; filename=approved"))
+        self.assertFalse(reference_consistency(
+            replace(grant, tenant="t" * 129), replace(dispatch, tenant="t" * 129),
+            "attachment; filename=approved",
+        ))
+
+    def test_metadata_does_not_enable_hostile_attribute_access(self):
+        class HostileMetadata:
+            def __getattribute__(self, name):
+                raise AssertionError("metadata attribute access")
+            def __iter__(self):
+                raise AssertionError("metadata iteration")
+            def __len__(self):
+                raise AssertionError("metadata length")
+        metadata = HostileMetadata()
+        self.assertTrue(reference_consistency(self.grant, self.dispatch, metadata))
+        self.assertFalse(reference_consistency(
+            replace(self.grant, issuer_verified=False), self.dispatch, metadata
+        ))
+
     def test_grant_and_dispatch_immutable(self):
         grant, dispatch = self.grant, self.dispatch
         reference_consistency(grant, dispatch, "attachment; filename=ignored")
