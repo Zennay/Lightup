@@ -263,5 +263,29 @@ class RawInputPreparserReferenceTests(unittest.TestCase):
         policy.decide.assert_not_called()
 
 
+    def test_unicode_category_boundary_does_not_overreject_letters(self):
+        from unittest.mock import Mock
+        policy = Mock(spec=ScopePolicy)
+        policy.decide.return_value = "delegated"
+        for char in ("é", "中", "Ω", "🛡", "\u0301"):
+            with self.subTest(char=ascii(char)):
+                policy.reset_mock()
+                target = Target("https://authorized.example.test/p" + char + "ath", authorization=self.auth)
+                self.assertEqual(reference_decide(policy, target), "delegated")
+                policy.decide.assert_called_once_with(target)
+
+    def test_unicode_surrogates_fail_closed_without_policy_access(self):
+        from unittest.mock import Mock
+        policy = Mock(spec=ScopePolicy)
+        for char in ("\ud800", "\udfff"):
+            with self.subTest(char=ascii(char)):
+                result = reference_decide(
+                    policy,
+                    Target("https://authorized.example.test/" + char, authorization=self.auth),
+                )
+                self.assertEqual(result.reason, ScopeReason.INVALID_TARGET)
+        policy.decide.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
