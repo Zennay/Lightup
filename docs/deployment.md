@@ -51,8 +51,17 @@ hostname, never an arbitrary incoming Host.
   also retain the session CSRF check.
 - Session creation and deletion use Secure, HttpOnly, SameSite=Strict cookies.
   Responses include HSTS (one year, without subdomains/preload) and no-store.
-- The proxy overwrites forwarding headers; request buffering and 64 KiB body
-  limits protect the upstream. Nginx header/body inactivity limits are 10s.
+- The proxy overwrites forwarding headers and omits client-controlled
+  `X-HTTP-Method-Override`, `X-Method-Override`, `X-Original-Method` and
+  `X-HTTP-Method` before forwarding. Empty `proxy_set_header` values in the
+  example Nginx config intentionally **remove** those incoming headers.
+  The configured WSGI `REQUEST_METHOD` remains the route/CSRF authority;
+  an installed proxy or custom middleware must not rewrite it from headers.
+  `tests/test_scope_nginx_method_override_template.py` checks the committed
+  template offline, but is **not** a proof of the deployed Nginx configuration.
+  Validate the real installed proxy separately before production release.
+  Request buffering and 64 KiB body limits protect the upstream. Nginx
+  header/body inactivity limits are 10s.
   Gunicorn uses two synchronous workers with a 30s worker timeout and 20s
   graceful shutdown. These settings concern the web app, not model workers.
 - The local proxy and local OS users remain within the deployment trust
