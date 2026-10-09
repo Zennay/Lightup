@@ -37,7 +37,7 @@ def validate_hold_manifest(data):
             defects.append("malformed requirement entry")
             continue
         ids.append(entry["id"])
-        if entry.get("state") != "unverified" or not isinstance(entry.get("owner"), str) or not entry["owner"].strip():
+        if entry.get("state") != "unverified" or type(entry.get("owner")) is not str or not entry["owner"].strip():
             defects.append("unaudited state or missing owner: " + entry["id"])
         if "approval" in entry or "grant" in entry:
             defects.append("fixture cannot issue approval or grant: " + entry["id"])
@@ -94,6 +94,41 @@ class ScopeReleaseEvidenceManifestTests(unittest.TestCase):
                 candidate = copy.deepcopy(self.manifest)
                 candidate[key] = value
                 self.assertTrue(validate_hold_manifest(candidate))
+
+    def test_hostile_owner_objects_never_execute_protocol_methods(self):
+        import copy
+
+        class PoisonOwner:
+            def __getattribute__(self, name):
+                raise AssertionError("untrusted owner protocol accessed")
+
+            def __str__(self):
+                raise AssertionError("untrusted owner coerced")
+
+        candidate = copy.deepcopy(self.manifest)
+        candidate["requirements"][0]["owner"] = PoisonOwner()
+        self.assertTrue(validate_hold_manifest(candidate))
+
+    def test_owner_string_subclasses_not_treated_as_trusted_identifiers(self):
+        import copy
+
+        class SpoofOwner(str):
+            def strip(self, *args, **kwargs):
+                raise AssertionError("untrusted str subclass method invoked")
+
+        candidate = copy.deepcopy(self.manifest)
+        candidate["requirements"][0]["owner"] = SpoofOwner("source-owner")
+        self.assertTrue(validate_hold_manifest(candidate))
+
+    def test_requirement_identifiers_reject_string_subclasses(self):
+        import copy
+
+        class SpoofId(str):
+            pass
+
+        candidate = copy.deepcopy(self.manifest)
+        candidate["requirements"][0]["id"] = SpoofId(candidate["requirements"][0]["id"])
+        self.assertTrue(validate_hold_manifest(candidate))
 
     def test_manifest_explicitly_holds_activation(self):
         self.assertEqual(self.manifest["release_gate"], "real_target_authorization")
