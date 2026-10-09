@@ -76,5 +76,49 @@ class TestSubprotocolNonAuthority(unittest.TestCase):
         self.assertFalse(permitted(self.grant, DictSubclass(self.dispatch), "admin"))
 
 
+    def test_missing_identity_or_revision_refused(self):
+        for key in ("tenant", "request", "asset", "capability", "revision"):
+            with self.subTest(key=key):
+                grant, dispatch = dict(self.grant), dict(self.dispatch)
+                grant.pop(key)
+                self.assertFalse(permitted(grant, dispatch, "admin"))
+                grant = dict(self.grant)
+                dispatch.pop(key)
+                self.assertFalse(permitted(grant, dispatch, "admin"))
+
+    def test_matching_empty_identity_refused(self):
+        for key in ("tenant", "request", "asset", "capability"):
+            with self.subTest(key=key):
+                grant, dispatch = dict(self.grant), dict(self.dispatch)
+                grant[key] = dispatch[key] = ""
+                self.assertFalse(permitted(grant, dispatch, "admin"))
+
+    def test_matching_string_subclass_refused(self):
+        class ForgedStr(str):
+            pass
+        for key in ("tenant", "request", "asset", "capability"):
+            with self.subTest(key=key):
+                grant, dispatch = dict(self.grant), dict(self.dispatch)
+                grant[key] = dispatch[key] = ForgedStr(grant[key])
+                self.assertFalse(permitted(grant, dispatch, "admin"))
+
+    def test_grant_revision_type_confusion_refused(self):
+        for invalid in (True, False, 0.0, "0", None, -1):
+            with self.subTest(invalid=repr(invalid)):
+                grant = dict(self.grant, revision=invalid)
+                self.assertFalse(permitted(grant, self.dispatch, "admin"))
+
+    def test_hostile_label_accessors_never_called(self):
+        class Hostile:
+            def __getattribute__(self, name):
+                raise AssertionError("label attribute accessed")
+            def __len__(self):
+                raise AssertionError("label length accessed")
+            def __eq__(self, other):
+                raise AssertionError("label compared")
+        self.assertTrue(permitted(self.grant, self.dispatch, Hostile()))
+        self.assertFalse(permitted(dict(self.grant, active=False), self.dispatch, Hostile()))
+
+
 if __name__ == "__main__":
     unittest.main()
