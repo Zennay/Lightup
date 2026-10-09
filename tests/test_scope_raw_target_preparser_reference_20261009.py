@@ -234,5 +234,34 @@ class RawInputPreparserReferenceTests(unittest.TestCase):
         policy.decide.assert_not_called()
 
 
+    def test_invalid_input_does_not_evaluate_authorization(self):
+        from unittest.mock import Mock
+
+        class PoisonAuthorization:
+            def __getattribute__(self, key):
+                raise AssertionError("authorization must not be accessed before raw validation")
+
+        policy = Mock(spec=ScopePolicy)
+        target = Target("https://authorized.example.test/a\n", authorization=PoisonAuthorization())
+        result = reference_decide(policy, target)
+        self.assertEqual(result.reason, ScopeReason.INVALID_TARGET)
+        policy.decide.assert_not_called()
+
+    def test_invalid_input_does_not_evaluate_labels(self):
+        from unittest.mock import Mock
+
+        class PoisonLabels:
+            def __iter__(self):
+                raise AssertionError("labels must not be inspected for invalid target")
+            def __bool__(self):
+                raise AssertionError("labels must not be truth-tested for invalid target")
+
+        policy = Mock(spec=ScopePolicy)
+        target = Target("https://authorized.example.test/\u200b", labels=PoisonLabels())
+        result = reference_decide(policy, target)
+        self.assertEqual(result.reason, ScopeReason.INVALID_TARGET)
+        policy.decide.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
