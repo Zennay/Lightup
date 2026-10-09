@@ -189,6 +189,16 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         self.assertIsNone(manifest["permanent_vps"]["job_id"])
         self.assertFalse(is_release_evidence_complete(manifest))
 
+    def test_observed_jobs_fail_closed_without_authenticated_evidence(self):
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        self.assertFalse(verify_observed_ci_jobs(manifest, {}))
+        self.assertFalse(verify_observed_ci_jobs(manifest, None))
+        self.assertFalse(verify_observed_ci_jobs(manifest, {
+            "hosted_python_311": {"status": "completed", "conclusion": "success"},
+            "hosted_python_314": {"status": "completed", "conclusion": "success"},
+            "permanent_vps": {"status": "completed", "conclusion": "success"},
+        }))
+
     def test_current_manifest_is_explicitly_held_and_incomplete(self):
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         self.assertEqual(manifest["release_gate"], "HOLD")
