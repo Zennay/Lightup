@@ -70,3 +70,6 @@ An additional fixture now tests valid-looking evidence across three CI lanes and
 
 ## Observed CI job separation (2026-10-09)
 GitHub's job endpoint showed run `37929812167` with hosted preflight jobs Python 3.14 (`113817670080`) and 3.11 (`113817670400`), both in progress at observation. Their names explicitly say `not VPS proof`. Another CI run `37929812148` had 3.14 (`113817493189`) and 3.11 (`113817493479`) jobs queued. This is observational evidence only, not green CI or confirmed permanent-runner execution. Re-query authenticated job/run metadata for any later release decision; never promote hosted results to canonical VPS proof.
+
+## Regression fixture repair (2026-10-09)
+Fixed two previously contradictory positive fixtures which used `example.invalid` as their artifact source even though the URL predicate correctly rejects `.invalid` domains. Positive controls now use the syntactically accepted `evidence.example.org` example. Also corrected the newline adversarial case to use a real escaped newline rather than a literal backslash-and-n. This only repairs the offline test oracle; example URLs are synthetic and do not authenticate artifacts, approve grants or authorize scans.
