@@ -1,6 +1,9 @@
 """Offline regression for BOOLEAN argument admission; no target I/O."""
 import unittest
 
+from lightup.engagements import RiskLevel
+from lightup.execution_policy import InteractionKind
+
 from lightup.ai.orchestration import (
     OrchestrationError, ParamKind, ToolDefinition, ToolParameter,
 )
@@ -11,8 +14,8 @@ class BooleanArgumentBoundaryTests(unittest.TestCase):
         self.schema = ToolDefinition(
             tool_id="offline-boolean-contract",
             capability_id="offline-only",
-            interaction=__import__("lightup.execution_policy", fromlist=["InteractionKind"]).InteractionKind.PLAN_ONLY,
-            min_risk=__import__("lightup.engagements", fromlist=["RiskLevel"]).RiskLevel.LOW_IMPACT,
+            interaction=InteractionKind.ANALYSIS,
+            min_risk=RiskLevel.ANALYSIS_ONLY,
             description="Inert schema validation only",
             parameters=(ToolParameter("enabled", ParamKind.BOOLEAN, required=True),),
         )
