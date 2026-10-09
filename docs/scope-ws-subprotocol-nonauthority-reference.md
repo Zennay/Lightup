@@ -176,3 +176,11 @@ The **64th offline unittest method** simulates twelve repeated requests with rev
 ## Stale revision denial audit separation
 
 The 65th offline unittest method covers eight replayed outdated-revision requests; every synthetic trace entry must be a denial-audit event and none may be action evidence. This remains a mock decision contract, not production integration evidence.
+
+## Integration test ownership and practical next action (2026-10-09)
+
+**Do not expand this offline mock matrix indefinitely.** The remaining high-value gate must be implemented by the owners of production ToolExecutor / gateway files, not inferred from these independent reference tests.
+
+A safe first owner task is to add one real-code **offline integration test** in the production-owning branch: inject a trusted unapproved/revoked lab grant and a spoofed `Sec-WebSocket-Protocol: admin,approved` header; instrument the actual executor dispatch, queue enqueue and action-evidence write entrypoints; assert all are **zero**, with denial-only audit allowed. Add one valid grant control using the same local lab fixture. Keep sockets/network patched to fail on any call. Then extend to revision replay, tenant binding and revocation race in distinct source-owned tests. This handoff explicitly requests no live scans, external targets or modified owner code in PR #1139.
+
+If the permanent VPS workflow is queued or cancelled, report **unverified** rather than treating hosted success or workflow creation as green. For promotion require owner-signed exact-SHA evidence on both platforms.
