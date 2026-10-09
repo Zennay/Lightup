@@ -27,6 +27,9 @@ def reference_preflight(policy, target, handler):
         hostname = parsed.hostname
         # Invalid/out-of-range ports are evaluated lazily by urllib.parse.
         port = parsed.port
+        # A trailing colon is not a valid explicit port, even when .port is None.
+        if authority.endswith(":"):
+            return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
         if not authority or not hostname:
             return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
         if authority.count("[") != authority.count("]") or authority.count("[") > 1:
@@ -161,6 +164,21 @@ class MalformedAuthorityNoHandlerReference(unittest.TestCase):
                 self.assertFalse(result.allowed)
                 self.assertIsNone(result.normalized_host)
                 self.assertEqual(result.reason, ScopeReason.INVALID_TARGET)
+        policy.decide.assert_not_called()
+        handler.assert_not_called()
+
+    def test_empty_explicit_port_denied_without_policy_or_handler(self):
+        policy = Mock(spec=ScopePolicy)
+        handler = Mock()
+        for raw in (
+            "https://unlisted.example.test:/",
+            "https://[::1]:/",
+            "https://unlisted.example.test:",
+        ):
+            with self.subTest(raw=raw):
+                decision = reference_preflight(policy, Target(raw), handler)
+                self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+                self.assertFalse(decision.allowed)
         policy.decide.assert_not_called()
         handler.assert_not_called()
 
