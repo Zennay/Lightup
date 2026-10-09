@@ -24,6 +24,8 @@ def _valid_artifact_url(value: object) -> bool:
     try:
         parts = urlsplit(value)
         return (parts.scheme == "https" and bool(parts.hostname) and
+                parts.netloc == parts.hostname and
+                bool(re.fullmatch(r"[a-z0-9-]+(?:[.][a-z0-9-]+)+", parts.hostname)) and
                 parts.username is None and parts.password is None and
                 parts.port is None and bool(parts.path) and parts.path != "/" and
                 not parts.query and not parts.fragment and
@@ -85,6 +87,10 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         self.assertTrue(_valid_artifact_url("https://evidence.example.org/evidence"))
         for candidate in (
             "https://github.com@evil.example.org/artifact",
+            "https://EVIDENCE.example.org/artifact",
+            "https://evidence.example.org./artifact",
+            "https://évidence.example.org/artifact",
+            "https://evidence.example.org\\artifact",
             "https://evidence.example.org:443/artifact",
             "https://evidence.example.org/artifact?override=true",
             "https://evidence.example.org/artifact#fragment",
