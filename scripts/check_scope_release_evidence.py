@@ -48,6 +48,9 @@ def evaluate(evidence: object) -> tuple[bool, list[str]]:
     reasons: list[str] = []
     if type(evidence) is not dict:
         return False, ["evidence must be a JSON object"]
+    allowed_fields = {"integration_sha", "trusted_grant_enforced", "zero_side_effect_denials", "revocation_fence_verified", "source_owner_reviewed", "remaining_xfails", "jobs"}
+    if set(evidence) != allowed_fields:
+        reasons.append("unexpected or missing top-level evidence fields")
     sha = evidence.get("integration_sha")
     if type(sha) is not str or len(sha) != 40 or any(c not in "0123456789abcdef" for c in sha):
         reasons.append("missing or malformed full integration SHA")
@@ -65,8 +68,12 @@ def evaluate(evidence: object) -> tuple[bool, list[str]]:
     if type(jobs) is not dict:
         reasons.append("missing job evidence")
     else:
+        if set(jobs) != set(REQUIRED_JOBS):
+            reasons.append("unexpected or missing workflow jobs")
         for name in REQUIRED_JOBS:
             job = jobs.get(name)
+            if type(job) is dict and set(job) != {"conclusion", "head_sha", "run_url"}:
+                reasons.append(f"{name}: unexpected or missing job fields")
             if type(job) is not dict or job.get("conclusion") != "success" or job.get("head_sha") != sha or not valid_run_url(job.get("run_url")):
                 reasons.append(f"{name}: missing success, exact SHA or GitHub run reference")
     return not reasons, reasons
