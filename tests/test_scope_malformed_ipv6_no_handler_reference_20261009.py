@@ -23,6 +23,10 @@ def reference_preflight(policy, target, handler):
         parsed = urlparse(target.value if "://" in target.value else "//" + target.value)
         # The authority is netloc, not a raw split which can include query or fragment.
         authority = parsed.netloc
+        # Force authority validation; urlparse alone can defer errors to hostname.
+        hostname = parsed.hostname
+        if not authority or not hostname:
+            return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
         if authority.count("[") != authority.count("]") or authority.count("[") > 1:
             return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
     except ValueError:
@@ -116,6 +120,29 @@ class MalformedAuthorityNoHandlerReference(unittest.TestCase):
                 result = reference_preflight(policy, Target(raw), handler)
                 self.assertEqual(result.reason, ScopeReason.INVALID_TARGET)
         policy.decide.assert_not_called()
+        handler.assert_not_called()
+
+    def test_missing_authority_does_not_reach_policy_or_handler(self):
+        policy = Mock(spec=ScopePolicy)
+        handler = Mock()
+        for raw in ("https:///path", "https://", "", "//"):
+            with self.subTest(raw=raw):
+                decision = reference_preflight(policy, Target(raw), handler)
+                self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+                self.assertFalse(decision.allowed)
+        policy.decide.assert_not_called()
+        handler.assert_not_called()
+
+    def test_valid_hostname_delegation_does_not_authorize_target(self):
+        policy = Mock(spec=ScopePolicy)
+        policy.decide.return_value = ScopeDecision(
+            False, "unlisted.example.test", ScopeReason.OUT_OF_SCOPE
+        )
+        handler = Mock()
+        target = Target("https://unlisted.example.test/?q=1")
+        decision = reference_preflight(policy, target, handler)
+        self.assertFalse(decision.allowed)
+        policy.decide.assert_called_once_with(target)
         handler.assert_not_called()
 
     def test_normal_denial_preserves_zero_handler_calls(self):
