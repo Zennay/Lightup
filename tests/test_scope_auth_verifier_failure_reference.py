@@ -17,7 +17,7 @@ def eligible(proof, verifier):
     """A trusted caller-provided verifier is illustrative, not issuer provenance."""
     if type(proof) is not Proof:
         return False
-    if any(type(value) is not str or not value or value != value.strip()
+    if any(type(value) is not str or not value or len(value) > 256 or value != value.strip() or any(ord(ch) < 33 or ord(ch) == 127 for ch in value)
            for value in (proof.tenant, proof.request, proof.issuer, proof.grant)):
         return False
     try:
@@ -65,6 +65,31 @@ class VerifierFailureReferenceTests(unittest.TestCase):
         self.assertFalse(eligible(Proof(" tenant-a", "r", "i", "g"), check))
         self.assertFalse(eligible(Proof("", "r", "i", "g"), check))
         self.assertEqual(called, [])
+
+    def test_control_characters_and_oversized_identifiers_deny_before_verification(self):
+        called = []
+        def check(_):
+            called.append(True)
+            return True
+        for bad in ("tenant\\nother", "tenant\\tother", "tenant\\x00other",
+                    "tenant\\x7fother", "x" * 257):
+            with self.subTest(bad=repr(bad)):
+                self.assertFalse(eligible(Proof(bad, "request", "issuer", "grant"), check))
+        self.assertEqual(called, [])
+
+    def test_identifier_length_boundary(self):
+        self.assertTrue(eligible(Proof("x" * 256, "request", "issuer", "grant"),
+                                 lambda _: True))
+
+    def test_wrong_type_fields_deny_without_verifier(self):
+        calls = []
+        def check(_):
+            calls.append(True)
+            return True
+        for bad in (None, 12, True, b"tenant", ["tenant"]):
+            with self.subTest(bad=repr(bad)):
+                self.assertFalse(eligible(Proof(bad, "request", "issuer", "grant"), check))
+        self.assertEqual(calls, [])
 
     def test_forged_subclass_denies(self):
         class Forged(Proof):
