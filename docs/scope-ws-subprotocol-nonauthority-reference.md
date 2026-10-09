@@ -168,3 +168,7 @@ Until the owner provides all seven evidence artifacts, keep this standalone PR a
 ## Trusted reapproval transition and action trace
 
 The 62nd and 63rd offline unittest methods check that reapproval requires both a changed trusted stored grant and an exactly matching fresh request revision, and that six arbitrary negotiation-header payloads against revoked consent never create mock handler, queue or action-evidence events. This validates the reference only, not a durable production revocation store.
+
+## Revoked replay event trace
+
+The **64th offline unittest method** simulates twelve repeated requests with revoked stored consent and asserts only denial-audit markers, never action markers. This models reference idempotence, not real persistence, revocation races or production execution.
