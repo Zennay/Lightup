@@ -138,6 +138,19 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
             self.assertEqual(result, 2)
             self.assertIn("HOLD:", output.getvalue())
 
+    def test_cli_rejects_fifo_without_blocking(self):
+        import os
+        if not hasattr(os, "mkfifo"):
+            self.skipTest("FIFO unsupported")
+        with tempfile.TemporaryDirectory() as directory:
+            fifo = Path(directory) / "evidence.pipe"
+            os.mkfifo(fifo)
+            output = StringIO()
+            with redirect_stdout(output):
+                result = main(["check_scope_release_evidence.py", str(fifo)])
+            self.assertEqual(result, 2)
+            self.assertIn("HOLD:", output.getvalue())
+
     def test_missing_evidence_holds(self):
         self.assertFalse(evaluate(None)[0])
         self.assertFalse(evaluate({})[0])
