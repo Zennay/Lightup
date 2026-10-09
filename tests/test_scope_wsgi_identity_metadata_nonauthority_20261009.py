@@ -188,6 +188,80 @@ class WsgiIdentityMetadataNonauthorityTest(unittest.TestCase):
                     self.assertEqual(headers["Location"], "/login")
         self.assert_no_new_clients()
 
+
+    def test_alternate_cookie_headers_cannot_supply_a_session(self):
+        # A proxy's alias/copy of Cookie is not LightUp's canonical Cookie.
+        # If an upstream proxy rewrites it to HTTP_COOKIE, that different
+        # ingress behavior needs an installed-proxy acceptance test.
+        copied = f"lightup_session={self.op_token}"
+        for mode in ("development", "production"):
+            for header in ("HTTP_X_FORWARDED_COOKIE", "HTTP_X_ORIGINAL_COOKIE",
+                           "HTTP_X_AUTH_REQUEST_COOKIE", "HTTP_COOKIE2"):
+                with self.subTest(mode=mode, header=header):
+                    status, headers, _ = self.request(
+                        mode, "GET", "/clients", extra={header: copied},
+                    )
+                    self.assertEqual(status, "303 See Other")
+                    self.assertEqual(headers["Location"], "/login")
+                    status, headers, _ = self.request(
+                        mode, "POST", "/clients",
+                        form={"name": "Forged", "csrf": self.op_csrf},
+                        extra={header: copied},
+                    )
+                    self.assertEqual(status, "303 See Other")
+                    self.assertEqual(headers["Location"], "/login")
+                    self.assert_no_new_clients()
+
+    def test_identity_metadata_cannot_issue_operator_only_scope_grants(self):
+        # Grant records are temporary SQLite fixtures, NEVER actual
+        # authorization for target contact or production execution.
+        for mode in ("development", "production"):
+            engagement = self.store.create_engagement(
+                self.operator_ctx, self.client_a.client_id,
+                f"Offline authority fixture {mode}",
+            )
+            path = f"/engagements/{engagement.engagement_id}/grants"
+            form = {
+                "approved_by": "Synthetic approver",
+                "reference": f"OFFLINE-{mode}",
+                "assets": "fixture.invalid",
+                "capabilities": "web-baseline",
+                "max_risk": "1",
+                "valid_days": "7",
+            }
+            for key, value in SPOOFED_IDENTITIES:
+                with self.subTest(mode=mode, key=key, session="anonymous"):
+                    status, headers, _ = self.request(
+                        mode, "POST", path,
+                        form={**form, "csrf": self.op_csrf},
+                        extra={key: value},
+                    )
+                    self.assertEqual(status, "303 See Other")
+                    self.assertEqual(headers["Location"], "/login")
+                    self.assertIsNone(self.store.get_current_grant(
+                        self.operator_ctx, engagement.engagement_id))
+                with self.subTest(mode=mode, key=key, session="client"):
+                    status, _, _ = self.request(
+                        mode, "POST", path, token=self.client_token,
+                        form={**form, "csrf": self.client_csrf},
+                        extra={key: value},
+                    )
+                    self.assertEqual(status, "403 Forbidden")
+                    self.assertIsNone(self.store.get_current_grant(
+                        self.operator_ctx, engagement.engagement_id))
+            # Synthetic positive control: operator's actual session+form CSRF,
+            # not a forged upstream identity, controls grant-record admission.
+            status, headers, _ = self.request(
+                mode, "POST", path, token=self.op_token,
+                form={**form, "csrf": self.op_csrf},
+                extra={"REMOTE_USER": "client@lightup.test"},
+            )
+            self.assertEqual(status, "303 See Other")
+            self.assertEqual(headers["Location"],
+                             f"/clients/{self.client_a.client_id}")
+            self.assertIsNotNone(self.store.get_current_grant(
+                self.operator_ctx, engagement.engagement_id))
+
     def test_genuine_operator_cookie_plus_form_csrf_remain_authoritative(self):
         # Non-authoritative identity hints must neither elevate nor disable
         # an otherwise authorized operator action.
