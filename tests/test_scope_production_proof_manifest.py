@@ -163,5 +163,22 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
 
 
 
+    def test_malformed_manifest_shapes_fail_closed_without_exceptions(self):
+        """Untrusted evidence envelopes must never crash the release checker."""
+        for payload in (None, True, False, 0, 1, "", [], (), "REVIEWED"):
+            with self.subTest(payload=repr(payload)):
+                self.assertFalse(is_release_evidence_complete(payload))
+
+        raw = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        for key in ("hosted_python_311", "hosted_python_314", "permanent_vps",
+                    "negative_real_executor_trace", "positive_loopback_lab_trace",
+                    "persistent_revocation_proof", "trusted_destination_metadata_proof"):
+            for malformed in (None, [], "", 1, True):
+                candidate = json.loads(json.dumps(raw))
+                candidate[key] = malformed
+                with self.subTest(field=key, shape=repr(malformed)):
+                    self.assertFalse(is_release_evidence_complete(candidate))
+
+
 if __name__ == "__main__":
     unittest.main()
