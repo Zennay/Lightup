@@ -16,7 +16,8 @@ REQUIRED = ("schema_version", "implementation_sha", "base_sha", "trusted_grant_r
             "positive_loopback_control_passed", "hosted_py311_sha",
             "hosted_py314_sha", "permanent_vps_sha", "owner_review_sha",
             "real_target_activation_disabled", "hosted_py311_run_id",
-            "hosted_py314_run_id", "permanent_vps_run_id")
+            "hosted_py314_run_id", "permanent_vps_run_id",
+            "hosted_py311_job_id", "hosted_py314_job_id", "permanent_vps_job_id")
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 
 
@@ -62,14 +63,15 @@ def verify(data):
         value = data.get(key)
         if type(value) is not int or value <= 0:
             errors.append(f"{key}: expected positive integer workflow run ID")
-    run_fields = ("hosted_py311_run_id", "hosted_py314_run_id", "permanent_vps_run_id")
-    run_ids = [data.get(key) for key in run_fields]
-    if all(type(value) is int and value > 0 for value in run_ids):
-        if len(set(run_ids)) != len(run_ids):
-            errors.append("CI workflow run identifiers must be distinct")
-    # A single proof index cannot substitute one observation for another.
-    # This does not establish provenance: run job and runner identity still
-    # require independent GitHub API inspection.
+    # Hosted matrix jobs may share a workflow run but must be different jobs.
+    job_fields = ("hosted_py311_job_id", "hosted_py314_job_id", "permanent_vps_job_id")
+    job_ids = [data.get(key) for key in job_fields]
+    for key, value in zip(job_fields, job_ids):
+        if type(value) is not int or value <= 0:
+            errors.append(f"{key}: expected positive integer job ID")
+    if all(type(value) is int and value > 0 for value in job_ids):
+        if len(set(job_ids)) != len(job_ids):
+            errors.append("CI job identifiers must be distinct")
     side_effects = data.get("denial_side_effect_counts")
     if type(side_effects) is not dict:
         errors.append("denial_side_effect_counts: missing object")
