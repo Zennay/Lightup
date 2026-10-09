@@ -121,5 +121,23 @@ class TooEarlyNonauthorityTests(unittest.TestCase):
         self.assertEqual(vars(BASE), before)
 
 
+    def test_dispatch_retry_must_recheck_current_revision(self):
+        # A retry after 425 must not borrow an earlier authorization snapshot.
+        attempted = BASE
+        later = replace(BASE, revision=BASE.revision + 1)
+        self.assertTrue(necessary_scope_consistency(BASE, attempted, 425, "1"))
+        self.assertFalse(necessary_scope_consistency(later, attempted, 200, "0"))
+        self.assertFalse(necessary_scope_consistency(attempted, later, 200, "0"))
+
+    def test_replay_success_cannot_bypass_withdrawn_consent(self):
+        # A prior synthetic success is never a permission token.
+        previous_success = necessary_scope_consistency(BASE, BASE, 200, "0")
+        self.assertTrue(previous_success)
+        withdrawn = replace(BASE, active=False)
+        for status in (425, 200, 204):
+            with self.subTest(status=status):
+                self.assertFalse(necessary_scope_consistency(withdrawn, BASE, status, "1"))
+
+
 if __name__ == "__main__":
     unittest.main()
