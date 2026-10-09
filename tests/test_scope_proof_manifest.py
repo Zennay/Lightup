@@ -202,7 +202,9 @@ class ProofManifestTests(unittest.TestCase):
             output = io.StringIO()
             with contextlib.redirect_stderr(output):
                 result = module.main(["verify", str(path)])
-            self.assertEqual(result, 2)
+            # Python 3.14 may parse 1500 nested arrays successfully: the
+            # resulting list must still be rejected by the object schema.
+            self.assertIn(result, (1, 2))
             self.assertNotIn("Traceback", output.getvalue())
 
     def test_oversized_manifest_fails_closed(self):
