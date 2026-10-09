@@ -73,6 +73,15 @@ class OfflineJobProvenanceTests(unittest.TestCase):
                     evidence[index][field] = value
                     self.assertTrue(module.check(proof(), evidence))
 
+    def test_unreferenced_successful_or_failed_jobs_are_rejected(self):
+        for conclusion in ("success", "failure"):
+            with self.subTest(conclusion=conclusion):
+                evidence = jobs()
+                evidence.append(dict(id=999, run_id=100, head_sha=SHA,
+                                     name="unreferenced", status="completed",
+                                     conclusion=conclusion))
+                self.assertTrue(module.check(proof(), evidence))
+
     def test_missing_or_duplicate_job_fails(self):
         self.assertTrue(module.check(proof(), jobs()[:-1]))
         self.assertTrue(module.check(proof(), jobs() + [jobs()[0]]))
