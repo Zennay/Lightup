@@ -166,5 +166,21 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
                 self.assertFalse(decision.allowed)
                 self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
 
+    def test_boolean_start_is_not_a_valid_datetime(self):
+        # Legacy behavior: bad persisted type raises; owner must fail closed.
+        grant = self.grant(True, None)
+        with self.assertRaises(TypeError):
+            grant.is_current(self.anchor)
+
+    def test_integer_end_is_not_a_valid_datetime(self):
+        grant = self.grant(None, 0)
+        with self.assertRaises(TypeError):
+            grant.is_current(self.anchor)
+
+    def test_public_scope_propagates_integer_end_type_error(self):
+        grant = self.grant(None, 42)
+        with self.assertRaises(TypeError):
+            self.policy.decide(Target("https://authorized.example", authorization=grant))
+
 if __name__ == "__main__":
     unittest.main()
