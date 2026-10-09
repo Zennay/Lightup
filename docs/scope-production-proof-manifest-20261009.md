@@ -133,3 +133,6 @@ The hosted-run classifier now requires exact built-in string status/conclusion f
 
 ## Full-run job identifier uniqueness
 Hosted job classification now rejects duplicate numeric job IDs anywhere in a caller-supplied job snapshot, including unrelated jobs outside the selected Python lanes. Duplicate identity is ambiguous evidence, so the classifier denies rather than silently selecting two apparently valid interpreter records. This consistency check still requires independent API authentication and confers no VPS or real-target authority.
+
+## Full-snapshot malformed job denial
+The offline hosted-job classifier now rejects a workflow snapshot containing any non-object job record or any job without a valid positive integer ID, even if two expected interpreter jobs otherwise look successful. This avoids selecting an apparently valid subset from partially corrupted input. This remains a consistency check on caller-provided data, not an authenticated GitHub API attestation and not VPS proof.
