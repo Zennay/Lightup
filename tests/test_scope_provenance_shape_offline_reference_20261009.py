@@ -108,6 +108,29 @@ class ReferenceProvenanceShapeTests(unittest.TestCase):
             Authorization(owner="Acme Security Team", reference="consent ticket 123")
         ))
 
+    def test_unicode_fixture_codepoints_are_not_literal_backslash_escapes(self):
+        fixtures = (
+            ("zero_width_space", "\u200b", "Cf"),
+            ("word_joiner", "\u2060", "Cf"),
+            ("no_break_space", "\u00a0", "Zs"),
+            ("figure_space", "\u2007", "Zs"),
+            ("narrow_no_break_space", "\u202f", "Zs"),
+            ("ideographic_space", "\u3000", "Zs"),
+            ("line_separator", "\u2028", "Zl"),
+            ("paragraph_separator", "\u2029", "Zp"),
+        )
+        for name, value, category in fixtures:
+            with self.subTest(name=name):
+                self.assertEqual(len(value), 1)
+                self.assertEqual(unicodedata.category(value), category)
+                self.assertNotIn("\\\\u", value)
+
+    def test_identity_shape_never_modifies_original_authorization(self):
+        grant = Authorization(owner="Team Alpha", reference="consent 123")
+        self.assertTrue(reference_provenance_shape(grant))
+        self.assertEqual(grant.owner, "Team Alpha")
+        self.assertEqual(grant.reference, "consent 123")
+
     def test_no_external_policy_or_handler_calls(self):
         handler = Mock()
         policy = Mock()
