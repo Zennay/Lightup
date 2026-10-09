@@ -9,3 +9,5 @@ Offline checks (no targets or network): `python -m unittest discover -s tests -p
 Additional negative controls cover missing/extra binding keys, exact boolean typing for both grant flags, strict grant-side revision typing with revision-zero positive control, and rejected `str` subclasses on either binding side. These protect against representation/type confusion; they do not establish authorization provenance.
 
 Further offline regressions exercise exact Grant typing (reject subclass), 128/129-character identity bounds on each binding, one-sided missing identities, and decision invariance across hostile browser-origin hints even when the grant revision differs. All examples use synthetic values only; no production authorization proof is implied.
+
+The latest negative controls additionally ensure no iteration, length check, representation or comparison is performed on a hostile metadata object; grant/dispatch revision integer subclasses are rejected; and an immutable synthetic grant remains unchanged across transport-hint variants. These are offline reference checks only.
