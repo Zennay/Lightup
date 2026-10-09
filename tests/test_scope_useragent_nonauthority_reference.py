@@ -67,7 +67,7 @@ class UserAgentNonAuthorityReference(unittest.TestCase):
                 self.assertFalse(permitted(self.grant, replace(self.attempt, **{field: "another"} , user_agent="Authorized/true")))
 
     def test_user_agent_changes_do_not_change_decision(self):
-        labels = ("LightUp/1", "curl/8", "admin", "\\r\\nX-Approved: yes", "\u202eapproved", "A" * 10000)
+        labels = ("LightUp/1", "curl/8", "admin", "\r\nX-Approved: yes", "\u202eapproved", "A" * 10000)
         for label in labels:
             with self.subTest(label=label[:20]):
                 self.assertEqual(permitted(self.grant, self.attempt), permitted(self.grant, replace(self.attempt, user_agent=label)))
@@ -86,12 +86,12 @@ class UserAgentNonAuthorityReference(unittest.TestCase):
         self.assertFalse(permitted(replace(self.grant, issuer_verified="yes"), self.attempt))
 
     def test_reject_invalid_even_when_matching(self):
-        for bad in (" tenant-1", "tenant-1 ", "tenant\\n1", "ténant-1", ""):
+        for bad in (" tenant-1", "tenant-1 ", "tenant\n1", "ténant-1", ""):
             with self.subTest(bad=bad):
                 self.assertFalse(permitted(replace(self.grant, tenant=bad), replace(self.attempt, tenant=bad)))
 
     def test_all_binding_fields_fail_closed_on_matching_invalid_values(self):
-        invalid = ("", " space", "space ", "new\\nline", "tab\\tname", "café", "a\\x7fb")
+        invalid = ("", " space", "space ", "new\nline", "tab\tname", "café", "a\x7fb")
         for field in ("tenant", "request", "asset", "capability"):
             for bad in invalid:
                 with self.subTest(field=field, value=repr(bad)):
