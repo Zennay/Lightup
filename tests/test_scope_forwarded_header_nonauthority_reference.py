@@ -124,6 +124,37 @@ class TestForwardedHeaderNonAuthority(unittest.TestCase):
         metadata["Forwarded"] = "for=127.0.0.1;proto=https;host=admin"
         self.assertEqual(before, reference_allowed(self.grant, self.dispatch, metadata))
 
+    def test_matching_invalid_identity_for_every_binding_field(self):
+        for field in ("tenant", "request", "asset", "capability"):
+            for invalid in ("bad\\rvalue", "bad\\x7fvalue", " ", "x" * 129):
+                with self.subTest(field=field, invalid=repr(invalid)):
+                    grant_values = {**self.grant.__dict__, field: invalid}
+                    dispatch_values = {**self.dispatch.__dict__, field: invalid}
+                    self.assertFalse(reference_allowed(
+                        Grant(**grant_values), Dispatch(**dispatch_values), HostileForwarded()
+                    ))
+
+    def test_dispatch_revision_type_confusion_denied(self):
+        for invalid in (True, False, 0.0, "0", None):
+            with self.subTest(invalid=repr(invalid)):
+                dispatch = Dispatch("tenant-a", "req-a", "asset-a", "http.headers", invalid)
+                self.assertFalse(reference_allowed(self.grant, dispatch, HostileForwarded()))
+
+    def test_active_and_verified_must_be_exact_bools(self):
+        for invalid in (1, "true", None):
+            with self.subTest(invalid=repr(invalid)):
+                verified = Grant("tenant-a", "req-a", "asset-a", "http.headers", 0, verified=invalid)
+                active = Grant("tenant-a", "req-a", "asset-a", "http.headers", 0, active=invalid)
+                self.assertFalse(reference_allowed(verified, self.dispatch, HostileForwarded()))
+                self.assertFalse(reference_allowed(active, self.dispatch, HostileForwarded()))
+
+    def test_proxy_metadata_is_non_authoritative_even_if_not_mapping(self):
+        for payload in (None, 123, True, ["for=127.0.0.1"], object(), HostileForwarded()):
+            with self.subTest(payload_type=type(payload).__name__):
+                self.assertTrue(reference_allowed(self.grant, self.dispatch, payload))
+                revoked = Grant("tenant-a", "req-a", "asset-a", "http.headers", 0, active=False)
+                self.assertFalse(reference_allowed(revoked, self.dispatch, payload))
+
 
 if __name__ == "__main__":
     unittest.main()
