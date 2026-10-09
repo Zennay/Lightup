@@ -218,6 +218,21 @@ class RedirectScopeReferenceTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
 
+    def test_redirect_with_mixed_case_unlisted_host_is_denied(self):
+        decision = self.decide("https://OuTsIdE.ExAmPlE.TeSt/next", self.grant)
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_explicit_ipv4_redirect_with_future_grant_is_denied(self):
+        future = Authorization(
+            owner="synthetic-test-only",
+            reference="FUTURE-IP-NOT-CONSENT",
+            valid_from=datetime.now(timezone.utc) + timedelta(days=1),
+        )
+        decision = self.decide("https://8.8.8.8/next", future)
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+
     def test_each_redirect_hop_rechecks_target_identity(self):
         hops = [
             "https://approved.example.test/start",
