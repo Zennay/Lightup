@@ -25,6 +25,11 @@ def reference_admit(envelope, verified_grant_ids=frozenset()):
         return False
     if type(envelope.capability) is not str or not envelope.capability:
         return False
+    # A policy store must not execute caller-controlled __contains__ methods.
+    if type(verified_grant_ids) is not frozenset:
+        return False
+    if any(type(item) is not str for item in verified_grant_ids):
+        return False
     grant = envelope.verified_grant
     return type(grant) is str and grant in verified_grant_ids
 
@@ -95,6 +100,44 @@ class TraceContextNonAuthorityTests(unittest.TestCase):
                 self.assertFalse(reference_admit(RequestEnvelope(
                     "lab.example.invalid", "web-baseline", verified_grant=grant
                 ), allowed))
+
+    def test_attacker_controlled_grant_collections_fail_closed(self):
+        class HostileCollection:
+            def __contains__(self, value):
+                raise AssertionError("must never run untrusted membership hook")
+            def __iter__(self):
+                raise AssertionError("must never traverse untrusted grant collection")
+        envelope = RequestEnvelope(
+            "lab.example.invalid", "web-baseline",
+            verified_grant="trusted-fixture"
+        )
+        for collection in (
+            HostileCollection(), ["trusted-fixture"], {"trusted-fixture"},
+            {"trusted-fixture": True}, ("trusted-fixture",)
+        ):
+            with self.subTest(collection_type=type(collection).__name__):
+                self.assertFalse(reference_admit(envelope, collection))
+
+    def test_malformed_grant_entries_do_not_get_coerced(self):
+        class HostileIdentity:
+            def __hash__(self):
+                raise AssertionError("must never hash untrusted grant identity")
+            def __eq__(self, other):
+                raise AssertionError("must never compare untrusted grant identity")
+        envelope = RequestEnvelope(
+            "lab.example.invalid", "web-baseline",
+            verified_grant="trusted-fixture"
+        )
+        # A tuple is deliberately not an accepted trusted collection.
+        self.assertFalse(reference_admit(envelope, (HostileIdentity(),)))
+        class Alias(str):
+            pass
+        self.assertFalse(reference_admit(
+            envelope, frozenset({"trusted-fixture", Alias("alias")})
+        ))
+        self.assertTrue(reference_admit(
+            envelope, frozenset({"trusted-fixture"})
+        ))
 
 
 if __name__ == "__main__":
