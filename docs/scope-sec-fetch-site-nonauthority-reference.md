@@ -11,3 +11,5 @@ Additional negative controls cover missing/extra binding keys, exact boolean typ
 Further offline regressions exercise exact Grant typing (reject subclass), 128/129-character identity bounds on each binding, one-sided missing identities, and decision invariance across hostile browser-origin hints even when the grant revision differs. All examples use synthetic values only; no production authorization proof is implied.
 
 The latest negative controls additionally ensure no iteration, length check, representation or comparison is performed on a hostile metadata object; grant/dispatch revision integer subclasses are rejected; and an immutable synthetic grant remains unchanged across transport-hint variants. These are offline reference checks only.
+
+Cross-tenant grant/dispatch swaps, visually similar Unicode identity suffixes, and two-sided null bindings are also rejected regardless of `Sec-Fetch-Site` hint. This does not imply any canonical Unicode normalization policy; the reference requires exact binding. The synthetic grant's `verified` bit is deliberately not a real cryptographic issuer verification. Production activation remains disabled.
