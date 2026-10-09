@@ -111,6 +111,34 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
                 candidate[field] = value
                 self.assertFalse(is_release_evidence_complete(candidate))
 
+    def test_ci_job_identifiers_cannot_be_swapped_or_reused(self):
+        """Job IDs alone are untrusted; even structural evidence needs strict lane binding."""
+        sha = "a" * 40
+        run_url = "https://github.com/example/repo/actions/runs/1"
+        run = {"sha": sha, "conclusion": "success", "run_url": run_url}
+        trace = {"sha": sha, "artifact_url": "https://evidence.example.org/evidence"}
+        valid = {
+            "schema_version": 2, "release_gate": "REVIEWED",
+            "real_target_activation": False, "implementation_sha": sha,
+            "owner_review_url": "https://github.com/example/repo/pull/1",
+            "hosted_python_311": {**run, "job_id": 111},
+            "hosted_python_314": {**run, "job_id": 114},
+            "permanent_vps": {**run, "run_url": "https://github.com/example/repo/actions/runs/2", "job_id": 200},
+            "negative_real_executor_trace": {**trace, **{key: 0 for key in COUNTERS}},
+            "positive_loopback_lab_trace": {**trace, "handler_calls": 1},
+            "persistent_revocation_proof": dict(trace),
+            "trusted_destination_metadata_proof": dict(trace),
+        }
+        self.assertTrue(is_release_evidence_complete(valid))
+        for lane in ("hosted_python_314", "permanent_vps"):
+            mutated = json.loads(json.dumps(valid))
+            mutated[lane]["job_id"] = 111
+            self.assertFalse(is_release_evidence_complete(mutated), lane)
+        for lane in ("hosted_python_311", "hosted_python_314", "permanent_vps"):
+            mutated = json.loads(json.dumps(valid))
+            mutated[lane]["job_id"] = "111"
+            self.assertFalse(is_release_evidence_complete(mutated), lane)
+
     def test_current_manifest_is_explicitly_held_and_incomplete(self):
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         self.assertEqual(manifest["release_gate"], "HOLD")
