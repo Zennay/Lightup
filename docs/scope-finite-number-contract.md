@@ -74,3 +74,7 @@ A normal ToolExecutor regression now executes valid finite â†’ invalid string â†
 ## Release gate manifest enforcement
 
 `tests/test_scope_known_red_gate_manifest.py` now requires the manifest to remain `DRAFT_HOLD` with `activation_permitted=false`, with all four same-head hosted/VPS Python gates, source-owner pre-I/O revocation and registry-owned network destinations, independent review, and at least one unresolved risk. This intentionally fails if required release conditions are removed or the reference PR is prematurely marked activated. Successful manifest tests do **not** prove those conditions have been met.
+
+## No stale or invented red gate names
+
+The manifest checker also parses both owned test modules and verifies every declared known-red method actually exists and is a `test_*` function, with integer issue references and nonempty gate keys. Combined with the decorator parity check, this prevents accidental stale references or invented known-red names in the machine-readable release ledger.
