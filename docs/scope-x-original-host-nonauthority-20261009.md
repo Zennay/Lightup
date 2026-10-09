@@ -69,3 +69,7 @@ Tests assert a group of untrusted issuer/client/engagement/asset/capability/revo
 ## Claimed lease / nonce / signature non-authority
 
 An X-Original-Host label claiming lease_id, run_id, nonce or approval_signature is not a signed, trusted capability lease. Such text cannot fill a missing grant or permit an unlisted hostname even alongside synthetic Authorization. Production cryptographic provenance and pre-I/O enforcement remain separate gates.
+
+## Signed consent hint isolation
+
+A routing header claiming `consent_signed`, `authorization_verified`, `scope_hash`, or `approval_expires` does not create a trusted authorization object. Even a synthetic grant cannot transfer target identity through such claims. These are pure offline regressions, not real cryptographic verification or production dispatcher consent.
