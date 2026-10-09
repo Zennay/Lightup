@@ -343,5 +343,20 @@ class ArgumentKeyHookBoundaryTests(unittest.TestCase):
         self.assertEqual(events, [])
 
 
+    def test_rejected_unknown_name_does_not_mutate_caller_arguments(self):
+        arguments = [("label", "safe"), ("unknown", "injected")]
+        snapshot = list(arguments)
+        with self.assertRaisesRegex(OrchestrationError, "unknown tool argument"):
+            validate_unambiguous_arguments(self.definition, arguments)
+        self.assertEqual(arguments, snapshot)
+
+    def test_rejected_duplicate_name_does_not_mutate_caller_arguments(self):
+        arguments = [("label", "first"), ("label", "second")]
+        snapshot = list(arguments)
+        with self.assertRaisesRegex(OrchestrationError, "duplicate tool argument"):
+            validate_unambiguous_arguments(self.definition, arguments)
+        self.assertEqual(arguments, snapshot)
+
+
 if __name__ == "__main__":
     unittest.main()
