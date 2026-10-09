@@ -80,5 +80,30 @@ class NegativeEvidenceMonotonicReferenceTests(unittest.TestCase):
         self.assertTrue(evaluate(original, "header-check", frozenset()))
 
 
+    def test_invalid_snapshot_authority_fails_closed(self):
+        for value in (["header-check"], {"header-check"}, frozenset({1}), frozenset({"header-check", ""})):
+            with self.subTest(value=value):
+                snap = Evaluation("tenant-a", "request-1", 1, value, frozenset())
+                self.assertFalse(evaluate(snap, "header-check", frozenset()))
+
+    def test_noncanonical_snapshot_denials_fail_closed(self):
+        for value in ([], {"revoked"}, frozenset({3}), frozenset({""})):
+            with self.subTest(value=value):
+                snap = Evaluation("tenant-a", "request-1", 1, self.snap.authority, value)
+                self.assertFalse(evaluate(snap, "header-check", frozenset()))
+
+    def test_foreign_tenant_identity_does_not_reuse_local_snapshot(self):
+        other = Evaluation("tenant-b", "request-1", 1, frozenset(), frozenset({"tenant_mismatch"}))
+        self.assertFalse(evaluate(other, "header-check", frozenset()))
+        self.assertTrue(evaluate(self.snap, "header-check", frozenset()))
+
+    def test_dataclass_subclass_cannot_override_authority(self):
+        class ForgedEvaluation(Evaluation):
+            pass
+
+        forged = ForgedEvaluation("tenant-a", "request-1", 1, self.snap.authority, frozenset())
+        self.assertFalse(evaluate(forged, "header-check", frozenset()))
+
+
 if __name__ == "__main__":
     unittest.main()
