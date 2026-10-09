@@ -49,3 +49,7 @@ Two new offline tests demonstrate that a local reference grants one handler call
 ## Revoked replay and revision claim regression
 
 Two new offline methods check twenty repeat requests after stored revocation result in zero mock calls, and a claimed future revision in WebSocket subprotocol never upgrades an older stored grant. 32 reference unittest methods total; this does not prove production durable revocation or live dispatcher safety.
+
+## Replayed authority tokens and malformed stored revision
+
+Two additional offline methods cover 35 attempts to replay seven authority-sounding subprotocol tokens against revoked consent with zero fake-handler calls, plus malformed stored revision values matched against a valid request. Total: **34 unittest methods**. No actual production executor calls or live revocation guarantees.
