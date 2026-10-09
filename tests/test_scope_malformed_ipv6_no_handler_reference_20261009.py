@@ -182,6 +182,22 @@ class MalformedAuthorityNoHandlerReference(unittest.TestCase):
         policy.decide.assert_not_called()
         handler.assert_not_called()
 
+    def test_bracketed_non_ip_authority_denied_without_policy_or_handler(self):
+        policy = Mock(spec=ScopePolicy)
+        handler = Mock()
+        for raw in (
+            "https://[authorized.example.test]/",
+            "https://[not-an-ip]/",
+            "https://[127.0.0.1]/",
+        ):
+            with self.subTest(raw=raw):
+                decision = reference_preflight(policy, Target(raw), handler)
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+                self.assertIsNone(decision.normalized_host)
+        policy.decide.assert_not_called()
+        handler.assert_not_called()
+
     def test_valid_explicit_port_preserves_denial(self):
         policy = Mock(spec=ScopePolicy)
         policy.decide.return_value = ScopeDecision(
