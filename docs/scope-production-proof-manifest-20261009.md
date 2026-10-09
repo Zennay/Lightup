@@ -39,3 +39,9 @@ Run exclusively with an isolated offline lab and instrument the real production 
 
 ## Ownership and non-interference
 This is a documentation-only reference pack. Do not merge or deploy it as production authorization. Do not modify #107, #1092, #1093, other workers' branches, or canonical runner scheduling from this lane. Real target activation stays disabled until explicit human authorization and all proof gates are satisfied.
+
+## Machine-readable evidence state
+
+The companion JSON manifest remains `release_gate: HOLD` with unknown/null evidence. The offline checker accepts `release_gate: REVIEWED` only **after** independent source-owner review and evidence links have been populated and authenticated. Even a fully evidenced `REVIEWED` fixture must keep `real_target_activation: false`: this is a release-evidence assessment, **not** an authority issuance or real-target activation mechanism. No actor may transition a manifest to REVIEWED solely on the basis of this offline checker; linked run URLs and artifacts must be verified independently against the exact SHA and trusted providers. Synthetic acceptance fixture URLs do not provide genuine proof.
+
+CI statuses `queued`, `cancelled`, `skipped` and `failure` never count as success. A missing counter or boolean masquerading as a zero integer fails closed. Missing revocation, destination metadata, positive lab or negative executor artifacts also fails closed. This checker deliberately performs no URL fetch, network I/O, scope grant updates or dispatch.
