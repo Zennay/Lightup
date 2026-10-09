@@ -89,3 +89,7 @@ IPv6 link-local targets remain out of scope when the trusted `allow_private_lab`
 ## Missing-grant network and HTTP dispatch tripwires
 
 A new denied allowlisted URL case patches `socket.getaddrinfo`, `socket.create_connection` and `urllib.request.urlopen` and asserts none were called in pure `ScopePolicy.decide`. It confirms only that this pure function does not invoke those endpoints, **not** that a live API/worker dispatcher blocks target I/O; that requires the source-owner integration and corresponding real-handler instrumentation.
+
+## Expired authorization transport tripwire
+
+An already-expired synthetic authorization with `revoked=false` routing metadata must produce `AUTHORIZATION_EXPIRED` without calling `socket.getaddrinfo`, `socket.create_connection`, or `urllib.request.urlopen` from the pure scope decision. This is strictly a unit-layer assertion, not proof of production executor or evidence-write isolation.
