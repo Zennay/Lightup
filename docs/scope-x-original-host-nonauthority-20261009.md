@@ -24,3 +24,5 @@ Maintain DRAFT/HOLD until production owner #107/#1128 completes end-to-end tests
 ## Configuration and repeated-label boundaries
 
 The pure policy reference separately tests that `require_authorization_for_public=False` is an explicit trusted policy configuration, never a value inferred from `X-Original-Host`, and that 1/10/100 repeated spoofed labels cannot mutate configured allowlists. These tests are NOT an endorsement of disabling consent requirements in the production dispatcher.
+
+## Alias and expiry isolation\n\nCase variants and underscore aliases of original-host routing metadata remain mere labels. A URL with an expired synthetic authorization remains denied even if a routing hint claims localhost. This offline legacy-policy reference is not a real ingress or tool-executor security proof.\n
