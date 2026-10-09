@@ -7,6 +7,10 @@ This branch characterizes existing `Authorization.is_current` and `ScopePolicy.d
 - A correctly ordered window includes its exact endpoints and excludes instants just outside them.
 - A synthetic grant cannot authorize an unlisted public host; a missing grant denies an allowlisted public host.
 - Naive caller-supplied timestamps raise `ValueError`.
+- A zero-length window is current at exactly one instant and not a microsecond before/after.
+- Equivalent aware timestamps expressed using different UTC offsets yield the same validity result.
+- Inverted windows remain invalid even when endpoints use different offsets.
+- A public target with an authorization window beginning tomorrow is denied today.
 
 ## Run
 `PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_inverted_window_reference_20261009.py' -v`
