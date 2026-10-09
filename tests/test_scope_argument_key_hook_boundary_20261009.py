@@ -61,5 +61,39 @@ class ArgumentKeyHookBoundaryTests(unittest.TestCase):
         self.assertEqual(effects, [])
 
 
+    def test_registry_string_subclass_name_does_not_run_hash_or_equality(self):
+        effects = []
+        class TrapRegistryName(str):
+            def __hash__(self):
+                effects.append("hash")
+                raise AssertionError("registry hash hook executed")
+            def __eq__(self, other):
+                effects.append("eq")
+                raise AssertionError("registry equality hook executed")
+        malformed = ToolDefinition(
+            "offline-malformed", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "synthetic registry",
+            (ToolParameter(TrapRegistryName("label"), ParamKind.STRING),),
+        )
+        with self.assertRaisesRegex(OrchestrationError, "parameter names must be strings"):
+            validate_unambiguous_arguments(malformed, (("label", "safe"),))
+        self.assertEqual(effects, [])
+
+    def test_registry_nonstring_name_cannot_trigger_hash_hook(self):
+        effects = []
+        class TrapRegistryName:
+            def __hash__(self):
+                effects.append("hash")
+                raise AssertionError("registry hash hook executed")
+        malformed = ToolDefinition(
+            "offline-malformed", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "synthetic registry",
+            (ToolParameter(TrapRegistryName(), ParamKind.STRING),),
+        )
+        with self.assertRaisesRegex(OrchestrationError, "parameter names must be strings"):
+            validate_unambiguous_arguments(malformed, (("label", "safe"),))
+        self.assertEqual(effects, [])
+
+
 if __name__ == "__main__":
     unittest.main()
