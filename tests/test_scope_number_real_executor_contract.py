@@ -119,6 +119,24 @@ class OfflineExecutorNumberTests(unittest.TestCase):
         self.assertEqual(self.calls, [1.25])
         self.assertEqual(self.evidence_count(), 1)
 
+    def test_repeated_malformed_calls_do_not_accumulate_evidence(self):
+        """Denial-only attempts must not inflate the durable lab ledger."""
+        for index in range(20):
+            with self.subTest(index=index):
+                with self.assertRaises(OrchestrationError):
+                    self.invoke("invalid-number")
+                self.assertEqual(self.calls, [])
+                self.assertEqual(self.evidence_count(), 0)
+
+    def test_repeated_malformed_calls_after_success_keep_exact_row_count(self):
+        self.invoke(4.0)
+        for index in range(20):
+            with self.subTest(index=index):
+                with self.assertRaises(OrchestrationError):
+                    self.invoke(None)
+                self.assertEqual(self.calls, [4.0])
+                self.assertEqual(self.evidence_count(), 1)
+
     @unittest.expectedFailure
     def test_duplicate_argument_name_must_not_silently_override(self):
         """ToolCall.arguments_dict currently collapses duplicate tuple keys."""
