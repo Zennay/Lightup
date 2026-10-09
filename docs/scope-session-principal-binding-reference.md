@@ -12,7 +12,7 @@ Requirements for a real integration:
 5. Deny on malformed identities, revoked/expired approvals, mixed tenants, altered revisions, or absent session. Log a sanitized denial without secrets.
 6. Preserve the separation between current assessment, isolated future simulation and lab evaluation. No implicit cross-purpose authority.
 
-The standalone unittest is intentionally stricter about reference identifier grammar and only tests matching and negative cases. It does not implement authentication, authoritative grants, lifecycle management, policy integration or execution.
+The thirteen offline unittest methods additionally exercise approval-side malformed identities, boolean/foreign revisions and an internally mismatched session/operator pair. These negative cases do not validate any actual identity provider.\n\nThe standalone unittest is intentionally stricter about reference identifier grammar and only tests matching and negative cases. It does not implement authentication, authoritative grants, lifecycle management, policy integration or execution.
 
 Run offline: `python -m unittest discover -s tests -p 'test_scope_session_principal_binding_reference.py'`.
 
