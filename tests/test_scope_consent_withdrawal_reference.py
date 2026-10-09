@@ -87,6 +87,22 @@ class ConsentWithdrawalReferenceTests(unittest.TestCase):
         self.assertFalse(decide_offline(self.grant, issuer_verified=False, within_scope=True))
         self.assertFalse(decide_offline(self.grant, issuer_verified=True, within_scope=False))
 
+    def test_stale_events_do_not_modify_live_snapshot(self):
+        live = apply_withdrawal(self.grant, "grant-A", 8)
+        for revision in (5, 6, 7, 8):
+            with self.subTest(revision=revision):
+                with self.assertRaises(ValueError):
+                    apply_withdrawal(live, "grant-A", revision)
+                self.assertEqual(live, Consent("grant-A", 8, True))
+
+    def test_interleaved_unrelated_grant_cannot_mutate_authority(self):
+        a = apply_withdrawal(self.grant, "grant-A", 5)
+        b = Consent("grant-B", 9)
+        with self.assertRaises(ValueError):
+            apply_withdrawal(b, "grant-A", 10)
+        self.assertEqual(b, Consent("grant-B", 9))
+        self.assertFalse(decide_offline(a, issuer_verified=True, within_scope=True))
+
     def test_malformed_boolean_inputs_not_truthy_authority(self):
         for issuer, scope in ((1, True), (True, 1), ("yes", True), (True, "yes")):
             self.assertFalse(decide_offline(self.grant, issuer_verified=issuer, within_scope=scope))
