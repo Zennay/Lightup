@@ -64,3 +64,6 @@ The offline validator now requires unambiguous HTTPS artifact references with a 
 
 ## Trusted-job verification boundary
 Do not treat a JSON field containing `conclusion: success`, a well-formed job ID, or a plausible GitHub URL as authenticated evidence. Before changing release status, an independent reviewer must obtain the run and job objects from the trusted GitHub API, check repository owner/name, immutable head SHA, matching run/job IDs, completed success status, actual Python version and expected permanent runner identity, and compare artifact provenance. Fail closed on API errors, absent jobs, or mismatches. This document and its structural offline validator deliberately do not perform external requests or authorize real targets.
+
+## Offline job-ID lane regression
+An additional fixture now tests valid-looking evidence across three CI lanes and explicitly rejects duplicate job IDs and string-coerced IDs. The fixture exercises only syntactic schema binding; it cannot authenticate GitHub records or establish the actual Python interpreter version. No scanning or production mutation occurs.
