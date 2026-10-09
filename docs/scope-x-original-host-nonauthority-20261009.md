@@ -41,3 +41,7 @@ A synthetic grant with a forged original-host label must not authorize a differe
 ## Tenant, engagement and role claims
 
 A routing hint string containing `tenant`, `engagement`, `asset`, `scope` or `role=admin` is never a trusted authorization or an allowlist override. The legacy-policy reference asserts only missing grant and unlisted host denials; production tenant/capability binding must be proven by #107/#1128.
+
+## Capability and revoked-state hints
+
+Forged `capability` values in original-host routing metadata cannot supply missing authorization. `revoked=false` in such metadata cannot restore an expired synthetic grant. This is offline legacy policy evidence only; persisted revocation enforcement requires the separate production owner integration.
