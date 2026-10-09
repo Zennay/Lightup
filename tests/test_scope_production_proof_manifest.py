@@ -83,6 +83,32 @@ def is_release_evidence_complete(m: dict) -> bool:
     return type(positive.get("handler_calls")) is int and positive["handler_calls"] == 1
 
 
+def verify_observed_ci_jobs(manifest: dict, observed: dict) -> bool:
+    """Compare caller-supplied snapshots; no network access or release authority."""
+    if not is_release_evidence_complete(manifest) or type(observed) is not dict:
+        return False
+    for lane, required_version in (("hosted_python_311", "3.11"),
+                                   ("hosted_python_314", "3.14"),
+                                   ("permanent_vps", None)):
+        expected = manifest[lane]
+        run = observed.get(lane)
+        if type(run) is not dict:
+            return False
+        if set(run) != {"job_id", "run_url", "sha", "status", "conclusion",
+                        "python_version", "runner_class"}:
+            return False
+        if any(run.get(key) != expected[key] for key in ("job_id", "run_url", "sha")):
+            return False
+        if run["status"] != "completed" or run["conclusion"] != "success":
+            return False
+        if required_version is not None:
+            if run["runner_class"] != "hosted" or run["python_version"] != required_version:
+                return False
+        elif run["runner_class"] != "permanent_vps" or run["python_version"] not in ("3.11", "3.14"):
+            return False
+    return True
+
+
 class ScopeProductionProofManifestTests(unittest.TestCase):
     def test_artifact_url_rejects_spoofed_or_ambiguous_locations(self):
         self.assertTrue(_valid_artifact_url("https://evidence.example.org/evidence"))
