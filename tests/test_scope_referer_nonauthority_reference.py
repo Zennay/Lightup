@@ -34,7 +34,8 @@ def permitted(grant, call):
     if not all(type(getattr(grant, key)) is str and type(getattr(call, key)) is str
                for key in ("tenant", "request", "asset", "capability")):
         return False
-    if not all(getattr(obj, key) and not any(ord(c) < 32 or ord(c) == 127 for c in getattr(obj, key))
+    if not all(getattr(obj, key) and getattr(obj, key) == getattr(obj, key).strip()
+               and not any(ord(c) < 32 or ord(c) == 127 for c in getattr(obj, key))
                for obj in (grant, call)
                for key in ("tenant", "request", "asset", "capability")):
         return False
@@ -173,6 +174,19 @@ class RefererCannotGrantAuthority(unittest.TestCase):
         revoked = Grant(self.grant.tenant, self.grant.request,
                         self.grant.asset, self.grant.capability, active=False)
         self.assertFalse(permitted(revoked, allowed))
+
+
+    def test_matching_control_and_whitespace_identities_fail_closed(self):
+        canonical = dict(tenant=self.call.tenant, request=self.call.request,
+                         asset=self.call.asset, capability=self.call.capability)
+        for field in canonical:
+            for candidate in (" ", "\\t", "\\r", "\\x00", "\\x1f", "\\x7f",
+                              "leading space", "trailing space "):
+                with self.subTest(field=field, candidate=repr(candidate)):
+                    values = dict(canonical)
+                    values[field] = candidate
+                    self.assertFalse(permitted(Grant(**values), Call(
+                        **values, referer="https://admin.example.invalid/approved")))
 
 
 if __name__ == "__main__":
