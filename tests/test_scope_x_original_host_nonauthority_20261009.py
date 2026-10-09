@@ -683,5 +683,29 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         dispatch.assert_not_called()
 
 
+    def test_future_grant_denial_has_no_http_or_socket_side_effects(self):
+        from datetime import datetime, timedelta, timezone
+        from unittest.mock import patch
+
+        future = Authorization(
+            owner="fixture", reference="NOT-TRUSTED",
+            valid_from=datetime.now(timezone.utc) + timedelta(days=2),
+        )
+        with (
+            patch("socket.getaddrinfo") as lookup,
+            patch("socket.create_connection") as connect,
+            patch("urllib.request.urlopen") as dispatch,
+        ):
+            decision = self.policy.decide(Target(
+                "https://approved.example/", authorization=future,
+                labels=("X-Original-Host: approved.example; approval_expires=2999-01-01",),
+            ))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+        lookup.assert_not_called()
+        connect.assert_not_called()
+        dispatch.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
