@@ -119,5 +119,22 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.policy.decide(Target("https://authorized.example", authorization=grant))
 
+    def test_start_only_bound_enforces_future_but_no_end(self):
+        grant = self.grant(self.anchor)
+        self.assertFalse(grant.is_current(self.anchor - timedelta(microseconds=1)))
+        self.assertTrue(grant.is_current(self.anchor))
+        self.assertTrue(grant.is_current(self.anchor + timedelta(days=365)))
+
+    def test_end_only_bound_enforces_expiration_but_no_start(self):
+        grant = self.grant(end=self.anchor)
+        self.assertTrue(grant.is_current(self.anchor - timedelta(days=365)))
+        self.assertTrue(grant.is_current(self.anchor))
+        self.assertFalse(grant.is_current(self.anchor + timedelta(microseconds=1)))
+
+    def test_unbounded_synthetic_grant_is_current_but_not_real_consent(self):
+        grant = self.grant()
+        self.assertTrue(grant.is_current(self.anchor))
+        self.assertTrue(grant.is_current(self.anchor + timedelta(days=365)))
+
 if __name__ == "__main__":
     unittest.main()
