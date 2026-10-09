@@ -169,3 +169,6 @@ The supplied hosted-job classifier now fails closed on job names containing an e
 
 ## First-page connector safety adapter
 `classify_first_page_only_jobs` explicitly models the GitHub connector's first-page-only job-list limitation. It never asserts verified pagination, so it always denies complete hosted CI classification even for two apparently successful synthetic jobs. The paired positive control demonstrates that a *separately established* completeness assertion would be required; the supplied adapter itself cannot establish that assertion. Real-target release remains HOLD.
+
+## Contiguous paged-job snapshot validation
+Added an offline `validate_paged_job_snapshot` reference that requires contiguous 1-based page indices, consistent `has_next` markers and each job's exact run ID before combining pages. Incomplete or contradictory lists fail closed. **This does not retrieve pages or authenticate the `has_next` markers**: a fabricated single final page can still appear consistent. Only trusted GitHub API pagination responses showing exhaustion may supply such metadata. The first-page-only connector remains insufficient and release remains HOLD.
