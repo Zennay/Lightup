@@ -199,5 +199,40 @@ class RawInputPreparserReferenceTests(unittest.TestCase):
                 self.assertEqual(target.value, raw)
 
 
+    def test_hostile_str_subclasses_are_rejected_without_methods(self):
+        from unittest.mock import Mock
+
+        class HostileString(str):
+            def __iter__(self):
+                raise AssertionError("must not iterate attacker subclass")
+            def __getitem__(self, index):
+                raise AssertionError("must not index attacker subclass")
+            def __str__(self):
+                raise AssertionError("must not stringify attacker subclass")
+
+        policy = Mock(spec=ScopePolicy)
+        target = Target(HostileString("https://authorized.example.test"), authorization=self.auth)
+        result = reference_decide(policy, target)
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.INVALID_TARGET)
+        policy.decide.assert_not_called()
+
+    def test_hostile_nonstring_objects_are_not_coerced(self):
+        from unittest.mock import Mock
+
+        class HostileTarget:
+            def __str__(self):
+                raise AssertionError("coercion is forbidden")
+            def __bool__(self):
+                raise AssertionError("truth testing is forbidden")
+            def __iter__(self):
+                raise AssertionError("iteration is forbidden")
+
+        policy = Mock(spec=ScopePolicy)
+        result = reference_decide(policy, Target(HostileTarget(), authorization=self.auth))
+        self.assertEqual(result.reason, ScopeReason.INVALID_TARGET)
+        policy.decide.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
