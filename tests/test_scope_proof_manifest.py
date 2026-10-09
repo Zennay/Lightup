@@ -23,6 +23,8 @@ def fixture():
     return dict(schema_version=1, implementation_sha=A, base_sha=B,
                 hosted_py311_run_id=101, hosted_py314_run_id=102,
                 permanent_vps_run_id=103,
+                hosted_py311_job_id=201, hosted_py314_job_id=202,
+                permanent_vps_job_id=203,
                 hosted_py311_sha=A, hosted_py314_sha=A, permanent_vps_sha=A,
                 owner_review_sha=A, trusted_grant_reviewed=True,
                 revocation_race_passed=True, denied_side_effects_zero=True,
@@ -37,8 +39,13 @@ class ProofManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             py_compile.compile(str(MODULE), cfile=str(Path(directory) / "verifier.pyc"), doraise=True)
 
-    def test_run_ids_for_independent_proof_lanes_must_differ(self):
-        fields = ("hosted_py311_run_id", "hosted_py314_run_id", "permanent_vps_run_id")
+    def test_hosted_matrix_jobs_may_share_workflow_run(self):
+        obj = fixture()
+        obj["hosted_py314_run_id"] = obj["hosted_py311_run_id"]
+        self.assertEqual(module.verify(obj), [])
+
+    def test_distinct_job_identifiers_are_mandatory(self):
+        fields = ("hosted_py311_job_id", "hosted_py314_job_id", "permanent_vps_job_id")
         for first in fields:
             for second in fields:
                 if first == second:
@@ -47,6 +54,12 @@ class ProofManifestTests(unittest.TestCase):
                     obj = fixture()
                     obj[second] = obj[first]
                     self.assertTrue(any("must be distinct" in e for e in module.verify(obj)))
+        for field in fields:
+            for value in (None, 0, -1, True, "201", 201.0):
+                with self.subTest(field=field, value=value):
+                    obj = fixture()
+                    obj[field] = value
+                    self.assertTrue(module.verify(obj))
 
     def test_missing_or_forged_run_ids_fail_closed(self):
         for field in ("hosted_py311_run_id", "hosted_py314_run_id", "permanent_vps_run_id"):
