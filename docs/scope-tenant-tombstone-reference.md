@@ -16,7 +16,7 @@ A deleted tenant must never retain active assessment authority just because a ca
 
 `python -m unittest discover -s tests -p 'test_scope_tenant_tombstone_reference.py' -v`
 
-Twelve stdlib-only cases test deletion denial, tenant reincarnation, older snapshots, tenant swaps, inactive/truthy flags, malformed identities and types, subclasses and input immutability. Passing the positive reference case is **not permission to run a scanner**.
+Sixteen stdlib-only cases test deletion denial, tenant reincarnation, older snapshots, tenant swaps, inactive/truthy flags, malformed identities and types, subclassed grant/state records, generation boundaries, grant identifier rejection and input immutability. Passing the positive reference case is **not permission to run a scanner**.
 
 ## Ownership / safety
 
