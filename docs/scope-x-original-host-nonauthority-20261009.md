@@ -109,3 +109,7 @@ An authority-less `https://` target with a forged approval label must fail with 
 ## Out-of-scope check ordering and transport tripwire
 
 An unlisted HTTPS hostname with a forged signed-consent routing label must be denied `OUT_OF_SCOPE` before reading a hostile synthetic authorization object. DNS, socket connection and urllib HTTP helpers must remain unused by this pure policy decision. Real worker dispatch and evidence store interception still require integration proof.
+
+## Missing grant and hostile label collection
+
+A public allowlisted URL without an Authorization must be denied `AUTHORIZATION_MISSING` without iterating, sizing, or coercing untrusted label objects. This is strictly a pure-policy ordering assertion; real ingress and trusted consent verification are separate owner responsibilities.
