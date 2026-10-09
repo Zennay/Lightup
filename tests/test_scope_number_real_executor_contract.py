@@ -413,6 +413,38 @@ class OfflineExecutorNumberTests(unittest.TestCase):
         self.assertEqual(self.calls, [])
         self.assertEqual(self.evidence_count(), 0)
 
+    def test_bridge_rejects_malformed_registered_kind_before_effects(self):
+        """Reject a forged registry kind without dispatch or ledger mutation."""
+        dispatched = []
+
+        def handler(context, arguments):
+            dispatched.append(arguments)
+            return ToolOutput("unexpected", "fixture", b"unexpected")
+
+        self.registry.register(
+            ToolDefinition(
+                "invalid-kind-lab-only", "web-baseline",
+                InteractionKind.LAB_ACTIVE, RiskLevel.DESTRUCTIVE_LAB_ONLY,
+                "Offline malformed kind fixture",
+                (ToolParameter("value", "number"),),
+            ),
+            handler,
+        )
+
+        def bridge(call):
+            definition, _handler = self.registry.get(call.tool_id)
+            return validate_unambiguous_arguments(definition, call.arguments)
+
+        with patch.object(ToolCall, "arguments_dict", bridge):
+            with self.assertRaisesRegex(OrchestrationError, "invalid kind or required"):
+                self.executor.execute(
+                    self.context,
+                    ToolCall("invalid-kind-lab-only", "127.0.0.1", (("value", 2.5),)),
+                )
+        self.assertEqual(dispatched, [])
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), 0)
+
     @unittest.expectedFailure
     def test_nan_denied_before_handler_and_evidence(self):
         with self.assertRaises(OrchestrationError):
