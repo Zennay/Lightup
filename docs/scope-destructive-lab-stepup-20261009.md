@@ -17,6 +17,18 @@ On current `main`, `RunContext.for_lab()` creates `approved_risk=DESTRUCTIVE_LAB
 - Ordinary lower-risk tools continue through existing `ToolExecutor` behavior without requiring a destructive approval.
 - No attempts are made to treat `is_lab` as proof of an actually isolated network. Actual lab isolation, persistent approval authenticity and runtime admission are still external requirements.
 
+## Confirmed raw-executor RED canary
+
+`tests/test_scope_destructive_lab_stepup_20261009.py` includes
+`test_red_default_raw_executor_has_no_destructive_stepup_gate_yet` as an
+explicit `unittest.expectedFailure`: the existing raw executor **does**
+run the synthetic destructive-marked lab handler without this wrapper.
+A green suite with one expected failure is **not** evidence the production
+gap has been fixed. The production owner must first wire a verified gate and
+replace the xfail with a normal passing denial assertion on the real entrypoint.
+Tracking: [#1173](https://github.com/Zennay/Lightup/issues/1173);
+owner handoff: [PR #107](https://github.com/Zennay/Lightup/pull/107).
+
 ## Runtime acceptance and *non*-claims
 
 An application/executor owner must integrate the wrapper at **every** destructive-capable dispatch route, supply a canonical operator-approved durable record resolver that cannot be influenced by AI prompts, and require actual isolated lab environment attestation. Do not deploy from this draft. The default `ToolExecutor` is unchanged and **still does not enforce the new check**; instantiating it directly bypasses this *optional* adapter. Approval records in the tests are synthetic and never authorize a live target.
