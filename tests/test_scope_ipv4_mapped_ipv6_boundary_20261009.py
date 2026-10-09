@@ -5,6 +5,8 @@ No socket, DNS, HTTP client, or live authorization provenance is involved.
 import unittest
 from unittest.mock import patch
 
+from datetime import datetime, timezone
+
 from lightup.models import Authorization, Target
 from lightup.scope import ScopePolicy, ScopeReason
 
@@ -31,13 +33,13 @@ class IPv4MappedIPv6ScopeBoundaryTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
-    def test_mapped_ipv6_can_be_explicitly_listed_but_requires_grant(self):
+    def test_mapped_ipv6_explicit_network_requires_grant(self):
         policy = ScopePolicy(explicit_networks=("::ffff:8.8.8.8/128",))
         decision = policy.decide(Target("http://[::ffff:8.8.8.8]/"))
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
 
-    def test_mapped_ipv6_explicit_host_with_synthetic_grant_is_legacy_scope_only(self):
+    def test_mapped_ipv6_explicit_network_with_synthetic_grant_is_legacy_scope_only(self):
         policy = ScopePolicy(explicit_networks=("::ffff:8.8.8.8/128",))
         decision = policy.decide(Target("http://[::ffff:8.8.8.8]/", authorization=self.grant))
         self.assertTrue(decision.allowed)
@@ -72,6 +74,28 @@ class IPv4MappedIPv6ScopeBoundaryTests(unittest.TestCase):
         decision = policy.decide(Target("http://[2001:db8::1]/", authorization=self.grant))
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_expired_mapped_ipv6_grant_fails_closed(self):
+        policy = ScopePolicy(explicit_networks=("::ffff:8.8.8.8/128",))
+        expired = Authorization(
+            owner="synthetic-test-owner",
+            reference="EXPIRED-TEST-ONLY",
+            valid_until=datetime(2000, 1, 1, tzinfo=timezone.utc),
+        )
+        decision = policy.decide(Target("http://[::ffff:8.8.8.8]/", authorization=expired))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+
+    def test_future_mapped_ipv6_grant_fails_closed(self):
+        policy = ScopePolicy(explicit_networks=("::ffff:8.8.8.8/128",))
+        not_yet_valid = Authorization(
+            owner="synthetic-test-owner",
+            reference="FUTURE-TEST-ONLY",
+            valid_from=datetime(2099, 1, 1, tzinfo=timezone.utc),
+        )
+        decision = policy.decide(Target("http://[::ffff:8.8.8.8]/", authorization=not_yet_valid))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
 
     def test_unlisted_mapped_ipv6_never_calls_network_or_dns(self):
         policy = ScopePolicy()
