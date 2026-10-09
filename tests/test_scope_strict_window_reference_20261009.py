@@ -205,5 +205,19 @@ class StrictWindowReferenceTests(unittest.TestCase):
                 self.assertFalse(strict_window_eligible(self.start, self.end, bad))
 
 
+    def test_offset_encoded_reversed_interval_denies(self):
+        # Wall-clock labels can appear increasing while UTC instants reverse.
+        start = datetime(2026, 10, 9, 12, tzinfo=timezone(timedelta(hours=-5)))
+        end = datetime(2026, 10, 9, 13, tzinfo=timezone(timedelta(hours=2)))
+        self.assertFalse(strict_window_eligible(start, end, self.now))
+
+    def test_microsecond_duration_window_respects_both_edges(self):
+        start = datetime(2026, 10, 9, 12, tzinfo=timezone.utc)
+        end = start + timedelta(microseconds=1)
+        self.assertTrue(strict_window_eligible(start, end, start))
+        self.assertFalse(strict_window_eligible(start, end, end))
+        self.assertFalse(strict_window_eligible(
+            start, end, start - timedelta(microseconds=1)))
+
 if __name__ == "__main__":
     unittest.main()
