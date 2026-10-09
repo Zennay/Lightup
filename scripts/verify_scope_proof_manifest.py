@@ -93,12 +93,16 @@ def main(argv):
                           object_pairs_hook=reject_duplicate_keys,
                           parse_constant=lambda value: (_ for _ in ()).throw(
                               ValueError(f"invalid JSON constant: {value}")))
-    except (OSError, ValueError, UnicodeError) as exc:
-        print(f"HOLD: invalid manifest: {exc}", file=sys.stderr)
+    except (OSError, ValueError, UnicodeError):
+        # Never echo attacker-controlled JSON keys, file names, or raw values
+        # into CI logs; a rejection is intentionally non-diagnostic.
+        print("HOLD: invalid manifest input", file=sys.stderr)
         return 2
     errors = verify(data)
     if errors:
-        print("HOLD: " + "; ".join(errors))
+        # Error details may include unknown, attacker-controlled field names.
+        # Only emit a stable summary to shared build logs.
+        print(f"HOLD: proof index validation failed ({len(errors)} issue(s))")
         return 1
     print("INDEX CHECK PASS ONLY: evidence references are internally consistent; "
           "not authorization or release approval")
