@@ -109,6 +109,27 @@ class UserAgentNonAuthorityReference(unittest.TestCase):
                 self.assertFalse(permitted(replace(self.grant, **{field: Identity(original)}), self.attempt))
                 self.assertFalse(permitted(self.grant, replace(self.attempt, **{field: Identity(original)})))
 
+    def test_non_string_identity_types_fail_even_when_equal(self):
+        values = (None, 0, 1, True, (), [], {}, b"asset", 1.0)
+        for field in ("tenant", "request", "asset", "capability"):
+            for value in values:
+                with self.subTest(field=field, value=repr(value)):
+                    self.assertFalse(permitted(
+                        replace(self.grant, **{field: value}),
+                        replace(self.attempt, **{field: value}),
+                    ))
+
+    def test_transport_metadata_never_grants_permission(self):
+        class AgentLabel(str):
+            pass
+        labels = (None, False, 1, [], {}, AgentLabel("Approved/true"))
+        for label in labels:
+            with self.subTest(value=repr(label)):
+                changed = replace(self.attempt, user_agent=label)
+                self.assertTrue(permitted(self.grant, changed))
+                self.assertFalse(permitted(replace(self.grant, active=False), changed))
+                self.assertFalse(permitted(replace(self.grant, issuer_verified=False), changed))
+
     def test_inputs_unchanged(self):
         before = (repr(self.grant), repr(self.attempt))
         permitted(self.grant, self.attempt)
