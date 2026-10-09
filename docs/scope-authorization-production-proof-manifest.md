@@ -73,3 +73,7 @@ Run `python scripts/verify_scope_proof_manifest.py evidence.json` only against a
 ## CI provenance index
 
 Format version 1 requires `hosted_py311_run_id`, `hosted_py314_run_id`, and `permanent_vps_run_id` as strictly positive integer GitHub workflow run references. These are lookup handles, not evidence of success: the reviewer must open each run, confirm the relevant Python job actually executed, verify its exact `head_sha` equals `implementation_sha`, and check the permanent job ran on `vps-bb300bba`. A queued/cancelled/skipped run or mismatched commit is **HOLD**, even if the offline index verifier passes.
+
+## CI output minimization
+
+The offline verifier deliberately prints only a fixed rejection summary and an error count. It never emits user-controlled JSON field names, values or untrusted parser exceptions to shared CI logs. Diagnostic inspection of rejected manifests must happen in a separately access-controlled, local context without uploading sensitive grant or customer data. This is log minimization only and is not evidence that an assessment was authorized.
