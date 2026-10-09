@@ -247,25 +247,23 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
 
 
-    def test_header_spoof_cannot_change_policy_opt_out(self):
+    def test_header_spoof_cannot_change_required_authorization(self):
+        # Do not demonstrate a permissive bypass as a successful approval.
         restrictive = ScopePolicy(
             allow_private_lab=False,
             explicit_hosts=frozenset({"approved.example"}),
             require_authorization_for_public=True,
         )
-        permissive = ScopePolicy(
-            allow_private_lab=False,
-            explicit_hosts=frozenset({"approved.example"}),
-            require_authorization_for_public=False,
-        )
-        hint = ("X-Original-Host: approved.example",)
-        denied = restrictive.decide(Target("approved.example", labels=hint))
-        self.assertFalse(denied.allowed)
-        self.assertEqual(denied.reason, ScopeReason.AUTHORIZATION_MISSING)
-        allowed_reference = permissive.decide(Target("approved.example", labels=hint))
-        self.assertTrue(allowed_reference.allowed)
-        self.assertEqual(allowed_reference.reason, ScopeReason.EXPLICIT_HOST)
-        # The policy opt-out is a trusted config choice, never extracted from hint.
+        baseline = restrictive.decide(Target("approved.example"))
+        with_hint = restrictive.decide(Target(
+            "approved.example",
+            labels=("X-Original-Host: approved.example; require_authorization_for_public=false",),
+        ))
+        self.assertFalse(baseline.allowed)
+        self.assertFalse(with_hint.allowed)
+        self.assertEqual(baseline.reason, ScopeReason.AUTHORIZATION_MISSING)
+        self.assertEqual(with_hint.reason, baseline.reason)
+        self.assertTrue(restrictive.require_authorization_for_public)
 
     def test_repeated_spoofed_headers_cannot_mutate_policy(self):
         original_hosts = self.policy.explicit_hosts
