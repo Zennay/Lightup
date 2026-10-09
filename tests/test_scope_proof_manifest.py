@@ -39,6 +39,15 @@ class ProofManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             py_compile.compile(str(MODULE), cfile=str(Path(directory) / "verifier.pyc"), doraise=True)
 
+    def test_vps_run_collision_fails_at_cli(self):
+        obj = fixture()
+        obj["permanent_vps_run_id"] = obj["hosted_py311_run_id"]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "vps-collision.json"
+            path.write_text(json.dumps(obj), encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(module.main(["verify", str(path)]), 1)
+
     def test_vps_run_cannot_be_hosted_run(self):
         for field in ("hosted_py311_run_id", "hosted_py314_run_id"):
             with self.subTest(field=field):
