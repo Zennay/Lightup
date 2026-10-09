@@ -119,6 +119,13 @@ class OfflineJobProvenanceTests(unittest.TestCase):
         evidence[2]["name"] = "LightUp unrelated task"
         self.assertTrue(any("expected job label" in error for error in module.check(proof(), evidence, runs())))
 
+    def test_run_snapshot_wrong_commit_or_failure_rejected(self):
+        for key, value in (("head_sha", "b" * 40), ("conclusion", "failure"), ("status", "queued")):
+            with self.subTest(key=key):
+                snapshots = runs()
+                snapshots[0][key] = value
+                self.assertTrue(module.check(proof(), jobs(), snapshots))
+
     def test_valid_matrix_and_distinct_vps(self):
         self.assertEqual(module.check(proof(), jobs(), runs()), [])
 
@@ -142,8 +149,8 @@ class OfflineJobProvenanceTests(unittest.TestCase):
                 self.assertTrue(module.check(proof(), evidence, runs()))
 
     def test_missing_or_duplicate_job_fails(self):
-        self.assertTrue(module.check(proof(), jobs()[:-1]))
-        self.assertTrue(module.check(proof(), jobs() + [jobs()[0]]))
+        self.assertTrue(module.check(proof(), jobs()[:-1], runs()))
+        self.assertTrue(module.check(proof(), jobs() + [jobs()[0]], runs()))
 
     def test_unreferenced_malformed_record_never_ignored(self):
         evidence = jobs()
