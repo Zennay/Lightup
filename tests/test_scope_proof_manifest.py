@@ -51,6 +51,23 @@ class ProofManifestTests(unittest.TestCase):
             obj[key] = 1
             self.assertTrue(module.verify(obj))
 
+    def test_unknown_top_level_authority_is_denied(self):
+        obj = fixture()
+        obj["client_approved"] = True
+        self.assertTrue(any("unknown field" in e for e in module.verify(obj)))
+
+    def test_unknown_side_effect_channel_is_denied(self):
+        obj = fixture()
+        obj["denial_side_effect_counts"]["network"] = 0
+        self.assertTrue(any("unknown denial boundary" in e for e in module.verify(obj)))
+
+    def test_missing_side_effect_boundary_is_denied(self):
+        for boundary in ("handler", "socket", "queue", "action_evidence"):
+            obj = fixture()
+            del obj["denial_side_effect_counts"][boundary]
+            with self.subTest(boundary=boundary):
+                self.assertTrue(module.verify(obj))
+
     def test_absent_or_malformed_manifest_is_denied(self):
         self.assertTrue(module.verify(None))
         self.assertTrue(module.verify({}))
