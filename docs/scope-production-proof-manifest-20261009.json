@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "release_gate": "HOLD",
+  "real_target_activation": false,
+  "implementation_sha": null,
+  "owner_review_url": null,
+  "hosted_python_311": {"sha": null, "conclusion": null, "run_url": null},
+  "hosted_python_314": {"sha": null, "conclusion": null, "run_url": null},
+  "permanent_vps": {"sha": null, "conclusion": null, "run_url": null},
+  "negative_real_executor_trace": {"sha": null, "artifact_url": null, "handler_calls": null, "dns_calls": null, "socket_opens": null, "http_calls": null, "subprocess_calls": null, "retry_submissions": null, "queue_submissions": null, "action_evidence_writes": null},
+  "positive_loopback_lab_trace": {"sha": null, "artifact_url": null, "handler_calls": null},
+  "persistent_revocation_proof": {"sha": null, "artifact_url": null},
+  "trusted_destination_metadata_proof": {"sha": null, "artifact_url": null}
+}
