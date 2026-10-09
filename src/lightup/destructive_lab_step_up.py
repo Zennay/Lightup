@@ -165,6 +165,13 @@ class DestructiveLabStepUpExecutor:
             definition.interaction is InteractionKind.LAB_ACTIVE
             and definition.min_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY
         ):
+            # Parameter schemas do not yet describe destination authority.
+            # Until a trusted lab-only argument binder is integrated, even
+            # optional/default parameters must not choose a second asset.
+            if type(definition.parameters) is not tuple or definition.parameters:
+                raise ToolDenied("destructive lab tool arguments lack a reviewed scope binding")
+            if type(call.arguments) is not tuple or call.arguments:
+                raise ToolDenied("destructive lab tool arguments are not authorized")
             if self._approval_resolver is None:
                 raise ToolDenied("explicit destructive-lab operator approval required")
             try:
