@@ -42,6 +42,11 @@ temporary SQLite evidence store and a pure synthetic handler:
   `TARGET_ACTIVE` request into authorized real-target execution.
 - Polymorphic/blank/control-bearing asset and capability identities, grant
   subclasses and request subclasses are rejected.
+- The nested grant envelope must contain a genuine `ScopeDefinition` with
+  exact risk, tuple/list membership types, canonical asset/capability text,
+  valid timezone-aware chronological timestamps and an exact recurring-retest
+  flag. A duck-typed scope with permissive `allows_asset` cannot authorize.
+  These checks are structural only and **do not authenticate** the grant issuer.
 - Valid scoped/authorized low-impact synthetic work still emits one ledger
   item, while invalid typed requests execute **zero** handlers and emit **zero**
   evidence rows.
