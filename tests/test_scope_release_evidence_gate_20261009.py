@@ -160,6 +160,17 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
                 case["jobs"]["permanent_vps"]["run_url"] = url
                 self.assertFalse(evaluate(case)[0])
 
+    def test_unicode_lookalike_url_is_denied(self):
+        for candidate in (
+            "https://github.com/Zennay/Lightup/actions/runs/１２３",
+            "https://github.com/Zennay/Lightup/actions/runs/123" + chr(0x200b),
+            "https://github.com/Zennay/Lightup/actions/runs/123" + chr(0x202e),
+        ):
+            with self.subTest(candidate=candidate):
+                case = sample()
+                case["jobs"]["permanent_vps"]["run_url"] = candidate
+                self.assertFalse(evaluate(case)[0])
+
     def test_sha_requires_full_lowercase_digest(self):
         for invalid in (None, "", "abc", "A" * 40, 3):
             with self.subTest(invalid=invalid):
