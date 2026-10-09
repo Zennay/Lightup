@@ -30,8 +30,8 @@ def proof():
 
 
 def runs():
-    return [dict(id=100, head_sha=SHA, status="completed", conclusion="success"),
-            dict(id=101, head_sha=SHA, status="completed", conclusion="success")]
+    return [dict(id=100, head_sha=SHA, name="LightUp offline preflight", status="completed", conclusion="success"),
+            dict(id=101, head_sha=SHA, name="LightUp CI", status="completed", conclusion="success")]
 
 
 def jobs():
@@ -126,6 +126,12 @@ class OfflineJobProvenanceTests(unittest.TestCase):
                 del snapshot[0][missing]
                 self.assertTrue(module.check(proof(), jobs(), snapshot))
         self.assertTrue(module.check(proof(), jobs(), runs() + [None]))
+
+    def test_unrelated_successful_workflow_cannot_count_as_proof(self):
+        for index in (0, 1):
+            snapshot = runs()
+            snapshot[index]["name"] = "Unrelated workflow"
+            self.assertTrue(module.check(proof(), jobs(), snapshot))
 
     def test_workflow_sha_must_be_exact_string(self):
         for value in (None, 123, True, ["a" * 40], "A" * 40):
