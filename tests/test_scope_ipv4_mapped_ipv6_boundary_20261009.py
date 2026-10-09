@@ -32,16 +32,16 @@ class IPv4MappedIPv6ScopeBoundaryTests(unittest.TestCase):
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
     def test_mapped_ipv6_can_be_explicitly_listed_but_requires_grant(self):
-        policy = ScopePolicy(explicit_hosts=frozenset({"::ffff:8.8.8.8"}))
+        policy = ScopePolicy(explicit_networks=("::ffff:8.8.8.8/128",))
         decision = policy.decide(Target("http://[::ffff:8.8.8.8]/"))
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
 
     def test_mapped_ipv6_explicit_host_with_synthetic_grant_is_legacy_scope_only(self):
-        policy = ScopePolicy(explicit_hosts=frozenset({"::ffff:8.8.8.8"}))
+        policy = ScopePolicy(explicit_networks=("::ffff:8.8.8.8/128",))
         decision = policy.decide(Target("http://[::ffff:8.8.8.8]/", authorization=self.grant))
         self.assertTrue(decision.allowed)
-        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_NETWORK)
 
     def test_unlisted_mapped_ipv6_never_calls_network_or_dns(self):
         policy = ScopePolicy()
