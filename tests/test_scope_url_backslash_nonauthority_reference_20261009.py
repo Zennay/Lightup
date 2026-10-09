@@ -279,6 +279,31 @@ class BackslashNonauthorityTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             reference_dispatch(target, None)
 
+
+    def test_invalid_raw_input_does_not_consult_policy_attributes(self):
+        class PoisonPolicy:
+            def __getattribute__(self, name):
+                raise AssertionError("policy inspected before raw-input rejection")
+
+            def __call__(self, target):
+                raise AssertionError("policy invoked")
+
+        for target in ("", "https://example.test/" + chr(92) + "admin"):
+            with self.subTest(target=target):
+                self.assertEqual(reference_dispatch(target, PoisonPolicy()), "INVALID_TARGET")
+
+    def test_valid_raw_input_propagates_explicit_policy_denial(self):
+        class DenyPolicy:
+            calls = 0
+
+            def __call__(self, target):
+                self.calls += 1
+                return "DENY"
+
+        policy = DenyPolicy()
+        self.assertEqual(reference_dispatch("https://example.test/", policy), "DENY")
+        self.assertEqual(policy.calls, 1)
+
     def test_nonstring_input_must_not_invoke_user_string_conversion(self):
         class Hostile:
             def __str__(self):
