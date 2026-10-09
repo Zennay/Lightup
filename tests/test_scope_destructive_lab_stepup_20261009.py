@@ -337,8 +337,8 @@ class DestructiveLabStepUpIntegrationTests(unittest.TestCase):
 
     def test_control_chars_and_oversized_approval_identifiers_denied(self):
         for value in (
-            "operator\\nother", "operator\\radmin", "operator\\troot",
-            "operator\\x00root", "operator\\x7froot", "x" * 257,
+            "operator\nother", "operator\radmin", "operator\troot",
+            "operator\x00root", "operator\x7froot", "x" * 257,
             "operator-☃",
         ):
             with self.subTest(identity=value):
@@ -346,10 +346,10 @@ class DestructiveLabStepUpIntegrationTests(unittest.TestCase):
                 self.assert_denied_without_effect()
         self.live_record = self.approval
         self.assert_denied_without_effect(
-            context=replace(self.context, run_id="run\\x00forged")
+            context=replace(self.context, run_id="run\x00forged")
         )
         self.assert_denied_without_effect(
-            call=ToolCall(self.call.tool_id, "lab\\nother")
+            call=ToolCall(self.call.tool_id, "lab\nother")
         )
 
     def test_direct_approval_match_cannot_bind_unrelated_definition_tool(self):
