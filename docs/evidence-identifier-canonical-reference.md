@@ -63,3 +63,7 @@ A further offline temporary-SQLite regression takes a full stored evidence-row s
 ## Parser alias pitfall
 
 Python's `uuid.UUID()` accepts uppercase and hyphenless UUID aliases and normalizes them to the same canonical textual identity. Therefore calling `str(UUID(user_input))` is **not** a sufficient strict evidence selector validator. Two additional offline regressions prove uppercase/compact aliases are parser-accepted but rejected by the strict lexical reference, and that nil/max UUID text is denied. These tests describe proposed read-boundary hardening, not deployed production behavior.
+
+## Restart-safe identity reference
+
+A plan-only offline fixture now persists an issued UUID4 evidence record to temporary SQLite, reopens it with a fresh `StateStore` instance and checks that the exact identifier, run association and separately stored SHA-256 digest remain unchanged. This guards the reference against accidental reliance on instance-local state; it is not evidence that production authorization or cross-tenant access control has been proven.
