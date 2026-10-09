@@ -26,6 +26,12 @@ def check(proof, jobs, runs):
     if errors:
         return errors
     expected_runs = {proof["hosted_py311_run_id"], proof["hosted_py314_run_id"], proof["permanent_vps_run_id"]}
+    if any(type(run) is not dict for run in runs):
+        errors.append("all workflow runs must be objects")
+    required_run_keys = {"id", "head_sha", "status", "conclusion"}
+    for run in runs:
+        if type(run) is dict and not required_run_keys.issubset(run):
+            errors.append("workflow run missing required metadata")
     if len(runs) != len(expected_runs):
         errors.append("expected exact workflow run count")
     for run_id in expected_runs:
