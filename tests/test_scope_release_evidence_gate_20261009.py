@@ -3,9 +3,13 @@ from __future__ import annotations
 
 import copy
 import json
+import tempfile
+from pathlib import Path
+from contextlib import redirect_stdout
+from io import StringIO
 import unittest
 
-from scripts.check_scope_release_evidence import REQUIRED_JOBS, evaluate, reject_duplicate_keys, reject_nonfinite_constant
+from scripts.check_scope_release_evidence import REQUIRED_JOBS, evaluate, reject_duplicate_keys, reject_nonfinite_constant, main
 
 
 SHA = "a" * 40
@@ -49,6 +53,21 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         json.loads(payload, object_pairs_hook=reject_duplicate_keys,
                                    parse_constant=reject_nonfinite_constant)
+
+    def test_cli_rejects_duplicate_and_nonfinite_json(self):
+        for payload in (
+            '{"remaining_xfails":0,"remaining_xfails":10}',
+            '{"remaining_xfails":NaN}',
+            '{"jobs":{"permanent_vps":Infinity}}',
+        ):
+            with self.subTest(payload=payload), tempfile.TemporaryDirectory() as directory:
+                evidence_path = Path(directory) / "evidence.json"
+                evidence_path.write_text(payload, encoding="utf-8")
+                output = StringIO()
+                with redirect_stdout(output):
+                    exit_code = main(["check_scope_release_evidence.py", str(evidence_path)])
+                self.assertEqual(exit_code, 2)
+                self.assertIn("HOLD:", output.getvalue())
 
     def test_missing_evidence_holds(self):
         self.assertFalse(evaluate(None)[0])
