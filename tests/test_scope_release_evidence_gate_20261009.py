@@ -69,6 +69,17 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
                 self.assertEqual(exit_code, 2)
                 self.assertIn("HOLD:", output.getvalue())
 
+    def test_cli_rejects_oversized_and_invalid_utf8_evidence(self):
+        for raw in (b" " * (64 * 1024 + 1), b"\\xff\\xfe"):
+            with self.subTest(length=len(raw)), tempfile.TemporaryDirectory() as directory:
+                evidence_path = Path(directory) / "evidence.json"
+                evidence_path.write_bytes(raw)
+                output = StringIO()
+                with redirect_stdout(output):
+                    exit_code = main(["check_scope_release_evidence.py", str(evidence_path)])
+                self.assertEqual(exit_code, 2)
+                self.assertIn("HOLD:", output.getvalue())
+
     def test_missing_evidence_holds(self):
         self.assertFalse(evaluate(None)[0])
         self.assertFalse(evaluate({})[0])
