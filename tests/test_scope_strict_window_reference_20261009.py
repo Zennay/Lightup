@@ -219,5 +219,20 @@ class StrictWindowReferenceTests(unittest.TestCase):
         self.assertFalse(strict_window_eligible(
             start, end, start - timedelta(microseconds=1)))
 
+    def test_same_absolute_instant_in_distinct_offsets_is_zero_length(self):
+        # Equal instants are never a nonempty authorization interval.
+        start = datetime(2026, 10, 9, 12, tzinfo=timezone.utc)
+        end = start.astimezone(timezone(timedelta(hours=5, minutes=30)))
+        self.assertFalse(strict_window_eligible(start, end, start))
+
+    def test_half_hour_offset_roundtrip_preserves_start_and_end(self):
+        start = datetime(2026, 10, 9, 12, tzinfo=timezone.utc)
+        end = start + timedelta(seconds=1)
+        offset = timezone(timedelta(hours=-3, minutes=-30))
+        self.assertTrue(strict_window_eligible(
+            start.astimezone(offset), end, start))
+        self.assertFalse(strict_window_eligible(
+            start, end.astimezone(offset), end))
+
 if __name__ == "__main__":
     unittest.main()
