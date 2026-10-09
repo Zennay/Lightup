@@ -148,6 +148,18 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
                     validate_unambiguous_arguments(self.definition, argument)
         self.assertEqual(activity, [])
 
+    def test_nonstring_registry_parameter_name_is_rejected(self):
+        """Do not accept malformed source registry metadata as a tool schema."""
+        for name in (None, b"value", 7):
+            with self.subTest(name=name):
+                malformed = ToolDefinition(
+                    "invalid-registry", "web-baseline", InteractionKind.LAB_ACTIVE,
+                    RiskLevel.DESTRUCTIVE_LAB_ONLY, "offline",
+                    (ToolParameter(name, ParamKind.NUMBER),),
+                )
+                with self.assertRaisesRegex(OrchestrationError, "parameter names"):
+                    validate_unambiguous_arguments(malformed, ())
+
 
 if __name__ == "__main__":
     unittest.main()
