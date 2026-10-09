@@ -91,6 +91,22 @@ class TypedArgumentsPreDispatchTests(unittest.TestCase):
                     "host": value, "port": 8080, "enabled": True
                 })
 
+    def test_unknown_tool_never_uses_registered_handler(self):
+        with self.assertRaises(OrchestrationError):
+            self.executor.execute(self.context, ToolCall(
+                tool_id="unregistered-tool", asset="localhost"
+            ))
+        self.handler.assert_not_called()
+        self.ledger.add_evidence.assert_not_called()
+
+    def test_optional_number_can_be_omitted_without_bypassing_gate(self):
+        result = self.executor.execute(self.context, self.call(
+            host="localhost", port=8080, enabled=False
+        ))
+        self.assertEqual(result.evidence_id, "synthetic-evidence-id")
+        self.handler.assert_called_once()
+        self.ledger.add_evidence.assert_called_once()
+
     def test_valid_lab_control_reaches_handler_and_evidence(self):
         result = self.executor.execute(self.context, self.call(
             host="localhost", port=8080, enabled=True, ratio=0.5
