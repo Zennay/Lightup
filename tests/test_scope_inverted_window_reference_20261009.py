@@ -193,5 +193,25 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
             with self.subTest(bad=bad):
                 self.assertTrue(self.grant(None, bad).is_current(self.anchor))
 
+    def test_falsy_malformed_start_passes_public_scope_legacy_gate(self):
+        # Red-flag characterization, NOT permission to execute a target.
+        grant = self.grant(False, None)
+        decision = self.policy.decide(Target("https://authorized.example", authorization=grant))
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+
+    def test_falsy_malformed_end_passes_public_scope_legacy_gate(self):
+        # Demonstrates the impact at the actual policy boundary, offline only.
+        grant = self.grant(None, "")
+        decision = self.policy.decide(Target("https://authorized.example", authorization=grant))
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+
+    def test_out_of_scope_stays_denied_despite_falsy_malformed_grant(self):
+        grant = self.grant(False, "")
+        decision = self.policy.decide(Target("https://unknown.example", authorization=grant))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
 if __name__ == "__main__":
     unittest.main()
