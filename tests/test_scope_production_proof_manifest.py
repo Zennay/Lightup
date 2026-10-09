@@ -144,6 +144,8 @@ def classify_supplied_hosted_run_jobs(run: dict, jobs: list, expected_sha: str, 
         return {}
     if any(type(job.get("run_id")) is not int or job["run_id"] != run["id"] for job in jobs):
         return {}
+    if any(type(job.get("name")) is not str or "\\x00" in job["name"] for job in jobs):
+        return {}
     if any(type(job.get("status")) is not str or job["status"] != "completed" or
            type(job.get("conclusion")) is not str or job["conclusion"] != "success" for job in jobs):
         return {}
@@ -201,6 +203,9 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         self.assertEqual(classify_supplied_hosted_run_jobs(run, duplicate_unrelated, sha, all_pages_verified=True), {})
         self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs + [None], sha, all_pages_verified=True), {})
         self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs + ["unknown"], sha, all_pages_verified=True), {})
+        bad_name = [dict(j) for j in jobs]
+        bad_name[0]["name"] += "\\x00"
+        self.assertEqual(classify_supplied_hosted_run_jobs(run, bad_name, sha, all_pages_verified=True), {})
         self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs + [{"name": "unrelated"}], sha, all_pages_verified=True), {})
         unrelated_wrong_run = [dict(j) for j in jobs] + [{
             "id": 102, "run_id": 92, "name": "Unrelated job",
