@@ -62,3 +62,7 @@ A dedicated passing-contract integration test reopens the evidence database thro
 ## Distinct positive evidence lineage
 
 A new actual ToolExecutor lab-only regression performs two valid finite-number calls, checks both result evidence IDs are unique and two rows are stored, and then verifies an invalid numeric string cannot append a third row or invoke the handler. This guards against a test harness that would silently collapse valid trace records while checking denial. It remains isolated and does not grant target authorization.
+
+## Interleaved valid and denied calls
+
+The offline actual-ToolExecutor fixture now alternates three accepted finite inputs with three rejected malformed values and compares the complete set of evidence IDs stored in SQLite to the IDs from accepted calls. Denials must not contaminate or delete evidence lineage, even when interleaved. These are local lab-only contracts and do not constitute production authorization approval.
