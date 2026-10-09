@@ -11,6 +11,7 @@ from urllib.parse import urlencode
 from lightup.domain import DomainStore, Role
 from lightup.webapp import create_app
 from lightup.webapp.root_mount_guard import RootMountGuard
+from lightup.webapp.root_mount_guarded_production import create_root_mount_guarded_production_app
 from lightup.webapp.security import WebSecurity
 
 
@@ -242,6 +243,56 @@ class RootMountGuardIntegrationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             RootMountGuard(production, production=False)
         self.assertIsInstance(RootMountGuard(production, production=True), RootMountGuard)
+
+
+    def test_opt_in_real_production_factory_retains_existing_config_and_hsts(self):
+        db = str(Path(self.tmp.name) / "root-guard-production.db")
+        factory = create_root_mount_guarded_production_app({
+            "LIGHTUP_PUBLIC_ORIGIN": "https://lightup.example.test",
+            "LIGHTUP_DB": db,
+        })
+        self.assertIsInstance(factory, RootMountGuard)
+        self.assertTrue(factory.production)
+        self.assertTrue(factory.app.security.production)
+
+        def invoke(script_name):
+            headers = {}
+            env = {
+                "HTTP_HOST": "lightup.example.test",
+                "HTTP_X_FORWARDED_PROTO": "https",
+                "REMOTE_ADDR": "127.0.0.1",
+                "REQUEST_METHOD": "GET",
+                "PATH_INFO": "/login",
+                "SCRIPT_NAME": script_name,
+                "CONTENT_LENGTH": "0",
+                "wsgi.input": io.BytesIO(b""),
+            }
+            response = b"".join(factory(
+                env, lambda status, values: headers.update(
+                    {"status": status, **dict(values)}
+                ),
+            ))
+            return headers, response
+
+        denied, payload = invoke("/external")
+        self.assertEqual(denied["status"], "400 Bad Request")
+        self.assertNotIn("Set-Cookie", denied)
+        self.assertEqual(denied["Cache-Control"], "no-store")
+        self.assertEqual(denied["Strict-Transport-Security"], "max-age=31536000")
+        self.assertEqual(payload, b"<h1>Bad request</h1>")
+        accepted, body = invoke("")
+        self.assertEqual(accepted["status"], "200 OK")
+        self.assertEqual(accepted["Strict-Transport-Security"], "max-age=31536000")
+        self.assertIn(b"Sign in", body)
+        for invalid in (
+            {},
+            {"LIGHTUP_PUBLIC_ORIGIN": "https://lightup.example.test",
+             "LIGHTUP_DB": "relative.db"},
+            {"LIGHTUP_PUBLIC_ORIGIN": "http://lightup.example.test",
+             "LIGHTUP_DB": db},
+        ):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                create_root_mount_guarded_production_app(invalid)
 
 if __name__ == "__main__":
     unittest.main()
