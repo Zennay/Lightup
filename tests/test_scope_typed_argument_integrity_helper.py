@@ -28,6 +28,14 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
                     )["value"], value
                 )
 
+    def test_arbitrarily_large_finite_integer_does_not_overflow(self):
+        huge = 10 ** 1000
+        self.assertEqual(
+            validate_unambiguous_arguments(
+                self.definition, (("value", huge),)
+            )["value"], huge
+        )
+
     def test_nan_and_infinities_rejected(self):
         for value in (float("nan"), float("inf"), float("-inf")):
             with self.subTest(value=str(value)):
