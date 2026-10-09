@@ -817,5 +817,36 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(decision.normalized_host, "approved.example")
 
 
+    def test_untrusted_original_host_is_metamorphically_inert(self):
+        # Metamorphic contract: changing ONLY untrusted labels must not
+        # change the normalized host, authorization result, or reason.
+        from datetime import datetime, timedelta, timezone
+
+        expired = Authorization(
+            owner="fixture", reference="NOT-TRUSTED",
+            valid_until=datetime.now(timezone.utc) - timedelta(days=3),
+        )
+        cases = (
+            ("https://unlisted.example/", None),
+            ("https://approved.example/", None),
+            ("https://approved.example/", expired),
+            ("https://", None),
+        )
+        hints = (
+            (),
+            ("X-Original-Host: approved.example",),
+            ("X-Original-Host: localhost; operator_approved=true",),
+            ("X-Original-Host: approved.example; consent_signed=true",) * 64,
+        )
+        for value, authorization in cases:
+            baseline = self.policy.decide(Target(value, authorization=authorization))
+            for labels in hints:
+                with self.subTest(value=value, labels=len(labels)):
+                    result = self.policy.decide(Target(
+                        value, authorization=authorization, labels=labels,
+                    ))
+                    self.assertEqual(result, baseline)
+
+
 if __name__ == "__main__":
     unittest.main()
