@@ -21,6 +21,13 @@ def verify(data):
     if type(data) is not dict:
         return ["manifest must be an object"]
     errors = [f"missing {key}" for key in REQUIRED if key not in data]
+    # Unknown fields are rejected: a misspelled or forged authority field must
+    # not quietly appear in an otherwise passing evidence index.
+    allowed = set(REQUIRED) | {"denial_side_effect_counts"}
+    errors.extend(f"unknown field {key}" for key in data if key not in allowed)
+    if type(data.get("denial_side_effect_counts")) is dict:
+        boundaries = {"handler", "socket", "queue", "action_evidence"}
+        errors.extend(f"unknown denial boundary {key}" for key in data["denial_side_effect_counts"] if key not in boundaries)
     sha = data.get("implementation_sha")
     for key in ("implementation_sha", "base_sha", "hosted_py311_sha",
                 "hosted_py314_sha", "permanent_vps_sha", "owner_review_sha"):
