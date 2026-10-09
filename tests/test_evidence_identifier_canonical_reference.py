@@ -60,5 +60,26 @@ class EvidenceIdentifierReferenceTests(unittest.TestCase):
         self.assertEqual(alias, "ev-" + "A0" * 32)
 
 
+    def test_distinct_canonical_ids_remain_distinct(self):
+        first = "ev-" + "0" * 64
+        second = "ev-" + "0" * 63 + "1"
+        self.assertNotEqual(canonical_evidence_id(first),
+                            canonical_evidence_id(second))
+
+    def test_rejected_aliases_share_stable_exception_contract(self):
+        for value in ("ev-" + "F" * 64, "ev-" + "0" * 63 + "g",
+                      "ev-" + "0" * 63 + "/", None, True):
+            with self.subTest(value=repr(value)):
+                with self.assertRaises(ValueError) as caught:
+                    canonical_evidence_id(value)
+                self.assertEqual(str(caught.exception),
+                                 "noncanonical evidence identifier")
+
+    def test_invalid_ascii_punctuation_rejected(self):
+        for separator in ("_", "/", ".", ":", "%", "#", "\\"):
+            value = "ev-" + "0" * 63 + separator
+            with self.subTest(separator=separator), self.assertRaises(ValueError):
+                canonical_evidence_id(value)
+
 if __name__ == "__main__":
     unittest.main()
