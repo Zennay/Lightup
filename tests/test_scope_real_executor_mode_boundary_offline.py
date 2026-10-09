@@ -125,5 +125,27 @@ class RealExecutorModeBoundaryTests(unittest.TestCase):
         self.handler.assert_not_called()
         self.state.add_evidence.assert_not_called()
 
+    def test_analysis_only_denies_target_tool_even_if_policy_would_allow(self):
+        self.definition = replace(self.definition, interaction=InteractionKind.TARGET_ACTIVE)
+        self.registry.get.return_value = (self.definition, self.handler)
+        context = replace(self.context(AssessmentMode.ANALYSIS_ONLY), is_lab=False)
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            with self.assertRaises(ToolDenied):
+                self.executor.execute(context, self.call)
+        self.policy.decide.assert_not_called()
+        self.handler.assert_not_called()
+        self.state.add_evidence.assert_not_called()
+
+    def test_passive_discovery_denies_target_tool_even_if_policy_would_allow(self):
+        self.definition = replace(self.definition, interaction=InteractionKind.TARGET_ACTIVE)
+        self.registry.get.return_value = (self.definition, self.handler)
+        context = replace(self.context(AssessmentMode.PASSIVE_DISCOVERY), is_lab=False)
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            with self.assertRaises(ToolDenied):
+                self.executor.execute(context, self.call)
+        self.policy.decide.assert_not_called()
+        self.handler.assert_not_called()
+        self.state.add_evidence.assert_not_called()
+
 if __name__ == "__main__":
     unittest.main()
