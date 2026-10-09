@@ -90,7 +90,7 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
             "https://evidence.example.org/artifact#fragment",
             "https://evidence.example.org/",
             "https://example.invalid/artifact",
-            "https://evidence.example.org/artifact\\n",
+            "https://evidence.example.org/artifact\n",
             "http://evidence.example.org/artifact",
             None,
         ):
