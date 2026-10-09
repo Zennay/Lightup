@@ -71,7 +71,7 @@ class IPv4MappedIPv6ScopeBoundaryTests(unittest.TestCase):
 
     def test_unmapped_ipv6_does_not_inherit_ipv4_mapped_prefix(self):
         policy = ScopePolicy(explicit_networks=("::ffff:8.8.8.0/120",))
-        decision = policy.decide(Target("http://[2001:db8::1]/", authorization=self.grant))
+        decision = policy.decide(Target("http://[2606:4700:4700::1111]/", authorization=self.grant))
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
