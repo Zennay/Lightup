@@ -182,5 +182,16 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.policy.decide(Target("https://authorized.example", authorization=grant))
 
+    def test_falsy_malformed_start_is_silently_treated_as_unbounded(self):
+        # Existing behavior is unsafe as production permission evidence.
+        for bad in (0, False, ""):
+            with self.subTest(bad=bad):
+                self.assertTrue(self.grant(bad, None).is_current(self.anchor))
+
+    def test_falsy_malformed_end_is_silently_treated_as_unbounded(self):
+        for bad in (0, False, ""):
+            with self.subTest(bad=bad):
+                self.assertTrue(self.grant(None, bad).is_current(self.anchor))
+
 if __name__ == "__main__":
     unittest.main()
