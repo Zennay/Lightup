@@ -124,3 +124,9 @@ Handoff acceptance: report counts of replaced legacy assertions, 4 RED requireme
 
 ## Partial provenance RED controls — 2026-10-09
 Two more explicit `@unittest.expectedFailure` tests assert mandatory denial when just one superficial grant field is populated: public host with only a reference string but no owner, and public IP network with only owner text but no reference. A text field is not a trusted issuer, signature, or durable grant ID. Legacy policy currently allows these cases, so XFAIL is proof of a *missing* protection, never production eligibility. Integration owner must verify full issuer/client/engagement/asset/capability/revocation provenance at the pre-I/O boundary and migrate all **6** RED contracts to normal deny tests with zero handler calls. No I/O is performed by this reference.
+
+## Release gate decision record — 2026-10-09
+
+Current reviewed reference HEAD `4f3197e225dbf3e2445d51a9a6ba6052aaaa3ea9` has hosted preflight `37892656447` success (four jobs; raw Python 3.11 and 3.14 unit logs each show `Ran 606 tests ... OK (expected failures=6)`). The **six expected failures represent unresolved denial requirements**. Canonical `LightUp CI` `37892656440` is still queued on the `[self-hosted, zcloud, vps]` lane and has no exact-HEAD completion evidence; no source-owner review exists.
+
+**Decision: HOLD / DRAFT.** Do not claim production permission, merge or deploy. Approval requires a separate source-owner implementation of trusted durable grant provenance and execution-time denial, conversion of all six RED cases to ordinary passing negative dispatch tests with zero handler/evidence effects, retirement of conflicting legacy characterization assertions, and successful canonical VPS CI plus review on the exact integration SHA. A cancelled or queued job, a green hosted run with XFAIL, and a synthetic `Authorization` object each fail the release gate.
