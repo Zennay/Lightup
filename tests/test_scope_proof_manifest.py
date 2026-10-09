@@ -169,6 +169,16 @@ class ProofManifestTests(unittest.TestCase):
                     path.write_text(raw, encoding="utf-8")
                     self.assertEqual(module.main(["verify", str(path)]), 2)
 
+    def test_excessive_json_nesting_returns_hold_not_traceback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "deep.json"
+            path.write_text("[" * 1500 + "0" + "]" * 1500, encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stderr(output):
+                result = module.main(["verify", str(path)])
+            self.assertEqual(result, 2)
+            self.assertNotIn("Traceback", output.getvalue())
+
     def test_oversized_manifest_fails_closed(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "oversized.json"
