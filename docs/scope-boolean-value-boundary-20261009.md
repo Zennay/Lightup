@@ -5,3 +5,9 @@ This branch adds `tests/test_scope_boolean_argument_boundary_20261009.py` agains
 `ParamKind.BOOLEAN` must accept the exact Python `True` and `False`, reject integer/float/string lookalikes and missing required arguments, and reject unknown keys without mutating caller data.
 
 This is a **schema-only, offline positive/negative regression**, not evidence that persisted customer consent, trusted destination binding, revocation checks or actual executor dispatch are safe. No handlers, grants, scanning, network or deployment are involved. This test-only branch intentionally avoids source currently owned by #107 and #156, the duplicate-key lane #966 and Draft #1146. Keep DRAFT/HOLD and do not promote to target execution absent production owner integration, source review and exact-head hosted plus canonical permanent VPS evidence. No CI runs have been claimed for this branch.
+
+## Rejection state integrity
+
+The schema-only suite also checks that a rejected string impersonating BOOLEAN leaves caller input unchanged; a subsequent exact `False` and `True` remains admissible. Mixed valid BOOLEAN with an unknown field is rejected without mutation, regardless of the BOOLEAN value. These checks are limited to `ToolDefinition.validate_arguments` and cannot establish zero handler calls or persisted-evidence absence in actual ToolExecutor execution.
+
+PR #1148 initially queued hosted preflight run [37950026884](https://github.com/Zennay/Lightup/actions/runs/37950026884) and canonical CI [37950027153](https://github.com/Zennay/Lightup/actions/runs/37950027153) for older HEAD `58c101d`. They were QUEUED at inspection, not successful proof, and do **not** validate this later commit. Do not rerun old jobs or treat their result as current-head acceptance.
