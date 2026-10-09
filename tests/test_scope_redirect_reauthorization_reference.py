@@ -122,6 +122,22 @@ class RedirectScopeReferenceTests(unittest.TestCase):
         self.assertFalse(dest.allowed)
         self.assertEqual(dest.reason, ScopeReason.OUT_OF_SCOPE)
 
+    def test_empty_redirect_target_is_invalid_even_with_authorization(self):
+        decision = self.decide("", self.grant)
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+
+    def test_approved_host_custom_port_still_requires_authorization(self):
+        decision = self.decide("https://approved.example.test:8443/next")
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_unknown_host_switching_from_https_to_http_remains_denied(self):
+        self.assertTrue(self.decide("https://approved.example.test/start", self.grant).allowed)
+        decision = self.decide("http://unlisted.example.test/next", self.grant)
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
     def test_each_redirect_hop_rechecks_target_identity(self):
         hops = [
             "https://approved.example.test/start",
