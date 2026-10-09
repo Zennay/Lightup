@@ -26,3 +26,6 @@ A start-only window permits all later instants; an end-only window permits earli
 
 ## Unparsed persisted strings
 Three isolated controls also show that raw string values in `valid_from` or `valid_until` raise `TypeError` in the legacy temporal evaluator; the public-host scope path similarly propagates the error. This is characterization of the defect, not a desired behavior. Persisted timestamps must be parsed and validated by their source owner before an enforcement decision; errors must fail closed without initiating I/O. These fixtures never grant actual authority.
+
+## Denial ordering controls
+An out-of-scope public hostname is rejected before attempting to interpret a malformed grant window. Likewise, an allowlisted public hostname without a grant returns `AUTHORIZATION_MISSING` regardless of URL path. Both checks are offline and constrain the regression surface for future production fail-closed repairs. They do not verify signed consent or authorize target execution.
