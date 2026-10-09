@@ -1,0 +1,145 @@
+"""Offline proof-manifest verifier. No network, filesystem writes or target execution.
+
+Usage: PYTHONPATH=src python scripts/verify_scope_proof_manifest.py evidence.json
+This script only checks an evidence *index*; it cannot prove the referenced
+artifacts are authentic. Independent review of the immutable SHA is mandatory.
+"""
+import json
+import os
+import stat
+import re
+import sys
+from pathlib import Path
+
+REQUIRED = ("schema_version", "implementation_sha", "base_sha", "trusted_grant_reviewed",
+            "revocation_race_passed", "denied_side_effects_zero",
+            "positive_loopback_control_passed", "hosted_py311_sha",
+            "hosted_py314_sha", "permanent_vps_sha", "owner_review_sha",
+            "real_target_activation_disabled", "hosted_py311_run_id",
+            "hosted_py314_run_id", "permanent_vps_run_id",
+            "hosted_py311_job_id", "hosted_py314_job_id", "permanent_vps_job_id")
+SHA = re.compile(r"[0-9a-f]{40}\Z")
+
+
+MAX_MANIFEST_BYTES = 64 * 1024
+
+
+def verify(data):
+    if type(data) is not dict:
+        return ["manifest must be an object"]
+    errors = [f"missing {key}" for key in REQUIRED if key not in data]
+    if type(data.get("schema_version")) is not int or data["schema_version"] != 1:
+        errors.append("schema_version: must be integer 1")
+    # Unknown fields are rejected: a misspelled or forged authority field must
+    # not quietly appear in an otherwise passing evidence index.
+    allowed = set(REQUIRED) | {"denial_side_effect_counts"}
+    errors.extend(f"unknown field {key}" for key in data if key not in allowed)
+    if type(data.get("denial_side_effect_counts")) is dict:
+        boundaries = {"handler", "socket", "queue", "action_evidence"}
+        errors.extend(f"unknown denial boundary {key}" for key in data["denial_side_effect_counts"] if key not in boundaries)
+    sha = data.get("implementation_sha")
+    for key in ("implementation_sha", "base_sha", "hosted_py311_sha",
+                "hosted_py314_sha", "permanent_vps_sha", "owner_review_sha"):
+        value = data.get(key)
+        if type(value) is not str or SHA.fullmatch(value) is None:
+            errors.append(f"{key}: expected lowercase 40-character commit SHA")
+        elif value == "0" * 40:
+            errors.append(f"{key}: null placeholder SHA is forbidden")
+    base_sha = data.get("base_sha")
+    if (type(sha) is str and SHA.fullmatch(sha)
+            and type(base_sha) is str and SHA.fullmatch(base_sha)
+            and sha == base_sha):
+        errors.append("implementation_sha: must differ from base_sha")
+    if type(sha) is str and SHA.fullmatch(sha):
+        for key in ("hosted_py311_sha", "hosted_py314_sha", "permanent_vps_sha", "owner_review_sha"):
+            if data.get(key) != sha:
+                errors.append(f"{key}: does not match implementation_sha")
+    for key in ("trusted_grant_reviewed", "revocation_race_passed",
+                "denied_side_effects_zero", "positive_loopback_control_passed",
+                "real_target_activation_disabled"):
+        if data.get(key) is not True:
+            errors.append(f"{key}: must be literal true")
+    for key in ("hosted_py311_run_id", "hosted_py314_run_id", "permanent_vps_run_id"):
+        value = data.get(key)
+        if type(value) is not int or value <= 0:
+            errors.append(f"{key}: expected positive integer workflow run ID")
+    # Hosted matrix jobs may share a workflow run but must be different jobs.
+    job_fields = ("hosted_py311_job_id", "hosted_py314_job_id", "permanent_vps_job_id")
+    job_ids = [data.get(key) for key in job_fields]
+    for key, value in zip(job_fields, job_ids):
+        if type(value) is not int or value <= 0:
+            errors.append(f"{key}: expected positive integer job ID")
+    if all(type(value) is int and value > 0 for value in job_ids):
+        if len(set(job_ids)) != len(job_ids):
+            errors.append("CI job identifiers must be distinct")
+    # The permanently hosted VPS proof must come from another workflow run;
+    # only the two hosted Python-version jobs may share a matrix run.
+    vps_run = data.get("permanent_vps_run_id")
+    for hosted_key in ("hosted_py311_run_id", "hosted_py314_run_id"):
+        hosted_run = data.get(hosted_key)
+        if (type(vps_run) is int and vps_run > 0
+                and type(hosted_run) is int and hosted_run > 0
+                and vps_run == hosted_run):
+            errors.append("permanent VPS run must differ from hosted preflight run")
+    side_effects = data.get("denial_side_effect_counts")
+    if type(side_effects) is not dict:
+        errors.append("denial_side_effect_counts: missing object")
+    else:
+        for boundary in ("handler", "socket", "queue", "action_evidence"):
+            if type(side_effects.get(boundary)) is not int or side_effects[boundary] != 0:
+                errors.append(f"denial_side_effect_counts.{boundary}: must be integer 0")
+    return errors
+
+
+def reject_duplicate_keys(pairs):
+    """Prevent JSON parser last-key-wins from overwriting denial evidence."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def main(argv):
+    if len(argv) != 2:
+        print("usage: verify_scope_proof_manifest.py path/to/evidence.json", file=sys.stderr)
+        return 2
+    try:
+        # Do not follow a symlink to a grant store, device or other secret.
+        # O_NONBLOCK avoids hanging if a supplied path resolves to a FIFO.
+        if (type(getattr(os, "O_NOFOLLOW", None)) is not int
+                or type(getattr(os, "O_NONBLOCK", None)) is not int):
+            raise ValueError("secure regular-file open is unavailable")
+        if os.O_NOFOLLOW == 0 or os.O_NONBLOCK == 0:
+            raise ValueError("secure regular-file open flags are ineffective")
+        flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
+        descriptor = os.open(argv[1], flags)
+        with os.fdopen(descriptor, "rb") as stream:
+            if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                raise ValueError("manifest must be a regular file")
+            raw = stream.read(MAX_MANIFEST_BYTES + 1)
+        if len(raw) > MAX_MANIFEST_BYTES:
+            raise ValueError("proof manifest exceeds maximum byte length")
+        data = json.loads(raw.decode("utf-8"),
+                          object_pairs_hook=reject_duplicate_keys,
+                          parse_constant=lambda value: (_ for _ in ()).throw(
+                              ValueError(f"invalid JSON constant: {value}")))
+    except (OSError, ValueError, UnicodeError, RecursionError):
+        # Never echo attacker-controlled JSON keys, file names, or raw values
+        # into CI logs; a rejection is intentionally non-diagnostic.
+        print("HOLD: invalid manifest input", file=sys.stderr)
+        return 2
+    errors = verify(data)
+    if errors:
+        # Error details may include unknown, attacker-controlled field names.
+        # Only emit a stable summary to shared build logs.
+        print(f"HOLD: proof index validation failed ({len(errors)} issue(s))")
+        return 1
+    print("INDEX CHECK PASS ONLY: evidence references are internally consistent; "
+          "not authorization or release approval")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))
