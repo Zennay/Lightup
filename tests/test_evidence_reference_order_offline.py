@@ -17,7 +17,10 @@ def reference_digest(tenant, finding, evidence_ids):
         raise ValueError("invalid evidence reference")
     if len(set(evidence_ids)) != len(evidence_ids):
         raise ValueError("duplicate evidence reference")
-    # Unpaired surrogate code points cannot represent valid UTF-8 identifiers.\n    if any(0xD800 <= ord(ch) <= 0xDFFF for value in (tenant, finding, *evidence_ids) for ch in value):\n        raise ValueError("invalid surrogate in reference identity")\n    payload = json.dumps(
+    # Unpaired surrogate code points cannot represent valid UTF-8 identifiers.
+    if any(0xD800 <= ord(ch) <= 0xDFFF for value in (tenant, finding, *evidence_ids) for ch in value):
+        raise ValueError("invalid surrogate in reference identity")
+    payload = json.dumps(
         {"schema": "lightup.evidence-set.v1", "tenant": tenant, "finding": finding, "evidence": sorted(evidence_ids)},
         sort_keys=True, ensure_ascii=True, separators=(",", ":"),
     ).encode("ascii")
