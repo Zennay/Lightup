@@ -146,5 +146,31 @@ class ScopeFetchModeNonAuthorityTest(unittest.TestCase):
         self.assertEqual(self.dispatch, dispatch_before)
 
 
+    def test_identity_length_boundary(self):
+        for field in ("tenant", "request", "asset", "capability"):
+            with self.subTest(field=field):
+                max_value = "a" * 128
+                self.assertTrue(reference_consistent(
+                    replace(self.grant, **{field: max_value}),
+                    replace(self.dispatch, **{field: max_value}), HostileHeader()))
+                too_long = "a" * 129
+                self.assertFalse(reference_consistent(
+                    replace(self.grant, **{field: too_long}),
+                    replace(self.dispatch, **{field: too_long}), "cors"))
+
+    def test_matching_revision_zero_is_allowed_synthetic_control(self):
+        self.assertTrue(reference_consistent(
+            replace(self.grant, revision=0),
+            replace(self.dispatch, revision=0), "no-cors"))
+
+    def test_missing_binding_denied_on_either_side(self):
+        for field in ("tenant", "request", "asset", "capability"):
+            with self.subTest(field=field):
+                self.assertFalse(reference_consistent(
+                    replace(self.grant, **{field: None}), self.dispatch, "navigate"))
+                self.assertFalse(reference_consistent(
+                    self.grant, replace(self.dispatch, **{field: None}), "navigate"))
+
+
 if __name__ == "__main__":
     unittest.main()
