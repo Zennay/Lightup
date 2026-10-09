@@ -57,3 +57,7 @@ Two more ordinary offline tests prove that Unicode format controls and lone surr
 ## Hostile polymorphic target objects
 
 Two more ordinary reference tests assert strict built-in `str` typing: a hostile `str` subclass with throwing iteration/indexing/stringification hooks and a non-string object with throwing `__str__`, `__bool__` and `__iter__` methods both fail closed without invoking downstream policy evaluation. The specimen intentionally never coerces hostile input. This is strictly offline pre-policy reference behavior, not production authorization enforcement.
+
+## Malformed target isolation from grant and labels
+
+Two additional ordinary offline tests use poison authorization and labels objects to assert that an invalid raw target is rejected before either metadata object is inspected, and before any policy call. These are pre-parser evaluation-order contracts only; trusted production grant verification is still required for valid targets. Total 19 ordinary reference methods, plus 16 legacy methods including 12 unresolved RED/XFAIL contracts.
