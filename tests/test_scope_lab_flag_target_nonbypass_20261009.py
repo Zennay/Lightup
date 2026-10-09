@@ -143,6 +143,31 @@ class LabMarkerNonBypassTests(unittest.TestCase):
         self.assertFalse(any(decision.allowed for decision in decisions))
         self.assertEqual(decisions[0], decisions[1])
 
+    def test_future_grant_cannot_be_activated_by_lab_marker(self):
+        now = datetime.now(timezone.utc)
+        future = AuthorizationGrant(
+            grant_id="future-synthetic-grant",
+            client_id="synthetic-client",
+            engagement_id="synthetic-engagement",
+            approved_by="owner@example.test",
+            reference="synthetic-only",
+            scope=self.grant.scope,
+            valid_from=now + timedelta(hours=1),
+            valid_until=now + timedelta(hours=2),
+        )
+        for marker in (False, True):
+            with self.subTest(is_lab=marker):
+                decision = self.policy.decide(ExecutionRequest(
+                    interaction=InteractionKind.TARGET_ACTIVE,
+                    asset="authorized.example.test",
+                    capability_id="synthetic-check",
+                    requested_risk=RiskLevel.LOW_IMPACT,
+                    authorization=future,
+                    is_lab=marker,
+                ))
+                self.assertFalse(decision.allowed)
+                self.assertIn("valid", decision.reason)
+
     def test_lab_interaction_without_lab_flag_denied_despite_grant(self):
         result = self.policy.decide(ExecutionRequest(
             interaction=InteractionKind.LAB_ACTIVE,
