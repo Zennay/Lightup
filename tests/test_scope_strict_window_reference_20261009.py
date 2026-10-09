@@ -117,6 +117,19 @@ class StrictWindowReferenceTests(unittest.TestCase):
         self.assertFalse(strict_window_eligible(first, second, second))
         self.assertFalse(strict_window_eligible(second, first, first))
 
+    def test_utc_conversion_overflow_denies_safely(self):
+        # Extreme aware dates can overflow when converted to UTC.
+        extreme = datetime.min.replace(tzinfo=timezone(timedelta(hours=14)))
+        self.assertFalse(strict_window_eligible(extreme, self.end, self.now))
+
+    def test_equivalent_fold_values_from_distinct_zones(self):
+        first = datetime(2026, 10, 25, 0, 30, tzinfo=timezone.utc)
+        end = first + timedelta(hours=1)
+        local_first = first.astimezone(timezone(timedelta(hours=2)))
+        local_end = end.astimezone(timezone(timedelta(hours=1)))
+        self.assertTrue(strict_window_eligible(local_first, local_end, first))
+        self.assertFalse(strict_window_eligible(local_first, local_end, end))
+
     def test_invalid_now_types_deny(self):
         for bad in (None, "", 0, False, True, self.now.isoformat()):
             with self.subTest(bad=repr(bad)):
