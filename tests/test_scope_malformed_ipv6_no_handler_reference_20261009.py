@@ -20,9 +20,9 @@ def reference_preflight(policy, target, handler):
     if type(target.value) is not str:
         return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
     try:
-        urlparse(target.value if "://" in target.value else "//" + target.value)
-        # Enforce authority bracket balance BEFORE delegating the real policy.
-        authority = target.value.split("://", 1)[-1].split("/", 1)[0]
+        parsed = urlparse(target.value if "://" in target.value else "//" + target.value)
+        # The authority is netloc, not a raw split which can include query or fragment.
+        authority = parsed.netloc
         if authority.count("[") != authority.count("]") or authority.count("[") > 1:
             return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
     except ValueError:
@@ -88,6 +88,34 @@ class MalformedAuthorityNoHandlerReference(unittest.TestCase):
         decision = reference_preflight(policy, target, handler)
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
         policy.decide.assert_called_once_with(target)
+        handler.assert_not_called()
+
+    def test_query_and_fragment_brackets_never_poison_authority(self):
+        for raw in (
+            "https://unlisted.example.test?lookup=[a",
+            "https://unlisted.example.test#fragment=[a",
+            "https://unlisted.example.test/path?lookup=]a",
+        ):
+            with self.subTest(raw=raw):
+                policy = Mock(spec=ScopePolicy)
+                policy.decide.return_value = ScopeDecision(
+                    False, "unlisted.example.test", ScopeReason.OUT_OF_SCOPE
+                )
+                handler = Mock()
+                target = Target(raw)
+                result = reference_preflight(policy, target, handler)
+                self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
+                policy.decide.assert_called_once_with(target)
+                handler.assert_not_called()
+
+    def test_authority_brackets_still_rejected_with_query_and_fragment(self):
+        policy = Mock(spec=ScopePolicy)
+        handler = Mock()
+        for raw in ("https://[::1?x=1", "https://[::1#frag"):
+            with self.subTest(raw=raw):
+                result = reference_preflight(policy, Target(raw), handler)
+                self.assertEqual(result.reason, ScopeReason.INVALID_TARGET)
+        policy.decide.assert_not_called()
         handler.assert_not_called()
 
     def test_normal_denial_preserves_zero_handler_calls(self):
