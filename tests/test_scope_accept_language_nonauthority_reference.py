@@ -20,7 +20,7 @@ def allowed(grant, *, tenant, request, asset, capability, accept_language):
     if type(grant) is not Grant:\n        return False\n    # No coercion: all authority-bearing identifiers must be exact strings.
     identities = (grant.tenant, grant.request, grant.asset, grant.capability,
                   tenant, request, asset, capability)
-    if any(type(x) is not str or not x or x != x.strip() for x in identities):
+    if any(type(x) is not str or not x or x != x.strip()\n           or any(ord(ch) < 32 or ord(ch) == 127 for ch in x)\n           for x in identities):
         return False
     # Header intentionally ignored, including malformed or adversarial content.
     return (type(grant.active) is bool
