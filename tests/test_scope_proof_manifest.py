@@ -37,6 +37,17 @@ class ProofManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             py_compile.compile(str(MODULE), cfile=str(Path(directory) / "verifier.pyc"), doraise=True)
 
+    def test_run_ids_for_independent_proof_lanes_must_differ(self):
+        fields = ("hosted_py311_run_id", "hosted_py314_run_id", "permanent_vps_run_id")
+        for first in fields:
+            for second in fields:
+                if first == second:
+                    continue
+                with self.subTest(first=first, second=second):
+                    obj = fixture()
+                    obj[second] = obj[first]
+                    self.assertTrue(any("must be distinct" in e for e in module.verify(obj)))
+
     def test_missing_or_forged_run_ids_fail_closed(self):
         for field in ("hosted_py311_run_id", "hosted_py314_run_id", "permanent_vps_run_id"):
             for value in (None, 0, -1, True, 1.0, "123"):
