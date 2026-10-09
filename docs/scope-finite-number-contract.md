@@ -102,3 +102,7 @@ The helper now accepts only exact built-in `tuple`/`list` types for both the ord
 ## Registry-first validation order
 
 The standalone helper now validates the **trusted tool registry schema first**, before reading caller-provided argument pairs: the parameter collection must be an exact tuple of exact `ToolParameter` records with unique string names. A malformed registry cannot accidentally evaluate an untrusted argument iterator/list subclass while determining whether the schema is safe. Dedicated synthetic tests cover duplicate registry names plus a side-effect trap and an invalid registry entry. Runtime authorization and real network I/O remain separate, unimplemented integration gates.
+
+## Actual executor compatibility bridge — temporary test only
+
+The new `test_bridge_validator_blocks_duplicate_and_nonfinite_before_real_handler` temporarily patches `ToolCall.arguments_dict` **only within the offline unittest** to delegate to `validate_unambiguous_arguments` using the registered tool definition. It calls the real `ToolExecutor` with a registered LAB_ACTIVE handler and temporary SQLite evidence ledger. NaN/±Infinity and a duplicate-key call must fail with no handler/evidence effects; a finite call must reach exactly one handler/evidence record. This demonstrates compatibility at the actual executor method boundary without changing production code; the production source owner must still wire and review a real implementation. No DNS, network, target scanning, real grants, or authorization claims.
