@@ -160,6 +160,32 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
                 with self.assertRaisesRegex(OrchestrationError, "parameter names"):
                     validate_unambiguous_arguments(malformed, ())
 
+    def test_malformed_registry_rejected_before_argument_iteration(self):
+        """Registry integrity checks run before processing untrusted inputs."""
+        malformed = ToolDefinition(
+            "bad-schema", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "offline",
+            (ToolParameter("value", ParamKind.NUMBER), ToolParameter("value", ParamKind.NUMBER)),
+        )
+        observed = []
+        class SideEffectList(list):
+            def __iter__(self):
+                observed.append("read")
+                raise AssertionError("arguments evaluated before registry validation")
+        with self.assertRaisesRegex(OrchestrationError, "duplicate tool parameter"):
+            validate_unambiguous_arguments(malformed, SideEffectList([("value", 5)]))
+        self.assertEqual(observed, [])
+
+    def test_malformed_registry_entry_is_rejected(self):
+        """An invalid ToolParameter entry is rejected without attribute errors."""
+        malformed = ToolDefinition(
+            "bad-schema", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "offline",
+            (None,),
+        )
+        with self.assertRaisesRegex(OrchestrationError, "invalid definition"):
+            validate_unambiguous_arguments(malformed, ())
+
 
 if __name__ == "__main__":
     unittest.main()
