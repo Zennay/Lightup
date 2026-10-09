@@ -173,7 +173,7 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
             grant.is_current(self.anchor)
 
     def test_integer_end_is_not_a_valid_datetime(self):
-        grant = self.grant(None, 0)
+        grant = self.grant(None, 42)
         with self.assertRaises(TypeError):
             grant.is_current(self.anchor)
 
