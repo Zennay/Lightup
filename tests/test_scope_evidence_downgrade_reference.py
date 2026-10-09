@@ -102,6 +102,25 @@ class EvidenceDowngradeReferenceTests(unittest.TestCase):
     def test_dict_cannot_impersonate_evidence(self):
         self.assertFalse(evidence_satisfies_request(self.good.__dict__, **self.claim))
 
+    def test_matched_invalid_identity_never_becomes_authority(self):
+        for value in ("tenantA ", "tenantA\\n", "tenantA\\x00", "ténantA", ""):
+            with self.subTest(value=value):
+                bad = Evidence(value, self.good.request, self.good.revision,
+                               self.good.issuer, TRUSTED_SOURCE, True, False)
+                self.assertFalse(evidence_satisfies_request(
+                    bad, **{**self.claim, "tenant": value}))
+
+    def test_exact_string_identity_rejects_polymorphic_values(self):
+        class ForgedString(str):
+            pass
+        for field in ("tenant", "request", "issuer"):
+            with self.subTest(field=field):
+                self.assertFalse(evidence_satisfies_request(
+                    self.good, **{**self.claim, field: ForgedString(self.claim[field])}))
+                bad = Evidence(**{**self.good.__dict__,
+                                  field: ForgedString(getattr(self.good, field))})
+                self.assertFalse(evidence_satisfies_request(bad, **self.claim))
+
     def test_does_not_mutate_input(self):
         before = self.good
         self.assertTrue(evidence_satisfies_request(self.good, **self.claim))
