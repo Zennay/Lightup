@@ -13,7 +13,8 @@ Proxy metadata describes a claimed transport path; it must not issue, renew, rev
 - stale revision and strict int typing on both grant and dispatch;
 - matching invalid control-character, non-ASCII, empty, and overlong identities across all four binding fields;
 - forged grant envelopes;
-- hostile header objects that must never be inspected, and polymorphic metadata types;\n- exact booleans for issuer verification and active state;
+- hostile header objects that must never be inspected, and polymorphic metadata types;
+- exact booleans for issuer verification and active state;
 - header mutation that cannot affect the authorization outcome.
 
 The predicate deliberately ignores proxy headers. Its `verified=True` fixture is **not** issuer signature verification; a positive result is **not** authority to execute any tool. Production code must separately validate authenticated provenance, operator approval, bounded scope, risk and current revocation state at the final dispatch gate.
