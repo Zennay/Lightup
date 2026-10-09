@@ -475,5 +475,26 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
                 self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
 
 
+    def test_claimed_approval_does_not_override_missing_grant_on_ipv6(self):
+        result = self.policy.decide(Target(
+            "https://[2001:db8::9]/",
+            labels=("X-Original-Host: approved.example; operator_approved=true",),
+        ))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.normalized_host, "2001:db8::9")
+        self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_grant_reference_hint_does_not_authorize_different_url_host(self):
+        target = Target(
+            "https://unlisted.example/resource",
+            authorization=Authorization(owner="fixture", reference="NOT-TRUSTED"),
+            labels=("X-Original-Host: approved.example; grant_ref=NOT-TRUSTED",),
+        )
+        decision = self.policy.decide(target)
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.normalized_host, "unlisted.example")
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+
 if __name__ == "__main__":
     unittest.main()
