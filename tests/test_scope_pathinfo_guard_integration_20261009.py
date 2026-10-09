@@ -181,7 +181,7 @@ class CanonicalPathInfoRealWSGITests(unittest.TestCase):
         for production in (False, True):
             with self.subTest(production=production):
                 env = self._environ(
-                    "/logout\\n", token=self.op_cookie, csrf=self.op_csrf,
+                    "/logout\n", token=self.op_cookie, csrf=self.op_csrf,
                     production=production
                 )
                 with patch.object(self.store, "session_context",
@@ -197,7 +197,7 @@ class CanonicalPathInfoRealWSGITests(unittest.TestCase):
             with self.subTest(production=production):
                 before = self.store.list_assessment_requests(self.operator)
                 env = self._environ(
-                    f"/portal/{self.tenant_id}/requests\\n",
+                    f"/portal/{self.tenant_id}/requests\n",
                     token=self.client_cookie, csrf=self.client_csrf,
                     production=production
                 )
