@@ -342,6 +342,18 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
                     self.consent, **(self.request | {"revoked": revocation}))
                 self.assertEqual(decision, not revocation)
 
+    def test_cross_field_swap_never_inherits_consent(self):
+        # A caller cannot swap two different identity roles to retain authority.
+        fields = ("tenant_id", "engagement_id", "owner_id",
+                  "asset_id", "capability_id")
+        for left_index in range(len(fields)):
+            for right_index in range(left_index + 1, len(fields)):
+                left, right = fields[left_index], fields[right_index]
+                with self.subTest(left=left, right=right):
+                    swapped = self.request.copy()
+                    swapped[left], swapped[right] = swapped[right], swapped[left]
+                    self.assertFalse(matches_consent(self.consent, **swapped))
+
 
 if __name__ == "__main__":
     unittest.main()
