@@ -133,5 +133,49 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
                 self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
 
 
+    def test_header_like_labels_never_grant_any_public_target(self):
+        synthetic = Authorization(owner="fixture", reference="NOT-TRUSTED")
+        hints = (
+            "X-Original-Host: approved.example",
+            "X-Original-Host: localhost",
+            "X-Original-Host: 127.0.0.1",
+            "X-Original-Host: [::1]",
+            "X-Original-Host: approved.example\\r\\nHost: unknown.example",
+            "X-Original-Host: approved.example\\nX-Forwarded-Host: approved.example",
+            "X-Original-Host: approved.example\\x00unknown.example",
+            "X-Original-Host: APPROVED.EXAMPLE.",
+        )
+        for hint in hints:
+            with self.subTest(hint=hint):
+                result = self.policy.decide(Target(
+                    "unknown.example", authorization=synthetic, labels=(hint,),
+                ))
+                self.assertFalse(result.allowed)
+                self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_lab_disabled_hint_cannot_promote_private_address(self):
+        for host in ("10.2.3.4", "192.168.44.5", "127.0.0.1"):
+            # Loopback is intentionally a separate local-only policy rule.
+            if host == "127.0.0.1":
+                continue
+            with self.subTest(host=host):
+                result = self.policy.decide(Target(
+                    host, labels=("X-Original-Host: approved.example",),
+                ))
+                self.assertFalse(result.allowed)
+                self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_original_host_does_not_mutate_immutable_target(self):
+        synthetic = Authorization(owner="fixture", reference="NOT-TRUSTED")
+        target = Target(
+            "unknown.example", authorization=synthetic,
+            labels=("X-Original-Host: approved.example",),
+        )
+        self.policy.decide(target)
+        self.assertEqual(target.value, "unknown.example")
+        self.assertEqual(target.labels, ("X-Original-Host: approved.example",))
+        self.assertIs(target.authorization, synthetic)
+
+
 if __name__ == "__main__":
     unittest.main()
