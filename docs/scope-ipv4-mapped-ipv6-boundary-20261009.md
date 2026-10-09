@@ -15,3 +15,7 @@ The nine synthetic test methods now distinguish an IPv4 allowlist from an IPv4-m
 ## Positive/negative pair
 
 Eleven methods now include an explicit **synthetic-only** in-prefix IPv4-mapped IPv6 acceptance control and an ordinary (unmapped) IPv6 noninheritance denial. This catches overbroad implementations that reject everything or incorrectly collapse IPv6 address families; a passing scope decision is not authorization to dispatch.
+
+## Grant time-window negative controls
+
+Thirteen offline test methods now include an expired authorization (`valid_until` in 2000) and a future-dated authorization (`valid_from` in 2099) against an explicitly listed mapped-IPv6 `/128`. Both must fail with `AUTHORIZATION_EXPIRED`. Fixed timestamps avoid wall-clock edge flakiness while testing the legacy scope gate. These fixtures do not confer persisted, issuer-verified consent.
