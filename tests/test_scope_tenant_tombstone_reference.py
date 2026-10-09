@@ -28,7 +28,7 @@ def eligible(grant: TenantGrant, state: TenantState) -> bool:
         return False
     if type(grant.generation) is not int or type(state.generation) is not int:
         return False
-    if min(grant.generation, state.generation) < 1:
+    if not (1 <= grant.generation <= 2**63 - 1\n            and 1 <= state.generation <= 2**63 - 1):
         return False
     return (type(grant.active) is bool and grant.active is True
             and type(state.deleted) is bool and state.deleted is False
@@ -102,6 +102,30 @@ class TenantTombstoneTests(unittest.TestCase):
             pass
         self.assertFalse(eligible(self.grant, DerivedState("tenant_a", 7, False)))
         self.assertFalse(eligible(self.grant, TenantState("tenant_a", 7, "false")))
+
+    def test_generation_overflow_denied(self):
+        for huge in (2**63, 10**100):
+            with self.subTest(huge=huge):
+                self.assertFalse(eligible(TenantGrant("tenant_a", "grant_1", huge, True), self.state))
+                self.assertFalse(eligible(self.grant, TenantState("tenant_a", huge, False)))
+
+    def test_max_generation_boundary_is_conditionally_eligible(self):
+        maximum = 2**63 - 1
+        self.assertTrue(eligible(
+            TenantGrant("tenant_a", "grant_1", maximum, True),
+            TenantState("tenant_a", maximum, False)))
+
+    def test_non_integer_generation_types_denied(self):
+        for bad in (7.0, "7", None):
+            with self.subTest(value=bad):
+                self.assertFalse(eligible(TenantGrant("tenant_a", "grant_1", bad, True), self.state))
+                self.assertFalse(eligible(self.grant, TenantState("tenant_a", bad, False)))
+
+    def test_non_string_grant_and_tenant_ids_denied(self):
+        for bad in (None, 1, b"tenant_a"):
+            with self.subTest(value=bad):
+                self.assertFalse(eligible(TenantGrant("tenant_a", bad, 7, True), self.state))
+                self.assertFalse(eligible(self.grant, TenantState(bad, 7, False)))
 
     def test_inputs_unchanged(self):
         before = (repr(self.grant), repr(self.state))
