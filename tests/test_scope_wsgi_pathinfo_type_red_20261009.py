@@ -127,6 +127,35 @@ class PathInfoIdentityWSGITests(unittest.TestCase):
             lookup.assert_not_called()
         self.assertEqual(len(self.store.list_clients(self.ctx)), self.original_count)
 
+    @unittest.expectedFailure
+    def test_red_str_subclass_get_must_not_disclose_operator_dashboard(self):
+        # GET must not become a protected read through a noncanonical
+        # server-path object even with a real operator browser cookie.
+        env = self._env(
+            _PathSubclass("/"), method="GET", token=self.op_cookie,
+        )
+        with patch.object(self.store, "session_context", wraps=self.store.session_context) as lookup:
+            status, _, body = self._invoke(env)
+            self.assertIn(status[:3], {"400", "403", "404"})
+            self.assertNotIn(b"Active testing", body)
+            lookup.assert_not_called()
+
+    def test_plain_str_get_operator_dashboard_still_requires_correct_role(self):
+        for production in (False, True):
+            with self.subTest(production=production):
+                operator_env = self._env(
+                    "/", method="GET", token=self.op_cookie, production=production,
+                )
+                client_env = self._env(
+                    "/", method="GET", token=self.client_cookie, production=production,
+                )
+                ok_status, _, ok_body = self._invoke(operator_env, production=production)
+                blocked_status, _, blocked_body = self._invoke(client_env, production=production)
+                self.assertEqual(ok_status, "200 OK")
+                self.assertIn(b"Active testing", ok_body)
+                self.assertEqual(blocked_status, "403 Forbidden")
+                self.assertNotIn(b"Active testing: Locked", blocked_body)
+
     def test_valid_operator_request_still_creates_client_in_dev_and_prod(self):
         for production in (False, True):
             with self.subTest(production=production):
