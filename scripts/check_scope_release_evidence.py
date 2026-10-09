@@ -6,6 +6,7 @@ Use only after an independent owner has verified source/run provenance.
 from __future__ import annotations
 
 import json
+import stat
 import sys
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -101,6 +102,8 @@ def main(argv: list[str]) -> int:
         return 2
     try:
         source = Path(argv[1])
+        if not stat.S_ISREG(source.lstat().st_mode):
+            raise ValueError("evidence must be a regular file (no symlinks or devices)")
         with source.open("rb") as stream:
             raw = stream.read(MAX_EVIDENCE_BYTES + 1)
         if len(raw) > MAX_EVIDENCE_BYTES:
