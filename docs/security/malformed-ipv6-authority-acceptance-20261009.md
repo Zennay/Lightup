@@ -17,11 +17,11 @@ structured denial. This is not approval to execute target work.
    writes, or executor calls for invalid authorities.
 4. Preserve valid explicitly authorized and unlisted-host behavior;
    distinguish synthetic fixture authorization from trusted consent.
-5. Convert each `expectedFailure` in
+5. Do not swallow exceptions from downstream authorization policies as malformed URL errors; policy infrastructure failures must remain distinguishable while handlers stay uncalled. Brackets appearing only in path components must not be treated as authority delimiters.\n6. Convert each `expectedFailure` in
    `tests/test_scope_malformed_ipv6_bracket_contract_20261009.py` to ordinary
    passing tests after the production fix. An XFAIL result is **not** a green
    security acceptance signal.
-6. Demand hosted and canonical VPS CI on the **exact** merge candidate commit,
+7. Demand hosted and canonical VPS CI on the **exact** merge candidate commit,
    plus source-owner review and trusted pre-I/O grant enforcement.
 
 ## Release state
