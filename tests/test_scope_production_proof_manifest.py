@@ -5,6 +5,7 @@ import json
 import re
 import unittest
 from pathlib import Path
+from urllib.parse import urlsplit
 
 MANIFEST = Path(__file__).resolve().parents[1] / "docs" / "scope-production-proof-manifest-20261009.json"
 SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -15,6 +16,20 @@ MANIFEST_KEYS = frozenset(("schema_version", "release_gate", "real_target_activa
     "implementation_sha", "owner_review_url", "hosted_python_311", "hosted_python_314",
     "permanent_vps", "negative_real_executor_trace", "positive_loopback_lab_trace",
     "persistent_revocation_proof", "trusted_destination_metadata_proof"))
+
+
+def _valid_artifact_url(value: object) -> bool:
+    if type(value) is not str or any(ord(ch) < 33 or ord(ch) == 127 for ch in value):
+        return False
+    try:
+        parts = urlsplit(value)
+        return (parts.scheme == "https" and bool(parts.hostname) and
+                parts.username is None and parts.password is None and
+                parts.port is None and bool(parts.path) and parts.path != "/" and
+                not parts.query and not parts.fragment and
+                parts.hostname.endswith(".invalid") is False)
+    except ValueError:
+        return False
 
 
 def is_release_evidence_complete(m: dict) -> bool:
@@ -57,7 +72,7 @@ def is_release_evidence_complete(m: dict) -> bool:
     for trace, keys in trace_schemas:
         if type(trace) is not dict or set(trace) != keys or trace.get("sha") != sha:
             return False
-        if not isinstance(trace.get("artifact_url"), str) or not trace["artifact_url"].startswith("https://"):
+        if not _valid_artifact_url(trace.get("artifact_url")):
             return False
     for counter in COUNTERS:
         if type(negative.get(counter)) is not int or negative[counter] != 0:
@@ -66,6 +81,22 @@ def is_release_evidence_complete(m: dict) -> bool:
 
 
 class ScopeProductionProofManifestTests(unittest.TestCase):
+    def test_artifact_url_rejects_spoofed_or_ambiguous_locations(self):
+        self.assertTrue(_valid_artifact_url("https://evidence.example.org/evidence"))
+        for candidate in (
+            "https://github.com@evil.example.org/artifact",
+            "https://evidence.example.org:443/artifact",
+            "https://evidence.example.org/artifact?override=true",
+            "https://evidence.example.org/artifact#fragment",
+            "https://evidence.example.org/",
+            "https://example.invalid/artifact",
+            "https://evidence.example.org/artifact\\n",
+            "http://evidence.example.org/artifact",
+            None,
+        ):
+            with self.subTest(candidate=candidate):
+                self.assertFalse(_valid_artifact_url(candidate))
+
     def test_current_manifest_is_explicitly_held_and_incomplete(self):
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         self.assertEqual(manifest["release_gate"], "HOLD")
@@ -76,7 +107,7 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         sha = "a" * 40
         run = {"sha": sha, "conclusion": "success",
                "run_url": "https://github.com/example/repo/actions/runs/1"}
-        trace = {"sha": sha, "artifact_url": "https://example.invalid/evidence"}
+        trace = {"sha": sha, "artifact_url": "https://evidence.example.org/evidence"}
         manifest = {
             "schema_version": 2, "release_gate": "REVIEWED", "implementation_sha": sha,
             "real_target_activation": False,
