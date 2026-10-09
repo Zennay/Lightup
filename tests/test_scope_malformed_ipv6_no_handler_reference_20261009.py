@@ -23,7 +23,7 @@ def reference_preflight(policy, target, handler):
         urlparse(target.value if "://" in target.value else "//" + target.value)
         # Enforce authority bracket balance BEFORE delegating the real policy.
         authority = target.value.split("://", 1)[-1].split("/", 1)[0]
-        if authority.count("[") != authority.count("]"):
+        if authority.count("[") != authority.count("]") or authority.count("[") > 1:
             return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
         decision = policy.decide(target)
     except ValueError:
@@ -39,7 +39,10 @@ class MalformedAuthorityNoHandlerReference(unittest.TestCase):
         policy = Mock(spec=ScopePolicy)
         handler = Mock()
         for raw in ("http://[::1", "https://[2001:db8::1/path",
-                    "https://[authorized.example.test/path"):
+                    "https://[authorized.example.test/path",
+                    "https://2001:db8::1]/path",
+                    "https://[[::1]]/",
+                    "http://[::1]]/"):
             with self.subTest(raw=raw):
                 result = reference_preflight(policy, Target(raw), handler)
                 self.assertFalse(result.allowed)
