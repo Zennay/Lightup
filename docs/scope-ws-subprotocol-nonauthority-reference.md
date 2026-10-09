@@ -9,3 +9,7 @@ The standalone `tests/test_scope_ws_subprotocol_nonauthority_reference.py` uses 
 Production acceptance belongs to the WebSocket gateway / trusted scope executor source owners: use live authenticated authorization from server-side storage, enforce revocation and exact capability/asset/tenant binding immediately before side effects, reject invalid scope with zero handler/evidence side effects, and run exact-head hosted plus permanent VPS CI and review. This reference deliberately does **not** assert those production guarantees.
 
 No overlapping production paths have been modified. No target I/O, scanning, deployment, or merge permitted by this artifact.
+
+## CI regression and exact fixture repair (2026-10-09)
+
+Hosted preflight `37914098987` failed (Python 3.11 and 3.14 `Compile and unit suite`, 20 assertions) because literal double-backslash fixture strings did not represent Unicode control characters. The self-checking fixture test exposed this failure; importantly, the preceding green-looking deny assertions were not trustworthy. Commit `4a08402fe529c52b18cd7bee7158048f397ef980` replaces double escapes with Python single escape sequences; GitHub source re-fetch confirms single-escape spelling. Exact-head hosted preflight `37914223989` and permanent VPS `37914223974` must pass before marking fixed. The reference does not establish production enforcement.
