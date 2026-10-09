@@ -82,3 +82,6 @@ The legacy-falsy-bound defect also affects the `ScopePolicy` explicit **public n
 
 ## Public network denial and exception distinction
 Two additional legacy policy tests confirm that an allowlisted public IP with **no grant** returns `AUTHORIZATION_MISSING`, while a truthy malformed stored start timestamp currently propagates a `TypeError` instead of delivering a typed denial. Combined with the falsy-corrupt public-network tests, this documents three separate codepaths the owner must reconcile under fail-closed execution semantics. The assertions are characterization only and do not approve dispatch.
+
+## Public IP expiry asymmetry
+The explicit public-network route now has isolated start **and** end timestamp characterization. A falsy corrupt `valid_until` (`0`, `False`, empty string) is silently skipped and currently yields `EXPLICIT_NETWORK`; a truthy malformed expiry produces `TypeError`. Both outcomes are unsafe as production permission evidence. The owner of issue #1128 must reject both malformed types as a non-executable denial, including at pre-dispatch revalidation. No target I/O is performed by these tests.
