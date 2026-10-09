@@ -112,10 +112,20 @@ class ProofManifestTests(unittest.TestCase):
             path.write_bytes(b" " * (module.MAX_MANIFEST_BYTES + 1))
             self.assertEqual(module.main(["verify", str(path)]), 2)
 
+    def test_byte_limit_bounded_read_and_boundary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "boundary.json"
+            raw = json.dumps(fixture()).encode("utf-8")
+            path.write_bytes(raw + b" " * (module.MAX_MANIFEST_BYTES - len(raw)))
+            self.assertEqual(module.main(["verify", str(path)]), 0)
+            with path.open("ab") as stream:
+                stream.write(b"X" * (module.MAX_MANIFEST_BYTES * 2))
+            self.assertEqual(module.main(["verify", str(path)]), 2)
+
     def test_malformed_utf8_fails_closed(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "malformed.json"
-            path.write_bytes(b"\\xff\\xfe")
+            path.write_bytes(bytes([0xff, 0xfe]))
             self.assertEqual(module.main(["verify", str(path)]), 2)
 
     def test_cli_valid_index_is_structural_only(self):
