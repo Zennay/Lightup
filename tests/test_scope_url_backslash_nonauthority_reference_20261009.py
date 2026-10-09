@@ -207,6 +207,25 @@ class BackslashNonauthorityTests(unittest.TestCase):
                 self.assertEqual(reference_dispatch("https://example.test/", policy), denied)
                 policy.assert_called_once_with("https://example.test/")
 
+
+    def test_malformed_ipv6_authority_denies_without_policy_call(self):
+        targets = (
+            "https://[::1/path",
+            "https://[invalid]/",
+            "https://user@[::1/path",
+        )
+        for target in targets:
+            with self.subTest(target=target):
+                policy = Mock(return_value="ALLOW")
+                self.assertEqual(reference_dispatch(target, policy), "INVALID_TARGET")
+                policy.assert_not_called()
+
+    def test_parser_value_error_cannot_trigger_policy_fallback(self):
+        target = "https://[::1/path"
+        policy = Mock(return_value="ALLOW")
+        self.assertEqual(reference_dispatch(target, policy), "INVALID_TARGET")
+        policy.assert_not_called()
+
     def test_nonstring_input_must_not_invoke_user_string_conversion(self):
         class Hostile:
             def __str__(self):
