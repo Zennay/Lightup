@@ -123,6 +123,8 @@ class GitHubReadOnly:
             try:
                 paths.add(normalize_path(filename))
                 prior = changed.get("previous_filename")
+                if changed.get("status") == "renamed" and prior is None:
+                    raise IncompleteEvidence("renamed PR file missing original path")
                 if prior is not None:
                     paths.add(normalize_path(prior))
             except ValueError:
