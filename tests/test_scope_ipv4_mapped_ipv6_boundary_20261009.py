@@ -43,6 +43,24 @@ class IPv4MappedIPv6ScopeBoundaryTests(unittest.TestCase):
         self.assertTrue(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.EXPLICIT_NETWORK)
 
+    def test_explicit_mapped_ipv6_network_does_not_authorize_other_ipv4(self):
+        policy = ScopePolicy(explicit_networks=("::ffff:8.8.8.0/120",))
+        decision = policy.decide(Target("8.8.8.8", authorization=self.grant))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_explicit_mapped_ipv6_network_rejects_neighbor_outside_prefix(self):
+        policy = ScopePolicy(explicit_networks=("::ffff:8.8.8.0/120",))
+        decision = policy.decide(Target("http://[::ffff:8.8.9.8]/", authorization=self.grant))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_explicit_mapped_ipv6_network_requires_grant_on_in_prefix_literal(self):
+        policy = ScopePolicy(explicit_networks=("::ffff:8.8.8.0/120",))
+        decision = policy.decide(Target("http://[::ffff:8.8.8.8]/"))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
     def test_unlisted_mapped_ipv6_never_calls_network_or_dns(self):
         policy = ScopePolicy()
         with patch("socket.create_connection", side_effect=AssertionError("network call")), patch(
