@@ -168,6 +168,27 @@ class LabMarkerNonBypassTests(unittest.TestCase):
                 self.assertFalse(decision.allowed)
                 self.assertIn("valid", decision.reason)
 
+    def test_lab_marker_is_invariant_across_target_denial_matrix(self):
+        """Lab metadata must not change the verdict or reason for identical targets."""
+        cases = (
+            ("missing-grant", None, "authorized.example.test", "synthetic-check", RiskLevel.LOW_IMPACT),
+            ("missing-capability", self.grant, "authorized.example.test", "other-capability", RiskLevel.LOW_IMPACT),
+            ("risk-escalation", self.grant, "authorized.example.test", "synthetic-check", RiskLevel.ELEVATED),
+            ("destructive", self.grant, "authorized.example.test", "synthetic-check", RiskLevel.DESTRUCTIVE_LAB_ONLY),
+        )
+        for label, grant, asset, capability, risk in cases:
+            with self.subTest(case=label):
+                results = tuple(self.policy.decide(ExecutionRequest(
+                    interaction=InteractionKind.TARGET_ACTIVE,
+                    asset=asset,
+                    capability_id=capability,
+                    requested_risk=risk,
+                    authorization=grant,
+                    is_lab=marker,
+                )) for marker in (False, True))
+                self.assertEqual(results[0], results[1])
+                self.assertFalse(results[0].allowed)
+
     def test_lab_interaction_without_lab_flag_denied_despite_grant(self):
         result = self.policy.decide(ExecutionRequest(
             interaction=InteractionKind.LAB_ACTIVE,
