@@ -118,8 +118,8 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
         self.assertEqual(repr(headers), before)
 
     def test_matching_poisoned_identity_is_still_denied(self):
-        poisoned = (" tenant-a", "tenant-a ", "tenant-a\\n", "tenant-a\\x00",
-                    "tenant-a\\u200b", "tenant-a\\u2028", "tenant-a\\ud800")
+        poisoned = (" tenant-a", "tenant-a ", "tenant-a\n", "tenant-a\x00",
+                    "tenant-a\u200b", "tenant-a\u2028", "tenant-a\ud800")
         for value in poisoned:
             for field in ("tenant", "asset", "capability"):
                 with self.subTest(value=ascii(value), field=field):
@@ -151,11 +151,11 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
 
     def test_control_fixtures_are_actual_codepoints(self):
         expected = (
-            ("newline", "\\n", "Cc"),
-            ("nul", "\\x00", "Cc"),
-            ("zero_width", "\\u200b", "Cf"),
-            ("line_separator", "\\u2028", "Zl"),
-            ("surrogate", "\\ud800", "Cs"),
+            ("newline", "\n", "Cc"),
+            ("nul", "\x00", "Cc"),
+            ("zero_width", "\u200b", "Cf"),
+            ("line_separator", "\u2028", "Zl"),
+            ("surrogate", "\ud800", "Cs"),
         )
         for label, value, category in expected:
             with self.subTest(label=label):
