@@ -94,7 +94,7 @@ class OfflineExecutorNumberTests(unittest.TestCase):
         self.assertEqual(self.calls, [])
         self.assertEqual(self.evidence_count(), 0)
 
-    def test_optional_number_argument_cannot_be_replaced_by_unknown_key(self):
+    def test_required_number_argument_cannot_be_replaced_by_unknown_key(self):
         with self.assertRaises(OrchestrationError):
             self.executor.execute(
                 self.context,
@@ -156,6 +156,17 @@ class OfflineExecutorNumberTests(unittest.TestCase):
             )
         self.assertEqual(self.evidence_count(), before_count)
         self.assertEqual(len(self.calls), before_calls)
+
+    @unittest.expectedFailure
+    def test_nonfinite_replay_after_valid_call_must_preserve_ledger(self):
+        """A failed numerical input must not mutate prior successful evidence."""
+        self.invoke(1.0)
+        before_calls = len(self.calls)
+        before_evidence = self.evidence_count()
+        with self.assertRaises(OrchestrationError):
+            self.invoke(float("nan"))
+        self.assertEqual(len(self.calls), before_calls)
+        self.assertEqual(self.evidence_count(), before_evidence)
 
     @unittest.expectedFailure
     def test_nan_denied_before_handler_and_evidence(self):
