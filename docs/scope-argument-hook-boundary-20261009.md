@@ -31,3 +31,7 @@ Duplicate-argument RED contract belongs to PR #966; trusted destination work bel
 ## Schema callback ordering acceptance (2026-10-09)
 
 The focused suite also checks that unknown keys, duplicates, and malformed registry parameter kinds are rejected before calling `ToolDefinition.validate_arguments`. The canonical built-in STRING positive control invokes that callback exactly once with the validated mapping. These are **offline helper contracts**, not authorization to execute, scan, or target anything.
+
+## Registry ambiguity regressions
+
+The focused offline suite rejects duplicate registered parameter names before invoking schema callbacks. A tuple subclass passed as the registry parameters collection must be rejected by an exact-type check without triggering its iterator hooks. These are helper-level checks only, not proof of the real execution boundary.
