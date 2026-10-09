@@ -136,3 +136,21 @@ Two additional expected-failure tests insist that one legitimate timestamp canno
 
 ## Both-corrupt temporal bound denial contracts — 2026-10-09
 Two additional RED `@unittest.expectedFailure` methods demand deny by default on allowlisted public host (`valid_from=False`, `valid_until=''`) and allowlisted public IP network (`valid_from=0`, `valid_until=False`). The legacy temporal predicate treats both falsy values as absent and returns an allow; a double-corrupt grant is NOT an unbounded authorized consent window. Ten RED requirements must be converted into ordinary passing pre-dispatch denials by the production owner after source repair, with zero target handler invocation. These tests are synthetic and perform no target I/O.
+
+## Executable negative-contract handoff matrix (source-owner checklist)
+The ten current `test_required_*` cases map to these requirements; this matrix is the authoritative owner migration inventory, not evidence that dispatch is safe:
+
+| Existing RED case | Invariant to enforce before dispatch |
+| --- | --- |
+| `test_required_public_host_denial_of_corrupt_bound` | Public hostname + falsy malformed start must deny |
+| `test_required_public_network_denial_of_corrupt_expiry` | Public network + falsy malformed end must deny |
+| `test_required_public_host_denial_without_provenance` | Host allowlist cannot replace missing verified grant identity |
+| `test_required_public_network_denial_without_provenance` | Network allowlist cannot replace missing verified grant identity |
+| `test_required_public_host_denial_with_reference_only` | Arbitrary reference text without issuer cannot authorize host |
+| `test_required_public_network_denial_with_owner_only` | Arbitrary owner text without reference cannot authorize network |
+| `test_required_host_denial_for_corrupt_start_with_valid_end` | Valid end cannot launder malformed start |
+| `test_required_network_denial_for_valid_start_with_corrupt_end` | Valid start cannot launder malformed end |
+| `test_required_host_denial_when_both_bounds_corrupt` | Two falsy malformed bounds must not become an unbounded host grant |
+| `test_required_network_denial_when_both_bounds_corrupt` | Two falsy malformed bounds must not become an unbounded network grant |
+
+For each migration, owner tests should assert **denied result, zero tool/handler invocations, zero durable execution/evidence writes**, and no fallback to an allowlist-only or text-only grant. Where the owner merges with #100/#107, use real persisted consent test fixtures and a verified issuer/client/engagement/asset/capability/revocation check; synthetic `Authorization` values in this PR are intentionally NOT valid signed consent. Remove `@expectedFailure` only when the production path actually satisfies the negative contract. Keep the PR DRAFT/HOLD until exact integration SHA passes the permanent VPS gate and receives owner review.
