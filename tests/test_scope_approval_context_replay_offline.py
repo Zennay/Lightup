@@ -109,5 +109,33 @@ class ApprovalContextReplayContract(unittest.TestCase):
                 self.assertFalse(admission(forged, forged, revoked=False))
 
 
+    def test_stored_receipt_revision_risk_and_approval_are_authoritative(self):
+        from dataclasses import replace
+        mutations = (
+            {"revision": 0}, {"revision": -1}, {"revision": True},
+            {"revision": "7"}, {"approved_risk": -1}, {"approved_risk": 6},
+            {"approved_risk": 2.0}, {"approved": 1}, {"approved": None},
+            {"approved": False},
+        )
+        for update in mutations:
+            with self.subTest(update=update):
+                modified = replace(self.receipt, **update)
+                self.assertFalse(admission(modified, modified, revoked=False))
+
+    def test_pairwise_role_swaps_never_transfer_authority(self):
+        from dataclasses import replace
+        from itertools import combinations
+        fields = ("tenant", "engagement", "asset", "capability",
+                  "run_id", "operator_id")
+        for left, right in combinations(fields, 2):
+            with self.subTest(left=left, right=right):
+                moved = replace(self.receipt, **{
+                    left: getattr(self.receipt, right),
+                    right: getattr(self.receipt, left),
+                })
+                self.assertFalse(admission(self.receipt, moved, revoked=False))
+                self.assertFalse(admission(moved, moved, revoked=False))
+
+
 if __name__ == "__main__":
     unittest.main()
