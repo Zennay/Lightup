@@ -34,7 +34,7 @@ def permitted(grant, call):
     if not all(type(getattr(grant, key)) is str and type(getattr(call, key)) is str
                for key in ("tenant", "request", "asset", "capability")):
         return False
-    if not all(getattr(grant, flag) is True for flag in
+    if not all(getattr(obj, key) and not any(ord(c) < 32 or ord(c) == 127 for c in getattr(obj, key))\n               for obj in (grant, call)\n               for key in ("tenant", "request", "asset", "capability")):\n        return False\n    if not all(getattr(grant, flag) is True for flag in
                ("approved", "active", "issuer_verified")):
         return False
     return all(getattr(grant, key) == getattr(call, key)
@@ -93,6 +93,59 @@ class RefererCannotGrantAuthority(unittest.TestCase):
                                   asset=self.grant.asset, capability=self.grant.capability)
                     values[flag] = bad
                     self.assertFalse(permitted(Grant(**values), self.call))
+
+
+    def test_matching_malformed_grant_and_call_identity_denied(self):
+        for field in ("tenant", "request", "asset", "capability"):
+            for invalid in (None, 3, True, "", "bad\\nvalue", "bad\\x7fvalue"):
+                with self.subTest(field=field, invalid=repr(invalid)):
+                    values = dict(tenant=self.call.tenant, request=self.call.request,
+                                  asset=self.call.asset, capability=self.call.capability)
+                    values[field] = invalid
+                    self.assertFalse(permitted(
+                        Grant(**values), Call(**values, referer="https://approved.invalid")))
+
+    def test_polymorphic_identity_string_rejected_on_both_sides(self):
+        class SpoofedIdentity(str):
+            def __eq__(self, other):
+                return True
+
+            __hash__ = str.__hash__
+
+        for field in ("tenant", "request", "asset", "capability"):
+            for side in ("grant", "call"):
+                with self.subTest(field=field, side=side):
+                    values = dict(tenant=self.call.tenant, request=self.call.request,
+                                  asset=self.call.asset, capability=self.call.capability)
+                    values[field] = SpoofedIdentity("different")
+                    if side == "grant":
+                        self.assertFalse(permitted(Grant(**values), self.call))
+                    else:
+                        self.assertFalse(permitted(
+                            self.grant, Call(**values, referer="https://approved.invalid")))
+
+    def test_polymorphic_envelope_rejected(self):
+        class SpoofedGrant(Grant):
+            pass
+
+        class SpoofedCall(Call):
+            pass
+
+        self.assertFalse(permitted(SpoofedGrant(**vars(self.grant)), self.call))
+        self.assertFalse(permitted(self.grant, SpoofedCall(**vars(self.call))))
+
+    def test_referer_mutation_does_not_change_grant_or_call(self):
+        referer = {"headers": ["approved"]}
+        call = Call(self.call.tenant, self.call.request, self.call.asset,
+                    self.call.capability, referer)
+        original_grant = vars(self.grant).copy()
+        original_identity = (call.tenant, call.request, call.asset, call.capability)
+        self.assertTrue(permitted(self.grant, call))
+        referer["headers"].append("revoked")
+        self.assertTrue(permitted(self.grant, call))
+        self.assertEqual(vars(self.grant), original_grant)
+        self.assertEqual((call.tenant, call.request, call.asset, call.capability),
+                         original_identity)
 
 
 if __name__ == "__main__":
