@@ -26,6 +26,7 @@ All methods use temporary SQLite and real `create_app` in development or simulat
 - `/clients\n` is recognized as regex-dangerous even though the guard denies it.
 - Denied paths do not call wrapped handlers, read request bodies, consult sessions, mutate the client database or disclose operator dashboard content. Production rejects retain HSTS, while development rejects omit it; non-boolean production flags are not allowed.
 - Exact valid operator GET/POST remains functional; client impersonation hints and invalid CSRF remain denied independently of the route guard.
+- A trailing-LF variant of `/logout` does not revoke a real operator session; a trailing-LF variant of `/portal/<client_id>/requests` does not add a tenant assessment request, in either WSGI environment. Both denial paths preserve session integrity.
 
 ## Production ownership and integration handoff
 
