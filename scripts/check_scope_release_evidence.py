@@ -108,7 +108,7 @@ def main(argv: list[str]) -> int:
             parse_constant=reject_nonfinite_constant,
         )
     except (OSError, UnicodeError, ValueError) as exc:
-        print(f"HOLD: unreadable evidence: {exc}", file=sys.stderr)
+        print(f"HOLD: invalid or unreadable evidence ({type(exc).__name__})", file=sys.stderr)
         return 2
     allowed, reasons = evaluate(evidence)
     print("REVIEW-ELIGIBLE (not authorization)" if allowed else "HOLD: " + "; ".join(reasons))
