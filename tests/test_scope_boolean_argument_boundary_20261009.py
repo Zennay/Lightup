@@ -127,6 +127,28 @@ class BooleanArgumentBoundaryTests(unittest.TestCase):
         self.assertEqual(candidate.calls, 0)
         self.schema.validate_arguments({"enabled": False})
 
+    def test_nonboolean_objects_are_rejected_without_truthiness(self):
+        class FalseLike:
+            calls = 0
+
+            def __bool__(self):
+                self.calls += 1
+                return False
+
+        class TrueLike:
+            calls = 0
+
+            def __bool__(self):
+                self.calls += 1
+                return True
+
+        for cls in (FalseLike, TrueLike):
+            candidate = cls()
+            with self.subTest(candidate=cls.__name__):
+                with self.assertRaises(OrchestrationError):
+                    self.schema.validate_arguments({"enabled": candidate})
+                self.assertEqual(candidate.calls, 0)
+
     def test_missing_boolean_rejected(self):
         with self.assertRaises(OrchestrationError):
             self.schema.validate_arguments({})
