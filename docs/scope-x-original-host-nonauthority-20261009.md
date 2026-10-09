@@ -85,3 +85,7 @@ Replaced the prior permissive policy opt-out *allow* control with an explicit fa
 ## Local lab configuration and allowlist immutability
 
 IPv6 link-local targets remain out of scope when the trusted `allow_private_lab` setting is disabled, even when X-Original-Host labels claim to enable lab access. Similarly, forged `explicit_hosts` metadata cannot expand the configured hostname allowlist. Assert both denial reason and unchanged policy configuration. This evidence is for pure `ScopePolicy`, not the production dispatcher.
+
+## Missing-grant network and HTTP dispatch tripwires
+
+A new denied allowlisted URL case patches `socket.getaddrinfo`, `socket.create_connection` and `urllib.request.urlopen` and asserts none were called in pure `ScopePolicy.decide`. It confirms only that this pure function does not invoke those endpoints, **not** that a live API/worker dispatcher blocks target I/O; that requires the source-owner integration and corresponding real-handler instrumentation.
