@@ -264,5 +264,24 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
                 "https://8.8.8.8",
                 authorization=self.grant("not-a-datetime", None)))
 
+    def test_public_network_falsy_corrupt_expiry_passes_legacy_gate(self):
+        # Synthetic characterization; EXPLICIT_NETWORK is not dispatch consent.
+        policy = ScopePolicy(explicit_networks=("8.8.8.0/24",))
+        for corrupt in (0, False, ""):
+            with self.subTest(corrupt=repr(corrupt)):
+                decision = policy.decide(Target(
+                    "https://8.8.8.8",
+                    authorization=self.grant(None, corrupt)))
+                self.assertTrue(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.EXPLICIT_NETWORK)
+
+    def test_public_network_truthy_malformed_expiry_raises(self):
+        # Source-owner requirement: return a stable fail-closed denial instead.
+        policy = ScopePolicy(explicit_networks=("8.8.8.0/24",))
+        with self.assertRaises(TypeError):
+            policy.decide(Target(
+                "https://8.8.8.8",
+                authorization=self.grant(None, "not-a-datetime")))
+
 if __name__ == "__main__":
     unittest.main()
