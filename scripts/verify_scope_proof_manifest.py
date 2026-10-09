@@ -68,7 +68,10 @@ def main(argv):
         print("usage: verify_scope_proof_manifest.py path/to/evidence.json", file=sys.stderr)
         return 2
     try:
-        data = json.loads(Path(argv[1]).read_text(encoding="utf-8"),\n                          object_pairs_hook=reject_duplicate_keys,\n                          parse_constant=lambda value: (_ for _ in ()).throw(\n                              ValueError(f"invalid JSON constant: {value}")))
+        data = json.loads(Path(argv[1]).read_text(encoding="utf-8"),
+                          object_pairs_hook=reject_duplicate_keys,
+                          parse_constant=lambda value: (_ for _ in ()).throw(
+                              ValueError(f"invalid JSON constant: {value}")))
     except (OSError, ValueError) as exc:
         print(f"HOLD: invalid manifest: {exc}", file=sys.stderr)
         return 2
