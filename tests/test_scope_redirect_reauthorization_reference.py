@@ -72,6 +72,32 @@ class RedirectScopeReferenceTests(unittest.TestCase):
         )
         self.assertFalse(policy.decide(Target("https://unlisted.example.test/")).allowed)
 
+    def test_allowlisted_destination_future_grant_is_not_current(self):
+        future = Authorization(
+            owner="synthetic-test-only",
+            reference="FUTURE-NOT-CONSENT",
+            valid_from=datetime.now(timezone.utc) + timedelta(days=1),
+        )
+        decision = self.decide("https://approved.example.test/next", future)
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+
+    def test_each_hop_requires_its_own_current_grant(self):
+        hops = [
+            ("https://approved.example.test/start", self.grant),
+            ("https://approved.example.test/next", None),
+        ]
+        outcomes = [self.decide(url, grant) for url, grant in hops]
+        self.assertEqual([item.allowed for item in outcomes], [True, False])
+        self.assertEqual(outcomes[-1].reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_unlisted_public_destination_stays_denied_with_new_grant(self):
+        different_grant = Authorization(owner="another-synthetic-owner", reference="NOT-CONSENT-2")
+        self.assertEqual(
+            self.decide("https://outside.example.test/", different_grant).reason,
+            ScopeReason.OUT_OF_SCOPE,
+        )
+
     def test_each_redirect_hop_rechecks_target_identity(self):
         hops = [
             "https://approved.example.test/start",
