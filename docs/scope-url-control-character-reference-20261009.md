@@ -61,3 +61,7 @@ Two more ordinary reference tests assert strict built-in `str` typing: a hostile
 ## Malformed target isolation from grant and labels
 
 Two additional ordinary offline tests use poison authorization and labels objects to assert that an invalid raw target is rejected before either metadata object is inspected, and before any policy call. These are pre-parser evaluation-order contracts only; trusted production grant verification is still required for valid targets. Total 19 ordinary reference methods, plus 16 legacy methods including 12 unresolved RED/XFAIL contracts.
+
+## Unicode non-control boundary controls
+
+Two ordinary offline tests preserve non-control Unicode letters, marks and symbols for downstream canonical validation without treating them as authorized, and reject lone high/low UTF-16 surrogates before any scope policy invocation. Total: 21 ordinary reference cases, alongside 16 legacy cases including 12 unresolved RED/XFAIL requirements. No production grant or dispatch behavior changes.
