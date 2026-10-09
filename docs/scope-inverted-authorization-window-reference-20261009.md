@@ -100,3 +100,6 @@ The offline strict reference now treats ordinary `Exception` subclasses from tim
 
 ## Follow-up correction: exceptions in all three temporal phases
 Review of the earlier timezone hardening identified two remaining narrow `except (TypeError, ValueError, OverflowError)` handlers on stored start/end validation and UTC conversion. The first guard on the current-clock offset had already been expanded, but `RuntimeError` could still escape from the other two paths. Updated the isolated reference so all three phases catch ordinary `Exception` and deny safely while still propagating `BaseException` process interrupts. The existing three-position crashing timezone regression now covers the complete correction; this is not a production fix or grant authority.
+
+## Timezone metadata mutation between validation and conversion
+A further offline strict-reference regression uses a `tzinfo` implementation that returns a valid offset on first inspection, then raises a `RuntimeError` on conversion. It checks start, end and current-clock locations and requires denial without an exception escape. This models a changing/untrusted timezone provider; it does not validate a real issuer, dispatch or network action.
