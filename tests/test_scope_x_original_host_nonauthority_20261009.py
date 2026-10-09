@@ -619,5 +619,27 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
 
+    def test_header_cannot_enable_private_lab_for_ipv6_link_local(self):
+        result = self.policy.decide(Target(
+            "http://[fe80::1]/",
+            labels=("X-Original-Host: localhost; allow_private_lab=true",),
+        ))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.normalized_host, "fe80::1")
+        self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
+        self.assertFalse(self.policy.allow_private_lab)
+
+    def test_header_cannot_expand_explicit_host_allowlist(self):
+        original = self.policy.explicit_hosts
+        result = self.policy.decide(Target(
+            "new.example",
+            labels=("X-Original-Host: approved.example; explicit_hosts=new.example",),
+        ))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.normalized_host, "new.example")
+        self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
+        self.assertEqual(self.policy.explicit_hosts, original)
+
+
 if __name__ == "__main__":
     unittest.main()
