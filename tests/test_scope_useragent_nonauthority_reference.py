@@ -90,6 +90,25 @@ class UserAgentNonAuthorityReference(unittest.TestCase):
             with self.subTest(bad=bad):
                 self.assertFalse(permitted(replace(self.grant, tenant=bad), replace(self.attempt, tenant=bad)))
 
+    def test_all_binding_fields_fail_closed_on_matching_invalid_values(self):
+        invalid = ("", " space", "space ", "new\\nline", "tab\\tname", "café", "a\\x7fb")
+        for field in ("tenant", "request", "asset", "capability"):
+            for bad in invalid:
+                with self.subTest(field=field, value=repr(bad)):
+                    self.assertFalse(permitted(
+                        replace(self.grant, **{field: bad}),
+                        replace(self.attempt, **{field: bad}),
+                    ))
+
+    def test_all_binding_fields_reject_polymorphic_strings(self):
+        class Identity(str):
+            pass
+        for field in ("tenant", "request", "asset", "capability"):
+            with self.subTest(field=field):
+                original = getattr(self.grant, field)
+                self.assertFalse(permitted(replace(self.grant, **{field: Identity(original)}), self.attempt))
+                self.assertFalse(permitted(self.grant, replace(self.attempt, **{field: Identity(original)})))
+
     def test_inputs_unchanged(self):
         before = (repr(self.grant), repr(self.attempt))
         permitted(self.grant, self.attempt)
