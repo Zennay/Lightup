@@ -42,9 +42,9 @@ gate and exact-head hosted and canonical VPS CI are verified.
 ## Isolated shape reference (not production authorization)
 
 `tests/test_scope_provenance_shape_offline_reference_20261009.py`
-adds eight **normal** offline unit contracts for a fail-closed,
+adds nine **normal** offline unit contracts for a fail-closed,
 strictly typed provenance-shape reference. It rejects empty/whitespace,
-Unicode format and control characters, surrogate code points, Unicode line/paragraph separators, hostile str subclasses, wrong-typed
+Unicode format and control characters, surrogate code points, Unicode line/paragraph separators and embedded invisible markers, hostile str subclasses, wrong-typed
 fields, and forged containers without invoking hostile `__str__` or
 `__bool__`. The positive case proves **syntax only**. A real grant must
 still be verified by the trusted source-owner path immediately before I/O.
