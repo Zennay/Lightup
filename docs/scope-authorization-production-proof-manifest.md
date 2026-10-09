@@ -93,3 +93,7 @@ JSON payloads with excessive nesting may raise `RecursionError` before structura
 ## Matrix and independent hosted jobs
 
 Both supported CI layouts are accepted by the structural index: Python 3.11 and Python 3.14 may occupy different jobs in one matrix workflow run, or jobs in separate workflow runs. In either layout, each version must reference a distinct job ID and the job's Python version, commit SHA, conclusion, and runner must be independently checked from GitHub. Identical run IDs alone are not proof of duplicated execution; identical job IDs are unacceptable.
+
+## Permanent runner separation
+
+Hosted Python-version jobs may share a preflight workflow run, but `permanent_vps_run_id` must differ from both hosted run IDs. A hosted run cannot be substituted for the separately scheduled permanent self-hosted LightUp CI proof. The corresponding job must independently be checked for exact commit, runner identity, status and safety test execution.
