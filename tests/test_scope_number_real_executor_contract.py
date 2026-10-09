@@ -224,6 +224,21 @@ class OfflineExecutorNumberTests(unittest.TestCase):
             actual = {row[0] for row in db.execute("SELECT evidence_id FROM evidence")}
         self.assertEqual(actual, set(expected))
 
+    def test_rejected_call_does_not_consume_evidence_identity(self):
+        """Invalid input between two successes cannot create an action record."""
+        first = self.invoke(10.0)
+        with self.assertRaises(OrchestrationError):
+            self.invoke("invalid")
+        second = self.invoke(11.0)
+        self.assertNotEqual(first.evidence_id, second.evidence_id)
+        self.assertEqual(self.calls, [10.0, 11.0])
+        with self.state.connect() as db:
+            rows = db.execute(
+                "SELECT evidence_id FROM evidence ORDER BY rowid"
+            ).fetchall()
+        self.assertEqual([row[0] for row in rows],
+                         [first.evidence_id, second.evidence_id])
+
     @unittest.expectedFailure
     def test_duplicate_argument_name_must_not_silently_override(self):
         """ToolCall.arguments_dict currently collapses duplicate tuple keys."""
