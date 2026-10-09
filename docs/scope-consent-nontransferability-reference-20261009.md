@@ -36,3 +36,5 @@ Additional offline hardening: identity comparison rejects U+200B zero-width spac
 The offline identity fixture now rejects all Unicode `Cc`, `Cf` and `Cs` categories, including bidi isolation, joiners and word joiners, across each consent binding. This is only a conservative reference boundary: trusted issuer validation and production owner review remain separate requirements.
 
 Stored consent identifiers receive the same Unicode format-control checks as request identifiers, including when both strings are identically contaminated; an exact textual match does not make malformed identities authoritative.
+
+Positive/negative Unicode controls: ordinary letters and combining marks are accepted only when the persisted owner ID exactly matches the request. Canonically equivalent composed/decomposed strings do not implicitly confer authority; the trusted issuer must define canonical identity rules independently.
