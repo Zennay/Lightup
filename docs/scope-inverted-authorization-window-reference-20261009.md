@@ -94,3 +94,6 @@ Two more offline characterization controls demonstrate that a merely nonempty `r
 
 ## Fixed UTC boundary truth matrix
 The pure strict temporal reference now checks 21 combinations: seven instants surrounding the `[start,end)` window expressed with three timezone offsets. Every case must match UTC chronological eligibility, independent of wall-clock representation; the exact end remains excluded. This is only a temporal reference, not an authenticated authorization or executor gate.
+
+## Untrusted timezone callback errors
+The offline strict reference now treats ordinary `Exception` subclasses from timezone metadata and UTC conversion as temporal rejection rather than escaping the validation boundary. A custom `tzinfo` raising `RuntimeError` is exercised at start, expiry and current-clock positions; `BaseException` process interrupts are intentionally not swallowed. This reference does not issue consent or change production behavior.
