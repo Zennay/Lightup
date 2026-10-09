@@ -171,6 +171,34 @@ class StrictWindowReferenceTests(unittest.TestCase):
         self.assertFalse(strict_window_eligible(self.start, broken, self.now))
         self.assertFalse(strict_window_eligible(self.start, self.end, broken))
 
+    def test_comparison_fault_from_timezone_backend_denies(self):
+        from datetime import tzinfo
+
+        class FailsDuringConversion(tzinfo):
+            def __init__(self):
+                self.calls = 0
+
+            def utcoffset(self, dt):
+                self.calls += 1
+                if self.calls > 1:
+                    raise RuntimeError("timezone backend changed during UTC conversion")
+                return timedelta(0)
+
+            def dst(self, dt):
+                return timedelta(0)
+
+        for bad_position in ("start", "end", "now"):
+            with self.subTest(bad_position=bad_position):
+                faulty = self.now.replace(tzinfo=FailsDuringConversion())
+                start, end, now = self.start, self.end, self.now
+                if bad_position == "start":
+                    start = faulty
+                elif bad_position == "end":
+                    end = faulty
+                else:
+                    now = faulty
+                self.assertFalse(strict_window_eligible(start, end, now))
+
     def test_invalid_now_types_deny(self):
         for bad in (None, "", 0, False, True, self.now.isoformat()):
             with self.subTest(bad=repr(bad)):
