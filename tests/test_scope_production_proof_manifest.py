@@ -148,8 +148,6 @@ def classify_supplied_hosted_run_jobs(run: dict, jobs: list, expected_sha: str, 
         return {}
     if any(type(job.get("name")) is not str or not job["name"].strip() for job in jobs):
         return {}
-    if any(type(job.get("status")) is not str or type(job.get("conclusion")) is not str for job in jobs):
-        return {}
     result = {}
     for version in ("3.11", "3.14"):
         matches = [job for job in jobs if type(job) is dict and
@@ -181,6 +179,9 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs, sha, all_pages_verified=True), expected)
         self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs, sha), {})
         self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs, sha, all_pages_verified=1), {})
+        for incomplete in (None, False, 0, "", "true", [], {}):
+            self.assertEqual(classify_supplied_hosted_run_jobs(
+                run, jobs, sha, all_pages_verified=incomplete), {})
         duplicate_unrelated = [dict(job) for job in jobs] + [{
             "id": 100, "run_id": 91, "name": "Unrelated job",
             "status": "completed", "conclusion": "success"}]
