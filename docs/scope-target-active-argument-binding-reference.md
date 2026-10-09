@@ -27,7 +27,8 @@ dispatch:
 6. only a host-level asset may leave port choice to the separately-authorized
    tool/capability contract;
 7. fail closed on non-string, blank, padded, control-character, userinfo,
-   malformed, unsupported-scheme, or otherwise ambiguous destination values;
+   malformed (including multiple terminal DNS dots), unsupported-scheme, or
+   otherwise ambiguous destination values;
 8. do not infer authority from the binding result itself.
 
 A positive binding result means only: declared destination arguments are
@@ -59,6 +60,7 @@ The isolated reference tests cover:
 - HTTPS implicit 443 and explicit 443: same endpoint;
 - HTTPS-authorized endpoint replayed as HTTP/80: reject;
 - hostname case and one trailing dot: same host identity;
+- malformed multi-dot terminal aliases: reject rather than normalize;
 - different `url`, `host`, `target`, or `endpoint`: reject;
 - duplicate argument names: reject before dict-style overwrite;
 - non-string destination values: reject;
