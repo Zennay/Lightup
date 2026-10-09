@@ -94,3 +94,7 @@ The independent helper only accepts concrete tuple/list argument containers. A s
 ## Ambiguous registry schema guard
 
 The helper also rejects duplicate names in `ToolDefinition.parameters` before calling the existing schema validator. Without that check, the current `ToolDefinition.validate_arguments` constructs a dictionary keyed by parameter name, which can silently collapse conflicting parameter definitions. A local regression constructs an ambiguous registry definition and requires a fail-closed error. This only protects calls routed through the unintegrated helper; the source owner must adopt it in actual dispatch.
+
+## Exact built-in argument containers
+
+The helper now accepts only exact built-in `tuple`/`list` types for both the ordered argument collection and each pair. Custom subclasses could override `__iter__` and `__len__` and execute arbitrary Python during pre-authorization parsing. A side-effect trap regression ensures such subclasses are denied without evaluating those hooks. This remains an unintegrated boundary helper; it is not a replacement for persisted authorization.
