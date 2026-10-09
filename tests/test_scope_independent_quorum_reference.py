@@ -140,6 +140,29 @@ class IndependentReviewerQuorumReference(unittest.TestCase):
         self.assertTrue(self.check(votes=self.votes + (
             Review("carol", "tenant", "req", 4, "current", True),), minimum=3))
 
+    def test_every_vote_must_be_valid_even_above_quorum(self):
+        third = Review("carol", "tenant", "req", 4, "current", False)
+        self.assertFalse(self.check(votes=self.votes + (third,)))
+        self.assertFalse(self.check(votes=self.votes + (
+            Review("alice", "tenant", "req", 4, "current", True),)))
+
+    def test_request_identity_is_strict(self):
+        for field, value in (("operator", "operator\\n"), ("tenant", "tenant\\x00"),
+                             ("request", "req\\u200b"), ("purpose", "future\\r")):
+            with self.subTest(field=field):
+                self.assertFalse(self.check(request=ApprovalRequest(
+                    **{**self.request.__dict__, field: value})))
+
+    def test_malformed_roster_and_revision(self):
+        for roster in (frozenset({"alice", "bob\\n"}), frozenset({"alice", 2}),
+                       frozenset({"alice"})):
+            with self.subTest(roster=repr(roster)):
+                self.assertFalse(self.check(roster=roster))
+        for revision in (0, -1, 4.0, "4"):
+            with self.subTest(revision=revision):
+                self.assertFalse(self.check(request=ApprovalRequest(
+                    "operator", "tenant", "req", revision, "current")))
+
 
 if __name__ == "__main__":
     unittest.main()
