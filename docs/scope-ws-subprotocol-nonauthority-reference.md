@@ -164,3 +164,7 @@ Evidence is acceptable only when every check below references the **same source 
 | Code owner approval | approved production PR and conflict-free change ownership | draft or unrelated review |
 
 Until the owner provides all seven evidence artifacts, keep this standalone PR as **DRAFT/HOLD** and avoid any production activation.
+
+## Trusted reapproval transition and action trace
+
+The 62nd and 63rd offline unittest methods check that reapproval requires both a changed trusted stored grant and an exactly matching fresh request revision, and that six arbitrary negotiation-header payloads against revoked consent never create mock handler, queue or action-evidence events. This validates the reference only, not a durable production revocation store.
