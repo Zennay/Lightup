@@ -321,6 +321,49 @@ class DestructiveLabStepUpIntegrationTests(unittest.TestCase):
         self.assertTrue(caught.exception.__suppress_context__)
         self.assertEqual(self.invocations, [])
 
+    def test_operator_approval_is_bounded_to_at_most_one_day(self):
+        exact = replace(
+            self.approval,
+            expires_at=self.approval.approved_at + timedelta(hours=24),
+        )
+        self.assertTrue(destructive_lab_approval_matches(
+            exact, self.context, self.call, self.destructive, now=self.now
+        ))
+        overlong = replace(
+            exact, expires_at=exact.expires_at + timedelta(microseconds=1)
+        )
+        self.live_record = overlong
+        self.assert_denied_without_effect()
+
+    def test_control_chars_and_oversized_approval_identifiers_denied(self):
+        for value in (
+            "operator\\nother", "operator\\radmin", "operator\\troot",
+            "operator\\x00root", "operator\\x7froot", "x" * 257,
+            "operator-☃",
+        ):
+            with self.subTest(identity=value):
+                self.live_record = replace(self.approval, approved_by=value)
+                self.assert_denied_without_effect()
+        self.live_record = self.approval
+        self.assert_denied_without_effect(
+            context=replace(self.context, run_id="run\\x00forged")
+        )
+        self.assert_denied_without_effect(
+            call=ToolCall(self.call.tool_id, "lab\\nother")
+        )
+
+    def test_direct_approval_match_cannot_bind_unrelated_definition_tool(self):
+        unrelated = replace(self.destructive, tool_id="another-noop-tool")
+        self.assertFalse(destructive_lab_approval_matches(
+            self.approval, self.context, self.call, unrelated, now=self.now
+        ))
+
+    def test_authorization_expires_exclusively_at_boundary(self):
+        boundary = replace(self.approval, expires_at=self.now)
+        self.assertFalse(destructive_lab_approval_matches(
+            boundary, self.context, self.call, self.destructive, now=self.now
+        ))
+
 
 if __name__ == "__main__":
     unittest.main()
