@@ -250,5 +250,19 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
+    def test_public_network_missing_grant_is_denied(self):
+        policy = ScopePolicy(explicit_networks=("8.8.8.0/24",))
+        decision = policy.decide(Target("https://8.8.8.8"))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_public_network_malformed_truthy_grant_propagates_error(self):
+        # Legacy observation; production owner must convert this into denial.
+        policy = ScopePolicy(explicit_networks=("8.8.8.0/24",))
+        with self.assertRaises(TypeError):
+            policy.decide(Target(
+                "https://8.8.8.8",
+                authorization=self.grant("not-a-datetime", None)))
+
 if __name__ == "__main__":
     unittest.main()
