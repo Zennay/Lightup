@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import io
 import json
+from contextlib import redirect_stdout
+from unittest.mock import patch
 from pathlib import Path
 import sys
 import unittest
@@ -11,8 +13,8 @@ from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from check_scope_pr_overlap import (  # noqa: E402
-    GitHubReadOnly, IncompleteEvidence, inspect, normalize_path, overlaps,
-    validate_repo,
+    GitHubReadOnly, IncompleteEvidence, inspect, main, normalize_path,
+    overlaps, validate_repo,
 )
 
 
@@ -183,6 +185,43 @@ class ReadOnlyPreflightTests(unittest.TestCase):
             inspect(client, ["new.py"], ignore=set(), max_open_prs=1)
         with self.assertRaises(ValueError):
             inspect(client, ["../not-repo"], ignore=set())
+
+    def test_cli_exit_code_clear_and_overlap_are_machine_readable(self):
+        client, _ = self.client({"/pulls": [pr(42)],
+                                  "/pulls/42/files": [entry("src/lightup/activation.py")]})
+        for wanted, expected_status, expected_code in [
+            ("tests/unique.py", "clear", 0),
+            ("src/lightup/activation.py", "overlap", 3),
+        ]:
+            with self.subTest(wanted=wanted):
+                stdout = io.StringIO()
+                with patch("check_scope_pr_overlap.GitHubReadOnly", return_value=client):
+                    with redirect_stdout(stdout):
+                        code = main(["--path", wanted])
+                result = json.loads(stdout.getvalue())
+                self.assertEqual(code, expected_code)
+                self.assertEqual(result["status"], expected_status)
+
+    def test_cli_unknown_returns_exit_two(self):
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            status = main(["--path", "../bad-path"])
+        self.assertEqual(status, 2)
+        result = json.loads(stdout.getvalue())
+        self.assertEqual(result["status"], "unknown")
+        self.assertNotIn("GITHUB_TOKEN", stdout.getvalue())
+
+    def test_cli_unknown_when_remote_changes(self):
+        client, _ = self.client({
+            "/pulls": lambda read: [pr(21)] if read == 1 else [pr(22)],
+            "/pulls/21/files": [],
+        })
+        stdout = io.StringIO()
+        with patch("check_scope_pr_overlap.GitHubReadOnly", return_value=client):
+            with redirect_stdout(stdout):
+                status = main(["--path", "tests/new.py"])
+        self.assertEqual(status, 2)
+        self.assertEqual(json.loads(stdout.getvalue())["status"], "unknown")
 
 
 if __name__ == "__main__":
