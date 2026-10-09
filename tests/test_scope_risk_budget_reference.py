@@ -1,0 +1,112 @@
+"""Offline reference: a budget is consumed only by exact authorized attempts.
+
+This is NOT a production authorization implementation or permission grant.
+No sockets, targets, or executor imports are used.
+"""
+from dataclasses import dataclass, replace
+import unittest
+
+
+@dataclass(frozen=True)
+class Budget:
+    tenant: str
+    request: str
+    revision: int
+    limit: int
+    used: int
+    active: bool
+
+
+@dataclass(frozen=True)
+class Attempt:
+    tenant: str
+    request: str
+    revision: int
+    units: int
+    approved: bool
+
+
+def reserve(budget: Budget, attempt: Attempt):
+    """Return a new budget or None, failing closed on malformed or exhausted state."""
+    if type(budget) is not Budget or type(attempt) is not Attempt:
+        return None
+    if any(type(v) is not str or not v or len(v) > 128 or not v.isascii()
+           for v in (budget.tenant, budget.request, attempt.tenant, attempt.request)):
+        return None
+    if any(type(v) is not int for v in
+           (budget.revision, budget.limit, budget.used, attempt.revision, attempt.units)):
+        return None
+    if type(budget.active) is not bool or type(attempt.approved) is not bool:
+        return None
+    if not budget.active or not attempt.approved:
+        return None
+    if budget.revision < 1 or budget.limit < 1 or budget.used < 0 or attempt.units < 1:
+        return None
+    if budget.used > budget.limit:
+        return None
+    if (budget.tenant, budget.request, budget.revision) != (
+        attempt.tenant, attempt.request, attempt.revision
+    ):
+        return None
+    if attempt.units > budget.limit - budget.used:
+        return None
+    return replace(budget, used=budget.used + attempt.units)
+
+
+class RiskBudgetReferenceTests(unittest.TestCase):
+    def setUp(self):
+        self.budget = Budget("tenant-a", "request-a", 3, 5, 1, True)
+        self.attempt = Attempt("tenant-a", "request-a", 3, 2, True)
+
+    def test_reservation_consumes_exact_units_without_mutation(self):
+        result = reserve(self.budget, self.attempt)
+        self.assertEqual(result.used, 3)
+        self.assertEqual(self.budget.used, 1)
+
+    def test_exact_boundary_and_exhaustion(self):
+        full = reserve(self.budget, replace(self.attempt, units=4))
+        self.assertEqual(full.used, 5)
+        self.assertIsNone(reserve(full, self.attempt))
+
+    def test_over_budget_or_zero_or_negative_units_denied(self):
+        for n in (0, -1, 5, 999):
+            with self.subTest(n=n):
+                self.assertIsNone(reserve(self.budget, replace(self.attempt, units=n)))
+
+    def test_tenant_request_revision_changes_denied(self):
+        for change in ({"tenant": "tenant-b"}, {"request": "request-b"}, {"revision": 4}):
+            self.assertIsNone(reserve(self.budget, replace(self.attempt, **change)))
+
+    def test_inactive_or_unapproved_denied(self):
+        self.assertIsNone(reserve(replace(self.budget, active=False), self.attempt))
+        self.assertIsNone(reserve(self.budget, replace(self.attempt, approved=False)))
+
+    def test_truthy_flags_denied(self):
+        self.assertIsNone(reserve(replace(self.budget, active=1), self.attempt))
+        self.assertIsNone(reserve(self.budget, replace(self.attempt, approved=1)))
+
+    def test_boolean_numeric_type_confusion_denied(self):
+        for change in ({"units": True}, {"revision": True}):
+            self.assertIsNone(reserve(self.budget, replace(self.attempt, **change)))
+        self.assertIsNone(reserve(replace(self.budget, limit=True), self.attempt))
+
+    def test_invalid_budget_state_denied(self):
+        for change in ({"used": -1}, {"used": 6}, {"limit": 0}, {"revision": 0}):
+            self.assertIsNone(reserve(replace(self.budget, **change), self.attempt))
+
+    def test_noncanonical_identity_denied(self):
+        for value in ("", "ténant", "x" * 129):
+            with self.subTest(value=value):
+                self.assertIsNone(reserve(replace(self.budget, tenant=value), self.attempt))
+
+    def test_polymorphic_envelopes_denied(self):
+        class SubBudget(Budget):
+            pass
+        class SubAttempt(Attempt):
+            pass
+        self.assertIsNone(reserve(SubBudget(**vars(self.budget)), self.attempt))
+        self.assertIsNone(reserve(self.budget, SubAttempt(**vars(self.attempt))))
+
+
+if __name__ == "__main__":
+    unittest.main()
