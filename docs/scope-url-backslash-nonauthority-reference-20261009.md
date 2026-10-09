@@ -19,3 +19,9 @@ Reference unit success by itself is **not** release proof. Keep draft until exac
 ## Parser-order regression (latest addition)
 
 The offline suite uses a poisoned `urlsplit` mock to prove literal backslashes and hostile non-string inputs are rejected **before** any URL parser call or policy callback. This prevents parser-dependent normalization from laundering malformed raw input into a seemingly trustworthy URL. Parser-order tests remain references only; source-owner integration must demonstrate the same pre-I/O order for actual producer entry points.
+
+## Full-boundary poisoned-parser proof — 2026-10-09
+
+The test suite now covers every insertion offset of U+005C in a synthetic URL while simultaneously poisoning `urlsplit` and the downstream policy. None may be called for rejected raw input. An authority backslash+userinfo ambiguity is also rejected regardless of any mocked parser return value. These are deliberately **offline ordering proofs only**, not live issuer, consent, revocation, redirect or executor authorization.
+
+Security release gates remain: exact-head hosted Python 3.11/3.14; canonical permanent VPS CI; source-owner integration demonstrating zero real executor/evidence calls; approval of trusted grants before active I/O. Do not grant, merge or deploy based on this document.
