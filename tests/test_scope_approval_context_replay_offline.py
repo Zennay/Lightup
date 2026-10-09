@@ -178,5 +178,25 @@ class ApprovalContextReplayContract(unittest.TestCase):
                     self.assertFalse(admission(self.receipt, request, revoked=False))
 
 
+    def test_request_identity_type_confusion_matrix(self):
+        from dataclasses import replace
+        for field in ("tenant", "engagement", "asset", "capability",
+                      "run_id", "operator_id"):
+            for invalid in (None, False, 0, 1.0, (), {}, ["tenant-a"]):
+                with self.subTest(field=field, invalid=repr(invalid)):
+                    mutated = replace(self.receipt, **{field: invalid})
+                    self.assertFalse(admission(self.receipt, mutated, revoked=False))
+
+    def test_revocation_dominates_every_risk_and_revision_match(self):
+        from dataclasses import replace
+        for risk in range(6):
+            for revision in range(1, 5):
+                receipt = replace(self.receipt, approved_risk=risk,
+                                  revision=revision)
+                with self.subTest(risk=risk, revision=revision):
+                    self.assertTrue(admission(receipt, receipt, revoked=False))
+                    self.assertFalse(admission(receipt, receipt, revoked=True))
+
+
 if __name__ == "__main__":
     unittest.main()
