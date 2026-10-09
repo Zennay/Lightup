@@ -157,3 +157,6 @@ Regression controls now reject absent, false, numeric, textual, list and object 
 
 ## Partial-page regression
 A single passing hosted Python job (a plausible truncated first-page snapshot) cannot classify as full hosted CI evidence, even if a caller incorrectly asserts `all_pages_verified=True`; both distinct 3.11 and 3.14 successful job records are required. This does not independently establish pagination completeness, and the source remains untrusted unless authenticated externally.
+
+## Duplicate interpreter-lane evidence
+Regression coverage now rejects a second successful Python 3.11 hosted preflight job even if it carries a distinct job ID. A complete workflow snapshot must contain exactly one matching successful 3.11 job and exactly one matching 3.14 job. This is local structural validation, not GitHub authentication or permanent VPS evidence; release remains HOLD.
