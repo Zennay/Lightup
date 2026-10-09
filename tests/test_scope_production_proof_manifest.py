@@ -87,6 +87,8 @@ def verify_observed_ci_jobs(manifest: dict, observed: dict) -> bool:
     """Compare caller-supplied snapshots; no network access or release authority."""
     if not is_release_evidence_complete(manifest) or type(observed) is not dict:
         return False
+    # Structural comparison alone is never an authenticated attestation.
+    # The caller must still independently verify GitHub API provenance.
     if set(observed) != {"hosted_python_311", "hosted_python_314", "permanent_vps"}:
         return False
     for lane, required_version in (("hosted_python_311", "3.11"),
@@ -372,6 +374,17 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
             changed = dict(valid)
             changed[field] = bad
             self.assertFalse(is_release_evidence_complete(changed), field)
+
+    def test_unverified_snapshots_never_change_persisted_hold_manifest(self):
+        import copy
+        original = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        before = copy.deepcopy(original)
+        self.assertFalse(verify_observed_ci_jobs(original, {}))
+        self.assertEqual(original, before)
+        self.assertEqual(original["release_gate"], "HOLD")
+        self.assertIs(original["real_target_activation"], False)
+        for lane in ("hosted_python_311", "hosted_python_314", "permanent_vps"):
+            self.assertIsNone(original[lane]["conclusion"])
 
     def test_current_manifest_is_explicitly_held_and_incomplete(self):
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
