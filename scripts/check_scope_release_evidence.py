@@ -30,6 +30,7 @@ def valid_run_url(value: object) -> bool:
         value.isascii()
         and not value.startswith("https://github.com//")
         and parsed.scheme == "https"
+        and value == parsed.geturl()
         and parsed.netloc == "github.com"
         and parsed.query == ""
         and parsed.fragment == ""
