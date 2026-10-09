@@ -262,5 +262,28 @@ class ArgumentKeyHookBoundaryTests(unittest.TestCase):
         self.assertEqual(calls, [{"label": "safe"}])
 
 
+    def test_invalid_registry_required_flag_denies_before_schema(self):
+        from unittest.mock import patch
+        malformed = ToolDefinition(
+            "bad-required", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "synthetic",
+            (ToolParameter("label", ParamKind.STRING, 1),),
+        )
+        with patch.object(ToolDefinition, "validate_arguments", side_effect=AssertionError("schema called")):
+            with self.assertRaisesRegex(OrchestrationError, "invalid kind or required"):
+                validate_unambiguous_arguments(malformed, (("label", "ok"),))
+
+    def test_invalid_registry_name_denies_before_schema(self):
+        from unittest.mock import patch
+        malformed = ToolDefinition(
+            "bad-name", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "synthetic",
+            (ToolParameter(b"label", ParamKind.STRING),),
+        )
+        with patch.object(ToolDefinition, "validate_arguments", side_effect=AssertionError("schema called")):
+            with self.assertRaisesRegex(OrchestrationError, "parameter names must be strings"):
+                validate_unambiguous_arguments(malformed, (("label", "ok"),))
+
+
 if __name__ == "__main__":
     unittest.main()
