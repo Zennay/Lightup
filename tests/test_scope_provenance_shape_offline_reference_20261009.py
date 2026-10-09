@@ -96,7 +96,7 @@ class ReferenceProvenanceShapeTests(unittest.TestCase):
                     self.assertFalse(reference_provenance_shape(Authorization(**kwargs)))
 
     def test_rejects_nonstandard_unicode_spaces_inside_provenance(self):
-        for marker in ("\\u00a0", "\\u2007", "\\u202f", "\\u3000"):
+        for marker in ("\u00a0", "\u2007", "\u202f", "\u3000"):
             for field in ("owner", "reference"):
                 kwargs = {"owner": "owner-1", "reference": "consent-1"}
                 kwargs[field] = "safe" + marker + "text"
