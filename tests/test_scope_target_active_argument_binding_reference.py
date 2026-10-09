@@ -4,7 +4,8 @@ This module is intentionally standalone and performs no network I/O. It models
 one narrow invariant for the production authorization owner:
 
     every declared network-bearing tool argument must resolve to the same host
-    as the independently authorized top-level asset.
+    as the independently authorized top-level asset, while preserving any
+    endpoint restriction explicitly present in that asset.
 
 A True result is only argument consistency. It is never authorization,
 provenance, approval, revocation, risk, or dispatch permission.
@@ -17,9 +18,10 @@ from urllib.parse import urlsplit
 
 
 _MAX_NETWORK_VALUE = 2048
+_DEFAULT_PORTS = {"http": 80, "https": 443}
 
 
-def _canonical_host(value: object) -> str | None:
+def _canonical_endpoint(value: object) -> tuple[str, int | None] | None:
     if type(value) is not str:
         return None
     if not value or len(value) > _MAX_NETWORK_VALUE or value != value.strip():
@@ -30,17 +32,27 @@ def _canonical_host(value: object) -> str | None:
     candidate = value if "://" in value else f"//{value}"
     try:
         parsed = urlsplit(candidate)
-        if parsed.scheme and parsed.scheme.lower() not in {"http", "https"}:
+        scheme = parsed.scheme.lower()
+        if scheme and scheme not in _DEFAULT_PORTS:
             return None
         if parsed.username is not None or parsed.password is not None:
             return None
         host = parsed.hostname
+        port = parsed.port
     except ValueError:
         return None
 
     if not host or "%" in host:
         return None
-    return host.rstrip(".").lower() or None
+
+    canonical_host = host.rstrip(".").lower()
+    if not canonical_host:
+        return None
+
+    if port is None and scheme:
+        port = _DEFAULT_PORTS[scheme]
+
+    return canonical_host, port
 
 
 def declared_network_arguments_match_asset(
@@ -55,13 +67,15 @@ def declared_network_arguments_match_asset(
     source network_argument_names from the trusted tool registry.
     """
 
-    asset_host = _canonical_host(authorized_asset)
-    if asset_host is None or type(arguments) is not tuple:
+    asset_endpoint = _canonical_endpoint(authorized_asset)
+    if asset_endpoint is None or type(arguments) is not tuple:
         return False
     if type(network_argument_names) is not frozenset:
         return False
 
+    asset_host, asset_port = asset_endpoint
     seen: set[str] = set()
+
     for item in arguments:
         if type(item) is not tuple or len(item) != 2:
             return False
@@ -70,10 +84,21 @@ def declared_network_arguments_match_asset(
             return False
         seen.add(key)
 
-        if key in network_argument_names:
-            argument_host = _canonical_host(value)
-            if argument_host is None or argument_host != asset_host:
-                return False
+        if key not in network_argument_names:
+            continue
+
+        argument_endpoint = _canonical_endpoint(value)
+        if argument_endpoint is None:
+            return False
+        argument_host, argument_port = argument_endpoint
+        if argument_host != asset_host:
+            return False
+
+        # A host-only grant leaves port selection to the already-authorized
+        # capability contract. An asset that explicitly carries endpoint
+        # semantics must not be widened to another port.
+        if asset_port is not None and argument_port != asset_port:
+            return False
 
     return True
 
@@ -81,11 +106,38 @@ def declared_network_arguments_match_asset(
 class TargetActiveArgumentBindingReferenceTests(unittest.TestCase):
     NETWORK_KEYS = frozenset({"url", "host", "target", "endpoint"})
 
-    def test_same_host_url_with_port_path_and_query_is_consistent(self):
+    def test_host_level_asset_can_use_same_host_with_port_path_and_query(self):
         self.assertTrue(
             declared_network_arguments_match_asset(
-                "https://Example.test",
+                "Example.test",
                 (("url", "https://example.test:8443/a?b=1"),),
+                network_argument_names=self.NETWORK_KEYS,
+            )
+        )
+
+    def test_explicit_asset_port_cannot_be_widened(self):
+        self.assertFalse(
+            declared_network_arguments_match_asset(
+                "https://example.test:443",
+                (("url", "https://example.test:8443/a"),),
+                network_argument_names=self.NETWORK_KEYS,
+            )
+        )
+
+    def test_scheme_default_port_preserves_explicit_endpoint_identity(self):
+        self.assertTrue(
+            declared_network_arguments_match_asset(
+                "https://example.test",
+                (("url", "https://example.test:443/a"),),
+                network_argument_names=self.NETWORK_KEYS,
+            )
+        )
+
+    def test_different_default_scheme_port_is_rejected_when_asset_is_url(self):
+        self.assertFalse(
+            declared_network_arguments_match_asset(
+                "https://example.test",
+                (("url", "http://example.test/a"),),
                 network_argument_names=self.NETWORK_KEYS,
             )
         )
@@ -161,6 +213,15 @@ class TargetActiveArgumentBindingReferenceTests(unittest.TestCase):
             declared_network_arguments_match_asset(
                 "approved.example",
                 (("url", "https://approved.example@other.example/path"),),
+                network_argument_names=self.NETWORK_KEYS,
+            )
+        )
+
+    def test_unsupported_scheme_is_rejected(self):
+        self.assertFalse(
+            declared_network_arguments_match_asset(
+                "approved.example",
+                (("url", "ftp://approved.example/file"),),
                 network_argument_names=self.NETWORK_KEYS,
             )
         )
