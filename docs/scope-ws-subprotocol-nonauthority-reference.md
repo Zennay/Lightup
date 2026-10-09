@@ -118,3 +118,7 @@ Two additional offline methods ensure three stale-revision replays produce zero 
 ## Header-sourced identity and revoked matching revision
 
 Two offline tests confirm caller-supplied WebSocket tokens cannot repair a wrong tenant binding, and that a matching revision does not overcome stored revocation or dispatch mock work. Total **55 unittest methods**. No production enforcement is claimed.
+
+## Request approval replay and capability escalation
+
+Two new offline tests reject ten attempts to replay an approved request against unapproved stored consent with zero mock handler calls, and reject any client-provided subprotocol capability claims that seek active-scan privileges beyond a read-only stored grant. Total **57 offline unittest methods**; production execution remains unverified.
