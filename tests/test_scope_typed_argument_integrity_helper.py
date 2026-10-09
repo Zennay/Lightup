@@ -199,6 +199,21 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
             validate_unambiguous_arguments(fake, (("value", 1.0),))
         self.assertEqual(touched, [])
 
+    def test_invalid_registry_kind_and_required_flag_rejected(self):
+        for kind, required in ((None, True), ("number", True),
+                               (ParamKind.NUMBER, 1),
+                               (ParamKind.NUMBER, "yes")):
+            with self.subTest(kind=kind, required=required):
+                malformed = ToolDefinition(
+                    "bad-schema", "web-baseline", InteractionKind.LAB_ACTIVE,
+                    RiskLevel.DESTRUCTIVE_LAB_ONLY, "offline",
+                    (ToolParameter("value", kind, required),),
+                )
+                with self.assertRaisesRegex(OrchestrationError, "invalid kind or required"):
+                    validate_unambiguous_arguments(
+                        malformed, (("value", 2.5),)
+                    )
+
 
 if __name__ == "__main__":
     unittest.main()
