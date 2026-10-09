@@ -145,7 +145,7 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
     def test_valid_distinct_unicode_identifier_remains_exact(self):
         other = Grant("tenant-é", "lab-asset", "read-only", 3, True, False)
         self.assertTrue(reference_decide(other, other, {}))
-        decomposed = Grant("tenant-e\\u0301", "lab-asset", "read-only", 3, True, False)
+        decomposed = Grant("tenant-e\u0301", "lab-asset", "read-only", 3, True, False)
         self.assertFalse(reference_decide(other, decomposed,
             {"Sec-WebSocket-Protocol": "normalize=true"}))
 
