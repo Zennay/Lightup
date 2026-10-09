@@ -5,6 +5,7 @@ These tests do not establish issuer provenance, tenant isolation or read authori
 """
 import re
 import unittest
+from uuid import uuid4
 
 _PATTERN = re.compile(
     r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
@@ -23,6 +24,20 @@ class EvidenceIdentifierReferenceTests(unittest.TestCase):
 
     def test_canonical_uuid4_accepted_without_normalization(self):
         self.assertEqual(canonical_evidence_id(self.VALID), self.VALID)
+
+    def test_actual_uuid4_issuer_samples_roundtrip(self):
+        # Standard-library issuer path used by StateStore.add_evidence.
+        for _ in range(32):
+            identifier = str(uuid4())
+            self.assertEqual(canonical_evidence_id(identifier), identifier)
+
+    def test_invalid_uuid_version_four_nibble_is_rejected(self):
+        for nibble in "012356789abcdef":
+            self.assertRejected(self.VALID[:14] + nibble + self.VALID[15:])
+
+    def test_invalid_variant_nibble_is_rejected(self):
+        for nibble in "01234567cdef":
+            self.assertRejected(self.VALID[:19] + nibble + self.VALID[20:])
 
     def test_distinct_canonical_ids_remain_distinct(self):
         other = "12345678-1234-4234-8234-123456789abd"
