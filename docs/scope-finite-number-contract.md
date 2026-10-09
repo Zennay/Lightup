@@ -34,3 +34,7 @@ The offline real-ToolExecutor fixture now patches Python's `socket.getaddrinfo`,
 ## Duplicate tool argument keys (#1147)
 
 `ToolCall.arguments` is a tuple, but `ToolCall.arguments_dict()` constructs `dict(self.arguments)`; duplicate keys are silently overwritten before validation. Two **expected-failure** real-executor regressions now require both duplicate-value orderings to be rejected without handler calls or evidence. This is an integrity ambiguity, not a demonstrated authorization bypass. The orchestration owner must reject duplicate keys before dictionary conversion, then promote tests to ordinary passing assertions and validate with exact-head CI. No production code is modified in this branch.
+
+## Repeated invocation / ledger stability
+
+An additional real-ToolExecutor regression verifies that after one accepted synthetic finite-number call, a later ambiguous duplicate-key call must be rejected without adding handler invocations or evidence rows. It is marked `expectedFailure` until production source handles duplicate tuples before `dict()` construction. Reference-only tests are not a release gate. See #1147.
