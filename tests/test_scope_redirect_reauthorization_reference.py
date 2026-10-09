@@ -3,6 +3,7 @@
 No HTTP requests, DNS resolution, scanning or target dispatch occurs here.
 """
 import unittest
+from urllib.parse import urljoin
 from datetime import datetime, timedelta, timezone
 
 from lightup.models import Authorization, Target
@@ -137,6 +138,31 @@ class RedirectScopeReferenceTests(unittest.TestCase):
         decision = self.decide("http://unlisted.example.test/next", self.grant)
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_relative_redirect_is_checked_against_resolved_origin(self):
+        source = "https://approved.example.test/start"
+        destination = urljoin(source, "../next")
+        self.assertEqual(destination, "https://approved.example.test/next")
+        self.assertEqual(
+            self.decide(destination).reason,
+            ScopeReason.AUTHORIZATION_MISSING,
+        )
+
+    def test_network_path_redirect_must_check_new_host(self):
+        source = "https://approved.example.test/start"
+        destination = urljoin(source, "//outside.example.test/next")
+        self.assertEqual(
+            self.decide(destination, self.grant).reason,
+            ScopeReason.OUT_OF_SCOPE,
+        )
+
+    def test_absolute_redirect_to_other_port_requires_fresh_gate(self):
+        source = "https://approved.example.test/start"
+        destination = urljoin(source, "https://approved.example.test:9443/next")
+        self.assertEqual(
+            self.decide(destination).reason,
+            ScopeReason.AUTHORIZATION_MISSING,
+        )
 
     def test_each_redirect_hop_rechecks_target_identity(self):
         hops = [
