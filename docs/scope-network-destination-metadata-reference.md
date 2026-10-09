@@ -17,26 +17,39 @@ argument-to-authorized-asset binding captured by PR #1092.
 ## Reference contract
 
 A production design should provide an immutable, typed destination role on the
-trusted tool definition/parameter metadata. Before a tool definition can enter
-the registry:
+trusted tool definition/parameter metadata. The roles must distinguish at least
+a host selector, a complete endpoint selector, a scalar port selector and a
+bounded port-set selector. Before a tool definition can enter the registry:
 
 1. the parameter collection is an exact immutable container;
 2. every parameter is an exact trusted metadata type;
 3. parameter names are canonical, bounded, non-empty and unique;
 4. parameter kind and destination role use exact known enum values;
-5. a network-destination parameter is string-typed;
-6. ordinary string fields such as notes or paths do not become destinations by
+5. host and complete-endpoint roles require string parameters;
+6. scalar-port roles require integer parameters and port-set roles use the
+   registry's canonical bounded string representation;
+7. ordinary string fields such as notes or paths do not become destinations by
    name guessing or caller declaration;
-7. malformed, polymorphic, duplicate or unknown metadata fails registration
+8. malformed, polymorphic, duplicate or unknown metadata fails registration
    closed rather than being normalized;
-8. extraction returns an immutable destination-name set owned by the trusted
-   definition.
+9. extraction returns immutable, disjoint role-specific name sets owned by the
+   trusted definition.
 
 A successful metadata validation is **not authorization**. Live grant,
 tenant/engagement ownership, capability, scope, risk, revocation and target
 binding remain independent gates.
 
 ## Production composition
+
+Current source inventory confirms why the roles must be distinct:
+
+- `http_baseline`: `url` string — complete endpoint selector;
+- `tls_baseline`: `host` string + `port` integer — split host/port selector;
+- `service_inventory`: `host` string + `ports` string — split host/port-set
+  selector.
+
+Those current production workers are LAB_ACTIVE, not new TARGET_ACTIVE
+authority. They are shape evidence for the registry contract only.
 
 The intended TARGET_ACTIVE order is:
 
@@ -53,11 +66,12 @@ Failure at any step must produce zero handler and zero target/network I/O.
 
 ## Regression coverage in this branch
 
-The standalone offline reference covers canonical extraction, empty metadata,
-caller-supplied name-set rejection, list/tuple-subclass rejection, metadata
-subclass rejection, duplicate names, blank/padded/control-bearing names, enum
-type confusion, non-string network destinations, non-destination metadata
-isolation, and input immutability.
+The standalone offline reference covers canonical role indexing, current
+HTTP/TLS/service-inventory shape controls, empty metadata, caller-supplied
+name-set rejection, list/tuple-subclass rejection, metadata subclass rejection,
+duplicate names across roles, blank/padded/control-bearing names, enum type
+confusion, role/kind mismatches, non-destination metadata isolation, and input
+immutability.
 
 ## Ownership
 
