@@ -10,7 +10,7 @@ The real `LightUpWebApp` uses the `lightup_session` cookie to resolve a server-s
 
 ## Exact acceptance exercised
 
-Run in development and simulated trusted-loopback production WSGI contexts:
+Run in development and simulated trusted-loopback production WSGI contexts (includes synthetic client requests, review decisions and risk elevation records):
 
 ```sh
 PYTHONPATH=src python -m unittest discover -s tests -p test_scope_wsgi_identity_metadata_nonauthority_20261009.py -v
@@ -24,6 +24,9 @@ PYTHONPATH=src python -m unittest discover -s tests -p test_scope_wsgi_identity_
 - Revoked operator session + spoofed WSGI identity: no protected read; cannot revive a revoked session.
 - A **real** operator cookie copied into `X-Forwarded-Cookie`, `X-Original-Cookie`, `X-Auth-Request-Cookie` or `Cookie2` (without a canonical `Cookie`) grants no session or client write.
 - The actual operator-only **authorization-grant recording WSGI route**, using a disposable in-memory-context/temporary-SQLite engagement, must reject anonymous and client-role callers with forged identity metadata; no grant rows are recorded. The positive operator/session/form-CSRF route may record only the local synthetic fixture grant; this does **not** constitute consent to contact `fixture.invalid` or any target.
+- The **assessment-request decision route** must not accept anonymous/client-session impostors even if all proxy identity hints claim they are an operator; persisted request status stays `submitted`, with no `decided_by` or `decided_at` until a real operator cookie + body CSRF approves. A request approval does not create an engagement or authorization grant.
+- The **risk-elevation decision route** must remain `pending` against those impostors, without decision provenance, and only the genuine operator cookie + CSRF may approve. Even a legitimate review approval must not automatically create any target grant.
+- A real tenant A client cookie + valid CSRF plus identity-spoofing headers cannot create an **assessment request for tenant B**. A tenant A request positive control remains `submitted` with no approval provenance. This tests submission isolation, not target authorization.
 - Positive control: genuine operator cookie **and** genuine body CSRF can create one synthetic client in each mode even with contradictory client-looking headers; protecting the boundary does not accidentally disable legitimate operator actions.
 
 The fixture tests `REMOTE_USER`, `AUTH_TYPE`, `Authorization`, `X-Remote-User`, `X-Auth-Request-User`, `X-Forwarded-User`, `X-Forwarded-Email`, `X-User` and `X-Api-Key`, plus a standalone forged `X-CSRF-Token`. These fields are not alternative login channels. A request that includes a valid **cookie** still follows normal cookie/session rules; this is not a ban on all requests containing these headers.
