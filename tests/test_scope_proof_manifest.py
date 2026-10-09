@@ -51,6 +51,14 @@ class ProofManifestTests(unittest.TestCase):
         obj["base_sha"] = obj["implementation_sha"]
         self.assertTrue(any("must differ" in e for e in module.verify(obj)))
 
+    def test_null_sha_placeholder_rejected_for_all_proof_refs(self):
+        for key in ("implementation_sha", "base_sha", "hosted_py311_sha",
+                    "hosted_py314_sha", "permanent_vps_sha", "owner_review_sha"):
+            with self.subTest(field=key):
+                obj = fixture()
+                obj[key] = "0" * 40
+                self.assertTrue(any("null placeholder" in error for error in module.verify(obj)))
+
     def test_exact_sha_binding_for_every_proof(self):
         for key in ("hosted_py311_sha", "hosted_py314_sha",
                     "permanent_vps_sha", "owner_review_sha"):
