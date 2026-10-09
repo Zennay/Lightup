@@ -79,5 +79,35 @@ class ApprovalContextReplayContract(unittest.TestCase):
                                            revoked=False))
 
 
+    def test_corrupt_stored_context_does_not_become_authority_on_exact_match(self):
+        from dataclasses import replace
+        for field in ("tenant", "engagement", "asset", "capability",
+                      "run_id", "operator_id"):
+            for invalid in ("", None, 0, ["forged"], True):
+                with self.subTest(field=field, invalid=repr(invalid)):
+                    corrupt = replace(self.receipt, **{field: invalid})
+                    self.assertFalse(admission(corrupt, corrupt, revoked=False))
+
+    def test_noncanonical_receipt_and_request_types_are_denied(self):
+        from dataclasses import replace
+        class ForgedReceipt(ApprovalReceipt):
+            pass
+
+        class ForgedString(str):
+            pass
+
+        self.assertFalse(admission(ForgedReceipt(**vars(self.receipt)),
+                                   self.receipt, revoked=False))
+        self.assertFalse(admission(self.receipt,
+                                   ForgedReceipt(**vars(self.receipt)), revoked=False))
+        for field in ("tenant", "engagement", "asset", "capability",
+                      "run_id", "operator_id"):
+            with self.subTest(field=field):
+                forged = replace(self.receipt, **{
+                    field: ForgedString(getattr(self.receipt, field))
+                })
+                self.assertFalse(admission(forged, forged, revoked=False))
+
+
 if __name__ == "__main__":
     unittest.main()
