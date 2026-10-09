@@ -95,5 +95,31 @@ class ArgumentKeyHookBoundaryTests(unittest.TestCase):
         self.assertEqual(effects, [])
 
 
+    def test_invalid_key_is_rejected_before_untrusted_value_repr(self):
+        effects = []
+        class TrapValue:
+            def __repr__(self):
+                effects.append("repr")
+                raise AssertionError("value repr executed")
+        with self.assertRaisesRegex(OrchestrationError, "names must be strings"):
+            validate_unambiguous_arguments(self.definition, ((None, TrapValue()),))
+        self.assertEqual(effects, [])
+
+    def test_duplicate_key_rejection_does_not_format_untrusted_value(self):
+        effects = []
+        class TrapValue:
+            def __str__(self):
+                effects.append("str")
+                raise AssertionError("value str executed")
+            def __repr__(self):
+                effects.append("repr")
+                raise AssertionError("value repr executed")
+        with self.assertRaisesRegex(OrchestrationError, "duplicate tool argument name"):
+            validate_unambiguous_arguments(
+                self.definition, (("label", "valid"), ("label", TrapValue()))
+            )
+        self.assertEqual(effects, [])
+
+
 if __name__ == "__main__":
     unittest.main()
