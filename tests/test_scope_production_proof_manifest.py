@@ -101,12 +101,15 @@ def verify_observed_ci_jobs(manifest: dict, observed: dict) -> bool:
             return False
         if any(type(run.get(key)) is not type(expected[key]) or run[key] != expected[key] for key in ("job_id", "run_url", "sha")):
             return False
-        if run["status"] != "completed" or run["conclusion"] != "success":
+        if (type(run["status"]) is not str or run["status"] != "completed" or
+                type(run["conclusion"]) is not str or run["conclusion"] != "success"):
             return False
         if required_version is not None:
-            if run["runner_class"] != "hosted" or run["python_version"] != required_version:
+            if (type(run["runner_class"]) is not str or run["runner_class"] != "hosted" or
+                    type(run["python_version"]) is not str or run["python_version"] != required_version):
                 return False
-        elif run["runner_class"] != "permanent_vps" or run["python_version"] not in ("3.11", "3.14"):
+        elif (type(run["runner_class"]) is not str or run["runner_class"] != "permanent_vps" or
+              type(run["python_version"]) is not str or run["python_version"] not in ("3.11", "3.14")):
             return False
     return True
 
