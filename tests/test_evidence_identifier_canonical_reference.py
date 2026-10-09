@@ -3,8 +3,11 @@
 Source observation: src/lightup/state.py add_evidence() issues str(uuid4()).
 These tests do not establish issuer provenance, tenant isolation or read authority.
 """
+import hashlib
 import re
+import tempfile
 import unittest
+from pathlib import Path
 from uuid import uuid4
 
 _PATTERN = re.compile(
@@ -24,6 +27,25 @@ class EvidenceIdentifierReferenceTests(unittest.TestCase):
 
     def test_canonical_uuid4_accepted_without_normalization(self):
         self.assertEqual(canonical_evidence_id(self.VALID), self.VALID)
+
+    def test_offline_state_store_issued_id_and_digest_are_separate(self):
+        # Real production issuer; temporary local SQLite only, plan-only run.
+        from lightup.state import StateStore
+
+        payload = b"offline evidence identifier compatibility fixture"
+        with tempfile.TemporaryDirectory() as directory:
+            store = StateStore(Path(directory) / "reference.db")
+            run_id = store.create_run(target="local-fixture", activation_mode="plan_only")
+            evidence_id = store.add_evidence(
+                run_id=run_id, capability_id="fixture", kind="reference",
+                source="offline", payload=payload,
+            )
+            self.assertEqual(canonical_evidence_id(evidence_id), evidence_id)
+            record = store.get_evidence(evidence_id)
+            self.assertEqual(record.evidence_id, evidence_id)
+            self.assertEqual(record.run_id, run_id)
+            self.assertEqual(record.sha256, hashlib.sha256(payload).hexdigest())
+            self.assertNotEqual(record.sha256, evidence_id)
 
     def test_actual_uuid4_issuer_samples_roundtrip(self):
         # Standard-library issuer path used by StateStore.add_evidence.
