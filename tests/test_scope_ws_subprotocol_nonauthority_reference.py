@@ -284,6 +284,26 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
         self.assertFalse(reference_decide(stored, request,
             {"Sec-WebSocket-Protocol": "revoked=false"}))
 
+    def test_full_c0_del_denial_propagates_to_mock_dispatch(self):
+        calls = []
+        for codepoint in tuple(range(32)) + (127,):
+            for role in ("tenant", "asset", "capability"):
+                values = dict(tenant=self.valid.tenant, asset=self.valid.asset,
+                              capability=self.valid.capability)
+                values[role] = "identity" + chr(codepoint)
+                poisoned = Grant(**values, revision=3, approved=True, revoked=False)
+                if reference_decide(poisoned, poisoned,
+                                    {"Sec-WebSocket-Protocol": "approved"}):
+                    calls.append((role, codepoint))
+        self.assertEqual(calls, [])
+
+    def test_all_denials_ignore_requested_header_container_identity(self):
+        revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
+        for headers in (None, (), [], {"Sec-WebSocket-Protocol": "approved"},
+                        {"Sec-WebSocket-Protocol": ["admin"]}, object()):
+            with self.subTest(header_type=type(headers).__name__):
+                self.assertFalse(reference_decide(revoked, revoked, headers))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
