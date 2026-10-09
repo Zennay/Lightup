@@ -39,6 +39,8 @@ def verify(data):
         value = data.get(key)
         if type(value) is not str or SHA.fullmatch(value) is None:
             errors.append(f"{key}: expected lowercase 40-character commit SHA")
+        elif value == "0" * 40:
+            errors.append(f"{key}: null placeholder SHA is forbidden")
     base_sha = data.get("base_sha")
     if (type(sha) is str and SHA.fullmatch(sha)
             and type(base_sha) is str and SHA.fullmatch(base_sha)
