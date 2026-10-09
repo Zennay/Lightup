@@ -10,10 +10,11 @@ current `ScopePolicy.normalize_host`, this permits an attacker-supplied
 hostname with embedded controls to be silently normalized into an explicitly
 allowlisted host. These inputs should be rejected, not repaired.
 
-`tests/test_scope_url_control_characters_20261009.py` contains nine
-offline unittest cases: three positive/negative controls, five deliberately
+`tests/test_scope_url_control_characters_20261009.py` contains thirteen
+offline unittest cases: three positive/negative controls, nine deliberately
 RED `expectedFailure` denial requirements, and one table-driven unknown
-host control. The RED cases are **not** passing safety guarantees.
+host control. Four additional RED cases cover raw CR without scheme, TAB in
+path, LF in query, and DEL in path. The RED cases are **not** passing safety guarantees.
 
 ## Required owner repair
 
@@ -23,7 +24,7 @@ host control. The RED cases are **not** passing safety guarantees.
 3. Verify pre-I/O production grant provenance, client/engagement/asset/capability
    binding and revocation independently; synthetic `Authorization` above is
    not authenticated customer consent.
-4. Convert the five expected failures into ordinary **passing** fail-closed
+4. Convert the nine expected failures into ordinary **passing** fail-closed
    assertions after owner implementation; cover handler invocation count = 0.
 5. Obtain exact-head hosted and canonical permanent VPS tests, source-owner
    review and approval before any merge or activation.
