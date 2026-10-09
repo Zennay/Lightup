@@ -83,5 +83,38 @@ class EnvironmentBindingReferenceTests(unittest.TestCase):
         self.assertEqual(vars(self.grant), before)
 
 
+    def test_grant_environment_identity_is_strict(self):
+        for environment in ("prod", "STAGING", "staging ", "staging\\n", "", None, 1, True):
+            with self.subTest(environment=environment):
+                candidate = EnvironmentGrant("tenant-a", "request-1", environment, "issuer-a", 4, True)
+                self.assertFalse(eligible_for_environment(candidate, **self.kwargs))
+
+    def test_other_canonical_environment_requires_matching_grant(self):
+        for environment in ("test", "staging", "production"):
+            candidate = EnvironmentGrant("tenant-a", "request-1", environment, "issuer-a", 4, True)
+            actual = eligible_for_environment(candidate, **{**self.kwargs, "environment": environment})
+            self.assertTrue(actual)
+
+    def test_identity_fields_reject_control_alias_and_wrong_type(self):
+        for field in ("tenant", "request", "issuer"):
+            for variant in (None, True, 42, "tenant-a\\n" if field == "tenant" else "bad\\n",
+                            " " + self.kwargs[field], self.kwargs[field] + " ",
+                            self.kwargs[field] + "\\x00", "x" * 129):
+                with self.subTest(field=field, variant=variant):
+                    self.assertFalse(eligible_for_environment(
+                        self.grant, **{**self.kwargs, field: variant}))
+
+    def test_grant_metadata_rejects_invalid_identity_and_revision(self):
+        for key, values in {
+            "tenant": (None, "tenant-a ", True),
+            "request": (None, "request-1\\n", 7),
+            "issuer": (None, " issuer-a", False),
+            "revision": (True, 0, "4", -1, 4.0),
+        }.items():
+            for value in values:
+                with self.subTest(key=key, value=value):
+                    candidate = EnvironmentGrant(**{**vars(self.grant), key: value})
+                    self.assertFalse(eligible_for_environment(candidate, **self.kwargs))
+
 if __name__ == "__main__":
     unittest.main()
