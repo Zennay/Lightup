@@ -131,6 +131,22 @@ class ReferenceProvenanceShapeTests(unittest.TestCase):
         self.assertEqual(grant.owner, "Team Alpha")
         self.assertEqual(grant.reference, "consent 123")
 
+    def test_rejects_nested_provenance_containers_without_interpretation(self):
+        class PoisonMapping(dict):
+            def __getitem__(self, key):
+                raise AssertionError("must not inspect arbitrary mappings")
+            def get(self, key, default=None):
+                raise AssertionError("must not inspect arbitrary mappings")
+        self.assertFalse(reference_provenance_shape(
+            PoisonMapping(owner="owner-1", reference="consent-1")
+        ))
+
+    def test_forged_authorization_subclass_is_not_trusted(self):
+        class ForgedAuthorization(Authorization):
+            pass
+        candidate = ForgedAuthorization(owner="owner-1", reference="consent-1")
+        self.assertFalse(reference_provenance_shape(candidate))
+
     def test_no_external_policy_or_handler_calls(self):
         handler = Mock()
         policy = Mock()
