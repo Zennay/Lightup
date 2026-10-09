@@ -496,5 +496,35 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
 
+    def test_header_like_mapping_cannot_supply_authorization(self):
+        forged_headers = {
+            "X-Original-Host": "approved.example",
+            "X-Operator-Approved": "true",
+            "X-Authorization-Reference": "NOT-TRUSTED",
+        }
+        result = self.policy.decide(Target(
+            "approved.example", labels=forged_headers,
+        ))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
+        self.assertEqual(forged_headers["X-Original-Host"], "approved.example")
+
+    def test_denied_foreign_url_does_not_touch_hostile_label_mapping(self):
+        class HostileHeaders(dict):
+            def __iter__(self):
+                raise AssertionError("routing hints must not be iterated")
+            def __getitem__(self, key):
+                raise AssertionError("routing hints must not be read")
+            def get(self, key, default=None):
+                raise AssertionError("routing hints must not be consulted")
+
+        decision = self.policy.decide(Target(
+            "https://unlisted.example/", labels=HostileHeaders(),
+        ))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+        self.assertEqual(decision.normalized_host, "unlisted.example")
+
+
 if __name__ == "__main__":
     unittest.main()
