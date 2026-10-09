@@ -50,3 +50,5 @@ Stored-record Unicode Zl/Zp separator contamination is denied even if a submitte
 Exhaustive ASCII control matrix: U+0000–U+001F and U+007F are exercised against each of five identifiers both as request-only mutation and as identical persisted/request mutation (33 × 5 × 2 denial assertions); no target or network I/O.
 
 Approval revision identifiers are never coerced from floating-point numbers or numeric strings. A valid exact revision is necessary but not sufficient: revocation still denies admission.
+
+Cross-field identity substitutions are denied: exchanging tenant, engagement, owner, asset, or capability values cannot preserve consent even if all original values are still present in the request.
