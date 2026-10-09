@@ -178,6 +178,25 @@ class OfflineExecutorNumberTests(unittest.TestCase):
         self.assertEqual(self.calls, [9.0])
         self.assertEqual(self.evidence_count(), 1)
 
+    def test_denied_arguments_preserve_evidence_after_database_reopen(self):
+        """Read through a fresh SQLite connection rather than cached state."""
+        result = self.invoke(6.25)
+        with self.state.connect() as db:
+            before = tuple(db.execute(
+                "SELECT * FROM evidence WHERE evidence_id=?", (result.evidence_id,)
+            ).fetchone())
+        for value in ("6.25", None, False):
+            with self.assertRaises(OrchestrationError):
+                self.invoke(value)
+        with self.state.connect() as db:
+            after = tuple(db.execute(
+                "SELECT * FROM evidence WHERE evidence_id=?", (result.evidence_id,)
+            ).fetchone())
+            total = db.execute("SELECT COUNT(*) FROM evidence").fetchone()[0]
+        self.assertEqual(before, after)
+        self.assertEqual(total, 1)
+        self.assertEqual(self.calls, [6.25])
+
     @unittest.expectedFailure
     def test_duplicate_argument_name_must_not_silently_override(self):
         """ToolCall.arguments_dict currently collapses duplicate tuple keys."""
