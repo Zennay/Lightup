@@ -121,3 +121,7 @@ With an allowlisted URL and expired synthetic Authorization, the pure scope poli
 ## Metamorphic non-authority contract
 
 For four fixed target/authorization cases (unlisted, allowlisted without grant, expired synthetic grant, invalid target), run the baseline decision without labels and compare the **entire** `ScopeDecision` against variants carrying forged X-Original-Host, operator approval, consent and repeated labels. Changing only untrusted label metadata must never change `allowed`, `normalized_host`, or `reason`. This is a pure policy noninterference invariant, not proof of real HTTP ingress or persisted consent.
+
+## Combined noninterference and transport tripwires
+
+For an out-of-scope HTTPS target, variants of X-Original-Host claiming approved identity, loopback, operator approval, or signed consent must yield the **identical complete ScopeDecision** as the no-label baseline, while the pure policy makes zero DNS/socket/urllib HTTP calls. This does not establish that an actual runtime dispatcher is blocked.
