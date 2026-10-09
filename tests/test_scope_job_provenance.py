@@ -106,6 +106,11 @@ class OfflineJobProvenanceTests(unittest.TestCase):
         self.assertTrue(module.check(proof(), jobs()[:-1]))
         self.assertTrue(module.check(proof(), jobs() + [jobs()[0]]))
 
+    def test_unreferenced_malformed_record_never_ignored(self):
+        evidence = jobs()
+        evidence.append(None)
+        self.assertTrue(any("all job records" in error for error in module.check(proof(), evidence)))
+
     def test_malformed_jobs_fail(self):
         for value in (None, {}, "jobs", [None]):
             with self.subTest(value=value):
