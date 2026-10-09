@@ -453,5 +453,27 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
 
 
+    def test_host_header_does_not_convert_unknown_url_to_loopback(self):
+        for claimed_local in ("localhost", "127.0.0.1", "[::1]"):
+            with self.subTest(claimed_local=claimed_local):
+                decision = self.policy.decide(Target(
+                    "https://unlisted.example/path",
+                    labels=("X-Original-Host: " + claimed_local,),
+                ))
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+                self.assertEqual(decision.normalized_host, "unlisted.example")
+
+    def test_header_claimed_mode_cannot_authorize_without_grant(self):
+        for claimed_mode in ("plan_only", "lab_only", "active", "passive"):
+            with self.subTest(claimed_mode=claimed_mode):
+                decision = self.policy.decide(Target(
+                    "https://approved.example/",
+                    labels=("X-Original-Host: approved.example; mode=" + claimed_mode,),
+                ))
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+
 if __name__ == "__main__":
     unittest.main()
