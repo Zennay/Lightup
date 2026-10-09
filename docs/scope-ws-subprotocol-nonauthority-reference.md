@@ -37,3 +37,7 @@ Two additional offline methods verify that a header cannot undo revocation even 
 ## Stored-grant authority cannot be overwritten by request fields
 
 Two extra offline methods reject request-side self-approval against an unapproved stored grant and request-side `revoked=False` against a revoked stored grant. Both operate without handlers or targets. Total: **26 offline unittest methods**; still not a substitute for real trusted source-owned pre-I/O authorization.
+
+## Control-codepoint mock-dispatch and malformed header container (2026-10-09)
+
+Two additional offline methods assert 99 C0/DEL identity-role mutation denials lead to **zero fake dispatches** and verify revoked grants remain denied with arbitrary header-container shapes. Total 28 methods. This remains a self-contained reference, not real ToolExecutor enforcement.
