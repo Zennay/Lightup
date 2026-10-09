@@ -18,7 +18,14 @@ def eligible(proof, verifier):
     """A trusted caller-provided verifier is illustrative, not issuer provenance."""
     if type(proof) is not Proof:
         return False
-    if any(\n        type(value) is not str\n        or not value\n        or len(value) > 256\n        or value != value.strip()\n        or any(unicodedata.category(ch) in {"Cc", "Cf", "Zl", "Zp"} for ch in value)\n        for value in (proof.tenant, proof.request, proof.issuer, proof.grant)\n    ):
+    if any(
+        type(value) is not str
+        or not value
+        or len(value) > 256
+        or value != value.strip()
+        or any(unicodedata.category(ch) in {"Cc", "Cf", "Zl", "Zp"} for ch in value)
+        for value in (proof.tenant, proof.request, proof.issuer, proof.grant)
+    ):
         return False
     try:
         result = verifier(proof)
