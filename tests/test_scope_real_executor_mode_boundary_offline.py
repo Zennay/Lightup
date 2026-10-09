@@ -348,5 +348,19 @@ class RealExecutorModeBoundaryTests(unittest.TestCase):
         self.handler.assert_not_called()
         self.state.add_evidence.assert_not_called()
 
+    def test_real_policy_denied_grant_never_writes_evidence_across_replays(self):
+        # Repeated unauthorized calls must not make their way into the ledger.
+        self.definition = replace(self.definition, interaction=InteractionKind.TARGET_ACTIVE)
+        self.registry.get.return_value = (self.definition, self.handler)
+        executor = ToolExecutor(self.registry, self.state, ExecutionPolicy())
+        context = replace(self.context(AssessmentMode.AUTHORIZED_ASSESSMENT), is_lab=False)
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            for _ in range(5):
+                with self.assertRaises(ToolDenied):
+                    executor.execute(context, self.call)
+        self.assertEqual(self.registry.get.call_count, 5)
+        self.handler.assert_not_called()
+        self.state.add_evidence.assert_not_called()
+
 if __name__ == "__main__":
     unittest.main()
