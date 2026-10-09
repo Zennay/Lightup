@@ -578,6 +578,23 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
                 self.assertTrue(reference_decide(read_only, read_only,
                     {"Sec-WebSocket-Protocol": claim}))
 
+    def test_rejected_consent_produces_no_simulated_action_evidence(self):
+        effects = {"handler": 0, "socket": 0, "queue": 0, "action_evidence": 0}
+        def execute(stored, request, header):
+            if not reference_decide(stored, request, header):
+                return False
+            for key in effects:
+                effects[key] += 1
+            return True
+        revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
+        unapproved = Grant("tenant-a", "lab-asset", "read-only", 3, False, False)
+        for stored in (revoked, unapproved):
+            self.assertFalse(execute(stored, self.valid,
+                {"Sec-WebSocket-Protocol": "admin, approved"}))
+        self.assertEqual(effects, dict.fromkeys(effects, 0))
+        self.assertTrue(execute(self.valid, self.valid, {}))
+        self.assertEqual(effects, dict.fromkeys(effects, 1))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
