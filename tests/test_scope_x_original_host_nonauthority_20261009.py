@@ -753,5 +753,30 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         dispatch.assert_not_called()
 
 
+    def test_unlisted_host_denial_precedes_poisoned_grant_and_transport(self):
+        from unittest.mock import patch
+
+        class PoisonAuthorization:
+            def __getattribute__(self, name):
+                raise AssertionError("out-of-scope host must not inspect authorization")
+
+        with (
+            patch("socket.getaddrinfo") as lookup,
+            patch("socket.create_connection") as connect,
+            patch("urllib.request.urlopen") as dispatch,
+        ):
+            decision = self.policy.decide(Target(
+                "https://unlisted.example/",
+                authorization=PoisonAuthorization(),
+                labels=("X-Original-Host: approved.example; consent_signed=true",),
+            ))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+        self.assertEqual(decision.normalized_host, "unlisted.example")
+        lookup.assert_not_called()
+        connect.assert_not_called()
+        dispatch.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
