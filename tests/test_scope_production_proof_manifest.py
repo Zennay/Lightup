@@ -199,6 +199,52 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
             "permanent_vps": {"status": "completed", "conclusion": "success"},
         }))
 
+    def test_observed_job_comparison_positive_and_negative_controls(self):
+        sha = "a" * 40
+        trace = {"sha": sha, "artifact_url": "https://evidence.example.org/evidence"}
+        base_run = {"sha": sha, "conclusion": "success",
+                    "run_url": "https://github.com/example/repo/actions/runs/1"}
+        manifest = {
+            "schema_version": 2, "release_gate": "REVIEWED",
+            "real_target_activation": False, "implementation_sha": sha,
+            "owner_review_url": "https://github.com/example/repo/pull/1",
+            "hosted_python_311": {**base_run, "job_id": 11},
+            "hosted_python_314": {**base_run, "job_id": 12},
+            "permanent_vps": {**base_run, "job_id": 13,
+                "run_url": "https://github.com/example/repo/actions/runs/2"},
+            "negative_real_executor_trace": {**trace, **{k: 0 for k in COUNTERS}},
+            "positive_loopback_lab_trace": {**trace, "handler_calls": 1},
+            "persistent_revocation_proof": trace.copy(),
+            "trusted_destination_metadata_proof": trace.copy(),
+        }
+        self.assertTrue(is_release_evidence_complete(manifest))
+        observed = {}
+        for name, version, runner in (
+            ("hosted_python_311", "3.11", "hosted"),
+            ("hosted_python_314", "3.14", "hosted"),
+            ("permanent_vps", "3.11", "permanent_vps"),
+        ):
+            expected = manifest[name]
+            observed[name] = {
+                "job_id": expected["job_id"], "run_url": expected["run_url"],
+                "sha": sha, "status": "completed", "conclusion": "success",
+                "python_version": version, "runner_class": runner,
+            }
+        self.assertTrue(verify_observed_ci_jobs(manifest, observed))
+        for lane, key, bad in (
+            ("hosted_python_311", "python_version", "3.14"),
+            ("hosted_python_314", "runner_class", "permanent_vps"),
+            ("permanent_vps", "runner_class", "hosted"),
+            ("permanent_vps", "status", "queued"),
+            ("permanent_vps", "conclusion", "failure"),
+            ("permanent_vps", "sha", "b" * 40),
+            ("permanent_vps", "job_id", 99),
+        ):
+            mutated = json.loads(json.dumps(observed))
+            mutated[lane][key] = bad
+            with self.subTest(lane=lane, field=key):
+                self.assertFalse(verify_observed_ci_jobs(manifest, mutated))
+
     def test_current_manifest_is_explicitly_held_and_incomplete(self):
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         self.assertEqual(manifest["release_gate"], "HOLD")
