@@ -18,7 +18,7 @@ def matches_consent(consent: Consent, *, tenant_id: str, engagement_id: str,
                     owner_id: str, asset_id: str, capability_id: str,
                     revision: int, revoked: bool) -> bool:
     """Illustrative all-field exact binding; not a trusted grant issuer."""
-    fields = (consent.tenant_id, consent.engagement_id, consent.owner_id,
+    if type(consent) is not Consent:\n        return False\n    fields = (consent.tenant_id, consent.engagement_id, consent.owner_id,
               consent.asset_id, consent.capability_id)
     requested = (tenant_id, engagement_id, owner_id, asset_id, capability_id)
     if any(type(value) is not str or not value.strip() for value in fields + requested):
@@ -118,6 +118,28 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
             with self.subTest(field=field):
                 self.assertFalse(matches_consent(
                     self.consent, **(self.request | {field: replacement})))
+
+    def test_reject_hostile_consent_container_without_attribute_access(self):
+        class Hostile:
+            def __getattribute__(self, name):
+                raise AssertionError("untrusted attribute access")
+        self.assertFalse(matches_consent(Hostile(), **self.request))
+
+    def test_reject_consent_subclass_override_without_attribute_access(self):
+        class HostileConsent(Consent):
+            def __getattribute__(self, name):
+                raise AssertionError("subclass intercept")
+        forged = object.__new__(HostileConsent)
+        self.assertFalse(matches_consent(forged, **self.request))
+
+    def test_no_implicit_string_conversion_of_requested_identity(self):
+        class Hostile:
+            def __str__(self):
+                raise AssertionError("implicit conversion")
+            def __eq__(self, other):
+                raise AssertionError("untrusted equality")
+        self.assertFalse(matches_consent(self.consent,
+                                         **(self.request | {"asset_id": Hostile()})))
 
 
 if __name__ == "__main__":
