@@ -94,6 +94,18 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
             self.assertIn("HOLD:", errors.getvalue() + output.getvalue())
             self.assertNotIn(secret, errors.getvalue() + output.getvalue())
 
+    def test_cli_never_calls_synthetic_evidence_authorized(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "synthetic.json"
+            path.write_text(json.dumps(sample()), encoding="utf-8")
+            output = StringIO()
+            with redirect_stdout(output):
+                result = main(["check_scope_release_evidence.py", str(path)])
+            self.assertEqual(result, 0)
+            self.assertIn("STRUCTURE-ONLY PASS", output.getvalue())
+            self.assertIn("unverified", output.getvalue())
+            self.assertIn("NOT release authorization", output.getvalue())
+
     def test_missing_evidence_holds(self):
         self.assertFalse(evaluate(None)[0])
         self.assertFalse(evaluate({})[0])
