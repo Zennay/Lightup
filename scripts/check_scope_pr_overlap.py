@@ -9,7 +9,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from pathlib import PurePosixPath
 import re
 import sys
 from urllib.error import HTTPError, URLError
@@ -100,8 +99,12 @@ class GitHubReadOnly:
     def open_prs(self):
         for pr in self.pages("/pulls"):
             number = pr.get("number")
+            head = pr.get("head")
+            sha = head.get("sha") if isinstance(head, dict) else None
             if type(number) is not int or number < 1:
                 raise IncompleteEvidence("PR response missing canonical number")
+            if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-fA-F]{40}", sha):
+                raise IncompleteEvidence("PR response missing immutable head SHA")
             yield pr
 
     def touched_paths(self, pr_number: int) -> set[str]:
@@ -130,6 +133,9 @@ def inspect(client: GitHubReadOnly, candidates: list[str], ignore: set[int],
     prs = list(client.open_prs())
     if len(prs) > max_open_prs:
         raise IncompleteEvidence("too many open PRs to inspect completely")
+    before = {p["number"]: p["head"]["sha"] for p in prs}
+    if len(before) != len(prs):
+        raise IncompleteEvidence("PR pagination returned repeated pull request numbers")
     collisions = []
     inspected = 0
     for pr in prs:
@@ -148,6 +154,13 @@ def inspect(client: GitHubReadOnly, candidates: list[str], ignore: set[int],
                     "changed_paths": matches,
                     "url": f"https://github.com/{client.repo}/pull/{number}",
                 })
+    # A commit or newly opened PR during the scan invalidates a path-ownership
+    # verdict. This second bounded GET snapshot prevents calling a moving list
+    # definitively clear; it does not claim an atomic server-side transaction.
+    after_prs = list(client.open_prs())
+    after = {p["number"]: p["head"]["sha"] for p in after_prs}
+    if len(after_prs) > max_open_prs or len(after) != len(after_prs) or before != after:
+        raise IncompleteEvidence("open PR set or head SHAs changed during the scan")
     return {
         "status": "overlap" if collisions else "clear",
         "repo": client.repo,
