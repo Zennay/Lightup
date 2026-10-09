@@ -103,7 +103,7 @@ def verify_observed_ci_jobs(manifest: dict, observed: dict) -> bool:
             return False
         if any(type(run.get(key)) is not type(expected[key]) or run[key] != expected[key] for key in ("job_id", "run_url", "sha")):
             return False
-        if type(run["job_name"]) is not str or not run["job_name"].strip() or "not vps proof" in run["job_name"].lower() and lane == "permanent_vps":
+        if type(run["job_name"]) is not str or not run["job_name"].strip() or (lane == "permanent_vps" and "not vps proof" in run["job_name"].lower()):
             return False
         if (type(run["status"]) is not str or run["status"] != "completed" or
                 type(run["conclusion"]) is not str or run["conclusion"] != "success"):
@@ -313,6 +313,7 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
                 "job_id": expected["job_id"], "run_url": expected["run_url"],
                 "sha": sha, "status": "completed", "conclusion": "success",
                 "python_version": version, "runner_class": runner,
+                "job_name": "Offline preflight Python " + version if runner == "hosted" else "Permanent VPS Python " + version,
             }
         self.assertTrue(verify_observed_ci_jobs(manifest, observed))
         for field in ("status", "conclusion", "python_version", "runner_class",
