@@ -27,6 +27,7 @@ def entry(name, previous=None):
     result = {"filename": name}
     if previous is not None:
         result["previous_filename"] = previous
+        result["status"] = "renamed"
     return result
 
 
@@ -155,6 +156,14 @@ class ReadOnlyPreflightTests(unittest.TestCase):
             inspect(client, ["test.py"], ignore=set())
         self.assertNotIn("TEST_TOKEN", str(caught.exception))
         self.assertIn("403", str(caught.exception))
+
+    def test_missing_rename_origin_is_unknown_not_clear(self):
+        client, _ = self.client({
+            "/pulls": [pr(7)],
+            "/pulls/7/files": [{"filename": "docs/new.md", "status": "renamed"}],
+        })
+        with self.assertRaisesRegex(IncompleteEvidence, "original path"):
+            inspect(client, ["docs/old.md"], ignore=set())
 
     def test_reject_moving_open_pr_set(self):
         client, _ = self.client({
