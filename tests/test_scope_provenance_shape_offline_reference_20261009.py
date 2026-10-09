@@ -86,6 +86,14 @@ class ReferenceProvenanceShapeTests(unittest.TestCase):
             Authorization(owner="Equipe française", reference="toestemming-42")
         ))
 
+    def test_rejects_invisible_characters_embedded_in_identifiers(self):
+        for marker in ("\\u200b", "\\u200d", "\\u2066", "\\u2069", "\\ufeff"):
+            for field in ("owner", "reference"):
+                kwargs = {"owner": "owner-1", "reference": "consent-1"}
+                kwargs[field] = "safe" + marker + "text"
+                with self.subTest(marker=repr(marker), field=field):
+                    self.assertFalse(reference_provenance_shape(Authorization(**kwargs)))
+
     def test_no_external_policy_or_handler_calls(self):
         handler = Mock()
         policy = Mock()
