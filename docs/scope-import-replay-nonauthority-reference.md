@@ -29,3 +29,11 @@ actual executable authorization boundary; integration requires source-owner revi
 Python 3.11/3.14 + permanent self-hosted VPS CI proof.
 
 No real targets, network traffic, grant issuance, active assessment or deployment are involved.
+
+## Additional hostile-input coverage
+
+The offline suite also denies malformed current issuer identifiers, wrong-type and
+negative revisions, boolean revision confusion, and overlong or malformed digest
+metadata. These tests only constrain the synthetic reconciliation reference;
+production authorization still requires owner-controlled issuer provenance,
+revocation epoch, asset/capability/window checks and live dispatch enforcement.
