@@ -53,12 +53,22 @@ def verify(data):
     return errors
 
 
+def reject_duplicate_keys(pairs):
+    """Prevent JSON parser last-key-wins from overwriting denial evidence."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def main(argv):
     if len(argv) != 2:
         print("usage: verify_scope_proof_manifest.py path/to/evidence.json", file=sys.stderr)
         return 2
     try:
-        data = json.loads(Path(argv[1]).read_text(encoding="utf-8"))
+        data = json.loads(Path(argv[1]).read_text(encoding="utf-8"),\n                          object_pairs_hook=reject_duplicate_keys,\n                          parse_constant=lambda value: (_ for _ in ()).throw(\n                              ValueError(f"invalid JSON constant: {value}")))
     except (OSError, ValueError) as exc:
         print(f"HOLD: invalid manifest: {exc}", file=sys.stderr)
         return 2
