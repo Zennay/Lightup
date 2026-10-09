@@ -35,7 +35,8 @@ duplicate wire Cookie fields.
   (>8192 ISO-8859-1 bytes), quoted/backslash escaped/comma-joined, whitespace-concatenated or malformed
   cookie-pairs receive 400 before delegating.
 - A second exact "lightup_session" name is refused, regardless of its value.
-- The sole session value must be **43 unpadded base64url characters**, matching current `DomainStore.create_session` (`secrets.token_urlsafe(32)`). Invalid/truncated/padded/percent-encoded/non-ASCII values are refused **before** session lookup. Correct length/alphabet is not authentication: SQLite session state still decides. If the domain's token format is intentionally migrated, this optional guard and acceptance tests must be updated together *before* production integration.
+- The sole session value must be **43 unpadded base64url characters**, with
+  canonical final two zero padding bits (last character in `AEIMQUYcgkosw048`), matching current `DomainStore.create_session` (`secrets.token_urlsafe(32)`). Invalid/truncated/padded/percent-encoded/non-ASCII values are refused **before** session lookup. Correct length/alphabet is not authentication: SQLite session state still decides. If the domain's token format is intentionally migrated, this optional guard and acceptance tests must be updated together *before* production integration.
 - Single canonical cookies and unrelated ordinary cookie pairs pass through
   unchanged. For a session-bearing envelope, the decoded session value must
   match what the *same* stdlib `SimpleCookie` parser used by the application
