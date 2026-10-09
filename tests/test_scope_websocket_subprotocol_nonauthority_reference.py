@@ -120,5 +120,28 @@ class TestSubprotocolNonAuthority(unittest.TestCase):
         self.assertFalse(permitted(dict(self.grant, active=False), self.dispatch, Hostile()))
 
 
+    def test_truthy_but_not_boolean_grant_flags_refused(self):
+        for key in ("active", "issuer_verified"):
+            for invalid in (1, "true", ["yes"], object()):
+                with self.subTest(key=key, invalid=type(invalid).__name__):
+                    grant = dict(self.grant, **{key: invalid})
+                    self.assertFalse(permitted(grant, self.dispatch, "admin"))
+
+    def test_identity_missing_on_both_sides_refused(self):
+        for key in ("tenant", "request", "asset", "capability"):
+            with self.subTest(key=key):
+                grant, dispatch = dict(self.grant), dict(self.dispatch)
+                grant.pop(key)
+                dispatch.pop(key)
+                self.assertFalse(permitted(grant, dispatch, "admin"))
+
+    def test_inputs_unchanged_by_metadata_independence(self):
+        grant, dispatch = dict(self.grant), dict(self.dispatch)
+        before_grant, before_dispatch = dict(grant), dict(dispatch)
+        self.assertTrue(permitted(grant, dispatch, HostileLabel()))
+        self.assertEqual(grant, before_grant)
+        self.assertEqual(dispatch, before_dispatch)
+
+
 if __name__ == "__main__":
     unittest.main()
