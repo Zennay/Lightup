@@ -186,6 +186,19 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
         with self.assertRaisesRegex(OrchestrationError, "invalid definition"):
             validate_unambiguous_arguments(malformed, ())
 
+    def test_untrusted_definition_subclass_cannot_run_property_code(self):
+        """Reject a forged subclass before its parameter property is touched."""
+        touched = []
+        class TrapDefinition(ToolDefinition):
+            @property
+            def parameters(self):
+                touched.append("accessed")
+                raise AssertionError("untrusted ToolDefinition property evaluated")
+        fake = object.__new__(TrapDefinition)
+        with self.assertRaisesRegex(OrchestrationError, "registered ToolDefinition"):
+            validate_unambiguous_arguments(fake, (("value", 1.0),))
+        self.assertEqual(touched, [])
+
 
 if __name__ == "__main__":
     unittest.main()
