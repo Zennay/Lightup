@@ -61,6 +61,18 @@ class IPv4MappedIPv6ScopeBoundaryTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
 
+    def test_explicit_mapped_ipv6_prefix_accepts_only_synthetic_in_prefix_grant(self):
+        policy = ScopePolicy(explicit_networks=("::ffff:8.8.8.0/120",))
+        decision = policy.decide(Target("http://[::ffff:8.8.8.8]/", authorization=self.grant))
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_NETWORK)
+
+    def test_unmapped_ipv6_does_not_inherit_ipv4_mapped_prefix(self):
+        policy = ScopePolicy(explicit_networks=("::ffff:8.8.8.0/120",))
+        decision = policy.decide(Target("http://[2001:db8::1]/", authorization=self.grant))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
     def test_unlisted_mapped_ipv6_never_calls_network_or_dns(self):
         policy = ScopePolicy()
         with patch("socket.create_connection", side_effect=AssertionError("network call")), patch(
