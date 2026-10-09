@@ -110,7 +110,7 @@ def verify_observed_ci_jobs(manifest: dict, observed: dict) -> bool:
                 (lane == "permanent_vps" and ("not vps proof" in run["job_name"].lower() or
                                                "offline preflight" in run["job_name"].lower()))):
             return False
-        if ("Python " + run["python_version"]) not in run["job_name"]:
+        if type(run["python_version"]) is not str or ("Python " + run["python_version"]) not in run["job_name"]:
             return False
         if (type(run["status"]) is not str or run["status"] != "completed" or
                 type(run["conclusion"]) is not str or run["conclusion"] != "success"):
