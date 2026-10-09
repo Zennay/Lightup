@@ -34,6 +34,11 @@ def verify(data):
         value = data.get(key)
         if type(value) is not str or SHA.fullmatch(value) is None:
             errors.append(f"{key}: expected lowercase 40-character commit SHA")
+    base_sha = data.get("base_sha")
+    if (type(sha) is str and SHA.fullmatch(sha)
+            and type(base_sha) is str and SHA.fullmatch(base_sha)
+            and sha == base_sha):
+        errors.append("implementation_sha: must differ from base_sha")
     if type(sha) is str and SHA.fullmatch(sha):
         for key in ("hosted_py311_sha", "hosted_py314_sha", "permanent_vps_sha", "owner_review_sha"):
             if data.get(key) != sha:
