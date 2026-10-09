@@ -399,6 +399,70 @@ class WsgiIdentityMetadataNonauthorityTest(unittest.TestCase):
             self.assertEqual(latest.status.value, "submitted")
             self.assertIsNone(latest.decided_by)
 
+    def test_forged_proxy_csrf_cannot_authorize_operator_decisions(self):
+        """An actual operator session still needs its own body CSRF for writes."""
+        client_ctx = self.store.context_for_user(self.client_user.user_id)
+        for mode in ("development", "production"):
+            engagement = self.store.create_engagement(
+                self.operator_ctx, self.client_a.client_id,
+                f"Offline CSRF boundary {mode}",
+            )
+            request = self.store.submit_assessment_request(
+                client_ctx, requested_assets=("fixture.invalid",),
+                requested_mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
+                requested_risk=RiskLevel.PASSIVE,
+                notes="synthetic form-CSRF gate",
+            )
+            elevation = self.store.request_risk_elevation(
+                client_ctx, engagement.engagement_id, RiskLevel.STANDARD,
+                "synthetic form-CSRF gate",
+            )
+            grant_path = f"/engagements/{engagement.engagement_id}/grants"
+            request_path = f"/assessments/requests/{request.request_id}/decision"
+            elevation_path = f"/assessments/elevations/{elevation.approval_id}/decision"
+            cases = (
+                (grant_path, {"approved_by": "Synthetic approver",
+                              "reference": "OFFLINE-NOT-A-GRANT",
+                              "assets": "fixture.invalid",
+                              "capabilities": "web-baseline", "max_risk": "1",
+                              "valid_days": "1"}),
+                (request_path, {"decision": "approve"}),
+                (elevation_path, {"decision": "approve"}),
+            )
+            for path, fields in cases:
+                for form_csrf in (None, "forged", ""):
+                    form = dict(fields)
+                    if form_csrf is not None:
+                        form["csrf"] = form_csrf
+                    with self.subTest(mode=mode, path=path, csrf=form_csrf):
+                        status, headers, _ = self.request(
+                            mode, "POST", path, token=self.op_token,
+                            form=form,
+                            extra={
+                                "REMOTE_USER": "op@lightup.test",
+                                "HTTP_X_AUTH_REQUEST_USER": "op@lightup.test",
+                                "HTTP_X_CSRF_TOKEN": self.op_csrf,
+                                "HTTP_X_XSRF_TOKEN": self.op_csrf,
+                            },
+                        )
+                        self.assertEqual(status, "403 Forbidden")
+                        self.assertEqual(headers["Cache-Control"], "no-store")
+                        self.assertEqual(self.store.list_authorization_grants(
+                            self.operator_ctx, engagement.engagement_id), [])
+                        after_request = self.store.get_assessment_request(
+                            self.operator_ctx, request.request_id
+                        )
+                        self.assertEqual(after_request.status.value, "submitted")
+                        self.assertIsNone(after_request.decided_by)
+                        self.assertIsNone(after_request.decided_at)
+                        after_risk = self.store.list_risk_approvals(
+                            self.operator_ctx, engagement.engagement_id
+                        )[0]
+                        self.assertEqual(after_risk.status.value, "pending")
+                        self.assertIsNone(after_risk.decided_by)
+                        self.assertIsNone(after_risk.decided_at)
+                        self.assertIsNotNone(self.store.session_context(self.op_token))
+
     def test_genuine_operator_cookie_plus_form_csrf_remain_authoritative(self):
         # Non-authoritative identity hints must neither elevate nor disable
         # an otherwise authorized operator action.
