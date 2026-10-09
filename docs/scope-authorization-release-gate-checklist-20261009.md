@@ -21,3 +21,7 @@ Status: **HOLD / no active-target activation**. This document does not grant con
 ## Explicit release verdict
 
 **FAIL / HOLD** until all seven items are evidenced on the exact integrated release SHA. The ten outstanding RED/XFAIL contracts are known security gaps, even where unit CI exits successfully.
+
+## Automation-safe CLI exit contract
+
+The offline `scripts/check_scope_release_evidence.py` is *not* a trustworthy grant or GitHub provenance verifier. Exit code `3` means **structurally complete synthetic claims only**, and must never unblock release or target activity. Exit code `1` means syntactically incomplete/denied evidence, and `2` means invalid input or CLI usage. **No exit code from this utility authorizes production**. A separate trusted source-owner validation must independently verify persisted consent, GitHub API runs and source SHA before any release decision.
