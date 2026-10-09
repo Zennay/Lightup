@@ -67,3 +67,7 @@ Python's `uuid.UUID()` accepts uppercase and hyphenless UUID aliases and normali
 ## Restart-safe identity reference
 
 A plan-only offline fixture now persists an issued UUID4 evidence record to temporary SQLite, reopens it with a fresh `StateStore` instance and checks that the exact identifier, run association and separately stored SHA-256 digest remain unchanged. This guards the reference against accidental reliance on instance-local state; it is not evidence that production authorization or cross-tenant access control has been proven.
+
+## Offline run-to-row separation fixture
+
+The reference suite now issues two evidence records against distinct plan-only local runs in the same temporary database. It checks ID uniqueness, exact ID readback, per-record run binding and distinct stored payload SHA-256 digests. This tests current store bookkeeping, **not** whether a caller is entitled to retrieve another run's evidence: authorization still belongs to the production policy owner and is outside this PR.
