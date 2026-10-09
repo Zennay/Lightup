@@ -12,21 +12,29 @@ from urllib.parse import urlsplit
 
 
 def valid_run_url(value: object) -> bool:
-    if type(value) is not str:
+    """Accept only an exact canonical workflow run URL for this repository.
+
+    Syntax is checked offline; this cannot prove that the run actually exists.
+    """
+    if type(value) is not str or len(value) > 256:
         return False
     try:
         parsed = urlsplit(value)
     except ValueError:
         return False
     parts = parsed.path.split("/")
-    return (parsed.scheme == "https" and parsed.netloc == "github.com"
-            and parsed.username is None and parsed.password is None
-            and parsed.query == "" and parsed.fragment == ""
-            and len(parts) == 7 and parts[:5] == ["", "Zennay", "Lightup", "actions", "runs"]
-            and parts[5].isascii() and parts[5].isdecimal() and parts[6] == "") or (parsed.scheme == "https" and parsed.netloc == "github.com"
-            and parsed.query == "" and parsed.fragment == ""
-            and len(parts) == 6 and parts[:5] == ["", "Zennay", "Lightup", "actions", "runs"]
-            and parts[5].isascii() and parts[5].isdecimal())
+    return (
+        parsed.scheme == "https"
+        and parsed.netloc == "github.com"
+        and parsed.query == ""
+        and parsed.fragment == ""
+        and len(parts) == 6
+        and parts[:5] == ["", "Zennay", "Lightup", "actions", "runs"]
+        and parts[5].isascii()
+        and parts[5].isdecimal()
+        and len(parts[5]) <= 20
+        and int(parts[5]) > 0
+    )
 
 
 REQUIRED_JOBS = ("py311_unit", "py314_unit", "py311_producer", "py314_producer", "permanent_vps")
