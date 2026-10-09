@@ -93,3 +93,7 @@ A new denied allowlisted URL case patches `socket.getaddrinfo`, `socket.create_c
 ## Expired authorization transport tripwire
 
 An already-expired synthetic authorization with `revoked=false` routing metadata must produce `AUTHORIZATION_EXPIRED` without calling `socket.getaddrinfo`, `socket.create_connection`, or `urllib.request.urlopen` from the pure scope decision. This is strictly a unit-layer assertion, not proof of production executor or evidence-write isolation.
+
+## Future-dated grant transport tripwire
+
+A not-yet-valid synthetic grant is denied with `AUTHORIZATION_EXPIRED` regardless of claimed approval expiry metadata. Pure policy evaluation must not invoke socket DNS, socket connection or urllib HTTP dispatch functions. This verifies only the unit boundary; production worker ingress and evidence-store write interception require separate integration tests.
