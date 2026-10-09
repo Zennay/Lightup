@@ -27,7 +27,7 @@ def validate_unambiguous_arguments(
         raise OrchestrationError("tool parameter registry must be a tuple")
     if any(type(parameter) is not ToolParameter for parameter in definition.parameters):
         raise OrchestrationError("tool parameter registry contains invalid definition")
-    parameter_names = [p.name for p in definition.parameters]
+    if any(type(p.kind) is not ParamKind or type(p.required) is not bool\n           for p in definition.parameters):\n        raise OrchestrationError("tool parameter registry has invalid kind or required flag")\n    parameter_names = [p.name for p in definition.parameters]
     if any(type(name) is not str for name in parameter_names):
         raise OrchestrationError("tool parameter names must be strings")
     if len(parameter_names) != len(set(parameter_names)):
