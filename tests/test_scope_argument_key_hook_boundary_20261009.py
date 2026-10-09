@@ -204,5 +204,33 @@ class ArgumentKeyHookBoundaryTests(unittest.TestCase):
         )
 
 
+    def test_unknown_argument_rejected_before_schema_validator(self):
+        calls = []
+        original = ToolDefinition.validate_arguments
+        def trap_validate(definition, arguments):
+            calls.append("called")
+            raise AssertionError("schema invoked for unknown argument")
+        from unittest.mock import patch
+        with patch.object(ToolDefinition, "validate_arguments", trap_validate):
+            with self.assertRaisesRegex(OrchestrationError, "unknown tool argument name"):
+                validate_unambiguous_arguments(
+                    self.definition, (("unknown", "injected"),)
+                )
+        self.assertEqual(calls, [])
+
+    def test_duplicate_argument_rejected_before_schema_validator(self):
+        calls = []
+        def trap_validate(definition, arguments):
+            calls.append("called")
+            raise AssertionError("schema invoked for duplicate arguments")
+        from unittest.mock import patch
+        with patch.object(ToolDefinition, "validate_arguments", trap_validate):
+            with self.assertRaisesRegex(OrchestrationError, "duplicate tool argument"):
+                validate_unambiguous_arguments(
+                    self.definition, (("label", "one"), ("label", "two"))
+                )
+        self.assertEqual(calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
