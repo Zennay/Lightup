@@ -70,5 +70,34 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
             grant.is_current(self.anchor.replace(tzinfo=None))
 
 
+    def test_zero_duration_window_is_valid_only_at_exact_instant(self):
+        grant = self.grant(self.anchor, self.anchor)
+        self.assertTrue(grant.is_current(self.anchor))
+        self.assertFalse(grant.is_current(self.anchor - timedelta(microseconds=1)))
+        self.assertFalse(grant.is_current(self.anchor + timedelta(microseconds=1)))
+
+    def test_offset_aware_clock_is_compared_as_absolute_instant(self):
+        from datetime import timezone as tz
+        east = tz(timedelta(hours=5, minutes=30))
+        instant = self.anchor.astimezone(east)
+        grant = self.grant(self.anchor, self.anchor)
+        self.assertTrue(grant.is_current(instant))
+
+    def test_inverted_window_across_timezones_remains_denied(self):
+        from datetime import timezone as tz
+        east = tz(timedelta(hours=9))
+        start = (self.anchor + timedelta(hours=1)).astimezone(east)
+        end = self.anchor
+        grant = self.grant(start, end)
+        self.assertFalse(grant.is_current(self.anchor))
+        self.assertFalse(grant.is_current(self.anchor + timedelta(hours=1)))
+
+    def test_public_host_future_window_denied(self):
+        now = datetime.now(timezone.utc)
+        grant = self.grant(now + timedelta(days=1), now + timedelta(days=2))
+        decision = self.policy.decide(Target("https://authorized.example", authorization=grant))
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+        self.assertFalse(decision.allowed)
+
 if __name__ == "__main__":
     unittest.main()
