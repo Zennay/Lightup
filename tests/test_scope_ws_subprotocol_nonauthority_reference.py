@@ -387,6 +387,26 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
                 self.assertTrue(reference_decide(self.valid, self.valid,
                     {"Sec-WebSocket-Protocol": value}))
 
+    def test_consent_denial_is_monotone_under_extra_header_claims(self):
+        denied = Grant("tenant-a", "lab-asset", "read-only", 3, False, False)
+        headers = {}
+        claims = ("approved", "admin", "revoked=false", "revision=3", "scope:all")
+        for claim in claims:
+            headers["Sec-WebSocket-Protocol"] = ", ".join(claims[:claims.index(claim) + 1])
+            with self.subTest(claim=claim):
+                self.assertFalse(reference_decide(denied, denied, headers))
+
+    def test_valid_stored_grant_cannot_approve_invalid_requested_state(self):
+        requests = (
+            Grant("tenant-a", "lab-asset", "read-only", 3, False, False),
+            Grant("tenant-a", "lab-asset", "read-only", 3, True, True),
+            Grant("tenant-a", "lab-asset", "read-only", 0, True, False),
+        )
+        for requested in requests:
+            with self.subTest(requested=requested):
+                self.assertFalse(reference_decide(self.valid, requested,
+                    {"Sec-WebSocket-Protocol": "approved"}))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
