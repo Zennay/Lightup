@@ -478,6 +478,24 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
         self.assertFalse(reference_decide(revoked, revoked, ExplodingMapping()))
         self.assertTrue(reference_decide(self.valid, self.valid, ExplodingMapping()))
 
+    def test_denied_stored_grant_cannot_be_reenabled_by_mutating_headers(self):
+        denied = Grant("tenant-a", "lab-asset", "read-only", 3, False, False)
+        headers = {"Sec-WebSocket-Protocol": "approved"}
+        effects = []
+        for claimed in ("admin", "approved", "revoked=false", "scope:all"):
+            headers["Sec-WebSocket-Protocol"] = claimed
+            if reference_decide(denied, self.valid, headers):
+                effects.append(claimed)
+        self.assertEqual(effects, [])
+
+    def test_valid_grant_is_independent_of_header_mutation(self):
+        headers = {"Sec-WebSocket-Protocol": "approved"}
+        outcomes = []
+        for claimed in ("admin", "", None, ["read-only"], {"approved": False}):
+            headers["Sec-WebSocket-Protocol"] = claimed
+            outcomes.append(reference_decide(self.valid, self.valid, headers))
+        self.assertEqual(outcomes, [True] * 5)
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
