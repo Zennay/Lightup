@@ -15,9 +15,16 @@ from collections.abc import Callable, Iterable, Mapping
 class RootMountGuard:
     """Accept only a root-mounted WSGI application with canonical metadata."""
 
-    def __init__(self, app: Callable, *, production: bool = False):
+    def __init__(self, app: Callable, *, production: bool):
+        # Configuration must be explicit: an accidental development default
+        # would omit HSTS from production's pre-auth denial responses.
         if type(production) is not bool:
             raise TypeError("production must be a boolean")
+        app_security = getattr(app, "security", None)
+        configured_production = getattr(app_security, "production", None)
+        if configured_production is not None:
+            if type(configured_production) is not bool or configured_production != production:
+                raise ValueError("root guard production mode must match the wrapped app")
         self.app = app
         self.production = production
 
