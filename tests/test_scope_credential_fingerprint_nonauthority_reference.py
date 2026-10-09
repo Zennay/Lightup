@@ -99,6 +99,27 @@ class CredentialFingerprintNonAuthorityReference(unittest.TestCase):
             pass
         self.assertFalse(conditionally_consistent(Forged("tenant-1", "assessment-3", 2, "http-head", True), self.call))
 
+    def test_polymorphic_request_denied(self):
+        class ForgedRequest(Request):
+            pass
+        self.assertFalse(conditionally_consistent(
+            self.grant, ForgedRequest("tenant-1", "assessment-3", 2, "http-head", "trusted")
+        ))
+
+    def test_matched_malformed_capability_denied(self):
+        for capability in ("http head", "http\\nhead", "http/head", "é", "", "x" * 129):
+            self.assertFalse(conditionally_consistent(
+                IssuerGrant("tenant-1", "assessment-3", 2, capability, True),
+                Request("tenant-1", "assessment-3", 2, capability, "trusted"),
+            ))
+
+    def test_request_and_grant_are_immutable(self):
+        from dataclasses import FrozenInstanceError
+        with self.assertRaises(FrozenInstanceError):
+            self.grant.active = False
+        with self.assertRaises(FrozenInstanceError):
+            self.call.credential_fingerprint = "trusted"
+
     def test_invalid_fingerprint_type_denied(self):
         self.assertFalse(conditionally_consistent(self.grant, Request("tenant-1", "assessment-3", 2, "http-head", None)))
 
