@@ -71,3 +71,7 @@ A plan-only offline fixture now persists an issued UUID4 evidence record to temp
 ## Offline run-to-row separation fixture
 
 The reference suite now issues two evidence records against distinct plan-only local runs in the same temporary database. It checks ID uniqueness, exact ID readback, per-record run binding and distinct stored payload SHA-256 digests. This tests current store bookkeeping, **not** whether a caller is entitled to retrieve another run's evidence: authorization still belongs to the production policy owner and is outside this PR.
+
+## Existence is separate from syntax
+
+A canonical-looking UUID4 is not proof that the evidence row exists. A new offline regression asks the real `StateStore` to retrieve an absent but lexically valid identifier and requires a failure with zero evidence rows created. This reference tolerates current `KeyError`/`ValueError` not-found behavior; no production error API changes or provenance claims are made.
