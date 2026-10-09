@@ -206,6 +206,18 @@ class RedirectScopeReferenceTests(unittest.TestCase):
         self.assertTrue(self.decide(source, self.grant).allowed)
         self.assertTrue(self.decide(destination, self.grant).allowed)
 
+    def test_unsupported_scheme_is_not_rejected_by_legacy_host_scope(self):
+        # Characterization: URL scheme validation belongs to the dispatch layer.
+        decision = self.decide("ftp://approved.example.test/resource", self.grant)
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+
+    def test_scheme_relative_authorized_host_still_needs_grant(self):
+        resolved = urljoin("https://outside.example.test/start", "//approved.example.test/path")
+        decision = self.decide(resolved)
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
     def test_each_redirect_hop_rechecks_target_identity(self):
         hops = [
             "https://approved.example.test/start",
