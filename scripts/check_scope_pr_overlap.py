@@ -12,7 +12,7 @@ import os
 import re
 import sys
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 
 class IncompleteEvidence(RuntimeError):
@@ -21,6 +21,13 @@ class IncompleteEvidence(RuntimeError):
 
 _REPO_COMPONENT = re.compile(r"^[A-Za-z0-9_.-]+$")
 _PAGE_SIZE = 100
+
+
+class _RejectRedirect(HTTPRedirectHandler):
+    """Never follow an API redirect to a second URL/host or a target."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise IncompleteEvidence("GitHub API redirected unexpectedly")
 
 
 def validate_repo(value: str) -> str:
@@ -58,7 +65,7 @@ class GitHubReadOnly:
         if max_pages < 1:
             raise ValueError("max_pages must be at least one")
         self.max_pages = max_pages
-        self.opener = opener or urlopen
+        self.opener = opener if opener is not None else build_opener(_RejectRedirect()).open
         self.token = token
         self.api_root = f"https://api.github.com/repos/{self.repo}"
 
