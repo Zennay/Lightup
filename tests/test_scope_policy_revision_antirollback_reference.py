@@ -14,11 +14,17 @@ class PolicySnapshot:
     enabled: bool
 
 
+def canonical_identity(value):
+    """Conservative reference identity grammar; not issuer provenance."""
+    return (type(value) is str and 1 <= len(value) <= 128
+            and all(char in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_:." for char in value))
+
+
 def may_continue(snapshot, current):
     """A necessary, never sufficient, condition for a queued capability."""
     if type(snapshot) is not PolicySnapshot or type(current) is not PolicySnapshot:
         return False
-    if any(type(v) is not str or not v or v.strip() != v for v in (
+    if any(not canonical_identity(v) for v in (
         snapshot.tenant, snapshot.grant_id, current.tenant, current.grant_id
     )):
         return False
@@ -73,6 +79,17 @@ class RevisionReferenceTests(unittest.TestCase):
         for bad in ("", " tenant-a", "tenant-a ", "\n"):
             with self.subTest(bad=bad):
                 self.assertFalse(may_continue(self.saved, PolicySnapshot(bad, "grant-1", 9, True)))
+
+    def test_malformed_grant_identity_denied(self):
+        for bad in ("grant\\n1", "grant\\u202e1", "grant/1", "g" * 129):
+            with self.subTest(bad=bad):
+                self.assertFalse(may_continue(self.saved, PolicySnapshot("tenant-a", bad, 9, True)))
+
+    def test_snapshot_identity_and_revision_must_also_be_canonical(self):
+        self.assertFalse(may_continue(PolicySnapshot("tenant\\na", "grant-1", 8, True),
+                                      PolicySnapshot("tenant\\na", "grant-1", 9, True)))
+        self.assertFalse(may_continue(PolicySnapshot("tenant-a", "grant-1", True, True),
+                                      PolicySnapshot("tenant-a", "grant-1", 9, True)))
 
     def test_inputs_not_mutated(self):
         before = repr(self.saved)
