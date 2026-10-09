@@ -19,3 +19,9 @@ This model intentionally does not call DNS, network targets, scanners, capabilit
 
 ## Promotion gate
 The authorization executor/source owner (existing PR #107) retains production ownership. Require exact-head Python 3.11/3.14 hosted **and permanent VPS** proof, owner review and real-domain test coverage before merging or claiming the invariant enforced. No real target activation is authorized by this PR.
+
+## CI regression repair ledger (2026-10-09)
+
+- Hosted preflight for predecessor `0c91483c290bd45b46618a5cd25a0fb22cc5ed70` (`37872558358`) exposed incorrectly doubled Unicode escape literals in the offline fixture, producing five failures in the Python 3.11 unit job. That predecessor is **not green proof**.
+- The fixture literals were corrected on head `26b06ffc661b76bd0f89b4228b7b07ce2847eba8`. This correction does not alter production behavior.
+- Acceptance still requires **new exact-head** hosted preflight on both Python versions plus canonical permanent VPS proof. Older runs, cancelled integration jobs, and this reference-only success must not be represented as production authorization acceptance.
