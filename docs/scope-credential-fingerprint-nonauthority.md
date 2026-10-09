@@ -12,7 +12,7 @@ A credential fingerprint, API-key hint, token prefix, hash string, log label, or
 
 1. Bind authenticated principal and current issuer grant through trusted components, never through fingerprint text or a caller/model-provided boolean.
 2. Deny malformed typed identifiers, stale versions, revocation, tenant/request/capability mismatch before queue admission and again at dispatch.
-3. No cached positive fingerprint, UI status, report, or scan output can mint permission or survive withdrawal.
+3. Polymorphic request/grant envelopes and malformed capability identities must fail closed; immutable reference fixtures avoid accidental authorization-state mutation. No cached positive fingerprint, UI status, report, or scan output can mint permission or survive withdrawal.
 4. Prove denial with zero handler invocations, DNS, socket, target traffic or other side effects.
 5. Pin integration results to the exact candidate head with hosted Python 3.11/3.14 and canonical permanent VPS runner checks; obtain owner review before promotion.
 
