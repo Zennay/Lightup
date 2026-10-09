@@ -103,11 +103,16 @@ def main(argv: list[str]) -> int:
         return 2
     try:
         source = Path(argv[1])
-        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_CLOEXEC", 0)
         if not hasattr(os, "O_NOFOLLOW"):
             raise ValueError("safe no-follow file opening is unavailable")
         fd = os.open(source, flags)
-        with os.fdopen(fd, "rb") as stream:
+        try:
+            stream = os.fdopen(fd, "rb")
+        except BaseException:
+            os.close(fd)
+            raise
+        with stream:
             if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
                 raise ValueError("evidence must be a regular file")
             raw = stream.read(MAX_EVIDENCE_BYTES + 1)
