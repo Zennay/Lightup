@@ -143,6 +143,21 @@ class OfflineExecutorNumberTests(unittest.TestCase):
         self.assertEqual(self.evidence_count(), 0)
 
     @unittest.expectedFailure
+    def test_duplicate_key_replay_after_valid_call_must_preserve_ledger(self):
+        """Ambiguous second invocation must not add evidence to a valid run."""
+        self.invoke(1.0)
+        before_count = self.evidence_count()
+        before_calls = len(self.calls)
+        with self.assertRaises(OrchestrationError):
+            self.executor.execute(
+                self.context,
+                ToolCall("number-lab-only", "127.0.0.1",
+                         (("value", 1.0), ("value", 2.0))),
+            )
+        self.assertEqual(self.evidence_count(), before_count)
+        self.assertEqual(len(self.calls), before_calls)
+
+    @unittest.expectedFailure
     def test_nan_denied_before_handler_and_evidence(self):
         with self.assertRaises(OrchestrationError):
             self.invoke(float("nan"))
