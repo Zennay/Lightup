@@ -92,6 +92,8 @@ def main(argv):
         if (type(getattr(os, "O_NOFOLLOW", None)) is not int
                 or type(getattr(os, "O_NONBLOCK", None)) is not int):
             raise ValueError("secure regular-file open is unavailable")
+        if os.O_NOFOLLOW == 0 or os.O_NONBLOCK == 0:
+            raise ValueError("secure regular-file open flags are ineffective")
         flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
         descriptor = os.open(argv[1], flags)
         with os.fdopen(descriptor, "rb") as stream:
