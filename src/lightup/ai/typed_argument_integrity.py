@@ -59,9 +59,13 @@ def validate_unambiguous_arguments(
     # Never coerce subclass-controlled numeric objects while checking finiteness.
     # Canonical tool NUMBER arguments are built-in int/float, not subclass hooks.
     for name, value in result.items():
-        if name in parameter_by_name and parameter_by_name[name].kind is ParamKind.NUMBER:
-            if type(value) not in (int, float):
-                raise OrchestrationError(f"tool argument {name!r} must be a built-in number")
+        if name not in parameter_by_name:
+            continue
+        kind = parameter_by_name[name].kind
+        if kind is ParamKind.NUMBER and type(value) not in (int, float):
+            raise OrchestrationError(f"tool argument {name!r} must be a built-in number")
+        if kind is ParamKind.INTEGER and type(value) is not int:
+            raise OrchestrationError(f"tool argument {name!r} must be a built-in integer")
     definition.validate_arguments(result)
     for name, value in result.items():
         if parameter_by_name[name].kind is ParamKind.NUMBER:
