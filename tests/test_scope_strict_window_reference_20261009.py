@@ -141,6 +141,21 @@ class StrictWindowReferenceTests(unittest.TestCase):
             tzinfo=timezone(timedelta(hours=-14)))
         self.assertFalse(strict_window_eligible(self.start, extreme_end, self.now))
 
+    def test_temporal_matrix_respects_exclusive_end_in_utc(self):
+        # Fixed matrix, no external clock or network: all tested instants
+        # must satisfy start <= now < end, irrespective of wall-clock offset.
+        start = datetime(2026, 10, 25, 0, 30, tzinfo=timezone.utc)
+        end = start + timedelta(hours=2)
+        offsets = (timezone.utc, timezone(timedelta(hours=2)),
+                   timezone(timedelta(hours=-5)))
+        for offset in offsets:
+            for minutes in (-1, 0, 1, 60, 119, 120, 121):
+                candidate = (start + timedelta(minutes=minutes)).astimezone(offset)
+                with self.subTest(offset=offset, minutes=minutes):
+                    self.assertEqual(
+                        strict_window_eligible(start, end, candidate),
+                        0 <= minutes < 120)
+
     def test_invalid_now_types_deny(self):
         for bad in (None, "", 0, False, True, self.now.isoformat()):
             with self.subTest(bad=repr(bad)):
