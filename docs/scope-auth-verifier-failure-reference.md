@@ -8,7 +8,7 @@ When a trusted issuer-owned authorization proof lookup or verification cannot pr
 ## Offline acceptance cases
 - An exact `True` result is *conditionally eligible* only; it is not proof of issuer provenance, current grant revision, tenant binding or active permission.
 - `False`, `None`, truthy integers/strings/containers, or exception paths deny.
-- Malformed, polymorphic or whitespace-ambiguous reference envelopes deny before verifier invocation.
+- Malformed, polymorphic, whitespace/control-character ambiguous, non-builtin-string, or oversized (>256 code point) reference envelopes deny before verifier invocation. The 256-character ceiling is an illustrative fixture limit, **not** an adopted production identifier policy.
 - Reference inputs remain unchanged after failure; no client-provided metadata is treated as authority.
 
 ## Production owner handoff
