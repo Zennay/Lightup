@@ -79,3 +79,6 @@ Offline admission now rejects uppercase, trailing-dot, internationalized/Unicode
 
 ## URL parser ambiguity correction
 The artifact URL predicate now explicitly rejects any backslash in the raw URL and percent-encoded bytes in the authority component. Relying only on a parsed hostname can overlook disagreements between URL parsers. This remains offline lexical filtering; trusted source provenance still requires authenticated verification.
+
+## Observed job matching reference
+The offline `verify_observed_ci_jobs` predicate now compares a structurally complete manifest with explicitly provided job snapshots: same SHA, run URL and job ID; completed success; explicit Python version and hosted/permanent-VPS runner class. Missing and mismatched snapshots deny. **This is not an authenticated fetch**: caller-provided labels and conclusions are not trusted CI attestations. Do not use it for release or real-target activation without independent GitHub API source verification and production-owner review.
