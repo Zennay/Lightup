@@ -18,7 +18,7 @@ def reference_digest(tenant, finding, evidence_ids):
     if len(set(evidence_ids)) != len(evidence_ids):
         raise ValueError("duplicate evidence reference")
     payload = json.dumps(
-        {"tenant": tenant, "finding": finding, "evidence": sorted(evidence_ids)},
+        {"schema": "lightup.evidence-set.v1", "tenant": tenant, "finding": finding, "evidence": sorted(evidence_ids)},
         sort_keys=True, ensure_ascii=True, separators=(",", ":"),
     ).encode("ascii")
     return hashlib.sha256(payload).hexdigest()
@@ -122,6 +122,23 @@ class EvidenceReferenceOrderReferenceTests(unittest.TestCase):
         first = reference_digest("tenant", "finding", ["β", "α"])
         for _ in range(10):
             self.assertEqual(first, reference_digest("tenant", "finding", ["α", "β"]))
+
+    def test_digest_uses_versioned_domain_separation(self):
+        expected_payload = json.dumps(
+            {"schema": "lightup.evidence-set.v1", "tenant": "t", "finding": "f",
+             "evidence": ["a", "b"]},
+            sort_keys=True, ensure_ascii=True, separators=(",", ":"),
+        ).encode("ascii")
+        self.assertEqual(reference_digest("t", "f", ["b", "a"]),
+                         hashlib.sha256(expected_payload).hexdigest())
+
+    def test_versioned_digest_differs_from_unversioned_legacy_payload(self):
+        legacy = json.dumps(
+            {"tenant": "t", "finding": "f", "evidence": ["a"]},
+            sort_keys=True, ensure_ascii=True, separators=(",", ":"),
+        ).encode("ascii")
+        self.assertNotEqual(reference_digest("t", "f", ["a"]),
+                            hashlib.sha256(legacy).hexdigest())
 
     def test_does_not_mutate_inputs(self):
         ids = ["z", "a"]
