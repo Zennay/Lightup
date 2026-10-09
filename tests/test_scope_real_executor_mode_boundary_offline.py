@@ -390,5 +390,19 @@ class RealExecutorModeBoundaryTests(unittest.TestCase):
         self.handler.assert_called_once()
         self.state.add_evidence.assert_not_called()
 
+    def test_invalid_arguments_rejected_before_policy_and_handler(self):
+        # This ToolDefinition declares no arguments; unexpected model-supplied
+        # parameters must not reach authorization policy or side effects.
+        call = ToolCall(
+            tool_id="synthetic-lab", asset="127.0.0.1",
+            arguments=(("unexpected_network_destination", "example.invalid"),),
+        )
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            with self.assertRaisesRegex(Exception, "unknown argument"):
+                self.executor.execute(self.context(AssessmentMode.LAB_AUTONOMOUS), call)
+        self.policy.decide.assert_not_called()
+        self.handler.assert_not_called()
+        self.state.add_evidence.assert_not_called()
+
 if __name__ == "__main__":
     unittest.main()
