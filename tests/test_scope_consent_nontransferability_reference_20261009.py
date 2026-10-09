@@ -272,6 +272,22 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
                 forged = self.request | {field: original + "\u0301"}
                 self.assertFalse(matches_consent(self.consent, **forged))
 
+    def test_only_requested_revision_must_match_exactly(self):
+        # Independently mutate the persisted grant revision and request revision.
+        for stored, requested in ((4, 3), (3, 4), (10, 9)):
+            with self.subTest(stored=stored, requested=requested):
+                changed = Consent("tenant-A", "engagement-A", "owner-A",
+                                  "asset-A", "web-baseline", stored, True)
+                self.assertFalse(matches_consent(
+                    changed, **(self.request | {"revision": requested})))
+
+    def test_nonboolean_approved_values_fail_closed_even_when_falsey(self):
+        for approval in (None, 0, 1, "", "false", [], {}):
+            with self.subTest(value=repr(approval)):
+                changed = Consent("tenant-A", "engagement-A", "owner-A",
+                                  "asset-A", "web-baseline", 3, approval)
+                self.assertFalse(matches_consent(changed, **self.request))
+
 
 if __name__ == "__main__":
     unittest.main()
