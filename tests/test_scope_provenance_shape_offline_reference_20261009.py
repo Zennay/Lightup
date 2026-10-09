@@ -75,7 +75,7 @@ class ReferenceProvenanceShapeTests(unittest.TestCase):
             self.assertFalse(reference_provenance_shape(Authorization(**kwargs)))
 
     def test_rejects_unicode_line_separators_and_surrogate_pairs(self):
-        for bad in ("owner\\u2028id", "owner\\u2029id", "\\ud800\\udc00"):
+        for bad in ("owner\u2028id", "owner\u2029id", "\ud800\udc00"):
             with self.subTest(value=repr(bad)):
                 self.assertFalse(reference_provenance_shape(
                     Authorization(owner=bad, reference="consent-1")
