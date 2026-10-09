@@ -101,7 +101,7 @@ class RefererCannotGrantAuthority(unittest.TestCase):
 
     def test_matching_malformed_grant_and_call_identity_denied(self):
         for field in ("tenant", "request", "asset", "capability"):
-            for invalid in (None, 3, True, "", "bad\\nvalue", "bad\\x7fvalue"):
+            for invalid in (None, 3, True, "", "bad\nvalue", "bad\x7fvalue"):
                 with self.subTest(field=field, invalid=repr(invalid)):
                     values = dict(tenant=self.call.tenant, request=self.call.request,
                                   asset=self.call.asset, capability=self.call.capability)
