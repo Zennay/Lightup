@@ -315,6 +315,44 @@ class OfflineExecutorNumberTests(unittest.TestCase):
             self.assertEqual(self.calls, [2.5])
             self.assertEqual(self.evidence_count(), 1)
 
+    def test_bridge_uses_each_registered_tool_schema(self):
+        """A second tool proves the bridge cannot reuse the first tool schema."""
+        dispatched = []
+
+        def string_handler(context, arguments):
+            dispatched.append(arguments["label"])
+            return ToolOutput("secondary local fixture", "fixture", b"secondary")
+        self.registry.register(
+            ToolDefinition(
+                "string-lab-only", "web-baseline", InteractionKind.LAB_ACTIVE,
+                RiskLevel.DESTRUCTIVE_LAB_ONLY, "Offline secondary fixture",
+                (ToolParameter("label", ParamKind.STRING),),
+            ),
+            string_handler,
+        )
+
+        def bridge(call):
+            definition, _handler = self.registry.get(call.tool_id)
+            return validate_unambiguous_arguments(definition, call.arguments)
+
+        with patch.object(ToolCall, "arguments_dict", bridge):
+            bad_call = ToolCall(
+                "string-lab-only", "127.0.0.1", (("value", 2.5),)
+            )
+            with self.assertRaises(OrchestrationError):
+                self.executor.execute(self.context, bad_call)
+            self.assertEqual(dispatched, [])
+            self.assertEqual(self.evidence_count(), 0)
+
+            valid_call = ToolCall(
+                "string-lab-only", "127.0.0.1", (("label", "synthetic"),)
+            )
+            result = self.executor.execute(self.context, valid_call)
+            self.assertTrue(result.evidence_id)
+            self.assertEqual(dispatched, ["synthetic"])
+            self.assertEqual(self.calls, [])
+            self.assertEqual(self.evidence_count(), 1)
+
     @unittest.expectedFailure
     def test_nan_denied_before_handler_and_evidence(self):
         with self.assertRaises(OrchestrationError):
