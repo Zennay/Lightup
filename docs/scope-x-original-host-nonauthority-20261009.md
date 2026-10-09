@@ -129,3 +129,7 @@ For an out-of-scope HTTPS target, variants of X-Original-Host claiming approved 
 ## Idempotent deny on repeated pure policy evaluations
 
 Repeated evaluation of the same invalid, out-of-scope, or missing-grant target with forged original-host/operator labels must produce an identical `ScopeDecision` and remain denied. This captures consistency of the existing pure policy only; no persistence, revocation checks, handler interception or real-world customer authorization are proven.
+
+## Configuration preservation after repeated denied evaluations
+
+Repeated denied checks of unlisted, allowlisted-without-grant, and malformed targets containing forged host/allowlist hints must leave all explicit hosts, explicit networks, public-authorization requirement and private-lab setting intact. This is a pure-policy immutability check, not proof of the production enforcement path.
