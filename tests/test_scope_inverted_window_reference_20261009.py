@@ -152,5 +152,19 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.policy.decide(Target("https://authorized.example", authorization=grant))
 
+    def test_out_of_scope_host_does_not_evaluate_malformed_grant(self):
+        # Check scope before grant parsing; unrelated target must remain denied.
+        grant = self.grant("invalid-timestamp", None)
+        decision = self.policy.decide(Target("https://not-approved.example", authorization=grant))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_missing_public_grant_remains_denied_independent_of_clock(self):
+        for address in ("authorized.example", "https://authorized.example/path"):
+            with self.subTest(address=address):
+                decision = self.policy.decide(Target(address))
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
 if __name__ == "__main__":
     unittest.main()
