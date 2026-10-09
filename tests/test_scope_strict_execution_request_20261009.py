@@ -100,6 +100,50 @@ class StrictEnvelopeUnitTests(unittest.TestCase):
         self.assertFalse(self.policy.decide(SubRequest(**request().__dict__)).allowed)
         self.assertFalse(self.policy.decide(object()).allowed)
 
+    def test_grant_scope_duck_typing_cannot_grant_authority(self):
+        class FakeScope:
+            max_risk = RiskLevel.DESTRUCTIVE_LAB_ONLY
+
+            def allows_asset(self, _asset):
+                return True
+
+            def allows_capability(self, _capability):
+                return True
+
+        fabricated = replace(grant(), scope=FakeScope())
+        self.assertFalse(self.policy.decide(request(authorization=fabricated)).allowed)
+
+    def test_grant_nested_types_fail_closed(self):
+        genuine = grant()
+        bad_scopes = (
+            replace(genuine.scope, assets=["safe.example.test"]),
+            replace(genuine.scope, allowed_capabilities=("web-baseline", WeirdText("other"))),
+            replace(genuine.scope, excluded_assets=("outside.example.test\\n",)),
+            replace(genuine.scope, max_risk=2),
+        )
+        for scope in bad_scopes:
+            with self.subTest(scope=repr(scope)):
+                self.assertFalse(self.policy.decide(request(
+                    authorization=replace(genuine, scope=scope),
+                )).allowed)
+        self.assertFalse(self.policy.decide(request(
+            authorization=replace(genuine, recurring_retest_allowed="false"),
+        )).allowed)
+        self.assertFalse(self.policy.decide(request(
+            authorization=replace(genuine, client_id=WeirdText("synthetic-client")),
+        )).allowed)
+
+    def test_naive_inverted_and_bad_grant_windows_are_denied(self):
+        genuine = grant()
+        for modified in (
+            replace(genuine, valid_from=datetime(2026, 1, 1)),
+            replace(genuine, valid_until=datetime(2027, 1, 1)),
+            replace(genuine, valid_from=genuine.valid_until + timedelta(seconds=1)),
+            replace(genuine, valid_until="tomorrow"),
+        ):
+            with self.subTest(grant=repr(modified)):
+                self.assertFalse(self.policy.decide(request(authorization=modified)).allowed)
+
     def test_lab_positive_and_missing_lab_marker_negative(self):
         r = request(
             interaction=InteractionKind.LAB_ACTIVE,
