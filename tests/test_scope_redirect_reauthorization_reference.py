@@ -98,6 +98,30 @@ class RedirectScopeReferenceTests(unittest.TestCase):
             ScopeReason.OUT_OF_SCOPE,
         )
 
+    def test_same_explicit_host_with_case_and_trailing_dot_remains_in_scope(self):
+        decision = self.decide("https://APPROVED.EXAMPLE.TEST./next", self.grant)
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+        self.assertEqual(decision.normalized_host, "approved.example.test")
+
+    def test_explicit_network_destination_with_current_grant(self):
+        decision = self.decide("https://8.8.8.8/next", self.grant)
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_NETWORK)
+
+    def test_adjacent_ip_outside_exact_allowlist_remains_denied(self):
+        self.assertEqual(
+            self.decide("https://8.8.8.9/next", self.grant).reason,
+            ScopeReason.OUT_OF_SCOPE,
+        )
+
+    def test_public_redirect_does_not_inherit_private_lab_allowance(self):
+        policy = ScopePolicy(allow_private_lab=True)
+        self.assertTrue(policy.decide(Target("http://127.0.0.1/start")).allowed)
+        dest = policy.decide(Target("https://unlisted.example.test/next", authorization=self.grant))
+        self.assertFalse(dest.allowed)
+        self.assertEqual(dest.reason, ScopeReason.OUT_OF_SCOPE)
+
     def test_each_redirect_hop_rechecks_target_identity(self):
         hops = [
             "https://approved.example.test/start",
