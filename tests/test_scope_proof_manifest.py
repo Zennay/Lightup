@@ -39,6 +39,25 @@ class ProofManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             py_compile.compile(str(MODULE), cfile=str(Path(directory) / "verifier.pyc"), doraise=True)
 
+    def test_shared_hosted_run_works_through_cli(self):
+        obj = fixture()
+        obj["hosted_py314_run_id"] = obj["hosted_py311_run_id"]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "shared-matrix-run.json"
+            path.write_text(json.dumps(obj), encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(module.main(["verify", str(path)]), 0)
+
+    def test_duplicate_hosted_job_fails_through_cli(self):
+        obj = fixture()
+        obj["hosted_py314_run_id"] = obj["hosted_py311_run_id"]
+        obj["hosted_py314_job_id"] = obj["hosted_py311_job_id"]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "duplicate-matrix-job.json"
+            path.write_text(json.dumps(obj), encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(module.main(["verify", str(path)]), 1)
+
     def test_hosted_matrix_jobs_may_share_workflow_run(self):
         obj = fixture()
         obj["hosted_py314_run_id"] = obj["hosted_py311_run_id"]
