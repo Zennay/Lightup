@@ -424,6 +424,29 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
         req = Grant(ForgedIdentity("tenant-a"), "lab-asset", "read-only", 3, True, False)
         self.assertFalse(reference_decide(self.valid, req, {}))
 
+    def test_denial_never_invokes_side_effect_boundary(self):
+        """Instrument the offline call boundary, not production ToolExecutor."""
+        effects = []
+        def dispatch(stored, request, headers):
+            if not reference_decide(stored, request, headers):
+                return False
+            effects.extend(("handler", "evidence_write", "network_open"))
+            return True
+
+        denied = (
+            Grant("tenant-a", "lab-asset", "read-only", 3, False, False),
+            Grant("tenant-a", "lab-asset", "read-only", 3, True, True),
+            Grant("tenant-b", "lab-asset", "read-only", 3, True, False),
+            Grant("tenant-a", "lab-asset", "read-only", 4, True, False),
+        )
+        for invalid in denied:
+            with self.subTest(invalid=invalid):
+                self.assertFalse(dispatch(invalid, self.valid,
+                    {"Sec-WebSocket-Protocol": "admin, approved"}))
+        self.assertEqual(effects, [])
+        self.assertTrue(dispatch(self.valid, self.valid, {}))
+        self.assertEqual(effects, ["handler", "evidence_write", "network_open"])
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
