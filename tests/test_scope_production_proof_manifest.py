@@ -99,7 +99,7 @@ def verify_observed_ci_jobs(manifest: dict, observed: dict) -> bool:
         if set(run) != {"job_id", "run_url", "sha", "status", "conclusion",
                         "python_version", "runner_class"}:
             return False
-        if any(run.get(key) != expected[key] for key in ("job_id", "run_url", "sha")):
+        if any(type(run.get(key)) is not type(expected[key]) or run[key] != expected[key] for key in ("job_id", "run_url", "sha")):
             return False
         if run["status"] != "completed" or run["conclusion"] != "success":
             return False
@@ -247,6 +247,16 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         swapped["hosted_python_311"], swapped["hosted_python_314"] = (
             swapped["hosted_python_314"], swapped["hosted_python_311"])
         self.assertFalse(verify_observed_ci_jobs(manifest, swapped))
+        for lane in ("hosted_python_311", "hosted_python_314", "permanent_vps"):
+            for key, bad in (("job_id", True), ("job_id", False),
+                             ("job_id", 11.0), ("run_url", None),
+                             ("sha", None), ("status", True),
+                             ("conclusion", True), ("python_version", True),
+                             ("runner_class", True)):
+                malformed = json.loads(json.dumps(observed))
+                malformed[lane][key] = bad
+                with self.subTest(lane=lane, key=key, malformed=repr(bad)):
+                    self.assertFalse(verify_observed_ci_jobs(manifest, malformed))
         for lane, key, bad in (
             ("hosted_python_311", "python_version", "3.14"),
             ("hosted_python_314", "runner_class", "permanent_vps"),
