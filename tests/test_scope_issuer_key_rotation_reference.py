@@ -124,6 +124,37 @@ class IssuerKeyRotationReferenceTests(unittest.TestCase):
         self.assertFalse(self.check(minimum_generation="2"))
         self.assertFalse(self.check(minimum_generation=2**63))
 
+    def test_key_side_identity_cannot_be_replaced(self):
+        for field, value in (("issuer", "issuer-B"), ("tenant", "tenant-B"),
+                             ("key_id", "key-1")):
+            with self.subTest(field=field):
+                self.assertFalse(self.check(key=replace(self.key, **{field: value})))
+
+    def test_same_old_generation_does_not_survive_floor_advance(self):
+        self.assertFalse(self.check(minimum_generation=3))
+        self.assertFalse(self.check(minimum_generation=4))
+
+    def test_matching_but_invalid_claim_and_key_identifiers_denied(self):
+        for value in (" issuer-A", "issuer-A\\n", "issuer-\\x7fA", "issuér-A", ""):
+            with self.subTest(value=repr(value)):
+                self.assertFalse(self.check(
+                    key=replace(self.key, issuer=value),
+                    claim=replace(self.claim, issuer=value)))
+
+    def test_revision_type_and_bounds_denied(self):
+        for value in (True, False, "5", 5.0, 0, -1, 2**63):
+            with self.subTest(value=repr(value)):
+                self.assertFalse(self.check(
+                    claim=replace(self.claim, authorization_revision=value)))
+
+    def test_unknown_key_envelope_denied(self):
+        self.assertFalse(eligible(None, self.claim, required_revision=5,
+                                  minimum_generation=2))
+        self.assertFalse(eligible(self.key, None, required_revision=5,
+                                  minimum_generation=2))
+        self.assertFalse(eligible(vars(self.key), self.claim, required_revision=5,
+                                  minimum_generation=2))
+
     def test_reference_is_input_pure(self):
         key, claim = self.key, self.claim
         self.check()
