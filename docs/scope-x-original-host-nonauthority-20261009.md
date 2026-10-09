@@ -105,3 +105,7 @@ Blank, whitespace-only and authority-less `https://` target values must return `
 ## Malformed target transport tripwire
 
 An authority-less `https://` target with a forged approval label must fail with `INVALID_TARGET` without invoking DNS, socket connection, or urllib HTTP helpers from `ScopePolicy.decide`. This checks pure policy behavior only; production worker/evidence interception is still required.
+
+## Out-of-scope check ordering and transport tripwire
+
+An unlisted HTTPS hostname with a forged signed-consent routing label must be denied `OUT_OF_SCOPE` before reading a hostile synthetic authorization object. DNS, socket connection and urllib HTTP helpers must remain unused by this pure policy decision. Real worker dispatch and evidence store interception still require integration proof.
