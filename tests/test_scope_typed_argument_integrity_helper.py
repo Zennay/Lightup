@@ -71,6 +71,32 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
                 with self.assertRaises(OrchestrationError):
                     validate_unambiguous_arguments(self.definition, pairs)
 
+    def test_input_pairs_remain_unchanged_after_accept_or_reject(self):
+        """The helper must not rewrite caller-owned arguments."""
+        valid = [("value", 4.5)]
+        snapshot = list(valid)
+        self.assertEqual(
+            validate_unambiguous_arguments(self.definition, valid),
+            {"value": 4.5},
+        )
+        self.assertEqual(valid, snapshot)
+        duplicate = [("value", 4.5), ("value", float("inf"))]
+        with self.assertRaises(OrchestrationError):
+            validate_unambiguous_arguments(self.definition, duplicate)
+        self.assertEqual(len(duplicate), 2)
+        self.assertEqual(duplicate[0], ("value", 4.5))
+        self.assertEqual(duplicate[1][0], "value")
+
+    def test_duplicate_key_preempts_invalid_second_value(self):
+        """Ambiguous provenance is rejected regardless of second value type."""
+        for second in (float("nan"), 1, True, None, {"nested": "input"}):
+            with self.subTest(value=str(second)):
+                with self.assertRaisesRegex(OrchestrationError, "duplicate"):
+                    validate_unambiguous_arguments(
+                        self.definition,
+                        (("value", 0), ("value", second)),
+                    )
+
 
 if __name__ == "__main__":
     unittest.main()
