@@ -23,15 +23,16 @@ def is_release_evidence_complete(m: dict) -> bool:
         return False
     if m.get("real_target_activation") is not False:
         return False  # evidence approval never flips activation
-    if not isinstance(m.get("owner_review_url"), str) or not m["owner_review_url"].startswith("https://github.com/"):
+    if type(m.get("owner_review_url")) is not str or not re.fullmatch(r"https://github[.]com/([^/?#]+)/([^/?#]+)/pull/[1-9][0-9]*", m["owner_review_url"]):
         return False
+    repo_path = "/".join(m["owner_review_url"].split("/")[3:5])
     job_ids = set()
     hosted_run_url = None
     for name in ("hosted_python_311", "hosted_python_314", "permanent_vps"):
         run = m.get(name)
         if type(run) is not dict or run.get("sha") != sha or run.get("conclusion") != "success":
             return False
-        if type(run.get("run_url")) is not str or not re.fullmatch(r"https://github\.com/[^/]+/[^/]+/actions/runs/[1-9][0-9]*", run["run_url"]):
+        if type(run.get("run_url")) is not str or not re.fullmatch(r"https://github[.]com/" + re.escape(repo_path) + r"/actions/runs/[1-9][0-9]*", run["run_url"]):
             return False
         if type(run.get("job_id")) is not int or run["job_id"] <= 0 or run["job_id"] in job_ids:
             return False
@@ -136,6 +137,16 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         self.assertFalse(is_release_evidence_complete(changed))
         changed = json.loads(json.dumps(manifest))
         changed["owner_review_url"] = None
+        self.assertFalse(is_release_evidence_complete(changed))
+        for url in ("https://github.com.evil.invalid/example/repo/pull/1",
+                    "https://github.com@example.invalid/example/repo/pull/1",
+                    "http://github.com/example/repo/pull/1",
+                    "https://github.com/example/repo/pull/1?fake=1"):
+            changed = json.loads(json.dumps(manifest))
+            changed["owner_review_url"] = url
+            self.assertFalse(is_release_evidence_complete(changed), url)
+        changed = json.loads(json.dumps(manifest))
+        changed["permanent_vps"]["run_url"] = "https://github.com/other/repo/actions/runs/3"
         self.assertFalse(is_release_evidence_complete(changed))
 
 
