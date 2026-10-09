@@ -226,6 +226,22 @@ class BackslashNonauthorityTests(unittest.TestCase):
         self.assertEqual(reference_dispatch(target, policy), "INVALID_TARGET")
         policy.assert_not_called()
 
+
+    def test_empty_and_unsupported_inputs_fail_before_parser(self):
+        for target in ("", None, b"https://example.test/", 123):
+            with self.subTest(value=repr(target)):
+                policy = Mock(return_value="ALLOW")
+                with patch(__name__ + ".urlsplit", side_effect=AssertionError("parser reached")) as parser:
+                    self.assertEqual(reference_dispatch(target, policy), "INVALID_TARGET")
+                parser.assert_not_called()
+                policy.assert_not_called()
+
+    def test_valid_url_does_not_retry_failed_downstream_policy(self):
+        policy = Mock(side_effect=RuntimeError("authorization unavailable"))
+        with self.assertRaisesRegex(RuntimeError, "authorization unavailable"):
+            reference_dispatch("https://example.test/path", policy)
+        policy.assert_called_once_with("https://example.test/path")
+
     def test_nonstring_input_must_not_invoke_user_string_conversion(self):
         class Hostile:
             def __str__(self):
