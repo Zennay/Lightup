@@ -97,6 +97,21 @@ class ProofManifestTests(unittest.TestCase):
         del obj["schema_version"]
         self.assertTrue(module.verify(obj))
 
+    def test_every_required_field_missing_is_rejected(self):
+        for field in module.REQUIRED:
+            with self.subTest(field=field):
+                obj = fixture()
+                del obj[field]
+                self.assertTrue(module.verify(obj))
+
+    def test_cli_rejects_missing_denial_counters(self):
+        obj = fixture()
+        del obj["denial_side_effect_counts"]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "missing-counters.json"
+            path.write_text(json.dumps(obj), encoding="utf-8")
+            self.assertEqual(module.main(["verify", str(path)]), 1)
+
     def test_valid_index_only(self):
         self.assertEqual(module.verify(fixture()), [])
 
