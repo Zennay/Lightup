@@ -66,6 +66,8 @@ def validate_unambiguous_arguments(
             raise OrchestrationError(f"tool argument {name!r} must be a built-in number")
         if kind is ParamKind.INTEGER and type(value) is not int:
             raise OrchestrationError(f"tool argument {name!r} must be a built-in integer")
+        if kind is ParamKind.STRING and type(value) is not str:
+            raise OrchestrationError(f"tool argument {name!r} must be a built-in string")
     definition.validate_arguments(result)
     for name, value in result.items():
         if parameter_by_name[name].kind is ParamKind.NUMBER:
