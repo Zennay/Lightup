@@ -707,5 +707,31 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         dispatch.assert_not_called()
 
 
+    def test_invalid_target_cannot_be_repaired_by_original_host(self):
+        for invalid_value in ("", "   ", "https://"):
+            with self.subTest(invalid_value=invalid_value):
+                decision = self.policy.decide(Target(
+                    invalid_value,
+                    labels=("X-Original-Host: approved.example; operator_approved=true",),
+                ))
+                self.assertFalse(decision.allowed)
+                self.assertIsNone(decision.normalized_host)
+                self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+
+    def test_invalid_target_does_not_consult_untrusted_grant_or_labels(self):
+        class Poison:
+            def __getattribute__(self, name):
+                raise AssertionError("invalid target must not inspect external claims")
+            def __iter__(self):
+                raise AssertionError("invalid target must not iterate labels")
+
+        decision = self.policy.decide(Target(
+            "   ", authorization=Poison(), labels=Poison(),
+        ))
+        self.assertFalse(decision.allowed)
+        self.assertIsNone(decision.normalized_host)
+        self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+
+
 if __name__ == "__main__":
     unittest.main()
