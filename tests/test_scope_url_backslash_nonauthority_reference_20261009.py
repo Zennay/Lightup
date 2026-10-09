@@ -48,6 +48,32 @@ class BackslashNonauthorityTests(unittest.TestCase):
                 self.assertEqual(reference_dispatch(candidate, policy), "INVALID_TARGET")
                 policy.assert_not_called()
 
+
+    def test_backslash_at_every_character_boundary_is_denied_without_policy(self):
+        baseline = "https://example.test/path?next=value#fragment"
+        # Include insertion before scheme, in authority, and after the fragment.
+        for offset in range(len(baseline) + 1):
+            candidate = baseline[:offset] + chr(92) + baseline[offset:]
+            with self.subTest(offset=offset):
+                policy = Mock(return_value="ALLOW")
+                self.assertEqual(reference_dispatch(candidate, policy), "INVALID_TARGET")
+                policy.assert_not_called()
+
+    def test_string_subclass_cannot_override_authorization_identity(self):
+        class MisleadingURL(str):
+            def __str__(self):
+                raise AssertionError("untrusted __str__ invoked")
+
+            def __contains__(self, item):
+                raise AssertionError("untrusted membership invoked")
+
+        policy = Mock(return_value="ALLOW")
+        self.assertEqual(
+            reference_dispatch(MisleadingURL("https://example.test/"), policy),
+            "INVALID_TARGET",
+        )
+        policy.assert_not_called()
+
     def test_nonstring_input_must_not_invoke_user_string_conversion(self):
         class Hostile:
             def __str__(self):
