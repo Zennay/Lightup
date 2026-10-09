@@ -4,6 +4,7 @@ Reference-only: does not represent production ToolExecutor enforcement.
 Run: python -m unittest discover -s tests -p 'test_scope_ws_subprotocol_nonauthority_reference.py'
 """
 import unittest
+import unicodedata
 from dataclasses import dataclass
 
 
@@ -17,13 +18,20 @@ class Grant:
     revoked: bool
 
 
+def valid_identity(value):
+    """Require canonical nonblank exact text with no control/format/separator chars."""
+    return (type(value) is str and bool(value) and value == value.strip()
+            and not any(unicodedata.category(ch) in ("Cc", "Cf", "Cs", "Zl", "Zp")
+                        for ch in value))
+
+
 def reference_decide(grant, requested, headers):
     """Fail closed using trusted grant fields only; ignore caller presentation headers."""
     del headers
     if type(grant) is not Grant or type(requested) is not Grant:
         return False
     for item in (grant, requested):
-        if any(type(getattr(item, field)) is not str or not getattr(item, field)
+        if any(not valid_identity(getattr(item, field))
                for field in ("tenant", "asset", "capability")):
             return False
         if type(item.revision) is not int or item.revision < 1:
@@ -108,6 +116,38 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
         before = repr(headers)
         self.assertTrue(reference_decide(self.valid, self.valid, headers))
         self.assertEqual(repr(headers), before)
+
+    def test_matching_poisoned_identity_is_still_denied(self):
+        poisoned = (" tenant-a", "tenant-a ", "tenant-a\\n", "tenant-a\\x00",
+                    "tenant-a\\u200b", "tenant-a\\u2028", "tenant-a\\ud800")
+        for value in poisoned:
+            for field in ("tenant", "asset", "capability"):
+                with self.subTest(value=ascii(value), field=field):
+                    replacement = dict(tenant=self.valid.tenant, asset=self.valid.asset,
+                                       capability=self.valid.capability)
+                    replacement[field] = value
+                    bad = Grant(**replacement, revision=3, approved=True, revoked=False)
+                    self.assertFalse(reference_decide(bad, bad,
+                        {"Sec-WebSocket-Protocol": "approved"}))
+
+    def test_identity_subclasses_never_gain_grant_authority(self):
+        class ForgedString(str):
+            pass
+        for field in ("tenant", "asset", "capability"):
+            with self.subTest(field=field):
+                replacement = dict(tenant=self.valid.tenant, asset=self.valid.asset,
+                                   capability=self.valid.capability)
+                replacement[field] = ForgedString(replacement[field])
+                forged = Grant(**replacement, revision=3, approved=True, revoked=False)
+                self.assertFalse(reference_decide(forged, forged,
+                    {"Sec-WebSocket-Protocol": "authorized"}))
+
+    def test_valid_distinct_unicode_identifier_remains_exact(self):
+        other = Grant("tenant-é", "lab-asset", "read-only", 3, True, False)
+        self.assertTrue(reference_decide(other, other, {}))
+        decomposed = Grant("tenant-e\\u0301", "lab-asset", "read-only", 3, True, False)
+        self.assertFalse(reference_decide(other, decomposed,
+            {"Sec-WebSocket-Protocol": "normalize=true"}))
 
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
