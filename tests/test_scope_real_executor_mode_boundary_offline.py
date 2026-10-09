@@ -372,5 +372,14 @@ class RealExecutorModeBoundaryTests(unittest.TestCase):
         self.handler.assert_not_called()
         self.state.add_evidence.assert_not_called()
 
+    def test_evidence_write_failure_does_not_return_success(self):
+        self.state.add_evidence.side_effect = RuntimeError("synthetic ledger unavailable")
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            with self.assertRaisesRegex(RuntimeError, "synthetic ledger unavailable"):
+                self.executor.execute(self.context(AssessmentMode.LAB_AUTONOMOUS), self.call)
+        self.policy.decide.assert_called_once()
+        self.handler.assert_called_once()
+        self.state.add_evidence.assert_called_once()
+
 if __name__ == "__main__":
     unittest.main()
