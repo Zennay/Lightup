@@ -19,3 +19,7 @@ Integrate only with owner coordination, then require exact-head hosted and canon
 The expanded reference tests exercise exact 256-character length acceptance, 257-character rejection, malformed built-in types in every receipt field and consumer selector, plus case/whitespace alias rejection. The fixture deliberately demonstrates a **coherently forged** receipt: changing both its tenant and the consumer selector passes this shape-only model. This is a **negative trust result**, not a successful provenance check.
 
 The production admission boundary must bind receipts to an independently authenticated tenant/run/finding source, trusted issuer identity, immutable content bytes and evidence-store ownership rather than relying on attacker-supplied matching strings. Cross-tenant reassignment must be prohibited even when all fields agree. Keep this PR draft while this is unresolved.
+
+## Independently registered ledger reference
+
+A second offline test module, `tests/test_evidence_trusted_ledger_reference.py`, illustrates the stronger boundary with server-owned in-memory registrations. The consuming caller supplies only a receipt ID and selectors; a separate ledger resolves the authoritative receipt and matches tenant, run, finding, digest and issuer. Unknown IDs, altered selectors, revoked records and substitute record types fail closed. This is **not** an implementation of durable storage, trusted issuer authentication or cryptographic digest verification. Production must use its existing durable records and owners; this in-memory model is illustrative only.
