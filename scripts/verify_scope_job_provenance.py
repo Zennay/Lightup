@@ -55,7 +55,9 @@ def check(proof, jobs):
         if job.get("status") != "completed" or job.get("conclusion") != "success":
             errors.append(f"{lane}: job not successful")
         name = job.get("name")
-        if type(name) is not str or not name.startswith(expected_label):
+        # Permit only the exact job title or a versioned matrix suffix.
+        if (type(name) is not str or
+                not (name == expected_label or name.startswith(expected_label + " ("))):
             errors.append(f"{lane}: expected job label missing")
     return errors
 
