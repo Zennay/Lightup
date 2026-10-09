@@ -107,3 +107,7 @@ Run `python scripts/verify_scope_job_provenance.py proof.json jobs.json` using a
 The offline job-snapshot reader also rejects symlinks, non-regular inputs, files larger than 64 KiB, duplicate JSON fields and nonstandard JSON constants. These input protections limit local parser ambiguity; they do not authenticate the GitHub source of the snapshot.
 
 The offline provenance input is a **selected three-job evidence array**, not the unfiltered GitHub workflow jobs list. Include exactly the Python 3.11, Python 3.14, and permanent VPS job objects; additional records, including seemingly successful jobs, are rejected to prevent unreviewed evidence from being silently ignored. Reviewers must preserve separately the full original API response and verify no omitted jobs materially change the conclusion.
+
+## Hosted workflow job-name binding
+
+Hosted proof is expected from jobs named with the `Offline preflight Python 3.11` and `Offline preflight Python 3.14` prefixes. A generic integration job merely mentioning `Python 3.11` or `Python 3.14` is insufficient. This offline name comparison is not an authenticated workflow-identity check: reviewers must independently verify repository, workflow, runner labels, job logs, and exact SHA via GitHub.
