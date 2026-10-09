@@ -137,5 +137,31 @@ class ApprovalContextReplayContract(unittest.TestCase):
                 self.assertFalse(admission(moved, self.receipt, revoked=False))
 
 
+    def test_risk_ceiling_exhaustive_bounded_matrix(self):
+        from dataclasses import replace
+        for ceiling in range(6):
+            stored = replace(self.receipt, approved_risk=ceiling)
+            for requested in range(6):
+                with self.subTest(ceiling=ceiling, requested=requested):
+                    request = replace(stored, approved_risk=requested)
+                    self.assertEqual(
+                        admission(stored, request, revoked=False),
+                        requested <= ceiling,
+                    )
+                    self.assertFalse(admission(stored, request, revoked=True))
+
+    def test_revision_isolation_across_successive_receipts(self):
+        from dataclasses import replace
+        for old_revision in range(1, 5):
+            for latest_revision in range(1, 5):
+                with self.subTest(old=old_revision, latest=latest_revision):
+                    stored = replace(self.receipt, revision=latest_revision)
+                    request = replace(self.receipt, revision=old_revision)
+                    self.assertEqual(
+                        admission(stored, request, revoked=False),
+                        old_revision == latest_revision,
+                    )
+
+
 if __name__ == "__main__":
     unittest.main()
