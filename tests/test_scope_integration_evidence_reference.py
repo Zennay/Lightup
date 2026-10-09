@@ -3,6 +3,7 @@
 No production modules, sockets or targets are imported or accessed.
 """
 import unittest
+import re
 
 
 REQUIRED = frozenset({
@@ -20,7 +21,7 @@ def evidence_ready(record):
     if any(type(record[key]) is not str or not record[key].strip()
            for key in ("production_owner", "base_sha", "head_sha")):
         return False
-    if any(type(record[key]) is not bool or record[key] is not True
+    if any(re.fullmatch(r"[0-9a-f]{40}", record[key]) is None\n           for key in ("base_sha", "head_sha")):\n        return False\n    if record["base_sha"] == record["head_sha"]:\n        return False\n    if any(type(record[key]) is not bool or record[key] is not True
            for key in REQUIRED - {"production_owner", "base_sha", "head_sha"}):
         return False
     # No interpretation of a CI result as an actual authorization grant.
@@ -65,6 +66,18 @@ class EvidenceGateReferenceTests(unittest.TestCase):
         candidate["target_active"] = True
         self.assertFalse(evidence_ready(candidate))
         self.assertFalse(evidence_ready(list(self.valid.items())))
+
+    def test_noncanonical_commit_identity_denies(self):
+        for bad in ("short", "g" * 40, "A" * 40, "a" * 39, "a" * 41, " " + "a" * 40, None, 123):
+            with self.subTest(value=repr(bad)):
+                candidate = dict(self.valid)
+                candidate["base_sha"] = bad
+                self.assertFalse(evidence_ready(candidate))
+
+    def test_same_base_and_head_denies(self):
+        candidate = dict(self.valid)
+        candidate["head_sha"] = candidate["base_sha"]
+        self.assertFalse(evidence_ready(candidate))
 
     def test_inputs_not_mutated(self):
         before = dict(self.valid)
