@@ -20,6 +20,7 @@ PYTHONPATH=src python -m unittest discover -s tests -p test_scope_wsgi_identity_
 - No session + genuine operator CSRF in POST body + spoofed identity: new-client POST redirects to sign-in; no client creation and no revocation of unrelated operator session.
 - Real **client** session + operator-looking metadata: operator dashboard, cross-tenant portal and operator POST stay forbidden even with the client's correct form CSRF token.
 - Real operator session + CSRF supplied **only by `X-CSRF-Token`** (or invalid body CSRF): POST forbidden, no client created.
+- For the **operator-only grant**, **assessment decision** and **risk-elevation decision** routes, a legitimate operator cookie cannot be combined with forged `REMOTE_USER`/`X-Auth-Request-User` or `X-CSRF-Token`/`X-XSRF-Token` to replace missing, empty or invalid **form** CSRF. Every denied request must preserve empty grant rows, pending decision state and blank decision provenance, keep the operator session valid and emit `Cache-Control: no-store`.
 - Anonymous POST logout + identity-looking metadata: does not revoke active operator or client sessions, and emits no logout cookie.
 - Revoked operator session + spoofed WSGI identity: no protected read; cannot revive a revoked session.
 - A **real** operator cookie copied into `X-Forwarded-Cookie`, `X-Original-Cookie`, `X-Auth-Request-Cookie` or `Cookie2` (without a canonical `Cookie`) grants no session or client write.
