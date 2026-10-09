@@ -280,5 +280,35 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(self.policy.explicit_networks, original_networks)
 
 
+    def test_case_variant_host_hint_cannot_expand_target_allowlist(self):
+        for hint in (
+            "X-ORIGINAL-HOST: approved.example",
+            "x-original-host: approved.example",
+            "X_Original_Host: approved.example",
+        ):
+            with self.subTest(hint=hint):
+                decision = self.policy.decide(Target(
+                    "unlisted.example", labels=(hint,),
+                ))
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_injected_hint_does_not_skip_expired_grant_check(self):
+        from datetime import datetime, timedelta, timezone
+        expired = Authorization(
+            owner="fixture", reference="NOT-TRUSTED",
+            valid_until=datetime.now(timezone.utc) - timedelta(hours=2),
+        )
+        target = Target(
+            "https://approved.example/resource",
+            authorization=expired,
+            labels=("X-Original-Host: localhost",),
+        )
+        decision = self.policy.decide(target)
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+        self.assertEqual(decision.normalized_host, "approved.example")
+
+
 if __name__ == "__main__":
     unittest.main()
