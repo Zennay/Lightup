@@ -38,3 +38,5 @@ The offline identity fixture now rejects all Unicode `Cc`, `Cf` and `Cs` categor
 Stored consent identifiers receive the same Unicode format-control checks as request identifiers, including when both strings are identically contaminated; an exact textual match does not make malformed identities authoritative.
 
 Positive/negative Unicode controls: ordinary letters and combining marks are accepted only when the persisted owner ID exactly matches the request. Canonically equivalent composed/decomposed strings do not implicitly confer authority; the trusted issuer must define canonical identity rules independently.
+
+Further offline edge controls exercise both ends of the Unicode surrogate range and verify that combining-mark suffixes on tenant, engagement, asset or capability IDs cannot silently inherit exact-match consent.
