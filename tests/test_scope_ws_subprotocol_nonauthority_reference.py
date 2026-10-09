@@ -511,6 +511,23 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
         self.assertFalse(reference_decide(replacement, self.valid, {}))
         self.assertTrue(reference_decide(replacement, replacement, {}))
 
+    def test_denial_has_no_effects_across_revision_replay_sequence(self):
+        effects = []
+        current = Grant("tenant-a", "lab-asset", "read-only", 5, True, False)
+        old = Grant("tenant-a", "lab-asset", "read-only", 4, True, False)
+        for requested in (old, old, old):
+            if reference_decide(current, requested, {"Sec-WebSocket-Protocol": "revision=5"}):
+                effects.append("handler")
+        self.assertEqual(effects, [])
+        self.assertTrue(reference_decide(current, current, {}))
+
+    def test_non_boolean_revocation_is_never_truthiness_coerced(self):
+        for revoked in (0, 1, "", "false", None, [], {}):
+            malformed = Grant("tenant-a", "lab-asset", "read-only", 3, True, revoked)
+            with self.subTest(revoked=revoked):
+                self.assertFalse(reference_decide(malformed, malformed,
+                    {"Sec-WebSocket-Protocol": "revoked=false"}))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
