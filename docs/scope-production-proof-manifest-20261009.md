@@ -109,3 +109,6 @@ Added regression coverage that a held, incomplete persisted manifest remains unc
 
 ## Actual GitHub job observation and VPS false-positive guard
 Observed GitHub Actions run `37931523743` reports jobs `113823282481` (Python 3.11) and `113823282961` (Python 3.14), both explicitly named `Offline preflight Python ... (not VPS proof)` and in progress at observation time. These are **not permanent VPS proof**. The offline snapshot comparison now additionally requires `job_name`, and rejects an explicitly `not VPS proof` job if assigned to the VPS lane. This negative guard is not positive VPS attestation: a label can be forged in a caller-provided snapshot. Reviewers still need authenticated GitHub job metadata, verified permanent runner identity and exact-SHA success.
+
+## Hosted preflight is never permanent-runner attestation
+The offline checker now rejects `offline preflight` job names in the `permanent_vps` lane even if the words `not VPS proof` are omitted; regression tests also deny a job with a superficially VPS-looking name when its runner class is hosted. This is negative classification only, never affirmative runner identity. Permanent runner identity requires independently authenticated GitHub job/run records and owner acceptance.
