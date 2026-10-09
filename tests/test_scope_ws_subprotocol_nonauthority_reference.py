@@ -234,6 +234,26 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
                 self.assertFalse(reference_decide(denied, denied,
                     {"Sec-WebSocket-Protocol": payload}))
 
+    def test_rejected_identity_mutations_do_not_trigger_mock_handler(self):
+        attempts = []
+        for field in ("tenant", "asset", "capability"):
+            for replacement in ("", " forged", "forged ", "forged\\x00", "forged\\u200b"):
+                values = dict(tenant=self.valid.tenant, asset=self.valid.asset,
+                              capability=self.valid.capability)
+                values[field] = replacement
+                request = Grant(**values, revision=3, approved=True, revoked=False)
+                if reference_decide(self.valid, request,
+                                    {"Sec-WebSocket-Protocol": "approved"}):
+                    attempts.append((field, replacement))
+        self.assertEqual(attempts, [])
+
+    def test_reversed_approval_or_revocation_flags_never_authorize(self):
+        for approved, revoked in ((False, False), (False, True), (True, True)):
+            grant = Grant("tenant-a", "lab-asset", "read-only", 3, approved, revoked)
+            with self.subTest(approved=approved, revoked=revoked):
+                self.assertFalse(reference_decide(grant, grant,
+                    {"Sec-WebSocket-Protocol": "admin"}))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
