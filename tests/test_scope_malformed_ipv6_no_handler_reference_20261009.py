@@ -253,6 +253,7 @@ class MalformedAuthorityNoHandlerReference(unittest.TestCase):
         policy = Mock(spec=ScopePolicy)
         handler = Mock()
         for character in ("\\n", "\\t", "\\r", "\\u200b", "\\u202e", "\\ud800"):
+            self.assertEqual(len(character), 1, "fixture must be a real Unicode codepoint")
             for placement in ("prefix", "authority", "path"):
                 raw = {
                     "prefix": character + "https://unlisted.example.test/",
