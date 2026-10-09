@@ -121,3 +121,6 @@ The offline CI snapshot comparison now requires an exact built-in integer `run_i
 
 ## Interpreter label consistency (2026-10-09)
 Offline supplied CI job snapshots now reject contradictory Python interpreter labels: an observed record declaring `python_version: 3.11` cannot simultaneously claim `Python 3.14` in its job name. The parser checks the interpreter value type before concatenation, so malformed types fail closed. This is a negative consistency check, not authenticated interpreter or runner attestation. The observed hosted run `37932067203` contained a successful Python 3.11 preflight job (`113825051340`) and a Python 3.14 job (`113825051835`) still in progress at observation time; neither is permanent VPS proof.
+
+## Interpreter label substring-spoof regression
+An observed Python 3.11 job must not pass merely because its name contains that substring inside `Python 3.110` or `MyPython 3.11`. The offline consistency predicate now checks token boundaries with escaped version text and deny tests for those misleading labels. A matching job label is still not authenticated proof of interpreter selection or a permanent VPS runner.
