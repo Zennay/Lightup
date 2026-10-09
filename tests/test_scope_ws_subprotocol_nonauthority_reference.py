@@ -304,6 +304,22 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
             with self.subTest(header_type=type(headers).__name__):
                 self.assertFalse(reference_decide(revoked, revoked, headers))
 
+    def test_revocation_transition_disables_later_mock_dispatch(self):
+        calls = []
+        initially_allowed = self.valid
+        later_revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
+        for stored in (initially_allowed, later_revoked, later_revoked):
+            if reference_decide(stored, self.valid,
+                                {"Sec-WebSocket-Protocol": "approved"}):
+                calls.append("handler")
+        self.assertEqual(calls, ["handler"])
+
+    def test_grant_revision_change_requires_new_matching_request(self):
+        next_revision = Grant("tenant-a", "lab-asset", "read-only", 4, True, False)
+        self.assertFalse(reference_decide(next_revision, self.valid,
+            {"Sec-WebSocket-Protocol": "revision=4"}))
+        self.assertTrue(reference_decide(next_revision, next_revision, {}))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
