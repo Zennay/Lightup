@@ -309,6 +309,23 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
                     self.assertFalse(matches_consent(
                         Consent(**record), **(self.request | {field: record[field]})))
 
+    def test_all_ascii_control_codepoints_rejected_for_request_and_storage(self):
+        for codepoint in (*range(32), 127):
+            for field in ("tenant_id", "engagement_id", "owner_id", "asset_id", "capability_id"):
+                with self.subTest(codepoint=codepoint, field=field):
+                    altered = self.request[field] + chr(codepoint)
+                    self.assertFalse(matches_consent(
+                        self.consent, **(self.request | {field: altered})))
+                    record = dict(tenant_id=self.consent.tenant_id,
+                                  engagement_id=self.consent.engagement_id,
+                                  owner_id=self.consent.owner_id,
+                                  asset_id=self.consent.asset_id,
+                                  capability_id=self.consent.capability_id,
+                                  revision=3, approved=True)
+                    record[field] = altered
+                    self.assertFalse(matches_consent(
+                        Consent(**record), **(self.request | {field: altered})))
+
 
 if __name__ == "__main__":
     unittest.main()
