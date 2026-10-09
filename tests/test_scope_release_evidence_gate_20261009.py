@@ -118,6 +118,26 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
                             expected,
                         )
 
+    def test_cli_rejects_symlink_before_reading(self):
+        with tempfile.TemporaryDirectory() as directory:
+            original = Path(directory) / "private.json"
+            original.write_text(json.dumps(sample()), encoding="utf-8")
+            link = Path(directory) / "evidence.json"
+            link.symlink_to(original)
+            output = StringIO()
+            with redirect_stdout(output):
+                result = main(["check_scope_release_evidence.py", str(link)])
+            self.assertEqual(result, 2)
+            self.assertIn("HOLD:", output.getvalue())
+
+    def test_cli_rejects_directory_before_reading(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = StringIO()
+            with redirect_stdout(output):
+                result = main(["check_scope_release_evidence.py", directory])
+            self.assertEqual(result, 2)
+            self.assertIn("HOLD:", output.getvalue())
+
     def test_missing_evidence_holds(self):
         self.assertFalse(evaluate(None)[0])
         self.assertFalse(evaluate({})[0])
