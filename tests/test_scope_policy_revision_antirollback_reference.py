@@ -76,18 +76,23 @@ class RevisionReferenceTests(unittest.TestCase):
         self.assertFalse(may_continue(self.saved, Untrusted("tenant-a", "grant-1", 9, True)))
 
     def test_malformed_identity_denied(self):
-        for bad in ("", " tenant-a", "tenant-a ", "\n"):
-            with self.subTest(bad=bad):
+        for bad in ("", " tenant-a", "tenant-a ", chr(10),
+                    "tenant" + chr(10) + "a", "tenant" + chr(13) + "a",
+                    "tenant" + chr(9) + "a", "tenant" + chr(0x2028) + "a",
+                    "tenant/a", "x" * 129):
+            with self.subTest(bad=repr(bad)):
                 self.assertFalse(may_continue(self.saved, PolicySnapshot(bad, "grant-1", 9, True)))
 
     def test_malformed_grant_identity_denied(self):
-        for bad in ("grant\\n1", "grant\\u202e1", "grant/1", "g" * 129):
-            with self.subTest(bad=bad):
+        for bad in ("grant" + chr(10) + "1", "grant" + chr(0x202e) + "1",
+                    "grant/1", "g" * 129):
+            with self.subTest(bad=repr(bad)):
                 self.assertFalse(may_continue(self.saved, PolicySnapshot("tenant-a", bad, 9, True)))
 
     def test_snapshot_identity_and_revision_must_also_be_canonical(self):
-        self.assertFalse(may_continue(PolicySnapshot("tenant\\na", "grant-1", 8, True),
-                                      PolicySnapshot("tenant\\na", "grant-1", 9, True)))
+        invalid = "tenant" + chr(10) + "a"
+        self.assertFalse(may_continue(PolicySnapshot(invalid, "grant-1", 8, True),
+                                      PolicySnapshot(invalid, "grant-1", 9, True)))
         self.assertFalse(may_continue(PolicySnapshot("tenant-a", "grant-1", True, True),
                                       PolicySnapshot("tenant-a", "grant-1", 9, True)))
 
