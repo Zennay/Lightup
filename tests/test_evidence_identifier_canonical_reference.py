@@ -25,6 +25,29 @@ def canonical_evidence_id(value):
 class EvidenceIdentifierReferenceTests(unittest.TestCase):
     VALID = "12345678-1234-4234-8234-123456789abc"
 
+    def test_rejected_selector_never_reaches_reference_lookup(self):
+        class SpyStore:
+            def __init__(self):
+                self.lookups = []
+
+            def get_evidence(self, identifier):
+                self.lookups.append(identifier)
+                return identifier
+
+        def reference_lookup(store, identifier):
+            # Proposed admission order only; not wired into production.
+            return store.get_evidence(canonical_evidence_id(identifier))
+
+        store = SpyStore()
+        for invalid in (self.VALID.upper(), self.VALID.replace("-", ""),
+                        None, True, " " + self.VALID):
+            with self.subTest(invalid=repr(invalid)):
+                with self.assertRaisesRegex(ValueError, "noncanonical"):
+                    reference_lookup(store, invalid)
+                self.assertEqual(store.lookups, [])
+        self.assertEqual(reference_lookup(store, self.VALID), self.VALID)
+        self.assertEqual(store.lookups, [self.VALID])
+
     def test_canonical_uuid4_accepted_without_normalization(self):
         self.assertEqual(canonical_evidence_id(self.VALID), self.VALID)
 
