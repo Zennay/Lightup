@@ -1,9 +1,10 @@
 # Offline scope authorization: JSON revision numeric identity
 
-This is an isolated **non-authorizing reference contract** for a prospective issuer-owned grant envelope, not a production implementation. The reference accepts a bounded exact JSON object with exact tenant and grant string identities and a positive JSON **integer token** revision (safe interoperable range 1..2^53-1).
+This is an isolated **non-authorizing reference contract** for a prospective issuer-owned grant envelope, not a production implementation. The reference accepts a bounded exact JSON object with exact lower-case ASCII tenant and grant slug identities (`[a-z0-9]` with interior `[a-z0-9-]`, 1–80 characters) and a positive JSON **integer token** revision (safe interoperable range 1..2^53-1).
 
 ## Fail-closed requirements for source owners
 
+- Reject noncanonical tenant/grant lexical identities: whitespace, control characters, Unicode, upper-case aliases, delimiters, leading/trailing hyphen and overlength strings. This reference grammar is proposed, not evidence of alignment with the live issuer schema.
 - Parse duplicate object members as invalid, not as last-wins or first-wins. Duplicate tenant, grant, revision, and unknown fields must not silently change identity.
 - Refuse Python boolean values even though `bool` subclasses `int`; reject strings, arrays, null, fractional/exponent JSON number tokens, nonfinite extensions and out-of-range revision integers.
 - Enforce a single agreed wire schema across producer, persistence, verifier and dispatcher. Do not round, coerce or parse an exponential numeric spelling into grant revision identity. Keep denial on producer/consumer disagreements.
@@ -14,4 +15,4 @@ This is an isolated **non-authorizing reference contract** for a prospective iss
 
 `python -m unittest discover -s tests -p 'test_scope_numeric_json_revision_reference.py' -v`
 
-Twelve stdlib-only test methods; no production imports, socket calls, target interaction or deployment. These checks prove reference behavior only. Before promotion require exact-head hosted Python 3.11/3.14 and canonical permanent self-hosted VPS validation, plus owning PR #107/source-owner review. This work does not modify #107 executor, approval/revocation owners or any existing scope branch.
+Fifteen stdlib-only test methods; no production imports, socket calls, target interaction or deployment. These checks prove reference behavior only. Before promotion require exact-head hosted Python 3.11/3.14 and canonical permanent self-hosted VPS validation, plus owning PR #107/source-owner review. This work does not modify #107 executor, approval/revocation owners or any existing scope branch.
