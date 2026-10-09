@@ -25,3 +25,7 @@ Two additional standalone tests exercise eight denied grant/request combinations
 ## Complete ASCII control and explicit authority-token deny matrix
 
 Two more offline tests cover all 33 ASCII C0/DEL codepoints across the three grant identity roles when stored and requested values match (99 denial assertions), and ten authority-sounding WebSocket subprotocol values against explicitly unapproved consent. Total: 20 standalone unittest methods. Still reference-only, no production authorization evidence.
+
+## Additional mutation and consent-denial mock checks
+
+Two offline methods cover 15 cross-field identity mutations with zero fake handler calls and the three denied approval/revocation Boolean combinations. Total: 22 offline unittest methods. This does not prove real executor dispatch ordering, live revocation, or production WebSocket gate behavior.
