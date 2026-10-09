@@ -32,6 +32,8 @@ def valid_run_url(value: object) -> bool:
         and parsed.scheme == "https"
         and value == parsed.geturl()
         and parsed.netloc == "github.com"
+        and parsed.username is None
+        and parsed.password is None
         and parsed.query == ""
         and parsed.fragment == ""
         and len(parts) == 6
