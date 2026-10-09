@@ -283,5 +283,21 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
                 "https://8.8.8.8",
                 authorization=self.grant(None, "not-a-datetime")))
 
+    def test_empty_owner_reference_pass_legacy_explicit_host(self):
+        # Legacy temporal check does not establish provenance or issuer consent.
+        grant = Authorization(owner="", reference="", valid_from=None, valid_until=None)
+        decision = self.policy.decide(
+            Target("https://authorized.example", authorization=grant))
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+
+    def test_empty_owner_reference_pass_legacy_explicit_network(self):
+        # Characterization only; real execution must require verified consent.
+        grant = Authorization(owner="", reference="", valid_from=None, valid_until=None)
+        policy = ScopePolicy(explicit_networks=("8.8.8.0/24",))
+        decision = policy.decide(Target("https://8.8.8.8", authorization=grant))
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_NETWORK)
+
 if __name__ == "__main__":
     unittest.main()
