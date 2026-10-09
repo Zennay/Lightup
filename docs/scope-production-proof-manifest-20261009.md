@@ -76,3 +76,6 @@ Fixed two previously contradictory positive fixtures which used `example.invalid
 
 ## Canonical artifact authority hardening
 Offline admission now rejects uppercase, trailing-dot, internationalized/Unicode and backslash-ambiguous artifact authorities. It requires a lowercase ASCII DNS hostname, no embedded port or userinfo, and a non-root HTTPS path. This is only syntactic filtering: independent reviewers must still verify trusted artifact provenance and avoid dereferencing untrusted URLs.
+
+## URL parser ambiguity correction
+The artifact URL predicate now explicitly rejects any backslash in the raw URL and percent-encoded bytes in the authority component. Relying only on a parsed hostname can overlook disagreements between URL parsers. This remains offline lexical filtering; trusted source provenance still requires authenticated verification.
