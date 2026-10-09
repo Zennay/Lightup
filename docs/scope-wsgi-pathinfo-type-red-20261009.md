@@ -18,11 +18,11 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_wsgi_pathinfo
 
 The real `create_app`, temporary SQLite `DomainStore`, and development + simulated production HTTPS/trusted-loopback WSGI settings exercise:
 
-- Four `expectedFailure` **RED** canaries: bytes, integer, list, and `str` subclass `PATH_INFO` cannot become a request route, authorize an operator write or force body/session access.
-- Four normal controls: an exact built-in string path with genuine operator cookie + body CSRF can create a client; client cookie with forged proxy identity cannot; unknown valid path cannot write; bad body CSRF cannot write or revoke the operator.
+- Five `expectedFailure` **RED** canaries: bytes, integer, list, and `str` subclass `PATH_INFO` cannot become a request route, authorize an operator write, disclose an operator dashboard on GET, or force body/session access.
+- Five normal controls: an exact built-in string path with genuine operator cookie + body CSRF can create a client; client cookie with forged proxy identity cannot; unknown valid path cannot write; bad body CSRF cannot write or revoke the operator; ordinary operator GET remains available while client GET receives a role denial.
 - No real targets, network/sockets, grants, scanners, proxy reload, workflow dispatch or production deployment initiated by the suite. Production is only a WSGI environment fixture.
 
-**Critical interpretation:** `expectedFailure` counts as test-suite success while exposing an unresolved app-level gap. A hosted or VPS green job is **NOT proof** that the RED canaries are fixed. The source owner must change the actual app boundary, remove the four `expectedFailure` decorators, show four plain passing negative assertions and positive controls on the exact integration SHA, and obtain independent review. Installed ingress acceptance is separate: externally supplied HTTP cannot normally choose arbitrary Python `environ` object types.
+**Critical interpretation:** `expectedFailure` counts as test-suite success while exposing an unresolved app-level gap. A hosted or VPS green job is **NOT proof** that the RED canaries are fixed. The source owner must change the actual app boundary, remove the five `expectedFailure` decorators, show five plain passing negative assertions and positive controls on the exact integration SHA, and obtain independent review. Installed ingress acceptance is separate: externally supplied HTTP cannot normally choose arbitrary Python `environ` object types.
 
 ## Promotion fence
 
