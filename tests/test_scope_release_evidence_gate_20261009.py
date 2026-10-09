@@ -19,7 +19,7 @@ def sample():
         "source_owner_reviewed": True,
         "remaining_xfails": 0,
         "jobs": {
-            name: {"head_sha": SHA, "conclusion": "success", "run_url": "https://github.com/example/repo/actions/runs/123"}
+            name: {"head_sha": SHA, "conclusion": "success", "run_url": "https://github.com/Zennay/Lightup/actions/runs/123"}
             for name in REQUIRED_JOBS
         },
     }
@@ -63,6 +63,23 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
                     else:
                         case["jobs"][name]["run_url"] = ""
                     self.assertFalse(evaluate(case)[0])
+
+    def test_hostile_evidence_links_denied(self):
+        hostile = (
+            "https://github.com.evil.example/Zennay/Lightup/actions/runs/123",
+            "https://github.com@evil.example/Zennay/Lightup/actions/runs/123",
+            "http://github.com/Zennay/Lightup/actions/runs/123",
+            "https://github.com/other/repo/actions/runs/123",
+            "https://github.com/Zennay/Lightup/actions/runs/not-a-number",
+            "https://github.com/Zennay/Lightup/actions/runs/123?approved=true",
+            "https://github.com/Zennay/Lightup/actions/runs/123#approved",
+            "https://github.com/Zennay/Lightup/actions/runs/123/extra",
+        )
+        for url in hostile:
+            with self.subTest(url=url):
+                case = sample()
+                case["jobs"]["permanent_vps"]["run_url"] = url
+                self.assertFalse(evaluate(case)[0])
 
     def test_sha_requires_full_lowercase_digest(self):
         for invalid in (None, "", "abc", "A" * 40, 3):
