@@ -37,7 +37,10 @@ The helper reads GitHub pages of 100 items and refuses a definitive answer if
 a configured pagination bound is exhausted. If GitHub has too many open PRs or
 a file list cannot be completely read, **do not proceed based on the report**.
 A large repository may need a read-token with sufficient API budget; do not
-reduce completeness to make the command pass.
+reduce completeness to make the command pass. The script also reads the **open
+PR list and immutable head SHAs twice** (before and after file inspection);
+if the collection or any head changed during the scan, the result is
+`unknown`, not `clear`. This is a race detector, not an atomic GitHub snapshot.
 
 ## Work-ownership rules
 
