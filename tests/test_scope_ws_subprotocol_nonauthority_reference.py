@@ -544,6 +544,22 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
                 effects.append("dispatch")
         self.assertEqual(effects, [])
 
+    def test_unapproved_grant_cannot_reuse_approved_request(self):
+        stored = Grant("tenant-a", "lab-asset", "read-only", 3, False, False)
+        effects = []
+        for _ in range(10):
+            if reference_decide(stored, self.valid,
+                                {"Sec-WebSocket-Protocol": "approved"}):
+                effects.append("handler")
+        self.assertEqual(effects, [])
+
+    def test_wrong_capability_header_claim_cannot_upgrade_request(self):
+        requested = Grant("tenant-a", "lab-asset", "active-scan", 3, True, False)
+        for claimed in ("read-only", "active-scan", "admin", "scope:all"):
+            with self.subTest(claimed=claimed):
+                self.assertFalse(reference_decide(self.valid, requested,
+                    {"Sec-WebSocket-Protocol": claimed}))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
