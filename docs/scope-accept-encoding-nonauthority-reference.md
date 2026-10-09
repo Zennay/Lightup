@@ -10,7 +10,9 @@ purpose, grant status, or grant revision.
 1. A matching *synthetic* authorization state remains unchanged for any
    `Accept-Encoding` value, including unknown, malformed and hostile objects.
 2. Missing, unverified, inactive, noncanonical or mismatched authorization
-   data must fail closed regardless of compression preferences.
+   data must fail closed regardless of compression preferences. Even matching
+   malformed identities, polymorphic dictionaries and type-confused grant
+   revisions are rejected.
 3. The policy must never stringify, coerce, traverse or invoke a header value.
 4. Authorized identity comprises exact builtin string tenant, request, asset,
    capability, purpose and exact nonnegative integer revision.
