@@ -168,6 +168,25 @@ def classify_supplied_hosted_run_jobs(run: dict, jobs: list, expected_sha: str, 
     return {"hosted_python_311": result["3.11"], "hosted_python_314": result["3.14"]}
 
 
+def validate_paged_job_snapshot(pages: list, expected_run_id: int) -> list:
+    """Reject unproven pagination; caller must supply contiguous page metadata."""
+    if type(pages) is not list or not pages or type(expected_run_id) is not int or expected_run_id <= 0:
+        return []
+    all_jobs = []
+    for index, page in enumerate(pages, start=1):
+        if type(page) is not dict or set(page) != {"page", "jobs", "has_next"}:
+            return []
+        if type(page["page"]) is not int or page["page"] != index or type(page["jobs"]) is not list:
+            return []
+        if type(page["has_next"]) is not bool or page["has_next"] != (index < len(pages)):
+            return []
+        for job in page["jobs"]:
+            if type(job) is not dict or type(job.get("run_id")) is not int or job["run_id"] != expected_run_id:
+                return []
+            all_jobs.append(job)
+    return all_jobs
+
+
 def classify_first_page_only_jobs(run: dict, jobs: list, expected_sha: str) -> dict:
     """GitHub connector exposes first-page jobs only; never claim complete CI evidence."""
     # Do not pass all_pages_verified=True from an unpaginated connector response.
@@ -258,6 +277,20 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
             changed[index][key] = wrong
             self.assertEqual(classify_supplied_hosted_run_jobs(run, changed, sha, all_pages_verified=True), {})
         self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs, "b" * 40, all_pages_verified=True), {})
+
+    def test_contiguous_pagination_metadata_must_be_consistent(self):
+        jobs = [{"id": 11, "run_id": 9}, {"id": 12, "run_id": 9}]
+        pages = [{"page": 1, "jobs": [jobs[0]], "has_next": True},
+                 {"page": 2, "jobs": [jobs[1]], "has_next": False}]
+        self.assertEqual(validate_paged_job_snapshot(pages, 9), jobs)
+        for wrong in (
+            [pages[0]],
+            [{"page": 2, "jobs": jobs, "has_next": False}],
+            [{"page": 1, "jobs": jobs, "has_next": True}],
+            [{"page": 1, "jobs": jobs, "has_next": 0}],
+            [{"page": 1, "jobs": [{"id": 10, "run_id": 10}], "has_next": False}],
+        ):
+            self.assertEqual(validate_paged_job_snapshot(wrong, 9), {} if False else [])
 
     def test_first_page_connector_cannot_claim_complete_ci(self):
         sha = "a" * 40
