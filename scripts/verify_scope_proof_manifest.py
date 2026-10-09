@@ -17,6 +17,9 @@ REQUIRED = ("implementation_sha", "base_sha", "trusted_grant_reviewed",
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 
 
+MAX_MANIFEST_BYTES = 64 * 1024
+
+
 def verify(data):
     if type(data) is not dict:
         return ["manifest must be an object"]
