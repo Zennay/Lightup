@@ -86,3 +86,7 @@ The manifest checks now reject duplicate GitHub issue numbers and duplicate gate
 ## Source-owner integration contract (not yet applied)
 
 `validate_unambiguous_arguments(definition, call.arguments)` must replace the lossy `dict(call.arguments)` conversion **before** any handler invocation, evidence write, policy dispatch, or socket operation. It produces a new dictionary and refuses duplicate argument names before coercion, non-finite Python floats, unknown/missing parameters, and malformed tuple entries. It deliberately does *not* authorize a run, resolve a destination, or persist/check revocation. Those independent controls must still execute immediately before actual I/O. The caller-owned ordered-pair sequence remains unmodified in accepted and rejected cases. Tests now pin duplicate precedence even when the second payload is NaN, boolean, null, or a nested dict. Do not mark #1143/#1147 resolved until the source owner wires the helper and removes the expected-failure markers against the *real* ToolExecutor.
+
+## Side-effect-free argument container boundary
+
+The independent helper only accepts concrete tuple/list argument containers. A side-effectful generator must be rejected without iteration, and every argument key must be an exact string. The new tests make both behaviors explicit, avoiding runtime iterator side effects before authorization decisions. This helper is still not connected to production dispatch.
