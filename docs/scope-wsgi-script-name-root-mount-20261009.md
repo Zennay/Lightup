@@ -15,6 +15,12 @@ accepts only **missing** `SCRIPT_NAME` or **exact built-in** empty-string
 generic 400 before the wrapped web app can parse forms, look up a session,
 write a tenant/client, authenticate a login or revoke a session.
 
+An isolated **opt-in production factory**,
+`create_root_mount_guarded_production_app()`, constructs the existing
+`create_production_app()` result and wraps it with the exact production mode.
+It is not registered as the deployed Gunicorn entrypoint. The factory continues
+to require the existing HTTPS origin and absolute database configuration.
+
 The rejection response contains no cookies, forbids caching/framing, and
 preserves HSTS when configured with `production=True`. The mode is **required**,\nmust be an actual `bool`, and must match the wrapped LightUp app's\n`WebSecurity.production` setting; accidental omission or mismatch fails at\nconstruction rather than weakening production denial headers. `SCRIPT_NAME` is never an authorization grant; accepted
 requests still require their original session, role, tenant and CSRF checks.
@@ -42,7 +48,7 @@ discover the new test file.
 
 ## Integration and evidence gates — **NOT MET by this PR**
 
-- This is an **optional wrapper, not a production entrypoint switch**.
+- This is an **optional wrapper and optional production factory, not a deployed entrypoint switch**.
   The source owner must compose it with the independently owned
   `PATH_INFO`, method, cookie, form and proxy guards. Do not edit their files
   or assume all wrappers are active because one passes its own tests.
