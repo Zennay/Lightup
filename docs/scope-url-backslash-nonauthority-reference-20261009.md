@@ -15,3 +15,7 @@
 `python -m unittest discover -s tests -p 'test_scope_url_backslash_nonauthority_reference_20261009.py' -v`
 
 Reference unit success by itself is **not** release proof. Keep draft until exact-head hosted Python 3.11/3.14 plus canonical permanent VPS CI succeed, producer grants (trusted issuer, tenant/client, engagement, asset, capability, revocation) are revalidated pre-I/O, and source-owner review confirms no bypasses. No real targets or grants are involved.
+
+## Parser-order regression (latest addition)
+
+The offline suite uses a poisoned `urlsplit` mock to prove literal backslashes and hostile non-string inputs are rejected **before** any URL parser call or policy callback. This prevents parser-dependent normalization from laundering malformed raw input into a seemingly trustworthy URL. Parser-order tests remain references only; source-owner integration must demonstrate the same pre-I/O order for actual producer entry points.
