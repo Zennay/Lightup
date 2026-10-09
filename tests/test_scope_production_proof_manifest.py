@@ -290,7 +290,7 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
             [{"page": 1, "jobs": jobs, "has_next": 0}],
             [{"page": 1, "jobs": [{"id": 10, "run_id": 10}], "has_next": False}],
         ):
-            self.assertEqual(validate_paged_job_snapshot(wrong, 9), {} if False else [])
+            self.assertEqual(validate_paged_job_snapshot(wrong, 9), [])
 
     def test_first_page_connector_cannot_claim_complete_ci(self):
         sha = "a" * 40
