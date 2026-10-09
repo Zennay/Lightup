@@ -6,6 +6,7 @@ authenticate customer consent, and makes no network calls.
 import os
 import sys
 import unittest
+import unicodedata
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from lightup.models import Authorization, Target
@@ -16,9 +17,10 @@ def validate_raw_target(value: object) -> bool:
     """Reject malformed raw input before urllib.parse can remove controls."""
     if type(value) is not str or not value:
         return False
-    if value[0].isspace():
-        return False
-    return not any(ord(char) < 0x20 or ord(char) == 0x7F for char in value)
+    return not any(
+        char.isspace() or unicodedata.category(char) in {"Cc", "Cf", "Cs"}
+        for char in value
+    )
 
 
 def reference_decide(policy: ScopePolicy, target: Target):
@@ -122,6 +124,42 @@ class RawInputPreparserReferenceTests(unittest.TestCase):
         policy = Mock(spec=ScopePolicy)
         policy.decide.return_value = "delegated"
         for suffix in ("/%0A", "/%0d", "/%09", "/%7F"):
+            with self.subTest(suffix=suffix):
+                policy.reset_mock()
+                target = Target("https://authorized.example.test" + suffix, authorization=self.auth)
+                self.assertEqual(reference_decide(policy, target), "delegated")
+                policy.decide.assert_called_once_with(target)
+
+
+    def test_invisible_unicode_format_characters_are_rejected(self):
+        for char in ("\u200b", "\u200c", "\u200d", "\u202e", "\u2066", "\ufeff"):
+            for position in ("hostname", "path", "query"):
+                with self.subTest(char=repr(char), position=position):
+                    values = {
+                        "hostname": "https://auth" + char + "orized.example.test/",
+                        "path": "https://authorized.example.test/a" + char + "b",
+                        "query": "https://authorized.example.test/?q=" + char,
+                    }
+                    result = reference_decide(
+                        self.policy, Target(values[position], authorization=self.auth)
+                    )
+                    self.assertFalse(result.allowed)
+                    self.assertEqual(result.reason, ScopeReason.INVALID_TARGET)
+
+    def test_internal_unicode_whitespace_rejected(self):
+        for char in (" ", "\u00a0", "\u2003", "\u2028", "\u2029"):
+            with self.subTest(char=repr(char)):
+                result = reference_decide(
+                    self.policy,
+                    Target("https://authorized.example.test/p" + char + "ath", authorization=self.auth),
+                )
+                self.assertEqual(result.reason, ScopeReason.INVALID_TARGET)
+
+    def test_encoded_unicode_remains_uninterpreted_at_preparser(self):
+        from unittest.mock import Mock
+        policy = Mock(spec=ScopePolicy)
+        policy.decide.return_value = "delegated"
+        for suffix in ("/%E2%80%8B", "/%E2%80%AE", "/%C2%A0"):
             with self.subTest(suffix=suffix):
                 policy.reset_mock()
                 target = Target("https://authorized.example.test" + suffix, authorization=self.auth)
