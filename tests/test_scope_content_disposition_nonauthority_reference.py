@@ -129,6 +129,36 @@ class TestContentDispositionNonAuthority(unittest.TestCase):
         self.assertTrue(reference_consistency(self.grant, self.dispatch, header))
         self.assertFalse(reference_consistency(replace(self.grant, active=False), self.dispatch, header))
 
+    def test_non_string_matching_identities_fail_closed(self):
+        for value in (None, 4, True, ["tenant-a"], {"id": "tenant-a"}):
+            for field in ("tenant", "request", "asset", "capability"):
+                with self.subTest(value=value, field=field):
+                    self.assertFalse(reference_consistency(
+                        replace(self.grant, **{field: value}),
+                        replace(self.dispatch, **{field: value}),
+                        'attachment; filename="approved"',
+                    ))
+
+    def test_string_subclass_identity_cannot_become_authority(self):
+        class SpoofedString(str):
+            pass
+        for field in ("tenant", "request", "asset", "capability"):
+            value = SpoofedString(getattr(self.grant, field))
+            with self.subTest(field=field):
+                self.assertFalse(reference_consistency(
+                    replace(self.grant, **{field: value}),
+                    replace(self.dispatch, **{field: value}),
+                    "inline",
+                ))
+
+    def test_dispatch_revision_types_are_exact(self):
+        for value in (True, 7.0, "7", None, -1):
+            with self.subTest(value=value):
+                self.assertFalse(reference_consistency(
+                    self.grant, replace(self.dispatch, revision=value),
+                    "attachment; filename=grant",
+                ))
+
     def test_grant_and_dispatch_immutable(self):
         grant, dispatch = self.grant, self.dispatch
         reference_consistency(grant, dispatch, "attachment; filename=ignored")
