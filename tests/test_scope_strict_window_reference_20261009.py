@@ -9,7 +9,12 @@ import unittest
 
 def strict_window_eligible(start, end, now):
     """Pure, fail-closed *temporal* predicate; consent must be checked elsewhere."""
-    if type(now) is not datetime or now.tzinfo is None or now.utcoffset() is None:
+    if type(now) is not datetime or now.tzinfo is None:
+        return False
+    try:
+        if now.utcoffset() is None:
+            return False
+    except (TypeError, ValueError, OverflowError):
         return False
     if start is None or end is None:
         return False
@@ -68,6 +73,29 @@ class StrictWindowReferenceTests(unittest.TestCase):
     def test_timezone_offset_equivalence(self):
         other = timezone(timedelta(hours=5, minutes=30))
         self.assertTrue(strict_window_eligible(self.start.astimezone(other), self.end, self.now))
+
+    def test_broken_timezone_offset_fails_closed(self):
+        from datetime import tzinfo
+
+        class BrokenTimezone(tzinfo):
+            def utcoffset(self, dt):
+                raise ValueError("invalid timezone metadata")
+
+            def dst(self, dt):
+                return None
+
+        broken = self.now.replace(tzinfo=BrokenTimezone())
+        self.assertFalse(strict_window_eligible(self.start, self.end, broken))
+        self.assertFalse(strict_window_eligible(broken, self.end, self.now))
+        self.assertFalse(strict_window_eligible(self.start, broken, self.now))
+
+    def test_subclass_datetimes_cannot_mint_temporal_eligibility(self):
+        class ForgedDatetime(datetime):
+            pass
+
+        forged = ForgedDatetime(2026, 10, 9, 12, tzinfo=timezone.utc)
+        self.assertFalse(strict_window_eligible(self.start, self.end, forged))
+        self.assertFalse(strict_window_eligible(forged, self.end, self.now))
 
     def test_invalid_now_types_deny(self):
         for bad in (None, "", 0, False, True, self.now.isoformat()):
