@@ -200,5 +200,24 @@ class SecFetchSiteNonAuthority(unittest.TestCase):
             self.assertTrue(reference_decision(self.grant, self.dispatch, hint))
             self.assertEqual(dict(self.grant.__dict__), before)
 
+
+    def test_transport_label_cannot_cross_tenant_grant_boundary(self):
+        other = Grant("tenant-other", "request", "asset", "web-baseline", 2, True, True)
+        for hint in ("same-origin", "same-site", "none", "cross-site", HostileLabel()):
+            self.assertFalse(reference_decision(other, self.dispatch, hint))
+            self.assertFalse(reference_decision(
+                self.grant, dict(self.dispatch, tenant="tenant-other"), hint))
+
+    def test_unicode_visual_similarity_does_not_create_identity(self):
+        for key in ("tenant", "request", "asset", "capability"):
+            changed = dict(self.dispatch, **{key: self.dispatch[key] + "\\u200d"})
+            self.assertFalse(reference_decision(self.grant, changed, "same-origin"))
+
+    def test_all_missing_binding_fields_fail_closed(self):
+        for key in ("tenant", "request", "asset", "capability"):
+            grant = Grant(**dict(self.grant.__dict__, **{key: None}))
+            dispatch = dict(self.dispatch, **{key: None})
+            self.assertFalse(reference_decision(grant, dispatch, HostileLabel()))
+
 if __name__ == "__main__":
     unittest.main()
