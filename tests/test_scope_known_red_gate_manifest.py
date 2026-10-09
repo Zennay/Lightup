@@ -79,6 +79,21 @@ class KnownRedGateManifestTests(unittest.TestCase):
             self.assertTrue(entry["expected_failure_tests"])
             self.assertTrue(set(entry["expected_failure_tests"]).issubset(names))
 
+    def test_known_red_manifest_does_not_accept_duplicate_issue_or_gate_keys(self):
+        data = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        issues = [entry["issue"] for entry in data["unresolved"]]
+        keys = [entry["key"] for entry in data["unresolved"]]
+        self.assertEqual(len(issues), len(set(issues)))
+        self.assertEqual(len(keys), len(set(keys)))
+        for entry in data["unresolved"]:
+            self.assertIs(type(entry["key"]), str)
+            self.assertTrue(entry["key"].strip())
+            self.assertIs(type(entry["expected_failure_tests"]), list)
+            self.assertTrue(all(
+                type(name) is str and name.startswith("test_")
+                for name in entry["expected_failure_tests"]
+            ))
+
 
 if __name__ == "__main__":
     unittest.main()
