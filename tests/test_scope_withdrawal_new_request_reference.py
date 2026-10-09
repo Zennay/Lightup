@@ -106,6 +106,24 @@ class WithdrawalNewRequestBoundaryTests(unittest.TestCase):
         self.assertFalse(conditionally_eligible(ForgedSnapshot("tenant-A", "asset-1", 7, "new"), self.issuer))
         self.assertFalse(conditionally_eligible(self.snapshot, ForgedConsent("tenant-A", "asset-1", 7, True)))
 
+    def test_new_request_does_not_reset_epoch_with_same_identifier(self):
+        # The old identifier can be recycled; it must not restore a stale epoch.
+        recycled = RequestSnapshot("tenant-A", "asset-1", 7, "request-original")
+        self.assertFalse(conditionally_eligible(
+            recycled, IssuedConsent("tenant-A", "asset-1", 8, True)))
+
+    def test_current_issuer_identity_must_be_canonical(self):
+        for value in (" tenant-A", "tenant-A\\n", "tenant/A", "é", "x" * 129, 7):
+            with self.subTest(value=value):
+                self.assertFalse(conditionally_eligible(
+                    self.snapshot, IssuedConsent(value, "asset-1", 7, True)))
+
+    def test_request_identity_must_be_canonical(self):
+        for value in ("", " request-new", "request/new", "request-new\\n", "é", 2):
+            with self.subTest(value=value):
+                self.assertFalse(conditionally_eligible(
+                    RequestSnapshot("tenant-A", "asset-1", 7, value), self.issuer))
+
     def test_inputs_remain_unchanged(self):
         before = (repr(self.snapshot), repr(self.issuer))
         conditionally_eligible(self.snapshot, self.issuer)
