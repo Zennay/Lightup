@@ -338,6 +338,7 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
                 "sha": sha, "status": "completed", "conclusion": "success",
                 "python_version": version, "runner_class": runner,
                 "job_name": "Offline preflight Python " + version if runner == "hosted" else "Permanent VPS Python " + version,
+                "run_id": int(expected["run_url"].rsplit("/", 1)[-1]),
             }
         self.assertTrue(verify_observed_ci_jobs(manifest, observed))
         for field in ("status", "conclusion", "python_version", "runner_class",
@@ -430,7 +431,7 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
                 "sha": "a" * 40, "status": "completed", "conclusion": "success",
                 "python_version": version, "runner_class": klass,
                 "job_name": "Offline preflight Python " + version if klass == "hosted" else "Permanent VPS Python " + version,
-                "run_id": 1,
+                "run_id": 1 if klass == "hosted" else 2,
             }
         self.assertFalse(verify_observed_ci_jobs(original, fake_success))
         self.assertFalse(is_release_evidence_complete(original))
