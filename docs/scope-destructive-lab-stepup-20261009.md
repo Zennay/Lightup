@@ -17,6 +17,7 @@ On current `main`, `RunContext.for_lab()` creates `approved_risk=DESTRUCTIVE_LAB
 - Each approval lasts **at most 24 hours**, with expiration exclusive; identifiers must be bounded printable ASCII without control characters, whitespace padding or silent coercion. Authorized lab contexts may not carry an unrelated real-target grant.
 - Tool definitions must carry exact canonical `InteractionKind` and `RiskLevel` enum values (never raw integer `5`/boolean/strings). Registry identity, handler identity and definition identity are checked again after synchronous resolver callbacks, preventing callback-driven tool swapping.
 - Ordinary lower-risk tools continue through existing `ToolExecutor` behavior without requiring a destructive approval.
+- Until a reviewed schema explicitly binds every destination-selecting argument to the approved lab asset, **risk-5 lab tools with any declared or supplied parameters are denied**. Even optional defaults can redirect execution. Ordinary lower-risk tools continue through their existing typed parameter contract; this is a conservative hold rather than a complete tool-argument binding implementation.
 - No attempts are made to treat `is_lab` as proof of an actually isolated network. Actual lab isolation, persistent approval authenticity and runtime admission are still external requirements.
 
 ## Confirmed raw-executor RED canary
@@ -38,7 +39,7 @@ An application/executor owner must integrate the wrapper at **every** destructiv
 Suggested source-owner release gates:
 
 1. Independent approval identity/role proof, operator review and a durable revocation transaction. Do not accept approvals encoded in `ToolCall.arguments`, HTTP fields or model output.
-2. Verify actual lab confinement and deny all external destinations at transport/network level, even after policy approval.
+2. Verify actual lab confinement and deny all external destinations at transport/network level, even after policy approval; create trusted registry metadata for destination-selecting arguments and bind it to the exact approval, or keep high-risk parameterized tools denied.
 3. Wire the wrapper into actual lab dispatch; forbid alternate raw executor dispatch paths at construction/import/review.
 4. Replace isolated acceptance with integrated real-entrypoint tests proving no handler starts without approval and denial causes zero state/evidence change.
 5. Run hosted Python 3.11/3.14 preflight and canonical permanent VPS safety CI on **the exact final SHA**; obtain independent reviewer signoff.
