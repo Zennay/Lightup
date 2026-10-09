@@ -138,6 +138,26 @@ class HttpCacheNonAuthorityReferenceTests(unittest.TestCase):
         bad_dispatch = Dispatch("tenant_a", "req_a", True, "headers")
         self.assertFalse(reference_eligible(self.grant, bad_dispatch, {"status": 304}))
 
+    def test_matching_invalid_ascii_controls_are_denied(self):
+        for value in ("tenant\\nA", "tenant\\rA", "tenant\\x00A", "tenant\\x7fA"):
+            with self.subTest(repr=repr(value)):
+                grant = LiveGrant(value, "req_a", 2, "headers", True, False)
+                request = Dispatch(value, "req_a", 2, "headers")
+                self.assertFalse(reference_eligible(grant, request, {"status": 304}))
+
+    def test_all_bound_identity_fields_reject_malformed_values(self):
+        for field in ("tenant", "request", "capability"):
+            for invalid in ("invalid/value", "", " leading", "trailing ", "é"):
+                with self.subTest(field=field, invalid=invalid):
+                    grant = LiveGrant(**{**vars(self.grant), field: invalid})
+                    request = Dispatch(**{**vars(self.dispatch), field: invalid})
+                    self.assertFalse(reference_eligible(grant, request, {"status": 200}))
+
+    def test_revision_strings_cannot_be_coerced_from_cache(self):
+        grant = LiveGrant("tenant_a", "req_a", "2", "headers", True, False)
+        request = Dispatch("tenant_a", "req_a", "2", "headers")
+        self.assertFalse(reference_eligible(grant, request, {"etag": "2"}))
+
     def test_hostile_cache_object_not_inspected(self):
         class HostileCache:
             def __getattribute__(self, name):
