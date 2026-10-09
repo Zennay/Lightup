@@ -136,7 +136,9 @@ def classify_authenticated_run_jobs(run: dict, jobs: list, expected_sha: str) ->
             type(run.get("conclusion")) is not str or run["conclusion"] != "success"):
         return {}
     # Reject duplicated job identities before selecting either interpreter lane.
-    ids = [job.get("id") for job in jobs if type(job) is dict]
+    if any(type(job) is not dict for job in jobs):
+        return {}
+    ids = [job.get("id") for job in jobs]
     if any(type(identifier) is not int or identifier <= 0 for identifier in ids) or len(ids) != len(set(ids)):
         return {}
     result = {}
@@ -172,6 +174,9 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
             "id": 100, "run_id": 91, "name": "Unrelated job",
             "status": "completed", "conclusion": "success"}]
         self.assertEqual(classify_authenticated_run_jobs(run, duplicate_unrelated, sha), {})
+        self.assertEqual(classify_authenticated_run_jobs(run, jobs + [None], sha), {})
+        self.assertEqual(classify_authenticated_run_jobs(run, jobs + ["unknown"], sha), {})
+        self.assertEqual(classify_authenticated_run_jobs(run, jobs + [{"name": "unrelated"}], sha), {})
         class EqualString(str):
             pass
         for key in ("status", "conclusion"):
