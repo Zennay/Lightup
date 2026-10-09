@@ -82,3 +82,7 @@ The manifest checker also parses both owned test modules and verifies every decl
 ## Unambiguous known-red issue registry
 
 The manifest checks now reject duplicate GitHub issue numbers and duplicate gate keys, and require each unresolved list to contain explicitly named `test_*` methods. These constraints prevent accidental shadowing of an open authorization gap in the draft release ledger. This is bookkeeping enforcement, not proof that the corresponding runtime issue is fixed.
+
+## Source-owner integration contract (not yet applied)
+
+`validate_unambiguous_arguments(definition, call.arguments)` must replace the lossy `dict(call.arguments)` conversion **before** any handler invocation, evidence write, policy dispatch, or socket operation. It produces a new dictionary and refuses duplicate argument names before coercion, non-finite Python floats, unknown/missing parameters, and malformed tuple entries. It deliberately does *not* authorize a run, resolve a destination, or persist/check revocation. Those independent controls must still execute immediately before actual I/O. The caller-owned ordered-pair sequence remains unmodified in accepted and rejected cases. Tests now pin duplicate precedence even when the second payload is NaN, boolean, null, or a nested dict. Do not mark #1143/#1147 resolved until the source owner wires the helper and removes the expected-failure markers against the *real* ToolExecutor.
