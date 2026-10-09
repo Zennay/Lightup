@@ -148,6 +148,19 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         changed = json.loads(json.dumps(manifest))
         changed["permanent_vps"]["run_url"] = "https://github.com/other/repo/actions/runs/3"
         self.assertFalse(is_release_evidence_complete(changed))
+        for url in ("https://github.com.evil.invalid/example/repo/actions/runs/3",
+                    "https://github.com/example/repo/actions/runs/3?redirect=1",
+                    "https://github.com/example/repo/actions/runs/3#fragment",
+                    "https://github.com/example/repo/actions/runs/0",
+                    "https://github.com/example/repo/actions/runs/3/extra"):
+            changed = json.loads(json.dumps(manifest))
+            changed["permanent_vps"]["run_url"] = url
+            self.assertFalse(is_release_evidence_complete(changed), url)
+        changed = json.loads(json.dumps(manifest))
+        changed["hosted_python_311"]["run_url"] = "https://github.com/other/repo/actions/runs/1"
+        changed["hosted_python_314"]["run_url"] = "https://github.com/other/repo/actions/runs/1"
+        self.assertFalse(is_release_evidence_complete(changed))
+
 
 
 if __name__ == "__main__":
