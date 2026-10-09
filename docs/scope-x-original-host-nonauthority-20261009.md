@@ -117,3 +117,7 @@ A public allowlisted URL without an Authorization must be denied `AUTHORIZATION_
 ## Expired grant: hostile label non-inspection
 
 With an allowlisted URL and expired synthetic Authorization, the pure scope policy must deny `AUTHORIZATION_EXPIRED` without iterating or coercing untrusted header labels. This is a unit-layer fail-closed invariant, not proof that production ingress, executor, or evidence store performs the corresponding gate.
+
+## Metamorphic non-authority contract
+
+For four fixed target/authorization cases (unlisted, allowlisted without grant, expired synthetic grant, invalid target), run the baseline decision without labels and compare the **entire** `ScopeDecision` against variants carrying forged X-Original-Host, operator approval, consent and repeated labels. Changing only untrusted label metadata must never change `allowed`, `normalized_host`, or `reason`. This is a pure policy noninterference invariant, not proof of real HTTP ingress or persisted consent.
