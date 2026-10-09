@@ -28,6 +28,6 @@ their inability to influence permission.
 
 Run `python -m unittest discover -s tests -p 'test_scope_media_type_nonauthority_reference.py' -v`
 with Python 3.11 and 3.14, then permanent VPS CI at the **exact PR head**.
-Remain draft until green proof and review by the source owner of PR #107.
+The expanded fixture now includes 17 test methods, with exact dispatch/grant revision typing, malformed matching identities in every identity field, and non-mutation checks. Control-byte fixtures use Python escape sequences that evaluate to actual control bytes, not literal backslash characters.\nRemain draft until green proof and review by the source owner of PR #107.
 No source executor edits, grant issuance, targets, network, DNS, scanning,
 credentials, capability dispatch or deployment are included.
