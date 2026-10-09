@@ -51,7 +51,9 @@ def validate_cookie_envelope(environ: dict) -> None:
         name, equals, value = piece.partition("=")
         if not equals or not _NAME.fullmatch(name):
             raise ValueError("invalid cookie pair")
-        if value != value.strip(" "):
+        # Unquoted cookie-octet cannot contain SP. SimpleCookie may tokenize
+        # whitespace-delimited pairs differently than a proxy or this loop.
+        if " " in value:
             raise ValueError("ambiguous cookie value")
         if name == SESSION_COOKIE:
             if session_seen:
