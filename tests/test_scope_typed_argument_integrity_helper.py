@@ -412,5 +412,30 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
         self.assertEqual(calls, [huge])
 
 
+    def test_schema_failure_is_propagated_without_retry(self):
+        from unittest.mock import patch
+        calls = []
+        def deny(definition, arguments):
+            calls.append(dict(arguments))
+            raise OrchestrationError("synthetic schema denial")
+        with patch.object(ToolDefinition, "validate_arguments", deny):
+            with self.assertRaisesRegex(OrchestrationError, "synthetic schema denial"):
+                validate_unambiguous_arguments(
+                    self.definition, (("value", 3.5),)
+                )
+        self.assertEqual(calls, [{"value": 3.5}])
+
+    def test_duplicate_key_denial_preempts_nonfinite_checks(self):
+        from unittest.mock import patch
+        with patch.object(
+            ToolDefinition, "validate_arguments",
+            side_effect=AssertionError("schema called"),
+        ):
+            with self.assertRaisesRegex(OrchestrationError, "duplicate tool argument"):
+                validate_unambiguous_arguments(
+                    self.definition, (("value", 1.0), ("value", float("nan")))
+                )
+
+
 if __name__ == "__main__":
     unittest.main()
