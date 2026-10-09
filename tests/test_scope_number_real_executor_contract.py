@@ -137,6 +137,26 @@ class OfflineExecutorNumberTests(unittest.TestCase):
                 self.assertEqual(self.calls, [4.0])
                 self.assertEqual(self.evidence_count(), 1)
 
+    def test_denial_preserves_exact_existing_evidence_identity(self):
+        """Denial must not replace or rewrite a prior successful evidence row."""
+        result = self.invoke(7.0)
+        with self.state.connect() as db:
+            before = tuple(db.execute(
+                "SELECT evidence_id, run_id, capability_id, kind, source "
+                "FROM evidence ORDER BY evidence_id"
+            ).fetchall()[0])
+        with self.assertRaises(OrchestrationError):
+            self.invoke("7.0")
+        with self.state.connect() as db:
+            after = tuple(db.execute(
+                "SELECT evidence_id, run_id, capability_id, kind, source "
+                "FROM evidence ORDER BY evidence_id"
+            ).fetchall()[0])
+        self.assertEqual(after, before)
+        self.assertEqual(result.evidence_id, before[0])
+        self.assertEqual(self.calls, [7.0])
+        self.assertEqual(self.evidence_count(), 1)
+
     @unittest.expectedFailure
     def test_duplicate_argument_name_must_not_silently_override(self):
         """ToolCall.arguments_dict currently collapses duplicate tuple keys."""
