@@ -41,8 +41,7 @@ development and simulated HTTPS/loopback-proxy production configuration:
    cannot substitute for the actual WSGI mount value.
 5. The HSTS policy is present on early-denied simulated production responses.\n6. Explicit production configuration is mandatory and cannot conflict with\n   the wrapped application's configured security mode.
 
-Run with `PYTHONPATH=src python -m unittest -v
-tests.test_scope_wsgi_script_name_root_mount_20261009`; the hosted
+Run with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_wsgi_script_name_root_mount_20261009.py' -v`; the hosted
 `lightup-preflight.yml` and self-hosted `lightup-ci.yml` workflows also
 discover the new test file.
 
