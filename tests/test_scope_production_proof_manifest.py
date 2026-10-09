@@ -231,6 +231,17 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
                 "python_version": version, "runner_class": runner,
             }
         self.assertTrue(verify_observed_ci_jobs(manifest, observed))
+        for lane in ("hosted_python_311", "hosted_python_314", "permanent_vps"):
+            missing = json.loads(json.dumps(observed))
+            missing.pop(lane)
+            self.assertFalse(verify_observed_ci_jobs(manifest, missing), lane)
+            extra = json.loads(json.dumps(observed))
+            extra[lane]["untrusted_override"] = "success"
+            self.assertFalse(verify_observed_ci_jobs(manifest, extra), lane)
+        swapped = json.loads(json.dumps(observed))
+        swapped["hosted_python_311"], swapped["hosted_python_314"] = (
+            swapped["hosted_python_314"], swapped["hosted_python_311"])
+        self.assertFalse(verify_observed_ci_jobs(manifest, swapped))
         for lane, key, bad in (
             ("hosted_python_311", "python_version", "3.14"),
             ("hosted_python_314", "runner_class", "permanent_vps"),
