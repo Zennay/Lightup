@@ -87,7 +87,8 @@ class DestructiveLabStepUpIntegrationTests(unittest.TestCase):
 
     def wrapper(self):
         return DestructiveLabStepUpExecutor(
-            self.executor, lambda run_id: self.live_record
+            self.executor, lambda run_id: self.live_record,
+            isolation_verifier=lambda context, call: True,
         )
 
     def assert_denied_without_effect(self, wrapper=None, *, context=None, call=None):
@@ -286,7 +287,7 @@ class DestructiveLabStepUpIntegrationTests(unittest.TestCase):
             self.registry._tools[self.destructive.tool_id] = (definition, substituted)
             return self.approval
 
-        wrapper = DestructiveLabStepUpExecutor(self.executor, mutate)
+        wrapper = DestructiveLabStepUpExecutor(self.executor, mutate, isolation_verifier=lambda context, call: True)
         self.assert_denied_without_effect(wrapper)
         self.assertEqual(calls, [])
 
@@ -298,7 +299,10 @@ class DestructiveLabStepUpIntegrationTests(unittest.TestCase):
             )
             return self.approval
         self.assert_denied_without_effect(
-            DestructiveLabStepUpExecutor(self.executor, mutate)
+            DestructiveLabStepUpExecutor(
+                self.executor, mutate,
+                isolation_verifier=lambda context, call: True,
+            )
         )
 
     def test_approval_resolver_cannot_swap_entire_registry(self):
@@ -419,6 +423,64 @@ class DestructiveLabStepUpIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(result.tool_id, low_param.tool_id)
         self.assertEqual(self.invocations, ["safe"])
+
+    def test_approval_without_isolation_evidence_still_denied(self):
+        standalone = DestructiveLabStepUpExecutor(
+            self.executor, lambda run_id: self.approval
+        )
+        self.assert_denied_without_effect(standalone)
+
+    def test_isolation_evidence_is_exact_boolean_not_a_truthy_label(self):
+        for result in (None, "true", 1, [], False):
+            with self.subTest(result=result):
+                wrapper = DestructiveLabStepUpExecutor(
+                    self.executor, lambda run_id: self.approval,
+                    isolation_verifier=lambda context, call: result,
+                )
+                self.assert_denied_without_effect(wrapper)
+
+    def test_isolation_verifier_errors_do_not_expose_private_details(self):
+        def unavailable(context, call):
+            raise RuntimeError("PRIVATE_LAB_NETWORK_CONFIG")
+        wrapper = DestructiveLabStepUpExecutor(
+            self.executor, lambda run_id: self.approval,
+            isolation_verifier=unavailable,
+        )
+        with self.assertRaises(ToolDenied) as denied:
+            wrapper.execute(self.context, self.call)
+        self.assertEqual(
+            str(denied.exception), "lab isolation verification unavailable"
+        )
+        self.assertIsNone(denied.exception.__cause__)
+        self.assertTrue(denied.exception.__suppress_context__)
+        self.assertEqual(self.invocations, [])
+
+    def test_isolation_verifier_cannot_swap_tool_after_approval(self):
+        definition, _ = self.registry.get(self.destructive.tool_id)
+        invoked = []
+        def substituted(context, arguments):
+            invoked.append("swapped")
+            return ToolOutput("bad", "note", b"bad")
+        def malicious_verifier(context, call):
+            self.registry._tools[self.destructive.tool_id] = (
+                definition, substituted,
+            )
+            return True
+        wrapper = DestructiveLabStepUpExecutor(
+            self.executor, lambda run_id: self.approval,
+            isolation_verifier=malicious_verifier,
+        )
+        self.assert_denied_without_effect(wrapper)
+        self.assertEqual(invoked, [])
+
+    def test_valid_trusted_isolation_and_approval_allow_only_noop_lab_tool(self):
+        app = DestructiveLabStepUpExecutor(
+            self.executor, lambda run_id: self.approval,
+            isolation_verifier=lambda context, call: True,
+        )
+        result = app.execute(self.context, self.call)
+        self.assertEqual(result.tool_id, self.call.tool_id)
+        self.assertEqual(self.invocations, [self.context.run_id])
 
 
 if __name__ == "__main__":
