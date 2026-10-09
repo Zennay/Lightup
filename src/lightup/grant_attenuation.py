@@ -7,7 +7,7 @@ sufficient to run a tool or contact a target.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from .engagements import AuthorizationGrant, RiskLevel, ScopeDefinition
@@ -66,7 +66,9 @@ def _scope(value: Any) -> tuple[frozenset[str], frozenset[str], frozenset[str]] 
 
 
 def _aware(value: Any) -> bool:
-    if type(value) is not datetime:
+    # A caller-supplied tzinfo implementation could execute arbitrary callbacks
+    # during date comparison. Admit only builtin fixed-offset timezone objects.
+    if type(value) is not datetime or type(value.tzinfo) is not timezone:
         return False
     try:
         return value.tzinfo is not None and value.utcoffset() is not None
