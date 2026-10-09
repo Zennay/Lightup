@@ -38,6 +38,10 @@ def reference_preflight(policy, target, handler):
             return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
         if authority.count("[") != authority.count("]") or authority.count("[") > 1:
             return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
+        if authority.startswith("[") and "]" in authority:
+            suffix = authority.split("]", 1)[1]
+            if suffix and not suffix.startswith(":"):
+                return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
     except ValueError:
         return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
     # Policy failures are not parser failures: never relabel them as safe denies.
@@ -236,6 +240,18 @@ class MalformedAuthorityNoHandlerReference(unittest.TestCase):
                 )
                 policy.decide.assert_not_called()
                 handler.assert_not_called()
+
+    def test_trailing_text_after_bracketed_ipv6_is_never_delegated(self):
+        policy = Mock(spec=ScopePolicy)
+        handler = Mock()
+        for raw in ("https://[::1]evil/", "https://[::1]@host/", "https://[::1]suffix:443/"):
+            with self.subTest(raw=raw):
+                decision = reference_preflight(policy, Target(raw), handler)
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+                self.assertIsNone(decision.normalized_host)
+        policy.decide.assert_not_called()
+        handler.assert_not_called()
 
     def test_valid_explicit_port_preserves_denial(self):
         policy = Mock(spec=ScopePolicy)
