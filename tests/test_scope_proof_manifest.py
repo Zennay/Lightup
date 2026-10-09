@@ -1,5 +1,7 @@
 """Offline checks for the proof-index verifier. No real targets or I/O."""
 import importlib.util
+import json
+import tempfile
 from pathlib import Path
 import unittest
 
@@ -67,6 +69,23 @@ class ProofManifestTests(unittest.TestCase):
             del obj["denial_side_effect_counts"][boundary]
             with self.subTest(boundary=boundary):
                 self.assertTrue(module.verify(obj))
+
+    def test_duplicate_top_level_json_key_fails_closed(self):
+        raw = json.dumps(fixture()).replace('"trusted_grant_reviewed": true', '"trusted_grant_reviewed": false, "trusted_grant_reviewed": true')
+        with self.assertRaises(ValueError):
+            json.loads(raw, object_pairs_hook=module.reject_duplicate_keys)
+
+    def test_duplicate_nested_boundary_key_fails_closed(self):
+        raw = json.dumps(fixture()).replace('"handler": 0', '"handler": 1, "handler": 0')
+        with self.assertRaises(ValueError):
+            json.loads(raw, object_pairs_hook=module.reject_duplicate_keys)
+
+    def test_cli_duplicate_field_never_passes(self):
+        raw = json.dumps(fixture()).replace('"trusted_grant_reviewed": true', '"trusted_grant_reviewed": false, "trusted_grant_reviewed": true')
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "fixture.json"
+            path.write_text(raw, encoding="utf-8")
+            self.assertEqual(module.main(["verify", str(path)]), 2)
 
     def test_absent_or_malformed_manifest_is_denied(self):
         self.assertTrue(module.verify(None))
