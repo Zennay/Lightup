@@ -244,6 +244,16 @@ class RealExecutorModeBoundaryTests(unittest.TestCase):
         self.assertEqual(result.evidence_id, "synthetic-evidence")
         self.handler.assert_called_once()
         self.state.add_evidence.assert_called_once()
+        evidence = self.state.add_evidence.call_args.kwargs
+        self.assertEqual(evidence["run_id"], "offline-run")
+        self.assertEqual(evidence["capability_id"], "http_headers")
+        self.assertEqual(evidence["source"], "synthetic-lab")
+        self.assertEqual(evidence["payload"], b"offline")
+        self.assertEqual(evidence["metadata"]["asset"], "127.0.0.1")
+        self.assertEqual(evidence["metadata"]["client_id"], "offline-client")
+        self.assertEqual(evidence["metadata"]["engagement_id"], "offline-engagement")
+        self.assertEqual(evidence["metadata"]["mode"], AssessmentMode.AUTHORIZED_ASSESSMENT.value)
+        self.assertEqual(evidence["metadata"]["is_lab"], "false")
 
     def test_real_policy_denies_risk_above_grant_ceiling(self):
         # Run ceiling permits LOW_IMPACT, but persisted-looking synthetic grant
