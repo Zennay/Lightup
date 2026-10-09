@@ -121,3 +121,6 @@ Do **not** merge this characterization file as if every assertion represented ap
 5. On the final exact implementation SHA, demand Python 3.11/3.14 hosted preflight, **canonical** `LightUp CI` using `[self-hosted, zcloud, vps]` with all jobs success, and source-owner review. Queued/cancelled runs and XFAIL-green runs do **not** satisfy these gates.
 
 Handoff acceptance: report counts of replaced legacy assertions, 4 RED requirements now regular passing negative tests, zero handler invocations for all denied inputs, and exact SHA plus permanent VPS run link. Do not edit #100/#107 branches or activate targets from this reference branch.
+
+## Partial provenance RED controls — 2026-10-09
+Two more explicit `@unittest.expectedFailure` tests assert mandatory denial when just one superficial grant field is populated: public host with only a reference string but no owner, and public IP network with only owner text but no reference. A text field is not a trusted issuer, signature, or durable grant ID. Legacy policy currently allows these cases, so XFAIL is proof of a *missing* protection, never production eligibility. Integration owner must verify full issuer/client/engagement/asset/capability/revocation provenance at the pre-I/O boundary and migrate all **6** RED contracts to normal deny tests with zero handler calls. No I/O is performed by this reference.
