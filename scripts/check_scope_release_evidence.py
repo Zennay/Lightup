@@ -87,7 +87,11 @@ def main(argv: list[str]) -> int:
         print("Usage: python scripts/check_scope_release_evidence.py evidence.json", file=sys.stderr)
         return 2
     try:
-        evidence = json.loads(\n            Path(argv[1]).read_text(encoding="utf-8"),\n            object_pairs_hook=reject_duplicate_keys,\n            parse_constant=reject_nonfinite_constant,\n        )
+        evidence = json.loads(
+            Path(argv[1]).read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_keys,
+            parse_constant=reject_nonfinite_constant,
+        )
     except (OSError, ValueError) as exc:
         print(f"HOLD: unreadable evidence: {exc}", file=sys.stderr)
         return 2
