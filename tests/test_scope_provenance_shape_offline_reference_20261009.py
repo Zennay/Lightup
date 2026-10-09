@@ -147,6 +147,14 @@ class ReferenceProvenanceShapeTests(unittest.TestCase):
         candidate = ForgedAuthorization(owner="owner-1", reference="consent-1")
         self.assertFalse(reference_provenance_shape(candidate))
 
+    def test_unicode_category_reference_is_complete_for_all_space_separators(self):
+        for codepoint in range(0x110000):
+            char = chr(codepoint)
+            if unicodedata.category(char) != "Zs" or char == " ":
+                continue
+            with self.subTest(codepoint=f"U+{codepoint:04X}"):
+                self.assertFalse(_well_formed_identity("a" + char + "b"))
+
     def test_no_external_policy_or_handler_calls(self):
         handler = Mock()
         policy = Mock()
