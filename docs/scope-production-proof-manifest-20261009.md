@@ -115,3 +115,6 @@ The offline checker now rejects `offline preflight` job names in the `permanent_
 
 ## VPS job-label regression refinements
 The negative VPS classification suite now explicitly rejects uppercase `OFFLINE PREFLIGHT` labels and blank names. The check is case-insensitive and deliberately deny-only: it cannot authenticate runner identity or prove VPS execution. Require exact-head authenticated GitHub job provenance and permanent runner-owner approval before any change to HOLD.
+
+## Observed run-ID linkage
+The offline CI snapshot comparison now requires an exact built-in integer `run_id` in every observed job and checks it against the canonical integer run ID encoded in the manifest's GitHub Actions run URL. It rejects a mismatched VPS run ID and Python boolean masquerading as a numeric ID. This is consistency validation, **not independently authenticated GitHub attestation**. Production activation remains disabled until verified GitHub provenance, permanent VPS execution and owner review are complete.
