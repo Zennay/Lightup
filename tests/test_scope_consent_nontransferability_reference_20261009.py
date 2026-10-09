@@ -18,7 +18,9 @@ def matches_consent(consent: Consent, *, tenant_id: str, engagement_id: str,
                     owner_id: str, asset_id: str, capability_id: str,
                     revision: int, revoked: bool) -> bool:
     """Illustrative all-field exact binding; not a trusted grant issuer."""
-    if type(consent) is not Consent:\n        return False\n    fields = (consent.tenant_id, consent.engagement_id, consent.owner_id,
+    if type(consent) is not Consent:
+        return False
+    fields = (consent.tenant_id, consent.engagement_id, consent.owner_id,
               consent.asset_id, consent.capability_id)
     requested = (tenant_id, engagement_id, owner_id, asset_id, capability_id)
     if any(type(value) is not str or not value.strip() for value in fields + requested):
