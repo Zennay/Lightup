@@ -5,7 +5,9 @@ This PR adds an isolated, pure Python stdlib **reference model**, not enforcemen
 ## Fail-closed invariants
 
 - A key must be issuer-owned, currently active, identified by exact issuer/tenant/key ID and generation, with one explicitly pinned algorithm.
-- Retired keys, stale generations, future/mismatched generations, issuer/tenant confusion, algorithm substitution and revision mismatches must deny.
+- Retired keys, stale generations, future/mismatched generations, issuer/tenant confusion (including key-side identity swaps), algorithm substitution and revision mismatches must deny.
+- Increasing the trusted minimum signing-key generation must immediately deny an unchanged prior-generation claim, even if the original key metadata remains active.
+- The standalone suite contains 21 offline regression methods; it is reference-only, not a production binding.
 - Malformed types, truthy-but-not-boolean flags, subclassed/forged envelopes and ambiguous identity strings must deny.
 - Key-rotation floor is independently trusted and monotonically maintained. It cannot originate from the request or claim.
 - **Necessary not sufficient**: matching synthetic fields never prove signatures, key custody, operator consent, current revocation, protected trust-store authenticity, or grant validity.
