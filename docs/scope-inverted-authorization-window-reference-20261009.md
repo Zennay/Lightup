@@ -79,3 +79,6 @@ The strict offline reference now includes both extreme `now` and `valid_until` v
 
 ## Public-network temporal validation evidence
 The legacy-falsy-bound defect also affects the `ScopePolicy` explicit **public network** branch, independently of explicit host names. New offline regressions characterize a synthetic `8.8.8.0/24` allowlist with `8.8.8.8`: a falsy corrupt start may produce `EXPLICIT_NETWORK`; an unlisted address `1.1.1.1` stays out of scope. Neither fixture makes a network request or grants authenticated permission. Production owner must cover both `EXPLICIT_HOST` and `EXPLICIT_NETWORK` in issue #1128's fail-closed acceptance.
+
+## Public network denial and exception distinction
+Two additional legacy policy tests confirm that an allowlisted public IP with **no grant** returns `AUTHORIZATION_MISSING`, while a truthy malformed stored start timestamp currently propagates a `TypeError` instead of delivering a typed denial. Combined with the falsy-corrupt public-network tests, this documents three separate codepaths the owner must reconcile under fail-closed execution semantics. The assertions are characterization only and do not approve dispatch.
