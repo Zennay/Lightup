@@ -153,6 +153,25 @@ class BackslashNonauthorityTests(unittest.TestCase):
         parser.assert_not_called()
         downstream.assert_not_called()
 
+
+    def test_parser_value_error_is_a_denial_with_no_policy_call(self):
+        policy = Mock(return_value="ALLOW")
+        with patch(__name__ + ".urlsplit", side_effect=ValueError("invalid authority")) as parser:
+            self.assertEqual(reference_dispatch("https://example.test/", policy), "INVALID_TARGET")
+        parser.assert_called_once_with("https://example.test/")
+        policy.assert_not_called()
+
+    def test_control_bytes_never_reach_parser_or_policy(self):
+        baseline = "https://example.test/path"
+        for control in (0, 9, 10, 13, 31, 127):
+            candidate = baseline[:8] + chr(control) + baseline[8:]
+            with self.subTest(control=control):
+                policy = Mock(return_value="ALLOW")
+                with patch(__name__ + ".urlsplit", side_effect=AssertionError("parser called")) as parser:
+                    self.assertEqual(reference_dispatch(candidate, policy), "INVALID_TARGET")
+                parser.assert_not_called()
+                policy.assert_not_called()
+
     def test_nonstring_input_must_not_invoke_user_string_conversion(self):
         class Hostile:
             def __str__(self):
