@@ -18,3 +18,7 @@ The `ParamKind.NUMBER` branch currently accepts built-in `NaN`, `+Infinity` and 
 
 This change adds a standalone test module and this document. No production source, tool execution, network/DNS calls, target I/O, approval change, merge or deployment.
 Source-owner coordination: #1143. Existing test-only PR #1142 is untouched.
+
+## Real-executor integration fixture (follow-up)
+
+`tests/test_scope_number_real_executor_contract.py` registers a local-only LAB_ACTIVE tool with the real `ToolRegistry`, `ToolExecutor`, and a temporary SQLite `StateStore`. A finite positive control must call the handler once and write one evidence row; boolean rejection must have zero handler/evidence effects. NaN/+Inf/-Inf each have a separately marked `expectedFailure` intended to turn into a passing hard assertion once the source owner changes validation. No socket/network API is used. This is **not** proof of durable authorization or real-target safety. Owner retains the source change.
