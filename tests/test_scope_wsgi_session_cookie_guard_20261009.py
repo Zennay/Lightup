@@ -124,6 +124,33 @@ class SessionCookieGuardTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     CookieEnvelopeGuard(Mock(), production=production)
 
+    def test_parser_disagreement_and_errors_deny_pre_auth(self):
+        """If the application's cookie parser would select another identity,
+        the guard must never delegate to the actual authenticated app."""
+        for production in (False, True):
+            (app, store, context, op_token, op_csrf, client_token,
+             client_csrf) = self.fixtures(production)
+            cookie = f"theme=dark; lightup_session={op_token}"
+            for failure in ("different-value", "missing", "error"):
+                with self.subTest(production=production, failure=failure):
+                    with patch("lightup.webapp.session_cookie_guard.SimpleCookie") as jar:
+                        if failure == "different-value":
+                            jar.return_value.get.return_value.value = client_token
+                        elif failure == "missing":
+                            jar.return_value.get.return_value = None
+                        else:
+                            from http.cookies import CookieError
+                            jar.return_value.load.side_effect = CookieError("invalid")
+                        with patch.object(store, "session_context") as lookup:
+                            response = self.request(
+                                app, production, "/", raw_cookie=cookie)
+                            lookup.assert_not_called()
+                    self.assertEqual(response["status"], "400 Bad Request")
+                    self.assertEqual(response["headers"]["Cache-Control"], "no-store")
+                    self.assertNotIn("Set-Cookie", response["headers"])
+                    self.assertIsNotNone(store.session_context(op_token))
+                    self.assertIsNotNone(store.session_context(client_token))
+
     def test_invalid_opaque_session_shapes_deny_before_real_sqlite_lookup(self):
         """Token structure is a prerequisite; a valid shape is NOT authority."""
         for production in (False, True):
