@@ -386,6 +386,22 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         for lane in ("hosted_python_311", "hosted_python_314", "permanent_vps"):
             self.assertIsNone(original[lane]["conclusion"])
 
+    def test_manifest_unknown_ci_does_not_accept_fabricated_success(self):
+        original = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        fake_success = {}
+        for lane, version, klass in (
+            ("hosted_python_311", "3.11", "hosted"),
+            ("hosted_python_314", "3.14", "hosted"),
+            ("permanent_vps", "3.11", "permanent_vps"),
+        ):
+            fake_success[lane] = {
+                "job_id": 1, "run_url": "https://github.com/example/repo/actions/runs/1",
+                "sha": "a" * 40, "status": "completed", "conclusion": "success",
+                "python_version": version, "runner_class": klass,
+            }
+        self.assertFalse(verify_observed_ci_jobs(original, fake_success))
+        self.assertFalse(is_release_evidence_complete(original))
+
     def test_current_manifest_is_explicitly_held_and_incomplete(self):
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         self.assertEqual(manifest["release_gate"], "HOLD")
