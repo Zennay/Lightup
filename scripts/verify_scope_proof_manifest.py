@@ -62,6 +62,11 @@ def verify(data):
         value = data.get(key)
         if type(value) is not int or value <= 0:
             errors.append(f"{key}: expected positive integer workflow run ID")
+    run_fields = ("hosted_py311_run_id", "hosted_py314_run_id", "permanent_vps_run_id")
+    run_ids = [data.get(key) for key in run_fields]
+    if all(type(value) is int and value > 0 for value in run_ids):
+        if len(set(run_ids)) != len(run_ids):
+            errors.append("CI workflow run identifiers must be distinct")
     side_effects = data.get("denial_side_effect_counts")
     if type(side_effects) is not dict:
         errors.append("denial_side_effect_counts: missing object")
