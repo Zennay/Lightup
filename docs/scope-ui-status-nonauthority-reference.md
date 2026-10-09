@@ -14,6 +14,9 @@ A rendered status (green badge, `Approved` label, frontend `approved` boolean, l
 - Truthy flags, subclass envelopes and unverified issuers do not pass the reference predicate.
 - Both claimed and issuer identity strings must be exact printable ASCII without surrounding whitespace, control bytes, Unicode confusables, empty values or values over 128 characters. This reference-only grammar is intentionally restrictive and must not be silently treated as the production canonicalization policy.
 - Boolean revision values are rejected even though Python treats `True == 1`.
+- Actual ASCII CR/LF/NUL/DEL characters (not their escaped textual spellings) must fail lexical identity checks.
+- Both claimed and issuer-owned request/capability values are checked for malformed identity syntax.
+- Metamorphic tests vary badge labels, approved booleans and displayed grant references while holding the trusted decision fixed; the outcome must remain unchanged.
 - Presentation data is not even dereferenced by the authorization predicate; display objects may be malformed or hostile.
 - Valid synthetic issuer decisions do not depend on cosmetic state.
 
