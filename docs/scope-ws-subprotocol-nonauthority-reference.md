@@ -114,3 +114,7 @@ Two offline tests check 12 pairings of denied approval/revocation states with au
 ## Stale revision replays and strict revocation types
 
 Two additional offline methods ensure three stale-revision replays produce zero mock execution effects and a new revision only allows an exactly matching request; malformed revocation fields are rejected without truthiness coercion. Total **53 reference unittest methods**. Real production pre-I/O safety remains outside this test model.
+
+## Header-sourced identity and revoked matching revision
+
+Two offline tests confirm caller-supplied WebSocket tokens cannot repair a wrong tenant binding, and that a matching revision does not overcome stored revocation or dispatch mock work. Total **55 unittest methods**. No production enforcement is claimed.
