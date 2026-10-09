@@ -56,3 +56,5 @@ The offline checker now accepts a canonical HTTPS `github.com/<owner>/<repo>/pul
 
 ## Closed evidence-envelope shape (schema v2)
 The offline schema-v2 validator now refuses **unknown top-level properties and missing required properties**, even when all other values in an otherwise valid synthetic manifest pass. This prevents silently ignoring caller-supplied fields such as `review_override` that could be mistaken for authorization by a downstream consumer. It does not yet reject unknown nested properties or authenticate linked evidence; these remain owner-owned follow-up checks. A passing synthetic fixture is never release approval. Release remains HOLD, with target activation disabled.
+
+Nested evidence dictionaries are now also closed: CI jobs allow only `sha`, `conclusion`, `run_url`, `job_id`; negative and positive traces allow their defined counters; revocation and metadata artifacts allow only `sha` and `artifact_url`. Unexpected keys are denied, not silently ignored. This remains a local structural test, not independently verified GitHub evidence.
