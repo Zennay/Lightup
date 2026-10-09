@@ -140,9 +140,9 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
             "X-Original-Host: localhost",
             "X-Original-Host: 127.0.0.1",
             "X-Original-Host: [::1]",
-            "X-Original-Host: approved.example\\r\\nHost: unknown.example",
-            "X-Original-Host: approved.example\\nX-Forwarded-Host: approved.example",
-            "X-Original-Host: approved.example\\x00unknown.example",
+            "X-Original-Host: approved.example" + chr(13) + chr(10) + "Host: unknown.example",
+            "X-Original-Host: approved.example" + chr(10) + "X-Forwarded-Host: approved.example",
+            "X-Original-Host: approved.example" + chr(0) + "unknown.example",
             "X-Original-Host: APPROVED.EXAMPLE.",
         )
         for hint in hints:
@@ -154,10 +154,7 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
                 self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
 
     def test_lab_disabled_hint_cannot_promote_private_address(self):
-        for host in ("10.2.3.4", "192.168.44.5", "127.0.0.1"):
-            # Loopback is intentionally a separate local-only policy rule.
-            if host == "127.0.0.1":
-                continue
+        for host in ("10.2.3.4", "192.168.44.5"):
             with self.subTest(host=host):
                 result = self.policy.decide(Target(
                     host, labels=("X-Original-Host: approved.example",),
