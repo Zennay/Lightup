@@ -73,3 +73,7 @@ An X-Original-Host label claiming lease_id, run_id, nonce or approval_signature 
 ## Signed consent hint isolation
 
 A routing header claiming `consent_signed`, `authorization_verified`, `scope_hash`, or `approval_expires` does not create a trusted authorization object. Even a synthetic grant cannot transfer target identity through such claims. These are pure offline regressions, not real cryptographic verification or production dispatcher consent.
+
+## Audit and evidence receipt non-authority
+
+An untrusted routing label claiming audit_id, evidence_id, approval_record or signed_by cannot grant consent or override the scoped target identity. Audit evidence is not itself a verified capability grant. These synthetic cases only cover the legacy pure-policy boundary.
