@@ -87,6 +87,15 @@ class ProofManifestTests(unittest.TestCase):
             path.write_text(raw, encoding="utf-8")
             self.assertEqual(module.main(["verify", str(path)]), 2)
 
+    def test_nonfinite_json_constants_rejected_at_cli(self):
+        for constant in ("NaN", "Infinity", "-Infinity"):
+            with self.subTest(constant=constant):
+                raw = json.dumps(fixture()).replace('"handler": 0', f'"handler": {constant}')
+                with tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / "fixture.json"
+                    path.write_text(raw, encoding="utf-8")
+                    self.assertEqual(module.main(["verify", str(path)]), 2)
+
     def test_absent_or_malformed_manifest_is_denied(self):
         self.assertTrue(module.verify(None))
         self.assertTrue(module.verify({}))
