@@ -93,8 +93,8 @@ class RestoreRollbackReferenceTests(unittest.TestCase):
                                           self.current))
 
     def test_control_unicode_and_overlong_identity_denied(self):
-        for identity in ("tenant\\nadmin", "tenant\\x00admin", "tenant/admin",
-                         "ténant-a", "tenant\\u2028admin", "a" * 129):
+        for identity in ("tenant\nadmin", "tenant\x00admin", "tenant/admin",
+                         "ténant-a", "tenant\u2028admin", "a" * 129):
             with self.subTest(identity=repr(identity)):
                 self.assertFalse(restore_eligible(Grant(identity, "grant-a", 5, True),
                                                   self.current))
