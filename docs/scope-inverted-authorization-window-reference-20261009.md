@@ -76,3 +76,6 @@ Two additional strict-reference tests cover conversion of extreme timezone-aware
 
 ## Clock and expiry UTC overflow
 The strict offline reference now includes both extreme `now` and `valid_until` values whose UTC conversion overflows. As with an overflowing start bound, temporal eligibility must be `False` without an exception escaping. All three paths remain synthetic and purely local; no validated issuer consent or execution rights are implied.
+
+## Public-network temporal validation evidence
+The legacy-falsy-bound defect also affects the `ScopePolicy` explicit **public network** branch, independently of explicit host names. New offline regressions characterize a synthetic `8.8.8.0/24` allowlist with `8.8.8.8`: a falsy corrupt start may produce `EXPLICIT_NETWORK`; an unlisted address `1.1.1.1` stays out of scope. Neither fixture makes a network request or grants authenticated permission. Production owner must cover both `EXPLICIT_HOST` and `EXPLICIT_NETWORK` in issue #1128's fail-closed acceptance.
