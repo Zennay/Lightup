@@ -99,5 +99,25 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
         self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
         self.assertFalse(decision.allowed)
 
+    def test_naive_stored_start_currently_raises_type_error(self):
+        # Characterization: caller must not mistake an exception for a denial.
+        grant = self.grant(self.anchor.replace(tzinfo=None),
+                           self.anchor + timedelta(days=1))
+        with self.assertRaises(TypeError):
+            grant.is_current(self.anchor)
+
+    def test_naive_stored_end_currently_raises_type_error(self):
+        grant = self.grant(self.anchor - timedelta(days=1),
+                           self.anchor.replace(tzinfo=None))
+        with self.assertRaises(TypeError):
+            grant.is_current(self.anchor)
+
+    def test_scope_decision_propagates_naive_grant_exception(self):
+        # Identifies an integration fail-closed requirement; no network I/O.
+        now = datetime.now(timezone.utc)
+        grant = self.grant(now.replace(tzinfo=None), None)
+        with self.assertRaises(TypeError):
+            self.policy.decide(Target("https://authorized.example", authorization=grant))
+
 if __name__ == "__main__":
     unittest.main()
