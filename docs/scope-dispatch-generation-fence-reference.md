@@ -19,3 +19,9 @@ The reference deliberately **does not** establish authentic provenance or grant 
 
 ## Collision and safety boundaries
 Tests and documentation only; **do not** edit production ToolExecutor or ExecutionPolicy files owned by PR #107 or other approval/revocation/queue owners. This contract is an additive reference, not a live gate, deployment, permission grant or production authorization proof. Tests make no DNS, socket, target or capability calls.
+
+## Identity hygiene and offline negative controls
+
+This additive reference uses deliberately restrictive ASCII-control/DEL, whitespace and 128-codepoint bounds for tenant and request labels. These are fixture-level ambiguity checks, **not** a canonical encoding specification for production identifiers. A production owner must choose one canonical issuer-side identity representation and enforce it consistently across durable storage and admission; never use loose normalization to expand an existing authorization. Both snapshot and live lease are independently shape-checked. Python bool, floating point and string generations do not count as positive integer generations.
+
+The reference tests do not prove the temporal linearization between fetching a lease and invoking a handler. An actual gate must make dispatch/cancellation ordering atomic or otherwise enforce cancellation at the capability execution boundary. No newly valid lease may resurrect any revoked scope grant.
