@@ -136,3 +136,6 @@ Hosted job classification now rejects duplicate numeric job IDs anywhere in a ca
 
 ## Full-snapshot malformed job denial
 The offline hosted-job classifier now rejects a workflow snapshot containing any non-object job record or any job without a valid positive integer ID, even if two expected interpreter jobs otherwise look successful. This avoids selecting an apparently valid subset from partially corrupted input. This remains a consistency check on caller-provided data, not an authenticated GitHub API attestation and not VPS proof.
+
+## Cross-run contamination denial
+The hosted-job classifier now requires that every job in the supplied workflow snapshot, not only the Python 3.11/3.14 selected jobs, declares the same integer `run_id` as the parent run. A stray job from another run rejects the full evidence set. This is offline consistency checking, not independent GitHub provenance; release remains HOLD.
