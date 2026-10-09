@@ -445,6 +445,44 @@ class OfflineExecutorNumberTests(unittest.TestCase):
         self.assertEqual(self.calls, [])
         self.assertEqual(self.evidence_count(), 0)
 
+    def test_integer_subclass_bridge_denies_before_real_executor_effects(self):
+        """Exercise exact INTEGER enforcement at the genuine lab dispatch path."""
+        handled = []
+        def integer_handler(context, arguments):
+            handled.append(arguments["count"])
+            return ToolOutput("integer fixture", "fixture", b"integer-evidence")
+        self.registry.register(
+            ToolDefinition(
+                "integer-lab-only", "web-baseline",
+                InteractionKind.LAB_ACTIVE, RiskLevel.DESTRUCTIVE_LAB_ONLY,
+                "Synthetic integer dispatch",
+                (ToolParameter("count", ParamKind.INTEGER),),
+            ), integer_handler,
+        )
+        class SpoofedInt(int):
+            def __index__(self):
+                raise AssertionError("custom __index__ must never run")
+        def bridge(call):
+            definition, _handler = self.registry.get(call.tool_id)
+            return validate_unambiguous_arguments(definition, call.arguments)
+        with patch.object(ToolCall, "arguments_dict", bridge):
+            for value in (SpoofedInt(7), True, 2.5):
+                with self.subTest(value=value):
+                    with self.assertRaises(OrchestrationError):
+                        self.executor.execute(
+                            self.context,
+                            ToolCall("integer-lab-only", "127.0.0.1", (("count", value),)),
+                        )
+                    self.assertEqual(handled, [])
+                    self.assertEqual(self.evidence_count(), 0)
+            accepted = self.executor.execute(
+                self.context,
+                ToolCall("integer-lab-only", "127.0.0.1", (("count", 7),)),
+            )
+        self.assertTrue(accepted.evidence_id)
+        self.assertEqual(handled, [7])
+        self.assertEqual(self.evidence_count(), 1)
+
     @unittest.expectedFailure
     def test_nan_denied_before_handler_and_evidence(self):
         with self.assertRaises(OrchestrationError):
