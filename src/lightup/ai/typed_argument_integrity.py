@@ -68,9 +68,10 @@ def validate_unambiguous_arguments(
             raise OrchestrationError(f"tool argument {name!r} must be a built-in integer")
         if kind is ParamKind.STRING and type(value) is not str:
             raise OrchestrationError(f"tool argument {name!r} must be a built-in string")
-    definition.validate_arguments(result)
+    # Reject non-finite values before invoking downstream schema callbacks.
     for name, value in result.items():
         if parameter_by_name[name].kind is ParamKind.NUMBER:
             if isinstance(value, float) and not math.isfinite(value):
                 raise OrchestrationError(f"tool argument {name!r} must be finite")
+    definition.validate_arguments(result)
     return result
