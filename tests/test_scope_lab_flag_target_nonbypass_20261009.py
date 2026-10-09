@@ -67,6 +67,52 @@ class LabMarkerNonBypassTests(unittest.TestCase):
         self.assertFalse(result.allowed)
         self.assertIn("scope", result.reason)
 
+    def test_lab_flag_does_not_override_risk_ceiling(self):
+        result = self.policy.decide(ExecutionRequest(
+            interaction=InteractionKind.TARGET_ACTIVE,
+            asset="authorized.example.test",
+            capability_id="synthetic-check",
+            requested_risk=RiskLevel.ELEVATED,
+            authorization=self.grant,
+            is_lab=True,
+        ))
+        self.assertFalse(result.allowed)
+        self.assertIn("risk", result.reason)
+
+    def test_lab_flag_does_not_enable_destructive_target_risk(self):
+        result = self.policy.decide(ExecutionRequest(
+            interaction=InteractionKind.TARGET_ACTIVE,
+            asset="authorized.example.test",
+            capability_id="synthetic-check",
+            requested_risk=RiskLevel.DESTRUCTIVE_LAB_ONLY,
+            authorization=self.grant,
+            is_lab=True,
+        ))
+        self.assertFalse(result.allowed)
+        self.assertIn("destructive", result.reason)
+
+    def test_lab_flag_does_not_override_expired_grant(self):
+        expired = AuthorizationGrant(
+            grant_id="expired-synthetic-grant",
+            client_id="synthetic-client",
+            engagement_id="synthetic-engagement",
+            approved_by="owner@example.test",
+            reference="synthetic-only",
+            scope=self.grant.scope,
+            valid_from=datetime.now(timezone.utc) - timedelta(hours=2),
+            valid_until=datetime.now(timezone.utc) - timedelta(hours=1),
+        )
+        result = self.policy.decide(ExecutionRequest(
+            interaction=InteractionKind.TARGET_ACTIVE,
+            asset="authorized.example.test",
+            capability_id="synthetic-check",
+            requested_risk=RiskLevel.LOW_IMPACT,
+            authorization=expired,
+            is_lab=True,
+        ))
+        self.assertFalse(result.allowed)
+        self.assertIn("valid", result.reason)
+
     def test_lab_interaction_without_lab_flag_denied_despite_grant(self):
         result = self.policy.decide(ExecutionRequest(
             interaction=InteractionKind.LAB_ACTIVE,
