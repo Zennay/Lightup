@@ -185,6 +185,25 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
                 self.assertEqual(len(value), 1)
                 self.assertTrue(ord(value) < 32 or ord(value) == 127)
 
+    def test_stored_binding_mutation_denied_even_when_request_unchanged(self):
+        original = dict(tenant_id=self.consent.tenant_id,
+                        engagement_id=self.consent.engagement_id,
+                        owner_id=self.consent.owner_id,
+                        asset_id=self.consent.asset_id,
+                        capability_id=self.consent.capability_id,
+                        revision=self.consent.revision, approved=True)
+        for field in ("tenant_id", "engagement_id", "owner_id", "asset_id", "capability_id"):
+            with self.subTest(field=field):
+                mutated = original | {field: original[field] + "-changed"}
+                self.assertFalse(matches_consent(Consent(**mutated), **self.request))
+
+    def test_all_binding_fields_must_match_not_just_owner_and_asset(self):
+        # This catches accidental omission of tenant, engagement or capability checks.
+        for field in ("tenant_id", "engagement_id", "owner_id", "asset_id", "capability_id"):
+            with self.subTest(field=field):
+                swapped = self.request | {field: "alternate-" + self.request[field]}
+                self.assertFalse(matches_consent(self.consent, **swapped))
+
 
 if __name__ == "__main__":
     unittest.main()
