@@ -68,11 +68,14 @@ def main(argv):
         print("usage: verify_scope_proof_manifest.py path/to/evidence.json", file=sys.stderr)
         return 2
     try:
-        data = json.loads(Path(argv[1]).read_text(encoding="utf-8"),
+        raw = Path(argv[1]).read_bytes()
+        if len(raw) > MAX_MANIFEST_BYTES:
+            raise ValueError("proof manifest exceeds maximum byte length")
+        data = json.loads(raw.decode("utf-8"),
                           object_pairs_hook=reject_duplicate_keys,
                           parse_constant=lambda value: (_ for _ in ()).throw(
                               ValueError(f"invalid JSON constant: {value}")))
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, UnicodeError) as exc:
         print(f"HOLD: invalid manifest: {exc}", file=sys.stderr)
         return 2
     errors = verify(data)
