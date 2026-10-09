@@ -12,13 +12,13 @@ CSRF/session gates, UI display and audit-correlation behavior.
 1. Live verified issuer approval, active grant and exact tenant/request/asset/capability binding remain necessary.
 2. Spoofed approval URLs, header injection-looking text, object metadata, and malformed Referer values cannot supply missing authority.
 3. Changing Referer alone never changes the synthetic decision when all authorization fields stay fixed.
-4. Both matching and mismatching malformed identity values fail closed, including empty strings, embedded C0/DEL controls and non-string identities; annotation-compatible but noncanonical booleans do not count as approval.\n5. Exact built-in envelope and identity types are required: caller-controlled subclasses cannot override equality or authority checks.\n6. Mutating transport label containers leaves grant and call identities unchanged.
+4. Both matching and mismatching malformed identity values fail closed, including empty strings, boundary whitespace, embedded C0/DEL controls and non-string identities; annotation-compatible but noncanonical booleans do not count as approval.\n5. Exact built-in envelope and identity types are required: caller-controlled subclasses cannot override equality or authority checks.\n6. Mutating transport label containers leaves grant and call identities unchanged.
 7. A Referer URL never becomes an implicitly authorized active destination.
 
 ## Offline proof
 
 Run `python -m unittest discover -s tests -p 'test_scope_referer_nonauthority_reference.py' -v`.
-This exercises ten pure-stdlib unittest methods, including matching-invalid grant/call fields, polymorphic identities, envelope subclasses and transport-label mutation and hostile Referer protocol objects, with no network, DNS, handler or target side effects.
+This exercises eleven pure-stdlib unittest methods, including matching-invalid grant/call fields, polymorphic identities, envelope subclasses and transport-label mutation and hostile Referer protocol objects, with no network, DNS, handler or target side effects.
 
 ## Production gate / collision rules
 
