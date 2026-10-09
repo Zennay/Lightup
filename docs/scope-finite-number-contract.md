@@ -22,3 +22,7 @@ Source-owner coordination: #1143. Existing test-only PR #1142 is untouched.
 ## Real-executor integration fixture (follow-up)
 
 `tests/test_scope_number_real_executor_contract.py` registers a local-only LAB_ACTIVE tool with the real `ToolRegistry`, `ToolExecutor`, and a temporary SQLite `StateStore`. A finite positive control must call the handler once and write one evidence row; boolean rejection must have zero handler/evidence effects. NaN/+Inf/-Inf each have a separately marked `expectedFailure` intended to turn into a passing hard assertion once the source owner changes validation. No socket/network API is used. This is **not** proof of durable authorization or real-target safety. Owner retains the source change.
+
+## Invalid primitive and alias coverage
+
+The real-executor integration fixture now also rejects numeric-looking strings, null values, absent required parameters, unexpected field aliases and unexpected extra fields before synthetic handler invocation or evidence writes. The valid finite-number positive control remains in place. These checks concern argument validation only; they do not establish trusted destination resolution, durable consent, or pre-I/O revocation enforcement.
