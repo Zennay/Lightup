@@ -446,5 +446,23 @@ class RealExecutorModeBoundaryTests(unittest.TestCase):
         malicious_handler.assert_not_called()
         self.state.add_evidence.assert_called_once()
 
+    def test_real_registry_rejects_unknown_capability_on_registration(self):
+        registry = ToolRegistry()
+        unknown_definition = replace(
+            self.definition, tool_id="synthetic-unknown-capability",
+            capability_id="not-a-registered-capability",
+        )
+        with self.assertRaisesRegex(Exception, "unknown capability"):
+            registry.register(unknown_definition, self.handler)
+        executor = ToolExecutor(registry, self.state, ExecutionPolicy())
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            with self.assertRaisesRegex(Exception, "unknown tool"):
+                executor.execute(
+                    self.context(AssessmentMode.LAB_AUTONOMOUS),
+                    ToolCall(tool_id="synthetic-unknown-capability", asset="127.0.0.1"),
+                )
+        self.handler.assert_not_called()
+        self.state.add_evidence.assert_not_called()
+
 if __name__ == "__main__":
     unittest.main()
