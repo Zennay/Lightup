@@ -20,7 +20,7 @@ origin labels are not trusted proof of where a record came from.
 
 The bundled stdlib test is deliberately a small **offline model**: it proves
 that a forged origin label, cross-tenant/request/issuer/reference swap, truthy
-approval or polymorphic input is denied by the stated reference predicate.
+approval, polymorphic input, ambiguous edge whitespace or ASCII control characters\ninside an identity is denied by the stated reference predicate.
 It does **not** authenticate the provenance of the string
 `trusted_authorization_register`; only integration with a trusted backend
 can establish that. The positive fixture is therefore conditional, not a
