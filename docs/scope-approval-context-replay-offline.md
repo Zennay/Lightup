@@ -15,3 +15,7 @@ The fixture in `tests/test_scope_approval_context_replay_offline.py` locks down 
 ## Required production gates (not satisfied by this PR)
 
 The responsible source owners must bind the trusted approval and revocation records to the actual pre-I/O ToolExecutor entrypoint. Negative paths must prove **zero handler invocations**, including evidence-producing and network-capable handlers. Independently obtain green hosted and canonical permanent-VPS CI for the exact PR SHA, and obtain owner review before merge. Never activate real targets from this fixture.
+
+## Handler-invocation fixture
+
+The isolated guarded-dispatch reference now records handler invocations and tests six denial paths against an empty call ledger. It also exercises a positive path to prove the mock handler is actually reachable when correctly authorized. This test **does not inspect production ToolExecutor** and must not be cited as real zero-handler-call proof.
