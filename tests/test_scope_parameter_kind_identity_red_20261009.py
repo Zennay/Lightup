@@ -20,7 +20,7 @@ def definition(kind):
         tool_id="synthetic.shape",
         capability_id="synthetic",
         interaction=InteractionKind.ANALYSIS,
-        min_risk=RiskLevel.ANALYSIS,
+        min_risk=RiskLevel.ANALYSIS_ONLY,
         description="inert shape fixture",
         parameters=(ToolParameter(name="destination", kind=kind),),
     )
