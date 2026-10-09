@@ -55,8 +55,14 @@ def validate_unambiguous_arguments(
             raise OrchestrationError(f"duplicate tool argument name {name!r}")
         result[name] = value
 
-    definition.validate_arguments(result)
     parameter_by_name = {p.name: p for p in definition.parameters}
+    # Never coerce subclass-controlled numeric objects while checking finiteness.
+    # Canonical tool NUMBER arguments are built-in int/float, not subclass hooks.
+    for name, value in result.items():
+        if name in parameter_by_name and parameter_by_name[name].kind is ParamKind.NUMBER:
+            if type(value) not in (int, float):
+                raise OrchestrationError(f"tool argument {name!r} must be a built-in number")
+    definition.validate_arguments(result)
     for name, value in result.items():
         if parameter_by_name[name].kind is ParamKind.NUMBER:
             if isinstance(value, float) and not math.isfinite(value):
