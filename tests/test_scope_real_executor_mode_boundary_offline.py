@@ -245,5 +245,31 @@ class RealExecutorModeBoundaryTests(unittest.TestCase):
         self.handler.assert_called_once()
         self.state.add_evidence.assert_called_once()
 
+    def test_real_policy_denies_risk_above_grant_ceiling(self):
+        # Run ceiling permits LOW_IMPACT, but persisted-looking synthetic grant
+        # explicitly permits PASSIVE only. No handler or evidence may run.
+        now = datetime.now(timezone.utc)
+        grant = AuthorizationGrant(
+            grant_id="low-risk-synthetic", client_id="offline-client",
+            engagement_id="offline-engagement", approved_by="offline-operator",
+            reference="offline-low-risk", scope=ScopeDefinition(
+                assets=("127.0.0.1",), max_risk=RiskLevel.PASSIVE,
+                allowed_capabilities=("http_headers",),
+            ), valid_from=now - timedelta(minutes=1),
+            valid_until=now + timedelta(hours=1),
+        )
+        self.definition = replace(self.definition, interaction=InteractionKind.TARGET_ACTIVE)
+        self.registry.get.return_value = (self.definition, self.handler)
+        executor = ToolExecutor(self.registry, self.state, ExecutionPolicy())
+        context = replace(
+            self.context(AssessmentMode.AUTHORIZED_ASSESSMENT),
+            authorization=grant, is_lab=False,
+        )
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            with self.assertRaises(ToolDenied):
+                executor.execute(context, self.call)
+        self.handler.assert_not_called()
+        self.state.add_evidence.assert_not_called()
+
 if __name__ == "__main__":
     unittest.main()
