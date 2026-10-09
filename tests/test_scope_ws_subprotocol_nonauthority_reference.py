@@ -560,6 +560,24 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
                 self.assertFalse(reference_decide(self.valid, requested,
                     {"Sec-WebSocket-Protocol": claimed}))
 
+    def test_authorization_decision_is_repeatable_without_header_state(self):
+        denied = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
+        header = {"Sec-WebSocket-Protocol": "approved"}
+        first = reference_decide(denied, denied, header)
+        header["Sec-WebSocket-Protocol"] = "admin,revoked=false"
+        second = reference_decide(denied, denied, header)
+        self.assertEqual((first, second), (False, False))
+
+    def test_trusted_capability_remains_exact_across_header_variants(self):
+        read_only = self.valid
+        active = Grant("tenant-a", "lab-asset", "active-scan", 3, True, False)
+        for claim in ("active-scan", "scope:all", "admin"):
+            with self.subTest(claim=claim):
+                self.assertFalse(reference_decide(read_only, active,
+                    {"Sec-WebSocket-Protocol": claim}))
+                self.assertTrue(reference_decide(read_only, read_only,
+                    {"Sec-WebSocket-Protocol": claim}))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
