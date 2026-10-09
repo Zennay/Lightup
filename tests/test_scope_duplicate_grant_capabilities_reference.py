@@ -21,6 +21,9 @@ def validate_capability_grant(grant: object, registered: frozenset[str]) -> bool
         return False
     if type(grant.grant_id) is not str or not grant.grant_id or grant.grant_id.strip() != grant.grant_id:
         return False
+    if not all(value.isascii() and all(33 <= ord(c) < 127 for c in value)
+               for value in (grant.tenant, grant.grant_id)):
+        return False
     if type(grant.capabilities) is not tuple or not grant.capabilities:
         return False
     if not all(type(x) is str and x and x == x.strip() and x.isascii()
