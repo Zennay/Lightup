@@ -50,3 +50,7 @@ Two regular (not expected-failure) real-ToolExecutor regression methods repeat m
 ## Exact evidence identity preservation
 
 A normal regression now snapshots the persisted evidence identity and provenance columns (`evidence_id`, `run_id`, `capability_id`, `kind`, `source`) after an allowed offline finite-number invocation. A subsequent rejected numeric-looking string must leave the exact row unchanged, not merely preserve row count. This checks existing denial behavior and does not close the separate pre-I/O consent/destination gaps.
+
+## Full persisted row equality
+
+A further offline real-ToolExecutor test snapshots all columns in the existing evidence row using SQLite schema metadata, then submits three malformed values (numeric-looking string, null, boolean). None may mutate or replace any stored column, invoke the handler, or append a row. This assertion covers the whole evidence row rather than selected provenance fields. It is a local regression, not a substitute for durable consent/revocation or destination checks.
