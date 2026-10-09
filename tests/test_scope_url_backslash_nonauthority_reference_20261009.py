@@ -172,6 +172,20 @@ class BackslashNonauthorityTests(unittest.TestCase):
                 parser.assert_not_called()
                 policy.assert_not_called()
 
+
+    def test_parser_generic_error_is_not_silently_authorized(self):
+        policy = Mock(return_value="ALLOW")
+        with patch(__name__ + ".urlsplit", side_effect=RuntimeError("parser failure")):
+            with self.assertRaisesRegex(RuntimeError, "parser failure"):
+                reference_dispatch("https://example.test/", policy)
+        policy.assert_not_called()
+
+    def test_policy_receives_exact_original_string_once(self):
+        target = "HTTPS://Example.TEST/a/%5c?q=%5C#frag"
+        policy = Mock(return_value="DENY")
+        self.assertEqual(reference_dispatch(target, policy), "DENY")
+        policy.assert_called_once_with(target)
+
     def test_nonstring_input_must_not_invoke_user_string_conversion(self):
         class Hostile:
             def __str__(self):
