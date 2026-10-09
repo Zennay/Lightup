@@ -88,3 +88,6 @@ The explicit public-network route now has isolated start **and** end timestamp c
 
 ## Missing authorization provenance on the legacy allowlist gate
 Two new offline controls demonstrate that a synthetic `Authorization(owner="", reference="")` with unbounded times still reaches `EXPLICIT_HOST` and `EXPLICIT_NETWORK` for explicitly allowlisted public targets. This is not trusted consent: `Authorization.is_current()` only evaluates time, not owner, issuer signature, grant authenticity, tenant, capability or revocation. Production issue #1128 requires a verified, durable grant at dispatch and a fail-closed denial for absent or unverified provenance, regardless of legacy policy output. No network I/O, approvals or production changes are included.
+
+## Partial owner/reference metadata is not issuer verification
+Two more offline characterization controls demonstrate that a merely nonempty `reference` cannot compensate for empty `owner`, and a nonempty `owner` cannot compensate for empty `reference` on synthetic public allowlist entries. Both paths may report legacy scope allow, but neither establishes authenticated consent, durable issuer proof or executable capability. Production gate owner must reject untrusted/missing provenance regardless of temporal scope outcome.
