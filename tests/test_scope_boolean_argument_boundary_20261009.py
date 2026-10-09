@@ -61,6 +61,25 @@ class BooleanArgumentBoundaryTests(unittest.TestCase):
         with self.assertRaises(OrchestrationError):
             schema.validate_arguments({"enabled": 0})
 
+    def test_rejection_preserves_input_and_subsequent_valid_admission(self):
+        # A malformed attempt must not poison subsequent in-memory admission.
+        rejected = {"enabled": "false"}
+        snapshot = dict(rejected)
+        with self.assertRaises(OrchestrationError):
+            self.schema.validate_arguments(rejected)
+        self.assertEqual(rejected, snapshot)
+        self.schema.validate_arguments({"enabled": False})
+        self.schema.validate_arguments({"enabled": True})
+
+    def test_mixed_known_boolean_and_unknown_field_is_rejected(self):
+        for boolean in (True, False):
+            payload = {"enabled": boolean, "override": False}
+            before = dict(payload)
+            with self.subTest(boolean=boolean):
+                with self.assertRaises(OrchestrationError):
+                    self.schema.validate_arguments(payload)
+                self.assertEqual(payload, before)
+
     def test_missing_boolean_rejected(self):
         with self.assertRaises(OrchestrationError):
             self.schema.validate_arguments({})
