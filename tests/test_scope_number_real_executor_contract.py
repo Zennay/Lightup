@@ -483,6 +483,43 @@ class OfflineExecutorNumberTests(unittest.TestCase):
         self.assertEqual(handled, [7])
         self.assertEqual(self.evidence_count(), 1)
 
+    def test_string_subclass_bridge_denied_before_real_executor_effects(self):
+        """Synthetic lab executor enforces canonical STRING input at dispatch."""
+        observed = []
+        self.registry.register(
+            ToolDefinition(
+                "string-lab-only", "web-baseline", InteractionKind.LAB_ACTIVE,
+                RiskLevel.DESTRUCTIVE_LAB_ONLY, "Offline string fixture",
+                (ToolParameter("label", ParamKind.STRING),),
+            ),
+            lambda _context, args: (
+                observed.append(args["label"]) or
+                ToolOutput("local", "fixture", b"string-evidence")
+            ),
+        )
+        class TrapString(str):
+            def __str__(self):
+                raise AssertionError("custom string conversion forbidden")
+        def bridge(call):
+            definition, _handler = self.registry.get(call.tool_id)
+            return validate_unambiguous_arguments(definition, call.arguments)
+        with patch.object(ToolCall, "arguments_dict", bridge):
+            with self.assertRaisesRegex(OrchestrationError, "built-in string"):
+                self.executor.execute(
+                    self.context,
+                    ToolCall("string-lab-only", "127.0.0.1",
+                             (("label", TrapString("untrusted")),)),
+                )
+            self.assertEqual(observed, [])
+            self.assertEqual(self.evidence_count(), 0)
+            accepted = self.executor.execute(
+                self.context,
+                ToolCall("string-lab-only", "127.0.0.1", (("label", "canonical"),)),
+            )
+        self.assertTrue(accepted.evidence_id)
+        self.assertEqual(observed, ["canonical"])
+        self.assertEqual(self.evidence_count(), 1)
+
     @unittest.expectedFailure
     def test_nan_denied_before_handler_and_evidence(self):
         with self.assertRaises(OrchestrationError):
