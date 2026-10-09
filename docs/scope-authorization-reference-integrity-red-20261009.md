@@ -42,7 +42,7 @@ gate and exact-head hosted and canonical VPS CI are verified.
 ## Isolated shape reference (not production authorization)
 
 `tests/test_scope_provenance_shape_offline_reference_20261009.py`
-adds eleven **normal** offline unit contracts for a fail-closed,
+adds thirteen **normal** offline unit contracts for a fail-closed,
 strictly typed provenance-shape reference. It rejects empty/whitespace,
 Unicode format and control characters, surrogate code points, Unicode line/paragraph separators and embedded invisible markers, hostile str subclasses, wrong-typed
 fields, and forged containers without invoking hostile `__str__` or
@@ -54,3 +54,7 @@ production handler integration.
 ```sh
 PYTHONPATH=src python -m unittest -v tests.test_scope_provenance_shape_offline_reference_20261009
 ```
+
+## Regression-fixture integrity
+
+Dedicated assertions verify that Unicode test fixtures are genuine single-codepoint characters in the intended Unicode category, rather than misleading literal backslash-u sequences. A separate invariant checks that syntax validation does not mutate the frozen Authorization object. These checks are offline and do not constitute authorization to contact a target.
