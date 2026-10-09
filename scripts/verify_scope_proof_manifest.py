@@ -13,7 +13,8 @@ REQUIRED = ("schema_version", "implementation_sha", "base_sha", "trusted_grant_r
             "revocation_race_passed", "denied_side_effects_zero",
             "positive_loopback_control_passed", "hosted_py311_sha",
             "hosted_py314_sha", "permanent_vps_sha", "owner_review_sha",
-            "real_target_activation_disabled")
+            "real_target_activation_disabled", "hosted_py311_run_id",
+            "hosted_py314_run_id", "permanent_vps_run_id")
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 
 
@@ -55,6 +56,10 @@ def verify(data):
                 "real_target_activation_disabled"):
         if data.get(key) is not True:
             errors.append(f"{key}: must be literal true")
+    for key in ("hosted_py311_run_id", "hosted_py314_run_id", "permanent_vps_run_id"):
+        value = data.get(key)
+        if type(value) is not int or value <= 0:
+            errors.append(f"{key}: expected positive integer workflow run ID")
     side_effects = data.get("denial_side_effect_counts")
     if type(side_effects) is not dict:
         errors.append("denial_side_effect_counts: missing object")
