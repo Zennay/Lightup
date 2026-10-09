@@ -31,3 +31,11 @@ Fifteen offline cases now include the expanded spelling `0:0:0:0:0:ffff:808:808`
 ## Case-normalization control
 
 Seventeen offline regression methods now include the uppercase `::FFFF:808:808` literal, which must have the same `/128` network identity and missing-grant denial as its lowercase equivalent. This is a parser/scope-only test, not a trusted authorization grant or target operation.
+
+## Network-free positive scope decision
+
+Eighteen offline methods now also assert that even an explicitly allowed mapped-IPv6 `/128` scope decision with a synthetic test grant never invokes `socket.create_connection` or `socket.getaddrinfo`. Both socket entrypoints are patched to raise. This is deliberately a **scope-parser** invariant only: real production dispatch must independently enforce verified consent, authorization freshness and destination binding before I/O.
+
+## CI acceptance checkpoint
+
+Do not infer green validation from predecessor commits: the previous `e20413f` hosted and VPS runs were cancelled, while `ba96584` runs were pending/queued at inspection. Freeze the final tested SHA for exact-head hosted Python 3.11/3.14 plus permanent VPS success and source-owner approval. Keep this draft on HOLD until those proofs exist; avoid unnecessary retriggers or merges.
