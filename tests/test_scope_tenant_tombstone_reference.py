@@ -80,6 +80,29 @@ class TenantTombstoneTests(unittest.TestCase):
         self.assertFalse(eligible(DerivedGrant("tenant_a", "grant_1", 7, True), self.state))
         self.assertFalse(eligible({"tenant_id": "tenant_a"}, self.state))
 
+
+    def test_state_boolean_generation_denied(self):
+        self.assertFalse(eligible(self.grant, TenantState("tenant_a", True, False)))
+
+    def test_zero_and_negative_generations_denied(self):
+        for generation in (0, -1):
+            with self.subTest(generation=generation):
+                self.assertFalse(eligible(TenantGrant("tenant_a", "grant_1", generation, True), self.state))
+                self.assertFalse(eligible(self.grant, TenantState("tenant_a", generation, False)))
+
+    def test_malformed_state_and_grant_identifiers_denied(self):
+        for value in ("tenant/a", "grant\\n1", "a" * 129, "x.y", "id\\x00suffix"):
+            with self.subTest(value=value):
+                self.assertFalse(eligible(TenantGrant("tenant_a", value, 7, True), self.state))
+                self.assertFalse(eligible(self.grant, TenantState(value, 7, False)))
+
+    def test_tenant_state_subclass_and_non_boolean_deletion_denied(self):
+        @dataclass(frozen=True)
+        class DerivedState(TenantState):
+            pass
+        self.assertFalse(eligible(self.grant, DerivedState("tenant_a", 7, False)))
+        self.assertFalse(eligible(self.grant, TenantState("tenant_a", 7, "false")))
+
     def test_inputs_unchanged(self):
         before = (repr(self.grant), repr(self.state))
         eligible(self.grant, self.state)
