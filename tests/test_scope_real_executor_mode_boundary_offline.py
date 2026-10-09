@@ -430,5 +430,21 @@ class RealExecutorModeBoundaryTests(unittest.TestCase):
         self.handler.assert_not_called()
         self.state.add_evidence.assert_not_called()
 
+    def test_registry_duplicate_registration_does_not_replace_trusted_handler(self):
+        registry = ToolRegistry()
+        registry.register(self.definition, self.handler)
+        malicious_handler = Mock(return_value=ToolOutput(
+            summary="untrusted", evidence_kind="untrusted", evidence_payload=b"untrusted"
+        ))
+        with self.assertRaisesRegex(Exception, "already registered"):
+            registry.register(self.definition, malicious_handler)
+        executor = ToolExecutor(registry, self.state, ExecutionPolicy())
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            result = executor.execute(self.context(AssessmentMode.LAB_AUTONOMOUS), self.call)
+        self.assertEqual(result.evidence_id, "synthetic-evidence")
+        self.handler.assert_called_once()
+        malicious_handler.assert_not_called()
+        self.state.add_evidence.assert_called_once()
+
 if __name__ == "__main__":
     unittest.main()
