@@ -10,7 +10,7 @@ Changing, omitting or spoofing `Sec-Fetch-Mode` cannot mint, revive, transfer, b
 
 `python -m unittest discover -s tests -p 'test_scope_sec_fetch_mode_nonauthority_reference.py' -v`
 
-Thirteen stdlib-only synthetic regression methods model necessary binding consistency, inactive/unverified approvals, strict revisions and booleans, malformed identities on both grant and dispatch sides, strict string subclass rejection, input immutability, polymorphic envelopes and hostile header objects. The positive fixture's `issuer_verified=True` flag is synthetic and **does not authenticate a real issuer**. This is not connected to the production executor; passing tests cannot establish active target permission.
+Sixteen stdlib-only synthetic regression methods model necessary binding consistency, inactive/unverified approvals, strict revisions and booleans, malformed identities on both grant and dispatch sides, strict string subclass rejection, input immutability, 128/129-character identity boundaries, missing bindings and a revision-zero positive control, polymorphic envelopes and hostile header objects. The positive fixture's `issuer_verified=True` flag is synthetic and **does not authenticate a real issuer**. This is not connected to the production executor; passing tests cannot establish active target permission.
 
 ## Merge gates
 
