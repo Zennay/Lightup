@@ -139,3 +139,6 @@ The offline hosted-job classifier now rejects a workflow snapshot containing any
 
 ## Cross-run contamination denial
 The hosted-job classifier now requires that every job in the supplied workflow snapshot, not only the Python 3.11/3.14 selected jobs, declares the same integer `run_id` as the parent run. A stray job from another run rejects the full evidence set. This is offline consistency checking, not independent GitHub provenance; release remains HOLD.
+
+## Whole-run completion acceptance
+Hosted CI classification now refuses a workflow snapshot if *any* included job is queued, failed, incomplete, or lacks an exact successful conclusion, even if the two Python preflight jobs individually passed. Negative fixtures include an unrelated third job in each invalid state. This deliberately requires a full successful run rather than a cherry-picked subset, but still cannot authenticate caller-provided GitHub snapshots or prove VPS identity.
