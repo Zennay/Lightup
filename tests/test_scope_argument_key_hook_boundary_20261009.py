@@ -180,5 +180,29 @@ class ArgumentKeyHookBoundaryTests(unittest.TestCase):
         self.assertEqual(calls, [])
 
 
+    def test_unknown_name_denied_before_value_hooks(self):
+        effects = []
+        class TrapValue:
+            def __repr__(self):
+                effects.append("repr")
+                raise AssertionError("untrusted value formatted")
+            def __str__(self):
+                effects.append("str")
+                raise AssertionError("untrusted value stringified")
+        with self.assertRaisesRegex(OrchestrationError, "unknown tool argument name"):
+            validate_unambiguous_arguments(self.definition, (("unknown", TrapValue()),))
+        self.assertEqual(effects, [])
+
+    def test_unknown_name_cannot_bypass_valid_other_argument(self):
+        with self.assertRaisesRegex(OrchestrationError, "unknown tool argument name"):
+            validate_unambiguous_arguments(
+                self.definition, (("label", "valid"), ("unknown", "injected"))
+            )
+        self.assertEqual(
+            validate_unambiguous_arguments(self.definition, (("label", "valid"),)),
+            {"label": "valid"},
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
