@@ -45,3 +45,7 @@ A routing hint string containing `tenant`, `engagement`, `asset`, `scope` or `ro
 ## Capability and revoked-state hints
 
 Forged `capability` values in original-host routing metadata cannot supply missing authorization. `revoked=false` in such metadata cannot restore an expired synthetic grant. This is offline legacy policy evidence only; persisted revocation enforcement requires the separate production owner integration.
+
+## Operator approval and risk mode hints
+
+An `operator_approved=true`, `approval_id`, `risk_level` or `mode=analysis_only` string inside routing metadata does not constitute an operator approval or a trusted scope grant. These offline tests do not claim that the production operator workflow is implemented.
