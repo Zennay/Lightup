@@ -134,7 +134,7 @@ class ApprovalContextReplayContract(unittest.TestCase):
                     right: getattr(self.receipt, left),
                 })
                 self.assertFalse(admission(self.receipt, moved, revoked=False))
-                self.assertFalse(admission(moved, moved, revoked=False))
+                self.assertFalse(admission(moved, self.receipt, revoked=False))
 
 
 if __name__ == "__main__":
