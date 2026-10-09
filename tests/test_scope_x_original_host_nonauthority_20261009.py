@@ -386,5 +386,27 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
                 self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
 
 
+    def test_routing_hint_cannot_supply_missing_engagement_or_asset_grant(self):
+        for claim in ("tenant=customer-a", "engagement=eng-123",
+                      "asset=approved.example", "scope=all"):
+            with self.subTest(claim=claim):
+                result = self.policy.decide(Target(
+                    "approved.example",
+                    labels=("X-Original-Host: approved.example; " + claim,),
+                ))
+                self.assertFalse(result.allowed)
+                self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_nonmatching_target_stays_denied_with_header_claimed_admin(self):
+        synthetic = Authorization(owner="fixture", reference="NOT-TRUSTED")
+        result = self.policy.decide(Target(
+            "unlisted.example", authorization=synthetic,
+            labels=("X-Original-Host: approved.example; role=admin",),
+        ))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.normalized_host, "unlisted.example")
+        self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
+
+
 if __name__ == "__main__":
     unittest.main()
