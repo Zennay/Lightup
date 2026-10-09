@@ -17,7 +17,7 @@ def may_dispatch(snapshot: DispatchLease, live: DispatchLease) -> bool:
         return False
     for lease in (snapshot, live):
         if (type(lease.tenant) is not str or not lease.tenant
-                or type(lease.request) is not str or not lease.request
+                or len(lease.tenant) > 128 or lease.tenant != lease.tenant.strip()\n                or any(ord(ch) < 33 or ord(ch) == 127 for ch in lease.tenant)\n                or type(lease.request) is not str or not lease.request\n                or len(lease.request) > 128 or lease.request != lease.request.strip()\n                or any(ord(ch) < 33 or ord(ch) == 127 for ch in lease.request)
                 or type(lease.generation) is not int or lease.generation < 1
                 or type(lease.active) is not bool):
             return False
@@ -61,6 +61,25 @@ class GenerationFenceTests(unittest.TestCase):
         class Forged(DispatchLease):
             pass
         self.assertFalse(may_dispatch(self.issued, Forged("tenant-a", "request-a", 7, True)))
+
+    def test_malformed_identity_fields_denied(self):
+        for value in (" tenant-a", "tenant-a ", "tenant\\n-a", "tenant\\x7f-a", "", "x" * 129, None, True):
+            with self.subTest(value=value):
+                self.assertFalse(may_dispatch(
+                    self.issued, DispatchLease(value, "request-a", 7, True)))
+                self.assertFalse(may_dispatch(
+                    self.issued, DispatchLease("tenant-a", value, 7, True)))
+
+    def test_snapshot_is_checked_not_just_live_record(self):
+        stale = DispatchLease("tenant-a", "request-a", 7, False)
+        self.assertFalse(may_dispatch(stale, self.issued))
+        malformed = DispatchLease("tenant-a ", "request-a", 7, True)
+        self.assertFalse(may_dispatch(malformed, self.issued))
+
+    def test_malformed_snapshot_types_denied(self):
+        bad = DispatchLease("tenant-a", "request-a", True, True)
+        self.assertFalse(may_dispatch(bad, self.issued))
+        self.assertFalse(may_dispatch(None, self.issued))
 
     def test_reference_does_not_mutate_inputs(self):
         before = repr(self.issued)
