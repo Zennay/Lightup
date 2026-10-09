@@ -271,5 +271,29 @@ class RealExecutorModeBoundaryTests(unittest.TestCase):
         self.handler.assert_not_called()
         self.state.add_evidence.assert_not_called()
 
+    def test_real_policy_denies_not_yet_valid_grant(self):
+        now = datetime.now(timezone.utc)
+        grant = AuthorizationGrant(
+            grant_id="future-synthetic", client_id="offline-client",
+            engagement_id="offline-engagement", approved_by="offline-operator",
+            reference="offline-future", scope=ScopeDefinition(
+                assets=("127.0.0.1",), max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("http_headers",),
+            ), valid_from=now + timedelta(days=1),
+            valid_until=now + timedelta(days=2),
+        )
+        self.definition = replace(self.definition, interaction=InteractionKind.TARGET_ACTIVE)
+        self.registry.get.return_value = (self.definition, self.handler)
+        executor = ToolExecutor(self.registry, self.state, ExecutionPolicy())
+        context = replace(
+            self.context(AssessmentMode.AUTHORIZED_ASSESSMENT),
+            authorization=grant, is_lab=False,
+        )
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            with self.assertRaises(ToolDenied):
+                executor.execute(context, self.call)
+        self.handler.assert_not_called()
+        self.state.add_evidence.assert_not_called()
+
 if __name__ == "__main__":
     unittest.main()
