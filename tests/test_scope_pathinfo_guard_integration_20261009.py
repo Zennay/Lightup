@@ -11,6 +11,7 @@ from urllib.parse import urlencode
 
 from lightup.domain import DomainStore, Role
 from lightup.webapp import create_app
+from lightup.webapp.guarded_production import create_guarded_production_app
 from lightup.webapp.pathinfo_guard import (
     MAX_PATH_INFO_CHARS,
     CanonicalPathInfoGuard,
@@ -250,6 +251,74 @@ class CanonicalPathInfoRealWSGITests(unittest.TestCase):
                 self.assertEqual(status, "403 Forbidden")
                 self.assertEqual(len(self.store.list_clients(self.operator)), before)
                 self.assertIsNotNone(self.store.session_context(self.op_cookie))
+
+
+class GuardedProductionFactoryTests(unittest.TestCase):
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+        self.path = str(Path(self.tempdir.name) / "production.sqlite")
+        self.factory = create_guarded_production_app({
+            "LIGHTUP_PUBLIC_ORIGIN": "https://lightup.example",
+            "LIGHTUP_DB": self.path,
+        })
+        # Inspect durable output through a separate store instance.
+        self.store = DomainStore(self.path)
+        op = self.store.bootstrap_operator(
+            "prod@scope.test", "Operator", "production-test-password"
+        )
+        self.ctx = self.store.context_for_user(op.user_id)
+        self.cookie, self.csrf = self.store.create_session(op.user_id)
+
+    def _call(self, path, stream=None, *, csrf=None):
+        body = urlencode({"name": "Real authorized name", "csrf": csrf or ""}).encode()
+        env = {
+            "REQUEST_METHOD": "POST",
+            "PATH_INFO": path,
+            "CONTENT_LENGTH": str(len(body)),
+            "CONTENT_TYPE": "application/x-www-form-urlencoded",
+            "HTTP_HOST": "lightup.example",
+            "HTTP_X_FORWARDED_PROTO": "https",
+            "HTTP_ORIGIN": "https://lightup.example",
+            "REMOTE_ADDR": "127.0.0.1",
+            "HTTP_COOKIE": f"lightup_session={self.cookie}",
+            "wsgi.input": stream if stream is not None else io.BytesIO(body),
+        }
+        out = {}
+        data = b"".join(self.factory(
+            env, lambda status, headers: out.update(status=status, headers=dict(headers))
+        ))
+        return out["status"], out["headers"], data
+
+    def test_opt_in_gunicorn_factory_denies_route_confusion_before_body_or_session(self):
+        for bad in ("/clients\\n", "/logout\\n", b"/clients", _RouteStringSubclass("/clients")):
+            with self.subTest(bad=repr(bad)):
+                with patch.object(self.factory._app.store, "session_context") as lookup:
+                    status, headers, body = self._call(
+                        bad, stream=_ForbiddenReadStream(), csrf=self.csrf
+                    )
+                    lookup.assert_not_called()
+                self.assertEqual(status, "400 Bad Request")
+                self.assertEqual(headers["Strict-Transport-Security"], "max-age=31536000")
+                self.assertEqual(headers["Cache-Control"], "no-store")
+                self.assertEqual(body, b"Invalid request path\\n")
+                self.assertEqual(self.store.list_clients(self.ctx), [])
+                self.assertIsNotNone(self.store.session_context(self.cookie))
+
+    def test_opt_in_gunicorn_factory_retains_authorized_positive_control(self):
+        status, headers, _ = self._call("/clients", csrf=self.csrf)
+        self.assertEqual(status, "303 See Other")
+        self.assertEqual(headers["Location"], "/clients")
+        self.assertEqual(len(self.store.list_clients(self.ctx)), 1)
+        self.assertIsNotNone(self.store.session_context(self.cookie))
+
+    def test_opt_in_factory_keeps_required_configuration_fail_closed(self):
+        for env in ({}, {"LIGHTUP_PUBLIC_ORIGIN": "http://lightup.example",
+                         "LIGHTUP_DB": self.path},
+                    {"LIGHTUP_PUBLIC_ORIGIN": "https://lightup.example",
+                     "LIGHTUP_DB": "relative.sqlite"}):
+            with self.subTest(env=env), self.assertRaises(ValueError):
+                create_guarded_production_app(env)
 
 
 if __name__ == "__main__":
