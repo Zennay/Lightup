@@ -20,6 +20,9 @@ A rendered status (green badge, `Approved` label, frontend `approved` boolean, l
 - Presentation data is not even dereferenced by the authorization predicate; display objects may be malformed or hostile.
 - Valid synthetic issuer decisions do not depend on cosmetic state.
 
+- Hostile identity or issuer fields with custom equality/truthiness must be rejected without evaluating attacker-controlled methods.
+- Revisions must be positive exact integers on both sides; strings, booleans, containers and floats are not revisions.
+
 ## Run (offline only)
 
 ```bash
