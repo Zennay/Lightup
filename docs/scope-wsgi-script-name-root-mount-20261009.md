@@ -16,8 +16,7 @@ generic 400 before the wrapped web app can parse forms, look up a session,
 write a tenant/client, authenticate a login or revoke a session.
 
 The rejection response contains no cookies, forbids caching/framing, and
-preserves HSTS when configured with `production=True` (which requires an
-actual `bool`). `SCRIPT_NAME` is never an authorization grant; accepted
+preserves HSTS when configured with `production=True`. The mode is **required**,\nmust be an actual `bool`, and must match the wrapped LightUp app's\n`WebSecurity.production` setting; accidental omission or mismatch fails at\nconstruction rather than weakening production denial headers. `SCRIPT_NAME` is never an authorization grant; accepted
 requests still require their original session, role, tenant and CSRF checks.
 
 ## Offline evidence
@@ -31,10 +30,10 @@ development and simulated HTTPS/loopback-proxy production configuration:
 2. An operator's legitimate session and existing tenant records survive
    rejected client writes and rejected logout/login requests unchanged.
 3. A canonical empty/missing mount preserves protected reads and existing
-   CSRF checks, and allows an explicitly authorized operator write.
+   CSRF checks, and allows an explicitly authorized operator write.\n   Client-admin sessions remain barred from operator and other-tenant routes\n   despite spoofed prefix hints.
 4. `X-Script-Name`, `X-Forwarded-Prefix` and other client-supplied hints
    cannot substitute for the actual WSGI mount value.
-5. The HSTS policy is present on early-denied simulated production responses.
+5. The HSTS policy is present on early-denied simulated production responses.\n6. Explicit production configuration is mandatory and cannot conflict with\n   the wrapped application's configured security mode.
 
 Run with `PYTHONPATH=src python -m unittest -v
 tests.test_scope_wsgi_script_name_root_mount_20261009`; the hosted
