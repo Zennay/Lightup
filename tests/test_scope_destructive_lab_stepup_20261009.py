@@ -193,6 +193,47 @@ class DestructiveLabStepUpIntegrationTests(unittest.TestCase):
         self.assertEqual(result.tool_id, self.low_risk.tool_id)
         self.assertEqual(len(self.invocations), 1)
 
+    def test_same_capability_different_tool_cannot_reuse_approval(self):
+        alternate = ToolDefinition(
+            tool_id="synthetic-lab-destructive-alternate",
+            capability_id=self.destructive.capability_id,
+            interaction=InteractionKind.LAB_ACTIVE,
+            min_risk=RiskLevel.DESTRUCTIVE_LAB_ONLY,
+            description="Independent offline no-op tool",
+        )
+        self.registry.register(
+            alternate,
+            lambda context, arguments: ToolOutput(
+                "synthetic alternate", "note", b"synthetic"
+            ),
+        )
+        self.assert_denied_without_effect(
+            call=ToolCall(tool_id=alternate.tool_id, asset=self.call.asset)
+        )
+
+    def test_current_approval_revoked_after_initial_success_cannot_replay(self):
+        wrapper = self.wrapper()
+        first = wrapper.execute(self.context, self.call)
+        self.assertEqual(first.run_id, self.context.run_id)
+        self.live_record = replace(self.approval, expires_at=self.now - timedelta(seconds=1))
+        self.assert_denied_without_effect(wrapper)
+        self.live_record = replace(self.approval, asset="different-lab")
+        self.assert_denied_without_effect(wrapper)
+        self.assertEqual(len(self.invocations), 1)
+
+    def test_approval_and_context_fields_refuse_noncanonical_subclasses(self):
+        class PretendStr(str):
+            pass
+
+        self.live_record = replace(
+            self.approval, asset=PretendStr(self.call.asset)
+        )
+        self.assert_denied_without_effect()
+        self.live_record = self.approval
+        self.assert_denied_without_effect(
+            context=replace(self.context, client_id=PretendStr(self.context.client_id))
+        )
+
     def test_noncanonical_run_and_call_denied_before_handler(self):
         class ForeignContext:
             run_id = "run-lab-a"
