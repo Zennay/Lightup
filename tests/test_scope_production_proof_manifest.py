@@ -146,6 +146,8 @@ def classify_authenticated_run_jobs(run: dict, jobs: list, expected_sha: str) ->
     if any(type(job.get("status")) is not str or job["status"] != "completed" or
            type(job.get("conclusion")) is not str or job["conclusion"] != "success" for job in jobs):
         return {}
+    if any(type(job.get("name")) is not str or not job["name"].strip() for job in jobs):
+        return {}
     result = {}
     for version in ("3.11", "3.14"):
         matches = [job for job in jobs if type(job) is dict and
@@ -186,6 +188,11 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
             "id": 102, "run_id": 92, "name": "Unrelated job",
             "status": "completed", "conclusion": "success"}]
         self.assertEqual(classify_authenticated_run_jobs(run, unrelated_wrong_run, sha), {})
+        for malformed in (None, "", "   ", 123, True):
+            unrelated_name = [dict(j) for j in jobs] + [{
+                "id": 102, "run_id": 91, "name": malformed,
+                "status": "completed", "conclusion": "success"}]
+            self.assertEqual(classify_authenticated_run_jobs(run, unrelated_name, sha), {})
         for key, bad in (("status", "queued"), ("conclusion", "failure"),
                          ("status", None), ("conclusion", None)):
             unrelated_bad = [dict(j) for j in jobs] + [{
