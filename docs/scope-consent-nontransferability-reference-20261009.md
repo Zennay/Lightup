@@ -11,6 +11,8 @@ The companion test uses an in-memory frozen tuple-shaped consent model and check
 - tenant, engagement and owner crossover denial;
 - asset and capability substitution denial;
 - stale revision and revoked consent denial;
+- owner-transfer round trip cannot resurrect an earlier approval: fresh authorization revision is required;
+- matching revision cannot override an independently revoked authorization;
 - strict booleans, integer revision and exact built-in string identity types;
 - empty identity and malformed revocation denial.
 
