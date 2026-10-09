@@ -174,5 +174,18 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertIs(target.authorization, synthetic)
 
 
+    def test_loopback_exception_is_local_identity_not_header_authority(self):
+        allowed = self.policy.decide(Target(
+            "127.0.0.1", labels=("X-Original-Host: unknown.example",),
+        ))
+        self.assertTrue(allowed.allowed)
+        self.assertEqual(allowed.reason, ScopeReason.LOOPBACK)
+        denied = self.policy.decide(Target(
+            "unknown.example", labels=("X-Original-Host: 127.0.0.1",),
+        ))
+        self.assertFalse(denied.allowed)
+        self.assertEqual(denied.reason, ScopeReason.OUT_OF_SCOPE)
+
+
 if __name__ == "__main__":
     unittest.main()
