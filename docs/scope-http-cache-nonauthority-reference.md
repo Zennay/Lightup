@@ -23,7 +23,7 @@ authenticated reviewer/operator approval remain mandatory.
 
 ## Isolation and proof
 
-The companion `tests/test_scope_http_cache_nonauthority_reference.py` uses only
+The companion `tests/test_scope_http_cache_nonauthority_reference.py` contains 17\noffline regression methods, including missing-grant, missing-dispatch, forged dispatch\nand malformed revision denials. It uses only
 Python stdlib and synthetic fixtures, with no sockets, DNS, scanners,
 credentials, targets, production executor changes or grant activation.
 
