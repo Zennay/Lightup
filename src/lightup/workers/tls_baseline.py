@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import socket
 import ssl
+import warnings
 from dataclasses import dataclass
 from typing import Any
 
@@ -105,7 +106,10 @@ def observe(host: str, port: int, timeout: float = 5.0) -> TlsObservation:
     permissive = ssl.create_default_context()
     permissive.check_hostname = False
     permissive.verify_mode = ssl.CERT_NONE
-    permissive.minimum_version = ssl.TLSVersion.TLSv1  # observe, then judge
+    with warnings.catch_warnings():
+        # Deliberate: accept legacy protocols so they can be observed and flagged.
+        warnings.simplefilter("ignore", DeprecationWarning)
+        permissive.minimum_version = ssl.TLSVersion.TLSv1  # observe, then judge
     with socket.create_connection((lab_host, port), timeout=timeout) as raw:
         with permissive.wrap_socket(raw, server_hostname=lab_host) as tls:
             protocol = tls.version() or "unknown"

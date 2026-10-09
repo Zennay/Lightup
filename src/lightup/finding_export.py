@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import io
+import unicodedata
 
 from .models import Finding, RetestStatus, Severity
 from .redaction import redact_text
@@ -21,7 +22,11 @@ def _cell(value: str) -> str:
     value = redact_text(value)
     # Spreadsheet parsers may skip leading whitespace/control characters.
     offset = 0
-    while offset < len(value) and (value[offset].isspace() or ord(value[offset]) < 32):
+    while offset < len(value) and (
+        value[offset].isspace()
+        or ord(value[offset]) < 32
+        or unicodedata.category(value[offset]) == "Cf"
+    ):
         offset += 1
     probe = value[offset:]
     if probe.startswith(("=", "+", "-", "@")) or value.startswith(("\t", "\r", "\n")):
