@@ -254,6 +254,24 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
                 self.assertFalse(reference_decide(grant, grant,
                     {"Sec-WebSocket-Protocol": "admin"}))
 
+    def test_header_cannot_override_revocation_across_identity_roles(self):
+        for role in ("tenant", "asset", "capability"):
+            with self.subTest(role=role):
+                values = dict(tenant=self.valid.tenant, asset=self.valid.asset,
+                              capability=self.valid.capability)
+                values[role] = "other-value"
+                revoked = Grant(**values, revision=3, approved=True, revoked=True)
+                self.assertFalse(reference_decide(revoked, revoked,
+                    {"Sec-WebSocket-Protocol": "revoked=false, approved, admin"}))
+
+    def test_malformed_approval_metadata_has_no_handler_side_effect(self):
+        calls = []
+        for approved in (None, 0, 1, "true", [], {}):
+            grant = Grant("tenant-a", "lab-asset", "read-only", 3, approved, False)
+            if reference_decide(grant, grant, {"Sec-WebSocket-Protocol": "approved"}):
+                calls.append(approved)
+        self.assertEqual(calls, [])
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
