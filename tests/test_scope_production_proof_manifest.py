@@ -89,6 +89,28 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         changed = json.loads(json.dumps(manifest))
         changed["real_target_activation"] = True
         self.assertFalse(is_release_evidence_complete(changed))
+        for value in (True, False, "0", -1, None):
+            changed = json.loads(json.dumps(manifest))
+            changed["negative_real_executor_trace"]["handler_calls"] = value
+            self.assertFalse(is_release_evidence_complete(changed))
+        for field in ("positive_loopback_lab_trace", "persistent_revocation_proof",
+                      "trusted_destination_metadata_proof"):
+            changed = json.loads(json.dumps(manifest))
+            changed.pop(field)
+            self.assertFalse(is_release_evidence_complete(changed), field)
+            changed = json.loads(json.dumps(manifest))
+            changed[field]["sha"] = "b" * 40
+            self.assertFalse(is_release_evidence_complete(changed), field)
+        for conclusion in ("queued", "cancelled", "skipped", "failure", None):
+            changed = json.loads(json.dumps(manifest))
+            changed["permanent_vps"]["conclusion"] = conclusion
+            self.assertFalse(is_release_evidence_complete(changed), conclusion)
+        changed = json.loads(json.dumps(manifest))
+        changed["positive_loopback_lab_trace"]["handler_calls"] = True
+        self.assertFalse(is_release_evidence_complete(changed))
+        changed = json.loads(json.dumps(manifest))
+        changed["owner_review_url"] = None
+        self.assertFalse(is_release_evidence_complete(changed))
 
 
 if __name__ == "__main__":
