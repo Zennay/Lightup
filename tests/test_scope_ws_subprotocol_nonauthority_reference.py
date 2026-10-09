@@ -272,6 +272,18 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
                 calls.append(approved)
         self.assertEqual(calls, [])
 
+    def test_request_approval_is_not_independent_authority(self):
+        stored = Grant("tenant-a", "lab-asset", "read-only", 3, False, False)
+        request = Grant("tenant-a", "lab-asset", "read-only", 3, True, False)
+        self.assertFalse(reference_decide(stored, request,
+            {"Sec-WebSocket-Protocol": "admin, approved"}))
+
+    def test_revoked_stored_grant_cannot_be_replaced_by_clean_request(self):
+        stored = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
+        request = Grant("tenant-a", "lab-asset", "read-only", 3, True, False)
+        self.assertFalse(reference_decide(stored, request,
+            {"Sec-WebSocket-Protocol": "revoked=false"}))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
