@@ -10,7 +10,9 @@ approve an assessment, issue grants, or establish readiness to merge/deploy.
 
 Supply a GitHub read token in `GITHUB_TOKEN` (or `GH_TOKEN`); never log it.
 The code only makes GET requests to `https://api.github.com` and never
-interacts with assessment targets or mutable repository endpoints.
+interacts with assessment targets or mutable repository endpoints. Unexpected
+HTTP redirects are explicitly rejected **before following** any destination,
+including non-GitHub hosts; they produce an `unknown` result.
 
 ```sh
 python scripts/check_scope_pr_overlap.py \
