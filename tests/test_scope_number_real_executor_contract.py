@@ -291,9 +291,10 @@ class OfflineExecutorNumberTests(unittest.TestCase):
 
     def test_bridge_validator_blocks_duplicate_and_nonfinite_before_real_handler(self):
         """Temporary adapter demonstrates end-to-end wiring without source edits."""
-        definition, _handler = self.registry.get("number-lab-only")
-
         def bridge(call):
+            # Bind validation to the exact registry definition selected by
+            # the executor, never to an assumed or caller-named schema.
+            definition, _handler = self.registry.get(call.tool_id)
             return validate_unambiguous_arguments(definition, call.arguments)
 
         with patch.object(ToolCall, "arguments_dict", bridge):
