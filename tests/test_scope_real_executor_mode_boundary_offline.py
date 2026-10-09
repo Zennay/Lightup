@@ -9,7 +9,8 @@ from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
 from lightup.ai.orchestration import (
-    RunContext, ToolCall, ToolDefinition, ToolDenied, ToolExecutor, ToolOutput,\n    RiskElevationRequired,
+    RunContext, ToolCall, ToolDefinition, ToolDenied, ToolExecutor, ToolOutput,
+    RiskElevationRequired,
 )
 from lightup.engagements import AssessmentMode, RiskLevel
 from lightup.execution_policy import ExecutionPolicy, InteractionKind
