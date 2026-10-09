@@ -10,7 +10,7 @@ Before any future target-capable dispatch, the production scope gate must indepe
 
 ## Offline contract
 
-`tests/test_scope_content_disposition_nonauthority_reference.py` exercises 15 pure-stdlib `unittest` methods: spoofed approval filenames, RFC 5987-style parameters, control bytes, untrusted object protocols, revoked and unverified grants, field mismatches on either side, matched-invalid fields, type-confused grant and dispatch revisions, matching non-string identities, string-subclass identity spoofing, forged envelope subclasses and immutable fixture envelopes. Additional controls show that response labels cannot revoke otherwise consistent synthetic state, and mixed valid/invalid issuer/dispatch identity types are denied on either side.
+`tests/test_scope_content_disposition_nonauthority_reference.py` exercises 17 pure-stdlib `unittest` methods: spoofed approval filenames, RFC 5987-style parameters, control bytes, untrusted object protocols, revoked and unverified grants, field mismatches on either side, matched-invalid fields, type-confused grant and dispatch revisions, matching non-string identities, string-subclass identity spoofing, forged envelope subclasses and immutable fixture envelopes. Additional controls show that response labels cannot revoke otherwise consistent synthetic state, and mixed valid/invalid issuer/dispatch identity types are denied on either side. Boundary fixtures cover revision zero, maximum 128-character identifiers, overlong matched identifiers and metadata objects with hostile attribute, length and iterator protocols.
 
 Run:
 
