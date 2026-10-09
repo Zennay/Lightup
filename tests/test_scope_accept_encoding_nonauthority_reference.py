@@ -98,6 +98,29 @@ class AcceptEncodingNonAuthorityReferenceTests(unittest.TestCase):
         self.assertFalse(authorized(dict(grant), [], "br"))
         self.assertFalse(authorized([], dict(dispatch), "br"))
 
+    def test_matching_malformed_identity_fails_closed(self):
+        for value in ("", None, 1, True, [], {}, "x" * 129):
+            with self.subTest(value=repr(value)):
+                grant, dispatch = fixture()
+                grant["asset"] = value
+                dispatch["asset"] = value
+                self.assertFalse(authorized(grant, dispatch, "gzip"))
+
+    def test_grant_revision_type_confusion_fails_closed(self):
+        for value in (True, 0.0, "0", None, -1):
+            with self.subTest(value=repr(value)):
+                grant, dispatch = fixture()
+                grant["revision"] = value
+                dispatch["revision"] = value
+                self.assertFalse(authorized(grant, dispatch, "br"))
+
+    def test_envelope_dictionary_subclasses_fail_closed(self):
+        class ForgedDict(dict):
+            pass
+        grant, dispatch = fixture()
+        self.assertFalse(authorized(ForgedDict(grant), dispatch, "gzip"))
+        self.assertFalse(authorized(grant, ForgedDict(dispatch), "gzip"))
+
     def test_input_unchanged(self):
         grant, dispatch = fixture()
         original_grant, original_dispatch = dict(grant), dict(dispatch)
