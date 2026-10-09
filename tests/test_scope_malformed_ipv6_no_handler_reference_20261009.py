@@ -38,8 +38,9 @@ def reference_preflight(policy, target, handler):
             return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
         if authority.count("[") != authority.count("]") or authority.count("[") > 1:
             return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
-        if authority.startswith("[") and "]" in authority:
-            suffix = authority.split("]", 1)[1]
+        host_authority = authority.rsplit("@", 1)[-1]
+        if host_authority.startswith("[") and "]" in host_authority:
+            suffix = host_authority.split("]", 1)[1]
             if suffix and not suffix.startswith(":"):
                 return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
     except ValueError:
