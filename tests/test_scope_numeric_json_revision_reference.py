@@ -1,0 +1,148 @@
+"""Offline non-authorizing reference: strict numeric parsing for grant revisions.
+
+No production imports, IO, network, or capability dispatch.
+"""
+import json
+import re
+import unittest
+
+_ID = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?", re.ASCII)
+
+
+def _no_duplicate_pairs(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError("duplicate key")
+        value[key] = item
+    return value
+
+
+def _reject_constant(token):
+    raise ValueError("non-JSON numeric constant: " + token)
+
+
+def reference_revision(envelope):
+    if type(envelope) is not str or len(envelope) > 2048:
+        return None
+    try:
+        data = json.loads(
+            envelope,
+            object_pairs_hook=_no_duplicate_pairs,
+            parse_constant=_reject_constant,
+        )
+    except (ValueError, TypeError, RecursionError):
+        return None
+    if type(data) is not dict or set(data) != {"tenant", "grant", "revision"}:
+        return None
+    if type(data["tenant"]) is not str or not data["tenant"].isascii():
+        return None
+    if type(data["grant"]) is not str or not data["grant"].isascii():
+        return None
+    if not (_ID.fullmatch(data["tenant"]) and _ID.fullmatch(data["grant"])):
+        return None
+    revision = data["revision"]
+    if type(revision) is not int or not (1 <= revision <= 2**53 - 1):
+        return None
+    return revision
+
+
+class NumericGrantRevisionReferenceTests(unittest.TestCase):
+    valid = '{"tenant":"tenant-a","grant":"grant-a","revision":7}'
+
+    def test_positive_canonical_integer(self):
+        self.assertEqual(reference_revision(self.valid), 7)
+
+    def test_safe_integer_upper_boundary_is_accepted(self):
+        payload = self.valid.replace("7}", "9007199254740991}")
+        self.assertEqual(reference_revision(payload), 9007199254740991)
+
+    def test_valid_single_character_identifiers(self):
+        self.assertEqual(reference_revision('{"tenant":"a","grant":"1","revision":1}'), 1)
+
+    def test_valid_max_length_identifiers(self):
+        tenant = "a" + "b" * 78 + "c"
+        grant = "1" + "2" * 78 + "3"
+        self.assertEqual(reference_revision(json.dumps({
+            "tenant": tenant, "grant": grant, "revision": 1
+        })), 1)
+
+    def test_json_encoded_controls_and_unicode_aliases_denied(self):
+        for token in ("tenant\\n-a", "tenant\\t-a", "tenant\\r-a", "tenant\\u200b"):
+            with self.subTest(token=token):
+                self.assertIsNone(reference_revision(json.dumps({
+                    "tenant": token, "grant": "grant-a", "revision": 7
+                })))
+
+    def test_boolean_is_not_integer_revision(self):
+        for value in ("true", "false"):
+            with self.subTest(value=value):
+                self.assertIsNone(reference_revision(self.valid.replace("7}", value + "}")))
+
+    def test_fraction_and_exponent_are_not_integer_tokens(self):
+        for value in ("7.0", "7e0", "7E+0", "7.5", "-0.0"):
+            with self.subTest(value=value):
+                self.assertIsNone(reference_revision(self.valid.replace("7}", value + "}")))
+
+    def test_nonfinite_tokens_are_denied(self):
+        for value in ("NaN", "Infinity", "-Infinity"):
+            with self.subTest(value=value):
+                self.assertIsNone(reference_revision(self.valid.replace("7}", value + "}")))
+
+    def test_zero_negative_and_out_of_safe_range(self):
+        for value in ("0", "-1", "9007199254740992", "9999999999999999999999"):
+            with self.subTest(value=value):
+                self.assertIsNone(reference_revision(self.valid.replace("7}", value + "}")))
+
+    def test_duplicate_revision_rejected_regardless_of_order(self):
+        for value in ('"revision":1,"revision":7', '"revision":7,"revision":1'):
+            with self.subTest(value=value):
+                self.assertIsNone(reference_revision('{"tenant":"tenant-a","grant":"grant-a",' + value + '}'))
+
+    def test_duplicate_identity_rejected(self):
+        self.assertIsNone(reference_revision('{"tenant":"tenant-a","tenant":"tenant-b","grant":"grant-a","revision":7}'))
+
+    def test_extra_key_and_missing_revision(self):
+        self.assertIsNone(reference_revision(self.valid[:-1] + ',"approved":true}'))
+        self.assertIsNone(reference_revision('{"tenant":"tenant-a","grant":"grant-a"}'))
+
+    def test_strings_arrays_and_null_rejected(self):
+        for value in ('"7"', "[7]", "null", "{}", "[]"):
+            with self.subTest(value=value):
+                self.assertIsNone(reference_revision(self.valid.replace("7}", value + "}")))
+
+    def test_invalid_outer_shape_and_type(self):
+        for payload in (None, {}, [], b"{}", "[]", "null", "true", ""):
+            with self.subTest(payload=payload):
+                self.assertIsNone(reference_revision(payload))
+
+    def test_control_whitespace_and_identity_aliases_denied(self):
+        for token in (" tenant-a", "tenant-a ", "tenant\\n-a", "tenant\\t-a",
+                      "Tenant-a", "tenant_a", "tenant/a", "tenant.a", "-tenant", "tenant-"):
+            with self.subTest(token=token):
+                self.assertIsNone(reference_revision(json.dumps({
+                    "tenant": token, "grant": "grant-a", "revision": 7
+                })))
+
+    def test_unicode_identity_and_empty_denied(self):
+        for token in ("", "ténant", "tenant\\u200b", "tenant" + "a" * 90):
+            with self.subTest(token=token):
+                self.assertIsNone(reference_revision(json.dumps({
+                    "tenant": "tenant-a", "grant": token, "revision": 7
+                })))
+
+    def test_nested_duplicate_member_denied(self):
+        payload = '{"tenant":"tenant-a","grant":"grant-a","revision":7,"extra":{"x":1,"x":2}}'
+        self.assertIsNone(reference_revision(payload))
+
+    def test_oversize_envelope_denied(self):
+        self.assertIsNone(reference_revision(self.valid + " " * 2048))
+
+    def test_does_not_mutate_source(self):
+        original = self.valid
+        self.assertEqual(reference_revision(original), 7)
+        self.assertEqual(original, self.valid)
+
+
+if __name__ == "__main__":
+    unittest.main()
