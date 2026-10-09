@@ -88,3 +88,6 @@ The job comparison now has a synthetic passing case covering hosted Python 3.11/
 
 ## Snapshot lane completeness
 Offline observed-job validation now requires exactly the three declared lanes, rejects missing or unknown lanes, rejects extra fields in each lane and detects swapped Python records. This is only structural comparison of supplied snapshots; independent authenticated GitHub provenance remains mandatory before source-owner review or release.
+
+## Snapshot type-integrity regression (2026-10-09)
+The supplied-job comparison now requires exact runtime field types for job ID, run URL and commit SHA before comparing them with the manifest. This closes Python equality-coercion ambiguity such as `True == 1` or `11.0 == 11` when comparing purported job IDs. Regression cases cover boolean and floating IDs as well as malformed status/version/classification fields. The validator still only checks untrusted, caller-provided snapshots. The mandatory authenticated GitHub API attestation and real-executor zero-I/O tests remain separate owner gates; no real-target authority is issued.
