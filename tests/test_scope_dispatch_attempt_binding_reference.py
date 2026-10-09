@@ -42,16 +42,19 @@ def reference_attempt_bound(grant, *, tenant, request, revision, attempt, grant_
     )
 
 
+_UNSET = object()
+
+
 class AttemptBindingReferenceTests(unittest.TestCase):
     def setUp(self):
         self.grant = AttemptGrant("tenant-A", "request-1", 3, "attempt-1", "grant-1", True)
         self.claim = dict(tenant="tenant-A", request="request-1", revision=3,
                           attempt="attempt-1", grant_id="grant-1")
 
-    def check(self, grant=None, **overrides):
+    def check(self, grant=_UNSET, **overrides):
         claim = dict(self.claim)
         claim.update(overrides)
-        return reference_attempt_bound(self.grant if grant is None else grant, **claim)
+        return reference_attempt_bound(self.grant if grant is _UNSET else grant, **claim)
 
     def test_matching_reference_only(self):
         self.assertTrue(self.check())
@@ -112,6 +115,7 @@ class AttemptBindingReferenceTests(unittest.TestCase):
     def test_invalid_grant_envelopes_are_denied(self):
         self.assertFalse(self.check(grant=None))
         self.assertFalse(self.check(grant=dataclasses.asdict(self.grant)))
+        self.assertFalse(self.check(grant=False))
 
 
 if __name__ == "__main__":
