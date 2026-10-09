@@ -145,6 +145,38 @@ class RetestProofBindingReference(unittest.TestCase):
             with self.subTest(key=key):
                 self.assertFalse(verified_retest(self.finding, {k: v for k, v in self.proof.items() if k != key}))
 
+    def test_all_finding_binding_fields_fail_closed(self):
+        mutations = {
+            "tenant_id": "tenant-b",
+            "finding_id": "f-2",
+            "revision": 3,
+            "evidence_sha256": "c" * 64,
+        }
+        for field, replacement in mutations.items():
+            with self.subTest(field=field):
+                self.assertFalse(verified_retest({**self.finding, field: replacement}, self.proof))
+
+    def test_finding_missing_or_extra_fields_denied(self):
+        for field in self.finding:
+            with self.subTest(missing=field):
+                self.assertFalse(verified_retest(
+                    {key: value for key, value in self.finding.items() if key != field}, self.proof))
+        self.assertFalse(verified_retest({**self.finding, "status": "resolved"}, self.proof))
+
+    def test_finding_outer_subclass_denied(self):
+        class FindingProxy(dict):
+            pass
+        self.assertFalse(verified_retest(FindingProxy(self.finding), self.proof))
+
+    def test_verified_and_method_exact_types(self):
+        class TrustedLooking(str):
+            pass
+        for patch in ({"result": TrustedLooking("passed")},
+                      {"method": TrustedLooking("offline_lab")},
+                      {"verified": "true"}, {"verified": False}):
+            with self.subTest(patch=patch):
+                self.assertFalse(verified_retest(self.finding, {**self.proof, **patch}))
+
     def test_inputs_remain_unchanged(self):
         before = (digest(self.finding), digest(self.proof))
         verified_retest(self.finding, self.proof)
