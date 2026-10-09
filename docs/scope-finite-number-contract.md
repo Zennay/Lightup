@@ -58,3 +58,7 @@ A further offline real-ToolExecutor test snapshots all columns in the existing e
 ## SQLite reconnection proof
 
 A dedicated passing-contract integration test reopens the evidence database through separate `StateStore.connect()` contexts before and after three rejected calls. It compares the persisted row tuple and total row count after reconnecting, so the test does not rely solely on an in-memory counter or a shared cursor. This is local evidence integrity only, not grant persistence or durable revocation proof.
+
+## Distinct positive evidence lineage
+
+A new actual ToolExecutor lab-only regression performs two valid finite-number calls, checks both result evidence IDs are unique and two rows are stored, and then verifies an invalid numeric string cannot append a third row or invoke the handler. This guards against a test harness that would silently collapse valid trace records while checking denial. It remains isolated and does not grant target authorization.
