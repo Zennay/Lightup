@@ -1,46 +1,40 @@
-# Evidence identifier canonicalization — offline reference only
+# Evidence identifier canonicalization — UUID4 offline reference
 
-This proposal defines an **isolated test reference**, not a production parser or
-an authorization decision. Its illustrative content-addressed identifier grammar
-is `ev-` followed by exactly 64 lowercase ASCII hexadecimal characters. It is
-**not** a claim that existing LightUp evidence IDs already use this grammar.
+## Verified source observation
 
-## Risk boundary
-Case folding, Unicode lookalikes, implicit string conversion, invisible controls,
-truncation and overlong values can cause two nonidentical evidence references to
-be treated as interchangeable. A verifier must never repair a hostile reference
-into a trusted one by coercion or normalization.
+On current `main` (base `dd4072cdd1a2bc44a752ccbb7b1d0b6d56559da1`),
+`src/lightup/state.py` issues IDs inside `StateStore.add_evidence()` by
+`str(uuid4())`. The evidence table uses `evidence_id TEXT PRIMARY KEY`;
+the SHA-256 of payload bytes is stored **separately**. Evidence ID is not a
+content hash. This corrects an earlier illustrative `ev-<sha256>` reference,
+which is not compatible with this issuer.
 
-## Proposed owner acceptance gate
-1. Determine the actual issued evidence-ID format and establish a documented,
-   versioned issuer-owned canonical grammar; do not deploy this reference grammar
-   without compatibility review.
-2. Require exact built-in string types; reject aliases, controls, Unicode
-   confusables, case variations, truncation, and overlong strings before lookup.
-3. Bind IDs to tenant, run, provenance, hash and immutable stored evidence. A
-   syntactically valid reference alone is **never** proof that an artifact exists,
-   belongs to the requester or was independently verified.
-4. Revalidate at read, export, remediation and retest admission boundaries, and
-   preserve audit-appropriate denial evidence without exposing sensitive data.
-5. Verify integration against the exact candidate commit in hosted CI **and**
-   the permanent self-hosted VPS lane before declaring a production gate green.
+## Offline lexical reference contract
 
-## Scope / non-overlap
-This change adds only this document and a stdlib offline reference module.
-Existing evidence-content-hash, reference-order, tombstone, export, transition,
-source ownership, and scope-authorization PRs remain untouched. No DNS, sockets,
-target probing, real evidence ingestion, permissions, deployment or active
-capability execution. Positive reference tests prove lexical shape only.
+Accepted: exact built-in `str`, 36 ASCII characters, lowercase hyphenated
+RFC 4122 UUID version 4, RFC variant `8`/`9`/`a`/`b`. Every other input
+fails with the same `ValueError("noncanonical evidence identifier")`.
 
-## Extended offline acceptance cases
+Rejected: uppercase aliases, UUID URNs, braces, hyphenless aliases, alternative
+versions and variants, Unicode lookalikes, invalid separators, control characters,
+wrong lengths, other object types and `str` subclasses. No coercion, trimming
+or automatic conversion occurs. Two valid UUID4 values retain distinct identity.
 
-The reference suite now also checks that two distinct canonical hexadecimal
-identifiers retain different identities, invalid ASCII separators are denied,
-and all malformed selectors raise the same deterministic `ValueError` message.
-These are lexical-invariant checks only: they deliberately do not attempt to
-resolve, dereference, ingest or authorize any evidence object.
+## Boundary and caveats
 
-The production owner should separately prove that identifier equality never
-substitutes for tenant isolation, issuer ownership, evidence content integrity,
-revocation status or verified provenance. Existing opaque identifiers must not
-be silently rewritten into this illustrative format.
+This is a **reference**, not an enforcement patch. Some historical producers,
+fixtures and persistence pathways may use different IDs; inventory them before
+deploying an exact-format check. Do not migrate or reinterpret existing rows
+silently. Lexical UUID4 shape cannot prove issuer authenticity, row existence,
+tenant ownership, run membership, payload hash, provenance or authorization.
+
+The production evidence owner must separately enforce tenant/run/capability
+binding and integrity before read, export, remediation or retest, with explicit
+backward compatibility policy. This PR does not edit production code.
+
+## Promotion gate
+
+Source-owner compatibility review; exact-head hosted tests; exact-head
+permanent self-hosted VPS validation; explicit human review. None is claimed
+green here. There are no target network calls, DNS, scanner invocations,
+authorization changes or deployments.
