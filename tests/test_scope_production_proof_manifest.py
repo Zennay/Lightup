@@ -141,6 +141,8 @@ def classify_authenticated_run_jobs(run: dict, jobs: list, expected_sha: str) ->
     ids = [job.get("id") for job in jobs]
     if any(type(identifier) is not int or identifier <= 0 for identifier in ids) or len(ids) != len(set(ids)):
         return {}
+    if any(type(job.get("run_id")) is not int or job["run_id"] != run["id"] for job in jobs):
+        return {}
     result = {}
     for version in ("3.11", "3.14"):
         matches = [job for job in jobs if type(job) is dict and
@@ -177,6 +179,10 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         self.assertEqual(classify_authenticated_run_jobs(run, jobs + [None], sha), {})
         self.assertEqual(classify_authenticated_run_jobs(run, jobs + ["unknown"], sha), {})
         self.assertEqual(classify_authenticated_run_jobs(run, jobs + [{"name": "unrelated"}], sha), {})
+        unrelated_wrong_run = [dict(j) for j in jobs] + [{
+            "id": 102, "run_id": 92, "name": "Unrelated job",
+            "status": "completed", "conclusion": "success"}]
+        self.assertEqual(classify_authenticated_run_jobs(run, unrelated_wrong_run, sha), {})
         class EqualString(str):
             pass
         for key in ("status", "conclusion"):
