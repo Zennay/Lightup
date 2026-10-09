@@ -97,6 +97,20 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
             with self.subTest(candidate=candidate):
                 self.assertFalse(_valid_artifact_url(candidate))
 
+    def test_unknown_evidence_cannot_activate_targets(self):
+        import copy
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        self.assertFalse(is_release_evidence_complete(manifest))
+        for field, value in (
+            ("release_gate", "REVIEWED"),
+            ("real_target_activation", True),
+            ("owner_review_url", "https://github.com/example/repo/pull/1"),
+        ):
+            with self.subTest(field=field):
+                candidate = copy.deepcopy(manifest)
+                candidate[field] = value
+                self.assertFalse(is_release_evidence_complete(candidate))
+
     def test_current_manifest_is_explicitly_held_and_incomplete(self):
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         self.assertEqual(manifest["release_gate"], "HOLD")
