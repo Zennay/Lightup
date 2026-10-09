@@ -285,5 +285,33 @@ class ArgumentKeyHookBoundaryTests(unittest.TestCase):
                 validate_unambiguous_arguments(malformed, (("label", "ok"),))
 
 
+    def test_duplicate_registry_names_denied_before_schema(self):
+        from unittest.mock import patch
+        malformed = ToolDefinition(
+            "duplicate-schema", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "synthetic",
+            (ToolParameter("label", ParamKind.STRING),
+             ToolParameter("label", ParamKind.STRING)),
+        )
+        with patch.object(ToolDefinition, "validate_arguments", side_effect=AssertionError("schema called")):
+            with self.assertRaisesRegex(OrchestrationError, "duplicate tool parameter"):
+                validate_unambiguous_arguments(malformed, (("label", "ok"),))
+
+    def test_malformed_registry_tuple_subclass_denied_without_iteration(self):
+        events = []
+        class TrapParameters(tuple):
+            def __iter__(self):
+                events.append("iter")
+                raise AssertionError("registry iteration executed")
+        malformed = ToolDefinition(
+            "tuple-subclass", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "synthetic",
+            TrapParameters((ToolParameter("label", ParamKind.STRING),)),
+        )
+        with self.assertRaisesRegex(OrchestrationError, "registry must be a tuple"):
+            validate_unambiguous_arguments(malformed, (("label", "ok"),))
+        self.assertEqual(events, [])
+
+
 if __name__ == "__main__":
     unittest.main()
