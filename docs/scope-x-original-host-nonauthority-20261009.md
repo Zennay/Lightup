@@ -53,3 +53,7 @@ An `operator_approved=true`, `approval_id`, `risk_level` or `mode=analysis_only`
 ## Loopback and mode isolation
 
 A spoofed original-host claim for localhost, 127.0.0.1 or [::1] must not reclassify an unlisted HTTPS host as local. Claimed `plan_only`, `lab_only`, `active`, or `passive` strings also cannot replace an authorization grant for a publicly allowlisted URL. This is legacy pure-policy reference only.
+
+## IPv6 approval and reference spoofing
+
+A fake operator approval embedded in a routing label cannot grant a bracketed IPv6 target, and an asserted grant reference cannot transfer target identity to a different URL hostname. These synthetic reference cases do not prove trusted real-world issuer or approval provenance.
