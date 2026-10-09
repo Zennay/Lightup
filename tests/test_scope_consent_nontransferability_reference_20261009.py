@@ -24,7 +24,7 @@ def matches_consent(consent: Consent, *, tenant_id: str, engagement_id: str,
               consent.asset_id, consent.capability_id)
     requested = (tenant_id, engagement_id, owner_id, asset_id, capability_id)
     if any(type(value) is not str or not value.strip() or
-           any(ord(char) < 32 or ord(char) == 127 for char in value)
+           any(ord(char) < 32 or ord(char) == 127 or\n               0xD800 <= ord(char) <= 0xDFFF or\n               ord(char) in (0x200B, 0x202E) for char in value)
            for value in fields + requested):
         return False
     if type(consent.revision) is not int or type(revision) is not int:
@@ -203,6 +203,15 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
             with self.subTest(field=field):
                 swapped = self.request | {field: "alternate-" + self.request[field]}
                 self.assertFalse(matches_consent(self.consent, **swapped))
+
+    def test_reject_unicode_format_and_surrogate_identifiers(self):
+        for suffix in ("\u200b", "\u202e", "\ud800"):
+            for field in ("tenant_id", "engagement_id", "owner_id",
+                          "asset_id", "capability_id"):
+                with self.subTest(field=field, codepoint=hex(ord(suffix))):
+                    self.assertFalse(matches_consent(
+                        self.consent,
+                        **(self.request | {field: self.request[field] + suffix})))
 
 
 if __name__ == "__main__":
