@@ -86,5 +86,26 @@ class RawInputPreparserReferenceTests(unittest.TestCase):
                 self.assertFalse(validate_raw_target(value))
 
 
+    def test_invalid_raw_target_never_calls_policy_decide(self):
+        from unittest.mock import Mock
+        sentinel_policy = Mock(spec=ScopePolicy)
+        for raw in ("https://authorized.example.test/a\nb", "\thttps://authorized.example.test", "https://authorized.example.test/\x7f"):
+            with self.subTest(raw=repr(raw)):
+                decision = reference_decide(
+                    sentinel_policy, Target(raw, authorization=self.auth)
+                )
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+        sentinel_policy.decide.assert_not_called()
+
+    def test_clean_raw_target_calls_policy_exactly_once(self):
+        from unittest.mock import Mock
+        sentinel_policy = Mock(spec=ScopePolicy)
+        sentinel_policy.decide.return_value = "delegated"
+        target = Target("https://authorized.example.test/", authorization=self.auth)
+        self.assertEqual(reference_decide(sentinel_policy, target), "delegated")
+        sentinel_policy.decide.assert_called_once_with(target)
+
+
 if __name__ == "__main__":
     unittest.main()
