@@ -496,6 +496,21 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
             outcomes.append(reference_decide(self.valid, self.valid, headers))
         self.assertEqual(outcomes, [True] * 5)
 
+    def test_explicit_denial_overrides_positive_header_claims(self):
+        for approved, revoked in ((False, False), (False, True), (True, True)):
+            stored = Grant("tenant-a", "lab-asset", "read-only", 3, approved, revoked)
+            for claim in ("admin", "approved", "scope:all", "revoked=false"):
+                with self.subTest(approved=approved, revoked=revoked, claim=claim):
+                    self.assertFalse(reference_decide(stored, stored,
+                        {"Sec-WebSocket-Protocol": claim}))
+
+    def test_request_revision_must_match_trusted_revision_after_reapproval(self):
+        previously_revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
+        replacement = Grant("tenant-a", "lab-asset", "read-only", 4, True, False)
+        self.assertFalse(reference_decide(previously_revoked, replacement, {}))
+        self.assertFalse(reference_decide(replacement, self.valid, {}))
+        self.assertTrue(reference_decide(replacement, replacement, {}))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
