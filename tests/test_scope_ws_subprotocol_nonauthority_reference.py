@@ -595,6 +595,27 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
         self.assertTrue(execute(self.valid, self.valid, {}))
         self.assertEqual(effects, dict.fromkeys(effects, 1))
 
+    def test_mock_dispatch_trace_separates_denial_audit_from_action_effects(self):
+        """Denial audit is permitted; rejected requests must not write action evidence."""
+        trace = []
+        def simulated_gateway(stored, requested, headers):
+            if not reference_decide(stored, requested, headers):
+                trace.append("denial_audit")
+                return False
+            trace.extend(("handler", "action_evidence"))
+            return True
+
+        revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
+        unapproved = Grant("tenant-a", "lab-asset", "read-only", 3, False, False)
+        self.assertFalse(simulated_gateway(revoked, self.valid,
+                                         {"Sec-WebSocket-Protocol": "admin"}))
+        self.assertFalse(simulated_gateway(unapproved, self.valid,
+                                         {"Sec-WebSocket-Protocol": "approved"}))
+        self.assertEqual(trace, ["denial_audit", "denial_audit"])
+        self.assertTrue(simulated_gateway(self.valid, self.valid, {}))
+        self.assertEqual(trace, ["denial_audit", "denial_audit",
+                                 "handler", "action_evidence"])
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
