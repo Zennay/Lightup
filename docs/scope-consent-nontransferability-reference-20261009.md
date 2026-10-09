@@ -23,6 +23,8 @@ The companion test uses an in-memory frozen tuple-shaped consent model and check
 
 Run offline: `python -m unittest discover -s tests -p 'test_scope_consent_nontransferability_reference_20261009.py' -v`.
 
+The reference now additionally mutates every stored identity field independently, and independently mutates every requested field. These tests detect partial-key comparisons that accidentally ignore tenant, engagement or capability.
+
 ## Production integration obligations (not implemented here)
 
 The trusted source owner must bind approvals to verified tenant, engagement, owning principal, canonical asset, capability, approval revision and revocation generation. Independently revalidate atomically immediately before any target I/O and prohibit inferred transfer on sale, tenant move, reassignment, ownership change or reused asset identifiers. Explicit user authorization and review remain required. Integration must prove **zero executor/evidence handler calls** on denial and cover race conditions on revocation or ownership transfer. No target-facing tests are enabled by this PR.
