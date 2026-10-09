@@ -99,9 +99,11 @@ def verify_observed_ci_jobs(manifest: dict, observed: dict) -> bool:
         if type(run) is not dict or type(expected) is not dict:
             return False
         if set(run) != {"job_id", "run_url", "sha", "status", "conclusion",
-                        "python_version", "runner_class"}:
+                        "python_version", "runner_class", "job_name"}:
             return False
         if any(type(run.get(key)) is not type(expected[key]) or run[key] != expected[key] for key in ("job_id", "run_url", "sha")):
+            return False
+        if type(run["job_name"]) is not str or not run["job_name"].strip() or "not vps proof" in run["job_name"].lower() and lane == "permanent_vps":
             return False
         if (type(run["status"]) is not str or run["status"] != "completed" or
                 type(run["conclusion"]) is not str or run["conclusion"] != "success"):
@@ -236,8 +238,12 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
                 "job_id": expected["job_id"], "run_url": expected["run_url"],
                 "sha": sha, "status": "completed", "conclusion": "success",
                 "python_version": version, "runner_class": runner,
+                "job_name": "Offline preflight Python " + version if runner == "hosted" else "Permanent VPS Python " + version,
             }
         self.assertTrue(verify_observed_ci_jobs(manifest, observed))
+        marked = json.loads(json.dumps(observed))
+        marked["permanent_vps"]["job_name"] = "Offline preflight Python 3.11 (not VPS proof)"
+        self.assertFalse(verify_observed_ci_jobs(manifest, marked))
         for lane in ("hosted_python_311", "hosted_python_314", "permanent_vps"):
             missing = json.loads(json.dumps(observed))
             missing.pop(lane)
@@ -398,6 +404,7 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
                 "job_id": 1, "run_url": "https://github.com/example/repo/actions/runs/1",
                 "sha": "a" * 40, "status": "completed", "conclusion": "success",
                 "python_version": version, "runner_class": klass,
+                "job_name": "Offline preflight Python " + version if klass == "hosted" else "Permanent VPS Python " + version,
             }
         self.assertFalse(verify_observed_ci_jobs(original, fake_success))
         self.assertFalse(is_release_evidence_complete(original))
