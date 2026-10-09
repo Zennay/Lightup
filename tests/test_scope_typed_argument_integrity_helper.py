@@ -199,6 +199,24 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
             validate_unambiguous_arguments(fake, (("value", 1.0),))
         self.assertEqual(touched, [])
 
+    def test_helper_import_has_no_eager_orchestration_binding(self):
+        """The helper can be imported from orchestration at module-load time."""
+        import ast
+        import inspect
+        import lightup.ai.typed_argument_integrity as helper
+        tree = ast.parse(inspect.getsource(helper))
+        eager = [
+            node for node in tree.body
+            if isinstance(node, ast.ImportFrom)
+            and node.module == "orchestration"
+        ]
+        self.assertEqual(eager, [], "avoid eager circular import of orchestration")
+        self.assertEqual(
+            validate_unambiguous_arguments(
+                self.definition, (("value", 2.5),)
+            ), {"value": 2.5}
+        )
+
     def test_invalid_registry_kind_and_required_flag_rejected(self):
         for kind, required in ((None, True), ("number", True),
                                (ParamKind.NUMBER, 1),
