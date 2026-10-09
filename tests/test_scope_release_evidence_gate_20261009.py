@@ -151,6 +151,15 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
             self.assertEqual(result, 2)
             self.assertIn("HOLD:", output.getvalue())
 
+    def test_cli_rejects_missing_evidence_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            missing = Path(directory) / "does-not-exist.json"
+            output = StringIO()
+            with redirect_stdout(output):
+                result = main(["check_scope_release_evidence.py", str(missing)])
+            self.assertEqual(result, 2)
+            self.assertIn("HOLD:", output.getvalue())
+
     def test_missing_evidence_holds(self):
         self.assertFalse(evaluate(None)[0])
         self.assertFalse(evaluate({})[0])
