@@ -259,6 +259,19 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
         self.assertFalse(matches_consent(
             stored, **(self.request | {"owner_id": "e\u0301"})))
 
+    def test_reject_all_unicode_surrogate_range_without_coercion(self):
+        for codepoint in (0xD800, 0xDBFF, 0xDC00, 0xDFFF):
+            with self.subTest(codepoint=hex(codepoint)):
+                forged = self.request | {"asset_id": self.request["asset_id"] + chr(codepoint)}
+                self.assertFalse(matches_consent(self.consent, **forged))
+
+    def test_combining_marks_do_not_normalize_other_binding_fields(self):
+        for field in ("tenant_id", "engagement_id", "asset_id", "capability_id"):
+            with self.subTest(field=field):
+                original = self.request[field]
+                forged = self.request | {field: original + "\u0301"}
+                self.assertFalse(matches_consent(self.consent, **forged))
+
 
 if __name__ == "__main__":
     unittest.main()
