@@ -97,3 +97,9 @@ Both supported CI layouts are accepted by the structural index: Python 3.11 and 
 ## Permanent runner separation
 
 Hosted Python-version jobs may share a preflight workflow run, but `permanent_vps_run_id` must differ from both hosted run IDs. A hosted run cannot be substituted for the separately scheduled permanent self-hosted LightUp CI proof. The corresponding job must independently be checked for exact commit, runner identity, status and safety test execution.
+
+## Offline workflow job cross-check (new)
+
+Run `python scripts/verify_scope_job_provenance.py proof.json jobs.json` using a reviewer-supplied array of GitHub job objects. This checks each proof lane has one job with matching job ID, workflow run ID, implementation SHA, completed-success outcome and expected name label. Matrix-hosted Python 3.11/3.14 jobs may share a run ID but require distinct job IDs and a separate VPS run.
+
+**Important:** JSON snapshots are trivially forgeable. A successful offline check is *not* CI provenance, runner attestation, authorization, or deployment approval. Fetch job and workflow metadata independently from the GitHub API, confirm the run belongs to this repository and expected workflow and commit, inspect actual self-hosted VPS runner labels and logs, and retain human review. No real target testing is permitted based on this script.
