@@ -38,3 +38,7 @@ Source-owner compatibility review; exact-head hosted tests; exact-head
 permanent self-hosted VPS validation; explicit human review. None is claimed
 green here. There are no target network calls, DNS, scanner invocations,
 authorization changes or deployments.
+
+## Issuer-focused regressions
+
+The offline module additionally samples 32 values from Python's `uuid4()` issuer and checks lossless lexical acceptance. It exhaustively rejects all 15 non-version-4 version nibbles and all 12 non-RFC-variant nibbles. This is a nondeterministic positive compatibility smoke check plus deterministic negative lexical coverage; it does not exercise `StateStore.add_evidence()` or prove durable evidence provenance. Exact-head workflow success is required separately.
