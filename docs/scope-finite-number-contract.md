@@ -66,3 +66,7 @@ A new actual ToolExecutor lab-only regression performs two valid finite-number c
 ## Interleaved valid and denied calls
 
 The offline actual-ToolExecutor fixture now alternates three accepted finite inputs with three rejected malformed values and compares the complete set of evidence IDs stored in SQLite to the IDs from accepted calls. Denials must not contaminate or delete evidence lineage, even when interleaved. These are local lab-only contracts and do not constitute production authorization approval.
+
+## Intervening denial cannot inject evidence
+
+A normal ToolExecutor regression now executes valid finite → invalid string → valid finite, then compares the persisted evidence IDs in insertion order against the two successful results. This proves an intervening rejected argument cannot insert an invisible action-evidence row in the local isolated fixture; real-target authorization remains out of scope.
