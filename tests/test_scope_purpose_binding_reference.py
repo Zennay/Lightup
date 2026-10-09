@@ -67,8 +67,8 @@ class PurposeBindingReferenceTests(unittest.TestCase):
     def test_malformed_grant_identity_never_mints_eligibility(self):
         for tenant_id, request_id in (
             ("tenant-1 ", "request-1"),
-            ("tenant-1", "request-1\\n"),
-            ("tenant-1", "request-1\\x00"),
+            ("tenant-1", "request-1\n"),
+            ("tenant-1", "request-1\x00"),
             ("", "request-1"),
             ("tenant-1", ""),
             ("x" * 129, "request-1"),
@@ -119,6 +119,17 @@ class PurposeBindingReferenceTests(unittest.TestCase):
     def test_unicode_grant_identities_fail_closed(self):
         self.assertFalse(self.check(PurposeGrant("tenant\u200b-1", "request-1", "current-assessment", True)))
         self.assertFalse(self.check(PurposeGrant("tenant-1", "request\u200b-1", "current-assessment", True)))
+
+    def test_unapproved_mode_aliases_fail_closed(self):
+        for alias in ("analysis-only", "passive", "current_assessment", "future_simulation", "lab", "all"):
+            with self.subTest(alias=alias):
+                self.assertFalse(self.check(purpose=alias))
+                self.assertFalse(self.check(PurposeGrant("tenant-1", "request-1", alias, True)))
+
+    def test_outer_grant_envelope_must_be_exact(self):
+        self.assertFalse(self.check({"tenant_id": "tenant-1", "request_id": "request-1", "purpose": "current-assessment", "active": True}))
+        self.assertFalse(self.check(object()))
+        self.assertFalse(self.check(False))
 
     def test_input_is_unchanged(self):
         before = repr(self.grant)
