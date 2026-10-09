@@ -14,6 +14,6 @@ The owner of the canonical scope/execution boundary must enforce immutable issue
 
 ## Coverage
 
-Eight stdlib unittest methods exercise canonical and absent capability, new and accumulated denial evidence, persistent snapshot denial, noncanonical evidence/revisions and immutable inputs. Strict value typing and immutability here are reference choices rather than proof of actual production canonicalization.
+Twelve stdlib unittest methods exercise canonical and absent capability, new and accumulated denial evidence, persistent snapshot denial, noncanonical evidence/revisions, malformed snapshot authority/denial containers, tenant isolation, exact dataclass identity and immutable inputs. Strict value typing and immutability here are reference choices rather than proof of actual production canonicalization.
 
 No DNS, sockets, public targets, scanning, capabilities, deployment, database writes, or authorization widening. Keep isolated pending source-owner review and exact-head runner proof.
