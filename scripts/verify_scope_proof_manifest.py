@@ -72,6 +72,15 @@ def verify(data):
     if all(type(value) is int and value > 0 for value in job_ids):
         if len(set(job_ids)) != len(job_ids):
             errors.append("CI job identifiers must be distinct")
+    # The permanently hosted VPS proof must come from another workflow run;
+    # only the two hosted Python-version jobs may share a matrix run.
+    vps_run = data.get("permanent_vps_run_id")
+    for hosted_key in ("hosted_py311_run_id", "hosted_py314_run_id"):
+        hosted_run = data.get(hosted_key)
+        if (type(vps_run) is int and vps_run > 0
+                and type(hosted_run) is int and hosted_run > 0
+                and vps_run == hosted_run):
+            errors.append("permanent VPS run must differ from hosted preflight run")
     side_effects = data.get("denial_side_effect_counts")
     if type(side_effects) is not dict:
         errors.append("denial_side_effect_counts: missing object")
