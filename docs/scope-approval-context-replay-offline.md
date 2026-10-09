@@ -19,3 +19,5 @@ The responsible source owners must bind the trusted approval and revocation reco
 ## Handler-invocation fixture
 
 The isolated guarded-dispatch reference now records handler invocations and tests six denial paths against an empty call ledger. It also exercises a positive path to prove the mock handler is actually reachable when correctly authorized. This test **does not inspect production ToolExecutor** and must not be cited as real zero-handler-call proof.
+
+The extended mock dispatch matrix separately checks all six bound identity roles, each of the 15 strictly higher requested risk combinations, four changed revisions and four revocation variants. The fake handler ledger must remain empty throughout denied requests; one positive control proves reachability. This remains **offline reference-only**, not a production execution gate.
