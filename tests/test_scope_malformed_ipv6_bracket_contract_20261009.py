@@ -40,5 +40,49 @@ class MalformedIpv6AuthorityContract(unittest.TestCase):
         self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
 
 
+    @unittest.expectedFailure
+    def test_malformed_authority_normalize_host_returns_none(self):
+        for raw in (
+            "https://[2001:db8::1/path",
+            "https://2001:db8::1]/path",
+            "https://[::1]]/",
+        ):
+            with self.subTest(raw=raw):
+                self.assertIsNone(ScopePolicy.normalize_host(raw))
+
+    @unittest.expectedFailure
+    def test_malformed_loopback_cannot_bypass_invalid_target_gate(self):
+        for raw in ("http://[::1", "http://[::1]]/"):
+            with self.subTest(raw=raw):
+                decision = ScopePolicy().decide(Target(raw))
+                self.assertFalse(decision.allowed)
+                self.assertIsNone(decision.normalized_host)
+                self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+
+    def test_valid_ipv6_synthetic_loopback_control(self):
+        decision = ScopePolicy().decide(Target("http://[::1]/"))
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.LOOPBACK)
+        self.assertEqual(decision.normalized_host, "::1")
+
+    @unittest.expectedFailure
+    def test_invalid_authority_does_not_inspect_poison_authorization(self):
+        class PoisonAuthorization:
+            def __getattribute__(self, name):
+                raise AssertionError("invalid target must not inspect authorization")
+
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset({"authorized.example.test"}),
+        )
+        decision = policy.decide(
+            Target("https://[authorized.example.test/path",
+                   authorization=PoisonAuthorization())
+        )
+        self.assertFalse(decision.allowed)
+        self.assertIsNone(decision.normalized_host)
+        self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+
+
 if __name__ == "__main__":
     unittest.main()
