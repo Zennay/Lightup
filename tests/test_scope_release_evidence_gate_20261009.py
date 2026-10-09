@@ -5,7 +5,7 @@ import copy
 import json
 import unittest
 
-from scripts.check_scope_release_evidence import REQUIRED_JOBS, evaluate, reject_duplicate_keys
+from scripts.check_scope_release_evidence import REQUIRED_JOBS, evaluate, reject_duplicate_keys, reject_nonfinite_constant
 
 
 SHA = "a" * 40
@@ -40,6 +40,15 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
     def test_unambiguous_json_parses_without_mutation(self):
         parsed = json.loads('{"jobs":{"py311_unit":{"conclusion":"queued"}}}', object_pairs_hook=reject_duplicate_keys)
         self.assertEqual(parsed, {"jobs": {"py311_unit": {"conclusion": "queued"}}})
+
+    def test_nonfinite_json_constants_fail_closed(self):
+        for literal in ("NaN", "Infinity", "-Infinity"):
+            for payload in (f'{{"remaining_xfails":{literal}}}',
+                            f'{{"jobs":{{"permanent_vps":{{"head_sha":{literal}}}}}}}'):
+                with self.subTest(payload=payload):
+                    with self.assertRaises(ValueError):
+                        json.loads(payload, object_pairs_hook=reject_duplicate_keys,
+                                   parse_constant=reject_nonfinite_constant)
 
     def test_missing_evidence_holds(self):
         self.assertFalse(evaluate(None)[0])
