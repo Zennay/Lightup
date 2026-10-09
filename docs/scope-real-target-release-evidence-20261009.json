@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "release_gate": "real_target_authorization",
+  "status": "HOLD",
+  "requirements": [
+    {
+      "id": "trusted_issuer",
+      "owner": "#107/#1128",
+      "state": "unverified"
+    },
+    {
+      "id": "customer_consent",
+      "owner": "#107/#1128",
+      "state": "unverified"
+    },
+    {
+      "id": "engagement_binding",
+      "owner": "#107/#1128",
+      "state": "unverified"
+    },
+    {
+      "id": "asset_binding",
+      "owner": "#107/#1128",
+      "state": "unverified"
+    },
+    {
+      "id": "capability_binding",
+      "owner": "#107/#1128",
+      "state": "unverified"
+    },
+    {
+      "id": "revocation_at_dispatch",
+      "owner": "#100/#107",
+      "state": "unverified"
+    },
+    {
+      "id": "zero_executor_calls_on_denial",
+      "owner": "#107/#1128",
+      "state": "unverified"
+    },
+    {
+      "id": "zero_evidence_writes_on_denial",
+      "owner": "#107/#1128",
+      "state": "unverified"
+    },
+    {
+      "id": "hosted_exact_sha_ci",
+      "owner": "scope source owner",
+      "state": "unverified"
+    },
+    {
+      "id": "permanent_vps_exact_sha_ci",
+      "owner": "scope source owner",
+      "state": "unverified"
+    },
+    {
+      "id": "source_owner_review",
+      "owner": "scope source owner",
+      "state": "unverified"
+    }
+  ],
+  "activation_rule": "explicit_project_level_activation_required",
+  "network_operations_permitted": false
+}
