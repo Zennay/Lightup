@@ -14,7 +14,7 @@ COUNTERS = ("handler_calls", "dns_calls", "socket_opens", "http_calls",
 
 
 def is_release_evidence_complete(m: dict) -> bool:
-    if type(m) is not dict or type(m.get("schema_version")) is not int or m["schema_version"] != 1:
+    if type(m) is not dict or type(m.get("schema_version")) is not int or m["schema_version"] != 2:
         return False
     if m.get("release_gate") != "REVIEWED":
         return False
@@ -70,7 +70,7 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
                "run_url": "https://github.com/example/repo/actions/runs/1"}
         trace = {"sha": sha, "artifact_url": "https://example.invalid/evidence"}
         manifest = {
-            "schema_version": 1, "release_gate": "REVIEWED", "implementation_sha": sha,
+            "schema_version": 2, "release_gate": "REVIEWED", "implementation_sha": sha,
             "real_target_activation": False,
             "owner_review_url": "https://github.com/example/repo/pull/1",
             "hosted_python_311": {**run, "job_id": 11},
