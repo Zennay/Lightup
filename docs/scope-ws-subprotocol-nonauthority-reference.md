@@ -29,3 +29,7 @@ Two more offline tests cover all 33 ASCII C0/DEL codepoints across the three gra
 ## Additional mutation and consent-denial mock checks
 
 Two offline methods cover 15 cross-field identity mutations with zero fake handler calls and the three denied approval/revocation Boolean combinations. Total: 22 offline unittest methods. This does not prove real executor dispatch ordering, live revocation, or production WebSocket gate behavior.
+
+## Revocation and malformed approval mock-denial expansion
+
+Two additional offline methods verify that a header cannot undo revocation even when another identity role varies, and malformed approval types (null, integer, string and containers) produce zero fake handler calls. Total: **24 standalone unittest methods**. These do not establish real gateway or ToolExecutor authorization safety.
