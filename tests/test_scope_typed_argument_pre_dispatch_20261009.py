@@ -107,6 +107,24 @@ class TypedArgumentsPreDispatchTests(unittest.TestCase):
         self.handler.assert_called_once()
         self.ledger.add_evidence.assert_called_once()
 
+    def test_malformed_arguments_do_not_poison_later_valid_call(self):
+        self.assert_denied_before_effects({
+            "host": "localhost", "port": True, "enabled": True
+        })
+        result = self.executor.execute(self.context, self.call(
+            host="localhost", port=8080, enabled=True
+        ))
+        self.assertEqual(result.evidence_id, "synthetic-evidence-id")
+        self.handler.assert_called_once()
+        self.ledger.add_evidence.assert_called_once()
+
+    def test_multiple_unknown_fields_never_reach_handler(self):
+        self.assert_denied_before_effects({
+            "host": "localhost", "port": 8080, "enabled": True,
+            "network_destination": "outside.invalid",
+            "authority_override": "outside.invalid",
+        })
+
     def test_valid_lab_control_reaches_handler_and_evidence(self):
         result = self.executor.execute(self.context, self.call(
             host="localhost", port=8080, enabled=True, ratio=0.5
