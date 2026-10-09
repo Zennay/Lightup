@@ -8,7 +8,7 @@ model tool arguments, prompt text, or client-controlled headers.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Callable
 
 from .ai.orchestration import (
@@ -36,6 +36,10 @@ class DestructiveLabApproval:
 
 ApprovalResolver = Callable[[str], DestructiveLabApproval | None]
 
+# A single operator approval must never authorize unbounded future work.
+# Proof of who issued it still belongs to a trusted persistent approval store.
+MAX_DESTRUCTIVE_APPROVAL_WINDOW = timedelta(hours=24)
+
 
 def _valid_timestamp(value: object) -> bool:
     return (
@@ -46,7 +50,12 @@ def _valid_timestamp(value: object) -> bool:
 
 
 def _valid_identity(value: object) -> bool:
-    return type(value) is str and bool(value) and value == value.strip()
+    return (
+        type(value) is str
+        and 0 < len(value) <= 256
+        and value == value.strip()
+        and all(0x20 <= ord(char) < 0x7F for char in value)
+    )
 
 
 def destructive_lab_approval_matches(
@@ -72,6 +81,10 @@ def destructive_lab_approval_matches(
         or definition.min_risk is not RiskLevel.DESTRUCTIVE_LAB_ONLY
         or type(approval.revoked) is not bool
         or approval.revoked
+        or type(definition.tool_id) is not str
+        or type(definition.capability_id) is not str
+        or not _valid_identity(call.tool_id)
+        or definition.tool_id != call.tool_id
     ):
         return False
     ids = (
@@ -100,6 +113,7 @@ def destructive_lab_approval_matches(
     return (
         approval.approved_at <= context.created_at <= now < approval.expires_at
         and approval.approved_at < approval.expires_at
+        and approval.expires_at - approval.approved_at <= MAX_DESTRUCTIVE_APPROVAL_WINDOW
     )
 
 
