@@ -13,7 +13,7 @@ All checks below MUST refer to one immutable implementation commit, not merely a
 | Request | Request identity, revision, tenant, principal, target, capability, risk and immutable decision digest |
 | Revocation | Durable persisted revocation event, monotonic revision, timestamp, and causal check immediately before side effect |
 | Execution | Instrumented ToolExecutor invocation with counted handler, socket, queue and action-evidence side effects |
-| CI | Hosted Python 3.11 and 3.14 plus permanent vps-bb300bba self-hosted job; all green on the SAME SHA |
+| CI | Hosted Python 3.11 and 3.14 plus permanent vps-bb300bba self-hosted job; all green on the SAME SHA, each with explicit positive integer workflow run IDs |
 | Independent review | Named source owner, review SHA, acceptance/rejection, timestamp |
 
 Never publish access tokens, grant secrets, real target identifiers or customer evidence in this manifest.
@@ -69,3 +69,7 @@ The verifier requires an **exact integer** `schema_version: 1` (not `true`, `1.0
 Run `python scripts/verify_scope_proof_manifest.py evidence.json` only against a **redacted local** index. It accepts UTF-8 JSON up to 64 KiB, refuses duplicate keys, malformed/non-finite values, unknown keys, missing counters and missing approvals, and checks all workflow/reviewer SHA references against the exact implementation SHA. The implementation SHA must differ from the base SHA. All-zero 40-character SHAs are treated as unresolved placeholders and rejected, including base, CI, and independent-review references. Tests: `PYTHONPATH=src python -m unittest discover -s tests -p test_scope_proof_manifest.py -v`.
 
 **Critical limitation:** the verifier cannot query GitHub, trust-store persistence or the actual production dispatcher. A JSON file with fabricated `true` fields and fabricated SHA strings can still pass its structural checks. Therefore even a passing exit code (`0`) is **INDEX CHECK PASS ONLY**, never production authorization or independent proof. Real run IDs, signed/retrievable evidence, pre-I/O revocation race results and source-owner acceptance must be inspected separately before any release decision.
+
+## CI provenance index
+
+Format version 1 requires `hosted_py311_run_id`, `hosted_py314_run_id`, and `permanent_vps_run_id` as strictly positive integer GitHub workflow run references. These are lookup handles, not evidence of success: the reviewer must open each run, confirm the relevant Python job actually executed, verify its exact `head_sha` equals `implementation_sha`, and check the permanent job ran on `vps-bb300bba`. A queued/cancelled/skipped run or mismatched commit is **HOLD**, even if the offline index verifier passes.
