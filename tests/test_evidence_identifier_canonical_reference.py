@@ -119,6 +119,19 @@ class EvidenceIdentifierReferenceTests(unittest.TestCase):
             self.assertEqual(store.get_evidence(second_id).sha256,
                              hashlib.sha256(b"second").hexdigest())
 
+    def test_missing_canonical_uuid_does_not_create_evidence(self):
+        from lightup.state import StateStore
+
+        missing_id = "12345678-1234-4234-8234-123456789abc"
+        with tempfile.TemporaryDirectory() as directory:
+            store = StateStore(Path(directory) / "missing.db")
+            self.assertEqual(canonical_evidence_id(missing_id), missing_id)
+            with self.assertRaises((KeyError, ValueError)):
+                store.get_evidence(missing_id)
+            with store.connect() as con:
+                count = con.execute("SELECT count(*) FROM evidence").fetchone()[0]
+            self.assertEqual(count, 0)
+
     def test_actual_uuid4_issuer_samples_roundtrip(self):
         # Standard-library issuer path used by StateStore.add_evidence.
         for _ in range(32):
