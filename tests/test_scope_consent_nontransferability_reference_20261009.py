@@ -27,6 +27,8 @@ def matches_consent(consent: Consent, *, tenant_id: str, engagement_id: str,
         return False
     if type(consent.revision) is not int or type(revision) is not int:
         return False
+    if consent.revision < 1 or revision < 1:
+        return False
     if type(consent.approved) is not bool or type(revoked) is not bool:
         return False
     return (consent.approved is True and revoked is False
@@ -142,6 +144,22 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
                 raise AssertionError("untrusted equality")
         self.assertFalse(matches_consent(self.consent,
                                          **(self.request | {"asset_id": Hostile()})))
+
+    def test_reject_zero_or_negative_revision(self):
+        for invalid in (0, -1, -999):
+            with self.subTest(revision=invalid):
+                self.assertFalse(matches_consent(
+                    self.consent, **(self.request | {"revision": invalid})))
+                invalid_record = Consent("tenant-A", "engagement-A", "owner-A",
+                                         "asset-A", "web-baseline", invalid, True)
+                self.assertFalse(matches_consent(
+                    invalid_record, **(self.request | {"revision": invalid})))
+
+    def test_reject_stored_boolean_revision(self):
+        invalid_record = Consent("tenant-A", "engagement-A", "owner-A",
+                                 "asset-A", "web-baseline", True, True)
+        self.assertFalse(matches_consent(invalid_record,
+                                         **(self.request | {"revision": True})))
 
 
 if __name__ == "__main__":
