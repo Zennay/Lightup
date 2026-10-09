@@ -262,6 +262,19 @@ class RedirectScopeReferenceTests(unittest.TestCase):
                 break
         self.assertEqual(visited, [ScopeReason.EXPLICIT_HOST, ScopeReason.AUTHORIZATION_EXPIRED])
 
+    def test_ipv6_public_destination_outside_allowlist_is_denied(self):
+        decision = self.decide("https://[2606:4700:4700::1111]/", self.grant)
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_encoded_allowed_hostname_in_path_does_not_authorize_destination(self):
+        decision = self.decide(
+            "https://outside.example.test/%61pproved.example.test/next",
+            self.grant,
+        )
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
     def test_each_redirect_hop_rechecks_target_identity(self):
         hops = [
             "https://approved.example.test/start",
