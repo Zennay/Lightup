@@ -43,6 +43,22 @@ class KnownRedGateManifestTests(unittest.TestCase):
         self.assertEqual(len(declared), len(set(declared)))
         self.assertEqual(set(declared), marked)
 
+    def test_manifest_is_fail_closed_and_requires_both_ci_environments(self):
+        data = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        self.assertFalse(data["activation_permitted"])
+        self.assertEqual(data["status"], "DRAFT_HOLD")
+        required = set(data["required_proof"])
+        self.assertTrue({
+            "same-head-hosted-python-3.11",
+            "same-head-hosted-python-3.14",
+            "same-head-vps-python-3.11",
+            "same-head-vps-python-3.14",
+            "source-owner-pre-io-grant-and-revocation",
+            "source-owner-registry-network-destination",
+            "independent-owner-review",
+        }.issubset(required))
+        self.assertGreater(len(data["unresolved"]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
