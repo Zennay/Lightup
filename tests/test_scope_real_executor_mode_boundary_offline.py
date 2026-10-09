@@ -4,6 +4,7 @@ This is deliberately NOT a persisted-consent/revocation proof. The production
 owner must separately prove trusted-grant revalidation before network I/O.
 """
 import unittest
+from dataclasses import replace
 from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
@@ -11,7 +12,7 @@ from lightup.ai.orchestration import (
     RunContext, ToolCall, ToolDefinition, ToolDenied, ToolExecutor, ToolOutput,
 )
 from lightup.engagements import AssessmentMode, RiskLevel
-from lightup.execution_policy import InteractionKind
+from lightup.execution_policy import ExecutionPolicy, InteractionKind
 
 
 class RealExecutorModeBoundaryTests(unittest.TestCase):
@@ -74,6 +75,31 @@ class RealExecutorModeBoundaryTests(unittest.TestCase):
         self.handler.assert_called_once()
         self.state.add_evidence.assert_called_once()
 
+
+    def test_real_policy_denies_target_without_authorization_before_handler(self):
+        # Production ExecutionPolicy, actual ToolExecutor; no fake policy approval.
+        self.definition = replace(
+            self.definition, interaction=InteractionKind.TARGET_ACTIVE
+        )
+        self.registry.get.return_value = (self.definition, self.handler)
+        self.executor = ToolExecutor(self.registry, self.state, ExecutionPolicy())
+        context = replace(
+            self.context(AssessmentMode.AUTHORIZED_ASSESSMENT), is_lab=False
+        )
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            with self.assertRaises(ToolDenied):
+                self.executor.execute(context, self.call)
+        self.handler.assert_not_called()
+        self.state.add_evidence.assert_not_called()
+
+    def test_real_executor_rejects_lab_tool_in_nonlab_context(self):
+        self.executor = ToolExecutor(self.registry, self.state, ExecutionPolicy())
+        context = replace(self.context(AssessmentMode.AUTHORIZED_ASSESSMENT), is_lab=False)
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            with self.assertRaises(ToolDenied):
+                self.executor.execute(context, self.call)
+        self.handler.assert_not_called()
+        self.state.add_evidence.assert_not_called()
 
 if __name__ == "__main__":
     unittest.main()
