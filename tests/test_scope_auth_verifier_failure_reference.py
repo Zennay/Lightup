@@ -2,6 +2,7 @@
 This is NOT the production gate and never authorizes target execution.
 """
 import unittest
+import unicodedata
 from dataclasses import dataclass
 
 
@@ -17,8 +18,7 @@ def eligible(proof, verifier):
     """A trusted caller-provided verifier is illustrative, not issuer provenance."""
     if type(proof) is not Proof:
         return False
-    if any(type(value) is not str or not value or len(value) > 256 or value != value.strip() or any(ord(ch) < 33 or ord(ch) == 127 for ch in value)
-           for value in (proof.tenant, proof.request, proof.issuer, proof.grant)):
+    if any(\n        type(value) is not str\n        or not value\n        or len(value) > 256\n        or value != value.strip()\n        or any(unicodedata.category(ch) in {"Cc", "Cf", "Zl", "Zp"} for ch in value)\n        for value in (proof.tenant, proof.request, proof.issuer, proof.grant)\n    ):
         return False
     try:
         result = verifier(proof)
@@ -76,6 +76,17 @@ class VerifierFailureReferenceTests(unittest.TestCase):
             with self.subTest(bad=repr(bad)):
                 self.assertFalse(eligible(Proof(bad, "request", "issuer", "grant"), check))
         self.assertEqual(called, [])
+
+    def test_unicode_format_and_line_separator_deny_without_verification(self):
+        calls = []
+        def check(_):
+            calls.append(True)
+            return True
+        for bad in ("tenant\\u200bother", "tenant\\u2028other", "tenant\\u2029other",
+                    "tenant\\u2060other"):
+            with self.subTest(bad=repr(bad)):
+                self.assertFalse(eligible(Proof(bad, "request", "issuer", "grant"), check))
+        self.assertEqual(calls, [])
 
     def test_identifier_length_boundary(self):
         self.assertTrue(eligible(Proof("x" * 256, "request", "issuer", "grant"),
