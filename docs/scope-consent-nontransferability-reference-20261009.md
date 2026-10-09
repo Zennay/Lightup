@@ -40,3 +40,5 @@ Stored consent identifiers receive the same Unicode format-control checks as req
 Positive/negative Unicode controls: ordinary letters and combining marks are accepted only when the persisted owner ID exactly matches the request. Canonically equivalent composed/decomposed strings do not implicitly confer authority; the trusted issuer must define canonical identity rules independently.
 
 Further offline edge controls exercise both ends of the Unicode surrogate range and verify that combining-mark suffixes on tenant, engagement, asset or capability IDs cannot silently inherit exact-match consent.
+
+Revision-binding checks also vary stored and requested revisions independently. Approval status must be an exact builtin boolean; numeric, string, missing, and container-shaped impostors fail closed even if they look truthy or falsey.
