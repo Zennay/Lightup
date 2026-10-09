@@ -16,6 +16,12 @@ def apply_withdrawal(current: Consent, event_grant_id: object, event_revision: o
         raise ValueError("noncanonical grant identifier")
     if type(event_revision) is not int or event_revision < 1:
         raise ValueError("noncanonical revision")
+    if type(current) is not Consent or type(current.grant_id) is not str or not current.grant_id:
+        raise ValueError("invalid current grant")
+    if type(current.revision) is not int or current.revision < 0:
+        raise ValueError("invalid current revision")
+    if type(current.withdrawn) is not bool:
+        raise ValueError("invalid withdrawal state")
     if event_grant_id != current.grant_id:
         raise ValueError("wrong grant")
     if event_revision <= current.revision:
@@ -25,7 +31,11 @@ def apply_withdrawal(current: Consent, event_grant_id: object, event_revision: o
 
 def decide_offline(current: Consent, *, issuer_verified: bool, within_scope: bool) -> bool:
     """Illustrative deny-only check, never a grant of runtime permission."""
-    return (type(issuer_verified) is bool and issuer_verified
+    return (type(current) is Consent
+            and type(current.grant_id) is str and bool(current.grant_id)
+            and type(current.revision) is int and current.revision >= 0
+            and type(current.withdrawn) is bool
+            and type(issuer_verified) is bool and issuer_verified
             and type(within_scope) is bool and within_scope
             and not current.withdrawn)
 
@@ -56,6 +66,26 @@ class ConsentWithdrawalReferenceTests(unittest.TestCase):
         again = apply_withdrawal(withdrawn, "grant-A", 6)
         self.assertTrue(again.withdrawn)
         self.assertFalse(decide_offline(again, issuer_verified=True, within_scope=True))
+
+    def test_malformed_persisted_state_fails_closed(self):
+        invalid = (
+            Consent("grant-A", True, False),
+            Consent("grant-A", -1, False),
+            Consent("grant-A", 4, 0),
+            Consent("grant-A", 4, "false"),
+            Consent("", 4, False),
+            Consent(b"grant-A", 4, False),
+        )
+        for item in invalid:
+            with self.subTest(item=item):
+                self.assertFalse(decide_offline(item, issuer_verified=True, within_scope=True))
+                with self.assertRaises(ValueError):
+                    apply_withdrawal(item, "grant-A", 5)
+
+    def test_positive_unwithdrawn_control_is_only_shape_check(self):
+        self.assertTrue(decide_offline(self.grant, issuer_verified=True, within_scope=True))
+        self.assertFalse(decide_offline(self.grant, issuer_verified=False, within_scope=True))
+        self.assertFalse(decide_offline(self.grant, issuer_verified=True, within_scope=False))
 
     def test_malformed_boolean_inputs_not_truthy_authority(self):
         for issuer, scope in ((1, True), (True, 1), ("yes", True), (True, "yes")):
