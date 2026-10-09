@@ -659,5 +659,29 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(self.policy.explicit_hosts, original)
 
 
+    def test_expired_grant_denial_has_no_http_or_socket_side_effects(self):
+        from datetime import datetime, timedelta, timezone
+        from unittest.mock import patch
+
+        expired = Authorization(
+            owner="fixture", reference="NOT-TRUSTED",
+            valid_until=datetime.now(timezone.utc) - timedelta(days=2),
+        )
+        with (
+            patch("socket.getaddrinfo") as lookup,
+            patch("socket.create_connection") as connect,
+            patch("urllib.request.urlopen") as dispatch,
+        ):
+            decision = self.policy.decide(Target(
+                "https://approved.example/", authorization=expired,
+                labels=("X-Original-Host: localhost; revoked=false",),
+            ))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+        lookup.assert_not_called()
+        connect.assert_not_called()
+        dispatch.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
