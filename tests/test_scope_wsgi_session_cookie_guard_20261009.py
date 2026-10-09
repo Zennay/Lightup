@@ -86,6 +86,8 @@ class SessionCookieGuardTest(unittest.TestCase):
             "lightup_session=foo; lightup_session=bar",
             "lightup_session=foo;lightup_session=foo",
             "lightup_session=foo, lightup_session=bar",
+            "lightup_session=foo lightup_session=bar",
+            "unrelated=da rk; lightup_session=bar",
             "lightup_session=foo\r\nX-Auth: operator",
             "lightup_session=foo\x00evil",
             "lightup_session=foo\tother",
