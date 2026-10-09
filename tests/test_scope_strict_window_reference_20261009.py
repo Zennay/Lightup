@@ -27,7 +27,10 @@ def strict_window_eligible(start, end, now):
         except (TypeError, ValueError, OverflowError):
             return False
     try:
-        return start < end and start <= now < end
+        normalized_start = start.astimezone(timezone.utc)
+        normalized_end = end.astimezone(timezone.utc)
+        normalized_now = now.astimezone(timezone.utc)
+        return normalized_start < normalized_end and normalized_start <= normalized_now < normalized_end
     except (TypeError, ValueError, OverflowError):
         return False
 
@@ -96,6 +99,23 @@ class StrictWindowReferenceTests(unittest.TestCase):
         forged = ForgedDatetime(2026, 10, 9, 12, tzinfo=timezone.utc)
         self.assertFalse(strict_window_eligible(self.start, self.end, forged))
         self.assertFalse(strict_window_eligible(forged, self.end, self.now))
+
+    def test_folded_local_hour_compares_actual_utc_instants(self):
+        from datetime import tzinfo
+
+        class AmbiguousHour(tzinfo):
+            def utcoffset(self, dt):
+                return timedelta(hours=2 if dt.fold == 0 else 1)
+
+            def dst(self, dt):
+                return timedelta(0)
+
+        zone = AmbiguousHour()
+        first = datetime(2026, 10, 25, 2, 30, tzinfo=zone, fold=0)
+        second = datetime(2026, 10, 25, 2, 30, tzinfo=zone, fold=1)
+        self.assertTrue(strict_window_eligible(first, second, first))
+        self.assertFalse(strict_window_eligible(first, second, second))
+        self.assertFalse(strict_window_eligible(second, first, first))
 
     def test_invalid_now_types_deny(self):
         for bad in (None, "", 0, False, True, self.now.isoformat()):
