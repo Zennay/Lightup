@@ -47,6 +47,35 @@ class EvidenceIdentifierReferenceTests(unittest.TestCase):
             self.assertEqual(record.sha256, hashlib.sha256(payload).hexdigest())
             self.assertNotEqual(record.sha256, evidence_id)
 
+    def test_temporary_store_rejected_alias_does_not_change_evidence_row(self):
+        from lightup.state import StateStore
+
+        payload = b"offline row immutability acceptance"
+        with tempfile.TemporaryDirectory() as directory:
+            store = StateStore(Path(directory) / "immutability.db")
+            run_id = store.create_run(target="local-fixture", activation_mode="plan_only")
+            identifier = store.add_evidence(
+                run_id=run_id, capability_id="fixture", kind="reference",
+                source="offline", payload=payload,
+            )
+            with store.connect() as con:
+                before = tuple(con.execute(
+                    "SELECT evidence_id,run_id,capability_id,kind,source,sha256,"
+                    "metadata_json,created_at FROM evidence WHERE evidence_id=?",
+                    (identifier,),
+                ).fetchone())
+            alias = identifier.upper()
+            self.assertRejected(alias)
+            with store.connect() as con:
+                after = tuple(con.execute(
+                    "SELECT evidence_id,run_id,capability_id,kind,source,sha256,"
+                    "metadata_json,created_at FROM evidence WHERE evidence_id=?",
+                    (identifier,),
+                ).fetchone())
+                count = con.execute("SELECT count(*) FROM evidence").fetchone()[0]
+            self.assertEqual(before, after)
+            self.assertEqual(count, 1)
+
     def test_actual_uuid4_issuer_samples_roundtrip(self):
         # Standard-library issuer path used by StateStore.add_evidence.
         for _ in range(32):
