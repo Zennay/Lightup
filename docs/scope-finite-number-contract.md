@@ -78,3 +78,7 @@ A normal ToolExecutor regression now executes valid finite â†’ invalid string â†
 ## No stale or invented red gate names
 
 The manifest checker also parses both owned test modules and verifies every declared known-red method actually exists and is a `test_*` function, with integer issue references and nonempty gate keys. Combined with the decorator parity check, this prevents accidental stale references or invented known-red names in the machine-readable release ledger.
+
+## Unambiguous known-red issue registry
+
+The manifest checks now reject duplicate GitHub issue numbers and duplicate gate keys, and require each unresolved list to contain explicitly named `test_*` methods. These constraints prevent accidental shadowing of an open authorization gap in the draft release ledger. This is bookkeeping enforcement, not proof that the corresponding runtime issue is fixed.
