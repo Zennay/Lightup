@@ -21,7 +21,12 @@ def evidence_ready(record):
     if any(type(record[key]) is not str or not record[key].strip()
            for key in ("production_owner", "base_sha", "head_sha")):
         return False
-    if any(re.fullmatch(r"[0-9a-f]{40}", record[key]) is None\n           for key in ("base_sha", "head_sha")):\n        return False\n    if record["base_sha"] == record["head_sha"]:\n        return False\n    if any(type(record[key]) is not bool or record[key] is not True
+    if any(re.fullmatch(r"[0-9a-f]{40}", record[key]) is None
+           for key in ("base_sha", "head_sha")):
+        return False
+    if record["base_sha"] == record["head_sha"]:
+        return False
+    if any(type(record[key]) is not bool or record[key] is not True
            for key in REQUIRED - {"production_owner", "base_sha", "head_sha"}):
         return False
     # No interpretation of a CI result as an actual authorization grant.
