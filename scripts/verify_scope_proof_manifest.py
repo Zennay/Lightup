@@ -89,7 +89,9 @@ def main(argv):
     try:
         # Do not follow a symlink to a grant store, device or other secret.
         # O_NONBLOCK avoids hanging if a supplied path resolves to a FIFO.
-        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_NONBLOCK"):
+            raise ValueError("secure regular-file open is unavailable")
+        flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
         descriptor = os.open(argv[1], flags)
         with os.fdopen(descriptor, "rb") as stream:
             if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
