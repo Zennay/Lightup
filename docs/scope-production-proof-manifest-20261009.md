@@ -127,3 +127,6 @@ An observed Python 3.11 job must not pass merely because its name contains that 
 
 ## Exact-SHA hosted job classification helper
 A separate offline reference `classify_authenticated_run_jobs(run, jobs, expected_sha)` accepts a caller-supplied workflow-run snapshot only when its head SHA and completed/success state match; hosted Python 3.11 and 3.14 must each have one distinct completed/success job belonging to that run with the exact hosted preflight job name. Missing, duplicate, failed, queued, wrong-run, or mismatched-name records deny. The helper **never returns permanent VPS proof**. Its name refers to the intended authenticated API source: the function itself cannot authenticate the caller or API payload and is not release authority. Existing HOLD and no-real-target gates remain in force.
+
+## Workflow and job result type-integrity
+The hosted-run classifier now requires exact built-in string status/conclusion fields at the workflow and individual job levels, rejecting same-text `str` subclass values. Synthetic regression fixtures cover both levels. This remains offline classification of caller-supplied records, not API authentication or VPS proof.
