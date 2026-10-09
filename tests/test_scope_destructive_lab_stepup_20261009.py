@@ -13,7 +13,7 @@ from pathlib import Path
 
 from lightup.ai.orchestration import (
     RunContext, ToolCall, ToolDefinition, ToolDenied, ToolExecutor,
-    ToolOutput, ToolRegistry,
+    ToolOutput, ToolRegistry, ToolParameter, ParamKind,
 )
 from lightup.destructive_lab_step_up import (
     DestructiveLabApproval, DestructiveLabStepUpExecutor,
@@ -363,6 +363,62 @@ class DestructiveLabStepUpIntegrationTests(unittest.TestCase):
         self.assertFalse(destructive_lab_approval_matches(
             boundary, self.context, self.call, self.destructive, now=self.now
         ))
+
+    def test_parameterized_destructive_lab_tool_cannot_choose_another_destination(self):
+        # The current registry cannot express which argument names select
+        # network or filesystem destinations. A per-asset approval is not
+        # authorization for an arbitrary host value in model arguments.
+        def handler(context, arguments):
+            self.invocations.append("bad-handler")
+            return ToolOutput("bad handler", "note", b"bad-handler")
+
+        param_tool = ToolDefinition(
+            tool_id="synthetic-lab-param-tool",
+            capability_id="wireless-lab",
+            interaction=InteractionKind.LAB_ACTIVE,
+            min_risk=RiskLevel.DESTRUCTIVE_LAB_ONLY,
+            description="Offline only; argument is never inspected by a tool",
+            parameters=(ToolParameter("host", ParamKind.STRING, required=True),),
+        )
+        self.registry.register(param_tool, handler)
+        self.live_record = replace(self.approval, tool_id=param_tool.tool_id)
+        self.assert_denied_without_effect(call=ToolCall(
+            tool_id=param_tool.tool_id,
+            asset=self.call.asset,
+            arguments=(("host", "outside-lab.example.test"),),
+        ))
+        self.assert_denied_without_effect(call=ToolCall(
+            tool_id=param_tool.tool_id,
+            asset=self.call.asset,
+        ))
+        self.assertNotIn("bad-handler", self.invocations)
+
+    def test_unexpected_arguments_on_risk_five_no_param_tool_rejected(self):
+        self.assert_denied_without_effect(call=ToolCall(
+            tool_id=self.call.tool_id,
+            asset=self.call.asset,
+            arguments=(("host", "outside-lab.example.test"),),
+        ))
+
+    def test_low_risk_parameterized_lab_contract_remains_delegated(self):
+        def handler(context, arguments):
+            self.invocations.append(arguments["label"])
+            return ToolOutput("ok", "note", b"safe")
+        low_param = ToolDefinition(
+            tool_id="synthetic-lab-low-risk-param",
+            capability_id="wireless-lab",
+            interaction=InteractionKind.LAB_ACTIVE,
+            min_risk=RiskLevel.LOW_IMPACT,
+            description="No-op labelled lab proof",
+            parameters=(ToolParameter("label", ParamKind.STRING),),
+        )
+        self.registry.register(low_param, handler)
+        result = DestructiveLabStepUpExecutor(self.executor).execute(
+            self.context,
+            ToolCall(low_param.tool_id, self.call.asset, (("label", "safe"),)),
+        )
+        self.assertEqual(result.tool_id, low_param.tool_id)
+        self.assertEqual(self.invocations, ["safe"])
 
 
 if __name__ == "__main__":
