@@ -74,6 +74,39 @@ class BackslashNonauthorityTests(unittest.TestCase):
         )
         policy.assert_not_called()
 
+
+    def test_literal_and_percent_encoded_backslash_have_distinct_boundaries(self):
+        examples = (
+            ("https://example.test/\\admin", True),
+            ("https://example.test/%5Cadmin", False),
+            ("https://example.test/%5cadmin", False),
+            ("https://example.test/?next=%5Cother.test", False),
+        )
+        for target, literal_backslash in examples:
+            with self.subTest(target=target):
+                policy = Mock(return_value="DENY")
+                self.assertEqual(
+                    reference_dispatch(target, policy),
+                    "INVALID_TARGET" if literal_backslash else "DENY",
+                )
+                if literal_backslash:
+                    policy.assert_not_called()
+                else:
+                    policy.assert_called_once_with(target)
+
+    def test_non_http_schemes_cannot_reach_policy(self):
+        for target in (
+            "file:///etc/hosts",
+            "data:text/plain,hello",
+            "javascript:alert(1)",
+            "//example.test/path",
+            "https:/missing-authority",
+        ):
+            with self.subTest(target=target):
+                policy = Mock(return_value="ALLOW")
+                self.assertEqual(reference_dispatch(target, policy), "INVALID_TARGET")
+                policy.assert_not_called()
+
     def test_nonstring_input_must_not_invoke_user_string_conversion(self):
         class Hostile:
             def __str__(self):
