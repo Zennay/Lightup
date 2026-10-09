@@ -13,7 +13,7 @@ This reference isolates an evidence/remediation integrity question: a finding's 
 
 ## Limitations and handoff
 
-Thirty stdlib-only offline reference tests. Additional vectors cover the 64-member limit (accepted) and 65-member denial, tuple/list parity, case-sensitive identity, composed versus decomposed Unicode, exact whitespace, JSON delimiter ambiguity, tenant/finding boundary separation, membership extension, and escaped versus literal control sequences, accepted exact-length identity boundaries, independently rejected finding identifiers, quoted identifier distinction, and deterministic repeated replay. No source changes, network access, real target assessment, CI-green claim, production enforcement, or authorization expansion. Production source owners must establish collection semantics, evidence provenance and retest synchronization before integration. Require exact-head hosted and permanent VPS validation before promoting the draft.
+Thirty-five stdlib-only offline reference tests. Additional vectors cover the 64-member limit (accepted) and 65-member denial, tuple/list parity, case-sensitive identity, composed versus decomposed Unicode, exact whitespace, JSON delimiter ambiguity, tenant/finding boundary separation, membership extension, and escaped versus literal control sequences, accepted exact-length identity boundaries, independently rejected finding identifiers, quoted identifier distinction, and deterministic repeated replay. No source changes, network access, real target assessment, CI-green claim, production enforcement, or authorization expansion. Production source owners must establish collection semantics, evidence provenance and retest synchronization before integration. Require exact-head hosted and permanent VPS validation before promoting the draft.
 
 ## Domain separation and compatibility
 
@@ -26,3 +26,7 @@ Unpaired UTF-16 surrogate code points are invalid as standalone Unicode scalar v
 ## Exhaustive order check and length semantics
 
 The reference checks all 24 permutations of four distinct evidence IDs to prove order independence over that bounded example. Its 128-character limit is based on Python string length (Unicode code points), **not UTF-8 encoded byte length**. Production owners must explicitly approve that distinction or replace it with the intended storage/API byte-limit contract before adopting this reference. These tests remain offline, not evidence of production enforcement or VPS success.
+
+## Receipt verification reference
+
+The offline verifier checks exact lowercase 64-character hexadecimal SHA-256 receipt shape, recomputes the versioned canonical evidence-set digest and compares it with `hmac.compare_digest`. It rejects forged values, changed tenant/finding/evidence membership, duplicate references and malformed Unicode. This is only content-integrity comparison: a matching receipt is **not** authenticity, issuer provenance, existence, authorization or a substitute for a signed/verified source-owned record. Production integration requires trusted evidence ownership and current-state revocation checks.
