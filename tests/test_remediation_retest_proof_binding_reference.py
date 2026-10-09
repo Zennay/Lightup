@@ -19,7 +19,7 @@ def digest(payload):
     return hashlib.sha256(canonical.encode("ascii")).hexdigest()
 
 
-_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\\Z", re.ASCII)
+_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z", re.ASCII)
 
 
 def verified_retest(finding, proof):
