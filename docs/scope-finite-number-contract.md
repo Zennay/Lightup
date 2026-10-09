@@ -90,3 +90,7 @@ The manifest checks now reject duplicate GitHub issue numbers and duplicate gate
 ## Side-effect-free argument container boundary
 
 The independent helper only accepts concrete tuple/list argument containers. A side-effectful generator must be rejected without iteration, and every argument key must be an exact string. The new tests make both behaviors explicit, avoiding runtime iterator side effects before authorization decisions. This helper is still not connected to production dispatch.
+
+## Ambiguous registry schema guard
+
+The helper also rejects duplicate names in `ToolDefinition.parameters` before calling the existing schema validator. Without that check, the current `ToolDefinition.validate_arguments` constructs a dictionary keyed by parameter name, which can silently collapse conflicting parameter definitions. A local regression constructs an ambiguous registry definition and requires a fail-closed error. This only protects calls routed through the unintegrated helper; the source owner must adopt it in actual dispatch.
