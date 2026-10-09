@@ -2,6 +2,7 @@
 import importlib.util
 import json
 import tempfile
+import py_compile
 from pathlib import Path
 import unittest
 
@@ -26,6 +27,10 @@ def fixture():
 
 
 class ProofManifestTests(unittest.TestCase):
+    def test_script_compiles_as_standalone_python(self):
+        with tempfile.TemporaryDirectory() as directory:
+            py_compile.compile(str(MODULE), cfile=str(Path(directory) / "verifier.pyc"), doraise=True)
+
     def test_valid_index_only(self):
         self.assertEqual(module.verify(fixture()), [])
 
