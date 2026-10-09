@@ -74,6 +74,12 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
             "https://github.com/Zennay/Lightup/actions/runs/123?approved=true",
             "https://github.com/Zennay/Lightup/actions/runs/123#approved",
             "https://github.com/Zennay/Lightup/actions/runs/123/extra",
+            "https://github.com/Zennay/Lightup/actions/runs/123/",
+            "https://github.com:443/Zennay/Lightup/actions/runs/123",
+            "https://github.com/Zennay/Lightup/actions/runs/0",
+            "https://github.com/Zennay/Lightup/actions/runs/000000000000000000001",
+            "https://github.com/Zennay/Lightup/actions/runs/123%2fextra",
+            "https://github.com/Zennay/Lightup/actions/runs/123@evil.example",
         )
         for url in hostile:
             with self.subTest(url=url):
