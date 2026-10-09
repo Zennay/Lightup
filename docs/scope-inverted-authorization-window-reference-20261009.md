@@ -73,3 +73,6 @@ The pure strict reference now normalizes all validated aware instants to UTC bef
 
 ## UTC boundary overflow controls
 Two additional strict-reference tests cover conversion of extreme timezone-aware values that underflow UTC and equivalent instants expressed with different fixed offsets near expiry. UTC conversion overflow must produce `False`, never an exception or permission. Expiry stays exclusive in this isolated reference. These are temporal-only controls without issuer authentication or dispatch authority.
+
+## Clock and expiry UTC overflow
+The strict offline reference now includes both extreme `now` and `valid_until` values whose UTC conversion overflows. As with an overflowing start bound, temporal eligibility must be `False` without an exception escaping. All three paths remain synthetic and purely local; no validated issuer consent or execution rights are implied.
