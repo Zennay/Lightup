@@ -20,6 +20,10 @@ def validate_hold_manifest(data):
     defects = []
     if type(data) is not dict:
         return ["manifest must be an object"]
+    allowed_top = {"schema_version", "release_gate", "status", "requirements",
+                   "activation_rule", "network_operations_permitted"}
+    if set(data) != allowed_top:
+        defects.append("unexpected or missing manifest fields")
     if type(data.get("schema_version")) is not int or data["schema_version"] != 1:
         defects.append("unsupported manifest schema")
     if data.get("status") != "HOLD" or data.get("network_operations_permitted") is not False:
@@ -37,6 +41,8 @@ def validate_hold_manifest(data):
             defects.append("malformed requirement entry")
             continue
         ids.append(entry["id"])
+        if set(entry) != {"id", "owner", "state"}:
+            defects.append("unexpected requirement metadata: " + entry["id"])
         if entry.get("state") != "unverified" or type(entry.get("owner")) is not str or not entry["owner"].strip():
             defects.append("unaudited state or missing owner: " + entry["id"])
         if "approval" in entry or "grant" in entry:
@@ -129,6 +135,24 @@ class ScopeReleaseEvidenceManifestTests(unittest.TestCase):
         candidate = copy.deepcopy(self.manifest)
         candidate["requirements"][0]["id"] = SpoofId(candidate["requirements"][0]["id"])
         self.assertTrue(validate_hold_manifest(candidate))
+
+    def test_extra_top_level_authority_fields_are_rejected(self):
+        import copy
+        for key, value in (("approved", True), ("grant", "synthetic"),
+                           ("activation_token", "none"), ("network_override", False)):
+            with self.subTest(key=key):
+                candidate = copy.deepcopy(self.manifest)
+                candidate[key] = value
+                self.assertTrue(validate_hold_manifest(candidate))
+
+    def test_extra_requirement_authority_fields_are_rejected(self):
+        import copy
+        for key, value in (("approval", False), ("grant", None),
+                           ("verified_by", "example"), ("trusted", False)):
+            with self.subTest(key=key):
+                candidate = copy.deepcopy(self.manifest)
+                candidate["requirements"][0][key] = value
+                self.assertTrue(validate_hold_manifest(candidate))
 
     def test_manifest_explicitly_holds_activation(self):
         self.assertEqual(self.manifest["release_gate"], "real_target_authorization")
