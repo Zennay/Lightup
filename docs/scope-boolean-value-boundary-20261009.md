@@ -25,3 +25,7 @@ Prior HEAD `5580c50272a368cc62a004032c1f27f812c64f44` queued canonical run [3795
 ## Adversarial truthiness boundary
 
 A deliberately hostile object whose `__bool__` raises is rejected as a BOOLEAN argument without executing that method (call count remains zero); an exact `False` remains admitted afterwards. This guards against accidental future conversion through `bool(value)` in schema admission. No target execution or authorization claims follow from this unit contract.
+
+## Non-throwing truthiness impostors
+
+In addition to an adversarial `__bool__` that raises, both true-like and false-like custom objects are rejected without their `__bool__` being invoked (zero calls). A coercion-based validator would wrongly accept at least one of these, so this is a direct non-coercion regression. This is still schema-only acceptance and cannot certify production execution gates. Earlier HEAD `3ddca53` hosted #37950655764 and VPS #37950656025 were queued at inspection; neither proves the new HEAD.
