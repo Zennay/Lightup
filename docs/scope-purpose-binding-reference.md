@@ -22,9 +22,9 @@ another. The explicit reference vocabulary is `current-assessment`,
 ## Evidence boundaries
 
 `tests/test_scope_purpose_binding_reference.py` contains a **pure in-memory
-reference** with ten independent unittest regressions. A positive result means
+reference** with twelve independent unittest regressions. A positive result means
 only that this tiny reference predicate's purpose and identity fields agree;
-it does not establish authentic provenance, valid consent, authorization for
+the reference intentionally restricts identity fields to printable ASCII to avoid\nUnicode confusables and invisible separators; the production owner must decide\na canonical identity grammar. It does not establish authentic provenance, valid consent, authorization for
 targets, or permission to execute a capability.
 
 Run offline:
