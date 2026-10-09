@@ -106,7 +106,7 @@ def main(argv):
                           object_pairs_hook=reject_duplicate_keys,
                           parse_constant=lambda value: (_ for _ in ()).throw(
                               ValueError(f"invalid JSON constant: {value}")))
-    except (OSError, ValueError, UnicodeError):
+    except (OSError, ValueError, UnicodeError, RecursionError):
         # Never echo attacker-controlled JSON keys, file names, or raw values
         # into CI logs; a rejection is intentionally non-diagnostic.
         print("HOLD: invalid manifest input", file=sys.stderr)
