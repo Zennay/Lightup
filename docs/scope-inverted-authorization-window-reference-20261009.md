@@ -91,3 +91,6 @@ Two new offline controls demonstrate that a synthetic `Authorization(owner="", r
 
 ## Partial owner/reference metadata is not issuer verification
 Two more offline characterization controls demonstrate that a merely nonempty `reference` cannot compensate for empty `owner`, and a nonempty `owner` cannot compensate for empty `reference` on synthetic public allowlist entries. Both paths may report legacy scope allow, but neither establishes authenticated consent, durable issuer proof or executable capability. Production gate owner must reject untrusted/missing provenance regardless of temporal scope outcome.
+
+## Fixed UTC boundary truth matrix
+The pure strict temporal reference now checks 21 combinations: seven instants surrounding the `[start,end)` window expressed with three timezone offsets. Every case must match UTC chronological eligibility, independent of wall-clock representation; the exact end remains excluded. This is only a temporal reference, not an authenticated authorization or executor gate.
