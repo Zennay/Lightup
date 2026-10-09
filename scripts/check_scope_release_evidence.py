@@ -69,12 +69,21 @@ def evaluate(evidence: object) -> tuple[bool, list[str]]:
     return not reasons, reasons
 
 
+def reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
         print("Usage: python scripts/check_scope_release_evidence.py evidence.json", file=sys.stderr)
         return 2
     try:
-        evidence = json.loads(Path(argv[1]).read_text(encoding="utf-8"))
+        evidence = json.loads(Path(argv[1]).read_text(encoding="utf-8"), object_pairs_hook=reject_duplicate_keys)
     except (OSError, ValueError) as exc:
         print(f"HOLD: unreadable evidence: {exc}", file=sys.stderr)
         return 2
