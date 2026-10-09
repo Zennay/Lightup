@@ -35,6 +35,8 @@ def validate_unambiguous_arguments(
         result[name] = value
 
     parameter_names = [p.name for p in definition.parameters]
+    if any(type(name) is not str for name in parameter_names):
+        raise OrchestrationError("tool parameter names must be strings")
     if len(parameter_names) != len(set(parameter_names)):
         raise OrchestrationError("duplicate tool parameter names in registry definition")
     definition.validate_arguments(result)
