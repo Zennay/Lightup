@@ -20,3 +20,7 @@ Command: `PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_x_o
 These tests cover only the pure legacy `ScopePolicy.decide` surface. They do not pass an actual HTTP request through ingress or tool-dispatch, and a passing test does not prove trusted authorization. Source owner must verify a request carrying `X-Original-Host` cannot change any pre-I/O asset, tenant, engagement, capability, issuer, approval, time window, or revocation check. Both denied and revoked requests must produce **zero handler calls and zero evidence writes**, including across reverse proxies.
 
 Maintain DRAFT/HOLD until production owner #107/#1128 completes end-to-end tests, explicit authorized customer consent is verified, and the exact PR head has passed both hosted Python 3.11/3.14 and permanent self-hosted VPS CI. No live targets, network requests, permissions, deployments or production-code edits were performed in this change.
+
+## Configuration and repeated-label boundaries
+
+The pure policy reference separately tests that `require_authorization_for_public=False` is an explicit trusted policy configuration, never a value inferred from `X-Original-Host`, and that 1/10/100 repeated spoofed labels cannot mutate configured allowlists. These tests are NOT an endorsement of disabling consent requirements in the production dispatcher.
