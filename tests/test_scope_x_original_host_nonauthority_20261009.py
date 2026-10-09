@@ -817,6 +817,30 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(decision.normalized_host, "approved.example")
 
 
+    def test_forged_host_does_not_alter_out_of_scope_denial_with_no_network(self):
+        from unittest.mock import patch
+
+        hints = (
+            "X-Original-Host: approved.example",
+            "X-Original-Host: localhost; consent_signed=true",
+            "X-Original-Host: approved.example; operator_approved=true",
+        )
+        baseline = self.policy.decide(Target("https://unlisted.example/"))
+        with (
+            patch("socket.getaddrinfo") as lookup,
+            patch("socket.create_connection") as connect,
+            patch("urllib.request.urlopen") as dispatch,
+        ):
+            for hint in hints:
+                with self.subTest(hint=hint):
+                    result = self.policy.decide(Target(
+                        "https://unlisted.example/", labels=(hint,),
+                    ))
+                    self.assertEqual(result, baseline)
+        lookup.assert_not_called()
+        connect.assert_not_called()
+        dispatch.assert_not_called()
+
     def test_untrusted_original_host_is_metamorphically_inert(self):
         # Metamorphic contract: changing ONLY untrusted labels must not
         # change the normalized host, authorization result, or reason.
