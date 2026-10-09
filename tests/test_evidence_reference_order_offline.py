@@ -165,6 +165,25 @@ class EvidenceReferenceOrderReferenceTests(unittest.TestCase):
         self.assertEqual(len({reference_digest(*case) for case in samples}),
                          len(samples))
 
+    def test_all_permutations_share_exact_digest(self):
+        from itertools import permutations
+
+        references = ("alpha", "beta", "gamma", "delta")
+        digests = {
+            reference_digest("tenant", "finding", list(order))
+            for order in permutations(references)
+        }
+        self.assertEqual(len(digests), 1)
+
+    def test_exact_evidence_reference_byte_length_boundary(self):
+        accepted = "é" * 128
+        self.assertEqual(
+            reference_digest("t", "f", [accepted]),
+            reference_digest("t", "f", (accepted,)),
+        )
+        with self.assertRaises(ValueError):
+            reference_digest("t", "f", ["é" * 129])
+
     def test_does_not_mutate_inputs(self):
         ids = ["z", "a"]
         reference_digest("t1", "f1", ids)
