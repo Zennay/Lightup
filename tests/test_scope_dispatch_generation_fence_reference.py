@@ -17,7 +17,11 @@ def may_dispatch(snapshot: DispatchLease, live: DispatchLease) -> bool:
         return False
     for lease in (snapshot, live):
         if (type(lease.tenant) is not str or not lease.tenant
-                or len(lease.tenant) > 128 or lease.tenant != lease.tenant.strip()\n                or any(ord(ch) < 33 or ord(ch) == 127 for ch in lease.tenant)\n                or type(lease.request) is not str or not lease.request\n                or len(lease.request) > 128 or lease.request != lease.request.strip()\n                or any(ord(ch) < 33 or ord(ch) == 127 for ch in lease.request)
+                or len(lease.tenant) > 128 or lease.tenant != lease.tenant.strip()
+                or any(ord(ch) < 33 or ord(ch) == 127 for ch in lease.tenant)
+                or type(lease.request) is not str or not lease.request
+                or len(lease.request) > 128 or lease.request != lease.request.strip()
+                or any(ord(ch) < 33 or ord(ch) == 127 for ch in lease.request)
                 or type(lease.generation) is not int or lease.generation < 1
                 or type(lease.active) is not bool):
             return False
