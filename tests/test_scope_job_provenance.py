@@ -87,6 +87,13 @@ class OfflineJobProvenanceTests(unittest.TestCase):
                 evidence[index]["name"] = f"Unrelated Python {version} integration"
                 self.assertTrue(any("expected job label" in e for e in module.check(proof(), evidence)))
 
+    def test_proof_job_name_rejects_unrelated_suffix(self):
+        for index in range(3):
+            with self.subTest(index=index):
+                evidence = jobs()
+                evidence[index]["name"] += " unrelated"
+                self.assertTrue(any("expected job label" in e for e in module.check(proof(), evidence)))
+
     def test_generic_lightup_job_is_not_vps_safety_proof(self):
         evidence = jobs()
         evidence[2]["name"] = "LightUp unrelated task"
