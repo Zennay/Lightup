@@ -126,7 +126,7 @@ class TestForwardedHeaderNonAuthority(unittest.TestCase):
 
     def test_matching_invalid_identity_for_every_binding_field(self):
         for field in ("tenant", "request", "asset", "capability"):
-            for invalid in ("bad\\rvalue", "bad\\x7fvalue", " ", "x" * 129):
+            for invalid in ("bad\rvalue", "bad\x7fvalue", " ", "x" * 129):
                 with self.subTest(field=field, invalid=repr(invalid)):
                     grant_values = {**self.grant.__dict__, field: invalid}
                     dispatch_values = {**self.dispatch.__dict__, field: invalid}
