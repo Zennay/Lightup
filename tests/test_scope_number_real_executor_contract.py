@@ -120,6 +120,29 @@ class OfflineExecutorNumberTests(unittest.TestCase):
         self.assertEqual(self.evidence_count(), 1)
 
     @unittest.expectedFailure
+    def test_duplicate_argument_name_must_not_silently_override(self):
+        """ToolCall.arguments_dict currently collapses duplicate tuple keys."""
+        with self.assertRaises(OrchestrationError):
+            self.executor.execute(
+                self.context,
+                ToolCall("number-lab-only", "127.0.0.1",
+                         (("value", "not-a-number"), ("value", 2.5))),
+            )
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), 0)
+
+    @unittest.expectedFailure
+    def test_duplicate_argument_name_cannot_replace_good_with_bad(self):
+        with self.assertRaises(OrchestrationError):
+            self.executor.execute(
+                self.context,
+                ToolCall("number-lab-only", "127.0.0.1",
+                         (("value", 2.5), ("value", 3.5))),
+            )
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), 0)
+
+    @unittest.expectedFailure
     def test_nan_denied_before_handler_and_evidence(self):
         with self.assertRaises(OrchestrationError):
             self.invoke(float("nan"))
