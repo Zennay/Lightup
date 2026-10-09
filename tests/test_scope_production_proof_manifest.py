@@ -135,6 +135,10 @@ def classify_authenticated_run_jobs(run: dict, jobs: list, expected_sha: str) ->
             type(run.get("status")) is not str or run["status"] != "completed" or
             type(run.get("conclusion")) is not str or run["conclusion"] != "success"):
         return {}
+    # Reject duplicated job identities before selecting either interpreter lane.
+    ids = [job.get("id") for job in jobs if type(job) is dict]
+    if any(type(identifier) is not int or identifier <= 0 for identifier in ids) or len(ids) != len(set(ids)):
+        return {}
     result = {}
     for version in ("3.11", "3.14"):
         matches = [job for job in jobs if type(job) is dict and
@@ -164,6 +168,10 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         ]
         expected = {"hosted_python_311": 100, "hosted_python_314": 101}
         self.assertEqual(classify_authenticated_run_jobs(run, jobs, sha), expected)
+        duplicate_unrelated = [dict(job) for job in jobs] + [{
+            "id": 100, "run_id": 91, "name": "Unrelated job",
+            "status": "completed", "conclusion": "success"}]
+        self.assertEqual(classify_authenticated_run_jobs(run, duplicate_unrelated, sha), {})
         class EqualString(str):
             pass
         for key in ("status", "conclusion"):
