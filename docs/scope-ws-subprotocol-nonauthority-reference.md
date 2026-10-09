@@ -94,3 +94,7 @@ Before promoting a real gateway/ToolExecutor implementation, a source-owning wor
 | Persistence + logging | denied operation | bounded denial audit only, no action evidence |
 
 Collect proof on the **same exact implementation SHA**: Python 3.11 + 3.14 hosted runs, canonical permanent VPS run and owner review. Do not treat mock calls as actual I/O assertions, do not activate external targets and do not merge this reference branch without authorization.
+
+## Revocation and Unicode normalization boundaries
+
+Two added offline tests exercise denied mock executor effects after revocation even when requested state otherwise matches, and prohibit cross-normalization Unicode identity binding without explicit trusted canonicalization. A composed identity still provides the reference positive control. Total **45 unittest methods**. No claim of live dispatcher safety.
