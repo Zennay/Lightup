@@ -92,6 +92,33 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
                 request = self.request | {"revision": revision, "revoked": True}
                 self.assertFalse(matches_consent(approval, **request))
 
+    def test_reject_nonboolean_revocation_even_if_falsy(self):
+        for forged in (None, "", [], {}, 0):
+            with self.subTest(value=repr(forged)):
+                self.assertFalse(matches_consent(self.consent, **(self.request | {"revoked": forged})))
+
+    def test_reject_unapproved_consent_even_if_identifiers_match(self):
+        unapproved = Consent("tenant-A", "engagement-A", "owner-A",
+                             "asset-A", "web-baseline", 3, False)
+        self.assertFalse(matches_consent(unapproved, **self.request))
+
+    def test_reject_missing_or_forged_stored_identity(self):
+        class Forged(str):
+            pass
+        for replacement in ("", "  ", Forged("owner-A")):
+            with self.subTest(replacement=repr(replacement)):
+                changed = Consent("tenant-A", "engagement-A", replacement,
+                                  "asset-A", "web-baseline", 3, True)
+                self.assertFalse(matches_consent(changed, **self.request))
+
+    def test_reject_lookalike_identifiers_without_normalizing_authority(self):
+        for field, replacement in (("tenant_id", "tenant-a"),
+                                   ("owner_id", "owner-A "),
+                                   ("asset_id", "asset-Α")):
+            with self.subTest(field=field):
+                self.assertFalse(matches_consent(
+                    self.consent, **(self.request | {field: replacement})))
+
 
 if __name__ == "__main__":
     unittest.main()
