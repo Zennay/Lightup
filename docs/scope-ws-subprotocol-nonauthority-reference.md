@@ -45,3 +45,7 @@ Two additional offline methods assert 99 C0/DEL identity-role mutation denials l
 ## Sequential revocation and revision transitions
 
 Two new offline tests demonstrate that a local reference grants one handler call before revocation but none after a stored revocation transition, and a new stored revision rejects the old request until a matching request exists. These are illustrative sequential checks, **not** evidence of concurrent or durable production revocation. Total: 30 unittest methods.
+
+## Revoked replay and revision claim regression
+
+Two new offline methods check twenty repeat requests after stored revocation result in zero mock calls, and a claimed future revision in WebSocket subprotocol never upgrades an older stored grant. 32 reference unittest methods total; this does not prove production durable revocation or live dispatcher safety.
