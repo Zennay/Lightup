@@ -14,7 +14,7 @@ def strict_window_eligible(start, end, now):
     try:
         if now.utcoffset() is None:
             return False
-    except (TypeError, ValueError, OverflowError):
+    except Exception:
         return False
     if start is None or end is None:
         return False
@@ -155,6 +155,21 @@ class StrictWindowReferenceTests(unittest.TestCase):
                     self.assertEqual(
                         strict_window_eligible(start, end, candidate),
                         0 <= minutes < 120)
+
+    def test_arbitrary_timezone_provider_failure_denies_without_exception(self):
+        from datetime import tzinfo
+
+        class CrashingTimezone(tzinfo):
+            def utcoffset(self, dt):
+                raise RuntimeError("untrusted timezone backend failure")
+
+            def dst(self, dt):
+                return None
+
+        broken = self.now.replace(tzinfo=CrashingTimezone())
+        self.assertFalse(strict_window_eligible(broken, self.end, self.now))
+        self.assertFalse(strict_window_eligible(self.start, broken, self.now))
+        self.assertFalse(strict_window_eligible(self.start, self.end, broken))
 
     def test_invalid_now_types_deny(self):
         for bad in (None, "", 0, False, True, self.now.isoformat()):
