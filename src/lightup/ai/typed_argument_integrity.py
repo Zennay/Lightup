@@ -21,6 +21,8 @@ def validate_unambiguous_arguments(
     The caller must still enforce durable consent, destination authorization,
     revocation, run mode, and risk policy. This is only input integrity.
     """
+    if type(definition) is not ToolDefinition:
+        raise OrchestrationError("tool definition must be a registered ToolDefinition")
     if type(definition.parameters) is not tuple:
         raise OrchestrationError("tool parameter registry must be a tuple")
     if any(type(parameter) is not ToolParameter for parameter in definition.parameters):
