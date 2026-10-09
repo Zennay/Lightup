@@ -13,6 +13,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 from lightup.domain import DomainStore, Role
+from lightup.engagements import AssessmentMode, RiskLevel
 from lightup.webapp import create_app
 from lightup.webapp.security import WebSecurity
 
@@ -261,6 +262,146 @@ class WsgiIdentityMetadataNonauthorityTest(unittest.TestCase):
                              f"/clients/{self.client_a.client_id}")
             self.assertIsNotNone(self.store.get_current_grant(
                 self.operator_ctx, engagement.engagement_id))
+
+    def test_forged_identity_cannot_approve_assessment_requests(self):
+        client_ctx = self.store.context_for_user(self.client_user.user_id)
+        for mode in ("development", "production"):
+            pending = self.store.submit_assessment_request(
+                client_ctx, requested_assets=("fixture.invalid",),
+                requested_mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
+                requested_risk=RiskLevel.LOW_IMPACT,
+                notes="offline no-target decision fixture",
+            )
+            path = f"/assessments/requests/{pending.request_id}/decision"
+            for key, value in SPOOFED_IDENTITIES:
+                for token, csrf, wanted_status in (
+                    (None, self.op_csrf, "303 See Other"),
+                    (self.client_token, self.client_csrf, "403 Forbidden"),
+                ):
+                    with self.subTest(mode=mode, key=key,
+                                      identity="anonymous" if token is None else "client"):
+                        status, headers, _ = self.request(
+                            mode, "POST", path, token=token,
+                            form={"csrf": csrf, "decision": "approve"},
+                            extra={key: value},
+                        )
+                        self.assertEqual(status, wanted_status)
+                        if token is None:
+                            self.assertEqual(headers["Location"], "/login")
+                        observed = self.store.get_assessment_request(
+                            self.operator_ctx, pending.request_id
+                        )
+                        self.assertEqual(observed.status.value, "submitted")
+                        self.assertIsNone(observed.decided_by)
+                        self.assertIsNone(observed.decided_at)
+            # Only the genuine operator session and body CSRF may decide.
+            status, headers, _ = self.request(
+                mode, "POST", path, token=self.op_token,
+                form={"csrf": self.op_csrf, "decision": "approve"},
+                extra={"REMOTE_USER": "client@lightup.test"},
+            )
+            self.assertEqual(status, "303 See Other")
+            self.assertEqual(headers["Location"], "/assessments")
+            decided = self.store.get_assessment_request(
+                self.operator_ctx, pending.request_id
+            )
+            self.assertEqual(decided.status.value, "approved")
+            self.assertEqual(decided.decided_by, self.operator_user.user_id)
+        # Approving a request is not an execution or authorization grant.
+        self.assertEqual(self.store.list_authorization_grants(self.operator_ctx,
+                         self.store.create_engagement(
+                             self.operator_ctx, self.client_a.client_id,
+                             "no active target authorization fixture",
+                         ).engagement_id), [])
+
+    def test_forged_identity_cannot_approve_risk_elevation(self):
+        client_ctx = self.store.context_for_user(self.client_user.user_id)
+        for mode in ("development", "production"):
+            engagement = self.store.create_engagement(
+                self.operator_ctx, self.client_a.client_id,
+                f"Offline risk decision fixture {mode}",
+            )
+            pending = self.store.request_risk_elevation(
+                client_ctx, engagement.engagement_id, RiskLevel.STANDARD,
+                "synthetic review-only scenario",
+            )
+            path = f"/assessments/elevations/{pending.approval_id}/decision"
+            for key, value in SPOOFED_IDENTITIES:
+                for token, csrf, expected_status in (
+                    (None, self.op_csrf, "303 See Other"),
+                    (self.client_token, self.client_csrf, "403 Forbidden"),
+                ):
+                    with self.subTest(mode=mode, key=key,
+                                      identity="anonymous" if token is None else "client"):
+                        status, headers, _ = self.request(
+                            mode, "POST", path, token=token,
+                            form={"csrf": csrf, "decision": "approve"},
+                            extra={key: value},
+                        )
+                        self.assertEqual(status, expected_status)
+                        if token is None:
+                            self.assertEqual(headers["Location"], "/login")
+                        observed = self.store.list_risk_approvals(
+                            self.operator_ctx, engagement.engagement_id
+                        )[0]
+                        self.assertEqual(observed.status.value, "pending")
+                        self.assertIsNone(observed.decided_by)
+                        self.assertIsNone(observed.decided_at)
+            status, headers, _ = self.request(
+                mode, "POST", path, token=self.op_token,
+                form={"csrf": self.op_csrf, "decision": "approve"},
+                extra={"HTTP_X_AUTH_REQUEST_USER": "client@lightup.test"},
+            )
+            self.assertEqual(status, "303 See Other")
+            self.assertEqual(headers["Location"], "/assessments")
+            decided = self.store.list_risk_approvals(
+                self.operator_ctx, engagement.engagement_id
+            )[0]
+            self.assertEqual(decided.status.value, "approved")
+            self.assertEqual(decided.decided_by, self.operator_user.user_id)
+            # A risk-review approval never silently issues a target grant.
+            self.assertEqual(self.store.list_authorization_grants(
+                self.operator_ctx, engagement.engagement_id), [])
+
+    def test_forged_identity_cannot_submit_request_as_another_tenant(self):
+        foreign_path = f"/portal/{self.client_b.client_id}/requests"
+        own_path = f"/portal/{self.client_a.client_id}/requests"
+        for mode in ("development", "production"):
+            before = len(self.store.list_assessment_requests(self.operator_ctx))
+            for key, value in SPOOFED_IDENTITIES:
+                for token, csrf, expected_status in (
+                    (None, self.op_csrf, "303 See Other"),
+                    (self.client_token, self.client_csrf, "403 Forbidden"),
+                ):
+                    with self.subTest(mode=mode, key=key,
+                                      identity="anonymous" if token is None else "client"):
+                        status, headers, _ = self.request(
+                            mode, "POST", foreign_path, token=token,
+                            form={"csrf": csrf, "assets": "fixture.invalid",
+                                  "risk": "1"},
+                            extra={key: value},
+                        )
+                        self.assertEqual(status, expected_status)
+                        if token is None:
+                            self.assertEqual(headers["Location"], "/login")
+                        self.assertEqual(
+                            len(self.store.list_assessment_requests(
+                                self.operator_ctx)), before
+                        )
+            # The same client cookie+form CSRF may only request its own scope,
+            # and a submitted request never grants permission to execute.
+            status, headers, _ = self.request(
+                mode, "POST", own_path, token=self.client_token,
+                form={"csrf": self.client_csrf, "assets": "fixture.invalid",
+                      "risk": "1"},
+                extra={"REMOTE_USER": "op@lightup.test"},
+            )
+            self.assertEqual(status, "303 See Other")
+            self.assertEqual(headers["Location"], own_path[:-9])
+            latest = self.store.list_assessment_requests(self.operator_ctx)[0]
+            self.assertEqual(latest.client_id, self.client_a.client_id)
+            self.assertEqual(latest.status.value, "submitted")
+            self.assertIsNone(latest.decided_by)
 
     def test_genuine_operator_cookie_plus_form_csrf_remain_authoritative(self):
         # Non-authoritative identity hints must neither elevate nor disable
