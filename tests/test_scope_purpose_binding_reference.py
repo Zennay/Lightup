@@ -131,6 +131,24 @@ class PurposeBindingReferenceTests(unittest.TestCase):
         self.assertFalse(self.check(object()))
         self.assertFalse(self.check(False))
 
+    def test_complete_purpose_cross_product(self):
+        """No one purpose can implicitly authorize either of the other two."""
+        for granted in sorted(_ALLOWED_PURPOSES):
+            for requested in sorted(_ALLOWED_PURPOSES):
+                with self.subTest(granted=granted, requested=requested):
+                    grant = PurposeGrant("tenant-1", "request-1", granted, True)
+                    self.assertIs(
+                        self.check(grant, purpose=requested),
+                        granted == requested,
+                    )
+
+    def test_forbidden_controls_on_matching_issuer_and_request(self):
+        """Matching malformed identity strings do not create authority."""
+        for invalid in ("tenant-1\\n", "tenant-1\\r", "tenant-1\\x00", "tenant-1\\x7f"):
+            with self.subTest(invalid=repr(invalid)):
+                grant = PurposeGrant(invalid, "request-1", "current-assessment", True)
+                self.assertFalse(self.check(grant, tenant_id=invalid))
+
     def test_input_is_unchanged(self):
         before = repr(self.grant)
         self.assertFalse(self.check(purpose="future-simulation"))
