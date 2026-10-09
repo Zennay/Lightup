@@ -77,3 +77,7 @@ Format version 1 requires `hosted_py311_run_id`, `hosted_py314_run_id`, and `per
 ## CI output minimization
 
 The offline verifier deliberately prints only a fixed rejection summary and an error count. It never emits user-controlled JSON field names, values or untrusted parser exceptions to shared CI logs. Diagnostic inspection of rejected manifests must happen in a separately access-controlled, local context without uploading sensitive grant or customer data. This is log minimization only and is not evidence that an assessment was authorized.
+
+## Local proof-file boundary
+
+The verification CLI reads only a regular file, rejects symbolic links/directories/devices/FIFOs and caps reads to 64 KiB + 1 byte. On the project's Linux runner it opens with `O_NOFOLLOW` and `O_NONBLOCK` before using `fstat`, so a symlink swap is not silently followed and a FIFO cannot hang the job. Proof material must still be stored in a restricted workspace; the index is not cryptographically authenticated.
