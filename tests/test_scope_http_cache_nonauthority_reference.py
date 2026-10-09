@@ -113,6 +113,31 @@ class HttpCacheNonAuthorityReferenceTests(unittest.TestCase):
             "tenant_a", "req_a", 2, "headers", True, False), self.dispatch, {}))
         self.assertFalse(reference_eligible(self.grant, vars(self.dispatch), {}))
 
+    def test_cache_cannot_supply_missing_grant(self):
+        self.assertFalse(reference_eligible(None, self.dispatch, {
+            "status": 200, "active": True, "authorization": "approved"}))
+
+    def test_cache_cannot_supply_missing_dispatch_identity(self):
+        self.assertFalse(reference_eligible(self.grant, None, {
+            "status": 304, "etag": "matching"}))
+
+    def test_forged_dispatch_subclass_is_denied(self):
+        class ForgedDispatch(Dispatch):
+            pass
+        forged = ForgedDispatch("tenant_a", "req_a", 2, "headers")
+        self.assertFalse(reference_eligible(self.grant, forged, {"age": 0}))
+
+    def test_cache_does_not_repair_zero_or_negative_revisions(self):
+        for revision in (0, -1):
+            with self.subTest(revision=revision):
+                bad_grant = LiveGrant("tenant_a", "req_a", revision, "headers", True, False)
+                bad_dispatch = Dispatch("tenant_a", "req_a", revision, "headers")
+                self.assertFalse(reference_eligible(bad_grant, bad_dispatch, {"status": 200}))
+
+    def test_cache_does_not_repair_bool_dispatch_revision(self):
+        bad_dispatch = Dispatch("tenant_a", "req_a", True, "headers")
+        self.assertFalse(reference_eligible(self.grant, bad_dispatch, {"status": 304}))
+
     def test_hostile_cache_object_not_inspected(self):
         class HostileCache:
             def __getattribute__(self, name):
