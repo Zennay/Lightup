@@ -4,6 +4,7 @@ This is NOT a production authorization implementation or permission grant.
 No sockets, targets, or executor imports are used.
 """
 from dataclasses import dataclass, replace
+import re
 import unittest
 
 
@@ -26,11 +27,14 @@ class Attempt:
     approved: bool
 
 
+_IDENTITY = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\\Z", re.ASCII)
+
+
 def reserve(budget: Budget, attempt: Attempt):
     """Return a new budget or None, failing closed on malformed or exhausted state."""
     if type(budget) is not Budget or type(attempt) is not Attempt:
         return None
-    if any(type(v) is not str or not v or len(v) > 128 or not v.isascii()
+    if any(type(v) is not str or _IDENTITY.fullmatch(v) is None
            for v in (budget.tenant, budget.request, attempt.tenant, attempt.request)):
         return None
     if any(type(v) is not int for v in
@@ -98,6 +102,28 @@ class RiskBudgetReferenceTests(unittest.TestCase):
         for value in ("", "ténant", "x" * 129):
             with self.subTest(value=value):
                 self.assertIsNone(reserve(replace(self.budget, tenant=value), self.attempt))
+
+    def test_identity_controls_whitespace_and_invisible_aliases_denied(self):
+        for value in (" tenant-a", "tenant-a ", "tenant\\na", "tenant\\ra",
+                      "tenant\\x00a", "tenant\\x7fa", "tenant/a",
+                      "tenant:a", "tenant\\u200ba", "tenant\\u202ea"):
+            with self.subTest(value=repr(value)):
+                self.assertIsNone(reserve(replace(self.budget, tenant=value), self.attempt))
+                self.assertIsNone(reserve(self.budget, replace(self.attempt, request=value)))
+
+    def test_budget_and_attempt_wrong_type_fields_denied(self):
+        for value in (None, 1, b"tenant-a", ["tenant-a"]):
+            with self.subTest(value=repr(value)):
+                self.assertIsNone(reserve(replace(self.budget, request=value), self.attempt))
+                self.assertIsNone(reserve(self.budget, replace(self.attempt, tenant=value)))
+
+    def test_units_are_never_implicitly_coerced(self):
+        for value in (2.0, "2", None, b"2", [2]):
+            with self.subTest(value=repr(value)):
+                self.assertIsNone(reserve(self.budget, replace(self.attempt, units=value)))
+
+    def test_overspent_budget_not_repaired_by_new_attempt(self):
+        self.assertIsNone(reserve(replace(self.budget, used=6), replace(self.attempt, units=1)))
 
     def test_polymorphic_envelopes_denied(self):
         class SubBudget(Budget):
