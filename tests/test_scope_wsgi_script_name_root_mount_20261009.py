@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 from urllib.parse import urlencode
 
-from lightup.domain import DomainStore
+from lightup.domain import DomainStore, Role
 from lightup.webapp import create_app
 from lightup.webapp.root_mount_guard import RootMountGuard
 from lightup.webapp.security import WebSecurity
@@ -188,6 +188,60 @@ class RootMountGuardIntegrationTests(unittest.TestCase):
             with self.subTest(invalid=repr(invalid)), self.assertRaises(TypeError):
                 RootMountGuard(lambda _env, _start: [], production=invalid)
 
+
+
+    def test_root_mount_keeps_client_tenant_and_role_boundaries(self):
+        allowed = self.store.create_client(self.context, "Tenant One")
+        other = self.store.create_client(self.context, "Tenant Two")
+        user = self.store.create_user(
+            self.context, "admin@tenant-one.test", "Tenant Admin",
+            Role.CLIENT_ADMIN, allowed.client_id,
+        )
+        client_token, client_csrf = self.store.create_session(user.user_id)
+        for production in (False, True):
+            with self.subTest(production=production):
+                # A prefix supplied by the caller never promotes a client
+                # session into operator or cross-tenant authority.
+                headers = {"HTTP_X_FORWARDED_PREFIX": "/admin",
+                           "HTTP_X_SCRIPT_NAME": "/clients"}
+                status, _, _, _ = self.request(
+                    production=production, method="GET", path="/clients",
+                    mount="", token=client_token, headers=headers,
+                )
+                self.assertEqual(status, "403 Forbidden")
+                status, _, _, _ = self.request(
+                    production=production, method="GET",
+                    path=f"/portal/{other.client_id}",
+                    mount="", token=client_token, headers=headers,
+                )
+                self.assertEqual(status, "403 Forbidden")
+                status, _, _, _ = self.request(
+                    production=production, method="POST", path="/clients",
+                    mount="", token=client_token,
+                    form={"csrf": client_csrf, "name": "Forbidden tenant"},
+                    headers=headers,
+                )
+                self.assertEqual(status, "403 Forbidden")
+                status, _, _, _ = self.request(
+                    production=production, method="GET",
+                    path=f"/portal/{allowed.client_id}",
+                    mount="", token=client_token,
+                )
+                self.assertEqual(status, "200 OK")
+                self.assertEqual(len(self.store.list_clients(self.context)), 2)
+
+    def test_production_mode_cannot_disagree_with_wrapped_application(self):
+        development = create_app(self.store, WebSecurity())
+        production = create_app(
+            self.store, WebSecurity("https://lightup.example.test")
+        )
+        with self.assertRaises(TypeError):
+            RootMountGuard(development)
+        with self.assertRaises(ValueError):
+            RootMountGuard(development, production=True)
+        with self.assertRaises(ValueError):
+            RootMountGuard(production, production=False)
+        self.assertIsInstance(RootMountGuard(production, production=True), RootMountGuard)
 
 if __name__ == "__main__":
     unittest.main()
