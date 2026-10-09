@@ -1,10 +1,6 @@
-"""Offline reference: evidence origin cannot be substituted for authorization.
-
-This is a contract fixture, not the production permission engine.
-No network, filesystem access, or target interaction.
-"""
+"""Pure offline acceptance reference; never grants production authorization."""
 import unittest
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 
 @dataclass(frozen=True)
@@ -30,12 +26,12 @@ def eligible(x: DecisionInput) -> bool:
         x.proof_issuer, x.proof_authorization_ref,
     )
     if any(
-        type(v) is not str
-        or not v
-        or len(v) > 128
-        or v != v.strip()
-        or any(ord(char) < 0x20 or ord(char) == 0x7f for char in v)
-        for v in fields
+        type(value) is not str
+        or not value
+        or len(value) > 128
+        or value != value.strip()
+        or any(ord(char) < 32 or ord(char) == 127 for char in value)
+        for value in fields
     ):
         return False
     if x.proof_origin != "trusted_authorization_register":
@@ -55,22 +51,66 @@ class ProofOriginReferenceTests(unittest.TestCase):
         self.good = DecisionInput(
             "tenant-A", "request-1", "issuer-1", "grant-1",
             "trusted_authorization_register", "tenant-A", "request-1",
-            "issuer-1", "grant-1", True
+            "issuer-1", "grant-1", True,
         )
 
-    def test_exact_reference_case_only(self):
+    def test_conditional_positive_fixture(self):
         self.assertTrue(eligible(self.good))
 
-    def test_untrusted_proof_origins_cannot_authorize(self):
-        from dataclasses import replace
-        for origin in ("report", "scanner", "lab_fixture", "client_upload", "", "TRUSTED_AUTHORIZATION_REGISTER"):
+    def test_untrusted_proof_origins(self):
+        for origin in ("report", "scanner", "lab_fixture", "client_upload", "",
+                       "TRUSTED_AUTHORIZATION_REGISTER"):
             with self.subTest(origin=origin):
-                self.assertFalse(eligible(replace(self.good, proof_origin="trusted_authorization_register\n")))
+                self.assertFalse(eligible(replace(self.good, proof_origin=origin)))
 
-    def test_subclass_is_not_a_trusted_envelope(self):
+    def test_proof_identity_binding(self):
+        for field in ("proof_tenant", "proof_request", "proof_issuer",
+                      "proof_authorization_ref"):
+            with self.subTest(field=field):
+                self.assertFalse(eligible(replace(self.good, **{field: "other"})))
+
+    def test_request_identity_binding(self):
+        for field in ("tenant", "request", "issuer", "authorization_ref"):
+            with self.subTest(field=field):
+                self.assertFalse(eligible(replace(self.good, **{field: "other"})))
+
+    def test_non_boolean_approval(self):
+        for value in (1, "yes", [], None, object()):
+            with self.subTest(value=repr(value)):
+                self.assertFalse(eligible(replace(self.good, proof_approved=value)))
+
+    def test_malformed_identity_types(self):
+        for field in ("tenant", "request", "issuer", "authorization_ref",
+                      "proof_tenant", "proof_request", "proof_issuer",
+                      "proof_authorization_ref", "proof_origin"):
+            for value in (None, 7, "", "x" * 129):
+                with self.subTest(field=field, value=repr(value)):
+                    self.assertFalse(eligible(replace(self.good, **{field: value})))
+
+    def test_control_characters_and_edge_whitespace(self):
+        for field in ("tenant", "request", "issuer", "authorization_ref",
+                      "proof_tenant", "proof_request", "proof_issuer",
+                      "proof_authorization_ref"):
+            for value in (" tenant", "tenant ", "tenant" + chr(10) + "other",
+                          "tenant" + chr(13) + "other", "tenant" + chr(9) + "other",
+                          "tenant" + chr(0) + "other", "tenant" + chr(127) + "other"):
+                with self.subTest(field=field, value=repr(value)):
+                    self.assertFalse(eligible(replace(self.good, **{field: value})))
+
+    def test_control_character_in_proof_origin(self):
+        self.assertFalse(eligible(replace(
+            self.good, proof_origin="trusted_authorization_register" + chr(10)
+        )))
+
+    def test_subclass_envelope_rejected(self):
         class Derived(DecisionInput):
             pass
         self.assertFalse(eligible(Derived(**vars(self.good))))
+
+    def test_frozen_fixture_remains_unchanged(self):
+        before = vars(self.good).copy()
+        eligible(self.good)
+        self.assertEqual(vars(self.good), before)
 
 
 if __name__ == "__main__":
