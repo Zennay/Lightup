@@ -78,6 +78,7 @@ class DestructiveLabStepUpIntegrationTests(unittest.TestCase):
             engagement_id=self.context.engagement_id,
             asset=self.call.asset,
             capability_id=self.destructive.capability_id,
+            tool_id=self.destructive.tool_id,
             approved_by="operator-step-up-reviewer",
             approved_at=self.now - timedelta(minutes=2),
             expires_at=self.now + timedelta(minutes=30),
@@ -123,6 +124,7 @@ class DestructiveLabStepUpIntegrationTests(unittest.TestCase):
             ("engagement_id", "other-engagement"),
             ("asset", "other-simulator"),
             ("capability_id", "other-capability"),
+            ("tool_id", "other-tool"),
         ):
             with self.subTest(field=key):
                 self.live_record = replace(self.approval, **{key: other})
@@ -134,22 +136,19 @@ class DestructiveLabStepUpIntegrationTests(unittest.TestCase):
             ("approved_by", " operator "),
             ("revoked", 0),
             ("expires_at", self.now - timedelta(seconds=1)),
-            ("expires_at", self.now + timedelta(hours=1)),
-            ("approved_at", self.now),
+                        ("approved_at", self.now),
             ("approved_at", self.context.created_at + timedelta(seconds=1)),
             ("approved_at", datetime.now()),
             ("expires_at", datetime.now()),
         ):
             with self.subTest(field=key, value=str(other)):
                 self.live_record = replace(self.approval, **{key: other})
-                if key == "expires_at" and other > self.now:
-                    # Future bounded expiry is legitimate (no hard global max).
-                    self.assertTrue(destructive_lab_approval_matches(
-                        self.live_record, self.context, self.call,
-                        self.destructive, now=self.now
-                    ))
-                else:
-                    self.assert_denied_without_effect()
+                self.assert_denied_without_effect()
+
+    def test_longer_future_expiry_remains_allowed_if_operator_approved(self):
+        self.live_record = replace(self.approval, expires_at=self.now + timedelta(hours=2))
+        result = self.wrapper().execute(self.context, self.call)
+        self.assertEqual(result.tool_id, self.call.tool_id)
 
     def test_expired_session_or_preapproval_run_denied(self):
         older = replace(
