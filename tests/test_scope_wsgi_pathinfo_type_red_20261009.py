@@ -135,6 +135,11 @@ class PathInfoIdentityWSGITests(unittest.TestCase):
                     "/clients", token=self.op_cookie, csrf=self.op_csrf,
                     production=production
                 )
+                # SQLite requires unique names across both environment subtests.
+                name = "Legitimate-prod" if production else "Legitimate-dev"
+                body = urlencode({"name": name, "csrf": self.op_csrf}).encode("utf-8")
+                env["CONTENT_LENGTH"] = str(len(body))
+                env["wsgi.input"] = io.BytesIO(body)
                 status, headers, _ = self._invoke(env, production=production)
                 self.assertEqual(status, "303 See Other")
                 self.assertEqual(headers["Location"], "/clients")
