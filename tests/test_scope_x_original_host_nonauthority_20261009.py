@@ -557,5 +557,26 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
 
 
+    def test_header_claimed_lease_cannot_approve_missing_grant(self):
+        for claim in ("lease_id=synthetic", "run_id=synthetic",
+                      "nonce=synthetic", "approval_signature=synthetic"):
+            with self.subTest(claim=claim):
+                result = self.policy.decide(Target(
+                    "approved.example",
+                    labels=("X-Original-Host: approved.example; " + claim,),
+                ))
+                self.assertFalse(result.allowed)
+                self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_forged_lease_does_not_authorize_unlisted_host(self):
+        result = self.policy.decide(Target(
+            "unlisted.example",
+            authorization=Authorization(owner="fixture", reference="NOT-TRUSTED"),
+            labels=("X-Original-Host: approved.example; lease_id=synthetic",),
+        ))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
+
+
 if __name__ == "__main__":
     unittest.main()
