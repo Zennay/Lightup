@@ -16,15 +16,19 @@ For every TARGET_ACTIVE tool definition, the trusted registry must identify
 which arguments can select or override a network destination. Before handler
 dispatch:
 
-1. resolve the independently authorized top-level asset to a canonical host;
+1. resolve the independently authorized top-level asset to a canonical host and,
+   when the asset expresses endpoint semantics, its effective port;
 2. reject duplicate or malformed argument pairs before projection to a mapping;
 3. for every registry-declared network-bearing argument, resolve a canonical
-   host without DNS or network I/O;
-4. require every such host to equal the authorized asset host exactly after the
-   agreed canonicalization;
-5. fail closed on non-string, blank, padded, control-character, userinfo,
+   host/endpoint without DNS or network I/O;
+4. require every such host to equal the authorized asset host;
+5. when the authorized asset fixes an endpoint through an explicit port or an
+   HTTP(S) URL, require the argument's effective port to match as well;
+6. only a host-level asset may leave port choice to the separately-authorized
+   tool/capability contract;
+7. fail closed on non-string, blank, padded, control-character, userinfo,
    malformed, unsupported-scheme, or otherwise ambiguous destination values;
-6. do not infer authority from the binding result itself.
+8. do not infer authority from the binding result itself.
 
 A positive binding result means only: declared destination arguments are
 consistent with the already-authorized asset. It does not prove grant issuance,
@@ -42,18 +46,23 @@ retry, queue handoff, DNS lookup, socket operation, or evidence-producing target
 interaction.
 
 The destination-key set must come from trusted tool metadata. Callers must not
-be allowed to declare their own network-bearing argument names.
+be allowed to declare their own network-bearing argument names. Port selection
+for host-level assets must still remain inside the already-authorized
+capability/tool contract; this reference does not grant arbitrary service access.
 
 ## Regression expectations
 
 The isolated reference tests cover:
 
-- same-host URL with different port/path/query: consistent;
-- hostname case and one trailing dot: same identity;
+- host-level asset + same host with different port/path/query: consistent;
+- URL/explicit-port asset + different port: reject;
+- HTTPS implicit 443 and explicit 443: same endpoint;
+- HTTPS-authorized endpoint replayed as HTTP/80: reject;
+- hostname case and one trailing dot: same host identity;
 - different `url`, `host`, `target`, or `endpoint`: reject;
 - duplicate argument names: reject before dict-style overwrite;
 - non-string destination values: reject;
-- userinfo ambiguity: reject;
+- userinfo ambiguity and unsupported schemes: reject;
 - blank/whitespace-padded values: reject;
 - unrelated metadata values: do not reinterpret as destinations;
 - caller input immutability;
