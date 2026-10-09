@@ -94,7 +94,7 @@ def verify_observed_ci_jobs(manifest: dict, observed: dict) -> bool:
                                    ("permanent_vps", None)):
         expected = manifest[lane]
         run = observed.get(lane)
-        if type(run) is not dict:
+        if type(run) is not dict or type(expected) is not dict:
             return False
         if set(run) != {"job_id", "run_url", "sha", "status", "conclusion",
                         "python_version", "runner_class"}:
@@ -273,6 +273,45 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
             mutated[lane][key] = bad
             with self.subTest(lane=lane, field=key):
                 self.assertFalse(verify_observed_ci_jobs(manifest, mutated))
+
+    def test_snapshot_subclass_values_never_count_as_verified(self):
+        class DeceptiveString(str):
+            pass
+        sha = "a" * 40
+        run = {"sha": sha, "conclusion": "success",
+               "run_url": "https://github.com/example/repo/actions/runs/1"}
+        trace = {"sha": sha, "artifact_url": "https://evidence.example.org/evidence"}
+        manifest = {
+            "schema_version": 2, "release_gate": "REVIEWED",
+            "real_target_activation": False, "implementation_sha": sha,
+            "owner_review_url": "https://github.com/example/repo/pull/1",
+            "hosted_python_311": {**run, "job_id": 11},
+            "hosted_python_314": {**run, "job_id": 12},
+            "permanent_vps": {**run, "job_id": 13,
+                "run_url": "https://github.com/example/repo/actions/runs/2"},
+            "negative_real_executor_trace": {**trace, **{key: 0 for key in COUNTERS}},
+            "positive_loopback_lab_trace": {**trace, "handler_calls": 1},
+            "persistent_revocation_proof": dict(trace),
+            "trusted_destination_metadata_proof": dict(trace),
+        }
+        observed = {}
+        for lane, version, runner in (
+            ("hosted_python_311", "3.11", "hosted"),
+            ("hosted_python_314", "3.14", "hosted"),
+            ("permanent_vps", "3.11", "permanent_vps"),
+        ):
+            expected = manifest[lane]
+            observed[lane] = {
+                "job_id": expected["job_id"], "run_url": expected["run_url"],
+                "sha": sha, "status": "completed", "conclusion": "success",
+                "python_version": version, "runner_class": runner,
+            }
+        self.assertTrue(verify_observed_ci_jobs(manifest, observed))
+        for field in ("status", "conclusion", "python_version", "runner_class",
+                      "run_url", "sha"):
+            changed = {name: dict(item) for name, item in observed.items()}
+            changed["hosted_python_311"][field] = DeceptiveString(changed["hosted_python_311"][field])
+            self.assertFalse(verify_observed_ci_jobs(manifest, changed), field)
 
     def test_current_manifest_is_explicitly_held_and_incomplete(self):
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
