@@ -447,6 +447,21 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
         self.assertTrue(dispatch(self.valid, self.valid, {}))
         self.assertEqual(effects, ["handler", "evidence_write", "network_open"])
 
+    def test_revoked_grant_cannot_execute_even_when_requested_matches_otherwise(self):
+        side_effects = []
+        revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
+        for candidate in (revoked, self.valid):
+            if reference_decide(revoked, candidate, {}):
+                side_effects.append("executor")
+        self.assertEqual(side_effects, [])
+
+    def test_reference_denies_distinct_normalization_forms_without_coercion(self):
+        composed = Grant("ténant", "lab-asset", "read-only", 3, True, False)
+        decomposed = Grant("te\u0301nant", "lab-asset", "read-only", 3, True, False)
+        self.assertFalse(reference_decide(composed, decomposed,
+            {"Sec-WebSocket-Protocol": "approved"}))
+        self.assertTrue(reference_decide(composed, composed, {}))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
