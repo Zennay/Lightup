@@ -168,6 +168,12 @@ def classify_supplied_hosted_run_jobs(run: dict, jobs: list, expected_sha: str, 
     return {"hosted_python_311": result["3.11"], "hosted_python_314": result["3.14"]}
 
 
+def classify_first_page_only_jobs(run: dict, jobs: list, expected_sha: str) -> dict:
+    """GitHub connector exposes first-page jobs only; never claim complete CI evidence."""
+    # Do not pass all_pages_verified=True from an unpaginated connector response.
+    return classify_supplied_hosted_run_jobs(run, jobs, expected_sha)
+
+
 class ScopeProductionProofManifestTests(unittest.TestCase):
     def test_authenticated_hosted_classifier_never_asserts_vps(self):
         sha = "a" * 40
@@ -252,6 +258,19 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
             changed[index][key] = wrong
             self.assertEqual(classify_supplied_hosted_run_jobs(run, changed, sha, all_pages_verified=True), {})
         self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs, "b" * 40, all_pages_verified=True), {})
+
+    def test_first_page_connector_cannot_claim_complete_ci(self):
+        sha = "a" * 40
+        run = {"id": 9, "head_sha": sha, "status": "completed", "conclusion": "success"}
+        jobs = [
+            {"id": 11, "run_id": 9, "name": "Offline preflight Python 3.11 (not VPS proof)",
+             "status": "completed", "conclusion": "success"},
+            {"id": 12, "run_id": 9, "name": "Offline preflight Python 3.14 (not VPS proof)",
+             "status": "completed", "conclusion": "success"},
+        ]
+        self.assertEqual(classify_first_page_only_jobs(run, jobs, sha), {})
+        self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs, sha, all_pages_verified=True),
+                         {"hosted_python_311": 11, "hosted_python_314": 12})
 
     def test_artifact_url_rejects_spoofed_or_ambiguous_locations(self):
         self.assertTrue(_valid_artifact_url("https://evidence.example.org/evidence"))
