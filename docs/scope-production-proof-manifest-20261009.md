@@ -67,3 +67,6 @@ Do not treat a JSON field containing `conclusion: success`, a well-formed job ID
 
 ## Offline job-ID lane regression
 An additional fixture now tests valid-looking evidence across three CI lanes and explicitly rejects duplicate job IDs and string-coerced IDs. The fixture exercises only syntactic schema binding; it cannot authenticate GitHub records or establish the actual Python interpreter version. No scanning or production mutation occurs.
+
+## Observed CI job separation (2026-10-09)
+GitHub's job endpoint showed run `37929812167` with hosted preflight jobs Python 3.14 (`113817670080`) and 3.11 (`113817670400`), both in progress at observation. Their names explicitly say `not VPS proof`. Another CI run `37929812148` had 3.14 (`113817493189`) and 3.11 (`113817493479`) jobs queued. This is observational evidence only, not green CI or confirmed permanent-runner execution. Re-query authenticated job/run metadata for any later release decision; never promote hosted results to canonical VPS proof.
