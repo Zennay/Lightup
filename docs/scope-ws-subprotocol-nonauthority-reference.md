@@ -140,3 +140,7 @@ Before promotion the owning implementation worker must attach evidence at one ex
 6. Source-owner review of any real-code modification and integration paths. This PR remains draft reference-only; do not take files from concurrent production workers.
 
 **Release decision: HOLD.** Neither this document nor a passing mock test authorizes target I/O, merge or deployment.
+
+## Offline multi-boundary side-effect instrumentation
+
+The **60th reference unittest method** records simulated handler, socket, queue, and action-evidence side effects: revoked and unapproved stored grants result in zero of all four, while the authorized positive control reaches each exactly once. These are local counters only, **not a real ToolExecutor, network or storage integration test**.
