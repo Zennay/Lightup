@@ -37,7 +37,11 @@ duplicate wire Cookie fields.
 - A second exact "lightup_session" name is refused, regardless of its value.
 - The sole session value must be **43 unpadded base64url characters**, matching current `DomainStore.create_session` (`secrets.token_urlsafe(32)`). Invalid/truncated/padded/percent-encoded/non-ASCII values are refused **before** session lookup. Correct length/alphabet is not authentication: SQLite session state still decides. If the domain's token format is intentionally migrated, this optional guard and acceptance tests must be updated together *before* production integration.
 - Single canonical cookies and unrelated ordinary cookie pairs pass through
-  unchanged. No session is created or authorized by this guard itself.
+  unchanged. For a session-bearing envelope, the decoded session value must
+  match what the *same* stdlib `SimpleCookie` parser used by the application
+  would select. Parser errors, missing entries or disagreed identity fail
+  closed before session lookup. The guard never confers authorization; SQLite
+  remains the only session authority.
 - Denial is generic, no-store, framed with CSP/frame/no-sniff/referrer
   controls and **no Set-Cookie**. Simulated production rejections retain HSTS.
 - Flag "production" is accepted only as a built-in bool. The opt-in
@@ -67,6 +71,9 @@ SQLite file in both development and simulated HTTPS/loopback production.
   valid operator POST creates exactly one client.
 - Production factory rejects missing or insecure configuration.
 - Unit-level stub proves invalid metadata never reaches the wrapped app.
+- Parser-differential regression replaces the guard's parsing adapter in an
+  isolated test with mismatched/missing/failing outcomes and proves the real
+  web app still receives no request, session lookup or mutation.
 
 No network listener or target interaction is used. CI tests do **not** inspect
 the installed reverse-proxy wire parser; that requires separate owner-approved
