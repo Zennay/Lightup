@@ -23,3 +23,7 @@ Thirteen offline test methods now include an expired authorization (`valid_until
 ## CI-driven fixture repair
 
 Hosted unit CI on prior HEAD `fe576bd` rejected the unmapped-IPv6 fixture because `2001:db8::1` is non-global under Python `ipaddress`, so the policy's intentional `allow_private_lab=True` shortcut applied. The negative control now uses a globally routed IPv6 literal `2606:4700:4700::1111` **as a parser-only fixture**; no connection, DNS query or target interaction is performed. This change tests only public-network allowlist inheritance, not private lab policy.
+
+## Equivalent IPv6 literal notation
+
+Fifteen offline cases now include the expanded spelling `0:0:0:0:0:ffff:808:808` of the same mapped address, asserting it matches the exact `/128` network only when the synthetic grant is present. This prevents bypass through address-text formatting and does not grant any network activity. The trust-boundary check remains a separate production requirement.
