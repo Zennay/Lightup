@@ -3,6 +3,7 @@
 This is a pure model. It does not claim production behavior or authorize targets.
 """
 import hashlib
+import hmac
 import json
 import unittest
 
@@ -26,6 +27,20 @@ def reference_digest(tenant, finding, evidence_ids):
     ).encode("ascii")
     return hashlib.sha256(payload).hexdigest()
 
+
+
+
+def verify_reference_digest(tenant, finding, evidence_ids, claimed_digest):
+    """Fail closed on malformed receipts; offline reference, not production attestation."""
+    if type(claimed_digest) is not str or len(claimed_digest) != 64:
+        return False
+    if any(char not in "0123456789abcdef" for char in claimed_digest):
+        return False
+    try:
+        actual = reference_digest(tenant, finding, evidence_ids)
+    except (ValueError, TypeError):
+        return False
+    return hmac.compare_digest(actual, claimed_digest)
 
 class EvidenceReferenceOrderReferenceTests(unittest.TestCase):
     def test_reorder_does_not_change_digest(self):
@@ -183,6 +198,33 @@ class EvidenceReferenceOrderReferenceTests(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             reference_digest("t", "f", ["é" * 129])
+
+    def test_receipt_verifier_accepts_matching_digest(self):
+        claim = reference_digest("t", "f", ["b", "a"])
+        self.assertTrue(verify_reference_digest("t", "f", ["a", "b"], claim))
+
+    def test_receipt_verifier_rejects_tampered_claim(self):
+        claim = reference_digest("t", "f", ["a"])
+        tampered = ("0" if claim[0] != "0" else "1") + claim[1:]
+        self.assertFalse(verify_reference_digest("t", "f", ["a"], tampered))
+
+    def test_receipt_verifier_rejects_malformed_claim(self):
+        claim = reference_digest("t", "f", ["a"])
+        for malformed in (None, 1, True, b"0" * 64, claim.upper(), "0" * 63, "g" * 64):
+            with self.subTest(claim=repr(malformed)):
+                self.assertFalse(verify_reference_digest("t", "f", ["a"], malformed))
+
+    def test_receipt_verifier_rejects_changed_context(self):
+        claim = reference_digest("t", "f", ["a"])
+        for tenant, finding, refs in (("t2", "f", ["a"]), ("t", "f2", ["a"]),
+                                      ("t", "f", ["b"]), ("t", "f", ["a", "b"])):
+            with self.subTest(tenant=tenant, finding=finding, refs=refs):
+                self.assertFalse(verify_reference_digest(tenant, finding, refs, claim))
+
+    def test_receipt_verifier_rejects_invalid_inputs(self):
+        claim = reference_digest("t", "f", ["a"])
+        self.assertFalse(verify_reference_digest("t", "f", ["a", "a"], claim))
+        self.assertFalse(verify_reference_digest("t", "f", [chr(0xD800)], claim))
 
     def test_does_not_mutate_inputs(self):
         ids = ["z", "a"]
