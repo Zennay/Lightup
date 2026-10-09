@@ -12,7 +12,7 @@ class BooleanArgumentBoundaryTests(unittest.TestCase):
             tool_id="offline-boolean-contract",
             capability_id="offline-only",
             interaction=__import__("lightup.execution_policy", fromlist=["InteractionKind"]).InteractionKind.PLAN_ONLY,
-            min_risk=__import__("lightup.engagements", fromlist=["RiskLevel"]).RiskLevel.LOW,
+            min_risk=__import__("lightup.engagements", fromlist=["RiskLevel"]).RiskLevel.LOW_IMPACT,
             description="Inert schema validation only",
             parameters=(ToolParameter("enabled", ParamKind.BOOLEAN, required=True),),
         )
