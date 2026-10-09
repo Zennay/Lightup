@@ -9,12 +9,13 @@ from pathlib import Path
 import sys
 import unittest
 from urllib.error import HTTPError
+from urllib.request import Request
 from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from check_scope_pr_overlap import (  # noqa: E402
     GitHubReadOnly, IncompleteEvidence, inspect, main, normalize_path,
-    overlaps, validate_repo,
+    overlaps, validate_repo, _RejectRedirect,
 )
 
 
@@ -72,6 +73,15 @@ class PathValidationTests(unittest.TestCase):
             with self.subTest(repo=value):
                 with self.assertRaises(ValueError):
                     validate_repo(value)
+
+    def test_redirect_to_other_host_is_denied_before_following(self):
+        handler = _RejectRedirect()
+        request = Request("https://api.github.com/repos/Zennay/Lightup/pulls")
+        with self.assertRaisesRegex(IncompleteEvidence, "redirected"):
+            handler.redirect_request(
+                request, None, 302, "Moved", {},
+                "https://synthetic-target.invalid/no-request-ever-sent",
+            )
 
     def test_directory_prefix_has_component_boundary(self):
         self.assertTrue(overlaps("src/lightup/", "src/lightup/execution_policy.py"))
