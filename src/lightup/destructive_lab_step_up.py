@@ -27,6 +27,7 @@ class DestructiveLabApproval:
     engagement_id: str
     asset: str
     capability_id: str
+    tool_id: str
     approved_by: str
     approved_at: datetime
     expires_at: datetime
@@ -75,7 +76,7 @@ def destructive_lab_approval_matches(
     ids = (
         approval.approval_id, approval.run_id, approval.client_id,
         approval.engagement_id, approval.asset, approval.capability_id,
-        approval.approved_by, context.run_id, context.client_id,
+        approval.tool_id, approval.approved_by, context.run_id, context.client_id,
         context.engagement_id, call.asset, definition.capability_id,
     )
     if not all(_valid_identity(value) for value in ids):
@@ -86,6 +87,7 @@ def destructive_lab_approval_matches(
         or approval.engagement_id != context.engagement_id
         or approval.asset != call.asset
         or approval.capability_id != definition.capability_id
+        or approval.tool_id != call.tool_id
     ):
         return False
     if not all(_valid_timestamp(value) for value in (
@@ -141,7 +143,7 @@ class DestructiveLabStepUpExecutor:
                     approval, context, call, definition,
                     now=datetime.now(timezone.utc),
                 )
-            except (Exception,) as exc:
+            except Exception as exc:
                 raise ToolDenied("destructive-lab approval unavailable") from exc
             if not approved:
                 raise ToolDenied("destructive-lab approval absent, stale or out of scope")
