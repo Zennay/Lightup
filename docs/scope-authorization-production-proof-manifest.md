@@ -81,3 +81,7 @@ The offline verifier deliberately prints only a fixed rejection summary and an e
 ## Local proof-file boundary
 
 The verification CLI reads only a regular file, rejects symbolic links/directories/devices/FIFOs and caps reads to 64 KiB + 1 byte. On the project's Linux runner it opens with `O_NOFOLLOW` and `O_NONBLOCK` before using `fstat`, so a symlink swap is not silently followed and a FIFO cannot hang the job. Proof material must still be stored in a restricted workspace; the index is not cryptographically authenticated.
+
+## Missing or ineffective OS capability flags
+
+`O_NOFOLLOW` and `O_NONBLOCK` must be actual nonzero integer bit masks on the executing platform. A missing, `None` or zero-valued flag is rejected before opening the proof path; no fallback to ordinary `open()` is permitted. This is an offline file-integrity defense only, not production authorization evidence.
