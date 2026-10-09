@@ -872,5 +872,23 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
                     self.assertEqual(result, baseline)
 
 
+    def test_decision_is_idempotent_with_untrusted_labels(self):
+        for value, expected_reason in (
+            ("https://unlisted.example/", ScopeReason.OUT_OF_SCOPE),
+            ("https://approved.example/", ScopeReason.AUTHORIZATION_MISSING),
+            ("https://", ScopeReason.INVALID_TARGET),
+        ):
+            target = Target(
+                value,
+                labels=("X-Original-Host: localhost; operator_approved=true",),
+            )
+            with self.subTest(value=value):
+                first = self.policy.decide(target)
+                second = self.policy.decide(target)
+                self.assertEqual(first, second)
+                self.assertFalse(first.allowed)
+                self.assertEqual(first.reason, expected_reason)
+
+
 if __name__ == "__main__":
     unittest.main()
