@@ -94,6 +94,13 @@ class OfflineJobProvenanceTests(unittest.TestCase):
                 evidence[index]["name"] += " unrelated"
                 self.assertTrue(any("expected job label" in e for e in module.check(proof(), evidence)))
 
+    def test_unapproved_matrix_suffix_is_rejected(self):
+        for suffix in ("Python 3.10", "Python 3.15", "Python 3.11) extra"):
+            with self.subTest(suffix=suffix):
+                evidence = jobs()
+                evidence[2]["name"] = "LightUp plan-only safety tests (" + suffix + ")"
+                self.assertTrue(module.check(proof(), evidence))
+
     def test_generic_lightup_job_is_not_vps_safety_proof(self):
         evidence = jobs()
         evidence[2]["name"] = "LightUp unrelated task"
