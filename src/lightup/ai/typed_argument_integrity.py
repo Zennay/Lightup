@@ -21,11 +21,11 @@ def validate_unambiguous_arguments(
     The caller must still enforce durable consent, destination authorization,
     revocation, run mode, and risk policy. This is only input integrity.
     """
-    if not isinstance(pairs, (tuple, list)):
+    if type(pairs) not in (tuple, list):
         raise OrchestrationError("tool arguments must be ordered pairs")
     result: dict[str, Any] = {}
     for pair in pairs:
-        if not isinstance(pair, (tuple, list)) or len(pair) != 2:
+        if type(pair) not in (tuple, list) or len(pair) != 2:
             raise OrchestrationError("tool argument entry must contain exactly two items")
         name, value = pair
         if type(name) is not str:
