@@ -326,6 +326,22 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
                     self.assertFalse(matches_consent(
                         Consent(**record), **(self.request | {field: altered})))
 
+    def test_approval_revision_is_not_float_or_numeric_string(self):
+        for forged in (3.0, "3", "+3", 3.5):
+            with self.subTest(value=repr(forged)):
+                self.assertFalse(matches_consent(
+                    self.consent, **(self.request | {"revision": forged})))
+                record = Consent("tenant-A", "engagement-A", "owner-A",
+                                 "asset-A", "web-baseline", forged, True)
+                self.assertFalse(matches_consent(record, **self.request))
+
+    def test_valid_revision_still_requires_live_unrevoked_consent(self):
+        for revocation in (False, True):
+            with self.subTest(revoked=revocation):
+                decision = matches_consent(
+                    self.consent, **(self.request | {"revoked": revocation}))
+                self.assertEqual(decision, not revocation)
+
 
 if __name__ == "__main__":
     unittest.main()
