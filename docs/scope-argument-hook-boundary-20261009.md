@@ -27,3 +27,7 @@ python -m unittest discover -s tests -p 'test_scope_argument_key_hook_boundary_2
 Duplicate-argument RED contract belongs to PR #966; trusted destination work belongs to #1092/#1093. This document does not authorize changes to those branches.
 
 **Release state: DRAFT / HOLD. No real targets, network scanning, grants, merge, deployment, or activation.**
+
+## Schema callback ordering acceptance (2026-10-09)
+
+The focused suite also checks that unknown keys, duplicates, and malformed registry parameter kinds are rejected before calling `ToolDefinition.validate_arguments`. The canonical built-in STRING positive control invokes that callback exactly once with the validated mapping. These are **offline helper contracts**, not authorization to execute, scan, or target anything.
