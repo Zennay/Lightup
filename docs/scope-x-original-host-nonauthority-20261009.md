@@ -125,3 +125,7 @@ For four fixed target/authorization cases (unlisted, allowlisted without grant, 
 ## Combined noninterference and transport tripwires
 
 For an out-of-scope HTTPS target, variants of X-Original-Host claiming approved identity, loopback, operator approval, or signed consent must yield the **identical complete ScopeDecision** as the no-label baseline, while the pure policy makes zero DNS/socket/urllib HTTP calls. This does not establish that an actual runtime dispatcher is blocked.
+
+## Idempotent deny on repeated pure policy evaluations
+
+Repeated evaluation of the same invalid, out-of-scope, or missing-grant target with forged original-host/operator labels must produce an identical `ScopeDecision` and remain denied. This captures consistency of the existing pure policy only; no persistence, revocation checks, handler interception or real-world customer authorization are proven.
