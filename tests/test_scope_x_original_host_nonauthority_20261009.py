@@ -578,5 +578,27 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
 
 
+    def test_claimed_signed_consent_in_header_cannot_replace_grant(self):
+        for claim in ("consent_signed=true", "authorization_verified=true",
+                      "scope_hash=synthetic", "approval_expires=2999-01-01"):
+            with self.subTest(claim=claim):
+                result = self.policy.decide(Target(
+                    "approved.example",
+                    labels=("X-Original-Host: approved.example; " + claim,),
+                ))
+                self.assertFalse(result.allowed)
+                self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_mismatched_target_denied_despite_signed_consent_hint(self):
+        result = self.policy.decide(Target(
+            "unlisted.example",
+            authorization=Authorization(owner="fixture", reference="NOT-TRUSTED"),
+            labels=("X-Original-Host: approved.example; consent_signed=true",),
+        ))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.normalized_host, "unlisted.example")
+        self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
+
+
 if __name__ == "__main__":
     unittest.main()
