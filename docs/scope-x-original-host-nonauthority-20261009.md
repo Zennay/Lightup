@@ -81,3 +81,7 @@ An untrusted routing label claiming audit_id, evidence_id, approval_record or si
 ## Regression quality refinement (2026-10-09)
 
 Replaced the prior permissive policy opt-out *allow* control with an explicit fail-closed before/after invariant. A forged `require_authorization_for_public=false` label must leave the restrictive policy setting unchanged and yield exactly `AUTHORIZATION_MISSING`, matching baseline. This does not assert that a permissive config is safe for production. The legacy policy also has no trusted persisted customer-consent provenance; all positive synthetic decisions remain untrusted and cannot enable I/O.
+
+## Local lab configuration and allowlist immutability
+
+IPv6 link-local targets remain out of scope when the trusted `allow_private_lab` setting is disabled, even when X-Original-Host labels claim to enable lab access. Similarly, forged `explicit_hosts` metadata cannot expand the configured hostname allowlist. Assert both denial reason and unchanged policy configuration. This evidence is for pure `ScopePolicy`, not the production dispatcher.
