@@ -25,6 +25,8 @@ def reference_preflight(policy, target, handler):
         authority = parsed.netloc
         # Force authority validation; urlparse alone can defer errors to hostname.
         hostname = parsed.hostname
+        # Invalid/out-of-range ports are evaluated lazily by urllib.parse.
+        port = parsed.port
         if not authority or not hostname:
             return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
         if authority.count("[") != authority.count("]") or authority.count("[") > 1:
@@ -142,6 +144,35 @@ class MalformedAuthorityNoHandlerReference(unittest.TestCase):
         target = Target("https://unlisted.example.test/?q=1")
         decision = reference_preflight(policy, target, handler)
         self.assertFalse(decision.allowed)
+        policy.decide.assert_called_once_with(target)
+        handler.assert_not_called()
+
+    def test_malformed_ports_are_denied_before_policy_or_handler(self):
+        policy = Mock(spec=ScopePolicy)
+        handler = Mock()
+        for raw in (
+            "https://unlisted.example.test:abc/",
+            "https://unlisted.example.test:65536/",
+            "https://[::1]:-1/",
+            "https://[::1]:99999/",
+        ):
+            with self.subTest(raw=raw):
+                result = reference_preflight(policy, Target(raw), handler)
+                self.assertFalse(result.allowed)
+                self.assertIsNone(result.normalized_host)
+                self.assertEqual(result.reason, ScopeReason.INVALID_TARGET)
+        policy.decide.assert_not_called()
+        handler.assert_not_called()
+
+    def test_valid_explicit_port_preserves_denial(self):
+        policy = Mock(spec=ScopePolicy)
+        policy.decide.return_value = ScopeDecision(
+            False, "unlisted.example.test", ScopeReason.OUT_OF_SCOPE
+        )
+        handler = Mock()
+        target = Target("https://unlisted.example.test:8443/path")
+        decision = reference_preflight(policy, target, handler)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
         policy.decide.assert_called_once_with(target)
         handler.assert_not_called()
 
