@@ -51,6 +51,23 @@ class MalformedAuthorityNoHandlerReference(unittest.TestCase):
         policy.decide.assert_not_called()
         handler.assert_not_called()
 
+    def test_hostile_nonstring_fails_without_coercion_or_downstream_calls(self):
+        class HostileValue:
+            def __str__(self):
+                raise AssertionError("must not coerce raw input")
+
+            def __bool__(self):
+                raise AssertionError("must not truth-test raw input")
+
+        policy = Mock(spec=ScopePolicy)
+        handler = Mock()
+        decision = reference_preflight(policy, Target(HostileValue()), handler)
+        self.assertFalse(decision.allowed)
+        self.assertIsNone(decision.normalized_host)
+        self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+        policy.decide.assert_not_called()
+        handler.assert_not_called()
+
     def test_normal_denial_preserves_zero_handler_calls(self):
         policy = Mock(spec=ScopePolicy)
         policy.decide.return_value = ScopeDecision(
