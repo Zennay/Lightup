@@ -38,3 +38,7 @@ The offline real-ToolExecutor fixture now patches Python's `socket.getaddrinfo`,
 ## Repeated invocation / ledger stability
 
 An additional real-ToolExecutor regression verifies that after one accepted synthetic finite-number call, a later ambiguous duplicate-key call must be rejected without adding handler invocations or evidence rows. It is marked `expectedFailure` until production source handles duplicate tuples before `dict()` construction. Reference-only tests are not a release gate. See #1147.
+
+## Nonfinite replay and evidence invariants
+
+Additional `expectedFailure` coverage now models one successful finite lab invocation followed by a NaN invocation. Required behavior is a denial with no new handler call and no additional evidence, preserving the earlier valid evidence row. This supplements the single-call NaN/+Inf/-Inf tripwires; it is still RED characterization rather than enforcement. The test formerly mislabeled an unknown-key check as an optional parameter is renamed to describe its required-parameter contract accurately.
