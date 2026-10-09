@@ -72,3 +72,7 @@ Reference test count: **38**. The latest additions test a stored grant's indepen
 ## Compound header claims and request-state denial
 
 Two offline methods assert denial remains monotone as caller-controlled WebSocket subprotocol claims accumulate, and valid stored consent cannot permit an invalid requested approval/revocation/revision state. Total: **40 unittest methods**. Only reference behavior, no production integration proof.
+
+## Polymorphic equality spoofing
+
+Two additional offline methods prove subclasses overriding equality cannot impersonate a trusted Grant or a request identity. The exact-type checks must precede any equality comparison. Total: **42 offline unittest methods**. No production implementation or actual handler integration is implied.
