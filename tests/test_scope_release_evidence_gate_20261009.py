@@ -70,7 +70,7 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
                 self.assertIn("HOLD:", output.getvalue())
 
     def test_cli_rejects_oversized_and_invalid_utf8_evidence(self):
-        for raw in (b" " * (64 * 1024 + 1), b"\\xff\\xfe"):
+        for raw in (b" " * (64 * 1024 + 1), bytes((255, 254))):
             with self.subTest(length=len(raw)), tempfile.TemporaryDirectory() as directory:
                 evidence_path = Path(directory) / "evidence.json"
                 evidence_path.write_bytes(raw)
@@ -135,10 +135,10 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
             "https://github.com/Zennay/Lightup/actions/runs/123%2fextra",
             "https://github.com/Zennay/Lightup/actions/runs/123@evil.example",
             " https://github.com/Zennay/Lightup/actions/runs/123",
-            "https://github.com/Zennay/Lightup/actions/runs/123\\n",
-            "https://github.com/Zennay/Lightup/actions/runs/123\\t",
-            "https://github.com/Zennay/Lightup/actions/runs/123\\x00",
-            "https://github.com/Zennay/Lightup/actions/runs/123\\x7f",
+            "https://github.com/Zennay/Lightup/actions/runs/123" + chr(10),
+            "https://github.com/Zennay/Lightup/actions/runs/123" + chr(9),
+            "https://github.com/Zennay/Lightup/actions/runs/123" + chr(0),
+            "https://github.com/Zennay/Lightup/actions/runs/123" + chr(127),
         )
         for url in hostile:
             with self.subTest(url=url):
