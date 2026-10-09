@@ -353,6 +353,31 @@ class OfflineExecutorNumberTests(unittest.TestCase):
             self.assertEqual(self.calls, [])
             self.assertEqual(self.evidence_count(), 1)
 
+    def test_bridge_denial_after_prior_success_preserves_evidence(self):
+        """A denied second request must not change committed evidence."""
+        def bridge(call):
+            definition, _handler = self.registry.get(call.tool_id)
+            return validate_unambiguous_arguments(definition, call.arguments)
+
+        with patch.object(ToolCall, "arguments_dict", bridge):
+            self.invoke(4.25)
+            before_calls = len(self.calls)
+            before_evidence = self.evidence_count()
+            for invalid in (float("nan"), float("inf"), float("-inf")):
+                with self.subTest(invalid=str(invalid)):
+                    with self.assertRaises(OrchestrationError):
+                        self.invoke(invalid)
+                    self.assertEqual(len(self.calls), before_calls)
+                    self.assertEqual(self.evidence_count(), before_evidence)
+            duplicate_call = ToolCall(
+                "number-lab-only", "127.0.0.1",
+                (("value", 4.25), ("value", 99.0)),
+            )
+            with self.assertRaises(OrchestrationError):
+                self.executor.execute(self.context, duplicate_call)
+            self.assertEqual(len(self.calls), before_calls)
+            self.assertEqual(self.evidence_count(), before_evidence)
+
     @unittest.expectedFailure
     def test_nan_denied_before_handler_and_evidence(self):
         with self.assertRaises(OrchestrationError):
