@@ -16,7 +16,8 @@ def valid_run_url(value: object) -> bool:
 
     Syntax is checked offline; this cannot prove that the run actually exists.
     """
-    if type(value) is not str or len(value) > 256:
+    if (type(value) is not str or len(value) > 256
+            or any(ord(ch) <= 32 or ord(ch) == 127 for ch in value)):
         return False
     try:
         parsed = urlsplit(value)
