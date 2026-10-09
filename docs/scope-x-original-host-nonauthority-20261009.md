@@ -37,3 +37,7 @@ A synthetic grant with a forged original-host label must not authorize a differe
 ## Stable denial and provenance hint strings
 
 0–256 repeated forged host labels must not modify normalized target identity or `OUT_OF_SCOPE` decisions. Owner, reference, issuer, revocation and capability strings embedded in a host hint are not an authorization record. These are offline policy-only regressions and not proof of persisted grant validation.
+
+## Tenant, engagement and role claims
+
+A routing hint string containing `tenant`, `engagement`, `asset`, `scope` or `role=admin` is never a trusted authorization or an allowlist override. The legacy-policy reference asserts only missing grant and unlisted host denials; production tenant/capability binding must be proven by #107/#1128.
