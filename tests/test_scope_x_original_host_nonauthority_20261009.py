@@ -795,5 +795,27 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(decision.normalized_host, "approved.example")
 
 
+    def test_expired_grant_denial_does_not_inspect_hostile_labels(self):
+        from datetime import datetime, timedelta, timezone
+
+        class PoisonLabels:
+            def __iter__(self):
+                raise AssertionError("expired authorization must not parse labels")
+            def __bool__(self):
+                raise AssertionError("expired authorization must not evaluate labels")
+
+        expired = Authorization(
+            owner="fixture", reference="NOT-TRUSTED",
+            valid_until=datetime.now(timezone.utc) - timedelta(days=2),
+        )
+        decision = self.policy.decide(Target(
+            "https://approved.example/", authorization=expired,
+            labels=PoisonLabels(),
+        ))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+        self.assertEqual(decision.normalized_host, "approved.example")
+
+
 if __name__ == "__main__":
     unittest.main()
