@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import copy
+import json
 import unittest
 
-from scripts.check_scope_release_evidence import REQUIRED_JOBS, evaluate
+from scripts.check_scope_release_evidence import REQUIRED_JOBS, evaluate, reject_duplicate_keys
 
 
 SHA = "a" * 40
@@ -26,6 +27,20 @@ def sample():
 
 
 class ScopeReleaseEvidenceTests(unittest.TestCase):
+    def test_duplicate_root_authorization_claim_is_rejected(self):
+        for payload in (
+            '{"trusted_grant_enforced":false,"trusted_grant_enforced":true}',
+            '{"jobs":{"permanent_vps":null,"permanent_vps":{"conclusion":"success"}}}',
+            '{"integration_sha":"a","integration_sha":"b"}',
+        ):
+            with self.subTest(payload=payload):
+                with self.assertRaises(ValueError):
+                    json.loads(payload, object_pairs_hook=reject_duplicate_keys)
+
+    def test_unambiguous_json_parses_without_mutation(self):
+        parsed = json.loads('{"jobs":{"py311_unit":{"conclusion":"queued"}}}', object_pairs_hook=reject_duplicate_keys)
+        self.assertEqual(parsed, {"jobs": {"py311_unit": {"conclusion": "queued"}}})
+
     def test_missing_evidence_holds(self):
         self.assertFalse(evaluate(None)[0])
         self.assertFalse(evaluate({})[0])
