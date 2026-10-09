@@ -733,5 +733,25 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
 
 
+    def test_invalid_target_denial_does_not_invoke_network_helpers(self):
+        from unittest.mock import patch
+
+        with (
+            patch("socket.getaddrinfo") as lookup,
+            patch("socket.create_connection") as connect,
+            patch("urllib.request.urlopen") as dispatch,
+        ):
+            decision = self.policy.decide(Target(
+                "https://",
+                labels=("X-Original-Host: approved.example; approved=true",),
+            ))
+        self.assertFalse(decision.allowed)
+        self.assertIsNone(decision.normalized_host)
+        self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+        lookup.assert_not_called()
+        connect.assert_not_called()
+        dispatch.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
