@@ -4,10 +4,11 @@ Does not fetch or authenticate metadata. A trusted reviewer must retrieve
 job objects independently from GitHub and check run origin and runner labels.
 """
 import json
+import os
+import stat
 import sys
-from pathlib import Path
 
-from verify_scope_proof_manifest import verify
+from verify_scope_proof_manifest import verify, reject_duplicate_keys
 
 LANES = (
     ("hosted_py311", "Python 3.11"),
@@ -55,12 +56,23 @@ def main(argv):
         # Inputs are reviewer-provided snapshots, not credentials or authority.
         # Refuse oversized snapshots rather than processing unbounded files.
         payloads = []
+        if (type(getattr(os, "O_NOFOLLOW", None)) is not int
+                or type(getattr(os, "O_NONBLOCK", None)) is not int
+                or not os.O_NOFOLLOW or not os.O_NONBLOCK):
+            raise ValueError("secure input open unavailable")
         for path in argv[1:]:
-            with open(path, "rb") as stream:
+            flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
+            descriptor = os.open(path, flags)
+            with os.fdopen(descriptor, "rb") as stream:
+                if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                    raise ValueError("input is not a regular file")
                 raw = stream.read(65537)
             if len(raw) > 65536:
                 raise ValueError("oversized input")
-            payloads.append(json.loads(raw.decode("utf-8")))
+            payloads.append(json.loads(raw.decode("utf-8"),
+                                       object_pairs_hook=reject_duplicate_keys,
+                                       parse_constant=lambda value: (_ for _ in ()).throw(
+                                           ValueError("nonstandard JSON constant"))))
         errors = check(*payloads)
     except (OSError, ValueError, UnicodeError, RecursionError):
         print("HOLD: invalid job snapshot input", file=sys.stderr)
