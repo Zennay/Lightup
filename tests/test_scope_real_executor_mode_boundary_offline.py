@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
 from lightup.ai.orchestration import (
-    RunContext, ToolCall, ToolDefinition, ToolDenied, ToolExecutor, ToolOutput,
+    RunContext, ToolCall, ToolDefinition, ToolDenied, ToolExecutor, ToolOutput,\n    RiskElevationRequired,
 )
 from lightup.engagements import AssessmentMode, RiskLevel
 from lightup.execution_policy import ExecutionPolicy, InteractionKind
@@ -99,6 +99,28 @@ class RealExecutorModeBoundaryTests(unittest.TestCase):
         with patch("socket.socket", side_effect=AssertionError("network attempted")):
             with self.assertRaises(ToolDenied):
                 self.executor.execute(context, self.call)
+        self.handler.assert_not_called()
+        self.state.add_evidence.assert_not_called()
+
+    def test_risk_elevation_denied_before_policy_handler_and_evidence(self):
+        context = replace(
+            self.context(AssessmentMode.LAB_AUTONOMOUS),
+            approved_risk=RiskLevel.ANALYSIS_ONLY,
+        )
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            with self.assertRaises(RiskElevationRequired):
+                self.executor.execute(context, self.call)
+        self.policy.decide.assert_not_called()
+        self.handler.assert_not_called()
+        self.state.add_evidence.assert_not_called()
+
+    def test_real_policy_rejects_target_active_inside_lab(self):
+        self.definition = replace(self.definition, interaction=InteractionKind.TARGET_ACTIVE)
+        self.registry.get.return_value = (self.definition, self.handler)
+        self.executor = ToolExecutor(self.registry, self.state, ExecutionPolicy())
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            with self.assertRaises(ToolDenied):
+                self.executor.execute(self.context(AssessmentMode.LAB_AUTONOMOUS), self.call)
         self.handler.assert_not_called()
         self.state.add_evidence.assert_not_called()
 
