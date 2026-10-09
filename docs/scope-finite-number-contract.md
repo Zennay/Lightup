@@ -70,3 +70,7 @@ The offline actual-ToolExecutor fixture now alternates three accepted finite inp
 ## Intervening denial cannot inject evidence
 
 A normal ToolExecutor regression now executes valid finite → invalid string → valid finite, then compares the persisted evidence IDs in insertion order against the two successful results. This proves an intervening rejected argument cannot insert an invisible action-evidence row in the local isolated fixture; real-target authorization remains out of scope.
+
+## Release gate manifest enforcement
+
+`tests/test_scope_known_red_gate_manifest.py` now requires the manifest to remain `DRAFT_HOLD` with `activation_permitted=false`, with all four same-head hosted/VPS Python gates, source-owner pre-I/O revocation and registry-owned network destinations, independent review, and at least one unresolved risk. This intentionally fails if required release conditions are removed or the reference PR is prematurely marked activated. Successful manifest tests do **not** prove those conditions have been met.
