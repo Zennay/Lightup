@@ -175,7 +175,7 @@ class EvidenceReferenceOrderReferenceTests(unittest.TestCase):
         }
         self.assertEqual(len(digests), 1)
 
-    def test_exact_evidence_reference_byte_length_boundary(self):
+    def test_exact_evidence_reference_character_length_boundary(self):
         accepted = "é" * 128
         self.assertEqual(
             reference_digest("t", "f", [accepted]),
