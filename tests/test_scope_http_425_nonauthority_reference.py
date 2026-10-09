@@ -139,5 +139,21 @@ class TooEarlyNonauthorityTests(unittest.TestCase):
                 self.assertFalse(necessary_scope_consistency(withdrawn, BASE, status, "1"))
 
 
+    def test_identity_length_boundary_is_fail_closed(self):
+        for field in ("tenant", "request", "asset", "capability"):
+            for bad in ("x" * 129, b"tenant-a", "x\\tunsafe", "x\\u200bhidden"):
+                with self.subTest(field=field, bad=repr(bad)):
+                    malformed = replace(BASE, **{field: bad})
+                    self.assertFalse(necessary_scope_consistency(malformed, malformed, 425, "1"))
+
+    def test_response_status_does_not_change_cross_binding_denials(self):
+        for status in (425, 200, 304, None):
+            for field in ("tenant", "request", "asset", "capability"):
+                with self.subTest(status=status, field=field):
+                    changed = replace(BASE, **{field: "foreign"})
+                    self.assertFalse(necessary_scope_consistency(BASE, changed, status, "1"))
+                    self.assertFalse(necessary_scope_consistency(changed, BASE, status, "1"))
+
+
 if __name__ == "__main__":
     unittest.main()
