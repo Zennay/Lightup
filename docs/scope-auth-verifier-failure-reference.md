@@ -10,6 +10,7 @@ When a trusted issuer-owned authorization proof lookup or verification cannot pr
 - `False`, `None`, truthy integers/strings/containers, or exception paths deny.
 - Malformed, polymorphic, whitespace/control-character ambiguous, non-builtin-string, or oversized (>256 code point) reference envelopes deny before verifier invocation. The 256-character ceiling is an illustrative fixture limit, **not** an adopted production identifier policy.
 - Reference inputs remain unchanged after failure; no client-provided metadata is treated as authority.
+- The reference invokes a supplied verifier at most once per decision. Failed issuer lookups cannot silently invoke a permissive fallback, retry with relaxed controls, or reinterpret unavailable evidence as consent. Missing/non-callable verifier inputs deny.
 
 ## Production owner handoff
 At **each** request admission, queue retry, step boundary and target-capable dispatch: resolve live issuer-owned grant and verify tenant, request, asset, capability, risk, approval lineage, revision, expiry, revocation, current test window and audit durability. Deny on unavailable source or indeterminate status. In-flight cancellation/revocation and positive-cache invalidation require production integration and separate evidence.
