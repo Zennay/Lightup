@@ -76,6 +76,22 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
         self.assertFalse(matches_consent(self.consent, **(self.request | {"tenant_id": "  "})))
         self.assertFalse(matches_consent(self.consent, **(self.request | {"revoked": 0})))
 
+    def test_transfer_back_requires_new_authorization_revision(self):
+        # Returning an asset to the original owner must not resurrect old consent.
+        request_after_transfer_back = self.request | {"revision": 4}
+        self.assertFalse(matches_consent(self.consent, **request_after_transfer_back))
+        renewed = Consent("tenant-A", "engagement-A", "owner-A",
+                          "asset-A", "web-baseline", 4, True)
+        self.assertTrue(matches_consent(renewed, **request_after_transfer_back))
+
+    def test_revocation_cannot_be_undone_by_revision_match(self):
+        for revision in (3, 4):
+            with self.subTest(revision=revision):
+                approval = Consent("tenant-A", "engagement-A", "owner-A",
+                                   "asset-A", "web-baseline", revision, True)
+                request = self.request | {"revision": revision, "revoked": True}
+                self.assertFalse(matches_consent(approval, **request))
+
 
 if __name__ == "__main__":
     unittest.main()
