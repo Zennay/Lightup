@@ -33,3 +33,7 @@ Two offline methods cover 15 cross-field identity mutations with zero fake handl
 ## Revocation and malformed approval mock-denial expansion
 
 Two additional offline methods verify that a header cannot undo revocation even when another identity role varies, and malformed approval types (null, integer, string and containers) produce zero fake handler calls. Total: **24 standalone unittest methods**. These do not establish real gateway or ToolExecutor authorization safety.
+
+## Stored-grant authority cannot be overwritten by request fields
+
+Two extra offline methods reject request-side self-approval against an unapproved stored grant and request-side `revoked=False` against a revoked stored grant. Both operate without handlers or targets. Total: **26 offline unittest methods**; still not a substitute for real trusted source-owned pre-I/O authorization.
