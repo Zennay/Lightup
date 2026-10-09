@@ -35,6 +35,7 @@ duplicate wire Cookie fields.
   (>8192 ISO-8859-1 bytes), quoted/backslash escaped/comma-joined, whitespace-concatenated or malformed
   cookie-pairs receive 400 before delegating.
 - A second exact "lightup_session" name is refused, regardless of its value.
+- The sole session value must be **43 unpadded base64url characters**, matching current `DomainStore.create_session` (`secrets.token_urlsafe(32)`). Invalid/truncated/padded/percent-encoded/non-ASCII values are refused **before** session lookup. Correct length/alphabet is not authentication: SQLite session state still decides. If the domain's token format is intentionally migrated, this optional guard and acceptance tests must be updated together *before* production integration.
 - Single canonical cookies and unrelated ordinary cookie pairs pass through
   unchanged. No session is created or authorized by this guard itself.
 - Denial is generic, no-store, framed with CSP/frame/no-sniff/referrer
@@ -60,6 +61,7 @@ SQLite file in both development and simulated HTTPS/loopback production.
   session tokens preserved and malicious body stream unread.
 - Malformed/oversize/control-byte headers are refused with no Set-Cookie or
   leaked tenant content.
+- A syntactically plausible but nonexistent 43-character token is treated as anonymous, never as an operator; invalid token shapes never reach `session_context` and cannot consume POST bodies.
 - Valid single operator cookie retains role/CSRF requirements. Client cookies
   cannot perform operator POST, incorrect/missing CSRF cannot write, and
   valid operator POST creates exactly one client.
