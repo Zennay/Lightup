@@ -17,6 +17,8 @@ B = "b" * 40
 
 def fixture():
     return dict(schema_version=1, implementation_sha=A, base_sha=B,
+                hosted_py311_run_id=101, hosted_py314_run_id=102,
+                permanent_vps_run_id=103,
                 hosted_py311_sha=A, hosted_py314_sha=A, permanent_vps_sha=A,
                 owner_review_sha=A, trusted_grant_reviewed=True,
                 revocation_race_passed=True, denied_side_effects_zero=True,
@@ -30,6 +32,17 @@ class ProofManifestTests(unittest.TestCase):
     def test_script_compiles_as_standalone_python(self):
         with tempfile.TemporaryDirectory() as directory:
             py_compile.compile(str(MODULE), cfile=str(Path(directory) / "verifier.pyc"), doraise=True)
+
+    def test_missing_or_forged_run_ids_fail_closed(self):
+        for field in ("hosted_py311_run_id", "hosted_py314_run_id", "permanent_vps_run_id"):
+            for value in (None, 0, -1, True, 1.0, "123"):
+                with self.subTest(field=field, value=value):
+                    obj = fixture()
+                    obj[field] = value
+                    self.assertTrue(module.verify(obj))
+            obj = fixture()
+            del obj[field]
+            self.assertTrue(module.verify(obj))
 
     def test_schema_version_is_exact_integer(self):
         for value in (None, True, False, "1", 1.0, 0, 2, -1):
