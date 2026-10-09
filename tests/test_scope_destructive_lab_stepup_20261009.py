@@ -143,7 +143,7 @@ class DestructiveLabStepUpIntegrationTests(unittest.TestCase):
             ("approved_by", " operator "),
             ("revoked", 0),
             ("expires_at", self.now - timedelta(seconds=1)),
-                        ("approved_at", self.now),
+            ("approved_at", self.now),
             ("approved_at", self.context.created_at + timedelta(seconds=1)),
             ("approved_at", datetime.now()),
             ("expires_at", datetime.now()),
@@ -248,6 +248,78 @@ class DestructiveLabStepUpIntegrationTests(unittest.TestCase):
             tool_id = "synthetic-lab-destructive"
         self.assert_denied_without_effect(context=ForeignContext())
         self.assert_denied_without_effect(call=ForeignCall())
+
+    def test_noncanonical_registered_tool_risk_and_kind_are_denied(self):
+        original = self.registry._tools[self.destructive.tool_id]
+        definition, handler = original
+        try:
+            for fields in (
+                {"min_risk": 5},
+                {"min_risk": True},
+                {"min_risk": "5"},
+                {"interaction": "lab_active"},
+                {"tool_id": "other-tool"},
+                {"capability_id": " compromised "},
+            ):
+                with self.subTest(fields=fields):
+                    self.registry._tools[self.destructive.tool_id] = (
+                        replace(definition, **fields), handler,
+                    )
+                    self.assert_denied_without_effect()
+        finally:
+            self.registry._tools[self.destructive.tool_id] = original
+
+    def test_lab_context_cannot_mix_external_authorization_with_destructive_approval(self):
+        # The lab label must not borrow authority from an unrelated grant.
+        self.assert_denied_without_effect(
+            context=replace(self.context, authorization=object())
+        )
+
+    def test_approval_resolver_cannot_replace_registered_handler_during_admission(self):
+        definition, _ = self.registry.get(self.destructive.tool_id)
+        calls = []
+        def substituted(context, arguments):
+            calls.append("changed")
+            return ToolOutput("untrusted", "note", b"untrusted")
+
+        def mutate(run_id):
+            self.registry._tools[self.destructive.tool_id] = (definition, substituted)
+            return self.approval
+
+        wrapper = DestructiveLabStepUpExecutor(self.executor, mutate)
+        self.assert_denied_without_effect(wrapper)
+        self.assertEqual(calls, [])
+
+    def test_approval_resolver_cannot_replace_identical_definition_object(self):
+        definition, handler = self.registry.get(self.destructive.tool_id)
+        def mutate(run_id):
+            self.registry._tools[self.destructive.tool_id] = (
+                replace(definition), handler,
+            )
+            return self.approval
+        self.assert_denied_without_effect(
+            DestructiveLabStepUpExecutor(self.executor, mutate)
+        )
+
+    def test_approval_resolver_cannot_swap_entire_registry(self):
+        def mutate(run_id):
+            self.executor.registry = ToolRegistry()
+            return self.approval
+        self.assert_denied_without_effect(
+            DestructiveLabStepUpExecutor(self.executor, mutate)
+        )
+
+    def test_resolver_private_exception_is_not_chained_to_public_denial(self):
+        def private_failure(run_id):
+            raise RuntimeError("PRIVATE_OPERATOR_APPROVAL_DB_DETAIL")
+
+        wrapper = DestructiveLabStepUpExecutor(self.executor, private_failure)
+        with self.assertRaises(ToolDenied) as caught:
+            wrapper.execute(self.context, self.call)
+        self.assertEqual(str(caught.exception), "destructive-lab approval unavailable")
+        self.assertIsNone(caught.exception.__cause__)
+        self.assertTrue(caught.exception.__suppress_context__)
+        self.assertEqual(self.invocations, [])
 
 
 if __name__ == "__main__":
