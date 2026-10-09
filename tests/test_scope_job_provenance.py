@@ -60,6 +60,26 @@ class OfflineJobProvenanceTests(unittest.TestCase):
             jobs_path.write_text(raw, encoding="utf-8")
             self.assertEqual(module.main(["verify", str(proof_path), str(jobs_path)]), 2)
 
+    def test_cli_accepts_consistent_snapshot_only_as_structural_check(self):
+        with tempfile.TemporaryDirectory() as directory:
+            proof_path = Path(directory) / "proof.json"
+            jobs_path = Path(directory) / "jobs.json"
+            proof_path.write_text(json.dumps(proof()), encoding="utf-8")
+            jobs_path.write_text(json.dumps(jobs()), encoding="utf-8")
+            self.assertEqual(module.main(["verify", str(proof_path), str(jobs_path)]), 0)
+
+    def test_cli_denies_wrong_job_commit_and_unexpected_record(self):
+        with tempfile.TemporaryDirectory() as directory:
+            proof_path = Path(directory) / "proof.json"
+            jobs_path = Path(directory) / "jobs.json"
+            proof_path.write_text(json.dumps(proof()), encoding="utf-8")
+            bad = jobs()
+            bad[2]["head_sha"] = "f" * 40
+            jobs_path.write_text(json.dumps(bad), encoding="utf-8")
+            self.assertEqual(module.main(["verify", str(proof_path), str(jobs_path)]), 1)
+            jobs_path.write_text(json.dumps(jobs() + [dict(id=999)]), encoding="utf-8")
+            self.assertEqual(module.main(["verify", str(proof_path), str(jobs_path)]), 1)
+
     def test_valid_matrix_and_distinct_vps(self):
         self.assertEqual(module.check(proof(), jobs()), [])
 
