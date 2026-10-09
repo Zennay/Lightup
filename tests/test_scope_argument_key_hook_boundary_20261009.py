@@ -152,5 +152,33 @@ class ArgumentKeyHookBoundaryTests(unittest.TestCase):
         self.assertEqual(events, [])
 
 
+    def test_argument_tuple_subclass_cannot_run_iterator(self):
+        calls = []
+        class TrapTuple(tuple):
+            def __iter__(self):
+                calls.append("iter")
+                raise AssertionError("argument tuple hook executed")
+        with self.assertRaisesRegex(OrchestrationError, "arguments must be ordered pairs"):
+            validate_unambiguous_arguments(
+                self.definition, TrapTuple((("label", "safe"),))
+            )
+        self.assertEqual(calls, [])
+
+    def test_nested_tuple_subclass_cannot_run_unpack(self):
+        calls = []
+        class TrapTuple(tuple):
+            def __len__(self):
+                calls.append("len")
+                raise AssertionError("pair length hook executed")
+            def __iter__(self):
+                calls.append("iter")
+                raise AssertionError("pair iteration hook executed")
+        with self.assertRaisesRegex(OrchestrationError, "entry must contain exactly two"):
+            validate_unambiguous_arguments(
+                self.definition, (TrapTuple(("label", "safe")),)
+            )
+        self.assertEqual(calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
