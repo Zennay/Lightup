@@ -1,0 +1,77 @@
+"""Offline argument-integrity helper for future source-owner integration.
+
+This module does not authorize targets and is not wired into ToolExecutor.
+It preserves the current ToolDefinition schema contract while rejecting
+ambiguous duplicate keys and non-finite numeric inputs before dispatch.
+"""
+from __future__ import annotations
+
+import math
+from typing import Any, Iterable
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .orchestration import ToolDefinition
+
+
+def validate_unambiguous_arguments(
+    definition: ToolDefinition,
+    pairs: Iterable[tuple[str, Any]],
+) -> dict[str, Any]:
+    """Return validated arguments or fail closed without side effects.
+
+    The caller must still enforce durable consent, destination authorization,
+    revocation, run mode, and risk policy. This is only input integrity.
+    """
+    # Resolve concrete schema types only when invoked: orchestration can
+    # safely import this helper at module load without a circular import.
+    from .orchestration import OrchestrationError, ParamKind, ToolDefinition, ToolParameter
+
+    if type(definition) is not ToolDefinition:
+        raise OrchestrationError("tool definition must be a registered ToolDefinition")
+    if type(definition.parameters) is not tuple:
+        raise OrchestrationError("tool parameter registry must be a tuple")
+    if any(type(parameter) is not ToolParameter for parameter in definition.parameters):
+        raise OrchestrationError("tool parameter registry contains invalid definition")
+    if any(type(p.kind) is not ParamKind or type(p.required) is not bool
+           for p in definition.parameters):
+        raise OrchestrationError("tool parameter registry has invalid kind or required flag")
+    parameter_names = [p.name for p in definition.parameters]
+    if any(type(name) is not str for name in parameter_names):
+        raise OrchestrationError("tool parameter names must be strings")
+    if len(parameter_names) != len(set(parameter_names)):
+        raise OrchestrationError("duplicate tool parameter names in registry definition")
+    if type(pairs) not in (tuple, list):
+        raise OrchestrationError("tool arguments must be ordered pairs")
+    result: dict[str, Any] = {}
+    for pair in pairs:
+        if type(pair) not in (tuple, list) or len(pair) != 2:
+            raise OrchestrationError("tool argument entry must contain exactly two items")
+        name, value = pair
+        if type(name) is not str:
+            raise OrchestrationError("tool argument names must be strings")
+        if name in result:
+            raise OrchestrationError(f"duplicate tool argument name {name!r}")
+        result[name] = value
+
+    parameter_by_name = {p.name: p for p in definition.parameters}
+    # Never coerce subclass-controlled numeric objects while checking finiteness.
+    # Canonical tool NUMBER arguments are built-in int/float, not subclass hooks.
+    for name, value in result.items():
+        if name not in parameter_by_name:
+            raise OrchestrationError(f"unknown tool argument name {name!r}")
+        kind = parameter_by_name[name].kind
+        if kind is ParamKind.NUMBER and type(value) not in (int, float):
+            raise OrchestrationError(f"tool argument {name!r} must be a built-in number")
+        if kind is ParamKind.INTEGER and type(value) is not int:
+            raise OrchestrationError(f"tool argument {name!r} must be a built-in integer")
+        if kind is ParamKind.STRING and type(value) is not str:
+            raise OrchestrationError(f"tool argument {name!r} must be a built-in string")
+    # Reject non-finite values before invoking downstream schema callbacks.
+    for name, value in result.items():
+        if parameter_by_name[name].kind is ParamKind.NUMBER:
+            if isinstance(value, float) and not math.isfinite(value):
+                raise OrchestrationError(f"tool argument {name!r} must be finite")
+    definition.validate_arguments(result)
+    return result
