@@ -1,6 +1,7 @@
 """Offline reference for non-transferable scope consent; never authorizes execution."""
 from dataclasses import dataclass
 import unittest
+import unicodedata
 
 
 @dataclass(frozen=True)
@@ -26,7 +27,7 @@ def matches_consent(consent: Consent, *, tenant_id: str, engagement_id: str,
     if any(type(value) is not str or not value.strip() or
            any(ord(char) < 32 or ord(char) == 127 or
                0xD800 <= ord(char) <= 0xDFFF or
-               ord(char) in (0x200B, 0x202E) for char in value)
+               unicodedata.category(char) in ("Cc", "Cf", "Cs") for char in value)
            for value in fields + requested):
         return False
     if type(consent.revision) is not int or type(revision) is not int:
@@ -214,6 +215,17 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
                     self.assertFalse(matches_consent(
                         self.consent,
                         **(self.request | {field: self.request[field] + suffix})))
+
+    def test_reject_unicode_bidi_controls_and_joiners_across_all_bindings(self):
+        # Identity strings must not carry invisible formatting that changes display.
+        for codepoint in (0x200C, 0x200D, 0x2060, 0x202A, 0x202B,
+                          0x202C, 0x202D, 0x2066, 0x2067, 0x2068, 0x2069):
+            for field in ("tenant_id", "engagement_id", "owner_id",
+                          "asset_id", "capability_id"):
+                with self.subTest(codepoint=hex(codepoint), field=field):
+                    contaminated = self.request[field] + chr(codepoint)
+                    self.assertFalse(matches_consent(
+                        self.consent, **(self.request | {field: contaminated})))
 
 
 if __name__ == "__main__":
