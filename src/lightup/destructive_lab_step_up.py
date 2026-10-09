@@ -67,6 +67,7 @@ def destructive_lab_approval_matches(
         or context.mode is not AssessmentMode.LAB_AUTONOMOUS
         or context.is_lab is not True
         or context.approved_risk is not RiskLevel.DESTRUCTIVE_LAB_ONLY
+        or context.authorization is not None
         or definition.interaction is not InteractionKind.LAB_ACTIVE
         or definition.min_risk is not RiskLevel.DESTRUCTIVE_LAB_ONLY
         or type(approval.revoked) is not bool
@@ -118,6 +119,10 @@ class DestructiveLabStepUpExecutor:
         if approval_resolver is not None and not callable(approval_resolver):
             raise TypeError("approval resolver must be callable or None")
         self._executor = executor
+        # A registry reference swapped after construction cannot inherit
+        # existing approvals. The source owner must still freeze registration
+        # and prevent concurrent mutations at the real entrypoint.
+        self._registry = executor.registry
         self._approval_resolver = approval_resolver
 
     def execute(self, context: RunContext, call: ToolCall) -> ToolResult:
@@ -125,15 +130,26 @@ class DestructiveLabStepUpExecutor:
             raise ToolDenied("noncanonical destructive-lab dispatch envelope")
         if type(call.tool_id) is not str or not call.tool_id:
             raise ToolDenied("noncanonical tool identity")
+        if self._executor.registry is not self._registry:
+            raise ToolDenied("lab tool registry identity changed")
         try:
-            definition, _ = self._executor.registry.get(call.tool_id)
-        except (OrchestrationError, TypeError, ValueError) as exc:
-            raise ToolDenied("unrecognized tool identity") from exc
-        if type(definition) is not ToolDefinition:
-            raise ToolDenied("noncanonical tool definition")
+            definition, handler = self._registry.get(call.tool_id)
+        except (OrchestrationError, TypeError, ValueError):
+            raise ToolDenied("unrecognized tool identity") from None
+        # Do not let raw 5, bool, foreign enums, or duck definitions skip the
+        # step-up branch and fall through to a permissive downstream policy.
+        if (
+            type(definition) is not ToolDefinition
+            or type(definition.tool_id) is not str
+            or definition.tool_id != call.tool_id
+            or not _valid_identity(definition.capability_id)
+            or type(definition.interaction) is not InteractionKind
+            or type(definition.min_risk) is not RiskLevel
+        ):
+            raise ToolDenied("noncanonical lab tool definition")
         if (
             definition.interaction is InteractionKind.LAB_ACTIVE
-            and definition.min_risk == RiskLevel.DESTRUCTIVE_LAB_ONLY
+            and definition.min_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY
         ):
             if self._approval_resolver is None:
                 raise ToolDenied("explicit destructive-lab operator approval required")
@@ -143,8 +159,21 @@ class DestructiveLabStepUpExecutor:
                     approval, context, call, definition,
                     now=datetime.now(timezone.utc),
                 )
-            except Exception as exc:
-                raise ToolDenied("destructive-lab approval unavailable") from exc
+            except Exception:
+                # A resolver may expose private approval or DB details in its
+                # exception text. Never chain that exception into an audit log.
+                raise ToolDenied("destructive-lab approval unavailable") from None
             if not approved:
                 raise ToolDenied("destructive-lab approval absent, stale or out of scope")
+        # Check again after any resolver callbacks: synchronous changes to
+        # registered handler/tool metadata must not switch what was approved.
+        # This is not a substitute for owner-controlled immutable registries.
+        if self._executor.registry is not self._registry:
+            raise ToolDenied("lab tool registry identity changed")
+        try:
+            current_definition, current_handler = self._registry.get(call.tool_id)
+        except (OrchestrationError, TypeError, ValueError):
+            raise ToolDenied("lab tool identity changed during admission") from None
+        if current_definition is not definition or current_handler is not handler:
+            raise ToolDenied("lab tool definition changed during admission")
         return self._executor.execute(context, call)
