@@ -197,6 +197,18 @@ class OfflineExecutorNumberTests(unittest.TestCase):
         self.assertEqual(total, 1)
         self.assertEqual(self.calls, [6.25])
 
+    def test_distinct_valid_finite_calls_keep_separate_evidence_records(self):
+        """Finite happy-path calls must remain traceable as distinct outputs."""
+        first = self.invoke(1.0)
+        second = self.invoke(2.0)
+        self.assertNotEqual(first.evidence_id, second.evidence_id)
+        self.assertEqual(self.calls, [1.0, 2.0])
+        self.assertEqual(self.evidence_count(), 2)
+        with self.assertRaises(OrchestrationError):
+            self.invoke("malformed")
+        self.assertEqual(self.evidence_count(), 2)
+        self.assertEqual(self.calls, [1.0, 2.0])
+
     @unittest.expectedFailure
     def test_duplicate_argument_name_must_not_silently_override(self):
         """ToolCall.arguments_dict currently collapses duplicate tuple keys."""
