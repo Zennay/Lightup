@@ -103,3 +103,6 @@ Review of the earlier timezone hardening identified two remaining narrow `except
 
 ## Timezone metadata mutation between validation and conversion
 A further offline strict-reference regression uses a `tzinfo` implementation that returns a valid offset on first inspection, then raises a `RuntimeError` on conversion. It checks start, end and current-clock locations and requires denial without an exception escape. This models a changing/untrusted timezone provider; it does not validate a real issuer, dispatch or network action.
+
+## Explicit red safety contracts (expectedFailure pending production fix)
+Two new `@unittest.expectedFailure` checks assert the **desired** denied decision for a corrupt falsy start on a public allowlisted hostname and a corrupt falsy end on a public allowlisted IP network. Existing legacy implementation is known to return allowed, so these are marked expected failures: an overall green unittest run must **not** be mistaken for a repaired production gate. Once #1128's strict denial is implemented, expected successes (XPASS) require owner coordination to remove `expectedFailure` and retire or migrate the earlier bug-characterization assertions, before merge. No target I/O.
