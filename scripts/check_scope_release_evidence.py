@@ -115,7 +115,9 @@ def main(argv: list[str]) -> int:
         return 2
     allowed, reasons = evaluate(evidence)
     print("STRUCTURE-ONLY PASS: unverified claims; NOT release authorization" if allowed else "HOLD: " + "; ".join(reasons))
-    return 0 if allowed else 1
+    # A synthetic schema check is never an authenticated release gate.
+    # Always exit nonzero so automation cannot interpret it as deployment approval.
+    return 3 if allowed else 1
 
 
 if __name__ == "__main__":
