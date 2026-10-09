@@ -304,6 +304,26 @@ class BackslashNonauthorityTests(unittest.TestCase):
         self.assertEqual(reference_dispatch("https://example.test/", policy), "DENY")
         self.assertEqual(policy.calls, 1)
 
+
+    def test_invalid_target_never_evaluates_policy_truthiness(self):
+        class PoisonPolicy:
+            def __bool__(self):
+                raise AssertionError("policy truthiness inspected")
+
+            def __call__(self, target):
+                raise AssertionError("policy called")
+
+        target = "https://example.test/" + chr(92) + "admin"
+        self.assertEqual(reference_dispatch(target, PoisonPolicy()), "INVALID_TARGET")
+
+    def test_raw_validation_does_not_modify_target_identity(self):
+        target = "https://example.test/a%2Fb?value=%5C#fragment"
+        original = target[:]
+        policy = Mock(return_value="DENY")
+        self.assertEqual(reference_dispatch(target, policy), "DENY")
+        self.assertEqual(target, original)
+        policy.assert_called_once_with(original)
+
     def test_nonstring_input_must_not_invoke_user_string_conversion(self):
         class Hostile:
             def __str__(self):
