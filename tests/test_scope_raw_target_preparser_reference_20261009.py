@@ -107,5 +107,27 @@ class RawInputPreparserReferenceTests(unittest.TestCase):
         sentinel_policy.decide.assert_called_once_with(target)
 
 
+    def test_input_is_not_mutated_or_rewritten(self):
+        from unittest.mock import Mock
+        policy = Mock(spec=ScopePolicy)
+        policy.decide.return_value = "delegated"
+        target = Target("https://authorized.example.test/a%09b", authorization=self.auth, labels=("original",))
+        original = (target.value, target.authorization, target.labels)
+        self.assertEqual(reference_decide(policy, target), "delegated")
+        self.assertEqual((target.value, target.authorization, target.labels), original)
+        policy.decide.assert_called_once_with(target)
+
+    def test_percent_encoded_controls_are_not_equivalent_to_raw_controls(self):
+        from unittest.mock import Mock
+        policy = Mock(spec=ScopePolicy)
+        policy.decide.return_value = "delegated"
+        for suffix in ("/%0A", "/%0d", "/%09", "/%7F"):
+            with self.subTest(suffix=suffix):
+                policy.reset_mock()
+                target = Target("https://authorized.example.test" + suffix, authorization=self.auth)
+                self.assertEqual(reference_decide(policy, target), "delegated")
+                policy.decide.assert_called_once_with(target)
+
+
 if __name__ == "__main__":
     unittest.main()
