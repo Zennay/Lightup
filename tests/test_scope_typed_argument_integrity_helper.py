@@ -116,6 +116,21 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
                         self.definition, ((name, 2.0),)
                     )
 
+    def test_duplicate_registry_parameter_names_fail_closed(self):
+        """An ambiguous registry schema must not choose a parameter silently."""
+        ambiguous = ToolDefinition(
+            "ambiguous-fixture", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "offline schema only",
+            (
+                ToolParameter("value", ParamKind.NUMBER),
+                ToolParameter("value", ParamKind.NUMBER),
+            ),
+        )
+        with self.assertRaisesRegex(OrchestrationError, "duplicate tool parameter"):
+            validate_unambiguous_arguments(
+                ambiguous, (("value", 5.0),)
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
