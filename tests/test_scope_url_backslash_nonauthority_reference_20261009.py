@@ -107,6 +107,23 @@ class BackslashNonauthorityTests(unittest.TestCase):
                 self.assertEqual(reference_dispatch(target, policy), "INVALID_TARGET")
                 policy.assert_not_called()
 
+
+    def test_raw_ascii_controls_deny_before_policy_invocation(self):
+        baseline = "https://example.test/path"
+        for codepoint in (*range(32), 127):
+            for insertion in (0, 8, len(baseline)):
+                candidate = baseline[:insertion] + chr(codepoint) + baseline[insertion:]
+                with self.subTest(codepoint=codepoint, insertion=insertion):
+                    policy = Mock(return_value="ALLOW")
+                    self.assertEqual(reference_dispatch(candidate, policy), "INVALID_TARGET")
+                    policy.assert_not_called()
+
+    def test_policy_exception_is_not_converted_into_authorization(self):
+        policy = Mock(side_effect=RuntimeError("policy unavailable"))
+        with self.assertRaisesRegex(RuntimeError, "policy unavailable"):
+            reference_dispatch("https://example.test/path", policy)
+        policy.assert_called_once_with("https://example.test/path")
+
     def test_nonstring_input_must_not_invoke_user_string_conversion(self):
         class Hostile:
             def __str__(self):
