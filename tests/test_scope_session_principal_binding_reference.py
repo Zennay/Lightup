@@ -88,6 +88,26 @@ class SessionPrincipalBindingTests(unittest.TestCase):
             pass
         self.assertFalse(can_use_approval(Forged(**self.approval.__dict__), **self.context))
 
+
+    def test_approval_side_identity_is_also_validated(self):
+        for field in ("tenant", "request", "approver", "operator", "session_principal"):
+            for invalid in (None, True, "", "bad\\nvalue", "with space", "é", "x" * 129):
+                with self.subTest(field=field, invalid=invalid):
+                    candidate = Approval(**{**self.approval.__dict__, field: invalid})
+                    self.assertFalse(can_use_approval(candidate, **self.context))
+
+    def test_boolean_and_foreign_revision_values_are_denied(self):
+        for revision in (True, False, 3.0, "3", None, 0, -1):
+            with self.subTest(revision=revision):
+                self.assertFalse(can_use_approval(self.approval, **{**self.context, "revision": revision}))
+                candidate = Approval(**{**self.approval.__dict__, "revision": revision})
+                self.assertFalse(can_use_approval(candidate, **self.context))
+
+    def test_session_and_operator_divergence_cannot_be_approved(self):
+        candidate = Approval(**{**self.approval.__dict__, "session_principal": "operator_b"})
+        context = {**self.context, "session_principal": "operator_b"}
+        self.assertFalse(can_use_approval(candidate, **context))
+
     def test_inputs_remain_unchanged(self):
         before = self.approval
         context = self.context.copy()
