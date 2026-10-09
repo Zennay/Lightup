@@ -25,11 +25,20 @@ class TrustedDecision:
     issuer_verified: bool
 
 
+def _canonical_identity(value):
+    return (
+        type(value) is str
+        and 0 < len(value) <= 128
+        and value == value.strip()
+        and all(0x21 <= ord(char) <= 0x7E for char in value)
+    )
+
+
 def reference_eligible(tenant_id, request_id, revision, capability, trusted_decision, display):
     """Fail closed on untrusted view metadata and malformed issuer decision."""
     # The view is intentionally not inspected: it is presentation-only.
     del display
-    if not all(type(v) is str and bool(v) for v in (tenant_id, request_id, capability)):
+    if not all(_canonical_identity(v) for v in (tenant_id, request_id, capability)):
         return False
     if type(revision) is not int or revision < 1:
         return False
@@ -37,10 +46,10 @@ def reference_eligible(tenant_id, request_id, revision, capability, trusted_deci
         return False
     d = trusted_decision
     return (
-        type(d.tenant_id) is str and d.tenant_id == tenant_id
-        and type(d.request_id) is str and d.request_id == request_id
+        _canonical_identity(d.tenant_id) and d.tenant_id == tenant_id
+        and _canonical_identity(d.request_id) and d.request_id == request_id
         and type(d.revision) is int and d.revision == revision
-        and type(d.capability) is str and d.capability == capability
+        and _canonical_identity(d.capability) and d.capability == capability
         and type(d.active) is bool and d.active is True
         and type(d.issuer_verified) is bool and d.issuer_verified is True
     )
@@ -103,6 +112,24 @@ class ScopeUiStatusNonAuthorityTests(unittest.TestCase):
                 raise AssertionError("view metadata must not be consulted")
         self.assertTrue(self.eligible(display=HostilePresentation()))
         self.assertFalse(self.eligible(decision=False, display=HostilePresentation()))
+
+    def test_noncanonical_claimed_identity_denied(self):
+        for bad in (" tenant-a", "tenant-a ", "tenant\\n-a", "tenant\\x7f-a",
+                    "ténant-a", "a" * 129, ""):
+            with self.subTest(value=repr(bad)):
+                self.assertFalse(reference_eligible(
+                    bad, "request-a", 3, "web-baseline", self.issued, self.green))
+
+    def test_noncanonical_issuer_identity_denied(self):
+        for bad in (" tenant-a", "tenant-a ", "tenant\\r-a", "tenant\\x00-a",
+                    "ténant-a", "a" * 129, ""):
+            with self.subTest(value=repr(bad)):
+                self.assertFalse(self.eligible(decision=TrustedDecision(
+                    bad, "request-a", 3, "web-baseline", True, True)))
+
+    def test_boolean_revision_does_not_pass_as_one(self):
+        self.assertFalse(reference_eligible(
+            "tenant-a", "request-a", True, "web-baseline", self.issued, self.green))
 
     def test_inputs_are_not_mutated(self):
         before = repr(self.issued), repr(self.green)
