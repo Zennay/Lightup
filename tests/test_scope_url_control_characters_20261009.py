@@ -51,6 +51,23 @@ class ControlCharacterScopeReference(unittest.TestCase):
     def test_tab_inside_host_without_scheme_must_deny(self):
         self.assertFalse(POLICY.decide(Target("autho\trized.example.test", authorization=AUTH)).allowed)
 
+
+    @unittest.expectedFailure
+    def test_carriage_return_without_scheme_must_deny(self):
+        self.assertFalse(POLICY.decide(Target("autho\rrized.example.test", authorization=AUTH)).allowed)
+
+    @unittest.expectedFailure
+    def test_tab_in_url_path_must_deny_raw_target(self):
+        self.assertFalse(POLICY.decide(Target("https://" + HOST + "/a\tb", authorization=AUTH)).allowed)
+
+    @unittest.expectedFailure
+    def test_newline_in_url_query_must_deny_raw_target(self):
+        self.assertFalse(POLICY.decide(Target("https://" + HOST + "/?x=1\ny=2", authorization=AUTH)).allowed)
+
+    @unittest.expectedFailure
+    def test_del_character_in_url_path_must_deny_raw_target(self):
+        self.assertFalse(POLICY.decide(Target("https://" + HOST + "/\x7f", authorization=AUTH)).allowed)
+
     def test_control_characters_do_not_allow_unlisted_hosts(self):
         for host in ("unlisted.example.test", "other.example.test"):
             for control in ("\n", "\r", "\t"):
