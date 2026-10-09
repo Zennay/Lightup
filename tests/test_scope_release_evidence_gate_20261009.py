@@ -238,6 +238,8 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
             "https://github.com/Zennay/Lightup/actions/runs/0",
             "https://github.com/Zennay/Lightup/actions/runs/0123",
             "https://github.com/Zennay/Lightup/actions/runs/0001",
+            "https://github.com/Zennay/Lightup/actions/runs/123\\r",
+            "https://github.com/Zennay/Lightup/actions/runs/123\\n",
             "https://github.com/Zennay/Lightup/actions/runs/000000000000000000001",
             "https://github.com/Zennay/Lightup/actions/runs/123%2fextra",
             "https://github.com/Zennay/Lightup/actions/runs/123@evil.example",
