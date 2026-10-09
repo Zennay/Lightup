@@ -18,7 +18,11 @@ from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason
 
 def reference_preflight(policy, target, handler):
     """Deny parser errors before any downstream policy/handler invocation."""
-    if type(target.value) is not str or not target.value or any(\n        char.isspace() or unicodedata.category(char) in {"Cc", "Cf", "Cs"}\n        for char in target.value\n    ):\n        return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
+    if type(target.value) is not str or not target.value or any(
+        char.isspace() or unicodedata.category(char) in {"Cc", "Cf", "Cs"}
+        for char in target.value
+    ):
+        return ScopeDecision(False, None, ScopeReason.INVALID_TARGET)
     try:
         parsed = urlparse(target.value if "://" in target.value else "//" + target.value)
         # The authority is netloc, not a raw split which can include query or fragment.
