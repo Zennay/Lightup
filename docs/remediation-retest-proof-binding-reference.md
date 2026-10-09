@@ -6,7 +6,7 @@ A finding must **not** transition to resolved merely because a user, model, or w
 
 ## Acceptance boundaries
 
-- Reject mismatched tenant/finding/revision and boolean integer impostors.
+- Reject mismatched tenant/finding/revision and boolean integer impostors. Tenant and finding identifiers are exact ASCII single-token selectors (`[A-Za-z0-9][A-Za-z0-9._:-]{0,127}`); spaces, path separators, Unicode normalization ambiguities and line-break injection fail closed in this reference. This grammar is a reference boundary and must be reconciled against the production domain's canonical identifier schema before integration.
 - Require explicit immutable prior/retest SHA-256 content-reference strings (64 lowercase hex bytes); forbid reusing the original digest as retest proof.
 - Deny failed or unknown outcomes, unknown method labels, truthy nonboolean verification, extra fields and subclass/duck containers.
 - Preserve caller inputs. Positive result means only *reference-shape eligible*, not production proof.
