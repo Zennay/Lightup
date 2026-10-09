@@ -31,3 +31,16 @@ Existing evidence-content-hash, reference-order, tombstone, export, transition,
 source ownership, and scope-authorization PRs remain untouched. No DNS, sockets,
 target probing, real evidence ingestion, permissions, deployment or active
 capability execution. Positive reference tests prove lexical shape only.
+
+## Extended offline acceptance cases
+
+The reference suite now also checks that two distinct canonical hexadecimal
+identifiers retain different identities, invalid ASCII separators are denied,
+and all malformed selectors raise the same deterministic `ValueError` message.
+These are lexical-invariant checks only: they deliberately do not attempt to
+resolve, dereference, ingest or authorize any evidence object.
+
+The production owner should separately prove that identifier equality never
+substitutes for tenant isolation, issuer ownership, evidence content integrity,
+revocation status or verified provenance. Existing opaque identifiers must not
+be silently rewritten into this illustrative format.
