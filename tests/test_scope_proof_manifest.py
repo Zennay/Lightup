@@ -101,6 +101,18 @@ class ProofManifestTests(unittest.TestCase):
                     path.write_text(raw, encoding="utf-8")
                     self.assertEqual(module.main(["verify", str(path)]), 2)
 
+    def test_oversized_manifest_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "oversized.json"
+            path.write_bytes(b" " * (module.MAX_MANIFEST_BYTES + 1))
+            self.assertEqual(module.main(["verify", str(path)]), 2)
+
+    def test_malformed_utf8_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "malformed.json"
+            path.write_bytes(b"\\xff\\xfe")
+            self.assertEqual(module.main(["verify", str(path)]), 2)
+
     def test_absent_or_malformed_manifest_is_denied(self):
         self.assertTrue(module.verify(None))
         self.assertTrue(module.verify({}))
