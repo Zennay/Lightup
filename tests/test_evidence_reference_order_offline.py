@@ -141,7 +141,7 @@ class EvidenceReferenceOrderReferenceTests(unittest.TestCase):
                             hashlib.sha256(legacy).hexdigest())
 
     def test_unpaired_surrogates_fail_closed(self):
-        for malformed in ("\\ud800", "\\udfff"):
+        for malformed in (chr(0xD800), chr(0xDFFF)):
             with self.subTest(malformed=ascii(malformed)):
                 for position in ("tenant", "finding", "evidence"):
                     with self.subTest(position=position), self.assertRaises(ValueError):
