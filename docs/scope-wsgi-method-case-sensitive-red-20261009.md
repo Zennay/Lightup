@@ -23,7 +23,7 @@ HTTP request methods are case-sensitive tokens (RFC 9110 §9.1). The actual WSGI
 | `GET` | `/` | 200 | positive |
 | `PATCH` | `/clients` | 404, no client created | negative |
 
-A source-owner correction may return 403/404/405 for unsupported case variants; acceptance requires **no effects** and **no sensitive reads**, not a specific denial status. The `expectedFailure` canaries currently pin 404 to detect the existing defect; after a fix, the owner should replace those assertions with an explicit accepted denial-status set and remove `expectedFailure`. Tests are standard-library unittest, run with:
+Each of the seven cases is exercised in both development WSGI and a simulated production WSGI fixture with exact trusted-loopback peer, Host, X-Forwarded-Proto=https and same-origin Origin. This is **14 tests** total (8 xfail RED canaries + 6 controls), and no reverse proxy is started.\n\nA source-owner correction may return 403/404/405 for unsupported case variants; acceptance requires **no effects** and **no sensitive reads**, not a specific denial status. The `expectedFailure` canaries currently pin 404 to detect the existing defect; after a fix, the owner should replace those assertions with an explicit accepted denial-status set and remove `expectedFailure`. Tests are standard-library unittest, run with:
 
 `PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_wsgi_method_case_sensitivity_20261009.py' -v`
 
