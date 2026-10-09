@@ -158,10 +158,12 @@ class SessionCookieGuardTest(unittest.TestCase):
                 (app, store, context, op_token, op_csrf, client_token,
                  client_csrf) = self.fixtures(production)
                 self.assertEqual(len(op_token), 43)
+                self.assertIn(op_token[-1], "AEIMQUYcgkosw048")
                 cases = [
                     op_token[:-1],                    # truncated
                     op_token + "A",                   # appended
                     op_token + "=",                   # padding
+                    op_token[:-1] + "B",              # impossible pad bits
                     op_token[:12] + "%" + op_token[13:],  # percent encoding
                     op_token[:12] + "." + op_token[13:],  # wrong alphabet
                     op_token[:12] + "é" + op_token[13:],  # latin-1 high byte
