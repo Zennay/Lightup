@@ -29,3 +29,7 @@ A deliberately hostile object whose `__bool__` raises is rejected as a BOOLEAN a
 ## Non-throwing truthiness impostors
 
 In addition to an adversarial `__bool__` that raises, both true-like and false-like custom objects are rejected without their `__bool__` being invoked (zero calls). A coercion-based validator would wrongly accept at least one of these, so this is a direct non-coercion regression. This is still schema-only acceptance and cannot certify production execution gates. Earlier HEAD `3ddca53` hosted #37950655764 and VPS #37950656025 were queued at inspection; neither proves the new HEAD.
+
+## Optional is not nullable
+
+An omitted optional BOOLEAN passes, but explicitly provided `None`, empty string, integer zero and text `"false"` must be rejected. An exact explicit `False` remains valid after negative cases. This prevents absent-value semantics from accidentally becoming null/coercion semantics. Prior HEAD `933ef63` hosted [37950790671](https://github.com/Zennay/Lightup/actions/runs/37950790671) and permanent [37950790611](https://github.com/Zennay/Lightup/actions/runs/37950790611) were pending at inspection, and cannot prove this later SHA.
