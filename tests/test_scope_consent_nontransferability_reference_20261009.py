@@ -242,6 +242,23 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
                     self.assertFalse(matches_consent(
                         Consent(**data), **(self.request | {field: data[field]})))
 
+    def test_benign_unicode_letters_remain_exactly_bound(self):
+        # Reference screening must not broadly ban legitimate Unicode identities.
+        for replacement in ("e\u0301", "\u00e9", "\u03b1", "\u6771"):
+            with self.subTest(value=ascii(replacement)):
+                approved = Consent("tenant-A", "engagement-A", replacement,
+                                   "asset-A", "web-baseline", 3, True)
+                self.assertTrue(matches_consent(
+                    approved, **(self.request | {"owner_id": replacement})))
+                self.assertFalse(matches_consent(
+                    approved, **(self.request | {"owner_id": "owner-A"})))
+
+    def test_canonical_equivalent_unicode_is_not_implicit_authority(self):
+        stored = Consent("tenant-A", "engagement-A", "\u00e9",
+                         "asset-A", "web-baseline", 3, True)
+        self.assertFalse(matches_consent(
+            stored, **(self.request | {"owner_id": "e\u0301"})))
+
 
 if __name__ == "__main__":
     unittest.main()
