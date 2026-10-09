@@ -39,6 +39,13 @@ class ProofManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             py_compile.compile(str(MODULE), cfile=str(Path(directory) / "verifier.pyc"), doraise=True)
 
+    def test_separate_hosted_runs_also_work_through_cli(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "separate-hosted-runs.json"
+            path.write_text(json.dumps(fixture()), encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(module.main(["verify", str(path)]), 0)
+
     def test_shared_hosted_run_works_through_cli(self):
         obj = fixture()
         obj["hosted_py314_run_id"] = obj["hosted_py311_run_id"]
