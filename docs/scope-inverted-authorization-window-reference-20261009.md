@@ -64,3 +64,6 @@ Review gates: pin implementation head; run focused failing-then-passing producti
 Run: `PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_strict_window_reference_20261009.py' -v`.
 
 The strict reference cannot authenticate issuer, owner, tenant, capability, revocation, persisted integrity or request intent. It must never be called as a stand-alone permission to scan. Production repair is tracked in #1128 under the #107 owner's surface.
+
+## Reference clock robustness
+Two additional strict-reference tests reject a timezone provider raising during `now.utcoffset()` and reject `datetime` subclasses masquerading as canonical instant values. The pure temporal predicate now returns `False` for malformed clock metadata rather than propagating that exception. This hardens only the offline reference, not the production executor or real-target permission validation.
