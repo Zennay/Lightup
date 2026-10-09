@@ -34,7 +34,7 @@ def is_release_evidence_complete(m: dict) -> bool:
     hosted_run_url = None
     for name in ("hosted_python_311", "hosted_python_314", "permanent_vps"):
         run = m.get(name)
-        if type(run) is not dict or run.get("sha") != sha or run.get("conclusion") != "success":
+        if type(run) is not dict or set(run) != {"sha", "conclusion", "run_url", "job_id"} or run.get("sha") != sha or run.get("conclusion") != "success":
             return False
         if type(run.get("run_url")) is not str or not re.fullmatch(r"https://github[.]com/" + re.escape(repo_path) + r"/actions/runs/[1-9][0-9]*", run["run_url"]):
             return False
@@ -50,9 +50,12 @@ def is_release_evidence_complete(m: dict) -> bool:
             return False
     negative = m.get("negative_real_executor_trace")
     positive = m.get("positive_loopback_lab_trace")
-    for trace in (negative, positive, m.get("persistent_revocation_proof"),
-                  m.get("trusted_destination_metadata_proof")):
-        if type(trace) is not dict or trace.get("sha") != sha:
+    trace_schemas = ((negative, {"sha", "artifact_url", *COUNTERS}),
+                     (positive, {"sha", "artifact_url", "handler_calls"}),
+                     (m.get("persistent_revocation_proof"), {"sha", "artifact_url"}),
+                     (m.get("trusted_destination_metadata_proof"), {"sha", "artifact_url"}))
+    for trace, keys in trace_schemas:
+        if type(trace) is not dict or set(trace) != keys or trace.get("sha") != sha:
             return False
         if not isinstance(trace.get("artifact_url"), str) or not trace["artifact_url"].startswith("https://"):
             return False
@@ -194,6 +197,10 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         extra = dict(valid)
         extra["review_override"] = True
         self.assertFalse(is_release_evidence_complete(extra))
+        for name in ("hosted_python_311", "negative_real_executor_trace", "persistent_revocation_proof"):
+            invalid = json.loads(json.dumps(valid))
+            invalid[name]["override"] = True
+            self.assertFalse(is_release_evidence_complete(invalid), name)
 
     def test_malformed_manifest_shapes_fail_closed_without_exceptions(self):
         """Untrusted evidence envelopes must never crash the release checker."""
