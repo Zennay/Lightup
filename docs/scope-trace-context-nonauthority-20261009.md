@@ -6,13 +6,15 @@ The scoped production owner must bind tenant, client, engagement, exact asset, c
 
 ## Current proof boundary
 
-`tests/test_scope_trace_context_nonauthority_20261009.py` exercises six offline cases:
+`tests/test_scope_trace_context_nonauthority_20261009.py` exercises eight offline cases:
 - traceparent cannot mint authorization;
 - tracestate/baggage cannot mint authorization;
 - conflicting trace metadata does not override an out-of-band verified fixture;
 - revoked/missing fixture remains denied;
 - hostile tracing objects are never coerced;
-- truthy / str-subclass fake grant identities fail closed.
+- truthy / str-subclass fake grant identities fail closed;
+- attacker-provided grant collection objects cannot run custom membership hooks;
+- mixed-type trusted grant collections and malformed grant identities fail closed.
 
 Run in the repository: `python -m unittest discover -s tests -p 'test_scope_trace_context_nonauthority_20261009.py' -v`.
 
