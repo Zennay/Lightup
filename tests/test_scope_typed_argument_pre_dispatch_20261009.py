@@ -125,6 +125,24 @@ class TypedArgumentsPreDispatchTests(unittest.TestCase):
             "authority_override": "outside.invalid",
         })
 
+    def test_non_finite_numeric_values_are_not_authorization(self):
+        # Primitive NUMBER validation currently accepts NaN/Infinity.
+        # This test is deliberately about evidence provenance, not permission:
+        # successful type validation MUST NOT be cited as network scope proof.
+        for value in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(value=str(value)):
+                self.assertTrue(ParamKind.NUMBER.accepts(value))
+
+    def test_denied_request_does_not_write_evidence_after_valid_control(self):
+        self.executor.execute(self.context, self.call(
+            host="localhost", port=8080, enabled=True
+        ))
+        self.handler.reset_mock()
+        self.ledger.reset_mock()
+        self.assert_denied_before_effects({
+            "host": "localhost", "port": "untrusted", "enabled": True
+        })
+
     def test_valid_lab_control_reaches_handler_and_evidence(self):
         result = self.executor.execute(self.context, self.call(
             host="localhost", port=8080, enabled=True, ratio=0.5
