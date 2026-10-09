@@ -54,6 +54,12 @@ class CanonicalPathInfoPureTests(unittest.TestCase):
         with self.assertRaises(InvalidPathInfo):
             canonical_path_info({"PATH_INFO": "/clients\n"})
 
+    def test_production_flag_is_exact_boolean_not_truthy_metadata(self):
+        for supplied in (1, 0, "yes", None, [], object()):
+            with self.subTest(value=repr(supplied)):
+                with self.assertRaises(TypeError):
+                    CanonicalPathInfoGuard(lambda *_: [], production=supplied)
+
     def test_invalid_path_cannot_invoke_wrapped_application(self):
         calls = []
         def downstream(*_):
@@ -119,7 +125,7 @@ class CanonicalPathInfoRealWSGITests(unittest.TestCase):
             WebSecurity(public_origin="https://lightup.example", trusted_proxy_ip="127.0.0.1")
             if production else WebSecurity()
         )
-        app = CanonicalPathInfoGuard(create_app(self.store, security))
+        app = CanonicalPathInfoGuard(create_app(self.store, security), production=production)
         response = {}
         chunks = app(env, lambda status, headers: response.update(
             status=status, headers=dict(headers)
@@ -147,6 +153,12 @@ class CanonicalPathInfoRealWSGITests(unittest.TestCase):
                     self.assertEqual(status, "400 Bad Request")
                     self.assertEqual(body, b"Invalid request path\n")
                     self.assertEqual(headers["Cache-Control"], "no-store")
+                    if production:
+                        self.assertEqual(
+                            headers["Strict-Transport-Security"], "max-age=31536000"
+                        )
+                    else:
+                        self.assertNotIn("Strict-Transport-Security", headers)
                     self.assertEqual(len(self.store.list_clients(self.operator)),
                                      self.original_client_count)
                     self.assertIsNotNone(self.store.session_context(self.op_cookie))
