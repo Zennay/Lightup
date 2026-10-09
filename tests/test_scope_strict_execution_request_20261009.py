@@ -118,7 +118,7 @@ class StrictEnvelopeUnitTests(unittest.TestCase):
         bad_scopes = (
             replace(genuine.scope, assets=["safe.example.test"]),
             replace(genuine.scope, allowed_capabilities=("web-baseline", WeirdText("other"))),
-            replace(genuine.scope, excluded_assets=("outside.example.test\\n",)),
+            replace(genuine.scope, excluded_assets=("outside.example.test\n",)),
             replace(genuine.scope, max_risk=2),
         )
         for scope in bad_scopes:
