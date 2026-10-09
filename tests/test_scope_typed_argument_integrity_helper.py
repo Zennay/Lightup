@@ -359,5 +359,29 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
         self.assertEqual(events, [])
 
 
+    def test_finite_numeric_boundaries_do_not_rewrite_original_value(self):
+        import sys
+        import math
+        values = (sys.float_info.max, sys.float_info.min, -sys.float_info.max, 0.0)
+        for value in values:
+            with self.subTest(value=value):
+                args = [("value", value)]
+                validated = validate_unambiguous_arguments(self.definition, args)
+                self.assertIs(validated["value"], value)
+                self.assertIs(args[0][1], value)
+                self.assertTrue(math.isfinite(validated["value"]))
+
+    def test_boolean_rejected_before_schema_callback(self):
+        from unittest.mock import patch
+        for value in (True, False):
+            with self.subTest(value=value):
+                with patch.object(
+                    ToolDefinition, "validate_arguments",
+                    side_effect=AssertionError("schema called"),
+                ):
+                    with self.assertRaisesRegex(OrchestrationError, "built-in number"):
+                        validate_unambiguous_arguments(self.definition, (("value", value),))
+
+
 if __name__ == "__main__":
     unittest.main()
