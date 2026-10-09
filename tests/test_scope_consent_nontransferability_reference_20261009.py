@@ -227,6 +227,21 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
                     self.assertFalse(matches_consent(
                         self.consent, **(self.request | {field: contaminated})))
 
+    def test_reject_unicode_format_controls_in_stored_consent_too(self):
+        for codepoint in (0x200B, 0x200D, 0x202E, 0x2066):
+            for field in ("tenant_id", "engagement_id", "owner_id",
+                          "asset_id", "capability_id"):
+                with self.subTest(codepoint=hex(codepoint), field=field):
+                    data = dict(tenant_id=self.consent.tenant_id,
+                                engagement_id=self.consent.engagement_id,
+                                owner_id=self.consent.owner_id,
+                                asset_id=self.consent.asset_id,
+                                capability_id=self.consent.capability_id,
+                                revision=3, approved=True)
+                    data[field] += chr(codepoint)
+                    self.assertFalse(matches_consent(
+                        Consent(**data), **(self.request | {field: data[field]})))
+
 
 if __name__ == "__main__":
     unittest.main()
