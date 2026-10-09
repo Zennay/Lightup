@@ -242,6 +242,31 @@ class BackslashNonauthorityTests(unittest.TestCase):
             reference_dispatch("https://example.test/path", policy)
         policy.assert_called_once_with("https://example.test/path")
 
+
+    def test_every_backslash_boundary_denies_before_untrusted_parser(self):
+        baseline = "https://example.test/path?next=value#fragment"
+        policy = Mock(return_value="ALLOW")
+        with patch(__name__ + ".urlsplit", side_effect=AssertionError("parser must not run")) as parser:
+            for offset in range(len(baseline) + 1):
+                with self.subTest(offset=offset):
+                    candidate = baseline[:offset] + chr(92) + baseline[offset:]
+                    self.assertEqual(reference_dispatch(candidate, policy), "INVALID_TARGET")
+        parser.assert_not_called()
+        policy.assert_not_called()
+
+    def test_authority_backslash_denial_is_independent_of_parser_output(self):
+        target = "https://trusted.example" + chr(92) + "@untrusted.example/path"
+        for parser_output in (
+            None,
+            object(),
+        ):
+            with self.subTest(parser_output=repr(parser_output)):
+                policy = Mock(return_value="ALLOW")
+                with patch(__name__ + ".urlsplit", return_value=parser_output) as parser:
+                    self.assertEqual(reference_dispatch(target, policy), "INVALID_TARGET")
+                parser.assert_not_called()
+                policy.assert_not_called()
+
     def test_nonstring_input_must_not_invoke_user_string_conversion(self):
         class Hostile:
             def __str__(self):
