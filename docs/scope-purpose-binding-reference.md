@@ -22,7 +22,7 @@ another. The explicit reference vocabulary is `current-assessment`,
 ## Evidence boundaries
 
 `tests/test_scope_purpose_binding_reference.py` contains a **pure in-memory
-reference** with twelve independent unittest regressions. A positive result means
+reference** with fourteen independent unittest regressions. A positive result means
 only that this tiny reference predicate's purpose and identity fields agree;
 the reference intentionally restricts identity fields to printable ASCII to avoid\nUnicode confusables and invisible separators; the production owner must decide\na canonical identity grammar. It does not establish authentic provenance, valid consent, authorization for
 targets, or permission to execute a capability.
@@ -33,7 +33,7 @@ Run offline:
 PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_purpose_binding_reference.py' -v
 ```
 
-No sockets, DNS, target activity, deployment, scanning or live executor changes.
+Additional cases require lab grants to remain purpose-isolated and reject malformed\nissuer-side tenant/request identifiers.\n\nNo sockets, DNS, target activity, deployment, scanning or live executor changes.
 The production scope-executor owner must decide how to integrate this separate
 contract. Keep this PR draft pending exact-head hosted 3.11/3.14 and permanent
 VPS checks plus source-owner review.
