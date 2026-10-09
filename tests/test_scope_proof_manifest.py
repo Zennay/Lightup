@@ -34,6 +34,11 @@ class ProofManifestTests(unittest.TestCase):
     def test_valid_index_only(self):
         self.assertEqual(module.verify(fixture()), [])
 
+    def test_implementation_must_not_equal_base(self):
+        obj = fixture()
+        obj["base_sha"] = obj["implementation_sha"]
+        self.assertTrue(any("must differ" in e for e in module.verify(obj)))
+
     def test_exact_sha_binding_for_every_proof(self):
         for key in ("hosted_py311_sha", "hosted_py314_sha",
                     "permanent_vps_sha", "owner_review_sha"):
