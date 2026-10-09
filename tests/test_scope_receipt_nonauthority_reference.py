@@ -35,7 +35,11 @@ def reference_admit(*, receipt, grant, tenant, request, capability, revision):
         return False
     if type(grant.active) is not bool or grant.active is not True:
         return False
-    if type(grant.revision) is not int:
+    if type(grant.revision) is not int or grant.revision < 1:
+        return False
+    if any(type(value) is not str or not value for value in (
+        grant.tenant, grant.request, grant.capability
+    )):
         return False
     return (
         grant.tenant == tenant
@@ -80,6 +84,33 @@ class ReceiptNonAuthorityReference(unittest.TestCase):
                       dataclasses.replace(self.grant, revision=True)):
             with self.subTest(grant=grant):
                 self.assertFalse(reference_admit(receipt=self.receipt, grant=grant, **self.args))
+
+    def test_receipt_outcome_is_non_authoritative(self):
+        for outcome in ("allowed", "denied", "revoked", "approved", ""):
+            with self.subTest(outcome=outcome):
+                receipt = dataclasses.replace(self.receipt, outcome=outcome)
+                self.assertTrue(reference_admit(
+                    receipt=receipt, grant=self.grant, **self.args))
+                self.assertFalse(reference_admit(
+                    receipt=receipt, grant=dataclasses.replace(self.grant, active=False),
+                    **self.args))
+
+    def test_polymorphic_grant_fields_cannot_cross_boundary(self):
+        class Identity(str):
+            pass
+        for field in ("tenant", "request", "capability"):
+            with self.subTest(field=field):
+                grant = dataclasses.replace(
+                    self.grant, **{field: Identity(getattr(self.grant, field))})
+                self.assertFalse(reference_admit(
+                    receipt=self.receipt, grant=grant, **self.args))
+
+    def test_invalid_grant_revision_cannot_authorize(self):
+        for revision in (0, -1, 3.0, "3"):
+            with self.subTest(revision=revision):
+                grant = dataclasses.replace(self.grant, revision=revision)
+                self.assertFalse(reference_admit(
+                    receipt=self.receipt, grant=grant, **self.args))
 
     def test_receipt_subclass_is_not_a_trusted_envelope(self):
         class ForgedReceipt(Receipt):
