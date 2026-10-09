@@ -39,6 +39,13 @@ class ProofManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             py_compile.compile(str(MODULE), cfile=str(Path(directory) / "verifier.pyc"), doraise=True)
 
+    def test_vps_run_cannot_be_hosted_run(self):
+        for field in ("hosted_py311_run_id", "hosted_py314_run_id"):
+            with self.subTest(field=field):
+                obj = fixture()
+                obj["permanent_vps_run_id"] = obj[field]
+                self.assertTrue(any("VPS run must differ" in e for e in module.verify(obj)))
+
     def test_separate_hosted_runs_also_work_through_cli(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "separate-hosted-runs.json"
