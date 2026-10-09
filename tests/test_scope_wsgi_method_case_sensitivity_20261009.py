@@ -39,6 +39,7 @@ class MethodTokenCaseSensitiveCanaries(unittest.TestCase):
             "HTTP_COOKIE": f"lightup_session={self.token}",
             "wsgi.input": io.BytesIO(data),
         }
+        env.update(getattr(self, "proxy_environ", {}))
         capture = {}
 
         def start_response(status, headers):
@@ -94,6 +95,28 @@ class MethodTokenCaseSensitiveCanaries(unittest.TestCase):
             "name": "Not allowed", "csrf": self.csrf
         }), "404 Not Found")
         self.assertEqual(len(self.store.list_clients(self.operator)), before)
+
+
+class ProductionMethodTokenCaseSensitiveCanaries(MethodTokenCaseSensitiveCanaries):
+    """Repeat the real WSGI canaries with production WebSecurity admission.
+
+    A simulated trusted loopback proxy is WSGI metadata only; no listener.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from lightup.webapp.security import WebSecurity
+        self.app = create_app(
+            self.store,
+            WebSecurity(public_origin="https://scope.example.test",
+                        trusted_proxy_ip="127.0.0.1"),
+        )
+        self.proxy_environ = {
+            "REMOTE_ADDR": "127.0.0.1",
+            "HTTP_HOST": "scope.example.test",
+            "HTTP_X_FORWARDED_PROTO": "https",
+            "HTTP_ORIGIN": "https://scope.example.test",
+        }
 
 
 if __name__ == "__main__":
