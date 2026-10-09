@@ -53,6 +53,27 @@ class NumericGrantRevisionReferenceTests(unittest.TestCase):
     def test_positive_canonical_integer(self):
         self.assertEqual(reference_revision(self.valid), 7)
 
+    def test_safe_integer_upper_boundary_is_accepted(self):
+        payload = self.valid.replace("7}", "9007199254740991}")
+        self.assertEqual(reference_revision(payload), 9007199254740991)
+
+    def test_valid_single_character_identifiers(self):
+        self.assertEqual(reference_revision('{"tenant":"a","grant":"1","revision":1}'), 1)
+
+    def test_valid_max_length_identifiers(self):
+        tenant = "a" + "b" * 78 + "c"
+        grant = "1" + "2" * 78 + "3"
+        self.assertEqual(reference_revision(json.dumps({
+            "tenant": tenant, "grant": grant, "revision": 1
+        })), 1)
+
+    def test_json_encoded_controls_and_unicode_aliases_denied(self):
+        for token in ("tenant\\n-a", "tenant\\t-a", "tenant\\r-a", "tenant\\u200b"):
+            with self.subTest(token=token):
+                self.assertIsNone(reference_revision(json.dumps({
+                    "tenant": token, "grant": "grant-a", "revision": 7
+                })))
+
     def test_boolean_is_not_integer_revision(self):
         for value in ("true", "false"):
             with self.subTest(value=value):
