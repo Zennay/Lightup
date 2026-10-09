@@ -87,6 +87,8 @@ def verify_observed_ci_jobs(manifest: dict, observed: dict) -> bool:
     """Compare caller-supplied snapshots; no network access or release authority."""
     if not is_release_evidence_complete(manifest) or type(observed) is not dict:
         return False
+    if set(observed) != {"hosted_python_311", "hosted_python_314", "permanent_vps"}:
+        return False
     for lane, required_version in (("hosted_python_311", "3.11"),
                                    ("hosted_python_314", "3.14"),
                                    ("permanent_vps", None)):
@@ -238,6 +240,9 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
             extra = json.loads(json.dumps(observed))
             extra[lane]["untrusted_override"] = "success"
             self.assertFalse(verify_observed_ci_jobs(manifest, extra), lane)
+        top_extra = json.loads(json.dumps(observed))
+        top_extra["override"] = {"conclusion": "success"}
+        self.assertFalse(verify_observed_ci_jobs(manifest, top_extra))
         swapped = json.loads(json.dumps(observed))
         swapped["hosted_python_311"], swapped["hosted_python_314"] = (
             swapped["hosted_python_314"], swapped["hosted_python_311"])
