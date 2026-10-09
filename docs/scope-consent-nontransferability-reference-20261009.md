@@ -34,3 +34,5 @@ Do not merge, deploy or activate based on this reference. Require exact-head hos
 Additional offline hardening: identity comparison rejects U+200B zero-width space, U+202E right-to-left override and lone UTF-16 surrogate codepoints to prevent hidden/surrogate identifiers from silently inheriting consent. This is not a full Unicode normalization policy or executable authorization.
 
 The offline identity fixture now rejects all Unicode `Cc`, `Cf` and `Cs` categories, including bidi isolation, joiners and word joiners, across each consent binding. This is only a conservative reference boundary: trusted issuer validation and production owner review remain separate requirements.
+
+Stored consent identifiers receive the same Unicode format-control checks as request identifiers, including when both strings are identically contaminated; an exact textual match does not make malformed identities authoritative.
