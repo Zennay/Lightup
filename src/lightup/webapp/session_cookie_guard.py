@@ -12,6 +12,9 @@ from .app import SESSION_COOKIE
 
 # RFC-style token subset; deliberately reject unusual/ambiguous cookie names.
 _NAME = re.compile(r"^[A-Za-z0-9!#$%&'*+.^_|~-]+$")
+# DomainStore.create_session uses secrets.token_urlsafe(32): exactly 43 base64url
+# characters, unpadded. This checks representation, not authentication.
+_SESSION_TOKEN = re.compile(r"[A-Za-z0-9_-]{43}\Z")
 _MISSING = object()
 _MAX_COOKIE_BYTES = 8192
 
@@ -58,6 +61,11 @@ def validate_cookie_envelope(environ: dict) -> None:
         if name == SESSION_COOKIE:
             if session_seen:
                 raise ValueError("duplicate LightUp session credential")
+            # Reject padding, encoded/folded values and noncanonical lengths
+            # before any store.session_context lookup. Only the store can
+            # decide whether a *well-formed* token authenticates.
+            if not _SESSION_TOKEN.fullmatch(value):
+                raise ValueError("noncanonical LightUp session token")
             session_seen = True
 
 
