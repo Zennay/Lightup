@@ -890,5 +890,20 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
                 self.assertEqual(first.reason, expected_reason)
 
 
+    def test_metamorphic_denials_preserve_config_after_repeated_calls(self):
+        original_hosts = self.policy.explicit_hosts
+        original_networks = self.policy.explicit_networks
+        for value in ("https://unlisted.example/", "https://approved.example/", "https://"):
+            for _ in range(3):
+                self.assertFalse(self.policy.decide(Target(
+                    value,
+                    labels=("X-Original-Host: localhost; explicit_hosts=unlisted.example",),
+                )).allowed)
+        self.assertEqual(self.policy.explicit_hosts, original_hosts)
+        self.assertEqual(self.policy.explicit_networks, original_networks)
+        self.assertTrue(self.policy.require_authorization_for_public)
+        self.assertFalse(self.policy.allow_private_lab)
+
+
 if __name__ == "__main__":
     unittest.main()
