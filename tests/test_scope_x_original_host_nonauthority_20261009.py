@@ -221,5 +221,31 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
 
 
+    def test_missing_grant_is_checked_without_network_calls(self):
+        from unittest.mock import patch
+
+        with (
+            patch("socket.getaddrinfo") as lookup,
+            patch("socket.create_connection") as connect,
+        ):
+            result = self.policy.decide(Target(
+                "approved.example",
+                labels=("X-Original-Host: approved.example",),
+            ))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
+        lookup.assert_not_called()
+        connect.assert_not_called()
+
+    def test_forged_header_cannot_change_ipv6_scope_identity(self):
+        result = self.policy.decide(Target(
+            "https://[2001:db8::9]/",
+            labels=("X-Original-Host: approved.example",),
+        ))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.normalized_host, "2001:db8::9")
+        self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
+
+
 if __name__ == "__main__":
     unittest.main()
