@@ -35,6 +35,7 @@ class DestructiveLabApproval:
 
 
 ApprovalResolver = Callable[[str], DestructiveLabApproval | None]
+LabIsolationVerifier = Callable[[RunContext, ToolCall], bool]
 
 # A single operator approval must never authorize unbounded future work.
 # Proof of who issued it still belongs to a trusted persistent approval store.
@@ -127,17 +128,21 @@ class DestructiveLabStepUpExecutor:
     def __init__(
         self, executor: ToolExecutor,
         approval_resolver: ApprovalResolver | None = None,
+        isolation_verifier: LabIsolationVerifier | None = None,
     ) -> None:
         if type(executor) is not ToolExecutor:
             raise TypeError("a canonical ToolExecutor is required")
         if approval_resolver is not None and not callable(approval_resolver):
             raise TypeError("approval resolver must be callable or None")
+        if isolation_verifier is not None and not callable(isolation_verifier):
+            raise TypeError("lab isolation verifier must be callable or None")
         self._executor = executor
         # A registry reference swapped after construction cannot inherit
         # existing approvals. The source owner must still freeze registration
         # and prevent concurrent mutations at the real entrypoint.
         self._registry = executor.registry
         self._approval_resolver = approval_resolver
+        self._isolation_verifier = isolation_verifier
 
     def execute(self, context: RunContext, call: ToolCall) -> ToolResult:
         if type(context) is not RunContext or type(call) is not ToolCall:
@@ -186,6 +191,16 @@ class DestructiveLabStepUpExecutor:
                 raise ToolDenied("destructive-lab approval unavailable") from None
             if not approved:
                 raise ToolDenied("destructive-lab approval absent, stale or out of scope")
+            # Operator consent and actual lab confinement are independent.
+            # Never infer isolation from is_lab=True or the asset label.
+            if self._isolation_verifier is None:
+                raise ToolDenied("verified lab isolation is required")
+            try:
+                isolated = self._isolation_verifier(context, call)
+            except Exception:
+                raise ToolDenied("lab isolation verification unavailable") from None
+            if isolated is not True:
+                raise ToolDenied("lab isolation is not verified")
         # Check again after any resolver callbacks: synchronous changes to
         # registered handler/tool metadata must not switch what was approved.
         # This is not a substitute for owner-controlled immutable registries.
