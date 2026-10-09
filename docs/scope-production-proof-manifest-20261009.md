@@ -103,3 +103,6 @@ Run-level SHA and conclusion, and all artifact-trace SHA fields now require exac
 
 ## Gate-state exact identity tests
 Synthetic positive fixture and negative controls now verify that `REVIEWED` cannot be supplied by a `str` subclass and schema version cannot be a boolean, while an activated target flag or polymorphic implementation SHA is denied. The checker remains local-only; source-controlled evidence and real-target authorization are independent.
+
+## HOLD immutability and fabricated CI evidence (2026-10-09)
+Added regression coverage that a held, incomplete persisted manifest remains unchanged after observational checks, and cannot be promoted by caller-supplied `completed/success` snapshots. This specifically separates observation from authorization. Verified GitHub API run/job provenance, same implementation SHA, permanent VPS execution and owner review remain unfulfilled release gates. No active targets, dispatch or production executor changes.
