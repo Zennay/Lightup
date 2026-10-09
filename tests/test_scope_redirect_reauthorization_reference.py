@@ -319,6 +319,23 @@ class RedirectScopeReferenceTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
+    def test_public_ipv4_host_in_url_userinfo_cannot_authorize_other_ip(self):
+        destination = "https://8.8.8.8@1.1.1.1/next"
+        decision = self.decide(destination, self.grant)
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.normalized_host, "1.1.1.1")
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_public_ipv6_host_in_url_userinfo_cannot_authorize_other_ipv6(self):
+        policy = ScopePolicy(allow_private_lab=False, explicit_networks=("2606:4700:4700::1111/128",))
+        decision = policy.decide(Target(
+            "https://[2606:4700:4700::1111]@[2606:4700:4700::1112]/next",
+            authorization=self.grant,
+        ))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.normalized_host, "2606:4700:4700::1112")
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
     def test_each_redirect_hop_rechecks_target_identity(self):
         hops = [
             "https://approved.example.test/start",
