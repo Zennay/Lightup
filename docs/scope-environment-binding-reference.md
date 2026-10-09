@@ -4,7 +4,7 @@
 A scope decision for a staging environment must never be transplanted into production (or vice versa), even when tenant, request, issuer and revision are identical. Environment is an explicit authority dimension, not a cosmetic tag, host-name inference, or a label that can be silently defaulted.
 
 ## Isolated test material
-`tests/test_scope_environment_binding_reference.py` models an immutable evidence envelope and a pure fail-closed decision. Eight standard-library unittest methods cover matching context; staging→production and production→staging substitutions; tenant/request/issuer/revision substitution; lexical aliases and controls; truthy flags, malformed revisions and subclass/dictionary envelopes; and input nonmutation.
+`tests/test_scope_environment_binding_reference.py` models an immutable evidence envelope and a pure fail-closed decision. Twelve standard-library unittest methods cover matching context; staging→production and production→staging substitutions; tenant/request/issuer/revision substitution; malformed grant environment identities; full test/staging/production matched controls; malformed metadata on both the request and grant side; lexical aliases and controls; truthy flags, malformed revisions and subclass/dictionary envelopes; and input nonmutation.
 
 ## Production-owner acceptance
 - Define the canonical, issuer-controlled environment identity during grant issuance. Decide migration policy for existing grants that lack this field; never silently treat missing as production.
