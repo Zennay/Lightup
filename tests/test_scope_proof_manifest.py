@@ -214,6 +214,15 @@ class ProofManifestTests(unittest.TestCase):
                     # An absent secure primitive must never turn into a permissive open.
                     self.assertEqual(module.main(["verify", "unused.json"]), 2)
 
+    def test_zero_secure_open_flag_fails_closed(self):
+        for flag in ("O_NOFOLLOW", "O_NONBLOCK"):
+            with self.subTest(flag=flag):
+                with mock.patch.object(module.os, flag, 0):
+                    with tempfile.TemporaryDirectory() as directory:
+                        path = Path(directory) / "valid.json"
+                        path.write_text(json.dumps(fixture()), encoding="utf-8")
+                        self.assertEqual(module.main(["verify", str(path)]), 2)
+
     def test_directory_proof_input_fails_closed(self):
         with tempfile.TemporaryDirectory() as directory:
             self.assertEqual(module.main(["verify", directory]), 2)
