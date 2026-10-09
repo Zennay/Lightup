@@ -11,7 +11,7 @@ structured denial. This is not approval to execute target work.
 
 ## Required contract
 1. Catch invalid authority/parser failures at the normalization boundary.
-2. Require a nonempty parsed authority and hostname before policy delegation; missing-host URLs must cause zero policy and handler calls. URL syntax validity alone never constitutes consent. Deny malformed URLs with `allowed=False`, `reason=INVALID_TARGET`, and
+2. Require a nonempty parsed authority and hostname before policy delegation; missing-host URLs must cause zero policy and handler calls. URL syntax validity alone never constitutes consent. Force urllib.parse's lazily evaluated hostname and port properties before policy delegation, rejecting nonnumeric, negative or out-of-range ports without policy/handler calls. Deny malformed URLs with `allowed=False`, `reason=INVALID_TARGET`, and
    `normalized_host=None`.
 3. Ensure authorization decisions never trigger DNS, HTTP, scanning, evidence
    writes, or executor calls for invalid authorities.
