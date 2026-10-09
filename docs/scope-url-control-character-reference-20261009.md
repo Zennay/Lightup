@@ -41,3 +41,7 @@ executor edits, deployment, or automatic merge are authorized by this reference.
 ## Pre-policy invocation gate
 
 The offline reference now contains eight ordinary tests, including mock-backed checks proving malformed raw targets call the downstream scope-policy decision function **zero times**, whereas a valid raw target delegates exactly once with the original `Target` object. This is a reference-layer no-call assertion only: it does **not** establish that the production ToolExecutor or network handler is blocked. The integration owner must add equivalent pre-I/O zero-handler-call tests on the trusted executor before release.
+
+## Raw-vs-encoded input fidelity
+
+The offline reference now includes ten normal tests. New mock-backed assertions preserve the original immutable `Target` (including labels and authorization reference) and distinguish literal raw ASCII controls from percent-encoded byte sequences (`%0A`, `%0d`, `%09`, `%7F`). The pre-parser specimen delegates percent-encoded values unchanged; it **does not approve** them for dispatch. Production must separately validate canonicalized authority/path semantics, redirect reauthorization and verified permission before all target I/O. This prevents double-decoding or accidental implicit grant issuance from being treated as a permitted scope transition.
