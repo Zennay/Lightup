@@ -38,6 +38,6 @@ def validate_unambiguous_arguments(
     parameter_by_name = {p.name: p for p in definition.parameters}
     for name, value in result.items():
         if parameter_by_name[name].kind is ParamKind.NUMBER:
-            if not math.isfinite(value):
+            if isinstance(value, float) and not math.isfinite(value):
                 raise OrchestrationError(f"tool argument {name!r} must be finite")
     return result
