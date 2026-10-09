@@ -130,6 +130,7 @@ def classify_supplied_hosted_run_jobs(run: dict, jobs: list, expected_sha: str, 
     if (all_pages_verified is not True or type(run) is not dict or type(jobs) is not list or
             type(expected_sha) is not str or not SHA.fullmatch(expected_sha)):
         return {}
+    # Only caller-supplied snapshots: this function cannot establish data provenance.
     if (type(run.get("head_sha")) is not str or run["head_sha"] != expected_sha or
             type(run.get("id")) is not int or run["id"] <= 0 or
             type(run.get("status")) is not str or run["status"] != "completed" or
@@ -178,6 +179,10 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         expected = {"hosted_python_311": 100, "hosted_python_314": 101}
         self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs, sha, all_pages_verified=True), expected)
         self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs, sha), {})
+        # Even a matching, successful first page must not pass without completeness proof.
+        truncated = [dict(jobs[0])]
+        self.assertEqual(classify_supplied_hosted_run_jobs(run, truncated, sha), {})
+        self.assertEqual(classify_supplied_hosted_run_jobs(run, truncated, sha, all_pages_verified=True), {})
         self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs, sha, all_pages_verified=1), {})
         for incomplete in (None, False, 0, "", "true", [], {}):
             self.assertEqual(classify_supplied_hosted_run_jobs(
