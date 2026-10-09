@@ -5,14 +5,14 @@ owner must separately prove trusted-grant revalidation before network I/O.
 """
 import unittest
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
 
 from lightup.ai.orchestration import (
     RunContext, ToolCall, ToolDefinition, ToolDenied, ToolExecutor, ToolOutput,
     RiskElevationRequired,
 )
-from lightup.engagements import AssessmentMode, RiskLevel
+from lightup.engagements import AssessmentMode, AuthorizationGrant, RiskLevel, ScopeDefinition
 from lightup.execution_policy import ExecutionPolicy, InteractionKind
 
 
@@ -144,6 +144,54 @@ class RealExecutorModeBoundaryTests(unittest.TestCase):
             with self.assertRaises(ToolDenied):
                 self.executor.execute(context, self.call)
         self.policy.decide.assert_not_called()
+        self.handler.assert_not_called()
+        self.state.add_evidence.assert_not_called()
+
+    def test_real_policy_denies_expired_grant_before_handler(self):
+        now = datetime.now(timezone.utc)
+        grant = AuthorizationGrant(
+            grant_id="expired-synthetic", client_id="offline-client",
+            engagement_id="offline-engagement", approved_by="offline-operator",
+            reference="offline-expired", scope=ScopeDefinition(
+                assets=("127.0.0.1",), max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("http_headers",),
+            ), valid_from=now - timedelta(days=2),
+            valid_until=now - timedelta(days=1),
+        )
+        self.definition = replace(self.definition, interaction=InteractionKind.TARGET_ACTIVE)
+        self.registry.get.return_value = (self.definition, self.handler)
+        executor = ToolExecutor(self.registry, self.state, ExecutionPolicy())
+        context = replace(
+            self.context(AssessmentMode.AUTHORIZED_ASSESSMENT),
+            authorization=grant, is_lab=False,
+        )
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            with self.assertRaises(ToolDenied):
+                executor.execute(context, self.call)
+        self.handler.assert_not_called()
+        self.state.add_evidence.assert_not_called()
+
+    def test_real_policy_denies_asset_outside_synthetic_grant_scope(self):
+        now = datetime.now(timezone.utc)
+        grant = AuthorizationGrant(
+            grant_id="restricted-synthetic", client_id="offline-client",
+            engagement_id="offline-engagement", approved_by="offline-operator",
+            reference="offline-restricted", scope=ScopeDefinition(
+                assets=("127.0.0.2",), max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("http_headers",),
+            ), valid_from=now - timedelta(minutes=1),
+            valid_until=now + timedelta(hours=1),
+        )
+        self.definition = replace(self.definition, interaction=InteractionKind.TARGET_ACTIVE)
+        self.registry.get.return_value = (self.definition, self.handler)
+        executor = ToolExecutor(self.registry, self.state, ExecutionPolicy())
+        context = replace(
+            self.context(AssessmentMode.AUTHORIZED_ASSESSMENT),
+            authorization=grant, is_lab=False,
+        )
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            with self.assertRaises(ToolDenied):
+                executor.execute(context, self.call)
         self.handler.assert_not_called()
         self.state.add_evidence.assert_not_called()
 
