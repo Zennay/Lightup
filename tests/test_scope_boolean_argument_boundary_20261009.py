@@ -149,6 +149,23 @@ class BooleanArgumentBoundaryTests(unittest.TestCase):
                     self.schema.validate_arguments({"enabled": candidate})
                 self.assertEqual(candidate.calls, 0)
 
+    def test_optional_boolean_none_is_not_missing(self):
+        # Optional means key omission, never permission to send a null value.
+        schema = ToolDefinition(
+            tool_id="offline-optional-present-value",
+            capability_id="offline-only",
+            interaction=InteractionKind.ANALYSIS,
+            min_risk=RiskLevel.ANALYSIS_ONLY,
+            description="Inert optional Boolean",
+            parameters=(ToolParameter("enabled", ParamKind.BOOLEAN, required=False),),
+        )
+        schema.validate_arguments({})
+        for invalid in (None, "", 0, "false"):
+            with self.subTest(value=repr(invalid)):
+                with self.assertRaises(OrchestrationError):
+                    schema.validate_arguments({"enabled": invalid})
+        schema.validate_arguments({"enabled": False})
+
     def test_missing_boolean_rejected(self):
         with self.assertRaises(OrchestrationError):
             self.schema.validate_arguments({})
