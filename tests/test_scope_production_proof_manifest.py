@@ -251,6 +251,13 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         preflight = json.loads(json.dumps(observed))
         preflight["permanent_vps"]["job_name"] = "Offline preflight Python 3.11"
         self.assertFalse(verify_observed_ci_jobs(manifest, preflight))
+        misleading_case = json.loads(json.dumps(observed))
+        misleading_case["permanent_vps"]["job_name"] = "OFFLINE PREFLIGHT PYTHON 3.11"
+        self.assertFalse(verify_observed_ci_jobs(manifest, misleading_case))
+        unknown = json.loads(json.dumps(observed))
+        unknown["permanent_vps"]["job_name"] = " "
+        self.assertFalse(verify_observed_ci_jobs(manifest, unknown))
+
         for lane in ("hosted_python_311", "hosted_python_314", "permanent_vps"):
             missing = json.loads(json.dumps(observed))
             missing.pop(lane)
