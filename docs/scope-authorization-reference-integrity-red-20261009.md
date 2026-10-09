@@ -18,9 +18,11 @@ and deny an owner or consent reference that is empty or whitespace-only.
 | Whitespace-only owner | deny before I/O | RED / expectedFailure |
 | Empty consent reference | deny before I/O | RED / expectedFailure |
 | Whitespace-only consent reference | deny before I/O | RED / expectedFailure |
+| Zero-width owner or reference | deny before I/O | RED / expectedFailure (2) |
+| Embedded newline/carriage return in owner or reference | deny before I/O | RED / expectedFailure (2) |
 | Expired grant | deny / authorization_expired | passing |
 
-These RED cases deliberately document missing guards. An
+There are now 11 offline methods: 3 passing controls and 8 RED requirements.\n\nThese RED cases deliberately document missing guards. An
 `expectedFailure` result is **not** proof of safe authorization.
 Converting them to passing assertions requires production-source owner
 review, trusted grant provenance, live consent/revocation checks, and
