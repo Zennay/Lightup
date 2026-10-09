@@ -168,5 +168,90 @@ class MethodOverrideNonAuthorityTests(unittest.TestCase):
         self.assertEqual(self.client_count(), before + 1)
 
 
+
+class ProductionMethodOverrideNonAuthorityTests(MethodOverrideNonAuthorityTests):
+    """Repeat real WSGI checks behind configured HTTPS/trusted-loopback proxy."""
+
+    def setUp(self):
+        super().setUp()
+        from lightup.webapp.security import WebSecurity
+
+        self.app = create_app(
+            self.store,
+            WebSecurity(
+                public_origin="https://security.example.test",
+                trusted_proxy_ip="127.0.0.1",
+            ),
+        )
+
+    def request(self, method, path, *, form=None, token=None, headers=None):
+        proxy_context = {
+            "REMOTE_ADDR": "127.0.0.1",
+            "HTTP_HOST": "security.example.test",
+            "HTTP_X_FORWARDED_PROTO": "https",
+            "HTTP_ORIGIN": "https://security.example.test",
+        }
+        proxy_context.update(headers or {})
+        return super().request(
+            method, path, form=form, token=token, headers=proxy_context
+        )
+
+    def test_override_does_not_skip_cross_origin_submission_denial(self):
+        before = self.client_count()
+        status, _, _ = self.request(
+            "POST", "/clients",
+            form={"name": "Spoofed", "csrf": self.operator_csrf},
+            token=self.operator_token,
+            headers={
+                "HTTP_X_HTTP_METHOD_OVERRIDE": "GET",
+                "HTTP_ORIGIN": "https://outside.example.test",
+            },
+        )
+        self.assertEqual(status, "403 Forbidden")
+        self.assertEqual(self.client_count(), before)
+
+    def test_override_does_not_skip_https_forwarding_requirement(self):
+        before = self.client_count()
+        status, _, _ = self.request(
+            "POST", "/clients",
+            form={"name": "Spoofed", "csrf": self.operator_csrf},
+            token=self.operator_token,
+            headers={
+                "HTTP_X_HTTP_METHOD_OVERRIDE": "GET",
+                "HTTP_X_FORWARDED_PROTO": "http",
+            },
+        )
+        self.assertEqual(status, "403 Forbidden")
+        self.assertEqual(self.client_count(), before)
+
+    def test_override_does_not_skip_trusted_proxy_peer_requirement(self):
+        before = self.client_count()
+        status, _, _ = self.request(
+            "POST", "/clients",
+            form={"name": "Spoofed", "csrf": self.operator_csrf},
+            token=self.operator_token,
+            headers={
+                "HTTP_X_HTTP_METHOD_OVERRIDE": "GET",
+                "REMOTE_ADDR": "198.51.100.8",
+            },
+        )
+        self.assertEqual(status, "403 Forbidden")
+        self.assertEqual(self.client_count(), before)
+
+    def test_override_does_not_skip_production_host_guard(self):
+        before = self.client_count()
+        status, _, _ = self.request(
+            "POST", "/clients",
+            form={"name": "Spoofed", "csrf": self.operator_csrf},
+            token=self.operator_token,
+            headers={
+                "HTTP_X_HTTP_METHOD_OVERRIDE": "GET",
+                "HTTP_HOST": "outside.example.test",
+            },
+        )
+        self.assertEqual(status, "403 Forbidden")
+        self.assertEqual(self.client_count(), before)
+
+
 if __name__ == "__main__":
     unittest.main()
