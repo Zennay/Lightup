@@ -52,7 +52,7 @@ def is_release_evidence_complete(m: dict) -> bool:
     hosted_run_url = None
     for name in ("hosted_python_311", "hosted_python_314", "permanent_vps"):
         run = m.get(name)
-        if type(run) is not dict or set(run) != {"sha", "conclusion", "run_url", "job_id"} or run.get("sha") != sha or run.get("conclusion") != "success":
+        if type(run) is not dict or set(run) != {"sha", "conclusion", "run_url", "job_id"} or type(run.get("sha")) is not str or run["sha"] != sha or type(run.get("conclusion")) is not str or run["conclusion"] != "success":
             return False
         if type(run.get("run_url")) is not str or not re.fullmatch(r"https://github[.]com/" + re.escape(repo_path) + r"/actions/runs/[1-9][0-9]*", run["run_url"]):
             return False
@@ -73,7 +73,7 @@ def is_release_evidence_complete(m: dict) -> bool:
                      (m.get("persistent_revocation_proof"), {"sha", "artifact_url"}),
                      (m.get("trusted_destination_metadata_proof"), {"sha", "artifact_url"}))
     for trace, keys in trace_schemas:
-        if type(trace) is not dict or set(trace) != keys or trace.get("sha") != sha:
+        if type(trace) is not dict or set(trace) != keys or type(trace.get("sha")) is not str or trace["sha"] != sha:
             return False
         if not _valid_artifact_url(trace.get("artifact_url")):
             return False
@@ -312,6 +312,37 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
             changed = {name: dict(item) for name, item in observed.items()}
             changed["hosted_python_311"][field] = DeceptiveString(changed["hosted_python_311"][field])
             self.assertFalse(verify_observed_ci_jobs(manifest, changed), field)
+
+    def test_polymorphic_manifest_sha_and_success_never_count(self):
+        class EqualString(str):
+            pass
+        sha = "a" * 40
+        run = {"sha": sha, "conclusion": "success",
+               "run_url": "https://github.com/example/repo/actions/runs/1"}
+        artifact = {"sha": sha, "artifact_url": "https://evidence.example.org/evidence"}
+        valid = {
+            "schema_version": 2, "release_gate": "REVIEWED", "real_target_activation": False,
+            "implementation_sha": sha, "owner_review_url": "https://github.com/example/repo/pull/1",
+            "hosted_python_311": {**run, "job_id": 11},
+            "hosted_python_314": {**run, "job_id": 12},
+            "permanent_vps": {**run, "job_id": 13,
+                              "run_url": "https://github.com/example/repo/actions/runs/2"},
+            "negative_real_executor_trace": {**artifact, **{k: 0 for k in COUNTERS}},
+            "positive_loopback_lab_trace": {**artifact, "handler_calls": 1},
+            "persistent_revocation_proof": artifact.copy(),
+            "trusted_destination_metadata_proof": artifact.copy(),
+        }
+        self.assertTrue(is_release_evidence_complete(valid))
+        for lane in ("hosted_python_311", "hosted_python_314", "permanent_vps"):
+            for key in ("sha", "conclusion"):
+                changed = {k: (dict(v) if type(v) is dict else v) for k, v in valid.items()}
+                changed[lane][key] = EqualString(changed[lane][key])
+                self.assertFalse(is_release_evidence_complete(changed), (lane, key))
+        for lane in ("negative_real_executor_trace", "positive_loopback_lab_trace",
+                     "persistent_revocation_proof", "trusted_destination_metadata_proof"):
+            changed = {k: (dict(v) if type(v) is dict else v) for k, v in valid.items()}
+            changed[lane]["sha"] = EqualString(sha)
+            self.assertFalse(is_release_evidence_complete(changed), lane)
 
     def test_current_manifest_is_explicitly_held_and_incomplete(self):
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
