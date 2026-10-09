@@ -99,9 +99,12 @@ def verify_observed_ci_jobs(manifest: dict, observed: dict) -> bool:
         if type(run) is not dict or type(expected) is not dict:
             return False
         if set(run) != {"job_id", "run_url", "sha", "status", "conclusion",
-                        "python_version", "runner_class", "job_name"}:
+                        "python_version", "runner_class", "job_name", "run_id"}:
             return False
         if any(type(run.get(key)) is not type(expected[key]) or run[key] != expected[key] for key in ("job_id", "run_url", "sha")):
+            return False
+        expected_run_id = int(expected["run_url"].rsplit("/", 1)[-1])
+        if type(run["run_id"]) is not int or run["run_id"] != expected_run_id:
             return False
         if type(run["job_name"]) is not str or not run["job_name"].strip() or (lane == "permanent_vps" and ("not vps proof" in run["job_name"].lower() or "offline preflight" in run["job_name"].lower())):
             return False
@@ -239,8 +242,15 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
                 "sha": sha, "status": "completed", "conclusion": "success",
                 "python_version": version, "runner_class": runner,
                 "job_name": "Offline preflight Python " + version if runner == "hosted" else "Permanent VPS Python " + version,
+                "run_id": int(expected["run_url"].rsplit("/", 1)[-1]),
             }
         self.assertTrue(verify_observed_ci_jobs(manifest, observed))
+        wrong_run_id = json.loads(json.dumps(observed))
+        wrong_run_id["permanent_vps"]["run_id"] = 1
+        self.assertFalse(verify_observed_ci_jobs(manifest, wrong_run_id))
+        boolean_run_id = json.loads(json.dumps(observed))
+        boolean_run_id["hosted_python_311"]["run_id"] = True
+        self.assertFalse(verify_observed_ci_jobs(manifest, boolean_run_id))
         marked = json.loads(json.dumps(observed))
         misleading = json.loads(json.dumps(observed))
         misleading["permanent_vps"]["job_name"] = "Permanent VPS Python 3.11"
@@ -420,6 +430,7 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
                 "sha": "a" * 40, "status": "completed", "conclusion": "success",
                 "python_version": version, "runner_class": klass,
                 "job_name": "Offline preflight Python " + version if klass == "hosted" else "Permanent VPS Python " + version,
+                "run_id": 1,
             }
         self.assertFalse(verify_observed_ci_jobs(original, fake_success))
         self.assertFalse(is_release_evidence_complete(original))
