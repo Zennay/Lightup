@@ -23,6 +23,10 @@ def check(proof, jobs):
         return errors + ["jobs must be a list"]
     if errors:
         return errors
+    # Require an exact three-job snapshot; extra entries could conceal a
+    # failed or unrelated execution that the index otherwise ignores.
+    if len(jobs) != len(LANES):
+        errors.append("expected exactly three scoped job records")
     seen = set()
     for lane, expected_label in LANES:
         job_id = proof[f"{lane}_job_id"]
