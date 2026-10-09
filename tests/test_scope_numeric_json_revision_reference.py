@@ -3,7 +3,10 @@
 No production imports, IO, network, or capability dispatch.
 """
 import json
+import re
 import unittest
+
+_ID = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?", re.ASCII)
 
 
 def _no_duplicate_pairs(pairs):
@@ -36,7 +39,7 @@ def reference_revision(envelope):
         return None
     if type(data["grant"]) is not str or not data["grant"].isascii():
         return None
-    if not (1 <= len(data["tenant"]) <= 80 and 1 <= len(data["grant"]) <= 80):
+    if not (_ID.fullmatch(data["tenant"]) and _ID.fullmatch(data["grant"])):
         return None
     revision = data["revision"]
     if type(revision) is not int or not (1 <= revision <= 2**53 - 1):
@@ -91,6 +94,25 @@ class NumericGrantRevisionReferenceTests(unittest.TestCase):
         for payload in (None, {}, [], b"{}", "[]", "null", "true", ""):
             with self.subTest(payload=payload):
                 self.assertIsNone(reference_revision(payload))
+
+    def test_control_whitespace_and_identity_aliases_denied(self):
+        for token in (" tenant-a", "tenant-a ", "tenant\\n-a", "tenant\\t-a",
+                      "Tenant-a", "tenant_a", "tenant/a", "tenant.a", "-tenant", "tenant-"):
+            with self.subTest(token=token):
+                self.assertIsNone(reference_revision(json.dumps({
+                    "tenant": token, "grant": "grant-a", "revision": 7
+                })))
+
+    def test_unicode_identity_and_empty_denied(self):
+        for token in ("", "ténant", "tenant\\u200b", "tenant" + "a" * 90):
+            with self.subTest(token=token):
+                self.assertIsNone(reference_revision(json.dumps({
+                    "tenant": "tenant-a", "grant": token, "revision": 7
+                })))
+
+    def test_nested_duplicate_member_denied(self):
+        payload = '{"tenant":"tenant-a","grant":"grant-a","revision":7,"extra":{"x":1,"x":2}}'
+        self.assertIsNone(reference_revision(payload))
 
     def test_oversize_envelope_denied(self):
         self.assertIsNone(reference_revision(self.valid + " " * 2048))
