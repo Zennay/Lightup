@@ -65,3 +65,7 @@ Additional offline regressions treat a mapping of claimed host/approval/referenc
 ## Composite forged consent and hostile mapping
 
 Tests assert a group of untrusted issuer/client/engagement/asset/capability/revocation hints cannot jointly create a grant, and that a hostile mapping cannot be inspected even for allowlisted hosts missing authorization. This still covers only the pure policy layer; true persisted consent is a separate production gate.
+
+## Claimed lease / nonce / signature non-authority
+
+An X-Original-Host label claiming lease_id, run_id, nonce or approval_signature is not a signed, trusted capability lease. Such text cannot fill a missing grant or permit an unlisted hostname even alongside synthetic Authorization. Production cryptographic provenance and pre-I/O enforcement remain separate gates.
