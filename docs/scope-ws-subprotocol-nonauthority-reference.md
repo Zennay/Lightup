@@ -68,3 +68,7 @@ Reference test count: **38**. The latest additions test a stored grant's indepen
 3. In the real gateway and ToolExecutor integration tests, track handler and evidence writes for denied requests and require exactly zero; include a fully authorized positive control.
 4. Execute Python 3.11/3.14 hosted preflight and permanent VPS suite on the **same reviewed implementation SHA**, then obtain source-owner review.
 5. Preserve analysis-only posture until all gates pass. This PR does not activate assets or prove production safety.
+
+## Compound header claims and request-state denial
+
+Two offline methods assert denial remains monotone as caller-controlled WebSocket subprotocol claims accumulate, and valid stored consent cannot permit an invalid requested approval/revocation/revision state. Total: **40 unittest methods**. Only reference behavior, no production integration proof.
