@@ -177,5 +177,22 @@ class TooEarlyNonauthorityTests(unittest.TestCase):
         self.assertEqual((dict(status), dict(hint)), before)
 
 
+    def test_revision_subclass_and_oversized_revision_denied(self):
+        class IntSubclass(int):
+            pass
+        for revision in (IntSubclass(7), 0, -10, "7", 7.0):
+            with self.subTest(revision=repr(revision)):
+                changed = replace(BASE, revision=revision)
+                self.assertFalse(necessary_scope_consistency(changed, changed, 425, "1"))
+
+    def test_status_never_confers_missing_dispatch_identity(self):
+        for field in ("tenant", "request", "asset", "capability"):
+            for missing in (None, "", False):
+                with self.subTest(field=field, missing=repr(missing)):
+                    dispatch = replace(BASE, **{field: missing})
+                    for status in (425, 200):
+                        self.assertFalse(necessary_scope_consistency(BASE, dispatch, status, "1"))
+
+
 if __name__ == "__main__":
     unittest.main()
