@@ -11,3 +11,7 @@ Release: **DRAFT/HOLD** pending exact-head hosted Python 3.11/3.14 + canonical p
 ## Extended negative controls
 
 The nine synthetic test methods now distinguish an IPv4 allowlist from an IPv4-mapped IPv6 /120 network, reject a neighboring mapped address outside that network, and require a grant for a mapped literal *inside* the network. Network matching remains necessary but never sufficient to authorize production dispatch. This suite does not validate effective socket destination identity after DNS resolution or platform IPv4-mapped socket handling; that is an independent pre-I/O production gate owned by #107/#1128.
+
+## Positive/negative pair
+
+Eleven methods now include an explicit **synthetic-only** in-prefix IPv4-mapped IPv6 acceptance control and an ordinary (unmapped) IPv6 noninheritance denial. This catches overbroad implementations that reject everything or incorrectly collapse IPv6 address families; a passing scope decision is not authorization to dispatch.
