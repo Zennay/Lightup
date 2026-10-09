@@ -142,3 +142,6 @@ The hosted-job classifier now requires that every job in the supplied workflow s
 
 ## Whole-run completion acceptance
 Hosted CI classification now refuses a workflow snapshot if *any* included job is queued, failed, incomplete, or lacks an exact successful conclusion, even if the two Python preflight jobs individually passed. Negative fixtures include an unrelated third job in each invalid state. This deliberately requires a full successful run rather than a cherry-picked subset, but still cannot authenticate caller-provided GitHub snapshots or prove VPS identity.
+
+## Malformed names in unrelated CI jobs
+The hosted workflow classifier now rejects empty, whitespace-only, non-string or missing job names anywhere in the supplied run snapshot, not only in the selected Python jobs. Regression cases cover null, blank, numeric and boolean names on an unrelated successful job. This remains offline evidence consistency validation; independently authenticated API provenance and permanent VPS proof are still required.
