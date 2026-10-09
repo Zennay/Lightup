@@ -71,6 +71,18 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
                 self.assertEqual(exit_code, 2)
                 self.assertIn("HOLD:", output.getvalue())
 
+    def test_cli_fails_closed_on_deeply_nested_json(self):
+        # Small malicious evidence can exceed the interpreter recursion limit.
+        nested = "[" * 2000 + "0" + "]" * 2000
+        with tempfile.TemporaryDirectory() as directory:
+            evidence = Path(directory) / "deeply_nested.json"
+            evidence.write_text(nested, encoding="utf-8")
+            output = StringIO()
+            with redirect_stdout(output):
+                result = main(["check_scope_release_evidence.py", str(evidence)])
+            self.assertEqual(result, 2)
+            self.assertIn("HOLD:", output.getvalue())
+
     def test_cli_rejects_oversized_and_invalid_utf8_evidence(self):
         for raw in (b" " * (64 * 1024 + 1), bytes((255, 254))):
             with self.subTest(length=len(raw)), tempfile.TemporaryDirectory() as directory:
