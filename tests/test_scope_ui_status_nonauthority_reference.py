@@ -161,6 +161,46 @@ class ScopeUiStatusNonAuthorityTests(unittest.TestCase):
         self.assertFalse(reference_eligible(
             "tenant-a", "request-a", True, "web-baseline", self.issued, self.green))
 
+    def test_hostile_claim_objects_are_not_compared_or_coerced(self):
+        class Hostile:
+            def __eq__(self, other):
+                raise AssertionError("untrusted equality consulted")
+            def __bool__(self):
+                raise AssertionError("untrusted truthiness consulted")
+            def __str__(self):
+                raise AssertionError("untrusted conversion consulted")
+        hostile = Hostile()
+        for position in (0, 1, 2, 3):
+            with self.subTest(position=position):
+                args = list(self.args)
+                args[position] = hostile
+                self.assertFalse(reference_eligible(
+                    *args, self.issued, self.green))
+
+    def test_hostile_issuer_objects_do_not_gain_authority(self):
+        class Hostile:
+            def __eq__(self, other):
+                raise AssertionError("untrusted equality consulted")
+            def __bool__(self):
+                raise AssertionError("untrusted truthiness consulted")
+        for field in ("tenant_id", "request_id", "revision", "capability",
+                      "active", "issuer_verified"):
+            with self.subTest(field=field):
+                values = dict(tenant_id="tenant-a", request_id="request-a",
+                              revision=3, capability="web-baseline",
+                              active=True, issuer_verified=True)
+                values[field] = Hostile()
+                self.assertFalse(self.eligible(decision=TrustedDecision(**values)))
+
+    def test_revision_range_and_type_fail_closed(self):
+        for bad in (0, -1, 1.0, "3", None, [], {}):
+            with self.subTest(value=repr(bad)):
+                self.assertFalse(reference_eligible(
+                    "tenant-a", "request-a", bad, "web-baseline",
+                    self.issued, self.green))
+                self.assertFalse(self.eligible(decision=TrustedDecision(
+                    "tenant-a", "request-a", bad, "web-baseline", True, True)))
+
     def test_inputs_are_not_mutated(self):
         before = repr(self.issued), repr(self.green)
         self.assertTrue(self.eligible())
