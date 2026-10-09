@@ -172,3 +172,7 @@ The 62nd and 63rd offline unittest methods check that reapproval requires both a
 ## Revoked replay event trace
 
 The **64th offline unittest method** simulates twelve repeated requests with revoked stored consent and asserts only denial-audit markers, never action markers. This models reference idempotence, not real persistence, revocation races or production execution.
+
+## Stale revision denial audit separation
+
+The 65th offline unittest method covers eight replayed outdated-revision requests; every synthetic trace entry must be a denial-audit event and none may be action evidence. This remains a mock decision contract, not production integration evidence.
