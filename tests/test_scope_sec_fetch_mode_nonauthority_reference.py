@@ -112,5 +112,39 @@ class ScopeFetchModeNonAuthorityTest(unittest.TestCase):
             self.assertTrue(reference_consistent(self.grant, self.dispatch, hint))
 
 
+    def test_grant_side_mismatch_denied(self):
+        for field in ("tenant", "request", "asset", "capability"):
+            with self.subTest(field=field):
+                self.assertFalse(reference_consistent(replace(self.grant, **{field: "other"}),
+                                                      self.dispatch, "navigate"))
+
+    def test_grant_revision_and_flag_type_confusion_denied(self):
+        for revision in (-1, 0, 2, True, 1.0, "1"):
+            with self.subTest(revision=revision):
+                self.assertFalse(reference_consistent(replace(self.grant, revision=revision),
+                                                      self.dispatch, "cors"))
+
+    def test_string_subclasses_not_accepted_as_identities(self):
+        class SpoofedIdentity(str):
+            pass
+
+        for field in ("tenant", "request", "asset", "capability"):
+            original = getattr(self.grant, field)
+            with self.subTest(field=field):
+                self.assertFalse(reference_consistent(
+                    replace(self.grant, **{field: SpoofedIdentity(original)}),
+                    self.dispatch, "same-origin"))
+                self.assertFalse(reference_consistent(
+                    self.grant,
+                    replace(self.dispatch, **{field: SpoofedIdentity(original)}),
+                    "same-origin"))
+
+    def test_input_dataclasses_remain_unchanged(self):
+        grant_before, dispatch_before = self.grant, self.dispatch
+        self.assertTrue(reference_consistent(self.grant, self.dispatch, HostileHeader()))
+        self.assertEqual(self.grant, grant_before)
+        self.assertEqual(self.dispatch, dispatch_before)
+
+
 if __name__ == "__main__":
     unittest.main()
