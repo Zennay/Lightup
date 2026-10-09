@@ -109,6 +109,18 @@ class IPv4MappedIPv6ScopeBoundaryTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
 
+    def test_case_variant_of_mapped_ipv6_requires_same_grant(self):
+        policy = ScopePolicy(explicit_networks=("::ffff:8.8.8.8/128",))
+        decision = policy.decide(Target("http://[::FFFF:808:808]/"))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_case_variant_of_mapped_ipv6_matches_explicit_network_with_grant(self):
+        policy = ScopePolicy(explicit_networks=("::ffff:8.8.8.8/128",))
+        decision = policy.decide(Target("http://[::FFFF:808:808]/", authorization=self.grant))
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_NETWORK)
+
     def test_unlisted_mapped_ipv6_never_calls_network_or_dns(self):
         policy = ScopePolicy()
         with patch("socket.create_connection", side_effect=AssertionError("network call")), patch(
