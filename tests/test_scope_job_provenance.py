@@ -127,6 +127,13 @@ class OfflineJobProvenanceTests(unittest.TestCase):
                 self.assertTrue(module.check(proof(), jobs(), snapshot))
         self.assertTrue(module.check(proof(), jobs(), runs() + [None]))
 
+    def test_workflow_sha_must_be_exact_string(self):
+        for value in (None, 123, True, ["a" * 40], "A" * 40):
+            with self.subTest(value=value):
+                snapshot = runs()
+                snapshot[0]["head_sha"] = value
+                self.assertTrue(module.check(proof(), jobs(), snapshot))
+
     def test_run_snapshot_wrong_commit_or_failure_rejected(self):
         for key, value in (("head_sha", "b" * 40), ("conclusion", "failure"), ("status", "queued")):
             with self.subTest(key=key):
