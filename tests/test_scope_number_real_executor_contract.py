@@ -8,6 +8,7 @@ from lightup.ai.orchestration import (
     OrchestrationError, ParamKind, RunContext, ToolCall, ToolDefinition,
     ToolExecutor, ToolOutput, ToolParameter, ToolRegistry,
 )
+from lightup.ai.typed_argument_integrity import validate_unambiguous_arguments
 from lightup.engagements import RiskLevel
 from lightup.execution_policy import InteractionKind
 from lightup.state import StateStore
@@ -287,6 +288,31 @@ class OfflineExecutorNumberTests(unittest.TestCase):
             self.invoke(float("nan"))
         self.assertEqual(len(self.calls), before_calls)
         self.assertEqual(self.evidence_count(), before_evidence)
+
+    def test_bridge_validator_blocks_duplicate_and_nonfinite_before_real_handler(self):
+        """Temporary adapter demonstrates end-to-end wiring without source edits."""
+        definition, _handler = self.registry.get("number-lab-only")
+
+        def bridge(call):
+            return validate_unambiguous_arguments(definition, call.arguments)
+
+        with patch.object(ToolCall, "arguments_dict", bridge):
+            for value in (float("nan"), float("inf"), float("-inf")):
+                with self.subTest(value=str(value)):
+                    with self.assertRaises(OrchestrationError):
+                        self.invoke(value)
+            ambiguous = ToolCall(
+                "number-lab-only", "127.0.0.1",
+                (("value", 1.0), ("value", 2.0)),
+            )
+            with self.assertRaises(OrchestrationError):
+                self.executor.execute(self.context, ambiguous)
+            self.assertEqual(self.calls, [])
+            self.assertEqual(self.evidence_count(), 0)
+            result = self.invoke(2.5)
+            self.assertTrue(result.evidence_id)
+            self.assertEqual(self.calls, [2.5])
+            self.assertEqual(self.evidence_count(), 1)
 
     @unittest.expectedFailure
     def test_nan_denied_before_handler_and_evidence(self):
