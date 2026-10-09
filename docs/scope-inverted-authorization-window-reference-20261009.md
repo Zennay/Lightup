@@ -29,3 +29,6 @@ Three isolated controls also show that raw string values in `valid_from` or `val
 
 ## Denial ordering controls
 An out-of-scope public hostname is rejected before attempting to interpret a malformed grant window. Likewise, an allowlisted public hostname without a grant returns `AUTHORIZATION_MISSING` regardless of URL path. Both checks are offline and constrain the regression surface for future production fail-closed repairs. They do not verify signed consent or authorize target execution.
+
+## Additional malformed-value finding
+Truthy non-datetime bounds (such as `True` and integer `42`) raise `TypeError`. More importantly, falsy malformed bounds (`0`, `False`, `""`) bypass the legacy `if self.valid_from` / `if self.valid_until` guards and are treated as absent, returning `is_current=True` for a synthetic unbounded grant. Neither behavior is acceptable evidence of authenticated permission. Production owner should require `datetime`-typed timezone-aware bounds or a separately reviewed strict schema, reject all malformed values before pre-I/O policy evaluation, and test denial explicitly. These tests characterize legacy defects and do not activate real targets.
