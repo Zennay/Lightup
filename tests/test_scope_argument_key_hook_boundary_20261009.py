@@ -313,5 +313,35 @@ class ArgumentKeyHookBoundaryTests(unittest.TestCase):
         self.assertEqual(events, [])
 
 
+    def test_untrusted_definition_subclass_denied_without_schema_access(self):
+        events = []
+        class TrapDefinition(ToolDefinition):
+            @property
+            def parameters(self):
+                events.append("parameters")
+                raise AssertionError("definition parameters evaluated")
+        fake = object.__new__(TrapDefinition)
+        with self.assertRaisesRegex(OrchestrationError, "registered ToolDefinition"):
+            validate_unambiguous_arguments(fake, (("label", "safe"),))
+        self.assertEqual(events, [])
+
+    def test_registry_entry_subclass_denied_before_attribute_access(self):
+        events = []
+        class TrapParameter(ToolParameter):
+            @property
+            def kind(self):
+                events.append("kind")
+                raise AssertionError("parameter kind evaluated")
+        fake = object.__new__(TrapParameter)
+        malformed = ToolDefinition(
+            "untrusted-parameter", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "synthetic",
+            (fake,),
+        )
+        with self.assertRaisesRegex(OrchestrationError, "invalid definition"):
+            validate_unambiguous_arguments(malformed, (("label", "safe"),))
+        self.assertEqual(events, [])
+
+
 if __name__ == "__main__":
     unittest.main()
