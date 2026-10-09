@@ -100,7 +100,7 @@ Hosted Python-version jobs may share a preflight workflow run, but `permanent_vp
 
 ## Offline workflow job cross-check (new)
 
-Run `python scripts/verify_scope_job_provenance.py proof.json jobs.json` using a reviewer-supplied array of GitHub job objects. This checks each proof lane has one job with matching job ID, workflow run ID, implementation SHA, completed-success outcome and expected name label. Matrix-hosted Python 3.11/3.14 jobs may share a run ID but require distinct job IDs and a separate VPS run.
+Run `python scripts/verify_scope_job_provenance.py proof.json jobs.json runs.json` using a reviewer-supplied array of GitHub job objects. This checks each proof lane has one job with matching job ID, workflow run ID, implementation SHA, completed-success outcome and expected name label. Matrix-hosted Python 3.11/3.14 jobs may share a run ID but require distinct job IDs and a separate VPS run.
 
 **Important:** JSON snapshots are trivially forgeable. A successful offline check is *not* CI provenance, runner attestation, authorization, or deployment approval. Fetch job and workflow metadata independently from the GitHub API, confirm the run belongs to this repository and expected workflow and commit, inspect actual self-hosted VPS runner labels and logs, and retain human review. No real target testing is permitted based on this script.
 
@@ -111,3 +111,7 @@ The offline provenance input is a **selected three-job evidence array**, not the
 ## Hosted workflow job-name binding
 
 Hosted proof is expected from jobs named with the `Offline preflight Python 3.11` and `Offline preflight Python 3.14` prefixes. A generic integration job merely mentioning `Python 3.11` or `Python 3.14` is insufficient. This offline name comparison is not an authenticated workflow-identity check: reviewers must independently verify repository, workflow, runner labels, job logs, and exact SHA via GitHub.
+
+## GitHub API snapshot binding
+
+The offline provenance check accepts three inputs: the proof manifest, selected job records from GitHub Actions jobs endpoints, and selected workflow-run records from the Actions workflow-runs endpoint. Each job binds by `run_id` to a run; the **run** (not the job) supplies `head_sha`, status and conclusion. Hosted matrix jobs may share a run. Missing, duplicate, unsuccessful, or mismatched run records fail closed. These snapshots are untrusted unless independently obtained and reviewed; this script neither calls GitHub nor authorizes target execution.
