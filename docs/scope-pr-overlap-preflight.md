@@ -31,7 +31,7 @@ to incomplete pagination, API/rate-limit errors or invalid inputs. Never interpr
 UNKNOWN as a pass. All three emit one JSON object with `status` of `clear`,
 `overlap` or `unknown`. Review `collisions[*].pr`, `candidate`,
 `changed_paths` and `url`. The helper checks renamed files under both old
-and new paths, counts draft PRs, and scans **all** open PRs, not just PRs with a
+and new paths, rejects renamed API records missing the old path, counts draft PRs, and scans **all** open PRs, not just PRs with a
 particular title. Path matching is exact, except a trailing `/` explicitly
 requests a directory prefix.
 
