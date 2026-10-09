@@ -2,7 +2,7 @@
 
 The `Sec-WebSocket-Protocol` negotiation label is attacker-controlled transport metadata, not a verified authorization grant. A label such as `admin`, `scope=all` or a serialized token must never create, renew, revoke or transfer permission to run a capability.
 
-The isolated, pure-stdlib test module `tests/test_scope_websocket_subprotocol_nonauthority_reference.py` checks seven fail-closed reference behaviors: a matching synthetic grant remains independent of the label, inactive/unverified grants cannot be revived, tenant/request/asset/capability mismatches and revision type confusion fail, malformed matching identities fail, and polymorphic envelopes fail. A hostile metadata object must not be inspected or coerced.
+The isolated, pure-stdlib test module `tests/test_scope_websocket_subprotocol_nonauthority_reference.py` checks twelve fail-closed reference behaviors: a matching synthetic grant remains independent of the label, inactive/unverified grants cannot be revived, tenant/request/asset/capability mismatches and revision type confusion fail, missing or empty matching identities fail, forged string subclasses fail, and polymorphic envelopes fail. Hostile transport labels must not have attributes, length, equality, truthiness, iteration, or string conversion invoked. A hostile metadata object must not be inspected or coerced.
 
 Run offline with `python -m unittest discover -s tests -p 'test_scope_websocket_subprotocol_nonauthority_reference.py' -v`.
 
