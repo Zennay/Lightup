@@ -29,6 +29,11 @@ def proof():
     )
 
 
+def runs():
+    return [dict(id=100, head_sha=SHA, status="completed", conclusion="success"),
+            dict(id=101, head_sha=SHA, status="completed", conclusion="success")]
+
+
 def jobs():
     return [
         dict(id=201, run_id=100, head_sha=SHA, name="Offline preflight Python 3.11",
@@ -49,7 +54,9 @@ class OfflineJobProvenanceTests(unittest.TestCase):
             link.symlink_to(source)
             jobs_path = Path(directory) / "jobs.json"
             jobs_path.write_text(json.dumps(jobs()), encoding="utf-8")
-            self.assertEqual(module.main(["verify", str(link), str(jobs_path)]), 2)
+            runs_path = Path(directory) / "runs.json"
+            runs_path.write_text(json.dumps(runs()), encoding="utf-8")
+            self.assertEqual(module.main(["verify", str(link), str(jobs_path), str(runs_path)]), 2)
 
     def test_duplicate_json_job_field_is_denied(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -58,7 +65,9 @@ class OfflineJobProvenanceTests(unittest.TestCase):
             jobs_path = Path(directory) / "jobs.json"
             raw = json.dumps(jobs()).replace('"id": 201', '"id": 999, "id": 201')
             jobs_path.write_text(raw, encoding="utf-8")
-            self.assertEqual(module.main(["verify", str(proof_path), str(jobs_path)]), 2)
+            runs_path = Path(directory) / "runs.json"
+            runs_path.write_text(json.dumps(runs()), encoding="utf-8")
+            self.assertEqual(module.main(["verify", str(proof_path), str(jobs_path), str(runs_path)]), 2)
 
     def test_cli_accepts_consistent_snapshot_only_as_structural_check(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -66,7 +75,9 @@ class OfflineJobProvenanceTests(unittest.TestCase):
             jobs_path = Path(directory) / "jobs.json"
             proof_path.write_text(json.dumps(proof()), encoding="utf-8")
             jobs_path.write_text(json.dumps(jobs()), encoding="utf-8")
-            self.assertEqual(module.main(["verify", str(proof_path), str(jobs_path)]), 0)
+            runs_path = Path(directory) / "runs.json"
+            runs_path.write_text(json.dumps(runs()), encoding="utf-8")
+            self.assertEqual(module.main(["verify", str(proof_path), str(jobs_path), str(runs_path)]), 0)
 
     def test_cli_denies_wrong_job_commit_and_unexpected_record(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -74,50 +85,52 @@ class OfflineJobProvenanceTests(unittest.TestCase):
             jobs_path = Path(directory) / "jobs.json"
             proof_path.write_text(json.dumps(proof()), encoding="utf-8")
             bad = jobs()
-            bad[2]["head_sha"] = "f" * 40
+            bad[2]["run_id"] = 999
             jobs_path.write_text(json.dumps(bad), encoding="utf-8")
-            self.assertEqual(module.main(["verify", str(proof_path), str(jobs_path)]), 1)
+            runs_path = Path(directory) / "runs.json"
+            runs_path.write_text(json.dumps(runs()), encoding="utf-8")
+            self.assertEqual(module.main(["verify", str(proof_path), str(jobs_path), str(runs_path)]), 1)
             jobs_path.write_text(json.dumps(jobs() + [dict(id=999)]), encoding="utf-8")
-            self.assertEqual(module.main(["verify", str(proof_path), str(jobs_path)]), 1)
+            self.assertEqual(module.main(["verify", str(proof_path), str(jobs_path), str(runs_path)]), 1)
 
     def test_unrelated_python_job_name_cannot_impersonate_preflight(self):
         for index, version in ((0, "3.11"), (1, "3.14")):
             with self.subTest(version=version):
                 evidence = jobs()
                 evidence[index]["name"] = f"Unrelated Python {version} integration"
-                self.assertTrue(any("expected job label" in e for e in module.check(proof(), evidence)))
+                self.assertTrue(any("expected job label" in e for e in module.check(proof(), evidence, runs())))
 
     def test_proof_job_name_rejects_unrelated_suffix(self):
         for index in range(3):
             with self.subTest(index=index):
                 evidence = jobs()
                 evidence[index]["name"] += " unrelated"
-                self.assertTrue(any("expected job label" in e for e in module.check(proof(), evidence)))
+                self.assertTrue(any("expected job label" in e for e in module.check(proof(), evidence, runs())))
 
     def test_unapproved_matrix_suffix_is_rejected(self):
         for suffix in ("Python 3.10", "Python 3.15", "Python 3.11) extra"):
             with self.subTest(suffix=suffix):
                 evidence = jobs()
                 evidence[2]["name"] = "LightUp plan-only safety tests (" + suffix + ")"
-                self.assertTrue(module.check(proof(), evidence))
+                self.assertTrue(module.check(proof(), evidence, runs()))
 
     def test_generic_lightup_job_is_not_vps_safety_proof(self):
         evidence = jobs()
         evidence[2]["name"] = "LightUp unrelated task"
-        self.assertTrue(any("expected job label" in error for error in module.check(proof(), evidence)))
+        self.assertTrue(any("expected job label" in error for error in module.check(proof(), evidence, runs())))
 
     def test_valid_matrix_and_distinct_vps(self):
-        self.assertEqual(module.check(proof(), jobs()), [])
+        self.assertEqual(module.check(proof(), jobs(), runs()), [])
 
     def test_fail_closed_for_wrong_commit_run_name_status(self):
-        for field, value in (("head_sha", "b" * 40), ("run_id", 999),
+        for field, value in (("run_id", 999),
                              ("name", "Hosted other job"), ("status", "queued"),
                              ("conclusion", "failure")):
             for index in range(3):
                 with self.subTest(field=field, index=index):
                     evidence = jobs()
                     evidence[index][field] = value
-                    self.assertTrue(module.check(proof(), evidence))
+                    self.assertTrue(module.check(proof(), evidence, runs()))
 
     def test_unreferenced_successful_or_failed_jobs_are_rejected(self):
         for conclusion in ("success", "failure"):
@@ -126,7 +139,7 @@ class OfflineJobProvenanceTests(unittest.TestCase):
                 evidence.append(dict(id=999, run_id=100, head_sha=SHA,
                                      name="unreferenced", status="completed",
                                      conclusion=conclusion))
-                self.assertTrue(module.check(proof(), evidence))
+                self.assertTrue(module.check(proof(), evidence, runs()))
 
     def test_missing_or_duplicate_job_fails(self):
         self.assertTrue(module.check(proof(), jobs()[:-1]))
@@ -135,24 +148,24 @@ class OfflineJobProvenanceTests(unittest.TestCase):
     def test_unreferenced_malformed_record_never_ignored(self):
         evidence = jobs()
         evidence.append(None)
-        self.assertTrue(any("all job records" in error for error in module.check(proof(), evidence)))
+        self.assertTrue(any("all job records" in error for error in module.check(proof(), evidence, runs())))
 
     def test_each_missing_job_metadata_field_fails_closed(self):
-        for key in ("id", "run_id", "head_sha", "name", "status", "conclusion"):
+        for key in ("id", "run_id", "name", "status", "conclusion"):
             with self.subTest(key=key):
                 evidence = jobs()
                 del evidence[0][key]
-                self.assertTrue(module.check(proof(), evidence))
+                self.assertTrue(module.check(proof(), evidence, runs()))
 
     def test_malformed_jobs_fail(self):
         for value in (None, {}, "jobs", [None]):
             with self.subTest(value=value):
-                self.assertTrue(module.check(proof(), value))
+                self.assertTrue(module.check(proof(), value, runs()))
 
     def test_forged_proof_structure_cannot_pass(self):
         document = proof()
         document["trusted_grant_reviewed"] = False
-        self.assertTrue(module.check(document, jobs()))
+        self.assertTrue(module.check(document, jobs(), runs()))
 
 
 if __name__ == "__main__":
