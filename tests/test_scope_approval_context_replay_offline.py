@@ -198,5 +198,28 @@ class ApprovalContextReplayContract(unittest.TestCase):
                     self.assertFalse(admission(receipt, receipt, revoked=True))
 
 
+    def test_non_boolean_revocation_objects_never_authorize(self):
+        class Truthy:
+            def __bool__(self):
+                return True
+
+        class Falsy:
+            def __bool__(self):
+                return False
+
+        for invalid in (Truthy(), Falsy(), 1, 0, "false", (), {}, None):
+            with self.subTest(revocation_type=type(invalid).__name__):
+                self.assertFalse(admission(self.receipt, self.receipt,
+                                           revoked=invalid))
+
+    def test_request_approval_flag_cannot_be_coerced(self):
+        from dataclasses import replace
+        for invalid in (0, 1, None, "true", "", [], {}, False):
+            with self.subTest(approval=repr(invalid)):
+                request = replace(self.receipt, approved=invalid)
+                self.assertFalse(admission(self.receipt, request,
+                                           revoked=False))
+
+
 if __name__ == "__main__":
     unittest.main()
