@@ -113,6 +113,36 @@ class LabMarkerNonBypassTests(unittest.TestCase):
         self.assertFalse(result.allowed)
         self.assertIn("valid", result.reason)
 
+    def test_valid_target_grant_remains_allowed_with_or_without_lab_marker(self):
+        decisions = [
+            self.policy.decide(ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset="authorized.example.test",
+                capability_id="synthetic-check",
+                requested_risk=RiskLevel.LOW_IMPACT,
+                authorization=self.grant,
+                is_lab=marker,
+            ))
+            for marker in (False, True)
+        ]
+        self.assertTrue(all(decision.allowed for decision in decisions))
+        self.assertEqual(decisions[0], decisions[1])
+
+    def test_denied_target_outside_scope_is_independent_of_lab_marker(self):
+        decisions = [
+            self.policy.decide(ExecutionRequest(
+                interaction=InteractionKind.TARGET_ACTIVE,
+                asset="outside.example.test",
+                capability_id="synthetic-check",
+                requested_risk=RiskLevel.LOW_IMPACT,
+                authorization=self.grant,
+                is_lab=marker,
+            ))
+            for marker in (False, True)
+        ]
+        self.assertFalse(any(decision.allowed for decision in decisions))
+        self.assertEqual(decisions[0], decisions[1])
+
     def test_lab_interaction_without_lab_flag_denied_despite_grant(self):
         result = self.policy.decide(ExecutionRequest(
             interaction=InteractionKind.LAB_ACTIVE,
