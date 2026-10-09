@@ -263,7 +263,7 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         sha = "a" * 40
         run = {"sha": sha, "conclusion": "success",
                "run_url": "https://github.com/example/repo/actions/runs/1"}
-        trace = {"sha": sha, "artifact_url": "https://example.invalid/evidence"}
+        trace = {"sha": sha, "artifact_url": "https://evidence.example.org/evidence"}
         valid = {
             "schema_version": 2, "release_gate": "REVIEWED",
             "implementation_sha": sha, "real_target_activation": False,
@@ -300,7 +300,7 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         sha = "a" * 40
         run = {"sha": sha, "conclusion": "success",
                "run_url": "https://github.com/example/repo/actions/runs/1"}
-        trace = {"sha": sha, "artifact_url": "https://example.invalid/evidence"}
+        trace = {"sha": sha, "artifact_url": "https://evidence.example.org/evidence"}
         raw = {
             "schema_version": 2, "release_gate": "REVIEWED",
             "implementation_sha": sha, "real_target_activation": False,
