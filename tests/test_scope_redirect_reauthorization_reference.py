@@ -275,6 +275,18 @@ class RedirectScopeReferenceTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
+    def test_ipv6_bracketed_redirect_with_explicit_network_requires_grant(self):
+        policy = ScopePolicy(allow_private_lab=False, explicit_networks=("2606:4700:4700::1111/128",))
+        decision = policy.decide(Target("https://[2606:4700:4700::1111]/"))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_ipv6_bracketed_redirect_explicit_network_with_grant(self):
+        policy = ScopePolicy(allow_private_lab=False, explicit_networks=("2606:4700:4700::1111/128",))
+        decision = policy.decide(Target("https://[2606:4700:4700::1111]/", authorization=self.grant))
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_NETWORK)
+
     def test_each_redirect_hop_rechecks_target_identity(self):
         hops = [
             "https://approved.example.test/start",
