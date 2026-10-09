@@ -14,7 +14,9 @@ The companion test uses an in-memory frozen tuple-shaped consent model and check
 - owner-transfer round trip cannot resurrect an earlier approval: fresh authorization revision is required;
 - matching revision cannot override an independently revoked authorization;
 - strict booleans, integer revision and exact built-in string identity types;
-- empty identity and malformed revocation denial.
+- empty identity and malformed revocation denial;
+- false-y nonboolean revocation status, denied approvals and forged stored owner identity;
+- case changes, trailing spaces and Unicode lookalikes cannot silently transfer authority.
 
 Run offline: `python -m unittest discover -s tests -p 'test_scope_consent_nontransferability_reference_20261009.py' -v`.
 
