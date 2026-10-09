@@ -70,3 +70,6 @@ Two additional strict-reference tests reject a timezone provider raising during 
 
 ## Repeated-hour DST ordering correction
 The pure strict reference now normalizes all validated aware instants to UTC before comparing them. Python datetime comparisons between values sharing a `tzinfo` can otherwise use local wall-time order and miss the distinction between the first and second occurrence of a repeated clock hour (`fold=0` vs `fold=1`). The new test verifies start-inclusive/end-exclusive semantics across that boundary. This change is limited to the isolated reference and does not alter real-target execution policy.
+
+## UTC boundary overflow controls
+Two additional strict-reference tests cover conversion of extreme timezone-aware values that underflow UTC and equivalent instants expressed with different fixed offsets near expiry. UTC conversion overflow must produce `False`, never an exception or permission. Expiry stays exclusive in this isolated reference. These are temporal-only controls without issuer authentication or dispatch authority.
