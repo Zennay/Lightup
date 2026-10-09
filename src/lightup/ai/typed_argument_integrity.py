@@ -9,7 +9,10 @@ from __future__ import annotations
 import math
 from typing import Any, Iterable
 
-from .orchestration import OrchestrationError, ParamKind, ToolDefinition, ToolParameter
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .orchestration import ToolDefinition
 
 
 def validate_unambiguous_arguments(
@@ -21,6 +24,10 @@ def validate_unambiguous_arguments(
     The caller must still enforce durable consent, destination authorization,
     revocation, run mode, and risk policy. This is only input integrity.
     """
+    # Resolve concrete schema types only when invoked: orchestration can
+    # safely import this helper at module load without a circular import.
+    from .orchestration import OrchestrationError, ParamKind, ToolDefinition, ToolParameter
+
     if type(definition) is not ToolDefinition:
         raise OrchestrationError("tool definition must be a registered ToolDefinition")
     if type(definition.parameters) is not tuple:
