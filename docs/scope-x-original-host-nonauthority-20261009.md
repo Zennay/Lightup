@@ -33,3 +33,7 @@ A forged X-Original-Host naming an explicitly allowlisted IP cannot transfer aut
 ## Domain and time-window boundaries
 
 A synthetic grant with a forged original-host label must not authorize a different domain. `valid_from` and `valid_until` claims embedded in any hint are untrusted text and cannot create a missing authorization object. Source-owner production trust, revocation and pre-I/O enforcement remain separate requirements.
+
+## Stable denial and provenance hint strings
+
+0–256 repeated forged host labels must not modify normalized target identity or `OUT_OF_SCOPE` decisions. Owner, reference, issuer, revocation and capability strings embedded in a host hint are not an authorization record. These are offline policy-only regressions and not proof of persisted grant validation.
