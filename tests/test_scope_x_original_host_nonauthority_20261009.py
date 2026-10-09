@@ -526,5 +526,36 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(decision.normalized_host, "unlisted.example")
 
 
+    def test_hostile_mapping_methods_cannot_reclassify_allowed_host(self):
+        class HostileHeaders(dict):
+            def items(self):
+                raise AssertionError("cannot consume untrusted header mapping")
+            def keys(self):
+                raise AssertionError("cannot inspect untrusted header keys")
+            def values(self):
+                raise AssertionError("cannot inspect untrusted header values")
+
+        result = self.policy.decide(Target(
+            "approved.example", labels=HostileHeaders(),
+        ))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_combined_fake_consent_metadata_still_denied(self):
+        claims = (
+            "X-Original-Host: approved.example",
+            "operator_approved=true",
+            "issuer=trusted",
+            "client=customer-a",
+            "engagement=eng-123",
+            "asset=approved.example",
+            "capability=http_headers",
+            "revoked=false",
+        )
+        result = self.policy.decide(Target("approved.example", labels=claims))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+
 if __name__ == "__main__":
     unittest.main()
