@@ -616,6 +616,25 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
         self.assertEqual(trace, ["denial_audit", "denial_audit",
                                  "handler", "action_evidence"])
 
+    def test_deny_then_approve_requires_trusted_state_change(self):
+        """Caller header mutation cannot change stored grant authority."""
+        denied = Grant("tenant-a", "lab-asset", "read-only", 3, False, False)
+        newly_approved = Grant("tenant-a", "lab-asset", "read-only", 4, True, False)
+        request = Grant("tenant-a", "lab-asset", "read-only", 3, True, False)
+        self.assertFalse(reference_decide(denied, request,
+            {"Sec-WebSocket-Protocol": "approved"}))
+        self.assertFalse(reference_decide(newly_approved, request,
+            {"Sec-WebSocket-Protocol": "revision=4"}))
+        self.assertTrue(reference_decide(newly_approved, newly_approved, {}))
+
+    def test_denied_grant_never_emits_mock_action_trace_under_header_fuzz(self):
+        trace = []
+        revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
+        for value in ("approved", "admin", "revoked=false", None, 123, ["admin"]):
+            if reference_decide(revoked, revoked, {"Sec-WebSocket-Protocol": value}):
+                trace.extend(("handler", "queue", "evidence"))
+        self.assertEqual(trace, [])
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
