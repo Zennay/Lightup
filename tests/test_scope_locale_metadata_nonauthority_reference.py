@@ -31,7 +31,8 @@ def conditionally_eligible(grant: Grant, request: Dispatch) -> bool:
         return False
     for value in (grant.tenant, grant.request, grant.capability,
                   request.tenant, request.request, request.capability):
-        if type(value) is not str or not value or value != value.strip():
+        if (type(value) is not str or not value or value != value.strip()
+                or any(ord(char) < 33 or ord(char) > 126 for char in value)):
             return False
     if type(grant.revision) is not int or type(request.revision) is not int:
         return False
@@ -102,7 +103,7 @@ class LocaleMetadataNonAuthorityTests(unittest.TestCase):
                                                replace(self.dispatch, revision=True)))
 
     def test_invalid_identity_denied_even_when_equal(self):
-        for identity in (" tenant-a", "tenant-a ", "", "\\n"):
+        for identity in (" tenant-a", "tenant-a ", "", "\n"):
             with self.subTest(identity=identity):
                 self.assertFalse(conditionally_eligible(replace(self.grant, tenant=identity),
                                                        replace(self.dispatch, tenant=identity)))
