@@ -344,6 +344,35 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
             changed[lane]["sha"] = EqualString(sha)
             self.assertFalse(is_release_evidence_complete(changed), lane)
 
+    def test_manifest_gate_rejects_boolean_and_polymorphic_state(self):
+        class EqualString(str):
+            pass
+        sha = "a" * 40
+        run = {"sha": sha, "conclusion": "success",
+               "run_url": "https://github.com/example/repo/actions/runs/1"}
+        trace = {"sha": sha, "artifact_url": "https://evidence.example.org/evidence"}
+        valid = {
+            "schema_version": 2, "release_gate": "REVIEWED",
+            "real_target_activation": False, "implementation_sha": sha,
+            "owner_review_url": "https://github.com/example/repo/pull/1",
+            "hosted_python_311": {**run, "job_id": 11},
+            "hosted_python_314": {**run, "job_id": 12},
+            "permanent_vps": {**run, "job_id": 13,
+                "run_url": "https://github.com/example/repo/actions/runs/2"},
+            "negative_real_executor_trace": {**trace, **{k: 0 for k in COUNTERS}},
+            "positive_loopback_lab_trace": {**trace, "handler_calls": 1},
+            "persistent_revocation_proof": dict(trace),
+            "trusted_destination_metadata_proof": dict(trace),
+        }
+        self.assertTrue(is_release_evidence_complete(valid))
+        for field, bad in (("release_gate", EqualString("REVIEWED")),
+                           ("schema_version", True),
+                           ("implementation_sha", EqualString(sha)),
+                           ("real_target_activation", True)):
+            changed = dict(valid)
+            changed[field] = bad
+            self.assertFalse(is_release_evidence_complete(changed), field)
+
     def test_current_manifest_is_explicitly_held_and_incomplete(self):
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         self.assertEqual(manifest["release_gate"], "HOLD")
