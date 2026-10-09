@@ -15,7 +15,7 @@ An incoming `X-Original-Host` HTTP header is client-controlled or proxy-controll
 
 Command: `PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_x_original_host_nonauthority_20261009.py' -v`.
 
-## Unproven production requirements (HOLD)
+## Additional adversarial coverage\n\nThe isolated fixture also checks CR/LF/NUL-like spoofed header labels, loopback/private-address claim strings, hostile noniterable labels, time-window invalidity and preserving an immutable Target instance. Note that loopback is intentionally allowed by a separate local-only policy rule; it must never be inferred from transport headers.\n\n## Unproven production requirements (HOLD)
 
 These tests cover only the pure legacy `ScopePolicy.decide` surface. They do not pass an actual HTTP request through ingress or tool-dispatch, and a passing test does not prove trusted authorization. Source owner must verify a request carrying `X-Original-Host` cannot change any pre-I/O asset, tenant, engagement, capability, issuer, approval, time window, or revocation check. Both denied and revoked requests must produce **zero handler calls and zero evidence writes**, including across reverse proxies.
 
