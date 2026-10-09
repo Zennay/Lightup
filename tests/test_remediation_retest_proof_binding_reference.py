@@ -65,6 +65,19 @@ class RetestProofBindingReference(unittest.TestCase):
     def test_exact_positive_reference(self):
         self.assertTrue(verified_retest(self.finding, self.proof))
 
+    def test_canonical_selector_boundaries_accepted(self):
+        for identifier in ("a", "A_0.-:z", "x" * 128):
+            with self.subTest(identifier=identifier):
+                finding = {**self.finding, "tenant_id": identifier, "finding_id": identifier}
+                proof = {**self.proof, "tenant_id": identifier, "finding_id": identifier}
+                self.assertTrue(verified_retest(finding, proof))
+
+    def test_selector_trailing_newline_rejected(self):
+        for value in ("tenant-a\\n", "tenant-a\\r", "tenant-a\\r\\n"):
+            with self.subTest(value=value):
+                self.assertFalse(verified_retest({**self.finding, "tenant_id": value},
+                                                 {**self.proof, "tenant_id": value}))
+
     def test_cross_tenant_denied(self):
         self.assertFalse(verified_retest(self.finding, {**self.proof, "tenant_id": "tenant-b"}))
 
