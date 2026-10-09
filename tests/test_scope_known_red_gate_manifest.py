@@ -59,6 +59,26 @@ class KnownRedGateManifestTests(unittest.TestCase):
         }.issubset(required))
         self.assertGreater(len(data["unresolved"]), 0)
 
+    def test_manifest_rejects_stale_or_fabricated_expected_failure_names(self):
+        """All declared red gates must name test methods on owned fixtures."""
+        data = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        names = set()
+        for path in (
+            ROOT / "tests" / "test_scope_number_finiteness_contract.py",
+            ROOT / "tests" / "test_scope_number_real_executor_contract.py",
+        ):
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            names.update(
+                node.name for node in ast.walk(tree)
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.name.startswith("test_")
+            )
+        for entry in data["unresolved"]:
+            self.assertIs(type(entry["issue"]), int)
+            self.assertTrue(entry["key"])
+            self.assertTrue(entry["expected_failure_tests"])
+            self.assertTrue(set(entry["expected_failure_tests"]).issubset(names))
+
 
 if __name__ == "__main__":
     unittest.main()
