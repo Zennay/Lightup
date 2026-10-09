@@ -30,3 +30,7 @@ The real-executor integration fixture now also rejects numeric-looking strings, 
 ## Network-isolation tripwire
 
 The offline real-ToolExecutor fixture now patches Python's `socket.getaddrinfo`, `socket.create_connection`, and `socket.socket` to raise on any attempt. One valid synthetic lab invocation and one rejected malformed argument must complete with zero socket/DNS calls. This prevents the test fixture from silently becoming a real-target test, but does not claim that production network-capable handlers have trusted destination bindings.
+
+## Duplicate tool argument keys (#1147)
+
+`ToolCall.arguments` is a tuple, but `ToolCall.arguments_dict()` constructs `dict(self.arguments)`; duplicate keys are silently overwritten before validation. Two **expected-failure** real-executor regressions now require both duplicate-value orderings to be rejected without handler calls or evidence. This is an integrity ambiguity, not a demonstrated authorization bypass. The orchestration owner must reject duplicate keys before dictionary conversion, then promote tests to ordinary passing assertions and validate with exact-head CI. No production code is modified in this branch.
