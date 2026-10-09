@@ -89,3 +89,7 @@ The verification CLI reads only a regular file, rejects symbolic links/directori
 ## Recursive JSON parser failure
 
 JSON payloads with excessive nesting may raise `RecursionError` before structural schema validation. The CLI treats this as malformed input (`HOLD`, exit 2), emits no stack trace or user-controlled content, and never interprets partial JSON as proof. This defense does not turn the evidence index into trusted authorization.
+
+## Matrix and independent hosted jobs
+
+Both supported CI layouts are accepted by the structural index: Python 3.11 and Python 3.14 may occupy different jobs in one matrix workflow run, or jobs in separate workflow runs. In either layout, each version must reference a distinct job ID and the job's Python version, commit SHA, conclusion, and runner must be independently checked from GitHub. Identical run IDs alone are not proof of duplicated execution; identical job IDs are unacceptable.
