@@ -53,3 +53,7 @@ Two new offline methods check twenty repeat requests after stored revocation res
 ## Replayed authority tokens and malformed stored revision
 
 Two additional offline methods cover 35 attempts to replay seven authority-sounding subprotocol tokens against revoked consent with zero fake-handler calls, plus malformed stored revision values matched against a valid request. Total: **34 unittest methods**. No actual production executor calls or live revocation guarantees.
+
+## Header casing and no header-access dependency
+
+Two isolated offline methods ensure an unapproved stored grant is denied under four alternate `Sec-WebSocket-Protocol` header casings and absent grants are denied without reading a hostile header object. Total: **36 offline unittest methods**. The reference's explicit ignore-header design cannot substitute for gateway or ToolExecutor integration proof.
