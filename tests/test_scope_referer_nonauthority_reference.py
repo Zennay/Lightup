@@ -152,5 +152,28 @@ class RefererCannotGrantAuthority(unittest.TestCase):
                          original_identity)
 
 
+    def test_referer_protocol_methods_are_never_consulted(self):
+        class HostileReferer:
+            def __bool__(self):
+                raise AssertionError("Referer truthiness must not be evaluated")
+
+            def __eq__(self, other):
+                raise AssertionError("Referer equality must not be evaluated")
+
+            def __str__(self):
+                raise AssertionError("Referer formatting must not be evaluated")
+
+            def __iter__(self):
+                raise AssertionError("Referer iteration must not be evaluated")
+
+        referer = HostileReferer()
+        allowed = Call(self.call.tenant, self.call.request, self.call.asset,
+                       self.call.capability, referer)
+        self.assertTrue(permitted(self.grant, allowed))
+        revoked = Grant(self.grant.tenant, self.grant.request,
+                        self.grant.asset, self.grant.capability, active=False)
+        self.assertFalse(permitted(revoked, allowed))
+
+
 if __name__ == "__main__":
     unittest.main()
