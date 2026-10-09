@@ -23,7 +23,7 @@ def matches_consent(consent: Consent, *, tenant_id: str, engagement_id: str,
     fields = (consent.tenant_id, consent.engagement_id, consent.owner_id,
               consent.asset_id, consent.capability_id)
     requested = (tenant_id, engagement_id, owner_id, asset_id, capability_id)
-    if any(type(value) is not str or not value.strip() for value in fields + requested):
+    if any(type(value) is not str or not value.strip() or\n           any(ord(char) < 32 or ord(char) == 127 for char in value)\n           for value in fields + requested):
         return False
     if type(consent.revision) is not int or type(revision) is not int:
         return False
@@ -160,6 +160,22 @@ class ScopeConsentNontransferabilityReferenceTests(unittest.TestCase):
                                  "asset-A", "web-baseline", True, True)
         self.assertFalse(matches_consent(invalid_record,
                                          **(self.request | {"revision": True})))
+
+    def test_reject_control_characters_in_stored_and_requested_identities(self):
+        for field in ("tenant_id", "engagement_id", "owner_id", "asset_id", "capability_id"):
+            for suffix in ("\\x00", "\\n", "\\r", "\\t", "\\x7f"):
+                with self.subTest(field=field, suffix=repr(suffix)):
+                    self.assertFalse(matches_consent(
+                        self.consent, **(self.request | {field: self.request[field] + suffix})))
+                    data = dict(tenant_id=self.consent.tenant_id,
+                                engagement_id=self.consent.engagement_id,
+                                owner_id=self.consent.owner_id,
+                                asset_id=self.consent.asset_id,
+                                capability_id=self.consent.capability_id,
+                                revision=3, approved=True)
+                    data[field] += suffix
+                    self.assertFalse(matches_consent(
+                        Consent(**data), **(self.request | {field: data[field]})))
 
 
 if __name__ == "__main__":
