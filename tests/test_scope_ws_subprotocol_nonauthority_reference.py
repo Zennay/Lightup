@@ -462,6 +462,22 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
             {"Sec-WebSocket-Protocol": "approved"}))
         self.assertTrue(reference_decide(composed, composed, {}))
 
+    def test_grant_and_request_type_mismatch_remains_fail_closed(self):
+        for malformed in (None, {}, [], "approved", 42, object()):
+            with self.subTest(type=type(malformed).__name__):
+                self.assertFalse(reference_decide(malformed, self.valid, {}))
+                self.assertFalse(reference_decide(self.valid, malformed, {}))
+
+    def test_denial_does_not_evaluate_header_properties(self):
+        class ExplodingMapping(dict):
+            def __getitem__(self, key):
+                raise AssertionError("headers are presentation-only")
+            def get(self, key, default=None):
+                raise AssertionError("headers are presentation-only")
+        revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
+        self.assertFalse(reference_decide(revoked, revoked, ExplodingMapping()))
+        self.assertTrue(reference_decide(self.valid, self.valid, ExplodingMapping()))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
