@@ -9,7 +9,7 @@ A finding must **not** transition to resolved merely because a user, model, or w
 - Reject mismatched tenant/finding/revision and boolean integer impostors. Tenant and finding identifiers are exact ASCII single-token selectors (`[A-Za-z0-9][A-Za-z0-9._:-]{0,127}`); spaces, path separators, Unicode normalization ambiguities and line-break injection fail closed in this reference. This grammar is a reference boundary and must be reconciled against the production domain's canonical identifier schema before integration.
 - Require explicit immutable prior/retest SHA-256 content-reference strings (64 lowercase hex bytes); forbid reusing the original digest as retest proof.
 - Deny failed or unknown outcomes, unknown method labels, truthy nonboolean verification, extra fields and subclass/duck containers.
-- Preserve caller inputs. Positive result means only *reference-shape eligible*, not production proof.
+- Preserve caller inputs. Positive result means only *reference-shape eligible*, not production proof. Regression coverage mutates every finding-side selector and evidence digest, checks missing/extra finding fields and rejects forged truthy or subclass result/method values.
 - A production verifier must additionally resolve both digests against tenant-scoped immutable stored evidence, verify trusted provenance, authorization/scope/time, actual retest outcome and current finding state, enforce atomic one-way state transition, and record an audit receipt. This reference deliberately does **none** of those things.
 - Never infer resolved status from AI output, caller-controlled `verified`, an offline test pass, or a digest-shaped string.
 
