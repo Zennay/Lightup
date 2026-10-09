@@ -600,5 +600,26 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
 
 
+    def test_claimed_audit_receipt_does_not_create_authorization(self):
+        for claim in ("audit_id=synthetic", "evidence_id=synthetic",
+                      "approval_record=synthetic", "signed_by=operator"):
+            with self.subTest(claim=claim):
+                decision = self.policy.decide(Target(
+                    "approved.example",
+                    labels=("X-Original-Host: approved.example; " + claim,),
+                ))
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_audit_receipt_claim_does_not_override_unlisted_target(self):
+        decision = self.policy.decide(Target(
+            "unlisted.example",
+            authorization=Authorization(owner="fixture", reference="NOT-TRUSTED"),
+            labels=("X-Original-Host: approved.example; audit_id=synthetic",),
+        ))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+
 if __name__ == "__main__":
     unittest.main()
