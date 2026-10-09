@@ -1,5 +1,8 @@
 """Offline, synthetic GitHub Actions job evidence tests; no real targets."""
 import importlib.util
+import json
+import tempfile
+from unittest import mock
 from pathlib import Path
 import sys
 import unittest
@@ -38,6 +41,25 @@ def jobs():
 
 
 class OfflineJobProvenanceTests(unittest.TestCase):
+    def test_snapshot_symlink_is_denied(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "proof.json"
+            source.write_text(json.dumps(proof()), encoding="utf-8")
+            link = Path(directory) / "proof-link.json"
+            link.symlink_to(source)
+            jobs_path = Path(directory) / "jobs.json"
+            jobs_path.write_text(json.dumps(jobs()), encoding="utf-8")
+            self.assertEqual(module.main(["verify", str(link), str(jobs_path)]), 2)
+
+    def test_duplicate_json_job_field_is_denied(self):
+        with tempfile.TemporaryDirectory() as directory:
+            proof_path = Path(directory) / "proof.json"
+            proof_path.write_text(json.dumps(proof()), encoding="utf-8")
+            jobs_path = Path(directory) / "jobs.json"
+            raw = json.dumps(jobs()).replace('"id": 201', '"id": 999, "id": 201')
+            jobs_path.write_text(raw, encoding="utf-8")
+            self.assertEqual(module.main(["verify", str(proof_path), str(jobs_path)]), 2)
+
     def test_valid_matrix_and_distinct_vps(self):
         self.assertEqual(module.check(proof(), jobs()), [])
 
