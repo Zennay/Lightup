@@ -16,7 +16,8 @@ The companion test uses an in-memory frozen tuple-shaped consent model and check
 - strict booleans, integer revision and exact built-in string identity types;
 - empty identity and malformed revocation denial;
 - false-y nonboolean revocation status, denied approvals and forged stored owner identity;
-- case changes, trailing spaces and Unicode lookalikes cannot silently transfer authority.
+- case changes, trailing spaces and Unicode lookalikes cannot silently transfer authority;
+- hostile consent objects and subclasses cannot trigger user-defined attribute access before admission; foreign request objects cannot invoke coercion or equality.
 
 Run offline: `python -m unittest discover -s tests -p 'test_scope_consent_nontransferability_reference_20261009.py' -v`.
 
