@@ -1,6 +1,8 @@
 """Offline checks for the proof-index verifier. No real targets or I/O."""
 import importlib.util
 import json
+import contextlib
+import io
 import tempfile
 import py_compile
 from pathlib import Path
@@ -43,6 +45,32 @@ class ProofManifestTests(unittest.TestCase):
             obj = fixture()
             del obj[field]
             self.assertTrue(module.verify(obj))
+
+    def test_attacker_controlled_field_never_echoed_in_cli_output(self):
+        marker = "SECRET-MARKER-NEVER-LOG"
+        obj = fixture()
+        obj[marker] = "sensitive"
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "proof.json"
+            path.write_text(json.dumps(obj), encoding="utf-8")
+            stdout, stderr = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                status = module.main(["verify", str(path)])
+            self.assertEqual(status, 1)
+            self.assertNotIn(marker, stdout.getvalue() + stderr.getvalue())
+            self.assertNotIn("sensitive", stdout.getvalue() + stderr.getvalue())
+
+    def test_duplicate_json_field_never_echoed(self):
+        marker = "SECRET-DUPLICATE-FIELD"
+        raw = json.dumps(fixture()).replace('"schema_version": 1', f'"{marker}": true, "{marker}": false, "schema_version": 1')
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "proof.json"
+            path.write_text(raw, encoding="utf-8")
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr):
+                status = module.main(["verify", str(path)])
+            self.assertEqual(status, 2)
+            self.assertNotIn(marker, stderr.getvalue())
 
     def test_schema_version_is_exact_integer(self):
         for value in (None, True, False, "1", 1.0, 0, 2, -1):
