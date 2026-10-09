@@ -136,5 +136,21 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
         self.assertTrue(grant.is_current(self.anchor))
         self.assertTrue(grant.is_current(self.anchor + timedelta(days=365)))
 
+    def test_malformed_string_start_currently_raises_type_error(self):
+        # Stored deserialization error must not be interpreted as approval.
+        grant = self.grant("2026-10-09T12:00:00Z", None)
+        with self.assertRaises(TypeError):
+            grant.is_current(self.anchor)
+
+    def test_malformed_string_end_currently_raises_type_error(self):
+        grant = self.grant(None, "2026-10-09T12:00:00Z")
+        with self.assertRaises(TypeError):
+            grant.is_current(self.anchor)
+
+    def test_public_scope_propagates_malformed_string_start(self):
+        grant = self.grant("invalid-datetime", None)
+        with self.assertRaises(TypeError):
+            self.policy.decide(Target("https://authorized.example", authorization=grant))
+
 if __name__ == "__main__":
     unittest.main()
