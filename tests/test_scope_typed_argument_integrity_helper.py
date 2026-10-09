@@ -97,6 +97,25 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
                         (("value", 0), ("value", second)),
                     )
 
+    def test_non_sequence_iterators_are_rejected_before_consumption(self):
+        """Do not permit partial validation or side effects from iterators."""
+        seen = []
+        def side_effectful():
+            seen.append("iterated")
+            yield ("value", 3.0)
+        with self.assertRaises(OrchestrationError):
+            validate_unambiguous_arguments(self.definition, side_effectful())
+        self.assertEqual(seen, [])
+
+    def test_argument_name_type_must_be_exact_string(self):
+        """Reject ambiguous, non-string dictionary keys before schema checks."""
+        for name in (b"value", None, 1, ("value",)):
+            with self.subTest(name=name):
+                with self.assertRaises(OrchestrationError):
+                    validate_unambiguous_arguments(
+                        self.definition, ((name, 2.0),)
+                    )
+
 
 if __name__ == "__main__":
     unittest.main()
