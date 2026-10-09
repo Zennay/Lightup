@@ -327,5 +327,37 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
                 self.assertEqual(len(pairs), 1)
 
 
+    def test_negative_zero_and_subnormal_floats_are_finite(self):
+        from unittest.mock import patch
+        import math
+        values = (-0.0, 5e-324, -5e-324)
+        original = ToolDefinition.validate_arguments
+        invoked = []
+        def capture(definition, arguments):
+            invoked.append(arguments["value"])
+            return original(definition, arguments)
+        with patch.object(ToolDefinition, "validate_arguments", capture):
+            for value in values:
+                with self.subTest(value=repr(value)):
+                    output = validate_unambiguous_arguments(
+                        self.definition, (("value", value),)
+                    )
+                    self.assertEqual(output["value"], value)
+                    self.assertEqual(math.copysign(1, output["value"]), math.copysign(1, value))
+        self.assertEqual(len(invoked), len(values))
+
+    def test_nonfinite_denial_does_not_invoke_float_subclass_hook(self):
+        events = []
+        class TrapFloat(float):
+            def __float__(self):
+                events.append("float")
+                raise AssertionError("subclass float hook invoked")
+        with self.assertRaisesRegex(OrchestrationError, "built-in number"):
+            validate_unambiguous_arguments(
+                self.definition, (("value", TrapFloat(float("inf"))),)
+            )
+        self.assertEqual(events, [])
+
+
 if __name__ == "__main__":
     unittest.main()
