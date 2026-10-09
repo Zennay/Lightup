@@ -106,3 +106,7 @@ Two offline methods cover six malformed stored/request grant shapes (twelve deny
 ## Mutable negotiation-header invariance
 
 Two extra offline methods verify denied trusted consent remains denied while the same caller-owned header mapping is repeatedly mutated, and valid matching consent remains allowed irrespective of five such changes. Total **49 offline unittest methods**. This is reference-only, not a claim that the real production gateway ignores headers.
+
+## Explicit-denial dominance and reapproval revision fencing
+
+Two offline tests check 12 pairings of denied approval/revocation states with authority-sounding WebSocket claims, and verify that reapproval on a newer revision cannot validate either a revoked earlier grant or a stale request. Total: **51 offline unittest methods**; real pre-I/O enforcement is not proven.
