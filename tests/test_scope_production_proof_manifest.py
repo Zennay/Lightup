@@ -187,6 +187,11 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         ambiguous = [dict(job) for job in jobs]
         ambiguous.append({**ambiguous[0], "id": 999})
         self.assertEqual(classify_supplied_hosted_run_jobs(run, ambiguous, sha, all_pages_verified=True), {})
+        duplicate_other_lane = [dict(job) for job in jobs]
+        duplicate_other_lane.append({**duplicate_other_lane[1], "id": 998})
+        self.assertEqual(classify_supplied_hosted_run_jobs(run, duplicate_other_lane, sha, all_pages_verified=True), {})
+        missing_second = [dict(jobs[0])]
+        self.assertEqual(classify_supplied_hosted_run_jobs(run, missing_second, sha, all_pages_verified=True), {})
         for incomplete in (None, False, 0, "", "true", [], {}):
             self.assertEqual(classify_supplied_hosted_run_jobs(
                 run, jobs, sha, all_pages_verified=incomplete), {})
