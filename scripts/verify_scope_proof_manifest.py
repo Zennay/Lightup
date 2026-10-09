@@ -5,6 +5,8 @@ This script only checks an evidence *index*; it cannot prove the referenced
 artifacts are authentic. Independent review of the immutable SHA is mandatory.
 """
 import json
+import os
+import stat
 import re
 import sys
 from pathlib import Path
@@ -85,7 +87,13 @@ def main(argv):
         print("usage: verify_scope_proof_manifest.py path/to/evidence.json", file=sys.stderr)
         return 2
     try:
-        with Path(argv[1]).open("rb") as stream:
+        # Do not follow a symlink to a grant store, device or other secret.
+        # O_NONBLOCK avoids hanging if a supplied path resolves to a FIFO.
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        descriptor = os.open(argv[1], flags)
+        with os.fdopen(descriptor, "rb") as stream:
+            if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                raise ValueError("manifest must be a regular file")
             raw = stream.read(MAX_MANIFEST_BYTES + 1)
         if len(raw) > MAX_MANIFEST_BYTES:
             raise ValueError("proof manifest exceeds maximum byte length")
