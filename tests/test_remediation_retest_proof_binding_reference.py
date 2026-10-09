@@ -5,6 +5,7 @@ No filesystem, network, assessment, or target execution occurs.
 """
 import hashlib
 import json
+import re
 import unittest
 
 
@@ -18,6 +19,9 @@ def digest(payload):
     return hashlib.sha256(canonical.encode("ascii")).hexdigest()
 
 
+_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\\Z", re.ASCII)
+
+
 def verified_retest(finding, proof):
     """Only exact, immutable-link-shaped retest evidence can support closure."""
     if type(finding) is not dict or type(proof) is not dict:
@@ -29,9 +33,9 @@ def verified_retest(finding, proof):
     if set(proof) != required:
         return False
     for obj in (finding, proof):
-        if type(obj["tenant_id"]) is not str or not obj["tenant_id"] or len(obj["tenant_id"]) > 128:
+        if type(obj["tenant_id"]) is not str or _ID.fullmatch(obj["tenant_id"]) is None:
             return False
-        if type(obj["finding_id"]) is not str or not obj["finding_id"] or len(obj["finding_id"]) > 128:
+        if type(obj["finding_id"]) is not str or _ID.fullmatch(obj["finding_id"]) is None:
             return False
         if type(obj["revision"]) is not int or obj["revision"] < 1:
             return False
@@ -98,6 +102,35 @@ class RetestProofBindingReference(unittest.TestCase):
         class Fake(dict):
             pass
         self.assertFalse(verified_retest(self.finding, Fake(self.proof)))
+
+    def test_unsafe_tenant_identifiers_denied(self):
+        for identifier in (" tenant-a", "tenant-a ", "tenant\\na", "ténant", "../tenant", "", "x" * 129):
+            with self.subTest(identifier=identifier):
+                self.assertFalse(verified_retest({**self.finding, "tenant_id": identifier},
+                                                 {**self.proof, "tenant_id": identifier}))
+
+    def test_unsafe_finding_identifiers_denied(self):
+        for identifier in (" f-1", "f-1\\r", "f/1", "f\\u20281", "", "x" * 129):
+            with self.subTest(identifier=identifier):
+                self.assertFalse(verified_retest({**self.finding, "finding_id": identifier},
+                                                 {**self.proof, "finding_id": identifier}))
+
+    def test_noncanonical_finding_revision_denied(self):
+        for revision in (0, -1, 1.0, "2", None):
+            with self.subTest(revision=revision):
+                self.assertFalse(verified_retest({**self.finding, "revision": revision},
+                                                 {**self.proof, "revision": revision}))
+
+    def test_missing_or_wrong_typed_digests_denied(self):
+        for bad in (None, b"b" * 64, "z" * 64, "b" * 63):
+            with self.subTest(bad=bad):
+                self.assertFalse(verified_retest(self.finding,
+                                                 {**self.proof, "retest_evidence_sha256": bad}))
+
+    def test_missing_fields_denied(self):
+        for key in self.proof:
+            with self.subTest(key=key):
+                self.assertFalse(verified_retest(self.finding, {k: v for k, v in self.proof.items() if k != key}))
 
     def test_inputs_remain_unchanged(self):
         before = (digest(self.finding), digest(self.proof))
