@@ -61,3 +61,6 @@ Nested evidence dictionaries are now also closed: CI jobs allow only `sha`, `con
 
 ## Artifact URL admission
 The offline validator now requires unambiguous HTTPS artifact references with a hostname and non-root path, rejecting credentials-in-URL, explicit ports, query/fragment ambiguity, control characters and `.invalid` fixture domains. These checks **do not prove** ownership, availability, artifact integrity, safe DNS routing, or trusted issuance; no network fetch occurs here. Production review must verify artifact provenance via trusted GitHub/job APIs rather than dereferencing attacker-controlled URLs.
+
+## Trusted-job verification boundary
+Do not treat a JSON field containing `conclusion: success`, a well-formed job ID, or a plausible GitHub URL as authenticated evidence. Before changing release status, an independent reviewer must obtain the run and job objects from the trusted GitHub API, check repository owner/name, immutable head SHA, matching run/job IDs, completed success status, actual Python version and expected permanent runner identity, and compare artifact provenance. Fail closed on API errors, absent jobs, or mismatches. This document and its structural offline validator deliberately do not perform external requests or authorize real targets.
