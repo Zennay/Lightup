@@ -1,6 +1,8 @@
 """Offline checks for the proof-index verifier. No real targets or I/O."""
 import importlib.util
 import json
+import os
+from unittest import mock
 import contextlib
 import io
 import tempfile
@@ -196,6 +198,21 @@ class ProofManifestTests(unittest.TestCase):
             link = Path(directory) / "linked.json"
             link.symlink_to(original)
             self.assertEqual(module.main(["verify", str(link)]), 2)
+
+    def test_fifo_proof_input_fails_closed_without_blocking(self):
+        if not hasattr(os, "mkfifo"):
+            self.skipTest("FIFO unsupported")
+        with tempfile.TemporaryDirectory() as directory:
+            fifo = Path(directory) / "proof.fifo"
+            os.mkfifo(fifo)
+            self.assertEqual(module.main(["verify", str(fifo)]), 2)
+
+    def test_missing_secure_open_flag_fails_closed(self):
+        for flag in ("O_NOFOLLOW", "O_NONBLOCK"):
+            with self.subTest(flag=flag):
+                with mock.patch.object(module.os, flag, None):
+                    # An absent secure primitive must never turn into a permissive open.
+                    self.assertEqual(module.main(["verify", "unused.json"]), 2)
 
     def test_directory_proof_input_fails_closed(self):
         with tempfile.TemporaryDirectory() as directory:
