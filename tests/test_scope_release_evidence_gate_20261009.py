@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import copy
 import json
+import os
+from unittest.mock import patch
 import tempfile
 from pathlib import Path
 from contextlib import redirect_stdout, redirect_stderr
@@ -135,6 +137,17 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
             output = StringIO()
             with redirect_stdout(output):
                 result = main(["check_scope_release_evidence.py", directory])
+            self.assertEqual(result, 2)
+            self.assertIn("HOLD:", output.getvalue())
+
+    def test_cli_requires_nonblocking_flag(self):
+        with tempfile.TemporaryDirectory() as directory:
+            evidence = Path(directory) / "evidence.json"
+            evidence.write_text(json.dumps(sample()), encoding="utf-8")
+            output = StringIO()
+            with patch("scripts.check_scope_release_evidence.hasattr", side_effect=lambda obj, key: False if key == "O_NONBLOCK" else hasattr(obj, key), create=True):
+                with redirect_stdout(output):
+                    result = main(["check_scope_release_evidence.py", str(evidence)])
             self.assertEqual(result, 2)
             self.assertIn("HOLD:", output.getvalue())
 
