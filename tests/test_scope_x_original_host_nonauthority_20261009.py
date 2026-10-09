@@ -408,5 +408,29 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
 
 
+    def test_header_claimed_capability_does_not_grant_missing_authorization(self):
+        for capability in ("http_headers", "tls", "port_scan", "all"):
+            with self.subTest(capability=capability):
+                result = self.policy.decide(Target(
+                    "approved.example",
+                    labels=("X-Original-Host: approved.example; capability=" + capability,),
+                ))
+                self.assertFalse(result.allowed)
+                self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_header_claimed_revocation_clear_does_not_restore_expired_grant(self):
+        from datetime import datetime, timedelta, timezone
+        expired = Authorization(
+            owner="fixture", reference="NOT-TRUSTED",
+            valid_until=datetime.now(timezone.utc) - timedelta(days=2),
+        )
+        result = self.policy.decide(Target(
+            "approved.example", authorization=expired,
+            labels=("X-Original-Host: approved.example; revoked=false",),
+        ))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+
+
 if __name__ == "__main__":
     unittest.main()
