@@ -110,3 +110,7 @@ Two extra offline methods verify denied trusted consent remains denied while the
 ## Explicit-denial dominance and reapproval revision fencing
 
 Two offline tests check 12 pairings of denied approval/revocation states with authority-sounding WebSocket claims, and verify that reapproval on a newer revision cannot validate either a revoked earlier grant or a stale request. Total: **51 offline unittest methods**; real pre-I/O enforcement is not proven.
+
+## Stale revision replays and strict revocation types
+
+Two additional offline methods ensure three stale-revision replays produce zero mock execution effects and a new revision only allows an exactly matching request; malformed revocation fields are rejected without truthiness coercion. Total **53 reference unittest methods**. Real production pre-I/O safety remains outside this test model.
