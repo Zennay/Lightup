@@ -144,7 +144,7 @@ class PurposeBindingReferenceTests(unittest.TestCase):
 
     def test_forbidden_controls_on_matching_issuer_and_request(self):
         """Matching malformed identity strings do not create authority."""
-        for invalid in ("tenant-1\\n", "tenant-1\\r", "tenant-1\\x00", "tenant-1\\x7f"):
+        for invalid in ("tenant-1\n", "tenant-1\r", "tenant-1\x00", "tenant-1\x7f"):
             with self.subTest(invalid=repr(invalid)):
                 grant = PurposeGrant(invalid, "request-1", "current-assessment", True)
                 self.assertFalse(self.check(grant, tenant_id=invalid))
