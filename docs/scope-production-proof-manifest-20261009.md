@@ -163,3 +163,6 @@ Regression coverage now rejects a second successful Python 3.11 hosted preflight
 
 ## Symmetric hosted interpreter lane regressions
 The hosted job classifier regression matrix now covers duplicate Python 3.14 records with distinct job IDs as well as a truncated job list containing only Python 3.11. These are offline negative tests of lane cardinality; they do not prove GitHub API provenance, pagination exhaustion or permanent VPS execution.
+
+## NUL-contaminated job names
+The supplied hosted-job classifier now fails closed on job names containing an embedded NUL, including otherwise valid interpreter labels. Regression coverage prevents such malformed raw text from being mistaken for a valid CI job identity. This remains caller-supplied structural evidence, not GitHub API authentication or VPS proof.
