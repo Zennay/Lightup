@@ -112,3 +112,6 @@ Observed GitHub Actions run `37931523743` reports jobs `113823282481` (Python 3.
 
 ## Hosted preflight is never permanent-runner attestation
 The offline checker now rejects `offline preflight` job names in the `permanent_vps` lane even if the words `not VPS proof` are omitted; regression tests also deny a job with a superficially VPS-looking name when its runner class is hosted. This is negative classification only, never affirmative runner identity. Permanent runner identity requires independently authenticated GitHub job/run records and owner acceptance.
+
+## VPS job-label regression refinements
+The negative VPS classification suite now explicitly rejects uppercase `OFFLINE PREFLIGHT` labels and blank names. The check is case-insensitive and deliberately deny-only: it cannot authenticate runner identity or prove VPS execution. Require exact-head authenticated GitHub job provenance and permanent runner-owner approval before any change to HOLD.
