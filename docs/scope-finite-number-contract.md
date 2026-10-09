@@ -26,3 +26,7 @@ Source-owner coordination: #1143. Existing test-only PR #1142 is untouched.
 ## Invalid primitive and alias coverage
 
 The real-executor integration fixture now also rejects numeric-looking strings, null values, absent required parameters, unexpected field aliases and unexpected extra fields before synthetic handler invocation or evidence writes. The valid finite-number positive control remains in place. These checks concern argument validation only; they do not establish trusted destination resolution, durable consent, or pre-I/O revocation enforcement.
+
+## Network-isolation tripwire
+
+The offline real-ToolExecutor fixture now patches Python's `socket.getaddrinfo`, `socket.create_connection`, and `socket.socket` to raise on any attempt. One valid synthetic lab invocation and one rejected malformed argument must complete with zero socket/DNS calls. This prevents the test fixture from silently becoming a real-target test, but does not claim that production network-capable handlers have trusted destination bindings.
