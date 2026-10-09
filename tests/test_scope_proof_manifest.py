@@ -248,6 +248,19 @@ class ProofManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             self.assertEqual(module.main(["verify", directory]), 2)
 
+    def test_unreadable_or_absent_path_returns_hold(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "missing.json"
+            output = io.StringIO()
+            with contextlib.redirect_stderr(output):
+                self.assertEqual(module.main(["verify", str(path)]), 2)
+            self.assertNotIn(str(path), output.getvalue())
+
+    def test_wrong_number_of_cli_arguments_is_usage_error(self):
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(module.main(["verify"]), 2)
+            self.assertEqual(module.main(["verify", "a.json", "b.json"]), 2)
+
     def test_cli_valid_index_is_structural_only(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "valid.json"
