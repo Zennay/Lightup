@@ -76,3 +76,21 @@ Two offline methods assert denial remains monotone as caller-controlled WebSocke
 ## Polymorphic equality spoofing
 
 Two additional offline methods prove subclasses overriding equality cannot impersonate a trusted Grant or a request identity. The exact-type checks must precede any equality comparison. Total: **42 offline unittest methods**. No production implementation or actual handler integration is implied.
+
+## Source-owner integration sign-off matrix (draft, lab only)
+
+The **43rd offline method** instruments simulated handler, evidence-write and network-open boundaries: four denied grants create zero mocked effects, and the matching authorized grant produces one of each. This is **not production dispatch coverage**.
+
+Before promoting a real gateway/ToolExecutor implementation, a source-owning worker must add separate real-code tests for these independent conditions:
+
+| Boundary | Denied case | Required observable evidence |
+| --- | --- | --- |
+| Authenticated caller -> trusted grant lookup | no owner authorization / wrong tenant | no ToolExecutor, DNS, socket, or evidence write |
+| Asset + capability binding | mismatched asset or elevated action | zero handler and network invocation |
+| Grant revision and scope fingerprint | replay of superseded grant | zero dispatch and explicit denial reason |
+| Durable revocation | revoke between admission and pre-I/O check | zero dispatch, including parallel workers |
+| Positive authorized control | exact owner-approved lab asset and allowed operation | one deliberate sandbox handler call only |
+| Header negotiation | spoofed `Sec-WebSocket-Protocol` privileges | zero elevation; no header-derived grant |
+| Persistence + logging | denied operation | bounded denial audit only, no action evidence |
+
+Collect proof on the **same exact implementation SHA**: Python 3.11 + 3.14 hosted runs, canonical permanent VPS run and owner review. Do not treat mock calls as actual I/O assertions, do not activate external targets and do not merge this reference branch without authorization.
