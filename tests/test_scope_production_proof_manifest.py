@@ -242,6 +242,10 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
             }
         self.assertTrue(verify_observed_ci_jobs(manifest, observed))
         marked = json.loads(json.dumps(observed))
+        misleading = json.loads(json.dumps(observed))
+        misleading["permanent_vps"]["job_name"] = "Permanent VPS Python 3.11"
+        misleading["permanent_vps"]["runner_class"] = "hosted"
+        self.assertFalse(verify_observed_ci_jobs(manifest, misleading))
         marked["permanent_vps"]["job_name"] = "Offline preflight Python 3.11 (not VPS proof)"
         self.assertFalse(verify_observed_ci_jobs(manifest, marked))
         for lane in ("hosted_python_311", "hosted_python_314", "permanent_vps"):
