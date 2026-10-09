@@ -37,7 +37,13 @@ contexts with temporary SQLite and checks:
    canonical WSGI body length, and cannot rescue an invalid WSGI length.
 4. Correct framing without CSRF is denied; approved framing+session+CSRF can
    create a synthetic client in each environment.
-5. Denied framing leaves both the authenticated session and the client count
+5. Truncated body and duplicate/percent-aliased CSRF fields are denied before
+   session lookup; neither the client database nor the existing operator
+   session is mutated.
+6. Valid canonical framing plus a real **client-admin** session/CSRF cannot
+   access the operator-only creation route, even with synthetic forwarded
+   user/role/length headers. Both operator and client sessions survive.
+7. Denied framing leaves both the authenticated session and the client count
    unchanged. Security response headers retain `Cache-Control: no-store`.
 
 ## Out-of-scope / limits
