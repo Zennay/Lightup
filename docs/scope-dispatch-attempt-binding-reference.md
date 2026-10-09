@@ -12,7 +12,7 @@ decision, even when all other fields are identical.
 
 The offline reference deliberately rejects inactive grants, non-boolean
 approval flags, malformed identifiers, subclasses of the grant envelope, and
-revision type confusion. It treats matching values as **necessary but not
+negative issuer and claimed revisions, and revision type confusion. It treats matching values as **necessary but not
 sufficient**: an attacker can fabricate every reference field.
 
 ## Ownership and safeguards
