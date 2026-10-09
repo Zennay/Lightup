@@ -299,5 +299,23 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
         self.assertTrue(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.EXPLICIT_NETWORK)
 
+    def test_placeholder_owner_with_nonempty_reference_is_not_verified_consent(self):
+        # Legacy characterization only: a reference string is not an issuer signature.
+        grant = Authorization(
+            owner="", reference="unverified-string", valid_from=None, valid_until=None)
+        decision = self.policy.decide(
+            Target("https://authorized.example", authorization=grant))
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+
+    def test_owner_text_without_reference_is_not_verified_consent(self):
+        grant = Authorization(
+            owner="unverified-text", reference="", valid_from=None, valid_until=None)
+        policy = ScopePolicy(explicit_networks=("8.8.8.0/24",))
+        decision = policy.decide(
+            Target("https://8.8.8.8", authorization=grant))
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_NETWORK)
+
 if __name__ == "__main__":
     unittest.main()
