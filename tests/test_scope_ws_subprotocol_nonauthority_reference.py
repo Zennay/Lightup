@@ -635,6 +635,18 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
                 trace.extend(("handler", "queue", "evidence"))
         self.assertEqual(trace, [])
 
+    def test_authorization_denial_trace_is_idempotent_under_replay(self):
+        revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
+        trace = []
+        for _ in range(12):
+            if reference_decide(revoked, self.valid,
+                                {"Sec-WebSocket-Protocol": "approved"}):
+                trace.append("action")
+            else:
+                trace.append("denial_audit")
+        self.assertEqual(trace, ["denial_audit"] * 12)
+        self.assertNotIn("action", trace)
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
