@@ -94,6 +94,31 @@ class EvidenceIdentifierReferenceTests(unittest.TestCase):
             self.assertEqual(record.sha256, hashlib.sha256(payload).hexdigest())
             self.assertEqual(record.run_id, run_id)
 
+    def test_offline_issued_ids_distinguish_runs_and_preserve_row_binding(self):
+        from lightup.state import StateStore
+
+        with tempfile.TemporaryDirectory() as directory:
+            store = StateStore(Path(directory) / "two-runs.db")
+            first_run = store.create_run(target="fixture-one", activation_mode="plan_only")
+            second_run = store.create_run(target="fixture-two", activation_mode="plan_only")
+            first_id = store.add_evidence(
+                run_id=first_run, capability_id="fixture", kind="reference",
+                source="offline", payload=b"first",
+            )
+            second_id = store.add_evidence(
+                run_id=second_run, capability_id="fixture", kind="reference",
+                source="offline", payload=b"second",
+            )
+            self.assertNotEqual(first_id, second_id)
+            self.assertEqual(canonical_evidence_id(first_id), first_id)
+            self.assertEqual(canonical_evidence_id(second_id), second_id)
+            self.assertEqual(store.get_evidence(first_id).run_id, first_run)
+            self.assertEqual(store.get_evidence(second_id).run_id, second_run)
+            self.assertEqual(store.get_evidence(first_id).sha256,
+                             hashlib.sha256(b"first").hexdigest())
+            self.assertEqual(store.get_evidence(second_id).sha256,
+                             hashlib.sha256(b"second").hexdigest())
+
     def test_actual_uuid4_issuer_samples_roundtrip(self):
         # Standard-library issuer path used by StateStore.add_evidence.
         for _ in range(32):
