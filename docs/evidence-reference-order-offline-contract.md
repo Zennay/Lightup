@@ -13,7 +13,7 @@ This reference isolates an evidence/remediation integrity question: a finding's 
 
 ## Limitations and handoff
 
-Twenty-eight stdlib-only offline reference tests. Additional vectors cover the 64-member limit (accepted) and 65-member denial, tuple/list parity, case-sensitive identity, composed versus decomposed Unicode, exact whitespace, JSON delimiter ambiguity, tenant/finding boundary separation, membership extension, and escaped versus literal control sequences, accepted exact-length identity boundaries, independently rejected finding identifiers, quoted identifier distinction, and deterministic repeated replay. No source changes, network access, real target assessment, CI-green claim, production enforcement, or authorization expansion. Production source owners must establish collection semantics, evidence provenance and retest synchronization before integration. Require exact-head hosted and permanent VPS validation before promoting the draft.
+Thirty stdlib-only offline reference tests. Additional vectors cover the 64-member limit (accepted) and 65-member denial, tuple/list parity, case-sensitive identity, composed versus decomposed Unicode, exact whitespace, JSON delimiter ambiguity, tenant/finding boundary separation, membership extension, and escaped versus literal control sequences, accepted exact-length identity boundaries, independently rejected finding identifiers, quoted identifier distinction, and deterministic repeated replay. No source changes, network access, real target assessment, CI-green claim, production enforcement, or authorization expansion. Production source owners must establish collection semantics, evidence provenance and retest synchronization before integration. Require exact-head hosted and permanent VPS validation before promoting the draft.
 
 ## Domain separation and compatibility
 
@@ -22,3 +22,7 @@ The offline digest now includes the explicit schema marker `lightup.evidence-set
 ## Invalid Unicode boundary
 
 Unpaired UTF-16 surrogate code points are invalid as standalone Unicode scalar values. Python's JSON `ensure_ascii=True` can otherwise escape them and produce a reproducible digest for an identifier that cannot be represented as well-formed UTF-8. The reference now rejects surrogates in tenant, finding and evidence identifiers before canonicalization, while preserving valid supplementary-plane characters. This does not claim production input enforcement; production adapters must independently validate their decoding and identity sources.
+
+## Exhaustive order check and length semantics
+
+The reference checks all 24 permutations of four distinct evidence IDs to prove order independence over that bounded example. Its 128-character limit is based on Python string length (Unicode code points), **not UTF-8 encoded byte length**. Production owners must explicitly approve that distinction or replace it with the intended storage/API byte-limit contract before adopting this reference. These tests remain offline, not evidence of production enforcement or VPS success.
