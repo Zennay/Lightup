@@ -60,6 +60,10 @@ If any denied case records action evidence, **fail** even when handler invocatio
 
 Any unchecked box => **HOLD**; do not merge, deploy or activate based only on offline reference tests. This file is deliberately informational, and never acts as a grant or executable policy.
 
+## Proof index wire contract
+
+The verifier requires an **exact integer** `schema_version: 1` (not `true`, `1.0`, or `"1"`). Any absent, unknown or malformed version is rejected to avoid silently interpreting a new or obsolete evidence contract. `schema_version` is a format discriminator only: it is not an authorization grant, proof signature, or release gate.
+
 ## Offline index verifier usage (non-authoritative)
 
 Run `python scripts/verify_scope_proof_manifest.py evidence.json` only against a **redacted local** index. It accepts UTF-8 JSON up to 64 KiB, refuses duplicate keys, malformed/non-finite values, unknown keys, missing counters and missing approvals, and checks all workflow/reviewer SHA references against the exact implementation SHA. The implementation SHA must differ from the base SHA. Tests: `PYTHONPATH=src python -m unittest discover -s tests -p test_scope_proof_manifest.py -v`.
