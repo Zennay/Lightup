@@ -30,6 +30,11 @@ def check(proof, jobs):
     # Fail closed on malformed records, not only on referenced lane entries.
     if any(type(job) is not dict for job in jobs):
         errors.append("all job records must be objects")
+    # The selected snapshot should not contain unknown or ambiguous metadata.
+    required_job_keys = {"id", "run_id", "head_sha", "name", "status", "conclusion"}
+    for job in jobs:
+        if type(job) is dict and not required_job_keys.issubset(job):
+            errors.append("job record is missing required metadata")
     seen = set()
     for lane, expected_label in LANES:
         job_id = proof[f"{lane}_job_id"]
