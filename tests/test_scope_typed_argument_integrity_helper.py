@@ -217,6 +217,19 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
             ), {"value": 2.5}
         )
 
+    def test_numeric_subclass_cannot_execute_float_conversion_hook(self):
+        """Never trigger attacker-controlled __float__ during finite checking."""
+        observed = []
+        class TrapFloat(float):
+            def __float__(self):
+                observed.append("coerced")
+                raise AssertionError("numeric coercion hook invoked")
+        with self.assertRaisesRegex(OrchestrationError, "built-in number"):
+            validate_unambiguous_arguments(
+                self.definition, (("value", TrapFloat(2.5)),)
+            )
+        self.assertEqual(observed, [])
+
     def test_invalid_registry_kind_and_required_flag_rejected(self):
         for kind, required in ((None, True), ("number", True),
                                (ParamKind.NUMBER, 1),
