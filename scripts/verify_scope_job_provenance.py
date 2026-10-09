@@ -17,12 +17,26 @@ LANES = (
 )
 
 
-def check(proof, jobs):
+def check(proof, jobs, runs):
     errors = verify(proof)
     if type(jobs) is not list:
         return errors + ["jobs must be a list"]
+    if type(runs) is not list:
+        return errors + ["runs must be a list"]
     if errors:
         return errors
+    expected_runs = {proof["hosted_py311_run_id"], proof["hosted_py314_run_id"], proof["permanent_vps_run_id"]}
+    if len(runs) != len(expected_runs):
+        errors.append("expected exact workflow run count")
+    for run_id in expected_runs:
+        matching = [run for run in runs if type(run) is dict and type(run.get("id")) is int and run["id"] == run_id]
+        if len(matching) != 1:
+            errors.append("missing or duplicate referenced workflow run")
+            continue
+        run = matching[0]
+        if (run.get("head_sha") != proof["implementation_sha"] or
+                run.get("status") != "completed" or run.get("conclusion") != "success"):
+            errors.append("workflow run SHA or outcome mismatch")
     # Require an exact three-job snapshot; extra entries could conceal a
     # failed or unrelated execution that the index otherwise ignores.
     if len(jobs) != len(LANES):
@@ -31,7 +45,7 @@ def check(proof, jobs):
     if any(type(job) is not dict for job in jobs):
         errors.append("all job records must be objects")
     # The selected snapshot should not contain unknown or ambiguous metadata.
-    required_job_keys = {"id", "run_id", "head_sha", "name", "status", "conclusion"}
+    required_job_keys = {"id", "run_id", "name", "status", "conclusion"}
     for job in jobs:
         if type(job) is dict and not required_job_keys.issubset(job):
             errors.append("job record is missing required metadata")
@@ -50,8 +64,6 @@ def check(proof, jobs):
         seen.add(job_id)
         if type(job.get("run_id")) is not int or job["run_id"] != run_id:
             errors.append(f"{lane}: workflow run mismatch")
-        if type(job.get("head_sha")) is not str or job["head_sha"] != proof["implementation_sha"]:
-            errors.append(f"{lane}: implementation commit mismatch")
         if job.get("status") != "completed" or job.get("conclusion") != "success":
             errors.append(f"{lane}: job not successful")
         name = job.get("name")
@@ -65,8 +77,8 @@ def check(proof, jobs):
 
 
 def main(argv):
-    if len(argv) != 3:
-        print("usage: verify_scope_job_provenance.py proof.json jobs.json", file=sys.stderr)
+    if len(argv) != 4:
+        print("usage: verify_scope_job_provenance.py proof.json jobs.json runs.json", file=sys.stderr)
         return 2
     try:
         # Inputs are reviewer-provided snapshots, not credentials or authority.
