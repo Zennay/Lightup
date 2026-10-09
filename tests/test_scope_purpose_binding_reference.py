@@ -27,7 +27,7 @@ def purpose_eligible(grant: object, *, tenant_id: object, request_id: object, pu
     for value in (grant.tenant_id, grant.request_id, grant.purpose, tenant_id, request_id, purpose):
         if type(value) is not str or not value or len(value) > 128:
             return False
-        if value != value.strip() or any(ord(c) < 33 or ord(c) == 127 for c in value):
+        if value != value.strip() or not value.isascii() or any(ord(c) < 33 or ord(c) == 127 for c in value):
             return False
     return (
         grant.purpose in _ALLOWED_PURPOSES
@@ -86,6 +86,18 @@ class PurposeBindingReferenceTests(unittest.TestCase):
 
     def test_inactive_grant_is_denied(self):
         self.assertFalse(self.check(PurposeGrant("tenant-1", "request-1", "current-assessment", False)))
+
+    def test_unicode_identity_confusables_fail_closed(self):
+        for value in ("current-assessment\u200b", "current‐assessment", "tenant－1"):
+            with self.subTest(value=value):
+                self.assertFalse(self.check(purpose=value))
+                self.assertFalse(self.check(PurposeGrant("tenant-1", "request-1", value, True)))
+        self.assertFalse(self.check(tenant_id="tenant\u200b-1"))
+        self.assertFalse(self.check(request_id="request\u200b-1"))
+
+    def test_unicode_grant_identities_fail_closed(self):
+        self.assertFalse(self.check(PurposeGrant("tenant\u200b-1", "request-1", "current-assessment", True)))
+        self.assertFalse(self.check(PurposeGrant("tenant-1", "request\u200b-1", "current-assessment", True)))
 
     def test_input_is_unchanged(self):
         before = repr(self.grant)
