@@ -163,5 +163,20 @@ class ApprovalContextReplayContract(unittest.TestCase):
                     )
 
 
+    def test_lookalike_request_identity_never_reuses_approval(self):
+        from dataclasses import replace
+        fields = ("tenant", "engagement", "asset", "capability",
+                  "run_id", "operator_id")
+        for field in fields:
+            original = getattr(self.receipt, field)
+            for candidate in (original.upper(), original + " ", " " + original,
+                              original + "\\u200b", original + "\\u0301"):
+                if candidate == original:
+                    continue
+                with self.subTest(field=field, candidate=repr(candidate)):
+                    request = replace(self.receipt, **{field: candidate})
+                    self.assertFalse(admission(self.receipt, request, revoked=False))
+
+
 if __name__ == "__main__":
     unittest.main()
