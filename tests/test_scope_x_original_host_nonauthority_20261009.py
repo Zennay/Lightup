@@ -363,5 +363,28 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
                 self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
 
 
+    def test_denied_host_hint_has_stable_reason_for_many_labels(self):
+        for n in (0, 1, 8, 64, 256):
+            with self.subTest(n=n):
+                decision = self.policy.decide(Target(
+                    "unlisted.example",
+                    labels=("X-Original-Host: approved.example",) * n,
+                ))
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.normalized_host, "unlisted.example")
+                self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_grant_metadata_in_header_does_not_count_as_current_grant(self):
+        for claim in ("owner=fixture", "reference=NOT-TRUSTED",
+                      "issuer=admin", "revoked=false", "capability=scan"):
+            with self.subTest(claim=claim):
+                decision = self.policy.decide(Target(
+                    "approved.example",
+                    labels=("X-Original-Host: approved.example; " + claim,),
+                ))
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+
 if __name__ == "__main__":
     unittest.main()
