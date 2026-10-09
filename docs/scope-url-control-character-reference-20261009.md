@@ -53,3 +53,7 @@ The offline raw pre-parser now rejects all Unicode whitespace and Unicode genera
 ## Unicode call-isolation and normalization controls
 
 Two more ordinary offline tests prove that Unicode format controls and lone surrogate input never invoke the downstream scope-policy decision, while canonically composed and decomposed accent sequences are delegated **unchanged**. The reference now has 15 ordinary tests. These checks do not imply Unicode hostname acceptance or consent: downstream canonical host matching, DNS rebinding checks, grant verification and zero actual network-handler invocations remain separate owner gates.
+
+## Hostile polymorphic target objects
+
+Two more ordinary reference tests assert strict built-in `str` typing: a hostile `str` subclass with throwing iteration/indexing/stringification hooks and a non-string object with throwing `__str__`, `__bool__` and `__iter__` methods both fail closed without invoking downstream policy evaluation. The specimen intentionally never coerces hostile input. This is strictly offline pre-policy reference behavior, not production authorization enforcement.
