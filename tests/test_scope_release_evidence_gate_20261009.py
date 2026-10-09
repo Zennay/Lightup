@@ -153,6 +153,18 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
                 case["integration_sha"] = invalid
                 self.assertFalse(evaluate(case)[0])
 
+    def test_unknown_evidence_fields_fail_closed(self):
+        for level in ("root", "jobs", "job"):
+            with self.subTest(level=level):
+                case = sample()
+                if level == "root":
+                    case["operator_approved"] = True
+                elif level == "jobs":
+                    case["jobs"]["untrusted_runner"] = case["jobs"]["py311_unit"].copy()
+                else:
+                    case["jobs"]["permanent_vps"]["verified_by_user"] = True
+                self.assertFalse(evaluate(case)[0])
+
     def test_no_mutation_of_input(self):
         case = sample()
         before = copy.deepcopy(case)
