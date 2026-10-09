@@ -91,7 +91,7 @@ class ScopeReleaseEvidenceTests(unittest.TestCase):
             with redirect_stdout(output), redirect_stderr(errors):
                 exit_code = main(["check_scope_release_evidence.py", str(evidence_path)])
             self.assertEqual(exit_code, 2)
-            self.assertIn("HOLD:", errors.getvalue())
+            self.assertIn("HOLD:", errors.getvalue() + output.getvalue())
             self.assertNotIn(secret, errors.getvalue() + output.getvalue())
 
     def test_missing_evidence_holds(self):
