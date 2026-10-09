@@ -213,5 +213,26 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
+    def test_all_falsy_corrupt_bounds_pass_legacy_host_gate(self):
+        # Characterization only: this must not be used as execution permission.
+        for corrupt in (0, False, ""):
+            for side in ("start", "end"):
+                with self.subTest(corrupt=repr(corrupt), side=side):
+                    grant = (self.grant(corrupt, None) if side == "start"
+                             else self.grant(None, corrupt))
+                    decision = self.policy.decide(
+                        Target("https://authorized.example", authorization=grant))
+                    self.assertTrue(decision.allowed)
+                    self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+
+    def test_falsy_corrupt_bounds_cannot_override_public_host_allowlist(self):
+        for corrupt in (0, False, ""):
+            with self.subTest(corrupt=repr(corrupt)):
+                decision = self.policy.decide(
+                    Target("https://unlisted.example",
+                           authorization=self.grant(corrupt, corrupt)))
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
 if __name__ == "__main__":
     unittest.main()
