@@ -187,6 +187,24 @@ class OriginalHostNonAuthorityTests(unittest.TestCase):
         self.assertEqual(denied.reason, ScopeReason.OUT_OF_SCOPE)
 
 
+    def test_missing_grant_does_not_probe_network_or_http_dispatch(self):
+        from unittest.mock import patch
+
+        with (
+            patch("socket.getaddrinfo") as lookup,
+            patch("socket.create_connection") as connect,
+            patch("urllib.request.urlopen") as dispatch,
+        ):
+            result = self.policy.decide(Target(
+                "https://approved.example/",
+                labels=("X-Original-Host: localhost; authorization_verified=true",),
+            ))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
+        lookup.assert_not_called()
+        connect.assert_not_called()
+        dispatch.assert_not_called()
+
     def test_forged_original_host_denial_never_resolves_or_connects(self):
         from unittest.mock import patch
 
