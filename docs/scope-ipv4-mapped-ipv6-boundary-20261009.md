@@ -27,3 +27,7 @@ Hosted unit CI on prior HEAD `fe576bd` rejected the unmapped-IPv6 fixture becaus
 ## Equivalent IPv6 literal notation
 
 Fifteen offline cases now include the expanded spelling `0:0:0:0:0:ffff:808:808` of the same mapped address, asserting it matches the exact `/128` network only when the synthetic grant is present. This prevents bypass through address-text formatting and does not grant any network activity. The trust-boundary check remains a separate production requirement.
+
+## Case-normalization control
+
+Seventeen offline regression methods now include the uppercase `::FFFF:808:808` literal, which must have the same `/128` network identity and missing-grant denial as its lowercase equivalent. This is a parser/scope-only test, not a trusted authorization grant or target operation.
