@@ -110,6 +110,24 @@ class RequestLabelNonAuthorityReferenceTests(unittest.TestCase):
         forged = ForgedRequest(**self.req.__dict__)
         self.assertFalse(reference_permit(forged, self.grant))
 
+    def test_label_cannot_override_tuple_subclass(self):
+        class ForgedTuple(tuple):
+            def __contains__(self, item):
+                return True
+
+        malformed = replace(self.grant, assets=ForgedTuple(("unlisted",)))
+        self.assertFalse(reference_permit(replace(self.req, label="asset-1"), malformed))
+
+    def test_label_cannot_override_unicode_grant_member(self):
+        malformed = replace(self.grant, capabilities=("headers", "héaders"))
+        self.assertFalse(reference_permit(replace(self.req, label="APPROVED"), malformed))
+
+    def test_inactive_grant_remains_denied_across_labels(self):
+        inactive = replace(self.grant, approved=False)
+        for label in ("approved", "ACTIVE", "tenant-1", "request-1", "asset-1"):
+            with self.subTest(label=label):
+                self.assertFalse(reference_permit(replace(self.req, label=label), inactive))
+
     def test_input_not_mutated(self):
         snapshot = (self.req, self.grant)
         reference_permit(self.req, self.grant)
