@@ -17,7 +17,7 @@ from check_scope_pr_overlap import (  # noqa: E402
 
 
 def pr(number, title="scope worker"):
-    return {"number": number, "title": title}
+    return {"number": number, "title": title, "head": {"sha": f"{number:040x}"}}
 
 
 def entry(name, previous=None):
@@ -33,6 +33,7 @@ class StubGitHub:
         self.error_path = error_path
         self.requested = []
         self.headers = []
+        self.list_snapshots = 0
 
     def __call__(self, request, timeout=20):
         parsed = urlsplit(request.full_url)
@@ -46,6 +47,10 @@ class StubGitHub:
             raise HTTPError(request.full_url, 403, "forbidden", {}, None)
         page = int(parse_qs(parsed.query)["page"][0])
         values = self.records.get(path, [])
+        if path == "/pulls" and page == 1:
+            self.list_snapshots += 1
+        if callable(values):
+            values = values(self.list_snapshots)
         return io.BytesIO(json.dumps(values[(page - 1) * 100:page * 100]).encode())
 
 
@@ -138,6 +143,28 @@ class ReadOnlyPreflightTests(unittest.TestCase):
             inspect(client, ["test.py"], ignore=set())
         self.assertNotIn("TEST_TOKEN", str(caught.exception))
         self.assertIn("403", str(caught.exception))
+
+    def test_reject_moving_open_pr_set(self):
+        client, _ = self.client({
+            "/pulls": lambda read: [pr(1)] if read == 1 else [pr(2)],
+            "/pulls/1/files": [],
+        })
+        with self.assertRaisesRegex(IncompleteEvidence, "changed"):
+            inspect(client, ["test.py"], ignore=set())
+
+    def test_reject_moving_pr_head_sha(self):
+        client, _ = self.client({
+            "/pulls": lambda read: [pr(1)] if read == 1
+                      else [{**pr(1), "head": {"sha": "f" * 40}}],
+            "/pulls/1/files": [],
+        })
+        with self.assertRaisesRegex(IncompleteEvidence, "changed"):
+            inspect(client, ["test.py"], ignore=set())
+
+    def test_reject_duplicate_pr_record(self):
+        client, _ = self.client({"/pulls": [pr(1), pr(1)]})
+        with self.assertRaisesRegex(IncompleteEvidence, "repeated"):
+            inspect(client, ["test.py"], ignore=set())
 
     def test_malformed_prs_and_file_records_deny(self):
         client, _ = self.client({"/pulls": [{"number": "17"}]})
