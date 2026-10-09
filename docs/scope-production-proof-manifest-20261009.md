@@ -118,3 +118,6 @@ The negative VPS classification suite now explicitly rejects uppercase `OFFLINE 
 
 ## Observed run-ID linkage
 The offline CI snapshot comparison now requires an exact built-in integer `run_id` in every observed job and checks it against the canonical integer run ID encoded in the manifest's GitHub Actions run URL. It rejects a mismatched VPS run ID and Python boolean masquerading as a numeric ID. This is consistency validation, **not independently authenticated GitHub attestation**. Production activation remains disabled until verified GitHub provenance, permanent VPS execution and owner review are complete.
+
+## Interpreter label consistency (2026-10-09)
+Offline supplied CI job snapshots now reject contradictory Python interpreter labels: an observed record declaring `python_version: 3.11` cannot simultaneously claim `Python 3.14` in its job name. The parser checks the interpreter value type before concatenation, so malformed types fail closed. This is a negative consistency check, not authenticated interpreter or runner attestation. The observed hosted run `37932067203` contained a successful Python 3.11 preflight job (`113825051340`) and a Python 3.14 job (`113825051835`) still in progress at observation time; neither is permanent VPS proof.
