@@ -29,3 +29,7 @@ The pure policy reference separately tests that `require_authorization_for_publi
 ## Header is not a network grant
 
 A forged X-Original-Host naming an explicitly allowlisted IP cannot transfer authority to another public IP. Text strings such as `authorization=fixture` or `approved=true` embedded in a hint cannot replace a required authorization object. Both tests operate only on the pure offline policy; production trust provenance and pre-I/O enforcement are still pending.
+
+## Domain and time-window boundaries
+
+A synthetic grant with a forged original-host label must not authorize a different domain. `valid_from` and `valid_until` claims embedded in any hint are untrusted text and cannot create a missing authorization object. Source-owner production trust, revocation and pre-I/O enforcement remain separate requirements.
