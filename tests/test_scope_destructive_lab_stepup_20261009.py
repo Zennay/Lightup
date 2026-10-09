@@ -97,6 +97,13 @@ class DestructiveLabStepUpIntegrationTests(unittest.TestCase):
             app.execute(context or self.context, call or self.call)
         self.assertEqual(len(self.invocations), before)
 
+    @unittest.expectedFailure
+    def test_red_default_raw_executor_has_no_destructive_stepup_gate_yet(self):
+        # RED integration canary, intentionally NOT a passing safety guarantee.
+        # Production owner #107 must require verified step-up at every entry.
+        with self.assertRaises(ToolDenied):
+            self.executor.execute(self.context, self.call)
+
     def test_no_resolver_always_denies_destructive_lab_tool(self):
         self.assert_denied_without_effect(DestructiveLabStepUpExecutor(self.executor))
 
