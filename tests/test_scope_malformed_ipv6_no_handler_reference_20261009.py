@@ -252,7 +252,7 @@ class MalformedAuthorityNoHandlerReference(unittest.TestCase):
     def test_raw_control_and_unicode_format_characters_never_reach_policy(self):
         policy = Mock(spec=ScopePolicy)
         handler = Mock()
-        for character in ("\\n", "\\t", "\\r", "\\u200b", "\\u202e", "\\ud800"):
+        for character in tuple(map(chr, (10, 9, 13, 0x200B, 0x202E, 0xD800))):
             self.assertEqual(len(character), 1, "fixture must be a real Unicode codepoint")
             for placement in ("prefix", "authority", "path"):
                 raw = {
