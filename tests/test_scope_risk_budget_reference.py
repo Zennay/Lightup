@@ -125,6 +125,30 @@ class RiskBudgetReferenceTests(unittest.TestCase):
     def test_overspent_budget_not_repaired_by_new_attempt(self):
         self.assertIsNone(reserve(replace(self.budget, used=6), replace(self.attempt, units=1)))
 
+    def test_sequential_spending_accumulates_with_no_oversubscription(self):
+        current = self.budget
+        for units, expected in ((1, 2), (1, 3), (2, 5)):
+            current = reserve(current, replace(self.attempt, units=units))
+            self.assertIsNotNone(current)
+            self.assertEqual(current.used, expected)
+        self.assertIsNone(reserve(current, replace(self.attempt, units=1)))
+        self.assertEqual(self.budget.used, 1)
+
+    def test_revision_change_cannot_reuse_budget_snapshot(self):
+        increased_revision = replace(self.attempt, revision=4)
+        self.assertIsNone(reserve(self.budget, increased_revision))
+        self.assertIsNone(reserve(replace(self.budget, revision=4, active=False), increased_revision))
+
+    def test_spending_is_monotonic_for_valid_sequential_calls(self):
+        current = replace(self.budget, used=0)
+        history = [current.used]
+        for _ in range(5):
+            current = reserve(current, replace(self.attempt, units=1))
+            self.assertIsNotNone(current)
+            history.append(current.used)
+        self.assertEqual(history, [0, 1, 2, 3, 4, 5])
+        self.assertIsNone(reserve(current, replace(self.attempt, units=1)))
+
     def test_polymorphic_envelopes_denied(self):
         class SubBudget(Budget):
             pass
