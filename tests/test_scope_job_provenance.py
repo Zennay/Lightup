@@ -35,7 +35,7 @@ def jobs():
              status="completed", conclusion="success"),
         dict(id=202, run_id=100, head_sha=SHA, name="Offline preflight Python 3.14",
              status="completed", conclusion="success"),
-        dict(id=203, run_id=101, head_sha=SHA, name="LightUp plan-only VPS",
+        dict(id=203, run_id=101, head_sha=SHA, name="LightUp plan-only safety tests (Python 3.11)",
              status="completed", conclusion="success"),
     ]
 
