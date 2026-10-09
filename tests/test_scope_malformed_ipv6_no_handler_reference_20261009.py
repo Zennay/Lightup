@@ -131,6 +131,36 @@ class MalformedAuthorityNoHandlerReference(unittest.TestCase):
         policy.decide.assert_called_once()
         handler.assert_not_called()
 
+    def test_handler_failure_is_not_disguised_as_parser_denial(self):
+        policy = Mock(spec=ScopePolicy)
+        policy.decide.return_value = ScopeDecision(True, "::1", ScopeReason.LOOPBACK)
+        handler = Mock(side_effect=ValueError("handler failed"))
+        target = Target("http://[::1]/")
+        with self.assertRaisesRegex(ValueError, "handler failed"):
+            reference_preflight(policy, target, handler)
+        policy.decide.assert_called_once_with(target)
+        handler.assert_called_once_with(target)
+
+    def test_malformed_authority_leaves_untrusted_metadata_untouched(self):
+        class PoisonMetadata:
+            def __getattribute__(self, name):
+                raise AssertionError("metadata must never be read")
+
+            def __bool__(self):
+                raise AssertionError("metadata must never be coerced")
+
+        policy = Mock(spec=ScopePolicy)
+        handler = Mock()
+        target = Target(
+            "https://[::1/path",
+            authorization=PoisonMetadata(),
+            labels=PoisonMetadata(),
+        )
+        decision = reference_preflight(policy, target, handler)
+        self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+        policy.decide.assert_not_called()
+        handler.assert_not_called()
+
     def test_valid_loopback_reference_dispatch_is_not_customer_consent(self):
         policy = Mock(spec=ScopePolicy)
         policy.decide.return_value = ScopeDecision(True, "::1", ScopeReason.LOOPBACK)
