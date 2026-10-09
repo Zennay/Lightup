@@ -27,6 +27,9 @@ def check(proof, jobs):
     # failed or unrelated execution that the index otherwise ignores.
     if len(jobs) != len(LANES):
         errors.append("expected exactly three scoped job records")
+    # Fail closed on malformed records, not only on referenced lane entries.
+    if any(type(job) is not dict for job in jobs):
+        errors.append("all job records must be objects")
     seen = set()
     for lane, expected_label in LANES:
         job_id = proof[f"{lane}_job_id"]
@@ -42,7 +45,7 @@ def check(proof, jobs):
         seen.add(job_id)
         if type(job.get("run_id")) is not int or job["run_id"] != run_id:
             errors.append(f"{lane}: workflow run mismatch")
-        if job.get("head_sha") != proof["implementation_sha"]:
+        if type(job.get("head_sha")) is not str or job["head_sha"] != proof["implementation_sha"]:
             errors.append(f"{lane}: implementation commit mismatch")
         if job.get("status") != "completed" or job.get("conclusion") != "success":
             errors.append(f"{lane}: job not successful")
