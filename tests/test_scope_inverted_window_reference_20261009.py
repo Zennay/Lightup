@@ -369,5 +369,24 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
         decision = policy.decide(Target("https://8.8.8.8", authorization=grant))
         self.assertFalse(decision.allowed)
 
+    @unittest.expectedFailure
+    def test_required_host_denial_for_corrupt_start_with_valid_end(self):
+        # RED: a good expiry must never launder a malformed start bound.
+        valid_end = datetime.now(timezone.utc) + timedelta(days=1)
+        decision = self.policy.decide(Target(
+            "https://authorized.example",
+            authorization=self.grant(False, valid_end)))
+        self.assertFalse(decision.allowed)
+
+    @unittest.expectedFailure
+    def test_required_network_denial_for_valid_start_with_corrupt_end(self):
+        # RED: a good start must never launder a malformed expiry bound.
+        valid_start = datetime.now(timezone.utc) - timedelta(days=1)
+        policy = ScopePolicy(explicit_networks=("8.8.8.0/24",))
+        decision = policy.decide(Target(
+            "https://8.8.8.8",
+            authorization=self.grant(valid_start, "")))
+        self.assertFalse(decision.allowed)
+
 if __name__ == "__main__":
     unittest.main()
