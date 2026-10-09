@@ -98,3 +98,7 @@ The helper also rejects duplicate names in `ToolDefinition.parameters` before ca
 ## Exact built-in argument containers
 
 The helper now accepts only exact built-in `tuple`/`list` types for both the ordered argument collection and each pair. Custom subclasses could override `__iter__` and `__len__` and execute arbitrary Python during pre-authorization parsing. A side-effect trap regression ensures such subclasses are denied without evaluating those hooks. This remains an unintegrated boundary helper; it is not a replacement for persisted authorization.
+
+## Registry-first validation order
+
+The standalone helper now validates the **trusted tool registry schema first**, before reading caller-provided argument pairs: the parameter collection must be an exact tuple of exact `ToolParameter` records with unique string names. A malformed registry cannot accidentally evaluate an untrusted argument iterator/list subclass while determining whether the schema is safe. Dedicated synthetic tests cover duplicate registry names plus a side-effect trap and an invalid registry entry. Runtime authorization and real network I/O remain separate, unimplemented integration gates.
