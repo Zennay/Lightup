@@ -123,7 +123,7 @@ def main(argv: list[str]) -> int:
             object_pairs_hook=reject_duplicate_keys,
             parse_constant=reject_nonfinite_constant,
         )
-    except (OSError, UnicodeError, ValueError) as exc:
+    except (OSError, UnicodeError, ValueError, RecursionError) as exc:
         print(f"HOLD: invalid or unreadable evidence ({type(exc).__name__})")
         return 2
     allowed, reasons = evaluate(evidence)
