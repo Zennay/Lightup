@@ -34,6 +34,9 @@ def validate_unambiguous_arguments(
             raise OrchestrationError(f"duplicate tool argument name {name!r}")
         result[name] = value
 
+    parameter_names = [p.name for p in definition.parameters]
+    if len(parameter_names) != len(set(parameter_names)):
+        raise OrchestrationError("duplicate tool parameter names in registry definition")
     definition.validate_arguments(result)
     parameter_by_name = {p.name: p for p in definition.parameters}
     for name, value in result.items():
