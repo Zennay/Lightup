@@ -206,7 +206,6 @@ class ArgumentKeyHookBoundaryTests(unittest.TestCase):
 
     def test_unknown_argument_rejected_before_schema_validator(self):
         calls = []
-        original = ToolDefinition.validate_arguments
         def trap_validate(definition, arguments):
             calls.append("called")
             raise AssertionError("schema invoked for unknown argument")
@@ -230,6 +229,37 @@ class ArgumentKeyHookBoundaryTests(unittest.TestCase):
                     self.definition, (("label", "one"), ("label", "two"))
                 )
         self.assertEqual(calls, [])
+
+
+    def test_invalid_registry_denied_before_schema_callback(self):
+        from unittest.mock import patch
+        calls = []
+        bad = ToolDefinition(
+            "invalid-fixture", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "synthetic",
+            (ToolParameter("label", "string"),),
+        )
+        def trap_validate(definition, arguments):
+            calls.append("called")
+            raise AssertionError("malformed registry reached validation")
+        with patch.object(ToolDefinition, "validate_arguments", trap_validate):
+            with self.assertRaisesRegex(OrchestrationError, "invalid kind or required"):
+                validate_unambiguous_arguments(bad, (("label", "safe"),))
+        self.assertEqual(calls, [])
+
+    def test_valid_builtin_value_reaches_schema_exactly_once(self):
+        from unittest.mock import patch
+        calls = []
+        original = ToolDefinition.validate_arguments
+        def observed_validate(definition, arguments):
+            calls.append(dict(arguments))
+            return original(definition, arguments)
+        with patch.object(ToolDefinition, "validate_arguments", observed_validate):
+            result = validate_unambiguous_arguments(
+                self.definition, (("label", "safe"),)
+            )
+        self.assertEqual(result, {"label": "safe"})
+        self.assertEqual(calls, [{"label": "safe"}])
 
 
 if __name__ == "__main__":
