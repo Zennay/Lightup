@@ -121,6 +121,15 @@ class IPv4MappedIPv6ScopeBoundaryTests(unittest.TestCase):
         self.assertTrue(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.EXPLICIT_NETWORK)
 
+    def test_explicit_mapped_network_scope_check_is_offline_even_with_grant(self):
+        policy = ScopePolicy(explicit_networks=("::ffff:8.8.8.8/128",))
+        with patch("socket.create_connection", side_effect=AssertionError("network call")), patch(
+            "socket.getaddrinfo", side_effect=AssertionError("DNS call")
+        ):
+            decision = policy.decide(Target("http://[::ffff:8.8.8.8]/", authorization=self.grant))
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_NETWORK)
+
     def test_unlisted_mapped_ipv6_never_calls_network_or_dns(self):
         policy = ScopePolicy()
         with patch("socket.create_connection", side_effect=AssertionError("network call")), patch(
