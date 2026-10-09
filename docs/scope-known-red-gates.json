@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "status": "DRAFT_HOLD",
+  "scope": "scope-authorization/typed-tool-arguments",
+  "activation_permitted": false,
+  "required_proof": [
+    "same-head-hosted-python-3.11",
+    "same-head-hosted-python-3.14",
+    "same-head-vps-python-3.11",
+    "same-head-vps-python-3.14",
+    "source-owner-pre-io-grant-and-revocation",
+    "source-owner-registry-network-destination",
+    "independent-owner-review"
+  ],
+  "unresolved": [
+    {
+      "issue": 1143,
+      "key": "number_nonfinite",
+      "expected_failure_tests": [
+        "test_nonfinite_nan_must_be_denied",
+        "test_nonfinite_positive_infinity_must_be_denied",
+        "test_nonfinite_negative_infinity_must_be_denied",
+        "test_nan_denied_before_handler_and_evidence",
+        "test_positive_infinity_denied_before_handler_and_evidence",
+        "test_negative_infinity_denied_before_handler_and_evidence",
+        "test_nonfinite_replay_after_valid_call_must_preserve_ledger"
+      ]
+    },
+    {
+      "issue": 1147,
+      "key": "duplicate_argument_keys",
+      "expected_failure_tests": [
+        "test_duplicate_argument_name_must_not_silently_override",
+        "test_duplicate_argument_name_cannot_replace_good_with_bad",
+        "test_duplicate_key_replay_after_valid_call_must_preserve_ledger"
+      ]
+    }
+  ]
+}
