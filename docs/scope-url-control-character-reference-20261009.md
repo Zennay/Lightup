@@ -49,3 +49,7 @@ The offline reference now includes ten normal tests. New mock-backed assertions 
 ## Unicode invisible-character policy specimen
 
 The offline raw pre-parser now rejects all Unicode whitespace and Unicode general categories `Cc`, `Cf` and `Cs` anywhere in the raw target, including zero-width joiners, bidi overrides/isolates and BOM-like format characters. Three additional ordinary tests cover 18 format-character/position combinations, five internal-whitespace cases and unchanged percent-encoded Unicode control sequences. Percent-encoded strings are not authorized by this check: decoded target semantics must be validated independently before real I/O. The reference is still not production enforcement.
+
+## Unicode call-isolation and normalization controls
+
+Two more ordinary offline tests prove that Unicode format controls and lone surrogate input never invoke the downstream scope-policy decision, while canonically composed and decomposed accent sequences are delegated **unchanged**. The reference now has 15 ordinary tests. These checks do not imply Unicode hostname acceptance or consent: downstream canonical host matching, DNS rebinding checks, grant verification and zero actual network-handler invocations remain separate owner gates.
