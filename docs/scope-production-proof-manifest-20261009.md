@@ -82,3 +82,6 @@ The artifact URL predicate now explicitly rejects any backslash in the raw URL a
 
 ## Observed job matching reference
 The offline `verify_observed_ci_jobs` predicate now compares a structurally complete manifest with explicitly provided job snapshots: same SHA, run URL and job ID; completed success; explicit Python version and hosted/permanent-VPS runner class. Missing and mismatched snapshots deny. **This is not an authenticated fetch**: caller-provided labels and conclusions are not trusted CI attestations. Do not use it for release or real-target activation without independent GitHub API source verification and production-owner review.
+
+## Observed-job positive and negative controls
+The job comparison now has a synthetic passing case covering hosted Python 3.11/3.14 and a distinct permanent VPS record. Negative controls mutate interpreter version, runner classification, completion status, result, SHA and job ID individually and require denial. These are in-memory fixtures, not externally authenticated attestations, and the production release gate remains HOLD.
