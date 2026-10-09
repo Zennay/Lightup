@@ -210,6 +210,30 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
             calls.append("executed")
         self.assertEqual(calls, ["executed"])
 
+    def test_all_ascii_controls_and_del_denied_even_on_exact_match(self):
+        for codepoint in tuple(range(32)) + (127,):
+            poisoned = "tenant-a" + chr(codepoint)
+            for field in ("tenant", "asset", "capability"):
+                with self.subTest(codepoint=codepoint, field=field):
+                    values = dict(tenant=self.valid.tenant, asset=self.valid.asset,
+                                  capability=self.valid.capability)
+                    values[field] = poisoned
+                    grant = Grant(**values, revision=3, approved=True, revoked=False)
+                    self.assertFalse(reference_decide(grant, grant,
+                        {"Sec-WebSocket-Protocol": "approved"}))
+
+    def test_header_authority_tokens_cannot_reverse_explicit_denial(self):
+        denied = Grant("tenant-a", "lab-asset", "read-only", 3, False, False)
+        payloads = (
+            "admin", "approved", "allow=true", "scope:all", "revision=3",
+            "tenant=tenant-a", "asset=lab-asset", "capability=read-only",
+            "revoked=false", "operator-approved",
+        )
+        for payload in payloads:
+            with self.subTest(payload=payload):
+                self.assertFalse(reference_decide(denied, denied,
+                    {"Sec-WebSocket-Protocol": payload}))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
