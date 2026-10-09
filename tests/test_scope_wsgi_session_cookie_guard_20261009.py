@@ -192,6 +192,39 @@ class SessionCookieGuardTest(unittest.TestCase):
                 self.assertEqual(approved["status"], "303 See Other")
                 self.assertEqual(len(store.list_clients(context)), 2)
 
+    def test_duplicate_cookie_login_cannot_rotate_or_create_session(self):
+        # Even valid login credentials cannot make an ambiguous existing
+        # session cookie a selector for which old session should be revoked.
+        for production in (False, True):
+            with self.subTest(production=production):
+                (app, store, context, op_token, op_csrf, client_token,
+                 client_csrf) = self.fixtures(production)
+                cookies = [
+                    f"lightup_session={client_token}; lightup_session={op_token}",
+                    f"lightup_session={op_token}; lightup_session={client_token}",
+                ]
+                for cookie in cookies:
+                    with self.subTest(cookie=cookie[:24]):
+                        with patch.object(store, "authenticate",
+                                          wraps=store.authenticate) as authn:
+                            with patch.object(store, "revoke_session",
+                                              wraps=store.revoke_session) as revoke:
+                                with patch.object(store, "create_session",
+                                                  wraps=store.create_session) as create:
+                                    result = self.request(
+                                        app, production, "/login", "POST",
+                                        cookie, {
+                                            "email": "operator@lightup.test",
+                                            "password": "operator-fixture-password",
+                                        })
+                                    authn.assert_not_called()
+                                    revoke.assert_not_called()
+                                    create.assert_not_called()
+                        self.assertEqual(result["status"], "400 Bad Request")
+                        self.assertNotIn("Set-Cookie", result["headers"])
+                        self.assertIsNotNone(store.session_context(op_token))
+                        self.assertIsNotNone(store.session_context(client_token))
+
     def test_production_factory_remains_fail_closed_for_bad_configuration(self):
         with self.assertRaises(ValueError):
             create_cookie_guarded_production_app({})
