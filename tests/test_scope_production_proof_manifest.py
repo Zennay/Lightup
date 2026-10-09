@@ -125,9 +125,9 @@ def verify_observed_ci_jobs(manifest: dict, observed: dict) -> bool:
     return True
 
 
-def classify_supplied_hosted_run_jobs(run: dict, jobs: list, expected_sha: str) -> dict:
+def classify_supplied_hosted_run_jobs(run: dict, jobs: list, expected_sha: str, *, all_pages_verified: bool = False) -> dict:
     """Classify supplied hosted-job records only; this cannot authenticate API provenance or VPS identity."""
-    if (type(run) is not dict or type(jobs) is not list or
+    if (all_pages_verified is not True or type(run) is not dict or type(jobs) is not list or
             type(expected_sha) is not str or not SHA.fullmatch(expected_sha)):
         return {}
     if (type(run.get("head_sha")) is not str or run["head_sha"] != expected_sha or
@@ -178,18 +178,20 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
              "status": "completed", "conclusion": "success"},
         ]
         expected = {"hosted_python_311": 100, "hosted_python_314": 101}
-        self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs, sha), expected)
+        self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs, sha, all_pages_verified=True), expected)
+        self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs, sha), {})
+        self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs, sha, all_pages_verified=1), {})
         duplicate_unrelated = [dict(job) for job in jobs] + [{
             "id": 100, "run_id": 91, "name": "Unrelated job",
             "status": "completed", "conclusion": "success"}]
-        self.assertEqual(classify_supplied_hosted_run_jobs(run, duplicate_unrelated, sha), {})
-        self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs + [None], sha), {})
-        self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs + ["unknown"], sha), {})
-        self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs + [{"name": "unrelated"}], sha), {})
+        self.assertEqual(classify_supplied_hosted_run_jobs(run, duplicate_unrelated, sha, all_pages_verified=True), {})
+        self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs + [None], sha, all_pages_verified=True), {})
+        self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs + ["unknown"], sha, all_pages_verified=True), {})
+        self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs + [{"name": "unrelated"}], sha, all_pages_verified=True), {})
         unrelated_wrong_run = [dict(j) for j in jobs] + [{
             "id": 102, "run_id": 92, "name": "Unrelated job",
             "status": "completed", "conclusion": "success"}]
-        self.assertEqual(classify_supplied_hosted_run_jobs(run, unrelated_wrong_run, sha), {})
+        self.assertEqual(classify_supplied_hosted_run_jobs(run, unrelated_wrong_run, sha, all_pages_verified=True), {})
         class EqualString(str):
             pass
         for field in ("status", "conclusion"):
@@ -197,40 +199,40 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
                 "id": 102, "run_id": 91, "name": "Unrelated job",
                 "status": "completed", "conclusion": "success"}]
             unrelated_polymorphic[2][field] = EqualString(unrelated_polymorphic[2][field])
-            self.assertEqual(classify_supplied_hosted_run_jobs(run, unrelated_polymorphic, sha), {})
+            self.assertEqual(classify_supplied_hosted_run_jobs(run, unrelated_polymorphic, sha, all_pages_verified=True), {})
         for malformed in (None, "", "   ", 123, True):
             unrelated_name = [dict(j) for j in jobs] + [{
                 "id": 102, "run_id": 91, "name": malformed,
                 "status": "completed", "conclusion": "success"}]
-            self.assertEqual(classify_supplied_hosted_run_jobs(run, unrelated_name, sha), {})
+            self.assertEqual(classify_supplied_hosted_run_jobs(run, unrelated_name, sha, all_pages_verified=True), {})
         for key, bad in (("status", "queued"), ("conclusion", "failure"),
                          ("status", None), ("conclusion", None)):
             unrelated_bad = [dict(j) for j in jobs] + [{
                 "id": 102, "run_id": 91, "name": "Unrelated job",
                 "status": "completed", "conclusion": "success"}]
             unrelated_bad[2][key] = bad
-            self.assertEqual(classify_supplied_hosted_run_jobs(run, unrelated_bad, sha), {})
+            self.assertEqual(classify_supplied_hosted_run_jobs(run, unrelated_bad, sha, all_pages_verified=True), {})
         class EqualString(str):
             pass
         for key in ("status", "conclusion"):
             poisoned_run = dict(run)
             poisoned_run[key] = EqualString(poisoned_run[key])
-            self.assertEqual(classify_supplied_hosted_run_jobs(poisoned_run, jobs, sha), {})
+            self.assertEqual(classify_supplied_hosted_run_jobs(poisoned_run, jobs, sha, all_pages_verified=True), {})
             poisoned_jobs = [dict(job) for job in jobs]
             poisoned_jobs[0][key] = EqualString(poisoned_jobs[0][key])
-            self.assertEqual(classify_supplied_hosted_run_jobs(run, poisoned_jobs, sha), {})
+            self.assertEqual(classify_supplied_hosted_run_jobs(run, poisoned_jobs, sha, all_pages_verified=True), {})
         self.assertNotIn("permanent_vps", expected)
         for mutation in ("queued", "failure"):
             changed = dict(run)
             changed["status" if mutation == "queued" else "conclusion"] = mutation
-            self.assertEqual(classify_supplied_hosted_run_jobs(changed, jobs, sha), {})
+            self.assertEqual(classify_supplied_hosted_run_jobs(changed, jobs, sha, all_pages_verified=True), {})
         for index, key, wrong in ((0, "run_id", 92), (1, "conclusion", "failure"),
                                   (0, "name", "Permanent VPS Python 3.11"),
                                   (1, "id", 100)):
             changed = [dict(j) for j in jobs]
             changed[index][key] = wrong
-            self.assertEqual(classify_supplied_hosted_run_jobs(run, changed, sha), {})
-        self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs, "b" * 40), {})
+            self.assertEqual(classify_supplied_hosted_run_jobs(run, changed, sha, all_pages_verified=True), {})
+        self.assertEqual(classify_supplied_hosted_run_jobs(run, jobs, "b" * 40, all_pages_verified=True), {})
 
     def test_artifact_url_rejects_spoofed_or_ambiguous_locations(self):
         self.assertTrue(_valid_artifact_url("https://evidence.example.org/evidence"))
