@@ -20,6 +20,8 @@ def validate_hold_manifest(data):
     defects = []
     if type(data) is not dict:
         return ["manifest must be an object"]
+    if type(data.get("schema_version")) is not int or data["schema_version"] != 1:
+        defects.append("unsupported manifest schema")
     if data.get("status") != "HOLD" or data.get("network_operations_permitted") is not False:
         defects.append("activation must remain disabled")
     if data.get("release_gate") != "real_target_authorization":
@@ -76,6 +78,22 @@ class ScopeReleaseEvidenceManifestTests(unittest.TestCase):
                 else:
                     entries[0]["owner"] = "  "
                 self.assertTrue(validate_hold_manifest(mutated))
+
+    def test_invalid_manifest_shapes_fail_closed(self):
+        import copy
+        for invalid in (None, [], "", 1, {"requirements": "invalid"},
+                        {"requirements": [None]}, {"requirements": [{"id": 4}]}):
+            with self.subTest(value=repr(invalid)):
+                self.assertTrue(validate_hold_manifest(invalid))
+
+    def test_schema_version_and_critical_fields_cannot_be_dropped(self):
+        import copy
+        for key, value in (("schema_version", True), ("schema_version", 2),
+                           ("release_gate", None), ("activation_rule", None)):
+            with self.subTest(key=key, value=value):
+                candidate = copy.deepcopy(self.manifest)
+                candidate[key] = value
+                self.assertTrue(validate_hold_manifest(candidate))
 
     def test_manifest_explicitly_holds_activation(self):
         self.assertEqual(self.manifest["release_gate"], "real_target_authorization")
