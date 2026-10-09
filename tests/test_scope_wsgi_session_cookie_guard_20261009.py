@@ -112,7 +112,9 @@ class SessionCookieGuardTest(unittest.TestCase):
                 env["wsgi.input"].read.assert_not_called()
 
     def test_valid_and_missing_envelopes_are_accepted(self):
-        for value in ("lightup_session=valid", "theme=dark; lightup_session=valid",
+        canonical = "A" * 43
+        for value in (f"lightup_session={canonical}",
+                      f"theme=dark; lightup_session={canonical}",
                       "unrelated=x=y", ""):
             with self.subTest(value=value):
                 validate_cookie_envelope({"HTTP_COOKIE": value})
@@ -121,6 +123,50 @@ class SessionCookieGuardTest(unittest.TestCase):
             with self.subTest(production=production):
                 with self.assertRaises(ValueError):
                     CookieEnvelopeGuard(Mock(), production=production)
+
+    def test_invalid_opaque_session_shapes_deny_before_real_sqlite_lookup(self):
+        """Token structure is a prerequisite; a valid shape is NOT authority."""
+        for production in (False, True):
+            with self.subTest(production=production):
+                (app, store, context, op_token, op_csrf, client_token,
+                 client_csrf) = self.fixtures(production)
+                self.assertEqual(len(op_token), 43)
+                cases = [
+                    op_token[:-1],                    # truncated
+                    op_token + "A",                   # appended
+                    op_token + "=",                   # padding
+                    op_token[:12] + "%" + op_token[13:],  # percent encoding
+                    op_token[:12] + "." + op_token[13:],  # wrong alphabet
+                    op_token[:12] + "é" + op_token[13:],  # latin-1 high byte
+                    "", "not-a-session",              # blank/short
+                ]
+                for token in cases:
+                    cookie = f"theme=light; lightup_session={token}"
+                    for path, method, form in (
+                        ("/", "GET", None),
+                        ("/clients", "POST", {"name": "Invalid", "csrf": op_csrf}),
+                        ("/logout", "POST", {"csrf": op_csrf}),
+                    ):
+                        with self.subTest(shape=repr(token), path=path,
+                                          method=method):
+                            stream = Mock()
+                            with patch.object(store, "session_context") as lookup:
+                                response = self.request(app, production, path,
+                                                        method, cookie, form, stream)
+                                lookup.assert_not_called()
+                            stream.read.assert_not_called()
+                            self.assertEqual(response["status"], "400 Bad Request")
+                            self.assertNotIn("Set-Cookie", response["headers"])
+                            self.assertEqual(len(store.list_clients(context)), 1)
+                # A token-like value with correct syntax is still not an
+                # authentication decision; the actual session DB remains source.
+                fake = "A" * 43
+                response = self.request(app, production, "/",
+                                        raw_cookie=f"lightup_session={fake}")
+                self.assertEqual(response["status"], "303 See Other")
+                self.assertEqual(response["headers"]["Location"], "/login")
+                self.assertIsNotNone(store.session_context(op_token))
+                self.assertIsNotNone(store.session_context(client_token))
 
     def test_real_sqlite_denials_keep_sessions_rows_and_body_untouched(self):
         for production in (False, True):
