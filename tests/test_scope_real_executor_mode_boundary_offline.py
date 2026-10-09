@@ -219,5 +219,31 @@ class RealExecutorModeBoundaryTests(unittest.TestCase):
         self.handler.assert_not_called()
         self.state.add_evidence.assert_not_called()
 
+    def test_real_policy_synthetic_grant_positive_control(self):
+        # Proves the negative grant tests do not pass merely because execution
+        # always fails. This test uses mock handlers and never opens a socket.
+        now = datetime.now(timezone.utc)
+        grant = AuthorizationGrant(
+            grant_id="positive-synthetic", client_id="offline-client",
+            engagement_id="offline-engagement", approved_by="offline-operator",
+            reference="offline-positive", scope=ScopeDefinition(
+                assets=("127.0.0.1",), max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("http_headers",),
+            ), valid_from=now - timedelta(minutes=1),
+            valid_until=now + timedelta(hours=1),
+        )
+        self.definition = replace(self.definition, interaction=InteractionKind.TARGET_ACTIVE)
+        self.registry.get.return_value = (self.definition, self.handler)
+        executor = ToolExecutor(self.registry, self.state, ExecutionPolicy())
+        context = replace(
+            self.context(AssessmentMode.AUTHORIZED_ASSESSMENT),
+            authorization=grant, is_lab=False,
+        )
+        with patch("socket.socket", side_effect=AssertionError("network attempted")):
+            result = executor.execute(context, self.call)
+        self.assertEqual(result.evidence_id, "synthetic-evidence")
+        self.handler.assert_called_once()
+        self.state.add_evidence.assert_called_once()
+
 if __name__ == "__main__":
     unittest.main()
