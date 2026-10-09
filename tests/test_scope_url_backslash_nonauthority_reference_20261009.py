@@ -186,6 +186,27 @@ class BackslashNonauthorityTests(unittest.TestCase):
         self.assertEqual(reference_dispatch(target, policy), "DENY")
         policy.assert_called_once_with(target)
 
+
+    def test_parser_result_with_missing_hostname_must_not_reach_policy(self):
+        from types import SimpleNamespace
+
+        for hostname in (None, ""):
+            with self.subTest(hostname=hostname):
+                policy = Mock(return_value="ALLOW")
+                with patch(
+                    __name__ + ".urlsplit",
+                    return_value=SimpleNamespace(scheme="https", hostname=hostname),
+                ):
+                    self.assertEqual(reference_dispatch("https://example.test/", policy), "INVALID_TARGET")
+                policy.assert_not_called()
+
+    def test_downstream_denial_is_preserved_without_reinterpretation(self):
+        for denied in ("DENY", "REVOKED", "OUT_OF_SCOPE"):
+            with self.subTest(denied=denied):
+                policy = Mock(return_value=denied)
+                self.assertEqual(reference_dispatch("https://example.test/", policy), denied)
+                policy.assert_called_once_with("https://example.test/")
+
     def test_nonstring_input_must_not_invoke_user_string_conversion(self):
         class Hostile:
             def __str__(self):
