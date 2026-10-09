@@ -233,6 +233,35 @@ class RedirectScopeReferenceTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
 
+    def test_redirect_to_public_ip_with_expired_grant_is_denied(self):
+        expired = Authorization(
+            owner="synthetic-test-only",
+            reference="EXPIRED-IP-NOT-CONSENT",
+            valid_until=datetime.now(timezone.utc) - timedelta(days=1),
+        )
+        decision = self.decide("https://8.8.8.8/next", expired)
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
+
+    def test_redirect_to_allowed_host_with_expired_grant_stops_chain(self):
+        expired = Authorization(
+            owner="synthetic-test-only",
+            reference="EXPIRED-HOP-NOT-CONSENT",
+            valid_until=datetime.now(timezone.utc) - timedelta(days=1),
+        )
+        hops = [
+            ("https://approved.example.test/start", self.grant),
+            ("https://approved.example.test/expired", expired),
+            ("https://approved.example.test/never-reached", self.grant),
+        ]
+        visited = []
+        for url, grant in hops:
+            result = self.decide(url, grant)
+            visited.append(result.reason)
+            if not result.allowed:
+                break
+        self.assertEqual(visited, [ScopeReason.EXPLICIT_HOST, ScopeReason.AUTHORIZATION_EXPIRED])
+
     def test_each_redirect_hop_rechecks_target_identity(self):
         hops = [
             "https://approved.example.test/start",
