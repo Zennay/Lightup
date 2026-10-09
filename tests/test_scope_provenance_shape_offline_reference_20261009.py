@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import unittest
 import unicodedata
-from dataclasses import dataclass
 from unittest.mock import Mock
 
 from lightup.models import Authorization
@@ -62,6 +61,29 @@ class ReferenceProvenanceShapeTests(unittest.TestCase):
         self.assertFalse(reference_provenance_shape(None))
         self.assertFalse(reference_provenance_shape(
             {"owner": "owner-1", "reference": "consent-1"}
+        ))
+
+    def test_rejects_str_subclasses_without_running_custom_methods(self):
+        class HostileString(str):
+            def strip(self, *args, **kwargs):
+                raise AssertionError("unexpected strip")
+            def __eq__(self, other):
+                raise AssertionError("unexpected comparison")
+        for field in ("owner", "reference"):
+            kwargs = {"owner": "owner-1", "reference": "consent-1"}
+            kwargs[field] = HostileString("apparently-valid")
+            self.assertFalse(reference_provenance_shape(Authorization(**kwargs)))
+
+    def test_rejects_unicode_line_separators_and_surrogate_pairs(self):
+        for bad in ("owner\\u2028id", "owner\\u2029id", "\\ud800\\udc00"):
+            with self.subTest(value=repr(bad)):
+                self.assertFalse(reference_provenance_shape(
+                    Authorization(owner=bad, reference="consent-1")
+                ))
+
+    def test_preserves_normal_unicode_letters_and_spaces(self):
+        self.assertTrue(reference_provenance_shape(
+            Authorization(owner="Equipe française", reference="toestemming-42")
         ))
 
     def test_no_external_policy_or_handler_calls(self):
