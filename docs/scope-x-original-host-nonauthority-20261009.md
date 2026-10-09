@@ -97,3 +97,7 @@ An already-expired synthetic authorization with `revoked=false` routing metadata
 ## Future-dated grant transport tripwire
 
 A not-yet-valid synthetic grant is denied with `AUTHORIZATION_EXPIRED` regardless of claimed approval expiry metadata. Pure policy evaluation must not invoke socket DNS, socket connection or urllib HTTP dispatch functions. This verifies only the unit boundary; production worker ingress and evidence-store write interception require separate integration tests.
+
+## Invalid-target fail-closed and inspection order
+
+Blank, whitespace-only and authority-less `https://` target values must return `INVALID_TARGET`, regardless of a forged `X-Original-Host` approval claim. With an invalid target, `ScopePolicy.decide` must not inspect an untrusted grant object or iterate untrusted labels. These checks are offline-only and deliberately avoid the DNS/configuration/real ingress paths owned by other scope PRs.
