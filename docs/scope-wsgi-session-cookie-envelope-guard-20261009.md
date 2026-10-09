@@ -32,7 +32,7 @@ duplicate wire Cookie fields.
 
 - Missing Cookie and empty Cookie are allowed as anonymous.
 - Non-built-in-string Cookie, unencodable Unicode, C0/DEL controls, oversized
-  (>8192 ISO-8859-1 bytes), quoted/backslash escaped/comma-joined or malformed
+  (>8192 ISO-8859-1 bytes), quoted/backslash escaped/comma-joined, whitespace-concatenated or malformed
   cookie-pairs receive 400 before delegating.
 - A second exact "lightup_session" name is refused, regardless of its value.
 - Single canonical cookies and unrelated ordinary cookie pairs pass through
