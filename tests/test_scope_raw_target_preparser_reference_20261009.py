@@ -167,5 +167,37 @@ class RawInputPreparserReferenceTests(unittest.TestCase):
                 policy.decide.assert_called_once_with(target)
 
 
+    def test_unicode_controls_never_reach_scope_policy(self):
+        from unittest.mock import Mock
+        policy = Mock(spec=ScopePolicy)
+        for character in ("\u200b", "\u202e", "\u2066", "\ufeff", "\ud800"):
+            for position in ("authority", "path"):
+                with self.subTest(character=ascii(character), position=position):
+                    raw = (
+                        "https://auth" + character + "orized.example.test/"
+                        if position == "authority"
+                        else "https://authorized.example.test/p" + character + "ath"
+                    )
+                    decision = reference_decide(policy, Target(raw, authorization=self.auth))
+                    self.assertFalse(decision.allowed)
+                    self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+        policy.decide.assert_not_called()
+
+    def test_unicode_normalization_does_not_rewrite_raw_input(self):
+        from unittest.mock import Mock
+        policy = Mock(spec=ScopePolicy)
+        policy.decide.return_value = "delegated"
+        for raw in (
+            "https://authorized.example.test/caf\u00e9",
+            "https://authorized.example.test/cafe\u0301",
+        ):
+            with self.subTest(raw=ascii(raw)):
+                policy.reset_mock()
+                target = Target(raw, authorization=self.auth)
+                self.assertEqual(reference_decide(policy, target), "delegated")
+                policy.decide.assert_called_once_with(target)
+                self.assertEqual(target.value, raw)
+
+
 if __name__ == "__main__":
     unittest.main()
