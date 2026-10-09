@@ -52,6 +52,26 @@ class ScopeAuthorizationReferenceIntegrity(unittest.TestCase):
         outcome = self._decision("test-owner", "\n\t ")
         self.assertFalse(outcome.allowed)
 
+    @unittest.expectedFailure
+    def test_zero_width_owner_must_not_authorize_public_host(self):
+        outcome = self._decision("\u200b", "test-consent")
+        self.assertFalse(outcome.allowed)
+
+    @unittest.expectedFailure
+    def test_zero_width_reference_must_not_authorize_public_host(self):
+        outcome = self._decision("test-owner", "\u200b")
+        self.assertFalse(outcome.allowed)
+
+    @unittest.expectedFailure
+    def test_control_character_owner_must_not_authorize_public_host(self):
+        outcome = self._decision("test\nowner", "test-consent")
+        self.assertFalse(outcome.allowed)
+
+    @unittest.expectedFailure
+    def test_control_character_reference_must_not_authorize_public_host(self):
+        outcome = self._decision("test-owner", "test\rconsent")
+        self.assertFalse(outcome.allowed)
+
     def test_expired_authorization_is_denied(self):
         now = datetime.now(timezone.utc)
         grant = Authorization(
