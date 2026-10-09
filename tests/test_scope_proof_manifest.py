@@ -118,6 +118,12 @@ class ProofManifestTests(unittest.TestCase):
             path.write_bytes(b"\\xff\\xfe")
             self.assertEqual(module.main(["verify", str(path)]), 2)
 
+    def test_cli_valid_index_is_structural_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "valid.json"
+            path.write_text(json.dumps(fixture()), encoding="utf-8")
+            self.assertEqual(module.main(["verify", str(path)]), 0)
+
     def test_absent_or_malformed_manifest_is_denied(self):
         self.assertTrue(module.verify(None))
         self.assertTrue(module.verify({}))
