@@ -59,3 +59,7 @@ Run with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_evidence_
 ## Rejected-alias persistence immutability
 
 A further offline temporary-SQLite regression takes a full stored evidence-row snapshot, rejects the uppercase lexical alias, and verifies the stored row remains byte/value-equivalent with the evidence table still containing exactly one record. This is a **reference parser non-mutation test**, not evidence that production `get_evidence()` currently performs lexical validation: the latter must be separately integrated and reviewed by its source owner.
+
+## Parser alias pitfall
+
+Python's `uuid.UUID()` accepts uppercase and hyphenless UUID aliases and normalizes them to the same canonical textual identity. Therefore calling `str(UUID(user_input))` is **not** a sufficient strict evidence selector validator. Two additional offline regressions prove uppercase/compact aliases are parser-accepted but rejected by the strict lexical reference, and that nil/max UUID text is denied. These tests describe proposed read-boundary hardening, not deployed production behavior.
