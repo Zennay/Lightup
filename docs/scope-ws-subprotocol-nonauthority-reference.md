@@ -13,3 +13,7 @@ No overlapping production paths have been modified. No target I/O, scanning, dep
 ## CI regression and exact fixture repair (2026-10-09)
 
 Hosted preflight `37914098987` failed (Python 3.11 and 3.14 `Compile and unit suite`, 20 assertions) because literal double-backslash fixture strings did not represent Unicode control characters. The self-checking fixture test exposed this failure; importantly, the preceding green-looking deny assertions were not trustworthy. Commit `4a08402fe529c52b18cd7bee7158048f397ef980` replaces double escapes with Python single escape sequences; GitHub source re-fetch confirms single-escape spelling. Exact-head hosted preflight `37914223989` and permanent VPS `37914223974` must pass before marking fixed. The reference does not establish production enforcement.
+
+## Missing grant and presentation shape rejection
+
+Three additional in-memory unittest methods cover absent/dict-like grants, malformed **requested** revision types, and header objects of arbitrary shape. The reference intentionally does not parse headers, because handshake negotiation metadata must never repair missing authorization evidence. **16 test methods** now exist in this standalone test file. This is not production enforcement; the real dispatcher and websocket gateway require source-owner verification and exact-head CI.
