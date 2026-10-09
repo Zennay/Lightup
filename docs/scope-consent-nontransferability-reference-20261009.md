@@ -30,3 +30,5 @@ The reference now additionally mutates every stored identity field independently
 The trusted source owner must bind approvals to verified tenant, engagement, owning principal, canonical asset, capability, approval revision and revocation generation. Independently revalidate atomically immediately before any target I/O and prohibit inferred transfer on sale, tenant move, reassignment, ownership change or reused asset identifiers. Explicit user authorization and review remain required. Integration must prove **zero executor/evidence handler calls** on denial and cover race conditions on revocation or ownership transfer. No target-facing tests are enabled by this PR.
 
 Do not merge, deploy or activate based on this reference. Require exact-head hosted and canonical permanent VPS CI plus source-owner review of #107/#1128 and revocation #100.
+
+Additional offline hardening: identity comparison rejects U+200B zero-width space, U+202E right-to-left override and lone UTF-16 surrogate codepoints to prevent hidden/surrogate identifiers from silently inheriting consent. This is not a full Unicode normalization policy or executable authorization.
