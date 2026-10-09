@@ -154,3 +154,6 @@ The reference classifier has been renamed from `classify_authenticated_run_jobs`
 
 ## Pagination completion type boundary
 Regression controls now reject absent, false, numeric, textual, list and object values for `all_pages_verified`; only the literal built-in `True` permits offline hosted classification. The duplicated result-type pass was removed while preserving the full-run exact-string success check. This flag must never be set from the first-page-only connector response without independently proving all job pages were retrieved. No VPS or target authorization follows from a passing fixture.
+
+## Partial-page regression
+A single passing hosted Python job (a plausible truncated first-page snapshot) cannot classify as full hosted CI evidence, even if a caller incorrectly asserts `all_pages_verified=True`; both distinct 3.11 and 3.14 successful job records are required. This does not independently establish pagination completeness, and the source remains untrusted unless authenticated externally.
