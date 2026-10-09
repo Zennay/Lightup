@@ -132,7 +132,8 @@ def classify_authenticated_run_jobs(run: dict, jobs: list, expected_sha: str) ->
         return {}
     if (type(run.get("head_sha")) is not str or run["head_sha"] != expected_sha or
             type(run.get("id")) is not int or run["id"] <= 0 or
-            run.get("status") != "completed" or run.get("conclusion") != "success"):
+            type(run.get("status")) is not str or run["status"] != "completed" or
+            type(run.get("conclusion")) is not str or run["conclusion"] != "success"):
         return {}
     result = {}
     for version in ("3.11", "3.14"):
@@ -141,7 +142,8 @@ def classify_authenticated_run_jobs(run: dict, jobs: list, expected_sha: str) ->
                    job["name"] == "Offline preflight Python " + version + " (not VPS proof)" and
                    type(job.get("id")) is int and job["id"] > 0 and
                    type(job.get("run_id")) is int and job["run_id"] == run["id"] and
-                   job.get("status") == "completed" and job.get("conclusion") == "success"]
+                   type(job.get("status")) is str and job["status"] == "completed" and
+                   type(job.get("conclusion")) is str and job["conclusion"] == "success"]
         if len(matches) != 1:
             return {}
         result[version] = matches[0]["id"]
@@ -162,6 +164,15 @@ class ScopeProductionProofManifestTests(unittest.TestCase):
         ]
         expected = {"hosted_python_311": 100, "hosted_python_314": 101}
         self.assertEqual(classify_authenticated_run_jobs(run, jobs, sha), expected)
+        class EqualString(str):
+            pass
+        for key in ("status", "conclusion"):
+            poisoned_run = dict(run)
+            poisoned_run[key] = EqualString(poisoned_run[key])
+            self.assertEqual(classify_authenticated_run_jobs(poisoned_run, jobs, sha), {})
+            poisoned_jobs = [dict(job) for job in jobs]
+            poisoned_jobs[0][key] = EqualString(poisoned_jobs[0][key])
+            self.assertEqual(classify_authenticated_run_jobs(run, poisoned_jobs, sha), {})
         self.assertNotIn("permanent_vps", expected)
         for mutation in ("queued", "failure"):
             changed = dict(run)
