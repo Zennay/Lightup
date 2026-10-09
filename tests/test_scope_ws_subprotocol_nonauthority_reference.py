@@ -407,6 +407,23 @@ class WebSocketSubprotocolNonauthorityReference(unittest.TestCase):
                 self.assertFalse(reference_decide(self.valid, requested,
                     {"Sec-WebSocket-Protocol": "approved"}))
 
+    def test_reference_rejects_untrusted_grant_subclass_with_overridden_equality(self):
+        class ForgedGrant(Grant):
+            def __eq__(self, other):
+                return True
+        forged = ForgedGrant("tenant-a", "lab-asset", "read-only", 3, True, False)
+        self.assertFalse(reference_decide(forged, self.valid,
+            {"Sec-WebSocket-Protocol": "approved"}))
+        self.assertFalse(reference_decide(self.valid, forged,
+            {"Sec-WebSocket-Protocol": "approved"}))
+
+    def test_reference_rejects_request_identity_subclass_even_if_text_matches(self):
+        class ForgedIdentity(str):
+            def __eq__(self, other):
+                return True
+        req = Grant(ForgedIdentity("tenant-a"), "lab-asset", "read-only", 3, True, False)
+        self.assertFalse(reference_decide(self.valid, req, {}))
+
     def test_denial_never_calls_handler(self):
         revoked = Grant("tenant-a", "lab-asset", "read-only", 3, True, True)
         calls = []
