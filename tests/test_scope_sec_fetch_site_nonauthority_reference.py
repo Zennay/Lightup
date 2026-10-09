@@ -135,5 +135,39 @@ class SecFetchSiteNonAuthority(unittest.TestCase):
             self.assertFalse(reference_decision(grant, self.dispatch, "same-origin"))
 
 
+    def test_grant_subclass_is_not_trusted(self):
+        class DerivedGrant(Grant):
+            pass
+        grant = DerivedGrant("tenant", "request", "asset", "web-baseline",
+                             2, True, True)
+        self.assertFalse(reference_decision(grant, self.dispatch, "same-origin"))
+
+    def test_matching_identity_length_boundaries(self):
+        for key in ("tenant", "request", "asset", "capability"):
+            valid = "a" * 128
+            grant = Grant(**dict(self.grant.__dict__, **{key: valid}))
+            dispatch = dict(self.dispatch, **{key: valid})
+            self.assertTrue(reference_decision(grant, dispatch, HostileLabel()))
+            invalid = "a" * 129
+            grant = Grant(**dict(self.grant.__dict__, **{key: invalid}))
+            dispatch = dict(self.dispatch, **{key: invalid})
+            self.assertFalse(reference_decision(grant, dispatch, HostileLabel()))
+
+    def test_nonmatching_missing_identity_is_denied(self):
+        for key in ("tenant", "request", "asset", "capability"):
+            grant = Grant(**dict(self.grant.__dict__, **{key: None}))
+            self.assertFalse(reference_decision(grant, self.dispatch, "same-origin"))
+            dispatch = dict(self.dispatch, **{key: None})
+            self.assertFalse(reference_decision(self.grant, dispatch, "same-origin"))
+
+    def test_hostile_label_does_not_change_revision_decision(self):
+        for revision in (0, 2, 3):
+            grant = Grant("tenant", "request", "asset", "web-baseline",
+                          revision, True, True)
+            for hint in ("same-origin", "cross-site", HostileLabel()):
+                self.assertEqual(
+                    reference_decision(grant, self.dispatch, None),
+                    reference_decision(grant, self.dispatch, hint))
+
 if __name__ == "__main__":
     unittest.main()
