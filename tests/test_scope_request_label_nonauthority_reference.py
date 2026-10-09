@@ -41,7 +41,9 @@ def reference_permit(request: Request, grant: Grant) -> bool:
         return False
     if type(grant.assets) is not tuple or type(grant.capabilities) is not tuple:
         return False
-    if any(type(v) is not str for v in grant.assets + grant.capabilities):
+    if any(type(v) is not str or not v or len(v) > 128
+           or not v.isascii() or not all(ch.isalnum() or ch in "-_." for ch in v)
+           for v in grant.assets + grant.capabilities):
         return False
     return (request.tenant_id == grant.tenant_id
             and request.request_id == grant.request_id
@@ -85,6 +87,28 @@ class RequestLabelNonAuthorityReferenceTests(unittest.TestCase):
 
     def test_truthy_approval_is_not_approval(self):
         self.assertFalse(reference_permit(self.req, replace(self.grant, approved="true")))
+
+    def test_label_cannot_override_inactive_grant(self):
+        self.assertFalse(reference_permit(replace(self.req, label="APPROVED"),
+                                          replace(self.grant, approved=False)))
+
+    def test_label_cannot_override_malformed_grant_member(self):
+        malformed = replace(self.grant, assets=("asset-1", "asset-2\\n"))
+        self.assertFalse(reference_permit(replace(self.req, label="trusted"), malformed))
+
+    def test_label_cannot_override_polymorphic_grant_member(self):
+        class ForgedAsset(str):
+            pass
+
+        malformed = replace(self.grant, assets=(ForgedAsset("asset-1"),))
+        self.assertFalse(reference_permit(replace(self.req, label="trusted"), malformed))
+
+    def test_label_cannot_override_subclass_envelope(self):
+        class ForgedRequest(Request):
+            pass
+
+        forged = ForgedRequest(**self.req.__dict__)
+        self.assertFalse(reference_permit(forged, self.grant))
 
     def test_input_not_mutated(self):
         snapshot = (self.req, self.grant)
