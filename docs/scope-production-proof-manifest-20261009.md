@@ -97,3 +97,6 @@ The structural observed-job checker also requires exact built-in strings for sta
 
 ## String-subclass snapshot regression
 The latest reference regression constructs a fully populated synthetic job evidence set, confirms its offline positive control, and mutates each observed text field into a `str` subclass with identical text. The comparison must deny polymorphic values for `status`, `conclusion`, `python_version`, `runner_class`, `run_url` and `sha`. This does not authenticate GitHub records or authorize real-target activity; exact-head CI and production-owner review remain required.
+
+## Proof-manifest polymorphic value hardening
+Run-level SHA and conclusion, and all artifact-trace SHA fields now require exact built-in strings before any equality check. A same-text `str` subclass is rejected even if its comparison equals the expected SHA or `success`. The synthetic acceptance fixture tests each run and trace lane independently. These offline checks do not authenticate artifacts, replace owner approval, or enable targets.
