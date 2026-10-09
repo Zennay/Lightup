@@ -101,3 +101,7 @@ A not-yet-valid synthetic grant is denied with `AUTHORIZATION_EXPIRED` regardles
 ## Invalid-target fail-closed and inspection order
 
 Blank, whitespace-only and authority-less `https://` target values must return `INVALID_TARGET`, regardless of a forged `X-Original-Host` approval claim. With an invalid target, `ScopePolicy.decide` must not inspect an untrusted grant object or iterate untrusted labels. These checks are offline-only and deliberately avoid the DNS/configuration/real ingress paths owned by other scope PRs.
+
+## Malformed target transport tripwire
+
+An authority-less `https://` target with a forged approval label must fail with `INVALID_TARGET` without invoking DNS, socket connection, or urllib HTTP helpers from `ScopePolicy.decide`. This checks pure policy behavior only; production worker/evidence interception is still required.
