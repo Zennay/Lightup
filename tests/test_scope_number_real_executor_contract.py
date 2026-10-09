@@ -2,6 +2,7 @@
 from __future__ import annotations
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from lightup.ai.orchestration import (
     OrchestrationError, ParamKind, RunContext, ToolCall, ToolDefinition,
@@ -101,6 +102,22 @@ class OfflineExecutorNumberTests(unittest.TestCase):
             )
         self.assertEqual(self.calls, [])
         self.assertEqual(self.evidence_count(), 0)
+
+    def test_fixture_has_no_dns_or_network_side_effects(self):
+        """Even the positive control must never resolve or open a socket."""
+        with (
+            patch("socket.getaddrinfo", side_effect=AssertionError("DNS forbidden")) as dns,
+            patch("socket.create_connection", side_effect=AssertionError("TCP forbidden")) as tcp,
+            patch("socket.socket", side_effect=AssertionError("socket forbidden")) as raw,
+        ):
+            self.invoke(1.25)
+            with self.assertRaises(OrchestrationError):
+                self.invoke("not-a-number")
+        dns.assert_not_called()
+        tcp.assert_not_called()
+        raw.assert_not_called()
+        self.assertEqual(self.calls, [1.25])
+        self.assertEqual(self.evidence_count(), 1)
 
     @unittest.expectedFailure
     def test_nan_denied_before_handler_and_evidence(self):
