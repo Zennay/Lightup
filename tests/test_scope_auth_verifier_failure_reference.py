@@ -89,8 +89,8 @@ class VerifierFailureReferenceTests(unittest.TestCase):
         def check(_):
             calls.append(True)
             return True
-        for bad in ("tenant\\u200bother", "tenant\\u2028other", "tenant\\u2029other",
-                    "tenant\\u2060other"):
+        for bad in ("tenant\u200bother", "tenant\u2028other", "tenant\u2029other",
+                    "tenant\u2060other"):
             with self.subTest(bad=repr(bad)):
                 self.assertFalse(eligible(Proof(bad, "request", "issuer", "grant"), check))
         self.assertEqual(calls, [])
