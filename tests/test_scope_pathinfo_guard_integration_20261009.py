@@ -89,6 +89,7 @@ class CanonicalPathInfoRealWSGITests(unittest.TestCase):
         )
         self.operator = self.store.context_for_user(op.user_id)
         tenant = self.store.create_client(self.operator, "Existing client")
+        self.tenant_id = tenant.client_id
         user = self.store.create_user(
             self.operator, "client@scope.test", "Client", Role.CLIENT_ADMIN, tenant.client_id
         )
@@ -175,6 +176,40 @@ class CanonicalPathInfoRealWSGITests(unittest.TestCase):
                         lookup.assert_not_called()
                     self.assertEqual(status, "400 Bad Request")
                     self.assertNotIn(b"Active testing", body)
+
+    def test_ambiguous_logout_path_never_revokes_a_valid_session(self):
+        for production in (False, True):
+            with self.subTest(production=production):
+                env = self._environ(
+                    "/logout\\n", token=self.op_cookie, csrf=self.op_csrf,
+                    production=production
+                )
+                with patch.object(self.store, "session_context",
+                                  wraps=self.store.session_context) as lookup:
+                    status, _, _ = self._invoke(env, production=production)
+                    lookup.assert_not_called()
+                self.assertEqual(status, "400 Bad Request")
+                self.assertIsNotNone(self.store.session_context(self.op_cookie))
+                self.assertIsNotNone(self.store.session_context(self.client_cookie))
+
+    def test_ambiguous_portal_request_path_never_creates_tenant_request(self):
+        for production in (False, True):
+            with self.subTest(production=production):
+                before = self.store.list_assessment_requests(self.operator)
+                env = self._environ(
+                    f"/portal/{self.tenant_id}/requests\\n",
+                    token=self.client_cookie, csrf=self.client_csrf,
+                    production=production
+                )
+                env["REMOTE_USER"] = "operator"
+                with patch.object(self.store, "session_context",
+                                  wraps=self.store.session_context) as lookup:
+                    status, _, _ = self._invoke(env, production=production)
+                    lookup.assert_not_called()
+                self.assertEqual(status, "400 Bad Request")
+                self.assertEqual(self.store.list_assessment_requests(self.operator),
+                                 before)
+                self.assertIsNotNone(self.store.session_context(self.client_cookie))
 
     def test_valid_operator_post_and_root_get_are_preserved(self):
         for production in (False, True):
