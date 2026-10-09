@@ -67,6 +67,9 @@ def verify(data):
     if all(type(value) is int and value > 0 for value in run_ids):
         if len(set(run_ids)) != len(run_ids):
             errors.append("CI workflow run identifiers must be distinct")
+    # A single proof index cannot substitute one observation for another.
+    # This does not establish provenance: run job and runner identity still
+    # require independent GitHub API inspection.
     side_effects = data.get("denial_side_effect_counts")
     if type(side_effects) is not dict:
         errors.append("denial_side_effect_counts: missing object")
