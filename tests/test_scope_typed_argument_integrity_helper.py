@@ -251,6 +251,27 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
         with self.assertRaises(OrchestrationError):
             validate_unambiguous_arguments(integer_definition, (("count", True),))
 
+    def test_string_subclass_denied_before_user_defined_string_hooks(self):
+        string_definition = ToolDefinition(
+            "string-fixture", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "local fixture",
+            (ToolParameter("label", ParamKind.STRING),),
+        )
+        calls = []
+        class TrapString(str):
+            def __str__(self):
+                calls.append("str")
+                raise AssertionError("user string hook invoked")
+        with self.assertRaisesRegex(OrchestrationError, "built-in string"):
+            validate_unambiguous_arguments(
+                string_definition, (("label", TrapString("safe")),)
+            )
+        self.assertEqual(calls, [])
+        self.assertEqual(
+            validate_unambiguous_arguments(string_definition, (("label", "safe"),)),
+            {"label": "safe"},
+        )
+
     def test_invalid_registry_kind_and_required_flag_rejected(self):
         for kind, required in ((None, True), ("number", True),
                                (ParamKind.NUMBER, 1),
