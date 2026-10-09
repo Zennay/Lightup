@@ -21,3 +21,7 @@ A separate inert STRING tool with an identically named `enabled` parameter is va
 A single immutable schema definition is reused for successive positive and negative validation attempts (`True`, `False`, `"true"`, `1`, `None`, `False`, `True`). Every rejection must preserve the same declared parameter tuple and subsequent canonical booleans must remain accepted. This establishes schema-only call-sequence invariance, not ToolExecutor cache safety or policy authorization.
 
 Prior HEAD `5580c50272a368cc62a004032c1f27f812c64f44` queued canonical run [37950370644](https://github.com/Zennay/Lightup/actions/runs/37950370644) and had hosted preflight [37950370842](https://github.com/Zennay/Lightup/actions/runs/37950370842) in progress when checked. These results are not current-head evidence after this test addition.
+
+## Adversarial truthiness boundary
+
+A deliberately hostile object whose `__bool__` raises is rejected as a BOOLEAN argument without executing that method (call count remains zero); an exact `False` remains admitted afterwards. This guards against accidental future conversion through `bool(value)` in schema admission. No target execution or authorization claims follow from this unit contract.
