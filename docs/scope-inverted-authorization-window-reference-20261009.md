@@ -20,3 +20,6 @@ Fixtures are fabricated and do not establish issuer identity, cryptographic inte
 
 ## Observed malformed stored timestamp gap
 Three additional characterization controls document current behavior (not desired release behavior): naive `valid_from` / `valid_until` values raise `TypeError` when compared with UTC-aware `now`, including through the public-host `ScopePolicy.decide` route. A future production pre-I/O gate must catch malformed persisted authorization and return a deterministic denial before dispatch. These tests intentionally assert existing exceptions, **not** an approved fail-closed implementation. Production owner must decide repair and add negative acceptance tests without broadening authority. Related pending boundary suites (#999 and #1058) remain separate.
+
+## Open-ended legacy windows
+A start-only window permits all later instants; an end-only window permits earlier instants; a grant with both bounds absent returns `is_current=True` for any aware supplied time. This is a description of the legacy dataclass's temporal predicate only, never authenticated issuer approval. Production execution must require durable, issuer-verified consent and separate pre-dispatch checks; this reference does not authorize an unbounded grant or change behavior.
