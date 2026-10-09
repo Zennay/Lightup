@@ -91,6 +91,27 @@ class VerifierFailureReferenceTests(unittest.TestCase):
                 self.assertFalse(eligible(Proof(bad, "request", "issuer", "grant"), check))
         self.assertEqual(calls, [])
 
+    def test_verifier_called_once_on_positive_result(self):
+        calls = []
+        def check(value):
+            calls.append(value)
+            return True
+        self.assertTrue(eligible(self.proof, check))
+        self.assertEqual(calls, [self.proof])
+
+    def test_verifier_failure_has_no_implicit_fallback_or_retry(self):
+        calls = []
+        def check(value):
+            calls.append(value)
+            raise ConnectionError("authorization issuer offline")
+        self.assertFalse(eligible(self.proof, check))
+        self.assertEqual(calls, [self.proof])
+
+    def test_missing_or_noncallable_verifier_denies(self):
+        for bad in (None, False, True, "trusted", {}):
+            with self.subTest(bad=repr(bad)):
+                self.assertFalse(eligible(self.proof, bad))
+
     def test_forged_subclass_denies(self):
         class Forged(Proof):
             pass
