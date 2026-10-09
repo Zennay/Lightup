@@ -198,6 +198,20 @@ class MalformedAuthorityNoHandlerReference(unittest.TestCase):
         policy.decide.assert_not_called()
         handler.assert_not_called()
 
+    def test_malformed_authority_rejected_across_schemes(self):
+        policy = Mock(spec=ScopePolicy)
+        handler = Mock()
+        for scheme in ("http", "https", "ftp"):
+            for authority in ("[::1", "[[::1]]", "2001:db8::1]"):
+                raw = scheme + "://" + authority + "/"
+                with self.subTest(raw=raw):
+                    decision = reference_preflight(policy, Target(raw), handler)
+                    self.assertFalse(decision.allowed)
+                    self.assertIsNone(decision.normalized_host)
+                    self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
+        policy.decide.assert_not_called()
+        handler.assert_not_called()
+
     def test_valid_explicit_port_preserves_denial(self):
         policy = Mock(spec=ScopePolicy)
         policy.decide.return_value = ScopeDecision(
