@@ -288,5 +288,20 @@ class TypedArgumentIntegrityTests(unittest.TestCase):
                     )
 
 
+    def test_nonfinite_number_denied_before_schema_callback(self):
+        from unittest.mock import patch
+        events = []
+        def trap_validate(definition, arguments):
+            events.append("schema")
+            raise AssertionError("schema invoked before finiteness check")
+        with patch.object(ToolDefinition, "validate_arguments", trap_validate):
+            for value in (float("nan"), float("inf"), float("-inf")):
+                with self.subTest(value=str(value)):
+                    with self.assertRaisesRegex(OrchestrationError, "must be finite"):
+                        validate_unambiguous_arguments(
+                            self.definition, (("value", value),)
+                        )
+        self.assertEqual(events, [])
+
 if __name__ == "__main__":
     unittest.main()
