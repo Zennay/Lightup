@@ -388,5 +388,22 @@ class InvertedAuthorizationWindowTests(unittest.TestCase):
             authorization=self.grant(valid_start, "")))
         self.assertFalse(decision.allowed)
 
+    @unittest.expectedFailure
+    def test_required_host_denial_when_both_bounds_corrupt(self):
+        # RED: two falsy malformed bounds must never become an unbounded grant.
+        decision = self.policy.decide(Target(
+            "https://authorized.example",
+            authorization=self.grant(False, "")))
+        self.assertFalse(decision.allowed)
+
+    @unittest.expectedFailure
+    def test_required_network_denial_when_both_bounds_corrupt(self):
+        # RED: a public network allowlist cannot launder two invalid bounds.
+        policy = ScopePolicy(explicit_networks=("8.8.8.0/24",))
+        decision = policy.decide(Target(
+            "https://8.8.8.8",
+            authorization=self.grant(0, False)))
+        self.assertFalse(decision.allowed)
+
 if __name__ == "__main__":
     unittest.main()
