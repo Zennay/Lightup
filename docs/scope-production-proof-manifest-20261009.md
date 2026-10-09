@@ -130,3 +130,6 @@ A separate offline reference `classify_authenticated_run_jobs(run, jobs, expecte
 
 ## Workflow and job result type-integrity
 The hosted-run classifier now requires exact built-in string status/conclusion fields at the workflow and individual job levels, rejecting same-text `str` subclass values. Synthetic regression fixtures cover both levels. This remains offline classification of caller-supplied records, not API authentication or VPS proof.
+
+## Full-run job identifier uniqueness
+Hosted job classification now rejects duplicate numeric job IDs anywhere in a caller-supplied job snapshot, including unrelated jobs outside the selected Python lanes. Duplicate identity is ambiguous evidence, so the classifier denies rather than silently selecting two apparently valid interpreter records. This consistency check still requires independent API authentication and confers no VPS or real-target authority.
