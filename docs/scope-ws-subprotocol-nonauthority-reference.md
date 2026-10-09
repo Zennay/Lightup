@@ -98,3 +98,7 @@ Collect proof on the **same exact implementation SHA**: Python 3.11 + 3.14 hoste
 ## Revocation and Unicode normalization boundaries
 
 Two added offline tests exercise denied mock executor effects after revocation even when requested state otherwise matches, and prohibit cross-normalization Unicode identity binding without explicit trusted canonicalization. A composed identity still provides the reference positive control. Total **45 unittest methods**. No claim of live dispatcher safety.
+
+## Structural type rejection and negotiation-header access isolation
+
+Two offline methods cover six malformed stored/request grant shapes (twelve deny assertions) and verify that deliberately hostile header mappings cannot be read as authorization inputs for rejected or accepted reference grants. Total **47 offline unittest methods**; no production ToolExecutor binding.
