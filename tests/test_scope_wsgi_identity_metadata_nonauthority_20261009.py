@@ -307,12 +307,8 @@ class WsgiIdentityMetadataNonauthorityTest(unittest.TestCase):
             )
             self.assertEqual(decided.status.value, "approved")
             self.assertEqual(decided.decided_by, self.operator_user.user_id)
-        # Approving a request is not an execution or authorization grant.
-        self.assertEqual(self.store.list_authorization_grants(self.operator_ctx,
-                         self.store.create_engagement(
-                             self.operator_ctx, self.client_a.client_id,
-                             "no active target authorization fixture",
-                         ).engagement_id), [])
+        # Approval of a request is not itself a grant or an engagement.
+        self.assertEqual(self.store.list_engagements(self.operator_ctx), [])
 
     def test_forged_identity_cannot_approve_risk_elevation(self):
         client_ctx = self.store.context_for_user(self.client_user.user_id)
