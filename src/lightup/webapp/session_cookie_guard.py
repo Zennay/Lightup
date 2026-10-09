@@ -15,7 +15,8 @@ from .app import SESSION_COOKIE
 _NAME = re.compile(r"^[A-Za-z0-9!#$%&'*+.^_|~-]+$")
 # DomainStore.create_session uses secrets.token_urlsafe(32): exactly 43 base64url
 # characters, unpadded. This checks representation, not authentication.
-_SESSION_TOKEN = re.compile(r"[A-Za-z0-9_-]{43}\Z")
+# For 32 bytes, the 43rd base64url symbol has two zero padding bits.
+_SESSION_TOKEN = re.compile(r"[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]\Z")
 _MISSING = object()
 _MAX_COOKIE_BYTES = 8192
 
