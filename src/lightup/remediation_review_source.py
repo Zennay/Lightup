@@ -25,6 +25,13 @@ MAX_EVIDENCE_JSON_CHARS = 16384
 # database fields to exhaust worker memory. Project each known column to a
 # max+1 prefix: oversize data stays detectably invalid, never silently valid.
 # All identifiers and lengths below are static trusted constants.
+_BOUNDED_ENGAGEMENT_SELECT = f"""
+SELECT
+    substr(engagement_id, 1, {MAX_ID + 1}) AS engagement_id,
+    substr(client_id, 1, {MAX_ID + 1}) AS client_id
+FROM engagements WHERE engagement_id=?
+"""
+
 _BOUNDED_FINDING_SELECT = f"""
 SELECT
     substr(finding_id, 1, {MAX_ID + 1}) AS finding_id,
@@ -102,9 +109,11 @@ def read_remediation_review_queue(
             # authenticated session; the context itself is not a grant.
             connection.execute("BEGIN")
             try:
+                # The engagement's tenant ID can be malformed/oversized too.
+                # Project only MAX+1 so Python never allocates arbitrary
+                # persistent client metadata before validating admission.
                 scoped = connection.execute(
-                    "SELECT engagement_id, client_id FROM engagements "
-                    "WHERE engagement_id=?", (engagement_id,),
+                    _BOUNDED_ENGAGEMENT_SELECT, (engagement_id,),
                 ).fetchone()
                 if scoped is None:
                     # Client identities must not discover whether an opaque
@@ -119,6 +128,10 @@ def read_remediation_review_queue(
                     type(scoped["engagement_id"]) is not str
                     or scoped["engagement_id"] != engagement_id
                     or type(scoped["client_id"]) is not str
+                    or not 1 <= len(scoped["client_id"]) <= MAX_ID
+                    or scoped["client_id"] != scoped["client_id"].strip()
+                    or not scoped["client_id"].isascii()
+                    or not scoped["client_id"].isprintable()
                 ):
                     raise ValueError("invalid remediation engagement identity")
                 # Exactly the same AccessContext tenant admission primitive

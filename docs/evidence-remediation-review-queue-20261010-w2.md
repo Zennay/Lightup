@@ -124,11 +124,18 @@ replaces this decoder, the adapter inspects each finding's raw JSON
 constructor, insisting on canonical arrays of built-in strings, and
 bounding the query at 129 rows (accepting at most 128), 64 evidence
 references per row and 16,384 JSON characters. **The SQL projection now
-applies `substr(column, 1, MAX+1)` to every decoded source column before
-Python allocates a row:** finding/scope IDs and enums 129 characters, source
+applies `substr(column, 1, MAX+1)` to every decoded finding column **and to
+engagement client IDs** before Python allocates a row:** finding/scope IDs
+and enums 129 characters, source
 text/timestamps 8,193 characters, raw evidence JSON 16,385 characters.
 If a value exceeds the allowed budget, the extra character makes the
-existing size check fail closed; the oversized full field never needs to be
+existing size check fail closed; the oversized engagement client ID is
+rejected **before** reading any finding. A disposable SQLite regression
+stores a 300k-character valid foreign-key client identifier to exercise
+this formerly uncapped boundary. Operator errors remain generic and no
+source remediation or evidence is changed. This adjustment does not
+authenticate the operator or grant engagement access. Other oversized
+source fields also fail closed; the oversized full field never needs to be
 materialized by Python. This does not bound SQLite's internal read/sort
 workload or replace system-level DB resource controls. Source parsing and
 ordinary `sqlite3.DatabaseError` storage failures are reduced to a generic

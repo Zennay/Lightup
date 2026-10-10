@@ -416,6 +416,38 @@ class RemediationReviewSourceTests(unittest.TestCase):
         self.assertNotIn("private-path-secret", str(caught.exception))
         self.assertIsNone(caught.exception.__cause__)
 
+    def test_oversized_engagement_tenant_denied_before_decoding_findings(self):
+        # The engagement's client_id was the one remaining unbounded SELECT.
+        # A valid synthetic FK target preserves SQLite integrity while its
+        # length tests whether a corrupt legacy row reaches Python unbounded.
+        oversized = "synthetic-" + "X" * 300000
+        with self.store._connect() as writer:
+            writer.execute(
+                "INSERT INTO clients(client_id,name,status,created_at) "
+                "VALUES(?,?,?,?)",
+                (oversized, "Synthetic oversized client", "active",
+                 "2026-10-10T00:00:00Z"),
+            )
+            writer.execute(
+                "UPDATE engagements SET client_id=? WHERE engagement_id=?",
+                (oversized, self.eng_first.engagement_id),
+            )
+        with patch.object(
+            DomainStore, "_finding_from_row",
+            side_effect=AssertionError("must deny corrupt tenant before decoding"),
+        ):
+            with self.assertRaisesRegex(
+                ValueError, "^remediation evidence read integrity invalid$"
+            ) as caught:
+                self._read(ctx=self.operator)
+        self.assertNotIn("synthetic-", str(caught.exception))
+        with self.store._connect() as con:
+            actual_length = con.execute(
+                "SELECT length(client_id) FROM engagements "
+                "WHERE engagement_id=?", (self.eng_first.engagement_id,),
+            ).fetchone()[0]
+        self.assertEqual(actual_length, len(oversized))
+
     def test_bounded_projection_preserves_valid_8192_character_source(self):
         long_text = "修" * 8192
         with self.store._connect() as writer:
