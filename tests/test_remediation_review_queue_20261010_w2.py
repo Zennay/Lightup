@@ -255,10 +255,10 @@ class RemediationQueueTests(unittest.TestCase):
                 self.assertEqual(first.items, later.items)
                 self.assertNotEqual(first.digest_sha256, later.digest_sha256)
 
-    def test_queue_json_schema_v3_and_pseudonymous_fingerprint_only(self):
+    def test_queue_json_schema_v4_and_pseudonymous_fingerprint_only(self):
         original = queue(finding(remediation="sensitive-text-cannot-escape"))
         payload = json.loads(original.to_json())
-        self.assertEqual(payload["schema_version"], "lightup.remediation_review_queue.v3")
+        self.assertEqual(payload["schema_version"], "lightup.remediation_review_queue.v4")
         self.assertEqual(len(payload["digest_sha256"]), 64)
         self.assertNotIn("sensitive-text-cannot-escape", original.to_json())
         self.assertFalse(payload["release_authorized"])
@@ -321,6 +321,55 @@ class RemediationQueueTests(unittest.TestCase):
                     replace(advisory, **{name: True})
                 with self.assertRaisesRegex(ValueError, "cannot certify"):
                     replace(advisory, **{name: 0})
+
+    def test_overlapping_human_review_actions_are_all_retained(self):
+        overlap = queue(finding(
+            evidence_ids=(), remediation="   ",
+            retest_status=RetestStatus.REGRESSION,
+        ))
+        item = overlap.items[0]
+        self.assertEqual(item.next_review_step, "collect_evidence")
+        self.assertEqual(item.review_actions, (
+            "collect_evidence", "author_remediation", "investigate_regression",
+        ))
+        exported = json.loads(overlap.to_json())
+        self.assertEqual(exported["items"][0]["review_actions"],
+                         list(item.review_actions))
+        self.assertEqual(exported["items"][0]["evidence_verified"], False)
+        self.assertEqual(exported["items"][0]["remediation_authorized"], False)
+        self.assertFalse(overlap.retest_authorized)
+
+    def test_claimed_fixed_without_evidence_still_requires_retest_review(self):
+        result = queue(finding(
+            evidence_ids=(), remediation="", retest_status=RetestStatus.FIXED
+        ))
+        item = result.items[0]
+        self.assertEqual(item.next_review_step, "collect_evidence")
+        self.assertEqual(item.review_actions, (
+            "collect_evidence", "author_remediation", "independent_retest",
+        ))
+        self.assertFalse(item.fix_verified)
+        self.assertFalse(result.release_authorized)
+
+    def test_single_review_action_remains_stable_and_private(self):
+        normal = queue(finding()).items[0]
+        self.assertEqual(normal.review_actions, ("review_remediation",))
+        missing_remediation = queue(finding(remediation="")).items[0]
+        self.assertEqual(missing_remediation.review_actions, ("author_remediation",))
+        self.assertNotIn("client-A", queue(finding()).to_json())
+
+    def test_item_constructor_rejects_forged_review_action_lists(self):
+        item = queue(finding()).items[0]
+        for actions in (
+            (), ("execute_remediation",), ("review_remediation", "collect_evidence"),
+            ("collect_evidence", "collect_evidence"), ("review_remediation",),
+            ["review_remediation"], ("collect_evidence", "author_remediation",
+                                      "investigate_regression", "independent_retest",
+                                      "review_remediation"),
+        ):
+            with self.subTest(actions=repr(actions)[:60]):
+                with self.assertRaisesRegex(ValueError, "invalid remediation"):
+                    replace(item, review_actions=actions)
 
     def test_direct_constructor_rejects_invalid_stage_digest_and_count(self):
         item = queue(finding()).items[0]

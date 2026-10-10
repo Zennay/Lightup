@@ -159,6 +159,24 @@ read from the former tenant is denied), a regression proving neither separate
 `get_engagement` nor `list_findings` is called, corrupt legacy JSON,
 oversized row budgets, mixed-tenant denials and no evidence writes on rejection.
 
+## V4 overlapping review obligations (no executable actions)
+
+The historical V3 `next_review_step` priority is intentionally preserved.
+Previously, a finding with missing evidence AND missing remediation AND a
+regression claim would show only `collect_evidence`, hiding two important
+human-review obligations. Schema `lightup.remediation_review_queue.v4` now
+exports an **ordered `review_actions` list** in each item, in addition to the
+unchanged `next_review_step`. Multiple independent obligations remain
+visible: `collect_evidence`, `author_remediation`, `investigate_regression`,
+`independent_retest`. When none applies the sole action is
+`review_remediation`. Only immutable enumerated human-review hints are
+accepted; duplicate or unknown actions, inconsistent priority, and attempts
+to treat `review_remediation` as an extra authorization step fail closed.
+The queue digest includes the ordered action list and the revised schema,
+so V3 hashes are not silently reused. The action list contains no raw
+remediation, target, evidence references or consent and **cannot execute
+anything**.
+
 ## In-memory view-model and SQLite read-only safety
 
 The two immutable dataclasses now check their own constructor invariants:

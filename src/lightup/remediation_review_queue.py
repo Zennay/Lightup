@@ -18,7 +18,7 @@ MAX_FINDINGS = 128
 MAX_EVIDENCE_IDS = 64
 MAX_TEXT = 8192
 MAX_ID = 128
-REVIEW_QUEUE_SCHEMA_VERSION = "lightup.remediation_review_queue.v3"
+REVIEW_QUEUE_SCHEMA_VERSION = "lightup.remediation_review_queue.v4"
 
 _SEVERITY_RANK = {
     Severity.CRITICAL: 0,
@@ -51,6 +51,7 @@ class RemediationReviewItem:
     claimed_retest_status: RetestStatus
     next_review_step: str
     referenced_evidence_count: int
+    review_actions: tuple[str, ...]
     evidence_verified: bool = False
     fix_verified: bool = False
     remediation_authorized: bool = False
@@ -70,6 +71,16 @@ class RemediationReviewItem:
             or self.next_review_step not in _STAGE_RANK
             or type(self.referenced_evidence_count) is not int
             or not 0 <= self.referenced_evidence_count <= MAX_EVIDENCE_IDS
+            or type(self.review_actions) is not tuple
+            or not 1 <= len(self.review_actions) <= 4
+            or any(type(action) is not str or action not in _STAGE_RANK
+                   for action in self.review_actions)
+            or len(set(self.review_actions)) != len(self.review_actions)
+            or tuple(sorted(self.review_actions, key=_STAGE_RANK.__getitem__))
+               != self.review_actions
+            or self.next_review_step != self.review_actions[0]
+            or ("review_remediation" in self.review_actions
+                and len(self.review_actions) != 1)
         ):
             raise ValueError("invalid remediation review advisory item")
 
@@ -119,6 +130,7 @@ class RemediationReviewQueue:
                     "severity": item.severity.value,
                     "claimed_retest_status": item.claimed_retest_status.value,
                     "next_review_step": item.next_review_step,
+                    "review_actions": list(item.review_actions),
                     "referenced_evidence_count": item.referenced_evidence_count,
                     "evidence_verified": False,
                     "fix_verified": False,
@@ -171,16 +183,25 @@ def _has_remediation_text(value: str) -> bool:
     return any(unicodedata.category(char)[0] in {"L", "N"} for char in value)
 
 
-def _step(finding: FindingRecord) -> str:
+def _review_actions(finding: FindingRecord) -> tuple[str, ...]:
+    """Preserve independent human review needs, never execution permission.
+
+    Multiple blockers must not disappear merely because the primary sorting
+    step reports the first one. No evidence/retest/remediation verification
+    is inferred from an action's presence or absence.
+    """
+    actions: list[str] = []
     if not finding.evidence_ids:
-        return "collect_evidence"
+        actions.append("collect_evidence")
     if not _has_remediation_text(finding.remediation):
-        return "author_remediation"
+        actions.append("author_remediation")
     if finding.retest_status is RetestStatus.REGRESSION:
-        return "investigate_regression"
+        actions.append("investigate_regression")
     if finding.retest_status is RetestStatus.FIXED:
-        return "independent_retest"
-    return "review_remediation"
+        actions.append("independent_retest")
+    if not actions:
+        actions.append("review_remediation")
+    return tuple(actions)
 
 
 def build_remediation_review_queue(
@@ -247,11 +268,13 @@ def build_remediation_review_queue(
             ),
             separators=(",", ":"), ensure_ascii=True,
         ).encode("utf-8")).hexdigest()
+        review_actions = _review_actions(finding)
         items.append(RemediationReviewItem(
             finding_key_sha256=key,
             severity=finding.severity,
             claimed_retest_status=finding.retest_status,
-            next_review_step=_step(finding),
+            next_review_step=review_actions[0],
+            review_actions=review_actions,
             referenced_evidence_count=len(references),
         ))
 
@@ -266,6 +289,7 @@ def build_remediation_review_queue(
             item.severity.value,
             item.claimed_retest_status.value,
             item.next_review_step,
+            item.review_actions,
             item.referenced_evidence_count,
             source_fingerprints[item.finding_key_sha256],
         )
