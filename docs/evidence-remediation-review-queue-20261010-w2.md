@@ -90,17 +90,24 @@ publish low-entropy identifiers or their deterministic hashes externally.
 application or web entrypoint. It demands an exact `DomainStore`, an exact
 `AccessContext` created by a separately authenticated trusted caller, and an
 explicit bounded engagement selector (including for operators).
-`DomainStore.get_engagement` enforces tenant access before selection. The
-adapter then uses **one explicit read-only SQLite transaction** (`BEGIN`
-to `ROLLBACK`) to verify the previously authorized engagement identity and
-read a bounded set of findings from that same immutable read snapshot. It
-does not call the legacy `list_findings` second-read path. A concurrent
-WAL writer can commit, but the current advisory retains one consistent
-historical snapshot. The next read sees the newer revision. This is not
-authorization, a lock on the writer, or source authenticity proof. Unknown
-engagement selectors now fail with a generic non-revealing `ValueError`;
-cross-tenant access retains its `TenantIsolationError` class but hides
-client/engagement identifiers in the error string. Denials never repair rows.
+The adapter now performs the same **AccessContext.resolve_client** tenant
+admission used by `DomainStore.get_engagement`, but **inside the same
+explicit `BEGIN` / `ROLLBACK` SQLite snapshot** as the selected
+engagement and its finding/evidence rows. This removes a former
+authorization/data consistency gap: an engagement could change tenants
+between the separate access-check connection and the finding snapshot.
+No separate `get_engagement` or legacy `list_findings` connection is
+called.
+
+A concurrent WAL writer can still commit a reassignment, but a single
+review sees the original tenant and source data from the same snapshot.
+A subsequent read sees the new tenant and denies the old client. This is
+**snapshot-consistent tenant matching**, not proof the caller was actually
+authenticated, not consent to test, and not a guarantee of post-read
+revocation. Only trusted application session construction can supply
+real identity and authority. Unknown engagement selectors fail with a
+generic non-revealing `ValueError`; cross-tenant access retains
+`TenantIsolationError` without source identifiers in the message.
 
 Existing `DomainStore._finding_from_row` may parse legacy persisted
 `evidence_ids_json` objects by iterating their keys and may throw generic
@@ -116,16 +123,15 @@ the generic `ValueError("remediation evidence read integrity invalid")`
 with no raw stored bytes in the exception. The transaction is always
 rolled back; it does not migrate or repair data.
 
-This is only a defensive *read-side adapter*. The finding source snapshot
-is now internally consistent, but the `get_engagement` access decision is
-made on a separate connection before the snapshot and thus **is not an
-atomically authenticated session/authorization transaction**. Other
-code can also mutate state immediately after this read. The adapter does
-not prove evidence, consent, revocation, or verification. Production requires
-the owner-controlled canonical decoder fix (#856/#886), trusted session
-provenance, revision and revocation checks at any action boundary, and
-independent acceptance. It cannot issue grants, contact targets or update
-the durable finding or retest status.
+This is only a defensive *read-side adapter*. Tenant matching and
+the finding/evidence snapshot are internally consistent; **session
+authentication and revocation remain external and non-atomic** to this read.
+Other code can mutate state immediately after returning. This does not prove
+consent, real session provenance, evidence truth, remediation or retest
+verification. Production still requires the owner-controlled canonical
+decoder fix (#856/#886), trusted session provenance, action-time revision/
+revocation checks and independent privacy/security acceptance. This module
+cannot issue grants, contact targets or update durable finding/retest status.
 
 Dedicated offline integration:
 `PYTHONPATH=src python -m unittest discover -s tests -p 'test_remediation_review_source_20261010_w2.py' -v`.
