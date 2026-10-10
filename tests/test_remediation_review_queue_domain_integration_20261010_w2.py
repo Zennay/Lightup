@@ -148,9 +148,16 @@ class RemediationReviewDomainIntegrationTests(unittest.TestCase):
             severity=Severity.CRITICAL,
             asset="lab://remediation-regression",
             impact="private failure details",
-            remediation="",
+            remediation="Synthetic initial human-authored remediation",
             evidence_ids=(),
         )
+        # DomainStore correctly refuses empty remediation at creation; emulate
+        # a legacy/imported incomplete row in this disposable local database.
+        with self.store._connect() as con:
+            con.execute(
+                "UPDATE findings SET remediation='' WHERE finding_id=?",
+                (finding.finding_id,),
+            )
         self.store.set_retest_status(
             self.operator, finding.finding_id, RetestStatus.REGRESSION,
         )
@@ -202,9 +209,16 @@ class RemediationReviewDomainIntegrationTests(unittest.TestCase):
             severity=Severity.CRITICAL,
             asset="lab://claimed-fixed",
             impact="never executed",
-            remediation="",
+            remediation="Synthetic initial human-authored remediation",
             evidence_ids=(),
         )
+        # DomainStore correctly refuses empty remediation at creation; emulate
+        # a legacy/imported incomplete row in this disposable local database.
+        with self.store._connect() as con:
+            con.execute(
+                "UPDATE findings SET remediation='' WHERE finding_id=?",
+                (finding.finding_id,),
+            )
         self.store.set_retest_status(
             self.operator, finding.finding_id, RetestStatus.FIXED,
         )
