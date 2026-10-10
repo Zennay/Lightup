@@ -41,7 +41,7 @@ def _text(value: object, *, max_chars: int) -> bool:
         type(value) is str
         and 0 < len(value) <= max_chars
         and value.strip() == value
-        and not any(ord(char) < 32 or ord(char) == 127 for char in value)
+        and all(char.isprintable() for char in value)
     )
 
 
@@ -53,7 +53,10 @@ def _evidence(items: object) -> set[str] | None:
     for entry in items:
         if not _text(entry, max_chars=_MAX_EVIDENCE_TEXT):
             return None
-        total += len(entry.encode("utf-8"))
+        try:
+            total += len(entry.encode("utf-8"))
+        except UnicodeError:
+            return None
         if total > _MAX_EVIDENCE_BYTES or entry in result:
             return None
         result.add(entry)
