@@ -202,5 +202,36 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
             [ModelRole.VERIFIER, ModelRole.REMEDIATION_ADVISOR],
         )
 
+
+    def test_hidden_control_in_later_current_fix_blocks_entire_model_batch(self):
+        source = fixture()
+        source["findings"].append({
+            **source["findings"][0],
+            "finding": "Untrusted second finding",
+            "fix": "Do not reorder\u202ethe human fix",
+            "evidence_ids": ["synthetic:evidence:2"],
+        })
+        before = copy.deepcopy(source)
+        pipeline, provider = make_pipeline("Safe synthetic advice")
+        with self.assertRaisesRegex(ValueError, "display text is invalid"):
+            review_with_display_safe_advice(pipeline, source)
+        self.assertEqual(provider.requests, [])
+        self.assertEqual(source, before)
+
+    def test_safe_multiline_current_fix_reaches_advisor_unchanged(self):
+        source = fixture()
+        fix = "  Human action one.\n\tStep two: preserve evidence. "
+        source["findings"][0]["fix"] = fix
+        pipeline, provider = make_pipeline("Synthetic safe review.")
+        result = review_with_display_safe_advice(pipeline, source)
+        advisor = next(request for request in provider.requests
+                       if request.role is ModelRole.REMEDIATION_ADVISOR)
+        # The gateway sends the canonical structured payload; it must not
+        # strip, normalize, repair or rewrite the human-authored current fix.
+        import json
+        payload = json.loads(advisor.messages[-1].content)
+        self.assertEqual(payload["current_fix"], fix)
+        self.assertEqual(result.findings[0].remediation_advice, "Synthetic safe review.")
+
 if __name__ == "__main__":
     unittest.main()
