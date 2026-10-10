@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import tempfile
+import sqlite3
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -371,6 +372,21 @@ class RemediationReviewSourceTests(unittest.TestCase):
                                         "^remediation evidence read integrity invalid$"):
                 self._read()
         self.assertEqual(self._raw(), original)
+
+    def test_corrupt_sqlite_storage_failure_does_not_leak_internal_details(self):
+        # Synthetic error from a malformed storage layer: public advisory
+        # errors must not reveal schema/path details or the underlying query.
+        with patch.object(self.store, "_connect",
+                          side_effect=sqlite3.OperationalError(
+                              "private-path-secret: malformed table"
+                          )):
+            with self.assertRaises(ValueError) as caught:
+                self._read()
+        self.assertEqual(
+            str(caught.exception), "remediation evidence read integrity invalid"
+        )
+        self.assertNotIn("private-path-secret", str(caught.exception))
+        self.assertIsNone(caught.exception.__cause__)
 
     def test_bounded_projection_preserves_valid_8192_character_source(self):
         long_text = "修" * 8192
