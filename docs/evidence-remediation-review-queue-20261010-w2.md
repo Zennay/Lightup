@@ -66,31 +66,47 @@ retest certificate, or public privacy/anonymization claim.
 `src/lightup/remediation_review_source.py` is an **opt-in adapter**, not an
 application or web entrypoint. It demands an exact `DomainStore`, an exact
 `AccessContext` created by a separately authenticated trusted caller, and an
-explicit bounded engagement selector (including for operators). It uses
-`DomainStore.get_engagement` tenant access checks and `list_findings`, then
-rechecks all records against the engagement's recorded client.
+explicit bounded engagement selector (including for operators).
+`DomainStore.get_engagement` enforces tenant access before selection. The
+adapter then uses **one explicit read-only SQLite transaction** (`BEGIN`
+to `ROLLBACK`) to verify the previously authorized engagement identity and
+read a bounded set of findings from that same immutable read snapshot. It
+does not call the legacy `list_findings` second-read path. A concurrent
+WAL writer can commit, but the current advisory retains one consistent
+historical snapshot. The next read sees the newer revision. This is not
+authorization, a lock on the writer, or source authenticity proof.
 
 Existing `DomainStore._finding_from_row` may parse legacy persisted
 `evidence_ids_json` objects by iterating their keys and may throw generic
 `JSONDecodeError`/`TypeError` for corrupt input. Until owner #828/#856
-replaces this decoder, the adapter separately reads the selected engagement's
-raw JSON **without writing**, insists on canonical arrays of built-in strings,
-bounds count/size, and reconciles raw evidence tuples against decoded rows.
-Malformed legacy values or mismatched snapshots become a generic
-`ValueError("remediation evidence read integrity invalid")`, with no raw
-stored evidence reflected in the error.
+replaces this decoder, the adapter inspects each finding's raw JSON
+**inside the same read transaction** before invoking the legacy row
+constructor, insisting on canonical arrays of built-in strings, and
+bounding the query at 129 rows (accepting at most 128), 64 evidence
+references per row and 16,384 JSON characters. It verifies every row's
+tenant/engagement identity and raw-versus-decoded tuple, refusing any
+partial review result when one record is corrupt. Malformed data yields
+the generic `ValueError("remediation evidence read integrity invalid")`
+with no raw stored bytes in the exception. The transaction is always
+rolled back; it does not migrate or repair data.
 
-This is only a defensive *read-side adapter*. The two source reads are **not
-an atomic transactional snapshot**, and they do not certify evidence, consent,
-revocation or verification. A production integration requires the source
-owner's canonical decoder fix (#856/#886), authenticated session provenance,
-transactional snapshot/revision safety if review results gain authority,
-and independent acceptance; the helper cannot issue grants, contact targets
-or update the durable finding or retest status.
+This is only a defensive *read-side adapter*. The finding source snapshot
+is now internally consistent, but the `get_engagement` access decision is
+made on a separate connection before the snapshot and thus **is not an
+atomically authenticated session/authorization transaction**. Other
+code can also mutate state immediately after this read. The adapter does
+not prove evidence, consent, revocation, or verification. Production requires
+the owner-controlled canonical decoder fix (#856/#886), trusted session
+provenance, revision and revocation checks at any action boundary, and
+independent acceptance. It cannot issue grants, contact targets or update
+the durable finding or retest status.
 
 Dedicated offline integration:
 `PYTHONPATH=src python -m unittest discover -s tests -p 'test_remediation_review_source_20261010_w2.py' -v`.
-All test databases are disposable and local.
+All test databases are disposable and local. Its checks include a
+**concurrent WAL writer regression** (one read sees exactly one historical
+revision, the next sees the new one), corrupt legacy JSON, oversized row
+budgets, denial of mixed-tenant rows, and no evidence writes on rejection.
 
 ## Explicit non-authority and collision fence
 
