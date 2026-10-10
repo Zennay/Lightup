@@ -226,12 +226,6 @@ def review_with_display_safe_advice(
         raise ValueError("review batch requires at least one finding")
     if checked["target"] is None and not checked["targets"]:
         raise ValueError("review batch requires explicit target context")
-    # The canonical pipeline silently prefers "target" over "targets".
-    # A conflicting second source would be ignored in all role prompts.
-    if checked["target"] is not None and checked["targets"] not in (
-        [], [checked["target"]]
-    ):
-        raise ValueError("review batch has conflicting target context")
     # Complete the entire input-display audit before the first model call:
     # a malformed current fix in a *later* finding must never dispatch an
     # earlier finding to any model provider. Keep the W5 detached snapshot.
@@ -266,6 +260,15 @@ def review_with_display_safe_advice(
             total_input_bytes += len(value.encode("utf-8"))
             if total_input_bytes > _MAX_TOTAL_INPUT_BYTES:
                 raise ValueError("review input batch byte limit exceeded")
+    # Run display validation first: a control/bidi byte in a target must
+    # yield the deterministic display rejection, not be obscured by a second
+    # unrelated target-conflict error.
+    # The canonical pipeline silently prefers "target" over "targets", so a
+    # well-shaped yet conflicting root label would be ignored in its prompts.
+    if checked["target"] is not None and checked["targets"] not in (
+        [], [checked["target"]]
+    ):
+        raise ValueError("review batch has conflicting target context")
     # The default pipeline accepts a finding-local target override without
     # checking whether it belongs to the declared review target set. A
     # multi-target fallback also turns an unspecified finding target into the
