@@ -727,5 +727,68 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
                 )
                 self.assertEqual(source, original)
 
+    def test_five_bounded_verifier_replies_exceed_aggregate_verdict_limit(self):
+        source = fixture()
+        first = source["findings"][0]
+        source["findings"] = [
+            {**first, "finding": "Synthetic " + str(i),
+             "evidence_ids": ["synthetic:evidence:" + str(i)]}
+            for i in range(5)
+        ]
+        original = copy.deepcopy(source)
+        pipeline, provider = make_pipeline("Simple human review")
+        provider._script[ModelRole.VERIFIER] = ["UNCERTAIN " + "x" * 8182] * 5
+        provider._script[ModelRole.REMEDIATION_ADVISOR] = ["Check manually"] * 5
+        with self.assertRaisesRegex(ValueError, "verdict batch limit exceeded"):
+            review_with_display_safe_advice(pipeline, source)
+        self.assertEqual(source, original)
+        self.assertEqual(
+            [request.role for request in provider.requests],
+            [role for _ in range(4) for role in
+             (ModelRole.VERIFIER, ModelRole.REMEDIATION_ADVISOR)]
+            + [ModelRole.VERIFIER],
+        )
+        self.assertNotIn(
+            ModelRole.REPORT_SYNTHESIZER,
+            [request.role for request in provider.requests],
+        )
+
+    def test_four_full_verifier_replies_fit_exact_total_byte_budget(self):
+        source = fixture()
+        first = source["findings"][0]
+        source["findings"] = [
+            {**first, "finding": "Synthetic " + str(i),
+             "evidence_ids": ["synthetic:evidence:" + str(i)]}
+            for i in range(4)
+        ]
+        pipeline, provider = make_pipeline("Simple human review")
+        provider._script[ModelRole.VERIFIER] = ["UNCERTAIN " + "x" * 8182] * 4
+        provider._script[ModelRole.REMEDIATION_ADVISOR] = ["Check manually"] * 4
+        result = review_with_display_safe_advice(pipeline, source)
+        self.assertEqual(len(result.findings), 4)
+        self.assertEqual(
+            [request.role for request in provider.requests].count(
+                ModelRole.REPORT_SYNTHESIZER
+            ), 1,
+        )
+
+    def test_multibyte_verifier_budget_uses_encoded_bytes(self):
+        source = fixture()
+        first = source["findings"][0]
+        source["findings"] = [
+            {**first, "finding": "Synthetic " + str(i),
+             "evidence_ids": ["synthetic:evidence:" + str(i)]}
+            for i in range(5)
+        ]
+        pipeline, provider = make_pipeline("Simple human review")
+        provider._script[ModelRole.VERIFIER] = ["UNCERTAIN " + "🧪" * 2045] * 5
+        provider._script[ModelRole.REMEDIATION_ADVISOR] = ["Check manually"] * 5
+        with self.assertRaisesRegex(ValueError, "verdict batch limit exceeded"):
+            review_with_display_safe_advice(pipeline, source)
+        self.assertNotIn(
+            ModelRole.REPORT_SYNTHESIZER,
+            [request.role for request in provider.requests],
+        )
+
 if __name__ == "__main__":
     unittest.main()
