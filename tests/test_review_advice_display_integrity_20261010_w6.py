@@ -275,7 +275,7 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
     def test_safe_unicode_review_inputs_are_not_changed(self):
         source = fixture()
         source["target"] = "lab://synthétique"
-        source["targets"] = ["lab://合成"]
+        source["targets"] = ["lab://synthétique"]
         source["findings"][0]["finding"] = "Évaluation synthétique"
         source["findings"][0]["impact"] = "测试摘要"
         source["findings"][0]["evidence_summary"] = "Échantillon contrôlé"
