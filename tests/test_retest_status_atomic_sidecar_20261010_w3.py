@@ -79,11 +79,19 @@ class AtomicRetestMetadataSidecarTest(unittest.TestCase):
         )
         self.assertEqual(result.evidence_ids, ())
 
-    def test_all_synthetic_enum_states_are_metadata_only(self):
-        for status in RetestStatus:
+    def test_only_review_pending_states_are_metadata_only(self):
+        for status in (RetestStatus.NOT_TESTED, RetestStatus.FIX_PENDING):
             with self.subTest(status=status):
                 result = self._transition(status)
                 self.assertIs(result.retest_status, status)
+
+    def test_unverified_retest_outcomes_cannot_be_minted(self):
+        before = self._full_row()
+        for status in (RetestStatus.FIXED, RetestStatus.REGRESSION):
+            with self.subTest(status=status):
+                with self.assertRaisesRegex(ValueError, "independent retest evidence"):
+                    self._transition(status)
+                self.assertEqual(self._full_row(), before)
 
     def test_malformed_evidence_rejection_is_atomic(self):
         cases = (
@@ -123,7 +131,7 @@ class AtomicRetestMetadataSidecarTest(unittest.TestCase):
         before = (self._row(), self._row(other.finding_id))
         with self.assertRaises(KeyError):
             atomic_retest_status_metadata(
-                self.store, self.operator, "not-a-real-finding", RetestStatus.FIXED
+                self.store, self.operator, "not-a-real-finding", RetestStatus.FIX_PENDING
             )
         self.assertEqual((self._row(), self._row(other.finding_id)), before)
 
