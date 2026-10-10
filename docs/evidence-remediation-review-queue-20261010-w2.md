@@ -19,7 +19,11 @@ any other worker's code.
   consistency; 128 findings / 64 unique evidence references per finding;
 - severity-first review priority (critical before high before lower severities);
 - zero evidence: `collect_evidence`; evidence but missing fix text:
-  `author_remediation`; regression claim: `investigate_regression`;
+  `author_remediation`; format-control / zero-width / combining-mark /
+  punctuation- or emoji-only "remediation" also remains
+  `author_remediation` (no letter/number, including non-Latin scripts).
+  Human-authored Unicode letters/numbers are counted as text presence,
+  never trusted as proof of a fix; regression claim: `investigate_regression`;
   status `fixed`: `independent_retest`; everything else:
   `review_remediation`;
 - no inference that `fixed` means retested, externally verified, safe to
@@ -137,8 +141,11 @@ Dedicated offline integration:
 `PYTHONPATH=src python -m unittest discover -s tests -p 'test_remediation_review_source_20261010_w2.py' -v`.
 All test databases are disposable and local. Its checks include a
 **concurrent WAL writer regression** (one read sees exactly one historical
-revision, the next sees the new one), corrupt legacy JSON, oversized row
-budgets, denial of mixed-tenant rows, and no evidence writes on rejection.
+revision, the next sees the new one), a **WAL tenant-reassignment regression**
+(the first read only uses its original tenant-snapshot identity, and a second
+read from the former tenant is denied), a regression proving neither separate
+`get_engagement` nor `list_findings` is called, corrupt legacy JSON,
+oversized row budgets, mixed-tenant denials and no evidence writes on rejection.
 
 ## Explicit non-authority and collision fence
 
