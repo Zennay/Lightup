@@ -34,6 +34,12 @@ _STAGE_RANK = {
     "review_remediation": 4,
 }
 
+_HEX = frozenset("0123456789abcdef")
+
+
+def _digest_shaped(value: object) -> bool:
+    return type(value) is str and len(value) == 64 and all(c in _HEX for c in value)
+
 
 @dataclass(frozen=True)
 class RemediationReviewItem:
@@ -48,6 +54,24 @@ class RemediationReviewItem:
     fix_verified: bool = False
     remediation_authorized: bool = False
 
+    def __post_init__(self) -> None:
+        # In-memory review models must not be directly constructed as positive
+        # evidence/authorization objects, even if the caller skips our builder.
+        if any(value is not False for value in (
+            self.evidence_verified, self.fix_verified, self.remediation_authorized,
+        )):
+            raise ValueError("review advisory cannot certify evidence, fix or execution")
+        if (
+            not _digest_shaped(self.finding_key_sha256)
+            or type(self.severity) is not Severity
+            or type(self.claimed_retest_status) is not RetestStatus
+            or type(self.next_review_step) is not str
+            or self.next_review_step not in _STAGE_RANK
+            or type(self.referenced_evidence_count) is not int
+            or not 0 <= self.referenced_evidence_count <= MAX_EVIDENCE_IDS
+        ):
+            raise ValueError("invalid remediation review advisory item")
+
 
 @dataclass(frozen=True)
 class RemediationReviewQueue:
@@ -58,6 +82,31 @@ class RemediationReviewQueue:
     remediation_authorized: bool = False
     retest_authorized: bool = False
     release_authorized: bool = False
+
+    def __post_init__(self) -> None:
+        # A frozen dataclass is a view model, NOT a security trust boundary.
+        # Reject ordinary direct-construction attempts to set any positive
+        # authority flag or insert arbitrary forged review steps.
+        if any(value is not False for value in (
+            self.authorization_verified, self.evidence_verified,
+            self.remediation_authorized, self.retest_authorized,
+            self.release_authorized,
+        )):
+            raise ValueError("review advisory cannot certify authorization or release")
+        if (
+            type(self.items) is not tuple or len(self.items) > MAX_FINDINGS
+            or any(type(item) is not RemediationReviewItem for item in self.items)
+            or not _digest_shaped(self.digest_sha256)
+            or len({item.finding_key_sha256 for item in self.items}) != len(self.items)
+        ):
+            raise ValueError("invalid remediation review advisory queue")
+        if any(
+            item.evidence_verified is not False
+            or item.fix_verified is not False
+            or item.remediation_authorized is not False
+            for item in self.items
+        ):
+            raise ValueError("review advisory cannot certify item evidence or fix")
 
     def to_json(self) -> str:
         """Deterministic privacy-minimal advisory; never embeds source text."""

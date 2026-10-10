@@ -68,6 +68,10 @@ def read_remediation_review_queue(
 
     try:
         with store._connect() as connection:
+            # An extra defense on this disposable connection: even if a later
+            # consumer accidentally adds SQL writes to this advisory path,
+            # SQLite itself refuses them. This does not grant any authority.
+            connection.execute("PRAGMA query_only=ON")
             # DomainStore._connect runs SQLite in autocommit; pin the *tenant
             # admission* and all source records to one version at the first
             # SELECT. A trusted caller must construct context from an

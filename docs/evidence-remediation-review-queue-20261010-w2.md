@@ -159,6 +159,27 @@ read from the former tenant is denied), a regression proving neither separate
 `get_engagement` nor `list_findings` is called, corrupt legacy JSON,
 oversized row budgets, mixed-tenant denials and no evidence writes on rejection.
 
+## In-memory view-model and SQLite read-only safety
+
+The two immutable dataclasses now check their own constructor invariants:
+`RemediationReviewItem` denies any positive evidence/fix/authorization
+flag, invalid review stage, malformed pseudonymous key or out-of-range
+evidence count. `RemediationReviewQueue` denies positive authorization,
+retest, release or evidence flags, malformed digests, duplicate items and
+noncanonical item types. These fail even with direct dataclass construction
+or `dataclasses.replace`, instead of relying exclusively on the builder.
+A frozen dataclass and SHA-256 fingerprint are **not authentication**; hostile
+Python code can still mutate or fabricate objects and must never be treated
+as an authority source. Only real independently verified session/consent
+and durable evidence can grant anything.
+
+The opt-in database adapter additionally sets `PRAGMA query_only=ON` on its
+own temporary SQLite connection before `BEGIN`. This denies accidental
+SQL writes on the review connection at SQLite level; `ROLLBACK` still runs
+on both successful and rejected reads. Tests deliberately attempt an
+`UPDATE` from inside row decoding and verify SQLite refuses it, while the
+read-only review succeeds with zero row mutation.
+
 ## Explicit non-authority and collision fence
 
 The pure queue builder requires authenticated tenant-specific selection.

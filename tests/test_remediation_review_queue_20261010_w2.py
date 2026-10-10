@@ -10,6 +10,8 @@ from lightup.models import RetestStatus, Severity
 from lightup.remediation_review_queue import (
     MAX_EVIDENCE_IDS,
     MAX_FINDINGS,
+    RemediationReviewItem,
+    RemediationReviewQueue,
     build_remediation_review_queue,
 )
 
@@ -297,6 +299,64 @@ class RemediationQueueTests(unittest.TestCase):
         self.assertNotEqual(first.items[0].finding_key_sha256,
                             changed_engagement.items[0].finding_key_sha256)
 
+
+    def test_item_direct_constructor_rejects_positive_verification_flags(self):
+        item = queue(finding()).items[0]
+        for name in ("evidence_verified", "fix_verified", "remediation_authorized"):
+            with self.subTest(flag=name):
+                with self.assertRaisesRegex(ValueError, "cannot certify"):
+                    replace(item, **{name: True})
+                with self.assertRaisesRegex(ValueError, "cannot certify"):
+                    replace(item, **{name: 0})
+
+    def test_queue_direct_constructor_rejects_positive_authority_flags(self):
+        advisory = queue(finding())
+        for name in (
+            "authorization_verified", "evidence_verified",
+            "remediation_authorized", "retest_authorized", "release_authorized",
+        ):
+            with self.subTest(flag=name):
+                with self.assertRaisesRegex(ValueError, "cannot certify"):
+                    replace(advisory, **{name: True})
+                with self.assertRaisesRegex(ValueError, "cannot certify"):
+                    replace(advisory, **{name: 0})
+
+    def test_direct_constructor_rejects_invalid_stage_digest_and_count(self):
+        item = queue(finding()).items[0]
+        for kwargs in (
+            {"next_review_step": "execute_fix"},
+            {"next_review_step": ""},
+            {"referenced_evidence_count": -1},
+            {"referenced_evidence_count": 65},
+            {"referenced_evidence_count": True},
+            {"finding_key_sha256": "A" * 64},
+            {"severity": "high"},
+            {"claimed_retest_status": "fixed"},
+        ):
+            with self.subTest(kwargs=kwargs):
+                with self.assertRaisesRegex(ValueError, "invalid remediation"):
+                    replace(item, **kwargs)
+        review = queue(finding())
+        for kwargs in (
+            {"digest_sha256": "bad"},
+            {"items": [item]},
+            {"items": (item, item)},
+            {"items": tuple([item] * 129)},
+        ):
+            with self.subTest(kwargs=str(kwargs)[:80]):
+                with self.assertRaisesRegex(ValueError, "invalid remediation"):
+                    replace(review, **kwargs)
+
+    def test_queue_direct_constructor_rejects_item_subclass(self):
+        class SubItem(RemediationReviewItem):
+            pass
+        item = queue(finding()).items[0]
+        forged = SubItem(**item.__dict__)
+        with self.assertRaisesRegex(ValueError, "invalid remediation"):
+            RemediationReviewQueue(
+                items=(forged,),
+                digest_sha256=queue(finding()).digest_sha256,
+            )
 
 
 if __name__ == "__main__":

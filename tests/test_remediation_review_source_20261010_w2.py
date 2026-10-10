@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import tempfile
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -413,6 +414,38 @@ class RemediationReviewSourceTests(unittest.TestCase):
                     self._read()
                 self.assertEqual(self._raw(), before)
 
+
+    def test_sqlite_query_only_pragma_blocks_accidental_advisory_writes(self):
+        original_connect = self.store._connect
+        decoder = DomainStore._finding_from_row
+        seen = []
+
+        @contextmanager
+        def intercept_connection():
+            with original_connect() as connection:
+                seen.append(connection)
+                yield connection
+
+        def observe_readonly(row):
+            connection = seen[-1]
+            self.assertEqual(
+                connection.execute("PRAGMA query_only").fetchone()[0], 1
+            )
+            with self.assertRaises(sqlite3.OperationalError):
+                connection.execute(
+                    "UPDATE findings SET remediation=? WHERE finding_id=?",
+                    ("SHOULD-NOT-PERSIST", self.row_first.finding_id),
+                )
+            return decoder(row)
+
+        before = self._raw()
+        with patch.object(self.store, "_connect", new=intercept_connection):
+            with patch.object(DomainStore, "_finding_from_row",
+                              side_effect=observe_readonly):
+                result = self._read()
+        self.assertEqual(len(result.items), 1)
+        self.assertEqual(len(seen), 1)
+        self.assertEqual(self._raw(), before)
 
 
 if __name__ == "__main__":
