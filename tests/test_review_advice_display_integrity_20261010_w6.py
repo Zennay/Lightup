@@ -177,5 +177,30 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
             review_with_display_safe_advice(object(), fixture())
 
 
+
+    def test_rejected_advice_never_leaks_private_text_in_error(self):
+        marker = "offline-private-test-marker-do-not-publish"
+        pipeline, provider = make_pipeline(marker + "\u202e")
+        source = fixture()
+        with self.assertRaises(ValueError) as caught:
+            review_with_display_safe_advice(pipeline, source)
+        self.assertEqual(str(caught.exception), "remediation advice display text is invalid")
+        self.assertNotIn(marker, str(caught.exception))
+        self.assertNotIn(ModelRole.REPORT_SYNTHESIZER,
+                         [request.role for request in provider.requests])
+
+    def test_untrusted_advice_subclass_never_invokes_user_text_methods(self):
+        class CallbackText(str):
+            def strip(self, *args, **kwargs):
+                raise AssertionError("untrusted model output callback invoked")
+
+        pipeline, provider = make_pipeline(CallbackText("looks printable"))
+        with self.assertRaisesRegex(ValueError, "invalid bounded advice"):
+            review_with_display_safe_advice(pipeline, fixture())
+        self.assertEqual(
+            [request.role for request in provider.requests],
+            [ModelRole.VERIFIER, ModelRole.REMEDIATION_ADVISOR],
+        )
+
 if __name__ == "__main__":
     unittest.main()
