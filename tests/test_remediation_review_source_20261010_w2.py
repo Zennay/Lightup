@@ -131,6 +131,26 @@ class RemediationReviewSourceTests(unittest.TestCase):
                 )
                 self.assertEqual(self._raw(), before)
 
+    def test_legacy_blank_finding_title_blocks_review_without_source_repair(self):
+        # New DomainStore writes already reject missing titles; simulate
+        # damaged historic persisted text without touching production code.
+        with self.store._connect() as writer:
+            writer.execute(
+                "UPDATE findings SET title=? WHERE finding_id=?",
+                ("  ", self.row_first.finding_id),
+            )
+        before = self._raw()
+        with self.assertRaisesRegex(
+            ValueError, "^remediation evidence read integrity invalid$"
+        ):
+            self._read()
+        self.assertEqual(before, self._raw())
+        with self.store._connect() as con:
+            self.assertEqual(con.execute(
+                "SELECT title FROM findings WHERE finding_id=?",
+                (self.row_first.finding_id,),
+            ).fetchone()[0], "  ")
+
     def test_corrupt_cross_tenant_finding_owner_row_fails_closed_without_write(self):
         self._corrupt("client_id", self.second.client_id)
         before = self._raw()

@@ -215,6 +215,16 @@ These counts reveal tenant workload/status and must remain inside a trusted
 engagement-scoped interface; they are not safe for public telemetry or
 unauthenticated dashboards.
 
+### Legacy title-integrity guard
+
+The pure queue builder also enforces the source-owned `DomainStore`
+creation rule that a finding title must be nonblank. Missing/whitespace-only
+titles in malformed historical rows fail with a generic integrity error
+before any review is published. The opt-in adapter never repairs the
+stored record. Disposable-SQLite regressions intentionally corrupt only
+a synthetic title and verify fail-closed with zero mutation. This does not
+verify finding origin, evidence or remediation.
+
 ### Per-action human-review filtering
 
 `RemediationReviewQueue.items_needing_review_action(action)` is a pure,

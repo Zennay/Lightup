@@ -195,6 +195,16 @@ class RemediationQueueTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "findings"):
             queue(*rows)
 
+    def test_blank_legacy_finding_titles_are_not_valid_review_entries(self):
+        for title in ("", " ", "  \t  ", "\n"):
+            with self.subTest(title=repr(title)):
+                with self.assertRaisesRegex(
+                    ValueError, "^invalid remediation review finding title$"
+                ) as caught:
+                    queue(finding(title=title))
+                self.assertNotIn("client-A", str(caught.exception))
+        self.assertEqual(len(queue(finding(title="Synthetic valid title")).items), 1)
+
     def test_rejects_mutable_or_polymorphic_source_text(self):
         class StrChild(str):
             pass

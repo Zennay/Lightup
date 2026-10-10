@@ -280,7 +280,12 @@ def build_remediation_review_queue(
             type(finding.retest_status) is not RetestStatus
         ):
             raise ValueError("invalid remediation review status")
-        _source_text(finding.title)
+        title = _source_text(finding.title)
+        # DomainStore.record_finding refuses a missing title on creation.
+        # Refuse corrupted/legacy blank titles on read as well: a nameless
+        # finding is not safely attributable to a human-review obligation.
+        if not title.strip():
+            raise ValueError("invalid remediation review finding title")
         _source_text(finding.asset)
         _source_text(finding.impact)
         _source_text(finding.remediation)
