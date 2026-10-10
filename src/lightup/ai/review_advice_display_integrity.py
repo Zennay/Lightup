@@ -16,6 +16,7 @@ from .review_batch_preflight import preflight_review_batch
 
 _MAX_TEXT_CHARS = 8192
 _MAX_TEXT_BYTES = 16384
+_MAX_TOTAL_ADVISOR_BYTES = 32768
 _ALLOWED_LAYOUT = frozenset(("\n", "\t"))
 
 
@@ -85,6 +86,7 @@ class _DisplaySafeAdviceGateway:
         self._delegate = _AdvisoryResponseGuard(_SanitizedProviderGateway(gateway))
         self._gateway = gateway
         self._pinned_providers: dict[str, object] = {}
+        self._total_advisor_bytes = 0
         # A model/provider must not silently rebind a later role during the
         # verifier -> advisor -> report sequence. Freeze all three identities
         # before the *first* provider call; recheck before and after dispatch.
@@ -167,6 +169,13 @@ class _DisplaySafeAdviceGateway:
             raise ValueError("review model response identity is invalid")
         if role is ModelRole.REMEDIATION_ADVISOR:
             checked_remediation_display_text(response.content)
+            # Every answer may be individually bounded while the total
+            # client-facing report prompt still grows across 128 findings.
+            # Refuse excessive cumulative advice before report synthesis.
+            next_size = self._total_advisor_bytes + len(response.content.encode("utf-8"))
+            if next_size > _MAX_TOTAL_ADVISOR_BYTES:
+                raise ValueError("remediation review advice batch limit exceeded")
+            self._total_advisor_bytes = next_size
         else:
             try:
                 checked_remediation_display_text(response.content)
