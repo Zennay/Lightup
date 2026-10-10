@@ -140,11 +140,15 @@ def atomic_retest_status_metadata(
             # A metadata-only lane has authority to advance an untested
             # finding into human review, not to erase a previously recorded
             # retest outcome or roll a pending review back to NOT_TESTED.
-            if previous.retest_status in (
-                RetestStatus.FIXED, RetestStatus.REGRESSION
-            ) or (
-                previous.retest_status is RetestStatus.FIX_PENDING
-                and status is RetestStatus.NOT_TESTED
+            if (
+                type(previous.retest_status) is not RetestStatus
+                or previous.retest_status not in (
+                    RetestStatus.NOT_TESTED, RetestStatus.FIX_PENDING
+                )
+                or (
+                    previous.retest_status is RetestStatus.FIX_PENDING
+                    and status is RetestStatus.NOT_TESTED
+                )
             ):
                 raise ValueError("retest metadata transition requires review")
             # Repeat submissions must not produce fresh audit events,
