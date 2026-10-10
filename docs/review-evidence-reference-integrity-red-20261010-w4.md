@@ -29,3 +29,11 @@ expected failures must **never** be described as proof of a production fix.
 Ownership: PR #846 keeps `src/lightup/ai/pipeline.py`; add-only regression
 suite and documentation here. No real model, targets, authorization, live
 verdict, remediation, network, deployment or production data.
+
+## Batch-atomic model-dispatch boundary
+
+If the second finding carries a duplicate evidence reference, the first
+finding must **not** have been emitted to the verifier already. Admission
+must preflight the *entire* result before the first model request: validating
+inside the per-finding model loop is too late. The dedicated second-finding
+RED canary documents that failure, including input preservation.
