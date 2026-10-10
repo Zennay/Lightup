@@ -120,7 +120,14 @@ replaces this decoder, the adapter inspects each finding's raw JSON
 **inside the same read transaction** before invoking the legacy row
 constructor, insisting on canonical arrays of built-in strings, and
 bounding the query at 129 rows (accepting at most 128), 64 evidence
-references per row and 16,384 JSON characters. It verifies every row's
+references per row and 16,384 JSON characters. **The SQL projection now
+applies `substr(column, 1, MAX+1)` to every decoded source column before
+Python allocates a row:** finding/scope IDs and enums 129 characters, source
+text/timestamps 8,193 characters, raw evidence JSON 16,385 characters.
+If a value exceeds the allowed budget, the extra character makes the
+existing size check fail closed; the oversized full field never needs to be
+materialized by Python. This does not bound SQLite's internal read/sort
+workload or replace system-level DB resource controls. It verifies every row's
 tenant/engagement identity and raw-versus-decoded tuple, refusing any
 partial review result when one record is corrupt. Malformed data yields
 the generic `ValueError("remediation evidence read integrity invalid")`
