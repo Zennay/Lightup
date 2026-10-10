@@ -61,7 +61,7 @@ class RemediationReviewQueue:
     def to_json(self) -> str:
         """Deterministic privacy-minimal advisory; never embeds source text."""
         return json.dumps({
-            "schema_version": "lightup.remediation_review_queue.v1",
+            "schema_version": "lightup.remediation_review_queue.v2",
             "items": [
                 {
                     "finding_key_sha256": item.finding_key_sha256,
@@ -141,6 +141,7 @@ def build_remediation_review_queue(
 
     seen: set[str] = set()
     items: list[RemediationReviewItem] = []
+    source_fingerprints: dict[str, str] = {}
     for finding in findings:
         if type(finding) is not FindingRecord:
             raise ValueError("invalid remediation review finding type")
@@ -169,6 +170,19 @@ def build_remediation_review_queue(
             ("lightup-review-v1\\0" + client_id + "\\0" + engagement_id + "\\0" + finding_id)
             .encode("utf-8")
         ).hexdigest()
+        # Bind the advisory digest to the *actual ordered evidence identities*
+        # and full source record, not only the evidence count / display step.
+        # This is change detection only: hashes never prove evidence truth,
+        # data origin, authorization or independent retest verification.
+        source_fingerprints[key] = sha256(json.dumps(
+            (
+                finding_id, finding.title, finding.asset, finding.impact,
+                finding.remediation, finding.created_at,
+                finding.severity.value, finding.retest_status.value,
+                references,
+            ),
+            separators=(",", ":"), ensure_ascii=True,
+        ).encode("utf-8")).hexdigest()
         items.append(RemediationReviewItem(
             finding_key_sha256=key,
             severity=finding.severity,
@@ -189,10 +203,19 @@ def build_remediation_review_queue(
             item.claimed_retest_status.value,
             item.next_review_step,
             item.referenced_evidence_count,
+            source_fingerprints[item.finding_key_sha256],
         )
         for item in ordered
     ]
+    # Even an empty queue must be scoped: its digest must not be reusable
+    # across clients / engagements with different trusted selectors.
     digest = sha256(json.dumps(
-        canonical, separators=(",", ":"), ensure_ascii=True,
+        {
+            "schema_version": "lightup.remediation_review_queue.v2",
+            "client_id": client_id,
+            "engagement_id": engagement_id,
+            "records": canonical,
+        },
+        sort_keys=True, separators=(",", ":"), ensure_ascii=True,
     ).encode("utf-8")).hexdigest()
     return RemediationReviewQueue(items=ordered, digest_sha256=digest)
