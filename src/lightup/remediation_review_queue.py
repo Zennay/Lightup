@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from hashlib import sha256
 import json
+import unicodedata
 
 from .domain import FindingRecord
 from .models import RetestStatus, Severity
@@ -110,10 +111,20 @@ def _evidence(value: object) -> tuple[str, ...]:
     return value
 
 
+def _has_remediation_text(value: str) -> bool:
+    """Require at least one visible letter/number, not just format controls.
+
+    This is a *text-presence* hint, not evidence that a fix is correct or
+    human-approved. Supports non-Latin letters while ignoring invisible
+    format characters, isolated marks, punctuation and emoji-only strings.
+    """
+    return any(unicodedata.category(char)[0] in {"L", "N"} for char in value)
+
+
 def _step(finding: FindingRecord) -> str:
     if not finding.evidence_ids:
         return "collect_evidence"
-    if not finding.remediation.strip():
+    if not _has_remediation_text(finding.remediation):
         return "author_remediation"
     if finding.retest_status is RetestStatus.REGRESSION:
         return "investigate_regression"
