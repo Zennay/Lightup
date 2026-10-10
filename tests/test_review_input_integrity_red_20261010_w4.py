@@ -110,6 +110,21 @@ class ReviewEvidenceReferenceIntegrityTest(unittest.TestCase):
         self.assertEqual(provider.requests, [])
 
 
+    @unittest.expectedFailure  # RED: whole-batch preflight must precede model I/O
+    def test_duplicate_in_second_finding_does_not_emit_first_finding(self):
+        source = _fixture()
+        second = copy.deepcopy(source["findings"][0])
+        second["finding"] = "Second synthetic observation"
+        second["evidence_ids"] = ["evidence:repeat", "evidence:repeat"]
+        source["findings"].append(second)
+        untouched = copy.deepcopy(source)
+        provider = RecordingOfflineProvider()
+
+        with self.assertRaises(ValueError):
+            _pipeline(provider).review(source)
+        self.assertEqual(provider.requests, [])
+        self.assertEqual(source, untouched)
+
 class ReviewCurrentFixIntegrityTest(unittest.TestCase):
     """#901: input must be a canonical nonblank builtin string before models."""
 
@@ -169,6 +184,21 @@ class ReviewCurrentFixIntegrityTest(unittest.TestCase):
     def test_bytes_fix_denied_pre_model(self):
         self._rejected_before_model(b"not JSON-safe text")
 
+
+    @unittest.expectedFailure  # RED: whole-batch preflight must precede model I/O
+    def test_bad_fix_in_second_finding_does_not_emit_first_finding(self):
+        source = _fixture()
+        second = copy.deepcopy(source["findings"][0])
+        second["finding"] = "Second synthetic observation"
+        second["fix"] = "  "
+        source["findings"].append(second)
+        untouched = copy.deepcopy(source)
+        provider = RecordingOfflineProvider()
+
+        with self.assertRaises(ValueError):
+            _pipeline(provider).review(source)
+        self.assertEqual(provider.requests, [])
+        self.assertEqual(source, untouched)
 
 if __name__ == "__main__":
     unittest.main()
