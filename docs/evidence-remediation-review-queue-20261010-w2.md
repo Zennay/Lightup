@@ -74,7 +74,10 @@ read a bounded set of findings from that same immutable read snapshot. It
 does not call the legacy `list_findings` second-read path. A concurrent
 WAL writer can commit, but the current advisory retains one consistent
 historical snapshot. The next read sees the newer revision. This is not
-authorization, a lock on the writer, or source authenticity proof.
+authorization, a lock on the writer, or source authenticity proof. Unknown
+engagement selectors now fail with a generic non-revealing `ValueError`;
+cross-tenant access retains its `TenantIsolationError` class but hides
+client/engagement identifiers in the error string. Denials never repair rows.
 
 Existing `DomainStore._finding_from_row` may parse legacy persisted
 `evidence_ids_json` objects by iterating their keys and may throw generic
