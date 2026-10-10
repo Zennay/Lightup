@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import unicodedata
 
-from .gateway import ModelGateway, ModelMessage, ModelResponse, ModelRole
+from .gateway import ModelGateway, ModelMessage, ModelResponse, ModelRole, RoleBinding
 from .pipeline import AssessmentReviewPipeline, ReviewResult
 from .review_advice_guard import _AdvisoryResponseGuard
 from .review_batch_preflight import preflight_review_batch
@@ -47,10 +47,41 @@ class _DisplaySafeAdviceGateway:
     """Stack display checks after W5 response identity checks, before report."""
 
     def __init__(self, gateway: ModelGateway):
+        if type(gateway) is not ModelGateway:
+            raise ValueError("canonical review model gateway required")
         self._delegate = _AdvisoryResponseGuard(gateway)
+        # A model/provider must not silently rebind a later role during the
+        # verifier -> advisor -> report sequence. Freeze all three identities
+        # before the *first* provider call; recheck before and after dispatch.
+        self._pinned: dict[ModelRole, RoleBinding] = {}
+        for role in AssessmentReviewPipeline.ROLES:
+            binding = self._delegate.binding_for(role)
+            if (
+                type(binding) is not RoleBinding
+                or binding.role is not role
+                or type(binding.model_id) is not str
+                or not binding.model_id
+                or type(binding.provider_id) is not str
+                or not binding.provider_id
+            ):
+                raise ValueError("review role binding is invalid")
+            self._pinned[role] = binding
 
     def binding_for(self, role: ModelRole):
-        return self._delegate.binding_for(role)
+        if role not in self._pinned:
+            raise ValueError("review role binding is invalid")
+        current = self._delegate.binding_for(role)
+        pinned = self._pinned[role]
+        if (
+            type(current) is not RoleBinding
+            or current.role is not role
+            or type(current.provider_id) is not str
+            or type(current.model_id) is not str
+            or current.provider_id != pinned.provider_id
+            or current.model_id != pinned.model_id
+        ):
+            raise ValueError("review role binding changed during batch")
+        return pinned
 
     def complete(
         self,
@@ -59,9 +90,13 @@ class _DisplaySafeAdviceGateway:
         max_output_tokens: int = 2048,
         metadata: tuple[tuple[str, str], ...] = (),
     ) -> ModelResponse:
+        binding_before = self.binding_for(role)
         response = self._delegate.complete(
             role, messages, max_output_tokens=max_output_tokens, metadata=metadata
         )
+        binding_after = self.binding_for(role)
+        if binding_after is not binding_before:
+            raise ValueError("review role binding changed during batch")
         # The default ModelGateway verifies only provider_id. This optional
         # wrapper additionally binds *every* returned role/model to its request,
         # before a verifier verdict can influence the advisor or a report can
