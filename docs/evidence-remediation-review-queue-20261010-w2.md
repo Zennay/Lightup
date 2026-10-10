@@ -129,7 +129,10 @@ text/timestamps 8,193 characters, raw evidence JSON 16,385 characters.
 If a value exceeds the allowed budget, the extra character makes the
 existing size check fail closed; the oversized full field never needs to be
 materialized by Python. This does not bound SQLite's internal read/sort
-workload or replace system-level DB resource controls. It verifies every row's
+workload or replace system-level DB resource controls. Source parsing and
+ordinary `sqlite3.DatabaseError` storage failures are reduced to a generic
+advisory integrity `ValueError` (without leaking DB schema/path details);
+the module does not repair or migrate its input database. It verifies every row's
 tenant/engagement identity and raw-versus-decoded tuple, refusing any
 partial review result when one record is corrupt. Malformed data yields
 the generic `ValueError("remediation evidence read integrity invalid")`
