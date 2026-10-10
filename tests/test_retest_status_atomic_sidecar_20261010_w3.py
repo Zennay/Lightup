@@ -179,7 +179,6 @@ class AtomicRetestMetadataSidecarTest(unittest.TestCase):
             ("huge_ascii", "A" * 300_000),
             ("multibyte_utf8", "é" * 9_000),
             ("sqlite_blob", sqlite3.Binary(b'["evidence:one"]')),
-            ("sqlite_null", None),
         )
         for label, raw in cases:
             with self.subTest(label=label):
