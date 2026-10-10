@@ -523,5 +523,39 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
                 self.assertEqual(provider.requests, [])
                 self.assertEqual(source, before)
 
+
+    def test_provider_failures_are_redacted_at_every_review_role(self):
+        secret = "synthetic-private-provider-exception-evidence"
+        for role in AssessmentReviewPipeline.ROLES:
+            with self.subTest(failing_role=role):
+                pipeline, provider = make_pipeline("Synthetic human guidance")
+                original = provider.complete
+
+                def fail_at_role(request):
+                    if request.role is role:
+                        raise RuntimeError(secret + " " + request.role.value)
+                    return original(request)
+
+                provider.complete = fail_at_role
+                with self.assertRaises(ValueError) as caught:
+                    review_with_display_safe_advice(pipeline, fixture())
+                self.assertEqual(str(caught.exception), "review model provider failed")
+                self.assertNotIn(secret, str(caught.exception))
+                self.assertTrue(caught.exception.__suppress_context__)
+                self.assertNotIn(
+                    ModelRole.REPORT_SYNTHESIZER,
+                    [req.role for req in provider.requests]
+                    if role is not ModelRole.REPORT_SYNTHESIZER else [],
+                )
+
+    def test_invalid_reply_shape_still_uses_specific_safe_validation_error(self):
+        pipeline, provider = make_pipeline(" ")
+        with self.assertRaisesRegex(ValueError, "invalid bounded advice"):
+            review_with_display_safe_advice(pipeline, fixture())
+        self.assertEqual(
+            [request.role for request in provider.requests],
+            [ModelRole.VERIFIER, ModelRole.REMEDIATION_ADVISOR],
+        )
+
 if __name__ == "__main__":
     unittest.main()
