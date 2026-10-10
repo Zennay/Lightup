@@ -13,6 +13,7 @@ import unittest
 from lightup.domain import AccessContext, DomainStore, Role, TenantIsolationError
 from lightup.models import RetestStatus, Severity
 from lightup.remediation_review_queue import build_remediation_review_queue
+from lightup.remediation_review_source import read_remediation_review_queue
 
 
 class RemediationReviewDomainIntegrationTests(unittest.TestCase):
@@ -137,6 +138,98 @@ class RemediationReviewDomainIntegrationTests(unittest.TestCase):
                 "FROM findings ORDER BY finding_id",
             ).fetchall()
             self.assertEqual([tuple(row) for row in after], snapshot)
+
+
+    def test_real_persisted_regression_with_two_missing_inputs_lists_all_review_needs(self):
+        finding = self.store.record_finding(
+            self.operator,
+            self.engagement_a.engagement_id,
+            title="Private missing evidence and remediation fixture",
+            severity=Severity.CRITICAL,
+            asset="lab://remediation-regression",
+            impact="private failure details",
+            remediation="",
+            evidence_ids=(),
+        )
+        self.store.set_retest_status(
+            self.operator, finding.finding_id, RetestStatus.REGRESSION,
+        )
+        with self.store._connect() as con:
+            before = [
+                tuple(row) for row in con.execute(
+                    "SELECT finding_id,client_id,engagement_id,remediation,"
+                    "evidence_ids_json,retest_status FROM findings "
+                    "ORDER BY finding_id",
+                ).fetchall()
+            ]
+        client = AccessContext(
+            "client-a-member", Role.CLIENT_MEMBER, self.client_a.client_id,
+        )
+        result = read_remediation_review_queue(
+            self.store, client,
+            engagement_id=self.engagement_a.engagement_id,
+        )
+        self.assertEqual(len(result.items), 2)
+        critical = result.items[0]
+        self.assertEqual(critical.severity, Severity.CRITICAL)
+        self.assertEqual(critical.next_review_step, "collect_evidence")
+        self.assertEqual(critical.review_actions, (
+            "collect_evidence", "author_remediation", "investigate_regression",
+        ))
+        self.assertFalse(critical.fix_verified)
+        self.assertFalse(result.authorization_verified)
+        self.assertFalse(result.retest_authorized)
+        for secret in (
+            finding.finding_id, finding.asset, finding.title, finding.impact,
+            self.client_a.client_id, self.engagement_a.engagement_id,
+        ):
+            self.assertNotIn(secret, result.to_json())
+        with self.store._connect() as con:
+            after = [
+                tuple(row) for row in con.execute(
+                    "SELECT finding_id,client_id,engagement_id,remediation,"
+                    "evidence_ids_json,retest_status FROM findings "
+                    "ORDER BY finding_id",
+                ).fetchall()
+            ]
+        self.assertEqual(after, before)
+
+    def test_real_persisted_fixed_claim_and_missing_evidence_remains_unverified(self):
+        finding = self.store.record_finding(
+            self.operator,
+            self.engagement_a.engagement_id,
+            title="Private claimed fixed but no remediation",
+            severity=Severity.CRITICAL,
+            asset="lab://claimed-fixed",
+            impact="never executed",
+            remediation="",
+            evidence_ids=(),
+        )
+        self.store.set_retest_status(
+            self.operator, finding.finding_id, RetestStatus.FIXED,
+        )
+        selected = self._rows(self.engagement_a.engagement_id)
+        first = build_remediation_review_queue(
+            selected,
+            client_id=self.client_a.client_id,
+            engagement_id=self.engagement_a.engagement_id,
+        )
+        item = first.items[0]
+        self.assertEqual(item.severity, Severity.CRITICAL)
+        self.assertEqual(item.review_actions, (
+            "collect_evidence", "author_remediation", "independent_retest",
+        ))
+        self.assertFalse(first.evidence_verified)
+        self.assertFalse(first.release_authorized)
+        self.assertFalse(item.fix_verified)
+        self.assertFalse(item.remediation_authorized)
+        self.assertEqual(
+            self.store.list_findings(
+                self.operator, engagement_id=self.engagement_a.engagement_id,
+            )[0].retest_status,
+            RetestStatus.FIXED,
+        )
+
 
 
 if __name__ == "__main__":
