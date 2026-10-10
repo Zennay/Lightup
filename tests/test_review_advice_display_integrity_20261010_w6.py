@@ -614,5 +614,58 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
             [request.role for request in provider.requests],
         )
 
+
+    def test_aggregate_large_source_denies_before_any_model_request(self):
+        source = fixture()
+        initial = source["findings"][0]
+        source["findings"] = [
+            {**initial, "finding": "Synthetic " + str(i),
+             "impact": "x" * 8000, "fix": "y" * 8000,
+             "evidence_summary": "z" * 4000,
+             "evidence_ids": ["synthetic:evidence:" + str(i)]}
+            for i in range(14)
+        ]
+        before = copy.deepcopy(source)
+        pipeline, provider = make_pipeline("Synthetic guidance")
+        with self.assertRaisesRegex(ValueError, "input batch byte limit exceeded"):
+            review_with_display_safe_advice(pipeline, source)
+        self.assertEqual(provider.requests, [])
+        self.assertEqual(source, before)
+
+    def test_aggregate_budget_counts_unicode_utf8_not_string_length(self):
+        source = fixture()
+        initial = source["findings"][0]
+        source["findings"] = [
+            {**initial, "finding": "Synthetic " + str(i),
+             "impact": "🧪" * 2000, "fix": "🧪" * 2000,
+             "evidence_summary": "🧪" * 1000,
+             "evidence_ids": ["synthetic:evidence:" + str(i)]}
+            for i in range(14)
+        ]
+        pipeline, provider = make_pipeline("Synthetic guidance")
+        with self.assertRaisesRegex(ValueError, "input batch byte limit exceeded"):
+            review_with_display_safe_advice(pipeline, source)
+        self.assertEqual(provider.requests, [])
+
+    def test_reasonable_multifinding_source_budget_still_allows_review(self):
+        source = fixture()
+        first = source["findings"][0]
+        source["findings"] = [
+            {**first, "finding": "Synthetic " + str(i),
+             "impact": "x" * 8000, "fix": "y" * 8000,
+             "evidence_summary": "z" * 4000,
+             "evidence_ids": ["synthetic:evidence:" + str(i)]}
+            for i in range(12)
+        ]
+        pipeline, provider = make_pipeline("Synthetic guidance")
+        provider._script[ModelRole.VERIFIER] = ["UNCERTAIN synthetic"] * 12
+        provider._script[ModelRole.REMEDIATION_ADVISOR] = ["Human-only guidance"] * 12
+        result = review_with_display_safe_advice(pipeline, source)
+        self.assertEqual(len(result.findings), 12)
+        self.assertEqual(
+            [req.role for req in provider.requests].count(ModelRole.REPORT_SYNTHESIZER),
+            1,
+        )
+
 if __name__ == "__main__":
     unittest.main()
