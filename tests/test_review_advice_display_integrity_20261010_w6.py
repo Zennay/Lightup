@@ -894,5 +894,49 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
             verifier,
         )
 
+    def test_in_place_frozen_role_binding_mutation_rejected_pre_advisor(self):
+        for field in ("model_id", "provider_id"):
+            with self.subTest(field=field):
+                pipeline, provider = make_pipeline("Human-only remediation advice")
+                gateway = pipeline.gateway
+                original = provider.complete
+
+                def corrupt_binding(request):
+                    response = original(request)
+                    if request.role is ModelRole.VERIFIER:
+                        binding = gateway._bindings[ModelRole.REMEDIATION_ADVISOR]
+                        # Dataclass(frozen=True) is not a true deep-freeze;
+                        # this attack modifies the same aliased object.
+                        object.__setattr__(binding, field, "injected-binding")
+                    return response
+
+                provider.complete = corrupt_binding
+                with self.assertRaisesRegex(ValueError, "binding changed"):
+                    review_with_display_safe_advice(pipeline, fixture())
+                self.assertEqual(
+                    [req.role for req in provider.requests],
+                    [ModelRole.VERIFIER],
+                )
+
+    def test_active_verifier_frozen_binding_mutation_rejected_after_reply(self):
+        pipeline, provider = make_pipeline("Human-only remediation advice")
+        gateway = pipeline.gateway
+        original = provider.complete
+
+        def corrupt_active_binding(request):
+            response = original(request)
+            if request.role is ModelRole.VERIFIER:
+                binding = gateway._bindings[ModelRole.VERIFIER]
+                object.__setattr__(binding, "model_id", "injected-model")
+            return response
+
+        provider.complete = corrupt_active_binding
+        with self.assertRaisesRegex(ValueError, "binding changed"):
+            review_with_display_safe_advice(pipeline, fixture())
+        self.assertEqual(
+            [req.role for req in provider.requests],
+            [ModelRole.VERIFIER],
+        )
+
 if __name__ == "__main__":
     unittest.main()
