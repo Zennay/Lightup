@@ -171,6 +171,44 @@ class AtomicRetestMetadataSidecarTest(unittest.TestCase):
                     self._transition()
                 self.assertEqual(self._row(), before)
 
+    def test_sql_shape_guard_denies_large_or_nontext_evidence_before_full_read(self):
+        # Trace statements rather than guessing from exceptions: malformed
+        # historical evidence must be rejected BEFORE SELECT f.* materializes
+        # unbounded bytes from the persisted row into Python memory.
+        cases = (
+            ("huge_ascii", "A" * 300_000),
+            ("multibyte_utf8", "é" * 9_000),
+            ("sqlite_blob", sqlite3.Binary(b'["evidence:one"]')),
+            ("sqlite_null", None),
+        )
+        for label, raw in cases:
+            with self.subTest(label=label):
+                self._corrupt(raw)
+                before = self._row()
+                statements = []
+                original_connect = self.store._connect
+
+                @contextmanager
+                def traced_connect():
+                    with original_connect() as con:
+                        con.set_trace_callback(statements.append)
+                        yield con
+
+                with mock.patch.object(
+                    self.store, "_connect", side_effect=traced_connect
+                ):
+                    with self.assertRaisesRegex(ValueError, "finding evidence"):
+                        self._transition()
+                self.assertFalse(
+                    any("SELECT f.*" in sql for sql in statements),
+                    "unbounded finding data materialized before SQL guard",
+                )
+                self.assertTrue(
+                    any("length(CAST" in sql for sql in statements),
+                    "preflight evidence length guard must execute",
+                )
+                self.assertEqual(self._row(), before)
+
     def test_rejected_status_and_identity_inputs_never_write(self):
         before = self._row()
         client = AccessContext("client-user", Role.CLIENT_ADMIN, self.client.client_id)
