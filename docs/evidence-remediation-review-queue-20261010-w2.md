@@ -44,7 +44,7 @@ an already authorized tenant-scoped workflow. Counts can also disclose activity.
 ## V2 snapshot integrity and privacy boundary
 
 V2 historically introduced a source-bound digest (now superseded by
-the current `lightup.remediation_review_queue.v3` schema). In v1 the queue
+the current `lightup.remediation_review_queue.v4` schema). In v1 the queue
 digest depended only on visible review fields and *counts* of referenced
 evidence. Swapping evidence A for evidence B while preserving the same count
 and review step produced exactly the same digest, as did rewriting a fix.
@@ -82,8 +82,9 @@ then SHA-256. JSON serialization preserves component boundaries, and
 separate engagements cannot reuse the same item key merely by injecting
 the old delimiter into a printable identifier. Dedicated synthetic
 regressions construct an exact former collision and prove distinct keys.
-The public payload schema and root digest version are now **v3**, making
-incompatible fingerprint semantics visible to any future consumer.
+The original v3 release made incompatible fingerprint semantics visible
+instead of silently reusing the v2 digest. The **current v4** payload and root
+digest additionally bind the complete ordered human-review action list.
 
 This is still only a deterministic pseudonym, not anonymization,
 authorization, proof of data provenance, or a MAC/signature. Do not
@@ -161,7 +162,7 @@ oversized row budgets, mixed-tenant denials and no evidence writes on rejection.
 
 ## V4 overlapping review obligations (no executable actions)
 
-The historical V3 `next_review_step` priority is intentionally preserved.
+The historical v3 `next_review_step` priority is intentionally preserved.
 Previously, a finding with missing evidence AND missing remediation AND a
 regression claim would show only `collect_evidence`, hiding two important
 human-review obligations. Schema `lightup.remediation_review_queue.v4` now
@@ -174,8 +175,25 @@ accepted; duplicate or unknown actions, inconsistent priority, and attempts
 to treat `review_remediation` as an extra authorization step fail closed.
 The queue digest includes the ordered action list and the revised schema,
 so V3 hashes are not silently reused. The action list contains no raw
-remediation, target, evidence references or consent and **cannot execute
-anything**.
+remediation, target or evidence reference IDs and **cannot execute
+anything**. It does expose human-review needs such as missing evidence or a
+claimed regression, so the summary and its deterministic pseudonyms must stay
+inside a trusted tenant-scoped interface rather than public logs.
+
+### Real persistent-record and state-matrix acceptance
+
+Dedicated temporary-`DomainStore` integration verifies a **critical real
+finding** with simultaneously missing evidence, missing remediation and
+`REGRESSION` yields all three human review obligations, ordered by the
+same primary priority, without persisting changes or leaking private source
+fields. A separately recorded `FIXED` claim with both inputs missing keeps
+`independent_retest` explicitly in the list and every verified/authorized
+flag false. Pure queue tests exercise **every `RetestStatus` value × evidence
+present/absent × remediation present/absent**, ensuring a missing first input
+never suppresses a later independent review requirement.
+
+The adapter and queue remain separate, opt-in and **not wired into any
+production route or security-gate decision**.
 
 ## In-memory view-model and SQLite read-only safety
 
