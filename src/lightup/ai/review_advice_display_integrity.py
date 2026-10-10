@@ -10,6 +10,7 @@ import unicodedata
 
 from .gateway import ModelGateway, ModelMessage, ModelResponse, ModelRole, RoleBinding
 from .pipeline import AssessmentReviewPipeline, ReviewResult
+from ..models import Severity
 from .review_advice_guard import _AdvisoryResponseGuard
 from .review_batch_preflight import preflight_review_batch
 
@@ -161,7 +162,13 @@ def review_with_display_safe_advice(
     # as client-facing review context. A second-row control byte must not let
     # the first row trigger a model request. Reject instead of normalizing.
     fields = [checked["target"], *checked["targets"]]
+    # The default AI review path treats severity as display text. For this
+    # opt-in evidence-review contract, refuse invented or disguised severity
+    # labels rather than sending them to a reviewer/report as canonical facts.
+    permitted_severities = frozenset(member.value for member in Severity)
     for finding in checked["findings"]:
+        if finding["severity"] not in permitted_severities:
+            raise ValueError("review finding severity is not canonical")
         fields.extend(finding[name] for name in (
             "finding", "severity", "impact", "fix", "evidence_summary"
         ))
