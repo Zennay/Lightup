@@ -195,6 +195,22 @@ The serialized review version and root digest both reference a single
 the digest and export version together. Dedicated offline tests cover
 that paired change without claiming authenticity or permission.
 
+## Canonical access-context structure (not authentication)
+
+Before opening SQLite, the opt-in reader now rejects non-enum role values,
+blank/nonprintable/oversized subject IDs and polymorphic, unbounded or
+whitespace-ambiguous tenant client IDs. This closes a local footgun in which
+an `AccessContext` constructed with the string `"client_member"` (rather
+than the exact `Role.CLIENT_MEMBER` enum) could accidentally be treated as
+a client member by domain structural checks. Real `Role.CLIENT_ADMIN`,
+`Role.CLIENT_MEMBER` and `Role.OPERATOR` contexts remain accepted when
+their fields are canonical. No raw identity is included in rejection errors.
+
+**These checks do not authenticate any user or prove client consent.**
+Even a perfectly typed `AccessContext` is a forgeable Python object; only
+a trusted session/token authority and action-time revocation can justify
+any live operation. The advisory remains read-only and non-authorizing.
+
 ## Explicit non-authority and collision fence
 
 The pure queue builder requires authenticated tenant-specific selection.

@@ -442,6 +442,47 @@ class RemediationReviewSourceTests(unittest.TestCase):
                 self.assertEqual(self._raw(), before)
 
 
+    def test_noncanonical_access_context_roles_subjects_and_tenants_are_denied(self):
+        class StrChild(str):
+            pass
+
+        bad_contexts = (
+            AccessContext("client-user", "client_member", self.first.client_id),
+            AccessContext("", Role.OPERATOR),
+            AccessContext("  ", Role.OPERATOR),
+            AccessContext("unauthenticated" * 20, Role.OPERATOR),
+            AccessContext("bad\\nuser", Role.OPERATOR),
+            AccessContext("client-user", Role.CLIENT_MEMBER,
+                          StrChild(self.first.client_id)),
+            AccessContext("client-user", Role.CLIENT_MEMBER,
+                          self.first.client_id + " "),
+        )
+        before = self._raw()
+        for ctx in bad_contexts:
+            with self.subTest(role=repr(ctx.role), subject=repr(ctx.user_id)[:24]):
+                with self.assertRaisesRegex(
+                    ValueError, "^invalid remediation review read context$"
+                ) as caught:
+                    read_remediation_review_queue(
+                        self.store, ctx, engagement_id=self.eng_first.engagement_id
+                    )
+                self.assertNotIn(self.first.client_id, str(caught.exception))
+        self.assertEqual(self._raw(), before)
+
+    def test_canonical_operator_and_client_admin_still_get_advisory_only(self):
+        admin = AccessContext(
+            "authorized-synthetic-admin", Role.CLIENT_ADMIN, self.first.client_id
+        )
+        for ctx in (self.operator, admin, self.client_ctx):
+            with self.subTest(role=ctx.role):
+                review = read_remediation_review_queue(
+                    self.store, ctx, engagement_id=self.eng_first.engagement_id
+                )
+                self.assertEqual(len(review.items), 1)
+                self.assertFalse(review.authorization_verified)
+                self.assertFalse(review.retest_authorized)
+                self.assertFalse(review.release_authorized)
+
     def test_sqlite_query_only_pragma_blocks_accidental_advisory_writes(self):
         original_connect = self.store._connect
         decoder = DomainStore._finding_from_row

@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import sqlite3
 
-from .domain import AccessContext, DomainStore, TenantIsolationError
+from .domain import AccessContext, DomainStore, Role, TenantIsolationError
 from .remediation_review_queue import (
     MAX_EVIDENCE_IDS,
     MAX_FINDINGS,
@@ -65,6 +65,30 @@ def read_remediation_review_queue(
         or not engagement_id.isprintable()
     ):
         raise ValueError("invalid remediation review engagement selector")
+    # DomainStore.AccessContext allows arbitrary runtime field types because
+    # its source owner intentionally has a minimal constructor. This optional
+    # reader must not silently treat a string role as a client role, accept an
+    # empty subject, or pass a polymorphic client identifier into scope checks.
+    # Canonical structure is not session authentication: the caller MUST still
+    # derive the context from its trusted session/revocation authority.
+    user = context.user_id
+    client = context.client_id
+    if (
+        type(context.role) is not Role
+        or type(user) is not str
+        or not 1 <= len(user) <= MAX_ID
+        or user != user.strip()
+        or not user.isprintable()
+        or (context.role is Role.OPERATOR and client is not None)
+        or (context.role is not Role.OPERATOR and (
+            type(client) is not str
+            or not 1 <= len(client) <= MAX_ID
+            or client != client.strip()
+            or not client.isascii()
+            or not client.isprintable()
+        ))
+    ):
+        raise ValueError("invalid remediation review read context")
 
     try:
         with store._connect() as connection:
