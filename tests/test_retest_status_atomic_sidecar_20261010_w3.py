@@ -99,6 +99,61 @@ class AtomicRetestMetadataSidecarTest(unittest.TestCase):
                         self._transition(status)
                 self.assertEqual(self._full_row(), before)
 
+    def test_review_status_cannot_downgrade_pending_or_prior_outcome(self):
+        # These pre-existing labels were injected into disposable fixtures,
+        # not minted by the non-verifying sidecar.
+        cases = (
+            (RetestStatus.FIX_PENDING, RetestStatus.NOT_TESTED),
+            (RetestStatus.FIXED, RetestStatus.FIX_PENDING),
+            (RetestStatus.FIXED, RetestStatus.NOT_TESTED),
+            (RetestStatus.REGRESSION, RetestStatus.FIX_PENDING),
+            (RetestStatus.REGRESSION, RetestStatus.NOT_TESTED),
+        )
+        for prior, requested in cases:
+            with self.subTest(prior=prior, requested=requested):
+                with self.store._connect() as con:
+                    con.execute(
+                        "UPDATE findings SET retest_status=? WHERE finding_id=?",
+                        (prior.value, self.finding.finding_id),
+                    )
+                before = self._full_row()
+                with self.assertRaisesRegex(ValueError, "requires review"):
+                    self._transition(requested)
+                self.assertEqual(self._full_row(), before)
+
+    def test_repeated_pending_review_is_write_free_even_under_abort_trigger(self):
+        self._transition(RetestStatus.FIX_PENDING)
+        before = self._full_row()
+        with self.store._connect() as con:
+            con.execute(
+                "CREATE TRIGGER synthetic_write_sentinel "
+                "BEFORE UPDATE ON findings BEGIN "
+                "SELECT RAISE(ABORT, 'repeat attempted SQLite write'); END"
+            )
+        try:
+            again = self._transition(RetestStatus.FIX_PENDING)
+            self.assertIs(again.retest_status, RetestStatus.FIX_PENDING)
+            self.assertEqual(self._full_row(), before)
+        finally:
+            with self.store._connect() as con:
+                con.execute("DROP TRIGGER synthetic_write_sentinel")
+
+    def test_not_tested_repeat_is_write_free_even_under_abort_trigger(self):
+        before = self._full_row()
+        with self.store._connect() as con:
+            con.execute(
+                "CREATE TRIGGER synthetic_write_sentinel "
+                "BEFORE UPDATE ON findings BEGIN "
+                "SELECT RAISE(ABORT, 'repeat attempted SQLite write'); END"
+            )
+        try:
+            same = self._transition(RetestStatus.NOT_TESTED)
+            self.assertIs(same.retest_status, RetestStatus.NOT_TESTED)
+            self.assertEqual(self._full_row(), before)
+        finally:
+            with self.store._connect() as con:
+                con.execute("DROP TRIGGER synthetic_write_sentinel")
+
     def test_malformed_evidence_rejection_is_atomic(self):
         cases = (
             '"evidence:one"', "null", '{"id":"evidence:one"}',
