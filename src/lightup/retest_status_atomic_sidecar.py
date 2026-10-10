@@ -107,11 +107,13 @@ def atomic_retest_status_metadata(
             # The immediate write lock keeps both reads on the same snapshot.
             evidence_shape = connection.execute(
                 "SELECT typeof(f.evidence_ids_json) AS value_type, "
-                "length(CAST(f.evidence_ids_json AS BLOB)) AS byte_length "
+                "length(CAST(f.evidence_ids_json AS BLOB)) AS byte_length, "
+                "CASE WHEN typeof(f.retest_status)='text' AND "
+                "f.retest_status IN (?,?,?,?) THEN 1 ELSE 0 END AS status_valid "
                 "FROM findings AS f JOIN engagements AS e "
                 "ON e.engagement_id=f.engagement_id AND e.client_id=f.client_id "
                 "WHERE f.finding_id=?",
-                (finding_id,),
+                (*tuple(value.value for value in RetestStatus), finding_id),
             ).fetchone()
             if evidence_shape is None:
                 raise KeyError("finding unavailable")
@@ -121,6 +123,8 @@ def atomic_retest_status_metadata(
                 or evidence_shape["byte_length"] > _MAX_EVIDENCE_JSON_BYTES
             ):
                 raise ValueError("finding evidence is invalid")
+            if evidence_shape["status_valid"] != 1:
+                raise ValueError("finding status is invalid")
             row = connection.execute(
                 "SELECT f.* FROM findings AS f JOIN engagements AS e "
                 "ON e.engagement_id=f.engagement_id AND e.client_id=f.client_id "
