@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 
-from .domain import AccessContext, DomainStore
+from .domain import AccessContext, DomainStore, TenantIsolationError
 from .remediation_review_queue import (
     MAX_EVIDENCE_IDS,
     MAX_FINDINGS,
@@ -44,7 +44,14 @@ def read_remediation_review_queue(
     # Preserve DomainStore's tenant access contract and its independent
     # TenantIsolationError / KeyError distinctions for unauthorized or
     # nonexistent engagements. No operator-global-list fallback.
-    engagement = store.get_engagement(context, engagement_id)
+    try:
+        engagement = store.get_engagement(context, engagement_id)
+    except TenantIsolationError:
+        # Keep the caller-visible permission-denial type but never include
+        # the other tenant's ID or the supplied opaque selector in its text.
+        raise TenantIsolationError("remediation review tenant scope denied") from None
+    except KeyError:
+        raise ValueError("remediation review engagement not found") from None
 
     try:
         with store._connect() as connection:
