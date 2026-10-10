@@ -1,0 +1,181 @@
+"""Offline real-FindingRecord regressions for advisory remediation triage."""
+from __future__ import annotations
+
+from dataclasses import replace
+import json
+import unittest
+
+from lightup.domain import FindingRecord
+from lightup.models import RetestStatus, Severity
+from lightup.remediation_review_queue import (
+    MAX_EVIDENCE_IDS,
+    MAX_FINDINGS,
+    build_remediation_review_queue,
+)
+
+
+def finding(**changes: object) -> FindingRecord:
+    fields = dict(
+        finding_id="finding-1",
+        client_id="client-A",
+        engagement_id="engagement-A",
+        title="A private finding title",
+        severity=Severity.HIGH,
+        asset="internal://sensitive-customer-host",
+        impact="internal impact with password=private",
+        remediation="Replace unsafe configuration. Authorization: Bearer SECRET",
+        retest_status=RetestStatus.FIX_PENDING,
+        evidence_ids=("evidence-1",),
+        created_at="2026-10-10T00:00:00+00:00",
+    )
+    fields.update(changes)
+    return FindingRecord(**fields)
+
+
+def queue(*rows: FindingRecord, **kwargs: str):
+    return build_remediation_review_queue(
+        tuple(rows),
+        client_id=kwargs.get("client_id", "client-A"),
+        engagement_id=kwargs.get("engagement_id", "engagement-A"),
+    )
+
+
+class RemediationQueueTests(unittest.TestCase):
+    def test_empty_queue_is_non_authorizing_and_stable(self):
+        a = queue()
+        self.assertEqual(a.items, ())
+        self.assertEqual(len(a.digest_sha256), 64)
+        self.assertEqual(a, queue())
+        body = json.loads(a.to_json())
+        self.assertFalse(body["authorization_verified"])
+        self.assertFalse(body["evidence_verified"])
+        self.assertFalse(body["remediation_authorized"])
+        self.assertFalse(body["retest_authorized"])
+        self.assertFalse(body["release_authorized"])
+
+    def test_historical_fixed_status_requires_independent_retest(self):
+        result = queue(finding(retest_status=RetestStatus.FIXED))
+        self.assertEqual(result.items[0].next_review_step, "independent_retest")
+        self.assertEqual(result.items[0].claimed_retest_status, RetestStatus.FIXED)
+        self.assertFalse(result.items[0].fix_verified)
+        self.assertFalse(result.items[0].remediation_authorized)
+
+    def test_missing_evidence_never_promotes_fixed_to_verified(self):
+        result = queue(finding(evidence_ids=(), retest_status=RetestStatus.FIXED))
+        self.assertEqual(result.items[0].next_review_step, "collect_evidence")
+        self.assertEqual(result.items[0].referenced_evidence_count, 0)
+        self.assertFalse(result.items[0].evidence_verified)
+
+    def test_missing_remediation_requires_human_authoring(self):
+        row = finding(remediation="   ", retest_status=RetestStatus.NOT_TESTED)
+        self.assertEqual(queue(row).items[0].next_review_step, "author_remediation")
+
+    def test_regression_is_investigation_not_automatic_reexecution(self):
+        row = finding(retest_status=RetestStatus.REGRESSION)
+        result = queue(row)
+        self.assertEqual(result.items[0].next_review_step, "investigate_regression")
+        self.assertFalse(result.retest_authorized)
+
+    def test_normal_pending_remediation_is_review_only(self):
+        result = queue(finding())
+        self.assertEqual(result.items[0].next_review_step, "review_remediation")
+
+    def test_severity_priority_independent_of_input_order(self):
+        high = finding(finding_id="high", severity=Severity.HIGH)
+        low = finding(finding_id="low", severity=Severity.LOW)
+        critical = finding(finding_id="critical", severity=Severity.CRITICAL)
+        first = queue(low, high, critical)
+        second = queue(critical, low, high)
+        self.assertEqual(first, second)
+        self.assertEqual(
+            [item.severity for item in first.items],
+            [Severity.CRITICAL, Severity.HIGH, Severity.LOW],
+        )
+        self.assertEqual(first.to_json(), second.to_json())
+
+    def test_digest_changes_when_review_step_changes(self):
+        a = queue(finding(evidence_ids=()))
+        b = queue(finding(evidence_ids=("evidence-1",)))
+        self.assertNotEqual(a.digest_sha256, b.digest_sha256)
+
+    def test_output_has_no_raw_evidence_text_or_tenant_identifiers(self):
+        row = finding()
+        result = queue(row)
+        exported = result.to_json()
+        for secret in (
+            row.finding_id, row.client_id, row.engagement_id, row.asset,
+            row.title, row.impact, row.remediation, row.evidence_ids[0],
+            "SECRET", "internal://",
+        ):
+            self.assertNotIn(secret, exported)
+
+    def test_input_record_remains_unchanged(self):
+        row = finding()
+        before = replace(row)
+        queue(row)
+        self.assertEqual(row, before)
+
+    def test_cross_tenant_finding_fails_closed(self):
+        with self.assertRaisesRegex(ValueError, "scope mismatch"):
+            queue(finding(client_id="other-tenant"))
+
+    def test_cross_engagement_finding_fails_closed(self):
+        with self.assertRaisesRegex(ValueError, "scope mismatch"):
+            queue(finding(engagement_id="other-engagement"))
+
+    def test_duplicate_finding_identity_fails_closed(self):
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            queue(finding(), finding())
+
+    def test_exact_tuple_and_record_types_required(self):
+        with self.assertRaises(ValueError):
+            build_remediation_review_queue([finding()], client_id="client-A", engagement_id="engagement-A")
+        class FakeFinding(FindingRecord):
+            pass
+        with self.assertRaises(ValueError):
+            queue(FakeFinding(**finding().__dict__))
+
+    def test_exact_enum_types_are_required(self):
+        with self.assertRaisesRegex(ValueError, "status"):
+            queue(finding(severity="high"))
+        with self.assertRaisesRegex(ValueError, "status"):
+            queue(finding(retest_status="fixed"))
+
+    def test_rejects_malformed_and_repeated_evidence_ids(self):
+        for evidence_ids in (
+            ["evidence-1"],
+            ("evidence-1", "evidence-1"),
+            ("",),
+            (" ",),
+            (42,),
+            ("id",) * (MAX_EVIDENCE_IDS + 1),
+        ):
+            with self.subTest(case=str(evidence_ids)[:20]):
+                with self.assertRaises(ValueError):
+                    queue(finding(evidence_ids=evidence_ids))
+
+    def test_rejects_polymorphic_ids_and_secret_like_error_is_generic(self):
+        class StrChild(str):
+            pass
+        for field in ("finding_id", "client_id", "engagement_id"):
+            with self.subTest(field=field):
+                with self.assertRaises(ValueError) as caught:
+                    queue(finding(**{field: StrChild("PRIVATE-SOURCE")}))
+                self.assertNotIn("PRIVATE-SOURCE", str(caught.exception))
+
+    def test_rejects_unbounded_findings_before_allocation(self):
+        rows = tuple(finding(finding_id=f"finding-{i}") for i in range(MAX_FINDINGS + 1))
+        with self.assertRaisesRegex(ValueError, "findings"):
+            queue(*rows)
+
+    def test_rejects_mutable_or_polymorphic_source_text(self):
+        class StrChild(str):
+            pass
+        for value in (None, [], StrChild("looks like text"), "x" * 8193):
+            with self.subTest(value=type(value).__name__):
+                with self.assertRaisesRegex(ValueError, "source field"):
+                    queue(finding(remediation=value))
+
+
+if __name__ == "__main__":
+    unittest.main()
