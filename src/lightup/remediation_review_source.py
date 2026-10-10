@@ -6,6 +6,8 @@ evidence verifier, or a target/remediation/retest dispatcher.
 """
 from __future__ import annotations
 
+import json
+
 from .domain import AccessContext, DomainStore
 from .remediation_review_queue import (
     RemediationReviewQueue,
@@ -40,6 +42,38 @@ def read_remediation_review_queue(
     engagement = store.get_engagement(context, engagement_id)
     try:
         rows = store.list_findings(context, engagement_id=engagement.engagement_id)
+        if len(rows) > 128:
+            raise ValueError("too many remediation review findings")
+        # Legacy DomainStore reads can coerce JSON objects into tuples of
+        # their keys, silently laundering corrupt evidence into valid-looking
+        # strings. Reconcile the *raw* per-engagement JSON to every decoded
+        # FindingRecord before returning anything. Read-only and bounded.
+        raw_by_id: dict[str, tuple[str, ...]] = {}
+        with store._connect() as connection:
+            persisted = connection.execute(
+                "SELECT finding_id, evidence_ids_json FROM findings "
+                "WHERE engagement_id=?", (engagement.engagement_id,),
+            )
+            for persisted_row in persisted:
+                if len(raw_by_id) >= 128:
+                    raise ValueError("too many persisted remediation findings")
+                raw = persisted_row["evidence_ids_json"]
+                if type(raw) is not str or len(raw) > 16384:
+                    raise ValueError("invalid persisted evidence JSON")
+                decoded = json.loads(raw)
+                if type(decoded) is not list or len(decoded) > 64:
+                    raise ValueError("invalid persisted evidence array")
+                if any(type(item) is not str for item in decoded):
+                    raise ValueError("invalid persisted evidence member")
+                finding_key = persisted_row["finding_id"]
+                if type(finding_key) is not str or finding_key in raw_by_id:
+                    raise ValueError("invalid persisted finding identity")
+                raw_by_id[finding_key] = tuple(decoded)
+        if len(raw_by_id) != len(rows):
+            raise ValueError("remediation review selected row drift")
+        for row in rows:
+            if raw_by_id.get(row.finding_id) != row.evidence_ids:
+                raise ValueError("remediation review evidence lineage drift")
         # Re-check every persisted finding's claimed tenant and engagement.
         # A corrupt or cross-tenant row must not produce even a summary.
         return build_remediation_review_queue(
