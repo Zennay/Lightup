@@ -6,15 +6,15 @@
 
 Issue #898 describes the default review pipeline's missing remediation-advisor output gate. W5 draft PR #1180 introduces a non-authorizing full-batch preflight and advisor identity/content guard, but its opt-in guard accepts otherwise bounded nonblank content that includes bidi overrides, control bytes, invisible format characters, surrogate code points and misleading/private-use Unicode.
 
-These code points can corrupt or visually reorder rendered remediation advice. This W6 child adds an independent **display-integrity** check after the W5 advisor response identity gate but **before** the real pipeline's report-synthesizer model call. It does **not** alter the canonical pipeline or report publisher.
+These code points can corrupt or visually reorder rendered remediation advice. This W6 child adds a **whole-batch current-fix display-integrity check before the first model call**, and an independent **advisor-output display-integrity check** after W5 response identity validation but **before** the real pipeline's report-synthesizer model call. It does **not** alter the canonical pipeline or report publisher.
 
 ## Implemented
 
 - `src/lightup/ai/review_advice_display_integrity.py`: an opt-in strict text validator and gateway delegate composed over W5 admission + advisor response checks.
-- `tests/test_review_advice_display_integrity_20261010_w6.py`: real offline `AssessmentReviewPipeline` + `ScriptedProvider` synthetic tests for the role ordering, invalid first/second advisor output, missing current fix on a later finding, duplicate evidence, byte-vs-character bounds, exact-type confusion, untouched caller input and valid international/multiline advice.
+- `tests/test_review_advice_display_integrity_20261010_w6.py`: real offline `AssessmentReviewPipeline` + `ScriptedProvider` synthetic tests for the role ordering, invalid first/second advisor output, missing or Unicode-control current fix on a later finding (zero model calls), duplicate evidence, byte-vs-character bounds, exact-type confusion, untouched caller input and valid international/multiline advice.
 - This document is the third **add-only** file. W5 source, issue owners and production entrypoints are not edited.
 
-The validator permits tab and LF for human-readable multiline guidance, and otherwise rejects Unicode category C (control, format, surrogate, private-use, unassigned). It does **not** strip or normalize accepted advice, rejects invalid UTF-8, and enforces both 8192 characters and 16384 UTF-8 bytes. This is deliberately conservative: compatibility of presentation clients must be reviewed before any adoption.
+Both input and output checks permit tab and LF for human-readable multiline guidance, and otherwise rejects Unicode category C (control, format, surrogate, private-use, unassigned). It does **not** strip or normalize accepted advice, rejects invalid UTF-8, and enforces both 8192 characters and 16384 UTF-8 bytes. This is deliberately conservative: compatibility of presentation clients must be reviewed before any adoption.
 
 ## Trust and implementation restrictions
 
