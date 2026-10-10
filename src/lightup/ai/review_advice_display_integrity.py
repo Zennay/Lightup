@@ -255,6 +255,19 @@ def review_with_display_safe_advice(
             total_input_bytes += len(value.encode("utf-8"))
             if total_input_bytes > _MAX_TOTAL_INPUT_BYTES:
                 raise ValueError("review input batch byte limit exceeded")
+    # The default pipeline accepts a finding-local target override without
+    # checking whether it belongs to the declared review target set. A
+    # multi-target fallback also turns an unspecified finding target into the
+    # comma-joined label "A, B", which is not reliable evidence lineage.
+    # Restrict this *opt-in* review to an explicit and unambiguous mapping.
+    declared_targets = checked["targets"] or [checked["target"]]
+    if len(set(declared_targets)) != len(declared_targets):
+        raise ValueError("review batch has duplicate target context")
+    for finding in checked["findings"]:
+        if len(declared_targets) > 1 and "target" not in finding:
+            raise ValueError("multi-target review requires finding target context")
+        if "target" in finding and finding["target"] not in declared_targets:
+            raise ValueError("review finding target is outside declared context")
     return AssessmentReviewPipeline(_DisplaySafeAdviceGateway(pipeline.gateway)).review(
         checked
     )
