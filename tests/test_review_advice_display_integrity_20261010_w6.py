@@ -557,5 +557,62 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
             [ModelRole.VERIFIER, ModelRole.REMEDIATION_ADVISOR],
         )
 
+
+    def test_aggregate_advisor_bytes_denies_before_report(self):
+        source = fixture()
+        first = source["findings"][0]
+        source["findings"] = [
+            {**first, "finding": "Synthetic " + str(i),
+             "evidence_ids": ["synthetic:evidence:" + str(i)]}
+            for i in range(5)
+        ]
+        before = copy.deepcopy(source)
+        pipeline, provider = make_pipeline("Synthetic guidance")
+        provider._script[ModelRole.VERIFIER] = ["UNCERTAIN synthetic"] * 5
+        provider._script[ModelRole.REMEDIATION_ADVISOR] = ["x" * 8192] * 4 + ["x"]
+        with self.assertRaisesRegex(ValueError, "advice batch limit exceeded"):
+            review_with_display_safe_advice(pipeline, source)
+        self.assertEqual(source, before)
+        self.assertEqual(
+            [request.role for request in provider.requests],
+            [r for _ in range(5) for r in
+             (ModelRole.VERIFIER, ModelRole.REMEDIATION_ADVISOR)],
+        )
+
+    def test_exact_aggregate_boundary_allows_four_canonical_advice_replies(self):
+        source = fixture()
+        first = source["findings"][0]
+        source["findings"] = [
+            {**first, "finding": "Synthetic " + str(i),
+             "evidence_ids": ["synthetic:evidence:" + str(i)]}
+            for i in range(4)
+        ]
+        pipeline, provider = make_pipeline("Synthetic guidance")
+        provider._script[ModelRole.VERIFIER] = ["UNCERTAIN synthetic"] * 4
+        provider._script[ModelRole.REMEDIATION_ADVISOR] = ["x" * 8192] * 4
+        result = review_with_display_safe_advice(pipeline, source)
+        self.assertEqual(len(result.findings), 4)
+        self.assertEqual(
+            [r.role for r in provider.requests].count(ModelRole.REPORT_SYNTHESIZER), 1
+        )
+
+    def test_aggregate_advice_budget_counts_utf8_bytes_not_characters(self):
+        source = fixture()
+        first = source["findings"][0]
+        source["findings"] = [
+            {**first, "finding": "Synthetic " + str(i),
+             "evidence_ids": ["synthetic:evidence:" + str(i)]}
+            for i in range(5)
+        ]
+        pipeline, provider = make_pipeline("Synthetic guidance")
+        provider._script[ModelRole.VERIFIER] = ["UNCERTAIN synthetic"] * 5
+        provider._script[ModelRole.REMEDIATION_ADVISOR] = ["🧪" * 2048] * 4 + ["🧪"]
+        with self.assertRaisesRegex(ValueError, "advice batch limit exceeded"):
+            review_with_display_safe_advice(pipeline, source)
+        self.assertNotIn(
+            ModelRole.REPORT_SYNTHESIZER,
+            [request.role for request in provider.requests],
+        )
+
 if __name__ == "__main__":
     unittest.main()
