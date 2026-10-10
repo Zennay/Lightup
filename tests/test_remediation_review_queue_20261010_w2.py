@@ -177,5 +177,66 @@ class RemediationQueueTests(unittest.TestCase):
                     queue(finding(remediation=value))
 
 
+    def test_equal_count_evidence_substitution_changes_snapshot_digest(self):
+        original = queue(finding(evidence_ids=("evidence-1", "evidence-2")))
+        replaced = queue(finding(evidence_ids=("evidence-1", "evidence-OTHER")))
+        self.assertEqual(original.items, replaced.items)
+        self.assertNotEqual(original.digest_sha256, replaced.digest_sha256)
+        self.assertNotIn("evidence-OTHER", replaced.to_json())
+
+    def test_evidence_reference_order_changes_snapshot_digest(self):
+        before = queue(finding(evidence_ids=("evidence-1", "evidence-2")))
+        after = queue(finding(evidence_ids=("evidence-2", "evidence-1")))
+        self.assertNotEqual(before.digest_sha256, after.digest_sha256)
+        self.assertEqual(before.items, after.items)
+
+    def test_equal_stage_remediation_revision_changes_snapshot_digest(self):
+        first = queue(finding(remediation="Rotate secrets safely"))
+        second = queue(finding(remediation="Replace the exposed key"))
+        self.assertEqual(first.items, second.items)
+        self.assertNotEqual(first.digest_sha256, second.digest_sha256)
+        self.assertNotIn("Rotate secrets safely", first.to_json())
+        self.assertNotIn("Replace the exposed key", second.to_json())
+
+    def test_evidence_review_digest_not_reusable_across_empty_scopes(self):
+        first = queue(client_id="client-A", engagement_id="engagement-A")
+        different_client = queue(client_id="client-B", engagement_id="engagement-A")
+        different_engagement = queue(client_id="client-A", engagement_id="engagement-B")
+        self.assertNotEqual(first.digest_sha256, different_client.digest_sha256)
+        self.assertNotEqual(first.digest_sha256, different_engagement.digest_sha256)
+        for result in (first, different_client, different_engagement):
+            self.assertEqual(result.items, ())
+            self.assertNotIn("client-", result.to_json())
+            self.assertNotIn("engagement-", result.to_json())
+
+    def test_non_display_source_revision_invalidates_digest(self):
+        first = queue(finding(asset="lab://one", impact="first claim",
+                              title="old", created_at="2026-10-09T00:00:00Z"))
+        revisions = (
+            {"asset": "lab://two", "impact": "first claim", "title": "old",
+             "created_at": "2026-10-09T00:00:00Z"},
+            {"asset": "lab://one", "impact": "different claim", "title": "old",
+             "created_at": "2026-10-09T00:00:00Z"},
+            {"asset": "lab://one", "impact": "first claim", "title": "new",
+             "created_at": "2026-10-09T00:00:00Z"},
+            {"asset": "lab://one", "impact": "first claim", "title": "old",
+             "created_at": "2026-10-10T00:00:00Z"},
+        )
+        for changes in revisions:
+            with self.subTest(changes=changes):
+                later = queue(finding(**changes))
+                self.assertEqual(first.items, later.items)
+                self.assertNotEqual(first.digest_sha256, later.digest_sha256)
+
+    def test_queue_json_schema_v2_and_pseudonymous_fingerprint_only(self):
+        original = queue(finding(remediation="sensitive-text-cannot-escape"))
+        payload = json.loads(original.to_json())
+        self.assertEqual(payload["schema_version"], "lightup.remediation_review_queue.v2")
+        self.assertEqual(len(payload["digest_sha256"]), 64)
+        self.assertNotIn("sensitive-text-cannot-escape", original.to_json())
+        self.assertFalse(payload["release_authorized"])
+
+
+
 if __name__ == "__main__":
     unittest.main()
