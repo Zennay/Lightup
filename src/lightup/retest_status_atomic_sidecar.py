@@ -81,12 +81,14 @@ def atomic_retest_status_metadata(
         or type(ctx.user_id) is not str
         or not 0 < len(ctx.user_id) <= 128
         or not ctx.user_id.isprintable()
+        or ctx.user_id != ctx.user_id.strip()
     ):
         raise RoleError("operator context required")
     if (
         type(finding_id) is not str
         or not 0 < len(finding_id) <= 128
         or not finding_id.isprintable()
+        or finding_id != finding_id.strip()
     ):
         raise ValueError("invalid finding id")
     if type(status) is not RetestStatus:
