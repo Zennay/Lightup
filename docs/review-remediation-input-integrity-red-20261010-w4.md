@@ -39,3 +39,10 @@ permanent LightUp VPS evidence before any integration or release.
 No source-owner edits, live customer data, real model/provider, active
 targets, authorization, remediation/retest execution, deployment or
 security-verdict promotion are part of this branch.
+
+## Batch-atomic model-dispatch boundary
+
+If a later finding contains malformed `fix` content, earlier findings must
+**not** have caused any model request. Validate all finding remediation inputs
+in a separate preflight pass before model dispatch. A second-finding RED
+canary explicitly proves the existing sequential model loop is insufficient.
