@@ -114,6 +114,21 @@ def atomic_retest_status_metadata(
             previous = DomainStore._finding_from_row(row)
             if previous.evidence_ids != checked:
                 raise ValueError("finding evidence is invalid")
+            # A metadata-only lane has authority to advance an untested
+            # finding into human review, not to erase a previously recorded
+            # retest outcome or roll a pending review back to NOT_TESTED.
+            if previous.retest_status in (
+                RetestStatus.FIXED, RetestStatus.REGRESSION
+            ) or (
+                previous.retest_status is RetestStatus.FIX_PENDING
+                and status is RetestStatus.NOT_TESTED
+            ):
+                raise ValueError("retest metadata transition requires review")
+            # Repeat submissions must not produce fresh audit events,
+            # trigger side effects, or a redundant durable SQLite mutation.
+            if previous.retest_status is status:
+                connection.commit()
+                return previous
             changes_before = connection.total_changes
             updated = connection.execute(
                 "UPDATE findings SET retest_status=? "
