@@ -1,8 +1,7 @@
-"""Read-only, opt-in DomainStore adapter for remediation review queues.
+"""Read-only tenant-scoped snapshot adapter for evidence/remediation advisory.
 
-This is a consumer of an already-authenticated AccessContext and the existing
-DomainStore tenant/engagement read guards. It is not an authentication system,
-evidence verifier, or a target/remediation/retest dispatcher.
+Opt-in consumer of a separately authenticated AccessContext. Never exposes a
+global-finding reader, issues permissions or executes remediation/retests.
 """
 from __future__ import annotations
 
@@ -10,9 +9,13 @@ import json
 
 from .domain import AccessContext, DomainStore
 from .remediation_review_queue import (
+    MAX_EVIDENCE_IDS,
+    MAX_FINDINGS,
     RemediationReviewQueue,
     build_remediation_review_queue,
 )
+
+MAX_EVIDENCE_JSON_CHARS = 16384
 
 
 def read_remediation_review_queue(
@@ -21,68 +24,93 @@ def read_remediation_review_queue(
     *,
     engagement_id: str,
 ) -> RemediationReviewQueue:
-    """Read a single tenant/engagement and build a non-authorizing advisory.
+    """Read one engagement's findings from a single SQLite read snapshot.
 
-    A trusted application entrypoint MUST authenticate the identity and build
-    the AccessContext; instantiating one in user code does not establish consent.
-    The existing DomainStore verifies tenant access to the engagement.
+    A trusted application MUST first authenticate the caller and construct
+    AccessContext from trusted session data. These structural checks and the
+    returned digest are NOT authorization or evidence-verification proofs.
     """
     if type(store) is not DomainStore or type(context) is not AccessContext:
         raise ValueError("invalid remediation review read context")
-    if (type(engagement_id) is not str
-            or not 1 <= len(engagement_id) <= 128
-            or engagement_id != engagement_id.strip()
-            or not engagement_id.isascii()
-            or not engagement_id.isprintable()):
+    if (
+        type(engagement_id) is not str
+        or not 1 <= len(engagement_id) <= 128
+        or engagement_id != engagement_id.strip()
+        or not engagement_id.isascii()
+        or not engagement_id.isprintable()
+    ):
         raise ValueError("invalid remediation review engagement selector")
 
-    # DomainStore.get_engagement performs access-context tenant validation.
-    # There is no operator-global-list route: the caller must select exactly
-    # one engagement, even when a privileged operator uses this helper.
+    # Preserve DomainStore's tenant access contract and its independent
+    # TenantIsolationError / KeyError distinctions for unauthorized or
+    # nonexistent engagements. No operator-global-list fallback.
     engagement = store.get_engagement(context, engagement_id)
+
     try:
-        rows = store.list_findings(context, engagement_id=engagement.engagement_id)
-        if len(rows) > 128:
-            raise ValueError("too many remediation review findings")
-        # Legacy DomainStore reads can coerce JSON objects into tuples of
-        # their keys, silently laundering corrupt evidence into valid-looking
-        # strings. Reconcile the *raw* per-engagement JSON to every decoded
-        # FindingRecord before returning anything. Read-only and bounded.
-        raw_by_id: dict[str, tuple[str, ...]] = {}
         with store._connect() as connection:
-            persisted = connection.execute(
-                "SELECT finding_id, evidence_ids_json FROM findings "
-                "WHERE engagement_id=?", (engagement.engagement_id,),
-            )
-            for persisted_row in persisted:
-                if len(raw_by_id) >= 128:
-                    raise ValueError("too many persisted remediation findings")
-                raw = persisted_row["evidence_ids_json"]
-                if type(raw) is not str or len(raw) > 16384:
-                    raise ValueError("invalid persisted evidence JSON")
-                decoded = json.loads(raw)
-                if type(decoded) is not list or len(decoded) > 64:
-                    raise ValueError("invalid persisted evidence array")
-                if any(type(item) is not str for item in decoded):
-                    raise ValueError("invalid persisted evidence member")
-                finding_key = persisted_row["finding_id"]
-                if type(finding_key) is not str or finding_key in raw_by_id:
-                    raise ValueError("invalid persisted finding identity")
-                raw_by_id[finding_key] = tuple(decoded)
-        if len(raw_by_id) != len(rows):
-            raise ValueError("remediation review selected row drift")
-        for row in rows:
-            if raw_by_id.get(row.finding_id) != row.evidence_ids:
-                raise ValueError("remediation review evidence lineage drift")
-        # Re-check every persisted finding's claimed tenant and engagement.
-        # A corrupt or cross-tenant row must not produce even a summary.
-        return build_remediation_review_queue(
-            tuple(rows),
-            client_id=engagement.client_id,
-            engagement_id=engagement.engagement_id,
-        )
-    except (ValueError, TypeError, UnicodeError) as exc:
-        # DomainStore's legacy decoder currently leaks JSONDecodeError/TypeError
-        # on corrupt evidence JSON. This adapter normalizes read-side failures,
-        # without modifying the source-owned decoder or touching the row.
+            # DomainStore._connect uses SQLite autocommit; explicit BEGIN
+            # pins the engagement, raw evidence and finding data to ONE
+            # consistent read transaction, instead of separate reads.
+            connection.execute("BEGIN")
+            try:
+                scoped = connection.execute(
+                    "SELECT engagement_id, client_id FROM engagements "
+                    "WHERE engagement_id=?", (engagement_id,),
+                ).fetchone()
+                if (
+                    scoped is None
+                    or scoped["engagement_id"] != engagement.engagement_id
+                    or scoped["client_id"] != engagement.client_id
+                ):
+                    raise ValueError("remediation review engagement snapshot drift")
+
+                # Request MAX+1 rows so oversized engagements fail before
+                # decoding arbitrary amounts of source-controlled evidence.
+                rows = connection.execute(
+                    "SELECT * FROM findings WHERE engagement_id=? "
+                    "ORDER BY created_at DESC LIMIT ?",
+                    (engagement_id, MAX_FINDINGS + 1),
+                ).fetchall()
+                if len(rows) > MAX_FINDINGS:
+                    raise ValueError("too many remediation review findings")
+
+                findings = []
+                for row in rows:
+                    if (
+                        type(row["client_id"]) is not str
+                        or row["client_id"] != engagement.client_id
+                        or row["engagement_id"] != engagement_id
+                    ):
+                        raise ValueError("remediation review finding scope mismatch")
+
+                    # DomainStore's legacy decoder coerces JSON objects to
+                    # a tuple of keys. Refuse that ambiguity *before* using
+                    # the source-owned row constructor.
+                    raw = row["evidence_ids_json"]
+                    if type(raw) is not str or len(raw) > MAX_EVIDENCE_JSON_CHARS:
+                        raise ValueError("invalid persisted evidence JSON")
+                    decoded = json.loads(raw)
+                    if type(decoded) is not list or len(decoded) > MAX_EVIDENCE_IDS:
+                        raise ValueError("invalid persisted evidence array")
+                    if any(type(item) is not str for item in decoded):
+                        raise ValueError("invalid persisted evidence member")
+
+                    finding = DomainStore._finding_from_row(row)
+                    if tuple(decoded) != finding.evidence_ids:
+                        raise ValueError("remediation review evidence lineage drift")
+                    findings.append(finding)
+
+                result = build_remediation_review_queue(
+                    tuple(findings),
+                    client_id=engagement.client_id,
+                    engagement_id=engagement_id,
+                )
+            finally:
+                # Explicit read-only teardown: neither successful review nor
+                # rejected legacy data leaves a SQLite transaction open.
+                connection.execute("ROLLBACK")
+        return result
+    except (ValueError, TypeError, UnicodeError, OverflowError):
+        # Generic error: do not echo corrupt stored evidence or SQLite fields.
+        # Retain the actual domain tenant-denial exception above this block.
         raise ValueError("remediation evidence read integrity invalid") from None
