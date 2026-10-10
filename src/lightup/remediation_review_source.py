@@ -107,6 +107,13 @@ def read_remediation_review_queue(
                     "WHERE engagement_id=?", (engagement_id,),
                 ).fetchone()
                 if scoped is None:
+                    # Client identities must not discover whether an opaque
+                    # engagement ID exists for another tenant. Both unknown
+                    # and known-but-inaccessible IDs are one denial surface.
+                    if context.role is not Role.OPERATOR:
+                        raise TenantIsolationError(
+                            "remediation review tenant scope denied"
+                        ) from None
                     raise ValueError("remediation review engagement not found")
                 if (
                     type(scoped["engagement_id"]) is not str

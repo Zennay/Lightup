@@ -442,6 +442,30 @@ class RemediationReviewSourceTests(unittest.TestCase):
                 self.assertEqual(self._raw(), before)
 
 
+    def test_client_unknown_and_cross_tenant_engagements_are_indistinguishable(self):
+        before = self._raw()
+        client_admin = AccessContext(
+            "authorized-admin", Role.CLIENT_ADMIN, self.first.client_id,
+        )
+        for context in (self.client_ctx, client_admin):
+            messages = []
+            for selector in (
+                self.eng_second.engagement_id,
+                "nonexistent-opaque-engagement-identifier",
+            ):
+                with self.subTest(role=context.role, selector=selector):
+                    with self.assertRaises(TenantIsolationError) as caught:
+                        read_remediation_review_queue(
+                            self.store, context, engagement_id=selector,
+                        )
+                    messages.append(str(caught.exception))
+                    self.assertNotIn(selector, messages[-1])
+            self.assertEqual(
+                messages,
+                ["remediation review tenant scope denied"] * 2,
+            )
+        self.assertEqual(self._raw(), before)
+
     def test_noncanonical_access_context_roles_subjects_and_tenants_are_denied(self):
         class StrChild(str):
             pass

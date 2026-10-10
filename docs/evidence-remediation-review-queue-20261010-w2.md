@@ -211,6 +211,18 @@ Even a perfectly typed `AccessContext` is a forgeable Python object; only
 a trusted session/token authority and action-time revocation can justify
 any live operation. The advisory remains read-only and non-authorizing.
 
+## Client engagement-existence non-disclosure
+
+For a client-scoped `CLIENT_MEMBER` or `CLIENT_ADMIN`, both an unknown
+engagement selector and a real engagement owned by another tenant produce
+the **same `TenantIsolationError` and generic string**. This avoids making
+the advisory reader an oracle for whether another customer's engagement
+exists. An operator (already separately authenticated by its trusted caller)
+continues to get a generic `ValueError("remediation review engagement not
+found")` for nonexistent selections. In either case, the adapter reads no
+cross-tenant finding rows or evidence and issues no data writes. Dedicated
+temporary-SQLite tests compare both client denial paths.
+
 ## Explicit non-authority and collision fence
 
 The pure queue builder requires authenticated tenant-specific selection.
