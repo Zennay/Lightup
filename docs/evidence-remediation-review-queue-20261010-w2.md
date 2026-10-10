@@ -173,6 +173,14 @@ visible: `collect_evidence`, `author_remediation`, `investigate_regression`,
 `review_remediation`. Only immutable enumerated human-review hints are
 accepted; duplicate or unknown actions, inconsistent priority, and attempts
 to treat `review_remediation` as an extra authorization step fail closed.
+The item constructor also refuses omissions or inventions of action needs
+that can be inferred from its own fields: zero evidence must carry
+`collect_evidence`, a `FIXED` claim must carry `independent_retest`, a
+`REGRESSION` claim must carry `investigate_regression`, and those
+actions cannot appear without their corresponding conditions. The presence
+of meaningful remediation prose is not in the public item, so its missing-
+text obligation is still computed only by the trusted builder (neither
+approach is evidence authenticity or a consent check).
 The queue digest includes the ordered action list and the revised schema,
 so V3 hashes are not silently reused. The action list contains no raw
 remediation, target or evidence reference IDs and **cannot execute

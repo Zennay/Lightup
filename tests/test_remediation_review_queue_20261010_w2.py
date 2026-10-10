@@ -339,6 +339,31 @@ class RemediationQueueTests(unittest.TestCase):
         self.assertEqual(exported["items"][0]["remediation_authorized"], False)
         self.assertFalse(overlap.retest_authorized)
 
+    def test_direct_constructor_cannot_hide_or_forge_evidence_and_retest_needs(self):
+        normal = queue(finding()).items[0]
+        without_evidence = queue(finding(evidence_ids=())).items[0]
+        claimed_fixed = queue(finding(retest_status=RetestStatus.FIXED)).items[0]
+        claimed_regression = queue(finding(
+            retest_status=RetestStatus.REGRESSION,
+        )).items[0]
+        forged = (
+            (without_evidence, ("review_remediation",)),
+            (normal, ("collect_evidence",)),
+            (claimed_fixed, ("review_remediation",)),
+            (claimed_regression, ("review_remediation",)),
+            (normal, ("independent_retest",)),
+            (normal, ("investigate_regression",)),
+        )
+        for item, actions in forged:
+            with self.subTest(status=item.claimed_retest_status,
+                              missing_evidence=item.referenced_evidence_count == 0,
+                              actions=actions):
+                with self.assertRaisesRegex(ValueError, "inconsistent"):
+                    replace(
+                        item, next_review_step=actions[0],
+                        review_actions=actions,
+                    )
+
     def test_all_claimed_statuses_keep_all_independent_human_review_needs(self):
         # Exhaustive combinations: an earlier missing-evidence/remediation
         # blocker must never erase a FIXED or REGRESSION review requirement.

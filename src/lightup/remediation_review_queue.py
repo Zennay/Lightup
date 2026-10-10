@@ -83,6 +83,20 @@ class RemediationReviewItem:
                 and len(self.review_actions) != 1)
         ):
             raise ValueError("invalid remediation review advisory item")
+        # Additional obligations derived from fields that are present in the
+        # item itself cannot be omitted or forged by a direct constructor.
+        # Missing remediation text is not stored here for privacy, so its
+        # authoring obligation still depends on the trusted builder.
+        actions = self.review_actions
+        evidence_missing = self.referenced_evidence_count == 0
+        fixed_claim = self.claimed_retest_status is RetestStatus.FIXED
+        regression_claim = self.claimed_retest_status is RetestStatus.REGRESSION
+        if (
+            ("collect_evidence" in actions) != evidence_missing
+            or ("independent_retest" in actions) != fixed_claim
+            or ("investigate_regression" in actions) != regression_claim
+        ):
+            raise ValueError("inconsistent remediation review advisory obligations")
 
 
 @dataclass(frozen=True)
