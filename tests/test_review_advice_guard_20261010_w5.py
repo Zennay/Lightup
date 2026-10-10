@@ -14,7 +14,7 @@ from lightup.ai.review_advice_guard import review_with_batch_and_advice_guards
 class RecordingProvider(ScriptedProvider):
     def __init__(self, advice: object = "  Lab-only remediation guidance  "):
         super().__init__("scripted-advisor-guard", {
-            ModelRole.VERIFIER: ["UNCERTAIN: test data"],
+            ModelRole.VERIFIER: ["UNCERTAIN synthetic test data"],
             ModelRole.REMEDIATION_ADVISOR: [advice],
             ModelRole.REPORT_SYNTHESIZER: ["Synthetic report only."],
         })
