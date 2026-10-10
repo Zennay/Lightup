@@ -4,6 +4,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 from lightup.domain import AccessContext, DomainStore, Role, TenantIsolationError
 from lightup.models import RetestStatus, Severity
@@ -151,6 +152,132 @@ class RemediationReviewSourceTests(unittest.TestCase):
                         store, ctx, engagement_id=self.eng_first.engagement_id,
                     )
         self.assertEqual(self._raw(), before)
+
+
+    def test_read_adapter_does_not_call_legacy_second_pass_list_findings(self):
+        with patch.object(self.store, "list_findings", side_effect=AssertionError(
+            "legacy second snapshot must not be read"
+        )):
+            result = self._read()
+        self.assertEqual(len(result.items), 1)
+
+    def test_reader_pins_snapshot_when_concurrent_writer_changes_evidence(self):
+        # WAL mode permits the external writer to commit while this adapter
+        # holds its own read transaction. The advisory must refer to the OLD
+        # coherent snapshot, never mix old FindingRecord + new raw JSON.
+        original = DomainStore._finding_from_row
+        replacement = '["synthetic-ref-updated"]'
+        callback_count = 0
+
+        def concurrent_write(row):
+            nonlocal callback_count
+            callback_count += 1
+            if callback_count == 1:
+                with self.store._connect() as writer:
+                    writer.execute(
+                        "UPDATE findings SET evidence_ids_json=?, remediation=? "
+                        "WHERE finding_id=?",
+                        (replacement, "Updated synthetic remediation",
+                         self.row_first.finding_id),
+                    )
+            return original(row)
+
+        with patch.object(DomainStore, "_finding_from_row", side_effect=concurrent_write):
+            before = self._read()
+
+        self.assertEqual(callback_count, 1)
+        after = self._read()
+        self.assertNotEqual(before.digest_sha256, after.digest_sha256)
+        self.assertEqual(before.items, after.items)
+        self.assertEqual(
+            self.store.list_findings(
+                self.operator, engagement_id=self.eng_first.engagement_id,
+            )[0].evidence_ids,
+            ("synthetic-ref-updated",),
+        )
+
+    def test_any_bad_record_denies_entire_engagement_without_repair(self):
+        second = self.store.record_finding(
+            self.operator, self.eng_first.engagement_id,
+            title="Second local synthetic row", severity=Severity.LOW,
+            asset="lab://first/other", impact="second impact",
+            remediation="second synthetic fix",
+            evidence_ids=("local-second",),
+        )
+        with self.store._connect() as writer:
+            writer.execute(
+                "UPDATE findings SET evidence_ids_json=? WHERE finding_id=?",
+                ('{"looks-valid":"key"}', second.finding_id),
+            )
+        with self.store._connect() as con:
+            snapshots = [
+                tuple(row) for row in con.execute(
+                    "SELECT finding_id, evidence_ids_json FROM findings "
+                    "WHERE engagement_id=? ORDER BY finding_id",
+                    (self.eng_first.engagement_id,),
+                ).fetchall()
+            ]
+        with self.assertRaisesRegex(
+            ValueError, "^remediation evidence read integrity invalid$"
+        ):
+            self._read()
+        with self.store._connect() as con:
+            actual = [
+                tuple(row) for row in con.execute(
+                    "SELECT finding_id, evidence_ids_json FROM findings "
+                    "WHERE engagement_id=? ORDER BY finding_id",
+                    (self.eng_first.engagement_id,),
+                ).fetchall()
+            ]
+        self.assertEqual(actual, snapshots)
+
+    def test_maximum_128_findings_allows_review_and_129_fails_closed(self):
+        with self.store._connect() as connection:
+            for index in range(127):
+                connection.execute(
+                    "INSERT INTO findings "
+                    "(finding_id,client_id,engagement_id,title,severity,asset,"
+                    "impact,remediation,retest_status,evidence_ids_json,created_at) "
+                    "SELECT ?,client_id,engagement_id,title,severity,asset,"
+                    "impact,remediation,retest_status,evidence_ids_json,created_at "
+                    "FROM findings WHERE finding_id=?",
+                    (f"extra-{index:03d}", self.row_first.finding_id),
+                )
+        review = self._read()
+        self.assertEqual(len(review.items), 128)
+        with self.store._connect() as connection:
+            connection.execute(
+                "INSERT INTO findings "
+                "(finding_id,client_id,engagement_id,title,severity,asset,"
+                "impact,remediation,retest_status,evidence_ids_json,created_at) "
+                "SELECT ?,client_id,engagement_id,title,severity,asset,"
+                "impact,remediation,retest_status,evidence_ids_json,created_at "
+                "FROM findings WHERE finding_id=?",
+                ("extra-128", self.row_first.finding_id),
+            )
+        with self.assertRaisesRegex(
+            ValueError, "^remediation evidence read integrity invalid$"
+        ):
+            self._read()
+        with self.store._connect() as con:
+            count = con.execute(
+                "SELECT count(*) FROM findings WHERE engagement_id=?",
+                (self.eng_first.engagement_id,),
+            ).fetchone()[0]
+        self.assertEqual(count, 129)
+
+    def test_rejects_noncanonical_json_member_types_without_rewriting(self):
+        for raw in ('[null]', '["evidence", 12]', '["one","one"]',
+                    '"single-reference"', 'true', '[{}]', '[" "]'):
+            with self.subTest(raw=raw):
+                self._corrupt("evidence_ids_json", raw)
+                before = self._raw()
+                with self.assertRaisesRegex(
+                    ValueError, "^remediation evidence read integrity invalid$"
+                ):
+                    self._read()
+                self.assertEqual(self._raw(), before)
+
 
 
 if __name__ == "__main__":
