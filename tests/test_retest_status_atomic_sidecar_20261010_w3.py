@@ -7,6 +7,7 @@ import tempfile
 from contextlib import contextmanager
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from lightup.domain import AccessContext, DomainStore, Role, RoleError
 from lightup.models import RetestStatus, Severity
@@ -171,6 +172,30 @@ class AtomicRetestMetadataSidecarTest(unittest.TestCase):
                 self.store._connect = original
                 writer.rollback()
             self.assertEqual(self._row(), before)
+
+    def test_post_update_decode_exception_also_rolls_back(self):
+        original = DomainStore._finding_from_row
+        calls = [0]
+
+        def fail_after_write(row):
+            calls[0] += 1
+            if calls[0] == 2:
+                raise ValueError("synthetic decoder rejection")
+            return original(row)
+
+        before = self._row()
+        with mock.patch.object(DomainStore, "_finding_from_row", side_effect=fail_after_write):
+            with self.assertRaisesRegex(ValueError, "synthetic decoder"):
+                self._transition()
+        self.assertEqual(calls[0], 2)
+        self.assertEqual(self._row(), before)
+
+    def test_unpaired_unicode_surrogate_is_rejected_without_write(self):
+        self._corrupt('["\\ud800"]')
+        before = self._row()
+        with self.assertRaisesRegex(ValueError, "finding evidence"):
+            self._transition()
+        self.assertEqual(self._row(), before)
 
     @unittest.expectedFailure
     def test_red_existing_domainstore_still_updates_before_corrupt_decode(self):
