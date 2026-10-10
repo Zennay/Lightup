@@ -23,11 +23,17 @@ _MAX_EVIDENCE_ID_BYTES = 256
 
 def _checked_evidence_json(raw: str) -> tuple[str, ...]:
     """Validate persisted evidence as a bounded list; never repair legacy data."""
-    if type(raw) is not str or len(raw.encode("utf-8")) > _MAX_EVIDENCE_JSON_BYTES:
+    if type(raw) is not str:
+        raise ValueError("finding evidence is invalid")
+    try:
+        raw_size = len(raw.encode("utf-8"))
+    except UnicodeError:
+        raise ValueError("finding evidence is invalid") from None
+    if raw_size > _MAX_EVIDENCE_JSON_BYTES:
         raise ValueError("finding evidence is invalid")
     try:
         values = json.loads(raw)
-    except (ValueError, TypeError, RecursionError) as exc:
+    except (ValueError, TypeError, RecursionError):
         raise ValueError("finding evidence is invalid") from None
     if type(values) is not list or len(values) > _MAX_EVIDENCE_IDS:
         raise ValueError("finding evidence is invalid")
@@ -38,7 +44,7 @@ def _checked_evidence_json(raw: str) -> tuple[str, ...]:
             or not item
             or item != item.strip()
             or not item.isprintable()
-            or len(item.encode("utf-8")) > _MAX_EVIDENCE_ID_BYTES
+            or len(item.encode("utf-8", errors="replace")) > _MAX_EVIDENCE_ID_BYTES
             or item in seen
         ):
             raise ValueError("finding evidence is invalid")
