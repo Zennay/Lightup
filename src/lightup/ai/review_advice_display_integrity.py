@@ -79,6 +79,11 @@ def review_with_display_safe_advice(
     if type(pipeline) is not AssessmentReviewPipeline:
         raise ValueError("canonical review pipeline required")
     checked = preflight_review_batch(source)
+    # Complete the entire input-display audit before the first model call:
+    # a malformed current fix in a *later* finding must never dispatch an
+    # earlier finding to any model provider. Keep the W5 detached snapshot.
+    for finding in checked["findings"]:
+        checked_remediation_display_text(finding["fix"])
     return AssessmentReviewPipeline(_DisplaySafeAdviceGateway(pipeline.gateway)).review(
         checked
     )
