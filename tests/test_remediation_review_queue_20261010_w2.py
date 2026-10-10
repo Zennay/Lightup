@@ -402,6 +402,36 @@ class RemediationQueueTests(unittest.TestCase):
                             expected,
                         )
 
+    def test_review_workload_counts_all_overlapping_human_obligations(self):
+        multi = finding(
+            finding_id="multi",
+            evidence_ids=(), remediation="",
+            retest_status=RetestStatus.REGRESSION,
+            severity=Severity.CRITICAL,
+        )
+        retest = finding(
+            finding_id="retest",
+            retest_status=RetestStatus.FIXED,
+            severity=Severity.HIGH,
+        )
+        normal = finding(finding_id="normal", severity=Severity.LOW)
+        a = queue(normal, multi, retest)
+        b = queue(retest, normal, multi)
+        expected = (
+            ("collect_evidence", 1),
+            ("author_remediation", 1),
+            ("investigate_regression", 1),
+            ("independent_retest", 1),
+            ("review_remediation", 1),
+        )
+        self.assertEqual(a.review_action_counts, expected)
+        self.assertEqual(a.review_action_counts, b.review_action_counts)
+        self.assertEqual(len(a.items), 3)
+        self.assertEqual(sum(count for _, count in expected), 5)
+        self.assertEqual(queue().review_action_counts, ())
+        self.assertFalse(a.release_authorized)
+        self.assertNotIn("client-A", str(a.review_action_counts))
+
     def test_claimed_fixed_without_evidence_still_requires_retest_review(self):
         result = queue(finding(
             evidence_ids=(), remediation="", retest_status=RetestStatus.FIXED

@@ -134,6 +134,20 @@ class RemediationReviewQueue:
         ):
             raise ValueError("review advisory cannot certify item evidence or fix")
 
+    @property
+    def review_action_counts(self) -> tuple[tuple[str, int], ...]:
+        """Pure tenant-scoped workload counts, never progress certification.
+
+        A single finding may contribute to more than one count because it can
+        need evidence, remediation authoring and an independent retest. Return
+        an immutable ordered tuple so no mutable accumulator escapes.
+        """
+        totals = {action: 0 for action in _STAGE_RANK}
+        for item in self.items:
+            for action in item.review_actions:
+                totals[action] += 1
+        return tuple((action, count) for action, count in totals.items() if count)
+
     def to_json(self) -> str:
         """Deterministic privacy-minimal advisory; never embeds source text."""
         return json.dumps({

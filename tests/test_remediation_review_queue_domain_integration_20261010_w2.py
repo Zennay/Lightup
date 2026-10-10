@@ -186,6 +186,12 @@ class RemediationReviewDomainIntegrationTests(unittest.TestCase):
         self.assertFalse(critical.fix_verified)
         self.assertFalse(result.authorization_verified)
         self.assertFalse(result.retest_authorized)
+        self.assertEqual(result.review_action_counts, (
+            ("collect_evidence", 1),
+            ("author_remediation", 1),
+            ("investigate_regression", 1),
+            ("review_remediation", 1),
+        ))
         for secret in (
             finding.finding_id, finding.asset, finding.title, finding.impact,
             self.client_a.client_id, self.engagement_a.engagement_id,

@@ -188,6 +188,21 @@ anything**. It does expose human-review needs such as missing evidence or a
 claimed regression, so the summary and its deterministic pseudonyms must stay
 inside a trusted tenant-scoped interface rather than public logs.
 
+### Read-only engagement workload summary
+
+`RemediationReviewQueue.review_action_counts` is an **immutable, in-memory
+tuple of action-name/count pairs**, ordered by the same deterministic review
+priority. It counts **each human obligation**, not just the primary step:
+one finding with three independent blockers contributes to three counts.
+For example a two-finding queue can have three or four required human tasks.
+The counts do not represent completed remediation, authentic evidence,
+verified fixes, task execution permission or release approval, and the
+serialized JSON remains unchanged (v4). Empty queues return an empty tuple.
+
+These counts reveal tenant workload/status and must remain inside a trusted
+engagement-scoped interface; they are not safe for public telemetry or
+unauthenticated dashboards.
+
 ### Real persistent-record and state-matrix acceptance
 
 Dedicated temporary-`DomainStore` integration verifies a **critical real
