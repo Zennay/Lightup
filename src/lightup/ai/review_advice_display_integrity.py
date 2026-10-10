@@ -17,6 +17,7 @@ from .review_batch_preflight import preflight_review_batch
 _MAX_TEXT_CHARS = 8192
 _MAX_TEXT_BYTES = 16384
 _MAX_TOTAL_ADVISOR_BYTES = 32768
+_MAX_TOTAL_INPUT_BYTES = 262144
 _ALLOWED_LAYOUT = frozenset(("\n", "\t"))
 
 
@@ -217,12 +218,19 @@ def review_with_display_safe_advice(
         if "target" in finding:
             fields.append(finding["target"])
     fields.extend(checked["coverage"]["counts"])
+    # Individually bounded strings can still sum to megabytes across a full
+    # 128-finding batch. Refuse unbounded aggregate prompt construction before
+    # the first provider request. This is a conservative opt-in safety cap.
+    total_input_bytes = 0
     for value in fields:
         if value is not None:
             try:
                 checked_remediation_display_text(value)
             except ValueError:
                 raise ValueError("review input display text is invalid") from None
+            total_input_bytes += len(value.encode("utf-8"))
+            if total_input_bytes > _MAX_TOTAL_INPUT_BYTES:
+                raise ValueError("review input batch byte limit exceeded")
     return AssessmentReviewPipeline(_DisplaySafeAdviceGateway(pipeline.gateway)).review(
         checked
     )
