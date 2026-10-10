@@ -200,9 +200,12 @@ class AtomicRetestMetadataSidecarTest(unittest.TestCase):
     @unittest.expectedFailure
     def test_red_existing_domainstore_still_updates_before_corrupt_decode(self):
         # Expected RED against existing source; cannot be considered closed.
-        self._corrupt('[null]')
+        # This invalid JSON raises only AFTER the legacy autocommit UPDATE.
+        # Expected RED specifically detects durable partial mutation, not
+        # merely the absence of strict evidence-shape validation.
+        self._corrupt('["evidence:one"')
         before = self._row()
-        with self.assertRaisesRegex(ValueError, "evidence"):
+        with self.assertRaises(ValueError):
             self.store.set_retest_status(
                 self.operator, self.finding.finding_id, RetestStatus.FIXED
             )
