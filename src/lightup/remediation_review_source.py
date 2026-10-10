@@ -46,7 +46,7 @@ SELECT
     substr(evidence_ids_json, 1, {MAX_EVIDENCE_JSON_CHARS + 1}) AS evidence_ids_json,
     substr(created_at, 1, {MAX_TEXT + 1}) AS created_at
 FROM findings WHERE engagement_id=?
-ORDER BY created_at DESC LIMIT ?
+LIMIT ?
 """
 
 
@@ -148,6 +148,11 @@ def read_remediation_review_queue(
 
                 # Request MAX+1 rows so oversized engagements fail before
                 # decoding arbitrary amounts of source-controlled evidence.
+                # Do not sort by the unbounded persisted created_at column:
+                # all <=128 rows are sorted by advisory priority in the
+                # builder; >128 rows are denied regardless of read order.
+                # SQL ORDER BY created_at would sort maliciously huge source
+                # values before our per-column projection/size checks.
                 rows = connection.execute(
                     _BOUNDED_FINDING_SELECT,
                     (engagement_id, MAX_FINDINGS + 1),

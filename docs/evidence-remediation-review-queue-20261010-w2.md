@@ -136,8 +136,13 @@ this formerly uncapped boundary. Operator errors remain generic and no
 source remediation or evidence is changed. This adjustment does not
 authenticate the operator or grant engagement access. Other oversized
 source fields also fail closed; the oversized full field never needs to be
-materialized by Python. This does not bound SQLite's internal read/sort
-workload or replace system-level DB resource controls. Source parsing and
+materialized by Python. The finding query intentionally has **no `ORDER BY created_at`**:
+sorting persisted unbounded timestamps before projection/validation could
+create excessive SQLite temporary sort work. For <=128 findings, the pure
+queue builder deterministically sorts *all* selected records by severity
+and human-review priority; for >128, every result is rejected regardless
+of input order. SQLite may still perform internal lookup/scan work, and
+database-level resource controls remain essential. Source parsing and
 ordinary `sqlite3.DatabaseError` storage failures are reduced to a generic
 advisory integrity `ValueError` (without leaking DB schema/path details);
 the module does not repair or migrate its input database. It verifies every row's

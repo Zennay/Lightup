@@ -10,7 +10,10 @@ from unittest.mock import patch
 
 from lightup.domain import AccessContext, DomainStore, Role, TenantIsolationError
 from lightup.models import RetestStatus, Severity
-from lightup.remediation_review_source import read_remediation_review_queue
+from lightup.remediation_review_source import (
+    _BOUNDED_FINDING_SELECT,
+    read_remediation_review_queue,
+)
 
 
 class RemediationReviewSourceTests(unittest.TestCase):
@@ -447,6 +450,39 @@ class RemediationReviewSourceTests(unittest.TestCase):
                 "WHERE engagement_id=?", (self.eng_first.engagement_id,),
             ).fetchone()[0]
         self.assertEqual(actual_length, len(oversized))
+
+    def test_bounded_selection_never_sorts_unbounded_created_at_source(self):
+        # ORDER BY created_at forces SQLite to compare arbitrary persisted
+        # TEXT values before the projected MAX+1 source field size checks.
+        # The queue's priority sort is independent of the read order.
+        self.assertNotIn("ORDER BY", _BOUNDED_FINDING_SELECT.upper())
+        self.assertIn("LIMIT ?", _BOUNDED_FINDING_SELECT.upper())
+        extra = self.store.record_finding(
+            self.operator, self.eng_first.engagement_id,
+            title="Critical synthetic finding",
+            severity=Severity.CRITICAL,
+            asset="lab://priority",
+            impact="synthetic impact",
+            remediation="Synthetic remediation",
+            evidence_ids=("synthetic-ref-priority",),
+        )
+        with self.store._connect() as writer:
+            writer.execute(
+                "UPDATE findings SET created_at=? WHERE finding_id=?",
+                ("1000-01-01T00:00:00Z", extra.finding_id),
+            )
+            writer.execute(
+                "UPDATE findings SET created_at=? WHERE finding_id=?",
+                ("9999-01-01T00:00:00Z", self.row_first.finding_id),
+            )
+        first = self._read()
+        second = self._read()
+        self.assertEqual(first, second)
+        self.assertEqual(
+            [item.severity for item in first.items],
+            [Severity.CRITICAL, Severity.MEDIUM],
+        )
+        self.assertFalse(first.release_authorized)
 
     def test_bounded_projection_preserves_valid_8192_character_source(self):
         long_text = "修" * 8192
