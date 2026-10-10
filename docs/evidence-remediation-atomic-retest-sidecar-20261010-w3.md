@@ -1,0 +1,46 @@
+# Evidence-remediation: opt-in atomic retest-status metadata sidecar (W3)
+
+**Phase:** M3/M7; PLAN/LAB only. **Status:** DRAFT/HOLD. Related open issue: [#893](https://github.com/Zennay/Lightup/issues/893). No live targets, tests against targets, evidence collection, remediation implementation, deployment or source-owner wiring.
+
+## Why this exists
+
+Current `DomainStore.set_retest_status()` writes `findings.retest_status` under SQLite autocommit *before* reconstructing the persisted `FindingRecord`. If historical `evidence_ids_json` is malformed, reconstruction can fail after durable status mutation. A failed retest-metadata update therefore need not be atomic. This was captured as an unresolved RED acceptance contract in issue #893.
+
+`src/lightup/retest_status_atomic_sidecar.py` demonstrates a **narrow opt-in repair** without changing concurrently owned `domain.py`, the canonical persisted evidence decoder from #856/#886, the write validator #851/#857, lab sync #184/#854 or review/queue PRs #846 and #1177.
+
+## Implementation
+
+1. Fail-closed exact runtime types for an operator-shaped context, the finding ID and `RetestStatus`; **these types are not authenticated authority**.
+2. Begin a `BEGIN IMMEDIATE` SQLite transaction **before** selecting any persisted finding data. A same-transaction join requires the stored finding tenant to match its engagement tenant.
+3. Validate bounded persisted evidence JSON as a list of unique, nonempty, printable built-in strings, with no conversions or repairs.
+4. Decode the canonical `FindingRecord` *before* writing, update with a compare-and-swap constraint, reconstruct the new row **before** commit, and roll back every exception (including decoder failures).
+5. No change to the main `DomainStore.set_retest_status` entrypoint. The helper is deliberately not installed in the web/API/agent/assessment paths.
+
+**Important semantics:** `RetestStatus.FIXED` is *only an existing data-model string/enum*. A successful synthetic metadata transition **does not** verify a fix, authenticate an operator, establish evidence provenance, prove a tenant session, authorize remediation, or permit any test. No background action is triggered by this helper.
+
+## Acceptance / negative evidence
+
+- Disposable SQLite canonical findings (including legitimate empty evidence) can transition without changing evidence/client/engagement bytes.
+- JSON scalar, null, object, malformed array, nonstring members, blanks, duplicate references, control characters and size violations all fail before durable mutation; corrupted original bytes stay unchanged.
+- An invalid severity that crashes row reconstruction also rolls back the transition.
+- Unbound client/engagement tenant mismatch, unknown finding, unsupported runtime types, nonoperator and concurrent writer lock all fail with no status change.
+- One `unittest.expectedFailure` RED canary against **existing** `DomainStore.set_retest_status` explicitly records that the actual entrypoint remains unsafe. This expected failure is *not* green remediation evidence.
+
+Run the offline acceptance (no network):
+```sh
+PYTHONPATH=src python -m unittest tests.test_retest_status_atomic_sidecar_20261010_w3 -v
+```
+
+## Integration dependencies: explicit HOLD
+
+Owner-controlled resolution of #893 must happen on an exact integrated source SHA: absorb canonical strict evidence decoder (#856/#886); change the real DomainStore mutation in the #828 owner lane; replace RED canary with an ordinary passing entrypoint assertion; enforce real authenticated role/tenant/session and action-time revocation outside this standalone helper; acquire independent reviewer approval and **both** hosted Python 3.11/3.14 tests and canonical permanent VPS self-hosted CI on final SHA. In particular, a queued/cancelled VPS workflow is **not** CI proof. Do not merge/deploy or advertise a verified remediation based on this sidecar.
+
+## Parallel ownership
+
+Exactly these three **new paths** are owned by this draft branch:
+
+- `src/lightup/retest_status_atomic_sidecar.py`
+- `tests/test_retest_status_atomic_sidecar_20261010_w3.py`
+- `docs/evidence-remediation-atomic-retest-sidecar-20261010-w3.md`
+
+No edits to active worker-owned production source, no DB change outside disposable test instances, no real targets, no grants or assessment actions.
