@@ -108,6 +108,7 @@ def atomic_retest_status_metadata(
             previous = DomainStore._finding_from_row(row)
             if previous.evidence_ids != checked:
                 raise ValueError("finding evidence is invalid")
+            changes_before = connection.total_changes
             updated = connection.execute(
                 "UPDATE findings SET retest_status=? "
                 "WHERE finding_id=? AND client_id=? AND engagement_id=? "
@@ -123,6 +124,10 @@ def atomic_retest_status_metadata(
             ).rowcount
             if updated != 1:
                 raise ValueError("finding status changed")
+            # SQLite total_changes includes trigger-induced changes to *other*
+            # rows that a row-local after-image comparison cannot detect.
+            if connection.total_changes - changes_before != 1:
+                raise ValueError("unexpected retest transaction write")
             after = connection.execute(
                 "SELECT * FROM findings WHERE finding_id=?", (finding_id,)
             ).fetchone()
