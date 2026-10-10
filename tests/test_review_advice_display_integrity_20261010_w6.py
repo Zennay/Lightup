@@ -288,7 +288,7 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
         import json
         verifier = next(r for r in provider.requests if r.role is ModelRole.VERIFIER)
         self.assertEqual(
-            json.loads(verifier.messages[-1].content)["evidence_id"], ""
+            json.loads(verifier.messages[-1].content)["evidence_ids"], ["synthetic:résumé"]
         )
         self.assertIn("Évaluation synthétique", verifier.messages[-1].content)
 
