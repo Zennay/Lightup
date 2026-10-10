@@ -197,6 +197,20 @@ def review_with_display_safe_advice(
     if type(pipeline) is not AssessmentReviewPipeline:
         raise ValueError("canonical review pipeline required")
     checked = preflight_review_batch(source)
+    # The canonical pipeline would otherwise synthesize a client-facing
+    # assessment report even with zero findings, or without a target label.
+    # Do not let a well-shaped but ungrounded empty review imply that anything
+    # was assessed. Reject prior to the *first* provider request.
+    if not checked["findings"]:
+        raise ValueError("review batch requires at least one finding")
+    if checked["target"] is None and not checked["targets"]:
+        raise ValueError("review batch requires explicit target context")
+    # The canonical pipeline silently prefers "target" over "targets".
+    # A conflicting second source would be ignored in all role prompts.
+    if checked["target"] is not None and checked["targets"] not in (
+        [], [checked["target"]]
+    ):
+        raise ValueError("review batch has conflicting target context")
     # Complete the entire input-display audit before the first model call:
     # a malformed current fix in a *later* finding must never dispatch an
     # earlier finding to any model provider. Keep the W5 detached snapshot.
