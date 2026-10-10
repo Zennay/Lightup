@@ -5,6 +5,7 @@ from __future__ import annotations
 import sqlite3
 import tempfile
 from contextlib import contextmanager
+from dataclasses import replace
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -120,6 +121,28 @@ class AtomicRetestMetadataSidecarTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "requires review"):
                     self._transition(requested)
                 self.assertEqual(self._full_row(), before)
+
+    def test_decoder_cannot_smuggle_future_status_into_metadata_transition(self):
+        # The persisted raw enum value is valid; simulate a later source
+        # decoder/model introducing a new outcome or noncanonical enum object.
+        # An allowlist must refuse it, even if its value would pass old CAS.
+        original = DomainStore._finding_from_row
+
+        class SyntheticFutureOutcome:
+            value = RetestStatus.NOT_TESTED.value
+
+        def decoded_future_state(row):
+            return replace(
+                original(row), retest_status=SyntheticFutureOutcome()
+            )
+
+        before = self._full_row()
+        with mock.patch.object(
+            DomainStore, "_finding_from_row", side_effect=decoded_future_state
+        ):
+            with self.assertRaisesRegex(ValueError, "requires review"):
+                self._transition(RetestStatus.FIX_PENDING)
+        self.assertEqual(self._full_row(), before)
 
     def test_repeated_pending_review_is_write_free_even_under_abort_trigger(self):
         self._transition(RetestStatus.FIX_PENDING)
