@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 import tempfile
+from contextlib import contextmanager
 import unittest
 from pathlib import Path
 
@@ -148,18 +149,26 @@ class AtomicRetestMetadataSidecarTest(unittest.TestCase):
             self._transition()
         self.assertEqual(self._row(), before)
 
-    def test_concurrent_begin_immediate_lock_cannot_partially_update(self):
-        # A separate held writer transaction prevents the preflight from
-        # crossing its read/write boundary. No threads or target I/O.
-        with sqlite3.connect(self.store.path, timeout=0.1, isolation_level=None) as writer:
+    def test_held_writer_lock_rejects_without_state_change(self):
+        @contextmanager
+        def fast_connect():
+            con = sqlite3.connect(self.store.path, timeout=0.01, isolation_level=None)
+            con.row_factory = sqlite3.Row
+            try:
+                yield con
+            finally:
+                con.close()
+
+        with sqlite3.connect(self.store.path, isolation_level=None) as writer:
             writer.execute("BEGIN IMMEDIATE")
             before = self._row()
+            original = self.store._connect
+            self.store._connect = fast_connect
             try:
                 with self.assertRaises(sqlite3.OperationalError):
-                    # The production connection has timeout=10, so avoid
-                    # sleeping: use a test-local connection override below.
-                    pass
+                    self._transition()
             finally:
+                self.store._connect = original
                 writer.rollback()
             self.assertEqual(self._row(), before)
 
