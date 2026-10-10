@@ -109,7 +109,12 @@ class _DisplaySafeAdviceGateway:
             if provider is None:
                 raise ValueError("review registered provider is invalid")
             self._pinned_providers[binding.provider_id] = provider
-            self._pinned[role] = binding
+            # An immutable dataclass can still be forcibly changed through
+            # object.__setattr__. Keep an independent value copy, never an
+            # alias to the gateway's live binding object.
+            self._pinned[role] = RoleBinding(
+                role, binding.provider_id, binding.model_id
+            )
 
     def binding_for(self, role: ModelRole):
         if role not in self._pinned:
