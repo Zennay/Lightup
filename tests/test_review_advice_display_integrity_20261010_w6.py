@@ -233,5 +233,131 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
         self.assertEqual(payload["current_fix"], fix)
         self.assertEqual(result.findings[0].remediation_advice, "Synthetic safe review.")
 
+
+    def test_every_forwarded_presentation_field_denies_controls_pre_model(self):
+        # Alter exactly one independent synthetic field at a time. A late
+        # finding must not dispatch an earlier one to any provider.
+        for field in ("finding", "severity", "impact", "evidence_summary",
+                      "target", "fix"):
+            with self.subTest(field=field):
+                source = fixture()
+                row = dict(source["findings"][0])
+                row["finding"] = "Second synthetic finding"
+                row["evidence_ids"] = ["synthetic:evidence:2"]
+                row[field] = "unsafe\u202evalue"
+                source["findings"].append(row)
+                before = copy.deepcopy(source)
+                pipeline, provider = make_pipeline("Valid advice")
+                with self.assertRaisesRegex(ValueError, "review input display"):
+                    review_with_display_safe_advice(pipeline, source)
+                self.assertEqual(provider.requests, [])
+                self.assertEqual(source, before)
+
+    def test_evidence_reference_and_root_target_controls_deny_pre_model(self):
+        for path in ("evidence_id", "root_target", "targets", "count_key"):
+            with self.subTest(path=path):
+                source = fixture()
+                if path == "evidence_id":
+                    source["findings"][0]["evidence_ids"][0] += "\u200b"
+                if path == "root_target":
+                    source["target"] += "\x1b"
+                if path == "targets":
+                    source["targets"] = ["lab://clean", "lab://bad\u2069"]
+                if path == "count_key":
+                    source["coverage"]["counts"]["unsafe\u202e"] = 1
+                before = copy.deepcopy(source)
+                pipeline, provider = make_pipeline("Valid advice")
+                with self.assertRaisesRegex(ValueError, "review input display"):
+                    review_with_display_safe_advice(pipeline, source)
+                self.assertEqual(provider.requests, [])
+                self.assertEqual(source, before)
+
+    def test_safe_unicode_review_inputs_are_not_changed(self):
+        source = fixture()
+        source["target"] = "lab://synthétique"
+        source["targets"] = ["lab://合成"]
+        source["findings"][0]["finding"] = "Évaluation synthétique"
+        source["findings"][0]["impact"] = "测试摘要"
+        source["findings"][0]["evidence_summary"] = "Échantillon contrôlé"
+        source["findings"][0]["evidence_ids"] = ["synthetic:résumé"]
+        before = copy.deepcopy(source)
+        pipeline, provider = make_pipeline("Human review advised.")
+        result = review_with_display_safe_advice(pipeline, source)
+        self.assertEqual(source, before)
+        self.assertEqual(result.findings[0].title, "Évaluation synthétique")
+        import json
+        verifier = next(r for r in provider.requests if r.role is ModelRole.VERIFIER)
+        self.assertEqual(
+            json.loads(verifier.messages[-1].content)["evidence_id"], ""
+        )
+        self.assertIn("Évaluation synthétique", verifier.messages[-1].content)
+
+    def test_verifier_wrong_model_or_role_denies_before_advisor(self):
+        from dataclasses import replace
+        for change in ({"model_id": "spoofed-model"},
+                       {"role": ModelRole.REPORT_SYNTHESIZER},
+                       {"content": "\u202eFAKE UNCERTAIN"},
+                       {"content": " \n\t "}):
+            with self.subTest(change=change):
+                pipeline, provider = make_pipeline("Valid advisor guidance")
+                original = provider.complete
+
+                def altered(req):
+                    response = original(req)
+                    if req.role is ModelRole.VERIFIER:
+                        return replace(response, **change)
+                    return response
+
+                provider.complete = altered
+                with self.assertRaises(ValueError):
+                    review_with_display_safe_advice(pipeline, fixture())
+                self.assertEqual(
+                    [r.role for r in provider.requests], [ModelRole.VERIFIER]
+                )
+
+    def test_report_wrong_role_model_blank_or_control_never_returned(self):
+        from dataclasses import replace
+        for change in ({"model_id": "spoofed-model"},
+                       {"role": ModelRole.VERIFIER},
+                       {"content": ""},
+                       {"content": "\u202efalse safety report"}):
+            with self.subTest(change=change):
+                pipeline, provider = make_pipeline("Valid advisor guidance")
+                original = provider.complete
+
+                def altered(req):
+                    response = original(req)
+                    if req.role is ModelRole.REPORT_SYNTHESIZER:
+                        return replace(response, **change)
+                    return response
+
+                provider.complete = altered
+                with self.assertRaises(ValueError):
+                    review_with_display_safe_advice(pipeline, fixture())
+                self.assertEqual(
+                    [r.role for r in provider.requests],
+                    [ModelRole.VERIFIER, ModelRole.REMEDIATION_ADVISOR,
+                     ModelRole.REPORT_SYNTHESIZER],
+                )
+
+    def test_output_rejection_error_does_not_echo_provider_content(self):
+        from dataclasses import replace
+        secret_marker = "synthetic-sentinel-never-log-this"
+        pipeline, provider = make_pipeline("Valid advice")
+        original = provider.complete
+
+        def altered(req):
+            response = original(req)
+            if req.role is ModelRole.REPORT_SYNTHESIZER:
+                return replace(response, content=secret_marker + "\u202e")
+            return response
+
+        provider.complete = altered
+        with self.assertRaises(ValueError) as caught:
+            review_with_display_safe_advice(pipeline, fixture())
+        self.assertEqual(str(caught.exception),
+                         "review model response display text is invalid")
+        self.assertNotIn(secret_marker, str(caught.exception))
+
 if __name__ == "__main__":
     unittest.main()
