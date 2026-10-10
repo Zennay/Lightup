@@ -339,6 +339,44 @@ class RemediationQueueTests(unittest.TestCase):
         self.assertEqual(exported["items"][0]["remediation_authorized"], False)
         self.assertFalse(overlap.retest_authorized)
 
+    def test_all_claimed_statuses_keep_all_independent_human_review_needs(self):
+        # Exhaustive combinations: an earlier missing-evidence/remediation
+        # blocker must never erase a FIXED or REGRESSION review requirement.
+        for status in RetestStatus:
+            for evidence_ids in ((), ("evidence-1",)):
+                for remediation in ("", "Synthetic human-authored fix"):
+                    with self.subTest(
+                        status=status, evidence_present=bool(evidence_ids),
+                        remediation_present=bool(remediation),
+                    ):
+                        actual = queue(finding(
+                            evidence_ids=evidence_ids,
+                            remediation=remediation,
+                            retest_status=status,
+                        ))
+                        item = actual.items[0]
+                        expected = []
+                        if not evidence_ids:
+                            expected.append("collect_evidence")
+                        if not remediation:
+                            expected.append("author_remediation")
+                        if status is RetestStatus.REGRESSION:
+                            expected.append("investigate_regression")
+                        if status is RetestStatus.FIXED:
+                            expected.append("independent_retest")
+                        if not expected:
+                            expected.append("review_remediation")
+                        self.assertEqual(item.review_actions, tuple(expected))
+                        self.assertEqual(item.next_review_step, expected[0])
+                        self.assertFalse(item.evidence_verified)
+                        self.assertFalse(item.fix_verified)
+                        self.assertFalse(item.remediation_authorized)
+                        self.assertFalse(actual.release_authorized)
+                        self.assertEqual(
+                            json.loads(actual.to_json())["items"][0]["review_actions"],
+                            expected,
+                        )
+
     def test_claimed_fixed_without_evidence_still_requires_retest_review(self):
         result = queue(finding(
             evidence_ids=(), remediation="", retest_status=RetestStatus.FIXED
