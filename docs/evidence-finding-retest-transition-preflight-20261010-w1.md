@@ -8,11 +8,11 @@ error: an object can flip its `retest_status` to `fixed` without recording any
 new evidence. The function refuses to call that a reviewable retest.
 
 The preflight requires exact built-in Finding/Severity/RetestStatus types;
-bounded, unique, nonempty, strictly typed evidence items; unchanged finding,
+bounded, unique, nonempty, Unicode-NFC, printable, strictly typed evidence\nitems; unchanged finding,
 target, title and severity identity; preserved historical evidence; and at
 least one additional item. It does not record or modify any finding.
 
-The result exposes only fixed reason codes, a bounded count, and three always
+Unicode normalization rejects visually equivalent decomposed evidence being\nsubmitted as a bogus new observation; control/format characters and invalid\nUnicode surrogate text also reject without bubbling codec errors.\n\nThe result exposes only fixed reason codes, a bounded count, and three always
 false flags: `externally_verified`, `remediation_authorized` and
 `release_authorized`. No target, evidence text, metadata, finding details or
 credentials are emitted.
