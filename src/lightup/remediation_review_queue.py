@@ -61,7 +61,7 @@ class RemediationReviewQueue:
     def to_json(self) -> str:
         """Deterministic privacy-minimal advisory; never embeds source text."""
         return json.dumps({
-            "schema_version": "lightup.remediation_review_queue.v2",
+            "schema_version": "lightup.remediation_review_queue.v3",
             "items": [
                 {
                     "finding_key_sha256": item.finding_key_sha256,
@@ -166,10 +166,13 @@ def build_remediation_review_queue(
 
         # This key permits deterministic correlation within an authorized
         # application context. It is NOT anonymization or an evidence digest.
-        key = sha256(
-            ("lightup-review-v1\\0" + client_id + "\\0" + engagement_id + "\\0" + finding_id)
-            .encode("utf-8")
-        ).hexdigest()
+        # A textual "\\0" separator is legal inside printable IDs, so
+        # concatenating them permits cross-scope key aliasing. Encode each
+        # identity as its own JSON tuple element instead.
+        key = sha256(json.dumps(
+            ("lightup-review-finding-key.v3", client_id, engagement_id, finding_id),
+            separators=(",", ":"), ensure_ascii=True,
+        ).encode("utf-8")).hexdigest()
         # Bind the advisory digest to the *actual ordered evidence identities*
         # and full source record, not only the evidence count / display step.
         # This is change detection only: hashes never prove evidence truth,
@@ -211,7 +214,7 @@ def build_remediation_review_queue(
     # across clients / engagements with different trusted selectors.
     digest = sha256(json.dumps(
         {
-            "schema_version": "lightup.remediation_review_queue.v2",
+            "schema_version": "lightup.remediation_review_queue.v3",
             "client_id": client_id,
             "engagement_id": engagement_id,
             "records": canonical,
