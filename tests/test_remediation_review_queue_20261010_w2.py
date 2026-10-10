@@ -72,16 +72,11 @@ class RemediationQueueTests(unittest.TestCase):
 
     def test_invisible_or_nonsemantic_remediation_requires_authoring(self):
         empty_in_practice = (
-            "\\u200d", "\\u202e", "\\u200b", "\\u2060",
-            "\\u0301", " ⚠️ ", " ✨ ", " -- ", "\\t\\u200d\\n",
+            chr(0x200D), chr(0x202E), chr(0x200B), chr(0x2060),
+            chr(0x0301), " ⚠️ ", " ✨ ", " -- ",
+            "  " + chr(0x200D) + "  ",
         )
         for value in empty_in_practice:
-            # Runtime decode is not needed: use actual Unicode characters.
-            value = value.replace(r"\\u200d", "\u200d").replace(
-                r"\\u202e", "\u202e"
-            ).replace(r"\\u200b", "\u200b").replace(
-                r"\\u2060", "\u2060"
-            ).replace(r"\\u0301", "\u0301")
             with self.subTest(value=ascii(value)):
                 result = queue(finding(remediation=value))
                 self.assertEqual(result.items[0].next_review_step,
