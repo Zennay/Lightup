@@ -8,8 +8,9 @@ historical retest transition preflight (#1176), retest lineage (#1065–#1078).
 No independent, bounded **review-only worklist** exists for the already selected
 real `FindingRecord` objects while source owners integrate those gates.
 
-This isolated producer does **not** integrate with the persistence layer or
-the live API. It introduces a deterministic advisory queue without changing
+The pure review builder never queries persistence. An **opt-in,
+read-only** adapter separately reads an authorized single engagement through
+`DomainStore`; neither component is connected to the live API or changes
 any other worker's code.
 
 ## Contract
@@ -42,7 +43,8 @@ an already authorized tenant-scoped workflow. Counts can also disclose activity.
 
 ## V2 snapshot integrity and privacy boundary
 
-The output schema is `lightup.remediation_review_queue.v2`. In v1 the queue
+V2 historically introduced a source-bound digest (now superseded by
+the current `lightup.remediation_review_queue.v3` schema). In v1 the queue
 digest depended only on visible review fields and *counts* of referenced
 evidence. Swapping evidence A for evidence B while preserving the same count
 and review step produced exactly the same digest, as did rewriting a fix.
