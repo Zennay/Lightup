@@ -228,13 +228,50 @@ class RemediationQueueTests(unittest.TestCase):
                 self.assertEqual(first.items, later.items)
                 self.assertNotEqual(first.digest_sha256, later.digest_sha256)
 
-    def test_queue_json_schema_v2_and_pseudonymous_fingerprint_only(self):
+    def test_queue_json_schema_v3_and_pseudonymous_fingerprint_only(self):
         original = queue(finding(remediation="sensitive-text-cannot-escape"))
         payload = json.loads(original.to_json())
-        self.assertEqual(payload["schema_version"], "lightup.remediation_review_queue.v2")
+        self.assertEqual(payload["schema_version"], "lightup.remediation_review_queue.v3")
         self.assertEqual(len(payload["digest_sha256"]), 64)
         self.assertNotIn("sensitive-text-cannot-escape", original.to_json())
         self.assertFalse(payload["release_authorized"])
+
+
+
+    def test_printable_delimiter_cannot_alias_cross_scope_finding_keys(self):
+        # Printable backslash + zero is a valid identifier substring, and
+        # historically was also the field separator in the hash input.
+        first = queue(
+            finding(client_id=r"tenant\\0sub", engagement_id="alpha",
+                    finding_id="same-finding"),
+            client_id=r"tenant\\0sub", engagement_id="alpha",
+        )
+        second = queue(
+            finding(client_id="tenant", engagement_id=r"sub\\0alpha",
+                    finding_id="same-finding"),
+            client_id="tenant", engagement_id=r"sub\\0alpha",
+        )
+        self.assertEqual(len(first.items), 1)
+        self.assertEqual(len(second.items), 1)
+        self.assertNotEqual(
+            first.items[0].finding_key_sha256,
+            second.items[0].finding_key_sha256,
+        )
+        self.assertNotEqual(first.digest_sha256, second.digest_sha256)
+        self.assertNotIn("tenant", first.to_json())
+        self.assertNotIn("tenant", second.to_json())
+
+    def test_key_identity_changes_for_distinct_engagement_or_finding_ids(self):
+        first = queue(finding(finding_id="same"))
+        changed_id = queue(finding(finding_id="different"))
+        changed_engagement = queue(
+            finding(finding_id="same", engagement_id="another"),
+            engagement_id="another",
+        )
+        self.assertNotEqual(first.items[0].finding_key_sha256,
+                            changed_id.items[0].finding_key_sha256)
+        self.assertNotEqual(first.items[0].finding_key_sha256,
+                            changed_engagement.items[0].finding_key_sha256)
 
 
 
