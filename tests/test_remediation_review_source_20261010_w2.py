@@ -451,7 +451,7 @@ class RemediationReviewSourceTests(unittest.TestCase):
             AccessContext("", Role.OPERATOR),
             AccessContext("  ", Role.OPERATOR),
             AccessContext("unauthenticated" * 20, Role.OPERATOR),
-            AccessContext("bad\\nuser", Role.OPERATOR),
+            AccessContext("bad" + chr(10) + "user", Role.OPERATOR),
             AccessContext("client-user", Role.CLIENT_MEMBER,
                           StrChild(self.first.client_id)),
             AccessContext("client-user", Role.CLIENT_MEMBER,
