@@ -575,6 +575,24 @@ class RemediationReviewSourceTests(unittest.TestCase):
                 self.assertFalse(review.retest_authorized)
                 self.assertFalse(review.release_authorized)
 
+    def test_filtering_existing_advisory_never_reopens_database_or_executes(self):
+        before = self._raw()
+        review = self._read()
+        with patch.object(
+            self.store, "_connect",
+            side_effect=AssertionError("filter must not open a database"),
+        ):
+            for action, count in review.review_action_counts:
+                results = review.items_needing_review_action(action)
+                self.assertEqual(len(results), count)
+                for item in results:
+                    self.assertIn(action, item.review_actions)
+                    self.assertFalse(item.remediation_authorized)
+            with self.assertRaises(ValueError):
+                review.items_needing_review_action("execute_remediation")
+        self.assertEqual(self._raw(), before)
+        self.assertFalse(review.retest_authorized)
+
     def test_sqlite_query_only_pragma_blocks_accidental_advisory_writes(self):
         original_connect = self.store._connect
         decoder = DomainStore._finding_from_row

@@ -148,6 +148,19 @@ class RemediationReviewQueue:
                 totals[action] += 1
         return tuple((action, count) for action, count in totals.items() if count)
 
+    def items_needing_review_action(
+        self, action: str,
+    ) -> tuple[RemediationReviewItem, ...]:
+        """Filter advisory items by one human task; never dispatch work.
+
+        Includes secondary obligations rather than filtering solely on the
+        item's primary next_review_step. No external services or DB are
+        consulted; the result retains the original severity-first order.
+        """
+        if type(action) is not str or action not in _STAGE_RANK:
+            raise ValueError("invalid remediation human-review action selector")
+        return tuple(item for item in self.items if action in item.review_actions)
+
     def to_json(self) -> str:
         """Deterministic privacy-minimal advisory; never embeds source text."""
         return json.dumps({

@@ -215,6 +215,21 @@ These counts reveal tenant workload/status and must remain inside a trusted
 engagement-scoped interface; they are not safe for public telemetry or
 unauthenticated dashboards.
 
+### Per-action human-review filtering
+
+`RemediationReviewQueue.items_needing_review_action(action)` is a pure,
+bounded, **read-only in-memory** selector for one of the five documented
+human review labels. It includes **secondary** obligations, preserving the
+already-ordered severity priority rather than filtering only on a finding's
+primary next-review step. Unknown, polymorphic and execution-capable labels
+(`execute_remediation`, `scan_target`, etc.) fail closed; an empty match
+returns an empty tuple. The result cannot issue instructions, contact targets
+or change evidence. Synthetic real-`DomainStore` regressions confirm
+filtering a previously selected engagement never reopens SQLite, modifies
+source rows or manufactures authorization. This filtered output and the
+counts can disclose engagement workload and must remain behind the
+separately trusted tenant interface.
+
 ### Real persistent-record and state-matrix acceptance
 
 Dedicated temporary-`DomainStore` integration verifies a **critical real

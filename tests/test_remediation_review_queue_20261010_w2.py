@@ -432,6 +432,66 @@ class RemediationQueueTests(unittest.TestCase):
         self.assertFalse(a.release_authorized)
         self.assertNotIn("client-A", str(a.review_action_counts))
 
+    def test_secondary_review_action_filter_keeps_priority_and_all_blockers(self):
+        critical = finding(
+            finding_id="critical", severity=Severity.CRITICAL,
+            evidence_ids=(), remediation="", retest_status=RetestStatus.REGRESSION,
+        )
+        high = finding(
+            finding_id="high", severity=Severity.HIGH,
+            evidence_ids=(), remediation="Human remediation",
+        )
+        medium = finding(
+            finding_id="medium", severity=Severity.MEDIUM,
+            retest_status=RetestStatus.FIXED,
+        )
+        review = queue(medium, high, critical)
+        all_items = review.items
+        self.assertEqual(
+            [i.severity for i in review.items_needing_review_action("collect_evidence")],
+            [Severity.CRITICAL, Severity.HIGH],
+        )
+        self.assertEqual(
+            [i.severity for i in review.items_needing_review_action("author_remediation")],
+            [Severity.CRITICAL],
+        )
+        self.assertEqual(
+            [i.severity for i in review.items_needing_review_action("investigate_regression")],
+            [Severity.CRITICAL],
+        )
+        self.assertEqual(
+            [i.severity for i in review.items_needing_review_action("independent_retest")],
+            [Severity.MEDIUM],
+        )
+        self.assertEqual(
+            review.items_needing_review_action("review_remediation"), (),
+        )
+        self.assertEqual(all_items, review.items)
+        for action, count in review.review_action_counts:
+            self.assertEqual(
+                count, len(review.items_needing_review_action(action)),
+            )
+        self.assertFalse(review.authorization_verified)
+
+    def test_review_action_filter_rejects_execution_and_polymorphic_selectors(self):
+        class ActionChild(str):
+            pass
+        review = queue(finding())
+        for action in (
+            "execute_remediation", "scan_target", "record_verified",
+            "", None, [], ActionChild("review_remediation"),
+        ):
+            with self.subTest(action=repr(action)):
+                with self.assertRaisesRegex(
+                    ValueError, "^invalid remediation human-review action selector$"
+                ):
+                    review.items_needing_review_action(action)
+        self.assertEqual(
+            review.items_needing_review_action("review_remediation"),
+            review.items,
+        )
+        self.assertFalse(review.release_authorized)
+
     def test_claimed_fixed_without_evidence_still_requires_retest_review(self):
         result = queue(finding(
             evidence_ids=(), remediation="", retest_status=RetestStatus.FIXED
