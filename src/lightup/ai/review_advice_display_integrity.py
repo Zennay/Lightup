@@ -62,8 +62,27 @@ class _DisplaySafeAdviceGateway:
         response = self._delegate.complete(
             role, messages, max_output_tokens=max_output_tokens, metadata=metadata
         )
+        # The default ModelGateway verifies only provider_id. This optional
+        # wrapper additionally binds *every* returned role/model to its request,
+        # before a verifier verdict can influence the advisor or a report can
+        # be returned to a caller. Do not trust provider-supplied role strings.
+        binding = self.binding_for(role)
+        if (
+            type(response) is not ModelResponse
+            or response.role is not role
+            or type(response.model_id) is not str
+            or response.model_id != binding.model_id
+            or type(response.provider_id) is not str
+            or response.provider_id != binding.provider_id
+        ):
+            raise ValueError("review model response identity is invalid")
         if role is ModelRole.REMEDIATION_ADVISOR:
             checked_remediation_display_text(response.content)
+        else:
+            try:
+                checked_remediation_display_text(response.content)
+            except ValueError:
+                raise ValueError("review model response display text is invalid") from None
         return response
 
 
@@ -82,8 +101,24 @@ def review_with_display_safe_advice(
     # Complete the entire input-display audit before the first model call:
     # a malformed current fix in a *later* finding must never dispatch an
     # earlier finding to any model provider. Keep the W5 detached snapshot.
+    # Validate every field actually forwarded into a model prompt or returned
+    # as client-facing review context. A second-row control byte must not let
+    # the first row trigger a model request. Reject instead of normalizing.
+    fields = [checked["target"], *checked["targets"]]
     for finding in checked["findings"]:
-        checked_remediation_display_text(finding["fix"])
+        fields.extend(finding[name] for name in (
+            "finding", "severity", "impact", "fix", "evidence_summary"
+        ))
+        fields.extend(finding["evidence_ids"])
+        if "target" in finding:
+            fields.append(finding["target"])
+    fields.extend(checked["coverage"]["counts"])
+    for value in fields:
+        if value is not None:
+            try:
+                checked_remediation_display_text(value)
+            except ValueError:
+                raise ValueError("review input display text is invalid") from None
     return AssessmentReviewPipeline(_DisplaySafeAdviceGateway(pipeline.gateway)).review(
         checked
     )
