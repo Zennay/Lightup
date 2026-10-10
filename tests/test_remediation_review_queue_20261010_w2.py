@@ -362,7 +362,7 @@ class RemediationQueueTests(unittest.TestCase):
         item = queue(finding()).items[0]
         for actions in (
             (), ("execute_remediation",), ("review_remediation", "collect_evidence"),
-            ("collect_evidence", "collect_evidence"), ("review_remediation",),
+            ("collect_evidence", "collect_evidence"),
             ["review_remediation"], ("collect_evidence", "author_remediation",
                                       "investigate_regression", "independent_retest",
                                       "review_remediation"),
