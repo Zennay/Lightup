@@ -70,6 +70,35 @@ class RemediationQueueTests(unittest.TestCase):
         row = finding(remediation="   ", retest_status=RetestStatus.NOT_TESTED)
         self.assertEqual(queue(row).items[0].next_review_step, "author_remediation")
 
+    def test_invisible_or_nonsemantic_remediation_requires_authoring(self):
+        empty_in_practice = (
+            "\\u200d", "\\u202e", "\\u200b", "\\u2060",
+            "\\u0301", " ⚠️ ", " ✨ ", " -- ", "\\t\\u200d\\n",
+        )
+        for value in empty_in_practice:
+            # Runtime decode is not needed: use actual Unicode characters.
+            value = value.replace(r"\\u200d", "\u200d").replace(
+                r"\\u202e", "\u202e"
+            ).replace(r"\\u200b", "\u200b").replace(
+                r"\\u2060", "\u2060"
+            ).replace(r"\\u0301", "\u0301")
+            with self.subTest(value=ascii(value)):
+                result = queue(finding(remediation=value))
+                self.assertEqual(result.items[0].next_review_step,
+                                 "author_remediation")
+                self.assertFalse(result.items[0].fix_verified)
+                self.assertFalse(result.evidence_verified)
+
+    def test_non_latin_remediation_counts_as_present_but_not_verified(self):
+        for value in ("修复配置", "Исправить настройку", "إصلاح الخلل",
+                      "確認して修正", "chmod 600", "✅ 修复"):
+            with self.subTest(value=value):
+                result = queue(finding(remediation=value))
+                self.assertEqual(result.items[0].next_review_step,
+                                 "review_remediation")
+                self.assertFalse(result.items[0].fix_verified)
+                self.assertFalse(result.remediation_authorized)
+
     def test_regression_is_investigation_not_automatic_reexecution(self):
         row = finding(retest_status=RetestStatus.REGRESSION)
         result = queue(row)
