@@ -60,6 +60,29 @@ from digest comparisons. Only use inside an authorized trusted tenant flow.
 Do not use this hash as an authorization, audit-log signature, independent
 retest certificate, or public privacy/anonymization claim.
 
+## V3 unambiguous finding identity correlation
+
+V2's pseudonymous per-item `finding_key_sha256` was SHA-256 over
+`"lightup-review-v1\\\\0" + client_id + "\\\\0" + engagement_id + "\\\\0" + finding_id`.
+The two-character printable sequence `\\\\0` was allowed inside all
+three IDs; different scope/ID tuples could therefore serialize to the
+same concatenated bytes and accidentally share a pseudonymous key.
+The root review digest was scope-bound already, but cross-tenant item-key
+collisions are not acceptable even in an advisory.
+
+V3 uses canonical JSON of a **four-element typed identity tuple**:
+`("lightup-review-finding-key.v3", client_id, engagement_id, finding_id)`,
+then SHA-256. JSON serialization preserves component boundaries, and
+separate engagements cannot reuse the same item key merely by injecting
+the old delimiter into a printable identifier. Dedicated synthetic
+regressions construct an exact former collision and prove distinct keys.
+The public payload schema and root digest version are now **v3**, making
+incompatible fingerprint semantics visible to any future consumer.
+
+This is still only a deterministic pseudonym, not anonymization,
+authorization, proof of data provenance, or a MAC/signature. Do not
+publish low-entropy identifiers or their deterministic hashes externally.
+
 ## Optional read-only DomainStore source
 
 `read_remediation_review_queue(store, context, engagement_id=...)` in
