@@ -16,6 +16,7 @@ from .review_batch_preflight import preflight_review_batch
 
 _MAX_TEXT_CHARS = 8192
 _MAX_TEXT_BYTES = 16384
+_MAX_TOTAL_VERIFIER_BYTES = 32768
 _MAX_TOTAL_ADVISOR_BYTES = 32768
 _MAX_TOTAL_INPUT_BYTES = 262144
 _ALLOWED_LAYOUT = frozenset(("\n", "\t"))
@@ -87,6 +88,7 @@ class _DisplaySafeAdviceGateway:
         self._delegate = _AdvisoryResponseGuard(_SanitizedProviderGateway(gateway))
         self._gateway = gateway
         self._pinned_providers: dict[str, object] = {}
+        self._total_verifier_bytes = 0
         self._total_advisor_bytes = 0
         # A model/provider must not silently rebind a later role during the
         # verifier -> advisor -> report sequence. Freeze all three identities
@@ -168,6 +170,14 @@ class _DisplaySafeAdviceGateway:
             or not 0 <= response.output_tokens <= 1_000_000
         ):
             raise ValueError("review model response identity is invalid")
+        if role is ModelRole.VERIFIER:
+            checked_remediation_display_text(response.content)
+            # Verdicts are echoed into advisor prompts AND the final summary
+            # payload. A bounded single reply is not a bounded whole batch.
+            total = self._total_verifier_bytes + len(response.content.encode("utf-8"))
+            if total > _MAX_TOTAL_VERIFIER_BYTES:
+                raise ValueError("review verifier verdict batch limit exceeded")
+            self._total_verifier_bytes = total
         if role is ModelRole.REMEDIATION_ADVISOR:
             checked_remediation_display_text(response.content)
             # Every answer may be individually bounded while the total
@@ -177,7 +187,7 @@ class _DisplaySafeAdviceGateway:
             if next_size > _MAX_TOTAL_ADVISOR_BYTES:
                 raise ValueError("remediation review advice batch limit exceeded")
             self._total_advisor_bytes = next_size
-        else:
+        elif role is ModelRole.REPORT_SYNTHESIZER:
             try:
                 checked_remediation_display_text(response.content)
             except ValueError:
