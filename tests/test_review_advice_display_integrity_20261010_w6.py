@@ -790,5 +790,77 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
             [request.role for request in provider.requests],
         )
 
+    def test_duplicate_declared_target_identity_denies_without_provider_calls(self):
+        source = fixture()
+        source.pop("target")
+        source["targets"] = ["lab://same", "lab://same"]
+        source["findings"][0]["target"] = "lab://same"
+        before = copy.deepcopy(source)
+        pipeline, provider = make_pipeline("Synthetic human advice")
+        with self.assertRaisesRegex(ValueError, "duplicate target context"):
+            review_with_display_safe_advice(pipeline, source)
+        self.assertEqual(provider.requests, [])
+        self.assertEqual(source, before)
+
+    def test_multitarget_review_requires_each_finding_target(self):
+        source = fixture()
+        source.pop("target")
+        source["targets"] = ["lab://one", "lab://two"]
+        before = copy.deepcopy(source)
+        pipeline, provider = make_pipeline("Synthetic human advice")
+        with self.assertRaisesRegex(ValueError, "requires finding target context"):
+            review_with_display_safe_advice(pipeline, source)
+        self.assertEqual(provider.requests, [])
+        self.assertEqual(source, before)
+
+    def test_later_finding_outside_declared_target_set_denies_whole_batch(self):
+        for scenario in ("single_root", "multi_target"):
+            with self.subTest(scenario=scenario):
+                source = fixture()
+                if scenario == "single_root":
+                    source["findings"][0]["target"] = source["target"]
+                else:
+                    source.pop("target")
+                    source["targets"] = ["lab://one", "lab://two"]
+                    source["findings"][0]["target"] = "lab://one"
+                source["findings"].append({
+                    **source["findings"][0], "finding": "Later synthetic claim",
+                    "evidence_ids": ["synthetic:evidence:other"],
+                    "target": "lab://out-of-set",
+                })
+                before = copy.deepcopy(source)
+                pipeline, provider = make_pipeline("Synthetic human advice")
+                with self.assertRaisesRegex(ValueError, "outside declared context"):
+                    review_with_display_safe_advice(pipeline, source)
+                self.assertEqual(provider.requests, [])
+                self.assertEqual(source, before)
+
+    def test_canonical_multitarget_mapping_reaches_verifier_exactly(self):
+        import json
+
+        source = fixture()
+        source.pop("target")
+        source["targets"] = ["lab://one", "lab://two"]
+        source["findings"][0]["target"] = "lab://one"
+        source["findings"].append({
+            **source["findings"][0], "finding": "Later synthetic claim",
+            "evidence_ids": ["synthetic:evidence:2"], "target": "lab://two",
+        })
+        before = copy.deepcopy(source)
+        pipeline, provider = make_pipeline(
+            "Human check for first evidence", "Human check for second evidence"
+        )
+        result = review_with_display_safe_advice(pipeline, source)
+        verifier_requests = [
+            req for req in provider.requests if req.role is ModelRole.VERIFIER
+        ]
+        self.assertEqual(
+            [json.loads(req.messages[-1].content)["target"]
+             for req in verifier_requests],
+            ["lab://one", "lab://two"],
+        )
+        self.assertEqual(len(result.findings), 2)
+        self.assertEqual(source, before)
+
 if __name__ == "__main__":
     unittest.main()
