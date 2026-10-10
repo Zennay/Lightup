@@ -6,6 +6,7 @@ offline comparison cannot authenticate the evidence source or authorize work.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from unicodedata import normalize
 
 from .models import Finding, RetestStatus, Severity
 
@@ -41,6 +42,7 @@ def _text(value: object, *, max_chars: int) -> bool:
         type(value) is str
         and 0 < len(value) <= max_chars
         and value.strip() == value
+        and normalize("NFC", value) == value
         and all(char.isprintable() for char in value)
     )
 
