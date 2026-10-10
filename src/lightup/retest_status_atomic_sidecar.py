@@ -19,6 +19,10 @@ from .models import RetestStatus
 _MAX_EVIDENCE_JSON_BYTES = 16384
 _MAX_EVIDENCE_IDS = 128
 _MAX_EVIDENCE_ID_BYTES = 256
+_IMMUTABLE_FINDING_COLUMNS = (
+    "finding_id", "client_id", "engagement_id", "title", "severity",
+    "asset", "impact", "remediation", "evidence_ids_json", "created_at",
+)
 
 
 def _checked_evidence_json(raw: str) -> tuple[str, ...]:
@@ -122,6 +126,13 @@ def atomic_retest_status_metadata(
             after = connection.execute(
                 "SELECT * FROM findings WHERE finding_id=?", (finding_id,)
             ).fetchone()
+            if after is None or any(
+                after[column] != row[column]
+                for column in _IMMUTABLE_FINDING_COLUMNS
+            ):
+                # Even a row-local SQLite trigger may not silently change
+                # tenant, identity, remediation text or raw evidence bytes.
+                raise ValueError("finding changed during retest metadata update")
             result = DomainStore._finding_from_row(after)
             # The record is reconstructed *before* committing any mutation.
             if result.evidence_ids != checked or result.retest_status is not status:
