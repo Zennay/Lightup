@@ -290,7 +290,7 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
         self.assertEqual(
             json.loads(verifier.messages[-1].content)["evidence_ids"], ["synthetic:résumé"]
         )
-        self.assertIn("Évaluation synthétique", verifier.messages[-1].content)
+        self.assertEqual(json.loads(verifier.messages[-1].content)["finding"], "Évaluation synthétique")
 
     def test_verifier_wrong_model_or_role_denies_before_advisor(self):
         from dataclasses import replace
