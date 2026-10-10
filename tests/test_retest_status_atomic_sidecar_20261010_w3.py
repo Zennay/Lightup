@@ -208,6 +208,43 @@ class AtomicRetestMetadataSidecarTest(unittest.TestCase):
                 )
                 self.assertEqual(self._row(), before)
 
+    def test_legacy_invalid_retest_labels_deny_before_row_decode_without_leak(self):
+        cases = (
+            ("invalid_literal", "wrong-status"),
+            ("oversized_secret", "PRIVATE_MARKER_" + "Z" * 300_000),
+            ("sqlite_blob", sqlite3.Binary(b"fix_pending")),
+        )
+        for label, raw in cases:
+            with self.subTest(label=label):
+                with self.store._connect() as con:
+                    con.execute(
+                        "UPDATE findings SET retest_status=? WHERE finding_id=?",
+                        (raw, self.finding.finding_id),
+                    )
+                before = self._row()
+                statements = []
+                original_connect = self.store._connect
+
+                @contextmanager
+                def traced_connect():
+                    with original_connect() as con:
+                        con.set_trace_callback(statements.append)
+                        yield con
+
+                with mock.patch.object(
+                    self.store, "_connect", side_effect=traced_connect
+                ):
+                    with self.assertRaisesRegex(
+                        ValueError, "^finding status is invalid$"
+                    ) as caught:
+                        self._transition()
+                self.assertNotIn("PRIVATE_MARKER_", str(caught.exception))
+                self.assertFalse(
+                    any("SELECT f.*" in sql for sql in statements),
+                    "corrupt legacy status fetched as full row before guard",
+                )
+                self.assertEqual(self._row(), before)
+
     def test_rejected_status_and_identity_inputs_never_write(self):
         before = self._row()
         client = AccessContext("client-user", Role.CLIENT_ADMIN, self.client.client_id)
