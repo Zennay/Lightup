@@ -39,4 +39,11 @@ Base: W5 draft #1180 at immutable `acfe8767c4985b94afe8a8f6ee1443bd2b722ccb`. Th
 - The reviewer must not confuse display-safe verifier strings with **verified** evidence: none of these presentation checks prove source authenticity or retest success.
 - Confirm any consumer's rendering/Unicode compatibility and authenticated tenant-bound provider disclosure policy. Do not treat this opt-in wrapper as an authorization or XSS sanitizer.
 
+## W6 extension — offline metadata admission
+
+- Every model response must carry exact built-in nonnegative `input_tokens` and `output_tokens` counters from 0 through 1,000,000. Booleans, custom int subclasses, negative/over-limit integers and other types fail closed at the role response boundary. These are **untrusted provider-reported usage metrics**, not billing evidence or authentication.
+- Every finding's severity label must match an exact canonical `Severity.value` string from the installed model enum (`info`, `low`, `medium`, `high`, `critical`). Mixed case, padding or made-up severity labels deny the **whole batch before any provider call**. No coercion/repair or severity recalculation happens.
+- Synthetic offline tests exercise each failure across all three model roles, rejecting downstream dispatch and preserving canonical positive examples. The rejection code never echoes private finding input.
+- These optional checks are **not** a finding validation service, permission to call external providers, authenticity attestation, evidence verification or remediation/retest proof. Source-owner composition and independent review remain mandatory.
+
 The binding snapshot is a **consistency check only**, not a cryptographic identity proof, provider trust root, target authorization or a defense against mutations **inside** the same provider object or modifications to provider implementation code. The consuming application must own its trusted provider registry and disclosure decision.
