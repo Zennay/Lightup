@@ -138,7 +138,7 @@ class AtomicRetestMetadataSidecarTest(unittest.TestCase):
             " " + self.finding.finding_id,
             self.finding.finding_id + " ",
             "   ",
-            "\\n" + self.finding.finding_id,
+            "\n" + self.finding.finding_id,
         )
         for candidate in identities:
             with self.subTest(candidate=repr(candidate)[:20]):
