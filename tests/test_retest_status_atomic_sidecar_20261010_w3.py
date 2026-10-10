@@ -89,8 +89,14 @@ class AtomicRetestMetadataSidecarTest(unittest.TestCase):
         before = self._full_row()
         for status in (RetestStatus.FIXED, RetestStatus.REGRESSION):
             with self.subTest(status=status):
-                with self.assertRaisesRegex(ValueError, "independent retest evidence"):
-                    self._transition(status)
+                with mock.patch.object(
+                    self.store, "_connect",
+                    side_effect=AssertionError("forbidden outcome opened SQLite"),
+                ):
+                    with self.assertRaisesRegex(
+                        ValueError, "independent retest evidence"
+                    ):
+                        self._transition(status)
                 self.assertEqual(self._full_row(), before)
 
     def test_malformed_evidence_rejection_is_atomic(self):
@@ -125,6 +131,40 @@ class AtomicRetestMetadataSidecarTest(unittest.TestCase):
                 with self.assertRaises((RoleError, TypeError, ValueError)):
                     atomic_retest_status_metadata(*args)
                 self.assertEqual(self._row(), before)
+
+    def test_noncanonical_finding_identity_and_operator_label_deny_early(self):
+        before = self._full_row()
+        identities = (
+            " " + self.finding.finding_id,
+            self.finding.finding_id + " ",
+            "   ",
+            "\\n" + self.finding.finding_id,
+        )
+        for candidate in identities:
+            with self.subTest(candidate=repr(candidate)[:20]):
+                with mock.patch.object(
+                    self.store, "_connect",
+                    side_effect=AssertionError("invalid identity opened SQLite"),
+                ):
+                    with self.assertRaisesRegex(ValueError, "invalid finding id"):
+                        atomic_retest_status_metadata(
+                            self.store, self.operator, candidate,
+                            RetestStatus.FIX_PENDING,
+                        )
+        for label in (" operator", "operator ", "  "):
+            with self.subTest(label=repr(label)):
+                with mock.patch.object(
+                    self.store, "_connect",
+                    side_effect=AssertionError("invalid operator opened SQLite"),
+                ):
+                    with self.assertRaises(RoleError):
+                        atomic_retest_status_metadata(
+                            self.store,
+                            AccessContext(label, Role.OPERATOR),
+                            self.finding.finding_id,
+                            RetestStatus.FIX_PENDING,
+                        )
+        self.assertEqual(self._full_row(), before)
 
     def test_missing_finding_never_mutates_other_rows(self):
         other = self._make_finding("Other synthetic finding")
