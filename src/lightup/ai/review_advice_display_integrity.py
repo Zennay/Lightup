@@ -123,6 +123,13 @@ class _DisplaySafeAdviceGateway:
             or response.model_id != binding.model_id
             or type(response.provider_id) is not str
             or response.provider_id != binding.provider_id
+            # Model-supplied usage metadata is untrusted. A negative, boolean,
+            # polymorphic, or arbitrarily large count must not be treated as
+            # canonical metering or flow into any future evidence receipt.
+            or type(response.input_tokens) is not int
+            or not 0 <= response.input_tokens <= 1_000_000
+            or type(response.output_tokens) is not int
+            or not 0 <= response.output_tokens <= 1_000_000
         ):
             raise ValueError("review model response identity is invalid")
         if role is ModelRole.REMEDIATION_ADVISOR:
