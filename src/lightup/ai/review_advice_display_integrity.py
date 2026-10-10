@@ -50,6 +50,8 @@ class _DisplaySafeAdviceGateway:
         if type(gateway) is not ModelGateway:
             raise ValueError("canonical review model gateway required")
         self._delegate = _AdvisoryResponseGuard(gateway)
+        self._gateway = gateway
+        self._pinned_providers: dict[str, object] = {}
         # A model/provider must not silently rebind a later role during the
         # verifier -> advisor -> report sequence. Freeze all three identities
         # before the *first* provider call; recheck before and after dispatch.
@@ -65,6 +67,10 @@ class _DisplaySafeAdviceGateway:
                 or not binding.provider_id
             ):
                 raise ValueError("review role binding is invalid")
+            provider = gateway._providers.get(binding.provider_id)
+            if provider is None:
+                raise ValueError("review registered provider is invalid")
+            self._pinned_providers[binding.provider_id] = provider
             self._pinned[role] = binding
 
     def binding_for(self, role: ModelRole):
@@ -81,6 +87,14 @@ class _DisplaySafeAdviceGateway:
             or current.model_id != pinned.model_id
         ):
             raise ValueError("review role binding changed during batch")
+        # A mutable registration map cannot replace the real provider under
+        # an unchanged provider_id after this review has already begun.
+        # This is identity consistency, not trusted provider attestation.
+        if (
+            self._gateway._providers.get(pinned.provider_id)
+            is not self._pinned_providers[pinned.provider_id]
+        ):
+            raise ValueError("review provider instance changed during batch")
         return pinned
 
     def complete(
