@@ -331,6 +331,60 @@ class RemediationReviewSourceTests(unittest.TestCase):
             ).fetchone()[0]
         self.assertEqual(count, 129)
 
+    def test_large_persisted_impact_is_truncated_before_row_decoding(self):
+        # SELECT * previously materialized the entire attacker-controlled
+        # TEXT column before Python could enforce MAX_TEXT. A bounded SQLite
+        # projection must hand at most MAX_TEXT+1 characters to the decoder.
+        enormous = "oversized-test-value-" * 15000
+        with self.store._connect() as writer:
+            writer.execute(
+                "UPDATE findings SET impact=? WHERE finding_id=?",
+                (enormous, self.row_first.finding_id),
+            )
+        original = DomainStore._finding_from_row
+        observed_lengths = []
+
+        def inspect_decode(row):
+            observed_lengths.append(len(row["impact"]))
+            return original(row)
+
+        with patch.object(DomainStore, "_finding_from_row",
+                          side_effect=inspect_decode):
+            with self.assertRaisesRegex(ValueError,
+                                        "^remediation evidence read integrity invalid$"):
+                self._read()
+        self.assertEqual(observed_lengths, [8193])
+        with self.store._connect() as connection:
+            actual_size = connection.execute(
+                "SELECT length(impact) FROM findings WHERE finding_id=?",
+                (self.row_first.finding_id,),
+            ).fetchone()[0]
+        self.assertEqual(actual_size, len(enormous))
+
+    def test_oversize_evidence_json_rejected_before_source_decoder(self):
+        huge = '["' + ("x" * 300000) + '"]'
+        self._corrupt("evidence_ids_json", huge)
+        original = self._raw()
+        with patch.object(DomainStore, "_finding_from_row",
+                          side_effect=AssertionError("never decode huge raw")):
+            with self.assertRaisesRegex(ValueError,
+                                        "^remediation evidence read integrity invalid$"):
+                self._read()
+        self.assertEqual(self._raw(), original)
+
+    def test_bounded_projection_preserves_valid_8192_character_source(self):
+        long_text = "修" * 8192
+        with self.store._connect() as writer:
+            writer.execute(
+                "UPDATE findings SET remediation=? WHERE finding_id=?",
+                (long_text, self.row_first.finding_id),
+            )
+        review = self._read()
+        self.assertEqual(len(review.items), 1)
+        self.assertEqual(review.items[0].next_review_step, "review_remediation")
+        self.assertNotIn("修", review.to_json())
+        self.assertFalse(review.remediation_authorized)
+
     def test_rejects_noncanonical_json_member_types_without_rewriting(self):
         for raw in ('[null]', '["evidence", 12]', '["one","one"]',
                     '"single-reference"', 'true', '[{}]', '[" "]'):
