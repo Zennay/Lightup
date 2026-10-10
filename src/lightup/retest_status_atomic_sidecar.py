@@ -102,6 +102,25 @@ def atomic_retest_status_metadata(
         try:
             # Serialize cross-process writers before checking durable evidence.
             connection.execute("BEGIN IMMEDIATE")
+            # Reject oversized/typed-invalid historical evidence *in SQL*
+            # before SELECT f.* copies the persisted JSON into Python.
+            # The immediate write lock keeps both reads on the same snapshot.
+            evidence_shape = connection.execute(
+                "SELECT typeof(f.evidence_ids_json) AS value_type, "
+                "length(CAST(f.evidence_ids_json AS BLOB)) AS byte_length "
+                "FROM findings AS f JOIN engagements AS e "
+                "ON e.engagement_id=f.engagement_id AND e.client_id=f.client_id "
+                "WHERE f.finding_id=?",
+                (finding_id,),
+            ).fetchone()
+            if evidence_shape is None:
+                raise KeyError("finding unavailable")
+            if (
+                evidence_shape["value_type"] != "text"
+                or type(evidence_shape["byte_length"]) is not int
+                or evidence_shape["byte_length"] > _MAX_EVIDENCE_JSON_BYTES
+            ):
+                raise ValueError("finding evidence is invalid")
             row = connection.execute(
                 "SELECT f.* FROM findings AS f JOIN engagements AS e "
                 "ON e.engagement_id=f.engagement_id AND e.client_id=f.client_id "
