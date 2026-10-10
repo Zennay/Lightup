@@ -11,11 +11,35 @@ from .domain import AccessContext, DomainStore, TenantIsolationError
 from .remediation_review_queue import (
     MAX_EVIDENCE_IDS,
     MAX_FINDINGS,
+    MAX_ID,
+    MAX_TEXT,
     RemediationReviewQueue,
     build_remediation_review_queue,
 )
 
 MAX_EVIDENCE_JSON_CHARS = 16384
+
+# SQLite can store far more than the caller's size budget in a TEXT/BLOB cell.
+# A SELECT * would materialize it *before* Python validation and allow large
+# database fields to exhaust worker memory. Project each known column to a
+# max+1 prefix: oversize data stays detectably invalid, never silently valid.
+# All identifiers and lengths below are static trusted constants.
+_BOUNDED_FINDING_SELECT = f"""
+SELECT
+    substr(finding_id, 1, {MAX_ID + 1}) AS finding_id,
+    substr(client_id, 1, {MAX_ID + 1}) AS client_id,
+    substr(engagement_id, 1, {MAX_ID + 1}) AS engagement_id,
+    substr(title, 1, {MAX_TEXT + 1}) AS title,
+    substr(severity, 1, {MAX_ID + 1}) AS severity,
+    substr(asset, 1, {MAX_TEXT + 1}) AS asset,
+    substr(impact, 1, {MAX_TEXT + 1}) AS impact,
+    substr(remediation, 1, {MAX_TEXT + 1}) AS remediation,
+    substr(retest_status, 1, {MAX_ID + 1}) AS retest_status,
+    substr(evidence_ids_json, 1, {MAX_EVIDENCE_JSON_CHARS + 1}) AS evidence_ids_json,
+    substr(created_at, 1, {MAX_TEXT + 1}) AS created_at
+FROM findings WHERE engagement_id=?
+ORDER BY created_at DESC LIMIT ?
+"""
 
 
 def read_remediation_review_queue(
@@ -76,8 +100,7 @@ def read_remediation_review_queue(
                 # Request MAX+1 rows so oversized engagements fail before
                 # decoding arbitrary amounts of source-controlled evidence.
                 rows = connection.execute(
-                    "SELECT * FROM findings WHERE engagement_id=? "
-                    "ORDER BY created_at DESC LIMIT ?",
+                    _BOUNDED_FINDING_SELECT,
                     (engagement_id, MAX_FINDINGS + 1),
                 ).fetchall()
                 if len(rows) > MAX_FINDINGS:
