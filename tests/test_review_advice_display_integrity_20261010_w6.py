@@ -442,5 +442,55 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
                     review_with_display_safe_advice(pipeline, fixture())
                 self.assertEqual([r.role for r in provider.requests], expected)
 
+    def test_noncanonical_model_usage_metadata_denies_at_each_role(self):
+        from dataclasses import replace
+
+        # Model-supplied counters are diagnostics only, never authority.
+        # Untrusted subclasses and booleans must be denied before downstream
+        # model dispatch or the returned ReviewResult.
+        invalid = (True, -1, 1_000_001, 1.5, "12", None)
+
+        class IntSubclass(int):
+            pass
+
+        for role in AssessmentReviewPipeline.ROLES:
+            for field in ("input_tokens", "output_tokens"):
+                for value in (*invalid, IntSubclass(5)):
+                    with self.subTest(role=role, field=field, value=repr(value)):
+                        pipeline, provider = make_pipeline("Synthetic human review")
+                        original = provider.complete
+
+                        def tamper(request):
+                            reply = original(request)
+                            if request.role is role:
+                                return replace(reply, **{field: value})
+                            return reply
+
+                        provider.complete = tamper
+                        with self.assertRaisesRegex(
+                            ValueError, "review model response identity is invalid"
+                        ):
+                            review_with_display_safe_advice(pipeline, fixture())
+                        index = AssessmentReviewPipeline.ROLES.index(role) + 1
+                        self.assertEqual(
+                            [req.role for req in provider.requests],
+                            list(AssessmentReviewPipeline.ROLES[:index]),
+                        )
+
+    def test_canonical_model_usage_metadata_remains_supported(self):
+        from dataclasses import replace
+
+        pipeline, provider = make_pipeline("Synthetic human review")
+        original = provider.complete
+
+        def meter(request):
+            reply = original(request)
+            return replace(reply, input_tokens=200, output_tokens=12)
+
+        provider.complete = meter
+        result = review_with_display_safe_advice(pipeline, fixture())
+        self.assertEqual(result.findings[0].remediation_advice, "Synthetic human review")
+        self.assertEqual(len(provider.requests), 3)
+
 if __name__ == "__main__":
     unittest.main()
