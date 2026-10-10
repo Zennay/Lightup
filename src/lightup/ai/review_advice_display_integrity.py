@@ -172,6 +172,12 @@ class _DisplaySafeAdviceGateway:
             raise ValueError("review model response identity is invalid")
         if role is ModelRole.VERIFIER:
             checked_remediation_display_text(response.content)
+            # The verifier's source-owned system instruction requires exactly
+            # one decision line. A second line can smuggle a contradictory
+            # "CONFIRMED" statement behind a first-line UNCERTAIN/REJECTED
+            # decision, which then reaches the advisor and report unchanged.
+            if "\n" in response.content or "\t" in response.content:
+                raise ValueError("review verifier verdict must be a single line")
             # Verdicts are echoed into advisor prompts AND the final summary
             # payload. A bounded single reply is not a bounded whole batch.
             total = self._total_verifier_bytes + len(response.content.encode("utf-8"))
