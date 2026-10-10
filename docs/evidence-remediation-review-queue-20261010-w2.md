@@ -309,8 +309,9 @@ any live operation. The advisory remains read-only and non-authorizing.
 
 ## Client engagement-existence non-disclosure
 
-For a client-scoped `CLIENT_MEMBER` or `CLIENT_ADMIN`, both an unknown
-engagement selector and a real engagement owned by another tenant produce
+For a client-scoped `CLIENT_MEMBER` or `CLIENT_ADMIN`, an unknown
+engagement selector, a real engagement owned by another tenant, **and an
+engagement with malformed persisted tenant metadata** all produce
 the **same `TenantIsolationError` and generic string**. This avoids making
 the advisory reader an oracle for whether another customer's engagement
 exists. An operator (already separately authenticated by its trusted caller)

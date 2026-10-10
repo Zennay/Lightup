@@ -439,6 +439,41 @@ class RemediationReviewSourceTests(unittest.TestCase):
         self.assertNotIn("private-path-secret", str(caught.exception))
         self.assertIsNone(caught.exception.__cause__)
 
+    def test_invalid_engagement_owner_is_not_a_client_existence_oracle(self):
+        # A corrupt engagement whose tenant ID is malformed must look
+        # identical to an unknown or forbidden engagement for client roles.
+        invalid_owner = " malformed-synthetic-owner "
+        with self.store._connect() as writer:
+            writer.execute(
+                "INSERT INTO clients(client_id,name,status,created_at) "
+                "VALUES(?,?,?,?)",
+                (invalid_owner, "Malformed-owner fixture", "active",
+                 "2026-10-10T00:00:00Z"),
+            )
+            writer.execute(
+                "UPDATE engagements SET client_id=? WHERE engagement_id=?",
+                (invalid_owner, self.eng_first.engagement_id),
+            )
+        errors = []
+        with patch.object(
+            DomainStore, "_finding_from_row",
+            side_effect=AssertionError("corrupt owner cannot decode findings"),
+        ):
+            for selector in (
+                self.eng_first.engagement_id,
+                "nonexistent-unrelated-engagement",
+                self.eng_second.engagement_id,
+            ):
+                with self.subTest(selector=selector):
+                    with self.assertRaises(TenantIsolationError) as caught:
+                        self._read(engagement_id=selector)
+                    errors.append(str(caught.exception))
+        self.assertEqual(errors, ["remediation review tenant scope denied"] * 3)
+        with self.assertRaisesRegex(
+            ValueError, "^remediation evidence read integrity invalid$"
+        ):
+            self._read(ctx=self.operator)
+
     def test_oversized_engagement_tenant_denied_before_decoding_findings(self):
         # The engagement's client_id was the one remaining unbounded SELECT.
         # A valid synthetic FK target preserves SQLite integrity while its

@@ -133,6 +133,13 @@ def read_remediation_review_queue(
                     or not scoped["client_id"].isascii()
                     or not scoped["client_id"].isprintable()
                 ):
+                    # Invalid legacy tenant metadata is also an existence
+                    # oracle: clients must receive the same generic denial
+                    # as for an unknown or another-tenant engagement.
+                    if context.role is not Role.OPERATOR:
+                        raise TenantIsolationError(
+                            "remediation review tenant scope denied"
+                        ) from None
                     raise ValueError("invalid remediation engagement identity")
                 # Exactly the same AccessContext tenant admission primitive
                 # used by DomainStore.get_engagement, now on this snapshot.
