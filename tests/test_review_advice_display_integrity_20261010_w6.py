@@ -667,5 +667,65 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
             1,
         )
 
+    def test_empty_finding_batch_does_not_synthesize_false_assessment(self):
+        source = fixture()
+        source["findings"] = []
+        original = copy.deepcopy(source)
+        pipeline, provider = make_pipeline("Synthetic advice only")
+        with self.assertRaisesRegex(ValueError, "requires at least one finding"):
+            review_with_display_safe_advice(pipeline, source)
+        self.assertEqual(provider.requests, [])
+        self.assertEqual(source, original)
+
+    def test_missing_root_target_denies_even_with_row_local_target(self):
+        for include_local_target in (False, True):
+            with self.subTest(local_target=include_local_target):
+                source = fixture()
+                del source["target"]
+                if include_local_target:
+                    source["findings"][0]["target"] = "lab://local-only"
+                original = copy.deepcopy(source)
+                pipeline, provider = make_pipeline("Synthetic advice only")
+                with self.assertRaisesRegex(ValueError, "explicit target context"):
+                    review_with_display_safe_advice(pipeline, source)
+                self.assertEqual(provider.requests, [])
+                self.assertEqual(source, original)
+
+    def test_conflicting_single_and_multi_target_sources_deny_pre_model(self):
+        for target_list in (
+            ["lab://some-other-target"],
+            ["lab://inert-fixture-no-network", "lab://different"],
+        ):
+            with self.subTest(targets=target_list):
+                source = fixture()
+                source["targets"] = target_list
+                original = copy.deepcopy(source)
+                pipeline, provider = make_pipeline("Synthetic advice only")
+                with self.assertRaisesRegex(ValueError, "conflicting target context"):
+                    review_with_display_safe_advice(pipeline, source)
+                self.assertEqual(provider.requests, [])
+                self.assertEqual(source, original)
+
+    def test_target_list_only_and_redundant_matching_target_remain_valid(self):
+        for target_context in (
+            {"targets": ["lab://first-synthetic"]},
+            {"target": "lab://inert-fixture-no-network",
+             "targets": ["lab://inert-fixture-no-network"]},
+        ):
+            with self.subTest(context=target_context):
+                source = fixture()
+                source.pop("target")
+                source.update(target_context)
+                original = copy.deepcopy(source)
+                pipeline, provider = make_pipeline("Synthetic advice only")
+                result = review_with_display_safe_advice(pipeline, source)
+                self.assertEqual(len(result.findings), 1)
+                self.assertEqual(
+                    [req.role for req in provider.requests],
+                    [ModelRole.VERIFIER, ModelRole.REMEDIATION_ADVISOR,
+                     ModelRole.REPORT_SYNTHESIZER],
+                )
+                self.assertEqual(source, original)
+
 if __name__ == "__main__":
     unittest.main()
