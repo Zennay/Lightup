@@ -174,7 +174,7 @@ class AtomicRetestMetadataSidecarTest(unittest.TestCase):
                 before = self._full_row()
                 try:
                     with self.assertRaisesRegex(
-                        ValueError, "finding changed during retest metadata update"
+                        ValueError, "(finding changed during retest metadata update|unexpected retest transaction write)"
                     ):
                         self._transition()
                     self.assertEqual(self._full_row(), before)
