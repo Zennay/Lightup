@@ -182,6 +182,37 @@ class AtomicRetestMetadataSidecarTest(unittest.TestCase):
                     with self.store._connect() as con:
                         con.execute("DROP TRIGGER synthetic_retest_row_guard")
 
+    def test_trigger_writes_to_another_finding_also_roll_back(self):
+        other = self._make_finding("Unaffected sibling")
+        own_before = self._full_row()
+        with self.store._connect() as con:
+            sibling_before = tuple(
+                con.execute(
+                    "SELECT * FROM findings WHERE finding_id=?", (other.finding_id,)
+                ).fetchone()
+            )
+            con.execute(
+                "CREATE TRIGGER synthetic_cross_row_retest "
+                "AFTER UPDATE OF retest_status ON findings "
+                "BEGIN UPDATE findings SET remediation='unauthorized trigger change' "
+                "WHERE finding_id='" + other.finding_id + "'; END"
+            )
+        try:
+            with self.assertRaisesRegex(
+                ValueError, "unexpected retest transaction write"
+            ):
+                self._transition()
+        finally:
+            with self.store._connect() as con:
+                sibling_after = tuple(
+                    con.execute(
+                        "SELECT * FROM findings WHERE finding_id=?", (other.finding_id,)
+                    ).fetchone()
+                )
+                con.execute("DROP TRIGGER synthetic_cross_row_retest")
+        self.assertEqual(self._full_row(), own_before)
+        self.assertEqual(sibling_after, sibling_before)
+
     def _full_row(self):
         with self.store._connect() as con:
             row = con.execute(
