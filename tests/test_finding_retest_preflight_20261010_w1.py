@@ -167,6 +167,22 @@ class RetestPreflightTests(unittest.TestCase):
         review = preflight_retest_transition(before(), candidate)
         self.assertEqual(("invalid_finding_shape",), review.reasons)
 
+    def test_equivalent_unicode_spelling_is_not_new_evidence(self):
+        previous = before()
+        previous.evidence = ["caf\\u00e9"]
+        candidate = deepcopy(previous)
+        candidate.evidence.append("cafe\\u0301")
+        review = preflight_retest_transition(previous, candidate)
+        self.assertFalse(review.ready_for_independent_review)
+        self.assertIn("invalid_finding_shape", review.reasons)
+
+    def test_normalized_unicode_remains_accepted(self):
+        candidate = later()
+        candidate.evidence.append("caf\\u00e9")
+        review = preflight_retest_transition(before(), candidate)
+        self.assertTrue(review.ready_for_independent_review)
+        self.assertEqual(2, review.new_evidence_count)
+
     def test_no_network_or_authority_embedded(self):
         result = preflight_retest_transition(before(), later())
         self.assertEqual(
