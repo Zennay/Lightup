@@ -411,5 +411,36 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
             {role.value for role in AssessmentReviewPipeline.ROLES},
         )
 
+
+    def test_mutable_provider_registry_replacement_denied_mid_review(self):
+        for swap_at, expected in (
+            (ModelRole.VERIFIER, [ModelRole.VERIFIER]),
+            (ModelRole.REMEDIATION_ADVISOR,
+             [ModelRole.VERIFIER, ModelRole.REMEDIATION_ADVISOR]),
+        ):
+            with self.subTest(swap_at=swap_at):
+                pipeline, provider = make_pipeline("Synthetic human review")
+                gateway = pipeline.gateway
+                original = provider.complete
+
+                def swap_provider(req):
+                    response = original(req)
+                    if req.role is swap_at:
+                        # Same registered provider ID, different object. The
+                        # provider-id-only ModelGateway contract cannot see it.
+                        gateway._providers[provider.provider_id] = ScriptedProvider(
+                            provider.provider_id, {
+                                ModelRole.VERIFIER: ["UNCERTAIN altered script"],
+                                ModelRole.REMEDIATION_ADVISOR: ["Altered advice"],
+                                ModelRole.REPORT_SYNTHESIZER: ["Altered report"],
+                            }
+                        )
+                    return response
+
+                provider.complete = swap_provider
+                with self.assertRaisesRegex(ValueError, "provider instance changed"):
+                    review_with_display_safe_advice(pipeline, fixture())
+                self.assertEqual([r.role for r in provider.requests], expected)
+
 if __name__ == "__main__":
     unittest.main()
