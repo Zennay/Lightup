@@ -27,6 +27,7 @@ Current `DomainStore.set_retest_status()` writes `findings.retest_status` under 
 - Synthetic SQLite `AFTER UPDATE` triggers that rewrite a finding's title, remediation, tenant, creation time, or reformat equivalent evidence JSON must cause **full transaction rollback**, without any silent change to the original row.
 - A synthetic trigger that **writes to a second finding** must also fail before commit; neither the selected finding nor its sibling may change.
 - Same-status resubmission (`NOT_TESTED`/`FIX_PENDING`) must not perform any SQLite `UPDATE` or fire database write triggers; a synthetic `BEFORE UPDATE` trigger that aborts on **any** mutation proves this offline.
+- Source-model drift fails closed: previous decoded status must have exact canonical `RetestStatus` runtime identity and be on the **positive** `NOT_TESTED`/`FIX_PENDING` allowlist. A synthetic future outcome object (even spoofing an allowed persisted `.value`) cannot transition to `FIX_PENDING`. No new status becomes metadata-authorized by default.
 - Unbound client/engagement tenant mismatch, unknown finding, unsupported runtime types, nonoperator and concurrent writer lock all fail with no status change.
 - One `unittest.expectedFailure` RED canary against **existing** `DomainStore.set_retest_status` uses deliberately truncated persisted JSON to prove the old entrypoint commits a partial status update **before** decode. This is a documented unresolved source defect, not successful production remediation. This expected failure is *not* green remediation evidence.
 
