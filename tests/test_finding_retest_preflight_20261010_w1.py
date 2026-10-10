@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import replace
 import unittest
 
 from lightup.finding_retest_preflight import preflight_retest_transition
@@ -114,7 +113,7 @@ class RetestPreflightTests(unittest.TestCase):
         candidates = [
             ["initial header observation", "x" * 2049],
             ["initial header observation"] + [f"sample-{i}" for i in range(64)],
-            ["initial header observation"] + ["\U0001f600" * 1024 for _ in range(2)],
+            ["initial header observation"] + [f"{i}-" + "\U0001f600" * 512 for i in range(33)],
         ]
         for evidence in candidates:
             with self.subTest(length=len(evidence)):
@@ -154,6 +153,19 @@ class RetestPreflightTests(unittest.TestCase):
         result = preflight_retest_transition(before(), candidate)
         self.assertEqual(2, result.new_evidence_count)
         self.assertEqual([], result.as_dict()["reasons"])
+
+    def test_unicode_format_control_and_surrogate_fail_closed(self):
+        for entry in ("redacted\\u202eTXET", "value\\ud800", "proof\\u200dencoded"):
+            with self.subTest(entry=ascii(entry)):
+                candidate = later()
+                candidate.evidence[-1] = entry
+                self.assert_blocked(candidate, "invalid_finding_shape")
+
+    def test_invalid_source_text_does_not_escape_via_error(self):
+        candidate = later()
+        candidate.target = "https://valid.example.test\\ud800"
+        review = preflight_retest_transition(before(), candidate)
+        self.assertEqual(("invalid_finding_shape",), review.reasons)
 
     def test_no_network_or_authority_embedded(self):
         result = preflight_retest_transition(before(), later())
