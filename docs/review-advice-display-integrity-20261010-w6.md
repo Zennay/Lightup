@@ -10,8 +10,8 @@ These code points can corrupt or visually reorder rendered remediation advice. T
 
 ## Implemented
 
-- \`src/lightup/ai/review_advice_display_integrity.py\`: an opt-in strict text validator and gateway delegate composed over W5 admission + advisor response checks.
-- \`tests/test_review_advice_display_integrity_20261010_w6.py\`: real offline \`AssessmentReviewPipeline\` + \`ScriptedProvider\` synthetic tests for the role ordering, invalid first/second advisor output, missing current fix on a later finding, duplicate evidence, byte-vs-character bounds, exact-type confusion, untouched caller input and valid international/multiline advice.
+- `src/lightup/ai/review_advice_display_integrity.py`: an opt-in strict text validator and gateway delegate composed over W5 admission + advisor response checks.
+- `tests/test_review_advice_display_integrity_20261010_w6.py`: real offline `AssessmentReviewPipeline` + `ScriptedProvider` synthetic tests for the role ordering, invalid first/second advisor output, missing current fix on a later finding, duplicate evidence, byte-vs-character bounds, exact-type confusion, untouched caller input and valid international/multiline advice.
 - This document is the third **add-only** file. W5 source, issue owners and production entrypoints are not edited.
 
 The validator permits tab and LF for human-readable multiline guidance, and otherwise rejects Unicode category C (control, format, surrogate, private-use, unassigned). It does **not** strip or normalize accepted advice, rejects invalid UTF-8, and enforces both 8192 characters and 16384 UTF-8 bytes. This is deliberately conservative: compatibility of presentation clients must be reviewed before any adoption.
@@ -26,8 +26,8 @@ No customer data, live target, real provider, external network, scanning, eviden
 
 ## Offline tests
 
-\`\`\`bash
+```bash
 PYTHONPATH=src python -m unittest tests.test_review_advice_display_integrity_20261010_w6 -v
-\`\`\`
+```
 
-Base: W5 draft #1180 at immutable \`acfe8767c4985b94afe8a8f6ee1443bd2b722ccb\`. This is a reviewable opt-in child, not a source-owner replacement.
+Base: W5 draft #1180 at immutable `acfe8767c4985b94afe8a8f6ee1443bd2b722ccb`. This is a reviewable opt-in child, not a source-owner replacement.
