@@ -27,7 +27,7 @@ any other worker's code.
   fields are literally false;
 - output excludes raw target URLs, evidence references, remediation content,
   client/engagement IDs, titles, impact, timestamps, and secrets. It emits
-  an SHA-256 pseudonymous correlation key and canonical structural digest,
+  an SHA-256 pseudonymous correlation key and canonical, source-bound snapshot digest,
   **not** a proof of tenant ownership or evidence provenance.
 - deterministic input-preserving JSON, fail-closed on duplicate IDs, malformed
   references, cross-tenant/engagement input and oversized records.
@@ -35,6 +35,30 @@ any other worker's code.
 A simple SHA-256 pseudonym is **not anonymization** and may be brute-forced
 if source identifiers have low entropy. Do not publish review keys outside
 an already authorized tenant-scoped workflow. Counts can also disclose activity.
+
+## V2 snapshot integrity and privacy boundary
+
+The output schema is `lightup.remediation_review_queue.v2`. In v1 the queue
+digest depended only on visible review fields and *counts* of referenced
+evidence. Swapping evidence A for evidence B while preserving the same count
+and review step produced exactly the same digest, as did rewriting a fix.
+That structural digest was not suitable as an advisory snapshot change token.
+
+V2 now binds the root digest to the explicit client/engagement context
+(including when there are zero findings) and a domain-specific SHA-256
+fingerprint of each full source record: ordered evidence IDs, remediation
+text, title, asset, impact, created_at, severity, claimed retest status and
+finding identity. Item presentation still omits all raw source fields.
+Sorting remains independent of input row order, and any source edit changes
+the review-snapshot digest even when the visible advisory stays identical.
+
+**Limitations:** This digest is deterministic and not keyed or authenticated.
+It does not establish origin, completeness, genuine evidence, successful
+remediation, tenant rights or tamper resistance against an adversary able
+to recompute the digest. Low-entropy source values may still be guessed
+from digest comparisons. Only use inside an authorized trusted tenant flow.
+Do not use this hash as an authorization, audit-log signature, independent
+retest certificate, or public privacy/anonymization claim.
 
 ## Explicit non-authority and collision fence
 
@@ -50,7 +74,7 @@ No modifications to owners' source paths:
 `domain.py` (#828/#851/#856),
 `labsync.py` (#184/#854), review pipeline (#841/#846),
 current finding retest preflight (#1176), or scope executor (#107).
-All changes are three add-only files on immutable `main=dd4072c`.
+All changes are four add-only files on immutable `main=dd4072c`.
 
 ## Proof and serialized integration gate
 
