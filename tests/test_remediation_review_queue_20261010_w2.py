@@ -242,14 +242,14 @@ class RemediationQueueTests(unittest.TestCase):
         # Printable backslash + zero is a valid identifier substring, and
         # historically was also the field separator in the hash input.
         first = queue(
-            finding(client_id=r"tenant\\0sub", engagement_id="alpha",
+            finding(client_id=r"tenant\0sub", engagement_id="alpha",
                     finding_id="same-finding"),
-            client_id=r"tenant\\0sub", engagement_id="alpha",
+            client_id=r"tenant\0sub", engagement_id="alpha",
         )
         second = queue(
-            finding(client_id="tenant", engagement_id=r"sub\\0alpha",
+            finding(client_id="tenant", engagement_id=r"sub\0alpha",
                     finding_id="same-finding"),
-            client_id="tenant", engagement_id=r"sub\\0alpha",
+            client_id="tenant", engagement_id=r"sub\0alpha",
         )
         self.assertEqual(len(first.items), 1)
         self.assertEqual(len(second.items), 1)
