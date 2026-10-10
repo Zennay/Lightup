@@ -44,13 +44,45 @@ def checked_remediation_display_text(value: object) -> str:
     return value
 
 
+class _SanitizedProviderGateway:
+    """Keep upstream provider and gateway error text out of public responses.
+
+    This does not make provider calls side-effect-free. The caller must still
+    authorize any external provider disclosure before entering this adapter.
+    """
+
+    def __init__(self, original: ModelGateway):
+        self._original = original
+
+    def binding_for(self, role: ModelRole):
+        return self._original.binding_for(role)
+
+    def complete(
+        self,
+        role: ModelRole,
+        messages: tuple[ModelMessage, ...],
+        max_output_tokens: int = 2048,
+        metadata: tuple[tuple[str, str], ...] = (),
+    ) -> ModelResponse:
+        try:
+            return self._original.complete(
+                role, messages, max_output_tokens=max_output_tokens, metadata=metadata
+            )
+        except Exception:
+            # No model/vendor error text, prompt, credentials or evidence bytes
+            # may become a user-facing exception through the opt-in pipeline.
+            raise ValueError("review model provider failed") from None
+
+
 class _DisplaySafeAdviceGateway:
     """Stack display checks after W5 response identity checks, before report."""
 
     def __init__(self, gateway: ModelGateway):
         if type(gateway) is not ModelGateway:
             raise ValueError("canonical review model gateway required")
-        self._delegate = _AdvisoryResponseGuard(gateway)
+        # The existing W5 advisor-shape guard remains on top of this delegate.
+        # Its own deterministic validation messages are not rewritten.
+        self._delegate = _AdvisoryResponseGuard(_SanitizedProviderGateway(gateway))
         self._gateway = gateway
         self._pinned_providers: dict[str, object] = {}
         # A model/provider must not silently rebind a later role during the
