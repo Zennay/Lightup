@@ -10,7 +10,7 @@ Current `DomainStore.set_retest_status()` writes `findings.retest_status` under 
 
 ## Implementation
 
-1. Fail-closed exact runtime types for an operator-shaped context, the finding ID and `RetestStatus`; **these types are not authenticated authority**.
+1. Fail-closed exact runtime types for an operator-shaped context, the finding ID and `RetestStatus`, rejecting whitespace-padded/noncanonical labels before any DB connection; **these types are not authenticated authority**.
 2. Begin a `BEGIN IMMEDIATE` SQLite transaction **before** selecting any persisted finding data. A same-transaction join requires the stored finding tenant to match its engagement tenant.
 3. Validate bounded persisted evidence JSON as a list of unique, nonempty, printable built-in strings, with no conversions or repairs.
 4. Decode the canonical `FindingRecord` *before* writing, update with a compare-and-swap constraint, reconstruct the new row **before** commit, and roll back every exception (including decoder failures). Compare the complete original non-status row projection after the update: `finding_id`, client/engagement lineage, title/severity/asset/impact/remediation, original **raw evidence JSON bytes** and creation time must remain unchanged. This also fails closed on synthetic same-row SQLite trigger mutations. Compare SQLite connection `total_changes` around the update: any extra trigger write, including changes to a **different** finding row, aborts the entire transaction rather than silently modifying unrelated remediation state.
