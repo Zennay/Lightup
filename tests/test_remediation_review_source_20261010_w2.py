@@ -374,6 +374,33 @@ class RemediationReviewSourceTests(unittest.TestCase):
                 self._read()
         self.assertEqual(self._raw(), original)
 
+    def test_deeply_nested_json_is_denied_without_recursion_leak_or_writes(self):
+        # Python's decoder raises RecursionError for deeply nested JSON,
+        # even when the entire source fits our explicit JSON char budget.
+        raw = "[" * 1400 + '"synthetic-ref"' + "]" * 1400
+        self._corrupt("evidence_ids_json", raw)
+        before = self._raw()
+        with self.assertRaises(ValueError) as caught:
+            self._read()
+        self.assertEqual(
+            str(caught.exception), "remediation evidence read integrity invalid"
+        )
+        self.assertIsNone(caught.exception.__cause__)
+        self.assertEqual(self._raw(), before)
+
+    def test_invalid_evidence_envelope_rejected_without_decoder_call(self):
+        for raw in ('{"key":"synthetic-ref"}', 'true', '"ref"', "null"):
+            with self.subTest(kind=raw[:6]):
+                self._corrupt("evidence_ids_json", raw)
+                before = self._raw()
+                with patch("lightup.remediation_review_source.json.loads",
+                           side_effect=AssertionError("invalid envelope reached JSON parser")):
+                    with self.assertRaisesRegex(
+                        ValueError, "^remediation evidence read integrity invalid$"
+                    ):
+                        self._read()
+                self.assertEqual(self._raw(), before)
+
     def test_corrupt_sqlite_storage_failure_does_not_leak_internal_details(self):
         # Synthetic error from a malformed storage layer: public advisory
         # errors must not reveal schema/path details or the underlying query.

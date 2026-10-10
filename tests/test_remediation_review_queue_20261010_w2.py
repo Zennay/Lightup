@@ -12,6 +12,7 @@ from lightup.remediation_review_queue import (
     MAX_FINDINGS,
     RemediationReviewItem,
     RemediationReviewQueue,
+    REVIEW_QUEUE_SCHEMA_VERSION,
     build_remediation_review_queue,
 )
 
@@ -346,6 +347,26 @@ class RemediationQueueTests(unittest.TestCase):
             with self.subTest(kwargs=str(kwargs)[:80]):
                 with self.assertRaisesRegex(ValueError, "invalid remediation"):
                     replace(review, **kwargs)
+
+    def test_queue_export_and_digest_use_shared_schema_version(self):
+        output = queue(finding())
+        self.assertEqual(
+            json.loads(output.to_json())["schema_version"], REVIEW_QUEUE_SCHEMA_VERSION,
+        )
+        # An explicit schema revision must invalidate the queue digest and
+        # update the serialized version *together*, not drift independently.
+        from unittest.mock import patch
+        with patch(
+            "lightup.remediation_review_queue.REVIEW_QUEUE_SCHEMA_VERSION",
+            "lightup.remediation_review_queue.v4-test",
+        ):
+            newer = queue(finding())
+            self.assertNotEqual(newer.digest_sha256, output.digest_sha256)
+            self.assertEqual(
+                json.loads(newer.to_json())["schema_version"],
+                "lightup.remediation_review_queue.v4-test",
+            )
+            self.assertEqual(newer.items, output.items)
 
     def test_queue_direct_constructor_rejects_item_subclass(self):
         class SubItem(RemediationReviewItem):

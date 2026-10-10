@@ -180,6 +180,21 @@ on both successful and rejected reads. Tests deliberately attempt an
 `UPDATE` from inside row decoding and verify SQLite refuses it, while the
 read-only review succeeds with zero row mutation.
 
+## Malformed evidence and digest-version rejection fences
+
+The selected finding's raw evidence must begin as a JSON array. Object,
+scalar, missing-envelope and deeply nested recursive JSON cannot escape as
+unhandled decoder tracebacks or be mistaken for accepted evidence; on this
+read-only path the caller receives a generic integrity `ValueError` and
+the corrupted database row is unchanged. The adapter still delegates the
+canonical global decoder fix to source owner #856/#886. This local negative
+case is **not** evidence provenance verification.
+
+The serialized review version and root digest both reference a single
+`REVIEW_QUEUE_SCHEMA_VERSION` constant; a later schema change must alter
+the digest and export version together. Dedicated offline tests cover
+that paired change without claiming authenticity or permission.
+
 ## Explicit non-authority and collision fence
 
 The pure queue builder requires authenticated tenant-specific selection.

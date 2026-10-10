@@ -18,6 +18,7 @@ MAX_FINDINGS = 128
 MAX_EVIDENCE_IDS = 64
 MAX_TEXT = 8192
 MAX_ID = 128
+REVIEW_QUEUE_SCHEMA_VERSION = "lightup.remediation_review_queue.v3"
 
 _SEVERITY_RANK = {
     Severity.CRITICAL: 0,
@@ -111,7 +112,7 @@ class RemediationReviewQueue:
     def to_json(self) -> str:
         """Deterministic privacy-minimal advisory; never embeds source text."""
         return json.dumps({
-            "schema_version": "lightup.remediation_review_queue.v3",
+            "schema_version": REVIEW_QUEUE_SCHEMA_VERSION,
             "items": [
                 {
                     "finding_key_sha256": item.finding_key_sha256,
@@ -274,7 +275,7 @@ def build_remediation_review_queue(
     # across clients / engagements with different trusted selectors.
     digest = sha256(json.dumps(
         {
-            "schema_version": "lightup.remediation_review_queue.v3",
+            "schema_version": REVIEW_QUEUE_SCHEMA_VERSION,
             "client_id": client_id,
             "engagement_id": engagement_id,
             "records": canonical,

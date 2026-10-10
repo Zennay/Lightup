@@ -126,6 +126,13 @@ def read_remediation_review_queue(
                     raw = row["evidence_ids_json"]
                     if type(raw) is not str or len(raw) > MAX_EVIDENCE_JSON_CHARS:
                         raise ValueError("invalid persisted evidence JSON")
+                    # Legacy evidence is always a top-level JSON array; reject
+                    # scalars/objects before invoking a general JSON decoder.
+                    # Python's JSON parser may raise RecursionError on deeply
+                    # nested malformed input; normalize it below, never leak a
+                    # Python stack or raw evidence through this read-only API.
+                    if not raw.lstrip().startswith("["):
+                        raise ValueError("invalid persisted evidence envelope")
                     decoded = json.loads(raw)
                     if type(decoded) is not list or len(decoded) > MAX_EVIDENCE_IDS:
                         raise ValueError("invalid persisted evidence array")
@@ -150,7 +157,7 @@ def read_remediation_review_queue(
     except TenantIsolationError:
         # Preserve the authorization-denial *type*, not its sensitive text.
         raise
-    except (ValueError, TypeError, UnicodeError, OverflowError, sqlite3.DatabaseError) as exc:
+    except (ValueError, TypeError, UnicodeError, OverflowError, RecursionError, sqlite3.DatabaseError) as exc:
         if type(exc) is ValueError and str(exc) == "remediation review engagement not found":
             raise ValueError("remediation review engagement not found") from None
         # Generic data failure: do not echo corrupt stored evidence/identities.
