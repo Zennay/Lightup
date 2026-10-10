@@ -150,6 +150,46 @@ class AtomicRetestMetadataSidecarTest(unittest.TestCase):
             self._transition()
         self.assertEqual(self._row(), before)
 
+    def test_sqlite_trigger_cannot_modify_finding_identity_or_evidence(self):
+        # Synthetic trigger fixtures emulate an unexpected SQLite side effect.
+        # A status-only metadata helper must reject even a reformat of the
+        # very same evidence values, preserving exact stored evidence bytes.
+        foreign = self.store.create_client(self.operator, "Trigger foreign tenant")
+        cases = (
+            ("title", "'Tampered title'"),
+            ("remediation", "'Tampered fix advice'"),
+            ("client_id", "'" + foreign.client_id + "'"),
+            ("evidence_ids_json", "'[ \"evidence:one\", \"evidence:two\" ]'"),
+            ("created_at", "'2030-01-01T00:00:00+00:00'"),
+        )
+        for column, sql_literal in cases:
+            with self.subTest(column=column):
+                with self.store._connect() as con:
+                    con.execute(
+                        "CREATE TRIGGER synthetic_retest_row_guard "
+                        "AFTER UPDATE OF retest_status ON findings "
+                        "BEGIN UPDATE findings SET " + column + "=" + sql_literal +
+                        " WHERE finding_id=NEW.finding_id; END"
+                    )
+                before = self._full_row()
+                try:
+                    with self.assertRaisesRegex(
+                        ValueError, "finding changed during retest metadata update"
+                    ):
+                        self._transition()
+                    self.assertEqual(self._full_row(), before)
+                finally:
+                    with self.store._connect() as con:
+                        con.execute("DROP TRIGGER synthetic_retest_row_guard")
+
+    def _full_row(self):
+        with self.store._connect() as con:
+            row = con.execute(
+                "SELECT * FROM findings WHERE finding_id=?",
+                (self.finding.finding_id,),
+            ).fetchone()
+            return tuple(row)
+
     def test_held_writer_lock_rejects_without_state_change(self):
         @contextmanager
         def fast_connect():
