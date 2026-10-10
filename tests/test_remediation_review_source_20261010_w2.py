@@ -88,8 +88,22 @@ class RemediationReviewSourceTests(unittest.TestCase):
         self.assertNotEqual(first.digest_sha256, second.digest_sha256)
 
     def test_cross_tenant_read_preserves_domain_access_denial(self):
-        with self.assertRaises(TenantIsolationError):
+        with self.assertRaises(TenantIsolationError) as caught:
             self._read(engagement_id=self.eng_second.engagement_id)
+        self.assertEqual(str(caught.exception), "remediation review tenant scope denied")
+        self.assertNotIn(self.second.client_id, str(caught.exception))
+        self.assertNotIn(self.eng_second.engagement_id, str(caught.exception))
+
+    def test_unknown_engagement_selector_has_no_secret_in_error(self):
+        secret = "nonexistent-private-engagement-id"
+        before = self._raw()
+        with self.assertRaises(ValueError) as caught:
+            self._read(ctx=self.operator, engagement_id=secret)
+        self.assertEqual(
+            str(caught.exception), "remediation review engagement not found"
+        )
+        self.assertNotIn(secret, str(caught.exception))
+        self.assertEqual(self._raw(), before)
 
     def test_missing_engagement_cannot_trigger_global_operator_findings_read(self):
         for invalid in ("", "  ", [], 1, None, b"valid",
