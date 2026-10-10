@@ -41,35 +41,37 @@ def read_remediation_review_queue(
     ):
         raise ValueError("invalid remediation review engagement selector")
 
-    # Preserve DomainStore's tenant access contract and its independent
-    # TenantIsolationError / KeyError distinctions for unauthorized or
-    # nonexistent engagements. No operator-global-list fallback.
-    try:
-        engagement = store.get_engagement(context, engagement_id)
-    except TenantIsolationError:
-        # Keep the caller-visible permission-denial type but never include
-        # the other tenant's ID or the supplied opaque selector in its text.
-        raise TenantIsolationError("remediation review tenant scope denied") from None
-    except KeyError:
-        raise ValueError("remediation review engagement not found") from None
-
     try:
         with store._connect() as connection:
-            # DomainStore._connect uses SQLite autocommit; explicit BEGIN
-            # pins the engagement, raw evidence and finding data to ONE
-            # consistent read transaction, instead of separate reads.
+            # DomainStore._connect runs SQLite in autocommit; pin the *tenant
+            # admission* and all source records to one version at the first
+            # SELECT. A trusted caller must construct context from an
+            # authenticated session; the context itself is not a grant.
             connection.execute("BEGIN")
             try:
                 scoped = connection.execute(
                     "SELECT engagement_id, client_id FROM engagements "
                     "WHERE engagement_id=?", (engagement_id,),
                 ).fetchone()
+                if scoped is None:
+                    raise ValueError("remediation review engagement not found")
                 if (
-                    scoped is None
-                    or scoped["engagement_id"] != engagement.engagement_id
-                    or scoped["client_id"] != engagement.client_id
+                    type(scoped["engagement_id"]) is not str
+                    or scoped["engagement_id"] != engagement_id
+                    or type(scoped["client_id"]) is not str
                 ):
-                    raise ValueError("remediation review engagement snapshot drift")
+                    raise ValueError("invalid remediation engagement identity")
+                # Exactly the same AccessContext tenant admission primitive
+                # used by DomainStore.get_engagement, now on this snapshot.
+                try:
+                    context.resolve_client(
+                        scoped["client_id"], "read_remediation_review_queue"
+                    )
+                except TenantIsolationError:
+                    raise TenantIsolationError(
+                        "remediation review tenant scope denied"
+                    ) from None
+                client_id = scoped["client_id"]
 
                 # Request MAX+1 rows so oversized engagements fail before
                 # decoding arbitrary amounts of source-controlled evidence.
@@ -85,7 +87,7 @@ def read_remediation_review_queue(
                 for row in rows:
                     if (
                         type(row["client_id"]) is not str
-                        or row["client_id"] != engagement.client_id
+                        or row["client_id"] != client_id
                         or row["engagement_id"] != engagement_id
                     ):
                         raise ValueError("remediation review finding scope mismatch")
@@ -109,7 +111,7 @@ def read_remediation_review_queue(
 
                 result = build_remediation_review_queue(
                     tuple(findings),
-                    client_id=engagement.client_id,
+                    client_id=client_id,
                     engagement_id=engagement_id,
                 )
             finally:
@@ -117,7 +119,11 @@ def read_remediation_review_queue(
                 # rejected legacy data leaves a SQLite transaction open.
                 connection.execute("ROLLBACK")
         return result
-    except (ValueError, TypeError, UnicodeError, OverflowError):
-        # Generic error: do not echo corrupt stored evidence or SQLite fields.
-        # Retain the actual domain tenant-denial exception above this block.
+    except TenantIsolationError:
+        # Preserve the authorization-denial *type*, not its sensitive text.
+        raise
+    except (ValueError, TypeError, UnicodeError, OverflowError) as exc:
+        if type(exc) is ValueError and str(exc) == "remediation review engagement not found":
+            raise ValueError("remediation review engagement not found") from None
+        # Generic data failure: do not echo corrupt stored evidence/identities.
         raise ValueError("remediation evidence read integrity invalid") from None
