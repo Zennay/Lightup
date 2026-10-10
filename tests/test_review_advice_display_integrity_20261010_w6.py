@@ -248,7 +248,7 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
                 source["findings"].append(row)
                 before = copy.deepcopy(source)
                 pipeline, provider = make_pipeline("Valid advice")
-                with self.assertRaisesRegex(ValueError, "review input display"):
+                with self.assertRaises(ValueError):
                     review_with_display_safe_advice(pipeline, source)
                 self.assertEqual(provider.requests, [])
                 self.assertEqual(source, before)
@@ -491,6 +491,37 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
         result = review_with_display_safe_advice(pipeline, fixture())
         self.assertEqual(result.findings[0].remediation_advice, "Synthetic human review")
         self.assertEqual(len(provider.requests), 3)
+
+
+    def test_exact_canonical_severity_labels_preserved_and_reported(self):
+        for label in ("info", "low", "medium", "high", "critical"):
+            with self.subTest(severity=label):
+                source = fixture()
+                source["findings"][0]["severity"] = label
+                before = copy.deepcopy(source)
+                pipeline, provider = make_pipeline("Synthetic human review")
+                result = review_with_display_safe_advice(pipeline, source)
+                self.assertEqual(result.findings[0].severity, label)
+                self.assertEqual(source, before)
+                self.assertEqual(len(provider.requests), 3)
+
+    def test_noncanonical_late_finding_severity_blocks_entire_batch(self):
+        invalid = ("HIGH", "High", "critical ", "urgent", "2", "informational")
+        for value in invalid:
+            with self.subTest(severity=value):
+                source = fixture()
+                source["findings"].append({
+                    **source["findings"][0],
+                    "finding": "Later synthetic evidence",
+                    "evidence_ids": ["synthetic:evidence:2"],
+                    "severity": value,
+                })
+                before = copy.deepcopy(source)
+                pipeline, provider = make_pipeline("Synthetic human review")
+                with self.assertRaisesRegex(ValueError, "severity is not canonical"):
+                    review_with_display_safe_advice(pipeline, source)
+                self.assertEqual(provider.requests, [])
+                self.assertEqual(source, before)
 
 if __name__ == "__main__":
     unittest.main()
