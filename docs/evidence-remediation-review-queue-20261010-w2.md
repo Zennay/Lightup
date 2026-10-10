@@ -60,12 +60,45 @@ from digest comparisons. Only use inside an authorized trusted tenant flow.
 Do not use this hash as an authorization, audit-log signature, independent
 retest certificate, or public privacy/anonymization claim.
 
+## Optional read-only DomainStore source
+
+`read_remediation_review_queue(store, context, engagement_id=...)` in
+`src/lightup/remediation_review_source.py` is an **opt-in adapter**, not an
+application or web entrypoint. It demands an exact `DomainStore`, an exact
+`AccessContext` created by a separately authenticated trusted caller, and an
+explicit bounded engagement selector (including for operators). It uses
+`DomainStore.get_engagement` tenant access checks and `list_findings`, then
+rechecks all records against the engagement's recorded client.
+
+Existing `DomainStore._finding_from_row` may parse legacy persisted
+`evidence_ids_json` objects by iterating their keys and may throw generic
+`JSONDecodeError`/`TypeError` for corrupt input. Until owner #828/#856
+replaces this decoder, the adapter separately reads the selected engagement's
+raw JSON **without writing**, insists on canonical arrays of built-in strings,
+bounds count/size, and reconciles raw evidence tuples against decoded rows.
+Malformed legacy values or mismatched snapshots become a generic
+`ValueError("remediation evidence read integrity invalid")`, with no raw
+stored evidence reflected in the error.
+
+This is only a defensive *read-side adapter*. The two source reads are **not
+an atomic transactional snapshot**, and they do not certify evidence, consent,
+revocation or verification. A production integration requires the source
+owner's canonical decoder fix (#856/#886), authenticated session provenance,
+transactional snapshot/revision safety if review results gain authority,
+and independent acceptance; the helper cannot issue grants, contact targets
+or update the durable finding or retest status.
+
+Dedicated offline integration:
+`PYTHONPATH=src python -m unittest discover -s tests -p 'test_remediation_review_source_20261010_w2.py' -v`.
+All test databases are disposable and local.
+
 ## Explicit non-authority and collision fence
 
-The caller must first perform authenticated tenant-specific selection.
-The helper trusts neither its `client_id` argument nor its input records as
-an authorization grant. A matching field is only a structural consistency
-check. It never queries SQLite, issues requests, calls AI/verification tools,
+The pure queue builder requires authenticated tenant-specific selection.
+The opt-in adapter only reads a selected engagement in temporary/opt-in domain
+storage and cannot authenticate a self-asserted AccessContext. Neither API
+trusts caller identifiers as an authorization grant. A matching field is
+only structural consistency, not consent. Neither issues requests, calls AI/verification tools,
 reads raw evidence files, contacts targets, executes remediation, records retest
 results, creates risk approvals, changes security-twin or CI verdict state, or
 claims production integration.
@@ -74,7 +107,7 @@ No modifications to owners' source paths:
 `domain.py` (#828/#851/#856),
 `labsync.py` (#184/#854), review pipeline (#841/#846),
 current finding retest preflight (#1176), or scope executor (#107).
-All changes are four add-only files on immutable `main=dd4072c`.
+All changes are six add-only files on immutable `main=dd4072c`.
 
 ## Proof and serialized integration gate
 
