@@ -6,6 +6,7 @@ global-finding reader, issues permissions or executes remediation/retests.
 from __future__ import annotations
 
 import json
+import sqlite3
 
 from .domain import AccessContext, DomainStore, TenantIsolationError
 from .remediation_review_queue import (
@@ -145,7 +146,7 @@ def read_remediation_review_queue(
     except TenantIsolationError:
         # Preserve the authorization-denial *type*, not its sensitive text.
         raise
-    except (ValueError, TypeError, UnicodeError, OverflowError) as exc:
+    except (ValueError, TypeError, UnicodeError, OverflowError, sqlite3.DatabaseError) as exc:
         if type(exc) is ValueError and str(exc) == "remediation review engagement not found":
             raise ValueError("remediation review engagement not found") from None
         # Generic data failure: do not echo corrupt stored evidence/identities.
