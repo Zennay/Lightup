@@ -91,6 +91,10 @@ def atomic_retest_status_metadata(
         raise ValueError("invalid finding id")
     if type(status) is not RetestStatus:
         raise TypeError("canonical retest status required")
+    # FIXED/REGRESSION are *outcomes*, not metadata. A helper without any
+    # independent retest verifier must never mint either claim.
+    if status not in (RetestStatus.NOT_TESTED, RetestStatus.FIX_PENDING):
+        raise ValueError("independent retest evidence required for outcome status")
 
     with store._connect() as connection:
         try:
