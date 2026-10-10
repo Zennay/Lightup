@@ -175,6 +175,57 @@ class RemediationReviewSourceTests(unittest.TestCase):
             result = self._read()
         self.assertEqual(len(result.items), 1)
 
+    def test_scope_and_findings_use_one_snapshot_despite_concurrent_reassignment(self):
+        original_admission = AccessContext.resolve_client
+        state = {"admissions": 0}
+
+        def reassign_after_snapshot(self_ctx, client_id, action):
+            state["admissions"] += 1
+            if state["admissions"] == 1:
+                # A genuine second WAL connection commits a reassignment
+                # *after* the first read pins the original authorized scope.
+                with self.store._connect() as writer:
+                    writer.execute(
+                        "UPDATE engagements SET client_id=? WHERE engagement_id=?",
+                        (self.second.client_id, self.eng_first.engagement_id),
+                    )
+            return original_admission(self_ctx, client_id, action)
+
+        before = self._raw()
+        with patch.object(AccessContext, "resolve_client",
+                          new=reassign_after_snapshot):
+            historical = self._read()
+
+        self.assertEqual(state["admissions"], 1)
+        self.assertEqual(len(historical.items), 1)
+        self.assertEqual(before, self._raw())
+        self.assertFalse(historical.authorization_verified)
+        # The next transaction sees a reassignment and refuses client A.
+        with self.assertRaises(TenantIsolationError) as caught:
+            self._read()
+        self.assertEqual(str(caught.exception), "remediation review tenant scope denied")
+        self.assertNotIn(self.second.client_id, str(caught.exception))
+
+    def test_adapter_never_uses_separate_get_engagement_authorization_read(self):
+        with patch.object(self.store, "get_engagement",
+                          side_effect=AssertionError("second database connection")):
+            result = self._read()
+        self.assertEqual(len(result.items), 1)
+        self.assertFalse(result.retest_authorized)
+
+    def test_tenant_reassignment_before_snapshot_denies_without_row_read(self):
+        with self.store._connect() as writer:
+            writer.execute(
+                "UPDATE engagements SET client_id=? WHERE engagement_id=?",
+                (self.second.client_id, self.eng_first.engagement_id),
+            )
+        before = self._raw()
+        with patch.object(DomainStore, "_finding_from_row",
+                          side_effect=AssertionError("finding should not decode")):
+            with self.assertRaisesRegex(TenantIsolationError, "scope denied"):
+                self._read()
+        self.assertEqual(before, self._raw())
+
     def test_reader_pins_snapshot_when_concurrent_writer_changes_evidence(self):
         # WAL mode permits the external writer to commit while this adapter
         # holds its own read transaction. The advisory must refer to the OLD
