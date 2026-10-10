@@ -359,5 +359,57 @@ class AdviceDisplayIntegrityTests(unittest.TestCase):
                          "review model response display text is invalid")
         self.assertNotIn(secret_marker, str(caught.exception))
 
+
+    def test_mid_review_future_role_rebinding_denied_before_next_request(self):
+        for change_at, target_role, expected in (
+            (ModelRole.VERIFIER, ModelRole.REMEDIATION_ADVISOR,
+             [ModelRole.VERIFIER]),
+            (ModelRole.REMEDIATION_ADVISOR, ModelRole.REPORT_SYNTHESIZER,
+             [ModelRole.VERIFIER, ModelRole.REMEDIATION_ADVISOR]),
+        ):
+            with self.subTest(change_at=change_at, target_role=target_role):
+                pipeline, provider = make_pipeline("Human-only review guidance.")
+                gateway = pipeline.gateway
+                original = provider.complete
+
+                def mutate(req):
+                    response = original(req)
+                    if req.role is change_at:
+                        gateway.bind_role(target_role, provider.provider_id, "changed-model")
+                    return response
+
+                provider.complete = mutate
+                with self.assertRaisesRegex(ValueError, "binding changed"):
+                    review_with_display_safe_advice(pipeline, fixture())
+                self.assertEqual([r.role for r in provider.requests], expected)
+
+    def test_mid_review_active_role_rebinding_denied_after_response(self):
+        pipeline, provider = make_pipeline("Human-only review guidance.")
+        gateway = pipeline.gateway
+        original = provider.complete
+
+        def mutate_verifier(req):
+            response = original(req)
+            if req.role is ModelRole.VERIFIER:
+                gateway.bind_role(ModelRole.VERIFIER, provider.provider_id,
+                                  "changed-after-request")
+            return response
+
+        provider.complete = mutate_verifier
+        with self.assertRaisesRegex(ValueError, "binding changed"):
+            review_with_display_safe_advice(pipeline, fixture())
+        self.assertEqual([r.role for r in provider.requests], [ModelRole.VERIFIER])
+
+    def test_unchanged_model_bindings_keep_expected_model_ids(self):
+        pipeline, provider = make_pipeline("Synthetic reviewer guidance.")
+        result = review_with_display_safe_advice(pipeline, fixture())
+        self.assertEqual(
+            [r.model_id for r in provider.requests], ["local-script"] * 3
+        )
+        self.assertEqual(
+            {role for role, _ in result.model_bindings},
+            {role.value for role in AssessmentReviewPipeline.ROLES},
+        )
+
 if __name__ == "__main__":
     unittest.main()
