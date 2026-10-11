@@ -32,6 +32,10 @@ class CheckedFindingExportWebApp(FindingExportWebApp):
         # called directly without a context; never manufacture an identity.
         if type(auth) is not AuthState or auth.context is None:
             return Response("Sign-in required.", status="403 Forbidden")
+        # Direct handler invocation must never manufacture an authenticated
+        # export using an AccessContext without a real WSGI session token.
+        if type(auth.session_token) is not str or not auth.session_token:
+            return Response("Export denied.", status="403 Forbidden")
         try:
             output = render_tenant_findings_csv_checked(
                 self.store, auth.context, client_id, engagement_id=engagement_id
@@ -40,6 +44,17 @@ class CheckedFindingExportWebApp(FindingExportWebApp):
             return Response("Export denied.", status="403 Forbidden")
         except (ValueError, KeyError, sqlite3.DatabaseError):
             return Response("Export unavailable.", status="400 Bad Request")
+
+        # An authorization/session change during bounded selection/rendering
+        # must not release an already-created CSV. This is an extra deny-only
+        # action-time check, not a guarantee about concurrent changes *after*
+        # response transmission or an installed ingress security proof.
+        try:
+            live = self.store.session_context(auth.session_token)
+        except (ValueError, KeyError, sqlite3.DatabaseError):
+            return Response("Export denied.", status="403 Forbidden")
+        if live is None or type(live[0]) is not type(auth.context) or live[0] != auth.context:
+            return Response("Export denied.", status="403 Forbidden")
 
         return Response(
             output,
