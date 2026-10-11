@@ -70,10 +70,13 @@ def render_findings_csv_checked(findings: list[Finding]) -> str:
     total_bytes = 0
     snapshots: list[Finding] = []
     seen: set[str] = set()
+    seen_compatibility_ids: set[str] = set()
     for finding in findings:
         if type(finding) is not Finding:
             raise ValueError("invalid CSV finding")
-        if type(finding.severity) is not Severity or type(finding.retest_status) is not RetestStatus:
+        severity = finding.severity
+        retest_status = finding.retest_status
+        if type(severity) is not Severity or type(retest_status) is not RetestStatus:
             raise ValueError("invalid CSV enum")
         values: dict[str, str] = {}
         for name, limit in MAX_FIELD_BYTES.items():
@@ -85,15 +88,19 @@ def render_findings_csv_checked(findings: list[Finding]) -> str:
         if values["finding_id"] in seen:
             raise ValueError("duplicate CSV finding identity")
         seen.add(values["finding_id"])
+        display_key = unicodedata.normalize("NFKC", values["finding_id"])
+        if display_key in seen_compatibility_ids:
+            raise ValueError("ambiguous CSV display identity")
+        seen_compatibility_ids.add(display_key)
         # Do not retain references to mutable Finding instances. Only the five
         # rendered columns plus a non-rendered target are snapshotted. Raw
         # evidence and metadata are intentionally never copied or exported.
         snapshots.append(Finding(
             finding_id=values["finding_id"],
             title=values["title"],
-            severity=finding.severity,
+            severity=severity,
             target=values["target"],
             remediation=values["remediation"],
-            retest_status=finding.retest_status,
+            retest_status=retest_status,
         ))
     return render_findings_csv(snapshots)
