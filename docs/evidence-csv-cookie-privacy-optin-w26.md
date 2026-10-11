@@ -30,8 +30,16 @@ A separate fail-closed error adapter catches `RecursionError` and
 `OverflowError` from the existing persisted finding reader. Historical
 SQLite `evidence_ids_json` can contain deeply nested JSON that raises
 outside the parent's recognized `ValueError`/SQLite errors. W26 returns
-a generic 400 with no CSV output; it does not rewrite the corrupt row
-or claim to fix the canonical domain decoder (#856/#886).
+a generic 400 **if that decoder exception occurs** and never modifies
+the stored row. **Critical interpreter difference:** the same 2,048-level
+synthetic nested row triggers an exception in Python 3.11 but the Python
+3.14 reader may accept its nesting and return a 200 CSV. Therefore W26
+does **not** reject all corrupt historical evidence and cannot substitute
+for canonical `DomainStore` evidence-shape validation (#856/#886).
+A real SQLite WSGI test checks exception containment, injecting the
+recursion failure after the existing selector when the interpreter
+accepts the synthetic nested shape; that test deliberately makes no
+universal evidence-admission claim.
 
 The W26 helper **does not** run from existing `create_app`,
 `create_app_with_exports`, `create_app_with_checked_exports`, CLI,
@@ -49,7 +57,7 @@ cookies or customer values:
 - double- and single-quoted cookie values cannot bypass the guard;
 - NFKC-compatible fullwidth label rejects without source mutation;
 - a late problematic finding blocks even earlier valid rows;
-- deeply nested corrupt historical SQLite evidence raises no uncaught WSGI exception;
+- a raised recursive decoder exception produces generic WSGI denial on both Python versions (not universal malformed-evidence rejection);
 - foreign-tenant access refuses before `list_findings`;
 - original W23 factory intentionally still permits the synthetic
   canary while new W26 factory rejects it;
