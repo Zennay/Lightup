@@ -122,9 +122,10 @@ class CsvSessionCookiePrivacyW26(unittest.TestCase):
         self.assertNotIn(CANARY, body)
         self.assertEqual(self.snapshot(), before)
 
-    def test_deep_corrupt_legacy_evidence_cannot_escape_wsgi_with_csv(self):
-        # A real historical SQLite row can be nested well beyond the JSON
-        # decoder's recursion limit. Never repair that row during export.
+    def test_recursive_decoder_exception_has_generic_wsgi_denial(self):
+        # Runtime JSON parsers differ: Python 3.14 may tolerate a nesting
+        # depth that Python 3.11 refuses. Prove ONLY the caught-exception
+        # boundary, not canonical evidence-shape admission (owner #856).
         raw = "[" * 2048 + '"synthetic:reference"' + "]" * 2048
         with self.store._connect() as con:
             con.execute(
@@ -132,9 +133,22 @@ class CsvSessionCookiePrivacyW26(unittest.TestCase):
                 (raw, self.fa.finding_id),
             )
         before = self.snapshot()
-        status, headers, body = self.request(
-            "GET", self.own_url, token=self.a_token
-        )
+        canonical_reader = self.store.list_findings
+
+        def read_then_decoder_failure(*args, **kwargs):
+            # Exercise the actual persisted row and existing tenant selector.
+            # If this interpreter accepts it, synthesize the same decoder
+            # recursion exception instead of claiming universal rejection.
+            canonical_reader(*args, **kwargs)
+            raise RecursionError("synthetic legacy evidence decode depth")
+
+        with patch.object(
+            self.store, "list_findings", side_effect=read_then_decoder_failure
+        ) as selected:
+            status, headers, body = self.request(
+                "GET", self.own_url, token=self.a_token
+            )
+            selected.assert_called_once()
         self.assertEqual(status, "400 Bad Request")
         self.assertEqual(headers["Cache-Control"], "no-store")
         self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
