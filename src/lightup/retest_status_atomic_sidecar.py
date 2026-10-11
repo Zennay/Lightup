@@ -12,6 +12,7 @@ session and human authorization layer is mandatory before any integration.
 from __future__ import annotations
 
 import json
+import unicodedata
 
 from .domain import AccessContext, DomainStore, FindingRecord, Role, RoleError
 from .models import RetestStatus
@@ -49,6 +50,12 @@ def _checked_evidence_json(raw: str) -> tuple[str, ...]:
             or item != item.strip()
             or not item.isprintable()
             or len(item.encode("utf-8", errors="replace")) > _MAX_EVIDENCE_ID_BYTES
+            # Unicode mark-only identifiers are effectively blank evidence.
+            # Check the normalized form so compatibility accents cannot bypass.
+            or not any(
+                unicodedata.category(char)[0] in "LNPS"
+                for char in unicodedata.normalize("NFKC", item)
+            )
             or item in seen
         ):
             raise ValueError("finding evidence is invalid")
