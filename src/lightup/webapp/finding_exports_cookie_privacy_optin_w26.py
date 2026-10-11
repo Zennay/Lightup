@@ -21,7 +21,7 @@ from .security import WebSecurity
 _SESSION_COOKIE_ASSIGNMENT = re.compile(
     # Deny the cookie assignment regardless of CSV-escaped quotes around
     # its value. No extraction or exposure of the value is necessary.
-    r"(?<![\\w])lightup_session\\s*=",
+    r"(?<![\w])lightup_session\s*=",
     flags=re.IGNORECASE,
 )
 
