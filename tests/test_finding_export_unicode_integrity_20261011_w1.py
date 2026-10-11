@@ -145,6 +145,23 @@ class UnicodeCsvIntegrityTests(unittest.TestCase):
                 render_findings_csv_checked([example(), example()])
             render.assert_not_called()
 
+    def test_nfkc_equivalent_ids_are_rejected_before_renderer(self):
+        for collision in ("finding-Ａ", "finding-Ⓐ", "finding-\u212b"):
+            # Some compatibility pairs deliberately have different native ID
+            # spellings while their spreadsheet-visible normalization aliases.
+            canonical = "finding-" + __import__("unicodedata").normalize("NFKC", collision.split("-")[1])
+            if canonical == collision:
+                continue
+            with self.subTest(collision=collision):
+                first = example(finding_id=canonical)
+                second = example(finding_id=collision)
+                snapshot = deepcopy([first, second])
+                with patch("lightup.finding_export_unicode_integrity.render_findings_csv") as render:
+                    with self.assertRaisesRegex(ValueError, "ambiguous"):
+                        render_findings_csv_checked([first, second])
+                    render.assert_not_called()
+                self.assertEqual([first, second], snapshot)
+
     def test_exact_types_for_findings_enum_and_strings(self):
         class TextChild(str):
             pass
