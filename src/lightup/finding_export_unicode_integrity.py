@@ -45,6 +45,11 @@ def _checked_text(value: object, field: str, max_bytes: int) -> tuple[str, int]:
            or unicodedata.category(char) in ("Zl", "Zp")
            for char in normalized):
         raise ValueError("unsafe normalized CSV character")
+    # Isolated marks and presentation selectors are not perceptible evidence
+    # identifiers or remediation text. Preserve accents and selectors when a
+    # real letter, number, punctuation or symbol is also present.
+    if not any(unicodedata.category(char)[0] in "LNPS" for char in normalized):
+        raise ValueError("CSV field requires visible base character")
     # The default renderer already quotes literal ASCII formula prefixes,
     # even after leading ordinary Unicode whitespace. Only block prefixes
     # that a spreadsheet's compatibility handling might uncover *after*
