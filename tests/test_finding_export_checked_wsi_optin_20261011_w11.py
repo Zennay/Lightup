@@ -215,5 +215,64 @@ class CheckedFindingExportWsgiTests(unittest.TestCase):
         self.assertEqual(html.count(f'href="{self.own_url}"'), 1)
 
 
+    def test_live_login_then_logout_observes_authenticated_route(self):
+        status, headers, _ = self.request(
+            "POST", "/login",
+            {"email": "a@acme.test", "password": "client-a-password"},
+        )
+        self.assertEqual(status, "303 See Other")
+        fresh_cookie = headers["Set-Cookie"]
+        self.assertIn("HttpOnly", fresh_cookie)
+        self.assertIn("SameSite=Strict", fresh_cookie)
+        token = fresh_cookie.split("lightup_session=")[1].split(";")[0]
+        status, _, body = self.request("GET", self.own_url, token=token)
+        self.assertEqual(status, "200 OK")
+        self.assertIn(self.fa.finding_id, body)
+        _, resolved = self.store.session_context(token)
+        status, _, _ = self.request("POST", "/logout", token=token, csrf=resolved)
+        self.assertEqual(status, "303 See Other")
+        with patch.object(self.store, "list_findings") as read:
+            status, _, body = self.request("GET", self.own_url, token=token)
+            self.assertEqual(status, "303 See Other")
+            read.assert_not_called()
+            self.assertNotIn(self.fa.finding_id, body)
+
+    def test_current_db_client_membership_overrides_stale_session_identity(self):
+        # Synthetic operator-side transfer: existing session token MUST resolve
+        # current role/tenant at each new request, not an old in-memory context.
+        status, _, body = self.request("GET", self.own_url, token=self.a_token)
+        self.assertEqual(status, "200 OK")
+        self.assertIn(self.fa.finding_id, body)
+        with self.store._connect() as con:
+            con.execute(
+                "UPDATE users SET client_id=? WHERE user_id=?",
+                (self.client_b.client_id, self.user_a.user_id),
+            )
+        with patch.object(self.store, "list_findings") as read:
+            status, _, body = self.request("GET", self.own_url, token=self.a_token)
+            self.assertEqual(status, "403 Forbidden")
+            read.assert_not_called()
+            self.assertNotIn(self.fa.finding_id, body)
+        status, _, body = self.request("GET", self.other_url, token=self.a_token)
+        self.assertEqual(status, "200 OK")
+        self.assertIn(self.fb.finding_id, body)
+        self.assertNotIn(self.fa.finding_id, body)
+
+    def test_expired_session_never_reaches_checked_producer(self):
+        from datetime import datetime, timedelta, timezone
+
+        with self.store._connect() as con:
+            con.execute(
+                "UPDATE sessions SET expires_at=? WHERE token_hash=?",
+                ((datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat(),
+                 self.store._token_hash(self.a_token)),
+            )
+        with patch.object(self.store, "list_findings") as read:
+            status, _, body = self.request("GET", self.own_url, token=self.a_token)
+            self.assertEqual(status, "303 See Other")
+            read.assert_not_called()
+            self.assertNotIn(self.fa.finding_id, body)
+
+
 if __name__ == "__main__":
     unittest.main()
