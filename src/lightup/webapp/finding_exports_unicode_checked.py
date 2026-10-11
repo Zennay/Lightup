@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from ..domain import DomainStore, TenantIsolationError
+from ..domain import AccessContext, DomainStore, TenantIsolationError
 from ..finding_export_tenant_checked import render_tenant_findings_csv_checked
 from .app import AuthState, Response
 from .finding_exports import FindingExportWebApp
@@ -53,7 +53,20 @@ class CheckedFindingExportWebApp(FindingExportWebApp):
             live = self.store.session_context(auth.session_token)
         except (ValueError, KeyError, sqlite3.DatabaseError):
             return Response("Export denied.", status="403 Forbidden")
-        if live is None or type(live[0]) is not type(auth.context) or live[0] != auth.context:
+        # Both values must come from the same canonical persisted session.
+        # Treat malformed/missing resolver shapes, CSRF rotation and replaced
+        # identity as denial, never as an exception or downloadable artifact.
+        if (
+            type(live) is not tuple
+            or len(live) != 2
+            or type(auth.context) is not AccessContext
+            or type(live[0]) is not AccessContext
+            or live[0] != auth.context
+            or type(auth.csrf) is not str
+            or not auth.csrf
+            or type(live[1]) is not str
+            or live[1] != auth.csrf
+        ):
             return Response("Export denied.", status="403 Forbidden")
 
         return Response(
