@@ -1,6 +1,6 @@
 # LightUp M3/M7 · CSV presentation-integrity preflight (2026-10-11 W1)
 
-**DRAFT / HOLD — opt-in and offline only.** Work for issue [#1182](https://github.com/Zennay/Lightup/issues/1182). Base is immutable `main=dd4072cdd1a2bc44a752ccbb7b1d0b6d56559da1`, with three unique **add-only** paths; no modification to live finding sources, tenant export, authorization, web, CI, scanner or concurrent producer owners.
+**DRAFT / HOLD — opt-in and offline only.** Work for issue [#1182](https://github.com/Zennay/Lightup/issues/1182). Base is immutable `main=dd4072cdd1a2bc44a752ccbb7b1d0b6d56559da1`, with four unique **add-only** paths; no modification to live finding sources, tenant export, authorization, web, CI, scanner or concurrent producer owners.
 
 ## Confirmed source-level limitation
 
@@ -20,6 +20,10 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 ```
 
 Tests use synthetic findings only: late-item atomic rejection with mock call count, literal ASCII formula escaping, Unicode confusables, all four projected identities/fields, excluded metadata/evidence/target, exact-type negatives, UTF-8 byte budgets, and copy-before-render mutation isolation. The NFKC-equivalent identity cases enforce *unambiguous display*, not canonical source identity or evidence authenticity. The default renderer's acceptance of an invisible prefix is retained as a **known gap demonstration**, not asserted to be an actual executed spreadsheet formula.
+
+## W2: real tenant-service synthetic proof
+
+`tests/test_finding_export_unicode_service_20261011_w2.py` creates **disposable** real `DomainStore` clients, engagements and findings. Its four independent regressions confirm the existing authenticated tenant-scoped service produces a CSV cell with a retained invisible prefix, keeps A/B tenants apart, honours an exact engagement filter, leaves SQLite bytes unchanged, and that the opt-in projected checker refuses the same persisted synthetic finding **before calling the renderer**. This is not a spreadsheet exploit or a fix to the canonical production exporter. Trusted authentication and source ownership remain external.
 
 ## Stop line / integration ownership
 
