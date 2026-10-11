@@ -26,6 +26,13 @@ remains unchanged and retains legacy recognized-pattern redaction,
 security headers and `no-store`. All other errors, 403 decisions and
 anonymous redirects are delegated unchanged to the inherited guard.
 
+A separate fail-closed error adapter catches `RecursionError` and
+`OverflowError` from the existing persisted finding reader. Historical
+SQLite `evidence_ids_json` can contain deeply nested JSON that raises
+outside the parent's recognized `ValueError`/SQLite errors. W26 returns
+a generic 400 with no CSV output; it does not rewrite the corrupt row
+or claim to fix the canonical domain decoder (#856/#886).
+
 The W26 helper **does not** run from existing `create_app`,
 `create_app_with_exports`, `create_app_with_checked_exports`, CLI,
 or any installed Nginx/Gunicorn service. It cannot certify arbitrary
@@ -42,6 +49,7 @@ cookies or customer values:
 - double- and single-quoted cookie values cannot bypass the guard;
 - NFKC-compatible fullwidth label rejects without source mutation;
 - a late problematic finding blocks even earlier valid rows;
+- deeply nested corrupt historical SQLite evidence raises no uncaught WSGI exception;
 - foreign-tenant access refuses before `list_findings`;
 - original W23 factory intentionally still permits the synthetic
   canary while new W26 factory rejects it;
