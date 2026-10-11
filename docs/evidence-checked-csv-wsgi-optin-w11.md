@@ -13,6 +13,8 @@ app = create_app_with_checked_exports(store, security)
 
 The class inherits the **existing** GET portal CSV routes, authenticated WSGI session and portal checks, existing `WebSecurity` transport/host enforcement, signed-in context, Content-Disposition download, `no-store`, nosniff and CSP/anti-frame response headers. Only `download_findings` is overridden, to call the opt-in `render_tenant_findings_csv_checked` on a session-derived context. Existing application creation, CLI and default CSV renderer remain untouched. The inherited portal link points to that existing URL only **when the optional factory is explicitly constructed**.
 
+The checked handler requires a real session token and re-reads its persisted context after selecting and rendering the complete CSV, before publishing the response. Revocation or tenant-role reassignment during rendering causes a generic 403 with no CSV body. This remains a *deny-only best-effort check*, not a lock across network transmission; independent action-time/ingress/security review is required.
+
 The data selection uses existing canonical `DomainStore` tenant/engagement authorization, validates the entire set and snapshot-projected strings before `render_findings_csv` is invoked, retains existing redaction, and excludes raw evidence IDs/target column/metadata. Formula and Unicode integrity failures result in generic 400 and **no partial CSV**; cross-tenant requests are 403; anonymous and revoked sessions redirect to login before data access. No writes other than temporary synthetic test setup.
 
 ## What this does NOT establish
