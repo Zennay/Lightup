@@ -8,7 +8,7 @@
 
 ## Opt-in response
 
-`render_findings_csv_checked` validates an exact built-in list of <=128 exact `Finding` objects, each with exact `Severity`/`RetestStatus` enums. It bounds UTF-8 input bytes (256 KiB across all projected fields, individual field caps of 256/8192/2048/8192), rejects ill-formed/empty/polymorphic cells, duplicates, control/format/private/unassigned Unicode, and Unicode line separators. It catches NFKC-equivalent formula prefixes that the existing renderer's ordinary ASCII escape decision would miss.
+`render_findings_csv_checked` validates an exact built-in list of <=128 exact `Finding` objects, each with exact `Severity`/`RetestStatus` enums. It bounds UTF-8 input bytes (256 KiB across all projected fields, individual field caps of 256/8192/2048/8192), rejects ill-formed/empty/polymorphic cells, duplicate or NFKC-equivalent display identities, control/format/private/unassigned Unicode, and Unicode line separators. It catches NFKC-equivalent formula prefixes that the existing renderer's ordinary ASCII escape decision would miss.
 
 A full preflight precedes *any* serializer call. Only display inputs are copied into fresh `Finding` objects before invoking the **existing redacting and ASCII-formula-escaping renderer**; the original mutable findings, raw evidence and metadata are not passed to the renderer. Good international text remains verbatim, including accents and combining marks. Intentional multiline text is conservatively **rejected** by this strict opt-in path, while default legacy export behavior is unchanged.
 
@@ -19,7 +19,7 @@ PYTHONPATH=src python -m unittest -v tests.test_finding_export_unicode_integrity
 PYTHONPATH=src python -m unittest discover -s tests -v
 ```
 
-Tests use synthetic findings only: late-item atomic rejection with mock call count, literal ASCII formula escaping, Unicode confusables, all four projected identities/fields, excluded metadata/evidence/target, exact-type negatives, UTF-8 byte budgets, and copy-before-render mutation isolation. The default renderer's acceptance of an invisible prefix is retained as a **known gap demonstration**, not asserted to be an actual executed spreadsheet formula.
+Tests use synthetic findings only: late-item atomic rejection with mock call count, literal ASCII formula escaping, Unicode confusables, all four projected identities/fields, excluded metadata/evidence/target, exact-type negatives, UTF-8 byte budgets, and copy-before-render mutation isolation. The NFKC-equivalent identity cases enforce *unambiguous display*, not canonical source identity or evidence authenticity. The default renderer's acceptance of an invisible prefix is retained as a **known gap demonstration**, not asserted to be an actual executed spreadsheet formula.
 
 ## Stop line / integration ownership
 
