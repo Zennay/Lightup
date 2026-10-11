@@ -35,7 +35,10 @@ types, forged list/mapping, and a rotated CSRF token. Each request
 demonstrates unchanged finding rows, non-CSV denial and no finding/secret
 release. The second session return is synthetically replaced **after** genuine
 first-pass authentication; it does not claim that such malformed outputs
-can be caused by remote users.
+can be caused by remote users. A separate real durable-SQLite WSGI test
+rotates the session's stored CSRF value during checked rendering and asserts
+the in-flight export is denied with no CSV or finding mutation. This proves
+the narrow CSRF revalidation behavior using a real persisted session.
 
 Run against this stacked branch with:
 
