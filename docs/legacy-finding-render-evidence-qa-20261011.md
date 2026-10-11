@@ -10,7 +10,7 @@ Production ownership remains with #100 (`src/lightup/models.py`) and #732
 Run from a complete LightUp checkout with:
 
 ```sh
-PYTHONPATH=src python -m unittest tests/test_legacy_finding_render_evidence_gate_20261011.py -v
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_legacy_finding_render_evidence_gate_20261011.py' -v
 ```
 
 The test exercises both `Finding.validate()` and `render_markdown()`.
