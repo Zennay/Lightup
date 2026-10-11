@@ -274,5 +274,66 @@ class CheckedFindingExportWsgiTests(unittest.TestCase):
             self.assertNotIn(self.fa.finding_id, body)
 
 
+    def test_session_revoked_during_checked_render_never_releases_csv(self):
+        from lightup.finding_export_tenant_checked import render_tenant_findings_csv_checked
+
+        before = self.snapshot()
+        def render_then_revoke(*args, **kwargs):
+            output = render_tenant_findings_csv_checked(*args, **kwargs)
+            self.assertIn(self.fa.finding_id, output)
+            self.store.revoke_session(self.a_token)
+            return output
+
+        with patch(
+            "lightup.webapp.finding_exports_unicode_checked.render_tenant_findings_csv_checked",
+            side_effect=render_then_revoke,
+        ):
+            status, headers, body = self.request("GET", self.own_url, token=self.a_token)
+        self.assertEqual(status, "403 Forbidden")
+        self.assertEqual(headers["Cache-Control"], "no-store")
+        self.assertNotIn(self.fa.finding_id, body)
+        self.assertNotIn("canary-secret", body)
+        self.assertEqual(before, self.snapshot())
+
+    def test_account_transferred_mid_render_cannot_receive_old_tenant_csv(self):
+        from lightup.finding_export_tenant_checked import render_tenant_findings_csv_checked
+
+        def render_then_change_membership(*args, **kwargs):
+            output = render_tenant_findings_csv_checked(*args, **kwargs)
+            self.assertIn(self.fa.finding_id, output)
+            with self.store._connect() as con:
+                con.execute(
+                    "UPDATE users SET client_id=? WHERE user_id=?",
+                    (self.client_b.client_id, self.user_a.user_id),
+                )
+            return output
+
+        with patch(
+            "lightup.webapp.finding_exports_unicode_checked.render_tenant_findings_csv_checked",
+            side_effect=render_then_change_membership,
+        ):
+            status, _, body = self.request("GET", self.own_url, token=self.a_token)
+        self.assertEqual(status, "403 Forbidden")
+        self.assertNotIn(self.fa.finding_id, body)
+        # Future requests now use the new persisted account tenant scope.
+        status, _, body = self.request("GET", self.other_url, token=self.a_token)
+        self.assertEqual(status, "200 OK")
+        self.assertIn(self.fb.finding_id, body)
+        self.assertNotIn(self.fa.finding_id, body)
+
+    def test_direct_handler_cannot_claim_session_from_context_alone(self):
+        from lightup.webapp.app import AuthState
+
+        with patch.object(self.store, "list_findings") as read:
+            response = self.app.download_findings(
+                AuthState(self.operator, None),
+                {},
+                self.client_a.client_id,
+            )
+            self.assertEqual(response.status, "403 Forbidden")
+            read.assert_not_called()
+            self.assertNotIn(self.fa.finding_id.encode(), response.body)
+
+
 if __name__ == "__main__":
     unittest.main()
