@@ -163,7 +163,7 @@ class TenantCheckedUnicodeCsvTests(unittest.TestCase):
         for bad in ("", " ", " " + self.a.client_id, self.a.client_id + " ", None, 22):
             with self.subTest(bad=bad):
                 with self.assertRaises(ValueError):
-                    self.rows(client=bad)
+                    render_tenant_findings_csv_checked(self.store, self.ctx_a, bad)
 
     def test_invalid_legacy_stored_enum_fails_before_output(self):
         f = self.record(self.eng_a, "Source good")
