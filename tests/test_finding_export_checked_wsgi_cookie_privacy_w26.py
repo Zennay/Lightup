@@ -86,6 +86,26 @@ class CsvSessionCookiePrivacyW26(unittest.TestCase):
         self.assertNotIn(CANARY, body)
         self.assertEqual(self.snapshot(), before)
 
+    def test_quoted_cookie_value_also_denies_entire_csv(self):
+        # Valid cookie header presentation may quote the cookie value.
+        # The CSV writer doubles those quotes in the resulting cell.
+        for quote in ('"', "'"):
+            with self.subTest(quote=quote):
+                self._replace(
+                    "remediation",
+                    "Set-Cookie: lightup_session=" + quote + CANARY + quote,
+                )
+                before = self.snapshot()
+                status, headers, body = self.request(
+                    "GET", self.own_url, token=self.a_token
+                )
+                self.assertEqual(status, "400 Bad Request")
+                self.assertEqual(headers["Cache-Control"], "no-store")
+                self.assertNotIn(CANARY, body)
+                self.assertNotIn(self.fa.finding_id, body)
+                self.assertEqual(before, self.snapshot())
+                self._replace("remediation", "synthetic ordinary text")
+
     def test_failure_in_later_row_never_releases_first_row(self):
         self.store.record_finding(
             self.operator, self.a_eng.engagement_id,
