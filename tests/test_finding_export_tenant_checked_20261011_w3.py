@@ -58,7 +58,7 @@ class TenantCheckedUnicodeCsvTests(unittest.TestCase):
     def persisted(self):
         with self.store._connect() as con:
             return tuple(tuple(row) for row in con.execute(
-                "SELECT finding_id,client_id,engagement_id,title,asset,"
+                "SELECT finding_id,client_id,engagement_id,title,severity,asset,"
                 "remediation,retest_status,evidence_ids_json FROM findings "
                 "ORDER BY finding_id"
             ))
