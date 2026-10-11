@@ -122,6 +122,27 @@ class CsvSessionCookiePrivacyW26(unittest.TestCase):
         self.assertNotIn(CANARY, body)
         self.assertEqual(self.snapshot(), before)
 
+    def test_deep_corrupt_legacy_evidence_cannot_escape_wsgi_with_csv(self):
+        # A real historical SQLite row can be nested well beyond the JSON
+        # decoder's recursion limit. Never repair that row during export.
+        raw = "[" * 2048 + '"synthetic:reference"' + "]" * 2048
+        with self.store._connect() as con:
+            con.execute(
+                "UPDATE findings SET evidence_ids_json=? WHERE finding_id=?",
+                (raw, self.fa.finding_id),
+            )
+        before = self.snapshot()
+        status, headers, body = self.request(
+            "GET", self.own_url, token=self.a_token
+        )
+        self.assertEqual(status, "400 Bad Request")
+        self.assertEqual(headers["Cache-Control"], "no-store")
+        self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
+        self.assertNotIn("text/csv", headers["Content-Type"])
+        self.assertNotIn(self.fa.finding_id, body)
+        self.assertNotIn("canary-secret", body)
+        self.assertEqual(self.snapshot(), before)
+
     def test_unauthorized_tenant_still_denied_before_selection(self):
         with patch.object(self.store, "list_findings") as read:
             status, headers, body = self.request(
