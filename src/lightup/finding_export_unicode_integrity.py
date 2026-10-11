@@ -22,6 +22,28 @@ MAX_FIELD_BYTES = {
 _FORMULA_PREFIXES = ("=", "+", "-", "@")
 
 
+def _mark_obscures_formula_prefix(value: str) -> bool:
+    """Detect leading Unicode marks/spacing hiding a spreadsheet formula.
+
+    Python str.lstrip() skips whitespace, not combining accents or variation
+    selectors. Treat only marks *before any visible base* as ignorable and
+    preserve marks after actual text (e.g. accented words or emoji).
+    """
+    probe = value.lstrip()
+    index = 0
+    saw_mark = False
+    while index < len(probe):
+        char = probe[index]
+        if unicodedata.category(char).startswith("M"):
+            saw_mark = True
+        elif char.isspace() and saw_mark:
+            pass
+        else:
+            break
+        index += 1
+    return saw_mark and probe[index:].startswith(_FORMULA_PREFIXES)
+
+
 def _checked_text(value: object, field: str, max_bytes: int) -> tuple[str, int]:
     if type(value) is not str or not value.strip():
         raise ValueError("invalid CSV presentation field")
@@ -60,6 +82,8 @@ def _checked_text(value: object, field: str, max_bytes: int) -> tuple[str, int]:
         original_prefix.startswith(_FORMULA_PREFIXES)
     ):
         raise ValueError("compatibility-disguised CSV formula prefix")
+    if _mark_obscures_formula_prefix(normalized_prefix):
+        raise ValueError("Unicode-mark-disguised CSV formula prefix")
     return value, byte_size
 
 
