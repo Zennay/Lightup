@@ -18,8 +18,10 @@ from .security import WebSecurity
 # Exact app session-cookie name, not a blanket 'token' / personal-data
 # classifier. Compatibility-normalize ONLY a private inspection copy, never
 # the caller's persisted findings or the CSV that is actually returned.
-_SESSION_COOKIE_VALUE = re.compile(
-    r"(?<![\w])lightup_session\s*=\s*[^\s;\r\n,\"]+",
+_SESSION_COOKIE_ASSIGNMENT = re.compile(
+    # Deny the cookie assignment regardless of CSV-escaped quotes around
+    # its value. No extraction or exposure of the value is necessary.
+    r"(?<![\\w])lightup_session\\s*=",
     flags=re.IGNORECASE,
 )
 
@@ -49,7 +51,7 @@ class CookiePrivacyCheckedFindingExportWebApp(CheckedFindingExportWebApp):
         except (UnicodeError, ValueError, TypeError):
             return Response("Export unavailable.", status="400 Bad Request")
 
-        if _SESSION_COOKIE_VALUE.search(probe):
+        if _SESSION_COOKIE_ASSIGNMENT.search(probe):
             return Response("Export unavailable.", status="400 Bad Request")
         return response
 
