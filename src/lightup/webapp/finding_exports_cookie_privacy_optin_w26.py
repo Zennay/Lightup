@@ -36,9 +36,15 @@ class CookiePrivacyCheckedFindingExportWebApp(CheckedFindingExportWebApp):
         client_id: str,
         engagement_id: str | None = None,
     ) -> Response:
-        response = super().download_findings(
-            auth, form, client_id, engagement_id=engagement_id
-        )
+        try:
+            response = super().download_findings(
+                auth, form, client_id, engagement_id=engagement_id
+            )
+        except (RecursionError, OverflowError):
+            # A deeply nested, corrupt legacy SQLite JSON evidence field
+            # may escape the canonical reader's currently unbounded decoder.
+            # This optional presentation path must never send partial data.
+            return Response("Export unavailable.", status="400 Bad Request")
         if response.status != "200 OK":
             return response
 
