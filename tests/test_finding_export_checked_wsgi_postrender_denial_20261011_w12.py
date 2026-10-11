@@ -43,7 +43,7 @@ class CheckedCsvPostrenderDenialTests(unittest.TestCase):
 
     def test_session_expires_while_checked_csv_is_rendered(self):
         from lightup.finding_export_tenant_checked import render_tenant_findings_csv_checked
-        before = self.store.get_finding(self.operator, self.finding.finding_id)
+        before = self.store.list_findings(self.operator, client_id=self.client_a.client_id)
 
         def expire_after_render(*args, **kwargs):
             csv_text = render_tenant_findings_csv_checked(*args, **kwargs)
@@ -63,7 +63,7 @@ class CheckedCsvPostrenderDenialTests(unittest.TestCase):
             self._assert_denied_without_csv(
                 self.request("GET", self.url, token=self.a_token)
             )
-        self.assertEqual(before, self.store.get_finding(self.operator, self.finding.finding_id))
+        self.assertEqual(before, self.store.list_findings(self.operator, client_id=self.client_a.client_id))
 
     def test_session_database_failure_after_render_fails_closed(self):
         real_session_context = self.store.session_context
