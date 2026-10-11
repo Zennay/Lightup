@@ -16,9 +16,11 @@ inherits the W23 opt-in tenant-selected renderer, trusted WSGI
 session/portal admission and post-render durable revalidation. Only a
 successful bounded CSV is inspected **before WSGI returns its bytes**.
 
-The gate rejects a concrete `lightup_session=VALUE` cookie fragment,
-including case and Unicode-NFKC-compatibility disguises, with an
-all-or-nothing generic 400 response. It inspects a private normalized
+The gate rejects **any** `lightup_session=` cookie assignment,
+including quoted cookie values (which CSV serialization doubles), case
+variants and Unicode-NFKC-compatibility disguises, with an all-or-nothing
+generic 400 response. Denying the assignment itself avoids relying on
+extracting or disclosing the credential value. It inspects a private normalized
 copy; existing persisted finding text is not altered. Ordinary CSV
 remains unchanged and retains legacy recognized-pattern redaction,
 security headers and `no-store`. All other errors, 403 decisions and
@@ -37,6 +39,7 @@ cookies or customer values:
 
 - authorized clean request returns redacted, read-only CSV with no-store;
 - synthetic session cookie in title and remediation rejects entire CSV;
+- double- and single-quoted cookie values cannot bypass the guard;
 - NFKC-compatible fullwidth label rejects without source mutation;
 - a late problematic finding blocks even earlier valid rows;
 - foreign-tenant access refuses before `list_findings`;
