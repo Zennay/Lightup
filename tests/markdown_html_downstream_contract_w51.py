@@ -74,7 +74,9 @@ class _RestrictedFragment(HTMLParser):
         raise ValueError(_ERROR)
 
 
-def check_conservative_html_fragment(fragment: object, *, expected_text: str) -> None:
+def check_conservative_html_fragment(
+    fragment: object, *, expected_text: str, required_text: tuple[str, ...] = ()
+) -> None:
     """Reject nontrivial DOM surfaces without claiming browser equivalence."""
     if type(fragment) is not str or len(fragment) > _MAX_HTML_BYTES:
         raise ValueError(_ERROR)
@@ -96,7 +98,9 @@ def check_conservative_html_fragment(fragment: object, *, expected_text: str) ->
     if parser.stack or not parser.seen_tag:
         raise ValueError(_ERROR)
     visible = "".join(parser.data)
-    if _PRIVATE in unescape(visible) or expected_text not in visible:
+    if _PRIVATE in unescape(visible) or any(
+        marker not in visible for marker in (expected_text, *required_text)
+    ):
         raise ValueError(_ERROR)
 
 
@@ -124,7 +128,11 @@ def synthetic_downstream_adapter_acceptance(
     if _PRIVATE in markdown or r"\$x\$" not in markdown:
         raise ValueError(_ERROR)
     html_fragment = convert_markdown_to_html(markdown)
-    check_conservative_html_fragment(html_fragment, expected_text="W51")
+    check_conservative_html_fragment(
+        html_fragment,
+        expected_text="W51",
+        required_text=("LightUp Assessment Findings", "Synthetic", "Treat raw"),
+    )
     after = (
         finding.finding_id, finding.title, finding.target, finding.remediation,
         copy.deepcopy(finding.evidence), copy.deepcopy(finding.metadata),
