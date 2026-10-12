@@ -6,6 +6,7 @@ synthetic checks never create users/sessions and never reach a network.
 from __future__ import annotations
 
 import sqlite3
+from contextlib import contextmanager
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -27,22 +28,33 @@ class SerializedLoginReferenceTests(unittest.TestCase):
         self.store = DomainStore(self.db)
         self.reference = SerializedLoginReference(self.store)
 
+    @contextmanager
+    def _db(self):
+        # sqlite3.Connection.__exit__ commits but does NOT close the handle.
+        # This wrapper releases it explicitly, including under expected-RED.
+        con = sqlite3.connect(self.db)
+        try:
+            with con:
+                yield con
+        finally:
+            con.close()
+
     def _rows(self, email=EMAIL):
-        with sqlite3.connect(self.db) as con:
+        with self._db() as con:
             return con.execute(
                 "SELECT failures,locked_until FROM login_failures WHERE email=?",
                 (email,),
             ).fetchone()
 
     def _seed(self, count):
-        with sqlite3.connect(self.db) as con:
+        with self._db() as con:
             con.execute(
                 "INSERT INTO login_failures(email,failures,locked_until) VALUES(?,?,NULL)",
                 (EMAIL, count),
             )
 
     def _count_sessions(self):
-        with sqlite3.connect(self.db) as con:
+        with self._db() as con:
             return con.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
 
     def _concurrent(self, names):
