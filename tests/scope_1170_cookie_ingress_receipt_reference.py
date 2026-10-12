@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import re
 
-MAX_RECEIPT_BYTES = 65536
-SHA256 = re.compile(r"[0-9a-f]{64}\\Z")
-GIT_SHA = re.compile(r"[0-9a-f]{40}\\Z")
+SHA256 = re.compile(r"[0-9a-f]{64}")
+GIT_SHA = re.compile(r"[0-9a-f]{40}")
 SESSION = "A" * 43
 
 # Values are fixtures; no socket, DNS, proxy or application is contacted.
@@ -21,7 +20,7 @@ SCENARIOS = {
     "duplicate_wire_headers": ("lightup_session=" + SESSION, "lightup_session=" + SESSION),
     "comma_coalesced": ("lightup_session=" + SESSION + ", lightup_session=" + SESSION,),
     "quoted_cookie": ('lightup_session="' + SESSION + '"',),
-    "control_byte": ("lightup_session=" + SESSION + "\\x00",),
+    "control_byte": ("lightup_session=" + SESSION + chr(0),),
     "unrelated_and_session": ("pref=ok; lightup_session=" + SESSION,),
 }
 DENIED = frozenset({
