@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import unittest
+import traceback
 from datetime import datetime, timedelta, timezone
 
 from lightup.models import Authorization, Target
@@ -148,6 +149,28 @@ class AtomicPublicScopeConfigurationTests(unittest.TestCase):
                         validate_public_scope_configuration(
                             self.policy(explicit_networks=networks)
                         )
+
+    def test_malformed_network_error_does_not_echo_private_scope_text(self):
+        private_marker = "SYNTHETIC-TENANT-NAME-PRIVATE-297"
+        try:
+            validate_public_scope_configuration(self.policy(
+                explicit_networks=(private_marker,)
+            ))
+        except InvalidPublicScopeConfiguration as error:
+            self.assertTrue(error.__suppress_context__)
+            rendered = "".join(traceback.format_exception(error))
+            self.assertNotIn(private_marker, rendered)
+            self.assertNotIn(private_marker, str(error))
+        else:
+            self.fail("malformed private network must fail closed")
+
+    def test_invalid_hostname_diagnostic_does_not_echo_target(self):
+        private_marker = "SYNTHETIC-TENANT-NAME-PRIVATE-297"
+        with self.assertRaises(InvalidPublicScopeConfiguration) as caught:
+            validate_public_scope_configuration(self.policy(
+                explicit_hosts=frozenset({private_marker})
+            ))
+        self.assertNotIn(private_marker, str(caught.exception))
 
     def test_noncanonical_policy_class_and_collection_types(self):
         invalid = (
