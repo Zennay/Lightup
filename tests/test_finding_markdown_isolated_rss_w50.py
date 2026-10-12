@@ -149,6 +149,16 @@ class IsolatedMarkdownMemoryCharacterizationW50(unittest.TestCase):
         self.assertGreaterEqual(result["rss_increment_kib"], 0)
         self.assertLess(result["rss_peak_kib"], self.MAX_PROCESS_RSS_KIB)
         self.assertLess(result["peak_tracked_bytes"], self.MAX_PYTHON_TRACKED_PEAK)
+        # Only synthetic numeric measurements: CI logs can be independently
+        # reviewed instead of relying on a PASS result alone.
+        print(
+            "W50_METRIC "
+            f"scenario={name} python={sys.version.split()[0]} "
+            f"rss_peak_kib={result['rss_peak_kib']} "
+            f"rss_increment_kib={result['rss_increment_kib']} "
+            f"tracked_peak_bytes={result['peak_tracked_bytes']} "
+            f"output_bytes={result['output_bytes']}"
+        )
         return result
 
     def test_accepted_large_escaped_output_measures_fresh_process(self):
