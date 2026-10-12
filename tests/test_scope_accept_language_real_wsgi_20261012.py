@@ -152,6 +152,36 @@ class AcceptLanguageRealWSGINonAuthorityTests(unittest.TestCase):
         )
         self.assertEqual(len(self.store.list_clients(self.operator_context)), 2)
 
+    def test_valid_operator_csrf_write_is_not_locale_dependent(self):
+        # Each valid write is intentional and affects only disposable SQLite.
+        baseline_count = len(self.store.list_clients(self.operator_context))
+        for index, language in enumerate(LANGUAGES):
+            with self.subTest(language=repr(language)[:56]):
+                status, headers, _ = self.request(
+                    "POST", "/clients", token=self.operator_token,
+                    csrf=self.operator_csrf, language=language,
+                    form={"name": f"Synthetic approved ${index}"}
+                )
+                self.assertEqual(status, "303 See Other")
+                self.assertEqual(headers["Cache-Control"], "no-store")
+                self.assertEqual(
+                    len(self.store.list_clients(self.operator_context)),
+                    baseline_count + index + 1
+                )
+
+    def test_logout_revocation_is_not_locale_dependent(self):
+        for language in LANGUAGES:
+            with self.subTest(language=repr(language)[:56]):
+                token, csrf = self.store.create_session(self.operator_user.user_id)
+                self.assertIsNotNone(self.store.session_context(token))
+                status, headers, _ = self.request(
+                    "POST", "/logout", token=token, csrf=csrf, language=language
+                )
+                self.assertEqual(status, "303 See Other")
+                self.assertIn("Max-Age=0", headers.get("Set-Cookie", ""))
+                self.assertIsNone(self.store.session_context(token))
+                self.assertIsNotNone(self.store.session_context(self.client_token))
+
     def test_client_cannot_write_operator_data_even_with_valid_client_csrf(self):
         self.assert_same_decision(
             "POST", "/clients", token=self.client_token,
