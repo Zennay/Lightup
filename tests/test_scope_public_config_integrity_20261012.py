@@ -105,6 +105,50 @@ class AtomicPublicScopeConfigurationTests(unittest.TestCase):
                 })
             ))
 
+    def test_ip_literals_cannot_hide_in_hostname_allowlist(self):
+        for host in ("127.0.0.1", "192.0.2.1", "10.0.0.1"):
+            with self.subTest(host=host):
+                with self.assertRaisesRegex(InvalidPublicScopeConfiguration, "IP literal"):
+                    validate_public_scope_configuration(
+                        self.policy(explicit_hosts=frozenset({host}))
+                    )
+
+    def test_link_local_ipv6_zone_is_not_portable_network_scope(self):
+        for scope in ("fe80::%eth0/128", "fe80::%lo/64"):
+            with self.subTest(scope=scope):
+                with self.assertRaisesRegex(
+                    InvalidPublicScopeConfiguration, "interface-scoped network"
+                ):
+                    validate_public_scope_configuration(
+                        self.policy(explicit_networks=(scope,))
+                    )
+
+    def test_internet_wide_networks_cannot_be_explicit_scope(self):
+        for route in ("0.0.0.0/0", "::/0"):
+            with self.subTest(route=route):
+                with self.assertRaisesRegex(
+                    InvalidPublicScopeConfiguration, "internet-wide network"
+                ):
+                    validate_public_scope_configuration(
+                        self.policy(explicit_networks=(route,))
+                    )
+
+    def test_precise_ip_network_scope_positive_control(self):
+        for network in ("127.0.0.1/32", "192.0.2.1/32", "2001:db8::1/128"):
+            with self.subTest(network=network):
+                self.assertIsNone(validate_public_scope_configuration(
+                    self.policy(explicit_networks=(network,))
+                ))
+
+    def test_mixed_safe_and_unsafe_networks_deny_atomically(self):
+        for bad in ("::/0", "fe80::%eth0/128", "0.0.0.0/0"):
+            for networks in (("192.0.2.0/24", bad), (bad, "192.0.2.0/24")):
+                with self.subTest(networks=networks):
+                    with self.assertRaises(InvalidPublicScopeConfiguration):
+                        validate_public_scope_configuration(
+                            self.policy(explicit_networks=networks)
+                        )
+
     def test_noncanonical_policy_class_and_collection_types(self):
         invalid = (
             ImpostorPolicy(),
