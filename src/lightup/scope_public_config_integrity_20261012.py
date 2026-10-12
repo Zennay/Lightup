@@ -61,8 +61,10 @@ def validate_public_scope_configuration(policy: ScopePolicy) -> None:
             raise InvalidPublicScopeConfiguration("invalid explicit network identity")
         try:
             parsed = ip_network(network, strict=True)
-        except (ValueError, TypeError) as exc:
-            raise InvalidPublicScopeConfiguration("malformed explicit network") from exc
+        except (ValueError, TypeError):
+            # The parser exception can echo scope/tenant metadata; do not
+            # chain its message into diagnostic logs or a client response.
+            raise InvalidPublicScopeConfiguration("malformed explicit network") from None
         if network != str(parsed):
             raise InvalidPublicScopeConfiguration("noncanonical explicit network")
         # IPv6 zone ids bind meaning to a *local interface*, not to a
