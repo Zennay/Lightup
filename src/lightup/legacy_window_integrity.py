@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Final
-from unicodedata import category
+from unicodedata import category, normalize
 
 from .models import Authorization
 
@@ -31,7 +31,12 @@ def _identity_valid(value: object) -> bool:
         type(value) is str
         and 0 < len(value) <= _MAX_PROVENANCE_CHARS
         and value == value.strip()
-        and not any(category(c).startswith("C") for c in value)
+        and normalize("NFKC", value) == value
+        and not any(
+            category(c).startswith("C")
+            or (category(c).startswith("Z") and c != " ")
+            for c in value
+        )
     )
 
 
