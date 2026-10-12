@@ -12,7 +12,7 @@ The existing domain/auth source owner is draft [PR #670](https://github.com/Zenn
 
 - Canonicalize whitespace/case in a failed email; persist one failure without any user/session creation.
 - Four ordinary sequential failures increment 1–4; the fifth creates the normal lockout, and a locked attempt does not call password verification.
-- Counters for two different fake `.invalid` addresses remain separate.
+- Canonical variants of the same email coalesce to one lockout counter; simultaneous counters for distinct fake emails do not mingle. Counters for two different fake `.invalid` addresses remain separate.
 - Interleave two real `DomainStore.authenticate` calls at the password-verification boundary (the password verifier is **stubbed**, so no real secrets or expensive hashes are used). Demand both complete, both fail, and zero session rows.
 - **Two explicitly `@expectedFailure` RED contracts**: fresh counter `0→2` under concurrency, and existing `1→3` under concurrency. On the current source these lose an increment and must **not** be misreported as passing production hardening.
 
