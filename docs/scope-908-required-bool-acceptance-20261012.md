@@ -11,13 +11,13 @@ Accept registration only when type(parameter.required) is bool. Every malformed 
 
 ## Tests
 - Three GREEN controls: True requires a present typed argument; False permits omission but type-checks present data; bool differs from int despite subclassing.
-- Nine intentional RED / expectedFailure methods: 0, empty string, None, empty tuple, empty dict, 1, nonempty string, a custom falsey object and an object whose __bool__ raises. Each demands fail-closed rejection, unchanged registry and zero handler invocations.
+- Eleven intentional RED / expectedFailure methods: 0, empty string, None, empty tuple, empty dict, 1, nonempty string, a custom falsey object and an object whose __bool__ raises, plus late-invalid nested parameters preserving an existing registration and a direct-validate falsey-marker canary. Each demands fail-closed rejection, unchanged registry and zero handler invocations.
 - No real handlers are executed. Synthetic in-process objects only; no DNS, sockets, target interaction, scans, permits, credential use or production data.
 
 Local isolated command (run only on actual checked-out branch):
     PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_908_required_bool_acceptance_20261012.py' -v
 
-Expected pre-repair shape: 12 methods, 3 normal successes, 9 expected failures, 0 errors. This is a specification, not a claimed CI result. expectedFailure is NOT a fix; once the source owner repairs the implementation, unexpected successes intentionally fail CI until annotations are reviewed and removed.
+Expected pre-repair shape: 14 methods, 3 normal successes, 11 expected failures, 0 errors. This is a specification, not a claimed CI result. expectedFailure is NOT a fix; once the source owner repairs the implementation, unexpected successes intentionally fail CI until annotations are reviewed and removed.
 
 ## Hold/release checklist
 1. Verify this exact two-path add-only diff against immutable #156 head.
