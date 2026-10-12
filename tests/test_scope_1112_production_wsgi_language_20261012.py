@@ -15,7 +15,7 @@ from urllib.parse import urlencode
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from lightup.domain import Role
+from lightup.domain import RequestStatus, Role
 from lightup.webapp.production import create_production_app
 
 
@@ -297,9 +297,10 @@ class ProductionWSGILanguageNonAuthorityTests(unittest.TestCase):
                 )
                 self.assertEqual(status, "303 See Other")
                 self.assertEqual(dict(headers)["Cache-Control"], "no-store")
-                self.assertEqual(
-                    len(self.store.list_assessment_requests(client_context)),
-                    before + index + 1
+                pending = self.store.list_assessment_requests(client_context)
+                self.assertEqual(len(pending), before + index + 1)
+                self.assertTrue(
+                    all(request.status is RequestStatus.SUBMITTED for request in pending)
                 )
 
     def test_untrusted_locale_cannot_open_an_execution_route_or_socket(self):
