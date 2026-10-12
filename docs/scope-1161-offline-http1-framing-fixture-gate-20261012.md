@@ -16,7 +16,7 @@ A valid result means **only** that a byte sequence fits this **artificial, delib
 
 ## Conservative synthetic allowlist
 
-Only request lines GET /health HTTP/1.1 and POST /clients HTTP/1.1, Host localhost, CRLF, at most 24 unique ASCII token-header fields, exact single-space header separator, no hop-by-hop transfer semantics, at most 8 KiB POST body and 16 KiB complete input. For POST, content-length must be one canonical nonnegative decimal integer exactly equal to the bytes present, and content-type exactly application/x-www-form-urlencoded. GET must have no body and no body-framing fields. Any ambiguity refuses the sample; deny-by-default is deliberate.
+Only request lines GET /health HTTP/1.1 and POST /clients HTTP/1.1, Host localhost, CRLF, at most 24 unique ASCII token-header fields, exact single-space header separator, no hop-by-hop transfer semantics, at most 8 KiB POST body and 16 KiB complete input. For POST, content-length must be one canonical nonnegative decimal integer exactly equal to the bytes present, and content-type exactly application/x-www-form-urlencoded. GET must have no body and no body-framing fields. Any ambiguity refuses the sample; deny-by-default is deliberate. The W2 hardening explicitly rejects Cookie/Authorization headers, forwarding/method/path-override hints, and raw form-body controls or non-ASCII bytes even where a real HTTP implementation might accept them. This is a **synthetic-fixture privacy and authority boundary**, not a claim about installed ingress.
 
 This fixture helper never listens, connects, sends HTTP, checks permissions, issues grants or mutates tenant state. It contains no live client tokens and no real target names.
 
@@ -30,8 +30,8 @@ This fixture helper never listens, connects, sends HTTP, checks permissions, iss
 
 ## Reproduce on authorized CI
 
-\`\`\`shell
+```shell
 PYTHONPATH=src:tests python -m unittest -v test_scope_1161_http1_framing_fixture_gate_20261012
-\`\`\`
+```
 
 No synthetic-only success satisfies installed ingress acceptance. Keep #1161 OPEN.
