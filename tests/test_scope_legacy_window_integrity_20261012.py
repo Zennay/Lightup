@@ -3,13 +3,14 @@ import os
 import sys
 import unittest
 from dataclasses import FrozenInstanceError
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from lightup.legacy_window_integrity import review_legacy_window
-from lightup.models import Authorization, Target
-from lightup.scope import ScopePolicy, ScopeReason
+from lightup.models import Authorization
+from lightup.scope import ScopePolicy
 
 
 NOW = datetime(2026, 10, 12, 12, 0, tzinfo=timezone.utc)
@@ -135,6 +136,68 @@ class LegacyWindowIntegrityTests(unittest.TestCase):
         result = self.review(authorization(owner="Équipe française", reference="référence-123"))
         self.assertTrue(result.integrity_ok)
 
+    def test_noncanonical_unicode_provenance_does_not_pass_shape_review(self):
+        for bad in ("team\u00a0name", "team\u202fname", "team\u3000name",
+                    "team\u2028name", "team\u2029name", "Ｆullwidth",
+                    "o\ufb03ce", "Cafe\u0301"):
+            for field in ("owner", "reference"):
+                with self.subTest(field=field, value=ascii(bad)):
+                    self.assertEqual(
+                        self.review(authorization(**{field: bad})).reason,
+                        "invalid_provenance_shape",
+                    )
+
+    def test_plain_ascii_separator_and_nfc_international_names(self):
+        reviewed = self.review(
+            authorization(owner="Équipe française", reference="Αθήνα Team 12")
+        )
+        self.assertTrue(reviewed.integrity_ok)
+
+    def test_cross_offset_equal_instants_cannot_create_a_window(self):
+        plus_two = timezone(timedelta(hours=2))
+        same_utc_instant = datetime(2026, 10, 12, 14, 0, tzinfo=plus_two)
+        self.assertEqual(
+            self.review(authorization(valid_from=same_utc_instant, valid_until=NOW)).reason,
+            "inverted_or_empty_window",
+        )
+        self.assertEqual(
+            self.review(authorization(valid_until=same_utc_instant), now=NOW).reason,
+            "expired",
+        )
+
+    def test_overflowing_utc_offset_bounds_are_refused_atomically(self):
+        ahead = timezone(timedelta(hours=14))
+        behind = timezone(timedelta(hours=-14))
+        earliest = datetime.min.replace(tzinfo=ahead)
+        latest = datetime.max.replace(tzinfo=behind)
+        self.assertEqual(
+            self.review(authorization(valid_from=earliest)).reason, "invalid_start"
+        )
+        self.assertEqual(
+            self.review(authorization(valid_until=latest)).reason, "invalid_expiry"
+        )
+
+    def test_custom_timezone_callback_is_never_invoked(self):
+        calls = []
+        class UntrustedTimezone(tzinfo):
+            def utcoffset(self, dt):
+                calls.append("utcoffset")
+                raise AssertionError("no custom timezone execution")
+            def dst(self, dt):
+                calls.append("dst")
+                raise AssertionError("no custom timezone execution")
+            def tzname(self, dt):
+                calls.append("tzname")
+                raise AssertionError("no custom timezone execution")
+        candidate = NOW.replace(tzinfo=UntrustedTimezone())
+        self.assertEqual(
+            self.review(authorization(valid_until=candidate)).reason, "invalid_expiry"
+        )
+        self.assertEqual(
+            self.review(authorization(), now=candidate).reason, "invalid_clock"
+        )
+        self.assertEqual(calls, [])
+
     def test_review_does_not_modify_existing_authorization(self):
         auth = authorization()
         before = (auth.owner, auth.reference, auth.valid_from, auth.valid_until)
@@ -144,16 +207,15 @@ class LegacyWindowIntegrityTests(unittest.TestCase):
         with self.assertRaises(FrozenInstanceError):
             result.integrity_ok = False
 
-    def test_legacy_scope_false_positive_is_only_characterized(self):
-        # Contrasting current legacy behavior, NOT integrating into ScopePolicy.
-        policy = ScopePolicy(explicit_hosts=frozenset({"app.example.test"}))
-        for bad in (0, False, ""):
-            with self.subTest(bad=repr(bad)):
-                candidate = authorization(valid_from=bad, valid_until=bad)
-                legacy = policy.decide(Target("app.example.test", authorization=candidate))
-                self.assertEqual(legacy.reason, ScopeReason.EXPLICIT_HOST)
-                self.assertTrue(legacy.allowed)  # Existing defect #1128.
-                self.assertFalse(self.review(candidate).integrity_ok)
+    def test_optional_reviewer_is_independent_of_legacy_scope_policy(self):
+        # A green regression must NOT assert that unsafe legacy allow is correct.
+        # The legacy runtime gap remains an issue for its source owner.
+        with patch.object(ScopePolicy, "decide", side_effect=AssertionError("untrusted policy")) as decide:
+            for bad in (0, False, ""):
+                with self.subTest(bad=repr(bad)):
+                    candidate = authorization(valid_from=bad, valid_until=bad)
+                    self.assertFalse(self.review(candidate).integrity_ok)
+            decide.assert_not_called()
 
     def test_review_does_not_infer_trusted_consent(self):
         # Even invented owner/reference values may pass structural review.
