@@ -66,3 +66,14 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_1112_producti
 \`\`\`
 
 The test does **not** prove that a real reverse proxy or HTTP server always passes headers safely as synthetic WSGI strings, nor does it prove the grant-resolution, durable issuer/asset/risk/time/revocation, per-I/O execution, or live target safety boundaries. Upstream normalization is an independent owner gate. Never describe hosted CI as permanent VPS acceptance. **DRAFT/HOLD/NO MERGE/NO DEPLOY.**
+
+## W5–W6 — portal-write and zero-network extension
+
+The production-factory acceptance suite was extended from **19** to **23** methods:
+
+- A valid client CSRF cannot submit an assessment request to a foreign tenant under any locale. No foreign or own request is created.
+- A risk-5/destructive portal submission is rejected before a request record is written, irrespective of locale.
+- A valid same-tenant, risk-1 passive request is persisted as a synthetic request-for-review only; it creates no authorization grant and launches no assessment.
+- Attempts to address nonexistent `/execute` or `/scan` WSGI routes are still `404` under each locale. A `socket.socket` constructor tripwire proves these **in-process requests** do not attempt to open a network socket. This does not prove that an installed ingress or separate execution worker can never open a socket.
+
+All effects are confined to disposable SQLite. Existing default ingress, ScopePolicy, persisted grant and ToolExecutor producers remain unchanged. The **37** total real WSGI test methods (14 development + 23 production) are independent acceptance evidence, not active authorization, and must retain original source-owner and registered VPS release gates.
