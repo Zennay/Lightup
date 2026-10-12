@@ -89,6 +89,11 @@ def _assert_raw_angle_tokens_complete(fragment: str) -> None:
         nested = fragment.find("<", start + 1)
         if end == -1 or (nested != -1 and nested < end):
             raise ValueError(_ERROR)
+        # HTMLParser silently accepts e.g. "</p onclick=x>" as an end tag
+        # for p. Require exact, allowlisted ASCII name with no raw suffix;
+        # this optional reviewer deliberately has a stricter token grammar.
+        if marker == "/" and fragment[start + 2:end].lower() not in _ALLOWED_TAGS:
+            raise ValueError(_ERROR)
         start = fragment.find("<", end + 1)
 
 
