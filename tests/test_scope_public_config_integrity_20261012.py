@@ -172,6 +172,45 @@ class AtomicPublicScopeConfigurationTests(unittest.TestCase):
             ))
         self.assertNotIn(private_marker, str(caught.exception))
 
+    def test_oversized_host_collection_denied_before_review(self):
+        hosts = frozenset(f"lab{i}.example.test" for i in range(4097))
+        with self.assertRaisesRegex(
+            InvalidPublicScopeConfiguration, "too many explicit hosts"
+        ):
+            validate_public_scope_configuration(self.policy(explicit_hosts=hosts))
+        self.assertEqual(len(hosts), 4097)
+
+    def test_oversized_network_collection_denied_before_review(self):
+        networks = ("192.0.2.0/24",) * 4097
+        with self.assertRaisesRegex(
+            InvalidPublicScopeConfiguration, "too many explicit networks"
+        ):
+            validate_public_scope_configuration(
+                self.policy(explicit_networks=networks)
+            )
+        self.assertEqual(len(networks), 4097)
+
+    def test_oversized_cidr_text_denied_before_parser(self):
+        oversized = "192.0.2.0/" + "0" * 10000
+        with self.assertRaisesRegex(
+            InvalidPublicScopeConfiguration, "network text is too long"
+        ) as caught:
+            validate_public_scope_configuration(
+                self.policy(explicit_networks=(oversized,))
+            )
+        self.assertNotIn(oversized, str(caught.exception))
+
+    def test_host_count_limit_boundary_remains_non_authorizing(self):
+        hosts = frozenset(f"lab{i}.example.test" for i in range(4096))
+        self.assertIsNone(
+            validate_public_scope_configuration(self.policy(explicit_hosts=hosts))
+        )
+        self.assertFalse(
+            self.policy(explicit_hosts=hosts).decide(
+                Target("lab0.example.test")
+            ).allowed
+        )
+
     def test_noncanonical_policy_class_and_collection_types(self):
         invalid = (
             ImpostorPolicy(),
