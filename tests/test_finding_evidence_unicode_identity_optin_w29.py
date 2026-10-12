@@ -88,9 +88,19 @@ class EvidenceUnicodeIdentityW29Tests(unittest.TestCase):
                 self._reject_extra_unicode(["ref:good", "ref:" + char + "bad"])
 
     def test_ascii_controls_and_surrogates_are_denied(self):
-        for char in ("\u0000", "\u000a", "\u007f", "\ud800"):
+        for char in ("\u0000", "\u000a", "\u007f"):
             with self.subTest(codepoint=hex(ord(char))):
                 self._reject_extra_unicode(["ref:one", "ref:" + char])
+
+    def test_escaped_lone_surrogate_is_already_denied_by_w27(self):
+        stored = self._stored(["ref:\ud800"])
+        for decoder in (
+            decode_finding_evidence_checked,
+            decode_finding_evidence_unicode_identity_checked,
+        ):
+            with self.assertRaisesRegex(ValueError, "evidence integrity"):
+                decoder(stored)
+        self._unchanged(stored)
 
     def test_non_ascii_separators_are_not_ambiguous_ids(self):
         for char in ("\u00a0", "\u2028", "\u2029", "\u3000"):
