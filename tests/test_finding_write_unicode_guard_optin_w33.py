@@ -121,6 +121,38 @@ class OptinWriteUnicodeW33Tests(unittest.TestCase):
         )
         self.assertEqual(stored[0].evidence_ids, refs)
 
+    def test_exact_4096_utf8_byte_reference_is_accepted(self):
+        reference = "é" * 2048
+        self.assertEqual(len(reference.encode("utf-8")), 4096)
+        result = self.checked_write((reference,))
+        self.assertEqual(result.evidence_ids, (reference,))
+        self.assertEqual(len(self.rows()), 1)
+
+    def test_exact_serialized_json_262144_bytes_is_accepted(self):
+        import json
+        references = tuple(
+            f"{index:03d}" + ("x" * 2041) for index in range(128)
+        )
+        serialized = json.dumps(list(references)).encode("utf-8")
+        self.assertEqual(len(serialized), 262144)
+        record = self.checked_write(references)
+        self.assertEqual(record.evidence_ids, references)
+        self.assertEqual(len(self.rows()), 1)
+
+    def test_one_serialized_json_byte_over_limit_never_reaches_writer(self):
+        import json
+        references = [
+            f"{index:03d}" + ("x" * 2041) for index in range(128)
+        ]
+        references[-1] += "x"
+        self.assertEqual(len(json.dumps(references).encode("utf-8")), 262145)
+        before = self.rows()
+        with patch.object(self.store, "record_finding") as writer:
+            with self.assertRaisesRegex(ValueError, "write integrity"):
+                self.checked_write(tuple(references))
+            writer.assert_not_called()
+        self.assertEqual(self.rows(), before)
+
     def test_existing_operator_role_checks_remain_in_force(self):
         client_context = AccessContext(
             "synthetic-client-user", Role.CLIENT_ADMIN, self.client.client_id
