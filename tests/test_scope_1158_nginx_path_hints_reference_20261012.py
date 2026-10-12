@@ -40,10 +40,20 @@ def review_nginx_path_hint_template(source: str) -> None:
     # macros, maps, inheritance, nested locations or runtime directives.
     lines = [line.split("#", 1)[0].strip() for line in source.splitlines()]
     clean = "\n".join(lines)
+    # Only a single-server, single-root-location *lab* configuration is
+    # understood. Another route or vhost must be independently inspected.
+    servers = list(re.finditer(r"(?im)^server\s*\{\s*$", clean))
+    locations = list(re.finditer(r"(?im)^location\s+", clean))
+    if len(servers) != 1 or len(locations) != 1:
+        raise TemplateGateError("multiple servers or locations require owner review")
+    if clean.count("{") != 2 or clean.count("}") != 2:
+        raise TemplateGateError("unsupported block nesting or braces")
+    if not servers[0].start() < locations[0].start():
+        raise TemplateGateError("root location must be inside literal server")
     roots = list(re.finditer(r"(?im)^location\s+/\s*\{\s*$", clean))
     if len(roots) != 1:
         raise TemplateGateError("require one literal root location")
-    if re.search(r"(?im)^\s*(?:include|rewrite|try_files|error_page|map|if)\s", clean):
+    if re.search(r"(?im)^\s*(?:include|rewrite|try_files|error_page|map|if|return|alias|proxy_intercept_errors)\s", clean):
         raise TemplateGateError("complex routing requires installed review")
     if re.search(r"(?im)^\s*proxy_pass\s+[^;]*\$", clean):
         raise TemplateGateError("dynamic proxy destination requires installed review")
@@ -139,6 +149,47 @@ class PathHintTemplateReferenceTest(unittest.TestCase):
             with self.subTest(directive=directive):
                 modified = _clean_fixture().replace(
                     "    location / {", f"    {directive}\n    location / {{"
+                )
+                with self.assertRaises(TemplateGateError):
+                    review_nginx_path_hint_template(modified)
+
+    def test_sibling_location_is_not_silently_certified(self):
+        extra = _clean_fixture().replace(
+            "    }\n}\n",
+            "    }\n    location /clients {\n"
+            "        proxy_pass http://127.0.0.1:8766;\n"
+            "    }\n}\n",
+        )
+        with self.assertRaises(TemplateGateError):
+            review_nginx_path_hint_template(extra)
+
+    def test_second_virtual_host_needs_installed_review(self):
+        duplicate = _clean_fixture() + _clean_fixture().replace(
+            "listen 443 ssl;", "listen 8443 ssl;"
+        ).replace("location / {", "location /login {")
+        with self.assertRaises(TemplateGateError):
+            review_nginx_path_hint_template(duplicate)
+
+    def test_unexpected_unbalanced_or_nested_blocks_fail(self):
+        for modified in (
+            _clean_fixture().replace("    }\n}\n", "    }\n"),
+            _clean_fixture().replace("    }\n}\n", "    }\n}\n}"),
+            _clean_fixture().replace(
+                "        proxy_pass", "        location /login {}\n        proxy_pass"
+            ),
+        ):
+            with self.subTest(tail=modified[-20:]):
+                with self.assertRaises(TemplateGateError):
+                    review_nginx_path_hint_template(modified)
+
+    def test_redirect_or_alias_in_single_location_needs_owner_review(self):
+        for directive in (
+            "return 302 /clients;", "alias /var/www/html;",
+            "proxy_intercept_errors on;",
+        ):
+            with self.subTest(directive=directive):
+                modified = _clean_fixture().replace(
+                    "        proxy_pass", f"        {directive}\n        proxy_pass"
                 )
                 with self.assertRaises(TemplateGateError):
                     review_nginx_path_hint_template(modified)
