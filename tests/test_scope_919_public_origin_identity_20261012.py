@@ -4,7 +4,6 @@ Tests exercise the real, unmodified production WebSecurity constructor and valid
 The two expected failures document unresolved production behavior; they are not
 successful security checks. No listener, DNS, target, or network I/O.
 """
-import io
 import unittest
 from unittest.mock import Mock
 
@@ -32,7 +31,7 @@ class SameTextOrigin(str):
 
 
 class RewrittenOrigin(str):
-    """Untrusted origin can change between constructor and request validation."""
+    """Caller-supplied origin with behavioral methods, not an exact str."""
 
     def __new__(cls, first, later):
         value = super().__new__(cls, first)
@@ -42,8 +41,7 @@ class RewrittenOrigin(str):
 
     def lstrip(self, chars=None):
         self.calls += 1
-        # urllib.parse.urlsplit invokes str.lstrip; returning builtin str
-        # makes the second parse unexpectedly point to a different host.
+        # A polymorphic value can return a different text when reparsed.
         return str(self) if self.calls == 1 else self.later
 
 
@@ -55,12 +53,19 @@ class PublicOriginIdentityIssue919(unittest.TestCase):
             WebSecurity(SameTextOrigin("https://" + TRUSTED))
 
     @unittest.expectedFailure
-    def test_red_stateful_subclass_cannot_repoint_host_between_requests(self):
+    def test_red_stateful_subclass_is_retained_as_untrusted_configuration(self):
         public = RewrittenOrigin("https://" + TRUSTED, "https://" + FOREIGN)
         security = WebSecurity(public)
         self.assertGreaterEqual(public.calls, 1)
-        # Main currently reparses caller-supplied mutable-behavior object;
-        # the foreign Host must never be trusted as the configured origin.
+        # The accepted object itself is noncanonical. A future production fix
+        # must reject it before invoking caller-overridable string methods.
+        self.assertIs(type(security.public_origin), str)
+
+    def test_stateful_lstrip_foreign_host_is_rejected_in_current_runtime(self):
+        # Independent positive result: this particular payload was denied by
+        # the hosted Python 3.11/3.14 runtime. Do not claim a bypass from it.
+        public = RewrittenOrigin("https://" + TRUSTED, "https://" + FOREIGN)
+        security = WebSecurity(public)
         with self.assertRaises(RequestRejected):
             security.validate(environ(FOREIGN))
 
