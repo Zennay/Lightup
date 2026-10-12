@@ -101,6 +101,25 @@ class DownstreamHtmlAdapterContractW51(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     synthetic_downstream_adapter_acceptance(adapter)
 
+    def test_adapter_cannot_silently_drop_required_report_sections(self):
+        # Emitting a single visible evidence marker is insufficient: a
+        # downstream renderer could otherwise discard title/remediation.
+        for adapter in (
+            lambda markdown: "<pre>W51</pre>",
+            lambda markdown: _lab_text_only_adapter(markdown).replace(
+                "LightUp Assessment Findings", "REDACTED-HEADING"
+            ),
+            lambda markdown: _lab_text_only_adapter(markdown).replace(
+                "Synthetic", "OMITTED-TITLE"
+            ),
+            lambda markdown: _lab_text_only_adapter(markdown).replace(
+                "Treat raw", "OMITTED-REMEDIATION"
+            ),
+        ):
+            with self.subTest(adapter=repr(adapter)[:100]):
+                with self.assertRaises(ValueError):
+                    synthetic_downstream_adapter_acceptance(adapter)
+
     def test_cli_without_explicit_engine_returns_inconclusive_not_pass(self):
         out = io.StringIO()
         with redirect_stderr(out):
