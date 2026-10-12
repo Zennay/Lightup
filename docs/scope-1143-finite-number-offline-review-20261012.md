@@ -22,7 +22,7 @@ This independent branch changes **three new paths only**. It does not edit `ai/o
 Reproduce:
 
 ```bash
-PYTHONPATH=src python -m unittest -v tests.test_scope_finite_number_review_20261012
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_finite_number_review_20261012.py' -v
 ```
 
 ## Required separate owner acceptance
