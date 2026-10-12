@@ -212,3 +212,31 @@ def check_locally_supplied_fixture_digests(
     ):
         raise IngressReceiptRejected("backend fixture digest mismatch")
     return None
+
+
+def check_receipt_against_external_pins(
+    receipt: SuppliedIngressReceipt,
+    *,
+    expected_repository_head: str,
+    expected_config_sha256: str,
+    expected_capture_sha256: str,
+) -> None:
+    """Fail closed on a stale or mismatched self-reported receipt.
+
+    Pins MUST come from an independent trusted owner-run capture/review step,
+    never be copied automatically from `receipt`. This function cannot verify
+    their provenance and returns no permission or deployment clearance.
+    """
+    check_supplied_ingress_receipt(receipt)
+    pins = (
+        (expected_repository_head, receipt.repository_head),
+        (expected_config_sha256, receipt.loaded_config_sha256),
+        (expected_capture_sha256, receipt.backend_capture_sha256),
+    )
+    if not all(_hex_sha(expected) for expected, _ in pins):
+        raise IngressReceiptRejected("invalid external evidence pin")
+    # No raw data, full hash, labels or caller values in any diagnostic.
+    for expected, supplied in pins:
+        if not hmac.compare_digest(expected, supplied):
+            raise IngressReceiptRejected("receipt differs from pinned context")
+    return None
