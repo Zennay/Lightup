@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import hashlib
 import unittest
 
 from scope_1158_ingress_receipt_reference import (
@@ -10,6 +11,7 @@ from scope_1158_ingress_receipt_reference import (
     SuppliedIngressReceipt,
     SyntheticRouteObservation,
     check_supplied_ingress_receipt,
+    check_locally_supplied_fixture_digests,
 )
 
 
@@ -298,6 +300,49 @@ class SuppliedIngressReceiptReferenceTest(unittest.TestCase):
                 self.valid, "post:authorized", durable_write_count=True
             )
         )
+
+    def test_local_synthetic_fixture_bytes_bind_to_declared_sha256(self):
+        config = b"# sanitized disposable loopback fixture\nserver {}\n"
+        capture = b"synthetic backend path=/nonexistent route=not_found\n"
+        record = replace(
+            self.valid,
+            loaded_config_sha256=hashlib.sha256(config).hexdigest(),
+            backend_capture_sha256=hashlib.sha256(capture).hexdigest(),
+        )
+        self.assertIsNone(
+            check_locally_supplied_fixture_digests(record, config, capture)
+        )
+
+    def test_digest_mismatch_is_refused_without_exposing_contents(self):
+        config = b"# sanitized disposable loopback fixture\n"
+        capture = b"synthetic backend path=/nonexistent\n"
+        record = replace(
+            self.valid,
+            loaded_config_sha256=hashlib.sha256(config).hexdigest(),
+            backend_capture_sha256=hashlib.sha256(capture).hexdigest(),
+        )
+        with self.assertRaisesRegex(
+            IngressReceiptRejected, "config fixture digest mismatch"
+        ):
+            check_locally_supplied_fixture_digests(record, config + b"x", capture)
+        with self.assertRaisesRegex(
+            IngressReceiptRejected, "backend fixture digest mismatch"
+        ):
+            check_locally_supplied_fixture_digests(record, config, capture + b"x")
+
+    def test_local_digest_requires_nonempty_exact_bounded_bytes(self):
+        for invalid in (
+            None, "", "", b"", bytearray(b"x"), b"x" * (1024 * 1024 + 1),
+        ):
+            with self.subTest(value_type=type(invalid).__name__):
+                with self.assertRaises(IngressReceiptRejected):
+                    check_locally_supplied_fixture_digests(
+                        self.valid, invalid, b"capture"
+                    )
+                with self.assertRaises(IngressReceiptRejected):
+                    check_locally_supplied_fixture_digests(
+                        self.valid, b"config", invalid
+                    )
 
     def test_input_stays_unmodified_after_late_rejection(self):
         original = self.valid
