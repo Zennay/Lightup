@@ -41,6 +41,22 @@ An independent owner of an *isolated localhost fixture* can later supply
 - One synthetic authenticated/CSRF-valid `POST /logout`: backend
   `logout`, 303, recorded session invalidation.
 
+## W7: distinguish wire injection from backend hint forwarding
+
+The earlier synthetic field name `forwarded_hint_names` was misleading:
+those values are the **client-injected HTTP request header names**, not a
+claim that the proxy forwarded them. The receipt now uses
+`injected_request_hint_names` and an independent
+`backend_observed_hint_names` observation. For this intentionally strict,
+header-stripping lab acceptance oracle, **backend observed hint names must be
+an exact empty built-in tuple** for every scenario, including contradictory
+wire requests. Two new tests reject all cases with a surviving backend hint
+and polymorphic/nonempty backend capture. An empty reported tuple by itself
+still does not authenticate an actual Gunicorn trace. The installed-ingress
+owner must capture the backend HTTP/WSGI metadata independently and compare
+against the original wire request, versioned config and pinned hashes.
+No source code or live reverse proxy was modified by this contract.
+
 The receipt must pin exact lowercase 64-hex repository commit and a
 SHA-256 string for the **installed** loaded Nginx config and backend capture,
 nonempty bounded Nginx/Gunicorn versions, and exact environment label
