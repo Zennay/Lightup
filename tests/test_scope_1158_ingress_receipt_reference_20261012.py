@@ -28,8 +28,9 @@ def _receipt() -> SuppliedIngressReceipt:
                 scenario=name,
                 request_method=method,
                 request_path=path,
-                forwarded_hint_names=hint_names,
+                injected_request_hint_names=hint_names,
                 requested_hint_paths=hint_paths,
+                backend_observed_hint_names=(),
                 backend_path=path,
                 backend_route=route,
                 response_status=status,
@@ -102,20 +103,43 @@ class SuppliedIngressReceiptReferenceTest(unittest.TestCase):
 
     def test_raw_hint_coverage_cannot_be_faked_by_status(self):
         for observation in self.valid.observations:
-            if observation.forwarded_hint_names:
+            if observation.injected_request_hint_names:
                 with self.subTest(scenario=observation.scenario):
                     self.assertRejected(
                         _change_case(
                             self.valid, observation.scenario,
-                            forwarded_hint_names=(),
+                            injected_request_hint_names=(),
                         )
                     )
                     self.assertRejected(
                         _change_case(
                             self.valid, observation.scenario,
-                            forwarded_hint_names=("x-untrusted-forwarded",),
+                            injected_request_hint_names=("x-untrusted-forwarded",),
                         )
                     )
+
+    def test_backend_must_not_observe_any_injected_path_hint(self):
+        for observation in self.valid.observations:
+            with self.subTest(scenario=observation.scenario):
+                self.assertRejected(
+                    _change_case(
+                        self.valid, observation.scenario,
+                        backend_observed_hint_names=("x-original-url",),
+                    )
+                )
+
+    def test_backend_header_capture_requires_exact_empty_tuple(self):
+        class TupleSubclass(tuple):
+            pass
+
+        for altered in (None, [], False, TupleSubclass(()), ("X-Rewrite-URL",)):
+            with self.subTest(value_type=type(altered).__name__):
+                self.assertRejected(
+                    _change_case(
+                        self.valid, "get:x-rewrite-url",
+                        backend_observed_hint_names=altered,
+                    )
+                )
 
     def test_harmless_or_missing_path_hint_does_not_count_as_adversarial(self):
         self.assertRejected(
@@ -163,14 +187,14 @@ class SuppliedIngressReceiptReferenceTest(unittest.TestCase):
     def test_case_insensitive_raw_header_names_are_accepted(self):
         case = _change_case(
             self.valid, "get:x-original-url",
-            forwarded_hint_names=("X-Original-URL",),
+            injected_request_hint_names=("X-Original-URL",),
         )
         self.assertIsNone(check_supplied_ingress_receipt(case))
 
     def test_duplicate_header_name_variants_refused(self):
         case = _change_case(
             self.valid, "get:x-original-url",
-            forwarded_hint_names=("X-Original-URL", "x-original-url"),
+            injected_request_hint_names=("X-Original-URL", "x-original-url"),
         )
         self.assertRejected(case)
 
@@ -293,7 +317,7 @@ class SuppliedIngressReceiptReferenceTest(unittest.TestCase):
         self.assertRejected(
             _change_case(
                 self.valid, "get:x-original-url",
-                forwarded_hint_names=[ "x-original-url" ],
+                injected_request_hint_names=[ "x-original-url" ],
             )
         )
         self.assertRejected(
