@@ -15,6 +15,7 @@ _MAX_FINDINGS = 128
 _MAX_EVIDENCE_PER_FINDING = 128
 _MAX_FIELD_BYTES = 16_384
 _MAX_BATCH_BYTES = 1_048_576
+_MAX_OUTPUT_BYTES = 2_097_152
 
 # Colon, slash and at-sign discourage renderer-specific implicit URL links.
 _LITERAL_ESCAPE = frozenset("\\*_{}[]()#+-.!|>~:/@") | {chr(96)}
@@ -136,4 +137,12 @@ def render_escaped_evidence_markdown_optin_w31(findings: object) -> str:
         else:
             lines.append("- No evidence recorded.")
         lines.extend(["", "### Remediation", _escape_literal(remediation), ""])
+    # Escaping can expand one input byte into multiple output bytes (HTML
+    # entities or Markdown backslashes). Bound the *rendered* UTF-8 artifact,
+    # not just untrusted source data, before assembling the final response.
+    output_bytes = 0
+    for index, line in enumerate(lines):
+        output_bytes += len(line.encode("utf-8", "strict")) + (1 if index else 0)
+        if output_bytes > _MAX_OUTPUT_BYTES:
+            raise ValueError(_ERROR)
     return "\n".join(lines)
