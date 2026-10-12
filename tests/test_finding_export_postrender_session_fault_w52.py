@@ -87,7 +87,7 @@ class PostRenderSessionFaultWsgiW52(unittest.TestCase):
         # Synthetic replacement for a just-changed authorization context,
         # without mutating user records or extending authorization.
         self._revalidate_with(
-            lambda _token: self.store.session_context(self.op_token)
+            lambda _token: (self.store.context_for_user(self.op_user.user_id), "synthetic-csrf")
         )
 
     def test_postrender_context_type_corruption_refuses_already_rendered_csv(self):
