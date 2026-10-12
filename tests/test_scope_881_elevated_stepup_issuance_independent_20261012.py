@@ -42,6 +42,21 @@ class ElevatedGrantStepupIndependentTests(unittest.TestCase):
         with sqlite3.connect(self.path) as con:
             return con.execute("SELECT COUNT(*) FROM authorization_grants").fetchone()[0]
 
+    def _grant_rows(self):
+        """Return a stable snapshot, not just a count, to prove denial atomicity."""
+        with sqlite3.connect(self.path) as con:
+            return con.execute(
+                "SELECT grant_id,client_id,engagement_id,max_risk,reference "
+                "FROM authorization_grants ORDER BY grant_id"
+            ).fetchall()
+
+    def _approval_rows(self):
+        with sqlite3.connect(self.path) as con:
+            return con.execute(
+                "SELECT approval_id,client_id,engagement_id,requested_risk,status "
+                "FROM risk_approvals ORDER BY approval_id"
+            ).fetchall()
+
     def _elevated(self):
         return self._issue(self.engagement.engagement_id, RiskLevel.ELEVATED)
 
@@ -86,6 +101,51 @@ class ElevatedGrantStepupIndependentTests(unittest.TestCase):
         with self.assertRaises(PermissionError):
             self.store.decide_risk_elevation(self.issuer, request.approval_id, True)
         self.assertEqual(self._grant_count(), 0)
+
+    def test_standard_grant_not_blocked_by_pending_elevation(self):
+        self._stepup(self.engagement.engagement_id, approve=None)
+        before_approvals = self._approval_rows()
+        grant = self._issue(self.engagement.engagement_id, RiskLevel.STANDARD)
+        self.assertIs(grant.scope.max_risk, RiskLevel.STANDARD)
+        self.assertEqual(self._grant_count(), 1)
+        self.assertEqual(self._approval_rows(), before_approvals)
+
+    def test_standard_grant_not_blocked_by_denied_elevation(self):
+        self._stepup(self.engagement.engagement_id, approve=False)
+        before_approvals = self._approval_rows()
+        grant = self._issue(self.engagement.engagement_id, RiskLevel.STANDARD)
+        self.assertIs(grant.scope.max_risk, RiskLevel.STANDARD)
+        self.assertEqual(self._grant_count(), 1)
+        self.assertEqual(self._approval_rows(), before_approvals)
+
+    def test_approved_stepup_is_read_only_during_positive_elevated_issue(self):
+        self._stepup(self.engagement.engagement_id, approve=True)
+        approval_before = self._approval_rows()
+        self._elevated()
+        self.assertEqual(self._approval_rows(), approval_before)
+        self.assertEqual(self._grant_count(), 1)
+
+    @unittest.expectedFailure
+    def test_red_pending_elevation_cannot_add_to_existing_standard_grant(self):
+        # A refused ELEVATED issue must leave previously issued lower risk
+        # authority intact instead of only asserting an empty grant table.
+        self._issue(self.engagement.engagement_id, RiskLevel.STANDARD)
+        self._stepup(self.engagement.engagement_id, approve=None)
+        grants_before, approvals_before = self._grant_rows(), self._approval_rows()
+        with self.assertRaises((PermissionError, ValueError)):
+            self._elevated()
+        self.assertEqual(self._grant_rows(), grants_before)
+        self.assertEqual(self._approval_rows(), approvals_before)
+
+    @unittest.expectedFailure
+    def test_red_wrong_tenant_stepup_cannot_modify_prior_grants(self):
+        self._issue(self.engagement.engagement_id, RiskLevel.STANDARD)
+        self._stepup(self.other_client_engagement.engagement_id)
+        grants_before, approvals_before = self._grant_rows(), self._approval_rows()
+        with self.assertRaises((PermissionError, ValueError)):
+            self._elevated()
+        self.assertEqual(self._grant_rows(), grants_before)
+        self.assertEqual(self._approval_rows(), approvals_before)
 
     @unittest.expectedFailure
     def test_red_elevated_grant_without_approval_must_leave_zero_rows(self):
