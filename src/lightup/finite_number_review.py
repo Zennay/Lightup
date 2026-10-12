@@ -55,7 +55,9 @@ class FiniteNumberBatchReview:
         raise TypeError("numeric batch integrity review is not execution authorization")
 
 
-def review_finite_number_batch(\n    values: object, *, max_integer_bits: int = MAX_OFFLINE_INTEGER_BITS\n) -> FiniteNumberBatchReview:
+def review_finite_number_batch(
+    values: object, *, max_integer_bits: int = MAX_OFFLINE_INTEGER_BITS
+) -> FiniteNumberBatchReview:
     """Inspect an exact, bounded tuple of NUMBER values atomically.
 
     On any invalid member the caller receives only the same generic exception
@@ -66,7 +68,9 @@ def review_finite_number_batch(\n    values: object, *, max_integer_bits: int = 
     _validate_integer_bit_budget(max_integer_bits)
     if type(values) is not tuple or len(values) > MAX_OFFLINE_NUMBER_BATCH:
         raise FiniteNumberRefused("NUMBER batch requires a bounded exact tuple")
-    return FiniteNumberBatchReview(\n        tuple(review_bounded_finite_number(v, max_integer_bits=max_integer_bits) for v in values)\n    )
+    return FiniteNumberBatchReview(
+        tuple(review_bounded_finite_number(v, max_integer_bits=max_integer_bits) for v in values)
+    )
 
 
 def _validate_integer_bit_budget(max_integer_bits: object) -> None:
