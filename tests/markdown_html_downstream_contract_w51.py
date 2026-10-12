@@ -70,6 +70,28 @@ def _assert_private_canary_not_obscured(text: str) -> None:
     raise ValueError(_ERROR)
 
 
+def _assert_raw_angle_tokens_complete(fragment: str) -> None:
+    """Fail closed when HTMLParser would reclassify partial raw tags as data.
+
+    This is an optional lab contract, not a conforming HTML tokenizer. Escaped
+    literal less-than sequences (&lt;) remain valid because they have no raw
+    "<". Source was bounded to 4 MiB before this linear lexical pass.
+    """
+    start = fragment.find("<")
+    while start != -1:
+        marker = fragment[start + 1:start + 2]
+        if not marker or not (
+            ("a" <= marker <= "z") or ("A" <= marker <= "Z")
+            or marker in ("/", "!", "?")
+        ):
+            raise ValueError(_ERROR)
+        end = fragment.find(">", start + 1)
+        nested = fragment.find("<", start + 1)
+        if end == -1 or (nested != -1 and nested < end):
+            raise ValueError(_ERROR)
+        start = fragment.find("<", end + 1)
+
+
 class _RestrictedFragment(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -123,6 +145,9 @@ def check_conservative_html_fragment(
         raise ValueError(_ERROR) from None
     if len(encoded) > _MAX_HTML_BYTES:
         raise ValueError(_ERROR)
+    # HTMLParser.close() may emit truncated "<script" as ordinary data;
+    # check raw lexical completion before allowing any parser-visible result.
+    _assert_raw_angle_tokens_complete(fragment)
     # This is a diagnostic privacy canary, not a comprehensive redactor.
     _assert_private_canary_not_obscured(fragment)
     parser = _RestrictedFragment()
