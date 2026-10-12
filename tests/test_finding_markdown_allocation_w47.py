@@ -43,7 +43,7 @@ class MarkdownAllocationCharacterizationW47(unittest.TestCase):
     LAB_PEAK_LIMIT = 32 * 1024 * 1024
 
     def test_near_limit_escaped_evidence_allocation(self):
-        row = finding("large", evidence=["<>&*_" * 2800 for _ in range(40)])
+        row = finding("large", evidence=[f"ref:{i:02d}:" + "<>&*_" * 2800 for i in range(40)])
         before = tuple(row.evidence)
         output, peak = measured(
             lambda: renderer.render_escaped_evidence_markdown_optin_w31([row])
