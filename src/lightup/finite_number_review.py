@@ -42,6 +42,7 @@ def review_finite_number(value: Any) -> FiniteNumberReview:
 # A review batch is deliberately small: it is not an arbitrary stream, and
 # no downstream component should treat a successful shape check as consent.
 MAX_OFFLINE_NUMBER_BATCH = 64
+MAX_OFFLINE_INTEGER_BITS = 4096
 
 
 @dataclass(frozen=True)
@@ -54,7 +55,7 @@ class FiniteNumberBatchReview:
         raise TypeError("numeric batch integrity review is not execution authorization")
 
 
-def review_finite_number_batch(values: object) -> FiniteNumberBatchReview:
+def review_finite_number_batch(\n    values: object, *, max_integer_bits: int = MAX_OFFLINE_INTEGER_BITS\n) -> FiniteNumberBatchReview:
     """Inspect an exact, bounded tuple of NUMBER values atomically.
 
     On any invalid member the caller receives only the same generic exception
@@ -62,6 +63,29 @@ def review_finite_number_batch(values: object) -> FiniteNumberBatchReview:
     An exact-tuple check prevents custom iteration/indexing code from running.
     No ToolExecutor, policy, evidence ledger, network or authorization I/O.
     """
+    _validate_integer_bit_budget(max_integer_bits)
     if type(values) is not tuple or len(values) > MAX_OFFLINE_NUMBER_BATCH:
         raise FiniteNumberRefused("NUMBER batch requires a bounded exact tuple")
-    return FiniteNumberBatchReview(tuple(review_finite_number(v) for v in values))
+    return FiniteNumberBatchReview(\n        tuple(review_bounded_finite_number(v, max_integer_bits=max_integer_bits) for v in values)\n    )
+
+
+def _validate_integer_bit_budget(max_integer_bits: object) -> None:
+    # Strict type identity prevents a bool/subclass from supplying policy.
+    if type(max_integer_bits) is not int or not 1 <= max_integer_bits <= MAX_OFFLINE_INTEGER_BITS:
+        raise FiniteNumberRefused("NUMBER bit budget requires a bounded exact int")
+
+
+def review_bounded_finite_number(
+    value: Any, *, max_integer_bits: int = MAX_OFFLINE_INTEGER_BITS
+) -> FiniteNumberReview:
+    """Apply a lab-only integer-bit budget after canonical finite shape review.
+
+    Exact built-in int.bit_length() avoids lossy float conversion, output
+    formatting, decimal conversion or caller-defined numeric methods. This
+    post-decoding check cannot bound the earlier parsing/allocation itself.
+    """
+    _validate_integer_bit_budget(max_integer_bits)
+    result = review_finite_number(value)
+    if type(value) is int and value.bit_length() > max_integer_bits:
+        raise FiniteNumberRefused("NUMBER integer exceeds offline bit budget")
+    return result
