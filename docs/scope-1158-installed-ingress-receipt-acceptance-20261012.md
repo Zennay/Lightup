@@ -44,7 +44,11 @@ An independent owner of an *isolated localhost fixture* can later supply
 The receipt must pin exact lowercase 64-hex repository commit and a
 SHA-256 string for the **installed** loaded Nginx config and backend capture,
 nonempty bounded Nginx/Gunicorn versions, and exact environment label
-`disposable-loopback-lab`. It denies missing/duplicate case IDs, wrong
+`disposable-loopback-lab`. It demands the **adversarial hinted path values**, not just header names:
+all seven individual header cases and the unknown-path POST must carry
+`/clients`; the conflicting-header control alternates `/clients` and
+`/logout`. Benign hints to `/nonexistent` do not count as tests of
+upstream rewriting. It denies missing/duplicate case IDs, wrong
 path or route, mismatch to original request, status-only claims, unvalidated
 CSRF controls, missing logout/session invalidation, unintended writes, unknown
 hint names and noncanonical types. Input remains unmodified. The validator
