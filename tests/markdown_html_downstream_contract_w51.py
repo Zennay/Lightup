@@ -94,6 +94,15 @@ def _assert_raw_angle_tokens_complete(fragment: str) -> None:
         # this optional reviewer deliberately has a stricter token grammar.
         if marker == "/" and fragment[start + 2:end].lower() not in _ALLOWED_TAGS:
             raise ValueError(_ERROR)
+        # HTMLParser can normalize malformed "<p/ >" or "<hr / >" to a
+        # valid start tag with no attributes. Preserve lexical integrity
+        # in this strict, optional lab-only reviewer before parsing.
+        if ("a" <= marker <= "z") or ("A" <= marker <= "Z"):
+            token = fragment[start + 1:end].lower()
+            if token not in _ALLOWED_TAGS and token not in (
+                "br/", "hr/", "br /", "hr /"
+            ):
+                raise ValueError(_ERROR)
         start = fragment.find("<", end + 1)
 
 
