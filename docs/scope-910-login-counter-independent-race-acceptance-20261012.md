@@ -33,3 +33,12 @@ After source-owner integration: independently inspect full Python 3.11/3.14 diag
 ## W4 email normalization and transactional purity
 
 The current branch adds two **positive** real `DomainStore.authenticate` acceptance controls for a verifier exception (existing persisted counter unchanged, zero sessions) and a locked-out email with different ASCII casing/whitespace (no repeated verifier call). A fourth deliberately expected-RED canary checks two concurrent alternate spellings of **the same canonical email**, ensuring normalization cannot sidestep serializable failure counting. The revised bounded two-thread fixture accepts caller-supplied labels only for known synthetic `.invalid` variants and always checks the normalized key. These tests use no users/password hashes or network.
+
+## W5 — actual optional serialization reference (NOT installed)
+
+Added two strictly new test-only paths in this branch:
+
+- `tests/scope_910_serialized_lockout_reference.py` — a **test-only, offline** `SerializedLoginReference` that uses an explicit SQLite `BEGIN IMMEDIATE` / `COMMIT` / `ROLLBACK` around the read, stubbed verifier and failure-count update. It is **not imported into the product**. It performs global writer locking, making it unsuitable as a drop-in production recipe: password hashing inside a write transaction creates database-wide head-of-line blocking, lock contention and possible denial of service. No real credentials/sessions.
+- `tests/test_scope_910_serialized_lockout_reference_20261012.py` — 8 real disposable-SQLite controls for concurrent 0→2 and 1→3, case normalization, 3→lock at two additional failures, 4→lock with the second request rejected before verification, rollback on verifier exceptions, successful synthetic verifier result clearing the counter, and malformed types causing no writes.
+
+This independent GREEN reference demonstrates that **serialization is feasible in-memory** without claiming correctness of current `DomainStore.authenticate`; the latter's four expected-RED tests must remain RED until original `domain.py` owner integrates an independently reviewed bounded, non-blocking, transactionally safe alternative. The reference is a characterization harness only: calling it from CLI/web/production is explicitly forbidden. Permanent registered VPS exact-HEAD proof and source-owner review remain necessary.
