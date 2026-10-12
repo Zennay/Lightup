@@ -218,7 +218,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         adapter = getattr(importlib.import_module(module_name), attribute)
         digest = synthetic_downstream_adapter_acceptance(adapter)
-    except (ImportError, AttributeError, ValueError, TypeError) as exc:
+    # Third-party adapters may raise arbitrary Exception subclasses (including
+    # RuntimeError/OSError). Classify their failures without echoing exception
+    # text or a traceback; BaseException interrupts must still propagate.
+    # This does NOT sandbox or authorize executing an untrusted adapter.
+    except Exception as exc:
         print(
             f"REJECTED/INCONCLUSIVE: adapter or strict synthetic HTML contract failed "
             f"({type(exc).__name__})",
