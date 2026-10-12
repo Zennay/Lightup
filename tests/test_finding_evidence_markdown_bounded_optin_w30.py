@@ -84,7 +84,9 @@ class BoundedMarkdownEvidenceW30Tests(unittest.TestCase):
         for invalid in (None, (self.finding(),), ListSubclass([self.finding()])):
             self._assert_atomic_denial(invalid)
         for evidence in (None, ("ref:x",), ListSubclass(["ref:x"]), "ref:x"):
-            self._assert_atomic_denial([self.finding(evidence=evidence)])
+            item = self.finding()
+            item.evidence = evidence
+            self._assert_atomic_denial([item])
 
     def test_invalid_enum_and_late_invalid_ref_deny_entire_batch(self):
         item = self.finding()
