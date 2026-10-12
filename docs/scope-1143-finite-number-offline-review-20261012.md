@@ -34,3 +34,16 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_finite_number
 5. Obtain exact-final-head hosted Python 3.11/3.14 unit and real-producer integration logs, **separate permanently registered** self-hosted VPS CI proof, compatibility with current `main`, original source-owner plus independent security/privacy review and explicit human approval.
 
 No client data, external DNS/HTTP, target probes, real grants, scans, executed remediation, merge, deployment or verified retest. Even a green hosted run remains **DRAFT/HOLD**.
+
+
+## W2 independent batch acceptance — 2026-10-12
+
+Separate opt-in `review_finite_number_batch` adds **all-or-nothing** screening of at most 64 exact-tuple entries. The atomic result is `FiniteNumberBatchReview`; both scalar and batch results raise `TypeError` when tested as a Boolean. Invalid inputs never yield a successful partial result and rejection messages never interpolate input values. A caller may inspect a structural `items` tuple only after every element passed. Oversized/non-tuple iterable inputs are denied before invoking user-defined iteration or coercion.
+
+New independently checkable lab module: `tests/test_scope_finite_number_batch_w2_20261012.py`, with a 64/65 boundary, mixed finite + huge-integer positives, three non-finite values in early/middle/late positions, custom-object method traps, a late failure purity check, non-bool result, and **real ToolExecutor** proof that a perfectly valid numeric shape cannot override the missing target authorization grant or produce evidence.
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_finite_number_*20261012.py' -v
+```
+
+Batch preflight is a **lab-only reference**, not installed runtime enforcement and not a consent/authorization decision. The 64-member cap is a reference-side resource guard, not yet a production tool parameter count policy. In particular, success does not bind registry-owned destination parameters, grant issuer/tenant, active target, current approval, exact time or revocation. Original `ParamKind.NUMBER` remains unsafe for non-finite values; **three existing real-executor expected-RED cases still document that defect**. Exact-final-head hosted 3.11/3.14 and registered permanent VPS acceptance must be separately revalidated after every change. No source-owner, deployment or ingress changes.
