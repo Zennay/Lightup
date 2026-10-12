@@ -7,6 +7,7 @@ until the DomainStore source owner serializes the read/verify/write lifetime.
 from __future__ import annotations
 
 import sqlite3
+from contextlib import contextmanager
 import tempfile
 import threading
 import unittest
@@ -27,18 +28,29 @@ class LoginFailureAtomicityIndependentTests(unittest.TestCase):
         self.db_path = Path(self.tmp.name) / "isolated.db"
         self.store = DomainStore(self.db_path)
 
+    @contextmanager
+    def _db(self):
+        # sqlite3.Connection.__exit__ commits but does NOT close the handle.
+        # This wrapper releases it explicitly, including under expected-RED.
+        con = sqlite3.connect(self.db_path)
+        try:
+            with con:
+                yield con
+        finally:
+            con.close()
+
     def _read_row(self, email: str = EMAIL):
-        with sqlite3.connect(self.db_path) as con:
+        with self._db() as con:
             return con.execute(
                 "SELECT failures, locked_until FROM login_failures WHERE email=?", (email,)
             ).fetchone()
 
     def _session_count(self) -> int:
-        with sqlite3.connect(self.db_path) as con:
+        with self._db() as con:
             return con.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
 
     def _seed_failure_count(self, failures: int) -> None:
-        with sqlite3.connect(self.db_path) as con:
+        with self._db() as con:
             con.execute(
                 "INSERT INTO login_failures(email,failures,locked_until) VALUES(?,?,NULL)",
                 (EMAIL, failures),
