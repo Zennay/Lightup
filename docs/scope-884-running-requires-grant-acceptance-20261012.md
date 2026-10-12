@@ -22,3 +22,19 @@ Reproduction on approved isolated checkout:
 ```bash
 PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_884_running_current_grant_20261012.py' -v
 ```
+
+
+## W2 — same-tenant sibling grants must never stand in for this engagement
+
+Added one further exclusively NEW test path `tests/test_scope_884_cross_engagement_grant_20261012.py` on the existing DRAFT #1260 branch, keeping original domain / #107, #651, #177 and all other worker-owned paths unchanged.
+
+15 additional true, disposable SQLite `DomainStore` scenarios, including **four deliberately expected RED** on current default producer: a valid SAME-TENANT SIBLING grant, valid FOREIGN-TENANT grant, `AUTHORIZED` label without durable grant, and expired own grant plus valid sibling grant must all refuse `RUNNING` and preserve previous durable status. This is independent from W1's six intentional XFAILs. Non-RED tests show real current-grant exact-engagement selection, tenant denial, operator-only transition, normal `AUTHORIZED→RUNNING` with own current grant, expiry windows, reopening the same temporary database, unchanged sibling engagements and grant-table row immutability.
+
+These **acceptance-only tests do not fix** the production `DomainStore.set_engagement_status` or prove durable revocation/atomicity. Main's persisted grant table does not provide the full #107 owner revocation contract; only original owner can safely integrate release-ready RUNNING checks and durable revoke/fencing semantics. No external target, scanner, attack-path effects, merge or deploy.
+
+Reproduce synthetic W1 and W2 on isolated branch:
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_884_*20261012.py' -v
+```
+
+Keep DRAFT/HOLD/NO MERGE/NO DEPLOY until original owner repairs producer, RED→GREEN, independently reviews tenant/source/authorization security, latest-main integration, exact hosted matrix, permanent registered VPS CI and explicit human approval.
