@@ -6,6 +6,7 @@ are disposable and synthetic. Expected failures are explicit, not authorization.
 from __future__ import annotations
 
 import sqlite3
+from contextlib import contextmanager
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -38,20 +39,30 @@ class ElevatedGrantStepupIndependentTests(unittest.TestCase):
         self.start = now - timedelta(minutes=5)
         self.end = now + timedelta(hours=1)
 
+    @contextmanager
+    def _db(self):
+        """Commit/rollback and *close* the sqlite handle deterministically."""
+        con = sqlite3.connect(self.path)
+        try:
+            with con:
+                yield con
+        finally:
+            con.close()
+
     def _grant_count(self) -> int:
-        with sqlite3.connect(self.path) as con:
+        with self._db() as con:
             return con.execute("SELECT COUNT(*) FROM authorization_grants").fetchone()[0]
 
     def _grant_rows(self):
         """Return a stable snapshot, not just a count, to prove denial atomicity."""
-        with sqlite3.connect(self.path) as con:
+        with self._db() as con:
             return con.execute(
                 "SELECT grant_id,client_id,engagement_id,max_risk,reference "
                 "FROM authorization_grants ORDER BY grant_id"
             ).fetchall()
 
     def _approval_rows(self):
-        with sqlite3.connect(self.path) as con:
+        with self._db() as con:
             return con.execute(
                 "SELECT approval_id,client_id,engagement_id,requested_risk,status "
                 "FROM risk_approvals ORDER BY approval_id"
