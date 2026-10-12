@@ -44,3 +44,25 @@ Keep independent:
 - latest-main compatibility and explicit human release approval.
 
 A green hosted test or this document alone does **not** authorize merge or deploy.
+
+## W4 — production-factory in-process WSGI acceptance
+
+Additional strictly **tests-only** file:
+\`tests/test_scope_1112_production_wsgi_language_20261012.py\`
+
+This instantiates \`create_production_app\` using a disposable SQLite database and *synthetic* HTTPS origin \`https://lightup.example.test\`. Production \`WebSecurity\`, cookie issuance and revocation, tenant identity, form/CSRF processing, Host, trusted-proxy peer, and Origin restrictions are exercised through the **actual** in-process WSGI callable. No Gunicorn, Nginx, HTTP listener, DNS, sockets, real external requests, or customer state.
+
+The production matrix contains 19 independently named unittest methods over 14 synthetic \`Accept-Language\` header values (including missing, empty, weighted and wildcard locales, attempted path/role names, CRLF, NUL and 8,192-character text). It checks:
+- exact status, headers **and body** invariance on anonymous/operator/client and foreign-tenant GETs;
+- denial invariance on missing or forged CSRF, client-only CSRF, forged/revoked cookies, invalid peer/Host/Origin;
+- authorized tenant/operator GET and proper signed-in login redirect are not spuriously denied;
+- production \`Secure\` cookie/HSTS/no-store/nosniff and absence of injected response headers;
+- positive server-side operator POST writes under each locale (disposable SQLite only), valid login issuing session cookies, and logout revoking **only** the proper token;
+- no mutations on denied foreign-tenant/client-privilege paths.
+
+Run the new slice independently:
+\`\`\`sh
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_1112_production_wsgi_language_20261012.py' -v
+\`\`\`
+
+The test does **not** prove that a real reverse proxy or HTTP server always passes headers safely as synthetic WSGI strings, nor does it prove the grant-resolution, durable issuer/asset/risk/time/revocation, per-I/O execution, or live target safety boundaries. Upstream normalization is an independent owner gate. Never describe hosted CI as permanent VPS acceptance. **DRAFT/HOLD/NO MERGE/NO DEPLOY.**
