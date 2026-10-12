@@ -55,6 +55,8 @@ class OptinWriteUnicodeW33Tests(unittest.TestCase):
         bad_refs = (
             ("\u0301",), ("\ufe0f",), ("\u202e",),
             ("a\u200bb",), ("\ud800",), ("e \u0301",),
+            ("evidence:\u0301",), ("evidence:\ufe0f",),
+            ("e\u034fvidence",),
         )
         for refs in bad_refs:
             with self.subTest(refs=repr(refs)):
