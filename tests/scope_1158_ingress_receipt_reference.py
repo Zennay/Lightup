@@ -7,6 +7,8 @@ truth/origin of self-reported capture metadata. Passing is NOT deployment proof.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
+import hmac
 import re
 
 PATH_HINTS = (
@@ -178,4 +180,35 @@ def check_supplied_ingress_receipt(receipt: SuppliedIngressReceipt) -> None:
                 raise IngressReceiptRejected("mismatched " + label)
     if observed != set(SCENARIOS):
         raise IngressReceiptRejected("missing required synthetic scenario")
+    return None
+
+
+def check_locally_supplied_fixture_digests(
+    receipt: SuppliedIngressReceipt,
+    installed_config_fixture_bytes: bytes,
+    backend_capture_fixture_bytes: bytes,
+) -> None:
+    """Cross-check the *provided local* bytes against declared digests.
+
+    This does not authenticate their origin, prove installed config identity,
+    verify an ingress trace, or issue any kind of release/permission decision.
+    Never log, return, write or upload the supplied bytes from this helper.
+    """
+    check_supplied_ingress_receipt(receipt)
+    for supplied in (
+        installed_config_fixture_bytes,
+        backend_capture_fixture_bytes,
+    ):
+        if type(supplied) is not bytes or not 0 < len(supplied) <= 1024 * 1024:
+            raise IngressReceiptRejected("invalid bounded local fixture")
+    if not hmac.compare_digest(
+        hashlib.sha256(installed_config_fixture_bytes).hexdigest(),
+        receipt.loaded_config_sha256,
+    ):
+        raise IngressReceiptRejected("config fixture digest mismatch")
+    if not hmac.compare_digest(
+        hashlib.sha256(backend_capture_fixture_bytes).hexdigest(),
+        receipt.backend_capture_sha256,
+    ):
+        raise IngressReceiptRejected("backend fixture digest mismatch")
     return None
