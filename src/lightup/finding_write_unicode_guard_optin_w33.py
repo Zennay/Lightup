@@ -35,7 +35,7 @@ def checked_written_evidence_references_w33(value: object) -> tuple[str, ...]:
         previous_base = False
         for char in reference:
             category = unicodedata.category(char)
-            if category[0] == "C" or category in ("Zl", "Zp"):
+            if category[0] == "C" or category in ("Zl", "Zp") or char == "\u034f":
                 raise ValueError(_ERROR)
             if category == "Zs":
                 if char != " ":
@@ -45,7 +45,9 @@ def checked_written_evidence_references_w33(value: object) -> tuple[str, ...]:
                 if not previous_base:
                     raise ValueError(_ERROR)
             else:
-                previous_base = True
+                # A punctuation mark is not a Unicode combining base.
+                # Emoji symbols, letters and numbers can anchor marks.
+                previous_base = category[0] in "LNS"
 
         normalized = unicodedata.normalize("NFKC", reference)
         if normalized in seen_compatibility:
