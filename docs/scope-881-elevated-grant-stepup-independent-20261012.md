@@ -25,3 +25,12 @@ Require exact SHA GitHub-hosted Python 3.11 and 3.14 unit + real producer integr
 ## W2 append-only review observations
 
 Five new real-producer tests (three positive + two expected-RED) characterize the unchanged production issue without modifying current grants or approval code. The W2 failure tests assert **whole-row persistence atomicity** rather than just a zero-row table after denial: previously issued STANDARD grants must survive and cannot silently be promoted by a cross-tenant or pending decision. Any GREEN CI report that still counts expected failures must be labeled diagnostic, not remediation.
+
+## W3 — non-authorizing step-up snapshot reference (NOT INSTALLED)
+
+Two new strictly tests-only paths supplement existing direct-producer expected-RED canaries:
+
+- `tests/scope_881_stepup_snapshot_reference.py` is a **pure, non-authorizing** typed reviewer for a caller-supplied immutable tuple of actual persisted `RiskApprovalRecord` objects. It matches exact client and engagement identities, an explicit independently APPROVED review and a risk ceiling that covers ELEVATED; it refuses malformed/polymorphic snapshots and ALL risk-5/lab-only requests. It returns only `None`, **never a signed or executable grant**.
+- `tests/test_scope_881_stepup_snapshot_reference_20261012.py` exercises 12 real disposable SQLite `DomainStore` scenarios: STANDARD without step-up, approved same engagement, pending/denied, other engagement/tenant, lower risk, foreign approved + local pending, same engagement denied then approved, malformed evidence, risk-5 denial and noncanonical context. The snapshot reference itself does not insert any authorization grants or make network calls.
+
+**Critical limitation:** caller-supplied approval tuples are NOT automatically trusted; anyone can fabricate one. These tests are an offline reference ONLY. No actual grant INSERT is performed under the same SQLite transaction as the check, so it **cannot prove atomic grant issuance or avoid TOCTOU/revocation races**. The original `DomainStore.record_authorization_grant` can still mint elevated authority and all eight real-producer RED canaries must remain RED until the source owners implement a trusted transactionally consistent integration. None of this is a release endorsement.
