@@ -25,6 +25,12 @@ Run under the *pinned branch checkout* (not against current main):
 
 The two original regression modules each have two canonical controls and two deliberately **unannotated RED** failures against the current PR #202 security source. These are intentionally retained as true failing test assertions. The new composition module may use an isolated `expectedFailure` canary to document combined behavior. Until the original source owner fixes the cause, ordinary complete CI on this branch is expected RED, not a release pass.
 
+## Mechanical composition provenance (additive, review-only)
+
+`tests/test_scope_920_composition_provenance_20261012.py` pins the five original Git blob IDs: unchanged #202 production `security.py` and the untouched #918/#919 regression and documentation inputs. It catches accidental source-owner edits or textual rewrites during composition. This is a *review provenance guard*, not runtime trust, release proof, a cryptographic grant or permission to execute. Intentionally restacking on a genuine owner fix requires explicit checksum updates and a full source review; never silently relax this test.
+
+    PYTHONPATH=src:tests python -m unittest discover -s tests -p 'test_scope_920_composition_provenance_20261012.py' -v
+
 ## Gating / non-collision
 
 - Keep branch-only while canonical self-hosted CI is congested; don't create duplicate canonical queue slots or a premature PR solely to run expected-RED tests.
