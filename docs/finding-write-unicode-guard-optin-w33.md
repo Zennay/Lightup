@@ -8,7 +8,7 @@ New opt-in \`checked_written_evidence_references_w33\` and \`record_finding_chec
 
 - Preserves intentionally empty manual evidence and authentic original ordered string values, without Unicode rewrites or trimming.
 - Restricts exact built-in tuple and member types, max 128 references, at most 4096 UTF-8 bytes each and 262144 UTF-8 bytes of **current DomainStore default JSON serialization** (which may expand non-ASCII into escapes).
-- Refuses invisible format/control/bidi and surrogate code points, non-ASCII separators, unanchored Unicode combining/variation marks, leading/trailing whitespace and NFKC-equivalent duplicate identities. Preserves normal accented text, emoji with attached variation selectors, ordinary literals and stable reference ordering.
+- Refuses invisible format/control/bidi and surrogate code points, non-ASCII separators, unanchored Unicode combining/variation marks (including marks after punctuation), explicit U+034F combining grapheme joiner, leading/trailing whitespace and NFKC-equivalent duplicate identities. Preserves normal accented text, emoji with attached variation selectors, ordinary literals and stable reference ordering.
 - Fails entirely before calling the existing persistence method. The existing store's operator and engagement checks are delegated, *not replaced or bypassed*. No authorization or provenance decision is created.
 - Refuses a polymorphic \`DomainStore\` object at this optional boundary. That policy is provisional pending original source owner compatibility review.
 
