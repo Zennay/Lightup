@@ -119,9 +119,9 @@ def render_escaped_evidence_markdown_optin_w31(findings: object) -> str:
             "",
             "### Evidence",
         ])
-        lines.extend(
-            "- " + _escape_literal(item)
-            for item in (evidence or ("No evidence recorded.",))
-        )
+        if evidence:
+            lines.extend("- " + _escape_literal(item) for item in evidence)
+        else:
+            lines.append("- No evidence recorded.")
         lines.extend(["", "### Remediation", _escape_literal(remediation), ""])
     return "\n".join(lines)
