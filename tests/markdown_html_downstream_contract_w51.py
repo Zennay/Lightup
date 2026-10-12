@@ -33,6 +33,23 @@ _ALLOWED_TAGS = frozenset((
 _VOID_TAGS = frozenset(("br", "hr"))
 
 
+def _assert_private_canary_not_obscured(text: str) -> None:
+    """Bounded lab-only entity decoding, denying ambiguous deep nesting.
+
+    This checks only the synthetic private marker, not real client privacy.
+    A fragment requiring more than eight decoding passes is refused rather
+    than silently classified as safe; no decoded value is returned.
+    """
+    for _ in range(8):
+        if _PRIVATE in text:
+            raise ValueError(_ERROR)
+        decoded = unescape(text)
+        if decoded == text:
+            return
+        text = decoded
+    raise ValueError(_ERROR)
+
+
 class _RestrictedFragment(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -87,8 +104,7 @@ def check_conservative_html_fragment(
     if len(encoded) > _MAX_HTML_BYTES:
         raise ValueError(_ERROR)
     # This is a diagnostic privacy canary, not a comprehensive redactor.
-    if _PRIVATE in unescape(fragment):
-        raise ValueError(_ERROR)
+    _assert_private_canary_not_obscured(fragment)
     parser = _RestrictedFragment()
     try:
         parser.feed(fragment)
@@ -98,9 +114,8 @@ def check_conservative_html_fragment(
     if parser.stack or not parser.seen_tag:
         raise ValueError(_ERROR)
     visible = "".join(parser.data)
-    if _PRIVATE in unescape(visible) or any(
-        marker not in visible for marker in (expected_text, *required_text)
-    ):
+    _assert_private_canary_not_obscured(visible)
+    if any(marker not in visible for marker in (expected_text, *required_text)):
         raise ValueError(_ERROR)
 
 
