@@ -18,7 +18,7 @@ def _receipt() -> SuppliedIngressReceipt:
     for name, fields in SCENARIOS.items():
         (
             method, path, route, status, writes,
-            actor, csrf, logout, hint_names,
+            actor, csrf, logout, hint_names, hint_paths,
         ) = fields
         observations.append(
             SyntheticRouteObservation(
@@ -26,6 +26,7 @@ def _receipt() -> SuppliedIngressReceipt:
                 request_method=method,
                 request_path=path,
                 forwarded_hint_names=hint_names,
+                requested_hint_paths=hint_paths,
                 backend_path=path,
                 backend_route=route,
                 response_status=status,
@@ -112,6 +113,49 @@ class SuppliedIngressReceiptReferenceTest(unittest.TestCase):
                             forwarded_hint_names=("x-untrusted-forwarded",),
                         )
                     )
+
+    def test_harmless_or_missing_path_hint_does_not_count_as_adversarial(self):
+        self.assertRejected(
+            _change_case(
+                self.valid, "get:x-original-url",
+                requested_hint_paths=("/nonexistent",),
+            )
+        )
+        self.assertRejected(
+            _change_case(
+                self.valid, "post:unknown",
+                requested_hint_paths=(),
+            )
+        )
+        self.assertRejected(
+            _change_case(
+                self.valid, "get:conflicting",
+                requested_hint_paths=("/clients",) * 7,
+            )
+        )
+
+    def test_hints_and_paths_require_exact_builtins(self):
+        class WrongString(str):
+            pass
+
+        self.assertRejected(
+            _change_case(
+                self.valid, "get:x-original-url",
+                requested_hint_paths=[ "/clients" ],
+            )
+        )
+        self.assertRejected(
+            _change_case(
+                self.valid, "get:x-original-url",
+                requested_hint_paths=(WrongString("/clients"),),
+            )
+        )
+        self.assertRejected(
+            _change_case(
+                self.valid, "get:x-original-url",
+                requested_hint_paths=("/clients\\r\\nInjected: true",),
+            )
+        )
 
     def test_case_insensitive_raw_header_names_are_accepted(self):
         case = _change_case(
