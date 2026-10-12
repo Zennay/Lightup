@@ -35,7 +35,7 @@ def _checked_literal(value: object) -> tuple[str, int]:
     has_base = False
     for character in value:
         category = unicodedata.category(character)
-        if category[0] == "C" or category in ("Zl", "Zp"):
+        if category[0] == "C" or category in ("Zl", "Zp") or character == "\u034f":
             raise ValueError(_ERROR)
         if category == "Zs":
             if character != " ":
@@ -45,7 +45,9 @@ def _checked_literal(value: object) -> tuple[str, int]:
             if not has_base:
                 raise ValueError(_ERROR)
         else:
-            has_base = True
+            # Punctuation cannot anchor a Unicode combining/variation mark.
+            # Letters, numbers and symbols (including emoji) can.
+            has_base = category[0] in "LNS"
         compatibility = unicodedata.normalize("NFKC", character)
         if compatibility != character and any(
             char in _COMPAT_MARKUP or char in "<>&"
