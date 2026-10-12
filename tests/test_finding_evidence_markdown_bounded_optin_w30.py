@@ -61,6 +61,17 @@ class BoundedMarkdownEvidenceW30Tests(unittest.TestCase):
                 setattr(item, field, "x" * 16385)
                 self._assert_atomic_denial([item])
 
+    def test_massively_oversized_input_is_denied_without_rendering(self):
+        # A character count exceeds a UTF-8 byte ceiling even for ASCII.
+        # W30 can refuse it before constructing a second encoded copy.
+        oversized = "x" * 1_000_000
+        item = self.finding(evidence=[oversized])
+        self._assert_atomic_denial([item])
+        item.evidence = ["ref:ok"]
+        item.title = oversized
+        self._assert_atomic_denial([item])
+        self.assertEqual(item.title, oversized)
+
     def test_total_batch_budget_denies_late_finding_before_rendering(self):
         findings = [
             self.finding(number=i, remediation="x" * 15000)
