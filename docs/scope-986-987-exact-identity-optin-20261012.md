@@ -11,7 +11,7 @@
 ## Isolated material implementation
 
 - `src/lightup/scope_exact_identity_policy.py`: optional `StrictIdentityExecutionPolicy` subclass, refusing anything except **exact enum types** before delegating to the unchanged `ExecutionPolicy`. It does **not** normalize, coerce, approve, issue grants or interact with targets.
-- `tests/test_scope_986_987_exact_identity_optin_20261012.py`: pure policy matrix and real `ToolExecutor` + `ToolRegistry` + disposable SQLite acceptance. Synthetic handlers return fixed evidence bytes and perform no I/O. Malformed tool metadata must be denied before handler and evidence write; valid canonical passive/active policy controls remain permitted only under inherited constraints.
+- `tests/test_scope_986_987_exact_identity_optin_20261012.py`: pure policy matrix and real `ToolExecutor` + `ToolRegistry` + disposable SQLite acceptance. Synthetic handlers return fixed evidence bytes and perform no I/O. Thirteen unittest methods include canonical active ToolExecutor positive and denied/mismatched-grant zero-evidence controls, malformed active risk denial, and an explicit default-executor-is-unchanged assertion. Malformed tool metadata must be denied before handler and evidence write; valid canonical passive/active policy controls remain permitted only under inherited constraints.
 - Production `src/lightup/execution_policy.py`, `src/lightup/ai/orchestration.py`, installed application, config, CI and all existing tests are **unchanged**. This opt-in module is deliberately **not wired into the default runtime**.
 
 ## Local reproduction / promotion requirements
