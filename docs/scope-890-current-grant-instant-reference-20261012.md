@@ -30,3 +30,16 @@ This extra acceptance *does not* make the optional reference an installed trust 
 ```bash
 PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_890_*20261012.py' -v
 ```
+
+
+## W3 — controlled hostile timezone faults before persisted grant selector
+
+The optional uninstalled `checked_current_grant_at` now normalizes `datetime.utcoffset()` exceptions to a **controlled generic ValueError before any store access**, rather than exposing caller-controlled tzinfo internals as uncontrolled exceptions. It still preserves exact-builtin datetime identity, a sole `None` omission sentinel, aware fixed/non-UTC offsets, and unmodified accepted instant delegation; it does not fix the default persisted `DomainStore`.
+
+`tests/test_scope_890_adversarial_timezone_20261012.py` adds **10 further** tests: caller-defined `tzinfo.utcoffset` raising RuntimeError/KeyError/TypeError/OverflowError, null offsets, no error-string leakage, acceptable builtin and custom aware offsets, naive rejection and genuine disposable SQLite grant-row immutability after all denials. No executor, target, API, network, grant issuance, merge or deployment.
+
+W1 and W2's total **eight expected source-owner RED** canaries remain intentionally unresolved. The W3 reference exception hardening is uninstalled; safe release still requires production owner #107's true selector fix, RED→GREEN, latest-main/tenant/security/privacy review, exact hosted 3.11+3.14 CI and separately registered permanent VPS proof with explicit human approval.
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_890_*20261012.py' -v
+```
