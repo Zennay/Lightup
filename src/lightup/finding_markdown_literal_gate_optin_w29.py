@@ -6,6 +6,7 @@ Only synthetic PLAN/LAB use until source-owner and privacy review.
 """
 from __future__ import annotations
 
+import re
 import unicodedata
 
 from .finding_evidence_markdown_checked_optin_w28 import (
@@ -38,7 +39,7 @@ def _literal_line(value: object) -> str:
             or char in _ALLOWED_PUNCTUATION
         ):
             raise ValueError(_ERROR)
-    if not normalized[0].isalnum():
+    if not normalized[0].isalnum() or re.match(r"^[0-9]{1,9}[.)] ", normalized):
         raise ValueError(_ERROR)
     return value
 
