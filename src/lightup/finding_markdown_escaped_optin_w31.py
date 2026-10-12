@@ -118,31 +118,40 @@ def render_escaped_evidence_markdown_optin_w31(findings: object) -> str:
             tuple(evidence),
         ))
 
-    lines = ["# LightUp Assessment Findings", ""]
+    # Keep the UTF-8 byte budget during assembly rather than after building
+    # every escaped line. Each line is bounded before it enters the list.
+    # All finding/evidence preflight above still completes before rendering.
+    lines: list[str] = []
+    output_bytes = 0
+
+    def append_line(line: str) -> None:
+        nonlocal output_bytes
+        size = len(line.encode("utf-8", "strict")) + (1 if lines else 0)
+        if output_bytes + size > _MAX_OUTPUT_BYTES:
+            raise ValueError(_ERROR)
+        lines.append(line)
+        output_bytes += size
+
     if not snapshots:
         return "# LightUp Assessment Findings\n\nNo findings recorded.\n"
 
+    append_line("# LightUp Assessment Findings")
+    append_line("")
     for finding_id, title, target, remediation, severity, retest_status, evidence in snapshots:
-        lines.extend([
-            "## " + _escape_literal(title),
-            "- ID: " + _escape_literal(finding_id),
-            "- Severity: **" + severity + "**",
-            "- Target: " + _escape_literal(target),
-            "- Retest: " + retest_status,
-            "",
-            "### Evidence",
-        ])
+        append_line("## " + _escape_literal(title))
+        append_line("- ID: " + _escape_literal(finding_id))
+        append_line("- Severity: **" + severity + "**")
+        append_line("- Target: " + _escape_literal(target))
+        append_line("- Retest: " + retest_status)
+        append_line("")
+        append_line("### Evidence")
         if evidence:
-            lines.extend("- " + _escape_literal(item) for item in evidence)
+            for item in evidence:
+                append_line("- " + _escape_literal(item))
         else:
-            lines.append("- No evidence recorded.")
-        lines.extend(["", "### Remediation", _escape_literal(remediation), ""])
-    # Escaping can expand one input byte into multiple output bytes (HTML
-    # entities or Markdown backslashes). Bound the *rendered* UTF-8 artifact,
-    # not just untrusted source data, before assembling the final response.
-    output_bytes = 0
-    for index, line in enumerate(lines):
-        output_bytes += len(line.encode("utf-8", "strict")) + (1 if index else 0)
-        if output_bytes > _MAX_OUTPUT_BYTES:
-            raise ValueError(_ERROR)
+            append_line("- No evidence recorded.")
+        append_line("")
+        append_line("### Remediation")
+        append_line(_escape_literal(remediation))
+        append_line("")
     return "\n".join(lines)
