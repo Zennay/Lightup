@@ -17,6 +17,9 @@ class InvalidPublicScopeConfiguration(ValueError):
     """A proposed public-scope configuration is noncanonical or ambiguous."""
 
 
+_MAX_SCOPE_ENTRIES = 4096
+_MAX_NETWORK_CHARS = 64
+
 _LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z", re.ASCII)
 
 
@@ -39,6 +42,11 @@ def validate_public_scope_configuration(policy: ScopePolicy) -> None:
         raise InvalidPublicScopeConfiguration("explicit hosts must be a frozenset")
     if type(policy.explicit_networks) is not tuple:
         raise InvalidPublicScopeConfiguration("explicit networks must be a tuple")
+    # Preserve a finite review budget before parsing or iterating any labels.
+    if len(policy.explicit_hosts) > _MAX_SCOPE_ENTRIES:
+        raise InvalidPublicScopeConfiguration("too many explicit hosts")
+    if len(policy.explicit_networks) > _MAX_SCOPE_ENTRIES:
+        raise InvalidPublicScopeConfiguration("too many explicit networks")
 
     for host in policy.explicit_hosts:
         if type(host) is not str or not host or len(host) > 253 or not host.isascii():
@@ -59,6 +67,8 @@ def validate_public_scope_configuration(policy: ScopePolicy) -> None:
     for network in policy.explicit_networks:
         if type(network) is not str or not network or network != network.strip():
             raise InvalidPublicScopeConfiguration("invalid explicit network identity")
+        if len(network) > _MAX_NETWORK_CHARS:
+            raise InvalidPublicScopeConfiguration("explicit network text is too long")
         try:
             parsed = ip_network(network, strict=True)
         except (ValueError, TypeError):
