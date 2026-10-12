@@ -69,6 +69,23 @@ stack or that a backend route was observed. Independent capture provenance
 and privacy review remain mandatory. Nothing may automatically promote the
 receipt into authorization, an active test, a real-client claim or release.
 
+## W5: externally pinned receipt identity (offline, non-authorizing)
+
+Use the new `check_receipt_against_external_pins` only with three exact
+64-character lowercase SHA-256/commit values obtained **independently** of
+the receipt: (1) reviewed repository HEAD/commit, (2) loaded proxy config
+digest captured by the installed-ingress owner, (3) backend capture digest.
+It first checks all twelve synthetic cases then compares each external pin
+against the receipt in constant-time string comparison. No mismatched hash
+contents, client data, version details or raw tokens are emitted by errors.
+
+**Important:** taking `expected_*` values from the receipt itself defeats
+the check. The function does not fetch GitHub, read Nginx, authenticate
+reviewers, validate a capture signature or bind traffic to the actual
+running Gunicorn. It returns `None`, never an authorization/release result.
+Owner evidence must separately retain protected raw captures/config hashes
+and reviewers must verify their chain of custody before any promotion.
+
 ## CRITICAL trust/operational limitations
 
 The structural checker does **not**:
