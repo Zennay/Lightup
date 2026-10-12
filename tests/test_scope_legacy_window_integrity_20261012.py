@@ -124,6 +124,17 @@ class LegacyWindowIntegrityTests(unittest.TestCase):
                         "invalid_provenance_shape",
                     )
 
+    def test_format_bidi_surrogates_and_private_use_provenance_denied(self):
+        for character in ("\\u200b", "\\u200e", "\\u202e", "\\u2060", "\\ud800", "\\ue000"):
+            for field in ("owner", "reference"):
+                with self.subTest(character=repr(character), field=field):
+                    result = self.review(authorization(**{field: "real" + character + "label"}))
+                    self.assertEqual(result.reason, "invalid_provenance_shape")
+
+    def test_international_plain_text_is_not_rejected_as_control(self):
+        result = self.review(authorization(owner="Équipe française", reference="référence-123"))
+        self.assertTrue(result.integrity_ok)
+
     def test_review_does_not_modify_existing_authorization(self):
         auth = authorization()
         before = (auth.owner, auth.reference, auth.valid_from, auth.valid_until)
