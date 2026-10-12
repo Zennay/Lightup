@@ -20,3 +20,20 @@ Exact-head GitHub-hosted Python 3.11 + 3.14 full tests, **independently register
 ```bash
 PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_877_request_asset_json_20261012.py' -v
 ```
+
+
+## W2 — same SQLite row, cross-tenant fail-before-decode, and all-or-none visibility
+
+Added TWO more exclusively new paths atop PR #1262 (no original domain, activation, web, request, grant or other worker files modified):
+
+- `src/lightup/request_assets_snapshot_optin.py`: **UNINSTALLED** read-only `checked_get_assessment_request` / `checked_list_assessment_requests` reference selectors. They read a single SQLite row/snapshot, check tenant visibility **before validating private row contents** for point reads, and validate the **entire visible list before building any result records**. They deliberately use the same snapshot row for validation and projection, avoiding separate uncoordinated validation/producer queries. They never issue grants, approve requests, authorize targets or mutate durable content.
+- `tests/test_scope_877_snapshot_read_20261012.py`: **15 more** real synthetic disposable SQLite selector regressions including get/list tenant boundaries, operator vs tenant list, cross-tenant corruption isolation, single/whole-batch malformed refusal, invalid identifier, row immutability, no grants or engagements and empty-list behavior.
+
+These opt-in tests demonstrate only local shape/tenant admission of persisted assets: `DomainStore._request_from_row` still ignores unrelated decision/status/provenance faults (#880, #879), and there is **no production installation, current client authorization, anti-TOCTOU dispatch fence, or release proof**. Even a passing test run must not be described as security acceptance. Default `get_assessment_request` / `list_assessment_requests` are still unchanged and vulnerable to the recorded shape issue.
+
+Replay the isolated W1 + W2 modules:
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_877_*20261012.py' -v
+```
+
+Keep DRAFT/HOLD/NO MERGE/NO DEPLOY pending source-owner integration, conversion of intentional RED to ordinary passing producer tests, latest-main security/privacy/tenant review, exact-head GitHub-hosted matrix and separate permanent VPS CI, and explicit human approval.
