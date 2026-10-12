@@ -125,7 +125,7 @@ class LegacyWindowIntegrityTests(unittest.TestCase):
                     )
 
     def test_format_bidi_surrogates_and_private_use_provenance_denied(self):
-        for character in ("\\u200b", "\\u200e", "\\u202e", "\\u2060", "\\ud800", "\\ue000"):
+        for character in ("\u200b", "\u200e", "\u202e", "\u2060", "\ud800", "\ue000"):
             for field in ("owner", "reference"):
                 with self.subTest(character=repr(character), field=field):
                     result = self.review(authorization(**{field: "real" + character + "label"}))
