@@ -403,7 +403,7 @@ class RealToolExecutorIdentityTests(unittest.TestCase):
         with self.state.connect() as con:
             original = tuple(
                 con.execute(
-                    "SELECT evidence_id, run_id, kind, source, payload_hash "
+                    "SELECT evidence_id, run_id, kind, source, sha256, metadata_json "
                     "FROM evidence ORDER BY evidence_id"
                 )
             )
@@ -415,7 +415,7 @@ class RealToolExecutorIdentityTests(unittest.TestCase):
         with self.state.connect() as con:
             after = tuple(
                 con.execute(
-                    "SELECT evidence_id, run_id, kind, source, payload_hash "
+                    "SELECT evidence_id, run_id, kind, source, sha256, metadata_json "
                     "FROM evidence ORDER BY evidence_id"
                 )
             )
