@@ -12,7 +12,7 @@ New opt-in \`checked_written_evidence_references_w33\` and \`record_finding_chec
 - Fails entirely before calling the existing persistence method. The existing store's operator and engagement checks are delegated, *not replaced or bypassed*. No authorization or provenance decision is created.
 - Refuses a polymorphic \`DomainStore\` object at this optional boundary. That policy is provisional pending original source owner compatibility review.
 
-Nine synthetic \`unittest\` methods exercise **genuine disposable-SQLite writes** and readback, invalid input refusal before writer invocation, exact stored data retention, JSON representation inflation, duplicate compatibility IDs, Unicode positive fixtures and unchanged operator role enforcement. The predecessor W32 tests remain **six intentional expected failures against the original default writer**. A green branch is not evidence that the default writer is fixed.
+Twelve synthetic \`unittest\` methods exercise **genuine disposable-SQLite writes** and readback, invalid input refusal before writer invocation, exact stored data retention, JSON representation inflation, duplicate compatibility IDs, Unicode positive fixtures and unchanged operator role enforcement, exact positive 4096-byte reference and 262144-byte serialized JSON budgets, and one-byte-over-budget pre-writer refusal. The predecessor W32 tests remain **six intentional expected failures against the original default writer**. A green branch is not evidence that the default writer is fixed.
 
 Run on exact head:
 
