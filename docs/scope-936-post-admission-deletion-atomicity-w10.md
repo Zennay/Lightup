@@ -19,7 +19,7 @@ The pinned producer's `ProspectProfile` is a mutable dataclass exposing a list; 
 Test-only reproduction on the exact branch snapshot:
 
 ```sh
-PYTHONPATH=src python -m unittest -v tests.test_discovery_post_admission_deletion_atomicity_w10
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_discovery_post_admission_deletion_atomicity_w10.py' -v
 ```
 
 Expected pre-repair local result: 10 methods: 2 ordinary pass and 8 intentional expected failures. This is **not** asserted as CI-verified; read raw exact-head logs for actual acceptance evidence. Existing v8/v9 regressions may still be RED and cannot be silently skipped in a release suite.
