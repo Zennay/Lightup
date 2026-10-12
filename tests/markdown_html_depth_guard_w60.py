@@ -37,7 +37,7 @@ def check_depth_bounded_html_fragment_w60(
     fragment: object, *, expected_text: str, required_text: tuple[str, ...] = ()
 ) -> None:
     """Add a conservative lab-only depth budget to W51's strict reviewer."""
-    if type(fragment) is not str:
+    if type(fragment) is not str or len(fragment) > _MAX_HTML_BYTES:
         raise ValueError(_ERROR)
     try:
         if len(fragment.encode("utf-8", "strict")) > _MAX_HTML_BYTES:
