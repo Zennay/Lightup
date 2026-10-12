@@ -17,7 +17,8 @@ FULL = "W51_VISIBLE_EVIDENCE_TOKEN"
 
 
 def text_only(markdown: str) -> str:
-    # Synthetic positive control: approximate Markdown literal underscore\n    # unescaping before HTML escaping; not an installed Markdown renderer.\n    return "<pre>" + escape(markdown.replace("\\\\_", "_"), quote=True) + "</pre>"
+    # Synthetic control only: decode Markdown-escaped underscores, not a renderer.
+    return "<pre>" + escape(markdown.replace("\\_", "_"), quote=True) + "</pre>"
 
 
 class FullEvidenceMarkerW52(unittest.TestCase):
