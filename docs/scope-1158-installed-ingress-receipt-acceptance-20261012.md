@@ -55,6 +55,20 @@ hint names and noncanonical types. Input remains unmodified. The validator
 returns `None` even on structural success: **no grant, permit or deployed
 security acceptance is produced**.
 
+## Additional bounded local digest cross-check (W4)
+
+An optional, pure, tests-only `check_locally_supplied_fixture_digests`
+function first requires the complete structural receipt and then compares
+`SHA-256` over two explicitly provided **in-memory, redacted synthetic**
+fixtures with the receipt's config/capture digests, rejecting mismatch,
+empty, mutable/non-builtin byte types and objects over **1 MiB**.
+The helper never opens files, writes files, logs fixtures or makes requests.
+This establishes consistency **between the caller's own supplied bytes and
+claimed digests**, not that the bytes came from the installed Nginx/Gunicorn
+stack or that a backend route was observed. Independent capture provenance
+and privacy review remain mandatory. Nothing may automatically promote the
+receipt into authorization, an active test, a real-client claim or release.
+
 ## CRITICAL trust/operational limitations
 
 The structural checker does **not**:
