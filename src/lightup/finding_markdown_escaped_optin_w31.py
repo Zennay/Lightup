@@ -76,6 +76,7 @@ def render_escaped_evidence_markdown_optin_w31(findings: object) -> str:
         raise ValueError(_ERROR)
 
     snapshots = []
+    seen_finding_ids: set[str] = set()
     total_bytes = 0
     for finding in findings:
         if (
@@ -93,9 +94,18 @@ def render_escaped_evidence_markdown_optin_w31(findings: object) -> str:
             checked, size = _checked_literal(value)
             fields.append(checked)
             total_bytes += size
+        # A report must not silently represent the same finding identity
+        # as two independent findings. Keep equality exact; no coercion.
+        if fields[0] in seen_finding_ids:
+            raise ValueError(_ERROR)
+        seen_finding_ids.add(fields[0])
         evidence = []
+        seen_evidence_ids: set[str] = set()
         for value in finding.evidence:
             checked, size = _checked_literal(value)
+            if checked in seen_evidence_ids:
+                raise ValueError(_ERROR)
+            seen_evidence_ids.add(checked)
             evidence.append(checked)
             total_bytes += size
         if total_bytes > _MAX_BATCH_BYTES:
