@@ -11,7 +11,7 @@
 ## Isolated material implementation
 
 - `src/lightup/scope_exact_identity_policy.py`: optional `StrictIdentityExecutionPolicy` subclass, refusing anything except **exact enum types** before delegating to the unchanged `ExecutionPolicy`. It does **not** normalize, coerce, approve, issue grants or interact with targets.
-- `tests/test_scope_986_987_exact_identity_optin_20261012.py`: pure policy matrix and real `ToolExecutor` + `ToolRegistry` + disposable SQLite acceptance. Synthetic handlers return fixed evidence bytes and perform no I/O. Twenty unittest methods now include a 96-case canonical interaction × risk × lab flag × grant reference-equivalence matrix, poison-grant short-circuit probes, expired/future grant and capability refusal, canonical active ToolExecutor positive and denied/mismatched-grant zero-evidence controls, malformed active risk denial, preservation of pre-existing durable evidence on rejection, and an explicit default-executor-is-unchanged assertion. Malformed tool metadata must be denied before handler and evidence write; valid canonical passive/active policy controls remain permitted only under inherited constraints.
+- `tests/test_scope_986_987_exact_identity_optin_20261012.py`: pure policy matrix and real `ToolExecutor` + `ToolRegistry` + disposable SQLite acceptance. Synthetic handlers return fixed evidence bytes and perform no I/O. Twenty optional-policy unittest methods now include a 96-case canonical interaction × risk × lab flag × grant reference-equivalence matrix, poison-grant short-circuit probes, expired/future grant and capability refusal, canonical active ToolExecutor positive and denied/mismatched-grant zero-evidence controls, malformed active risk denial, preservation of pre-existing durable evidence on rejection, and an explicit default-executor-is-unchanged assertion. Malformed tool metadata must be denied before handler and evidence write; valid canonical passive/active policy controls remain permitted only under inherited constraints.
 - Production `src/lightup/execution_policy.py`, `src/lightup/ai/orchestration.py`, installed application, config, CI and all existing tests are **unchanged**. This opt-in module is deliberately **not wired into the default runtime**.
 
 ## Local reproduction / promotion requirements
@@ -31,3 +31,13 @@ Treat the tests as **proposed acceptance** until actual exact-head raw CI record
 The 96-case enumeration compares the optional policy with the untouched baseline for **valid exact enum identities only**; it is equivalence evidence, not proof that the baseline is secure or that caller-owned grants cannot change concurrently. Poison-grant cases assert malformed interaction/risk admission does not read a grant at all. An accepted synthetic passive call is followed by a denied call; the full durable evidence-row snapshot (including SHA-256 and metadata) must be byte-for-byte unchanged. Existing owner sources, actual ingress/dispatcher wiring and grants remain unmodified. The default executor still uses the original policy.
 
 **Important:** each commit invalidates tests on prior SHAs. A hosted successful run only belongs to its recorded exact SHA. Registered permanent VPS proof is separate, and a queued VPS run never authorizes merge/deploy.
+
+## W3: original producer expected-RED acceptance
+
+The independent new file `tests/test_scope_986_987_default_producer_expected_red_20261012.py` adds **six additional methods**. Two canonical baseline positives remain ordinary passing tests. Four intentionally `@unittest.expectedFailure` tests demonstrate currently unfixed default-policy and genuine ToolExecutor handling for unknown interaction text and boolean passive requested risk, on disposable SQLite and fixed in-memory handlers only. These tests **do not install** or repair the default policy and **must not be reported as green authorization**; expected failures explicitly show that the unsafe original behavior persists. The original #100/#107 owners must convert these RED cases into normal passing, zero-handler/zero-evidence tests after their actual implementation repairs. The separately opt-in policy's 20 tests remain independent. Total **26 test methods**, including four intentional expected RED, prior to raw CI verification. A successful CI job that includes expected failures is NOT signoff of the default executor.
+
+Suggested focused command:
+
+```sh
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_986_987_*20261012.py' -v
+```
