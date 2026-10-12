@@ -23,7 +23,7 @@ For any fixed synthetic target `T`, monotonicity requires
 `Q.decide(T).allowed ⇒ P.decide(T).allowed`.
 The normalized host must also be unchanged as configuration narrows. The reason may legitimately change from allow to deny, or remain an allow reason; denial reason alone is **never authority**.
 
-The tests enumerate all 64 policies from the two public hosts/two CIDRs and two boolean policy switches, and compare each ordered narrowing pair across synthetic host, URL, private, link-local, loopback and unrelated public addresses, with and without a purely synthetic `Authorization` object. Separate controls establish expected host/network withdrawal, public-authorization tightening, lab opt-out, loopback behavior, denial retention, deterministic re-evaluation, exact input/policy preservation, and absence of socket/DNS interaction.
+The tests enumerate all **128 canonical policies** from two public hosts, two IPv4 CIDRs, one IPv6 CIDR and two boolean policy switches, and compare each ordered narrowing pair across 17 synthetic target representations. Cases include public bracketed IPv6 URLs, IPv6 link and unique-local context, IPv6 loopback, IPv4/IPv6 address allowlist withdrawal, hostname/URL normalization, unrelated public addresses and optional purely synthetic `Authorization` objects. Separate controls establish expected host/network withdrawal, public-authorization tightening, lab opt-out, loopback behavior, denial retention, deterministic re-evaluation, exact input/policy preservation, and absence of socket/DNS interaction.
 
 ## Offline reproduction
 
