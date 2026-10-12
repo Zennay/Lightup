@@ -217,5 +217,70 @@ class RealToolExecutorIdentityTests(unittest.TestCase):
         self.assertEqual(self._evidence_count(), 1)
 
 
+    def test_canonical_active_real_executor_positive_is_synthetic(self):
+        self._register(
+            "valid-active", InteractionKind.TARGET_ACTIVE, RiskLevel.LOW_IMPACT
+        )
+        executor = ToolExecutor(
+            self.registry, self.state, policy=StrictIdentityExecutionPolicy()
+        )
+        result = executor.execute(
+            self._context(
+                AssessmentMode.AUTHORIZED_ASSESSMENT, RiskLevel.STANDARD, _grant()
+            ),
+            ToolCall("valid-active", "asset.example.test"),
+        )
+        self.assertEqual(result.policy_reason, "authorized active assessment")
+        self.assertEqual(self.handler_calls, 1)
+        self.assertEqual(self._evidence_count(), 1)
+
+    def test_canonical_active_grant_refusals_do_not_dispatch(self):
+        self._register(
+            "active-denial", InteractionKind.TARGET_ACTIVE, RiskLevel.LOW_IMPACT
+        )
+        executor = ToolExecutor(
+            self.registry, self.state, policy=StrictIdentityExecutionPolicy()
+        )
+        context_without_grant = self._context(
+            AssessmentMode.AUTHORIZED_ASSESSMENT, RiskLevel.STANDARD
+        )
+        context_with_grant = self._context(
+            AssessmentMode.AUTHORIZED_ASSESSMENT, RiskLevel.STANDARD, _grant()
+        )
+        for context, asset in (
+            (context_without_grant, "asset.example.test"),
+            (context_with_grant, "outside.example.test"),
+        ):
+            with self.subTest(asset=asset, grant=context.authorization is not None):
+                with self.assertRaises(ToolDenied):
+                    executor.execute(context, ToolCall("active-denial", asset))
+                self.assertEqual(self.handler_calls, 0)
+                self.assertEqual(self._evidence_count(), 0)
+
+    def test_noncanonical_active_risk_does_not_dispatch(self):
+        self._register("bad-active-risk", InteractionKind.TARGET_ACTIVE, True)
+        executor = ToolExecutor(
+            self.registry, self.state, policy=StrictIdentityExecutionPolicy()
+        )
+        with self.assertRaises(ToolDenied):
+            executor.execute(
+                self._context(
+                    AssessmentMode.AUTHORIZED_ASSESSMENT, RiskLevel.STANDARD, _grant()
+                ),
+                ToolCall("bad-active-risk", "asset.example.test"),
+            )
+        self.assertEqual(self.handler_calls, 0)
+        self.assertEqual(self._evidence_count(), 0)
+
+    def test_default_executor_has_not_installed_the_reference_gate(self):
+        from lightup.execution_policy import ExecutionPolicy
+
+        default_executor = ToolExecutor(self.registry, self.state)
+        self.assertIs(
+            type(default_executor.policy), ExecutionPolicy,
+            "an opt-in reference is not authorization in the installed default",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
