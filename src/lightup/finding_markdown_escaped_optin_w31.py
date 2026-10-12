@@ -24,7 +24,12 @@ _COMPAT_MARKUP = frozenset("<>[](){}*#|!~\\:_@+-") | {chr(96)}
 
 def _checked_literal(value: object) -> tuple[str, int]:
     """Admit bounded single-line readable Unicode without coercing the input."""
-    if type(value) is not str or not value.strip():
+    # UTF-8 uses at least one byte per Unicode code point. Reject an
+    # impossible field before strip(), encode() or a character-by-character
+    # Unicode scan can traverse an arbitrarily large caller-owned string.
+    if type(value) is not str or len(value) > _MAX_FIELD_BYTES:
+        raise ValueError(_ERROR)
+    if not value.strip():
         raise ValueError(_ERROR)
     try:
         byte_count = len(value.encode("utf-8", "strict"))
@@ -93,6 +98,8 @@ def render_escaped_evidence_markdown_optin_w31(findings: object) -> str:
             finding.finding_id, finding.title, finding.target, finding.remediation
         ):
             checked, size = _checked_literal(value)
+            if total_bytes + size > _MAX_BATCH_BYTES:
+                raise ValueError(_ERROR)
             fields.append(checked)
             total_bytes += size
         # A report must not silently represent the same finding identity
@@ -104,13 +111,15 @@ def render_escaped_evidence_markdown_optin_w31(findings: object) -> str:
         seen_evidence_ids: set[str] = set()
         for value in finding.evidence:
             checked, size = _checked_literal(value)
+            # Stop preflight at the first source-byte overrun, rather than
+            # scanning all remaining evidence before rejecting this finding.
+            if total_bytes + size > _MAX_BATCH_BYTES:
+                raise ValueError(_ERROR)
             if checked in seen_evidence_ids:
                 raise ValueError(_ERROR)
             seen_evidence_ids.add(checked)
             evidence.append(checked)
             total_bytes += size
-        if total_bytes > _MAX_BATCH_BYTES:
-            raise ValueError(_ERROR)
         snapshots.append((
             *fields,
             finding.severity.value,
