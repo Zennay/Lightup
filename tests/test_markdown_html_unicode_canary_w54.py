@@ -43,7 +43,7 @@ class HtmlUnicodeCanaryW54(unittest.TestCase):
 
     def test_unicode_compatibility_confusable_canary_is_denied(self) -> None:
         for source in ("\uff33" + _PRIVATE[1:],
-                       _PRIVATE[:10] + "\uff2d" + _PRIVATE[11:]):
+                       _PRIVATE[:10] + "\uff37" + _PRIVATE[11:]):
             with self.subTest(source=source):
                 self.assert_denied("<p>W51 " + source + "</p>")
 
