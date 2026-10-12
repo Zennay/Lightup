@@ -47,3 +47,14 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_finite_number
 ```
 
 Batch preflight is a **lab-only reference**, not installed runtime enforcement and not a consent/authorization decision. The 64-member cap is a reference-side resource guard, not yet a production tool parameter count policy. In particular, success does not bind registry-owned destination parameters, grant issuer/tenant, active target, current approval, exact time or revocation. Original `ParamKind.NUMBER` remains unsafe for non-finite values; **three existing real-executor expected-RED cases still document that defect**. Exact-final-head hosted 3.11/3.14 and registered permanent VPS acceptance must be separately revalidated after every change. No source-owner, deployment or ingress changes.
+
+
+## W3 binary64 and strict-serialization controls — 2026-10-12
+
+Added `tests/test_scope_finite_number_ieee754_w3_20261012.py` (6 offline unittests) with exact bit-pattern controls for signed zeros, positive/negative subnormals, smallest normal, largest finite IEEE-754 values and NaN payload variants. Also covers `math.nextafter` finite boundaries, exact-type refusal of bool/numeric subclasses, and a separate strict `json.dumps(allow_nan=False)` consumer comparison. No packed-byte float conversion or user-defined numeric coercion is introduced into the reviewer.
+
+**Important limits:** finiteness of an arbitrary-precision integer does not itself prove bounded encoded-byte length, downstream JSON acceptance or runtime memory ceilings. The positive JSON controls are **not** an endorsement of unbounded integer payloads. The production owner must set size/range budgets independently for risk/ports/limits/weights and refuse over-budget values before expensive downstream processing. JSON acceptance does not confer any authority; no live scan or target I/O occurred.
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_finite_number_ieee754_w3_20261012.py' -v
+```
