@@ -12,9 +12,9 @@
 
 The exact real `WebSecurity` constructor accepts a `public_origin` value, calls `origin()` at construction, and currently parses that stored object again during `validate()`. The root contract requires a **built-in `str` exactly** for non-null production origin, before any parsing, so a polymorphic `str` subclass cannot switch trusted host between constructor and request.
 
-`tests/test_scope_919_public_origin_identity_20261012.py` provides:
+`tests/test_scope_919_public_origin_identity_20261012.py` provides (12 methods):
 
-1. **Two deliberate `@expectedFailure` production canaries**: same-text `str` subclass accepted at construction and stateful `lstrip()` substitution when origin is reparsed on a later real `WebSecurity.validate` invocation. A passing XFAIL suite **does not mean this weakness is repaired**.
+1. **Two deliberate `@expectedFailure` production canaries**: same-text `str` subclass accepted at construction and stateful `lstrip()` subclass **retained** as the trusted-origin field. A separate green test confirms the particular foreign-Host switch payload is rejected by current hosted Python; it does **not** reproduce a live host-trust bypass. A passing XFAIL suite **does not mean this weakness is repaired**.
 2. Green positive controls using built-in strings: exact HTTPS origin, case/default-port equivalence, required proxy identity and HTTPS transport.
 3. Green negatives for different Host, forwarded-host spoofing, malformed/non-string config, foreign POST Origin despite a good Referer, sanitized denial reason, and development host boundary.
 4. In-process **actual LightUp WSGI** denial proof: foreign host returns 403 / no-store before mocked session store or request-body read.
