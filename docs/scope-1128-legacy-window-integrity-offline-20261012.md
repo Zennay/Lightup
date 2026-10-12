@@ -12,7 +12,7 @@ This standalone **uninstalled** helper `src/lightup/legacy_window_integrity.py` 
 
 - Exact built-in `Authorization` object; bounded exact built-in owner/reference strings without leading/trailing whitespace, Unicode C* controls/format/surrogates/private-use, Unicode separators other than ordinary ASCII space, NFKC-unstable compatibility characters or oversized values. Text is **unverified** and can be forged.
 - `valid_until` is mandatory and finite; `valid_from=None` is accepted for legacy structural compatibility, but both supplied bounds must be exact built-in fixed-offset timezone-aware `datetime` objects.
-- Refuse `0`, `False`, `""`, arrays, arbitrary objects, naive datetimes, datetime subclasses, invalid start/end ordering and malformed explicit clocks. Do not use truthiness defaults for `now`.
+- Refuse `0`, `False`, `""`, arrays, arbitrary objects, naive datetimes, datetime subclasses, invalid start/end ordering and malformed explicit clocks. An **explicit canonical caller-supplied clock is mandatory**; omitted/`None` is refused as `missing_explicit_clock`. There is no ambient `datetime.now()` fallback. Even a supplied timestamp is not proof of a fresh trusted dispatch-time/revocation check.
 - Canonicalize to UTC. Start is inclusive; end is **exclusive**, intentionally narrower than the legacy model's inclusive end. Do not broaden actual authorization windows.
 - Diagnostic reasons are fixed, non-sensitive codes; no direct exception from comparing malformed values, no input mutation and no network, DB or active target behavior. Noncanonical custom timezone implementations must not have their `tzinfo` callbacks executed. UTC underflow/overflow is a denial, not a crash.
 - A structurally valid, invented reference is **still untrusted**. Future integration must re-read trusted persisted issuer-owned authorization and recheck exact tenant, request, target, capability, risk, time window, revocation and approval immediately before any I/O.
@@ -37,3 +37,9 @@ Separate exact-head GitHub-hosted Python 3.11/3.14 unit and real-producer integr
 - Refuse arbitrary custom `tzinfo` implementations *before invoking their callbacks*; no user-supplied clock code runs as a side effect of window parsing.
 - Historical unsafe `ScopePolicy` allow behavior is no longer encoded as an assertion that must remain true. The default executable policy is **still vulnerable until source owners repair it**; an independent reviewed window is NOT a grant.
 - Scope restricted to the three existing W24 paths on draft #1236; no change to other workers' branches or production source, no CI-hosted success claimed for a superseded commit.
+
+## Independent W26 explicit-clock denial — 2026-10-12
+
+The earlier opt-in reviewer used `datetime.now(timezone.utc)` when the caller omitted `now`. This created an implicit nondeterministic validity input and a possible stale diagnostic if accidentally reused as authorization. W26 removes the ambient clock fallback and refuses missing/explicitly-null clocks. Added offline tests for both absent and invalid clocks; a positive structural result must be explicitly time-pinned, cannot be coerced to bool, and **does not represent a live, trusted, persisted grant or permission**.
+
+The final authorization owner must sample and verify its own trusted time and persisted revocation **inside the execution transaction immediately before I/O**, independently of this offline diagnostic. No production source integration, grant, scan, deployment or authorization widening.
