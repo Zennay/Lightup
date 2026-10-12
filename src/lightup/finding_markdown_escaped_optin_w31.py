@@ -57,11 +57,11 @@ def _checked_literal(value: object) -> tuple[str, int]:
 
 def _escape_literal(value: str) -> str:
     """Escape untrusted text as literal inline Markdown, not as raw HTML."""
-    encoded = html.escape(value, quote=True)
-    return "".join(
+    escaped = "".join(
         "\\" + char if char in _LITERAL_ESCAPE else char
-        for char in encoded
+        for char in value
     )
+    return html.escape(escaped, quote=True)
 
 
 def render_escaped_evidence_markdown_optin_w31(findings: object) -> str:
