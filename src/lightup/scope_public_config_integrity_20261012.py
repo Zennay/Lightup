@@ -8,7 +8,7 @@ See docs/scope-297-atomic-config-reference-20261012.md.
 from __future__ import annotations
 
 import re
-from ipaddress import ip_network
+from ipaddress import IPv6Network, ip_address, ip_network
 
 from .scope import ScopePolicy
 
@@ -47,6 +47,14 @@ def validate_public_scope_configuration(policy: ScopePolicy) -> None:
             raise InvalidPublicScopeConfiguration("noncanonical explicit host identity")
         if any(_LABEL.fullmatch(label) is None for label in host.split(".")):
             raise InvalidPublicScopeConfiguration("invalid explicit hostname label")
+        # Explicit IP literals belong in the network allowlist: the installed
+        # ScopePolicy takes the IP branch first and silently ignores host slots.
+        try:
+            ip_address(host)
+        except ValueError:
+            pass
+        else:
+            raise InvalidPublicScopeConfiguration("IP literal is not a hostname")
 
     for network in policy.explicit_networks:
         if type(network) is not str or not network or network != network.strip():
@@ -57,3 +65,10 @@ def validate_public_scope_configuration(policy: ScopePolicy) -> None:
             raise InvalidPublicScopeConfiguration("malformed explicit network") from exc
         if network != str(parsed):
             raise InvalidPublicScopeConfiguration("noncanonical explicit network")
+        # IPv6 zone ids bind meaning to a *local interface*, not to a
+        # portable target scope. ipaddress accepts these by default.
+        if isinstance(parsed, IPv6Network) and parsed.network_address.scope_id is not None:
+            raise InvalidPublicScopeConfiguration("interface-scoped network is ambiguous")
+        # Internet-wide wildcards are not meaningful explicit target scope.
+        if parsed.prefixlen == 0:
+            raise InvalidPublicScopeConfiguration("internet-wide network is not explicit scope")
