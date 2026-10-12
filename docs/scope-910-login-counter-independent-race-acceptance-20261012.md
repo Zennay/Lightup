@@ -14,9 +14,9 @@ The existing domain/auth source owner is draft [PR #670](https://github.com/Zenn
 - Four ordinary sequential failures increment 1–4; the fifth creates the normal lockout, and a locked attempt does not call password verification.
 - Canonical variants of the same email coalesce to one lockout counter; simultaneous counters for distinct fake emails do not mingle. Counters for two different fake `.invalid` addresses remain separate.
 - Interleave two real `DomainStore.authenticate` calls at the password-verification boundary (the password verifier is **stubbed**, so no real secrets or expensive hashes are used). Demand both complete, both fail, and zero session rows.
-- **Two explicitly `@expectedFailure` RED contracts**: fresh counter `0→2` under concurrency, and existing `1→3` under concurrency. On the current source these lose an increment and must **not** be misreported as passing production hardening.
+- **Three explicitly `@expectedFailure` RED contracts**: fresh counter `0→2`, existing counter `1→3`, and threshold crossing `3→locked` after two simultaneous failures (instead of remaining unlocked with count 4). On the current source these lose an increment and must **not** be misreported as passing production hardening.
 
-The bounded 650 ms verifier rendezvous deliberately allows a prospective `BEGIN IMMEDIATE` implementation to serialize the second read without test deadlock. Expected RED is **not** a security pass: a future successful repair must remove both `@expectedFailure` decorators and rerun the exact-head suite. Unrelated failures or timeouts must not be treated as validated behavior by reviewers.
+The bounded 650 ms verifier rendezvous deliberately allows a prospective `BEGIN IMMEDIATE` implementation to serialize the second read without test deadlock. Expected RED is **not** a security pass: a future successful repair must remove all three `@expectedFailure` decorators and rerun the exact-head suite. Unrelated failures or timeouts must not be treated as validated behavior by reviewers.
 
 ## Reproduction / release contract
 
@@ -28,4 +28,4 @@ The source owner should add a single transactionally serialized counter read/che
 
 After source-owner integration: independently inspect full Python 3.11/3.14 diagnostics; verify exact branch HEAD + all test method names in raw job logs; obtain **separately registered permanent self-hosted VPS** run evidence; independently review SQLite lock contention, audit/data minimization and authentication side effects. Existing issue stays OPEN until the source owner and authorized human reviewer explicitly accept the integrated fix.
 
-**Nonclaims:** no real login was attempted, no real account/password/client data were used, no sockets/DNS/HTTP, no target interaction, no authorization grants, no scans or deployment. These are test oracles only, not a installed authentication guarantee.
+**Nonclaims:** no real login was attempted, no real account/password/client data were used, no sockets/DNS/HTTP, no target interaction, no authorization grants, no scans or deployment. These are test oracles only, not an installed authentication guarantee.
