@@ -32,7 +32,7 @@ class RevocationWindowOfflineTests(unittest.TestCase):
         registry = ToolRegistry()
         definition = ToolDefinition(
             tool_id="synthetic-risk-five-noop",
-            capability_id="isolated-lab",
+            capability_id="wireless-lab",
             interaction=InteractionKind.LAB_ACTIVE,
             min_risk=RiskLevel.DESTRUCTIVE_LAB_ONLY,
             description="in-memory marker only",
