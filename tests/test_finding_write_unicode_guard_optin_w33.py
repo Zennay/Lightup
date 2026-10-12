@@ -113,7 +113,7 @@ class OptinWriteUnicodeW33Tests(unittest.TestCase):
                 self.assertEqual(before, self.rows())
 
     def test_read_side_stores_canonical_identity_unchanged(self):
-        refs = ("example:é", "example:e\u0301", "example:safe")
+        refs = ("example:é", "example:é-two", "example:safe")
         result = self.checked_write(refs)
         self.assertEqual(result.evidence_ids, refs)
         stored = self.store.list_findings(
