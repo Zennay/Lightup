@@ -6,6 +6,7 @@ Production source owners #100/#107 retain installed policy/executor ownership.
 from __future__ import annotations
 
 import tempfile
+from dataclasses import replace
 import unittest
 from datetime import datetime, timedelta, timezone
 from enum import IntEnum
@@ -125,6 +126,111 @@ class ExactIdentityPolicyTests(unittest.TestCase):
                 _request(InteractionKind.TARGET_ACTIVE, RiskLevel.ELEVATED, _grant())
             ).allowed
         )
+
+
+    def test_canonical_mode_risk_matrix_preserves_inherited_decisions(self):
+        from lightup.execution_policy import ExecutionPolicy
+
+        original = ExecutionPolicy()
+        # Full 4 x 6 x 2 x 2 synthetic matrix: strictly typed inputs must
+        # produce exactly the unchanged production policy's decision.
+        for interaction in InteractionKind:
+            for risk in RiskLevel:
+                for is_lab in (False, True):
+                    for grant in (None, _grant()):
+                        with self.subTest(
+                            interaction=interaction.name,
+                            risk=risk.name,
+                            lab=is_lab,
+                            grant=grant is not None,
+                        ):
+                            request = ExecutionRequest(
+                                interaction=interaction,
+                                asset="asset.example.test",
+                                capability_id="web-baseline",
+                                requested_risk=risk,
+                                authorization=grant,
+                                is_lab=is_lab,
+                            )
+                            self.assertEqual(
+                                self.policy.decide(request),
+                                original.decide(request),
+                            )
+
+    def test_invalid_interaction_does_not_consult_poison_grant(self):
+        class PoisonGrant:
+            def is_current(self):
+                raise AssertionError("invalid interaction reached grant")
+
+            @property
+            def scope(self):
+                raise AssertionError("invalid interaction reached scope")
+
+        for bad in (None, "target_active", 1, True):
+            with self.subTest(value=str(bad)):
+                result = self.policy.decide(
+                    _request(bad, RiskLevel.STANDARD, PoisonGrant())
+                )
+                self.assertFalse(result.allowed)
+                self.assertEqual(result.reason, "noncanonical interaction kind")
+
+    def test_invalid_risk_does_not_consult_poison_grant(self):
+        class PoisonGrant:
+            def is_current(self):
+                raise AssertionError("invalid risk reached grant")
+
+            @property
+            def scope(self):
+                raise AssertionError("invalid risk reached scope")
+
+        for bad in (True, 1, ForeignRisk.LOW_IMPACT, "2", None):
+            with self.subTest(value=str(bad)):
+                result = self.policy.decide(
+                    _request(InteractionKind.TARGET_ACTIVE, bad, PoisonGrant())
+                )
+                self.assertFalse(result.allowed)
+                self.assertEqual(result.reason, "noncanonical requested risk")
+
+    def test_canonical_expired_and_not_yet_valid_grants_remain_denied(self):
+        now = datetime.now(timezone.utc)
+        grant = _grant()
+        expired = replace(
+            grant,
+            valid_from=now - timedelta(days=2),
+            valid_until=now - timedelta(days=1),
+        )
+        future = replace(
+            grant,
+            valid_from=now + timedelta(days=1),
+            valid_until=now + timedelta(days=2),
+        )
+        for rejected in (expired, future):
+            with self.subTest(grant_window=rejected.valid_from.isoformat()):
+                self.assertFalse(
+                    self.policy.decide(
+                        _request(
+                            InteractionKind.TARGET_ACTIVE,
+                            RiskLevel.LOW_IMPACT,
+                            rejected,
+                        )
+                    ).allowed
+                )
+
+    def test_canonical_disallowed_capability_remains_denied(self):
+        request = ExecutionRequest(
+            interaction=InteractionKind.TARGET_ACTIVE,
+            asset="asset.example.test",
+            capability_id="identity-access",
+            requested_risk=RiskLevel.LOW_IMPACT,
+            authorization=_grant(),
+        )
+        self.assertFalse(self.policy.decide(request).allowed)
+
+    def test_invalid_interaction_takes_precedence_over_invalid_risk(self):
+        result = self.policy.decide(_request("target_active", True, _grant()))
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.reason, "noncanonical interaction kind")
+
 
 
 class RealToolExecutorIdentityTests(unittest.TestCase):
@@ -280,6 +386,43 @@ class RealToolExecutorIdentityTests(unittest.TestCase):
             type(default_executor.policy), ExecutionPolicy,
             "an opt-in reference is not authorization in the installed default",
         )
+
+
+    def test_rejected_call_does_not_mutate_preexisting_evidence(self):
+        self._register(
+            "existing-passive", InteractionKind.PASSIVE_PUBLIC, RiskLevel.PASSIVE
+        )
+        executor = ToolExecutor(
+            self.registry, self.state, policy=StrictIdentityExecutionPolicy()
+        )
+        context = self._context(AssessmentMode.PASSIVE_DISCOVERY, RiskLevel.PASSIVE)
+        first = executor.execute(
+            context, ToolCall("existing-passive", "asset.example.test")
+        )
+        self.assertEqual(self._evidence_count(), 1)
+        with self.state.connect() as con:
+            original = tuple(
+                con.execute(
+                    "SELECT evidence_id, run_id, kind, source, payload_hash "
+                    "FROM evidence ORDER BY evidence_id"
+                )
+            )
+        self._register("rejected-passive", InteractionKind.PASSIVE_PUBLIC, True)
+        with self.assertRaises(ToolDenied):
+            executor.execute(
+                context, ToolCall("rejected-passive", "asset.example.test")
+            )
+        with self.state.connect() as con:
+            after = tuple(
+                con.execute(
+                    "SELECT evidence_id, run_id, kind, source, payload_hash "
+                    "FROM evidence ORDER BY evidence_id"
+                )
+            )
+        self.assertEqual([tuple(row) for row in original],
+                         [tuple(row) for row in after])
+        self.assertEqual(first.evidence_id, original[0]["evidence_id"])
+        self.assertEqual(self.handler_calls, 1)
 
 
 if __name__ == "__main__":
