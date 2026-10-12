@@ -31,7 +31,7 @@ class MarkdownIncrementalOutputBudgetW45(unittest.TestCase):
                 expected,
             )
         self.assertIn("&quot;", expected)
-        self.assertIn("&lt;html&gt;", expected)
+        self.assertIn(r"&lt;html\&gt;", expected)
         self.assertNotIn("excluded-synthetic-metadata", expected)
 
     def test_one_byte_below_cap_refuses_complete_report(self):
