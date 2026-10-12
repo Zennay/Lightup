@@ -152,6 +152,46 @@ class SyntheticHTTPFramingPreflightTests(unittest.TestCase):
         self.assert_denied(request(headers=(HOST, b"X-Blob: " + b"a" * 17000)))
         self.assert_denied(b"")
 
+    def test_cookie_and_authorization_never_enter_synthetic_fixtures(self):
+        for field in (
+            b"Cookie: lightup_session=synthetic",
+            b"Cookie2: $Version=1",
+            b"Authorization: Bearer synthetic",
+            b"Proxy-Authorization: Basic synthetic",
+            b"Remote-User: operator",
+            b"Authentication: operator",
+        ):
+            with self.subTest(field=field):
+                self.assert_denied(request(headers=(HOST, field)))
+                self.assert_denied(posted(extra=(field,)))
+
+    def test_forwarded_identity_and_rewrite_hints_refused(self):
+        for field in (
+            b"Forwarded: for=127.0.0.1",
+            b"X-Forwarded-For: 127.0.0.1",
+            b"X-Forwarded-Host: localhost",
+            b"X-Forwarded-Proto: https",
+            b"X-Real-IP: 127.0.0.1",
+            b"X-Original-URL: /clients",
+            b"X-Rewrite-URL: /clients",
+            b"X-Auth-Request-User: operator",
+            b"X-Auth-Request-Cookie: synthetic",
+            b"X-HTTP-Method-Override: PUT",
+            b"X-Method-Override: POST",
+        ):
+            with self.subTest(field=field):
+                self.assert_denied(request(headers=(HOST, field)))
+                self.assert_denied(posted(extra=(field,)))
+
+    def test_form_fixture_rejects_raw_controls_binary_and_spaces(self):
+        self.assertTrue(accepts_synthetic_http1_fixture(posted(b"x=clean+ascii%20data")))
+        for body in (
+            b"x=hello world", b"x=line\r\nGET /clients HTTP/1.1",
+            b"x=\x00", b"x=\xff", b"x=\tvalue", b"x=\x7f", b"x=\n",
+        ):
+            with self.subTest(body=body):
+                self.assert_denied(posted(body))
+
     def test_case_and_order_variance_does_not_bypass_checks(self):
         self.assertTrue(accepts_synthetic_http1_fixture(request(
             headers=(b"User-Agent: offline", b"hOsT: localhost"))))
