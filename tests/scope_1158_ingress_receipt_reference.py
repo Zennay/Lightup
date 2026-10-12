@@ -16,34 +16,36 @@ PATH_HINTS = (
 )
 
 # (method, request_path, backend_route, HTTP status, count of DB writes,
-#  actor, csrf_valid, logout_invalidates_session, expected hint header names)
+#  actor, csrf_valid, logout_invalidates_session, hint names, hint paths)
 SCENARIOS = {
     **{
         "get:" + header: (
             "GET", "/nonexistent", "not_found", 404, 0,
-            "anonymous", False, False, (header,),
+            "anonymous", False, False, (header,), ("/clients",),
         )
         for header in PATH_HINTS
     },
     "get:conflicting": (
         "GET", "/nonexistent", "not_found", 404, 0,
         "anonymous", False, False, PATH_HINTS,
+        tuple("/clients" if index % 2 == 0 else "/logout"
+              for index in range(len(PATH_HINTS))),
     ),
     "post:unknown": (
         "POST", "/nonexistent", "not_found", 404, 0,
-        "operator", True, False, ("x-original-url",),
+        "operator", True, False, ("x-original-url",), ("/clients",),
     ),
     "post:authorized": (
         "POST", "/clients", "clients_created", 303, 1,
-        "operator", True, False, (),
+        "operator", True, False, (), (),
     ),
     "get:foreign-tenant": (
         "GET", "/clients/foreign", "tenant_denied", 403, 0,
-        "client", False, False, ("x-original-url",),
+        "client", False, False, ("x-original-url",), ("/clients",),
     ),
     "post:logout": (
         "POST", "/logout", "logout", 303, 0,
-        "operator", True, True, (),
+        "operator", True, True, (), (),
     ),
 }
 
@@ -58,6 +60,7 @@ class SyntheticRouteObservation:
     request_method: str
     request_path: str
     forwarded_hint_names: tuple[str, ...]
+    requested_hint_paths: tuple[str, ...]
     backend_path: str
     backend_route: str
     response_status: int
@@ -136,7 +139,7 @@ def check_supplied_ingress_receipt(receipt: SuppliedIngressReceipt) -> None:
         (
             expected_method, expected_path, expected_route, expected_status,
             expected_writes, expected_actor, expected_csrf, expected_logout,
-            expected_hints,
+            expected_hints, expected_hint_paths,
         ) = expected
         if type(case.forwarded_hint_names) is not tuple or not all(
             type(name) is str
@@ -152,6 +155,14 @@ def check_supplied_ingress_receipt(receipt: SuppliedIngressReceipt) -> None:
             or set(normalized) != set(expected_hints)
         ):
             raise IngressReceiptRejected("required original hint not evidenced")
+        if type(case.requested_hint_paths) is not tuple or not all(
+            type(value) is str
+            and value in {"/clients", "/logout"}
+            for value in case.requested_hint_paths
+        ):
+            raise IngressReceiptRejected("noncanonical hinted path values")
+        if case.requested_hint_paths != expected_hint_paths:
+            raise IngressReceiptRejected("adversarial hint target not evidenced")
         for label, value, required in (
             ("method", case.request_method, expected_method),
             ("original path", case.request_path, expected_path),
