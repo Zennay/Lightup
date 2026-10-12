@@ -13,6 +13,7 @@ from html.parser import HTMLParser
 import importlib
 import sys
 from typing import Callable
+from unicodedata import normalize
 
 from lightup.finding_markdown_escaped_optin_w31 import (
     render_escaped_evidence_markdown_optin_w31,
@@ -23,6 +24,25 @@ _ERROR = "invalid downstream finding html integrity"
 _MAX_HTML_BYTES = 4 * 1024 * 1024
 _PRIVATE = "SYNTHETIC-W51-METADATA-PRIVATE"
 _VISIBLE = "W51_VISIBLE_EVIDENCE_TOKEN"
+# Synthetic *diagnostic* only: strip known zero-width / formatting characters
+# for marker matching, never from the caller's HTML or persisted evidence.
+# A real content/secret privacy policy requires a separate reviewed engine.
+_CANARY_IGNORE = str.maketrans("", "", (
+    "\u00ad\u034f\u061c\u180e\u200b\u200c\u200d\u200e\u200f"
+    "\u202a\u202b\u202c\u202d\u202e\u2060\u2061\u2062"
+    "\u2063\u2064\u2066\u2067\u2068\u2069\ufeff\ufe0e\ufe0f"
+))
+
+
+def _has_visible_synthetic_canary(text: str) -> bool:
+    if _PRIVATE in text:
+        return True
+    if text.isascii():
+        return False
+    # The caller has already enforced the 4 MiB HTML byte input ceiling.
+    # NFKC/format removal are for refusal only: never rewrite report data.
+    return _PRIVATE in normalize("NFKC", text.translate(_CANARY_IGNORE))
+
 # Intentionally reject hyperlinks and *all* attributes, including class.
 # Linkification, MathML, images, inline CSS and extensions need a separate,
 # explicit security/privacy review; this is only a conservative lab contract.
@@ -41,7 +61,7 @@ def _assert_private_canary_not_obscured(text: str) -> None:
     than silently classified as safe; no decoded value is returned.
     """
     for _ in range(8):
-        if _PRIVATE in text:
+        if _has_visible_synthetic_canary(text):
             raise ValueError(_ERROR)
         decoded = unescape(text)
         if decoded == text:
