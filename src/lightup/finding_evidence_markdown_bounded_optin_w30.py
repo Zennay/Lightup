@@ -17,7 +17,11 @@ _MAX_TOTAL_INPUT_BYTES = 1_048_576
 
 
 def _bounded_text(value: object, ceiling: int) -> int:
-    if type(value) is not str or not value.strip():
+    if type(value) is not str:
+        raise ValueError(_ERROR)
+    # UTF-8 uses at least one byte per Unicode code point. Reject obviously
+    # oversized strings before strip()/encode() can copy untrusted input.
+    if len(value) > ceiling or not value.strip():
         raise ValueError(_ERROR)
     try:
         size = len(value.encode("utf-8", "strict"))
