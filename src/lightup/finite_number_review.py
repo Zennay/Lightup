@@ -37,3 +37,31 @@ def review_finite_number(value: Any) -> FiniteNumberReview:
     if type(value) is float and math.isfinite(value):
         return FiniteNumberReview("float")
     raise FiniteNumberRefused("NUMBER requires an exact finite int or float")
+
+
+# A review batch is deliberately small: it is not an arbitrary stream, and
+# no downstream component should treat a successful shape check as consent.
+MAX_OFFLINE_NUMBER_BATCH = 64
+
+
+@dataclass(frozen=True)
+class FiniteNumberBatchReview:
+    """Atomic structural observations only, never an authorization permit."""
+
+    items: tuple[FiniteNumberReview, ...]
+
+    def __bool__(self) -> bool:
+        raise TypeError("numeric batch integrity review is not execution authorization")
+
+
+def review_finite_number_batch(values: object) -> FiniteNumberBatchReview:
+    """Inspect an exact, bounded tuple of NUMBER values atomically.
+
+    On any invalid member the caller receives only the same generic exception
+    as the scalar reviewer, not a successful partial result or input contents.
+    An exact-tuple check prevents custom iteration/indexing code from running.
+    No ToolExecutor, policy, evidence ledger, network or authorization I/O.
+    """
+    if type(values) is not tuple or len(values) > MAX_OFFLINE_NUMBER_BATCH:
+        raise FiniteNumberRefused("NUMBER batch requires a bounded exact tuple")
+    return FiniteNumberBatchReview(tuple(review_finite_number(v) for v in values))
