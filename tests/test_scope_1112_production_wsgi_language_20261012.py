@@ -250,6 +250,58 @@ class ProductionWSGILanguageNonAuthorityTests(unittest.TestCase):
             "GET", "/", token="forged-token", status="303 See Other"
         )
 
+    def test_cross_tenant_portal_post_never_mints_a_request(self):
+        client_context, _ = self.store.session_context(self.client_token)
+        before = self.store.list_assessment_requests(client_context)
+        for locale in LOCALES:
+            with self.subTest(locale=repr(locale)[:70]):
+                status, headers, _ = self.request(
+                    "POST", f"/portal/{self.b.client_id}/requests",
+                    language=locale, token=self.client_token,
+                    csrf=self.client_csrf,
+                    data={"assets": "unowned.example.invalid",
+                          "risk": "1", "notes": "Synthetic non-authorizing test"},
+                )
+                self.assertEqual(status, "403 Forbidden")
+                self.assertEqual(dict(headers)["Cache-Control"], "no-store")
+                self.assertEqual(
+                    self.store.list_assessment_requests(client_context), before
+                )
+
+    def test_destructive_portal_request_stays_forbidden_to_request(self):
+        client_context, _ = self.store.session_context(self.client_token)
+        before = self.store.list_assessment_requests(client_context)
+        self.assert_matrix(
+            "POST", f"/portal/{self.a.client_id}/requests",
+            token=self.client_token, csrf=self.client_csrf,
+            data={"assets": "owned.example.invalid", "risk": "5"},
+            status="400 Bad Request"
+        )
+        self.assertEqual(
+            self.store.list_assessment_requests(client_context), before
+        )
+
+    def test_own_passive_request_stays_review_only_across_locales(self):
+        # Submits only synthetic review requests into disposable SQLite.
+        # No authorization grant, target interaction or assessment execution.
+        client_context, _ = self.store.session_context(self.client_token)
+        before = len(self.store.list_assessment_requests(client_context))
+        for index, locale in enumerate(LOCALES):
+            with self.subTest(locale=repr(locale)[:70]):
+                status, headers, _ = self.request(
+                    "POST", f"/portal/{self.a.client_id}/requests",
+                    language=locale, token=self.client_token,
+                    csrf=self.client_csrf,
+                    data={"assets": f"owned-{index}.example.invalid",
+                          "risk": "1", "notes": "Offline test request only"},
+                )
+                self.assertEqual(status, "303 See Other")
+                self.assertEqual(dict(headers)["Cache-Control"], "no-store")
+                self.assertEqual(
+                    len(self.store.list_assessment_requests(client_context)),
+                    before + index + 1
+                )
+
     def test_production_tenant_list_is_unchanged_after_denied_matrix(self):
         before = self.store.list_clients(self.operator_ctx)
         self.assert_matrix(
