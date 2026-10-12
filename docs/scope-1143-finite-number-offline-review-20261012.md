@@ -58,3 +58,14 @@ Added `tests/test_scope_finite_number_ieee754_w3_20261012.py` (6 offline unittes
 ```bash
 PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_finite_number_ieee754_w3_20261012.py' -v
 ```
+
+
+## W4 resource-size distinction — 2026-10-12
+
+A structurally finite built-in integer can still be arbitrarily large: passing `review_finite_number()` is **not** proof of bounded memory, safe JSON output or a safe downstream cost. New optional `review_bounded_finite_number(value, max_integer_bits=4096)` rejects exact built-in integers above the configured bit length without invoking string conversion or untrusted numeric dunder methods. Budget type must be an exact built-in `int` in the inclusive range 1–4096. The offline W2 batch reviewer now applies this bound to every member before yielding an all-or-nothing review result.
+
+`tests/test_scope_finite_number_budget_w4_20261012.py` adds nine synthetic cases: 4096/4097-bit positive and negative boundary, strict smaller per-field budget, type-confused or excessive budget, NaN/±Infinity, float control, late outlier atomicity, scalar/bounded contract distinction and a malicious int subclass. **This is an optional post-decoding lab check only**. It cannot prevent a JSON/input parser from allocating an oversized object *before* this validator runs, and cannot replace a full pre-read byte limit, field-specific integer ranges, issuer/tenant/grant validity or live pre-I/O permission gates. The production source owner must decide explicit safety limits per field; no source/producer behavior has changed.
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_finite_number_budget_w4_20261012.py' -v
+```
