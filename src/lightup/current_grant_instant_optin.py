@@ -32,7 +32,16 @@ def checked_current_grant_at(
     else:
         if type(now) is not datetime:
             raise TypeError("grant evaluation instant must be an exact datetime")
-        if now.tzinfo is None or now.utcoffset() is None:
+        if now.tzinfo is None:
+            raise ValueError("grant evaluation instant must be timezone-aware")
+        # Exact datetime can still contain an opaque caller-supplied tzinfo.
+        # Convert its exception to controlled pre-store denial; do not let
+        # an invalid offset escape into the persisted authorization selector.
+        try:
+            offset = now.utcoffset()
+        except Exception:
+            raise ValueError("grant evaluation instant has invalid timezone offset") from None
+        if offset is None:
             raise ValueError("grant evaluation instant must be timezone-aware")
         instant = now
     return store.get_current_grant(context, engagement_id, now=instant)
