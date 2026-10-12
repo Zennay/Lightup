@@ -18,8 +18,9 @@ _MAX_BATCH_BYTES = 1_048_576
 _MAX_OUTPUT_BYTES = 2_097_152
 
 # Colon, slash and at-sign discourage renderer-specific implicit URL links.
-_LITERAL_ESCAPE = frozenset("\\*_{}[]()#+-.!|>~:/@") | {chr(96)}
-_COMPAT_MARKUP = frozenset("<>[](){}*#|!~\\:_@+-") | {chr(96)}
+# Dollar is special in Markdown math extensions; escape literal budgets.
+_LITERAL_ESCAPE = frozenset("\\*_{}[]()#+-.!|>~:/@$") | {chr(96)}
+_COMPAT_MARKUP = frozenset("<>[](){}*#|!~\\:_@+-$") | {chr(96)}
 
 
 def _checked_literal(value: object) -> tuple[str, int]:
