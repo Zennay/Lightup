@@ -101,6 +101,53 @@ class RevocationWindowOfflineTests(unittest.TestCase):
         self.assertEqual(self.verifier_calls, [])
         self.assertEqual(self.handled, [])
 
+
+    def test_foreign_tenant_approval_denies_before_isolation(self):
+        self.live = replace(self.approval, client_id="foreign-tenant")
+
+        def isolation(context, call):
+            self.verifier_calls.append("called")
+            return True
+
+        with self.assertRaises(ToolDenied):
+            self.wrapper(isolation).execute(self.context, self.call)
+        self.assertEqual(self.verifier_calls, [])
+        self.assertEqual(self.handled, [])
+
+    def test_foreign_capability_approval_denies_before_isolation(self):
+        self.live = replace(self.approval, capability_id="foreign-capability")
+
+        def isolation(context, call):
+            self.verifier_calls.append("called")
+            return True
+
+        with self.assertRaises(ToolDenied):
+            self.wrapper(isolation).execute(self.context, self.call)
+        self.assertEqual(self.verifier_calls, [])
+        self.assertEqual(self.handled, [])
+
+    @unittest.expectedFailure
+    def test_red_approval_expiry_during_isolation_prevents_handler(self):
+        def isolation(context, call):
+            self.live = replace(
+                self.approval, expires_at=datetime.now(timezone.utc) - timedelta(seconds=1)
+            )
+            return True
+
+        with self.assertRaises(ToolDenied):
+            self.wrapper(isolation).execute(self.context, self.call)
+        self.assertEqual(self.handled, [])
+
+    @unittest.expectedFailure
+    def test_red_approval_replacement_during_isolation_prevents_handler(self):
+        def isolation(context, call):
+            self.live = replace(self.approval, approval_id="replacement-approval")
+            return True
+
+        with self.assertRaises(ToolDenied):
+            self.wrapper(isolation).execute(self.context, self.call)
+        self.assertEqual(self.handled, [])
+
     @unittest.expectedFailure
     def test_red_revocation_during_isolation_prevents_handler(self):
         def isolation(context, call):
