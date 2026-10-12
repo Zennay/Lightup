@@ -123,5 +123,37 @@ class ToolParameterRequiredBoolAcceptance(unittest.TestCase):
         self._assert_refused_atomically(_ExplodingTruthiness())
 
 
+    @unittest.expectedFailure
+    def test_existing_registry_remains_intact_after_late_bad_parameter(self) -> None:
+        # Do not partially register a new tool or replace a previous valid one.
+        valid = self._definition(True, "already-registered")
+        self.registry.register(valid, self._handler)
+        before = self.registry.definitions()
+        malformed = ToolDefinition(
+            tool_id="two-parameters",
+            capability_id="external-attack-surface",
+            interaction=InteractionKind.PASSIVE_PUBLIC,
+            min_risk=RiskLevel.PASSIVE,
+            description="later nested marker fails atomically",
+            parameters=(
+                ToolParameter("query", ParamKind.STRING, required=True),
+                ToolParameter("tag", ParamKind.STRING, required=0),
+            ),
+        )
+        with self.assertRaises(OrchestrationError):
+            self.registry.register(malformed, self._handler)
+        self.assertEqual(self.registry.definitions(), before)
+        self.assertIs(self.registry.get("already-registered")[0], valid)
+        with self.assertRaises(OrchestrationError):
+            self.registry.get("two-parameters")
+        self.assertEqual(self.handler_calls, 0)
+
+    @unittest.expectedFailure
+    def test_direct_validator_must_not_silently_omit_falsey_nobool(self) -> None:
+        # Direct validation is a second safety check, NOT a substitute for registry admission.
+        with self.assertRaises(OrchestrationError):
+            self._definition(0).validate_arguments({})
+        self.assertEqual(self.handler_calls, 0)
+
 if __name__ == "__main__":
     unittest.main()
