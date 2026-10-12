@@ -90,6 +90,43 @@ class PostRenderSessionFaultWsgiW52(unittest.TestCase):
             lambda _token: (self.store.context_for_user(self.op_user.user_id), "synthetic-csrf")
         )
 
+    def test_postrender_real_sqlite_expiry_revokes_already_rendered_csv(self):
+        # Unlike an injected return value, expire the persisted synthetic
+        # session record after the real checked CSV is built. The actual
+        # session_context implementation must refuse that expired cookie.
+        from datetime import datetime, timedelta, timezone
+
+        before = self.snapshot()
+        completed = [False]
+
+        def render_then_expire(*args, **kwargs):
+            csv_text = checked_renderer(*args, **kwargs)
+            self.assertIn(self.fa.finding_id, csv_text)
+            with self.store._connect() as con:
+                con.execute(
+                    "UPDATE sessions SET expires_at=? WHERE token_hash=?",
+                    (
+                        (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat(),
+                        self.store._token_hash(self.a_token),
+                    ),
+                )
+            completed[0] = True
+            return csv_text
+
+        with patch.object(
+            optional_wsi, "render_tenant_findings_csv_checked",
+            side_effect=render_then_expire,
+        ):
+            status, headers, body = self.request(
+                "GET", self.own_url, token=self.a_token
+            )
+        self.assertTrue(completed[0], "expiry must happen after actual CSV render")
+        self.assertEqual(status, "403 Forbidden")
+        self.assertEqual(headers["Cache-Control"], "no-store")
+        self.assertNotIn(self.fa.finding_id, body)
+        self.assertNotIn("canary-secret", body)
+        self.assertEqual(before, self.snapshot())
+
     def test_postrender_context_type_corruption_refuses_already_rendered_csv(self):
         # The current lookup returns a different object than the originally
         # authenticated AccessContext, even if its repr might look credible.
