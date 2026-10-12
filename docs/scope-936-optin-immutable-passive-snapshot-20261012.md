@@ -33,3 +33,13 @@ GitHub-hosted full-suite Python 3.11/3.14 and genuine producer integrations, plu
 - The reference **does not issue authorization**, certify third-party prospects, or validate ownership of assets. It is not wired into real prospecting paths; #175 must evaluate integration and independent security/privacy/source review.
 - Python's frozen objects do not protect against an arbitrary malicious Python process with `object.__setattr__` or interpreter-level mutation; this is an in-process immutable-value API contract, not a security sandbox.
 - **Incubate M3/M7 — PLAN/LAB ONLY; DRAFT/HOLD/NO MERGE/NO DEPLOY** until source-owner integration, fresh latest-main compatibility, exact-SHA hosted and permanent VPS passing runs, independent privacy/security approval and explicit human release authority.
+
+## W12 additional zero-I/O / copy-on-write proof
+
+- Added independent `tests/test_scope_passive_snapshot_isolation_20261012.py`, five real offline tests on the same opt-in model. No source-owner or former tests changed.
+- `socket.socket` and `socket.getaddrinfo` tripwires assert successful and rejected synthetic admissions make no socket/DNS calls.
+- Thread-pool copy-on-write exercises 32 simultaneous immutable children: the original snapshot and all earlier versions retain their exact signal tuples/identities.
+- Source-owner contrast: later mutation of legacy `ProspectProfile.signals`, `prospect_id`, and a caller-owned frozen-dataclass signal cannot rewrite the separately copied opt-in snapshot. This intentionally does **not** repair the mutable legacy producer.
+- Reject a `tuple` subclass with hostile `__iter__` before user-defined iteration; and preserve all earlier versions after a later rejected signal.
+- Run with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_passive_snapshot_isolation_20261012.py' -v`. The original 20-test file remains separate; the W12 suite adds five tests.
+- Prior hosted green for W11 SHA `1cd422796fc6db1af08d4e5532e162627fc9ff38` is **superseded** by this new commit; no final-head green may be claimed until exact W12 CI runs finish. Permanent registered VPS CI is a distinct mandatory gate.
