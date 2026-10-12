@@ -10,7 +10,7 @@ Reproduce from the repo root (no models/API credentials, target traffic, or real
 
     PYTHONPATH=src python -m unittest -v tests.test_finding_markdown_isolated_rss_w50
 
-Five methods exercise separate-process large valid escaping, output-overflow atomic refusal after line assembly starts, late-row/oversize-scalar/duplicate preflight refusal before any escape, empty/Unicode controls and identical SHA-256 output across independent invocations. Every subprocess checks exact exception type/message, no returned partial artifact, caller input unchanged, metadata exclusion, output bytes, and tracked memory/RSS observations. Cases use only invented strings and metadata canaries.
+Five methods exercise separate-process large valid escaping, output-overflow atomic refusal after line assembly starts, late-row/oversize-scalar/duplicate preflight refusal before any escape, empty/Unicode controls and identical SHA-256 output across independent invocations. Every subprocess checks exact exception type/message, no returned partial artifact, caller input unchanged, metadata exclusion, output bytes, and tracked memory/RSS observations. All runs emit a synthetic-only W50_METRIC line with scenario, interpreter version, RSS high-water/delta, tracked peak and output bytes into the runner log for independent numeric inspection; there are no client or target identifiers in these lines. Cases use only invented strings and metadata canaries.
 
 ## Measurement limitations and release gate
 
