@@ -19,6 +19,10 @@ Tests compare baseline vs every input for:
 7. Revoked or forged session cookies cannot be reinstated;
 8. Bad Host is not rehabilitated by language;
 9. Session identities and tenant count remain unchanged by GET.
+10. Legitimate operator CSRF-protected client creation remains functional for each language input and mutates only disposable SQLite;
+11. Valid logout revokes the correct temporary token regardless of locale while unrelated client sessions survive.
+
+The suite contains **14 actual unittest methods**. Normal logged-in `GET /login` is expected to redirect with `303 See Other`; this must not be confused with a denial or a locale influence.
 
 ## Reproduce
 
