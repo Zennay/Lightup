@@ -24,12 +24,16 @@ class MarkdownEarlySourceByteBudgetW46(unittest.TestCase):
     def test_huge_field_rejected_without_unicode_walk_or_render(self):
         finding = self.finding()
         finding.title = "a" * 1_000_000
+        # Verify the oversized scalar itself fails before any Unicode walk;
+        # normal preceding fields legitimately need their usual Unicode scan.
         with patch.object(renderer.unicodedata, "category", side_effect=AssertionError("walked huge field")) as category:
-            with patch.object(renderer, "_escape_literal") as escape:
-                with self.assertRaisesRegex(ValueError, "evidence integrity"):
-                    renderer.render_escaped_evidence_markdown_optin_w31([finding])
-                category.assert_not_called()
-                escape.assert_not_called()
+            with self.assertRaisesRegex(ValueError, "evidence integrity"):
+                renderer._checked_literal(finding.title)
+            category.assert_not_called()
+        with patch.object(renderer, "_escape_literal") as escape:
+            with self.assertRaisesRegex(ValueError, "evidence integrity"):
+                renderer.render_escaped_evidence_markdown_optin_w31([finding])
+            escape.assert_not_called()
         self.assertEqual(len(finding.title), 1_000_000)
 
     def test_exact_codepoint_limit_and_unicode_byte_boundary(self):
