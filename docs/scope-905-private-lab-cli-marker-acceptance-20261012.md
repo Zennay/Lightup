@@ -21,3 +21,21 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_905_private_l
 Source owner #100 must remove the coercion and require `type(args.allow_private_lab) is bool` before policy selection, keep normal argparse semantics, and convert all expected RED cases into ordinary passing deny tests. Validate original #165 lower-level policy contract independently, no public target permissions, and obtain original-source/tenant/security/privacy review, current-main compatibility, exact hosted Python 3.11/3.14 and separately permanent registered VPS CI, explicit human release approval.
 
 This branch is **not a new PR**: the original #100 source owner keeps lane ownership and a pending canonical CI lane must not be multiplied. Only a branch/test/doc handoff is produced; existing PRs/workers/main unchanged. Keep #905 OPEN.
+
+
+## 2026-10-12 W2 material, independent uninstalled exact-bool implementation
+
+The same **branch-only** original-#100 lineage has been extended with two ADD-ONLY paths:
+
+- `src/lightup/private_lab_cli_guard_optin.py`: uninstalled `checked_private_lab_cli_policy(args)`; requires an *exact* `argparse.Namespace` and an *exact* `bool` marker before delegating to original #100 `_policy`. It does not run CLI commands or authorize targets. It prevents caller-defined `__bool__` execution for malformed marker types.
+- `tests/test_scope_905_optin_cli_guard_20261012.py`: 10 green-intent unit methods with exact True/False synthetic private-lab behavior, invalid type pre-delegate `Mock` control, missing key, polymorphic namespace and boolean, parser compatibility, and caller-input immutability.
+
+The original 13 source-owner tests (5 intentional RED) remain untouched. No existing source owner file has changed, no PR/CI has been created, and **no test-success or VPS-run claim is made**. The reference cannot by itself remediate the default CLI policy. `src/lightup/cli.py` remains owned by #100.
+
+Replay on the exact branch checkout only:
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_905_*20261012.py' -v
+```
+
+Production acceptance still requires #100 owner integration of exact Boolean guard, all original RED→GREEN, privacy/security review, exact hosted 3.11/3.14 CI, registered permanent VPS CI, and explicit release approval; no target authorizations, merge, or deploy.
