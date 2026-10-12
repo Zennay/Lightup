@@ -302,6 +302,29 @@ class ProductionWSGILanguageNonAuthorityTests(unittest.TestCase):
                     before + index + 1
                 )
 
+    def test_untrusted_locale_cannot_open_an_execution_route_or_socket(self):
+        # A transport header must not turn the web portal into a tool/scan API.
+        # Socket is intercepted: even an attempted call fails before network I/O.
+        from unittest.mock import patch
+
+        for locale in LOCALES:
+            with self.subTest(locale=repr(locale)[:70]):
+                with patch(
+                    "socket.socket", side_effect=AssertionError("network attempted")
+                ) as socket_ctor:
+                    for method, path in (
+                        ("GET", "/execute"), ("GET", "/scan"),
+                        ("POST", "/execute"), ("POST", "/scan"),
+                    ):
+                        status, headers, body = self.request(
+                            method, path, language=locale,
+                            token=self.operator_token,
+                        )
+                        self.assertEqual(status, "404 Not Found")
+                        self.assertEqual(dict(headers)["Cache-Control"], "no-store")
+                        self.assertNotIn(b"lightup_session=", body)
+                    socket_ctor.assert_not_called()
+
     def test_production_tenant_list_is_unchanged_after_denied_matrix(self):
         before = self.store.list_clients(self.operator_ctx)
         self.assert_matrix(
