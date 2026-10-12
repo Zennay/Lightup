@@ -25,7 +25,7 @@ class MarkdownDollarLiteralIntegrityW47(unittest.TestCase):
         report = renderer.render_escaped_evidence_markdown_optin_w31([self.finding()])
         for snippet in (
             r"quote\$one",
-            r"Synthetic \$5 budget and \$x+y\$ token",
+            r"Synthetic \$5 budget and \$x\+y\$ token",
             r"offline\.\$scope",
             r"ref\:\$5",
             r"Manual \$fix\$ review only",
