@@ -184,7 +184,7 @@ class AcceptLanguageRealWSGINonAuthorityTests(unittest.TestCase):
         self.assertIsNotNone(before_op)
         self.assertIsNotNone(before_client)
         self.assert_same_decision(
-            "GET", "/login", token=self.operator_token, expected="200 OK"
+            "GET", "/login", token=self.operator_token, expected="303 See Other"
         )
         self.assertEqual(self.store.session_context(self.operator_token), before_op)
         self.assertEqual(self.store.session_context(self.client_token), before_client)
