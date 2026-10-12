@@ -40,16 +40,26 @@ def review_nginx_path_hint_template(source: str) -> None:
     # macros, maps, inheritance, nested locations or runtime directives.
     lines = [line.split("#", 1)[0].strip() for line in source.splitlines()]
     clean = "\n".join(lines)
-    if not re.search(r"(?im)^location\s+/\s*\{\s*$", clean):
-        raise TemplateGateError("missing literal root location")
+    roots = list(re.finditer(r"(?im)^location\s+/\s*\{\s*$", clean))
+    if len(roots) != 1:
+        raise TemplateGateError("require one literal root location")
     if re.search(r"(?im)^\s*(?:include|rewrite|try_files|error_page|map|if)\s", clean):
         raise TemplateGateError("complex routing requires installed review")
     if re.search(r"(?im)^\s*proxy_pass\s+[^;]*\$", clean):
         raise TemplateGateError("dynamic proxy destination requires installed review")
 
+    # A server-level proxy_set_header does NOT necessarily inherit into a
+    # location that has its own proxy_set_header. Scan the literal root body,
+    # not the whole file. Nested braces exceed this deliberately narrow oracle.
+    root_body, closing, _remainder = clean[roots[0].end():].partition("}")
+    if not closing or "{" in root_body:
+        raise TemplateGateError("nested or unclosed root location needs owner review")
+    if not re.search(r"(?im)^proxy_pass\s+http://127\.0\.0\.1:8766;\s*$", root_body):
+        raise TemplateGateError("no pinned literal lab upstream in root location")
+
     directives = re.findall(
         r"(?im)^\s*proxy_set_header\s+([A-Za-z0-9-]+)\s+([^;]+);\s*$",
-        clean,
+        root_body,
     )
     seen = {}
     for header, value in directives:
@@ -69,7 +79,7 @@ def review_nginx_path_hint_template(source: str) -> None:
         for h, v in directives
         if h.casefold() in required
     }
-    for line in lines:
+    for line in root_body.splitlines():
         if re.match(r"(?i)^proxy_set_header\s+X-(?:Original|Rewrite|Forwarded|Script)-", line):
             match = re.fullmatch(
                 r"(?i)proxy_set_header\s+([A-Za-z0-9-]+)\s+([^;]+);", line
@@ -138,6 +148,28 @@ class PathHintTemplateReferenceTest(unittest.TestCase):
             review_nginx_path_hint_template(
                 _clean_fixture().replace("location / {", "location /clients {")
             )
+
+    def test_headers_declared_only_at_server_level_cannot_pass(self):
+        # Server-level strips can be shadowed by local proxy_set_header Host.
+        lines = _clean_fixture().splitlines()
+        removals = [line for line in lines if "proxy_set_header" in line]
+        moved = "\n".join(line for line in lines if "proxy_set_header" not in line)
+        moved = moved.replace("    location / {", "\n".join(removals) + "\n    location / {")
+        with self.assertRaises(TemplateGateError):
+            review_nginx_path_hint_template(moved)
+
+    def test_multiple_root_locations_cannot_pass(self):
+        doubled = _clean_fixture().replace(
+            "    location / {", "    location / {\n    }\n    location / {"
+        )
+        with self.assertRaises(TemplateGateError):
+            review_nginx_path_hint_template(doubled)
+
+    def test_canonical_header_names_are_case_insensitive(self):
+        lower = _clean_fixture()
+        for header in PATH_HINT_HEADERS:
+            lower = lower.replace(header, header.lower())
+        self.assertIsNone(review_nginx_path_hint_template(lower))
 
     def test_rejected_inputs_remain_unchanged(self):
         source = _clean_fixture().replace(
