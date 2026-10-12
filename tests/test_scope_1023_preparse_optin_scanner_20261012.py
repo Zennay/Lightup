@@ -125,7 +125,7 @@ class OptinPreparseNoTreeAllocation(unittest.TestCase):
         samples = (
             {"tenant":"lab.invalid", "enabled":False},
             {"a":1, "b":[1,2,3], "c":{"d":True}},
-            {"text":"[] {} , : \\" and more", "numeric":-0.125},
+            {"text":'[] {} , : " and more', "numeric":-0.125},
             {"n":[{"x":2},None,{},[]]},
             {"unicode":"☃", "value":" \\u0000 "},
         )
