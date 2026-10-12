@@ -21,6 +21,19 @@ ALLOWED_REQUEST_LINES = frozenset({
     b"GET /health HTTP/1.1",
     b"POST /clients HTTP/1.1",
 })
+# Never admit synthetic credentials, identity, forwarding or route overrides.
+FORBIDDEN_AUTHORITY_FIELDS = frozenset({
+    b"cookie", b"cookie2", b"authorization", b"proxy-authorization",
+    b"forwarded", b"remote-user", b"authentication",
+    b"x-real-ip", b"x-http-method-override", b"x-method-override",
+})
+UNTRUSTED_AUTHORITY_PREFIXES = (
+    b"x-forwarded-", b"x-original-", b"x-rewrite-", b"x-auth-request-",
+)
+# Only harmless ASCII form test data, no raw CRLF/body-control bytes.
+SYNTHETIC_FORM_BYTES = frozenset(
+    b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_=&.%+-"
+)
 
 
 def accepts_synthetic_http1_fixture(payload: object) -> bool:
@@ -54,7 +67,9 @@ def accepts_synthetic_http1_fixture(payload: object) -> bool:
             return False
         lower_name = name.lower()
         # Duplicated fields are not normalized, even when both values agree.
-        if lower_name in fields or lower_name in FORBIDDEN_HOP_FIELDS:
+        if (lower_name in fields or lower_name in FORBIDDEN_HOP_FIELDS
+                or lower_name in FORBIDDEN_AUTHORITY_FIELDS
+                or lower_name.startswith(UNTRUSTED_AUTHORITY_PREFIXES)):
             return False
         # Exact, single-SP fixture syntax; reject obs-fold and hidden controls.
         if not raw_value.startswith(b" ") or raw_value.startswith(b"  "):
@@ -88,5 +103,7 @@ def accepts_synthetic_http1_fixture(payload: object) -> bool:
         return False
     declared = int(length)
     if declared > MAX_SYNTHETIC_BODY or declared != len(body):
+        return False
+    if any(ch not in SYNTHETIC_FORM_BYTES for ch in body):
         return False
     return True
