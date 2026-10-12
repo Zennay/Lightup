@@ -90,7 +90,8 @@ class LoginFailureAtomicityIndependentTests(unittest.TestCase):
         self.assertEqual(self._session_count(), 0)
         row = self._read_row()
         self.assertIsNotNone(row)
-        self.assertIsNone(row[1], "two failures must not lock the account yet")
+        if initial < self.store.LOGIN_MAX_FAILURES - 2:
+            self.assertIsNone(row[1], "two failures must not lock the account yet")
         return row, visits
 
     def test_one_failed_login_uses_canonical_email_and_creates_no_session(self):
@@ -124,6 +125,24 @@ class LoginFailureAtomicityIndependentTests(unittest.TestCase):
         self.assertEqual(self._read_row("another-offline@example.invalid"), (1, None))
         self.assertEqual(self._session_count(), 0)
 
+    def test_email_variants_share_one_counter(self):
+        with patch.object(self.store, "verify_password", return_value=None):
+            self.store.authenticate("OFFLINE-COUNTER@EXAMPLE.INVALID", "invalid")
+            self.store.authenticate(" offline-counter@example.invalid ", "invalid")
+        self.assertEqual(self._read_row(), (2, None))
+        self.assertEqual(self._session_count(), 0)
+
+    def test_parallel_different_emails_keep_independent_counts(self):
+        addresses = (EMAIL, "separate-offline@example.invalid")
+        with patch.object(self.store, "verify_password", return_value=None):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                futures = [pool.submit(self.store.authenticate, name, "invalid") for name in addresses]
+                for future in futures:
+                    self.assertIsNone(future.result(timeout=8))
+        self.assertEqual(self._read_row(EMAIL), (1, None))
+        self.assertEqual(self._read_row(addresses[1]), (1, None))
+        self.assertEqual(self._session_count(), 0)
+
     def test_concurrent_stubs_finish_without_creating_session(self):
         # GREEN control: even the broken historical source completes and has no
         # successful user/session. Counting correctness is asserted separately.
@@ -141,6 +160,19 @@ class LoginFailureAtomicityIndependentTests(unittest.TestCase):
     def test_red_existing_counter_two_overlapping_failures_increment_twice(self):
         row, _ = self._run_interleaved_failures(initial=1)
         self.assertEqual(row, (3, None), "overlap overwrote an already-persisted counter")
+
+    @unittest.expectedFailure
+    def test_red_parallel_failures_cannot_delay_lockout_at_threshold(self):
+        # Starting three failures below the lockout count, two concurrent
+        # failures must lock immediately rather than leaving a count of four.
+        row, _ = self._run_interleaved_failures(
+            initial=self.store.LOGIN_MAX_FAILURES - 2
+        )
+        self.assertEqual(row[0], 0, "lost increment delayed brute-force lockout")
+        self.assertIsNotNone(row[1], "fifth failure must set locked_until")
+        with self.assertRaises(AccountLockedError):
+            self.store.authenticate(EMAIL, "invalid")
+
 
 
 if __name__ == "__main__":
