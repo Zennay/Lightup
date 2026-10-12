@@ -17,3 +17,16 @@ Local synthetic replay:
 ```bash
 PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_890_optin_grant_instant_20261012.py' -v
 ```
+
+
+## W2 — explicit no-grant/expired/future timestamp denial and durable-window boundaries
+
+New isolated `tests/test_scope_890_grant_window_snapshot_20261012.py` adds **18** real temporary SQLite / opt-in adapter unittest methods, **five deliberate expected RED** proving current *unmodified* producer `get_current_grant` reinterprets explicit invalid falsy `now` values even if there is no grant, an expired grant or future grant. W1's three original expected RED tests remain unresolved.
+
+Green controls cover exact current grant window start/end inclusive and microsecond outside denied, non-UTC timezone preserving the same instant, invalid/malicious `datetime` subclass and timezone invalidity refused before store access, malformed user time no persisted row changes, mock delegation on exact accepted time, different engagement and cross-tenant denial. No network, user grants, target interaction, side effects or production code were changed.
+
+This extra acceptance *does not* make the optional reference an installed trust boundary or prove producer validity. The `now = now or utcnow()` source issue #890 remains open until #107's owner fixes the real method and all eight expected REDs become ordinary passing denial tests. Independent latest-main/tenant/privacy/security review and exact hosted + permanent VPS CI and explicit human release still required.
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_890_*20261012.py' -v
+```
