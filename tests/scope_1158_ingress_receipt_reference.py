@@ -61,8 +61,9 @@ class SyntheticRouteObservation:
     scenario: str
     request_method: str
     request_path: str
-    forwarded_hint_names: tuple[str, ...]
+    injected_request_hint_names: tuple[str, ...]
     requested_hint_paths: tuple[str, ...]
+    backend_observed_hint_names: tuple[str, ...]
     backend_path: str
     backend_route: str
     response_status: int
@@ -143,13 +144,13 @@ def check_supplied_ingress_receipt(receipt: SuppliedIngressReceipt) -> None:
             expected_writes, expected_actor, expected_csrf, expected_logout,
             expected_hints, expected_hint_paths,
         ) = expected
-        if type(case.forwarded_hint_names) is not tuple or not all(
+        if type(case.injected_request_hint_names) is not tuple or not all(
             type(name) is str
             and re.fullmatch(r"[A-Za-z0-9-]{1,64}", name) is not None
-            for name in case.forwarded_hint_names
+            for name in case.injected_request_hint_names
         ):
             raise IngressReceiptRejected("noncanonical forwarded header list")
-        normalized = tuple(name.lower() for name in case.forwarded_hint_names)
+        normalized = tuple(name.lower() for name in case.injected_request_hint_names)
         if len(set(normalized)) != len(normalized):
             raise IngressReceiptRejected("duplicate header in a case")
         if (
@@ -157,6 +158,13 @@ def check_supplied_ingress_receipt(receipt: SuppliedIngressReceipt) -> None:
             or set(normalized) != set(expected_hints)
         ):
             raise IngressReceiptRejected("required original hint not evidenced")
+        # Raw client-side hint injection and backend forwarding are different
+        # evidence streams: a secure stripping proxy must not deliver any of
+        # these seven route hints to WSGI, even when they were on the wire.
+        if type(case.backend_observed_hint_names) is not tuple:
+            raise IngressReceiptRejected("noncanonical backend header capture")
+        if case.backend_observed_hint_names:
+            raise IngressReceiptRejected("backend received a stripped path hint")
         if type(case.requested_hint_paths) is not tuple or not all(
             type(value) is str
             and value in {"/clients", "/logout"}
