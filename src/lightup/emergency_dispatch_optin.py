@@ -20,14 +20,19 @@ def execute_with_emergency_gate(
 ) -> ToolResult:
     """Deny malformed signals and STOP before delegating to the *normal* gate.
 
+    STOP is denial-dominant, even when a separate override input is malformed.
     The override signal is observational only: it never alters RunContext,
     ToolCall, requested risk, trusted policy, authorization or permissions.
     Even override=True must pass the existing ToolExecutor/ExecutionPolicy.
     Use only in a controlled synthetic lab until a source owner integrates a
     trusted persisted STOP with pre-I/O revalidation and dispatch fencing.
     """
-    if type(stop_active) is not bool or type(override_requested) is not bool:
-        raise ToolDenied("invalid emergency control signal")
+    # Validate STOP independently. Never coerce caller-supplied truthy values.
+    if type(stop_active) is not bool:
+        raise ToolDenied("invalid emergency STOP signal")
+    # A real STOP must dominate malformed overrides and all downstream work.
     if stop_active:
         raise ToolDenied("emergency STOP: dispatch refused")
+    if type(override_requested) is not bool:
+        raise ToolDenied("invalid emergency override signal")
     return executor.execute(context, call)
