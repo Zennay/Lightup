@@ -12,6 +12,7 @@ from scope_1158_ingress_receipt_reference import (
     SyntheticRouteObservation,
     check_supplied_ingress_receipt,
     check_locally_supplied_fixture_digests,
+    check_receipt_against_external_pins,
 )
 
 
@@ -343,6 +344,78 @@ class SuppliedIngressReceiptReferenceTest(unittest.TestCase):
                     check_locally_supplied_fixture_digests(
                         self.valid, b"config", invalid
                     )
+
+    def test_independently_pinned_context_accepts_matching_synthetic_receipt(self):
+        self.assertIsNone(
+            check_receipt_against_external_pins(
+                self.valid,
+                expected_repository_head="a" * 64,
+                expected_config_sha256="b" * 64,
+                expected_capture_sha256="c" * 64,
+            )
+        )
+
+    def test_each_stale_or_foreign_external_pin_is_refused(self):
+        pins = {
+            "expected_repository_head": "a" * 64,
+            "expected_config_sha256": "b" * 64,
+            "expected_capture_sha256": "c" * 64,
+        }
+        for field in tuple(pins):
+            with self.subTest(field=field):
+                tampered = {**pins, field: "d" * 64}
+                with self.assertRaisesRegex(
+                    IngressReceiptRejected, "receipt differs from pinned context"
+                ):
+                    check_receipt_against_external_pins(self.valid, **tampered)
+        self.assertEqual(
+            pins,
+            {
+                "expected_repository_head": "a" * 64,
+                "expected_config_sha256": "b" * 64,
+                "expected_capture_sha256": "c" * 64,
+            },
+        )
+
+    def test_external_pins_require_exact_lowercase_sha256_strings(self):
+        pins = {
+            "expected_repository_head": "a" * 64,
+            "expected_config_sha256": "b" * 64,
+            "expected_capture_sha256": "c" * 64,
+        }
+
+        class StringSubclass(str):
+            pass
+
+        for field in tuple(pins):
+            for malformed in (
+                None, True, 1, "", "z" * 64, "A" * 64, "a" * 63,
+                StringSubclass(pins[field]),
+            ):
+                with self.subTest(field=field, invalid_type=type(malformed).__name__):
+                    with self.assertRaisesRegex(
+                        IngressReceiptRejected, "invalid external evidence pin"
+                    ):
+                        check_receipt_against_external_pins(
+                            self.valid, **{**pins, field: malformed}
+                        )
+
+    def test_external_pin_mismatch_does_not_disclose_values(self):
+        bad = "f" * 64
+        try:
+            check_receipt_against_external_pins(
+                self.valid,
+                expected_repository_head="a" * 64,
+                expected_config_sha256=bad,
+                expected_capture_sha256="c" * 64,
+            )
+        except IngressReceiptRejected as exc:
+            diagnostic = str(exc)
+            self.assertNotIn(bad, diagnostic)
+            self.assertNotIn("b" * 64, diagnostic)
+            self.assertNotIn("nginx-1.0", diagnostic)
+        else:
+            self.fail("expected pin mismatch")
 
     def test_input_stays_unmodified_after_late_rejection(self):
         original = self.valid
