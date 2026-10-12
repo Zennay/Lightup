@@ -44,13 +44,18 @@ class LoginFailureAtomicityIndependentTests(unittest.TestCase):
                 (EMAIL, failures),
             )
 
-    def _run_interleaved_failures(self, initial: int = 0) -> tuple[tuple[int, str | None], int]:
+    def _run_interleaved_failures(
+        self, initial: int = 0, account_inputs: tuple[str, str] | None = None
+    ) -> tuple[tuple[int, str | None], int]:
         """Force overlap at verification without requiring fixed code to overlap.
 
         Vulnerable source reads the same counter before both reach verifier;
         a BEGIN IMMEDIATE repair can serialize the second read, in which case
         the first verifier exits after a bounded wait instead of deadlocking.
         """
+        if account_inputs is None:
+            account_inputs = ("  OFFLINE-counter@example.invalid  ",) * 2
+        self.assertEqual(len(account_inputs), 2)
         if initial:
             self._seed_failure_count(initial)
         first_in_verifier = threading.Event()
@@ -72,17 +77,17 @@ class LoginFailureAtomicityIndependentTests(unittest.TestCase):
                 second_in_verifier.set()
             return None
 
-        def fail_once():
-            return self.store.authenticate("  OFFLINE-counter@example.invalid  ", "synthetic-invalid")
+        def fail_once(email):
+            return self.store.authenticate(email, "synthetic-invalid")
 
         with patch.object(self.store, "verify_password", side_effect=fake_verify):
             with ThreadPoolExecutor(max_workers=2) as pool:
-                first = pool.submit(fail_once)
+                first = pool.submit(fail_once, account_inputs[0])
                 self.assertTrue(
                     first_in_verifier.wait(timeout=4),
                     "first offline verification did not start",
                 )
-                second = pool.submit(fail_once)
+                second = pool.submit(fail_once, account_inputs[1])
                 self.assertIsNone(first.result(timeout=8))
                 self.assertIsNone(second.result(timeout=8))
 
@@ -143,6 +148,29 @@ class LoginFailureAtomicityIndependentTests(unittest.TestCase):
         self.assertEqual(self._read_row(addresses[1]), (1, None))
         self.assertEqual(self._session_count(), 0)
 
+    def test_verification_exception_never_overwrites_failure_counter(self):
+        self._seed_failure_count(2)
+        before = self._read_row()
+        with patch.object(
+            self.store, "verify_password",
+            side_effect=RuntimeError("synthetic verifier refusal"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "synthetic verifier refusal"):
+                self.store.authenticate(EMAIL, "synthetic-invalid")
+        self.assertEqual(self._read_row(), before)
+        self.assertEqual(self._session_count(), 0)
+
+    def test_locked_email_alias_does_not_reach_verifier(self):
+        with patch.object(self.store, "verify_password", return_value=None) as verifier:
+            for _ in range(self.store.LOGIN_MAX_FAILURES):
+                self.assertIsNone(self.store.authenticate(EMAIL, "synthetic-invalid"))
+            with self.assertRaises(AccountLockedError):
+                self.store.authenticate(
+                    "  OFFLINE-COUNTER@EXAMPLE.INVALID  ", "synthetic-invalid"
+                )
+        self.assertEqual(verifier.call_count, self.store.LOGIN_MAX_FAILURES)
+        self.assertEqual(self._session_count(), 0)
+
     def test_concurrent_stubs_finish_without_creating_session(self):
         # GREEN control: even the broken historical source completes and has no
         # successful user/session. Counting correctness is asserted separately.
@@ -160,6 +188,17 @@ class LoginFailureAtomicityIndependentTests(unittest.TestCase):
     def test_red_existing_counter_two_overlapping_failures_increment_twice(self):
         row, _ = self._run_interleaved_failures(initial=1)
         self.assertEqual(row, (3, None), "overlap overwrote an already-persisted counter")
+
+    @unittest.expectedFailure
+    def test_red_concurrent_email_aliases_must_count_both_failures(self):
+        row, calls = self._run_interleaved_failures(
+            account_inputs=(
+                "OFFLINE-COUNTER@EXAMPLE.INVALID",
+                " offline-counter@example.invalid ",
+            ),
+        )
+        self.assertEqual(calls, 2)
+        self.assertEqual(row, (2, None), "case variants lost a failure")
 
     @unittest.expectedFailure
     def test_red_parallel_failures_cannot_delay_lockout_at_threshold(self):
