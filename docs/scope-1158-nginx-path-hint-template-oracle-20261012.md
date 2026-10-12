@@ -14,6 +14,14 @@ The tests exercise seven single-missing and seven attacker-forwarding variants, 
 
 The W2 review now scans only the single literal root-location body, **not** server-level header declarations, because those can be shadowed by a location's own `proxy_set_header`. It requires the existing pinned literal lab upstream, refuses nested/unclosed root syntax, refuses duplicate root locations, and exercises server-level false positives plus case-insensitive header names. The header-gate unit suite has 11 methods including one deliberately expected-failure main-template canary; this remains non-authorizing.
 
+The W6 static reviewer also rejects any second virtual server, sibling
+location, unexpected block nesting/brace count, explicit `return`, `alias`
+or `proxy_intercept_errors` directives. These are deliberate conservative
+lab limitations: a legitimate multi-vhost site is **not** certified by this
+toy parser and must instead be reviewed against actual installed config and
+backend route captures. New synthetic negative tests cover sibling route,
+second vhost, unbalanced/nested blocks and redirect/alias rules.
+
 This heuristic neither parses Nginx grammar completely nor verifies virtual server selection, nested locations, inherited proxy headers, third-party modules, header normalization, loaded configuration, proxy binary, Gunicorn parser, TLS, app authentication or route authorization. An ingress source owner must separately inspect those.
 
 ## Required independent promotion sequence
