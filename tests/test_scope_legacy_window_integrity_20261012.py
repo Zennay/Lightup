@@ -36,6 +36,28 @@ class LegacyWindowIntegrityTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             bool(result)
 
+    def test_explicit_clock_is_required_no_ambient_wall_clock(self):
+        candidate = authorization()
+        for given in (False, True):
+            with self.subTest(explicit_none=given):
+                if given:
+                    review = review_legacy_window(candidate, now=None)
+                else:
+                    review = review_legacy_window(candidate)
+                self.assertFalse(review.integrity_ok)
+                self.assertEqual(review.reason, "missing_explicit_clock")
+                with self.assertRaises(TypeError):
+                    bool(review)
+
+    def test_invalid_clock_denial_precedes_any_time_window_grant(self):
+        candidate = authorization()
+        for bad in (False, 0, "", object()):
+            with self.subTest(clock_type=type(bad).__name__):
+                self.assertEqual(
+                    review_legacy_window(candidate, now=bad).reason,
+                    "invalid_clock",
+                )
+
     def test_missing_start_is_conservative_structural_control(self):
         self.assertTrue(self.review(authorization(valid_from=None)).integrity_ok)
 
