@@ -82,9 +82,11 @@ def review_legacy_window(
     else:
         start = None
 
-    # Unlike legacy 'now or datetime.now(...)', falsey non-datetime values
-    # cannot select the current time and change the outcome.
-    clock = datetime.now(timezone.utc) if now is None else _canonical_time(now)
+    # No hidden wall-clock fallback. A caller must explicitly sample the clock
+    # for every review; the sample is diagnostic, NOT trusted dispatch time.
+    if now is None:
+        return LegacyWindowReview(False, "missing_explicit_clock")
+    clock = _canonical_time(now)
     if clock is None:
         return LegacyWindowReview(False, "invalid_clock")
     if start is not None and clock < start:
