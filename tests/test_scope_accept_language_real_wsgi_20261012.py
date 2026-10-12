@@ -160,7 +160,7 @@ class AcceptLanguageRealWSGINonAuthorityTests(unittest.TestCase):
                 status, headers, _ = self.request(
                     "POST", "/clients", token=self.operator_token,
                     csrf=self.operator_csrf, language=language,
-                    form={"name": f"Synthetic approved ${index}"}
+                    form={"name": f"Synthetic approved {index}"}
                 )
                 self.assertEqual(status, "303 See Other")
                 self.assertEqual(headers["Cache-Control"], "no-store")
