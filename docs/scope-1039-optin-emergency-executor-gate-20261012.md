@@ -3,70 +3,85 @@
 ## Ownership and safety
 
 **M3/M7 INCUBATE · PLAN/LAB ONLY · DRAFT/HOLD/NO MERGE/NO DEPLOY.**
-This independent follow-up to [open issue #1039](https://github.com/Zennay/Lightup/issues/1039)
-does not edit its existing `chatgpt/scope-auth-emergency-override-deny-contract-20261008-0339`
-reference branch, or production-owner [PR #100](https://github.com/Zennay/Lightup/pull/100)
-and [PR #107](https://github.com/Zennay/Lightup/pull/107).
+Independent follow-up to [open issue #1039](https://github.com/Zennay/Lightup/issues/1039).
+Original emergency reference branch is not touched, nor are production-owner
+[PR #100](https://github.com/Zennay/Lightup/pull/100) and
+[PR #107](https://github.com/Zennay/Lightup/pull/107).
 
-New **opt-in** `src/lightup/emergency_dispatch_optin.py` wrapper is intentionally
-**not registered** in the web, default executor, queue, runtime, CLI or deployment.
-The attached tests execute the *real* `ToolExecutor` and *real*
-`ExecutionPolicy`, but use mock registry, mock evidence sink, synthetic
-authorization data and 127.0.0.1 strings only. No DNS, HTTP, socket, scanner,
-live asset, client data, legitimate grant, target interaction or active test.
+The **opt-in** `src/lightup/emergency_dispatch_optin.py` is intentionally
+**not registered** in the web, default executor, queues, runtime, CLI or
+deployment. Tests invoke actual `ToolExecutor` and `ExecutionPolicy` with
+inert in-memory mock handlers and no sockets, DNS, HTTP, scans or clients.
 
-## Verified property to seek
+## W1 acceptance — real policy + mocked evidence
 
-1. `stop_active=True` denies **before registry lookup**, regardless of
-   normal authorization or `override_requested`.
-2. Only exact built-in booleans are valid emergency inputs; truthy strings,
-   integers, containers and `None` are denied without side effects.
-3. The `override_requested` signal **never creates, extends, substitutes,
-   mutates or bypasses** the normal `RunContext.authorization`.
-4. Missing/expired/out-of-scope/wrong-capability grants, passive mode,
-   insufficient approved risk and untrusted override argument payloads are
-   denied by the unchanged normal policy, not by a synthetic permissive mock.
-5. Positive control proves a real-policy permitted synthetic request reaches a
-   mock handler and mock evidence sink with/without override; denial paths
-   prove zero handler/evidence writes, and inputs remain unchanged.
-6. Socket construction is forbidden in the offline test context.
+`tests/test_scope_1039_emergency_executor_optin_20261012.py` includes 14
+synthetic real-policy/executor methods: a positive mock control; stop before
+registry access; invalid exact-bool flags fail closed without truth coercion;
+overrides cannot mint grants, widen capabilities/assets/risks, resurrect expired
+grant, activate passive mode or smuggle a model argument; zero denied handler
+and evidence effects; unchanged caller objects. STOP does not grant authority.
 
-Run in a test environment with repo dependencies available:
+## W2 acceptance — STOP precedence + disposable real SQLite
+
+`src/lightup/emergency_dispatch_optin.py` now checks the **exact built-in**
+STOP bool first and, if true, denies **before checking override shape or
+touching executor/registry**. It checks override type only when STOP is false.
+Malformed STOP always denies; a true STOP with a malformed override has
+the explicit STOP reason, not an ambiguous malformed-override reason.
+
+`tests/test_scope_1039_sqlite_emergency_denial_w2_20261012.py` adds 13
+independent offline methods using real `ToolRegistry`, real `StateStore`
+on a disposable SQLite database, real `ExecutionPolicy`/`ToolExecutor`,
+actual `runs`/`evidence` queries and a mock handler. No socket is allowed.
+Positive control persists exactly one **synthetic** record with checked SHA-256
+and client metadata. STOP, malformed inputs, absent/expired grant,
+out-of-scope asset, wrong capability, passive mode and risk ceilings
+must cause zero handler calls, zero evidence writes and unchanged run count.
+
+Two of the 13 methods are **intentional expected-RED** characterization
+canaries for current-main cross-client and cross-engagement mismatches.
+Unchanged main `ExecutionRequest` lacks client/engagement lineage, so an
+unrelated tenant's / engagement's context may be admitted by the legacy
+policy. These are **not passing authorization controls**; unittest
+`expectedFailure` must remain explicit until #100/#107 production owners
+repair and verify the behavior. Source owners must convert them to ordinary
+passing denial tests against actual installed gate after repair. An
+`unexpected success` on a changed baseline requires review, not blind
+promotion.
+
+Run in the repository's test environment:
 
 ```sh
-PYTHONPATH=src python -m unittest -v tests.test_scope_1039_emergency_executor_optin_20261012
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_1039*' -v
+PYTHONPATH=src python -m unittest discover -s tests -v
+PYTHONPATH=src:tests python -m unittest discover -s tests/integration -v
 ```
 
 ## What this does **not** establish
 
-- This is an **opt-in prototype** and is not a production emergency-stop
-  mechanism. Direct calls to `ToolExecutor.execute` bypass this wrapper.
-- Boolean inputs are **not authenticated operator intent**, authoritative STOP
-  storage, revocation, independent two-party step-up or release approval.
-- One pre-dispatch check is subject to a TOCTOU race. It **cannot** cancel a
-  dispatched handler, stop queued/retried work, fence in-flight actions, or
-  revalidate a persisted STOP immediately before each network I/O.
-- A passed synthetic test does not prove multi-tenant authorization, trusted
-  persisted issuer, audit durability, authenticated tenancy, runtime deployment,
-  network isolation or effectiveness of live emergency operations.
-- No claim of defensive coverage or safety of arbitrary tools is made.
+- This is an **uninstalled opt-in prototype**. Default
+  `ToolExecutor.execute` **bypasses the wrapper**.
+- A caller-supplied bool is not authenticated operator STOP or approval.
+- A single pre-dispatch check cannot protect against concurrent revocation,
+  post-admission/queued retries, active handler I/O, in-flight cancellation or
+  stale/persisted STOP state. There is **no** atomic, durable generation fence.
+- A local SQLite positive control is synthetic, **not** an authorized client
+  assessment. No actual cross-tenant denial has been fixed in production.
+- Hosted diagnostics alone are not permanent VPS acceptance or proof of
+  authenticated consent, tenant isolation, real ingress or pre-I/O fencing.
 
-## Owner acceptance before any promotion
+## Mandatory owner promotion gate
 
-Require original #100/#107 owners and independent security/privacy/tenant
-review. A source-owner integration must bind a durable authenticated STOP and
-independently approved emergency operation to tenant, engagement, asset,
-capability, execution generation, effective time, issuer and operator,
-revalidate at queue/retry/pre-I/O boundaries, and prove interruption/fencing
-without broadening normal target authority. Establish positive and negative
-post-revocation race acceptance using **synthetic isolated lab** assets,
-zero effects after denial, cross-tenant tests, and original-code tests.
+Source owners #100/#107 must install an independently authenticated persisted
+STOP bound to operator, tenant, engagement, approved scope, capability,
+execution generation and time, plus pre-I/O validation and queue/retry fences;
+independent security/privacy reviews must confirm no scope widening and
+correct tenant binding. Convert expected-RED identity tests to ordinary
+passing tests **only after** the production fix passes on its exact SHA.
+Require safe latest-main composition, exact-head hosted Python 3.11/3.14
+preflight and separately registered **permanent VPS CI**, and explicit human
+release authority. No merge/deploy/real-target interaction without all gates.
 
-Separately require:
-- safe current-main source composition without overwriting other workers;
-- exact immutable branch SHA, passing GitHub-hosted Python 3.11/3.14 offline
-  preflight, **registered permanent self-hosted VPS CI** on that exact SHA;
-- independent reviews plus explicit human approval before merge, activation
-  or any real-target interaction.
-
-Keep issue #1039 OPEN and this PR DRAFT/HOLD until all above gates are met.
+Keep #1039 OPEN, this PR DRAFT/HOLD. Do not treat synthetic expected failures
+or hosted-green jobs as production authorization proof.
