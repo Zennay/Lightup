@@ -192,5 +192,27 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
         self.refused(lambda: m.review({"host": "localhost"}))
 
 
+    def test_26_destination_role_tampering_denied(self):
+        m = self.manifest()
+        object.__setattr__(m._fields[0], "role", "unclassified")
+        self.refused(lambda: m.review({"host": "localhost"}))
+
+    def test_27_destination_parameter_key_tampering_denied(self):
+        m = self.manifest()
+        object.__setattr__(m._fields[0], "parameter", "metadata")
+        self.refused(lambda: m.review({"host": "localhost"}))
+
+    def test_28_definition_risk_or_interaction_drift_denied(self):
+        m = self.manifest()
+        object.__setattr__(m._definition, "interaction", InteractionKind.TARGET_ACTIVE)
+        self.refused(lambda: m.review({"host": "localhost"}))
+
+    def test_29_registered_tools_map_swap_denied(self):
+        m = self.manifest()
+        self.registry._tools = dict(self.registry._tools)
+        self.refused(lambda: m.review({"host": "localhost"}))
+
+
+
 if __name__ == "__main__":
     unittest.main()
