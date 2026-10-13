@@ -21,3 +21,14 @@ PYTHONPATH=src python -m unittest -v tests.test_evidence_893_atomic_crossrow_202
 Run full exact-head hosted Python 3.11 and 3.14 tests plus **separate permanent registered VPS CI** only when a source-owner-approved composition is ready. Keep this branch **branch-only** to avoid duplicate PRs and contention for the shared runner. No CI is claimed for this child until observed. No real target, remediation action, retest observation, authorization, deployment, or new security-verdict authority is created.
 
 LightUp **Incubate M3/M7 — PLAN/LAB ONLY / DRAFT HOLD / NO MERGE / NO DEPLOY**. Keep issue #893 OPEN and hand off to #828/#856/#886 source owners with privacy/security/tenant review, latest-main integration and explicit release approval.
+
+
+## Audit-trigger durability supplement (second pass)
+
+New add-only `tests/test_evidence_893_retest_audit_trigger_red_20261013.py` proves another consequence of the installed post-write evidence decode: real temporary SQLite `AFTER UPDATE OF retest_status` audit rows must **not** persist when corrupt JSON/object evidence refuses a metadata transition. Two positive controls prove one canonical event and zero events for unknown finding; two explicit **expected-RED** canaries demand no status and no audit side effects on malformed persisted evidence. These tests use only synthetic fixtures and unchanged default `DomainStore`; there is no claim of a real retest or fixed source.
+
+```sh
+PYTHONPATH=src python -m unittest -v tests.test_evidence_893_retest_audit_trigger_red_20261013
+```
+
+This branch now contains **four new tests/doc files** across two passes. It remains branch-only, without duplicate PR or shared VPS dispatch; no exact-head CI success is claimed. #1178 already owns the separate opt-in atomic metadata helper, so this child edits neither that helper nor `domain.py`. A production source owner must fix read-before-write/transaction rollback and convert all RED contracts to normal green cases.
