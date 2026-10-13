@@ -83,3 +83,9 @@ This is a preventive defense-in-depth against future incorrect reuse of the inte
 The CI evidence checker now insists on syntactically canonical `YYYY-MM-DDTHH:MM:SSZ` timestamps and validates each actual GitHub Actions run lifecycle `created_at ≤ run_started_at ≤ updated_at` and each completed job `created_at ≤ started_at ≤ completed_at`. Missing, contradictory, malformed, fractional, non-UTC or non-string timestamps are **HOLD** regardless of aggregate job success. These metadata checks are read-only and cannot prove clock accuracy, trusted infrastructure or release authorization; they supplement workflow/job exact-head, review and raw-log checks.
 
 Regression fixtures model both good and impossible run/job timing, including malformed Gregorian calendar dates and Boolean type confusion. All endpoints stay fixed GitHub GETs.
+
+## W17 — reject ambiguous HTTP transport responses
+
+The underlying fixed-origin GitHub API helper now refuses any response that is not an exact HTTP `200` with an explicit JSON media type (`application/json` or `application/vnd.github+json`, optionally with parameters). Non-200 or HTML/missing media types are rejected **before reading or parsing** the response body. This adds a read-only independent fail-closed transport layer on top of the W15 endpoint allowlist, no-redirect rule and bounded/duplicate-key-aware JSON parsing. Local mocked-response regression tests verify successful canonical JSON and refusal of provisional/HTML/missing-header responses.
+
+Response metadata does not attest to a trusted GitHub server or a registered runner. No customer authorization, scan permit or release can be granted by this checker.
