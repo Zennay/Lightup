@@ -6,7 +6,7 @@ import json
 import os
 import re
 import sys
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 API_ROOT = "https://api.github.com/repos/Zennay/Lightup/actions/runs/"
 SHA = re.compile(r"[0-9a-f]{40}\Z")
@@ -98,13 +98,20 @@ def evaluate(head: str, hosted_id: int, vps_id: int,
                 holds.append(f"{name}_runner_unverified")
     return _receipt(holds)
 
+class _DenyRedirects(HTTPRedirectHandler):
+    """Do not forward an optional API token beyond the fixed GitHub API origin."""
+
+    def redirect_request(self, request, fp, code, msg, headers, newurl):
+        return None
+
+
 def _get_json(url: str, token: str | None) -> object:
     # URLs use a fixed GitHub endpoint, never a user-controlled destination.
     headers = {"Accept": "application/vnd.github+json",
                "User-Agent": "LightUp-scope-CI-evidence-optin"}
     if token:
         headers["Authorization"] = "Bearer " + token
-    with urlopen(Request(url, headers=headers, method="GET"), timeout=8) as response:
+    with build_opener(_DenyRedirects()).open(Request(url, headers=headers, method="GET"), timeout=8) as response:
         raw = response.read(524289)
     if len(raw) > 524288:
         raise ValueError("too much metadata")
