@@ -77,6 +77,7 @@ def inspect_evidence_id_shapes(
         if (
             any(name not in columns for name in mandatory)
             or columns["evidence_id"] != ("TEXT", 1)
+            or sum(position != 0 for _, position in columns.values()) != 1
         ):
             raise ValueError("evidence inventory unavailable or invalid SQLite schema")
         cursor = connection.execute(
