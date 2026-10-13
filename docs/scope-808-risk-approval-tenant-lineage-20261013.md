@@ -28,3 +28,6 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_808_risk_appr
 ## Release and collision gates
 
 Source owner must implement coherent tenant/engagement revalidation **inside the installed read path**, preserving filters, meaningful operator-audit behavior, and read-only failure. Need independent privacy/security review, current-main compatibility, exact commit SHA hosted Python 3.11 and 3.14 CI, separate permanently registered VPS runner CI, and explicit human approval. No test or documentation in this branch authorizes a scan, target interaction, tenant access, grant, remediation, retest, production migration, merge or deployment.
+
+## W3 — operator read-path split
+Three more synthetic real SQLite acceptance scenarios: the operator-wide audit inventory retains corrupt approvals **without rewriting state** (ordinary green), but operator-explicit engagement reads must reject a relabelled tenant and an A approval retargeted to B's engagement (**2 additional intentionally unresolved expected RED** against main). Total now **16 methods: 9 ordinary controls plus 7 unresolved expected RED**. Green suite with seven expected failures is NOT an installed security fix.
