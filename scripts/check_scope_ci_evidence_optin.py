@@ -356,6 +356,12 @@ def _get_json(url: str, token: str | None) -> object:
     if token:
         headers["Authorization"] = "Bearer " + token
     with build_opener(_DenyRedirects()).open(Request(url, headers=headers, method="GET"), timeout=8) as response:
+        media_type = response.headers.get("Content-Type")
+        if (type(response.status) is not int or response.status != 200
+                or type(media_type) is not str
+                or media_type.partition(";")[0].strip().lower()
+                not in {"application/json", "application/vnd.github+json"}):
+            raise ValueError("invalid metadata response")
         raw = response.read(524289)
     if len(raw) > 524288:
         raise ValueError("too much metadata")
