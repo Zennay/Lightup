@@ -41,3 +41,9 @@ This is **metadata consistency** only: it does not cryptographically attest to t
 The read-only CLI refuses unknown or malformed numeric arguments with an **opaque fixed JSON HOLD**, without echoing untrusted CLI tokens into stdout/stderr (including erroneous `argparse` values). GitHub API input is capped to 512 KiB and parses JSON with duplicate-key rejection **at every object level** and rejection of `NaN`/`Infinity`; conflicting CI evidence cannot be resolved by last-key-wins behavior. Regression tests use entirely synthetic in-memory mocked responses and input canaries, never making network requests.
 
 This strengthens a non-authorizing metadata preview only; no claim of trusted CI provenance, race-free GitHub state, registry permission, release approval or actual scanner safety.
+
+## W9–W10: bounded PR and main consistency snapshots
+
+The verifier reads the current PR **before and after** requesting both workflow runs and their jobs. A changed head, base, closed PR or conversion from draft to ready causes **HOLD**. It also fetches the canonical GitHub `refs/heads/main` at both ends, requiring the PR base SHA to equal current main and refusing a main ref that changes while collecting evidence. This reduces a straightforward metadata TOCTOU replay but cannot provide atomic GitHub state or make PR/test evidence an authorization grant.
+
+All fetches are GETs to fixed `api.github.com` repo endpoints; no checkout, workflow rerun, scanning, deployment or write action occurs. The extra two main-branch GETs require GitHub REST repository metadata availability. Failures emit an opaque non-authorizing HOLD receipt.
