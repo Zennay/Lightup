@@ -65,9 +65,17 @@ def _load_plan(path: str) -> tuple[str, ...]:
         before = os.fstat(fd)
         if not stat.S_ISREG(before.st_mode) or before.st_size > MAX_BYTES:
             _deny()
-        # Explicit kernel read bound. Buffered streams can prefetch more bytes
-        # internally than their caller-visible read(n) size.
-        raw = os.read(fd, MAX_BYTES + 1)
+        # Explicit bounded kernel reads: no buffered prefetch, and a short
+        # os.read() result cannot silently ignore trailing plan data.
+        chunks: list[bytes] = []
+        remaining = MAX_BYTES + 1
+        while remaining:
+            chunk = os.read(fd, remaining)
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        raw = b"".join(chunks)
         after = os.fstat(fd)
         if (
             not stat.S_ISREG(after.st_mode)
