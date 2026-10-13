@@ -89,6 +89,19 @@ def _open_plan_fd_without_symlink_ancestors(path: str) -> int:
         os.close(directory_fd)
 
 
+def _read_bounded_snapshot(fd: int) -> bytes:
+    """Fully consume one <=4097 byte snapshot, including short OS reads."""
+    chunks: list[bytes] = []
+    remaining = MAX_BYTES + 1
+    while remaining:
+        part = os.read(fd, remaining)
+        if not part:
+            break
+        chunks.append(part)
+        remaining -= len(part)
+    return b"".join(chunks)
+
+
 def _load_plan(path: str) -> tuple[str, ...]:
     # Never block on a FIFO, follow final *or parent* symlinks, or open
     # an arbitrary device for reading. Every directory is pinned by dir_fd.
@@ -104,17 +117,15 @@ def _load_plan(path: str) -> tuple[str, ...]:
             # Hard-link aliases and group/world-writable files have mutable
             # external entry points even when path components are nofollow.
             _deny()
-        # Explicit bounded kernel reads: no buffered prefetch, and a short
-        # os.read() result cannot silently ignore trailing plan data.
-        chunks: list[bytes] = []
-        remaining = MAX_BYTES + 1
-        while remaining:
-            chunk = os.read(fd, remaining)
-            if not chunk:
-                break
-            chunks.append(chunk)
-            remaining -= len(chunk)
-        raw = b"".join(chunks)
+        # Check content twice through the same pinned descriptor, still
+        # respecting the per-pass kernel budget. A stable fstat alone cannot
+        # detect an in-place rewrite whose size/times were restored.
+        raw = _read_bounded_snapshot(fd)
+        if not raw or len(raw) > MAX_BYTES:
+            _deny()
+        os.lseek(fd, 0, os.SEEK_SET)
+        if _read_bounded_snapshot(fd) != raw:
+            _deny()
         after = os.fstat(fd)
         if (
             not stat.S_ISREG(after.st_mode)
