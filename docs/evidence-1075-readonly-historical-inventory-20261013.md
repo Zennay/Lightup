@@ -49,3 +49,15 @@ The integrity preflight now also refuses composite-key schemas: a column at prim
 The table preflight additionally inspects the actual **primary-key index key-column collation** using parameterized `pragma_index_xinfo(?)`. A single `evidence_id` key with **BINARY** collation is required; `NOCASE` and `RTRIM` violate literal UUID4 identity by treating spelling variants as the same key. Reject these before reading evidence rows. Three extra synthetic SQLite tests prove NOCASE and RTRIM rejection with unchanged database bytes and acceptance of an explicit BINARY schema. No migration is performed, and this is not a source/authorization authenticity guarantee.
 
 The previous hosted receipts apply only to their immutable earlier commits. This collation guard needs current exact-head Python 3.11/3.14 hosted validation **plus** separate registered permanent VPS proof and original #1075 source-owner review before any adoption. Strictly DRAFT/HOLD/NO MERGE/NO DEPLOY.
+
+## Consistent read snapshot under concurrent SQLite writers (2026-10-13)
+
+Inventory schema admission and evidence-row iteration now share **one explicit SQLite read transaction** (`BEGIN` immediately after query-only admission). Without this boundary SQLite autocommit could read a valid schema at time A, then count rows committed at time B after another process updated or replaced data. With WAL, concurrent commits can proceed while the inventory sees a stable, older snapshot; a **subsequent** inventory run sees the new committed state. The read-only connection is closed in `finally`, including on row-budget denial and malformed schema.
+
+New `tests/test_evidence_1075_inventory_snapshot_20261013.py` uses a disposable real WAL SQLite database and a controlled **second writer connection** that commits *after* schema checks but *before* evidence SELECT. Its 3 tests demonstrate: an inserted UUID row does not enter the existing snapshot; additive schema change leaves earlier snapshot valid; a concurrently committed historic/noncanonical ID appears only on a fresh invocation. All tests are synthetic, offline and explicitly selected. No real client databases, target activity, remediation or retest.
+
+```sh
+PYTHONPATH=src python -m unittest -v tests.test_evidence_1075_inventory_snapshot_20261013
+```
+
+This is a **consistent SQLite point-in-time shape diagnostic**, not evidence authenticity, tenant permission, issuer provenance, schema trust for arbitrary external files, forensic safety or full process memory limit. **No production execution**; default StateStore remains unchanged. Latest exact-head Python 3.11/3.14 hosted tests plus separate registered VPS proof and human release review are mandatory. Do not inherit prior-head green CI.
