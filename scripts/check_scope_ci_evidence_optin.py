@@ -10,6 +10,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 API_ROOT = "https://api.github.com/repos/Zennay/Lightup/actions/runs/"
 PR_ROOT = "https://api.github.com/repos/Zennay/Lightup/pulls/"
+MAIN_REF = "https://api.github.com/repos/Zennay/Lightup/git/ref/heads/main"
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 REPO = "Zennay/Lightup"
 HOSTED_WORKFLOW = ("LightUp offline preflight", ".github/workflows/lightup-preflight.yml", 375432315)
@@ -182,6 +183,25 @@ def _reject_nonfinite_json(_value: str) -> None:
     raise ValueError("nonfinite metadata")
 
 
+def verify_current_main(pr: object, main_ref: object) -> list[str]:
+    """Treat changed or unverifiable main as missing latest-main composition."""
+    if not isinstance(pr, dict) or not isinstance(pr.get("base"), dict):
+        return ["current_main_unverified"]
+    if (not isinstance(main_ref, dict)
+            or main_ref.get("ref") != "refs/heads/main"
+            or not isinstance(main_ref.get("object"), dict)):
+        return ["current_main_unverified"]
+    base = pr["base"]
+    current = main_ref["object"]
+    if (base.get("ref") != "main"
+            or current.get("type") != "commit"
+            or type(current.get("sha")) is not str
+            or SHA.fullmatch(current["sha"]) is None
+            or base.get("sha") != current["sha"]):
+        return ["current_main_unverified"]
+    return []
+
+
 def _get_json(url: str, token: str | None) -> object:
     # URLs use a fixed GitHub endpoint, never a user-controlled destination.
     headers = {"Accept": "application/vnd.github+json",
@@ -220,6 +240,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         token = os.environ.get("GITHUB_TOKEN")
         pr = _get_json(f"{PR_ROOT}{args.pr}", token)
+        initial_main = _get_json(MAIN_REF, token)
         hosted = _get_json(f"{API_ROOT}{args.hosted_run}", token)
         hj = _get_json(f"{API_ROOT}{args.hosted_run}/jobs?per_page=100", token)
         vps = _get_json(f"{API_ROOT}{args.vps_run}", token)
@@ -227,18 +248,23 @@ def main(argv: list[str] | None = None) -> int:
         # Re-read the PR last. A retargeted, closed or updated PR cannot
         # borrow successful workflow results collected earlier in this run.
         final_pr = _get_json(f"{PR_ROOT}{args.pr}", token)
+        final_main = _get_json(MAIN_REF, token)
         receipt = evaluate(args.head, args.hosted_run, args.vps_run, hosted, hj, vps, vj)
         holds = (receipt["missing_gates"]
                  + verify_pr_head(args.head, args.pr, pr)
                  + verify_run_pr_binding(args.head, args.pr, pr, hosted, vps)
                  + verify_pr_head(args.head, args.pr, final_pr)
-                 + verify_run_pr_binding(args.head, args.pr, final_pr, hosted, vps))
+                 + verify_run_pr_binding(args.head, args.pr, final_pr, hosted, vps)
+                 + verify_current_main(pr, initial_main)
+                 + verify_current_main(final_pr, final_main))
         if (not isinstance(final_pr, dict) or not isinstance(pr, dict)
                 or final_pr.get("head") != pr.get("head")
                 or final_pr.get("base") != pr.get("base")
                 or final_pr.get("state") != pr.get("state")
                 or final_pr.get("draft") != pr.get("draft")):
             holds.append("pr_changed_during_evidence_read")
+        if initial_main != final_main:
+            holds.append("main_changed_during_evidence_read")
         receipt = _receipt(holds)
     except Exception:
         # Error bodies and credentials must never enter the receipt.
