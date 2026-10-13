@@ -32,17 +32,25 @@ def sample():
            "path": ".github/workflows/lightup-ci.yml", "workflow_id": 373018063,
            "pull_requests": [pr_link()]}
     hj = {"total_count": 4, "jobs": [
-        {"name": name, "head_sha": HEAD, "status": "completed", "conclusion": "success",
+        {"id": 2001 + i, "name": name,
+         "workflow_name": "LightUp offline preflight", "head_branch": "scope-draft",
+         "run_url": f"{gate.API_ROOT}1001",
+         "url": f"https://api.github.com/repos/Zennay/Lightup/actions/jobs/{2001+i}",
+         "head_sha": HEAD, "status": "completed", "conclusion": "success",
          "run_id": 1001, "run_attempt": 1,
          "runner_name": "GitHub Actions 9", "runner_id": 1009,
          "runner_group_id": 0, "labels": ["ubuntu-latest"]}
-        for name in sorted(gate.HOSTED)]}
+        for i, name in enumerate(sorted(gate.HOSTED))]}
     vj = {"total_count": 2, "jobs": [
-        {"name": name, "head_sha": HEAD, "status": "completed", "conclusion": "success",
+        {"id": 3001 + i, "name": name,
+         "workflow_name": "LightUp CI", "head_branch": "scope-draft",
+         "run_url": f"{gate.API_ROOT}1002",
+         "url": f"https://api.github.com/repos/Zennay/Lightup/actions/jobs/{3001+i}",
+         "head_sha": HEAD, "status": "completed", "conclusion": "success",
          "run_id": 1002, "run_attempt": 1,
          "runner_name": "zcloud-vps-1", "runner_id": 2209,
          "runner_group_id": 1, "labels": ["self-hosted", "zcloud", "vps"]}
-        for name in sorted(gate.PERMANENT)]}
+        for i, name in enumerate(sorted(gate.PERMANENT))]}
     for job in (*hj["jobs"], *vj["jobs"]):
         job.update(created_at="2026-10-13T00:01:10Z",
                    started_at="2026-10-13T00:02:00Z",
@@ -208,6 +216,44 @@ class CIEvidenceGateTests(unittest.TestCase):
     def test_replayed_previous_attempt_is_hold(self):
         data = sample(); data[2]["run_attempt"] = 2
         self.hold(evaluate(data), "permanent_vps_job_run_identity_mismatch")
+
+    def test_distinct_canonical_actions_job_ids_admit_non_authorizing(self):
+        data = sample()
+        self.assertEqual(len({j["id"] for j in data[1]["jobs"]}), 4)
+        self.assertEqual(len({j["id"] for j in data[3]["jobs"]}), 2)
+        self.assertEqual(evaluate(data)["state"], "EVIDENCE_COMPLETE_NOT_AUTHORIZED")
+
+    def test_duplicate_job_numeric_id_is_hold(self):
+        data = sample()
+        data[3]["jobs"][1]["id"] = data[3]["jobs"][0]["id"]
+        self.hold(evaluate(data), "permanent_vps_job_numeric_identity_unverified")
+
+    def test_boolean_or_missing_job_id_is_hold(self):
+        for bad in (True, 0, None, "2001"):
+            with self.subTest(bad=bad):
+                data = sample()
+                data[1]["jobs"][0]["id"] = bad
+                self.hold(evaluate(data), "hosted_job_numeric_identity_unverified")
+
+    def test_wrong_job_workflow_name_is_hold(self):
+        data = sample()
+        data[1]["jobs"][0]["workflow_name"] = "LightUp CI"
+        self.hold(evaluate(data), "hosted_job_provenance_unverified")
+
+    def test_wrong_job_run_url_is_hold(self):
+        data = sample()
+        data[3]["jobs"][0]["run_url"] = f"{gate.API_ROOT}9999"
+        self.hold(evaluate(data), "permanent_vps_job_provenance_unverified")
+
+    def test_wrong_job_branch_is_hold(self):
+        data = sample()
+        data[3]["jobs"][0]["head_branch"] = "other-worker"
+        self.hold(evaluate(data), "permanent_vps_job_provenance_unverified")
+
+    def test_job_url_must_reference_exact_numeric_job_id(self):
+        data = sample()
+        data[1]["jobs"][0]["url"] = "https://api.github.com/repos/Zennay/Lightup/actions/jobs/9999"
+        self.hold(evaluate(data), "hosted_job_provenance_unverified")
 
     def test_failed_integration_is_hold(self):
         data = sample(); data[1]["jobs"][0]["conclusion"] = "failure"
