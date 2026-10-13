@@ -120,7 +120,9 @@ def _arguments_are_valid(parameters: tuple, arguments: tuple) -> bool:
             if type(value) is not int or not -(2**63) <= value <= 2**63 - 1:
                 return False
         elif kind is ParamKind.NUMBER:
-            if (type(value) not in (int, float)\n                or (type(value) is int and value.bit_length() > 63)\n                or not isfinite(value)):
+            if (type(value) not in (int, float)
+                or (type(value) is int and value.bit_length() > 63)
+                or not isfinite(value)):
                 return False
         elif kind is ParamKind.BOOLEAN:
             if type(value) is not bool:
