@@ -214,5 +214,21 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
 
 
 
+    def test_30_receipt_cannot_be_constructed_with_permission(self):
+        from lightup.trusted_destination_manifest_optin import DestinationReview
+        with self.assertRaises(TypeError):
+            DestinationReview(1, permit_issued=True)
+        with self.assertRaises(TypeError):
+            DestinationReview(1, authorization_verified=True)
+        with self.assertRaises(TypeError):
+            DestinationReview(1, execution_enabled=True)
+        with self.assertRaises(TypeError):
+            DestinationReview(1, release_approved=True)
+        receipt = self.manifest().review({"host": "localhost"})
+        self.assertEqual(receipt.status, "hold")
+        self.assertIs(receipt.permit_issued, False)
+
+
+
 if __name__ == "__main__":
     unittest.main()
