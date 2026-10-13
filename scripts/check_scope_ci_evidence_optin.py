@@ -281,6 +281,21 @@ def verify_pr_guard_files(pr: object, changed_files: object) -> list[str]:
     return []
 
 
+_STABLE_RUN_FIELDS = (
+    "id", "head_sha", "head_branch", "run_attempt", "status",
+    "conclusion", "workflow_id", "name", "path", "event",
+    "pull_requests", "repository", "head_repository",
+)
+
+def verify_run_stability(initial: object, final: object, name: str) -> list[str]:
+    """Refuse evidence superseded by an Actions rerun during metadata collection."""
+    if not isinstance(initial, dict) or not isinstance(final, dict):
+        return [f"{name}_run_changed_during_evidence_read"]
+    if any(initial.get(field) != final.get(field) for field in _STABLE_RUN_FIELDS):
+        return [f"{name}_run_changed_during_evidence_read"]
+    return []
+
+
 def _get_json(url: str, token: str | None) -> object:
     # URLs use a fixed GitHub endpoint, never a user-controlled destination.
     headers = {"Accept": "application/vnd.github+json",
@@ -329,6 +344,8 @@ def main(argv: list[str] | None = None) -> int:
         # borrow successful workflow results collected earlier in this run.
         final_pr = _get_json(f"{PR_ROOT}{args.pr}", token)
         final_main = _get_json(MAIN_REF, token)
+        final_hosted = _get_json(f"{API_ROOT}{args.hosted_run}", token)
+        final_vps = _get_json(f"{API_ROOT}{args.vps_run}", token)
         receipt = evaluate(args.head, args.hosted_run, args.vps_run, hosted, hj, vps, vj)
         holds = (receipt["missing_gates"]
                  + verify_pr_head(args.head, args.pr, pr)
@@ -338,7 +355,9 @@ def main(argv: list[str] | None = None) -> int:
                  + verify_current_main(pr, initial_main)
                  + verify_current_main(final_pr, final_main)
                  + verify_pr_guard_files(pr, changed_files)
-                 + verify_pr_guard_files(final_pr, changed_files))
+                 + verify_pr_guard_files(final_pr, changed_files)
+                 + verify_run_stability(hosted, final_hosted, "hosted")
+                 + verify_run_stability(vps, final_vps, "permanent_vps"))
         if (not isinstance(final_pr, dict) or not isinstance(pr, dict)
                 or final_pr.get("head") != pr.get("head")
                 or final_pr.get("base") != pr.get("base")
