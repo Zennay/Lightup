@@ -148,6 +148,17 @@ class AdviceGateOptInPipelineAcceptance(unittest.TestCase):
             _run(provider, payload, cap=64)
         self.assertNotIn(ModelRole.REPORT_SYNTHESIZER, provider.roles)
 
+    def test_extremely_oversized_advice_rejected_before_report(self):
+        # Regression for the old ordering: avoid calling .strip() on an
+        # attacker-sized advisor string before checking the exact char cap.
+        huge = (" " * (8 * 1024 * 1024)) + "secret"
+        provider = RecordingProvider(huge)
+        with self.assertRaisesRegex(ValueError, "bounded non-empty text"):
+            _run(provider, _fixture())
+        self.assertEqual(provider.roles, [
+            ModelRole.VERIFIER, ModelRole.REMEDIATION_ADVISOR,
+        ])
+
     def test_multibyte_utf8_overflow_denied_even_under_character_limit(self):
         self._assert_denied_before_report("🔐" * 4097)
 
