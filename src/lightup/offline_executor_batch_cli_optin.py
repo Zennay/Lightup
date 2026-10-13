@@ -95,7 +95,14 @@ def _load_plan(path: str) -> tuple[str, ...]:
     fd = _open_plan_fd_without_symlink_ancestors(path)
     try:
         before = os.fstat(fd)
-        if not stat.S_ISREG(before.st_mode) or before.st_size > MAX_BYTES:
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_size > MAX_BYTES
+            or before.st_nlink != 1
+            or before.st_mode & (stat.S_IWGRP | stat.S_IWOTH)
+        ):
+            # Hard-link aliases and group/world-writable files have mutable
+            # external entry points even when path components are nofollow.
             _deny()
         # Explicit bounded kernel reads: no buffered prefetch, and a short
         # os.read() result cannot silently ignore trailing plan data.
@@ -117,6 +124,8 @@ def _load_plan(path: str) -> tuple[str, ...]:
             or after.st_mode != before.st_mode
             or after.st_mtime_ns != before.st_mtime_ns
             or after.st_ctime_ns != before.st_ctime_ns
+            or after.st_nlink != before.st_nlink
+            or after.st_mode & (stat.S_IWGRP | stat.S_IWOTH)
         ):
             # Same-length changes often evade a size-only after-read check.
             # Metadata comparisons narrow that gap but do not establish an
