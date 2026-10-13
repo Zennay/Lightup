@@ -126,14 +126,50 @@ def _preview(names: tuple[str, ...]) -> dict[str, int | bool | str]:
         }
 
 
+def _compare(
+    baseline: tuple[str, ...], proposed: tuple[str, ...]
+) -> dict[str, int | bool | str]:
+    """Read-only synthetic toolset delta; a green comparison grants nothing.
+
+    Validate *both* plans by the same real offline preview before returning
+    any summary, so even a late-invalid proposed plan has no partial receipt.
+    This is not customer authorization or an active scope policy comparison.
+    """
+    _preview(baseline)
+    _preview(proposed)
+    old, new = set(baseline), set(proposed)
+    return {
+        "status": "reviewed",
+        "added_tools": len(new - old),
+        "removed_tools": len(old - new),
+        "unchanged_tools": len(new & old),
+        "expansion_detected": bool(new - old),
+        "permit_issued": False,
+        "execution_enabled": False,
+        "authorization_verified": False,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
-    if len(args) != 2 or args[0] != "--input" or type(args[1]) is not str:
+    if not (
+        (len(args) == 2 and args[0] == "--input" and type(args[1]) is str)
+        or (
+            len(args) == 3
+            and args[0] == "--compare"
+            and type(args[1]) is str
+            and type(args[2]) is str
+        )
+    ):
         print(_GENERIC_ERROR, file=sys.stderr)
         return 2
     try:
-        names = _load_plan(args[1])
-        receipt = _preview(names)
+        if args[0] == "--input":
+            receipt = _preview(_load_plan(args[1]))
+        else:
+            baseline = _load_plan(args[1])
+            proposed = _load_plan(args[2])
+            receipt = _compare(baseline, proposed)
     except Exception:
         # Opaque failure: no traceback, file path, plan data, host, or secret.
         print(_GENERIC_ERROR, file=sys.stderr)
