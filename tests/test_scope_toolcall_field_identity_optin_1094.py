@@ -190,11 +190,13 @@ class StrictFieldIdentityTests(unittest.TestCase):
         self.assertEqual(self.evidence_count(), 0)
 
     def test_other_default_tools_remain_unavailable(self):
+        from lightup.ai.orchestration import OrchestrationError
+
         with self.assertRaises(OrchestrationError):
-            from lightup.ai.orchestration import OrchestrationError
             self.strict.execute(
                 self.context, self.call(tool_id="nonexistent-tool")
             )
+        self.assertEqual(self.seen, [])
         self.assertEqual(self.evidence_count(), 0)
 
 
