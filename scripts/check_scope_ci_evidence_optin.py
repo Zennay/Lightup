@@ -11,6 +11,12 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 API_ROOT = "https://api.github.com/repos/Zennay/Lightup/actions/runs/"
 PR_ROOT = "https://api.github.com/repos/Zennay/Lightup/pulls/"
 MAIN_REF = "https://api.github.com/repos/Zennay/Lightup/git/ref/heads/main"
+_ALLOWED_API_URL = re.compile(
+    r"https://api\\.github\\.com/repos/Zennay/Lightup/"
+    r"(?:git/ref/heads/main"
+    r"|pulls/[1-9][0-9]{0,9}(?:/files\\?per_page=100)?"
+    r"|actions/runs/[1-9][0-9]{0,16}(?:/jobs\\?per_page=100)?)\\Z"
+)
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 REPO = "Zennay/Lightup"
 HOSTED_WORKFLOW = ("LightUp offline preflight", ".github/workflows/lightup-preflight.yml", 375432315)
@@ -310,7 +316,10 @@ def verify_run_stability(initial: object, final: object, name: str) -> list[str]
 
 
 def _get_json(url: str, token: str | None) -> object:
-    # URLs use a fixed GitHub endpoint, never a user-controlled destination.
+    # Enforce fixed endpoints at the transport boundary, not just the caller.
+    # In particular, never forward a GitHub token to a substituted origin.
+    if type(url) is not str or _ALLOWED_API_URL.fullmatch(url) is None:
+        raise ValueError("unapproved metadata endpoint")
     headers = {"Accept": "application/vnd.github+json",
                "User-Agent": "LightUp-scope-CI-evidence-optin"}
     if token:
