@@ -6,7 +6,7 @@
 
 Parent is immutable [DRAFT #1286](https://github.com/Zennay/Lightup/pull/1286) exact `33fd5c0b5015fccf8a5110390e9cd179d71ffc03`. This isolated follow-up adds:
 1. `src/lightup/webapp/production_opaque_optin.py`: explicit `create_opaque_production_app(environ=None)` that invokes the existing validated `create_production_app` and wraps its exact `LightUpWebApp` instance in the opt-in `OpaqueErrorWSGI`.
-2. `tests/test_production_opaque_optin_1284.py`: **15 real in-process, production-shaped WSGI integration cases** against disposable SQLite.
+2. `tests/test_production_opaque_optin_1284.py`: **17 real in-process, production-shaped WSGI integration cases** against disposable SQLite.
 3. This documentation. No edits to default `production.py`, `app.py`, `security.py`, `domain.py`, existing tests, other workers, `main`, installed Gunicorn/Nginx or target/execution sources.
 
 ## Explicit API only
@@ -28,6 +28,7 @@ app = create_opaque_production_app({
 - Exact original production factory **still unguarded** as a negative control; non-400 normal GET identical between old/new app.
 - Real valid same-origin operator POST still persists, and bad/missing CSRF, client role, hostile Origin, cross-site Fetch Metadata, spoofed proxy/source IP, HTTP proto and bad Host still deny **without database mutations**.
 - Anonymous redirect/tenant role boundaries, secure HttpOnly SameSite cookies on login, logout with permanent session revocation, active session preserved after sanitized error.
+- Rejected hostile Origin and oversized form bodies are refused **before any session lookup or reading WSGI input**, independently mocked at the actual opt-in factory boundary.
 - Invalid origin/proxy/relative SQLite configuration rejected **before invoking DomainStore**, exactly as the production factory already promises.
 
 ## Limitations and owner gates
