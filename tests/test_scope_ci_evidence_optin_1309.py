@@ -378,26 +378,61 @@ class CIEvidenceGateTests(unittest.TestCase):
     def test_api_json_duplicate_nested_keys_refused(self):
         payload = b'{"run":{"head_sha":"a","head_sha":"b"}}'
         with patch.object(gate, "build_opener") as opener:
-            opener.return_value.open.return_value.__enter__.return_value.read.return_value = payload
+            response = opener.return_value.open.return_value.__enter__.return_value
+            response.status = 200
+            response.headers.get.return_value = "application/json; charset=utf-8"
+            response.read.return_value = payload
             with self.assertRaises(ValueError):
                 gate._get_json(gate.API_ROOT + "1001", None)
 
     def test_api_json_nonfinite_refused(self):
         payload = b'{"run":{"status":NaN}}'
         with patch.object(gate, "build_opener") as opener:
-            opener.return_value.open.return_value.__enter__.return_value.read.return_value = payload
+            response = opener.return_value.open.return_value.__enter__.return_value
+            response.status = 200
+            response.headers.get.return_value = "application/json; charset=utf-8"
+            response.read.return_value = payload
             with self.assertRaises(ValueError):
                 gate._get_json(gate.API_ROOT + "1001", None)
 
     def test_api_json_bounded_and_valid_control(self):
         with patch.object(gate, "build_opener") as opener:
             response = opener.return_value.open.return_value.__enter__.return_value
+            response.status = 200
+            response.headers.get.return_value = "application/vnd.github+json"
             response.read.return_value = b'{"run":{"id":1001}}'
             self.assertEqual(gate._get_json(gate.API_ROOT + "1001", None),
                              {"run": {"id": 1001}})
             response.read.return_value = b" " * 524289
             with self.assertRaises(ValueError):
                 gate._get_json(gate.API_ROOT + "1001", None)
+
+    def test_non_200_metadata_response_refused_before_read(self):
+        with patch.object(gate, "build_opener") as opener:
+            response = opener.return_value.open.return_value.__enter__.return_value
+            response.status = 202
+            response.headers.get.return_value = "application/json"
+            with self.assertRaises(ValueError):
+                gate._get_json(gate.API_ROOT + "1001", "SYNTHETIC-TOKEN")
+            response.read.assert_not_called()
+
+    def test_non_json_metadata_response_refused_before_read(self):
+        with patch.object(gate, "build_opener") as opener:
+            response = opener.return_value.open.return_value.__enter__.return_value
+            response.status = 200
+            response.headers.get.return_value = "text/html"
+            with self.assertRaises(ValueError):
+                gate._get_json(gate.API_ROOT + "1001", None)
+            response.read.assert_not_called()
+
+    def test_non_string_content_type_fails_closed(self):
+        with patch.object(gate, "build_opener") as opener:
+            response = opener.return_value.open.return_value.__enter__.return_value
+            response.status = 200
+            response.headers.get.return_value = None
+            with self.assertRaises(ValueError):
+                gate._get_json(gate.API_ROOT + "1001", None)
+            response.read.assert_not_called()
 
     def test_invalid_numeric_cli_does_not_echo_private_text(self):
         marker = "SECRET-SYNTHETIC-CLI-CANARY"
