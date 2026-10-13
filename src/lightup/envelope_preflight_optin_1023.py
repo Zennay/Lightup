@@ -120,7 +120,7 @@ def _preparse_shape(source: str, *, max_depth: int, max_nodes: int) -> bool:
 
         if index >= length:
             return False
-        kind, state = stack[-1]
+        kind, state = stack[-1][:2]
         token = source[index]
 
         if kind == "object":
