@@ -39,6 +39,10 @@ def _canonical_target_host(value: str) -> str | None:
     except ValueError:
         pass
     else:
+        # Legacy ScopePolicy parses bare ::1 as a non-host; never widen it.
+        # Explicitly bracket IPv6 so URL authority parsing is unambiguous.
+        if addr.version == 6:
+            return None
         return str(addr).lower()
 
     is_url = "://" in value
@@ -93,7 +97,8 @@ def _canonical_target_host(value: str) -> str | None:
             return None
         return canonical
     else:
-        return str(ip).lower()
+        # Existing ScopePolicy only recognizes bracketed IPv6 authorities.
+        return f"[{ip}]" if ip.version == 6 else str(ip).lower()
 
 
 @dataclass(frozen=True)
