@@ -46,6 +46,10 @@ def pr_fixture():
             "base": {"ref": "main", "sha": "b" * 40, "repo": {"full_name": "Zennay/Lightup"}}}
 
 
+def main_fixture():
+    return {"ref": "refs/heads/main", "object": {"type": "commit", "sha": "b" * 40}}
+
+
 def evaluate(data=None):
     return gate.evaluate(HEAD, 1001, 1002, *(sample() if data is None else data))
 
@@ -200,7 +204,7 @@ class CIEvidenceGateTests(unittest.TestCase):
     def test_main_combines_current_pr_binding_denial(self):
         data = sample()
         data[2]["pull_requests"][0]["head"]["sha"] = "c" * 40
-        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), *data, pr_fixture()]):
+        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), main_fixture(), *data, pr_fixture(), main_fixture()]):
             with patch("sys.stdout", new_callable=StringIO) as out:
                 exit_status = gate.main(["--pr", "1310", "--head", HEAD,
                                          "--hosted-run", "1001", "--vps-run", "1002"])
@@ -256,7 +260,7 @@ class CIEvidenceGateTests(unittest.TestCase):
         final = pr_fixture()
         final["head"]["sha"] = "c" * 40
         with patch.object(gate, "_get_json",
-                          side_effect=[pr_fixture(), *sample(), final]):
+                          side_effect=[pr_fixture(), main_fixture(), *sample(), final, main_fixture()]):
             with patch("sys.stdout", new_callable=StringIO) as out:
                 result = gate.main(["--pr", "1310", "--head", HEAD,
                                     "--hosted-run", "1001", "--vps-run", "1002"])
@@ -267,7 +271,7 @@ class CIEvidenceGateTests(unittest.TestCase):
         final = pr_fixture()
         final["base"]["sha"] = "c" * 40
         with patch.object(gate, "_get_json",
-                          side_effect=[pr_fixture(), *sample(), final]):
+                          side_effect=[pr_fixture(), main_fixture(), *sample(), final, main_fixture()]):
             with patch("sys.stdout", new_callable=StringIO) as out:
                 result = gate.main(["--pr", "1310", "--head", HEAD,
                                     "--hosted-run", "1001", "--vps-run", "1002"])
@@ -280,12 +284,42 @@ class CIEvidenceGateTests(unittest.TestCase):
                 final = pr_fixture()
                 final.update(mutation)
                 with patch.object(gate, "_get_json",
-                                  side_effect=[pr_fixture(), *sample(), final]):
+                                  side_effect=[pr_fixture(), main_fixture(), *sample(), final, main_fixture()]):
                     with patch("sys.stdout", new_callable=StringIO) as out:
                         result = gate.main(["--pr", "1310", "--head", HEAD,
                                             "--hosted-run", "1001", "--vps-run", "1002"])
                 self.assertEqual(result, 2)
                 self.hold(json.loads(out.getvalue()), "pr_changed_during_evidence_read")
+
+    def test_main_pin_matches_current_pr_base(self):
+        self.assertEqual(gate.verify_current_main(pr_fixture(), main_fixture()), [])
+
+    def test_changed_main_head_is_hold(self):
+        final_main = main_fixture()
+        final_main["object"]["sha"] = "c" * 40
+        with patch.object(gate, "_get_json",
+                          side_effect=[pr_fixture(), main_fixture(), *sample(),
+                                       pr_fixture(), final_main]):
+            with patch("sys.stdout", new_callable=StringIO) as out:
+                result = gate.main(["--pr", "1310", "--head", HEAD,
+                                    "--hosted-run", "1001", "--vps-run", "1002"])
+        self.assertEqual(result, 2)
+        self.hold(json.loads(out.getvalue()), "main_changed_during_evidence_read")
+
+    def test_incoherent_main_base_is_hold(self):
+        invalid_main = main_fixture()
+        invalid_main["object"]["sha"] = "c" * 40
+        self.assertEqual(gate.verify_current_main(pr_fixture(), invalid_main),
+                         ["current_main_unverified"])
+
+    def test_main_ref_type_or_shape_must_be_canonical(self):
+        for change in ({"ref": "refs/heads/dev"}, {"object": {"sha": "b" * 40, "type": "tag"}},
+                       {"object": {"sha": False, "type": "commit"}}):
+            with self.subTest(change=change):
+                ref = main_fixture()
+                ref.update(change)
+                self.assertEqual(gate.verify_current_main(pr_fixture(), ref),
+                                 ["current_main_unverified"])
 
     def test_private_api_exception_does_not_echo(self):
         with patch.object(gate, "_get_json", side_effect=RuntimeError("SECRET-SYNTHETIC-CANARY")):
@@ -295,14 +329,14 @@ class CIEvidenceGateTests(unittest.TestCase):
         self.hold(json.loads(out.getvalue()), "metadata_unavailable")
 
     def test_cli_uses_only_fixed_github_origin(self):
-        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), *sample(), pr_fixture()]) as get:
+        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), main_fixture(), *sample(), pr_fixture(), main_fixture()]) as get:
             with patch("sys.stdout", new_callable=StringIO):
                 self.assertEqual(gate.main(["--pr", "1310", "--head", HEAD, "--hosted-run", "1001", "--vps-run", "1002"]), 0)
         self.assertEqual([c.args[0] for c in get.call_args_list], [
-            f"{gate.PR_ROOT}1310",
+            f"{gate.PR_ROOT}1310", gate.MAIN_REF,
             f"{gate.API_ROOT}1001", f"{gate.API_ROOT}1001/jobs?per_page=100",
             f"{gate.API_ROOT}1002", f"{gate.API_ROOT}1002/jobs?per_page=100",
-            f"{gate.PR_ROOT}1310",
+            f"{gate.PR_ROOT}1310", gate.MAIN_REF,
         ])
 
 if __name__ == "__main__":
