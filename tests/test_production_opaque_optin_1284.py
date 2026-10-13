@@ -9,7 +9,7 @@ import io
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from urllib.parse import urlencode
 
 from lightup.domain import Role
@@ -169,6 +169,57 @@ class OpaqueProductionFactory1284Tests(unittest.TestCase):
                 self.assertEqual(h["Cache-Control"], "no-store")
                 self.assertNotIn(b"Forbidden new tenant", body)
         self.assertEqual(len(self.store.list_clients(self.ctx)), before)
+
+    def test_rejected_origin_precedes_body_parsing_and_session_lookup(self):
+        unread = Mock()
+        env = {
+            "HTTP_HOST": "lightup.example.test",
+            "REMOTE_ADDR": "127.0.0.1",
+            "HTTP_X_FORWARDED_PROTO": "https",
+            "HTTP_ORIGIN": "https://untrusted.example.test",
+            "REQUEST_METHOD": "POST",
+            "PATH_INFO": "/clients",
+            "CONTENT_LENGTH": "999999999",
+            "CONTENT_TYPE": "application/x-www-form-urlencoded",
+            "HTTP_COOKIE": "lightup_session=" + self.op_token,
+            "wsgi.input": unread,
+        }
+        out = {}
+        with patch.object(self.store, "session_context") as lookup:
+            body = b"".join(self.app(
+                env, lambda status, headers: out.update(
+                    status=status, headers=dict(headers))))
+            lookup.assert_not_called()
+        unread.read.assert_not_called()
+        self.assertEqual(out["status"], "403 Forbidden")
+        self.assertNotIn(self.PRIVATE_ID.encode(), body)
+        self.assertEqual(out["headers"]["Cache-Control"], "no-store")
+
+    def test_oversized_form_refused_before_session_and_stream_read(self):
+        unread = Mock()
+        env = {
+            "HTTP_HOST": "lightup.example.test",
+            "REMOTE_ADDR": "127.0.0.1",
+            "HTTP_X_FORWARDED_PROTO": "https",
+            "HTTP_ORIGIN": self.ORIGIN,
+            "REQUEST_METHOD": "POST",
+            "PATH_INFO": "/clients",
+            "CONTENT_LENGTH": "65537",
+            "CONTENT_TYPE": "application/x-www-form-urlencoded",
+            "HTTP_COOKIE": "lightup_session=" + self.op_token,
+            "wsgi.input": unread,
+        }
+        out = {}
+        with patch.object(self.store, "session_context") as lookup:
+            body = b"".join(self.app(
+                env, lambda status, headers: out.update(
+                    status=status, headers=dict(headers))))
+            lookup.assert_not_called()
+        unread.read.assert_not_called()
+        self.assertEqual(out["status"], "413 Payload Too Large")
+        self.assertNotIn(self.PRIVATE_ID.encode(), body)
+        self.assertEqual(out["headers"]["Cache-Control"], "no-store")
+
 
     def test_client_role_cannot_create_other_tenant(self):
         before = len(self.store.list_clients(self.ctx))
