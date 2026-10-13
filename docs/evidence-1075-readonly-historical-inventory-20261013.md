@@ -29,3 +29,15 @@ This is **not automatically run against any user or customer database**. The hel
 Original StateStore/source, privacy/security and tenant owners must approve the **site-specific historical-identifier inventory plan**, decide on migrations and accepted formats, integrate any strict production prelookup before database access, convert all intentional RED to plain PASS, verify latest-main compatibility and **exact-head GitHub-hosted Python 3.11/3.14 and separate permanent registered VPS CI**, and explicitly approve release. Never infer that a syntactically canonical ID is owned/authorized.
 
 **DRAFT/HOLD/NO MERGE/NO DEPLOY** until all review gates. No live clients, targets, scans, evidence collection, remediation, retest, grants, or production database interaction.
+
+## Schema identity preflight — independent follow-up (2026-10-13)
+
+Before returning any aggregate, the diagnostic now refuses a missing/forged `evidence` object: SQLite `sqlite_schema` must report one ordinary **table**, not a view or virtual table; `PRAGMA table_info` must include original StateStore evidence columns and exactly **TEXT PRIMARY KEY** for `evidence_id`. Additive ordinary columns are allowed, so known schema extensions can remain reviewable. All validation executes through the same explicitly chosen **read-only** SQLite connection before selecting evidence rows. Wrong/incomplete schemas fail with a generic `ValueError`; no table names, paths or stored content are exposed in that error. This is a shape gate only, not evidence authenticity, tenancy, authorization or arbitrary untrusted-database execution safety proof.
+
+Additional **8 real disposable SQLite tests** in `tests/test_evidence_1075_inventory_schema_identity_20261013.py` cover genuine StateStore schema, additive extension, missing table, a fake view over a synthetic secret, missing ID primary key, wrong BLOB primary-key affinity, missing required metadata and a single-column lookalike. They assert refusal without mutating SQLite database bytes. Total new inventory tests are **20** (12 initial, 8 schema identity).
+
+```sh
+PYTHONPATH=src python -m unittest -v tests.test_evidence_1075_readonly_inventory_20261013 tests.test_evidence_1075_inventory_schema_identity_20261013
+```
+
+The earlier 4/4 hosted green receipt applies **only to the superseded HEAD** `932f44db98ac4ae5852aed9ed68e9eac47e964d1`, not to this updated source. Latest-head hosted and separate permanent registered VPS CI are mandatory before promotion; do not imply historical production database inspection or approval.
