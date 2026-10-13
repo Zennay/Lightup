@@ -151,7 +151,9 @@ class RunContextIdentity944(unittest.TestCase):
         self.assertEqual(self._rows(), 1)
 
     def test_canonical_analysis_context_cannot_run_lab_tool(self):
-        self._deny_before_effects(self.canonical, "synthetic-lab-944")
+        # Isolate the lab-only denial from the separately tested risk ceiling.
+        elevated = replace(self.canonical, approved_risk=RiskLevel.DESTRUCTIVE_LAB_ONLY)
+        self._deny_before_effects(elevated, "synthetic-lab-944")
 
     def test_exact_low_risk_context_cannot_run_lab_tool(self):
         low = replace(
