@@ -99,3 +99,15 @@ The metadata checker now requires each completed mandatory job to occur during i
 Both permanent Python matrix jobs must report the **same positive integer** GitHub `runner_id` and same canonical nonnegative `runner_group_id`; missing, Boolean, zero or mismatched values fail closed. Hosted jobs also require valid positive runner IDs. The runner name `zcloud-vps-1`, expected labels, exact SHA and canonical required workflow steps remain separately mandatory. This can stop obvious accidental runner alias confusion but it does **not** cryptographically prove that a trusted physical runner executed the commands or that the machine is secure.
 
 **Actual blocker observed:** permanent VPS CI #38483217027 later returned cancelled with two cancelled jobs, with `runner_id=0` and empty runner names (no registered runner execution). It is emphatically **not passing VPS evidence**. The GitHub connector does not expose a repo-runner registration listing or a VPS restart action; manual independent runner restoration is outside this branch's scope. Do not replay hosted tests as permanent runner proof.
+
+## W20 — immutable repository + PR number-to-ID provenance
+
+Run-level workflow metadata previously correlated only human-readable repository names and PR number. The checker now additionally pins GitHub repository immutable numeric ID `1401523136` and matches the current PR's GitHub numeric ID with both workflow-linked PR IDs and their head/base repository IDs. The run's own `repository.id` and `head_repository.id` must equal that pinned repository ID. Invalid or Boolean IDs, different linked PRs or fork-like numeric identity changes force `HOLD`. This is metadata-consistency validation and not proof that the source is authorized to scan a customer.
+
+## W21 — distinct jobs and exact workflow/branch/run identity
+
+Each of the six required GH Actions job records must have a **positive unique** numeric `id` and canonical `url`, matching `run_url`, `workflow_name` and `head_branch`. Missing/duplicate/replayed job identities or mismatched run and branch labels cause `HOLD` regardless of aggregate green status. The prior run-ID, head SHA, runner ID, required step/time ordering and source workflow checks continue to apply.
+
+### VPS evidence status
+
+A cancelled queued VPS CI run (even after source jobs pass on GitHub-hosted) is **not** proof that the permanent runner executed the tests. The user or authorized ops worker must independently restore/verify the registered `zcloud-vps-1` runner, and a new exact-HEAD **two-job SUCCESS** must be inspected before any release review. These code additions neither rerun nor repair infrastructure.
