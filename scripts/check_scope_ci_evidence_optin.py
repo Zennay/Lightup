@@ -168,6 +168,20 @@ def verify_run_pr_binding(head: str, pr_number: int, pr: object,
     return holds
 
 
+def _unique_json_keys(pairs: list[tuple[str, object]]) -> dict:
+    """Never resolve conflicting metadata by silently taking its last value."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("ambiguous metadata")
+        result[key] = value
+    return result
+
+
+def _reject_nonfinite_json(_value: str) -> None:
+    raise ValueError("nonfinite metadata")
+
+
 def _get_json(url: str, token: str | None) -> object:
     # URLs use a fixed GitHub endpoint, never a user-controlled destination.
     headers = {"Accept": "application/vnd.github+json",
@@ -178,7 +192,8 @@ def _get_json(url: str, token: str | None) -> object:
         raw = response.read(524289)
     if len(raw) > 524288:
         raise ValueError("too much metadata")
-    return json.loads(raw.decode("utf-8"))
+    return json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_json_keys,
+                      parse_constant=_reject_nonfinite_json)
 
 class _OpaqueParser(argparse.ArgumentParser):
     """Suppress argparse echo of untrusted CLI values (and accidental tokens)."""
