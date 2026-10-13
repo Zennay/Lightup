@@ -209,5 +209,78 @@ class OptinAdmittedReviewAdapterTest(unittest.TestCase):
         self.assertEqual(provider.requests, [])
 
 
+    def test_blank_advisor_output_fails_before_report_synthesis(self):
+        provider = RecordingScriptedProvider()
+        provider._script[ModelRole.REMEDIATION_ADVISOR] = ["  \t  "]
+        with self.assertRaisesRegex(ValueError, "remediation_advisor"):
+            review_admitted_remediation_batch(
+                bound_pipeline(provider), fixture(fixture_finding())
+            )
+        self.assertEqual([r.role for r in provider.requests],
+                         [ModelRole.VERIFIER, ModelRole.REMEDIATION_ADVISOR])
+
+    def test_invalid_verifier_status_fails_before_advisor_request(self):
+        provider = RecordingScriptedProvider()
+        provider._script[ModelRole.VERIFIER] = ["APPROVED and closed"]
+        with self.assertRaisesRegex(ValueError, "verifier verdict"):
+            review_admitted_remediation_batch(
+                bound_pipeline(provider), fixture(fixture_finding())
+            )
+        self.assertEqual([r.role for r in provider.requests], [ModelRole.VERIFIER])
+
+    def test_bad_output_unicode_surrogate_fails_before_report(self):
+        provider = RecordingScriptedProvider()
+        provider._script[ModelRole.REMEDIATION_ADVISOR] = ["invalid\ud800content"]
+        with self.assertRaisesRegex(ValueError, "remediation_advisor"):
+            review_admitted_remediation_batch(
+                bound_pipeline(provider), fixture(fixture_finding())
+            )
+        self.assertEqual([r.role for r in provider.requests],
+                         [ModelRole.VERIFIER, ModelRole.REMEDIATION_ADVISOR])
+
+    def test_blank_report_output_fails_closed(self):
+        provider = RecordingScriptedProvider()
+        provider._script[ModelRole.REPORT_SYNTHESIZER] = [""]
+        with self.assertRaisesRegex(ValueError, "report_synthesizer"):
+            review_admitted_remediation_batch(
+                bound_pipeline(provider), fixture(fixture_finding())
+            )
+        self.assertEqual(provider.requests[-1].role, ModelRole.REPORT_SYNTHESIZER)
+
+    def test_response_role_spoofing_is_rejected_before_advice(self):
+        class WrongRoleProvider(RecordingScriptedProvider):
+            def complete(self, request):
+                original = super().complete(request)
+                if request.role is ModelRole.VERIFIER:
+                    return ModelResponse(
+                        provider_id=original.provider_id,
+                        model_id=original.model_id,
+                        role=ModelRole.PLANNER,
+                        content=original.content,
+                    )
+                return original
+        provider = WrongRoleProvider()
+        with self.assertRaisesRegex(ValueError, "wrong role"):
+            review_admitted_remediation_batch(
+                bound_pipeline(provider), fixture(fixture_finding())
+            )
+        self.assertEqual([r.role for r in provider.requests], [ModelRole.VERIFIER])
+
+    def test_advisor_carries_exact_verifier_verdict_and_evidence_summary(self):
+        provider = RecordingScriptedProvider()
+        review_admitted_remediation_batch(bound_pipeline(provider),
+                                          fixture(fixture_finding()))
+        advisor = user_payload(provider.requests[1])
+        verifier = user_payload(provider.requests[0])
+        self.assertEqual(advisor["verifier_verdict"],
+                         "UNCERTAIN synthetic evidence needs verification")
+        self.assertEqual(advisor["evidence_summary"], verifier["evidence_summary"])
+        self.assertEqual(advisor["evidence_ids"], verifier["evidence_ids"])
+        self.assertEqual(advisor["target"], verifier["target"])
+        report = user_payload(provider.requests[2])
+        self.assertEqual(report["findings"][0]["verdict"],
+                         "UNCERTAIN synthetic evidence needs verification")
+
+
 if __name__ == "__main__":
     unittest.main()
