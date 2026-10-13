@@ -96,7 +96,20 @@ def _preparse_shape(source: str, *, max_depth: int, max_nodes: int) -> bool:
             return _after_string(source, at)
         if token in "-0123456789":
             matched = _NUMBER.match(source, at)
-            return matched.end() if matched else None
+            if matched is None:
+                return None
+            numeric = matched.group()
+            if "." in numeric or "e" in numeric or "E" in numeric:
+                # Reject exponent overflow before the full JSON decoder builds
+                # a tree. Python json.loads silently converts 1e999 to inf.
+                # A bounded token-local float check is not authorization or
+                # a substitute for application-level numeric value policy.
+                try:
+                    if not math.isfinite(float(numeric)):
+                        return None
+                except (ValueError, OverflowError):
+                    return None
+            return matched.end()
         for literal in ("true", "false", "null"):
             if source.startswith(literal, at):
                 return at + len(literal)
