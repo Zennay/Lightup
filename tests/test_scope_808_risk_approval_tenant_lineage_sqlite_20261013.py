@@ -159,6 +159,31 @@ class RiskApprovalTenantLineageSQLiteAcceptance(unittest.TestCase):
         self._orphan_a_approval()
         self.assertEqual(self._ids(self.ctx_b), {self.approval_b.approval_id})
 
+    def test_operator_wide_inventory_preserves_corrupt_row_for_audit(self):
+        self._corrupt_a_tenant_to_b()
+        before = self._row_snapshot()
+        self.assertEqual(
+            self._ids(self.operator),
+            {self.approval_a.approval_id, self.approval_b.approval_id},
+        )
+        self.assertEqual(self._row_snapshot(), before)
+
+    @unittest.expectedFailure
+    def test_red_operator_explicit_engagement_filters_incoherent_tenant_label(self):
+        self._corrupt_a_tenant_to_b()
+        self.assertNotIn(
+            self.approval_a.approval_id,
+            self._ids(self.operator, self.engagement_a.engagement_id),
+        )
+
+    @unittest.expectedFailure
+    def test_red_operator_explicit_engagement_filters_foreign_pointer(self):
+        self._retarget_a_approval_to_b_engagement()
+        self.assertEqual(
+            self._ids(self.operator, self.engagement_b.engagement_id),
+            {self.approval_b.approval_id},
+        )
+
     def test_cross_tenant_explicit_read_remains_denied_after_corruption(self):
         self._corrupt_a_tenant_to_b()
         with self.assertRaises(TenantIsolationError):
