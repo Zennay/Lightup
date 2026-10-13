@@ -35,3 +35,9 @@ The command now **requires** `--pr` and uses a fifth read-only GitHub API GET fo
 New fail-closed check for **both hosted and permanent VPS** workflow runs: GitHub Actions `pull_requests` metadata must contain exactly one record for the requested PR number, its immutable source SHA/branch and its exact base branch+SHA. The run `head_branch` must be the current PR head ref. Reject missing/duplicate/mismatched PR associations, stale base SHA and non-`main` base. This makes apparently green CI from an unrelated PR or an older pre-base-update snapshot **HOLD**.
 
 This is **metadata consistency** only: it does not cryptographically attest to the runner, source checkout, test logs or GitHub itself, and it does not authorize a scanner, allow merging or stand in for human security/privacy review. Branches are held as draft.
+
+## W7–W8: opaque argument and unambiguous metadata admission
+
+The read-only CLI refuses unknown or malformed numeric arguments with an **opaque fixed JSON HOLD**, without echoing untrusted CLI tokens into stdout/stderr (including erroneous `argparse` values). GitHub API input is capped to 512 KiB and parses JSON with duplicate-key rejection **at every object level** and rejection of `NaN`/`Infinity`; conflicting CI evidence cannot be resolved by last-key-wins behavior. Regression tests use entirely synthetic in-memory mocked responses and input canaries, never making network requests.
+
+This strengthens a non-authorizing metadata preview only; no claim of trusted CI provenance, race-free GitHub state, registry permission, release approval or actual scanner safety.
