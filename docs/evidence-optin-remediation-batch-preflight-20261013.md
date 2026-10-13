@@ -26,3 +26,20 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 The 22 standalone tests require **22 ordinary PASS**, no expected RED. They cover atomic whole-batch input rejection, exact types/subtypes, fix budget and per-field length caps, canonical ordering and fallback, intra-finding duplicate references, cross-finding shared IDs, input preservation, immutable return snapshots, no raw evidence, and malformed Unicode.
 
 This is a **new optional component** not wired to `AssessmentReviewPipeline.review()`. The #846 source owner must explicitly decide whether/how to admit the full batch *before any verifier/advisor/report dispatch*, compose legacy #899/#901/#902 acceptance, and preserve existing evidence/tenant/authorization checks. No claim that the installed review pipeline now rejects malformed inputs. Require exact-head hosted Python 3.11/3.14, separately registered permanent VPS CI, latest-main integration, security/privacy review, and explicit human release decision before any merge/deploy. Never send customer evidence or external target details through this reference fixture.
+
+
+## Optional caller-facing review adapter (additional implemented feature)
+
+`review_admitted_remediation_batch(pipeline, labrun_result)` in the **new** `src/lightup/ai/review_admitted_batch_optin.py` explicitly runs the **whole** immutable preflight before *any* verifier/advisor/report invocation, then calls the actual existing `AssessmentReviewPipeline` with **fresh JSON-like containers derived exclusively from immutable validated metadata**. In particular, the caller's original findings list/objects, raw evidence payload, arbitrary custom fields, unvalidated coverage counts, and misleading caller-wide target value are never sent to providers. The adapter propagates per-finding targets and evidence references; it labels multiple targets honestly as multiple preflighted target labels rather than presenting the first one as the scope of all findings.
+
+This opt-in adapter uses the caller's configured pipeline. **A configured live model provider could make outbound API requests only when the caller explicitly invokes this adapter**; the API does not initiate any request on its own. All accompanying tests bind **only** deterministic in-memory `ScriptedProvider` models and make **zero network requests**. Actual verifier/advisor responses retain existing source-owner validation limitations (#898) and are not a security verdict. Neither wrapper nor producer performs authorization; callers still need approved assessment evidence, consent and scope checks, and independently validated coverage. No default application route or pipeline integration has been changed.
+
+`tests/test_review_admitted_batch_optin.py` exercises actual pipeline dispatch ordering with ten additional synthetic methods: preservation of unique remediation/evidence by finding, no raw evidence/authorization spoofing forwarded, whole-batch reject-before-dispatch even for a later bad finding, **mutation of the original caller input during the first model completion does not affect the subsequent verifier/advisor/report request**, empty-batch noncoverage, and exact pipeline admission.
+
+Run both modules together:
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_*optin.py' -v
+```
+
+The only accepted sign-off is the exact-head hosted Python 3.11/3.14 full suite **plus** real registered permanent VPS jobs; normal GitHub-hosted preflight is not a substitute for VPS CI.
