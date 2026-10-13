@@ -256,6 +256,41 @@ class AdviceGateOptInPipelineAcceptance(unittest.TestCase):
             ModelRole.VERIFIER, ModelRole.REMEDIATION_ADVISOR
         ])
 
+    def test_provider_id_property_is_read_only_once_at_construction(self):
+        class StatefulIdentityProvider(RecordingProvider):
+            def __init__(self):
+                super().__init__("valid")
+                self.identity_calls = 0
+            @property
+            def provider_id(self):
+                self.identity_calls += 1
+                return "offline-advisor-gate-fixture" if self.identity_calls == 1 else "swapped"
+        provider = StatefulIdentityProvider()
+        wrapped = CheckedRemediationAdviceProvider(provider)
+        self.assertEqual(wrapped.provider_id, "offline-advisor-gate-fixture")
+        self.assertEqual(wrapped.provider_id, "offline-advisor-gate-fixture")
+        self.assertEqual(provider.identity_calls, 1)
+
+    def test_provider_id_property_exception_is_generic_no_context(self):
+        class RaisingIdentityProvider(RecordingProvider):
+            @property
+            def provider_id(self):
+                raise RuntimeError("PRIVATE_PROVIDER_IDENTITY_SECRET")
+        provider = RaisingIdentityProvider("valid")
+        with self.assertRaisesRegex(ValueError, "invalid remediation advice gate") as caught:
+            CheckedRemediationAdviceProvider(provider)
+        self.assertNotIn("PRIVATE_", str(caught.exception))
+        self.assertIsNone(caught.exception.__context__)
+        self.assertIsNone(caught.exception.__cause__)
+
+    def test_nonbuiltin_provider_id_is_denied_during_construction(self):
+        class SubclassIdentityProvider(RecordingProvider):
+            @property
+            def provider_id(self):
+                return StrSubclass("offline-advisor-gate-fixture")
+        with self.assertRaisesRegex(ValueError, "invalid remediation advice gate"):
+            CheckedRemediationAdviceProvider(SubclassIdentityProvider("valid"))
+
     def test_non_advisor_failures_are_not_silently_converted(self):
         class RaisingVerifier(RecordingProvider):
             def complete(self, request):
