@@ -92,6 +92,21 @@ class EvidenceIdInventorySnapshotTests(unittest.TestCase):
             EvidenceIdInventory(1, 1, 0, 0),
         )
 
+    def test_schema_swap_to_fake_view_does_not_bypass_snapshot_admission(self):
+        with closing(sqlite3.connect(self.path)) as writer:
+            def replace_with_view():
+                writer.execute("ALTER TABLE evidence RENAME TO archived_evidence")
+                writer.execute(
+                    "CREATE VIEW evidence AS SELECT evidence_id FROM archived_evidence"
+                )
+                writer.commit()
+            counted = self._inventory_with_queued_write(replace_with_view)
+        # The already admitted reader sees the original WAL snapshot, never
+        # the new lookalike view. The next reader must refuse that new schema.
+        self.assertEqual(counted, EvidenceIdInventory(1, 1, 0, 0))
+        with self.assertRaisesRegex(ValueError, "invalid SQLite schema"):
+            inspect_evidence_id_shapes(self.path)
+
     def test_reopening_after_snapshot_sees_new_noncanonical_without_mutation(self):
         with closing(sqlite3.connect(self.path)) as writer:
             def insert_legacy():
