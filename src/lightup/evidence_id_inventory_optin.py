@@ -51,6 +51,10 @@ def inspect_evidence_id_shapes(
         # caller-supplied SQL. mode=ro forbids updates, schema edits and creation.
         connection = sqlite3.connect(resolved.as_uri() + "?mode=ro", uri=True)
         connection.execute("PRAGMA query_only=ON")
+        # Pin schema checks and evidence rows to ONE consistent SQLite snapshot.
+        # Without BEGIN, a concurrent writer can commit between schema admission
+        # and the evidence SELECT, producing a misleading mixed-time inventory.
+        connection.execute("BEGIN")
         # This diagnostic only understands the real StateStore evidence table.
         # A foreign database/view with an "evidence_id" column must not produce
         # plausible-looking migration/compatibility counts.
