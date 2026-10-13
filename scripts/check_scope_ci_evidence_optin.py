@@ -27,6 +27,46 @@ PERMANENT = frozenset((
     "LightUp plan-only safety tests (Python 3.11)",
     "LightUp plan-only safety tests (Python 3.14)",
 ))
+HOSTED_PREFLIGHT_STEPS = frozenset((
+    "Run actions/checkout@v4",
+    "Run actions/setup-python@v5",
+    "Compile and unit suite",
+    "Repeat activation and web canaries with isolated state",
+))
+HOSTED_INTEGRATION_STEPS = frozenset((
+    "Run actions/checkout@v4",
+    "Run actions/setup-python@v5",
+    "Combined unit suite and real producer integration",
+    "State verification boundary",
+))
+VPS_CRITICAL_STEPS = frozenset((
+    "Guard permanent VPS runner",
+    "Checkout",
+    "Setup Python",
+    "Compile",
+    "Unit tests",
+    "Real producer integration (requires merged ST2/ST3 predecessors)",
+    "Offline activation and web canaries (isolated state)",
+))
+
+def _verified_required_steps(job: dict, required: frozenset[str]) -> bool:
+    """Do not infer a safety suite ran solely from overall job success."""
+    steps = job.get("steps")
+    if type(steps) is not list or len(steps) > 40:
+        return False
+    names = set()
+    for step in steps:
+        if not isinstance(step, dict) or type(step.get("name")) is not str:
+            return False
+        name = step["name"]
+        if name in names:
+            return False
+        names.add(name)
+        if name in required and (step.get("status") != "completed"
+                                  or step.get("conclusion") != "success"):
+            return False
+    return required.issubset(names)
+
 
 def _receipt(holds: list[str]) -> dict:
     return {
@@ -90,6 +130,11 @@ def evaluate(head: str, hosted_id: int, vps_id: int,
             if (job.get("head_sha") != head or job.get("status") != "completed"
                     or job.get("conclusion") != "success"):
                 holds.append(f"{name}_job_not_successful_on_head")
+            required_steps = (VPS_CRITICAL_STEPS if is_vps else
+                              HOSTED_INTEGRATION_STEPS if job["name"].startswith("Real producer")
+                              else HOSTED_PREFLIGHT_STEPS)
+            if not _verified_required_steps(job, required_steps):
+                holds.append(f"{name}_critical_steps_unverified")
             labels = job.get("labels")
             if (type(labels) is not list or any(type(s) is not str for s in labels)
                     or (is_vps and (not VPS_LABELS.issubset(labels)
