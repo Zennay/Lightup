@@ -216,18 +216,28 @@ class AdviceGateOptInPipelineAcceptance(unittest.TestCase):
         self.assertNotIn(ModelRole.REPORT_SYNTHESIZER, provider.roles)
 
     def test_delegate_identity_is_pinned_against_in_place_mutation(self):
-        provider = RecordingProvider("apparently valid")
-        gate = CheckedRemediationAdviceProvider(provider)
-        before = gate.provider_id
-        provider._provider_id = "swapped-provider-after-binding"
-        self.assertEqual(gate.provider_id, before)
+        class SwappingDelegate(RecordingProvider):
+            def complete(self, request):
+                # Verifier response uses original provider identity; only
+                # the later advisor call mutates the delegate behind its
+                # already-pinned gateway binding.
+                if request.role is ModelRole.REMEDIATION_ADVISOR:
+                    self._provider_id = "swapped-provider-after-binding"
+                return super().complete(request)
+        provider = SwappingDelegate("apparently valid")
         gateway = ModelGateway()
-        gateway.register_provider(gate)
+        checked = CheckedRemediationAdviceProvider(provider)
+        original = checked.provider_id
+        gateway.register_provider(checked)
         for role in AssessmentReviewPipeline.ROLES:
-            gateway.bind_role(role, before, "offline-script")
+            gateway.bind_role(role, original, "offline-script")
         with self.assertRaisesRegex(ValueError, "bounded non-empty text"):
             AssessmentReviewPipeline(gateway).review(_fixture())
+        self.assertEqual(checked.provider_id, original)
         self.assertNotIn(ModelRole.REPORT_SYNTHESIZER, provider.roles)
+        self.assertEqual(provider.roles, [
+            ModelRole.VERIFIER, ModelRole.REMEDIATION_ADVISOR,
+        ])
 
     def test_advisor_provider_exception_sanitized_without_context_leak(self):
         class RaisingAdvisor(RecordingProvider):
