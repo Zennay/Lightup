@@ -8,6 +8,7 @@ from __future__ import annotations
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 from uuid import uuid4
@@ -67,7 +68,7 @@ class EvidenceIdInventorySnapshotTests(unittest.TestCase):
         return aggregate
 
     def test_schema_and_row_counts_share_one_consistent_read_snapshot(self):
-        with sqlite3.connect(self.path) as writer:
+        with closing(sqlite3.connect(self.path)) as writer:
             counted = self._inventory_with_queued_write(
                 lambda: self._insert_writer_row(writer)
             )
@@ -79,7 +80,7 @@ class EvidenceIdInventorySnapshotTests(unittest.TestCase):
         )
 
     def test_schema_change_during_snapshot_cannot_reinterpret_evidence(self):
-        with sqlite3.connect(self.path) as writer:
+        with closing(sqlite3.connect(self.path)) as writer:
             def add_column():
                 writer.execute("ALTER TABLE evidence ADD COLUMN future_extra TEXT")
                 writer.commit()
@@ -92,7 +93,7 @@ class EvidenceIdInventorySnapshotTests(unittest.TestCase):
         )
 
     def test_reopening_after_snapshot_sees_new_noncanonical_without_mutation(self):
-        with sqlite3.connect(self.path) as writer:
+        with closing(sqlite3.connect(self.path)) as writer:
             def insert_legacy():
                 self._insert_writer_row(writer)
                 writer.execute(
