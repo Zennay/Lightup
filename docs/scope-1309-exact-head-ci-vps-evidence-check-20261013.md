@@ -65,3 +65,9 @@ This neither validates the workflow code behind a displayed step nor proves the 
 After the initial GitHub Actions run/job reads and the final PR/main snapshots, the opt-in verifier fetches **both** hosted and permanent VPS run metadata again. The stable run fields include workflow/repository/PR provenance, branch, immutable SHA, `run_attempt`, status and conclusion. Any changed or missing metadata forces `HOLD`, even if the earlier job list indicated success. Synthetic tests cover a new run attempt, altered PR link, suddenly queued VPS and unavailable second read.
 
 This is deliberately non-atomic best-effort metadata consistency, not proof that GitHub cannot change between requests. It does not trigger or approve reruns, and never returns an execution token. Permanent runner + human review remain required.
+
+## W14 — strict step sequence and step-number provenance
+
+Beyond verifying critical step names and success, the opt-in checker now requires GitHub Actions step `number` fields to be exact positive integers, unique and strictly increasing in the returned sequence. Each required critical step must also appear in the original workflow's precise ordered pipeline: the permanent VPS hostname guard precedes checkout, then interpreter setup, compile, unit tests, producer integration and final safety canaries. Hosted preflight and integration jobs have separately pinned ordered step sequences. Rearranged safety execution, missing, duplicate or Boolean step numbers cause `HOLD` even with an aggregate successful job.
+
+The numbered step metadata is **not** independent attestation that the shell commands executed on a trusted runner. Review of original immutable workflow source, raw logs and real VPS completion remain mandatory. No installed workflow configuration, customer target or production code was modified.
