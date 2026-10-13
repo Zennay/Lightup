@@ -81,7 +81,12 @@ def _verified_required_steps(job: dict, required: tuple[str, ...]) -> bool:
             return False
         last_number = number
         seen[name] = step
+    job_started = _utc_instant(job.get("started_at"))
+    job_finished = _utc_instant(job.get("completed_at"))
+    if job_started is None or job_finished is None or job_started > job_finished:
+        return False
     last_number = 0
+    last_finished = job_started
     for name in required:
         current = seen.get(name)
         if (current is None
@@ -89,7 +94,13 @@ def _verified_required_steps(job: dict, required: tuple[str, ...]) -> bool:
                 or current.get("conclusion") != "success"
                 or current["number"] <= last_number):
             return False
+        step_started = _utc_instant(current.get("started_at"))
+        step_finished = _utc_instant(current.get("completed_at"))
+        if (step_started is None or step_finished is None
+                or not last_finished <= step_started <= step_finished <= job_finished):
+            return False
         last_number = current["number"]
+        last_finished = step_finished
     return True
 
 
@@ -117,6 +128,21 @@ def _ordered_job_timestamps(job: dict) -> bool:
     started = _utc_instant(job.get("started_at"))
     completed = _utc_instant(job.get("completed_at"))
     return created is not None and started is not None and completed is not None and created <= started <= completed
+
+def _job_within_run(run: dict, job: dict) -> bool:
+    """Bound every successful job to its enclosing exact-run lifecycle."""
+    run_created = _utc_instant(run.get("created_at"))
+    run_started = _utc_instant(run.get("run_started_at"))
+    run_finished = _utc_instant(run.get("updated_at"))
+    job_created = _utc_instant(job.get("created_at"))
+    job_started = _utc_instant(job.get("started_at"))
+    job_finished = _utc_instant(job.get("completed_at"))
+    return (all(value is not None for value in (
+        run_created, run_started, run_finished,
+        job_created, job_started, job_finished))
+        and run_created <= job_created
+        and run_started <= job_started <= job_finished <= run_finished)
+
 
 
 def _receipt(holds: list[str]) -> dict:
@@ -185,6 +211,8 @@ def evaluate(head: str, hosted_id: int, vps_id: int,
                 holds.append(f"{name}_job_not_successful_on_head")
             if not _ordered_job_timestamps(job):
                 holds.append(f"{name}_job_timeline_unverified")
+            if not _job_within_run(run, job):
+                holds.append(f"{name}_run_job_timeline_incoherent")
             required_steps = (VPS_CRITICAL_ORDER if is_vps else
                               HOSTED_INTEGRATION_ORDER if job["name"].startswith("Real producer")
                               else HOSTED_PREFLIGHT_ORDER)
