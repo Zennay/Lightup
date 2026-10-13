@@ -70,6 +70,26 @@ class RiskApprovalTenantLineageSQLiteAcceptance(unittest.TestCase):
             ).rowcount
         self.assertEqual(updated, 1)
 
+    def _retarget_a_approval_to_b_engagement(self):
+        # Simulates a persisted foreign engagement reference with unchanged A label.
+        with sqlite3.connect(self.store.path) as con:
+            updated = con.execute(
+                "UPDATE risk_approvals SET engagement_id=? WHERE approval_id=?",
+                (self.engagement_b.engagement_id, self.approval_a.approval_id),
+            ).rowcount
+        self.assertEqual(updated, 1)
+
+    def _orphan_a_approval(self):
+        # Deliberately corrupt an *offline fixture* using a connection with FK
+        # enforcement disabled; no product write API can create this condition.
+        with sqlite3.connect(self.store.path) as con:
+            con.execute("PRAGMA foreign_keys=OFF")
+            removed = con.execute(
+                "DELETE FROM engagements WHERE engagement_id=?",
+                (self.engagement_a.engagement_id,),
+            ).rowcount
+        self.assertEqual(removed, 1)
+
     def test_canonical_owner_and_foreign_client_lists_are_isolated(self):
         self.assertEqual(self._ids(self.ctx_a), {self.approval_a.approval_id})
         self.assertEqual(self._ids(self.ctx_b), {self.approval_b.approval_id})
@@ -123,6 +143,20 @@ class RiskApprovalTenantLineageSQLiteAcceptance(unittest.TestCase):
     @unittest.expectedFailure
     def test_red_corrupt_row_is_omitted_without_hiding_valid_b_approval(self):
         self._corrupt_a_tenant_to_b()
+        self.assertEqual(self._ids(self.ctx_b), {self.approval_b.approval_id})
+
+    @unittest.expectedFailure
+    def test_red_same_client_label_cannot_hide_foreign_engagement_lineage(self):
+        self._retarget_a_approval_to_b_engagement()
+        self.assertNotIn(self.approval_a.approval_id, self._ids(self.ctx_a))
+
+    @unittest.expectedFailure
+    def test_red_orphaned_engagement_cannot_leave_visible_client_approval(self):
+        self._orphan_a_approval()
+        self.assertNotIn(self.approval_a.approval_id, self._ids(self.ctx_a))
+
+    def test_canonical_b_approval_survives_unrelated_orphaned_a_fixture(self):
+        self._orphan_a_approval()
         self.assertEqual(self._ids(self.ctx_b), {self.approval_b.approval_id})
 
     def test_cross_tenant_explicit_read_remains_denied_after_corruption(self):
