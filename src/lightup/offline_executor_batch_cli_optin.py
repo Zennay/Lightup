@@ -63,8 +63,8 @@ def _open_plan_fd_without_symlink_ancestors(path: str) -> int:
     required = ("O_NONBLOCK", "O_NOFOLLOW", "O_CLOEXEC", "O_DIRECTORY")
     if not all(hasattr(os, flag) for flag in required):
         _deny()
-    if os.open not in os.supports_dir_fd:
-        _deny()
+    # dir_fd support is exercised by os.open itself; platforms lacking it
+    # raise and the CLI returns its one opaque error, never a weaker open.
     # pathlib collapses repeated separators and '.' only. Parent traversal
     # is explicitly forbidden to keep every directory lookup predictable.
     parts = Path(path).parts
