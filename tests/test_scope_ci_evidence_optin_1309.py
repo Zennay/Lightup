@@ -17,10 +17,12 @@ def sample():
     vps = {**host, "id": 1002}
     hj = {"total_count": 4, "jobs": [
         {"name": name, "head_sha": HEAD, "status": "completed", "conclusion": "success",
+         "run_id": 1001, "run_attempt": 1,
          "runner_name": "GitHub Actions 9", "labels": ["ubuntu-latest"]}
         for name in sorted(gate.HOSTED)]}
     vj = {"total_count": 2, "jobs": [
         {"name": name, "head_sha": HEAD, "status": "completed", "conclusion": "success",
+         "run_id": 1002, "run_attempt": 1,
          "runner_name": "zcloud-vps-1", "labels": ["self-hosted", "zcloud", "vps"]}
         for name in sorted(gate.PERMANENT)]}
     return [host, hj, vps, vj]
@@ -55,6 +57,14 @@ class CIEvidenceGateTests(unittest.TestCase):
     def test_stale_vps_job_is_hold(self):
         data = sample(); data[3]["jobs"][0]["head_sha"] = "b" * 40
         self.hold(evaluate(data), "permanent_vps_job_not_successful_on_head")
+
+    def test_replayed_prior_run_job_is_hold(self):
+        data = sample(); data[3]["jobs"][0]["run_id"] = 9000
+        self.hold(evaluate(data), "permanent_vps_job_run_identity_mismatch")
+
+    def test_replayed_previous_attempt_is_hold(self):
+        data = sample(); data[2]["run_attempt"] = 2
+        self.hold(evaluate(data), "permanent_vps_job_run_identity_mismatch")
 
     def test_failed_integration_is_hold(self):
         data = sample(); data[1]["jobs"][0]["conclusion"] = "failure"
