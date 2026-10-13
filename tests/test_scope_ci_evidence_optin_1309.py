@@ -14,7 +14,12 @@ HEAD = "a" * 40
 
 def sample():
     host = {"id": 1001, "head_sha": HEAD, "status": "completed", "conclusion": "success", "run_attempt": 1}
-    vps = {**host, "id": 1002}
+    host.update(name="LightUp offline preflight",
+                path=".github/workflows/lightup-preflight.yml", workflow_id=375432315,
+                event="pull_request", repository={"full_name": "Zennay/Lightup"},
+                head_repository={"full_name": "Zennay/Lightup"})
+    vps = {**host, "id": 1002, "name": "LightUp CI",
+           "path": ".github/workflows/lightup-ci.yml", "workflow_id": 373018063}
     hj = {"total_count": 4, "jobs": [
         {"name": name, "head_sha": HEAD, "status": "completed", "conclusion": "success",
          "run_id": 1001, "run_attempt": 1,
@@ -49,6 +54,18 @@ class CIEvidenceGateTests(unittest.TestCase):
         for job in data[3]["jobs"]:
             job.update(status="queued", conclusion=None, runner_name="")
         self.hold(evaluate(data), "permanent_vps_run_not_successful")
+
+    def test_wrong_workflow_identity_is_hold(self):
+        data = sample(); data[0]["workflow_id"] = 373018063
+        self.hold(evaluate(data), "hosted_workflow_identity_mismatch")
+
+    def test_wrong_repository_is_hold(self):
+        data = sample(); data[2]["head_repository"] = {"full_name": "forged/Lightup"}
+        self.hold(evaluate(data), "permanent_vps_workflow_identity_mismatch")
+
+    def test_push_event_is_not_pull_request_evidence(self):
+        data = sample(); data[0]["event"] = "push"
+        self.hold(evaluate(data), "hosted_workflow_identity_mismatch")
 
     def test_stale_hosted_sha_is_hold(self):
         data = sample(); data[0]["head_sha"] = "b" * 40
