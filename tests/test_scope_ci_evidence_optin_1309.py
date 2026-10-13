@@ -121,6 +121,11 @@ class CIEvidenceGateTests(unittest.TestCase):
         data = sample(); data[3]["jobs"][0] = {"name": False}
         self.hold(evaluate(data), "permanent_vps_malformed_jobs")
 
+    def test_github_redirect_is_rejected(self):
+        handler = gate._DenyRedirects()
+        self.assertIsNone(handler.redirect_request(
+            None, None, 302, "synthetic", {}, "https://untrusted.invalid/"))
+
     def test_private_api_exception_does_not_echo(self):
         with patch.object(gate, "_get_json", side_effect=RuntimeError("SECRET-SYNTHETIC-CANARY")):
             with patch("sys.stdout", new_callable=StringIO) as out:
