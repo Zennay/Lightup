@@ -26,16 +26,21 @@ class CheckedRemediationAdviceProvider(ModelProvider):
     ):
         if not isinstance(delegate, ModelProvider):
             raise ValueError("remediation advice provider is required")
+        # A custom provider_id property can be stateful or throw. Capture
+        # ONCE and validate only the snapshot used by the gateway binding.
+        try:
+            provider_id = delegate.provider_id
+        except Exception:
+            provider_id = None
         if (
-            type(delegate.provider_id) is not str
-            or not delegate.provider_id.strip()
+            type(provider_id) is not str
+            or not provider_id.strip()
             or type(max_advice_chars) is not int
             or not 1 <= max_advice_chars <= _MAX_ADVICE_CHARS
         ):
             raise ValueError("invalid remediation advice gate configuration")
         self._delegate = delegate
-        # Stable identity, never re-read a mutable delegate property to bind.
-        self._provider_id = delegate.provider_id
+        self._provider_id = provider_id
         self._max_advice_chars = max_advice_chars
 
     @property
