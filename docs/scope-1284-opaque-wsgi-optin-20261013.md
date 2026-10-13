@@ -20,7 +20,7 @@ guarded_app = OpaqueErrorWSGI(create_app(disposable_store))
 
 The wrapper accepts **only the exact current synchronous `LightUpWebApp` class** and never reinterprets route, user, session, host, origin, CSRF, grant, target or capability. It consumes/discards the original 400 body and returns a constant safe HTML body; original status, CSP, frame/no-cache protections and other headers remain. It corrects Content-Type/Length for the replacement, removes any stale ETag, never emits raw domain exception text, and passes all non-400 responses through unchanged. This is only a proof of the eager stdlib shell WSGI contract; arbitrary streaming WSGI apps and the `write()` interface are explicitly unsupported.
 
-`tests/test_opaque_error_wsgi_optin_1284.py` uses 10 actual authenticated disposable SQLite WSGI tests, verifying nonleaking unknown-resource ID, nonleaking validation text, original default remaining unmodified, correct replacement length/type/security headers, positive valid authorized POST, unchanged operator normal GET, anonymous/client/CSRF refusal, no illegal DB mutation, and session continuity after error.
+`tests/test_opaque_error_wsgi_optin_1284.py` uses 11 actual authenticated disposable SQLite WSGI tests, verifying nonleaking unknown-resource ID, nonleaking validation text, original default remaining unmodified, correct replacement length/type/security headers, positive valid authorized POST, unchanged operator normal GET, anonymous/client/CSRF refusal, no illegal DB mutation, session continuity after error, and synthetic untrusted error-header/cookie suppression.
 
 ## Important limitations
 
