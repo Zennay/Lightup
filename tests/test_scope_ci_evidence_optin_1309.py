@@ -306,6 +306,39 @@ class CIEvidenceGateTests(unittest.TestCase):
         self.assertEqual(exit_status, 2)
         self.hold(json.loads(out.getvalue()), "permanent_vps_pr_binding_mismatch")
 
+    def test_fixed_transport_allows_only_canonical_github_metadata_urls(self):
+        examples = (
+            gate.MAIN_REF, f"{gate.PR_ROOT}1310", f"{gate.PR_ROOT}1310/files?per_page=100",
+            f"{gate.API_ROOT}1001", f"{gate.API_ROOT}1001/jobs?per_page=100",
+        )
+        for url in examples:
+            with self.subTest(url=url):
+                self.assertIsNotNone(gate._ALLOWED_API_URL.fullmatch(url))
+
+    def test_transport_blocks_token_forwarding_to_untrusted_origins(self):
+        examples = (
+            "https://untrusted.invalid/steal", "http://api.github.com/repos/Zennay/Lightup/pulls/1310",
+            "https://api.github.com.evil.invalid/repos/Zennay/Lightup/pulls/1310",
+            "https://operator@api.github.com/repos/Zennay/Lightup/pulls/1310",
+            "https://api.github.com/repos/Zennay/Lightup/pulls/1310/../../untrusted",
+            "https://api.github.com/repos/Zennay/Lightup/pulls/1310#fragment",
+            "https://api.github.com/repos/Zennay/Lightup/pulls/1310?redirect=true",
+            "https://api.github.com/repos/Zennay/Lightup/actions/runs/1001/jobs?per_page=200",
+            "https://api.github.com/repos/Zennay/Lightup/pulls/0001",
+        )
+        with patch.object(gate, "build_opener") as opener:
+            for url in examples:
+                with self.subTest(url=url), self.assertRaises(ValueError):
+                    gate._get_json(url, "SECRET-SYNTHETIC-GITHUB-TOKEN")
+        opener.assert_not_called()
+
+    def test_transport_rejects_non_string_url_without_network(self):
+        with patch.object(gate, "build_opener") as opener:
+            for url in (None, False, 10, ["https://api.github.com"]):
+                with self.subTest(url=url), self.assertRaises(ValueError):
+                    gate._get_json(url, "SECRET-TOKEN")
+        opener.assert_not_called()
+
     def test_api_json_duplicate_nested_keys_refused(self):
         payload = b'{"run":{"head_sha":"a","head_sha":"b"}}'
         with patch.object(gate, "build_opener") as opener:
