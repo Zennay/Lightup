@@ -26,7 +26,7 @@ This adapter does **not** authenticate model providers, independently validate e
 
 ## Independent acceptance
 
-`tests/test_evidence_898_advice_gate_optin_20261013.py` adds **19** deterministic **real `ModelGateway` + `AssessmentReviewPipeline`** tests using *offline scripted provider* only. It covers Unicode success, every seven parent RED input variants converted into **plain PASS by the opt-in wrapper**, exact/over character and UTF-8 byte budgets, invalid Unicode surrogate refusal, late second-finding refusal before any report request, wrong model role identity, configuration type confusion, and no input mutation.
+`tests/test_evidence_898_advice_gate_optin_20261013.py` adds **24** deterministic **real `ModelGateway` + `AssessmentReviewPipeline`** tests using *offline scripted provider* only. It covers Unicode success, every seven parent RED input variants converted into **plain PASS by the opt-in wrapper**, exact/over character and UTF-8 byte budgets, invalid Unicode surrogate refusal, late second-finding refusal before any report request, wrong model role identity, configuration type confusion, and no input mutation.
 
 ```sh
 PYTHONPATH=src python -m unittest -v \
@@ -48,4 +48,12 @@ The review-integrity pack predecessor contains 7 **ordinary failing RED canaries
 
 ## Oversized output fast refusal — 2026-10-13
 
-The adapter now checks the exact built-in `str`'s `len(value)` **before** calling `.strip()`. The earlier expression evaluated `.strip()` first and could scan a very large text response before discovering the 8,192-character budget violation. New synthetic 8-MiB-string regression verifies fail-closed before REPORT_SYNTHESIZER; it is not an RSS/time benchmark and no production model was called. Total **19** real opt-in pipeline tests in this clean-main PR. Older CI receipts belong to superseded commits only: exact new-head hosted and permanent registered VPS evidence is needed.
+The adapter now checks the exact built-in `str`'s `len(value)` **before** calling `.strip()`. The earlier expression evaluated `.strip()` first and could scan a very large text response before discovering the 8,192-character budget violation. New synthetic 8-MiB-string regression verifies fail-closed before REPORT_SYNTHESIZER; it is not an RSS/time benchmark and no production model was called. Total **24** real opt-in pipeline tests in this clean-main PR. Older CI receipts belong to superseded commits only: exact new-head hosted and permanent registered VPS evidence is needed.
+
+## Advisor provider/model identity + exception opacity — 2026-10-13
+
+The explicitly registered opt-in wrapper now **pins the delegate's provider ID once at construction**, and refuses an ADVISOR response if its exact built-in provider ID or model ID differs from the pinned provider identity / requested model ID. A wrong-role result remains rejected. These checks run **inside the wrapper, before** the unchanged gateway or report synth is invoked, and do not alter the original source owner module. The wrapper also converts exceptions raised by the ADVISOR provider into the same generic `ValueError` **after leaving** its `except` block, avoiding secret-bearing raw `__context__` and `__cause__` references. Other model roles are still transparently delegated; this is not an all-role security boundary.
+
+Five genuine synthetic in-process acceptance tests cover swapped provider ID, swapped model ID, mutated provider identity after binding, private error text and exception-context sanitation, and non-advisor pass-through. **Total 24** optional adapter methods. A provider binding ID is only a declared string and is **not** a cryptographically authenticated origin, tenant approval, current permission grant, or signed model output. The comprehensive older [#1181](https://github.com/Zennay/Lightup/pull/1181) optional reviewer integrity pack remains a separate owner slice; no files/branches from it are edited. The final production #846 reviewer still needs independent source-owner integration, full privacy/auth validation, conversion of unresolved RED to plain green, latest-main and registered permanent VPS CI.
+
+The prior hosted **4/4 success #38419804615** applies to the superseded `e4bda04b04b385b6a079842e81684df7095fcb4f` only. Do not claim green exact-head status until the new head's hosted Python 3.11/3.14 and independent registered VPS jobs finish. **DRAFT/HOLD/NO MERGE/NO DEPLOY**.
