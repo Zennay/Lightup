@@ -16,6 +16,11 @@ REPO = "Zennay/Lightup"
 HOSTED_WORKFLOW = ("LightUp offline preflight", ".github/workflows/lightup-preflight.yml", 375432315)
 VPS_WORKFLOW = ("LightUp CI", ".github/workflows/lightup-ci.yml", 373018063)
 VPS_RUNNER = "zcloud-vps-1"
+CRITICAL_CI_PATHS = frozenset((
+    ".github/workflows/lightup-ci.yml",
+    ".github/workflows/lightup-preflight.yml",
+    "scripts/check_safety_canaries.py",
+))
 VPS_LABELS = frozenset(("self-hosted", "zcloud", "vps"))
 HOSTED = frozenset((
     "Offline preflight Python 3.11 (not VPS proof)",
@@ -247,6 +252,35 @@ def verify_current_main(pr: object, main_ref: object) -> list[str]:
     return []
 
 
+def verify_pr_guard_files(pr: object, changed_files: object) -> list[str]:
+    """Refuse self-modified verification workflows and incomplete PR file listings."""
+    if not isinstance(pr, dict):
+        return ["pr_files_unverified"]
+    count = pr.get("changed_files")
+    if type(count) is not int or not 0 < count <= 100:
+        return ["pr_files_unverified"]
+    if type(changed_files) is not list or len(changed_files) != count:
+        return ["pr_files_unverified"]
+    seen: set[str] = set()
+    for item in changed_files:
+        if not isinstance(item, dict) or type(item.get("filename")) is not str:
+            return ["pr_files_unverified"]
+        filename, previous = item["filename"], item.get("previous_filename")
+        if (not filename or len(filename) > 4096 or filename in seen
+                or item.get("status") not in ("added", "modified", "removed",
+                                              "renamed", "copied", "changed")):
+            return ["pr_files_unverified"]
+        seen.add(filename)
+        if previous is not None and (type(previous) is not str
+                                     or not previous or len(previous) > 4096):
+            return ["pr_files_unverified"]
+        paths = (filename, previous) if previous is not None else (filename,)
+        if any(path in CRITICAL_CI_PATHS
+               or path.startswith(".github/workflows/") for path in paths):
+            return ["verification_workflow_or_canary_modified"]
+    return []
+
+
 def _get_json(url: str, token: str | None) -> object:
     # URLs use a fixed GitHub endpoint, never a user-controlled destination.
     headers = {"Accept": "application/vnd.github+json",
@@ -286,6 +320,7 @@ def main(argv: list[str] | None = None) -> int:
         token = os.environ.get("GITHUB_TOKEN")
         pr = _get_json(f"{PR_ROOT}{args.pr}", token)
         initial_main = _get_json(MAIN_REF, token)
+        changed_files = _get_json(f"{PR_ROOT}{args.pr}/files?per_page=100", token)
         hosted = _get_json(f"{API_ROOT}{args.hosted_run}", token)
         hj = _get_json(f"{API_ROOT}{args.hosted_run}/jobs?per_page=100", token)
         vps = _get_json(f"{API_ROOT}{args.vps_run}", token)
@@ -301,7 +336,9 @@ def main(argv: list[str] | None = None) -> int:
                  + verify_pr_head(args.head, args.pr, final_pr)
                  + verify_run_pr_binding(args.head, args.pr, final_pr, hosted, vps)
                  + verify_current_main(pr, initial_main)
-                 + verify_current_main(final_pr, final_main))
+                 + verify_current_main(final_pr, final_main)
+                 + verify_pr_guard_files(pr, changed_files)
+                 + verify_pr_guard_files(final_pr, changed_files))
         if (not isinstance(final_pr, dict) or not isinstance(pr, dict)
                 or final_pr.get("head") != pr.get("head")
                 or final_pr.get("base") != pr.get("base")
