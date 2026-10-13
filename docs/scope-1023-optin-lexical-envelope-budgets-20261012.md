@@ -23,3 +23,14 @@ This prototype reduces the **full JSON tree allocation before depth/node rejecti
 **Promotion acceptance:** original #107 and any future real authorization-envelope endpoint owner must confirm entrypoint and trusted issuer/tenant/grant/scope/expiry/revocation/STOP admission. Prove denial before any queue/write/handler/socket; real multi-tenant SQLite, realistic request streaming / true memory limits, security/privacy review, current-main composition, independently completed permanent VPS CI, and explicit human approval. Do not activate any target interaction to test this library.
 
 **Always DRAFT/HOLD/NO MERGE/NO DEPLOY, issue #1023 OPEN.**
+
+
+## 2026-10-13 W7: Unicode scalar-value admission before JSON parse
+
+The original Python standard-library decoder can produce **unpaired UTF-16 surrogate code points** from textual \`\uD800\` or \`\uDC00\` escape sequences. Such isolated code points are not Unicode scalar values, can break downstream encoding and make canonical issuer/tenant/object-key comparisons ambiguous across components.
+
+The isolated opt-in lexical scanner now **rejects a high surrogate escape that is not followed immediately by a well-formed escaped low surrogate**, as well as every unpaired low surrogate escape. It applies the same rule inside JSON **member names and values**, before calling \`json.loads\`. Paired \`\uD83D\uDE00\` escapes and ordinary literal UTF-8 supplementary-plane characters remain shape-eligible. A syntactically legal literal backslash-plus-\`uD800\` string is not misclassified as a real Unicode surrogate escape.
+
+Added \`tests/test_scope_1023_optin_unicode_scalar_20261013.py\` (**8 methods**, multiple synthetic cases) covering high/low surrogates at nested depths and in keys, malformed combinations, valid high+low pairs, valid BMP/literal Unicode, and exact budget/parser-order guarantees.
+
+**Compatibility decision required:** this is an intentional **stricter-than-Python-json narrowing** for the optional prototype, and is *not* asserted to be already required or installed by existing production API consumers. The source owner must decide canonical JSON/Unicode semantics before selecting or wiring any parsing boundary. The unmodified #1012 original reference still has its two intentional depth/node postparse RED canaries. No real issuer, tenant, grant or active-target authorization is conferred.
