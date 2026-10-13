@@ -52,10 +52,19 @@ def _canonical_target_host(value: str) -> str | None:
             if value.startswith("/") or "?" in value or "#" in value:
                 return None
             parsed = urlsplit("//" + value)
+            if parsed.path or parsed.query or parsed.fragment:
+                return None
         netloc = parsed.netloc
         if not netloc or any(ch in netloc for ch in ("@", "%", "\\", ",")):
             return None
         if not netloc.isascii() or netloc.endswith(":"):
+            return None
+        # urlsplit().hostname may silently ignore junk after closing IPv6
+        # brackets: reject rather than grant a permit on a different identity.
+        if netloc.startswith("["):
+            if not re.fullmatch(r"\\[[0-9A-Fa-f:.]+\\](?::[0-9]{1,5})?", netloc):
+                return None
+        elif not re.fullmatch(r"[A-Za-z0-9.-]+(?::[0-9]{1,5})?", netloc):
             return None
         if parsed.username is not None or parsed.password is not None:
             return None
