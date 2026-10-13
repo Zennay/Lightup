@@ -9,6 +9,7 @@ import sys
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 API_ROOT = "https://api.github.com/repos/Zennay/Lightup/actions/runs/"
+PR_ROOT = "https://api.github.com/repos/Zennay/Lightup/pulls/"
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 REPO = "Zennay/Lightup"
 HOSTED_WORKFLOW = ("LightUp offline preflight", ".github/workflows/lightup-preflight.yml", 375432315)
@@ -105,6 +106,27 @@ class _DenyRedirects(HTTPRedirectHandler):
         return None
 
 
+def verify_pr_head(head: str, pr_number: int, pr: object) -> list[str]:
+    """Reject run evidence that belongs to an outdated or unrelated PR revision."""
+    if type(pr_number) is not int or not 0 < pr_number < 10**10:
+        return ["invalid_pr_identity"]
+    if not isinstance(pr, dict):
+        return ["pr_metadata_missing"]
+    if (pr.get("number") != pr_number or pr.get("state") != "open"
+            or pr.get("draft") is not True):
+        return ["pr_state_or_identity_mismatch"]
+    current = pr.get("head")
+    base = pr.get("base")
+    if (not isinstance(current, dict) or not isinstance(base, dict)
+            or current.get("sha") != head
+            or not isinstance(current.get("repo"), dict)
+            or current["repo"].get("full_name") != REPO
+            or not isinstance(base.get("repo"), dict)
+            or base["repo"].get("full_name") != REPO):
+        return ["pr_current_head_or_repository_mismatch"]
+    return []
+
+
 def _get_json(url: str, token: str | None) -> object:
     # URLs use a fixed GitHub endpoint, never a user-controlled destination.
     headers = {"Accept": "application/vnd.github+json",
@@ -120,20 +142,24 @@ def _get_json(url: str, token: str | None) -> object:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Read-only CI evidence, NEVER authorization")
     parser.add_argument("--head", required=True)
+    parser.add_argument("--pr", required=True, type=int)
     parser.add_argument("--hosted-run", required=True, type=int)
     parser.add_argument("--vps-run", required=True, type=int)
     args = parser.parse_args(argv)
     if (SHA.fullmatch(args.head) is None or not 0 < args.hosted_run < 10**17
-            or not 0 < args.vps_run < 10**17 or args.hosted_run == args.vps_run):
+            or not 0 < args.vps_run < 10**17 or args.hosted_run == args.vps_run
+            or not 0 < args.pr < 10**10):
         print(json.dumps(_receipt(["invalid_input"]), sort_keys=True))
         return 2
     try:
         token = os.environ.get("GITHUB_TOKEN")
+        pr = _get_json(f"{PR_ROOT}{args.pr}", token)
         hosted = _get_json(f"{API_ROOT}{args.hosted_run}", token)
         hj = _get_json(f"{API_ROOT}{args.hosted_run}/jobs?per_page=100", token)
         vps = _get_json(f"{API_ROOT}{args.vps_run}", token)
         vj = _get_json(f"{API_ROOT}{args.vps_run}/jobs?per_page=100", token)
         receipt = evaluate(args.head, args.hosted_run, args.vps_run, hosted, hj, vps, vj)
+        receipt = _receipt(receipt["missing_gates"] + verify_pr_head(args.head, args.pr, pr))
     except Exception:
         # Error bodies and credentials must never enter the receipt.
         receipt = _receipt(["metadata_unavailable"])
