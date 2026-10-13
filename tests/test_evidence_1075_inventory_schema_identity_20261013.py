@@ -118,6 +118,39 @@ class EvidenceIdInventorySchemaIdentityTests(unittest.TestCase):
         )
         self._assert_schema_rejected_without_database_mutation()
 
+    def test_case_insensitive_primary_key_must_not_conflate_uuid_aliases(self) -> None:
+        self._make(
+            "CREATE TABLE evidence (" +
+            _COLUMNS.replace(
+                "evidence_id TEXT PRIMARY KEY",
+                "evidence_id TEXT PRIMARY KEY COLLATE NOCASE",
+            ) + ")"
+        )
+        self._assert_schema_rejected_without_database_mutation()
+
+    def test_trailing_space_collation_must_not_alias_identifiers(self) -> None:
+        self._make(
+            "CREATE TABLE evidence (" +
+            _COLUMNS.replace(
+                "evidence_id TEXT PRIMARY KEY",
+                "evidence_id TEXT PRIMARY KEY COLLATE RTRIM",
+            ) + ")"
+        )
+        self._assert_schema_rejected_without_database_mutation()
+
+    def test_explicit_binary_collation_is_canonical(self) -> None:
+        self._make(
+            "CREATE TABLE evidence (" +
+            _COLUMNS.replace(
+                "evidence_id TEXT PRIMARY KEY",
+                "evidence_id TEXT PRIMARY KEY COLLATE BINARY",
+            ) + ")"
+        )
+        self.assertEqual(
+            inspect_evidence_id_shapes(self.path),
+            EvidenceIdInventory(0, 0, 0, 0),
+        )
+
     def test_foreign_schema_with_only_evidence_id_is_not_valid_schema(self) -> None:
         self._make("CREATE TABLE evidence (evidence_id TEXT PRIMARY KEY)")
         self._assert_schema_rejected_without_database_mutation()
