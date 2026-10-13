@@ -21,6 +21,9 @@ class StringSubclass(str):
     pass
 
 
+_NOT_GIVEN = object()
+
+
 class RefScopedEvidenceAdmissionTests(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory(prefix="lightup-current-scope-reference-")
@@ -37,8 +40,8 @@ class RefScopedEvidenceAdmissionTests(unittest.TestCase):
         )
         self.grants = []
 
-    def _lookup(self, evidence_id=None, *, checker=None, run_id=None, capability_id=None):
-        if evidence_id is None:
+    def _lookup(self, evidence_id=_NOT_GIVEN, *, checker=None, run_id=None, capability_id=None):
+        if evidence_id is _NOT_GIVEN:
             evidence_id = self.evidence_id
         if checker is None:
             checker = lambda rid, cid, eid: True
