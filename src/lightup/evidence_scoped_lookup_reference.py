@@ -27,8 +27,9 @@ def _checked_current_permission(
     try:
         approved = checker(run_id, capability_id, evidence_id)
     except Exception:
-        # Never disclose provider exception content, tenant details or IDs.
-        raise PermissionError(_DENIED) from None
+        # Move denial OUTSIDE the active except context: otherwise even
+        # "raise ... from None" retains the raw exception in __context__.
+        approved = False
     if approved is not True or type(approved) is not bool:
         raise PermissionError(_DENIED)
 
@@ -71,7 +72,11 @@ def get_evidence_with_current_scope_reference(
     try:
         record = store.get_evidence(canonical)
     except (LookupError, ValueError, TypeError, sqlite3.Error):
-        raise LookupError(_UNAVAILABLE) from None
+        # Do not propagate hidden raw SQLite/metadata exceptions via Python's
+        # __context__ chain in caller-visible sanitized failures.
+        record = None
+    if record is None:
+        raise LookupError(_UNAVAILABLE)
     if (
         type(record) is not EvidenceRecord
         or record.evidence_id != canonical
