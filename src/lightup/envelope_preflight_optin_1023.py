@@ -36,10 +36,25 @@ def _after_string(source: str, index: int) -> int | None:
                 return None
             escape = source[index]
             if escape == "u":
-                if (index + 4 >= len(source)
-                        or any(c not in _HEX for c in source[index + 1:index + 5])):
+                digits = source[index + 1:index + 5]
+                if len(digits) != 4 or any(c not in _HEX for c in digits):
                     return None
+                scalar = int(digits, 16)
                 index += 4
+                if 0xD800 <= scalar <= 0xDBFF:
+                    # Escaped high surrogate must be IMMEDIATELY followed
+                    # by an escaped low surrogate. This is checked before
+                    # json.loads, including in JSON member names.
+                    if source[index + 1:index + 3] != "\\u":
+                        return None
+                    second = source[index + 3:index + 7]
+                    if (len(second) != 4
+                            or any(c not in _HEX for c in second)
+                            or not 0xDC00 <= int(second, 16) <= 0xDFFF):
+                        return None
+                    index += 6
+                elif 0xDC00 <= scalar <= 0xDFFF:
+                    return None
             elif escape not in '"\\/bfnrt':
                 return None
         index += 1
