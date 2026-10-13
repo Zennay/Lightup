@@ -109,6 +109,15 @@ class EvidenceIdInventorySchemaIdentityTests(unittest.TestCase):
         )
         self._assert_schema_rejected_without_database_mutation()
 
+    def test_composite_primary_key_must_not_masquerade_as_unique_id(self) -> None:
+        self._make(
+            "CREATE TABLE evidence (evidence_id TEXT, run_id TEXT, "
+            "capability_id TEXT, kind TEXT, source TEXT, sha256 TEXT, "
+            "metadata_json TEXT, created_at TEXT, "
+            "PRIMARY KEY(evidence_id, run_id))"
+        )
+        self._assert_schema_rejected_without_database_mutation()
+
     def test_foreign_schema_with_only_evidence_id_is_not_valid_schema(self) -> None:
         self._make("CREATE TABLE evidence (evidence_id TEXT PRIMARY KEY)")
         self._assert_schema_rejected_without_database_mutation()
