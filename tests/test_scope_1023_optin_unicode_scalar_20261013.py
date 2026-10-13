@@ -103,5 +103,32 @@ class UnicodeScalarPreparseTests(unittest.TestCase):
         decoder.assert_not_called()
 
 
+    def test_literal_utf8_emoji_and_surrogate_pair_keys_are_duplicate(self):
+        # Both encodings decode to the same Unicode scalar key and should
+        # not silently choose first- or last-key authorization semantics.
+        examples = (
+            b'{"\\ud83d\\ude00":1,"\xf0\x9f\x98\x80":2}',
+            b'{"\\ud83d\\ude00":1,"\\uD83D\\uDE00":2}',
+            b'{"nested":{"\\ud83d\\ude00":false,"\xf0\x9f\x98\x80":true}}',
+        )
+        for raw in examples:
+            with self.subTest(raw=raw):
+                self.assertFalse(bounded_envelope_shape_optin(raw))
+
+    def test_python_decoder_accepts_ill_formed_unicode_while_optin_narrows(self):
+        # This is an intentional compatibility-narrowing admission choice.
+        raw = b'{"tenant":"\\uD800"}'
+        decoded = json.loads(raw)
+        self.assertEqual(ord(decoded["tenant"]), 0xD800)
+        self.assertFalse(bounded_envelope_shape_optin(raw))
+
+    def test_equivalent_literal_and_escaped_emoji_values_are_valid_shapes(self):
+        escaped = b'{"tenant":"\\ud83d\\ude00"}'
+        literal = '{"tenant":"😀"}'.encode("utf-8")
+        self.assertTrue(bounded_envelope_shape_optin(escaped))
+        self.assertTrue(bounded_envelope_shape_optin(literal))
+        self.assertEqual(json.loads(escaped), json.loads(literal))
+
+
 if __name__ == "__main__":
     unittest.main()
