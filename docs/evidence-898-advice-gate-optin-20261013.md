@@ -26,7 +26,7 @@ This adapter does **not** authenticate model providers, independently validate e
 
 ## Independent acceptance
 
-`tests/test_evidence_898_advice_gate_optin_20261013.py` adds **18** deterministic **real `ModelGateway` + `AssessmentReviewPipeline`** tests using *offline scripted provider* only. It covers Unicode success, every seven parent RED input variants converted into **plain PASS by the opt-in wrapper**, exact/over character and UTF-8 byte budgets, invalid Unicode surrogate refusal, late second-finding refusal before any report request, wrong model role identity, configuration type confusion, and no input mutation.
+`tests/test_evidence_898_advice_gate_optin_20261013.py` adds **19** deterministic **real `ModelGateway` + `AssessmentReviewPipeline`** tests using *offline scripted provider* only. It covers Unicode success, every seven parent RED input variants converted into **plain PASS by the opt-in wrapper**, exact/over character and UTF-8 byte budgets, invalid Unicode surrogate refusal, late second-finding refusal before any report request, wrong model role identity, configuration type confusion, and no input mutation.
 
 ```sh
 PYTHONPATH=src python -m unittest -v \
@@ -45,3 +45,7 @@ No external model, network/target, live scan, credentials, clients, evidence col
 ## Clean-main CI isolation
 
 The review-integrity pack predecessor contains 7 **ordinary failing RED canaries** on unchanged #846 product files. The earlier stacked DRAFT #1269 therefore cannot be treated as all-green hosted acceptance, despite all 18 new opt-in tests passing. This isolated add-only branch starts on `main`, uses the same three independent source/test/docs artifacts, and intentionally does not copy the pack, modify its tests, suppress real failures, or change any #846 owner file. CI on this branch demonstrates only the optional adapter with baseline `main` gateway/pipeline; it is **not** approval of the unmerged review-integrity pack, issuer/tenant/auth, or the production pipeline fix.
+
+## Oversized output fast refusal — 2026-10-13
+
+The adapter now checks the exact built-in `str`'s `len(value)` **before** calling `.strip()`. The earlier expression evaluated `.strip()` first and could scan a very large text response before discovering the 8,192-character budget violation. New synthetic 8-MiB-string regression verifies fail-closed before REPORT_SYNTHESIZER; it is not an RSS/time benchmark and no production model was called. Total **19** real opt-in pipeline tests in this clean-main PR. Older CI receipts belong to superseded commits only: exact new-head hosted and permanent registered VPS evidence is needed.
