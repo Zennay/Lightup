@@ -39,13 +39,13 @@ def sample():
          "runner_name": "zcloud-vps-1", "labels": ["self-hosted", "zcloud", "vps"]}
         for name in sorted(gate.PERMANENT)]}
     for job in hj["jobs"]:
-        needed = (gate.HOSTED_INTEGRATION_STEPS if job["name"].startswith("Real producer")
-                  else gate.HOSTED_PREFLIGHT_STEPS)
-        job["steps"] = [{"name": name, "status": "completed", "conclusion": "success"}
-                        for name in sorted(needed)]
+        needed = (gate.HOSTED_INTEGRATION_ORDER if job["name"].startswith("Real producer")
+                  else gate.HOSTED_PREFLIGHT_ORDER)
+        job["steps"] = [{"name": name, "number": i, "status": "completed", "conclusion": "success"}
+                        for i, name in enumerate(needed, 2)]
     for job in vj["jobs"]:
-        job["steps"] = [{"name": name, "status": "completed", "conclusion": "success"}
-                        for name in sorted(gate.VPS_CRITICAL_STEPS)]
+        job["steps"] = [{"name": name, "number": i, "status": "completed", "conclusion": "success"}
+                        for i, name in enumerate(gate.VPS_CRITICAL_ORDER, 1)]
     return [host, hj, vps, vj]
 
 def pr_files_fixture():
@@ -133,6 +133,33 @@ class CIEvidenceGateTests(unittest.TestCase):
         data = sample()
         data[1]["jobs"][0]["steps"] = []
         self.hold(evaluate(data), "hosted_critical_steps_unverified")
+
+    def test_reordered_permanent_guard_is_hold(self):
+        data = sample()
+        steps = data[3]["jobs"][0]["steps"]
+        steps[0], steps[1] = steps[1], steps[0]
+        self.hold(evaluate(data), "permanent_vps_critical_steps_unverified")
+
+    def test_reordered_critical_step_numbers_are_hold(self):
+        data = sample()
+        steps = data[1]["jobs"][0]["steps"]
+        steps[2]["number"] = steps[1]["number"]
+        self.hold(evaluate(data), "hosted_critical_steps_unverified")
+
+    def test_boolean_step_number_is_not_valid_integer(self):
+        data = sample()
+        data[3]["jobs"][0]["steps"][0]["number"] = True
+        self.hold(evaluate(data), "permanent_vps_critical_steps_unverified")
+
+    def test_missing_critical_step_number_denied(self):
+        data = sample()
+        del data[1]["jobs"][0]["steps"][0]["number"]
+        self.hold(evaluate(data), "hosted_critical_steps_unverified")
+
+    def test_honest_critical_order_keeps_non_authorizing_outcome(self):
+        receipt = evaluate()
+        self.assertEqual(receipt["state"], "EVIDENCE_COMPLETE_NOT_AUTHORIZED")
+        self.assertFalse(receipt["permit_issued"])
 
     def test_queued_vps_is_hold(self):
         data = sample()
