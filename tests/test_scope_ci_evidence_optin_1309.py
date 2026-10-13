@@ -32,6 +32,12 @@ def sample():
         for name in sorted(gate.PERMANENT)]}
     return [host, hj, vps, vj]
 
+def pr_fixture():
+    return {"number": 1310, "state": "open", "draft": True,
+            "head": {"sha": HEAD, "repo": {"full_name": "Zennay/Lightup"}},
+            "base": {"repo": {"full_name": "Zennay/Lightup"}}}
+
+
 def evaluate(data=None):
     return gate.evaluate(HEAD, 1001, 1002, *(sample() if data is None else data))
 
@@ -126,18 +132,35 @@ class CIEvidenceGateTests(unittest.TestCase):
         self.assertIsNone(handler.redirect_request(
             None, None, 302, "synthetic", {}, "https://untrusted.invalid/"))
 
+    def test_pr_head_must_match_current_revision(self):
+        pr = pr_fixture()
+        pr["head"]["sha"] = "b" * 40
+        self.assertEqual(gate.verify_pr_head(HEAD, 1310, pr),
+                         ["pr_current_head_or_repository_mismatch"])
+
+    def test_pr_must_be_open_draft_and_same_repo(self):
+        pr = pr_fixture()
+        pr["draft"] = False
+        self.assertEqual(gate.verify_pr_head(HEAD, 1310, pr),
+                         ["pr_state_or_identity_mismatch"])
+        pr = pr_fixture()
+        pr["base"]["repo"]["full_name"] = "untrusted/repo"
+        self.assertEqual(gate.verify_pr_head(HEAD, 1310, pr),
+                         ["pr_current_head_or_repository_mismatch"])
+
     def test_private_api_exception_does_not_echo(self):
         with patch.object(gate, "_get_json", side_effect=RuntimeError("SECRET-SYNTHETIC-CANARY")):
             with patch("sys.stdout", new_callable=StringIO) as out:
-                self.assertEqual(gate.main(["--head", HEAD, "--hosted-run", "1001", "--vps-run", "1002"]), 2)
+                self.assertEqual(gate.main(["--pr", "1310", "--head", HEAD, "--hosted-run", "1001", "--vps-run", "1002"]), 2)
         self.assertNotIn("SECRET-SYNTHETIC-CANARY", out.getvalue())
         self.hold(json.loads(out.getvalue()), "metadata_unavailable")
 
     def test_cli_uses_only_fixed_github_origin(self):
-        with patch.object(gate, "_get_json", side_effect=sample()) as get:
+        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), *sample()]) as get:
             with patch("sys.stdout", new_callable=StringIO):
-                self.assertEqual(gate.main(["--head", HEAD, "--hosted-run", "1001", "--vps-run", "1002"]), 0)
+                self.assertEqual(gate.main(["--pr", "1310", "--head", HEAD, "--hosted-run", "1001", "--vps-run", "1002"]), 0)
         self.assertEqual([c.args[0] for c in get.call_args_list], [
+            f"{gate.PR_ROOT}1310",
             f"{gate.API_ROOT}1001", f"{gate.API_ROOT}1001/jobs?per_page=100",
             f"{gate.API_ROOT}1002", f"{gate.API_ROOT}1002/jobs?per_page=100",
         ])
