@@ -18,7 +18,7 @@ New `tests/test_scope_1275_risk_approval_decision_lineage_20261013.py` uses real
 
 An isolated real `LightUpWebApp` WSGI sub-suite exercises current authenticated operator session, real CSRF, client-session denial, anonymous redirect and **two deliberately expected RED** cases demanding fail-closed HTTP 400/403/409 for the same corrupt approval during operator approve or deny. All denial tests snapshot actual stored rows and the trigger audit ledger before and after; no write side effects permitted.
 
-The WSGI acceptance class subclasses the SQLite fixture so its inherited integrity cases are exercised twice (standalone and through the WSGI fixture). This is intentional redundant real-path characterization, not an increase in unique invariants. `expectedFailure` is never success of the missing control.
+The SQLite and WSGI acceptance classes use the same setup helper, but run separate tests without duplicate suite inheritance: **11 direct SQLite methods (5 ordinary controls, 6 unresolved expected RED)** and **6 real WSGI methods (4 ordinary controls, 2 unresolved expected RED)**. All **17 tests** execute real product code. `expectedFailure` is never success of the missing control.
 
 ## Ownership and safe workflow
 
