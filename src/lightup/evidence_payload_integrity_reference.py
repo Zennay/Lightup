@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import sqlite3
 from collections.abc import Callable
 
 from .evidence_scoped_lookup_reference import (
@@ -60,6 +61,21 @@ def verify_scoped_evidence_payload_reference(
     actual = hashlib.sha256(payload).hexdigest()
     if not hmac.compare_digest(actual, expected):
         raise ValueError(_FAILURE)
+
+    # Hashing may take time. A concurrent SQLite writer could change the
+    # persisted evidence digest or its associated metadata AFTER the first
+    # read. Re-read the complete record before the last permission callback.
+    # This is a best-effort changed-row detection, NOT an atomic transaction
+    # and NOT a trusted evidence-provenance or authorization guarantee.
+    try:
+        latest_record = store.get_evidence(record.evidence_id)
+    except (LookupError, ValueError, TypeError, sqlite3.Error):
+        latest_record = None
+    if type(latest_record) is not EvidenceRecord or latest_record != record:
+        # A generic error outside the except clause avoids retaining raw
+        # SQLite/metadata exceptions in __context__.
+        raise ValueError(_FAILURE)
+
     # This callback is untrusted unless an upstream authenticated operator,
     # tenant and current grant resolver supplies the actual implementation.
     _checked_current_permission(
