@@ -14,8 +14,8 @@ On main at `05b80319cd0581fed21fe9d8f565bcb0a56cd2df`, the client-wide query in 
 `tests/test_scope_808_risk_approval_tenant_lineage_sqlite_20261013.py` uses an isolated temporary on-disk SQLite database, the real unchanged `DomainStore` methods, two synthetic clients with one engagement and one risk approval each, and one direct synthetic test-only UPDATE of the duplicated approval tenant field.
 
 - Five ordinary PASS controls: two normal tenant listings; two explicit engagement checks; foreign engagement denial; operator-wide listing; and unmodified persisted database after ordinary reads.
-- Three **intentional unresolved expected failures (RED)**: corrupt A→B tenant label must not expose A's approval to B; A's explicit engagement list must not expose a mismatched approval; B's canonical approval must remain visible while the corrupt A approval is excluded.
-- Two additional ordinary PASS controls after corruption: foreign engagement denial remains enforced; all synthetic rejected/read-only operations leave the persisted row snapshot unchanged.
+- Five **intentional unresolved expected failures (RED)**: corrupt A→B tenant label must not expose A's approval to B; A's explicit engagement list must not expose a mismatched approval; B's canonical approval must remain visible while the corrupt A approval is excluded; a row that points to B's engagement while keeping A's client label must be hidden from A; and an orphaned approval with no owning engagement must be excluded.
+- Three additional ordinary PASS controls after corruption: foreign engagement denial remains enforced; all synthetic rejected/read-only operations leave the persisted row snapshot unchanged; and a canonical B approval remains visible if an unrelated synthetic A engagement is deleted using a deliberately FK-disabled offline fixture connection.
 
 Run from repo root (installed project dependencies available):
 
@@ -23,7 +23,7 @@ Run from repo root (installed project dependencies available):
 PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_808_risk_approval_tenant_lineage_sqlite_20261013.py' -v
 ```
 
-**Interpretation:** `OK (expected failures=3)` is **not security pass**. It means three source-owner defects remain known. On production integration, remove `@unittest.expectedFailure` one by one only when the repaired installed query genuinely passes the corresponding requirement without weakening it; rerun full old/new tests and check unrelated operator/tenant read paths. If a corrected query makes the RED cases unexpectedly succeed, CI should flag `unexpected success` until the markers are removed with reviewer approval.
+**Interpretation:** `OK (expected failures=5)` is **not security pass**. It means five source-owner denial cases remain unresolved. On production integration, remove `@unittest.expectedFailure` one by one only when the repaired installed query genuinely passes the corresponding requirement without weakening it; rerun full old/new tests and check unrelated operator/tenant read paths. If a corrected query makes the RED cases unexpectedly succeed, CI should flag `unexpected success` until the markers are removed with reviewer approval.
 
 ## Release and collision gates
 
