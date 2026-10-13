@@ -13,6 +13,15 @@ from .app import LightUpWebApp
 _OPAQUE_HTML = b"<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Request failed</title><body><h1>Request failed</h1></body></html>"
 
 
+# Only fixed web-security headers survive a substituted 400. Unknown future
+# diagnostics, correlation metadata, location and cookies are intentionally
+# discarded rather than allowed to leak through a different response channel.
+_SAFE_ERROR_HEADERS = frozenset({
+    "cache-control", "content-security-policy", "referrer-policy",
+    "x-content-type-options", "x-frame-options", "strict-transport-security",
+})
+
+
 class OpaqueErrorWSGI:
     """Deny transmission of raw domain exception details in 400 responses.
 
@@ -60,7 +69,7 @@ class OpaqueErrorWSGI:
                     close()
             headers = [
                 (key, value) for key, value in headers
-                if key.lower() not in {"content-length", "content-type", "etag"}
+                if key.lower() in _SAFE_ERROR_HEADERS
             ]
             headers.extend((
                 ("Content-Type", "text/html; charset=utf-8"),
