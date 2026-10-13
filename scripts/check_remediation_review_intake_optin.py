@@ -21,6 +21,7 @@ from lightup.ai.remediation_input_preflight_optin import (
 )
 
 MAX_INPUT_BYTES = 1_048_576
+MAX_JSON_DEPTH = 128
 
 
 class _LocalIntakeError(ValueError):
@@ -52,6 +53,36 @@ def _invalid_json_constant(_value: str) -> None:
     raise _LocalIntakeError("nonstandard_json_constant")
 
 
+
+def _validate_json_nesting(raw: bytes) -> None:
+    """Enforce a portable nesting bound before version-specific JSON parsing.
+
+    Walk UTF-8 byte syntax, respecting escapes and quote boundaries so deep
+    brackets inside JSON strings are not misclassified as structural depth.
+    The true JSON parser remains responsible for all other grammar checks.
+    """
+    depth = 0
+    in_string = False
+    escaped = False
+    for byte in raw:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif byte == 0x5C:  # backslash
+                escaped = True
+            elif byte == 0x22:  # double quote
+                in_string = False
+        elif byte == 0x22:
+            in_string = True
+        elif byte in (0x7B, 0x5B):  # object / array open
+            depth += 1
+            if depth > MAX_JSON_DEPTH:
+                raise _LocalIntakeError("json_too_deep")
+        elif byte in (0x7D, 0x5D):  # object / array close
+            depth -= 1
+    # Syntax/closure matching is the responsibility of json.loads.
+
+
 def inspect_local_document(source: Path) -> tuple[str, int, int]:
     """Return a sanitized status and two counts; never return caller text."""
     # Refuse symlinks and non-regular files; a local operator must explicitly
@@ -71,6 +102,7 @@ def inspect_local_document(source: Path) -> tuple[str, int, int]:
     except UnicodeDecodeError:
         raise _LocalIntakeError("invalid_utf8") from None
 
+    _validate_json_nesting(raw)
     try:
         decoded = json.loads(
             text,
