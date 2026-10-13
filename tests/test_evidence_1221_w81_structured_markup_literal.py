@@ -6,6 +6,7 @@ reporting paths. A passing parser test is not browser/DOM/CSP or tenant proof.
 from __future__ import annotations
 
 import copy
+import os
 from html.parser import HTMLParser
 import unittest
 
@@ -46,9 +47,17 @@ def _sample(field, value):
     return Finding(**fields)
 
 
-@unittest.skipUnless(mistune is not None and MarkdownIt is not None,
-                     "optional real Markdown parsers unavailable")
 class W81StructuredMarkupLiteral(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if mistune is None or MarkdownIt is None:
+            if os.environ.get("GITHUB_ACTIONS") == "true":
+                raise AssertionError(
+                    "CI must install mistune==3.2.1 and markdown-it-py==4.2.0; "
+                    "W81 parser acceptance must not silently skip"
+                )
+            raise unittest.SkipTest("optional real Markdown parsers unavailable")
+
     def _check(self, field, value):
         item = _sample(field, value)
         original = copy.deepcopy(item)
