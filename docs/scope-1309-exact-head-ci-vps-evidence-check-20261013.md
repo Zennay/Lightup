@@ -29,3 +29,9 @@ Source ownership: three newly created paths only on dedicated #1309 branch from 
 ## W5: current PR-head binding
 
 The command now **requires** `--pr` and uses a fifth read-only GitHub API GET for the current PR. The PR must remain open and DRAFT, belong to the canonical `Zennay/Lightup` head/base repositories, and its CURRENT head SHA must equal the SHA whose two CI runs are checked. Historical fully successful workflow runs for a superseded PR revision fail closed. This is a reviewer metadata guard, **not** an authorization to merge or activate anything. PR API results are not included in stdout.
+
+## W6: PR provenance and base-commit composition
+
+New fail-closed check for **both hosted and permanent VPS** workflow runs: GitHub Actions `pull_requests` metadata must contain exactly one record for the requested PR number, its immutable source SHA/branch and its exact base branch+SHA. The run `head_branch` must be the current PR head ref. Reject missing/duplicate/mismatched PR associations, stale base SHA and non-`main` base. This makes apparently green CI from an unrelated PR or an older pre-base-update snapshot **HOLD**.
+
+This is **metadata consistency** only: it does not cryptographically attest to the runner, source checkout, test logs or GitHub itself, and it does not authorize a scanner, allow merging or stand in for human security/privacy review. Branches are held as draft.
