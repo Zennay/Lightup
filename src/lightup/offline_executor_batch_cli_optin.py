@@ -53,12 +53,28 @@ def _reject_nonfinite(_value: str) -> None:
 
 
 def _load_plan(path: str) -> tuple[str, ...]:
-    # Do not read a FIFO, device or oversized file. No symlink path is
-    # rejected as a policy claim; actual fd type and byte budget are checked.
-    with Path(path).open("rb") as handle:
-        if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+    # Opening a FIFO in blocking mode *before* checking fstat can hang this
+    # CLI indefinitely. Nonblocking O_RDONLY ensures type validation runs
+    # first. O_NOFOLLOW blocks symlink substitution of the final path.
+    # These flags are required; no silent fallback to a weaker open.
+    if not all(hasattr(os, flag) for flag in ("O_NONBLOCK", "O_NOFOLLOW", "O_CLOEXEC")):
+        _deny()
+    flags = os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW | os.O_CLOEXEC
+    fd = os.open(path, flags)
+    try:
+        before = os.fstat(fd)
+        if not stat.S_ISREG(before.st_mode) or before.st_size > MAX_BYTES:
             _deny()
-        raw = handle.read(MAX_BYTES + 1)
+        with os.fdopen(os.dup(fd), "rb") as handle:
+            raw = handle.read(MAX_BYTES + 1)
+        after = os.fstat(fd)
+        if (
+            not stat.S_ISREG(after.st_mode)
+            or after.st_size != before.st_size
+        ):
+            _deny()
+    finally:
+        os.close(fd)
     if not raw or len(raw) > MAX_BYTES:
         _deny()
     try:
