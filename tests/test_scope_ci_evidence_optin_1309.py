@@ -207,6 +207,30 @@ class CIEvidenceGateTests(unittest.TestCase):
         self.assertEqual(exit_status, 2)
         self.hold(json.loads(out.getvalue()), "permanent_vps_pr_binding_mismatch")
 
+    def test_api_json_duplicate_nested_keys_refused(self):
+        payload = b'{"run":{"head_sha":"a","head_sha":"b"}}'
+        with patch.object(gate, "build_opener") as opener:
+            opener.return_value.open.return_value.__enter__.return_value.read.return_value = payload
+            with self.assertRaises(ValueError):
+                gate._get_json(gate.API_ROOT + "1001", None)
+
+    def test_api_json_nonfinite_refused(self):
+        payload = b'{"run":{"status":NaN}}'
+        with patch.object(gate, "build_opener") as opener:
+            opener.return_value.open.return_value.__enter__.return_value.read.return_value = payload
+            with self.assertRaises(ValueError):
+                gate._get_json(gate.API_ROOT + "1001", None)
+
+    def test_api_json_bounded_and_valid_control(self):
+        with patch.object(gate, "build_opener") as opener:
+            response = opener.return_value.open.return_value.__enter__.return_value
+            response.read.return_value = b'{"run":{"id":1001}}'
+            self.assertEqual(gate._get_json(gate.API_ROOT + "1001", None),
+                             {"run": {"id": 1001}})
+            response.read.return_value = b" " * 524289
+            with self.assertRaises(ValueError):
+                gate._get_json(gate.API_ROOT + "1001", None)
+
     def test_invalid_numeric_cli_does_not_echo_private_text(self):
         marker = "SECRET-SYNTHETIC-CLI-CANARY"
         with patch("sys.stdout", new_callable=StringIO) as out:
