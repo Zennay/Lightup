@@ -12,12 +12,19 @@ gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
 HEAD = "a" * 40
 
+def pr_link():
+    return {"number": 1310,
+            "head": {"ref": "scope-draft", "sha": HEAD},
+            "base": {"ref": "main", "sha": "b" * 40}}
+
+
 def sample():
     host = {"id": 1001, "head_sha": HEAD, "status": "completed", "conclusion": "success", "run_attempt": 1}
     host.update(name="LightUp offline preflight",
                 path=".github/workflows/lightup-preflight.yml", workflow_id=375432315,
                 event="pull_request", repository={"full_name": "Zennay/Lightup"},
                 head_repository={"full_name": "Zennay/Lightup"})
+    host.update(head_branch="scope-draft", pull_requests=[pr_link()])
     vps = {**host, "id": 1002, "name": "LightUp CI",
            "path": ".github/workflows/lightup-ci.yml", "workflow_id": 373018063}
     hj = {"total_count": 4, "jobs": [
@@ -34,8 +41,8 @@ def sample():
 
 def pr_fixture():
     return {"number": 1310, "state": "open", "draft": True,
-            "head": {"sha": HEAD, "repo": {"full_name": "Zennay/Lightup"}},
-            "base": {"repo": {"full_name": "Zennay/Lightup"}}}
+            "head": {"ref": "scope-draft", "sha": HEAD, "repo": {"full_name": "Zennay/Lightup"}},
+            "base": {"ref": "main", "sha": "b" * 40, "repo": {"full_name": "Zennay/Lightup"}}}
 
 
 def evaluate(data=None):
@@ -147,6 +154,57 @@ class CIEvidenceGateTests(unittest.TestCase):
         pr["base"]["repo"]["full_name"] = "untrusted/repo"
         self.assertEqual(gate.verify_pr_head(HEAD, 1310, pr),
                          ["pr_current_head_or_repository_mismatch"])
+
+    def test_matching_run_pr_links_are_metadata_only(self):
+        self.assertEqual(gate.verify_run_pr_binding(
+            HEAD, 1310, pr_fixture(), sample()[0], sample()[2]), [])
+
+    def test_run_belonging_to_other_pr_refused(self):
+        data = sample()
+        data[0]["pull_requests"][0]["number"] = 1308
+        self.assertEqual(gate.verify_run_pr_binding(
+            HEAD, 1310, pr_fixture(), data[0], data[2]),
+            ["hosted_pr_binding_mismatch"])
+
+    def test_run_linked_to_old_base_refused(self):
+        data = sample()
+        data[2]["pull_requests"][0]["base"]["sha"] = "c" * 40
+        self.assertEqual(gate.verify_run_pr_binding(
+            HEAD, 1310, pr_fixture(), data[0], data[2]),
+            ["permanent_vps_pr_binding_mismatch"])
+
+    def test_run_on_other_branch_refused(self):
+        data = sample()
+        data[0]["head_branch"] = "other-branch"
+        self.assertEqual(gate.verify_run_pr_binding(
+            HEAD, 1310, pr_fixture(), data[0], data[2]),
+            ["hosted_pr_binding_mismatch"])
+
+    def test_missing_ambiguous_and_forged_pr_links_refused(self):
+        for links in (None, [], [pr_link(), pr_link()], [{"number": True}]):
+            with self.subTest(links=links):
+                data = sample()
+                data[2]["pull_requests"] = links
+                self.assertEqual(gate.verify_run_pr_binding(
+                    HEAD, 1310, pr_fixture(), data[0], data[2]),
+                    ["permanent_vps_pr_binding_mismatch"])
+
+    def test_pr_base_must_be_canonical_main(self):
+        pr = pr_fixture()
+        pr["base"]["ref"] = "feature"
+        self.assertEqual(gate.verify_run_pr_binding(
+            HEAD, 1310, pr, sample()[0], sample()[2]),
+            ["pr_base_or_branch_invalid"])
+
+    def test_main_combines_current_pr_binding_denial(self):
+        data = sample()
+        data[2]["pull_requests"][0]["head"]["sha"] = "c" * 40
+        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), *data]):
+            with patch("sys.stdout", new_callable=StringIO) as out:
+                exit_status = gate.main(["--pr", "1310", "--head", HEAD,
+                                         "--hosted-run", "1001", "--vps-run", "1002"])
+        self.assertEqual(exit_status, 2)
+        self.hold(json.loads(out.getvalue()), "permanent_vps_pr_binding_mismatch")
 
     def test_private_api_exception_does_not_echo(self):
         with patch.object(gate, "_get_json", side_effect=RuntimeError("SECRET-SYNTHETIC-CANARY")):
