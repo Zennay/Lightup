@@ -34,21 +34,32 @@ class CheckedRemediationAdviceProvider(ModelProvider):
         ):
             raise ValueError("invalid remediation advice gate configuration")
         self._delegate = delegate
+        # Stable identity, never re-read a mutable delegate property to bind.
+        self._provider_id = delegate.provider_id
         self._max_advice_chars = max_advice_chars
 
     @property
     def provider_id(self) -> str:
-        return self._delegate.provider_id
+        return self._provider_id
 
     def complete(self, request: ModelRequest) -> ModelResponse:
-        response = self._delegate.complete(request)
         if request.role is not ModelRole.REMEDIATION_ADVISOR:
-            return response
+            return self._delegate.complete(request)
+        # Hide raw provider error text AND the retained Python __context__;
+        # raising inside an except block, even with 'from None', leaks it.
+        try:
+            response = self._delegate.complete(request)
+        except Exception:
+            response = None
         if type(response) is not ModelResponse:
             raise ValueError(_DENIED)
         value = response.content
         if (
             response.role is not ModelRole.REMEDIATION_ADVISOR
+            or type(response.provider_id) is not str
+            or response.provider_id != self._provider_id
+            or type(response.model_id) is not str
+            or response.model_id != request.model_id
             or type(value) is not str
             # Reject huge text BEFORE scanning or allocating for .strip().
             or len(value) > self._max_advice_chars
