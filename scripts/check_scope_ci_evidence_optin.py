@@ -202,6 +202,10 @@ def evaluate(head: str, hosted_id: int, vps_id: int,
         names = [job["name"] for job in jobs]
         if len(names) != len(set(names)) or set(names) != required:
             holds.append(f"{name}_job_set_mismatch")
+        numeric_job_ids = [job.get("id") for job in jobs]
+        if (any(type(value) is not int or value <= 0 for value in numeric_job_ids)
+                or len(set(numeric_job_ids)) != len(numeric_job_ids)):
+            holds.append(f"{name}_job_numeric_identity_unverified")
         if is_vps:
             # Both matrix jobs must run on the same stable registered runner.
             # Name and GitHub-provided labels alone do not pin identity.
@@ -213,6 +217,13 @@ def evaluate(head: str, hosted_id: int, vps_id: int,
                     or len(set(groups)) != 1):
                 holds.append("permanent_vps_runner_identity_incoherent")
         for job in jobs:
+            job_id = job.get("id")
+            if (type(job_id) is not int or job_id <= 0
+                    or job.get("workflow_name") != workflow[0]
+                    or job.get("head_branch") != run.get("head_branch")
+                    or job.get("run_url") != f"{API_ROOT}{run_id}"
+                    or job.get("url") != f"https://api.github.com/repos/Zennay/Lightup/actions/jobs/{job_id}"):
+                holds.append(f"{name}_job_provenance_unverified")
             if (type(job.get("run_id")) is not int or job.get("run_id") != run_id
                     or type(job.get("run_attempt")) is not int
                     or job.get("run_attempt") != run.get("run_attempt")):
