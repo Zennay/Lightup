@@ -80,7 +80,15 @@ def _load_plan(path: str) -> tuple[str, ...]:
         if (
             not stat.S_ISREG(after.st_mode)
             or after.st_size != before.st_size
+            or after.st_dev != before.st_dev
+            or after.st_ino != before.st_ino
+            or after.st_mode != before.st_mode
+            or after.st_mtime_ns != before.st_mtime_ns
+            or after.st_ctime_ns != before.st_ctime_ns
         ):
+            # Same-length changes often evade a size-only after-read check.
+            # Metadata comparisons narrow that gap but do not establish an
+            # atomic snapshot against hostile same-timestamp rewrites.
             _deny()
     finally:
         os.close(fd)
