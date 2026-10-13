@@ -5,7 +5,7 @@ Parent: [DRAFT #1199](https://github.com/Zennay/Lightup/pull/1199), immutable he
 
 ## Scope and threat boundary
 
-This child adds **only** `tests/test_evidence_1075_real_sqlite_prelookup_20261013.py` and this contract. It exercises the existing opt-in `canonical_evidence_id` using genuine disposable `StateStore` SQLite data. The test-only `checked_lookup` calls lexical admission **before** delegating to `get_evidence`. It is **not installed** in the application. Production `StateStore.get_evidence`, authorizing/session/tenant code, worker source, main, web routes and real targets remain unchanged.
+The first pass added `tests/test_evidence_1075_real_sqlite_prelookup_20261013.py` and this contract; a separate second-pass add-only producer canary module is documented below. It exercises the existing opt-in `canonical_evidence_id` using genuine disposable `StateStore` SQLite data. The test-only `checked_lookup` calls lexical admission **before** delegating to `get_evidence`. It is **not installed** in the application. Production `StateStore.get_evidence`, authorizing/session/tenant code, worker source, main, web routes and real targets remain unchanged.
 
 Five regression methods cover:
 
@@ -24,3 +24,14 @@ PYTHONPATH=src python -m unittest -v tests.test_evidence_1075_real_sqlite_preloo
 This new branch needs exact-commit GitHub-hosted Python 3.11/3.14 regression results, **separate** permanent registered `vps-bb300bba` runner CI, independent source-owner and privacy/security review, historical-ID inventory/compatibility decision, latest-main integration, and explicit human release approval. A passing isolated test suite is never a production admission or tenant-authorization proof.
 
 No client/target requests, scanning, evidence collection from systems, remediation, retest, code/config execution, authorization grant, product merge or deployment. **Incubate M3/M7 — PLAN/LAB ONLY; DRAFT/HOLD/NO MERGE/NO DEPLOY.**
+
+
+## Independent installed-reader RED canaries (second pass)
+
+A **third add-only path**, `tests/test_evidence_1075_installed_reader_red_20261013.py`, tests the unchanged production `StateStore.get_evidence` against genuine disposable SQLite fixtures. It includes 2 normal positive/unknown-ID controls and **4 explicit expected-RED cases** demonstrating that the default source still permits historical noncanonical record IDs, uppercase UUID4 stored aliases and `str` subclass selectors, and raises incidental exceptions rather than the intended pre-database ValueError for type-confused input. RED is deliberately marked `@unittest.expectedFailure` so it remains visible without accidentally treating a failing security gate as a release blocker on an unmodified producer.
+
+```sh
+PYTHONPATH=src python -m unittest -v tests.test_evidence_1075_installed_reader_red_20261013
+```
+
+The previously verified hosted 573-unit/86-integration receipt applies **only to the earlier exact HEAD** `2b2da1707b7341d40c794199fcced33943946ff0`. Revalidation on this new head is required; do not reuse that receipt. The original source owner must integrate a canonical prelookup gate, inventory real historical identifiers, convert the 4 RED canaries to ordinary passing tests, and obtain explicit release approval. Tests-only addition does not claim authorization, historical record migration or production enforcement.
