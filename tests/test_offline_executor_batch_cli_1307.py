@@ -57,6 +57,22 @@ class OfflineSyntheticCli1307(unittest.TestCase):
         })
         self.assertNotIn(b"offline-check-001", result.stdout)
 
+    def test_checked_in_example_plan_runs_without_echo_or_permission(self):
+        example = Path(__file__).resolve().parents[1] / "examples" / "offline_executor_plan_1307.json"
+        self.assertTrue(example.is_file())
+        p = subprocess.run(
+            [sys.executable, "-m", "lightup.offline_executor_batch_cli_optin",
+             "--input", str(example)],
+            capture_output=True, check=False, timeout=15,
+        )
+        self.assertEqual(p.returncode, 0, p.stderr)
+        parsed = json.loads(p.stdout)
+        self.assertEqual(parsed["tools_reviewed"], 2)
+        self.assertFalse(parsed["permit_issued"])
+        self.assertFalse(parsed["execution_enabled"])
+        self.assertFalse(parsed["authorization_verified"])
+        self.assertNotIn(b"offline-check", p.stdout)
+
     def test_two_tools_reviewed_without_disclosing_identifiers(self):
         result = self._json({
             "version": 1,
