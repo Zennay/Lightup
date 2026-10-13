@@ -38,10 +38,15 @@ class NoSymlinkAncestor1307(unittest.TestCase):
         self.direct_alias.symlink_to(self.plan)
 
     def _cli(self, flag: str, *paths: str | Path, cwd=None):
+        env = os.environ.copy()
+        # A test launched from a disposable directory still imports source
+        # from the checked-out repository, not cwd or third-party PYTHONPATH.
+        source = str(Path(__file__).resolve().parents[1] / "src")
+        env["PYTHONPATH"] = source
         return subprocess.run(
             [sys.executable, "-m", "lightup.offline_executor_batch_cli_optin",
              flag, *map(str, paths)],
-            cwd=cwd, capture_output=True, check=False, timeout=10,
+            cwd=cwd, env=env, capture_output=True, check=False, timeout=10,
         )
 
     def _denied(self, result):
