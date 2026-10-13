@@ -34,12 +34,14 @@ def sample():
     hj = {"total_count": 4, "jobs": [
         {"name": name, "head_sha": HEAD, "status": "completed", "conclusion": "success",
          "run_id": 1001, "run_attempt": 1,
-         "runner_name": "GitHub Actions 9", "labels": ["ubuntu-latest"]}
+         "runner_name": "GitHub Actions 9", "runner_id": 1009,
+         "runner_group_id": 0, "labels": ["ubuntu-latest"]}
         for name in sorted(gate.HOSTED)]}
     vj = {"total_count": 2, "jobs": [
         {"name": name, "head_sha": HEAD, "status": "completed", "conclusion": "success",
          "run_id": 1002, "run_attempt": 1,
-         "runner_name": "zcloud-vps-1", "labels": ["self-hosted", "zcloud", "vps"]}
+         "runner_name": "zcloud-vps-1", "runner_id": 2209,
+         "runner_group_id": 1, "labels": ["self-hosted", "zcloud", "vps"]}
         for name in sorted(gate.PERMANENT)]}
     for job in (*hj["jobs"], *vj["jobs"]):
         job.update(created_at="2026-10-13T00:01:10Z",
@@ -218,6 +220,36 @@ class CIEvidenceGateTests(unittest.TestCase):
     def test_paginated_jobs_are_hold(self):
         data = sample(); data[3]["total_count"] = 101
         self.hold(evaluate(data), "permanent_vps_incomplete_jobs")
+
+    def test_same_registered_runner_id_both_vps_jobs_keeps_non_authorizing(self):
+        data = sample()
+        ids = {job["runner_id"] for job in data[3]["jobs"]}
+        self.assertEqual(ids, {2209})
+        self.assertEqual(evaluate(data)["state"], "EVIDENCE_COMPLETE_NOT_AUTHORIZED")
+
+    def test_vps_name_lookalike_with_different_runner_id_is_hold(self):
+        data = sample()
+        data[3]["jobs"][1]["runner_id"] = 9999
+        self.hold(evaluate(data), "permanent_vps_runner_identity_incoherent")
+
+    def test_null_zero_or_boolean_runner_id_refused(self):
+        for bad in (0, None, True, -1, "2209"):
+            with self.subTest(bad=bad):
+                data = sample()
+                data[3]["jobs"][0]["runner_id"] = bad
+                self.hold(evaluate(data), "permanent_vps_runner_identity_incoherent")
+
+    def test_mixed_or_malformed_runner_groups_are_hold(self):
+        for bad in (2, False, -1, "1"):
+            with self.subTest(bad=bad):
+                data = sample()
+                data[3]["jobs"][0]["runner_group_id"] = bad
+                self.hold(evaluate(data), "permanent_vps_runner_identity_incoherent")
+
+    def test_hosted_unnamed_or_zero_runner_id_is_hold(self):
+        data = sample()
+        data[1]["jobs"][0]["runner_id"] = 0
+        self.hold(evaluate(data), "hosted_runner_identity_unverified")
 
     def test_wrong_vps_runner_is_hold(self):
         data = sample(); data[3]["jobs"][0]["runner_name"] = "unregistered"
