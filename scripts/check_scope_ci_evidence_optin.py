@@ -201,6 +201,16 @@ def evaluate(head: str, hosted_id: int, vps_id: int,
         names = [job["name"] for job in jobs]
         if len(names) != len(set(names)) or set(names) != required:
             holds.append(f"{name}_job_set_mismatch")
+        if is_vps:
+            # Both matrix jobs must run on the same stable registered runner.
+            # Name and GitHub-provided labels alone do not pin identity.
+            ids = [job.get("runner_id") for job in jobs]
+            groups = [job.get("runner_group_id") for job in jobs]
+            if (any(type(value) is not int or value <= 0 for value in ids)
+                    or len(set(ids)) != 1 or
+                    any(type(value) is not int or value < 0 for value in groups)
+                    or len(set(groups)) != 1):
+                holds.append("permanent_vps_runner_identity_incoherent")
         for job in jobs:
             if (type(job.get("run_id")) is not int or job.get("run_id") != run_id
                     or type(job.get("run_attempt")) is not int
@@ -219,6 +229,10 @@ def evaluate(head: str, hosted_id: int, vps_id: int,
             if not _verified_required_steps(job, required_steps):
                 holds.append(f"{name}_critical_steps_unverified")
             labels = job.get("labels")
+            if (type(job.get("runner_id")) is not int or job.get("runner_id") <= 0
+                    or type(job.get("runner_group_id")) is not int
+                    or job.get("runner_group_id") < 0):
+                holds.append(f"{name}_runner_identity_unverified")
             if (type(labels) is not list or any(type(s) is not str for s in labels)
                     or (is_vps and (not VPS_LABELS.issubset(labels)
                                     or job.get("runner_name") != VPS_RUNNER))
