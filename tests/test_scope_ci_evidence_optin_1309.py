@@ -13,9 +13,9 @@ spec.loader.exec_module(gate)
 HEAD = "a" * 40
 
 def pr_link():
-    return {"number": 1310,
-            "head": {"ref": "scope-draft", "sha": HEAD},
-            "base": {"ref": "main", "sha": "b" * 40}}
+    return {"id": 4850423399, "number": 1310,
+            "head": {"ref": "scope-draft", "sha": HEAD, "repo": {"id": gate.REPO_ID}},
+            "base": {"ref": "main", "sha": "b" * 40, "repo": {"id": gate.REPO_ID}}}
 
 
 def sample():
@@ -25,8 +25,8 @@ def sample():
             "updated_at": "2026-10-13T00:05:00Z"}
     host.update(name="LightUp offline preflight",
                 path=".github/workflows/lightup-preflight.yml", workflow_id=375432315,
-                event="pull_request", repository={"full_name": "Zennay/Lightup"},
-                head_repository={"full_name": "Zennay/Lightup"})
+                event="pull_request", repository={"full_name": "Zennay/Lightup", "id": gate.REPO_ID},
+                head_repository={"full_name": "Zennay/Lightup", "id": gate.REPO_ID})
     host.update(head_branch="scope-draft", pull_requests=[pr_link()])
     vps = {**host, "id": 1002, "name": "LightUp CI",
            "path": ".github/workflows/lightup-ci.yml", "workflow_id": 373018063,
@@ -71,10 +71,10 @@ def pr_files_fixture():
 
 
 def pr_fixture():
-    return {"number": 1310, "state": "open", "draft": True,
+    return {"id": 4850423399, "number": 1310, "state": "open", "draft": True,
             "changed_files": 3,
-            "head": {"ref": "scope-draft", "sha": HEAD, "repo": {"full_name": "Zennay/Lightup"}},
-            "base": {"ref": "main", "sha": "b" * 40, "repo": {"full_name": "Zennay/Lightup"}}}
+            "head": {"ref": "scope-draft", "sha": HEAD, "repo": {"full_name": "Zennay/Lightup", "id": gate.REPO_ID}},
+            "base": {"ref": "main", "sha": "b" * 40, "repo": {"full_name": "Zennay/Lightup", "id": gate.REPO_ID}}}
 
 
 def final_runs_fixture():
@@ -281,6 +281,49 @@ class CIEvidenceGateTests(unittest.TestCase):
         handler = gate._DenyRedirects()
         self.assertIsNone(handler.redirect_request(
             None, None, 302, "synthetic", {}, "https://untrusted.invalid/"))
+
+    def test_all_matching_immutable_repository_ids_admit_metadata_only(self):
+        data = sample()
+        self.assertEqual(gate.verify_numeric_repo_pr_identity(
+            pr_fixture(), data[0], data[2]), [])
+        self.assertFalse(evaluate(data)["permit_issued"])
+
+    def test_other_immutable_repository_id_is_hold(self):
+        data = sample()
+        data[0]["repository"]["id"] = 9999
+        self.assertEqual(gate.verify_numeric_repo_pr_identity(
+            pr_fixture(), data[0], data[2]), ["hosted_numeric_provenance_unverified"])
+
+    def test_mismatched_linked_pr_numeric_id_is_hold(self):
+        data = sample()
+        data[2]["pull_requests"][0]["id"] = 1
+        self.assertEqual(gate.verify_numeric_repo_pr_identity(
+            pr_fixture(), data[0], data[2]), ["permanent_vps_numeric_provenance_unverified"])
+
+    def test_mismatched_linked_head_repo_is_hold(self):
+        data = sample()
+        data[2]["pull_requests"][0]["head"]["repo"]["id"] = 9999
+        self.assertEqual(gate.verify_numeric_repo_pr_identity(
+            pr_fixture(), data[0], data[2]), ["permanent_vps_numeric_provenance_unverified"])
+
+    def test_invalid_boolean_pr_repo_id_is_hold(self):
+        pr = pr_fixture()
+        pr["base"]["repo"]["id"] = True
+        self.assertEqual(gate.verify_numeric_repo_pr_identity(
+            pr, sample()[0], sample()[2]), ["pr_numeric_provenance_unverified"])
+
+    def test_cli_rejects_cross_repository_id_without_approval(self):
+        data = sample()
+        data[2]["head_repository"]["id"] = 9
+        with patch.object(gate, "_get_json",
+                          side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(),
+                                       *data, pr_fixture(), main_fixture(),
+                                       *final_runs_fixture()]):
+            with patch("sys.stdout", new_callable=StringIO) as out:
+                exit_code = gate.main(["--pr", "1310", "--head", HEAD,
+                                       "--hosted-run", "1001", "--vps-run", "1002"])
+        self.assertEqual(exit_code, 2)
+        self.hold(json.loads(out.getvalue()), "permanent_vps_numeric_provenance_unverified")
 
     def test_pr_head_must_match_current_revision(self):
         pr = pr_fixture()
