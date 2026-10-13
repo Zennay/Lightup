@@ -80,12 +80,12 @@ def inspect_local_document(source: Path) -> tuple[str, int, int]:
         )
     except _LocalIntakeError:
         raise
-    except (ValueError, TypeError, OverflowError):
+    except (ValueError, TypeError, OverflowError, RecursionError):
         raise _LocalIntakeError("invalid_json") from None
 
     try:
         prepared = prepare_remediation_review_inputs(decoded)
-    except (ValueError, TypeError, OverflowError):
+    except (ValueError, TypeError, OverflowError, RecursionError):
         # Preserve no exception messages; even legitimate values never leak.
         raise _LocalIntakeError("invalid_review_metadata") from None
 
