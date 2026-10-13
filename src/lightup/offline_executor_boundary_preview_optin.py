@@ -204,13 +204,13 @@ class OfflineExecutorBoundaryPreview:
             or context.authorization is not None
             or context.is_lab is not False
             or type(context.created_at) is not datetime
-            or context.created_at.tzinfo is None
-            or context.created_at.utcoffset() is None
+            or context.created_at.tzinfo is not timezone.utc
             or not all(_identifier(x) for x in (
                 context.run_id, context.client_id, context.engagement_id,
             ))
             or not _identifier(call.tool_id)
             or type(call.asset) is not str
+            or len(call.asset) != len("synthetic.invalid")
             or call.asset != "synthetic.invalid"
         ):
             _deny()
