@@ -12,10 +12,10 @@ API_ROOT = "https://api.github.com/repos/Zennay/Lightup/actions/runs/"
 PR_ROOT = "https://api.github.com/repos/Zennay/Lightup/pulls/"
 MAIN_REF = "https://api.github.com/repos/Zennay/Lightup/git/ref/heads/main"
 _ALLOWED_API_URL = re.compile(
-    r"https://api\\.github\\.com/repos/Zennay/Lightup/"
+    r"https://api\.github\.com/repos/Zennay/Lightup/"
     r"(?:git/ref/heads/main"
-    r"|pulls/[1-9][0-9]{0,9}(?:/files\\?per_page=100)?"
-    r"|actions/runs/[1-9][0-9]{0,16}(?:/jobs\\?per_page=100)?)\\Z"
+    r"|pulls/[1-9][0-9]{0,9}(?:/files\?per_page=100)?"
+    r"|actions/runs/[1-9][0-9]{0,16}(?:/jobs\?per_page=100)?)\Z"
 )
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 REPO = "Zennay/Lightup"
