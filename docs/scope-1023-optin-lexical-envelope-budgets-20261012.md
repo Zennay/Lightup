@@ -44,3 +44,18 @@ The isolated opt-in preparse contract now has additional **add-only** acceptance
 - `tests/test_scope_1023_optin_real_wsgi_non_authority_20261013.py` (**9 real default WSGI + disposable SQLite methods**) demonstrates that **even shape-positive JSON** claiming `approved=true`, risk 5 or a forged tenant is refused at current form-only grant/request endpoints, with **unchanged durable grants, requests, sessions, engagements, approvals, users and clients**. Escaped Unicode pairs, bad surrogates, escaped-duplicate keys, malformed URL-encoded form, anonymous form attempts, invalid Content-Length and transfer framing are covered. These tests exercise the **current installed code in an in-process offline WSGI harness**, not a real Nginx/Gunicorn deployment or a future JSON-envelope production endpoint.
 
 **No semantic authority is ever inferred from `True` returned by the optional shape parser.** This remains a non-authorizing demonstration, not a replacement for trusted issuer, tenant, current same-engagement persisted grant, risk, scope/asset/capability, revocation, STOP and human consent. In production, source owners must implement those checks atomically at actual intake/dispatch boundaries. Running synthetic tests does not authorize active target interaction, network access, scan initiation, grant issuance, merging or deployment.
+
+
+## 2026-10-13 W9: controlled synthetic memory/time diagnostics (NOT an RSS guarantee)
+
+New **uninstalled/read-only** `src/lightup/envelope_profile_optin_1023.py` contains a manual offline check:
+
+```sh
+PYTHONPATH=src python -m lightup.envelope_profile_optin_1023
+```
+
+It creates five **local, deterministic, synthetic** JSON objects with varying list cardinality and configured node budgets, calls only the isolated non-authorizing shape preflight, and prints **sample elapsed nanoseconds and Python `tracemalloc` peak bytes**, not raw buffers or customer data. It refuses non-built-in `bytes`, any diagnostic body larger than 256 KiB, and an already-running `tracemalloc` session; it preserves the caller bytes and tears down its own tracing after each sample. Its metrics set `metrics_are_release_proof = false` explicitly. It has no network, WSGI, grant database, real targets or executor connection.
+
+**Measurement limitations:** elapsed time varies by machine, process load and Python version; `tracemalloc` measures traced Python-managed allocations and cannot capture all native allocations, OS page cache, process peak RSS, resident memory of HTTP proxies, streaming server buffers, CPU scheduling or host-level denial-of-service. The 256 KiB diagnostic input cap is **not a recommended production request budget**. Only independent representative traffic profiling and a production source-owner security review can establish acceptable end-to-end limits.
+
+New `tests/test_scope_1023_optin_profile_20261013.py` (**10 tests**) validates shape-positive and budget-negative samples, cap/type rejection, preservation of an existing profiler, cleanup, five deterministic fixtures, raw-buffer immutability, and reporting which never asserts authorization. Neither this diagnostic nor a parser `True` is consent, an authorization grant or permission for a tool/scan.
