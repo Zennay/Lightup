@@ -16,7 +16,7 @@ from lightup.engagements import RiskLevel
 from lightup.webapp import create_app
 
 
-class DecisionLineageSQLiteAcceptance(unittest.TestCase):
+class _DecisionFixture:
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory(prefix="lightup-1275-")
         self.addCleanup(self._tmp.cleanup)
@@ -93,6 +93,7 @@ class DecisionLineageSQLiteAcceptance(unittest.TestCase):
         self.assertEqual(self._snapshot(), before)
         self.assertEqual(self._status(), "pending")
 
+class DecisionLineageSQLiteAcceptance(_DecisionFixture, unittest.TestCase):
     def test_canonical_operator_approval_commits_once_with_audit(self):
         result = self.store.decide_risk_elevation(self.operator, self.approval.approval_id, True)
         self.assertEqual(result.status.value, "approved")
@@ -159,7 +160,7 @@ class DecisionLineageSQLiteAcceptance(unittest.TestCase):
         self._expect_atomic_refusal(False)
 
 
-class DecisionLineageRealWSGIAcceptance(DecisionLineageSQLiteAcceptance):
+class DecisionLineageRealWSGIAcceptance(_DecisionFixture, unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.operator_user = self.store.create_user(
