@@ -66,12 +66,16 @@ def _preparse_shape(source: str, *, max_depth: int, max_nodes: int) -> bool:
 
     Counts each object, array and primitive VALUE as one node; an object
     member name (key) is not an additional value node. A nested child value
-    has depth parent+1, including arrays. No parsing tree is materialized.
+    has depth parent+1, including arrays. Each member name is decoded once
+    into a byte-budget-bounded set so duplicate key aliases are rejected
+    before the full JSON tree is materialized.
     """
     length = len(source)
     index = 0
     nodes = 0
-    stack: list[list[str]] = []
+    # Object frames also carry a key set, for duplicate denial BEFORE json.loads.
+    # This is bounded by the caller's strict UTF-8 byte ceiling.
+    stack: list[list[object]] = []
     root_started = False
 
     def begin_value(at: int) -> int | None:
@@ -83,7 +87,7 @@ def _preparse_shape(source: str, *, max_depth: int, max_nodes: int) -> bool:
             return None
         token = source[at]
         if token == "{":
-            stack.append(["object", "key_or_end"])
+            stack.append(["object", "key_or_end", set()])
             return at + 1
         if token == "[":
             stack.append(["array", "value_or_end"])
@@ -128,6 +132,16 @@ def _preparse_shape(source: str, *, max_depth: int, max_nodes: int) -> bool:
                 next_index = _after_string(source, index)
                 if next_index is None:
                     return False
+                # Decode only the current member name, not the JSON tree.
+                # scanstring uses the same Unicode escape semantics as the
+                # full JSON decoder, so escaped/literal aliases are identical.
+                try:
+                    name, decoded_end = json.decoder.scanstring(source, index + 1, True)
+                except (ValueError, UnicodeError):
+                    return False
+                if decoded_end != next_index or name in stack[-1][2]:
+                    return False
+                stack[-1][2].add(name)
                 stack[-1][1] = "colon"
                 index = next_index
                 continue
