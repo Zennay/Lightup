@@ -64,6 +64,11 @@ def pr_fixture():
             "base": {"ref": "main", "sha": "b" * 40, "repo": {"full_name": "Zennay/Lightup"}}}
 
 
+def final_runs_fixture():
+    fresh = sample()
+    return [fresh[0], fresh[2]]
+
+
 def main_fixture():
     return {"ref": "refs/heads/main", "object": {"type": "commit", "sha": "b" * 40}}
 
@@ -267,7 +272,7 @@ class CIEvidenceGateTests(unittest.TestCase):
     def test_main_combines_current_pr_binding_denial(self):
         data = sample()
         data[2]["pull_requests"][0]["head"]["sha"] = "c" * 40
-        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(), *data, pr_fixture(), main_fixture()]):
+        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(), *data, pr_fixture(), main_fixture(), *final_runs_fixture()]):
             with patch("sys.stdout", new_callable=StringIO) as out:
                 exit_status = gate.main(["--pr", "1310", "--head", HEAD,
                                          "--hosted-run", "1001", "--vps-run", "1002"])
@@ -323,7 +328,7 @@ class CIEvidenceGateTests(unittest.TestCase):
         final = pr_fixture()
         final["head"]["sha"] = "c" * 40
         with patch.object(gate, "_get_json",
-                          side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(), *sample(), final, main_fixture()]):
+                          side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(), *sample(), final, main_fixture(), *final_runs_fixture()]):
             with patch("sys.stdout", new_callable=StringIO) as out:
                 result = gate.main(["--pr", "1310", "--head", HEAD,
                                     "--hosted-run", "1001", "--vps-run", "1002"])
@@ -334,7 +339,7 @@ class CIEvidenceGateTests(unittest.TestCase):
         final = pr_fixture()
         final["base"]["sha"] = "c" * 40
         with patch.object(gate, "_get_json",
-                          side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(), *sample(), final, main_fixture()]):
+                          side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(), *sample(), final, main_fixture(), *final_runs_fixture()]):
             with patch("sys.stdout", new_callable=StringIO) as out:
                 result = gate.main(["--pr", "1310", "--head", HEAD,
                                     "--hosted-run", "1001", "--vps-run", "1002"])
@@ -347,7 +352,7 @@ class CIEvidenceGateTests(unittest.TestCase):
                 final = pr_fixture()
                 final.update(mutation)
                 with patch.object(gate, "_get_json",
-                                  side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(), *sample(), final, main_fixture()]):
+                                  side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(), *sample(), final, main_fixture(), *final_runs_fixture()]):
                     with patch("sys.stdout", new_callable=StringIO) as out:
                         result = gate.main(["--pr", "1310", "--head", HEAD,
                                             "--hosted-run", "1001", "--vps-run", "1002"])
@@ -362,7 +367,7 @@ class CIEvidenceGateTests(unittest.TestCase):
         final_main["object"]["sha"] = "c" * 40
         with patch.object(gate, "_get_json",
                           side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(), *sample(),
-                                       pr_fixture(), final_main]):
+                                       pr_fixture(), final_main, *final_runs_fixture()]):
             with patch("sys.stdout", new_callable=StringIO) as out:
                 result = gate.main(["--pr", "1310", "--head", HEAD,
                                     "--hosted-run", "1001", "--vps-run", "1002"])
@@ -435,6 +440,44 @@ class CIEvidenceGateTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.hold(json.loads(out.getvalue()), "verification_workflow_or_canary_modified")
 
+    def test_completed_run_second_read_still_not_authority(self):
+        initial = sample()
+        self.assertEqual(gate.verify_run_stability(
+            initial[0], final_runs_fixture()[0], "hosted"), [])
+        self.assertEqual(gate.verify_run_stability(
+            initial[2], final_runs_fixture()[1], "permanent_vps"), [])
+
+    def test_rerun_attempt_during_read_is_hold(self):
+        newer = final_runs_fixture()
+        newer[0]["run_attempt"] = 2
+        with patch.object(gate, "_get_json",
+                          side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(),
+                                       *sample(), pr_fixture(), main_fixture(), *newer]):
+            with patch("sys.stdout", new_callable=StringIO) as out:
+                code = gate.main(["--pr", "1310", "--head", HEAD,
+                                  "--hosted-run", "1001", "--vps-run", "1002"])
+        self.assertEqual(code, 2)
+        self.hold(json.loads(out.getvalue()), "hosted_run_changed_during_evidence_read")
+
+    def test_run_conclusion_change_during_read_is_hold(self):
+        newer = final_runs_fixture()
+        newer[1]["status"] = "queued"
+        newer[1]["conclusion"] = None
+        self.assertEqual(gate.verify_run_stability(
+            sample()[2], newer[1], "permanent_vps"),
+            ["permanent_vps_run_changed_during_evidence_read"])
+
+    def test_run_pr_link_mutation_during_read_is_hold(self):
+        newer = final_runs_fixture()
+        newer[0]["pull_requests"][0]["head"]["sha"] = "c" * 40
+        self.assertEqual(gate.verify_run_stability(
+            sample()[0], newer[0], "hosted"),
+            ["hosted_run_changed_during_evidence_read"])
+
+    def test_missing_second_run_metadata_is_hold(self):
+        self.assertEqual(gate.verify_run_stability(sample()[0], None, "hosted"),
+                         ["hosted_run_changed_during_evidence_read"])
+
     def test_private_api_exception_does_not_echo(self):
         with patch.object(gate, "_get_json", side_effect=RuntimeError("SECRET-SYNTHETIC-CANARY")):
             with patch("sys.stdout", new_callable=StringIO) as out:
@@ -443,7 +486,7 @@ class CIEvidenceGateTests(unittest.TestCase):
         self.hold(json.loads(out.getvalue()), "metadata_unavailable")
 
     def test_cli_uses_only_fixed_github_origin(self):
-        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(), *sample(), pr_fixture(), main_fixture()]) as get:
+        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(), *sample(), pr_fixture(), main_fixture(), *final_runs_fixture()]) as get:
             with patch("sys.stdout", new_callable=StringIO):
                 self.assertEqual(gate.main(["--pr", "1310", "--head", HEAD, "--hosted-run", "1001", "--vps-run", "1002"]), 0)
         self.assertEqual([c.args[0] for c in get.call_args_list], [
@@ -452,6 +495,7 @@ class CIEvidenceGateTests(unittest.TestCase):
             f"{gate.API_ROOT}1001", f"{gate.API_ROOT}1001/jobs?per_page=100",
             f"{gate.API_ROOT}1002", f"{gate.API_ROOT}1002/jobs?per_page=100",
             f"{gate.PR_ROOT}1310", gate.MAIN_REF,
+            f"{gate.API_ROOT}1001", f"{gate.API_ROOT}1002",
         ])
 
 if __name__ == "__main__":
