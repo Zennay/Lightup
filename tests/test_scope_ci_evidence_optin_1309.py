@@ -26,7 +26,8 @@ def sample():
                 head_repository={"full_name": "Zennay/Lightup"})
     host.update(head_branch="scope-draft", pull_requests=[pr_link()])
     vps = {**host, "id": 1002, "name": "LightUp CI",
-           "path": ".github/workflows/lightup-ci.yml", "workflow_id": 373018063}
+           "path": ".github/workflows/lightup-ci.yml", "workflow_id": 373018063,
+           "pull_requests": [pr_link()]}
     hj = {"total_count": 4, "jobs": [
         {"name": name, "head_sha": HEAD, "status": "completed", "conclusion": "success",
          "run_id": 1001, "run_attempt": 1,
