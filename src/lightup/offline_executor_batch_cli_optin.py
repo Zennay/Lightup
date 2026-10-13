@@ -52,15 +52,47 @@ def _reject_nonfinite(_value: str) -> None:
     _deny()
 
 
-def _load_plan(path: str) -> tuple[str, ...]:
-    # Opening a FIFO in blocking mode *before* checking fstat can hang this
-    # CLI indefinitely. Nonblocking O_RDONLY ensures type validation runs
-    # first. O_NOFOLLOW blocks symlink substitution of the final path.
-    # These flags are required; no silent fallback to a weaker open.
-    if not all(hasattr(os, flag) for flag in ("O_NONBLOCK", "O_NOFOLLOW", "O_CLOEXEC")):
+def _open_plan_fd_without_symlink_ancestors(path: str) -> int:
+    """Pin each directory by descriptor, rejecting every symlink component.
+
+    The cwd or filesystem can still be adversarial; this is only safe local
+    input admission, not a secure filesystem namespace or production gate.
+    """
+    if type(path) is not str or not 1 <= len(path) <= 4096:
         _deny()
-    flags = os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW | os.O_CLOEXEC
-    fd = os.open(path, flags)
+    required = ("O_NONBLOCK", "O_NOFOLLOW", "O_CLOEXEC", "O_DIRECTORY")
+    if not all(hasattr(os, flag) for flag in required):
+        _deny()
+    if os.open not in os.supports_dir_fd:
+        _deny()
+    # pathlib collapses repeated separators and '.' only. Parent traversal
+    # is explicitly forbidden to keep every directory lookup predictable.
+    parts = Path(path).parts
+    if not parts or len(parts) > 65 or ".." in parts:
+        _deny()
+    absolute = parts[0] in ("/", "//")
+    names = parts[1:] if absolute else parts
+    if not names or any(not name or len(name) > 255 for name in names):
+        _deny()
+    directory_flags = (
+        os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+    )
+    file_flags = os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW | os.O_CLOEXEC
+    directory_fd = os.open("/" if absolute else ".", directory_flags)
+    try:
+        for name in names[:-1]:
+            next_fd = os.open(name, directory_flags, dir_fd=directory_fd)
+            os.close(directory_fd)
+            directory_fd = next_fd
+        return os.open(names[-1], file_flags, dir_fd=directory_fd)
+    finally:
+        os.close(directory_fd)
+
+
+def _load_plan(path: str) -> tuple[str, ...]:
+    # Never block on a FIFO, follow final *or parent* symlinks, or open
+    # an arbitrary device for reading. Every directory is pinned by dir_fd.
+    fd = _open_plan_fd_without_symlink_ancestors(path)
     try:
         before = os.fstat(fd)
         if not stat.S_ISREG(before.st_mode) or before.st_size > MAX_BYTES:
