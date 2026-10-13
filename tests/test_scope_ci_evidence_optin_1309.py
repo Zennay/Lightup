@@ -207,6 +207,27 @@ class CIEvidenceGateTests(unittest.TestCase):
         self.assertEqual(exit_status, 2)
         self.hold(json.loads(out.getvalue()), "permanent_vps_pr_binding_mismatch")
 
+    def test_invalid_numeric_cli_does_not_echo_private_text(self):
+        marker = "SECRET-SYNTHETIC-CLI-CANARY"
+        with patch("sys.stdout", new_callable=StringIO) as out:
+            with patch("sys.stderr", new_callable=StringIO) as err:
+                result = gate.main(["--pr", marker, "--head", HEAD,
+                                    "--hosted-run", "1001", "--vps-run", "1002"])
+        self.assertEqual(result, 2)
+        self.hold(json.loads(out.getvalue()), "invalid_input")
+        self.assertNotIn(marker, out.getvalue() + err.getvalue())
+
+    def test_unknown_cli_flag_does_not_echo_private_text(self):
+        marker = "SECRET-SYNTHETIC-UNKNOWN-CANARY"
+        with patch("sys.stdout", new_callable=StringIO) as out:
+            with patch("sys.stderr", new_callable=StringIO) as err:
+                result = gate.main(["--pr", "1310", "--head", HEAD,
+                                    "--hosted-run", "1001", "--vps-run", "1002",
+                                    "--unknown=" + marker])
+        self.assertEqual(result, 2)
+        self.hold(json.loads(out.getvalue()), "invalid_input")
+        self.assertNotIn(marker, out.getvalue() + err.getvalue())
+
     def test_private_api_exception_does_not_echo(self):
         with patch.object(gate, "_get_json", side_effect=RuntimeError("SECRET-SYNTHETIC-CANARY")):
             with patch("sys.stdout", new_callable=StringIO) as out:
