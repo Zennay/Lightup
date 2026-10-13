@@ -6,7 +6,7 @@ This standalone reviewer command only GETs public GitHub Actions run metadata fr
 
 ```sh
 python3 scripts/check_scope_ci_evidence_optin.py \
-  --head 3978e3725df1cadde3bed675fcd7e22d5030b609 \
+  --pr 1308 --head 3978e3725df1cadde3bed675fcd7e22d5030b609 \
   --hosted-run 38478609048 --vps-run 38478609055
 python3 -m unittest discover -s tests -p 'test_scope_ci_evidence_optin_1309.py' -v
 ```
@@ -25,3 +25,7 @@ Source ownership: three newly created paths only on dedicated #1309 branch from 
 - Runs must identify the original `Zennay/Lightup` repository and PR event, with the exact GitHub workflow ID, display name and path; unrelated workflows cannot substitute matching job names.
 - GitHub API HTTP redirects are denied, including when a `GITHUB_TOKEN` is configured, to prevent forwarding that credential outside the pinned origin.
 - Tests use synthetic GitHub metadata only. The Python test suite does not contact GitHub, the user's VPS, clients, lab hosts or any target. There is no release token, approval or live execution.
+
+## W5: current PR-head binding
+
+The command now **requires** `--pr` and uses a fifth read-only GitHub API GET for the current PR. The PR must remain open and DRAFT, belong to the canonical `Zennay/Lightup` head/base repositories, and its CURRENT head SHA must equal the SHA whose two CI runs are checked. Historical fully successful workflow runs for a superseded PR revision fail closed. This is a reviewer metadata guard, **not** an authorization to merge or activate anything. PR API results are not included in stdout.
