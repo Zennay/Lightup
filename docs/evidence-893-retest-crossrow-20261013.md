@@ -32,3 +32,13 @@ PYTHONPATH=src python -m unittest -v tests.test_evidence_893_retest_audit_trigge
 ```
 
 This branch now contains **four new tests/doc files** across two passes. It remains branch-only, without duplicate PR or shared VPS dispatch; no exact-head CI success is claimed. #1178 already owns the separate opt-in atomic metadata helper, so this child edits neither that helper nor `domain.py`. A production source owner must fix read-before-write/transaction rollback and convert all RED contracts to normal green cases.
+
+## Exact status enum / durable mutation supplement (2026-10-13)
+
+Another independent add-only module, `tests/test_evidence_893_status_type_atomic_red_20261013.py`, has seven real temporary SQLite acceptance methods: three passing controls (canonical operator enum persists, client-member denial leaves rows intact, unknown finding denial is atomic) and **four intentionally expected RED** status-input contracts. The unchanged `DomainStore.set_retest_status` currently reads `status.value` without requiring an exact `RetestStatus` enum, so objects can forge a valid string status or commit invalid persisted status text/boolean before `_finding_from_row` fails. A plain string yields an incidental `AttributeError` rather than a deterministic denial. All negative tests require refusal **before any SQLite mutation** and unchanged reopened durable rows. These remain source-owner evidence, not an installed repair.
+
+```sh
+PYTHONPATH=src python -m unittest -v tests.test_evidence_893_status_type_atomic_red_20261013
+```
+
+Source-owner remediation must validate `type(status) is RetestStatus` before opening the database, recheck persisted evidence integrity and wrap status transition and decode in one atomic transaction. Keep #893 OPEN and convert these intentional RED to ordinary PASS after original #828/#856 decoder and `DomainStore` owners approve. No separate PR or runner retrigger from this branch; no exact-head CI claimed here.
