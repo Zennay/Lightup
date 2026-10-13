@@ -5,6 +5,7 @@ or touch targets. An injected synthetic checker is NOT real authorization.
 """
 from __future__ import annotations
 
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -128,6 +129,7 @@ class RefScopedEvidenceAdmissionTests(unittest.TestCase):
             reader.assert_not_called()
         self.assertNotIn("SECRET_", str(caught.exception))
         self.assertIsNone(caught.exception.__cause__)
+        self.assertIsNone(caught.exception.__context__)
 
     def test_missing_grant_callback_fails_closed(self):
         with patch.object(self.store, "get_evidence") as reader:
@@ -187,6 +189,7 @@ class RefScopedEvidenceAdmissionTests(unittest.TestCase):
             self._lookup(checker=checker)
         self.assertEqual(len(calls), 2)
         self.assertNotIn("SECRET", str(caught.exception))
+        self.assertIsNone(caught.exception.__context__)
 
     def test_noncanonical_run_and_capability_labels_denied_before_read(self):
         invalid_scopes = (
@@ -218,7 +221,21 @@ class RefScopedEvidenceAdmissionTests(unittest.TestCase):
             self._lookup()
         self.assertNotIn(self.evidence_id, str(caught.exception))
         self.assertNotIn("SYNTHETIC_PRIVATE", str(caught.exception))
+        self.assertIsNone(caught.exception.__context__)
         self.assertEqual(before, self._rows())
+
+    def test_sqlite_driver_error_does_not_leak_hidden_exception_context(self):
+        # Error text is intentionally sensitive-looking, but MUST NOT survive
+        # through __context__ of the sanitized public lookup error.
+        with patch.object(
+            self.store, "get_evidence",
+            side_effect=sqlite3.OperationalError("SYNTHETIC_PRIVATE_SQL"),
+        ):
+            with self.assertRaisesRegex(LookupError, "lookup unavailable") as caught:
+                self._lookup()
+        self.assertNotIn("SYNTHETIC_PRIVATE", str(caught.exception))
+        self.assertIsNone(caught.exception.__cause__)
+        self.assertIsNone(caught.exception.__context__)
 
     def test_noncanonical_stored_historical_id_still_denied_without_migration(self):
         with self.store.connect() as db:
