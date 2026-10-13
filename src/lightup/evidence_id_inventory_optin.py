@@ -51,6 +51,34 @@ def inspect_evidence_id_shapes(
         # caller-supplied SQL. mode=ro forbids updates, schema edits and creation.
         connection = sqlite3.connect(resolved.as_uri() + "?mode=ro", uri=True)
         connection.execute("PRAGMA query_only=ON")
+        # This diagnostic only understands the real StateStore evidence table.
+        # A foreign database/view with an "evidence_id" column must not produce
+        # plausible-looking migration/compatibility counts.
+        schema_rows = connection.execute(
+            "SELECT type, sql FROM sqlite_schema WHERE name='evidence'"
+        ).fetchall()
+        if (
+            len(schema_rows) != 1
+            or schema_rows[0][0] != "table"
+            or not isinstance(schema_rows[0][1], str)
+            or schema_rows[0][1].lstrip().lower().startswith(
+                "create virtual table"
+            )
+        ):
+            raise ValueError("evidence inventory unavailable or invalid SQLite schema")
+        columns = {
+            row[1]: (row[2].upper(), row[5])
+            for row in connection.execute('PRAGMA table_info("evidence")')
+        }
+        mandatory = (
+            "evidence_id", "run_id", "capability_id", "kind",
+            "source", "sha256", "metadata_json", "created_at",
+        )
+        if (
+            any(name not in columns for name in mandatory)
+            or columns["evidence_id"] != ("TEXT", 1)
+        ):
+            raise ValueError("evidence inventory unavailable or invalid SQLite schema")
         cursor = connection.execute(
             "SELECT typeof(evidence_id), "
             "CASE WHEN typeof(evidence_id)='text' "
