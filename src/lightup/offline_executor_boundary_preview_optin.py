@@ -6,7 +6,7 @@ resolver, database, scanner, adapter, network or model. Not used by production.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from math import isfinite
 import re
 
@@ -40,7 +40,7 @@ def _deny() -> None:
 
 
 def _identifier(value: object) -> bool:
-    return type(value) is str and _IDENT.fullmatch(value) is not None
+    return type(value) is str and 1 <= len(value) <= 128 and _IDENT.fullmatch(value) is not None
 
 
 def _parameter_fingerprint(parameter: object) -> tuple:
