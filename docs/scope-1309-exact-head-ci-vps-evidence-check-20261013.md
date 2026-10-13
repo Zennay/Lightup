@@ -59,3 +59,9 @@ A GitHub Actions job may report an aggregate `success` even if its job metadata 
 Even valid workflow labels and displayed step names are not independent evidence when the submitted pull request can change the workflow that produced them. The optional tool now queries the actual PR changed-files listing, requires **all files** to be present in a single bounded page, and cross-checks `changed_files`. Any change to `.github/workflows/*` or `scripts/check_safety_canaries.py`, including a rename **away** from a protected path, forces `HOLD` for separate independent source-security review. Duplicate file identities, unknown statuses, incomplete >100-file PR listings and malformed change records also HOLD. This is an intentionally conservative opt-in evidence checker, not GitHub's actual branch-protection or security policy.
 
 This neither validates the workflow code behind a displayed step nor proves the absence of race conditions or tampering in arbitrary non-guard source; review and exact-head raw logs remain separate requirements.
+
+## W13 — reject workflow reruns while collecting evidence
+
+After the initial GitHub Actions run/job reads and the final PR/main snapshots, the opt-in verifier fetches **both** hosted and permanent VPS run metadata again. The stable run fields include workflow/repository/PR provenance, branch, immutable SHA, `run_attempt`, status and conclusion. Any changed or missing metadata forces `HOLD`, even if the earlier job list indicated success. Synthetic tests cover a new run attempt, altered PR link, suddenly queued VPS and unavailable second read.
+
+This is deliberately non-atomic best-effort metadata consistency, not proof that GitHub cannot change between requests. It does not trigger or approve reruns, and never returns an execution token. Permanent runner + human review remain required.
