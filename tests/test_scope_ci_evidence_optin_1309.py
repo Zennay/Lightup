@@ -38,6 +38,14 @@ def sample():
          "run_id": 1002, "run_attempt": 1,
          "runner_name": "zcloud-vps-1", "labels": ["self-hosted", "zcloud", "vps"]}
         for name in sorted(gate.PERMANENT)]}
+    for job in hj["jobs"]:
+        needed = (gate.HOSTED_INTEGRATION_STEPS if job["name"].startswith("Real producer")
+                  else gate.HOSTED_PREFLIGHT_STEPS)
+        job["steps"] = [{"name": name, "status": "completed", "conclusion": "success"}
+                        for name in sorted(needed)]
+    for job in vj["jobs"]:
+        job["steps"] = [{"name": name, "status": "completed", "conclusion": "success"}
+                        for name in sorted(gate.VPS_CRITICAL_STEPS)]
     return [host, hj, vps, vj]
 
 def pr_fixture():
@@ -65,6 +73,51 @@ class CIEvidenceGateTests(unittest.TestCase):
         self.assertEqual(receipt["state"], "EVIDENCE_COMPLETE_NOT_AUTHORIZED")
         self.assertTrue(receipt["run_evidence_consistent"])
         self.assertFalse(receipt["release_approved"])
+
+    def test_hosted_suite_step_skipped_is_hold(self):
+        data = sample()
+        steps = data[1]["jobs"][0]["steps"]
+        self.assertTrue(any(s["name"] == "Compile and unit suite" for s in steps)
+                        or any(s["name"] == "Combined unit suite and real producer integration"
+                               for s in steps))
+        steps[0]["conclusion"] = "skipped"
+        self.hold(evaluate(data), "hosted_critical_steps_unverified")
+
+    def test_missing_runner_identity_guard_is_hold(self):
+        data = sample()
+        data[3]["jobs"][0]["steps"] = [
+            s for s in data[3]["jobs"][0]["steps"]
+            if s["name"] != "Guard permanent VPS runner"]
+        self.hold(evaluate(data), "permanent_vps_critical_steps_unverified")
+
+    def test_missing_permanent_safety_canary_is_hold(self):
+        data = sample()
+        data[3]["jobs"][0]["steps"] = [
+            s for s in data[3]["jobs"][0]["steps"]
+            if s["name"] != "Offline activation and web canaries (isolated state)"]
+        self.hold(evaluate(data), "permanent_vps_critical_steps_unverified")
+
+    def test_overall_green_cannot_mask_failed_integration_step(self):
+        data = sample()
+        steps = data[3]["jobs"][0]["steps"]
+        next(s for s in steps if s["name"].startswith("Real producer integration"))["conclusion"] = "failure"
+        self.hold(evaluate(data), "permanent_vps_critical_steps_unverified")
+
+    def test_duplicate_step_names_fail_closed(self):
+        data = sample()
+        steps = data[1]["jobs"][0]["steps"]
+        steps.append(dict(steps[0]))
+        self.hold(evaluate(data), "hosted_critical_steps_unverified")
+
+    def test_opaque_malformed_step_structure_fails_closed(self):
+        data = sample()
+        data[3]["jobs"][0]["steps"] = [{"name": False}]
+        self.hold(evaluate(data), "permanent_vps_critical_steps_unverified")
+
+    def test_step_free_success_is_not_proof(self):
+        data = sample()
+        data[1]["jobs"][0]["steps"] = []
+        self.hold(evaluate(data), "hosted_critical_steps_unverified")
 
     def test_queued_vps_is_hold(self):
         data = sample()
