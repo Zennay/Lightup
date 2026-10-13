@@ -50,8 +50,9 @@ class CheckedRemediationAdviceProvider(ModelProvider):
         if (
             response.role is not ModelRole.REMEDIATION_ADVISOR
             or type(value) is not str
-            or not value.strip()
+            # Reject huge text BEFORE scanning or allocating for .strip().
             or len(value) > self._max_advice_chars
+            or not value.strip()
         ):
             raise ValueError(_DENIED)
         try:
