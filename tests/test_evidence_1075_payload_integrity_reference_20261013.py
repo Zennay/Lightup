@@ -218,6 +218,94 @@ class EvidencePayloadIntegrityReferenceTests(unittest.TestCase):
         self.assertIsNone(error.exception.__cause__)
         self.assertIsNone(error.exception.__context__)
 
+    def _with_concurrent_hash_write(self, write_action):
+        original_sha256 = hashlib.sha256
+        calls = []
+
+        def hash_then_write(blob):
+            calls.append("hash_started")
+            write_action()
+            return original_sha256(blob)
+
+        with patch(
+            "lightup.evidence_payload_integrity_reference.hashlib.sha256",
+            side_effect=hash_then_write,
+        ):
+            with self.assertRaisesRegex(
+                ValueError, "evidence payload integrity unavailable"
+            ) as denied:
+                self._verify()
+        self.assertEqual(calls, ["hash_started"])
+        self.assertIsNone(denied.exception.__context__)
+        self.assertIsNone(denied.exception.__cause__)
+        self.assertNotIn(self.evidence_id, str(denied.exception))
+        # First two injected permissions succeeded. A changed row MUST be
+        # refused before the third callback authorizes a return.
+        self.assertEqual(len(self.events), 2)
+
+    def test_matching_payload_requires_second_real_sqlite_read(self):
+        original = self._durable_rows()
+        with patch.object(
+            self.store, "get_evidence", wraps=self.store.get_evidence
+        ) as reader:
+            accepted = self._verify()
+        self.assertEqual(reader.call_count, 2)
+        self.assertEqual(accepted.evidence_id, self.evidence_id)
+        self.assertEqual(len(self.events), 3)
+        self.assertEqual(self._durable_rows(), original)
+
+    def test_concurrent_digest_replacement_after_hash_start_is_denied(self):
+        different_digest = hashlib.sha256(b"different-synthetic").hexdigest()
+
+        def write():
+            with self.store.connect() as writer:
+                writer.execute(
+                    "UPDATE evidence SET sha256=? WHERE evidence_id=?",
+                    (different_digest, self.evidence_id),
+                )
+
+        self._with_concurrent_hash_write(write)
+        self.assertEqual(self._durable_rows()[0][5], different_digest)
+
+    def test_concurrent_metadata_replacement_with_same_digest_is_denied(self):
+        initial = self._durable_rows()
+
+        def write():
+            with self.store.connect() as writer:
+                writer.execute(
+                    "UPDATE evidence SET metadata_json=? WHERE evidence_id=?",
+                    ('{"different":"synthetic"}', self.evidence_id),
+                )
+
+        self._with_concurrent_hash_write(write)
+        self.assertEqual(self._durable_rows()[0][5], initial[0][5])
+        self.assertNotEqual(self._durable_rows()[0][6], initial[0][6])
+
+    def test_concurrent_evidence_deletion_after_hash_start_is_denied(self):
+        def write():
+            with self.store.connect() as writer:
+                writer.execute(
+                    "DELETE FROM evidence WHERE evidence_id=?", (self.evidence_id,)
+                )
+
+        self._with_concurrent_hash_write(write)
+        self.assertEqual(self._durable_rows(), ())
+
+    def test_concurrent_corrupt_metadata_reader_exception_is_sanitized(self):
+        def write():
+            with self.store.connect() as writer:
+                writer.execute(
+                    "UPDATE evidence SET metadata_json=? WHERE evidence_id=?",
+                    ('{"PRIVATE_METADATA_CANNOT_ESCAPE":', self.evidence_id),
+                )
+
+        self._with_concurrent_hash_write(write)
+        self.assertTrue(
+            self._durable_rows()[0][6].startswith(
+                '{"PRIVATE_METADATA_CANNOT_ESCAPE"'
+            )
+        )
+
     def test_unknown_uuid_does_not_reveal_existence_details(self):
         unknown = str(uuid4())
         while unknown == self.evidence_id:
