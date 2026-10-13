@@ -86,6 +86,18 @@ class RemediationAdviceTypeIntegrityExpectedRed(unittest.TestCase):
         self.assertEqual(result, original)
 
     @unittest.expectedFailure
+    def test_empty_advice_must_refuse_before_report_synthesizer(self):
+        self._assert_invalid("")
+
+    @unittest.expectedFailure
+    def test_whitespace_only_advice_must_refuse_before_report_synthesizer(self):
+        self._assert_invalid("  \t\n ")
+
+    @unittest.expectedFailure
+    def test_unicode_whitespace_only_advice_must_refuse_before_report_synthesizer(self):
+        self._assert_invalid(" \u00a0\u2003 ")
+
+    @unittest.expectedFailure
     def test_none_advice_must_refuse_before_report_synthesizer(self):
         self._assert_invalid(None)
 
