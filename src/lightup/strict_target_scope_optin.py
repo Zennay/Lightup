@@ -62,7 +62,7 @@ def _canonical_target_host(value: str) -> str | None:
         # urlsplit().hostname may silently ignore junk after closing IPv6
         # brackets: reject rather than grant a permit on a different identity.
         if netloc.startswith("["):
-            if not re.fullmatch(r"\\[[0-9A-Fa-f:.]+\\](?::[0-9]{1,5})?", netloc):
+            if not re.fullmatch(r"\[[0-9A-Fa-f:.]+\](?::[0-9]{1,5})?", netloc):
                 return None
         elif not re.fullmatch(r"[A-Za-z0-9.-]+(?::[0-9]{1,5})?", netloc):
             return None
