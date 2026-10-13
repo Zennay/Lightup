@@ -10,6 +10,9 @@ from urllib.request import Request, urlopen
 
 API_ROOT = "https://api.github.com/repos/Zennay/Lightup/actions/runs/"
 SHA = re.compile(r"[0-9a-f]{40}\Z")
+REPO = "Zennay/Lightup"
+HOSTED_WORKFLOW = ("LightUp offline preflight", ".github/workflows/lightup-preflight.yml", 375432315)
+VPS_WORKFLOW = ("LightUp CI", ".github/workflows/lightup-ci.yml", 373018063)
 VPS_RUNNER = "zcloud-vps-1"
 VPS_LABELS = frozenset(("self-hosted", "zcloud", "vps"))
 HOSTED = frozenset((
@@ -51,6 +54,14 @@ def evaluate(head: str, hosted_id: int, vps_id: int,
         if not isinstance(run, dict) or not isinstance(listing, dict):
             holds.append(f"{name}_missing_metadata")
             continue
+        workflow = VPS_WORKFLOW if is_vps else HOSTED_WORKFLOW
+        if ((run.get("name"), run.get("path"), run.get("workflow_id")) != workflow
+                or run.get("event") != "pull_request"
+                or not isinstance(run.get("repository"), dict)
+                or run["repository"].get("full_name") != REPO
+                or not isinstance(run.get("head_repository"), dict)
+                or run["head_repository"].get("full_name") != REPO):
+            holds.append(f"{name}_workflow_identity_mismatch")
         if (type(run.get("id")) is not int or run.get("id") != run_id
                 or type(run.get("head_sha")) is not str
                 or run.get("head_sha") != head):
