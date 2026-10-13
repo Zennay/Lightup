@@ -77,3 +77,9 @@ The numbered step metadata is **not** independent attestation that the shell com
 The underlying HTTP helper itself now requires an exact canonical URL match against the **only** metadata families used: `refs/heads/main`, `pulls/{id}`, `pulls/{id}/files?per_page=100`, `actions/runs/{id}` and `actions/runs/{id}/jobs?per_page=100` on the fixed `https://api.github.com/repos/Zennay/Lightup/` prefix. It rejects alternate schemes/origins, userinfo, fragments, query substitutions, path traversal and arbitrary strings or object types **before** creating an opener or adding the optional `GITHUB_TOKEN` header. Redirect following remains forbidden. Tests prove both positive known URL admissions and blocked malicious destination attempts without any network traffic.
 
 This is a preventive defense-in-depth against future incorrect reuse of the internal helper, **not** proof of GitHub server provenance, runner integrity, log attestation, customer authorization or release approval.
+
+## W16 — bounded UTC timeline coherence
+
+The CI evidence checker now insists on syntactically canonical `YYYY-MM-DDTHH:MM:SSZ` timestamps and validates each actual GitHub Actions run lifecycle `created_at ≤ run_started_at ≤ updated_at` and each completed job `created_at ≤ started_at ≤ completed_at`. Missing, contradictory, malformed, fractional, non-UTC or non-string timestamps are **HOLD** regardless of aggregate job success. These metadata checks are read-only and cannot prove clock accuracy, trusted infrastructure or release authorization; they supplement workflow/job exact-head, review and raw-log checks.
+
+Regression fixtures model both good and impossible run/job timing, including malformed Gregorian calendar dates and Boolean type confusion. All endpoints stay fixed GitHub GETs.
