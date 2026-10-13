@@ -134,7 +134,7 @@ class OfflineExecutorPreview1307(unittest.TestCase):
 
     def test_executor_state_replacement_after_capture_is_denied(self):
         preview = OfflineExecutorBoundaryPreview.capture(self.executor)
-        self.executor.state = StateStore(self.state.db_path)
+        self.executor.state = StateStore(self.state.path)
         self._refuse(preview=preview)
 
     def test_executor_resolver_replacement_after_capture_is_denied(self):
