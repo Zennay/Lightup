@@ -12,3 +12,6 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_809_real_sqli
 ```
 
 Do not merge a tests-only stack into main as if it integrated the #809 source fix. CI on this child only checks that old #809 source candidate satisfies the added tests; separately rebase and review the original owner-approved source diff against latest main, check authentication, operator-audit behavior and privacy/security, require exact-head Python 3.11 and 3.14 GitHub-hosted and genuinely permanently registered VPS CI, then explicit human authorization. **INCUBATE M3/M7 PLAN/LAB ONLY / DRAFT/HOLD / NO MERGE / NO DEPLOY.**
+
+## W4 — independent operator read-path acceptance
+Three more real temporary SQLite cases cover operator-wide audit preservation after a corrupt A→B tenant label, readonly persisted state, and operator **explicit engagement filtering** for both mismatched tenant and cross-engagement pointer. These added checks use ordinary assertions (no expected failures) against the older #809 source owner's SQL. **16 ordinary PASS methods required**. No installed/main proof, owner or production edits, target access or merge/deploy authorization.
