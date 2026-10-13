@@ -127,6 +127,47 @@ def verify_pr_head(head: str, pr_number: int, pr: object) -> list[str]:
     return []
 
 
+def verify_run_pr_binding(head: str, pr_number: int, pr: object,
+                          hosted: object, vps: object) -> list[str]:
+    """Bind both CI runs to the same current PR head, branch and base.
+
+    This checks consistency of GitHub API metadata only; it is not a signature
+    or a customer authorization. Missing or ambiguous PR links fail closed.
+    """
+    if not isinstance(pr, dict):
+        return ["pr_metadata_missing"]
+    current, base = pr.get("head"), pr.get("base")
+    if not isinstance(current, dict) or not isinstance(base, dict):
+        return ["pr_branch_metadata_missing"]
+    head_ref, base_ref, base_sha = current.get("ref"), base.get("ref"), base.get("sha")
+    if (type(head_ref) is not str or not head_ref
+            or base_ref != "main" or type(base_sha) is not str
+            or SHA.fullmatch(base_sha) is None):
+        return ["pr_base_or_branch_invalid"]
+    holds = []
+    for name, run in (("hosted", hosted), ("permanent_vps", vps)):
+        if not isinstance(run, dict):
+            holds.append(f"{name}_pr_binding_missing")
+            continue
+        linked = run.get("pull_requests")
+        if (run.get("head_branch") != head_ref or type(linked) is not list
+                or len(linked) != 1 or not isinstance(linked[0], dict)):
+            holds.append(f"{name}_pr_binding_mismatch")
+            continue
+        linked_pr = linked[0]
+        linked_head, linked_base = linked_pr.get("head"), linked_pr.get("base")
+        if (type(linked_pr.get("number")) is not int
+                or linked_pr.get("number") != pr_number
+                or not isinstance(linked_head, dict)
+                or linked_head.get("ref") != head_ref
+                or linked_head.get("sha") != head
+                or not isinstance(linked_base, dict)
+                or linked_base.get("ref") != base_ref
+                or linked_base.get("sha") != base_sha):
+            holds.append(f"{name}_pr_binding_mismatch")
+    return holds
+
+
 def _get_json(url: str, token: str | None) -> object:
     # URLs use a fixed GitHub endpoint, never a user-controlled destination.
     headers = {"Accept": "application/vnd.github+json",
@@ -159,7 +200,11 @@ def main(argv: list[str] | None = None) -> int:
         vps = _get_json(f"{API_ROOT}{args.vps_run}", token)
         vj = _get_json(f"{API_ROOT}{args.vps_run}/jobs?per_page=100", token)
         receipt = evaluate(args.head, args.hosted_run, args.vps_run, hosted, hj, vps, vj)
-        receipt = _receipt(receipt["missing_gates"] + verify_pr_head(args.head, args.pr, pr))
+        receipt = _receipt(
+            receipt["missing_gates"]
+            + verify_pr_head(args.head, args.pr, pr)
+            + verify_run_pr_binding(args.head, args.pr, pr, hosted, vps)
+        )
     except Exception:
         # Error bodies and credentials must never enter the receipt.
         receipt = _receipt(["metadata_unavailable"])
