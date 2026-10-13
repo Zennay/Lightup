@@ -32,19 +32,19 @@ PERMANENT = frozenset((
     "LightUp plan-only safety tests (Python 3.11)",
     "LightUp plan-only safety tests (Python 3.14)",
 ))
-HOSTED_PREFLIGHT_STEPS = frozenset((
+HOSTED_PREFLIGHT_ORDER = (
     "Run actions/checkout@v4",
     "Run actions/setup-python@v5",
     "Compile and unit suite",
     "Repeat activation and web canaries with isolated state",
-))
-HOSTED_INTEGRATION_STEPS = frozenset((
+)
+HOSTED_INTEGRATION_ORDER = (
     "Run actions/checkout@v4",
     "Run actions/setup-python@v5",
     "Combined unit suite and real producer integration",
     "State verification boundary",
-))
-VPS_CRITICAL_STEPS = frozenset((
+)
+VPS_CRITICAL_ORDER = (
     "Guard permanent VPS runner",
     "Checkout",
     "Setup Python",
@@ -52,25 +52,38 @@ VPS_CRITICAL_STEPS = frozenset((
     "Unit tests",
     "Real producer integration (requires merged ST2/ST3 predecessors)",
     "Offline activation and web canaries (isolated state)",
-))
+)
+HOSTED_PREFLIGHT_STEPS = frozenset(HOSTED_PREFLIGHT_ORDER)
+HOSTED_INTEGRATION_STEPS = frozenset(HOSTED_INTEGRATION_ORDER)
+VPS_CRITICAL_STEPS = frozenset(VPS_CRITICAL_ORDER)
 
-def _verified_required_steps(job: dict, required: frozenset[str]) -> bool:
-    """Do not infer a safety suite ran solely from overall job success."""
+
+def _verified_required_steps(job: dict, required: tuple[str, ...]) -> bool:
+    """Require recorded completion and ordered admission, never just green job."""
     steps = job.get("steps")
-    if type(steps) is not list or len(steps) > 40:
+    if type(steps) is not list or not 0 < len(steps) <= 40:
         return False
-    names = set()
+    seen: dict[str, dict] = {}
+    last_number = 0
     for step in steps:
         if not isinstance(step, dict) or type(step.get("name")) is not str:
             return False
-        name = step["name"]
-        if name in names:
+        name, number = step["name"], step.get("number")
+        if (not name or name in seen or type(number) is not int
+                or not last_number < number <= 100):
             return False
-        names.add(name)
-        if name in required and (step.get("status") != "completed"
-                                  or step.get("conclusion") != "success"):
+        last_number = number
+        seen[name] = step
+    last_number = 0
+    for name in required:
+        current = seen.get(name)
+        if (current is None
+                or current.get("status") != "completed"
+                or current.get("conclusion") != "success"
+                or current["number"] <= last_number):
             return False
-    return required.issubset(names)
+        last_number = current["number"]
+    return True
 
 
 def _receipt(holds: list[str]) -> dict:
@@ -135,9 +148,9 @@ def evaluate(head: str, hosted_id: int, vps_id: int,
             if (job.get("head_sha") != head or job.get("status") != "completed"
                     or job.get("conclusion") != "success"):
                 holds.append(f"{name}_job_not_successful_on_head")
-            required_steps = (VPS_CRITICAL_STEPS if is_vps else
-                              HOSTED_INTEGRATION_STEPS if job["name"].startswith("Real producer")
-                              else HOSTED_PREFLIGHT_STEPS)
+            required_steps = (VPS_CRITICAL_ORDER if is_vps else
+                              HOSTED_INTEGRATION_ORDER if job["name"].startswith("Real producer")
+                              else HOSTED_PREFLIGHT_ORDER)
             if not _verified_required_steps(job, required_steps):
                 holds.append(f"{name}_critical_steps_unverified")
             labels = job.get("labels")
