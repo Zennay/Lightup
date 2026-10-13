@@ -146,5 +146,34 @@ class OpaqueErrorWsgi1284Tests(unittest.TestCase):
         self.assertEqual(status, "200 OK")
 
 
+    def test_synthetic_400_strips_untrusted_response_headers(self):
+        # Inject only a fake WSGI response into a disposable wrapper instance.
+        # This is NOT a claim the default app currently emits these headers.
+        def fake_original(_environ, start_response):
+            start_response("400 Bad Request", [
+                ("Content-Type", "text/plain"),
+                ("Content-Length", "9999"),
+                ("X-Internal-Trace", self.PRIVATE_MARKER),
+                ("Location", "/private-debug"),
+                ("Set-Cookie", "internal_session=secret"),
+                ("ETag", self.PRIVATE_MARKER),
+                ("Cache-Control", "no-store"),
+                ("Strict-Transport-Security", "max-age=31536000"),
+            ])
+            return [self.PRIVATE_MARKER.encode("utf-8")]
+
+        self.app._app = fake_original
+        status, headers, body = self.request(self.app, "GET", "/clients")
+        self.assertEqual(status, "400 Bad Request")
+        self.assertNotIn(self.PRIVATE_MARKER.encode(), body)
+        self.assertNotIn("X-Internal-Trace", headers)
+        self.assertNotIn("Location", headers)
+        self.assertNotIn("Set-Cookie", headers)
+        self.assertNotIn("ETag", headers)
+        self.assertEqual(headers["Cache-Control"], "no-store")
+        self.assertEqual(headers["Strict-Transport-Security"], "max-age=31536000")
+        self.assertEqual(int(headers["Content-Length"]), len(body))
+
+
 if __name__ == "__main__":
     unittest.main()
