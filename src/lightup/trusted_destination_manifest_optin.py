@@ -1,7 +1,7 @@
 """Optional offline registry destination-role review; never authorizes or dispatches."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 import ipaddress
 import math
@@ -33,11 +33,11 @@ class DestinationField:
 @dataclass(frozen=True, slots=True)
 class DestinationReview:
     destination_fields_checked: int
-    status: str = "hold"
-    authorization_verified: bool = False
-    permit_issued: bool = False
-    execution_enabled: bool = False
-    release_approved: bool = False
+    status: str = field(init=False, default="hold")
+    authorization_verified: bool = field(init=False, default=False)
+    permit_issued: bool = field(init=False, default=False)
+    execution_enabled: bool = field(init=False, default=False)
+    release_approved: bool = field(init=False, default=False)
 
 
 _NAME = re.compile(r"[a-z][a-z0-9_]{0,63}\Z", re.ASCII)
