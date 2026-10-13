@@ -34,3 +34,11 @@ PYTHONPATH=src python -m unittest -v tests.test_evidence_1075_current_scope_refe
 - Latest-main safe composition, privacy/security/tenant/source-owner review, exact-head GitHub-hosted Python 3.11/3.14 **and separate registered permanent VPS** CI, and explicit human release approval.
 
 **DRAFT/HOLD — NO MERGE/NO DEPLOY.** No actual client database, real target, scanning, executed remediation/retest, grant creation, authorization promotion or runtime change.
+
+## Public exception-context privacy (second hardening pass)
+
+Python's `raise SanitizedError(...) from None` hides a raw exception from ordinary traceback display but **still retains the raw exception object in `sanitized.__context__`**, which could expose a tenant/grant/corrupt-metadata secret to programmatic consumers. The opt-in helper therefore converts injected check failures and real reader SQLite/metadata decode failures to neutral outcomes first and raises the sanitized denial **after leaving the `except` block**. This prevents retained hidden `__context__` and `__cause__` references to the raw error.
+
+The synthetic test module adds an independent real `sqlite3.OperationalError` privacy regression and strengthens callback-before-read, callback-after-read and invalid persisted metadata tests to assert `__context__ is None`. This is limited to the uninstalled adapter; it does not sanitize the original default `StateStore` or convey source-authorized tenant/grant rights.
+
+Any exact-head hosted/VPS success previously reported for commit `72a4e8caa3f7c8cfdf1ede5c86490316e27e45d1` applies to that **superseded** head only. The updated code must pass its own new Python 3.11/3.14 hosted and permanent registered VPS CI before source-owner review.
