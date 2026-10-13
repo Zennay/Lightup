@@ -4,6 +4,7 @@ from __future__ import annotations
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from uuid import uuid4
 
@@ -125,9 +126,10 @@ class EvidenceIdInventoryOptInSqliteTests(unittest.TestCase):
 
     def test_invalid_sqlite_schema_raises_generic_no_content_error(self):
         other = self.path.parent / "unrelated.sqlite3"
-        with sqlite3.connect(other) as db:
+        with closing(sqlite3.connect(other)) as db:
             db.execute("CREATE TABLE unrelated (secret TEXT)")
             db.execute("INSERT INTO unrelated VALUES (?)", ("SYNTHETIC_SECRET",))
+            db.commit()
         with self.assertRaisesRegex(ValueError, "invalid SQLite schema") as cm:
             inspect_evidence_id_shapes(other)
         self.assertNotIn("SYNTHETIC_SECRET", str(cm.exception))
