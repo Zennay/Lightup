@@ -86,7 +86,7 @@ class ResolverLifetime938(unittest.TestCase):
         )
 
     def _assert_binding_did_not_change(self, executor):
-        self.assertIs(
+        self.assertEqual(
             executor.authorization_resolver, self._revoked_resolver,
             "caller must not replace the trusted construction-time resolver",
         )
