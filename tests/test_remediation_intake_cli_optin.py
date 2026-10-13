@@ -178,7 +178,23 @@ class RemediationIntakeCliTest(unittest.TestCase):
         raw = (b'{"findings":[],"untrusted":'
                + b'[' * 2200 + b'0' + b']' * 2200 + b'}')
         out = self._parse(self._execute(raw), 2)
-        self.assertEqual(out["code"], "invalid_json")
+        self.assertEqual(out["code"], "json_too_deep")
+
+    def test_brackets_inside_json_string_do_not_count_toward_depth(self):
+        data = _fixture()
+        data["synthetic_padding"] = "[" * 1000 + "}" * 1000
+        out = self._parse(self._execute(_bytes(data)), 0)
+        self.assertEqual(out["finding_count"], 0)
+
+    def test_depth_limit_is_identical_at_both_edges(self):
+        # Root object counts as one level; each nested array adds one level.
+        root = b'{"findings":[],"synthetic_nested":'
+        accepted = root + b'[' * 127 + b'0' + b']' * 127 + b'}'
+        out = self._parse(self._execute(accepted), 0)
+        self.assertEqual(out["finding_count"], 0)
+        rejected = root + b'[' * 128 + b'0' + b']' * 128 + b'}'
+        out = self._parse(self._execute(rejected), 2)
+        self.assertEqual(out["code"], "json_too_deep")
 
 
 if __name__ == "__main__":
