@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "tools": [
+    "offline-check-001",
+    "offline-check-002"
+  ]
+}
