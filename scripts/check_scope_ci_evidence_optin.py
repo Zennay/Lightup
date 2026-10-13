@@ -224,12 +224,22 @@ def main(argv: list[str] | None = None) -> int:
         hj = _get_json(f"{API_ROOT}{args.hosted_run}/jobs?per_page=100", token)
         vps = _get_json(f"{API_ROOT}{args.vps_run}", token)
         vj = _get_json(f"{API_ROOT}{args.vps_run}/jobs?per_page=100", token)
+        # Re-read the PR last. A retargeted, closed or updated PR cannot
+        # borrow successful workflow results collected earlier in this run.
+        final_pr = _get_json(f"{PR_ROOT}{args.pr}", token)
         receipt = evaluate(args.head, args.hosted_run, args.vps_run, hosted, hj, vps, vj)
-        receipt = _receipt(
-            receipt["missing_gates"]
-            + verify_pr_head(args.head, args.pr, pr)
-            + verify_run_pr_binding(args.head, args.pr, pr, hosted, vps)
-        )
+        holds = (receipt["missing_gates"]
+                 + verify_pr_head(args.head, args.pr, pr)
+                 + verify_run_pr_binding(args.head, args.pr, pr, hosted, vps)
+                 + verify_pr_head(args.head, args.pr, final_pr)
+                 + verify_run_pr_binding(args.head, args.pr, final_pr, hosted, vps))
+        if (not isinstance(final_pr, dict) or not isinstance(pr, dict)
+                or final_pr.get("head") != pr.get("head")
+                or final_pr.get("base") != pr.get("base")
+                or final_pr.get("state") != pr.get("state")
+                or final_pr.get("draft") != pr.get("draft")):
+            holds.append("pr_changed_during_evidence_read")
+        receipt = _receipt(holds)
     except Exception:
         # Error bodies and credentials must never enter the receipt.
         receipt = _receipt(["metadata_unavailable"])
