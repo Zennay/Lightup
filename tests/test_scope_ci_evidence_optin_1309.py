@@ -19,7 +19,10 @@ def pr_link():
 
 
 def sample():
-    host = {"id": 1001, "head_sha": HEAD, "status": "completed", "conclusion": "success", "run_attempt": 1}
+    host = {"id": 1001, "head_sha": HEAD, "status": "completed", "conclusion": "success",
+            "run_attempt": 1, "created_at": "2026-10-13T00:00:00Z",
+            "run_started_at": "2026-10-13T00:01:00Z",
+            "updated_at": "2026-10-13T00:05:00Z"}
     host.update(name="LightUp offline preflight",
                 path=".github/workflows/lightup-preflight.yml", workflow_id=375432315,
                 event="pull_request", repository={"full_name": "Zennay/Lightup"},
@@ -38,6 +41,10 @@ def sample():
          "run_id": 1002, "run_attempt": 1,
          "runner_name": "zcloud-vps-1", "labels": ["self-hosted", "zcloud", "vps"]}
         for name in sorted(gate.PERMANENT)]}
+    for job in (*hj["jobs"], *vj["jobs"]):
+        job.update(created_at="2026-10-13T00:01:10Z",
+                   started_at="2026-10-13T00:02:00Z",
+                   completed_at="2026-10-13T00:04:00Z")
     for job in hj["jobs"]:
         needed = (gate.HOSTED_INTEGRATION_ORDER if job["name"].startswith("Real producer")
                   else gate.HOSTED_PREFLIGHT_ORDER)
@@ -305,6 +312,35 @@ class CIEvidenceGateTests(unittest.TestCase):
                                          "--hosted-run", "1001", "--vps-run", "1002"])
         self.assertEqual(exit_status, 2)
         self.hold(json.loads(out.getvalue()), "permanent_vps_pr_binding_mismatch")
+
+    def test_good_utc_timeline_metadata_remains_non_authorizing(self):
+        self.assertTrue(gate._ordered_run_timestamps(sample()[0]))
+        self.assertTrue(gate._ordered_job_timestamps(sample()[1]["jobs"][0]))
+        self.assertEqual(evaluate()["state"], "EVIDENCE_COMPLETE_NOT_AUTHORIZED")
+
+    def test_reversed_run_timeline_is_hold(self):
+        data = sample()
+        data[0]["run_started_at"] = "2026-10-12T23:59:00Z"
+        self.hold(evaluate(data), "hosted_run_timeline_unverified")
+
+    def test_job_completed_before_start_is_hold(self):
+        data = sample()
+        data[3]["jobs"][0]["completed_at"] = "2026-10-13T00:01:00Z"
+        self.hold(evaluate(data), "permanent_vps_job_timeline_unverified")
+
+    def test_malformed_utc_or_boolean_job_time_is_hold(self):
+        for value in (False, "2026-10-13T00:00:00+00:00",
+                      "2026-02-31T00:00:00Z", "2026-10-13T00:00:00",
+                      "2026-10-13T00:00:00.123Z"):
+            with self.subTest(value=value):
+                data = sample()
+                data[1]["jobs"][0]["started_at"] = value
+                self.hold(evaluate(data), "hosted_job_timeline_unverified")
+
+    def test_incomplete_timeline_cannot_substitute_green_run(self):
+        data = sample()
+        data[2].pop("run_started_at")
+        self.hold(evaluate(data), "permanent_vps_run_timeline_unverified")
 
     def test_fixed_transport_allows_only_canonical_github_metadata_urls(self):
         examples = (
