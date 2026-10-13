@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from lightup.domain import AccessContext, DomainStore, Role
+from lightup.domain import AccessContext, DomainStore, Role, RoleError
 from lightup.models import RetestStatus, Severity
 
 
@@ -89,6 +89,46 @@ class RetestAuditAtomicityAcceptance(unittest.TestCase):
         with self.assertRaises(KeyError):
             self.store.set_retest_status(
                 self.operator, "missing-synthetic-finding", RetestStatus.FIX_PENDING
+            )
+        self.assertEqual(self._state(), before)
+
+    def test_client_denial_cannot_create_audit_event(self):
+        before = self._state()
+        with self.store._connect() as connection:
+            row = connection.execute(
+                "SELECT client_id FROM findings WHERE finding_id=?",
+                (self.finding.finding_id,),
+            ).fetchone()
+        client = AccessContext(
+            "synthetic-unprivileged-client", Role.CLIENT_MEMBER, row["client_id"]
+        )
+        with self.assertRaises(RoleError):
+            self.store.set_retest_status(
+                client, self.finding.finding_id, RetestStatus.FIX_PENDING
+            )
+        self.assertEqual(self._state(), before)
+
+    @unittest.expectedFailure
+    def test_forged_canonical_status_must_not_emit_an_audit_event(self):
+        class ForgedStatus:
+            value = RetestStatus.FIX_PENDING.value
+
+        before = self._state()
+        with self.assertRaisesRegex(ValueError, "retest.*status|status.*type"):
+            self.store.set_retest_status(
+                self.operator, self.finding.finding_id, ForgedStatus()
+            )
+        self.assertEqual(self._state(), before)
+
+    @unittest.expectedFailure
+    def test_forged_unknown_status_must_not_commit_audit_before_decode(self):
+        class ForgedStatus:
+            value = "synthetic_forbidden_status"
+
+        before = self._state()
+        with self.assertRaisesRegex(ValueError, "retest.*status|status.*type"):
+            self.store.set_retest_status(
+                self.operator, self.finding.finding_id, ForgedStatus()
             )
         self.assertEqual(self._state(), before)
 
