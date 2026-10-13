@@ -139,6 +139,9 @@ class TrustedDestinationManifest:
     _parameters: tuple[ToolParameter, ...]
     _handler: object
     _snapshot: tuple
+    _registry_map: dict
+    _definition_snapshot: tuple
+    _roles_snapshot: tuple
 
     def __init__(self, registry, definition, fields):
         if type(registry) is not ToolRegistry or type(definition) is not ToolDefinition or type(fields) is not tuple:
@@ -183,12 +186,26 @@ class TrustedDestinationManifest:
             _deny()
         for k, v in (("_registry", registry), ("_definition", definition), ("_fields", fields),
                      ("_parameters", params), ("_handler", entry[1]),
-                     ("_snapshot", tuple((p, p.name, p.kind, p.required) for p in params))):
+                     ("_snapshot", tuple((p, p.name, p.kind, p.required) for p in params)),
+                     ("_registry_map", registry._tools),
+                     ("_definition_snapshot", (definition.tool_id, definition.capability_id,
+                                               definition.interaction, definition.min_risk,
+                                               definition.description, definition.parameters)),
+                     ("_roles_snapshot", tuple((f, f.parameter, f.role) for f in fields))):
             object.__setattr__(self, k, v)
 
     def review(self, arguments):
         registry, definition = self._registry, self._definition
-        if type(registry._tools) is not dict:
+        if (type(registry._tools) is not dict or registry._tools is not self._registry_map
+                or type(definition.tool_id) is not str):
+            _deny()
+        if (definition.tool_id, definition.capability_id, definition.interaction,
+                definition.min_risk, definition.description, definition.parameters) != self._definition_snapshot:
+            _deny()
+        if (len(self._fields) != len(self._roles_snapshot) or any(
+                type(f) is not DestinationField or f is not original
+                or f.parameter != name or f.role is not role
+                for f, (original, name, role) in zip(self._fields, self._roles_snapshot))):
             _deny()
         entry = registry._tools.get(definition.tool_id)
         if (type(entry) is not tuple or len(entry) != 2 or entry[0] is not definition
