@@ -224,3 +224,41 @@ class OfflineExecutorBoundaryPreview:
             _deny()
         # No permit, no evaluator; success is metadata shape only.
         return OfflineBoundaryReceipt(registered_analysis_tools=len(fingerprint))
+
+    def preview_batch(
+        self, context: RunContext, calls: tuple[ToolCall, ...]
+    ) -> "OfflineBoundaryBatchReceipt":
+        """All-or-nothing, bounded *review* only; never grants or executes.
+
+        A late invalid item cannot emit a partial receipt. This does not
+        promise isolation against concurrent mutation of Python objects.
+        """
+        if (
+            type(context) is not RunContext
+            or type(calls) is not tuple
+            or not 1 <= len(calls) <= 64
+        ):
+            _deny()
+        seen = set()
+        for call in calls:
+            # This validates exact ToolCall before reading any of its fields.
+            self.preview(context, call)
+            if call.tool_id in seen:
+                _deny()
+            seen.add(call.tool_id)
+        if _registry_fingerprint(self._registry) != self._registry_at_creation:
+            _deny()
+        return OfflineBoundaryBatchReceipt(
+            tools_reviewed=len(calls),
+            registered_analysis_tools=len(self._registry_at_creation),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class OfflineBoundaryBatchReceipt:
+    tools_reviewed: int
+    registered_analysis_tools: int
+    permit_issued: bool = False
+    execution_enabled: bool = False
+    authorization_verified: bool = False
+
