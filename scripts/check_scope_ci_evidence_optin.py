@@ -2,6 +2,7 @@
 """Opt-in read-only GitHub CI evidence check; NEVER authorizes LightUp execution."""
 from __future__ import annotations
 import argparse
+from datetime import datetime, timezone
 import json
 import os
 import re
@@ -92,6 +93,32 @@ def _verified_required_steps(job: dict, required: tuple[str, ...]) -> bool:
     return True
 
 
+_UTC_SECONDS = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\\Z")
+
+
+def _utc_instant(value: object):
+    if type(value) is not str or _UTC_SECONDS.fullmatch(value) is None:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def _ordered_run_timestamps(run: dict) -> bool:
+    created = _utc_instant(run.get("created_at"))
+    started = _utc_instant(run.get("run_started_at"))
+    updated = _utc_instant(run.get("updated_at"))
+    return created is not None and started is not None and updated is not None and created <= started <= updated
+
+
+def _ordered_job_timestamps(job: dict) -> bool:
+    created = _utc_instant(job.get("created_at"))
+    started = _utc_instant(job.get("started_at"))
+    completed = _utc_instant(job.get("completed_at"))
+    return created is not None and started is not None and completed is not None and created <= started <= completed
+
+
 def _receipt(holds: list[str]) -> dict:
     return {
         "state": "HOLD" if holds else "EVIDENCE_COMPLETE_NOT_AUTHORIZED",
@@ -135,6 +162,8 @@ def evaluate(head: str, hosted_id: int, vps_id: int,
         if (run.get("status") != "completed" or run.get("conclusion") != "success"
                 or type(run.get("run_attempt")) is not int or run["run_attempt"] < 1):
             holds.append(f"{name}_run_not_successful")
+        if not _ordered_run_timestamps(run):
+            holds.append(f"{name}_run_timeline_unverified")
         jobs, total = listing.get("jobs"), listing.get("total_count")
         if (type(jobs) is not list or type(total) is not int
                 or total != len(jobs) or not 0 < total <= 100):
@@ -154,6 +183,8 @@ def evaluate(head: str, hosted_id: int, vps_id: int,
             if (job.get("head_sha") != head or job.get("status") != "completed"
                     or job.get("conclusion") != "success"):
                 holds.append(f"{name}_job_not_successful_on_head")
+            if not _ordered_job_timestamps(job):
+                holds.append(f"{name}_job_timeline_unverified")
             required_steps = (VPS_CRITICAL_ORDER if is_vps else
                               HOSTED_INTEGRATION_ORDER if job["name"].startswith("Real producer")
                               else HOSTED_PREFLIGHT_ORDER)
