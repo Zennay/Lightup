@@ -20,6 +20,7 @@ _ALLOWED_API_URL = re.compile(
 )
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 REPO = "Zennay/Lightup"
+REPO_ID = 1401523136  # GitHub immutable repository identifier, not branch name
 HOSTED_WORKFLOW = ("LightUp offline preflight", ".github/workflows/lightup-preflight.yml", 375432315)
 VPS_WORKFLOW = ("LightUp CI", ".github/workflows/lightup-ci.yml", 373018063)
 VPS_RUNNER = "zcloud-vps-1"
@@ -325,6 +326,40 @@ def _reject_nonfinite_json(_value: str) -> None:
     raise ValueError("nonfinite metadata")
 
 
+def verify_numeric_repo_pr_identity(pr: object, hosted: object, vps: object) -> list[str]:
+    """Cross-check immutable GH numeric repo/PR IDs, not just display names."""
+    if (not isinstance(pr, dict) or type(pr.get("id")) is not int
+            or pr["id"] <= 0 or not isinstance(pr.get("head"), dict)
+            or not isinstance(pr.get("base"), dict)):
+        return ["pr_numeric_provenance_unverified"]
+    for side in ("head", "base"):
+        repo = pr[side].get("repo")
+        if not isinstance(repo, dict) or type(repo.get("id")) is not int or repo["id"] != REPO_ID:
+            return ["pr_numeric_provenance_unverified"]
+    holds = []
+    for name, run in (("hosted", hosted), ("permanent_vps", vps)):
+        if not isinstance(run, dict):
+            holds.append(f"{name}_numeric_provenance_unverified")
+            continue
+        repositories = (run.get("repository"), run.get("head_repository"))
+        linked = run.get("pull_requests")
+        if (any(not isinstance(r, dict) or type(r.get("id")) is not int
+                or r["id"] != REPO_ID for r in repositories)
+                or type(linked) is not list or len(linked) != 1
+                or not isinstance(linked[0], dict)):
+            holds.append(f"{name}_numeric_provenance_unverified")
+            continue
+        associate = linked[0]
+        if (type(associate.get("id")) is not int or associate["id"] != pr["id"]
+                or any(not isinstance(associate.get(side), dict)
+                       or not isinstance(associate[side].get("repo"), dict)
+                       or type(associate[side]["repo"].get("id")) is not int
+                       or associate[side]["repo"]["id"] != REPO_ID
+                       for side in ("head", "base"))):
+            holds.append(f"{name}_numeric_provenance_unverified")
+    return holds
+
+
 def verify_current_main(pr: object, main_ref: object) -> list[str]:
     """Treat changed or unverifiable main as missing latest-main composition."""
     if not isinstance(pr, dict) or not isinstance(pr.get("base"), dict):
@@ -453,6 +488,8 @@ def main(argv: list[str] | None = None) -> int:
                  + verify_run_pr_binding(args.head, args.pr, pr, hosted, vps)
                  + verify_pr_head(args.head, args.pr, final_pr)
                  + verify_run_pr_binding(args.head, args.pr, final_pr, hosted, vps)
+                 + verify_numeric_repo_pr_identity(pr, hosted, vps)
+                 + verify_numeric_repo_pr_identity(final_pr, hosted, vps)
                  + verify_current_main(pr, initial_main)
                  + verify_current_main(final_pr, final_main)
                  + verify_pr_guard_files(pr, changed_files)
