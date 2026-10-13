@@ -71,7 +71,7 @@ def measure_synthetic_envelope(
 def synthetic_profile_rows() -> list[dict[str, int | bool]]:
     """Generate reproducible offline synthetic sizes, not user data."""
     cases = (
-        (0, 1), (4, 8), (32, 12), (128, 64), (256, 300),
+        (0, 2), (4, 8), (32, 12), (128, 64), (256, 300),
     )
     rows = []
     for count, nodes_limit in cases:
