@@ -101,7 +101,7 @@ class StrictTargetIdentity1289Tests(unittest.TestCase):
         for good in ("localhost", "LOCALHOST.", "127.0.0.1", "http://localhost",
                      "https://localhost:443/path?q=value",
                      "localhost:8766", "http://127.0.0.1:8080/",
-                     "::1", "[::1]", "http://[::1]:8766/"):
+                     "[::1]", "http://[::1]:8766/"):
             with self.subTest(good=good):
                 orig = self.base.decide(Target(good))
                 actual = self.strict.decide(Target(good))
@@ -109,6 +109,17 @@ class StrictTargetIdentity1289Tests(unittest.TestCase):
                 self.assertEqual(actual.reason, ScopeReason.LOOPBACK)
                 self.assertEqual(actual.allowed, orig.allowed)
                 self.assertEqual(actual.normalized_host, orig.normalized_host)
+
+    def test_bare_ipv6_not_granted_until_explicitly_bracketed(self):
+        # Legacy URL authority interpretation does not accept bare ::1.
+        original = self.base.decide(Target("::1"))
+        self.assertFalse(original.allowed)
+        denied = self.strict.decide(Target("::1"))
+        self.assertFalse(denied.allowed)
+        self.assertEqual(denied.reason, ScopeReason.INVALID_TARGET)
+        granted = self.strict.decide(Target("[::1]"))
+        self.assertTrue(granted.allowed)
+        self.assertEqual(granted.normalized_host, "::1")
 
     def test_private_lab_and_public_ip_decisions_are_not_widened(self):
         for addr, reason, allowed in (
