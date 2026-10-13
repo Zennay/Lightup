@@ -31,6 +31,9 @@ def sample():
     vps = {**host, "id": 1002, "name": "LightUp CI",
            "path": ".github/workflows/lightup-ci.yml", "workflow_id": 373018063,
            "pull_requests": [pr_link()]}
+    # The two workflow fixtures must not share mutable nested repository data.
+    vps["repository"] = dict(host["repository"])
+    vps["head_repository"] = dict(host["head_repository"])
     hj = {"total_count": 4, "jobs": [
         {"id": 2001 + i, "name": name,
          "workflow_name": "LightUp offline preflight", "head_branch": "scope-draft",
@@ -327,6 +330,13 @@ class CIEvidenceGateTests(unittest.TestCase):
         handler = gate._DenyRedirects()
         self.assertIsNone(handler.redirect_request(
             None, None, 302, "synthetic", {}, "https://untrusted.invalid/"))
+
+    def test_hosted_and_vps_repository_fixture_mutations_are_independent(self):
+        host, _, vps, _ = sample()
+        host["repository"]["id"] = 9
+        self.assertEqual(vps["repository"]["id"], gate.REPO_ID)
+        vps["head_repository"]["id"] = 8
+        self.assertEqual(host["head_repository"]["id"], gate.REPO_ID)
 
     def test_all_matching_immutable_repository_ids_admit_metadata_only(self):
         data = sample()
