@@ -433,7 +433,7 @@ class CIEvidenceGateTests(unittest.TestCase):
         bad[0]["filename"] = ".github/workflows/lightup-ci.yml"
         with patch.object(gate, "_get_json",
                           side_effect=[pr_fixture(), main_fixture(), bad, *sample(),
-                                       pr_fixture(), main_fixture()]):
+                                       pr_fixture(), main_fixture(), *final_runs_fixture()]):
             with patch("sys.stdout", new_callable=StringIO) as out:
                 code = gate.main(["--pr", "1310", "--head", HEAD,
                                   "--hosted-run", "1001", "--vps-run", "1002"])
