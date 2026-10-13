@@ -237,5 +237,18 @@ class OptionalRemediationInputPreflightTest(unittest.TestCase):
         self.assertEqual(batch.findings[0].target, "asset://offline")
 
 
+    def test_display_target_fallback_and_bound_preserve_only_label(self):
+        item = finding()
+        item.pop("target")
+        data = payload(item)
+        data["target"] = "asset://synthetic-fallback"
+        prepared = prepare_remediation_review_inputs(data)
+        self.assertEqual(prepared.findings[0].target, "asset://synthetic-fallback")
+        data["target"] = ""
+        self.reject_unchanged(data, "target")
+        data["target"] = "x" * 1025
+        self.reject_unchanged(data, "target")
+
+
 if __name__ == "__main__":
     unittest.main()
