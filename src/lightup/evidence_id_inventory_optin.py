@@ -80,6 +80,23 @@ def inspect_evidence_id_shapes(
             or sum(position != 0 for _, position in columns.values()) != 1
         ):
             raise ValueError("evidence inventory unavailable or invalid SQLite schema")
+        # Exact UUID text identity is byte-sensitive. A schema using NOCASE
+        # for the primary-key index would equate uppercase/lowercase aliases,
+        # invalidating a literal identifier migration inventory.
+        pk_indexes = [
+            index[1] for index in connection.execute('PRAGMA index_list("evidence")')
+            if index[3] == "pk"
+        ]
+        if len(pk_indexes) != 1:
+            raise ValueError("evidence inventory unavailable or invalid SQLite schema")
+        pk_key_columns = [
+            (name, collation) for name, collation, is_key in connection.execute(
+                'SELECT name, coll, "key" FROM pragma_index_xinfo(?)',
+                (pk_indexes[0],),
+            ) if is_key
+        ]
+        if pk_key_columns != [("evidence_id", "BINARY")]:
+            raise ValueError("evidence inventory unavailable or invalid SQLite schema")
         cursor = connection.execute(
             "SELECT typeof(evidence_id), "
             "CASE WHEN typeof(evidence_id)='text' "
