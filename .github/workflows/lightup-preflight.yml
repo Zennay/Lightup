@@ -28,6 +28,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+      - name: Install pinned opt-in Markdown parser test dependencies
+        if: ${{ hashFiles('tests/test_evidence_1221_w81_structured_markup_literal.py') != '' }}
+        run: python -m pip install --disable-pip-version-check --no-input "mistune==3.2.1" "markdown-it-py==4.2.0"
       - name: Compile and unit suite
         env:
           PYTHONPATH: src
@@ -59,6 +62,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+      - name: Install pinned opt-in Markdown parser test dependencies
+        if: ${{ hashFiles('tests/test_evidence_1221_w81_structured_markup_literal.py') != '' }}
+        run: python -m pip install --disable-pip-version-check --no-input "mistune==3.2.1" "markdown-it-py==4.2.0"
       - name: Combined unit suite and real producer integration
         env:
           PYTHONPATH: src:tests
