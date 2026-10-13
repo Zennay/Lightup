@@ -65,8 +65,9 @@ def _load_plan(path: str) -> tuple[str, ...]:
         before = os.fstat(fd)
         if not stat.S_ISREG(before.st_mode) or before.st_size > MAX_BYTES:
             _deny()
-        with os.fdopen(os.dup(fd), "rb") as handle:
-            raw = handle.read(MAX_BYTES + 1)
+        # Explicit kernel read bound. Buffered streams can prefetch more bytes
+        # internally than their caller-visible read(n) size.
+        raw = os.read(fd, MAX_BYTES + 1)
         after = os.fstat(fd)
         if (
             not stat.S_ISREG(after.st_mode)
