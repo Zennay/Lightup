@@ -93,7 +93,7 @@ def _verified_required_steps(job: dict, required: tuple[str, ...]) -> bool:
     return True
 
 
-_UTC_SECONDS = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\\Z")
+_UTC_SECONDS = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\Z")
 
 
 def _utc_instant(value: object):
