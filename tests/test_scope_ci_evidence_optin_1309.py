@@ -53,6 +53,10 @@ def sample():
     for job in vj["jobs"]:
         job["steps"] = [{"name": name, "number": i, "status": "completed", "conclusion": "success"}
                         for i, name in enumerate(gate.VPS_CRITICAL_ORDER, 1)]
+    for job in (*hj["jobs"], *vj["jobs"]):
+        for i, step in enumerate(job["steps"], 1):
+            step.update(started_at=f"2026-10-13T00:02:{i:02d}Z",
+                        completed_at=f"2026-10-13T00:02:{i + 1:02d}Z")
     return [host, hj, vps, vj]
 
 def pr_files_fixture():
@@ -317,6 +321,44 @@ class CIEvidenceGateTests(unittest.TestCase):
         self.assertTrue(gate._ordered_run_timestamps(sample()[0]))
         self.assertTrue(gate._ordered_job_timestamps(sample()[1]["jobs"][0]))
         self.assertEqual(evaluate()["state"], "EVIDENCE_COMPLETE_NOT_AUTHORIZED")
+
+    def test_job_cannot_start_before_run_starts(self):
+        data = sample()
+        data[0]["run_started_at"] = "2026-10-13T00:03:00Z"
+        self.hold(evaluate(data), "hosted_run_job_timeline_incoherent")
+
+    def test_job_cannot_end_after_run_updated(self):
+        data = sample()
+        data[2]["updated_at"] = "2026-10-13T00:03:00Z"
+        self.hold(evaluate(data), "permanent_vps_run_job_timeline_incoherent")
+
+    def test_job_cannot_be_created_before_run_exists(self):
+        data = sample()
+        data[3]["jobs"][0]["created_at"] = "2026-10-12T23:59:59Z"
+        self.hold(evaluate(data), "permanent_vps_run_job_timeline_incoherent")
+
+    def test_required_step_start_before_job_is_hold(self):
+        data = sample()
+        data[1]["jobs"][0]["steps"][0]["started_at"] = "2026-10-13T00:01:59Z"
+        self.hold(evaluate(data), "hosted_critical_steps_unverified")
+
+    def test_required_step_end_after_job_is_hold(self):
+        data = sample()
+        data[3]["jobs"][0]["steps"][-1]["completed_at"] = "2026-10-13T00:04:01Z"
+        self.hold(evaluate(data), "permanent_vps_critical_steps_unverified")
+
+    def test_required_step_time_travel_is_hold(self):
+        data = sample()
+        steps = data[3]["jobs"][0]["steps"]
+        steps[2]["started_at"] = "2026-10-13T00:02:01Z"
+        self.hold(evaluate(data), "permanent_vps_critical_steps_unverified")
+
+    def test_missing_or_non_utc_required_step_timestamps_are_hold(self):
+        for value in (None, False, "2026-10-13T00:02:01+00:00"):
+            with self.subTest(value=value):
+                data = sample()
+                data[1]["jobs"][0]["steps"][0]["started_at"] = value
+                self.hold(evaluate(data), "hosted_critical_steps_unverified")
 
     def test_reversed_run_timeline_is_hold(self):
         data = sample()
