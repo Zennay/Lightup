@@ -200,7 +200,7 @@ class CIEvidenceGateTests(unittest.TestCase):
     def test_main_combines_current_pr_binding_denial(self):
         data = sample()
         data[2]["pull_requests"][0]["head"]["sha"] = "c" * 40
-        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), *data]):
+        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), *data, pr_fixture()]):
             with patch("sys.stdout", new_callable=StringIO) as out:
                 exit_status = gate.main(["--pr", "1310", "--head", HEAD,
                                          "--hosted-run", "1001", "--vps-run", "1002"])
@@ -252,6 +252,41 @@ class CIEvidenceGateTests(unittest.TestCase):
         self.hold(json.loads(out.getvalue()), "invalid_input")
         self.assertNotIn(marker, out.getvalue() + err.getvalue())
 
+    def test_last_pr_read_catches_changed_head(self):
+        final = pr_fixture()
+        final["head"]["sha"] = "c" * 40
+        with patch.object(gate, "_get_json",
+                          side_effect=[pr_fixture(), *sample(), final]):
+            with patch("sys.stdout", new_callable=StringIO) as out:
+                result = gate.main(["--pr", "1310", "--head", HEAD,
+                                    "--hosted-run", "1001", "--vps-run", "1002"])
+        self.assertEqual(result, 2)
+        self.hold(json.loads(out.getvalue()), "pr_changed_during_evidence_read")
+
+    def test_last_pr_read_catches_retargeted_base(self):
+        final = pr_fixture()
+        final["base"]["sha"] = "c" * 40
+        with patch.object(gate, "_get_json",
+                          side_effect=[pr_fixture(), *sample(), final]):
+            with patch("sys.stdout", new_callable=StringIO) as out:
+                result = gate.main(["--pr", "1310", "--head", HEAD,
+                                    "--hosted-run", "1001", "--vps-run", "1002"])
+        self.assertEqual(result, 2)
+        self.hold(json.loads(out.getvalue()), "pr_changed_during_evidence_read")
+
+    def test_last_pr_read_catches_closed_or_undrafted_pr(self):
+        for mutation in ({"state": "closed"}, {"draft": False}):
+            with self.subTest(mutation=mutation):
+                final = pr_fixture()
+                final.update(mutation)
+                with patch.object(gate, "_get_json",
+                                  side_effect=[pr_fixture(), *sample(), final]):
+                    with patch("sys.stdout", new_callable=StringIO) as out:
+                        result = gate.main(["--pr", "1310", "--head", HEAD,
+                                            "--hosted-run", "1001", "--vps-run", "1002"])
+                self.assertEqual(result, 2)
+                self.hold(json.loads(out.getvalue()), "pr_changed_during_evidence_read")
+
     def test_private_api_exception_does_not_echo(self):
         with patch.object(gate, "_get_json", side_effect=RuntimeError("SECRET-SYNTHETIC-CANARY")):
             with patch("sys.stdout", new_callable=StringIO) as out:
@@ -260,13 +295,14 @@ class CIEvidenceGateTests(unittest.TestCase):
         self.hold(json.loads(out.getvalue()), "metadata_unavailable")
 
     def test_cli_uses_only_fixed_github_origin(self):
-        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), *sample()]) as get:
+        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), *sample(), pr_fixture()]) as get:
             with patch("sys.stdout", new_callable=StringIO):
                 self.assertEqual(gate.main(["--pr", "1310", "--head", HEAD, "--hosted-run", "1001", "--vps-run", "1002"]), 0)
         self.assertEqual([c.args[0] for c in get.call_args_list], [
             f"{gate.PR_ROOT}1310",
             f"{gate.API_ROOT}1001", f"{gate.API_ROOT}1001/jobs?per_page=100",
             f"{gate.API_ROOT}1002", f"{gate.API_ROOT}1002/jobs?per_page=100",
+            f"{gate.PR_ROOT}1310",
         ])
 
 if __name__ == "__main__":
