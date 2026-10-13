@@ -191,6 +191,72 @@ class AdviceGateOptInPipelineAcceptance(unittest.TestCase):
             _run(provider, _fixture())
         self.assertNotIn(ModelRole.REPORT_SYNTHESIZER, provider.roles)
 
+    def test_advisor_response_provider_identity_mismatch_denied_before_report(self):
+        class WrongProviderIdentity(RecordingProvider):
+            def complete(self, request):
+                response = super().complete(request)
+                if request.role is ModelRole.REMEDIATION_ADVISOR:
+                    return replace(response, provider_id="other-untrusted-provider")
+                return response
+        provider = WrongProviderIdentity("apparently valid")
+        with self.assertRaisesRegex(ValueError, "bounded non-empty text"):
+            _run(provider, _fixture())
+        self.assertNotIn(ModelRole.REPORT_SYNTHESIZER, provider.roles)
+
+    def test_advisor_response_model_identity_mismatch_denied_before_report(self):
+        class WrongModelIdentity(RecordingProvider):
+            def complete(self, request):
+                response = super().complete(request)
+                if request.role is ModelRole.REMEDIATION_ADVISOR:
+                    return replace(response, model_id="swapped-model")
+                return response
+        provider = WrongModelIdentity("apparently valid")
+        with self.assertRaisesRegex(ValueError, "bounded non-empty text"):
+            _run(provider, _fixture())
+        self.assertNotIn(ModelRole.REPORT_SYNTHESIZER, provider.roles)
+
+    def test_delegate_identity_is_pinned_against_in_place_mutation(self):
+        provider = RecordingProvider("apparently valid")
+        gate = CheckedRemediationAdviceProvider(provider)
+        before = gate.provider_id
+        provider._provider_id = "swapped-provider-after-binding"
+        self.assertEqual(gate.provider_id, before)
+        gateway = ModelGateway()
+        gateway.register_provider(gate)
+        for role in AssessmentReviewPipeline.ROLES:
+            gateway.bind_role(role, before, "offline-script")
+        with self.assertRaisesRegex(ValueError, "bounded non-empty text"):
+            AssessmentReviewPipeline(gateway).review(_fixture())
+        self.assertNotIn(ModelRole.REPORT_SYNTHESIZER, provider.roles)
+
+    def test_advisor_provider_exception_sanitized_without_context_leak(self):
+        class RaisingAdvisor(RecordingProvider):
+            def complete(self, request):
+                if request.role is ModelRole.REMEDIATION_ADVISOR:
+                    self.roles.append(request.role)
+                    raise RuntimeError("PRIVATE_PROVIDER_CREDENTIALS")
+                return super().complete(request)
+        provider = RaisingAdvisor("unused")
+        with self.assertRaisesRegex(ValueError, "bounded non-empty text") as caught:
+            _run(provider, _fixture())
+        self.assertNotIn("PRIVATE_", str(caught.exception))
+        self.assertIsNone(caught.exception.__cause__)
+        self.assertIsNone(caught.exception.__context__)
+        self.assertEqual(provider.roles, [
+            ModelRole.VERIFIER, ModelRole.REMEDIATION_ADVISOR
+        ])
+
+    def test_non_advisor_failures_are_not_silently_converted(self):
+        class RaisingVerifier(RecordingProvider):
+            def complete(self, request):
+                if request.role is ModelRole.VERIFIER:
+                    raise RuntimeError("synthetic verifier error")
+                return super().complete(request)
+        # The gate is scoped to ADVISOR only; other owner roles remain the
+        # default gateway's responsibility, not reinterpreted by this helper.
+        with self.assertRaisesRegex(RuntimeError, "synthetic verifier error"):
+            _run(RaisingVerifier("unused"), _fixture())
+
     def test_invalid_configuration_fails_before_provider_dispatch(self):
         for value in (True, False, 0, -1, 8193, 1.5, "64"):
             with self.subTest(limit=value):
