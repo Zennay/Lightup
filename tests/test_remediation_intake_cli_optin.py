@@ -174,5 +174,12 @@ class RemediationIntakeCliTest(unittest.TestCase):
         self.assertEqual(out["code"], "invalid_review_metadata")
 
 
+    def test_excessively_nested_json_is_classified_without_traceback(self):
+        raw = (b'{"findings":[],"untrusted":'
+               + b'[' * 2200 + b'0' + b']' * 2200 + b'}')
+        out = self._parse(self._execute(raw), 2)
+        self.assertEqual(out["code"], "invalid_json")
+
+
 if __name__ == "__main__":
     unittest.main()
