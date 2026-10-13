@@ -70,6 +70,10 @@ def evaluate(head: str, hosted_id: int, vps_id: int,
         if len(names) != len(set(names)) or set(names) != required:
             holds.append(f"{name}_job_set_mismatch")
         for job in jobs:
+            if (type(job.get("run_id")) is not int or job.get("run_id") != run_id
+                    or type(job.get("run_attempt")) is not int
+                    or job.get("run_attempt") != run.get("run_attempt")):
+                holds.append(f"{name}_job_run_identity_mismatch")
             if (job.get("head_sha") != head or job.get("status") != "completed"
                     or job.get("conclusion") != "success"):
                 holds.append(f"{name}_job_not_successful_on_head")
