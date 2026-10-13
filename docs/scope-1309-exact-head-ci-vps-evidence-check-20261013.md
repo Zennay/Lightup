@@ -89,3 +89,13 @@ Regression fixtures model both good and impossible run/job timing, including mal
 The underlying fixed-origin GitHub API helper now refuses any response that is not an exact HTTP `200` with an explicit JSON media type (`application/json` or `application/vnd.github+json`, optionally with parameters). Non-200 or HTML/missing media types are rejected **before reading or parsing** the response body. This adds a read-only independent fail-closed transport layer on top of the W15 endpoint allowlist, no-redirect rule and bounded/duplicate-key-aware JSON parsing. Local mocked-response regression tests verify successful canonical JSON and refusal of provisional/HTML/missing-header responses.
 
 Response metadata does not attest to a trusted GitHub server or a registered runner. No customer authorization, scan permit or release can be granted by this checker.
+
+## W18 — job and safety-step timelines must fit enclosing workflow
+
+The metadata checker now requires each completed mandatory job to occur during its corresponding run: GitHub Actions `run.created_at <= job.created_at`, `run.run_started_at <= job.started_at <= job.completed_at <= run.updated_at`. Each ordered mandatory safety step has a real UTC `started_at`/`completed_at` pair, must fit inside its job and must not overlap backwards with its preceding mandatory safety step. These are real CI metadata consistency checks, **not** trusted execution attestations. Forged, missing or impossibly ordered records force `HOLD` even if all outer job statuses are green.
+
+## W19 — stable registered runner ID, not merely VPS labels/name
+
+Both permanent Python matrix jobs must report the **same positive integer** GitHub `runner_id` and same canonical nonnegative `runner_group_id`; missing, Boolean, zero or mismatched values fail closed. Hosted jobs also require valid positive runner IDs. The runner name `zcloud-vps-1`, expected labels, exact SHA and canonical required workflow steps remain separately mandatory. This can stop obvious accidental runner alias confusion but it does **not** cryptographically prove that a trusted physical runner executed the commands or that the machine is secure.
+
+**Actual blocker observed:** permanent VPS CI #38483217027 later returned cancelled with two cancelled jobs, with `runner_id=0` and empty runner names (no registered runner execution). It is emphatically **not passing VPS evidence**. The GitHub connector does not expose a repo-runner registration listing or a VPS restart action; manual independent runner restoration is outside this branch's scope. Do not replay hosted tests as permanent runner proof.
