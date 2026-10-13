@@ -1,0 +1,20 @@
+# #1309: opt-in exact-head hosted + permanent VPS evidence verifier
+
+**INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD/NO MERGE/NO DEPLOY.**
+
+This standalone reviewer command only GETs public GitHub Actions run metadata from a **fixed** `api.github.com/repos/Zennay/Lightup/actions/runs` origin. It does not import LightUp policy/executor, call models, resolve target names, issue permits, run GitHub Actions, scan, deploy or touch customer data.
+
+```sh
+python3 scripts/check_scope_ci_evidence_optin.py \
+  --head 3978e3725df1cadde3bed675fcd7e22d5030b609 \
+  --hosted-run 38478609048 --vps-run 38478609055
+python3 -m unittest discover -s tests -p 'test_scope_ci_evidence_optin_1309.py' -v
+```
+
+As observed 2026-10-13 around 22:38 UTC, that hosted run has **4 completed successful Python 3.11/3.14 unit+producer jobs**, while separate permanent VPS jobs are **QUEUED**. The expected read-only result is therefore **HOLD**, not an approval.
+
+Fail closed for mismatched immutable SHA or run ID, incomplete listing, duplicate/missing/extra job, queued/failed/canceled jobs, wrong hosted label, wrong permanent self-hosted label or unexpected registered runner `zcloud-vps-1`. Run-list paging beyond 100 is considered **incomplete**, not implicitly successful. `GITHUB_TOKEN` is an optional environment variable for API rate limits; not written into the output. External API errors return an opaque constant. The output contains only aggregate gate names and four hardcoded false flags: `authorization_verified`, `permit_issued`, `execution_enabled`, `release_approved`.
+
+**Important:** `EVIDENCE_COMPLETE_NOT_AUTHORIZED` is only metadata consistency, **not** a release gate, signature attestation, log inspection, proof of self-hosted runner trust, human approval, customer consent or security. The GitHub API/runner metadata themselves can be forged if the upstream trust is compromised. The original #1306 fourteen failing authorization tests remain unrelated and unsolved; original owners #107/#100/#156, independent security/privacy, latest-main compatibility, permanent registered VPS job completion, raw logs and explicit human release are mandatory. No production effects.
+
+Source ownership: three newly created paths only on dedicated #1309 branch from pinned main `05b80319cd0581fed21fe9d8f565bcb0a56cd2df`. All pre-existing source, other worker branches and CI workflow configuration remain untouched.
