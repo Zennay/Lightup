@@ -180,13 +180,23 @@ def _get_json(url: str, token: str | None) -> object:
         raise ValueError("too much metadata")
     return json.loads(raw.decode("utf-8"))
 
+class _OpaqueParser(argparse.ArgumentParser):
+    """Suppress argparse echo of untrusted CLI values (and accidental tokens)."""
+    def error(self, message: str) -> None:
+        raise ValueError("invalid CLI arguments")
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Read-only CI evidence, NEVER authorization")
+    parser = _OpaqueParser(description="Read-only CI evidence, NEVER authorization")
     parser.add_argument("--head", required=True)
     parser.add_argument("--pr", required=True, type=int)
     parser.add_argument("--hosted-run", required=True, type=int)
     parser.add_argument("--vps-run", required=True, type=int)
-    args = parser.parse_args(argv)
+    try:
+        args = parser.parse_args(argv)
+    except ValueError:
+        print(json.dumps(_receipt(["invalid_input"]), sort_keys=True, separators=(",", ":")))
+        return 2
     if (SHA.fullmatch(args.head) is None or not 0 < args.hosted_run < 10**17
             or not 0 < args.vps_run < 10**17 or args.hosted_run == args.vps_run
             or not 0 < args.pr < 10**10):
