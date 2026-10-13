@@ -181,7 +181,7 @@ def main(argv: list[str] | None = None) -> int:
         (len(args) == 2 and args[0] == "--input" and type(args[1]) is str)
         or (
             len(args) == 3
-            and args[0] == "--compare"
+            and args[0] in ("--compare", "--require-no-expansion")
             and type(args[1]) is str
             and type(args[2]) is str
         )
@@ -195,6 +195,11 @@ def main(argv: list[str] | None = None) -> int:
             baseline = _load_plan(args[1])
             proposed = _load_plan(args[2])
             receipt = _compare(baseline, proposed)
+            # Optional strict CI-style signal. A widening synthetic plan
+            # yields a constant denial with NO success receipt or plan data.
+            # This does not issue/verify customer authorization.
+            if args[0] == "--require-no-expansion" and receipt["expansion_detected"]:
+                _deny()
     except Exception:
         # Opaque failure: no traceback, file path, plan data, host, or secret.
         print(_GENERIC_ERROR, file=sys.stderr)
