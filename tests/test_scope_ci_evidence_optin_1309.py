@@ -48,8 +48,18 @@ def sample():
                         for name in sorted(gate.VPS_CRITICAL_STEPS)]
     return [host, hj, vps, vj]
 
+def pr_files_fixture():
+    return [
+        {"filename": "docs/scope-1309-exact-head-ci-vps-evidence-check-20261013.md",
+         "status": "added"},
+        {"filename": "scripts/check_scope_ci_evidence_optin.py", "status": "added"},
+        {"filename": "tests/test_scope_ci_evidence_optin_1309.py", "status": "added"},
+    ]
+
+
 def pr_fixture():
     return {"number": 1310, "state": "open", "draft": True,
+            "changed_files": 3,
             "head": {"ref": "scope-draft", "sha": HEAD, "repo": {"full_name": "Zennay/Lightup"}},
             "base": {"ref": "main", "sha": "b" * 40, "repo": {"full_name": "Zennay/Lightup"}}}
 
@@ -257,7 +267,7 @@ class CIEvidenceGateTests(unittest.TestCase):
     def test_main_combines_current_pr_binding_denial(self):
         data = sample()
         data[2]["pull_requests"][0]["head"]["sha"] = "c" * 40
-        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), main_fixture(), *data, pr_fixture(), main_fixture()]):
+        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(), *data, pr_fixture(), main_fixture()]):
             with patch("sys.stdout", new_callable=StringIO) as out:
                 exit_status = gate.main(["--pr", "1310", "--head", HEAD,
                                          "--hosted-run", "1001", "--vps-run", "1002"])
@@ -313,7 +323,7 @@ class CIEvidenceGateTests(unittest.TestCase):
         final = pr_fixture()
         final["head"]["sha"] = "c" * 40
         with patch.object(gate, "_get_json",
-                          side_effect=[pr_fixture(), main_fixture(), *sample(), final, main_fixture()]):
+                          side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(), *sample(), final, main_fixture()]):
             with patch("sys.stdout", new_callable=StringIO) as out:
                 result = gate.main(["--pr", "1310", "--head", HEAD,
                                     "--hosted-run", "1001", "--vps-run", "1002"])
@@ -324,7 +334,7 @@ class CIEvidenceGateTests(unittest.TestCase):
         final = pr_fixture()
         final["base"]["sha"] = "c" * 40
         with patch.object(gate, "_get_json",
-                          side_effect=[pr_fixture(), main_fixture(), *sample(), final, main_fixture()]):
+                          side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(), *sample(), final, main_fixture()]):
             with patch("sys.stdout", new_callable=StringIO) as out:
                 result = gate.main(["--pr", "1310", "--head", HEAD,
                                     "--hosted-run", "1001", "--vps-run", "1002"])
@@ -337,7 +347,7 @@ class CIEvidenceGateTests(unittest.TestCase):
                 final = pr_fixture()
                 final.update(mutation)
                 with patch.object(gate, "_get_json",
-                                  side_effect=[pr_fixture(), main_fixture(), *sample(), final, main_fixture()]):
+                                  side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(), *sample(), final, main_fixture()]):
                     with patch("sys.stdout", new_callable=StringIO) as out:
                         result = gate.main(["--pr", "1310", "--head", HEAD,
                                             "--hosted-run", "1001", "--vps-run", "1002"])
@@ -351,7 +361,7 @@ class CIEvidenceGateTests(unittest.TestCase):
         final_main = main_fixture()
         final_main["object"]["sha"] = "c" * 40
         with patch.object(gate, "_get_json",
-                          side_effect=[pr_fixture(), main_fixture(), *sample(),
+                          side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(), *sample(),
                                        pr_fixture(), final_main]):
             with patch("sys.stdout", new_callable=StringIO) as out:
                 result = gate.main(["--pr", "1310", "--head", HEAD,
@@ -374,6 +384,57 @@ class CIEvidenceGateTests(unittest.TestCase):
                 self.assertEqual(gate.verify_current_main(pr_fixture(), ref),
                                  ["current_main_unverified"])
 
+    def test_safe_additive_scope_pr_files_accepted(self):
+        self.assertEqual(gate.verify_pr_guard_files(pr_fixture(), pr_files_fixture()), [])
+
+    def test_modified_ci_workflow_requires_independent_review(self):
+        for path in (".github/workflows/lightup-ci.yml",
+                     ".github/workflows/lightup-preflight.yml",
+                     ".github/workflows/other.yml",
+                     "scripts/check_safety_canaries.py"):
+            with self.subTest(path=path):
+                files = pr_files_fixture()
+                files[0]["filename"] = path
+                self.assertEqual(
+                    gate.verify_pr_guard_files(pr_fixture(), files),
+                    ["verification_workflow_or_canary_modified"])
+
+    def test_renamed_away_verifier_cannot_hide_modified_workflow(self):
+        files = pr_files_fixture()
+        files[0] = {"filename": "docs/renamed.md",
+                    "previous_filename": ".github/workflows/lightup-ci.yml",
+                    "status": "renamed"}
+        self.assertEqual(gate.verify_pr_guard_files(pr_fixture(), files),
+                         ["verification_workflow_or_canary_modified"])
+
+    def test_truncated_or_paged_pr_listing_is_hold(self):
+        files = pr_files_fixture()
+        self.assertEqual(gate.verify_pr_guard_files(pr_fixture(), files[:-1]),
+                         ["pr_files_unverified"])
+        pr = pr_fixture()
+        pr["changed_files"] = 101
+        self.assertEqual(gate.verify_pr_guard_files(pr, files),
+                         ["pr_files_unverified"])
+
+    def test_missing_duplicate_or_malformed_file_records_refused(self):
+        for invalid in (None, ["unexpected"], [{"filename": "foo", "status": "added"}],
+                        [pr_files_fixture()[0]] * 3):
+            with self.subTest(invalid=invalid):
+                self.assertEqual(gate.verify_pr_guard_files(pr_fixture(), invalid),
+                                 ["pr_files_unverified"])
+
+    def test_unsafe_changed_workflow_cli_emits_hold_not_authority(self):
+        bad = pr_files_fixture()
+        bad[0]["filename"] = ".github/workflows/lightup-ci.yml"
+        with patch.object(gate, "_get_json",
+                          side_effect=[pr_fixture(), main_fixture(), bad, *sample(),
+                                       pr_fixture(), main_fixture()]):
+            with patch("sys.stdout", new_callable=StringIO) as out:
+                code = gate.main(["--pr", "1310", "--head", HEAD,
+                                  "--hosted-run", "1001", "--vps-run", "1002"])
+        self.assertEqual(code, 2)
+        self.hold(json.loads(out.getvalue()), "verification_workflow_or_canary_modified")
+
     def test_private_api_exception_does_not_echo(self):
         with patch.object(gate, "_get_json", side_effect=RuntimeError("SECRET-SYNTHETIC-CANARY")):
             with patch("sys.stdout", new_callable=StringIO) as out:
@@ -382,11 +443,12 @@ class CIEvidenceGateTests(unittest.TestCase):
         self.hold(json.loads(out.getvalue()), "metadata_unavailable")
 
     def test_cli_uses_only_fixed_github_origin(self):
-        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), main_fixture(), *sample(), pr_fixture(), main_fixture()]) as get:
+        with patch.object(gate, "_get_json", side_effect=[pr_fixture(), main_fixture(), pr_files_fixture(), *sample(), pr_fixture(), main_fixture()]) as get:
             with patch("sys.stdout", new_callable=StringIO):
                 self.assertEqual(gate.main(["--pr", "1310", "--head", HEAD, "--hosted-run", "1001", "--vps-run", "1002"]), 0)
         self.assertEqual([c.args[0] for c in get.call_args_list], [
             f"{gate.PR_ROOT}1310", gate.MAIN_REF,
+            f"{gate.PR_ROOT}1310/files?per_page=100",
             f"{gate.API_ROOT}1001", f"{gate.API_ROOT}1001/jobs?per_page=100",
             f"{gate.API_ROOT}1002", f"{gate.API_ROOT}1002/jobs?per_page=100",
             f"{gate.PR_ROOT}1310", gate.MAIN_REF,
