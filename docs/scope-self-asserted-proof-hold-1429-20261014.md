@@ -56,6 +56,14 @@ The output fd is also checked before any write. Only a FIFO/pipe or verified ter
 
 New genuine subprocess regressions use a disposable redirected regular file, an AF_UNIX local socketpair, a non-tty `/dev/null` sink and an **intentionally prefilled unread stdout pipe**. Separate real local POSIX pseudoterminal and closed-pipe process tests prove that a genuine terminal still receives one HOLD-only JSON line while broken output pipes exit 2 without traceback. The child must exit within a bounded interval with return code 2, no traceback, no file bytes written and no socket bytes transmitted. Direct tests deny spoofed stdout fileno, forbidden fd mode and oversized receipt before touching the sink. No customer targets, installed ingress, real policy/grant, actual network addresses or deploy infrastructure are involved. This is a Python/userland compatibility proof, **not an OS sandbox or release permission**.
 
+## W70 — inherited pipe status restoration (2026-10-14)
+
+**Concrete safety defect in W69:** `os.set_blocking(1, False)` modifies `O_NONBLOCK` on the underlying **open-file description**. An inherited pipe's original writer can share that same description with the child; the reviewer previously exited with the *parent writer left nonblocking*. That is an observable ambient side effect, even though the JSON receipt itself is always HOLD.
+
+The bounded stdout writer now snapshots `os.get_blocking(1)` and temporarily changes only a previously blocking descriptor. A `finally` restores its prior blocking state across successful writes, full-output-pipe deadline expiry and broken-pipe/`EPIPE` failure; an already-nonblocking writer is left unchanged. New **genuine subprocess tests** inspect the actual parent `os.get_blocking(writefd)` **after child termination** in both initial mode states, on a deliberately filled originally-blocking pipe, and on a broken originally-blocking pipe. They also preserve the normal one-line HOLD receipt and exact exit code 2.
+
+Important limitation: the state can be transiently nonblocking **while** the child writes, because this is a shared POSIX open-file description. Restoring the state on exit eliminates the persistent leak, not the brief cross-process race. Integrators requiring strict simultaneous writer isolation should supply a dedicated private pipe, not a shared writer. This remains synthetic diagnostics, not a hardened OS sandbox or permission to release.
+
 ## Execution and fail-closed result
 
 ```sh
