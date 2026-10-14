@@ -99,6 +99,15 @@ return a nonreflective HOLD without reading stdin.
   counted as HOLD regardless of later clean permits. Neither
   constructor nor issue may turn `SystemExit(0)` into a successful
   CLI exit: the audit emits one fixed HOLD receipt and exit 2.
+  The additional explicit-public-scope path now counts mock token
+  creation during **Authorization/ScopePolicy fixture construction**,
+  the public `ScopePolicy.decide` check, the `ActivationPolicy` and
+  `ActivationGate` constructors, and `issue()` itself. The same
+  checks cover the three cases of denied or expired/not-yet-current
+  owner approval. Independent synthetic mutations prove an allowed
+  public-scope policy constructor, gate constructor or policy decision
+  cannot hide token minting; three separately built expired public
+  network fixtures must each contribute a distinct HOLD observation.
   This is **Python-only defensive instrumentation**, NOT process,
   native syscall, thread or import-time isolation.
 - Python-only defense-in-depth during audit: blocks ordinary
