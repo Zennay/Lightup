@@ -47,7 +47,8 @@ return a nonreflective HOLD without reading stdin.
   vulnerable source, with separate assertion-trace integrity canaries.
 - Real in-memory permit metadata integrity checks verify exact synthetic
   target binding, capability, activation mode/reference, fixed mocked token
-  identity, and timezone-aware timestamp. Forged metadata mutants are
+  identity, and exact current-call UTC timestamp bounds (deny stale/future
+  issued tokens and polymorphic string subclasses). Forged metadata mutants are
   caught as additional HOLD violations; no permit is ever dispatched.
 - Disable `allow_private_lab` and confirm non-loopback samples cannot
   be issued a LAB_ONLY permit.
