@@ -21,6 +21,13 @@ _EXPECTED_MODELS = str(_CHECKOUT_SRC / "lightup" / "models.py")
 from lightup.models import Authorization, Target
 from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason
 
+# Freeze the original objects from this import, so an in-process rebinding
+# cannot quietly make this reviewer inspect a stale policy class while the
+# checked-out module publishes a different production class.
+_ORIGINAL_DECIDE = ScopePolicy.__dict__.get("decide")
+_ORIGINAL_NORMALIZE = ScopePolicy.__dict__.get("normalize_host")
+_ORIGINAL_IS_CURRENT = Authorization.__dict__.get("is_current")
+
 
 # Explicit membership reference. Do not use ipaddress.is_private/is_global
 # because their special-purpose semantics vary by Python release.
@@ -109,10 +116,22 @@ def _source_is_this_checkout() -> bool:
             or abspath(module.__dict__["__file__"]) != expected
         ):
             return False
+    scope = sys.modules["lightup.scope"].__dict__
+    models = sys.modules["lightup.models"].__dict__
     return (
-        ScopePolicy.__module__ == "lightup.scope"
+        scope.get("ScopePolicy") is ScopePolicy
+        and scope.get("ScopeDecision") is ScopeDecision
+        and scope.get("ScopeReason") is ScopeReason
+        and models.get("Target") is Target
+        and models.get("Authorization") is Authorization
+        and ScopePolicy.__module__ == "lightup.scope"
         and ScopeDecision.__module__ == "lightup.scope"
+        and ScopeReason.__module__ == "lightup.scope"
         and Target.__module__ == "lightup.models"
+        and Authorization.__module__ == "lightup.models"
+        and ScopePolicy.__dict__.get("decide") is _ORIGINAL_DECIDE
+        and ScopePolicy.__dict__.get("normalize_host") is _ORIGINAL_NORMALIZE
+        and Authorization.__dict__.get("is_current") is _ORIGINAL_IS_CURRENT
     )
 
 
