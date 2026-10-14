@@ -22,6 +22,23 @@ class PrimitiveValueSnapshot:
     """Immutable copies of canonical builtin values, NOT an execution token."""
 
     items: tuple[tuple[str, object], ...]
+
+    def __post_init__(self) -> None:
+        # Public constructors must not bypass the shape guard. There is no
+        # authorization binding here: value kinds still require caller policy.
+        if type(self.items) is not tuple or len(self.items) > MAX_SYNTHETIC_PARAMETERS:
+            raise OrchestrationError("invalid synthetic receipt item collection")
+        seen: set[str] = set()
+        for entry in self.items:
+            if type(entry) is not tuple or len(entry) != 2:
+                raise OrchestrationError("invalid synthetic receipt item")
+            key, value = entry
+            if type(key) is not str or type(value) not in (str, int, float, bool):
+                raise OrchestrationError("invalid synthetic receipt primitive")
+            if key in seen:
+                raise OrchestrationError("duplicate synthetic receipt key")
+            seen.add(key)
+
     @property
     def authorization_verified(self) -> bool:
         return False
@@ -42,6 +59,15 @@ class PrimitiveValueSnapshot:
 @dataclass(frozen=True, slots=True)
 class PrimitiveBatchSnapshot:
     entries: tuple[PrimitiveValueSnapshot, ...]
+
+    def __post_init__(self) -> None:
+        if (
+            type(self.entries) is not tuple
+            or not 1 <= len(self.entries) <= MAX_SYNTHETIC_BATCH_ITEMS
+            or any(type(item) is not PrimitiveValueSnapshot for item in self.entries)
+        ):
+            raise OrchestrationError("invalid synthetic receipt batch collection")
+
     @property
     def authorization_verified(self) -> bool:
         return False
