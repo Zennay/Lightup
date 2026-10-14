@@ -235,6 +235,43 @@ class CandidateLedgerTests(unittest.TestCase):
             )
         self.assertEqual(self.ledger.review("lab-run-1", client_id="client-1")["status"], "REVIEW_ONLY")
 
+    def test_issue_does_not_rollback_foreign_open_transaction(self):
+        self.db.execute("CREATE TABLE unrelated (value TEXT NOT NULL)")
+        self.db.execute("BEGIN IMMEDIATE")
+        self.db.execute("INSERT INTO unrelated VALUES ('caller-write')")
+        with self.assertRaises(CandidateHeld):
+            self.ledger.issue(**self.items)
+        self.assertTrue(self.db.in_transaction)
+        self.assertEqual(self.db.execute("SELECT value FROM unrelated").fetchone(), ("caller-write",))
+        self.db.rollback()
+
+    def test_single_revoke_does_not_rollback_foreign_transaction(self):
+        self.ledger.issue(**self.items)
+        self.db.execute("CREATE TABLE unrelated (value TEXT NOT NULL)")
+        self.db.execute("BEGIN IMMEDIATE")
+        self.db.execute("INSERT INTO unrelated VALUES ('caller-write')")
+        with self.assertRaises(CandidateHeld):
+            self.ledger.revoke(run_id="lab-run-1", actor="operator-1", operator_gate=allow)
+        self.assertEqual(self.db.execute("SELECT value FROM unrelated").fetchone(), ("caller-write",))
+        self.assertTrue(self.db.in_transaction)
+        self.db.rollback()
+        self.assertIsNone(self.ledger.inspect("lab-run-1", client_id="client-1").revoked_at)
+
+    def test_bulk_revoke_does_not_rollback_foreign_transaction(self):
+        self.ledger.issue(**self.items)
+        self.db.execute("CREATE TABLE unrelated (value TEXT NOT NULL)")
+        self.db.execute("BEGIN IMMEDIATE")
+        self.db.execute("INSERT INTO unrelated VALUES ('caller-write')")
+        with self.assertRaises(CandidateHeld):
+            self.ledger.revoke_engagement(
+                client_id="client-1", engagement_id="engagement-1",
+                actor="operator-1", operator_gate=allow,
+            )
+        self.assertEqual(self.db.execute("SELECT value FROM unrelated").fetchone(), ("caller-write",))
+        self.assertTrue(self.db.in_transaction)
+        self.db.rollback()
+        self.assertIsNone(self.ledger.inspect("lab-run-1", client_id="client-1").revoked_at)
+
 
 if __name__ == "__main__":
     unittest.main()
