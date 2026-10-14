@@ -202,8 +202,8 @@ def _check_additive_history(repo: Path, base: str, head: str,
     return "HISTORY_PATHS_MATCH"
 
 def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
-            peers: tuple[str, ...] = (), require_current_head: bool = False
-            ) -> tuple[str, int]:
+            peers: tuple[str, ...] = (), require_current_head: bool = False,
+            require_clean_worktree: bool = False) -> tuple[str, int]:
     """Return a fixed reason code and count; never print private file contents."""
     if not SHA.fullmatch(base) or not SHA.fullmatch(head) or base == head:
         return "INVALID_IMMUTABLE_REFS", 0
@@ -229,10 +229,25 @@ def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
         return "INVALID_REPOSITORY_ROOT", 0
     if type(require_current_head) is not bool:
         return "INVALID_CURRENT_HEAD_POLICY", 0
+    if type(require_clean_worktree) is not bool or (
+            require_clean_worktree and not require_current_head):
+        return "INVALID_WORKTREE_POLICY", 0
     if require_current_head:
         current = _git(repo, "rev-parse", "--verify", "HEAD^{commit}")
         if current.returncode or current.stdout.strip() != head.encode("ascii"):
             return "STALE_CURRENT_HEAD", 0
+    if require_clean_worktree:
+        # Git status uses the index/worktree, unlike commit-only inspection.
+        # Disable fsmonitor hooks and do not write optional index locks.
+        status = _git_bounded_names(
+            repo, "-c", "core.fsmonitor=false", "status", "--porcelain=v1",
+            "--no-renames", "-z", "--untracked-files=all",
+            "--ignore-submodules=none", "--", limit=65536,
+        )
+        if status.returncode:
+            return "WORKTREE_STATUS_UNAVAILABLE", 0
+        if status.stdout:
+            return "DIRTY_WORKTREE", 0
     for sha in (base, head):
         if _git(repo, "cat-file", "-e", f"{sha}^{{commit}}").returncode:
             return "MISSING_COMMIT", 0
@@ -307,9 +322,12 @@ def main(argv: list[str] | None = None) -> int:
                         help="immutable other worker HEAD SHA (repeat; only supplied peers are checked)")
     parser.add_argument("--require-current-head", action="store_true",
                         help="deny an older SHA than the checkout's actual current HEAD")
+    parser.add_argument("--require-clean-worktree", action="store_true",
+                        help="requires --require-current-head; deny staged, unstaged and untracked work")
     args = parser.parse_args(argv)
     reason, count = inspect(args.repo, args.base, args.head, tuple(args.allow),
-                            tuple(args.peer), args.require_current_head)
+                            tuple(args.peer), args.require_current_head,
+                            args.require_clean_worktree)
     print(json.dumps({
         "status": "REVIEW_ONLY" if reason == "ADDITIVE_PATHS_MATCH" else "HOLD",
         "reason": reason,
