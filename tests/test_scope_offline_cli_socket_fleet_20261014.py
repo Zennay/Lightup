@@ -152,6 +152,11 @@ for _name, _original in _FD_READ_ORIGINALS.items():
 for _name in ("dup", "dup2", "dup3"):
     if hasattr(os, _name):
         setattr(os, _name, forbidden)
+# os.closerange (and optional os.close_range) can bypass checked_os_close
+# and leave stale admitted numeric descriptors after the kernel closes them.
+for _name in ("closerange", "close_range"):
+    if hasattr(os, _name):
+        setattr(os, _name, forbidden)
 # fcntl duplicates descriptors without invoking os.dup/dup2/dup3. An
 # admitted numeric descriptor may not be copied outside our provenance set.
 if _fcntl is not None:
@@ -506,7 +511,8 @@ class OfflineReviewCliSocketFleetTests(unittest.TestCase):
 
     def test_uncatchable_inherited_descriptor_reads_and_rebindings(self):
         # Untrusted numeric descriptors were never admitted by guarded
-        # os.open(). Native fd reads must be rejected before observation.
+        # os.open(). Native fd reads and range-closes must be rejected
+        # before observation, mutation or stale numeric fd provenance.
         variants = (
             ("read", "os.read(0, 1)"),
             ("readv", "os.readv(0, [bytearray(1)])"),
@@ -515,6 +521,8 @@ class OfflineReviewCliSocketFleetTests(unittest.TestCase):
             ("dup", "os.dup(0)"),
             ("dup2", "os.dup2(0, 7)"),
             ("dup3", "os.dup3(0, 7, 0)"),
+            ("closerange", "os.closerange(0, 1)"),
+            ("close_range", "os.close_range(0, 1)"),
         )
         before = self.fingerprint()
         for api, statement in variants:
