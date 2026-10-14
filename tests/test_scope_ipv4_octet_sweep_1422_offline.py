@@ -419,6 +419,44 @@ class OctetSweepTests(unittest.TestCase):
         self.assertEqual(receipt["diagnostic_code"], "EVALUATION_EXCEPTION")
         self.assertNotIn("secret-exception", output.getvalue())
 
+    def test_cli_discards_policy_stdout_stderr_but_preserves_one_json_line(self):
+        def chatty_diagnostic():
+            print("private-stdout-ip-192.168.1.1")
+            print("private-stderr-owner-token", file=sys.stderr)
+            return review_ipv4_octet_sweep(IndependentStrictPolicy)
+
+        stdout, stderr = StringIO(), StringIO()
+        with patch(
+            "audit_scope_ipv4_octet_sweep_1422_offline.review_ipv4_octet_sweep",
+            side_effect=chatty_diagnostic,
+        ), redirect_stdout(stdout), patch.object(sys, "stderr", stderr):
+            code = main([])
+        self.assertEqual(code, 3)
+        self.assertEqual(len(stdout.getvalue().splitlines()), 1)
+        self.assertEqual(stderr.getvalue(), "")
+        self.assert_non_authorizing(json.loads(stdout.getvalue()), "REVIEW_ONLY")
+        self.assertNotIn("private-", stdout.getvalue())
+
+    def test_cli_silences_policy_output_even_when_it_raises(self):
+        def noisy_failure():
+            print("confidential-client-secret")
+            print("confidential-stderr-secret", file=sys.stderr)
+            raise RuntimeError("confidential-traceback-secret")
+
+        stdout, stderr = StringIO(), StringIO()
+        with patch(
+            "audit_scope_ipv4_octet_sweep_1422_offline.review_ipv4_octet_sweep",
+            side_effect=noisy_failure,
+        ), redirect_stdout(stdout), patch.object(sys, "stderr", stderr):
+            rc = main([])
+        self.assertEqual(rc, 2)
+        self.assertEqual(stderr.getvalue(), "")
+        self.assertEqual(len(stdout.getvalue().splitlines()), 1)
+        receipt = json.loads(stdout.getvalue())
+        self.assert_non_authorizing(receipt, "HOLD")
+        self.assertEqual(receipt["diagnostic_code"], "EVALUATION_EXCEPTION")
+        self.assertNotIn("confidential", stdout.getvalue())
+
     def test_invalid_argv_skips_policy_factory_completely(self):
         output = StringIO()
         with patch(
