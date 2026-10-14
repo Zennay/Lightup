@@ -100,9 +100,13 @@ def review_lab_literal(value: object) -> LabLiteralReview:
         if address == _V6_LOOPBACK:
             return LabLiteralReview("REVIEW_ONLY", "LOOPBACK")
         if address in _V6_ULA:
-            # IPv6 has no broadcast; avoid suggesting the ULA aggregate's
-            # all-zero network base represents an individually verified host.
-            if address == _V6_ULA.network_address:
+            # Every ULA /64 has a potentially special subnet-router anycast
+            # address with an all-zero 64-bit interface identifier. Without
+            # subnet provenance this review must not label it as an ordinary
+            # individual host, even though it is inside fc00::/7.
+            # This is a conservative *review* rule, not a claim about actual
+            # tenant routing, subnet assignment, or scan authorization.
+            if int(address) & ((1 << 64) - 1) == 0:
                 return _hold()
             return LabLiteralReview("REVIEW_ONLY", "PRIVATE_USE")
     return _hold()
