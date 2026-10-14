@@ -232,6 +232,38 @@ class IngressIdentitySnapshotPreflightTests(unittest.TestCase):
             with self.subTest(config=bad[-80:]):
                 self.assert_hold(NGINX, bad)
 
+    def test_gunicorn_control_character_and_source_expansion_hold(self):
+        # Effective settings must not be parsed with a different newline or
+        # escape grammar from the actual Python config source.
+        for modified in (
+            GUNICORN.replace(b"worker_class = 'sync'", b"worker_class = 'sync'\r"),
+            GUNICORN.replace(b"worker_class = 'sync'", b"worker_class = 'sync'\v"),
+            GUNICORN.replace(b"worker_class = 'sync'", b"worker_class = 'sync'\f"),
+            GUNICORN.replace(b"worker_class = 'sync'", b"worker_class = 'sync'\xe2\x80\xa8"),
+            GUNICORN.replace(b"worker_class = 'sync'", b"worker_class = 'sync'\xe2\x80\xa9"),
+            GUNICORN.replace(b"worker_class = 'sync'", b"worker_class = 'sync'\r"
+                             b"raw_env = ['REMOTE_USER=operator']"),
+            GUNICORN.replace(b"worker_class = 'sync'",
+                             b"worker_class = 'sync' # accepted fixture\n"
+                             b"raw_env = ['AUTH_TYPE=operator']"),
+        ):
+            with self.subTest(modified=modified[-120:]):
+                self.assert_hold(NGINX, modified)
+
+    def test_non_authorizing_receipts_do_not_reflect_snapshots_or_secrets(self):
+        marker = b"secret-identity-value-should-not-leak"
+        for nginx, gunicorn in (
+            (NGINX + marker, GUNICORN),
+            (NGINX, GUNICORN + marker),
+            (NGINX.replace(b"fixture.invalid", marker), GUNICORN),
+        ):
+            with self.subTest(marker=marker):
+                receipt = preflight.review(nginx, gunicorn)
+                serialized = json.dumps(receipt, sort_keys=True).encode("utf-8")
+                self.assertNotIn(marker, serialized)
+                self.assertIs(receipt["authorization_verified"], False)
+                self.assertIs(receipt["release_approved"], False)
+
     def test_bounded_bytes_and_noncanonical_types_hold(self):
         self.assert_hold(b"")
         self.assert_hold(NGINX + b"\x00")
