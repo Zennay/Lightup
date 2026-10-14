@@ -80,20 +80,10 @@ def audit() -> dict[str, object]:
         return SYNTHETIC_PERMIT_ID
 
     try:
-        gate = ActivationGate(
-            ScopePolicy(allow_private_lab=True),
-            ActivationPolicy(mode=ActivationMode.LAB_ONLY),
-        )
-        locked_gate = ActivationGate(
-            ScopePolicy(allow_private_lab=False),
-            ActivationPolicy(mode=ActivationMode.LAB_ONLY),
-        )
-        plan_gate = ActivationGate(
-            ScopePolicy(allow_private_lab=True),
-            ActivationPolicy(mode=ActivationMode.PLAN_ONLY),
-        )
         # Defense-in-depth for this synthetic Python process (NOT an OS sandbox).
         # All first-party modules are imported before the temporary I/O guards.
+        # Guard policy/gate construction too: a future source constructor must
+        # not perform I/O, mint a token or spawn a child before first issue().
         with (
             patch("lightup.activation.token_urlsafe", side_effect=_synthetic_mint),
             patch.object(socket, "socket", side_effect=_unexpected_io),
@@ -107,6 +97,18 @@ def audit() -> dict[str, object]:
             patch.object(sqlite3, "connect", side_effect=_unexpected_io),
             patch.object(subprocess, "Popen", side_effect=_unexpected_io),
         ):
+            gate = ActivationGate(
+                ScopePolicy(allow_private_lab=True),
+                ActivationPolicy(mode=ActivationMode.LAB_ONLY),
+            )
+            locked_gate = ActivationGate(
+                ScopePolicy(allow_private_lab=False),
+                ActivationPolicy(mode=ActivationMode.LAB_ONLY),
+            )
+            plan_gate = ActivationGate(
+                ScopePolicy(allow_private_lab=True),
+                ActivationPolicy(mode=ActivationMode.PLAN_ONLY),
+            )
             for literal in SAFE_LAB + NOT_LAB:
                 checked += 1
                 expected_lab = literal in SAFE_LAB
@@ -306,8 +308,9 @@ def audit() -> dict[str, object]:
                         or invalid_mint_requests != before_invalid_requests
                     ):
                         violations += 1
-    except Exception:
-        # Corrupt source, unanticipated API drift or attempted I/O is HOLD.
+    except (Exception, SystemExit):
+        # Corrupt source, API drift, constructor/issue attempted I/O or a
+        # premature sys.exit(0) must all be nonzero HOLD without diagnostics.
         return {"status": "HOLD", "checked": 0, "violations": 1, **_DENIED}
     return {
         "status": "HOLD" if violations else "REVIEW_ONLY",
