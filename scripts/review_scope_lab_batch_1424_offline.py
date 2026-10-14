@@ -16,13 +16,6 @@ from lightup.scope_lab_literal_review_1424 import review_lab_literal
 
 _MAX_INPUT_BYTES = 4096
 _MAX_LITERALS = 16
-_FALSE_FLAGS = {
-    "authorization_verified": False,
-    "permit_issued": False,
-    "execution_enabled": False,
-    "merge_approved": False,
-    "release_approved": False,
-}
 
 
 def _distinct_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -76,15 +69,23 @@ def review_batch_json(raw: object) -> tuple[str, int]:
 def main(argv: list[str] | None = None) -> int:
     arguments = sys.argv[1:] if argv is None else argv
     status, count = "HOLD", 0
-    if type(arguments) is list and arguments == ["--stdin-json"]:
+    if (type(arguments) is list and len(arguments) == 1\n            and type(arguments[0]) is str and arguments[0] == "--stdin-json"):
         try:
             raw = sys.stdin.buffer.read(_MAX_INPUT_BYTES + 1)
             status, count = review_batch_json(raw)
         except (OSError, ValueError):
             status, count = "HOLD", 0
-    receipt = dict(_FALSE_FLAGS)
-    receipt["status"] = status
-    receipt["reviewed_count"] = count
+    # Fresh literal booleans each run: never use a mutable shared dictionary
+    # that a previous call could poison into asserting a forged permission.
+    receipt = {
+        "status": status,
+        "reviewed_count": count,
+        "authorization_verified": False,
+        "permit_issued": False,
+        "execution_enabled": False,
+        "merge_approved": False,
+        "release_approved": False,
+    }
     sys.stdout.write(json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n")
     # All statuses are nonzero: review-only is not operational authority.
     return 3 if status == "REVIEW_ONLY" else 2
