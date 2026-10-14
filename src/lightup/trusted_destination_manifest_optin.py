@@ -107,7 +107,7 @@ def _safe_url_escapes(value):
         octet = int(pair, 16)
         # Reject controls and reserved bytes whose decoding can reinterpret
         # authority/path/query boundaries (including double-encoded '%').
-        if octet < 32 or octet == 127 or octet in (35, 37, 47, 63, 64, 92):
+        if octet < 32 or octet == 127 or octet in (35, 37, 38, 43, 46, 47, 58, 59, 61, 63, 64, 92):
             return False
         index += 3
     return True
