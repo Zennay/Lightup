@@ -6,6 +6,7 @@ It never contacts, resolves, scans, or authorizes any address.
 from __future__ import annotations
 
 import json
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from ipaddress import IPv6Address
 import sys
@@ -202,13 +203,27 @@ def _safe_cli_receipt(candidate):
     return _receipt("HOLD", 0, "RECEIPT_INTEGRITY_FAILURE")
 
 
+class _DiscardDiagnosticOutput:
+    """Bounded-memory Python stream sink; no echo of policy debug text."""
+
+    def write(self, value):
+        return len(value) if type(value) is str else 0
+
+    def flush(self):
+        pass
+
+
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
     # Exact, zero-argument interface. Never read stdin or echo raw input.
     if type(argv) is list and len(argv) == 0:
         try:
-            candidate = review_ipv4_octet_sweep()
+            # Python-level diagnostic prints must never be mixed into the
+            # one-line CLI receipt. This is not an OS/file-descriptor sandbox.
+            sink = _DiscardDiagnosticOutput()
+            with redirect_stdout(sink), redirect_stderr(sink):
+                candidate = review_ipv4_octet_sweep()
         except Exception:
             candidate = _receipt("HOLD", 0, "EVALUATION_EXCEPTION")
     else:
