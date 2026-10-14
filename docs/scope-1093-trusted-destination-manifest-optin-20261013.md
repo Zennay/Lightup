@@ -40,3 +40,18 @@ The opt-in reviewer now refuses alternative numeric-host authorities (whole-numb
 The optional shape review now rejects non-ASCII endpoint input *before* `urllib.parse.urlsplit`, including invisible marks and malformed lone-surrogate URI path text, requiring percent-encoded path bytes instead of parser-specific Unicode normalization. This is a conservative plan/lab reference constraint, **not** a deployed Unicode-path behavior change. Two new tests check rejection and a valid percent-encoded Unicode path that still yields only a HOLD receipt. The local synthetic module-replica run now passes 54/54 on Python 3.13; it is not equivalent to exact-GitHub-code Python3.11/3.14 CI.
 
 The earlier numeric-host, hostile-equality, duplicate-role and non-I/O regressions remain. Exact-head full repository tests, durable authorization, authorized destination binding, registered self-hosted VPS runner evidence and separate independent review are still missing. DRAFT/HOLD, no PR, merge or deploy.
+
+
+## W6 — exact lexical URL identity admission (2026-10-14)
+
+**Concrete fix:** `urlsplit()` normalizes scheme case and can discard empty query/fragment delimiters. In this independent *non-authorizing* preview, that creates a discrepancy between the originally supplied address and the interpreted address. The opt-in `_endpoint()` now requires an original lowercase `http://` or `https://` scheme, rejects any fragment marker (even an empty one) or trailing empty query delimiter, and requires a byte-for-byte `p.geturl() == original` round trip after parser admission. Legitimate canonical ASCII URI / percent-encoded paths still return only `HOLD`.
+
+**Tests:** Four additional synthetic scenarios exercise mixed-case schemes, empty `#`, empty `?` and canonical explicit query positive controls; another two verify a deliberately rewritten parser return is denied and canonical HTTP/HTTPS/IPv6 endpoints remain HOLD. Together with earlier tests this branch now contains **60 ordinary synthetic test methods**. An independently maintained local Python 3.13 *replica* of this module and lightweight orchestration stubs completed `compileall` and **60/60** `unittest` methods, including new W6 checks. This is a **local synthetic regression signal only, not proof of exact GitHub-file execution, official hosted matrix, source-owner test integration, or permanent VPS**.
+
+### Authority and threat-model limitation
+
+This API accepts a tuple of `DestinationField` declarations provided by its calling code; the preview **cannot prove those declarations originated from a trusted, registered source**. In production this would require a registry-owner review and binding to a canonical registered definition before use. Neither this reviewer nor a valid URL shape establishes tenant consent, live authorization, matching `call.asset`, DNS/redirect/egress confinement, safe dispatch, or a release token. **Never use a HOLD receipt as a permit**. Current integration is intentionally absent; no live targets, scan, grant, deployment or workflow dispatch.
+
+### Unmet acceptance
+
+Source-owner #107/#156 and policy owner #100 must integrate and validate real authority, existing separate #1093 metadata acceptance branch must be reconciled without overwriting it; exact-head hosted Python 3.11 and 3.14, registered permanent VPS CI, independent security/privacy, latest-main compatibility and explicit human authorization remain required. Project remains **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD/NO MERGE/NO DEPLOY**.
