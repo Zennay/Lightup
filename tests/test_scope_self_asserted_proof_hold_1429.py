@@ -177,5 +177,84 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
         self.assertNotIn(b"SECRET", child.stdout)
 
 
+    def _cli_with_unclosed_writer(self, data, args=("--stdin-json",)):
+        """Exercise a real child without hiding the EOF requirement in run()."""
+        proc = subprocess.Popen(
+            [sys.executable, "-B", str(SCRIPT), *args],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env={"PATH": os.defpath, "PYTHONDONTWRITEBYTECODE": "1"},
+        )
+        try:
+            if data:
+                proc.stdin.write(data)
+                proc.stdin.flush()
+            # Deliberately do NOT close the writing end. The reviewer must
+            # fail closed on timeout/over-budget even without producer EOF.
+            code = proc.wait(timeout=8)
+            output = proc.stdout.read()
+            errors = proc.stderr.read()
+            return code, output, errors
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait(timeout=3)
+            for pipe in (proc.stdin, proc.stdout, proc.stderr):
+                if pipe:
+                    pipe.close()
+
+    def test_real_cli_stalled_partial_stdin_exits_hold_without_echo(self):
+        code, output, errors = self._cli_with_unclosed_writer(b"SECRET-PARTIAL-PACKET")
+        self.assertEqual(code, 2)
+        self.assertEqual(errors, b"")
+        self.assertNotIn(b"SECRET", output)
+        self.assertEqual(json.loads(output)["input_integrity"], "REJECTED")
+
+    def test_real_cli_full_json_without_eof_is_not_accepted(self):
+        code, output, errors = self._cli_with_unclosed_writer(encoded(packet()))
+        self.assertEqual(code, 2)
+        self.assertEqual(errors, b"")
+        self.assertEqual(json.loads(output)["input_integrity"], "REJECTED")
+        self.assertEqual(json.loads(output)["unverified_self_asserted_pass_claims"], 0)
+
+    def test_real_cli_unclosed_oversized_stream_aborts_without_echo(self):
+        code, output, errors = self._cli_with_unclosed_writer(b"SECRET-" + b"x" * review.MAX_STDIN_BYTES)
+        self.assertEqual(code, 2)
+        self.assertEqual(errors, b"")
+        self.assertNotIn(b"SECRET", output)
+        self.assertEqual(json.loads(output)["input_integrity"], "REJECTED")
+
+    def test_real_cli_invalid_argv_never_waits_for_stdin_eof(self):
+        code, output, errors = self._cli_with_unclosed_writer(b"", args=("--release",))
+        self.assertEqual(code, 2)
+        self.assertEqual(errors, b"")
+        self.assertEqual(json.loads(output)["input_integrity"], "REJECTED")
+
+    def test_real_cli_split_valid_stdin_requires_eof(self):
+        payload = encoded(packet())
+        proc = subprocess.Popen(
+            [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env={"PATH": os.defpath, "PYTHONDONTWRITEBYTECODE": "1"},
+        )
+        try:
+            midpoint = len(payload) // 2
+            proc.stdin.write(payload[:midpoint])
+            proc.stdin.flush()
+            proc.stdin.write(payload[midpoint:])
+            proc.stdin.close()
+            self.assertEqual(proc.wait(timeout=8), 2)
+            output, errors = proc.stdout.read(), proc.stderr.read()
+            self.assertEqual(errors, b"")
+            self.assertEqual(json.loads(output)["input_integrity"], "COHERENT")
+            self.assertEqual(json.loads(output)["unverified_self_asserted_pass_claims"], 4)
+            self.assertIs(json.loads(output)["release"], False)
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait(timeout=3)
+            for pipe in (proc.stdin, proc.stdout, proc.stderr):
+                if pipe and not pipe.closed:
+                    pipe.close()
+
 if __name__ == "__main__":
     unittest.main()
