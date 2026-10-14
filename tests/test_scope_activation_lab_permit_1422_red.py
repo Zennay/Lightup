@@ -190,7 +190,7 @@ class ActualActivationPermitChainRED(unittest.TestCase):
     def test_auditor_reports_unsafe_chain_only_as_hold(self):
         result = AUDIT.audit()
         self.assertEqual(result["status"], "HOLD")
-        self.assertEqual(result["checked"], 46)
+        self.assertEqual(result["checked"], 50)
         self.assertGreaterEqual(result["violations"], 10)
         self.assertEqual(type(result["violations"]), int)
         for key in (
@@ -225,7 +225,7 @@ class ActualActivationPermitChainRED(unittest.TestCase):
 
     def test_permit_metadata_mutants_increase_violations_without_reflecting(self):
         baseline = AUDIT.audit()
-        self.assertEqual(baseline["checked"], 46)
+        self.assertEqual(baseline["checked"], 50)
         self.assertEqual(baseline["violations"], 10)
         for field, replacement in (
             ("target", "forged.example.invalid"),
@@ -250,7 +250,7 @@ class ActualActivationPermitChainRED(unittest.TestCase):
                 with patch.object(AUDIT, "ActivationGate", MutatedGate):
                     receipt = AUDIT.audit()
                 self.assertEqual(receipt["status"], "HOLD")
-                self.assertEqual(receipt["checked"], 46)
+                self.assertEqual(receipt["checked"], 50)
                 self.assertEqual(
                     receipt["violations"],
                     baseline["violations"] + len(AUDIT.SAFE_LAB),
@@ -421,6 +421,32 @@ class ActualActivationPermitChainRED(unittest.TestCase):
                 self.assertEqual(receipt["status"], "HOLD")
                 self.assertIs(receipt["permit_issued"], False)
                 self.assertEqual(set(receipt), {"status", "checked", "violations", *AUDIT._DENIED})
+
+
+    def test_public_scope_denial_cannot_hide_premature_token_mint(self):
+        baseline = AUDIT.audit()
+        self.assertEqual(baseline["checked"], 50)
+        self.assertEqual(baseline["violations"], 10)
+        real_gate = ActivationGate
+
+        class PrematureExplicitMint:
+            def __init__(self, policy, activation):
+                self.real = real_gate(policy, activation)
+
+            def issue(self, target, capability):
+                if target.value == "consented.example.test":
+                    activation_module.token_urlsafe(24)
+                    raise PermissionError("SYNTHETIC-PUBLIC-MINT-DENIED")
+                return self.real.issue(target, capability)
+
+        with patch.object(AUDIT, "ActivationGate", PrematureExplicitMint):
+            receipt = AUDIT.audit()
+        self.assertEqual(receipt["checked"], 50)
+        self.assertEqual(receipt["violations"], 11)
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(set(receipt), {"status", "checked", "violations", *AUDIT._DENIED})
+        self.assertIs(receipt["permit_issued"], False)
+        self.assertIs(receipt["scan_allowed"], False)
 
     def test_cli_single_fixed_receipt_no_literal_or_token_reflection(self):
         run = subprocess.run(
