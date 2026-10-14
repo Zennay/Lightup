@@ -25,7 +25,9 @@ configuration, credentials, environment files, cookies or redaction keys in the
 repository, GitHub Actions artifacts, issue comments or PRs.** An authorized
 operator must handle production-derived configuration privately and review
 redactions for semantic loss. The program reads at most 256 KiB + 1 byte per
-input, never prints source lines, input paths or error strings, and reports
+input, requires ordinary non-symlink local files (rejects FIFOs/devices and
+changing size/mtime during the read), never prints source lines, input paths
+or error strings, and reports
 only an optional pair of SHA-256 digests on a small accepted static fixture
 shape. These digests are merely fingerprints of the *supplied bytes*, not
 cryptographic authentication of installed process identity or provenance.
