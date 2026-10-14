@@ -420,7 +420,7 @@ class ActualActivationPermitChainRED(unittest.TestCase):
                 self.assertEqual(receipt["violations"], baseline["violations"] + 1)
                 self.assertEqual(receipt["status"], "HOLD")
                 self.assertIs(receipt["permit_issued"], False)
-                self.assertNotIn(str(length), json.dumps(receipt))
+                self.assertEqual(set(receipt), {"status", "checked", "violations", *AUDIT._DENIED})
 
     def test_cli_single_fixed_receipt_no_literal_or_token_reflection(self):
         run = subprocess.run(
