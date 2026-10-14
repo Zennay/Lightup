@@ -104,3 +104,44 @@ bounds, privacy, input purity, zero authority and forbidden network/database.
 **INCUBATE M3/M7, PLAN/LAB ONLY. No real scans, deployment, permit, direct
 authorization, or merge claim is created by this packet.** Entire branch
 touches only its newly added owned paths.
+
+## Deliverable C — direct offline CLI for reviewers (no installed runtime)
+
+The new `scripts/review_direct_grant_window_738_offline.py` provides a
+strict UTF-8/ASCII-only **fictional** UTC window shape fixture interface:
+
+```bash
+python scripts/review_direct_grant_window_738_offline.py \
+  --from-utc 2026-10-14T11:00:00Z \
+  --until-utc 2026-10-14T13:00:00Z \
+  --observed-at-utc 2026-10-14T12:00:00Z
+```
+
+All three inputs are required, with exact zero-padded
+`YYYY-MM-DDTHH:MM:SSZ` ASCII dates and calendar-valid times. The CLI
+denies missing/duplicate flags, malformed noncanonical offsets/fractions,
+leap-second ambiguity, extra arguments, non-string types and time windows
+outside their bounds. It **never** asks for a real grant ID, consent,
+customer, hostname, capability, signature, scan approval or network target:
+the grant object used internally is hard-coded synthetic fixture data.
+
+- JSON receipt only, **no echoed user input or exception detail**, exactly
+  five immutable false authorization/permit/execution/merge/release flags.
+- Always nonzero exit: **2=HOLD**, **3=REVIEW_ONLY**. Never shell success:
+  `review && perform_action` cannot accidentally authorize activity.
+- `REVIEW_ONLY` describes a syntactically coherent *fictional*
+  UTC interval — never trusted consent, an actual clock attestation or
+  permission to execute anything.
+- Unit coverage `tests/test_scope_direct_grant_window_cli_738_offline.py`
+  tests strict UTC parsing, hostile values, positive/negative windows,
+  privacy redaction, nonzero exit, missing/duplicate keys and absence of
+  socket/SQLite access.
+
+```bash
+python -m unittest discover -s tests -p 'test_scope_direct_grant_window_cli_738_offline.py' -v
+```
+
+This adds an actual runnable, narrow human-review diagnostic while leaving
+all original source-owner security defects **UNFIXED** until #100 integrates
+proper runtime validation. Do not merge it into an active-target route,
+perform a scan or treat green review tests as a release authorization.
