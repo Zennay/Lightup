@@ -14,8 +14,8 @@ import sys
 
 MAX_INPUT = 16384
 MAX_MEMBERS = 32
-IDENTIFIER = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9._:-]{0,95}\\Z")
-SCOPE_ITEM = re.compile(r"[a-z0-9][a-z0-9._:/-]{0,239}\\Z")
+IDENTIFIER = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9._:-]{0,95}\Z")
+SCOPE_ITEM = re.compile(r"[a-z0-9][a-z0-9._:/-]{0,239}\Z")
 ROOT_KEYS = frozenset({"schema", "before", "after"})
 GRANT_KEYS = frozenset({
     "grant_id", "client_id", "engagement_id", "reference", "assets",
@@ -91,7 +91,7 @@ def _instant(value: object) -> datetime:
     if type(value) is not str or len(value) > 35:
         raise Rejected("instant_type")
     # Require explicit UTC rather than silently normalizing an operator's time.
-    if not re.fullmatch(r"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z", value):
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", value):
         raise Rejected("instant_format")
     try:
         return datetime.fromisoformat(value[:-1] + "+00:00").astimezone(timezone.utc)
