@@ -21,7 +21,7 @@ Each snapshot must contain exactly these keys:
 
 | Key | Format | Narrowing rule |
 | --- | --- | --- |
-| `grant_id`, `client_id`, `engagement_id`, `reference` | Opaque bounded ASCII identifier, never displayed | All must match exactly. |
+| `grant_id`, `client_id`, `engagement_id`, `approved_by`, `reference` | Opaque bounded ASCII identifier, never displayed | All must match exactly. |
 | `assets` | Nonempty list of at most 32 distinct canonical lowercase opaque identifiers | `after` must be a subset of `before`. |
 | `excluded_assets` | At most 32 distinct canonical lowercase opaque identifiers | `after` must be a superset of `before`. |
 | `capabilities` | Nonempty list of at most 32 distinct canonical lowercase opaque identifiers | `after` must be a subset of `before`. |
@@ -35,6 +35,7 @@ Example **synthetic** grant snapshot, use this identically under `before` and `a
       "grant_id": "demo-only-01",
       "client_id": "client-example",
       "engagement_id": "eng-example",
+      "approved_by": "operator-demo",
       "reference": "test-only",
       "assets": ["lab-a.example"],
       "excluded_assets": ["lab-b.example"],
