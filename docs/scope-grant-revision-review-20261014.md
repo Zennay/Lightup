@@ -179,3 +179,22 @@ authorized by this optional offline checker.
 Synthetic regression suite: `test_grant_revision_history_review.py` and
 `test_grant_revision_history_cli.py`. Both are read-only and do not touch
 customer records, production dispatcher, network targets or worker files.
+
+## W6: cross-tenant IP/CIDR truthfulness
+
+The simple local grant **batch** reviewer intentionally does not implement
+CIDR membership, DNS, authority normalization or ownership proof. A claim
+that two cross-tenant IP/CIDR *strings* differ would be misleading:
+`192.0.2.0/24` and `192.0.2.12` name overlapping space. For any
+multi-tenant batch containing a canonical live IP, IPv6, CIDR or ambiguous
+colon host:port authority, the whole review now returns
+`HOLD/network_identity_requires_separate_review` and zero counts, even
+when declared networks happen to be disjoint. Ordinary syntactically
+canonical, disjoint DNS name declarations remain reviewable without target
+interaction. Single-tenant IP-shaped snapshots can still receive
+`REVIEW_ONLY` for their local syntactic *narrowing* only, with all five
+authority flags false.
+
+Proper network isolation is separately owned by its independent scope
+lane; this change deliberately does **not** take over that work or confer
+a certificate of non-overlap. It introduces no DNS calls or active target I/O.
