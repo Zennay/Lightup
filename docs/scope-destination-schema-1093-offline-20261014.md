@@ -34,6 +34,12 @@ registry definitions: `lab-http-baseline.url` → endpoint/string,
 `lab-tls-baseline.host` + `port` → host/string + port/integer,
 `lab-service-inventory.host` + `ports` → host/string + port_set/string.
 
+A dedicated test additionally imports the three **actual, currently installed**
+LAB_ACTIVE ToolDefinition objects and checks their exact tool IDs and
+parameter name/kind shapes against the synthetic fixtures. No registry is
+registered or handler invoked. These source checks deliberately do not
+infer a trusted destination role: ToolParameter currently has no such field.
+
 The reviewer deliberately has **no installed registry/production imports**.
 Therefore an attacker can supply a self-consistent invented tool ID and still
 receive REVIEW_ONLY. The privacy-minimal receipt contains only status, counts,
