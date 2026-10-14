@@ -58,6 +58,22 @@ class OfflineLabBatchReviewTests(TestCase):
             with self.subTest(bad=bad):
                 self.assert_batch(_raw(["10.0.0.1", bad, "127.0.0.1"]), "HOLD", 0)
 
+    def test_outer_block_edges_force_atomic_hold_no_partial_review(self):
+        edge_literals = (
+            "127.0.0.0", "127.255.255.255",
+            "10.0.0.0", "10.255.255.255",
+            "172.16.0.0", "172.31.255.255",
+            "192.168.0.0", "192.168.255.255",
+            "fc00::",
+        )
+        for edge in edge_literals:
+            with self.subTest(edge=edge):
+                self.assert_batch(_raw(["10.0.0.1", edge, "fd00::1"]), "HOLD", 0)
+        self.assert_batch(
+            _raw(["10.0.0.1", "127.0.0.1", "fd00::1"]),
+            "REVIEW_ONLY", 3,
+        )
+
     def test_duplicate_representations_and_limits_are_hold(self):
         groups = (
             [],
