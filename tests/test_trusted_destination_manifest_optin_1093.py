@@ -500,5 +500,46 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
 
+
+    def test_61_seeded_malformed_authority_corpus_stays_denied(self):
+        from random import Random
+        rng = Random(1093)
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        poisoned = (
+            "operator@localhost", "0x7f.0.0.1", "2130706433",
+            "lo\ncalhost", "localhost\\evil", "localhost%2eother",
+            "localhost:00080", "localhost:0", "localhost:65536",
+            "localhost:notaport",
+        )
+        for index in range(1800):
+            authority = rng.choice(poisoned)
+            scheme = rng.choice(("http://", "https://", "HTTP://", "HtTpS://"))
+            path = rng.choice(("", "/ok", "/x?q=1", "/ok#"))
+            candidate = scheme + authority + path
+            with self.subTest(case=index):
+                self.refused(lambda v=candidate: m.review({"url": v}))
+        self.assertEqual(self.calls, [])
+
+    def test_62_exhaustive_canonical_uri_corpus_remains_hold(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        checked = 0
+        for scheme in ("http", "https"):
+            for host in ("localhost", "127.0.0.1", "192.168.1.2",
+                         "example.test", "[::1]", "[2001:db8::1]"):
+                for port in ("", ":1", ":80", ":443", ":65535"):
+                    for path in ("", "/status", "/a?x=1", "/r%C3%A9sum%C3%A9"):
+                        candidate = scheme + "://" + host + port + path
+                        with self.subTest(url=candidate):
+                            result = m.review({"url": candidate})
+                            self.assertEqual(result.status, "hold")
+                            self.assertIs(result.permit_issued, False)
+                            self.assertIs(result.execution_enabled, False)
+                        checked += 1
+        self.assertEqual(checked, 240)
+        self.assertEqual(self.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
