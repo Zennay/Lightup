@@ -68,6 +68,13 @@ return a nonreflective HOLD without reading stdin.
   synthetic mutation cases deliberately mint in deny paths or double-mint
   a valid lab sample, and must increment HOLD violations. This does not
   mint real grants or touch executable adapters.
+- The synthetic token factory additionally verifies the original
+  `token_urlsafe(24)` byte-length request is an **exact built-in integer**.
+  A mock returning the same fixed token must not conceal a zero/short,
+  longer/different, boolean, floating-point or textual entropy request.
+  Seven alternate request-shape mutants construct otherwise valid fake
+  in-memory permits, all of which must increase HOLD violations. This
+  remains a unit-level regression, not cryptographic entropy attestation.
 - Python-only defense-in-depth during audit: blocks ordinary
   `builtins.open`, `Path.open`, `os.open`, `os.write`, `os.system`,
   `sqlite3.connect`, `subprocess.Popen`, network socket creation and basic
