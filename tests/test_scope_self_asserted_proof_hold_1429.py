@@ -65,7 +65,7 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
         self.assertEqual(type(result["verified_evidence"]), bool)
         for flag in FLAGS:
             self.assertEqual(type(result[flag]), bool)
-        wire = (json.dumps(result, sort_keys=True, separators=(",", ":")) + "\\n").encode("ascii")
+        wire = (json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")
         self.assertLessEqual(len(wire), MAX_RECEIPT_BYTES)
         rendered = json.dumps(result)
         self.assertNotIn(SHA, rendered)
@@ -382,7 +382,7 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
                 child = self.cli(payload)
                 self.assertEqual(child.returncode, 2)
                 self.assertEqual(child.stderr, b"")
-                self.assertEqual(child.stdout.count(b"\\n"), 1)
+                self.assertEqual(child.stdout.count(b"\n"), 1)
                 self.assertLessEqual(len(child.stdout), MAX_RECEIPT_BYTES)
                 result = json.loads(child.stdout.decode("ascii"))
                 self.assertEqual(set(result), RECEIPT_KEYS)
