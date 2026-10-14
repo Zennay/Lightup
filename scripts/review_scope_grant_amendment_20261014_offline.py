@@ -202,13 +202,117 @@ def _bounded_stdin() -> bytes:
         return b""
 
 
+RECEIPT_SCHEMA = "lightup.grant-amendment-review.receipt.v1"
+RECEIPT_KEYS = frozenset({
+    "schema", "status", "reason", "widening_dimensions", *DENIAL.keys(),
+})
+WIDENING_KEYS = frozenset({
+    "identity", "assets", "exclusions", "capabilities", "risk", "window",
+    "recurring_retest",
+})
+MAX_OUTPUT = 512
+
+
+def _seal_receipt(receipt: object) -> bytes | None:
+    """Refuse forged/malformed receipts *before* examining inherited stdout."""
+    if type(receipt) is not dict or set(receipt) != RECEIPT_KEYS:
+        return None
+    if (type(receipt["schema"]) is not str
+            or receipt["schema"] != RECEIPT_SCHEMA):
+        return None
+    status, reason = receipt["status"], receipt["reason"]
+    if type(status) is not str or type(reason) is not str:
+        return None
+    if (status, reason) not in {
+        ("HOLD", "invalid_input"),
+        ("HOLD", "possible_widening"),
+        ("REVIEW_ONLY", "structurally_non_widening"),
+    }:
+        return None
+    dimensions = receipt["widening_dimensions"]
+    if type(dimensions) is not list or any(
+        type(v) is not str or v not in WIDENING_KEYS for v in dimensions
+    ) or dimensions != sorted(set(dimensions)):
+        return None
+    if reason == "possible_widening" and not dimensions:
+        return None
+    if reason != "possible_widening" and dimensions:
+        return None
+    if any(type(receipt[k]) is not bool or receipt[k] is not False for k in DENIAL):
+        return None
+    try:
+        data = (json.dumps(
+            receipt, sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+            allow_nan=False,
+        ) + "\n").encode("ascii")
+    except (ValueError, TypeError, UnicodeError):
+        return None
+    return data if len(data) <= MAX_OUTPUT else None
+
+
+def _emit_receipt(receipt: object) -> bool:
+    """Bounded, privacy-sealed local pipe/tty output (no file or socket sink).
+
+    A pipe whose reader never drains must not hang the reviewer. Restoring
+    O_NONBLOCK is important: POSIX parent/child can share the pipe's open file
+    description. This userland check is NOT a sandbox against concurrent I/O.
+    """
+    data = _seal_receipt(receipt)
+    if data is None:
+        return False
+    try:
+        fd = sys.stdout.fileno()
+        if fd != 1:
+            return False
+        mode = os.fstat(fd).st_mode
+        if not (stat.S_ISFIFO(mode) or (stat.S_ISCHR(mode) and os.isatty(fd))):
+            return False
+        was_blocking = os.get_blocking(fd)
+    except (OSError, ValueError, TypeError):
+        return False
+    deadline = time.monotonic() + 2.0
+    switched = False
+    success = False
+    try:
+        if was_blocking:
+            # If this switch raises after altering the flag, still restore it.
+            switched = True
+            os.set_blocking(fd, False)
+        offset = 0
+        while offset < len(data):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            _, writable, _ = select.select([], [fd], [], remaining)
+            if not writable:
+                break
+            try:
+                count = os.write(fd, data[offset:])
+            except BlockingIOError:
+                continue
+            if count <= 0:
+                break
+            offset += count
+        success = offset == len(data)
+    except (OSError, ValueError, TypeError):
+        success = False
+    finally:
+        if switched:
+            try:
+                os.set_blocking(fd, was_blocking)
+            except (OSError, ValueError):
+                success = False
+    return success
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Offline-only grant amendment review; never authorization.")
     parser.add_argument("--stdin-json", action="store_true", required=True)
     args = parser.parse_args(argv)
     assert args.stdin_json is True
     receipt, code = review(_bounded_stdin())
-    print(json.dumps(receipt, sort_keys=True, separators=(",", ":"), ensure_ascii=True))
+    if not _emit_receipt(receipt):
+        return 2
     return code
 
 
