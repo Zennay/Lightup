@@ -7,6 +7,9 @@ import json
 import os
 from pathlib import Path
 import socket
+import stat
+from types import SimpleNamespace
+from unittest.mock import patch
 import tempfile
 import subprocess
 import sys
@@ -431,6 +434,86 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
         finally:
             os.close(read_fd)
             os.close(write_fd)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX inherited fd test")
+    def test_pipe_stdin_restores_parent_reader_blocking_mode(self):
+        reader, writer = os.pipe()
+        try:
+            self.assertTrue(os.get_blocking(reader))
+            process = subprocess.Popen(
+                [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                stdin=reader, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            )
+            os.write(writer, encode(fixture()))
+            os.close(writer)
+            writer = -1
+            output, errors = process.communicate(timeout=8)
+            self.assertEqual(process.returncode, 3)
+            self.assertFalse(errors)
+            self.assertEqual(json.loads(output)["status"], "REVIEW_ONLY")
+            self.assertTrue(os.get_blocking(reader))
+        finally:
+            os.close(reader)
+            if writer != -1:
+                os.close(writer)
+
+    def test_input_file_metadata_drift_is_atomically_refused(self):
+        original = SimpleNamespace(
+            st_mode=stat.S_IFREG, st_dev=15, st_ino=22, st_size=2,
+            st_mtime_ns=100, st_ctime_ns=100,
+        )
+        class Stdin:
+            def fileno(self):
+                return 0
+        for changed_field in ("st_dev", "st_ino", "st_mode", "st_size",
+                              "st_mtime_ns", "st_ctime_ns"):
+            after = SimpleNamespace(**vars(original))
+            setattr(after, changed_field, getattr(after, changed_field) + 1)
+            with self.subTest(changed=changed_field):
+                with patch.object(reviewer.sys, "stdin", Stdin()), \\
+                     patch.object(reviewer.os, "fstat", side_effect=[original, after]), \\
+                     patch.object(reviewer.os, "get_blocking", return_value=False), \\
+                     patch.object(reviewer.select, "select", return_value=([0], [], [])), \\
+                     patch.object(reviewer.os, "read", side_effect=[b"{}", b""]):
+                    self.assertEqual(reviewer._bounded_stdin(), b"")
+
+    def test_input_metadata_stability_accepts_bounded_read(self):
+        original = SimpleNamespace(
+            st_mode=stat.S_IFREG, st_dev=15, st_ino=22, st_size=2,
+            st_mtime_ns=100, st_ctime_ns=100,
+        )
+        class Stdin:
+            def fileno(self):
+                return 0
+        with patch.object(reviewer.sys, "stdin", Stdin()), \\
+             patch.object(reviewer.os, "fstat", side_effect=[original, original]), \\
+             patch.object(reviewer.os, "get_blocking", return_value=False), \\
+             patch.object(reviewer.select, "select", return_value=([0], [], [])), \\
+             patch.object(reviewer.os, "read", side_effect=[b"{}", b""]):
+            self.assertEqual(reviewer._bounded_stdin(), b"{}")
+
+    def test_input_nonblocking_flag_restored_even_on_setter_error(self):
+        original = SimpleNamespace(st_mode=stat.S_IFIFO, st_dev=15,
+                                   st_ino=22, st_size=0)
+        class Stdin:
+            def fileno(self):
+                return 0
+        for errors in ((OSError("setter-error"), None), (None, OSError("restore-error"))):
+            with self.subTest(errors=repr(errors)):
+                def change_mode(*_args):
+                    outcome = errors[change_mode.calls]
+                    change_mode.calls += 1
+                    if outcome:
+                        raise outcome
+                change_mode.calls = 0
+                with patch.object(reviewer.sys, "stdin", Stdin()), \\
+                     patch.object(reviewer.os, "fstat", side_effect=[original, original]), \\
+                     patch.object(reviewer.os, "get_blocking", return_value=True), \\
+                     patch.object(reviewer.os, "set_blocking", side_effect=change_mode), \\
+                     patch.object(reviewer.select, "select", return_value=([0], [], [])), \\
+                     patch.object(reviewer.os, "read", side_effect=[b"{}", b""]):
+                    self.assertEqual(reviewer._bounded_stdin(), b"")
+                self.assertEqual(change_mode.calls, 2)
 
     def test_cli_rejects_no_flag(self):
         result = subprocess.run(
