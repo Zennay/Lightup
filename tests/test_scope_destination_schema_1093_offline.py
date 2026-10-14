@@ -200,6 +200,33 @@ class ReviewTests(unittest.TestCase):
                     proc.stdout.close()
                     proc.stderr.close()
 
+    def test_cli_stdin_pipe_restores_parent_blocking_state(self):
+        # A subprocess duplicates fd0 but shares its POSIX open-file-description.
+        # Both accepted EOF and HOLD must leave the parent's mode unchanged.
+        for initially_blocking in (False, True):
+            for valid in (False, True):
+                with self.subTest(initially_blocking=initially_blocking, valid=valid):
+                    read_fd, write_fd = os.pipe()
+                    try:
+                        os.set_blocking(read_fd, initially_blocking)
+                        if valid:
+                            os.write(write_fd, encoded(fixture()))
+                        os.close(write_fd)
+                        write_fd = None
+                        result = subprocess.run(
+                            [sys.executable, str(SCRIPT), "--stdin-json"],
+                            stdin=read_fd, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, timeout=6)
+                        self.assertEqual(result.returncode, 3 if valid else 2)
+                        self.assertFalse(result.stderr)
+                        self.assertIs(os.get_blocking(read_fd), initially_blocking)
+                        self.assert_denied(json.loads(result.stdout),
+                                           "REVIEW_ONLY" if valid else "HOLD")
+                    finally:
+                        os.close(read_fd)
+                        if write_fd is not None:
+                            os.close(write_fd)
+
     def test_cli_rejects_regular_file_stdin_without_reading_it(self):
         with tempfile.TemporaryFile() as stream:
             stream.write(encoded(fixture()))
