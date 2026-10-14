@@ -26,13 +26,13 @@ from review_scope_destination_schema_1093_offline import (  # noqa: E402
 def fixture():
     return {"tools": [
         {"tool_id": "lab-http-baseline", "parameters": [
-            {"name": "url", "kind": "string", "role": "endpoint"}]},
+            {"name": "url", "kind": "string", "role": "endpoint", "required": True}]},
         {"tool_id": "lab-tls-baseline", "parameters": [
-            {"name": "host", "kind": "string", "role": "host"},
-            {"name": "port", "kind": "integer", "role": "port"}]},
+            {"name": "host", "kind": "string", "role": "host", "required": True},
+            {"name": "port", "kind": "integer", "role": "port", "required": True}]},
         {"tool_id": "lab-service-inventory", "parameters": [
-            {"name": "host", "kind": "string", "role": "host"},
-            {"name": "ports", "kind": "string", "role": "port_set"}]},
+            {"name": "host", "kind": "string", "role": "host", "required": True},
+            {"name": "ports", "kind": "string", "role": "port_set", "required": True}]},
     ]}
 
 
@@ -71,9 +71,11 @@ class ReviewTests(unittest.TestCase):
             with self.subTest(tool_id=definition.tool_id):
                 self.assertEqual(definition.tool_id, claim["tool_id"])
                 self.assertEqual(
-                    [(parameter.name, parameter.kind.value)
+                    [(parameter.name, parameter.kind.value,
+                      parameter.required)
                      for parameter in definition.parameters],
-                    [(parameter["name"], parameter["kind"])
+                    [(parameter["name"], parameter["kind"],
+                      parameter["required"])
                      for parameter in claim["parameters"]],
                 )
                 # Roles are presently *absent* from ToolDefinition; claims
@@ -95,11 +97,11 @@ class ReviewTests(unittest.TestCase):
                 self.assert_denied(review_schema(sample), "HOLD")
 
     def test_destination_role_grammar_all_four_valid_shapes(self):
-        endpoint = {"name": "url", "kind": "string", "role": "endpoint"}
-        host = {"name": "host", "kind": "string", "role": "host"}
-        port = {"name": "port", "kind": "integer", "role": "port"}
-        port_set = {"name": "ports", "kind": "string", "role": "port_set"}
-        metadata = {"name": "trace_id", "kind": "string", "role": "none"}
+        endpoint = {"name": "url", "kind": "string", "role": "endpoint", "required": True}
+        host = {"name": "host", "kind": "string", "role": "host", "required": True}
+        port = {"name": "port", "kind": "integer", "role": "port", "required": True}
+        port_set = {"name": "ports", "kind": "string", "role": "port_set", "required": True}
+        metadata = {"name": "trace_id", "kind": "string", "role": "none", "required": True}
         for params in ([endpoint], [host], [host, port], [host, port_set]):
             for variant in (params, list(reversed(params)), params + [metadata]):
                 with self.subTest(roles=tuple(p["role"] for p in variant)):
@@ -112,7 +114,7 @@ class ReviewTests(unittest.TestCase):
 
     def test_destination_role_grammar_rejects_ambiguous_selectors_atomically(self):
         def field(name, kind, role):
-            return {"name": name, "kind": kind, "role": role}
+            return {"name": name, "kind": kind, "role": role, "required": True}
 
         host = field("host", "string", "host")
         port = field("port", "integer", "port")
@@ -150,11 +152,11 @@ class ReviewTests(unittest.TestCase):
 
     def test_cli_bad_role_composition_refuses_to_echo_claims(self):
         bad_shapes = (
-            [{"name": "port", "kind": "integer", "role": "port"}],
-            [{"name": "url", "kind": "string", "role": "endpoint"},
-             {"name": "ports", "kind": "string", "role": "port_set"}],
-            [{"name": "host", "kind": "string", "role": "host"},
-             {"name": "url", "kind": "string", "role": "endpoint"}],
+            [{"name": "port", "kind": "integer", "role": "port", "required": True}],
+            [{"name": "url", "kind": "string", "role": "endpoint", "required": True},
+             {"name": "ports", "kind": "string", "role": "port_set", "required": True}],
+            [{"name": "host", "kind": "string", "role": "host", "required": True},
+             {"name": "url", "kind": "string", "role": "endpoint", "required": True}],
         )
         for parameters in bad_shapes:
             with self.subTest(roles=tuple(p["role"] for p in parameters)):
@@ -169,6 +171,44 @@ class ReviewTests(unittest.TestCase):
                 self.assertNotIn(b"synthetic_customer_secret_marker", process.stdout)
                 self.assertEqual(process.stdout.count(b"\n"), 1)
                 self.assert_denied(json.loads(process.stdout), "HOLD")
+
+    def test_destination_must_be_explicitly_required_and_bool_exact(self):
+        for field_name in ("required",):
+            for forged in (False, None, 0, 1, "true", [], {}, 1.0):
+                with self.subTest(forged=str(forged)):
+                    packet = fixture()
+                    packet["tools"][1]["parameters"][0][field_name] = forged
+                    self.assert_denied(review_schema(packet), "HOLD")
+                    self.assert_denied(review_bytes(encoded(packet)), "HOLD")
+            missing = fixture()
+            del missing["tools"][1]["parameters"][0][field_name]
+            self.assert_denied(review_schema(missing), "HOLD")
+            self.assert_denied(review_bytes(encoded(missing)), "HOLD")
+
+        allowed = fixture()
+        allowed["tools"][0]["parameters"].append(
+            {"name": "trace_id", "kind": "string", "role": "none",
+             "required": False})
+        self.assert_denied(review_schema(allowed), "REVIEW_ONLY")
+        self.assert_denied(review_bytes(encoded(allowed)), "REVIEW_ONLY")
+        allowed["tools"][0]["parameters"][-1]["required"] = 0
+        self.assert_denied(review_schema(allowed), "HOLD")
+
+    def test_required_metadata_cannot_be_omitted_or_renamed(self):
+        for mutation in ("missing", "renamed", "optional_port", "optional_set"):
+            with self.subTest(mutation=mutation):
+                packet = fixture()
+                tls = packet["tools"][1]["parameters"]
+                if mutation == "missing":
+                    del tls[0]["required"]
+                elif mutation == "renamed":
+                    tls[0]["is_required"] = tls[0].pop("required")
+                elif mutation == "optional_port":
+                    tls[1]["required"] = False
+                else:
+                    packet["tools"][2]["parameters"][1]["required"] = False
+                self.assert_denied(review_schema(packet), "HOLD")
+                self.assert_denied(review_bytes(encoded(packet)), "HOLD")
 
     def test_reject_untrusted_structure(self):
         for change in (
@@ -205,7 +245,7 @@ class ReviewTests(unittest.TestCase):
     def test_non_destination_metadata_does_not_supply_authority(self):
         sample = fixture()
         sample["tools"][0]["parameters"].append(
-            {"name": "max_retries", "kind": "integer", "role": "none"})
+            {"name": "max_retries", "kind": "integer", "role": "none", "required": True})
         self.assert_denied(review_schema(sample), "REVIEW_ONLY")
         sample["tools"][0]["parameters"][0]["role"] = "none"
         self.assert_denied(review_schema(sample), "HOLD")
@@ -243,14 +283,14 @@ class ReviewTests(unittest.TestCase):
     def test_max_structural_cardinality(self):
         data = fixture()["tools"][0]
         many = {"tools": [{"tool_id": "tool_" + str(i), "parameters":
-                 [{"name": "host", "kind": "string", "role": "host"}]}
+                 [{"name": "host", "kind": "string", "role": "host", "required": True}]}
                 for i in range(8)]}
         self.assert_denied(review_schema(many), "REVIEW_ONLY")
         many["tools"].append(data)
         self.assert_denied(review_schema(many), "HOLD")
         many = {"tools": [{"tool_id": "one", "parameters":
-                 [{"name": "host", "kind": "string", "role": "host"}]
-                 + [{"name": "p_" + str(i), "kind": "string", "role": "none"}
+                 [{"name": "host", "kind": "string", "role": "host", "required": True}]
+                 + [{"name": "p_" + str(i), "kind": "string", "role": "none", "required": True}
                     for i in range(15)]}]}
         self.assert_denied(review_schema(many), "REVIEW_ONLY")
         many["tools"][0]["parameters"].append(data["parameters"][0])
