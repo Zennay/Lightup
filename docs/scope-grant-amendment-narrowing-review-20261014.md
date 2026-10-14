@@ -46,7 +46,7 @@ Example **synthetic** grant snapshot, use this identically under `before` and `a
       "recurring_retest_allowed": false
     }
 
-The input parser refuses oversized buffers, duplicate object keys (including escaped aliases), non-finite numbers, floating-point values, invalid UTF-8, BOM, scalar roots, trailing documents, unexpected keys, duplicate member entries, and wrong Python/JSON primitive types.
+The output receipt is independently sealed against forged keys, approval flags, status/reason combinations, and unrecognized widening dimensions *before opening stdout*. It is at most **512 ASCII bytes**, one JSON line. The CLI writes only to a local FIFO/pipe or terminal, never an inherited socket, regular file, directory, or non-terminal character device. Delivery has an absolute **2-second write deadline**; a full or broken output pipe exits nonzero. When switching inherited POSIX stdout to nonblocking mode, it attempts to restore the original shared pipe mode even on failure. This is application-level defensive handling, **not an OS sandbox**; transient shared flags can still affect simultaneous parent writers, so use private pipes for isolation.\n\nThe input parser refuses oversized buffers, duplicate object keys (including escaped aliases), non-finite numbers, floating-point values, invalid UTF-8, BOM, scalar roots, trailing documents, unexpected keys, duplicate member entries, and wrong Python/JSON primitive types.
 
 ## Interpretation
 
