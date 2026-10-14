@@ -84,13 +84,18 @@ def review_schema(payload: object) -> dict:
         role_counts = {"host": 0, "endpoint": 0, "port": 0,
                        "port_set": 0, "none": 0}
         for param in params:
-            if type(param) is not dict or set(param) != {"name", "kind", "role"}:
+            if type(param) is not dict or set(param) != {
+                "name", "kind", "role", "required"
+            }:
                 return _hold()
             name, kind, role = param["name"], param["kind"], param["role"]
+            required = param["required"]
             if (type(name) is not str or not PARAMETER_NAME.fullmatch(name)
                     or name in seen_params or type(kind) is not str
                     or kind not in KINDS or type(role) is not str
-                    or role not in ROLE_KINDS or kind not in ROLE_KINDS[role]):
+                    or role not in ROLE_KINDS or kind not in ROLE_KINDS[role]
+                    or type(required) is not bool
+                    or (role != "none" and required is not True)):
                 return _hold()
             seen_params.add(name)
             role_counts[role] += 1
