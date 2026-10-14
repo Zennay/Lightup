@@ -9,6 +9,12 @@ Use only with disposable synthetic metadata on a private FIFO/pipe stdin.
 A regular file, device, socket, incomplete pipe without EOF, or a pipe whose
 writer keeps its end open fails atomically to HOLD after at most two seconds.
 All reads use bounded 1024-byte chunks and an absolute monotonic deadline.
+Fd0 is temporarily nonblocking, so another FIFO reader draining bytes between
+`select` and `read` cannot create an unbounded stall; `EAGAIN` retries are
+limited by the same absolute deadline. The inherited fd0 blocking mode is
+restored on all paths, including HOLD and successful EOF. As with fd1, this
+changes a shared POSIX open-file-description *transiently*, so always use a
+private input pipe if simultaneous writers/readers need strict isolation.
 This is a Python userland guard, not an OS sandbox. Stdout receipts are
 independently sealed to an exact 10-field, all-denial ASCII JSON shape (seven
 literal false flags), capped at 512 bytes. Only private FIFO/pipe and real TTY
