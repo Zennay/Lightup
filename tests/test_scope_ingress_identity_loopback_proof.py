@@ -193,8 +193,27 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
         )
         self.assertEqual(len(names), len(set(names)))
         self.assertTrue(set(names).issubset(set(fixture.CASE_NAMES)))
+        client_names = tuple(
+            f"client_spoof_{value.lower().replace('-', '_')}"
+            for value in fixture.ALTERNATE_HEADERS
+        )
+        self.assertEqual(len(client_names), len(set(client_names)))
+        self.assertTrue(set(client_names).issubset(set(fixture.CASE_NAMES)))
+        self.assertFalse(set(client_names).intersection(set(names)))
         self.assertIn("alternate_combined", fixture.CASE_NAMES)
-        self.assertEqual(len(fixture.CASE_NAMES), 15)
+        self.assertEqual(len(fixture.CASE_NAMES), 23)
+
+    def test_synthetic_client_with_untrusted_operator_hints_never_elevates(self):
+        response = self._synthetic_app(
+            "/engagements/fixture/grants",
+            fixture.SYNTHETIC_CLIENT,
+            body=fixture.SYNTHETIC_CSRF,
+            hints=True,
+        )
+        self.assertEqual(response["identity"], "client")
+        self.assertEqual(response["verdict"], "DENIED")
+        self.assertEqual(response["written_grants"], 0)
+        self.assertFalse(fixture._expected(response, "client", "DENIED"))
 
     def test_invalid_alt_header_selector_denied_before_http_object_created(self):
         with patch.object(
