@@ -6,7 +6,6 @@ No LightUp runtime imports, network I/O, persistence or target interaction.
 """
 from __future__ import annotations
 
-import argparse
 from datetime import datetime, timezone
 import json
 import os
@@ -339,10 +338,14 @@ def _emit_receipt(receipt: object) -> bool:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Offline-only grant amendment review; never authorization.")
-    parser.add_argument("--stdin-json", action="store_true", required=True)
-    args = parser.parse_args(argv)
-    assert args.stdin_json is True
+    # Exact closed-world opt-in. argparse echoes unknown arguments (possibly
+    # secrets) in stderr, so malformed CLI input must be opaque and must not
+    # read stdin, including if an untrusted producer keeps its pipe open.
+    arguments = sys.argv[1:] if argv is None else argv
+    if type(arguments) is not list or len(arguments) != 1 or (
+        type(arguments[0]) is not str or arguments[0] != "--stdin-json"
+    ):
+        return 2
     receipt, code = review(_bounded_stdin())
     if not _emit_receipt(receipt):
         return 2
