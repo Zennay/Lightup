@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import math
-import sqlite3
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -66,7 +65,7 @@ class FiniteNumberOfflineReviewTests(unittest.TestCase):
                 snapshot_finite_number_arguments(batch)
 
     def test_noncanonical_containers_and_sizes_fail_closed(self):
-        invalid = (None, [], {}, (), ((("a", 1)),), [("a", 1)],
+        invalid = (None, [], {}, (), [("a", 1)],
                    tuple((f"n{i}", i) for i in range(33)),
                    ((("n", 1, 2)),), (["n", 1],),
                    (("x", 1), ("x", 2)))
