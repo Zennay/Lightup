@@ -309,6 +309,43 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
                 return super().decide(target)
         self.assertEqual(audit_installed_scope(IncorrectPolicy)["status"], "HOLD")
 
+    def test_private_lab_disabled_false_reason_cannot_claim_membership(self):
+        class IncorrectPolicy(_FixturePolicy):
+            def decide(self, target):
+                if target.value == "10.0.0.1" and not self.enabled and not self.explicit:
+                    return ScopeDecision(
+                        False, target.value, ScopeReason.PRIVATE_LAB
+                    )
+                return super().decide(target)
+        receipt = audit_installed_scope(IncorrectPolicy)
+        self.assert_never_authority(receipt)
+        self.assertEqual(receipt["status"], "HOLD")
+
+    def test_reserved_address_false_reason_cannot_claim_missing_grant(self):
+        class IncorrectPolicy(_FixturePolicy):
+            def decide(self, target):
+                if target.value == "192.0.2.1" and self.enabled and not self.explicit:
+                    return ScopeDecision(
+                        False, target.value, ScopeReason.AUTHORIZATION_MISSING
+                    )
+                return super().decide(target)
+        self.assertEqual(audit_installed_scope(IncorrectPolicy)["status"], "HOLD")
+
+    def test_actual_reserved_auto_admission_cannot_yield_review_only(self):
+        # Conditional on the REAL installed source being unsafe: this still
+        # passes once its owner fixes #1422, but must never greenlight an
+        # actually detected forbidden private-lab auto-admission.
+        actual_policy = ScopePolicy(allow_private_lab=True)
+        forbidden = ("192.0.2.1", "198.18.0.1", "169.254.1.1")
+        wrongly_admitted = any(
+            actual_policy.decide(Target(literal)).allowed is True
+            for literal in forbidden
+        )
+        if wrongly_admitted:
+            receipt = audit_installed_scope()
+            self.assert_never_authority(receipt)
+            self.assertEqual(receipt["status"], "HOLD")
+
     def test_nonboolean_allowed_identity_holds(self):
         class IncorrectPolicy(_FixturePolicy):
             def decide(self, target):
