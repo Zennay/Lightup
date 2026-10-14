@@ -120,7 +120,9 @@ class LabInventoryShapeReviewTests(unittest.TestCase):
         for bad in (None, (), set(), {}, 123, "10.1.2.3", [True],
                     ["10.1.2.3"] * 33):
             with self.subTest(type=type(bad).__name__):
-                self.assertEqual(review_inventory(packet(proposed=bad))["status"], "HOLD")
+                doc = packet()
+                doc["proposed_literals"] = bad
+                self.assertEqual(review_inventory(doc)["status"], "HOLD")
 
     def test_top_level_object_shape_is_exact(self):
         for obj in ([], None, 1, True, "test", {"schema_version": 1}, {}):
