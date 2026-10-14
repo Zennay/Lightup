@@ -98,3 +98,12 @@ This closes the narrower failure mode where inspecting only the current module-g
 **Limits:** Python module-import anchoring is not tamper-proof attestation and cannot protect against arbitrary pre-import monkeypatching or introspection changing the original function's `__code__`. This offline preview does not bind the endpoint to a live authorized asset or issue permission; its receipt retains `status=hold` and all four authority flags false.
 
 **Verification status:** 89 `unittest` methods now *staged* in GitHub (including 1,800 malformed and 240 canonical deterministic cases), but the final exact SHA has not been executed on the genuine repository's Python3.11/3.14 CI. Earlier Python3.13 replica tests do not prove new commits pass. An actual GitHub Actions PR/worker run is deliberately not spawned because the existing issue #1093 explicitly reserves branch-only acceptance to avoid duplicated permanent VPS queues. Source-owner/security/privacy/latest-main/human release reviews and exact-head GitHub-hosted/permanent registered VPS remain required. **INCUBATE M3/M7 — PLAN/LAB ONLY — DRAFT/HOLD/NO MERGE/NO DEPLOY.**
+
+
+## W14 — source-shape offline no-authority controls
+
+Added independent tests against the **actual LightUp source classes** (staged for official CI) to ensure neither a successful nor a denied built-in LAB metadata preview invokes `ExecutionPolicy.decide`, `ToolExecutor.execute`, or `StateStore.add_evidence`. Network/DNS sockets are mocked to raise immediately; the only success state is still `HOLD` with all authority flags `False`. These tests do not execute real tools, grant resolvers, scanner adapters or customer targets.
+
+**Current test suite:** 91 synthetic/offline methods in this branch, of which the new real-worker import/registration cases remain unexecuted in the canonical repo. **No claim that 91/91 passed**: previous local light-stub tests applied only to earlier heads and cannot substitute for exact final SHA Python 3.11/3.14 hosted and registered VPS results. No new pull request, CI queue or runner restart was initiated in compliance with issue #1093's branch-only/noncollision ownership.
+
+The standalone opt-in preview is an exploratory contract, not a trusted TARGET_ACTIVE authorization boundary. Live authorization/destination/tenant/revocation and independent owner/security/privacy review remain mandatory. **INCUBATE · M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD/NO MERGE/NO DEPLOY.**
