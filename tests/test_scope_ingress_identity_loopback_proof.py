@@ -62,6 +62,27 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     fixture.nginx_config(Path(value), 28211, 28212)
 
+    def test_disposable_gunicorn_config_has_zero_forwarder_trust(self):
+        config = fixture.gunicorn_config(28211)
+        self.assertEqual(config.splitlines(), [
+            "bind = '127.0.0.1:28211'",
+            "workers = 1",
+            "worker_class = 'sync'",
+            "forwarded_allow_ips = ''",
+            "secure_scheme_headers = {}",
+            "accesslog = None",
+            "errorlog = '/dev/null'",
+        ])
+        self.assertTrue(config.endswith("\\n"))
+        self.assertNotIn("0.0.0.0", config)
+        self.assertNotIn("X-Forwarded", config)
+        self.assertNotIn("raw_env", config)
+        self.assertNotIn("proxy_protocol", config)
+        for bad in (0, 80, 443, -1, 65536, None, "28211", True):
+            with self.subTest(port=bad):
+                with self.assertRaises(ValueError):
+                    fixture.gunicorn_config(bad)
+
     def test_disposable_child_environment_never_inherits_execution_hooks(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -412,8 +433,13 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
                 "precheck and both children must use identical isolated env",
             )
             self.assertEqual(
-                spawn.call_args_list[0].args[0][4],
-                "127.0.0.1:28211",
+                spawn.call_args_list[0].args[0][3],
+                "--config",
+            )
+            self.assertTrue(
+                spawn.call_args_list[0].args[0][4].endswith(
+                    "/gunicorn-fixture.conf.py"
+                )
             )
             self.assertIn(
                 "daemon off;",
