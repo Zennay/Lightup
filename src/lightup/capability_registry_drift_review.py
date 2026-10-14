@@ -28,6 +28,7 @@ class RegistryReview:
     baseline_fingerprint: str | None
     candidate_fingerprint: str | None
     changed_capabilities: tuple[str, ...]
+    changed_fields: tuple[tuple[str, tuple[str, ...]], ...] = ()
     authorization_verified: bool = False
     permit_issued: bool = False
     execution_enabled: bool = False
@@ -41,6 +42,7 @@ class RegistryReview:
             "baseline_fingerprint": self.baseline_fingerprint,
             "candidate_fingerprint": self.candidate_fingerprint,
             "changed_capabilities": list(self.changed_capabilities),
+            "changed_fields": {name: list(fields) for name, fields in self.changed_fields},
             "authorization_verified": False,
             "permit_issued": False,
             "execution_enabled": False,
@@ -167,9 +169,22 @@ def review_capability_registry_drift(baseline: bytes, candidate: bytes) -> Regis
         after = _decode_manifest(candidate)
     except (ValueError, TypeError, OverflowError, RecursionError):
         return RegistryReview("HOLD", "invalid_manifest", None, None, ())
-    changed = tuple(sorted(k for k in before.keys() | after.keys() if before.get(k) != after.get(k)))
+    field_names = ("state", "requires_explicit_activation", "name", "description")
+    change_details: list[tuple[str, tuple[str, ...]]] = []
+    for capability_id in sorted(before.keys() | after.keys()):
+        if capability_id not in before:
+            fields = ("added",)
+        elif capability_id not in after:
+            fields = ("removed",)
+        else:
+            original, proposed = before[capability_id], after[capability_id]
+            fields = tuple(field_names[index] for index in range(4) if original[index] != proposed[index])
+        if fields:
+            change_details.append((capability_id, fields))
+    changed = tuple(capability_id for capability_id, _ in change_details)
     return RegistryReview(
         "HOLD" if changed else "REVIEW_ONLY",
         "registry_drift_requires_independent_review" if changed else "identical_metadata_only",
         _fingerprint(before), _fingerprint(after), changed,
+        changed_fields=tuple(change_details),
     )
