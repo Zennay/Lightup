@@ -85,6 +85,55 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
         self.assert_never_authority(receipt)
         self.assertEqual(receipt["status"], "REVIEW_ONLY")
 
+    def test_strict_fixture_executes_every_declared_policy_case_exactly_once(self):
+        # This is a real counting witness, not a guessed total in a receipt:
+        # a future accidental early skip or duplicated policy decision fails.
+        seen = []
+
+        class CountingPolicy(_FixturePolicy):
+            def decide(self, target):
+                permission = target.authorization
+                category = (
+                    "host" if self.explicit_hosts
+                    else "network" if self.explicit
+                    else "lab_enabled" if self.enabled else "lab_disabled"
+                )
+                window = (
+                    "none" if permission is None
+                    else "future" if permission.valid_from is not None
+                    else "expired"
+                )
+                seen.append((category, target.value, window))
+                return super().decide(target)
+
+        receipt = audit_installed_scope(CountingPolicy)
+        self.assert_never_authority(receipt)
+        self.assertEqual(receipt["status"], "REVIEW_ONLY")
+
+        expected = []
+        for literal, _, _ in LAB:
+            expected.extend((
+                ("lab_enabled", literal, "none"),
+                ("lab_disabled", literal, "none"),
+            ))
+        for literal in NOT_LAB:
+            expected.extend((
+                ("lab_enabled", literal, "none"),
+                ("lab_disabled", literal, "none"),
+                ("network", literal, "none"),
+                ("network", literal, "expired"),
+                ("network", literal, "future"),
+            ))
+        for literal, _ in EXPLICIT_HOST_DENIALS:
+            expected.extend((
+                ("host", literal, "none"),
+                ("host", literal, "expired"),
+                ("host", literal, "future"),
+            ))
+        self.assertEqual(len(expected), TOTAL_CHECKS)
+        self.assertEqual(len(seen), TOTAL_CHECKS)
+        self.assertCountEqual(seen, expected)
+
     def test_checkout_source_guard_does_not_hide_policy_evaluation(self):
         # This detects a vacuous HOLD from a source-path mismatch on a clean
         # checkout; fixture REVIEW_ONLY must exercise actual policy decisions.
