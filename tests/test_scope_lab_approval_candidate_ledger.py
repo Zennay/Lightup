@@ -32,30 +32,30 @@ class CandidateLedgerTests(unittest.TestCase):
 
     def test_issue_is_durable_and_non_authorizing(self):
         approval = self.ledger.issue(**self.items)
-        read = self.ledger.inspect("lab-run-1")
+        read = self.ledger.inspect("lab-run-1", client_id="client-1")
         self.assertEqual(read, approval)
         self.assertIsNone(read.revoked_at)
-        result = self.ledger.review("lab-run-1")
+        result = self.ledger.review("lab-run-1", client_id="client-1")
         self.assertEqual(result["status"], "REVIEW_ONLY")
         for flag in ("authorization_verified", "permit_issued",
                      "execution_enabled", "merge_approved", "release_approved"):
             self.assertIs(result[flag], False)
 
     def test_missing_candidate_holds(self):
-        self.assertIsNone(self.ledger.inspect("lab-run-1"))
-        self.assertEqual(self.ledger.review("lab-run-1")["status"], "HOLD")
+        self.assertIsNone(self.ledger.inspect("lab-run-1", client_id="client-1"))
+        self.assertEqual(self.ledger.review("lab-run-1", client_id="client-1")["status"], "HOLD")
 
     def test_issue_without_operator_gate_is_rejected_without_row(self):
         self.items["operator_gate"] = None
         with self.assertRaises(CandidateHeld):
             self.ledger.issue(**self.items)
-        self.assertIsNone(self.ledger.inspect("lab-run-1"))
+        self.assertIsNone(self.ledger.inspect("lab-run-1", client_id="client-1"))
 
     def test_operator_denial_has_no_write(self):
         self.items["operator_gate"] = lambda *_: False
         with self.assertRaises(CandidateHeld):
             self.ledger.issue(**self.items)
-        self.assertIsNone(self.ledger.inspect("lab-run-1"))
+        self.assertIsNone(self.ledger.inspect("lab-run-1", client_id="client-1"))
 
     def test_truthy_non_boolean_operator_proof_is_rejected(self):
         self.items["operator_gate"] = lambda *_: 1
@@ -95,8 +95,8 @@ class CandidateLedgerTests(unittest.TestCase):
     def test_revocation_is_durable_and_cannot_be_reversed(self):
         self.ledger.issue(**self.items)
         self.ledger.revoke(run_id="lab-run-1", actor="operator-1", operator_gate=allow)
-        self.assertIsNotNone(self.ledger.inspect("lab-run-1").revoked_at)
-        self.assertEqual(self.ledger.review("lab-run-1")["status"], "HOLD")
+        self.assertIsNotNone(self.ledger.inspect("lab-run-1", client_id="client-1").revoked_at)
+        self.assertEqual(self.ledger.review("lab-run-1", client_id="client-1")["status"], "HOLD")
         with self.assertRaises(CandidateHeld):
             self.ledger.revoke(run_id="lab-run-1", actor="operator-1", operator_gate=allow)
         with self.assertRaises(CandidateHeld):
@@ -106,7 +106,7 @@ class CandidateLedgerTests(unittest.TestCase):
         self.ledger.issue(**self.items)
         with self.assertRaises(CandidateHeld):
             self.ledger.revoke(run_id="lab-run-1", actor="operator-1", operator_gate=None)
-        self.assertIsNone(self.ledger.inspect("lab-run-1").revoked_at)
+        self.assertIsNone(self.ledger.inspect("lab-run-1", client_id="client-1").revoked_at)
 
     def test_revoke_unknown_is_denied(self):
         with self.assertRaises(CandidateHeld):
@@ -116,7 +116,7 @@ class CandidateLedgerTests(unittest.TestCase):
         self.ledger.issue(**self.items)
         with self.assertRaises(CandidateHeld):
             self.ledger.revoke(run_id="lab-run-1", actor="different", operator_gate=allow)
-        self.assertIsNone(self.ledger.inspect("lab-run-1").revoked_at)
+        self.assertIsNone(self.ledger.inspect("lab-run-1", client_id="client-1").revoked_at)
 
     def test_naive_time_rejected_before_operator(self):
         gate = Mock(return_value=True)
@@ -154,7 +154,7 @@ class CandidateLedgerTests(unittest.TestCase):
         )
         self.db.commit()
         with self.assertRaises(CandidateHeld):
-            self.ledger.review("lab-run-1")
+            self.ledger.review("lab-run-1", client_id="client-1")
 
     def test_corrupt_identity_holds(self):
         self.ledger.issue(**self.items)
@@ -169,7 +169,7 @@ class CandidateLedgerTests(unittest.TestCase):
         )
         self.db.commit()
         with self.assertRaises(CandidateHeld):
-            self.ledger.inspect("lab-run-1")
+            self.ledger.inspect("lab-run-1", client_id="client-1")
 
     def test_file_backed_sqlite_survives_reopen(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -180,14 +180,64 @@ class CandidateLedgerTests(unittest.TestCase):
             first.close()
             second = sqlite3.connect(path)
             fresh = LabApprovalCandidateLedger(second)
-            self.assertEqual(fresh.review("lab-run-1")["status"], "REVIEW_ONLY")
+            self.assertEqual(fresh.review("lab-run-1", client_id="client-1")["status"], "REVIEW_ONLY")
             fresh.revoke(run_id="lab-run-1", actor="operator-1", operator_gate=allow)
             second.close()
             third = sqlite3.connect(path)
             self.assertEqual(LabApprovalCandidateLedger(third).review(
-                "lab-run-1"
+                "lab-run-1", client_id="client-1"
             )["status"], "HOLD")
             third.close()
+
+    def test_foreign_tenant_lookup_never_returns_candidate(self):
+        self.ledger.issue(**self.items)
+        self.assertIsNone(self.ledger.inspect("lab-run-1", client_id="other-client"))
+        self.assertEqual(
+            self.ledger.review("lab-run-1", client_id="other-client")["status"],
+            "HOLD",
+        )
+
+    def test_invalid_tenant_lookup_fails_closed(self):
+        self.ledger.issue(**self.items)
+        with self.assertRaises(CandidateHeld):
+            self.ledger.inspect("lab-run-1", client_id="client\\nforged")
+
+    def test_engagement_revocation_is_tenant_scoped_and_atomic(self):
+        self.ledger.issue(**self.items)
+        same = dict(self.items, run_id="lab-run-2")
+        self.ledger.issue(**same)
+        foreign = dict(self.items, run_id="lab-run-3", client_id="other-client")
+        self.ledger.issue(**foreign)
+        unrelated = dict(self.items, run_id="lab-run-4", engagement_id="other-engagement")
+        self.ledger.issue(**unrelated)
+        count = self.ledger.revoke_engagement(
+            client_id="client-1", engagement_id="engagement-1",
+            actor="operator-1", operator_gate=allow,
+        )
+        self.assertEqual(count, 2)
+        for run in ("lab-run-1", "lab-run-2"):
+            self.assertEqual(self.ledger.review(run, client_id="client-1")["status"], "HOLD")
+        self.assertEqual(
+            self.ledger.review("lab-run-3", client_id="other-client")["status"],
+            "REVIEW_ONLY",
+        )
+        self.assertEqual(self.ledger.review("lab-run-4", client_id="client-1")["status"], "REVIEW_ONLY")
+
+    def test_empty_engagement_revocation_is_denied(self):
+        with self.assertRaises(CandidateHeld):
+            self.ledger.revoke_engagement(
+                client_id="client-1", engagement_id="engagement-1",
+                actor="operator-1", operator_gate=allow,
+            )
+
+    def test_engagement_revocation_requires_operator_role(self):
+        self.ledger.issue(**self.items)
+        with self.assertRaises(CandidateHeld):
+            self.ledger.revoke_engagement(
+                client_id="client-1", engagement_id="engagement-1",
+                actor="untrusted", operator_gate=allow,
+            )
+        self.assertEqual(self.ledger.review("lab-run-1", client_id="client-1")["status"], "REVIEW_ONLY")
 
 
 if __name__ == "__main__":
