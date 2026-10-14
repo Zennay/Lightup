@@ -83,6 +83,19 @@ class GitReplaceRefBoundaryTests(unittest.TestCase):
         self.assertEqual(self.git("diff", "--name-only", self.base, self.unsafe,
                                   disable_replace=True).strip(), "src/lightup/protected.py")
 
+    def test_replace_ref_can_falsify_original_parent_commit_history(self):
+        # An unrelated root commit is also a syntactically valid replacement.
+        self.git("checkout", "--orphan", "unrelated")
+        self.git("reset", "--hard")
+        self.write("docs/scope_unrelated.md", "unrelated\n")
+        orphan = self.commit("unrelated root")
+        self.git("replace", "-f", self.unsafe, orphan)
+        apparent = self.git("show", "-s", "--format=%P", self.unsafe).strip()
+        actual = self.git("show", "-s", "--format=%P", self.unsafe,
+                          disable_replace=True).strip()
+        self.assertEqual(apparent, "")
+        self.assertEqual(actual, self.base)
+
     def test_current_head_sha_check_alone_does_not_disarm_git_replacement(self):
         self.git("checkout", "--detach", "-q", self.unsafe)
         # HEAD still names the genuine immutable SHA, although normal Git
