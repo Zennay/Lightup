@@ -20,6 +20,17 @@ python -m unittest discover -s tests -p 'test_scope_git_replace_ref_boundary.py'
 
 The **nine** genuine disposable-repository tests cover diff spoofing, unchanged SHA / changed tree, original blob recovery, repository-local refs independent of inherited variables, `HEAD^{commit}` pin insufficiency, original history recovery and **false parent ancestry under an unrelated orphan replacement commit**, and two legacy `.git/info/grafts` controls that prove parent history can still be rewritten even when replacements are disabled. Each test uses a temporary directory, does not import production LightUp, opens no network sockets, runs no scans and never alters a real repository.
 
+## Additional optional refusal-only companion
+
+The independent `scripts/check_scope_git_object_identity_preflight.py` now inspects the **local Git checkout** with read-only commands and fixed safe environment. It refuses any local `refs/replace` ref (including packed refs), any legacy `info/grafts` path, an unexpected/nested Git root, missing Git, failed lookups or an inaccessible graft path. It does not delete Git refs/grafts, cannot scan targets, and cannot produce an authorization. Even an apparently clean result is only `REVIEW_ONLY`, never merge/release permission.
+
+```sh
+python scripts/check_scope_git_object_identity_preflight.py --repo .
+python -m unittest discover -s tests -p 'test_scope_git_object_identity_preflight.py' -v
+```
+
+This adds **seven more** disposable Git regression tests, for **16 independent methods** total across both new test modules. The preflight intentionally does **not** import or modify the actively owned #1313 checker. It is a conservative negative-only reusable reference, and does not prevent a local malicious actor changing Git state between checks (TOCTOU). A fully trusted commit attestation requires additional source-owner review, pinning and runtime controls.
+
 ## Owner handoff — not an independent fix
 
 - The active source-owner [draft #1313](https://github.com/Zennay/Lightup/pull/1313) must decide whether to set `GIT_NO_REPLACE_OBJECTS=1` **for every Git subprocess**, including `diff`, `rev-list`, `cat-file`, `ls-tree`, `status` and `rev-parse`. Prefer enforcing this centrally in the owner's sanitized Git environment rather than only individual callers.
@@ -30,4 +41,4 @@ The **nine** genuine disposable-repository tests cover diff spoofing, unchanged 
 
 ## Collision boundary
 
-This small PR adds only `tests/test_scope_git_replace_ref_boundary.py` and `docs/scope-git-replace-ref-boundary.md` on a dedicated branch off untouched `main`. It does **not** edit #1313's checker/docs/tests, another worker's files, CI workflows, production authorization, VPS runners, targets, grants or evidence-remediation.
+This isolated PR adds only two new test paths (`tests/test_scope_git_replace_ref_boundary.py` and `tests/test_scope_git_object_identity_preflight.py`), the opt-in `scripts/check_scope_git_object_identity_preflight.py`, and `docs/scope-git-replace-ref-boundary.md` on a dedicated branch off untouched `main`. It does **not** edit #1313's checker/docs/tests, another worker's files, CI workflows, production authorization, VPS runners, targets, grants or evidence-remediation.
