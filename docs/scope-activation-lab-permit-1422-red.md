@@ -52,6 +52,11 @@ return a nonreflective HOLD without reading stdin.
   caught as additional HOLD violations; no permit is ever dispatched.
 - Disable `allow_private_lab` and confirm non-loopback samples cannot
   be issued a LAB_ONLY permit.
+- Four additional real `ScopePolicy` + `ActivationGate.issue` controls:
+  syntactically allowed **explicit host/network** with a synthetic owner
+  reference or with deliberately disabled public-authorization policy
+  never crosses into a LAB_ONLY permit. This does not create actual
+  consent or exercise AUTHORIZED mode; token creation is a hard failure.
 - `PLAN_ONLY` terminally rejects all sixteen fixtures.
 - CLI real subprocess exit/status/privacy contracts and source-error
   fail-closed behavior.
