@@ -21,7 +21,7 @@ def _samples():
     # Two bounded samples in every /8, and full second-octet sweeps
     # around RFC1918's 172.16/12 and 192.168/16 membership boundaries.
     for first in range(256):
-        yield f"{first}.0.0.1", first, 0
+        yield f"{first}.0.0.2", first, 0
         yield f"{first}.255.255.254", first, 255
     for second in range(256):
         yield f"172.{second}.0.1", 172, second
