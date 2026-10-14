@@ -55,3 +55,12 @@ This API accepts a tuple of `DestinationField` declarations provided by its call
 ### Unmet acceptance
 
 Source-owner #107/#156 and policy owner #100 must integrate and validate real authority, existing separate #1093 metadata acceptance branch must be reconciled without overwriting it; exact-head hosted Python 3.11 and 3.14, registered permanent VPS CI, independent security/privacy, latest-main compatibility and explicit human authorization remain required. Project remains **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD/NO MERGE/NO DEPLOY**.
+
+
+## W7 — deterministic corpus and genuine existing lab-tool registration acceptance
+
+**Additive coverage (no existing source changes):** A seeded synthetic corpus explicitly denies 1,800 malformed authority strings using mixed schemes, userinfo, numeric-host aliases, invalid ports, control characters and fragments; 240 canonical HTTP/HTTPS/IPv4/IPv6/hostname/port/path combinations must each return **HOLD with authority flags false**. The synthetic local Python 3.13 replica with lightweight class stubs executed its first **62 cases**, including both full corpora: **PASS 62/62** with `compileall`. The number of `unittest` methods is not the number of corpus cases.
+
+**New real source integration tests staged only in GitHub:** Two additional methods (`test_63`, `test_64`) import the repository's genuine `lightup.workers.http_baseline`, `tls_baseline`, and `service_inventory` definitions, register them into fresh real `ToolRegistry` instances, then review their role and value shapes without invoking any handler. They enforce no DNS/socket/urlopen calls and check malformed URL, boolean TLS port, and unordered port-set refusal. Those two methods **have not been executed**, because the local sandbox contains only lightweight stubs and cannot download the complete GitHub checkout. They require genuine repo CI on the exact final head and must not be described as green.
+
+This is **LAB_ACTIVE schema evidence only**. The presence of real registered lab workers does not create TARGET_ACTIVE destination metadata, authorized target binding, production safety, or release authority. Owner #107/#156 must implement registry-owned destination roles and runtime authorization with correct current grant, asset identity, risk, tenant, revocation and egress. Branch remains isolated and non-authorizing: no PR/merge/CI queue/deploy, no real targets/scans/handlers.
