@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import itertools
 import json
 import os
 from pathlib import Path
@@ -255,6 +256,50 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
             for pipe in (proc.stdin, proc.stdout, proc.stderr):
                 if pipe and not pipe.closed:
                     pipe.close()
+
+    def test_all_625_self_asserted_status_combinations_remain_hold(self):
+        """Every possible four-lane label combination remains non-authority."""
+        results = ("pass", "fail", "queued", "cancelled", "unknown")
+        reviewed = 0
+        for choices in itertools.product(results, repeat=4):
+            value = packet()
+            for claim, status in zip(value["claims"], choices):
+                claim["result"] = status
+            self.check_hold(encoded(value), coherent=True, passing=choices.count("pass"))
+            reviewed += 1
+        self.assertEqual(reviewed, 625)
+
+    def test_exact_16k_payload_boundary_and_plus_one(self):
+        valid = encoded(packet())
+        exact = valid + b" " * (review.MAX_STDIN_BYTES - len(valid))
+        self.assertEqual(len(exact), 16384)
+        self.check_hold(exact, coherent=True, passing=4)
+        self.check_hold(exact + b" ")
+
+    def test_smuggled_multiple_json_objects_and_unicode_aliases_rejected(self):
+        valid = encoded(packet())
+        cases = (
+            valid + valid,
+            valid + b" {}",
+            valid + b"\x00",
+            valid.replace(b'"head":', b'"he\\u0061d":' + b'"' + SHA.encode() + b'","head":', 1),
+            valid.replace(b'"lane":', b'"la\\u006ee":', 1),
+            valid.replace(b'"pass"', b'1e999', 1),
+            valid.replace(b'"pass"', b'true', 1),
+        )
+        for case in cases:
+            with self.subTest(case=repr(case[:60])):
+                self.check_hold(case)
+
+    def test_reader_rejects_spoofed_nonstdin_file_descriptor(self):
+        from unittest.mock import MagicMock
+        fake = MagicMock()
+        fake.fileno.return_value = 7
+        with patch.object(review.sys, "stdin", fake), \
+             patch.object(review.select, "select", side_effect=AssertionError("selected alien fd")), \
+             patch.object(review.os, "read", side_effect=AssertionError("read alien fd")):
+            self.assertEqual(review._read_bounded_stdin(), b"")
+
 
 if __name__ == "__main__":
     unittest.main()
