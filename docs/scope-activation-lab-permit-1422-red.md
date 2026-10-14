@@ -90,6 +90,17 @@ return a nonreflective HOLD without reading stdin.
   omitting it and relying on the optional default is not accepted.
   Every mutant must increase HOLD violations. This
   remains a unit-level regression, not cryptographic entropy attestation.
+- The temporary diagnostic Python I/O guards now cover **construction**
+  of the three real `ScopePolicy`/`ActivationGate` objects, not just
+  their later `issue()` calls. Six harmless constructor I/O mutants
+  (nonexistent file/FD, invalid write descriptor, in-memory SQLite,
+  socket creation) must fail closed without reaching the unguarded API.
+  A constructor that mints even a synthetic token is independently
+  counted as HOLD regardless of later clean permits. Neither
+  constructor nor issue may turn `SystemExit(0)` into a successful
+  CLI exit: the audit emits one fixed HOLD receipt and exit 2.
+  This is **Python-only defensive instrumentation**, NOT process,
+  native syscall, thread or import-time isolation.
 - Python-only defense-in-depth during audit: blocks ordinary
   `builtins.open`, `Path.open`, `os.open`, `os.write`, `os.system`,
   `sqlite3.connect`, `subprocess.Popen`, network socket creation and basic
