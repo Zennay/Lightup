@@ -136,7 +136,12 @@ def _enforce_private_ancestors(path: str) -> None:
         raise PacketHold("PRIVATE_PATH_TRAVERSAL")
     directory = os.path.dirname(os.path.abspath(path))
     while directory and directory != os.path.dirname(directory):
-        parent = os.lstat(directory)
+        try:
+            parent = os.lstat(directory)
+        except (OSError, OverflowError, ValueError):
+            # Ancestor errors must not escape as a traceback containing the
+            # customer's local path: fixed-code HOLD, same as file errors.
+            raise PacketHold("INPUT_UNAVAILABLE") from None
         if stat.S_ISLNK(parent.st_mode):
             raise PacketHold("PRIVATE_PARENT_SYMLINK")
         if not stat.S_ISDIR(parent.st_mode):
