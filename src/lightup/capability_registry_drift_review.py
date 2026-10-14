@@ -57,10 +57,14 @@ def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 def _decode_manifest(raw: bytes) -> dict[str, tuple[str, bool]]:
     if type(raw) is not bytes or not 1 <= len(raw) <= _MAX_PAYLOAD_BYTES:
         raise ValueError("manifest must be bounded bytes")
+    # Canonical manifests contain exactly one list and at most 128 entry objects.
+    # Bound structural nesting before invoking the JSON decoder on hostile input.
+    if raw.count(b"[") != 1 or raw.count(b"{") > _MAX_CAPABILITIES + 1:
+        raise ValueError("invalid manifest structure")
     try:
         obj = json.loads(raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys,
                          parse_constant=lambda _: (_ for _ in ()).throw(ValueError("nonfinite JSON")))
-    except (UnicodeError, json.JSONDecodeError) as exc:
+    except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise ValueError("invalid manifest JSON") from exc
     if type(obj) is not dict or set(obj) != {"capabilities"}:
         raise ValueError("manifest envelope must contain capabilities only")
@@ -100,7 +104,7 @@ def review_capability_registry_drift(baseline: bytes, candidate: bytes) -> Regis
     try:
         before = _decode_manifest(baseline)
         after = _decode_manifest(candidate)
-    except (ValueError, TypeError, OverflowError):
+    except (ValueError, TypeError, OverflowError, RecursionError):
         return RegistryReview("HOLD", "invalid_manifest", None, None, ())
     changed = tuple(sorted(k for k in before.keys() | after.keys() if before.get(k) != after.get(k)))
     return RegistryReview(
