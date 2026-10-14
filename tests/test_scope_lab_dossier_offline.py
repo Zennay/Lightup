@@ -147,7 +147,21 @@ class DossierReviewTests(unittest.TestCase):
                       "::ffff:10.1.2.3", "0.0.0.0", "FD00::1"):
             d = dossier()
             d["literal"] = value
-            # Uppercase IPv6 is a reviewable bare literal shape but does not\n            # equal any canonical inventory text: either rejection path is safe.\n            self.assertHold(d)\n\n    def test_fake_authority_fields_in_root_refused(self):
+            # An uppercase IPv6 bare literal is syntactically reviewable by
+            # the base parser, but is not the same canonical inventory text.
+            self.assertHold(d)
+
+    def test_noncanonical_ipv6_case_cannot_substitute_canonical_member(self):
+        d = dossier()
+        d["literal"] = "FD00::1"
+        d["inventory"]["proposed_literals"] = ["fd00::1"]
+        d["narrowing"]["proposed_lab_literals"] = ["10.1.2.3"]
+        # A reviewable IPv6 spelling must not gain authority or be silently
+        # equated with another inventory member across cross-bound packets.
+        self.assertHold(d)
+        self.assertNoAuthority(review_dossier(d))
+
+    def test_fake_authority_fields_in_root_refused(self):
         for field in ("permit_issued", "authorization_verified", "owner",
                       "tenant", "consent", "release_approved"):
             d = dossier()
