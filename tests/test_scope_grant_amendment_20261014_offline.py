@@ -518,6 +518,41 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
                     self.assertEqual(reviewer._bounded_stdin(), b"")
                 self.assertEqual(change_mode.calls, 2)
 
+    def test_invalid_cli_arguments_do_not_echo_secrets_or_read_unclosed_stdin(self):
+        cases = (
+            [],
+            ["--help"],
+            ["--stdin-json", "--stdin-json"],
+            ["--stdin-json", "--unexpected", "SUPER-SECRET-123"],
+            ["--unexpected", "SUPER-SECRET-123"],
+        )
+        for args in cases:
+            with self.subTest(args=args):
+                child = subprocess.Popen(
+                    [sys.executable, "-B", str(SCRIPT), *args],
+                    stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                try:
+                    child.stdin.write(b"SUPER-SECRET-FROM-PIPE")
+                    child.stdin.flush()
+                    self.assertEqual(child.wait(timeout=5), 2)
+                    self.assertEqual(child.stdout.read(), b"")
+                    self.assertEqual(child.stderr.read(), b"")
+                finally:
+                    child.stdin.close()
+                    if child.poll() is None:
+                        child.kill()
+                        child.wait(timeout=5)
+                    child.stdout.close()
+                    child.stderr.close()
+
+    def test_direct_cli_argv_shape_noncanonical_types_refused(self):
+        for bad in ("--stdin-json", (), True, ["--stdin-json", "--stdin-json"],
+                    ["--bad"], [True], [b"--stdin-json"]):
+            with self.subTest(argument=bad):
+                self.assertEqual(reviewer.main(bad), 2)
+
     def test_cli_rejects_no_flag(self):
         result = subprocess.run(
             [sys.executable, "-B", str(SCRIPT)],
