@@ -50,7 +50,10 @@ class LabLiteralReview:
                 raise ValueError("lab literal review cannot confer authority")
 
 
-_HOLD = LabLiteralReview()
+def _hold() -> LabLiteralReview:
+    # Return a fresh immutable receipt; avoid cross-request aliasing even if
+    # hostile Python code bypasses frozen dataclasses with object.__setattr__.
+    return LabLiteralReview()
 
 
 def review_lab_literal(value: object) -> LabLiteralReview:
@@ -63,28 +66,28 @@ def review_lab_literal(value: object) -> LabLiteralReview:
     Never trust ipaddress.is_private or is_global for lab membership.
     """
     if type(value) is not str or not value or len(value) > 45:
-        return _HOLD
+        return _hold()
     try:
         address = ip_address(value)
     except ValueError:
-        return _HOLD
+        return _hold()
     # ip_address accepts some valid but noncanonical variants. Conservative
     # review avoids independent parse interpretations at API boundaries.
     if value != str(address):
-        return _HOLD
+        return _hold()
 
     if type(address) is IPv4Address:
         if address in _V4_LOOPBACK:
             return LabLiteralReview("REVIEW_ONLY", "LOOPBACK")
         if any(address in network for network in _V4_LAB):
             return LabLiteralReview("REVIEW_ONLY", "PRIVATE_USE")
-        return _HOLD
+        return _hold()
 
     if type(address) is IPv6Address:
         if address.scope_id is not None or address.ipv4_mapped is not None:
-            return _HOLD
+            return _hold()
         if address == _V6_LOOPBACK:
             return LabLiteralReview("REVIEW_ONLY", "LOOPBACK")
         if address in _V6_ULA:
             return LabLiteralReview("REVIEW_ONLY", "PRIVATE_USE")
-    return _HOLD
+    return _hold()
