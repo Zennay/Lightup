@@ -276,3 +276,34 @@ class TrustedDestinationManifest:
             if role is DestinationRole.PORT_SET and not _ports(value):
                 _deny()
         return DestinationReview(destination_fields_checked=len(self._fields))
+
+
+
+def known_lab_destination_manifest(registry, definition):
+    """Bind three genuine built-in lab definitions to fixed role metadata.
+
+    This is an optional OFFLINE schema reviewer, not a TARGET_ACTIVE
+    authorization gate. The caller cannot supply a role map here. The exact
+    canonical built-in ToolDefinition object, not a clone with the same ID,
+    must already be registered. No lab worker handler is invoked.
+    """
+    if type(registry) is not ToolRegistry or type(definition) is not ToolDefinition:
+        _deny()
+    from .workers import http_baseline, tls_baseline, service_inventory
+
+    trusted = (
+        (http_baseline.HTTP_BASELINE_TOOL,
+         (DestinationField("url", DestinationRole.ENDPOINT),)),
+        (tls_baseline.TLS_BASELINE_TOOL,
+         (DestinationField("host", DestinationRole.HOST),
+          DestinationField("port", DestinationRole.PORT))),
+        (service_inventory.SERVICE_INVENTORY_TOOL,
+         (DestinationField("host", DestinationRole.HOST),
+          DestinationField("ports", DestinationRole.PORT_SET))),
+    )
+    for actual, role_fields in trusted:
+        if definition is actual:
+            if definition.interaction is not InteractionKind.LAB_ACTIVE:
+                _deny()
+            return TrustedDestinationManifest(registry, definition, role_fields)
+    _deny()
