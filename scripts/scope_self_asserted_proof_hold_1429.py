@@ -7,11 +7,16 @@ No network, disk, subprocess, application imports or authorization side effects.
 from __future__ import annotations
 
 import json
+import os
 import re
+import select
 import sys
+import time
 from typing import Any
 
 MAX_STDIN_BYTES = 16 * 1024
+READ_DEADLINE_SECONDS = 2.0
+READ_CHUNK_BYTES = 4096
 INPUT_SCHEMA = "lightup.scope.self_asserted_proof.v1"
 OUTPUT_SCHEMA = "lightup.scope.untrusted_proof_hold.v1"
 HEAD_PATTERN = re.compile(r"[0-9a-f]{40}\Z")
@@ -109,15 +114,42 @@ def review_bytes(payload: bytes) -> dict[str, Any]:
     }
 
 
+def _read_bounded_stdin() -> bytes:
+    """Read only inherited fd 0; require EOF before a monotonic deadline.
+
+    A partial, stalled, overlong or invalid stream is rejected atomically,
+    never interpreted as a successful or complete proof bundle.
+    """
+    deadline = time.monotonic() + READ_DEADLINE_SECONDS
+    parts: list[bytes] = []
+    total = 0
+    try:
+        fd = sys.stdin.fileno()
+        if type(fd) is not int or fd != 0:
+            return b""
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return b""
+            readable, _, _ = select.select([fd], [], [], remaining)
+            if not readable:
+                return b""
+            chunk = os.read(fd, min(READ_CHUNK_BYTES, MAX_STDIN_BYTES + 1 - total))
+            if not chunk:
+                return b"".join(parts)
+            parts.append(chunk)
+            total += len(chunk)
+            if total > MAX_STDIN_BYTES:
+                return b""
+    except (OSError, ValueError, TypeError, OverflowError):
+        return b""
+
 def main(argv: list[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
     # Do not touch stdin for invalid argv. Zero ambient file / network access.
     if argv == ["--stdin-json"]:
-        try:
-            payload = sys.stdin.buffer.read(MAX_STDIN_BYTES + 1)
-        except (OSError, UnicodeError, ValueError):
-            payload = b""
+        payload = _read_bounded_stdin()
     else:
         payload = b""
     result = review_bytes(payload)
