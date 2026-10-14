@@ -752,5 +752,70 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
             self.assertIs(response[name], False)
 
 
+    @unittest.skipUnless(hasattr(os, "get_blocking"), "POSIX fd mode unavailable")
+    def test_real_cli_simultaneous_unclosed_stdin_and_full_stdout_is_bounded(self):
+        # Producer never sends EOF, and the consumer never drains its stdout.
+        # Both independent monotonic deadlines must compose to a bounded exit
+        # without permanently mutating the original parent's pipe mode.
+        readfd, writefd = os.pipe()
+        proc = None
+        try:
+            os.set_blocking(writefd, False)
+            while True:
+                try:
+                    os.write(writefd, b"Q" * 4096)
+                except BlockingIOError:
+                    break
+            os.set_blocking(writefd, True)
+            self.assertTrue(os.get_blocking(writefd))
+            started = __import__("time").monotonic()
+            proc = subprocess.Popen(
+                [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                stdin=subprocess.PIPE, stdout=writefd, stderr=subprocess.PIPE,
+                env={"PATH": os.defpath, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            # An incomplete, secret-bearing input deliberately stays OPEN.
+            proc.stdin.write(b"SECRET-STALLED-INPUT")
+            proc.stdin.flush()
+            self.assertEqual(proc.wait(timeout=9), 2)
+            elapsed = __import__("time").monotonic() - started
+            self.assertLess(elapsed, 7.5, "two simultaneous stalls escaped their deadlines")
+            self.assertEqual(proc.stderr.read(), b"")
+            self.assertTrue(os.get_blocking(writefd), "child changed parent's blocking state")
+        finally:
+            if proc is not None:
+                if proc.poll() is None:
+                    proc.kill()
+                    proc.wait(timeout=3)
+                for stream in (proc.stdin, proc.stderr):
+                    if stream is not None and not stream.closed:
+                        stream.close()
+            os.close(writefd)
+            os.close(readfd)
+
+    def test_real_cli_invalid_argv_with_undrained_stdin_does_not_read_input(self):
+        proc = subprocess.Popen(
+            [sys.executable, "-B", str(SCRIPT), "--release"],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env={"PATH": os.defpath, "PYTHONDONTWRITEBYTECODE": "1"},
+        )
+        try:
+            proc.stdin.write(b"SECRET-UNREAD-INVALID-ARGS")
+            proc.stdin.flush()
+            self.assertEqual(proc.wait(timeout=5), 2)
+            self.assertEqual(proc.stderr.read(), b"")
+            wire = proc.stdout.read()
+            self.assertTrue(review._is_sealed_hold_receipt(wire))
+            self.assertEqual(json.loads(wire)["input_integrity"], "REJECTED")
+            self.assertNotIn(b"SECRET", wire)
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait(timeout=3)
+            for stream in (proc.stdin, proc.stdout, proc.stderr):
+                if stream is not None and not stream.closed:
+                    stream.close()
+
+
 if __name__ == "__main__":
     unittest.main()
