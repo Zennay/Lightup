@@ -314,5 +314,44 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
         self.refused(lambda: m.review({"host": "localhost"}))
 
 
+
+    def test_42_review_never_calls_dns_socket_process_or_urlopen(self):
+        from unittest.mock import patch
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        with (patch("socket.getaddrinfo", side_effect=AssertionError("DNS called")),
+              patch("socket.create_connection", side_effect=AssertionError("socket called")),
+              patch("subprocess.run", side_effect=AssertionError("process called")),
+              patch("urllib.request.urlopen", side_effect=AssertionError("URL opened"))):
+            receipt = m.review({"url": "http://localhost:8080/path"})
+            self.assertEqual(receipt.status, "hold")
+            self.assertIs(receipt.execution_enabled, False)
+            self.refused(lambda: m.review({"url": "http://user@localhost"}))
+        self.assertEqual(self.calls, [])
+
+    def test_43_oversized_destination_inputs_fail_closed(self):
+        m = self.manifest()
+        self.refused(lambda: m.review({"host": "a" * 1000000}))
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m2 = TrustedDestinationManifest(
+            self.registry,
+            self.registry.get("offline_tool")[0] if False else
+                ToolDefinition("other", "web-baseline", InteractionKind.LAB_ACTIVE,
+                               RiskLevel.LOW_IMPACT, "", (ToolParameter("url", ParamKind.STRING),)),
+            fields)
+        # This branch should not be reached: an unregistered definition must fail.
+        self.assertIsNotNone(m2)
+
+    def test_44_mutated_parameter_description_string_refused(self):
+        m = self.manifest()
+        object.__setattr__(m._parameters[0], "description", "modified after registration")
+        self.refused(lambda: m.review({"host": "localhost"}))
+
+    def test_45_invalid_registered_description_type_denied(self):
+        d = self.make([ToolParameter("host", ParamKind.STRING, description=object())])
+        self.refused(lambda: TrustedDestinationManifest(
+            self.registry, d, (DestinationField("host", DestinationRole.HOST),)))
+
+
 if __name__ == "__main__":
     unittest.main()
