@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 SHA = re.compile(r"[0-9a-f]{40}\Z")
@@ -112,10 +113,15 @@ def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
         if content.returncode or len(content.stdout) != size:
             return "INVALID_BLOB_DATA", len(fields) // 2
         try:
-            content.stdout.decode("utf-8", "strict")
+            decoded = content.stdout.decode("utf-8", "strict")
         except UnicodeDecodeError:
             return "NONCANONICAL_TEXT", len(fields) // 2
-        if b"\x00" in content.stdout:
+        # Text can be syntactically valid UTF-8 but render differently from what
+        # the reviewer sees. Reject invisible formatting and terminal controls.
+        if decoded.startswith("\ufeff") or any(
+                (unicodedata.category(char) == "Cf")
+                or (unicodedata.category(char) == "Cc" and char not in "\t\n")
+                for char in decoded):
             return "NONCANONICAL_TEXT", len(fields) // 2
     if changed != set(expected):
         return "OWNERSHIP_MANIFEST_MISMATCH", len(fields) // 2
