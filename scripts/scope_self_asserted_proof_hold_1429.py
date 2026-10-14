@@ -13,6 +13,7 @@ import select
 import stat
 import sys
 import time
+from types import MappingProxyType
 from typing import Any
 
 MAX_STDIN_BYTES = 16 * 1024
@@ -30,14 +31,16 @@ LANES = frozenset({
     "installed_ingress",
 })
 RESULTS = frozenset({"pass", "fail", "queued", "cancelled", "unknown"})
-FALSE_FLAGS = {
+# Do not let in-process callers accidentally mutate the permission denial
+# dictionary or add/remove release authority fields from a HOLD receipt.
+FALSE_FLAGS = MappingProxyType({
     "authorized": False,
     "permit": False,
     "dispatch": False,
     "merge": False,
     "deploy": False,
     "release": False,
-}
+})
 
 
 class RejectedClaim(ValueError):
