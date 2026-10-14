@@ -24,8 +24,12 @@ _FLAGS = (
 # Installed automatically by Python before the actual CLI imports anything.
 # Hook BOTH public socket wrappers and the direct _socket C-extension symbol.
 _TRIPWIRE = """import _socket
+import builtins
+import io
 import os
+import pathlib
 import socket
+import sqlite3
 import subprocess
 
 def forbidden(*args, **kwargs):
@@ -45,6 +49,63 @@ for name in ("fork", "forkpty", "spawnv", "spawnve", "spawnvp",
              "posix_spawn", "posix_spawnp"):
     if hasattr(os, name):
         setattr(os, name, forbidden)
+
+# Catch attempts, even if application code swallows BaseException. Ordinary
+# read-only file opens remain available for local manifest inspection.
+_real_open = builtins.open
+_real_io_open = io.open
+_real_path_open = pathlib.Path.open
+_real_os_open = os.open
+_real_fdopen = os.fdopen
+
+def _read_only_mode(mode):
+    return type(mode) is str and not any(c in mode for c in "wax+")
+
+def checked_open(path, mode="r", *args, **kwargs):
+    if not _read_only_mode(mode):
+        forbidden()
+    return _real_open(path, mode, *args, **kwargs)
+
+def checked_io_open(path, mode="r", *args, **kwargs):
+    if not _read_only_mode(mode):
+        forbidden()
+    return _real_io_open(path, mode, *args, **kwargs)
+
+def checked_path_open(path, mode="r", *args, **kwargs):
+    if not _read_only_mode(mode):
+        forbidden()
+    return _real_path_open(path, mode, *args, **kwargs)
+
+def checked_os_open(path, flags, *args, **kwargs):
+    deny_mask = (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC
+                 | os.O_APPEND | os.O_EXCL | getattr(os, "O_TMPFILE", 0))
+    if type(flags) is not int or flags & deny_mask:
+        forbidden()
+    return _real_os_open(path, flags, *args, **kwargs)
+
+def checked_fdopen(fd, mode="r", *args, **kwargs):
+    if not _read_only_mode(mode):
+        forbidden()
+    return _real_fdopen(fd, mode, *args, **kwargs)
+
+builtins.open = checked_open
+io.open = checked_io_open
+pathlib.Path.open = checked_path_open
+os.open = checked_os_open
+os.fdopen = checked_fdopen
+for name in ("write_text", "write_bytes", "touch", "mkdir",
+             "rename", "replace", "unlink", "rmdir", "symlink_to",
+             "hardlink_to", "chmod", "lchmod"):
+    if hasattr(pathlib.Path, name):
+        setattr(pathlib.Path, name, forbidden)
+for name in ("mkdir", "makedirs", "rename", "replace", "remove",
+             "unlink", "rmdir", "removedirs", "symlink", "link",
+             "chmod", "chown", "fchmod", "fchown", "ftruncate",
+             "truncate"):
+    if hasattr(os, name):
+        setattr(os, name, forbidden)
+sqlite3.connect = forbidden
+sqlite3.dbapi2.connect = forbidden
 """
 
 
@@ -202,6 +263,43 @@ class OfflineReviewCliSocketFleetTests(unittest.TestCase):
             with self.subTest(statement=statement):
                 program = (
                     "import os, subprocess\n"
+                    "try:\n"
+                    f"    {statement}\n"
+                    "except BaseException:\n"
+                    "    pass\n"
+                    "print('UNEXPECTED_EXECUTION')\n"
+                )
+                proc = subprocess.run(
+                    [sys.executable, "-B", "-c", program], cwd=self.root,
+                    env=self.env, capture_output=True, check=False, timeout=15,
+                )
+                self.assertEqual(proc.returncode, 92, statement)
+                self.assertEqual(proc.stdout, b"")
+                self.assertEqual(proc.stderr, b"")
+                self.assertEqual(self.fingerprint(), before)
+
+
+    def test_uncatchable_filesystem_and_sqlite_mutation_tripwires(self):
+        # Each operation is intercepted pre-import, before actual mutation,
+        # while the injected child catches BaseException and would fake success
+        # under a catchable-only tripwire.
+        variants = (
+            'open("synthetic.marker", "w").write("secret")',
+            'io.open("synthetic.marker", "a").write("secret")',
+            'pathlib.Path("synthetic.marker").open("w").write("secret")',
+            'pathlib.Path("synthetic.marker").write_text("secret")',
+            'pathlib.Path("synthetic.marker").touch()',
+            'os.open("synthetic.marker", os.O_CREAT | os.O_WRONLY, 0o600)',
+            'os.rename("absent-old", "absent-new")',
+            'os.unlink("absent-file")',
+            'sqlite3.connect("candidate.sqlite")',
+            'sqlite3.dbapi2.connect("candidate.sqlite")',
+        )
+        before = self.fingerprint()
+        for statement in variants:
+            with self.subTest(statement=statement):
+                program = (
+                    "import io, os, pathlib, sqlite3\n"
                     "try:\n"
                     f"    {statement}\n"
                     "except BaseException:\n"
