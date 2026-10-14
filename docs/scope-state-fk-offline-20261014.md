@@ -33,11 +33,12 @@ This covers **both** high-level application behavior and an independent raw SQLi
 
 - All checks pass: `REVIEW_ONLY`, exit 0.
 - Any check fails: `HOLD`, exit 2.
+- Any non-empty CLI arguments, including a database path or target URL: `HOLD` + fixed `UNSUPPORTED_ARGUMENTS` with no file opens and no echoed arguments; exit 2. The CLI intentionally has **no customer-DB or target mode**.
 - Any unexpected error: `HOLD` + fixed `PROBE_UNAVAILABLE` without traceback, file path, record or exception detail; exit 2.
 - Every receipt fixes `authorization_verified`, `permit_issued`, `execution_enabled`, `merge_approved` and `release_approved` to **false**.
 - `REVIEW_ONLY` is strictly a *synthetic local diagnostic*; it is **not trusted proof of runtime authorization, release readiness, or future safety**.
 
-16 unittest methods run genuine temporary SQLite fixtures: positive enforcement, deliberately disabled FKs, split app-vs-SQL controls, independently denied evidence/lease, altered run mode/target, evidence digest/metadata tampering, missing lease row, ephemeral cleanup, opaque failures, bounded receipt shape and non-authority flags. The source-owner production fix can turn HOLD into REVIEW_ONLY without rewriting tests to expect perpetual failure.
+18 unittest methods run genuine temporary SQLite fixtures: positive enforcement, deliberately disabled FKs, split app-vs-SQL controls, independently denied evidence/lease, altered run mode/target, evidence digest/metadata tampering, missing lease row, ephemeral cleanup, explicit denial of external database/target CLI arguments, opaque failures, bounded receipt shape and non-authority flags. The source-owner production fix can turn HOLD into REVIEW_ONLY without rewriting tests to expect perpetual failure.
 
 **Expected on main `05b80319cd0581fed21fe9d8f565bcb0a56cd2df`: HOLD** because `StateStore.connect()` does not enable FK on every opened connection; main cannot guarantee orphan denial or cascading cleanup.
 
