@@ -31,3 +31,59 @@ python -m unittest discover -s tests -p 'test_scope_grant_issuance_datetime_647_
 ```
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** No real assessment, deployment or scope grant is authorized by these checks.
+
+## W2 — working uninstalled issuance window snapshot (source owner unaffected)
+
+The new `src/lightup/grant_issuance_window_snapshot_647.py` contains the
+**actual usable, strictly pure** `snapshot_grant_issuance_window(start, end)`.
+It returns `CanonicalIssueWindow(starts_at_utc, expires_at_utc)` or raises
+a sanitized `WindowRejected` before invoking any untrusted datetime
+subclass serializer/comparison, `tzinfo` hook, SQLite writer or handler.
+It accepts only the exact builtin timezone-aware `datetime` type and
+exact builtin fixed-offset `datetime.timezone` class on **both** fields,
+normalizes safe instances to exact builtin UTC datetime values, and
+conservatively refuses invalid/empty/reversed windows and date overflow.
+No implicit now, consent, customer lookup, grant issuance, or active target
+exists in the new module.
+
+The test-owned **disposable SQLite** integration in
+`tests/test_scope_grant_issuance_window_snapshot_647.py` actually calls
+`DomainStore.record_authorization_grant` only after successful opt-in
+snapshot. It verifies normalized UTC values are what get persisted, and
+that polymorphic or invalid data is rejected BEFORE a real synthetic
+`authorization_grants` row can be created. This is a lab assertion in an
+ephemeral database, not a production write or a real authorization.
+
+Example, strictly fictional:
+
+```python
+from datetime import datetime, timedelta, timezone
+from lightup.grant_issuance_window_snapshot_647 import snapshot_grant_issuance_window
+
+now = datetime(2026, 10, 14, 12, tzinfo=timezone.utc)
+window = snapshot_grant_issuance_window(now, now + timedelta(minutes=10))
+assert type(window.starts_at_utc) is datetime
+assert window.expires_at_utc.tzinfo is timezone.utc
+```
+
+**Important:** this helper is **not installed or wired** into the existing
+`DomainStore.record_authorization_grant` production source owned by PR #554.
+It cannot fix already-persisted forged grant data, replace live revocation,
+validate tenant/client/capability/asset/approval, or issue a scan permit. The
+four expected-RED production-source tests remain genuinely unfixed until
+the owner adopts type validation at the real issuance boundary, normalizes
+the persisted values, and changes the REDs to ordinary green tests.
+
+```bash
+python -m unittest discover -s tests -p 'test_scope_grant_issuance_window_snapshot_647.py' -v
+```
+
+### Required source-owner integration
+
+Original #554 owner must call exact builtin checks on *every* production
+issuance path before any object-provided `isoformat` or database insertion;
+choosing to use this snapshot helper is a possible implementation detail,
+not implied authorization for this worker to edit owner files. Verify
+signed/tenant-bound consent and revocation separately. Run exact-head hosted
+Python3.11+3.14 plus real producer integrations and registered permanent
+VPS evidence before independent security/release review.
