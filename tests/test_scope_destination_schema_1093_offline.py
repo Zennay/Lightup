@@ -398,6 +398,69 @@ class ReviewTests(unittest.TestCase):
         sample["tools"][0]["parameters"][0]["role"] = Text("endpoint")
         self.assert_denied(review_schema(sample), "HOLD")
 
+    def test_polymorphic_field_name_aliases_hold_at_every_level(self):
+        # Type identity applies to dictionary keys, not just values. A str
+        # subclass compares equal to an official key, but is NOT a canonical
+        # JSON parser-created field name at this direct-Python API boundary.
+        class Alias(str):
+            pass
+
+        sample = fixture()
+        for depth in ("packet", "tool", "parameter"):
+            with self.subTest(depth=depth):
+                payload = fixture()
+                if depth == "packet":
+                    payload = {Alias("tools"): payload["tools"]}
+                elif depth == "tool":
+                    tool = payload["tools"][0]
+                    tool[Alias("tool_id")] = tool.pop("tool_id")
+                else:
+                    param = payload["tools"][1]["parameters"][0]
+                    param[Alias("name")] = param.pop("name")
+                self.assert_denied(review_schema(payload), "HOLD")
+        # Canonical built-in strings still work; this additional API guard
+        # cannot accidentally deny real JSON decoded by the strict reader.
+        self.assert_denied(review_schema(sample), "REVIEW_ONLY")
+        self.assert_denied(review_bytes(encoded(sample)), "REVIEW_ONLY")
+
+    def test_poisoned_key_hash_never_invoked_during_field_validation(self):
+        # If a future refactor calls set(mapping) before checking exact key
+        # identity, an attacker-supplied string subclass gets a code path.
+        class UntrustedKey(str):
+            armed = False
+
+            def __hash__(self):
+                if self.armed:
+                    raise AssertionError("untrusted key rehashed")
+                return str.__hash__(self)
+
+            def __eq__(self, other):
+                if self.armed:
+                    raise AssertionError("untrusted key compared")
+                return str.__eq__(self, other)
+
+        for depth in ("packet", "tool", "parameter", "receipt"):
+            with self.subTest(depth=depth):
+                name = {"packet": "tools", "tool": "parameters",
+                        "parameter": "required", "receipt": "status"}[depth]
+                key = UntrustedKey(name)
+                sample = fixture()
+                if depth == "packet":
+                    container = sample
+                elif depth == "tool":
+                    container = sample["tools"][0]
+                elif depth == "parameter":
+                    container = sample["tools"][0]["parameters"][0]
+                else:
+                    container = review_schema(sample)
+                value = container.pop(name)
+                container[key] = value  # insertion precedes arming
+                key.armed = True
+                if depth == "receipt":
+                    self.assertIsNone(_seal_receipt(container))
+                else:
+                    self.assert_denied(review_schema(sample), "HOLD")
+
     def test_max_structural_cardinality(self):
         data = fixture()["tools"][0]
         many = {"tools": [{"tool_id": "tool_" + str(i), "parameters":
