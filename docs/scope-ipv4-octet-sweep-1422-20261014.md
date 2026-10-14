@@ -33,3 +33,8 @@ Only the following **three newly owned paths** may change in this PR: this docum
 - The independently defined expected class accepts only `::1` as IPv6 loopback and `fc00::/7` as IPv6 ULA candidate while private-lab is enabled. Documentation, global, link-local, multicast, unspecified and transition address classes cannot be admitted as lab by a generic non-global predicate.
 - All bracketed target authority values must normalize to the exact canonical unbracketed IPv6 literal without relabeling a denied host. The synthetic strict oracle was extended to evaluate IPv6 directly via explicit address networks, not production's `is_private` heuristic.
 - This adds **no production wiring, authority, network I/O or deployed behavior**; the installed-policy RED canary remains deliberately RED pending source-owner repair.
+
+## W46 — fresh, tamper-resistant non-authority receipt composition
+The five authorization, permit, execution, merge and release flags are now constructed as **fresh literal `False` values on every new result**. No module-global mutable flag dictionary is reused. An independent regression mutates all five fields of a prior synthetic REVIEW_ONLY result and verifies that both later REVIEW_ONLY and HOLD receipts remain exactly false. This prevents a previously returned advisory diagnostic from contaminating a later receipt; it does not turn a receipt into authenticated authority, prevent hostile code inside the same Python process, or provide an OS sandbox.
+
+Hosted CI results from W45 are superseded by the new exact HEAD and must not be reused to claim green W46; permanent registered VPS proof remains separate.
