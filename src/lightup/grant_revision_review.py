@@ -58,7 +58,7 @@ def _tokens(values: object, *, allow_empty: bool = False) -> frozenset[str] | No
                     return None
             except ValueError:
                 return None
-        elif ":" in value or fullmatch(r"(?:0x[0-9a-f]+|[0-9]+)(?:\\.(?:0x[0-9a-f]+|[0-9]+))*", value) is not None:
+        elif ":" in value or fullmatch(r"(?:0x[0-9a-f]+|[0-9]+)(?:\.(?:0x[0-9a-f]+|[0-9]+))*", value) is not None:
             try:
                 if str(ip_address(value)) != value:
                     return None
