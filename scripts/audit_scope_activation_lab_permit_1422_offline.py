@@ -5,10 +5,16 @@ This MUST NOT be used as a scan, permission, grant, merge or release gate.
 """
 from __future__ import annotations
 
+import builtins
+from datetime import datetime
 import json
+import os
 import socket
+import sqlite3
+import subprocess
 import sys
 from pathlib import Path
+from types import MappingProxyType
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -31,18 +37,18 @@ NOT_LAB = (
 CAPABILITY = "synthetic_reference_only"
 SYNTHETIC_PERMIT_ID = "NO_REAL_PERMIT"
 
-_DENIED = {
+_DENIED = MappingProxyType({
     "authorization_verified": False,
     "permit_issued": False,
     "execution_enabled": False,
     "scan_allowed": False,
     "merge_approved": False,
     "release_approved": False,
-}
+})
 
 
 def _unexpected_io(*_args: object, **_kwargs: object) -> None:
-    raise RuntimeError("scope activation audit attempted network I/O")
+    raise RuntimeError("scope activation audit attempted prohibited Python I/O")
 
 
 def audit() -> dict[str, object]:
@@ -67,12 +73,20 @@ def audit() -> dict[str, object]:
             ScopePolicy(allow_private_lab=True),
             ActivationPolicy(mode=ActivationMode.PLAN_ONLY),
         )
-        # Block accidental resolver/connection use as an extra synthetic guard.
+        # Defense-in-depth for this synthetic Python process (NOT an OS sandbox).
+        # All first-party modules are imported before the temporary I/O guards.
         with (
             patch("lightup.activation.token_urlsafe", return_value=SYNTHETIC_PERMIT_ID),
             patch.object(socket, "socket", side_effect=_unexpected_io),
             patch.object(socket, "getaddrinfo", side_effect=_unexpected_io),
             patch.object(socket, "gethostbyname", side_effect=_unexpected_io),
+            patch.object(builtins, "open", side_effect=_unexpected_io),
+            patch.object(Path, "open", side_effect=_unexpected_io),
+            patch.object(os, "open", side_effect=_unexpected_io),
+            patch.object(os, "write", side_effect=_unexpected_io),
+            patch.object(os, "system", side_effect=_unexpected_io),
+            patch.object(sqlite3, "connect", side_effect=_unexpected_io),
+            patch.object(subprocess, "Popen", side_effect=_unexpected_io),
         ):
             for literal in SAFE_LAB + NOT_LAB:
                 checked += 1
@@ -90,7 +104,15 @@ def audit() -> dict[str, object]:
                         or type(permit) is not ExecutionPermit
                         or permit.mode is not ActivationMode.LAB_ONLY
                         or permit.permit_id != SYNTHETIC_PERMIT_ID
+                        or type(permit.capability_id) is not str
                         or permit.capability_id != CAPABILITY
+                        or type(permit.target) is not str
+                        or permit.target != (literal[1:-1] if literal.startswith("[") else literal)
+                        or type(permit.activation_reference) is not str
+                        or permit.activation_reference != "LAB"
+                        or type(permit.issued_at) is not datetime
+                        or permit.issued_at.tzinfo is None
+                        or permit.issued_at.utcoffset() is None
                     ):
                         violations += 1
 
