@@ -910,5 +910,28 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
 
+
+    def test_88_encoded_combining_and_unicode_separator_confusables_denied(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        for path in ("e%CC%81", "%CC%81", "%E2%80%A8", "%E2%80%A9",
+                     "%C2%A0", "%EF%B8%8F", "%EE%80%80"):
+            with self.subTest(path=path):
+                self.refused(lambda suffix=path: m.review(
+                    {"url": "https://localhost/" + suffix}))
+        self.assertEqual(self.calls, [])
+
+    def test_89_canonical_nfc_visible_unicode_utf8_still_hold(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        for path in ("%C3%A9", "%E2%82%AC", "%F0%9F%94%92"):
+            with self.subTest(path=path):
+                result = m.review({"url": "https://localhost/" + path})
+                self.assertEqual(result.status, "hold")
+                self.assertIs(result.authorization_verified, False)
+                self.assertIs(result.permit_issued, False)
+        self.assertEqual(self.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
