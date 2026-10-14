@@ -69,7 +69,8 @@ def review_batch_json(raw: object) -> tuple[str, int]:
 def main(argv: list[str] | None = None) -> int:
     arguments = sys.argv[1:] if argv is None else argv
     status, count = "HOLD", 0
-    if (type(arguments) is list and len(arguments) == 1\n            and type(arguments[0]) is str and arguments[0] == "--stdin-json"):
+    if (type(arguments) is list and len(arguments) == 1
+            and type(arguments[0]) is str and arguments[0] == "--stdin-json"):
         try:
             raw = sys.stdin.buffer.read(_MAX_INPUT_BYTES + 1)
             status, count = review_batch_json(raw)
