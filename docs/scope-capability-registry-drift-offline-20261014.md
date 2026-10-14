@@ -4,13 +4,13 @@ An **opt-in, offline developer review** to detect release-to-release changes to 
 
 ## Input
 
-Two regular local UTF-8 JSON manifests representing explicitly chosen baseline and candidate versions:
+Two regular local UTF-8 JSON manifests representing explicitly chosen baseline and candidate versions. Legacy three-field records remain readable, while current exporter records also bind the capability's human-readable name and description:
 
 ```json
-{"capabilities":[{"capability_id":"web-baseline","state":"planning","requires_explicit_activation":true}]}
+{"capabilities":[{"capability_id":"web-baseline","state":"planning","requires_explicit_activation":true,"name":"Web baseline","description":"HTTP/TLS configuration review"}]}
 ```
 
-Each manifest is bounded to 32 KiB / 128 distinct canonical ASCII IDs. All three fields are required; unknown keys, duplicate JSON keys or IDs, weird numeric bools, invalid state names and nonregular/symlinked files fail closed. Order does not affect canonical SHA-256 metadata fingerprints. The metadata baseline is chosen by the human reviewer; the tool **does not prove repository, manifest, author or grant provenance**.
+Each manifest is bounded to 32 KiB / 128 distinct canonical ASCII IDs. Exactly the three legacy or five current fields are required; partial metadata is refused. Names and descriptions must be nonblank bounded NFC Unicode without hidden control/formatting characters; descriptions are included in the canonical fingerprint and must trigger HOLD on semantic change, including upgrade from a legacy manifest. Quoted braces/brackets do not count toward structural nesting.  unknown keys, duplicate JSON keys or IDs, weird numeric bools, invalid state names and nonregular/symlinked files fail closed. Order does not affect canonical SHA-256 metadata fingerprints. The metadata baseline is chosen by the human reviewer; the tool **does not prove repository, manifest, author or grant provenance**.
 
 Run: `python3 scripts/review_scope_capability_registry_offline.py BASELINE.json CANDIDATE.json`.
 
@@ -18,9 +18,9 @@ Run: `python3 scripts/review_scope_capability_registry_offline.py BASELINE.json 
 
 ## Generate the current local candidate
 
-The optional `python3 scripts/export_scope_capability_registry_offline.py > CANDIDATE.json` serializes **actual local** `get_capabilities()` metadata using strict builtin model and enum identity. It rejects duplicate/noncanonical IDs, non-builtin boolean flags and malformed registries, then writes only the strict manifest JSON to stdout. The exporter deliberately exits **3 even on successful export**, or **2 for invalid data**; its successful shell exit is not zero. Compare a separately saved trusted, human-selected baseline against the newly generated candidate, rather than a copy against itself. Output provenance depends entirely on the checkout and reviewer: the exporter does **not** attest the repository commit or grant authority.
+The optional `python3 scripts/export_scope_capability_registry_offline.py > CANDIDATE.json` serializes **actual local** `get_capabilities()` metadata using strict builtin model, enum, boolean, name and description identity. It rejects duplicate/noncanonical IDs, non-builtin boolean flags and malformed registries, then writes only the strict manifest JSON to stdout. The exporter deliberately exits **3 even on successful export**, or **2 for invalid data**; its successful shell exit is not zero. Compare a separately saved trusted, human-selected baseline against the newly generated candidate, rather than a copy against itself. Output provenance depends entirely on the checkout and reviewer: the exporter does **not** attest the repository commit or grant authority.
 
-The 12 original reviewer regressions and a further 12 real in-repository registry exporter regressions cover field identity, metadata drift, unsafe input, canonical ordering and CLI safety; hosted 3.11/3.14 and permanent registered VPS evidence must be gathered per final SHA.
+The original reviewer regressions, 12 in-repository registry exporter regressions and 17 semantic name/description regressions cover field identity, metadata drift, unsafe input, canonical ordering and CLI safety; hosted 3.11/3.14 and permanent registered VPS evidence must be gathered per final SHA.
 
 ## What still requires independent checks
 
