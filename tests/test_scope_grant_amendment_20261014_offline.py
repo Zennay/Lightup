@@ -560,6 +560,125 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
             with self.subTest(argument=bad):
                 self.assertEqual(reviewer.main(bad), 2)
 
+    def test_live_model_membership_agrees_with_synthetic_narrowing(self):
+        # Real production model constructors/decision *predicates*, but no
+        # real grant issuance, persistence, executor, handler or target I/O.
+        from datetime import datetime, timezone
+        from lightup.engagements import AuthorizationGrant, RiskLevel, ScopeDefinition
+
+        packet = fixture()
+        packet["after"]["assets"] = ["lab-a.example"]
+        packet["after"]["capabilities"] = ["tls_baseline"]
+        packet["after"]["excluded_assets"] = ["lab-b.example", "lab-a.example"]
+        packet["after"]["max_risk"] = 1
+        packet["after"]["valid_from"] = "2026-10-14T06:00:00Z"
+        packet["after"]["valid_until"] = "2026-10-14T09:00:00Z"
+        self.assertEqual(reviewer.review(encode(packet))[1], 3)
+
+        def to_grant(d):
+            start = datetime.fromisoformat(d["valid_from"].replace("Z", "+00:00"))
+            end = datetime.fromisoformat(d["valid_until"].replace("Z", "+00:00"))
+            return AuthorizationGrant(
+                grant_id=d["grant_id"], client_id=d["client_id"],
+                engagement_id=d["engagement_id"], approved_by=d["approved_by"],
+                reference=d["reference"],
+                scope=ScopeDefinition(
+                    assets=tuple(d["assets"]), excluded_assets=tuple(d["excluded_assets"]),
+                    allowed_capabilities=tuple(d["capabilities"]),
+                    max_risk=RiskLevel(d["max_risk"]),
+                ),
+                valid_from=start, valid_until=end,
+                recurring_retest_allowed=d["recurring_retest_allowed"],
+            )
+        old = to_grant(packet["before"])
+        new = to_grant(packet["after"])
+        evaluation = datetime(2026, 10, 14, 7, 0, tzinfo=timezone.utc)
+        self.assertTrue(old.is_current(evaluation))
+        self.assertTrue(new.is_current(evaluation))
+        for asset in ("lab-a.example", "lab-b.example", "unlisted.example"):
+            self.assertFalse(
+                new.scope.allows_asset(asset) and not old.scope.allows_asset(asset),
+                msg="canonical synthetic narrowed asset unexpectedly gained real-model permission",
+            )
+        for capability in ("tls_baseline", "http_headers", "unknown"):
+            self.assertFalse(
+                new.scope.allows_capability(capability)
+                and not old.scope.allows_capability(capability),
+            )
+        self.assertLessEqual(new.scope.max_risk, old.scope.max_risk)
+        self.assertLessEqual(old.valid_from, new.valid_from)
+        self.assertLessEqual(new.valid_until, old.valid_until)
+
+    def test_input_silent_mode_setter_failure_refuses_review_bytes(self):
+        class Stdin:
+            def fileno(self):
+                return 0
+        original = SimpleNamespace(st_mode=stat.S_IFIFO, st_dev=2, st_ino=7, st_size=0)
+        with patch.object(reviewer.sys, "stdin", Stdin()), \
+             patch.object(reviewer.os, "fstat", side_effect=[original, original]), \
+             patch.object(reviewer.os, "get_blocking", side_effect=[True, False]), \
+             patch.object(reviewer.os, "set_blocking") as setter, \
+             patch.object(reviewer.select, "select", return_value=([0], [], [])), \
+             patch.object(reviewer.os, "read", side_effect=[b"{}", b""]):
+            self.assertEqual(reviewer._bounded_stdin(), b"")
+        self.assertEqual(setter.call_count, 2)
+
+    def test_output_silent_mode_setter_failure_refuses_receipt(self):
+        class Stdout:
+            def fileno(self):
+                return 1
+        sink = SimpleNamespace(st_mode=stat.S_IFIFO, st_dev=2, st_ino=7)
+        receipt, _ = reviewer.review(encode(fixture()))
+        with patch.object(reviewer.sys, "stdout", Stdout()), \
+             patch.object(reviewer.os, "fstat", return_value=sink), \
+             patch.object(reviewer.os, "get_blocking", side_effect=[True, False]), \
+             patch.object(reviewer.os, "set_blocking") as setter, \
+             patch.object(reviewer.select, "select", return_value=([], [1], [])), \
+             patch.object(reviewer.os, "write", side_effect=lambda _, data: len(data)):
+            self.assertFalse(reviewer._emit_receipt(receipt))
+        self.assertEqual(setter.call_count, 2)
+
+    def test_stdout_changed_device_or_inode_cannot_receive_receipt(self):
+        class Stdout:
+            def fileno(self):
+                return 1
+        before = SimpleNamespace(st_mode=stat.S_IFIFO, st_dev=2, st_ino=7)
+        for dimension in ("st_dev", "st_ino", "st_mode"):
+            after = SimpleNamespace(**vars(before))
+            setattr(after, dimension, (
+                stat.S_IFSOCK if dimension == "st_mode"
+                else getattr(after, dimension) + 1
+            ))
+            receipt, _ = reviewer.review(encode(fixture()))
+            with self.subTest(dimension=dimension):
+                with patch.object(reviewer.sys, "stdout", Stdout()), \
+                     patch.object(reviewer.os, "fstat", side_effect=[before, after]), \
+                     patch.object(reviewer.os, "get_blocking", return_value=True), \
+                     patch.object(reviewer.os, "set_blocking"), \
+                     patch.object(reviewer.select, "select", return_value=([], [1], [])), \
+                     patch.object(reviewer.os, "write") as writer:
+                    self.assertFalse(reviewer._emit_receipt(receipt))
+                writer.assert_not_called()
+
+    def test_stdout_unchanged_identity_still_emits_only_sealed_receipt(self):
+        class Stdout:
+            def fileno(self):
+                return 1
+        sink = SimpleNamespace(st_mode=stat.S_IFIFO, st_dev=2, st_ino=7)
+        receipt, _ = reviewer.review(encode(fixture()))
+        wire: list[bytes] = []
+        def send(_fd, data):
+            wire.append(bytes(data))
+            return len(data)
+        with patch.object(reviewer.sys, "stdout", Stdout()), \
+             patch.object(reviewer.os, "fstat", return_value=sink), \
+             patch.object(reviewer.os, "get_blocking", return_value=True), \
+             patch.object(reviewer.os, "set_blocking"), \
+             patch.object(reviewer.select, "select", return_value=([], [1], [])), \
+             patch.object(reviewer.os, "write", side_effect=send):
+            self.assertTrue(reviewer._emit_receipt(receipt))
+        self.assertEqual(b"".join(wire), reviewer._seal_receipt(receipt))
+
     def test_cli_rejects_no_flag(self):
         result = subprocess.run(
             [sys.executable, "-B", str(SCRIPT)],
