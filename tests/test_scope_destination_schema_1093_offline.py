@@ -94,6 +94,82 @@ class ReviewTests(unittest.TestCase):
                 sample["tools"][0]["parameters"][0].update(role=role, kind=wrong_kind)
                 self.assert_denied(review_schema(sample), "HOLD")
 
+    def test_destination_role_grammar_all_four_valid_shapes(self):
+        endpoint = {"name": "url", "kind": "string", "role": "endpoint"}
+        host = {"name": "host", "kind": "string", "role": "host"}
+        port = {"name": "port", "kind": "integer", "role": "port"}
+        port_set = {"name": "ports", "kind": "string", "role": "port_set"}
+        metadata = {"name": "trace_id", "kind": "string", "role": "none"}
+        for params in ([endpoint], [host], [host, port], [host, port_set]):
+            for variant in (params, list(reversed(params)), params + [metadata]):
+                with self.subTest(roles=tuple(p["role"] for p in variant)):
+                    packet = {"tools": [{"tool_id": "shape_only",
+                                          "parameters": variant}]}
+                    original = encoded(packet)
+                    self.assert_denied(review_schema(packet), "REVIEW_ONLY")
+                    self.assert_denied(review_bytes(original), "REVIEW_ONLY")
+                    self.assertEqual(encoded(packet), original)
+
+    def test_destination_role_grammar_rejects_ambiguous_selectors_atomically(self):
+        def field(name, kind, role):
+            return {"name": name, "kind": kind, "role": role}
+
+        host = field("host", "string", "host")
+        port = field("port", "integer", "port")
+        ports = field("ports", "string", "port_set")
+        endpoint = field("url", "string", "endpoint")
+        metadata = field("note", "boolean", "none")
+        malformed = (
+            [port],
+            [ports],
+            [metadata],
+            [host, field("alternate_host", "string", "host")],
+            [endpoint, field("backup_url", "string", "endpoint")],
+            [host, endpoint],
+            [endpoint, port],
+            [endpoint, ports],
+            [host, port, ports],
+            [host, port, field("backup_port", "integer", "port")],
+            [host, ports, field("fallback_ports", "string", "port_set")],
+            [host, endpoint, port],
+            [port, ports],
+        )
+        valid = fixture()["tools"][0]
+        for bad in malformed:
+            with self.subTest(roles=tuple(p["role"] for p in bad)):
+                forged = {"tool_id": "ambiguous", "parameters": bad}
+                for tools in ([forged], [valid, forged], [forged, valid]):
+                    packet = {"tools": tools}
+                    baseline = encoded(packet)
+                    denied = review_schema(packet)
+                    self.assert_denied(denied, "HOLD")
+                    self.assertEqual(denied["claimed_tool_count"], 0)
+                    self.assertEqual(denied["claimed_parameter_count"], 0)
+                    self.assert_denied(review_bytes(baseline), "HOLD")
+                    self.assertEqual(encoded(packet), baseline)
+
+    def test_cli_bad_role_composition_refuses_to_echo_claims(self):
+        bad_shapes = (
+            [{"name": "port", "kind": "integer", "role": "port"}],
+            [{"name": "url", "kind": "string", "role": "endpoint"},
+             {"name": "ports", "kind": "string", "role": "port_set"}],
+            [{"name": "host", "kind": "string", "role": "host"},
+             {"name": "url", "kind": "string", "role": "endpoint"}],
+        )
+        for parameters in bad_shapes:
+            with self.subTest(roles=tuple(p["role"] for p in parameters)):
+                body = encoded({"tools": [
+                    {"tool_id": "synthetic_customer_secret_marker",
+                     "parameters": parameters}]})
+                process = subprocess.run(
+                    [sys.executable, str(SCRIPT), "--stdin-json"],
+                    input=body, capture_output=True, timeout=6)
+                self.assertEqual(process.returncode, 2)
+                self.assertFalse(process.stderr)
+                self.assertNotIn(b"synthetic_customer_secret_marker", process.stdout)
+                self.assertEqual(process.stdout.count(b"\\n"), 1)
+                self.assert_denied(json.loads(process.stdout), "HOLD")
+
     def test_reject_untrusted_structure(self):
         for change in (
             lambda v: v.update(approved=True),
@@ -173,8 +249,9 @@ class ReviewTests(unittest.TestCase):
         many["tools"].append(data)
         self.assert_denied(review_schema(many), "HOLD")
         many = {"tools": [{"tool_id": "one", "parameters":
-                 [{"name": "p_" + str(i), "kind": "string", "role": "host"}
-                  for i in range(16)]}]}
+                 [{"name": "host", "kind": "string", "role": "host"}]
+                 + [{"name": "p_" + str(i), "kind": "string", "role": "none"}
+                    for i in range(15)]}]}
         self.assert_denied(review_schema(many), "REVIEW_ONLY")
         many["tools"][0]["parameters"].append(data["parameters"][0])
         self.assert_denied(review_schema(many), "HOLD")
