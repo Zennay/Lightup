@@ -60,6 +60,14 @@ return a nonreflective HOLD without reading stdin.
 - `PLAN_ONLY` terminally rejects all sixteen fixtures.
 - CLI real subprocess exit/status/privacy contracts and source-error
   fail-closed behavior.
+- An in-process synthetic mint counter guards the **real token-creation
+  boundary**, not just the returned permit or final exception. LAB_ONLY
+  valid fixtures must mint exactly once; denied lab-scope fixtures,
+  disabled private-lab policy and PLAN_ONLY must mint **zero** even if
+  code creates a token before raising PermissionError. Three independent
+  synthetic mutation cases deliberately mint in deny paths or double-mint
+  a valid lab sample, and must increment HOLD violations. This does not
+  mint real grants or touch executable adapters.
 - Python-only defense-in-depth during audit: blocks ordinary
   `builtins.open`, `Path.open`, `os.open`, `os.write`, `os.system`,
   `sqlite3.connect`, `subprocess.Popen`, network socket creation and basic
