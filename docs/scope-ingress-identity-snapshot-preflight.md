@@ -274,3 +274,30 @@ negatieve (2/2 HOLD) controles voor de *tijdelijke Nginx→Python-stdlib*
 route. Dit blijft een ander executiepad dan de nog niet uitgevoerde
 Nginx→Gunicorn→LightUp fixture en is geen installed-config attestatie,
 geen CI/VPS-bewijs en geen toestemming voor scans of release.
+
+
+## W66: geen standaard Gunicorn-proxyvertrouwen in echte opt-in fixture
+
+Verdere review van de niet-geactiveerde localhost Nginx→Gunicorn→synthetische
+WSGI-proef wees op een daadwerkelijk open gat: de vorige Gunicorn CLI gebruikte
+de standaardinstellingen voor vertrouwde forwarded IP's en schemeheaders.
+Dat is ongeschikt als positief bewijs van een strikte ingress-grens.
+
+De fixture genereert daarom nu een **eigen tijdelijk Python-configbestand**
+voor uitsluitend haar eigen nieuwe Gunicorn-child, met expliciet
+`bind='127.0.0.1:<ephemeral>'`, `workers=1`, `worker_class='sync'`,
+`forwarded_allow_ips=''`, `secure_scheme_headers={}`, plus geen
+accesslogs. Gunicorn start met `--config <eigen-tempbestand>`; de globale
+omgeving blijft afgesloten van process hooks en `GUNICORN_CMD_ARGS`.
+Nieuwe tests eisen exact de zeven vertrouwde instellingen en weigeren
+publieke/lage/ongeldige poorten en andere defaults. De mock-orkestratie
+controleert dat het eigen configuratiepad werkelijk naar de nieuwe
+Gunicorn-child wordt doorgegeven. Er is nog niets aan het bestaande
+`deploy/gunicorn.conf.py` of de productieapp gewijzigd.
+
+**Status:** deze aanvullende Gunicorn-grens is code + tests, **nog geen
+bewijs dat echte Gunicorn-binaries op localhost hebben gedraaid**.
+De werkelijk uitgevoerde twintig Nginx-only HTTP-tests en drie negatieve
+mutanten blijven een aparte, smallere bewijslijn. De echte LightUp-app en
+permanent geregistreerde VPS-runner zijn niet gevalideerd. Nog steeds
+PLAN/LAB ONLY · DRAFT/HOLD, zonder autorisatie, merge, deploy of scans.
