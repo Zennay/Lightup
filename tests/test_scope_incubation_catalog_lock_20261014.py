@@ -10,7 +10,7 @@ from pathlib import Path
 
 from lightup.capabilities import Capability, CapabilityState, get_capabilities
 from lightup.capability_registry_incubation_catalog_review import (
-    _EXPECTED, review_incubation_catalog,
+    _EXPECTED, _REVIEWED_SEMANTIC_FINGERPRINT, review_incubation_catalog,
 )
 from scripts.export_scope_capability_registry_offline import snapshot_manifest
 
@@ -152,6 +152,40 @@ class ClosedWorldIncubationCatalogTests(unittest.TestCase):
         receipt = json.dumps(result.as_dict())
         self.assertNotIn("Secret fixture marker", receipt)
         self.assertIn("web-baseline", receipt)
+
+    def test_reviewed_semantic_fingerprint_matches_full_current_registry(self):
+        result = review_incubation_catalog(self.raw)
+        self.assertEqual(result.metadata_fingerprint, _REVIEWED_SEMANTIC_FINGERPRINT)
+        self.assertEqual(result.reason, "incubation_catalog_metadata_only")
+        self.check_no_authority(result)
+
+    def test_description_only_change_now_holds(self):
+        altered = self.modify("web-baseline", description="Synthetic changed description")
+        result = review_incubation_catalog(altered)
+        self.assertEqual(result.status, "HOLD")
+        self.assertEqual(result.reason, "semantic_metadata_differs_from_reviewed_reference")
+        self.assertEqual(result.violations, ())
+        self.assertNotIn("Synthetic changed description", json.dumps(result.as_dict()))
+        self.check_no_authority(result)
+
+    def test_name_only_change_now_holds(self):
+        altered = self.modify("wireless-lab", name="Synthetic renamed wireless lab")
+        result = review_incubation_catalog(altered)
+        self.assertEqual(result.status, "HOLD")
+        self.assertEqual(result.reason, "semantic_metadata_differs_from_reviewed_reference")
+        self.assertEqual(result.violations, ())
+        self.assertNotIn("Synthetic renamed wireless lab", json.dumps(result.as_dict()))
+        self.check_no_authority(result)
+
+    def test_independent_valid_metadata_edits_do_not_cancel_each_other(self):
+        altered = tuple(replace(c, name="Other name") if c.capability_id == "web-baseline"
+                        else replace(c, description="Another description")
+                        if c.capability_id == "wireless-lab" else c
+                        for c in self.records)
+        result = review_incubation_catalog(snapshot_manifest(altered))
+        self.assertEqual(result.status, "HOLD")
+        self.assertEqual(result.reason, "semantic_metadata_differs_from_reviewed_reference")
+        self.check_no_authority(result)
 
     def test_review_receipt_is_frozen(self):
         result = review_incubation_catalog(self.raw)
