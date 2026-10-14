@@ -62,6 +62,23 @@ def _utc(value: object) -> datetime:
     return value.astimezone(timezone.utc)
 
 
+def _stored_utc(value: object) -> datetime:
+    """Read only the exact UTC instant encoding emitted by the local writer.
+
+    SQLite rows are not a trusted approval authority. Ambiguous aliases, values
+    from custom adapters and silently normalised datetimes must HOLD.
+    """
+    if type(value) is not str or not 20 <= len(value) <= 40:
+        raise CandidateHeld("candidate timestamp corrupted")
+    try:
+        value_dt = _utc(datetime.fromisoformat(value))
+    except (TypeError, ValueError, OverflowError, CandidateHeld):
+        raise CandidateHeld("candidate timestamp corrupted") from None
+    if value_dt.isoformat() != value:
+        raise CandidateHeld("noncanonical candidate timestamp")
+    return value_dt
+
+
 def _operator(gate: OperatorGate | None, actor: object, action: str) -> str:
     actor_id = _identity(actor)
     if action not in _ACTIONS or not callable(gate):
@@ -228,9 +245,18 @@ class LabApprovalCandidateLedger:
             for item in row[:8]:
                 _identity(item)
             dates = tuple(
-                None if item is None else _utc(datetime.fromisoformat(item))
+                None if item is None else _stored_utc(item)
                 for item in row[8:]
             )
+            issued, expiry, revoked = dates
+            # Check original issuance invariants again on *every* read.
+            # An actor with DB write access may be able to widen a stored row.
+            if (
+                issued >= expiry
+                or expiry - issued > MAX_WINDOW
+                or (revoked is not None and revoked < issued)
+            ):
+                raise CandidateHeld("candidate validity window corrupted")
             return LabApprovalCandidate(*row[:8], *dates)
         except (TypeError, ValueError, CandidateHeld):
             raise CandidateHeld("candidate record corrupted") from None
