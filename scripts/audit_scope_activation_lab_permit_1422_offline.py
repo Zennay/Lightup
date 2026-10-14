@@ -20,8 +20,8 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from lightup.activation import ActivationGate, ActivationMode, ActivationPolicy, ExecutionPermit
-from lightup.models import Target
-from lightup.scope import ScopePolicy
+from lightup.models import Authorization, Target
+from lightup.scope import ScopePolicy, ScopeReason
 
 # Unroutable synthetic inputs only. These are classification fixtures, not targets.
 SAFE_LAB = (
@@ -172,6 +172,73 @@ def audit() -> dict[str, object]:
                     denied = True
                 if (
                     not denied
+                    or synthetic_mints != before_mints
+                    or invalid_mint_requests != before_invalid_requests
+                ):
+                    violations += 1
+
+            # Four real-source explicit public scope decisions remain separate
+            # from LAB_ONLY. A policy that syntactically accepts a public
+            # host/network can never convert it into a lab permit.
+            synthetic_owner = Authorization(
+                owner="synthetic-only", reference="NON_AUTHORITATIVE"
+            )
+            public_cases = (
+                (
+                    ScopePolicy(
+                        allow_private_lab=False,
+                        explicit_hosts=frozenset({"consented.example.test"}),
+                    ),
+                    Target("consented.example.test", authorization=synthetic_owner),
+                    ScopeReason.EXPLICIT_HOST,
+                ),
+                (
+                    ScopePolicy(
+                        allow_private_lab=False,
+                        explicit_networks=("192.0.2.0/24",),
+                    ),
+                    Target("192.0.2.42", authorization=synthetic_owner),
+                    ScopeReason.EXPLICIT_NETWORK,
+                ),
+                (
+                    ScopePolicy(
+                        allow_private_lab=False,
+                        require_authorization_for_public=False,
+                        explicit_hosts=frozenset({"unconsented.example.test"}),
+                    ),
+                    Target("unconsented.example.test"),
+                    ScopeReason.EXPLICIT_HOST,
+                ),
+                (
+                    ScopePolicy(
+                        allow_private_lab=False,
+                        require_authorization_for_public=False,
+                        explicit_networks=("198.51.100.0/24",),
+                    ),
+                    Target("198.51.100.42"),
+                    ScopeReason.EXPLICIT_NETWORK,
+                ),
+            )
+            for public_policy, public_target, expected_reason in public_cases:
+                checked += 1
+                scope_result = public_policy.decide(public_target)
+                bad_scope = (
+                    not scope_result.allowed
+                    or scope_result.reason is not expected_reason
+                )
+                public_gate = ActivationGate(
+                    public_policy, ActivationPolicy(mode=ActivationMode.LAB_ONLY)
+                )
+                before_mints = synthetic_mints
+                before_invalid_requests = invalid_mint_requests
+                denied = False
+                try:
+                    public_gate.issue(public_target, CAPABILITY)
+                except PermissionError:
+                    denied = True
+                if (
+                    bad_scope
+                    or not denied
                     or synthetic_mints != before_mints
                     or invalid_mint_requests != before_invalid_requests
                 ):
