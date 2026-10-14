@@ -470,6 +470,33 @@ class SyntheticRealExecutorBatchTests(unittest.TestCase):
         self.assertEqual(self.calls, [])
         self.assertEqual(self.evidence_count(), before)
 
+    def test_post_preflight_object_setattr_tamper_cannot_change_real_synthetic_effect(self):
+        original = {"value": "safe"}
+        receipt = snapshot_exact_primitive_values(self.text, original)
+        self.assertEqual(self.evidence_count(), 0)
+        with self.assertRaises((AttributeError, TypeError)):
+            object.__setattr__(receipt, "items", (("value", StrSubclass("evil")),))
+        original["value"] = StrSubclass("evil")
+        self.assertEqual(receipt.as_arguments(), {"value": "safe"})
+        self.executor.execute(
+            self.context, ToolCall(self.text.tool_id, "synthetic.invalid",
+                                   arguments=receipt.items)
+        )
+        self.assertEqual(self.calls, [{"value": "safe"}])
+        self.assertEqual(self.evidence_count(), 1)
+
+    def test_forged_tuple_denied_before_real_synthetic_executor_effects(self):
+        forged = tuple.__new__(
+            PrimitiveValueSnapshot, ((("value", StrSubclass("evil")),),)
+        )
+        before = self.evidence_count()
+        with self.assertRaises(OrchestrationError):
+            forged.as_arguments()
+        with self.assertRaises(OrchestrationError):
+            PrimitiveBatchSnapshot((forged,))
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), before)
+
     def test_preflight_does_not_invoke_registry_handlers_or_policy(self):
         batch = snapshot_exact_primitive_batch(((self.text, {"value": "ok"}),))
         self.assertEqual(batch.count, 1)
