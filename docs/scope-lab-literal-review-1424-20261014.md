@@ -32,3 +32,8 @@ Run this on Python 3.11 and 3.14 **at the exact PR head**, plus the full suite a
 
 ## Ownership
 Four entirely new, self-contained paths (optional module, CLI, tests and handoff doc). Does not touch original `scope.py`, `activation.py`, tool executor, target parser [#1289](https://github.com/Zennay/Lightup/issues/1289), tenant CIDR [PR #1318](https://github.com/Zennay/Lightup/pull/1318), original [#1423](https://github.com/Zennay/Lightup/pull/1423) RED acceptance paths, any other worker, workflows, self-hosted runners, customer state, evidence or deployment.
+
+## W39 — conservative outer-network endpoint handling and independent integer oracle
+The single-literal reference now returns **HOLD** for the ambiguous *outer aggregate* network and directed-broadcast endpoints of 127/8, 10/8, 172.16/12 and 192.168/16; also for IPv6 ULA's all-zero `fc00::` network base. Neighboring ordinary literal candidates remain `REVIEW_ONLY`. This is intentionally more conservative than `ipaddress.is_private`, and **does not determine whether arbitrary CIDR-specific network or broadcast endpoints can be assigned**; only a separate reviewed network mask and actual authorization could do so.
+
+Two targeted tests cover the exact boundary and neighboring literals, and batch acceptance proves even one edge literal changes the entire list to HOLD. A separate `tests/test_scope_lab_literal_integer_oracle_1424.py` adds reproducible weighted IPv4/IPv6 samples at all key ranges using integer range math independent of `is_private` / `is_global`. It reasserts five literally false authority flags for every accepted or denied candidate on Python 3.11/3.14. All inputs are synthetic addresses interpreted in memory only, not contacted.
