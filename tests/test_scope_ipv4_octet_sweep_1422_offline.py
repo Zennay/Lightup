@@ -317,6 +317,31 @@ class OctetSweepTests(unittest.TestCase):
         self.assertEqual(receipt["diagnostic_code"], "ARGUMENT_REJECTED")
         self.assertNotIn("private-customer-secret.example", output.getvalue())
 
+    def test_final_ipv6_mismatch_classification_is_atomic_and_private(self):
+        final = IPv6Address("64:ff9b::255.0.0.1")
+        last_literal = f"[{final.compressed}]"
+
+        class LastHostSpoofPolicy(IndependentStrictPolicy):
+            decisions = 0
+
+            def decide(self, target):
+                type(self).decisions += 1
+                result = super().decide(target)
+                if not self.lab and target.value == last_literal:
+                    return ScopeDecision(
+                        result.allowed,
+                        "private-internal-target.invalid",
+                        result.reason,
+                    )
+                return result
+
+        result = review_ipv4_octet_sweep(LastHostSpoofPolicy)
+        self.assertEqual(LastHostSpoofPolicy.decisions, TOTAL_DECISIONS)
+        self.assert_non_authorizing(result, "HOLD")
+        self.assertEqual(result["diagnostic_code"], "HOST_IDENTITY_MISMATCH")
+        self.assertNotIn("private-internal-target", json.dumps(result))
+        self.assertEqual(result["checked_count"], 0)
+
     def test_receipt_flags_are_fresh_literals_after_external_tampering(self):
         first = review_ipv4_octet_sweep(IndependentStrictPolicy)
         first["authorization_verified"] = True
