@@ -295,18 +295,35 @@ def known_lab_destination_manifest(registry, definition):
     from .workers import http_baseline, tls_baseline, service_inventory
 
     trusted = (
-        (http_baseline.HTTP_BASELINE_TOOL,
-         (DestinationField("url", DestinationRole.ENDPOINT),)),
-        (tls_baseline.TLS_BASELINE_TOOL,
+        (http_baseline.HTTP_BASELINE_TOOL, "lab-http-baseline", "web-baseline",
+         ("url",), (DestinationField("url", DestinationRole.ENDPOINT),)),
+        (tls_baseline.TLS_BASELINE_TOOL, "lab-tls-baseline", "cryptography",
+         ("host", "port"),
          (DestinationField("host", DestinationRole.HOST),
           DestinationField("port", DestinationRole.PORT))),
-        (service_inventory.SERVICE_INVENTORY_TOOL,
+        (service_inventory.SERVICE_INVENTORY_TOOL, "lab-service-inventory", "network-services",
+         ("host", "ports"),
          (DestinationField("host", DestinationRole.HOST),
           DestinationField("ports", DestinationRole.PORT_SET))),
     )
-    for actual, role_fields in trusted:
+    for actual, expected_id, expected_capability, expected_parameters, role_fields in trusted:
         if definition is actual:
-            if definition.interaction is not InteractionKind.LAB_ACTIVE:
+            params = definition.parameters
+            # A module-global ToolDefinition reference may be rebound or mutated.
+            # Require the fixed built-in ID, capability, risk and entire schema,
+            # not merely the original module's current object pointer.
+            if (type(definition.tool_id) is not str
+                    or type(definition.capability_id) is not str
+                    or definition.tool_id != expected_id
+                    or definition.capability_id != expected_capability
+                    or definition.interaction is not InteractionKind.LAB_ACTIVE
+                    or definition.min_risk is not RiskLevel.LOW_IMPACT
+                    or type(params) is not tuple
+                    or len(params) != len(expected_parameters)
+                    or any(type(p) is not ToolParameter or type(p.name) is not str
+                           for p in params)):
+                _deny()
+            if tuple(p.name for p in params) != expected_parameters:
                 _deny()
             return TrustedDestinationManifest(registry, definition, role_fields)
     _deny()
