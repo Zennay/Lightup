@@ -24,3 +24,33 @@ python -m unittest discover -s tests -p 'test_scope_legacy_falsy_window_301*.py'
 ```
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY.** A positive `ScopePolicy` decision is merely a synthetic observation here. It does not certify genuine ownership, customer consent or a permit. No production deployment or real target assessment is authorized.
+
+## W2 real in-process ActivationGate boundary (new acceptance)
+
+`tests/test_scope_legacy_falsy_window_activation_red_301.py` adds
+**four additional expected-RED** original-source tests for the real
+`ActivationGate.issue()` **AUTHORIZED** path, with explicitly configured
+synthetic scope and a never-resolved `fixture.example.test` hostname.
+
+- A falsey invalid start/expiry (`False`, `0`) passes legacy
+  `Authorization.is_current()` truthiness checks in the real in-process
+  gate and can result in creation of a **fictional in-memory permit**.
+  This is a security regression witness, **not actual consent, a real
+  deploy/scan permit or any execution capability**.
+- Canonical future/expired UTC and PLAN_ONLY/LAB_ONLY negative controls
+  remain ordinary PASS, with no socket, DNS, target adapter, real
+  authorization, external state or customer interaction.
+- An ordinary integrity test reruns the four expected REDs under a
+  private unittest result and refuses masked errors or unexpected
+  successes. When the source owner fixes the defect, convert all four
+  expected REDs to normal passing tests; do not mistake a masked
+  failure or hosted green XFAIL for genuine safety.
+
+The original `ActivationGate` and legacy `Authorization` production
+files remain **unmodified**, including owner #100/#104. This adds
+synthetic acceptance to the already-owned #301 PR without overlapping
+another worker.
+
+```bash
+python -m unittest discover -s tests -p 'test_scope_legacy_falsy_window_activation_red_301.py' -v
+```
