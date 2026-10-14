@@ -181,6 +181,25 @@ class OctetSweepTests(unittest.TestCase):
                 review_ipv4_octet_sweep(UnsafeEmbeddedPolicy), "HOLD"
             )
 
+    def test_last_decision_in_off_mode_cannot_leave_partial_approval(self):
+        last_ipv6 = IPv6Address("64:ff9b::255.0.0.1")
+        last_literal = f"[{last_ipv6.compressed}]"
+
+        class LastDecisionUnsafePolicy(IndependentStrictPolicy):
+            calls = 0
+
+            def decide(self, target):
+                type(self).calls += 1
+                if not self.lab and target.value == last_literal:
+                    return ScopeDecision(
+                        True, last_ipv6.compressed, ScopeReason.PRIVATE_LAB
+                    )
+                return super().decide(target)
+
+        receipt = review_ipv4_octet_sweep(LastDecisionUnsafePolicy)
+        self.assertEqual(LastDecisionUnsafePolicy.calls, TOTAL_DECISIONS)
+        self.assert_non_authorizing(receipt, "HOLD")
+
     def test_receipt_flags_are_fresh_literals_after_external_tampering(self):
         first = review_ipv4_octet_sweep(IndependentStrictPolicy)
         first["authorization_verified"] = True
