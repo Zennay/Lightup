@@ -20,8 +20,11 @@ from audit_scope_installed_lab_policy_1422_offline import (
 
 
 class _FixturePolicy:
-    def __init__(self, *, allow_private_lab):
+    def __init__(self, *, allow_private_lab, require_authorization_for_public=True,
+                 explicit_networks=()):
         self.enabled = allow_private_lab
+        self.explicit = bool(explicit_networks)
+        self.requires_grant = require_authorization_for_public
 
     def decide(self, target):
         positive = {original: (canonical, reason) for original, canonical, reason in LAB}
@@ -33,6 +36,8 @@ class _FixturePolicy:
                 return ScopeDecision(True, host, ScopeReason.PRIVATE_LAB)
             return ScopeDecision(False, host, ScopeReason.OUT_OF_SCOPE)
         if target.value in NOT_LAB:
+            if self.explicit and self.requires_grant:
+                return ScopeDecision(False, "fictional", ScopeReason.AUTHORIZATION_MISSING)
             return ScopeDecision(False, "fictional", ScopeReason.OUT_OF_SCOPE)
         raise ValueError("unexpected fixture input")
 
@@ -76,6 +81,24 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
         receipt = audit_installed_scope(IncorrectPolicy)
         self.assert_never_authority(receipt)
         self.assertEqual(receipt["status"], "HOLD")
+
+    def test_explicit_all_networks_without_grant_must_never_grant(self):
+        class IncorrectPolicy(_FixturePolicy):
+            def decide(self, target):
+                if self.explicit and target.value == "8.8.8.8":
+                    return ScopeDecision(True, target.value, ScopeReason.EXPLICIT_NETWORK)
+                return super().decide(target)
+        receipt = audit_installed_scope(IncorrectPolicy)
+        self.assert_never_authority(receipt)
+        self.assertEqual(receipt["status"], "HOLD")
+
+    def test_false_denial_reason_for_missing_grant_holds(self):
+        class IncorrectPolicy(_FixturePolicy):
+            def decide(self, target):
+                if self.explicit and target.value in NOT_LAB:
+                    return ScopeDecision(False, target.value, ScopeReason.OUT_OF_SCOPE)
+                return super().decide(target)
+        self.assertEqual(audit_installed_scope(IncorrectPolicy)["status"], "HOLD")
 
     def test_wrong_ipv6_loopback_or_bad_normalization_holds(self):
         class IncorrectPolicy(_FixturePolicy):
@@ -143,8 +166,10 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
             "172.32.0.0", "192.167.255.255", "192.169.0.1",
             "126.255.255.255", "128.0.0.1",
             "[fbff:ffff::1]", "[fe00::1]",
+            "[::ffff:10.0.0.1]", "[::ffff:127.0.0.1]",
+            "[2002:c000:201::1]", "[2001:0::1]",
         }.issubset(NOT_LAB))
-        self.assertGreaterEqual(TOTAL_CHECKS, 80)
+        self.assertGreaterEqual(TOTAL_CHECKS, 120)
 
     def test_real_source_audit_performs_no_network_file_or_child_process(self):
         # Mocks MUST NOT be called: catching a forbidden IO exception and then
