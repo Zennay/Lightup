@@ -32,6 +32,23 @@ class LabLiteralReview:
     merge_approved: Literal[False] = False
     release_approved: Literal[False] = False
 
+    def __post_init__(self) -> None:
+        # Dataclass annotations are not runtime checks. Refuse constructed
+        # authority-looking receipts before any caller can observe them.
+        if type(self.status) is not str or self.status not in ("HOLD", "REVIEW_ONLY"):
+            raise ValueError("invalid review status")
+        if (type(self.classification) is not str or
+                self.classification not in ("UNTRUSTED", "LOOPBACK", "PRIVATE_USE")):
+            raise ValueError("invalid review classification")
+        if (self.status == "HOLD") != (self.classification == "UNTRUSTED"):
+            raise ValueError("inconsistent review-only classification")
+        for flag in (
+            self.authorization_verified, self.permit_issued,
+            self.execution_enabled, self.merge_approved, self.release_approved,
+        ):
+            if flag is not False:
+                raise ValueError("lab literal review cannot confer authority")
+
 
 _HOLD = LabLiteralReview()
 
