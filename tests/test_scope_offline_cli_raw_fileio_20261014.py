@@ -81,7 +81,7 @@ class OfflineScopeRawFileIOTests(unittest.TestCase):
                     "except BaseException:\n"
                     "    pass\n"
                     "print('FALSE_REVIEW_ONLY')\n"
-                ).replace("\\\n", "\n")
+                )
                 result = self.run_child(program)
                 self.assertEqual(result.returncode, 92, statement)
                 self.assertEqual(result.stdout, b"")
