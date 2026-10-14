@@ -5,8 +5,14 @@ Known unsafe current-source admissions are intentional expected failures.
 """
 from __future__ import annotations
 
+from dataclasses import replace
+from datetime import datetime
+import builtins
 import importlib.util
 import json
+import os
+import sqlite3
+import socket
 from pathlib import Path
 import subprocess
 import sys
@@ -148,6 +154,105 @@ class ActualActivationPermitChainRED(unittest.TestCase):
             for literal in ("[::ffff:192.0.2.1]", "[fe80::1]"):
                 with self.subTest(sample=literal), self.assertRaises(PermissionError):
                     gate.issue(Target(literal), "synthetic_reference_only")
+
+
+    def test_authority_receipt_flags_cannot_be_mutated_by_importers(self):
+        with self.assertRaises(TypeError):
+            AUDIT._DENIED["permit_issued"] = True
+        with self.assertRaises(TypeError):
+            AUDIT._DENIED["release_approved"] = True
+        receipt = AUDIT.audit()
+        for key in AUDIT._DENIED:
+            self.assertIs(receipt[key], False)
+        self.assertEqual(set(receipt), {
+            "status", "checked", "violations", *AUDIT._DENIED,
+        })
+        self.assertLessEqual(len(json.dumps(receipt, sort_keys=True).encode()), 256)
+
+    def test_permit_metadata_mutants_increase_violations_without_reflecting(self):
+        baseline = AUDIT.audit()
+        self.assertEqual(baseline["checked"], 46)
+        self.assertEqual(baseline["violations"], 10)
+        for field, replacement in (
+            ("target", "forged.example.invalid"),
+            ("activation_reference", "USER-CONTROLLED"),
+            ("capability_id", "different-synthetic-capability"),
+            ("issued_at", datetime(2026, 1, 1)),  # Naive timestamp
+        ):
+            with self.subTest(field=field):
+                class MutatedGate:
+                    def __init__(self, *args, **kwargs):
+                        self.original = ActivationGate(*args, **kwargs)
+
+                    def issue(self, target, capability):
+                        permit = self.original.issue(target, capability)
+                        if target.value in AUDIT.SAFE_LAB:
+                            return replace(permit, **{field: replacement})
+                        return permit
+
+                with patch.object(AUDIT, "ActivationGate", MutatedGate):
+                    receipt = AUDIT.audit()
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertEqual(receipt["checked"], 46)
+                self.assertEqual(
+                    receipt["violations"],
+                    baseline["violations"] + len(AUDIT.SAFE_LAB),
+                )
+                self.assertIs(receipt["permit_issued"], False)
+                self.assertIs(receipt["release_approved"], False)
+                self.assertNotIn(str(replacement), json.dumps(receipt))
+
+    def test_python_io_mutant_canaries_fail_closed_without_effects(self):
+        # All mutations use harmless local/synthetic arguments; a missing
+        # guard is detected as an untripped mock rather than used as proof.
+        attempts = (
+            ("file_read", lambda: builtins.open(__file__, "rb")),
+            ("path_read", lambda: Path(__file__).open("rb")),
+            ("fd_read", lambda: os.open(__file__, os.O_RDONLY)),
+            ("fd_write", lambda: os.write(-1, b"")),
+            ("shell", lambda: os.system("")),
+            ("sqlite", lambda: sqlite3.connect(":memory:")),
+            ("process", lambda: subprocess.Popen(["/__synthetic_nonexistent__/binary"])),
+            ("socket", lambda: socket.socket()),
+        )
+        for name, action in attempts:
+            with self.subTest(name=name):
+                class SideEffectGate:
+                    def __init__(self, *args, **kwargs):
+                        pass
+
+                    def issue(self, target, capability):
+                        action()
+                        raise AssertionError("guard missing")
+
+                with (
+                    patch.object(AUDIT, "ActivationGate", SideEffectGate),
+                    patch.object(
+                        AUDIT, "_unexpected_io",
+                        side_effect=RuntimeError("SENSITIVE-CANARY"),
+                    ) as tripped,
+                ):
+                    receipt = AUDIT.audit()
+                self.assertGreaterEqual(tripped.call_count, 1)
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertEqual(receipt["checked"], 0)
+                self.assertEqual(receipt["violations"], 1)
+                self.assertNotIn("SENSITIVE", json.dumps(receipt))
+                self.assertIs(receipt["execution_enabled"], False)
+
+    def test_io_guards_leave_process_environment_restored(self):
+        before_open = builtins.open
+        before_os_open = os.open
+        before_os_write = os.write
+        before_popen = subprocess.Popen
+        before_db = sqlite3.connect
+        receipt = AUDIT.audit()
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertIs(builtins.open, before_open)
+        self.assertIs(os.open, before_os_open)
+        self.assertIs(os.write, before_os_write)
+        self.assertIs(subprocess.Popen, before_popen)
+        self.assertIs(sqlite3.connect, before_db)
 
     def test_cli_single_fixed_receipt_no_literal_or_token_reflection(self):
         run = subprocess.run(
