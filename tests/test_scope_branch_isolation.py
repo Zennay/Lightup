@@ -248,5 +248,30 @@ class IsolationCheckTests(unittest.TestCase):
         self.assertEqual(inspect(self.repo, self.base, head, (path,), (peer,))[0],
                          "PEER_PATH_COLLISION")
 
+    def test_oversize_added_file_is_rejected_without_loading_blob(self):
+        path = "docs/scope-large-fixture.md"
+        self.write(path, "x" * (256 * 1024 + 1) + "\n")
+        head = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
+                         "ADDED_FILE_TOO_LARGE")
+
+    def test_invalid_utf8_new_file_is_rejected(self):
+        path = "tests/test_scope_invalid_bytes.py"
+        dest = self.repo / path
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(b"\xff\xfe\n")
+        head = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
+                         "NONCANONICAL_TEXT")
+
+    def test_nul_byte_in_new_file_is_rejected(self):
+        path = "tests/test_scope_binary.py"
+        dest = self.repo / path
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(b"synthetic\x00body\n")
+        head = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
+                         "NONCANONICAL_TEXT")
+
 if __name__ == "__main__":
     unittest.main()
