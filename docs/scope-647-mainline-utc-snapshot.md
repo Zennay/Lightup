@@ -63,3 +63,41 @@ capability, asset and risk enforcement remain independent release requirements.
 
 **Incubate / PLAN-LAB ONLY.** Source merge is not deployment, authorization,
 or permission to assess any real-world system.
+
+## W2 — genuine mainline disposable SQLite acceptance
+
+After integrating the pure UTC snapshot via [PR #1325](https://github.com/Zennay/Lightup/pull/1325),
+the **new** `tests/test_scope_647_mainline_sqlite_snapshot_integration.py`
+executes real `DomainStore.record_authorization_grant` calls in a private
+`TemporaryDirectory` fixture after, and only after, successful
+`snapshot_grant_issuance_window` admission. It is **not** a production
+source modification or real customer authorization.
+
+The tests verify that a canonical UTC or non-UTC fixed-offset input stores
+exactly the same safe UTC instant, including true raw SQLite `valid_from`
+and `valid_until` columns. Invalid or spoofed subclass fields are rejected
+before the original mutable/polymorphic source can invoke their `isoformat`
+hooks; no grant record is created. An existing valid fictional record
+survives a later invalid issuance attempt unchanged.
+
+A patched socket boundary asserts this never performs DNS/target/network
+I/O. All clients and grants are purely fictional under test-only SQLite.
+`FICTIONAL-NOT-CONSENT` is not a customer approval reference.
+
+```sh
+python -m unittest discover -s tests -p 'test_scope_647_mainline_sqlite_snapshot_integration.py' -v
+```
+
+### Remaining *real* enforcement gap
+
+The function remains **opt-in**. The installed production
+`DomainStore.record_authorization_grant` still accepts its original raw
+datetime inputs unless its caller deliberately invokes the new snapshot.
+The original durable authorization source owner #554 is responsible for
+failing closed at the actual runtime issuance boundary and validating
+stored grant lineage/consent/revocation. The six source RED regressions in
+its owner-dependent child PR #1324 remain unresolved until the real code
+is repaired and all six are converted to ordinary PASS.
+
+**Mainline unit/integration PASS is not permission to scan, issue real
+authorization, deploy or call the feature production-safe.**
