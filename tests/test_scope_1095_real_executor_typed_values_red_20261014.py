@@ -1,0 +1,227 @@
+"""Issue #1095: actual ToolExecutor typed-value admission (offline, intentionally RED).
+
+Only synthetic ANALYSIS_ONLY calls and disposable SQLite. No real target, network,
+authorization issuance or original registry/source modifications. The expected
+failures characterize current gaps; they are NOT passing security guarantees.
+"""
+from __future__ import annotations
+
+import tempfile
+import unittest
+from datetime import datetime, timezone
+from enum import IntEnum
+from pathlib import Path
+from uuid import uuid4
+
+from lightup.ai.orchestration import (
+    OrchestrationError, ParamKind, RunContext, ToolCall, ToolDefinition,
+    ToolExecutor, ToolOutput, ToolParameter, ToolRegistry,
+)
+from lightup.engagements import AssessmentMode, RiskLevel
+from lightup.execution_policy import InteractionKind
+from lightup.state import StateStore
+
+
+class SubclassText(str):
+    pass
+
+
+class SubclassInt(int):
+    pass
+
+
+class SubclassFloat(float):
+    pass
+
+
+class NumericEnum(IntEnum):
+    ONE = 1
+
+
+class PretendInteger:
+    def __int__(self):
+        raise AssertionError("type admission must never coerce values")
+
+
+class PrimitiveAdmissibilityTests(unittest.TestCase):
+    def test_exact_builtin_positive_controls(self):
+        for kind, values in (
+            (ParamKind.STRING, ("safe", "")),
+            (ParamKind.INTEGER, (0, -1, 12)),
+            (ParamKind.NUMBER, (0, -3, 1.25, 0.0)),
+            (ParamKind.BOOLEAN, (True, False)),
+        ):
+            for value in values:
+                with self.subTest(kind=kind.value, value=repr(value)):
+                    self.assertTrue(kind.accepts(value))
+
+    def test_unrelated_builtin_types_rejected(self):
+        for kind, values in (
+            (ParamKind.STRING, (None, 1, b"text", True, [])),
+            (ParamKind.INTEGER, (None, True, False, 1.0, "1")),
+            (ParamKind.NUMBER, (None, True, False, "1", 1j)),
+            (ParamKind.BOOLEAN, (None, 0, 1, "true")),
+        ):
+            for value in values:
+                with self.subTest(kind=kind.value, value=repr(value)):
+                    self.assertFalse(kind.accepts(value))
+
+    def test_fake_numeric_protocol_does_not_invoke_conversion(self):
+        self.assertFalse(ParamKind.INTEGER.accepts(PretendInteger()))
+        self.assertFalse(ParamKind.NUMBER.accepts(PretendInteger()))
+
+    @unittest.expectedFailure
+    def test_red_string_subclass_rejected(self):
+        self.assertFalse(ParamKind.STRING.accepts(SubclassText("safe")))
+
+    @unittest.expectedFailure
+    def test_red_integer_subclass_rejected(self):
+        self.assertFalse(ParamKind.INTEGER.accepts(SubclassInt(3)))
+
+    @unittest.expectedFailure
+    def test_red_integer_enum_rejected(self):
+        self.assertFalse(ParamKind.INTEGER.accepts(NumericEnum.ONE))
+
+    @unittest.expectedFailure
+    def test_red_number_integer_subclass_rejected(self):
+        self.assertFalse(ParamKind.NUMBER.accepts(SubclassInt(3)))
+
+    @unittest.expectedFailure
+    def test_red_number_float_subclass_rejected(self):
+        self.assertFalse(ParamKind.NUMBER.accepts(SubclassFloat(1.25)))
+
+    @unittest.expectedFailure
+    def test_red_number_enum_rejected(self):
+        self.assertFalse(ParamKind.NUMBER.accepts(NumericEnum.ONE))
+
+    @unittest.expectedFailure
+    def test_red_definition_must_refuse_polymorphic_text(self):
+        definition = ToolDefinition(
+            "synthetic-text", "external-attack-surface",
+            InteractionKind.ANALYSIS, RiskLevel.ANALYSIS_ONLY, "offline",
+            (ToolParameter("value", ParamKind.STRING),),
+        )
+        with self.assertRaises(OrchestrationError):
+            definition.validate_arguments({"value": SubclassText("safe")})
+
+
+class ActualExecutorAdmissionTests(unittest.TestCase):
+    """No mocked executor or handler bypass: real policy and real SQLite ledger."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.state = StateStore(Path(self.temp.name) / "scope-1095.db")
+        self.handler_calls = []
+        self.registry = ToolRegistry()
+        for name, kind in (
+            ("text", ParamKind.STRING),
+            ("integer", ParamKind.INTEGER),
+            ("number", ParamKind.NUMBER),
+            ("boolean", ParamKind.BOOLEAN),
+        ):
+            self.registry.register(
+                ToolDefinition(
+                    "synthetic-" + name, "external-attack-surface",
+                    InteractionKind.ANALYSIS, RiskLevel.ANALYSIS_ONLY,
+                    "Synthetic analysis-only primitive gate",
+                    (ToolParameter("value", kind),),
+                ),
+                self._handler,
+            )
+        self.executor = ToolExecutor(self.registry, self.state)
+        self.context = RunContext(
+            run_id=str(uuid4()), client_id="offline-tenant",
+            engagement_id="offline-engagement",
+            mode=AssessmentMode.ANALYSIS_ONLY,
+            approved_risk=RiskLevel.ANALYSIS_ONLY,
+            authorization=None, is_lab=False,
+            created_at=datetime.now(timezone.utc),
+        )
+
+    def _handler(self, context, arguments):
+        self.handler_calls.append(dict(arguments))
+        return ToolOutput("offline shape control", "synthetic", b"no target data")
+
+    def _evidence_count(self):
+        with self.state.connect() as con:
+            return con.execute("SELECT COUNT(*) FROM evidence").fetchone()[0]
+
+    def _execute(self, primitive, value):
+        return self.executor.execute(
+            self.context,
+            ToolCall("synthetic-" + primitive, "synthetic.invalid",
+                     arguments=(("value", value),)),
+        )
+
+    def _assert_rejected_without_effects(self, primitive, value):
+        before_calls = len(self.handler_calls)
+        before_rows = self._evidence_count()
+        denied = False
+        try:
+            self._execute(primitive, value)
+        except OrchestrationError:
+            denied = True
+        self.assertEqual(len(self.handler_calls), before_calls,
+                         "typed rejection must happen BEFORE handler invocation")
+        self.assertEqual(self._evidence_count(), before_rows,
+                         "typed rejection must leave durable evidence unchanged")
+        self.assertTrue(denied, "invalid input must raise OrchestrationError")
+
+    def test_all_exact_primitive_types_reach_synthetic_analysis_handler(self):
+        for primitive, value in (
+            ("text", "safe"), ("integer", 3),
+            ("number", -2), ("number", 1.5),
+            ("boolean", False),
+        ):
+            with self.subTest(primitive=primitive, value=repr(value)):
+                before = self._evidence_count()
+                self._execute(primitive, value)
+                self.assertEqual(self._evidence_count(), before + 1)
+        self.assertEqual(len(self.handler_calls), 5)
+
+    def test_canonical_mismatch_is_rejected_without_handler_or_evidence(self):
+        for primitive, value in (
+            ("text", 42), ("integer", True), ("integer", 1.5),
+            ("number", False), ("number", "1.5"), ("boolean", 0),
+        ):
+            with self.subTest(primitive=primitive, value=repr(value)):
+                self._assert_rejected_without_effects(primitive, value)
+
+    def test_numeric_protocol_objects_are_never_coerced(self):
+        self._assert_rejected_without_effects("integer", PretendInteger())
+        self._assert_rejected_without_effects("number", PretendInteger())
+
+    @unittest.expectedFailure
+    def test_red_real_executor_string_subclass_must_have_zero_effects(self):
+        self._assert_rejected_without_effects("text", SubclassText("safe"))
+
+    @unittest.expectedFailure
+    def test_red_real_executor_int_subclass_must_have_zero_effects(self):
+        self._assert_rejected_without_effects("integer", SubclassInt(3))
+
+    @unittest.expectedFailure
+    def test_red_real_executor_intenum_must_have_zero_effects(self):
+        self._assert_rejected_without_effects("integer", NumericEnum.ONE)
+
+    @unittest.expectedFailure
+    def test_red_real_executor_number_float_subclass_must_have_zero_effects(self):
+        self._assert_rejected_without_effects("number", SubclassFloat(1.25))
+
+    @unittest.expectedFailure
+    def test_red_real_executor_number_int_subclass_must_have_zero_effects(self):
+        self._assert_rejected_without_effects("number", SubclassInt(3))
+
+    @unittest.expectedFailure
+    def test_red_real_executor_number_enum_must_have_zero_effects(self):
+        self._assert_rejected_without_effects("number", NumericEnum.ONE)
+
+    @unittest.expectedFailure
+    def test_red_polymorphic_input_after_valid_call_keeps_ledger_unchanged(self):
+        self._execute("text", "safe")
+        self.assertEqual(self._evidence_count(), 1)
+        self._assert_rejected_without_effects("text", SubclassText("unsafe"))
+
+
+if __name__ == "__main__":
+    unittest.main()
