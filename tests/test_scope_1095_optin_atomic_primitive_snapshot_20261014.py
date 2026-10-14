@@ -10,6 +10,7 @@ import tempfile
 import unittest
 from datetime import datetime, timezone
 from enum import IntEnum
+from itertools import permutations
 from pathlib import Path
 from uuid import uuid4
 
@@ -154,6 +155,100 @@ class ExactPrimitiveSnapshotTests(unittest.TestCase):
         self.assertFalse(batch.execution_enabled)
         with self.assertRaises((AttributeError, TypeError)):
             batch.entries = ()
+
+    @staticmethod
+    def _mixed_schema():
+        return ToolDefinition(
+            "synthetic-primitive-matrix", "external-attack-surface",
+            InteractionKind.ANALYSIS, RiskLevel.ANALYSIS_ONLY,
+            "offline all-kind input order control",
+            (
+                ToolParameter("label", ParamKind.STRING),
+                ToolParameter("count", ParamKind.INTEGER),
+                ToolParameter("measure", ParamKind.NUMBER),
+                ToolParameter("enabled", ParamKind.BOOLEAN),
+            ),
+        )
+
+    @staticmethod
+    def _mixed_orders(overrides=None):
+        values = {
+            "label": "synthetic", "count": 2, "measure": 1.25,
+            "enabled": False,
+        }
+        if overrides:
+            values.update(overrides)
+        return tuple(dict(pairs) for pairs in permutations(tuple(values.items())))
+
+    def test_all_24_input_orders_preserve_schema_order_in_optin_snapshot(self):
+        schema = self._mixed_schema()
+        expected = (
+            ("label", "synthetic"), ("count", 2),
+            ("measure", 1.25), ("enabled", False),
+        )
+        for payload in self._mixed_orders():
+            with self.subTest(order=tuple(payload)):
+                snap = snapshot_exact_primitive_values(schema, payload)
+                self.assertEqual(snap.items, expected)
+                self.assertEqual(snap.as_arguments(), dict(expected))
+                self.assertFalse(snap.permit_issued)
+
+    def test_all_24_orders_reject_every_canonical_mismatch(self):
+        schema = self._mixed_schema()
+        for field, invalid in (
+            ("label", 4), ("count", True),
+            ("measure", "1.25"), ("enabled", 1),
+        ):
+            for payload in self._mixed_orders({field: invalid}):
+                with self.subTest(field=field, order=tuple(payload)):
+                    with self.assertRaises(OrchestrationError):
+                        snapshot_exact_primitive_values(schema, payload)
+
+    def test_all_24_orders_reject_polymorphic_runtime_values(self):
+        schema = self._mixed_schema()
+        for field, value in (
+            ("label", StrSubclass("synthetic")),
+            ("count", IntSubclass(2)),
+            ("count", NumberEnum.ONE),
+            ("measure", IntSubclass(2)),
+            ("measure", FloatSubclass(1.25)),
+            ("measure", NumberEnum.ONE),
+        ):
+            for payload in self._mixed_orders({field: value}):
+                with self.subTest(field=field, runtime_type=type(value).__name__, keys=tuple(payload)):
+                    with self.assertRaises(OrchestrationError):
+                        snapshot_exact_primitive_values(schema, payload)
+
+    def test_batch_of_24_permutations_snapshots_copies_without_any_authority(self):
+        schema = self._mixed_schema()
+        ordered_inputs = self._mixed_orders()
+        batch = snapshot_exact_primitive_batch(
+            tuple((schema, payload) for payload in ordered_inputs)
+        )
+        self.assertEqual(batch.count, 24)
+        self.assertFalse(batch.authorization_verified)
+        self.assertFalse(batch.permit_issued)
+        self.assertFalse(batch.execution_enabled)
+        for item in batch.entries:
+            self.assertEqual(item.as_arguments(), {
+                "label": "synthetic", "count": 2,
+                "measure": 1.25, "enabled": False,
+            })
+        ordered_inputs[0]["label"] = StrSubclass("modified")
+        self.assertEqual(batch.entries[0].as_arguments()["label"], "synthetic")
+
+    def test_last_of_32_invalid_permuted_fields_denies_entire_batch(self):
+        schema = self._mixed_schema()
+        valid = ((schema, self._mixed_orders()[0]),) * (MAX_SYNTHETIC_BATCH_ITEMS - 1)
+        for field, value in (
+            ("label", StrSubclass("synthetic")),
+            ("count", NumberEnum.ONE),
+            ("measure", FloatSubclass(1.25)),
+        ):
+            with self.subTest(field=field):
+                last_bad = (schema, self._mixed_orders({field: value})[-1])
+                with self.assertRaises(OrchestrationError):
+                    snapshot_exact_primitive_batch(valid + (last_bad,))
 
     def test_late_invalid_batch_fails_atomically(self):
         a = definition("text", ParamKind.STRING)
