@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import itertools
 import os
 import pathlib
 import pty
@@ -289,6 +290,54 @@ class ReviewTests(unittest.TestCase):
                 self.assertNotIn(b"synthetic_customer_secret_marker", process.stdout)
                 self.assertEqual(process.stdout.count(b"\n"), 1)
                 self.assert_denied(json.loads(process.stdout), "HOLD")
+
+    def test_exhaustive_destination_role_grammar_up_to_four_parameters(self):
+        """Enumerate the entire bounded role vocabulary, not only examples.
+
+        Independent allowlist oracle intentionally avoids the reviewer's
+        branch structure. NONE can add metadata but cannot create authority.
+        The 5^1+5^2+5^3+5^4 = 780 packets stay wholly synthetic and offline.
+        """
+        role_kinds = {
+            "endpoint": "string", "host": "string", "port": "integer",
+            "port_set": "string", "none": "boolean",
+        }
+        valid_destinations = {
+            ("endpoint",), ("host",), ("host", "port"),
+            ("host", "port_set"),
+        }
+        allowed_sorted = {tuple(sorted(value)) for value in valid_destinations}
+        reviewed = held = 0
+        for size in (1, 2, 3, 4):
+            for roles in itertools.product(role_kinds, repeat=size):
+                params = [
+                    {"name": "p_" + str(i), "kind": role_kinds[role],
+                     "role": role, "required": role != "none"}
+                    for i, role in enumerate(roles)
+                ]
+                packet = {"tools": [
+                    {"tool_id": "synthetic_role_matrix",
+                     "parameters": params}]}
+                destinations = tuple(sorted(
+                    role for role in roles if role != "none"
+                ))
+                expected = (
+                    "REVIEW_ONLY"
+                    if destinations in allowed_sorted else "HOLD"
+                )
+                result = review_schema(packet)
+                self.assert_denied(result, expected)
+                if expected == "REVIEW_ONLY":
+                    reviewed += 1
+                    self.assertEqual(result["claimed_tool_count"], 1)
+                    self.assertEqual(result["claimed_parameter_count"], size)
+                else:
+                    held += 1
+                    self.assertEqual(result["claimed_tool_count"], 0)
+                    self.assertEqual(result["claimed_parameter_count"], 0)
+        self.assertEqual(reviewed + held, 780)
+        self.assertGreater(reviewed, 0)
+        self.assertGreater(held, 0)
 
     def test_destination_must_be_explicitly_required_and_bool_exact(self):
         for field_name in ("required",):
