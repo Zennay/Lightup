@@ -19,9 +19,17 @@ class PrimitiveValueSnapshot:
     """Immutable copies of canonical builtin values, NOT an execution token."""
 
     items: tuple[tuple[str, object], ...]
-    authorization_verified: bool = False
-    permit_issued: bool = False
-    execution_enabled: bool = False
+    @property
+    def authorization_verified(self) -> bool:
+        return False
+
+    @property
+    def permit_issued(self) -> bool:
+        return False
+
+    @property
+    def execution_enabled(self) -> bool:
+        return False
 
     def as_arguments(self) -> dict[str, object]:
         """Make a fresh ordinary dict. Caller must still enforce all real gates."""
@@ -31,9 +39,17 @@ class PrimitiveValueSnapshot:
 @dataclass(frozen=True, slots=True)
 class PrimitiveBatchSnapshot:
     entries: tuple[PrimitiveValueSnapshot, ...]
-    authorization_verified: bool = False
-    permit_issued: bool = False
-    execution_enabled: bool = False
+    @property
+    def authorization_verified(self) -> bool:
+        return False
+
+    @property
+    def permit_issued(self) -> bool:
+        return False
+
+    @property
+    def execution_enabled(self) -> bool:
+        return False
 
     @property
     def count(self) -> int:
