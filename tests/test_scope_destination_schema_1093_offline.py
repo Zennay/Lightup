@@ -6,16 +6,20 @@ import os
 import pathlib
 import pty
 import socket
+import stat
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
+from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "review_scope_destination_schema_1093_offline.py"
 sys.path.insert(0, str(ROOT / "scripts"))
 from review_scope_destination_schema_1093_offline import (  # noqa: E402
-    DENIAL, MAX_INPUT_BYTES, _seal_receipt, review_bytes, review_schema,
+    DENIAL, MAX_INPUT_BYTES, _read_private_pipe, _seal_receipt,
+    review_bytes, review_schema,
 )
 
 
@@ -199,6 +203,25 @@ class ReviewTests(unittest.TestCase):
                         proc.wait(timeout=3)
                     proc.stdout.close()
                     proc.stderr.close()
+
+    def test_ready_fifo_drained_by_peer_retries_eagain_without_blocking(self):
+        # Fully synthetic race: select reports readable, a peer drains the
+        # FIFO, read gets EAGAIN, then another writer supplies EOF.
+        with (
+            mock.patch("review_scope_destination_schema_1093_offline.os.fstat",
+                       return_value=types.SimpleNamespace(st_mode=stat.S_IFIFO)),
+            mock.patch("review_scope_destination_schema_1093_offline.os.get_blocking",
+                       return_value=True),
+            mock.patch("review_scope_destination_schema_1093_offline.os.set_blocking")
+                as set_blocking,
+            mock.patch("review_scope_destination_schema_1093_offline.select.select",
+                       return_value=([0], [], [])),
+            mock.patch("review_scope_destination_schema_1093_offline.os.read",
+                       side_effect=[BlockingIOError(), b'{"tools":[]}', b""])
+        ):
+            self.assertEqual(_read_private_pipe(), b'{"tools":[]}')
+            self.assertEqual(set_blocking.call_args_list,
+                             [mock.call(0, False), mock.call(0, True)])
 
     def test_cli_stdin_pipe_restores_parent_blocking_state(self):
         # A subprocess duplicates fd0 but shares its POSIX open-file-description.
