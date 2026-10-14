@@ -844,5 +844,36 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
 
+
+    def test_83_encoded_path_dot_segments_and_query_delimiters_denied(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        variants = (
+            "https://localhost/safe/%2E%2E/admin",
+            "https://localhost/safe/%2E/private",
+            "https://localhost/%3Aadmin",
+            "https://localhost/a%3Bsession",
+            "https://localhost/path?ok=1%26admin=1",
+            "https://localhost/path?ok=1%3Dadmin",
+            "https://localhost/path?x=%2B",
+        )
+        for uri in variants:
+            with self.subTest(uri=uri):
+                self.refused(lambda v=uri: m.review({"url": v}))
+        self.assertEqual(self.calls, [])
+
+    def test_84_url_escaped_space_and_valid_unicode_remain_hold(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        for uri in ("https://localhost/a%20b",
+                    "https://localhost/%E2%82%AC",
+                    "https://localhost/a?q=hello%20world"):
+            with self.subTest(uri=uri):
+                receipt = m.review({"url": uri})
+                self.assertEqual(receipt.status, "hold")
+                self.assertIs(receipt.permit_issued, False)
+        self.assertEqual(self.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
