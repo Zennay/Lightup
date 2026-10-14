@@ -5,6 +5,7 @@ import json
 import pathlib
 import subprocess
 import sys
+import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -132,6 +133,44 @@ class ReviewTests(unittest.TestCase):
         self.assert_denied(review_schema(many), "REVIEW_ONLY")
         many["tools"][0]["parameters"].append(data["parameters"][0])
         self.assert_denied(review_schema(many), "HOLD")
+
+    def test_cli_unclosed_pipe_forces_finite_atomic_hold(self):
+        for payload in (b'{"tools":[', encoded(fixture())):
+            with self.subTest(length=len(payload)):
+                proc = subprocess.Popen(
+                    [sys.executable, str(SCRIPT), "--stdin-json"],
+                    stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE)
+                try:
+                    proc.stdin.write(payload)
+                    proc.stdin.flush()  # deliberately do NOT send EOF
+                    self.assertEqual(proc.wait(timeout=6), 2)
+                    stdout = proc.stdout.read()
+                    stderr = proc.stderr.read()
+                    self.assertFalse(stderr)
+                    self.assertEqual(stdout.count(b"\n"), 1)
+                    self.assert_denied(json.loads(stdout), "HOLD")
+                    self.assertNotIn(payload, stdout)
+                finally:
+                    proc.stdin.close()
+                    if proc.poll() is None:
+                        proc.kill()
+                        proc.wait(timeout=3)
+                    proc.stdout.close()
+                    proc.stderr.close()
+
+    def test_cli_rejects_regular_file_stdin_without_reading_it(self):
+        with tempfile.TemporaryFile() as stream:
+            stream.write(encoded(fixture()))
+            stream.flush()
+            stream.seek(0)
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "--stdin-json"],
+                stdin=stream, capture_output=True, timeout=6)
+            self.assertEqual(result.returncode, 2)
+            self.assert_denied(json.loads(result.stdout), "HOLD")
+            self.assertEqual(stream.tell(), 0)
+            self.assertFalse(result.stderr)
 
     def test_cli_real_process_never_exits_success_and_never_echoes_claims(self):
         sample = fixture()
