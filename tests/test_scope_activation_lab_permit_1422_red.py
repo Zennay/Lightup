@@ -384,6 +384,44 @@ class ActualActivationPermitChainRED(unittest.TestCase):
         self.assertEqual(receipt["status"], "HOLD")
         self.assertIs(receipt["release_approved"], False)
 
+
+    def test_fake_token_entropy_size_downgrade_and_type_confusion_hold(self):
+        baseline = AUDIT.audit()
+        self.assertEqual(baseline["violations"], 10)
+        real_gate = ActivationGate
+        for length in (0, 1, 16, 32, True, 24.0, "24"):
+            with self.subTest(synthetic_length=repr(length)):
+                class SyntheticWeakPermit:
+                    def __init__(self, policy, activation):
+                        self.real = real_gate(policy, activation)
+                        self.lab = (
+                            policy.allow_private_lab is True
+                            and activation.mode is ActivationMode.LAB_ONLY
+                        )
+
+                    def issue(self, target, capability):
+                        if self.lab and target.value == AUDIT.SAFE_LAB[0]:
+                            # Mutation deliberately constructs an otherwise
+                            # perfect synthetic permit using one weak token
+                            # request; the mock must detect the call shape.
+                            return ExecutionPermit(
+                                permit_id=activation_module.token_urlsafe(length),
+                                target="127.0.0.1",
+                                capability_id=capability,
+                                mode=ActivationMode.LAB_ONLY,
+                                activation_reference="LAB",
+                                issued_at=datetime.now(timezone.utc),
+                            )
+                        return self.real.issue(target, capability)
+
+                with patch.object(AUDIT, "ActivationGate", SyntheticWeakPermit):
+                    receipt = AUDIT.audit()
+                self.assertEqual(receipt["checked"], baseline["checked"])
+                self.assertEqual(receipt["violations"], baseline["violations"] + 1)
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertIs(receipt["permit_issued"], False)
+                self.assertNotIn(str(length), json.dumps(receipt))
+
     def test_cli_single_fixed_receipt_no_literal_or_token_reflection(self):
         run = subprocess.run(
             [sys.executable, str(SCRIPT)],
