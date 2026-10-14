@@ -12,6 +12,9 @@ import math
 import sys
 from pathlib import Path
 
+# This offline reviewer must not create __pycache__ in the source checkout.
+# Unlike a caller-specific -B flag, this default applies to normal CLI use.
+sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from lightup.finite_number_offline_review import review_finite_number_arguments
 
