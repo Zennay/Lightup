@@ -76,6 +76,7 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
             ("grant_id", "grant-other", "identity"),
             ("client_id", "client-other", "identity"),
             ("engagement_id", "eng-other", "identity"),
+            ("approved_by", "untrusted-operator", "identity"),
             ("reference", "reference-other", "identity"),
             ("assets", ["lab-a.example", "lab-b.example", "lab-c.example"], "assets"),
             ("excluded_assets", [], "exclusions"),
