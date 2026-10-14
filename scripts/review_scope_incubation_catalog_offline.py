@@ -9,7 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from lightup.capabilities import get_capabilities
 from lightup.capability_registry_incubation_catalog_review import review_incubation_catalog
-from scripts.export_scope_capability_registry_offline import snapshot_manifest
+from export_scope_capability_registry_offline import snapshot_manifest
 
 
 def main(args: list[str]) -> int:
