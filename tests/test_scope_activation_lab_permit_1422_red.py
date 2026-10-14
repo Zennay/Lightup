@@ -618,6 +618,92 @@ class ActualActivationPermitChainRED(unittest.TestCase):
         self.assertIs(broken_receipt["authorization_verified"], False)
         self.assertIs(broken_receipt["release_approved"], False)
 
+
+    def test_constructor_python_io_guards_are_active_before_first_issue(self):
+        # A missing guard must fail this test without contacting a target or
+        # invoking a real shell. All paths are deliberately nonexistent/local.
+        attempts = (
+            ("file", lambda: builtins.open("/__synthetic_no_file__/", "rb")),
+            ("path", lambda: Path("/__synthetic_no_file__/").open("rb")),
+            ("fd", lambda: os.open("/__synthetic_no_file__/", os.O_RDONLY)),
+            ("write", lambda: os.write(-1, b"")),
+            ("sqlite", lambda: sqlite3.connect(":memory:")),
+            ("socket", lambda: socket.socket()),
+        )
+        for label, action in attempts:
+            with self.subTest(constructor=label):
+                class ConstructorSideEffect:
+                    def __init__(self, policy, activation):
+                        action()
+
+                with (
+                    patch.object(AUDIT, "ActivationGate", ConstructorSideEffect),
+                    patch.object(
+                        AUDIT, "_unexpected_io",
+                        side_effect=RuntimeError("SENSITIVE-CONSTRUCTOR-IO"),
+                    ) as tripped,
+                ):
+                    receipt = AUDIT.audit()
+                self.assertGreaterEqual(tripped.call_count, 1)
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertEqual(receipt["checked"], 0)
+                self.assertEqual(receipt["violations"], 1)
+                self.assertIs(receipt["execution_enabled"], False)
+                self.assertNotIn("SENSITIVE", json.dumps(receipt))
+
+    def test_constructor_synthetic_token_mint_is_a_distinct_hold_violation(self):
+        original = ActivationGate
+        baseline = AUDIT.audit()
+        self.assertEqual(baseline["checked"], 56)
+        self.assertEqual(baseline["violations"], 10)
+
+        class ConstructorMint:
+            def __init__(self, policy, activation):
+                self.real = original(policy, activation)
+                if (
+                    activation.mode is ActivationMode.LAB_ONLY
+                    and policy.allow_private_lab is True
+                ):
+                    activation_module.token_urlsafe(24)
+
+            def issue(self, target, capability):
+                return self.real.issue(target, capability)
+
+        with patch.object(AUDIT, "ActivationGate", ConstructorMint):
+            receipt = AUDIT.audit()
+        self.assertEqual(receipt["checked"], 56)
+        self.assertEqual(receipt["violations"], 11)
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertIs(receipt["permit_issued"], False)
+        self.assertIs(receipt["release_approved"], False)
+
+    def test_constructor_and_issue_system_exit_zero_are_hold_not_exit_zero(self):
+        original = ActivationGate
+        for phase in ("construct", "issue"):
+            with self.subTest(phase=phase):
+                class PrematureExit:
+                    def __init__(self, policy, activation):
+                        if phase == "construct":
+                            raise SystemExit(0)
+                        self.real = original(policy, activation)
+
+                    def issue(self, target, capability):
+                        raise SystemExit(0)
+
+                with patch.object(AUDIT, "ActivationGate", PrematureExit):
+                    receipt = AUDIT.audit()
+                    output = io.StringIO()
+                    with redirect_stdout(output):
+                        exit_code = AUDIT.main([])
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertEqual(receipt["checked"], 0)
+                self.assertEqual(receipt["violations"], 1)
+                self.assertEqual(exit_code, 2)
+                self.assertEqual(json.loads(output.getvalue()), receipt)
+                self.assertEqual(
+                    set(receipt), {"status", "checked", "violations", *AUDIT._DENIED}
+                )
+
     def test_cli_single_fixed_receipt_no_literal_or_token_reflection(self):
         run = subprocess.run(
             [sys.executable, str(SCRIPT)],
