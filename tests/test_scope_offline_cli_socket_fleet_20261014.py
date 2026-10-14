@@ -42,6 +42,14 @@ socket.socketpair = forbidden
 socket.create_connection = forbidden
 socket.create_server = forbidden
 socket.fromfd = forbidden
+# DNS / reverse DNS can run through native system resolvers WITHOUT first
+# allocating a Python socket. Instrument both the public Python wrapper
+# and the directly importable C extension entrypoints before CLI import.
+for module in (socket, _socket):
+    for name in ("getaddrinfo", "gethostbyname", "gethostbyname_ex",
+                 "gethostbyaddr", "getnameinfo", "getfqdn"):
+        if hasattr(module, name):
+            setattr(module, name, forbidden)
 subprocess.Popen = forbidden
 os.system = forbidden
 os.popen = forbidden
@@ -343,6 +351,45 @@ class OfflineReviewCliSocketFleetTests(unittest.TestCase):
             with self.subTest(api=api):
                 program = (
                     "import os, _sqlite3\n"
+                    "try:\n"
+                    f"    {statement}\n"
+                    "except BaseException:\n"
+                    "    pass\n"
+                    "print('UNEXPECTED_EXECUTION')\n"
+                )
+                proc = subprocess.run(
+                    [sys.executable, "-B", "-c", program], cwd=self.root,
+                    env=self.env, capture_output=True, check=False, timeout=15,
+                )
+                self.assertEqual(proc.returncode, 92, statement)
+                self.assertEqual(proc.stdout, b"")
+                self.assertEqual(proc.stderr, b"")
+                self.assertEqual(self.fingerprint(), before)
+
+
+    def test_uncatchable_dns_resolver_attempts_without_socket_creation(self):
+        # These are intercepted BEFORE any libc/DNS resolver runs. A
+        # catchable denial could be swallowed into a false REVIEW_ONLY.
+        variants = (
+            ('socket', 'getaddrinfo', 'socket.getaddrinfo("synthetic.invalid", 443)'),
+            ('socket', 'gethostbyname', 'socket.gethostbyname("synthetic.invalid")'),
+            ('socket', 'gethostbyname_ex', 'socket.gethostbyname_ex("synthetic.invalid")'),
+            ('socket', 'gethostbyaddr', 'socket.gethostbyaddr("127.0.0.1")'),
+            ('socket', 'getnameinfo', 'socket.getnameinfo(("127.0.0.1", 443), 0)'),
+            ('socket', 'getfqdn', 'socket.getfqdn("synthetic.invalid")'),
+            ('_socket', 'getaddrinfo', '_socket.getaddrinfo("synthetic.invalid", 443)'),
+            ('_socket', 'gethostbyname', '_socket.gethostbyname("synthetic.invalid")'),
+            ('_socket', 'gethostbyname_ex', '_socket.gethostbyname_ex("synthetic.invalid")'),
+            ('_socket', 'gethostbyaddr', '_socket.gethostbyaddr("127.0.0.1")'),
+            ('_socket', 'getnameinfo', '_socket.getnameinfo(("127.0.0.1", 443), 0)'),
+        )
+        before = self.fingerprint()
+        for module, function, statement in variants:
+            if not hasattr(__import__(module), function):
+                continue
+            with self.subTest(module=module, function=function):
+                program = (
+                    "import socket, _socket\n"
                     "try:\n"
                     f"    {statement}\n"
                     "except BaseException:\n"
