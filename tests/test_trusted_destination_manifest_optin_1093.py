@@ -466,5 +466,39 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
 
+
+    def test_59_url_parser_cannot_rewrite_identity(self):
+        from unittest.mock import patch
+        from urllib.parse import urlsplit
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        original = urlsplit("https://localhost/path")
+        class RewritingResult:
+            scheme = original.scheme
+            netloc = original.netloc
+            username = None
+            password = None
+            fragment = ""
+            hostname = original.hostname
+            port = None
+            def geturl(self):
+                return "https://elsewhere.invalid/path"
+        with patch("lightup.trusted_destination_manifest_optin.urlsplit",
+                   return_value=RewritingResult()):
+            self.refused(lambda: m.review({"url": "https://localhost/path"}))
+        self.assertEqual(self.calls, [])
+
+    def test_60_canonical_url_roundtrip_remains_hold(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        for value in ("http://localhost", "https://localhost:443/path?x=1",
+                      "http://[::1]:8080/api", "https://localhost/r%C3%A9sum%C3%A9"):
+            with self.subTest(url=value):
+                receipt = m.review({"url": value})
+                self.assertEqual(receipt.status, "hold")
+                self.assertIs(receipt.execution_enabled, False)
+        self.assertEqual(self.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
