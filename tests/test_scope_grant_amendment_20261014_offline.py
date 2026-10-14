@@ -468,12 +468,15 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
         for changed_field in ("st_dev", "st_ino", "st_mode", "st_size",
                               "st_mtime_ns", "st_ctime_ns"):
             after = SimpleNamespace(**vars(original))
-            setattr(after, changed_field, getattr(after, changed_field) + 1)
+            setattr(after, changed_field, (
+                stat.S_IFIFO if changed_field == "st_mode"
+                else getattr(after, changed_field) + 1
+            ))
             with self.subTest(changed=changed_field):
-                with patch.object(reviewer.sys, "stdin", Stdin()), \\
-                     patch.object(reviewer.os, "fstat", side_effect=[original, after]), \\
-                     patch.object(reviewer.os, "get_blocking", return_value=False), \\
-                     patch.object(reviewer.select, "select", return_value=([0], [], [])), \\
+                with patch.object(reviewer.sys, "stdin", Stdin()), \
+                     patch.object(reviewer.os, "fstat", side_effect=[original, after]), \
+                     patch.object(reviewer.os, "get_blocking", return_value=False), \
+                     patch.object(reviewer.select, "select", return_value=([0], [], [])), \
                      patch.object(reviewer.os, "read", side_effect=[b"{}", b""]):
                     self.assertEqual(reviewer._bounded_stdin(), b"")
 
@@ -485,10 +488,10 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
         class Stdin:
             def fileno(self):
                 return 0
-        with patch.object(reviewer.sys, "stdin", Stdin()), \\
-             patch.object(reviewer.os, "fstat", side_effect=[original, original]), \\
-             patch.object(reviewer.os, "get_blocking", return_value=False), \\
-             patch.object(reviewer.select, "select", return_value=([0], [], [])), \\
+        with patch.object(reviewer.sys, "stdin", Stdin()), \
+             patch.object(reviewer.os, "fstat", side_effect=[original, original]), \
+             patch.object(reviewer.os, "get_blocking", return_value=False), \
+             patch.object(reviewer.select, "select", return_value=([0], [], [])), \
              patch.object(reviewer.os, "read", side_effect=[b"{}", b""]):
             self.assertEqual(reviewer._bounded_stdin(), b"{}")
 
@@ -506,11 +509,11 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
                     if outcome:
                         raise outcome
                 change_mode.calls = 0
-                with patch.object(reviewer.sys, "stdin", Stdin()), \\
-                     patch.object(reviewer.os, "fstat", side_effect=[original, original]), \\
-                     patch.object(reviewer.os, "get_blocking", return_value=True), \\
-                     patch.object(reviewer.os, "set_blocking", side_effect=change_mode), \\
-                     patch.object(reviewer.select, "select", return_value=([0], [], [])), \\
+                with patch.object(reviewer.sys, "stdin", Stdin()), \
+                     patch.object(reviewer.os, "fstat", side_effect=[original, original]), \
+                     patch.object(reviewer.os, "get_blocking", return_value=True), \
+                     patch.object(reviewer.os, "set_blocking", side_effect=change_mode), \
+                     patch.object(reviewer.select, "select", return_value=([0], [], [])), \
                      patch.object(reviewer.os, "read", side_effect=[b"{}", b""]):
                     self.assertEqual(reviewer._bounded_stdin(), b"")
                 self.assertEqual(change_mode.calls, 2)
