@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from dataclasses import FrozenInstanceError, fields
 from pathlib import Path
+import json
+import subprocess
 from unittest import TestCase, main, mock
 import sys
 
@@ -156,6 +158,43 @@ class LiteralReviewOfflineTests(TestCase):
             op.assert_not_called()
             proc.assert_not_called()
             command.assert_not_called()
+
+
+    def test_real_optin_cli_never_exits_zero_or_repeats_literals(self):
+        script = Path(__file__).resolve().parents[1] / "scripts" / "review_scope_lab_literal_1424_offline.py"
+        self.assertTrue(script.is_file())
+        cases = (
+            (("--literal", "10.23.45.67"), 3, "REVIEW_ONLY", "PRIVATE_USE"),
+            (("--literal", "fd00::2"), 3, "REVIEW_ONLY", "PRIVATE_USE"),
+            (("--literal", "127.0.0.1"), 3, "REVIEW_ONLY", "LOOPBACK"),
+            (("--literal", "192.0.2.1"), 2, "HOLD", "UNTRUSTED"),
+            (("--literal", "8.8.8.8"), 2, "HOLD", "UNTRUSTED"),
+            (("--literal", "http://10.23.45.67"), 2, "HOLD", "UNTRUSTED"),
+            (("--literal", "10.23.45.67", "--literal", "127.0.0.1"), 2, "HOLD", "UNTRUSTED"),
+            (("--literal",), 2, "HOLD", "UNTRUSTED"),
+            ((), 2, "HOLD", "UNTRUSTED"),
+            (("--bad-argument", "synthetic-private-secret-value"), 2, "HOLD", "UNTRUSTED"),
+        )
+        for args, code, status, classification in cases:
+            with self.subTest(args=args):
+                result = subprocess.run(
+                    [sys.executable, "-B", str(script), *args],
+                    input=b"synthetic-stdin-secret-never-read",
+                    capture_output=True, check=False, timeout=15,
+                )
+                self.assertEqual(result.returncode, code, result.stderr)
+                self.assertEqual(result.stderr, b"")
+                receipt = json.loads(result.stdout)
+                self.assertEqual(receipt["status"], status)
+                self.assertEqual(receipt["classification"], classification)
+                self.assertEqual(set(receipt), {"status", "classification", *self.flags})
+                for key in self.flags:
+                    self.assertIs(receipt[key], False, key)
+                self.assertNotIn(b"synthetic", result.stdout)
+                self.assertNotIn(b"10.23.45.67", result.stdout)
+                self.assertNotIn(b"8.8.8.8", result.stdout)
+                self.assertNotIn(b"192.0.2.1", result.stdout)
+                self.assertNotIn(b"127.0.0.1", result.stdout)
 
 
 if __name__ == "__main__":
