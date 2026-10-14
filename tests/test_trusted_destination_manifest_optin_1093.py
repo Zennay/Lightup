@@ -602,5 +602,54 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
 
+
+    def test_65_known_lab_factory_pins_actual_builtin_definitions(self):
+        from lightup.trusted_destination_manifest_optin import known_lab_destination_manifest
+        from lightup.workers import http_baseline, tls_baseline, service_inventory
+        cases = (
+            (http_baseline, http_baseline.HTTP_BASELINE_TOOL,
+             {"url": "http://127.0.0.1:8080/status"}, 1),
+            (tls_baseline, tls_baseline.TLS_BASELINE_TOOL,
+             {"host": "127.0.0.1", "port": 443}, 2),
+            (service_inventory, service_inventory.SERVICE_INVENTORY_TOOL,
+             {"host": "127.0.0.1", "ports": "80,443"}, 2),
+        )
+        for worker, definition, args, count in cases:
+            with self.subTest(worker=definition.tool_id):
+                registry = ToolRegistry()
+                worker.register(registry)
+                result = known_lab_destination_manifest(registry, definition).review(args)
+                self.assertEqual(result.destination_fields_checked, count)
+                self.assertEqual(result.status, "hold")
+                self.assertIs(result.permit_issued, False)
+                self.assertIs(result.execution_enabled, False)
+                self.assertIs(result.authorization_verified, False)
+                self.assertIs(result.release_approved, False)
+        self.assertEqual(self.calls, [])
+
+    def test_66_known_lab_factory_rejects_cloned_registered_definition(self):
+        from lightup.trusted_destination_manifest_optin import known_lab_destination_manifest
+        from lightup.workers import http_baseline
+        cloned = dataclasses.replace(http_baseline.HTTP_BASELINE_TOOL)
+        registry = ToolRegistry()
+        registry.register(cloned, lambda *a: self.calls.append(a))
+        self.refused(lambda: known_lab_destination_manifest(registry, cloned))
+        self.assertEqual(self.calls, [])
+
+    def test_67_known_lab_factory_rejects_unregistered_builtin(self):
+        from lightup.trusted_destination_manifest_optin import known_lab_destination_manifest
+        from lightup.workers import tls_baseline
+        registry = ToolRegistry()
+        self.refused(lambda: known_lab_destination_manifest(
+            registry, tls_baseline.TLS_BASELINE_TOOL))
+
+    def test_68_known_lab_factory_rejects_custom_tool_using_matching_metadata(self):
+        from lightup.trusted_destination_manifest_optin import known_lab_destination_manifest
+        real_shape = (ToolParameter("url", ParamKind.STRING),)
+        d = self.make(real_shape)
+        self.refused(lambda: known_lab_destination_manifest(self.registry, d))
+        self.assertEqual(self.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
