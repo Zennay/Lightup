@@ -79,6 +79,45 @@ class FiniteNumberCliNoIoTests(unittest.TestCase):
                     self.assertEqual(fingerprint(), baseline)
                     self.assertFalse(any(sandbox.rglob("*.pyc")))
 
+    def test_default_interpreter_negative_control_creates_cache_without_guard(self):
+        """The same real CLI must write .pyc when the single guard is removed."""
+        repo = Path(__file__).resolve().parents[1]
+        source = (repo / "scripts" / "review_scope_finite_number_offline.py").read_text(
+            encoding="utf-8"
+        )
+        guard = "sys.dont_write_bytecode = True\\n"
+        self.assertEqual(source.count(guard), 1)
+        with tempfile.TemporaryDirectory() as root:
+            sandbox = Path(root)
+            scripts = sandbox / "scripts"
+            package = sandbox / "src" / "lightup"
+            scripts.mkdir(parents=True)
+            package.mkdir(parents=True)
+            for relative in ("__init__.py", "finite_number_offline_review.py"):
+                shutil.copyfile(repo / "src" / "lightup" / relative,
+                                package / relative)
+            mutant = scripts / "review_scope_finite_number_offline.py"
+            mutant.write_text(source.replace(guard, ""), encoding="utf-8")
+            env = os.environ.copy()
+            env.pop("PYTHONDONTWRITEBYTECODE", None)
+            env.pop("PYTHONPYCACHEPREFIX", None)
+            env.pop("PYTHONPATH", None)
+            env["PYTHONNOUSERSITE"] = "1"
+            result = subprocess.run(
+                [sys.executable, str(mutant)],
+                cwd=sandbox,
+                env=env,
+                input=b'{"arguments":[["synthetic",1]]}',
+                capture_output=True,
+                check=False,
+                timeout=10,
+            )
+            self.assertEqual(result.returncode, 3, result.stderr)
+            self.assertEqual(result.stderr, b"")
+            self.assertEqual(json.loads(result.stdout)["status"], "REVIEW_ONLY")
+            self.assertTrue(list(package.rglob("*.pyc")),
+                            "test setup masks bytecode writes and cannot prove fix")
+
     def test_no_workspace_mutation_or_network_for_success_hold_and_bad_args(self):
         repo = Path(__file__).resolve().parents[1]
         cli = repo / "scripts" / "review_scope_finite_number_offline.py"
