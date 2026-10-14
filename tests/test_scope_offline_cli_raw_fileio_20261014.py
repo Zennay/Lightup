@@ -75,13 +75,13 @@ class OfflineScopeRawFileIOTests(unittest.TestCase):
         for statement in attempts:
             with self.subTest(statement=statement):
                 program = (
-                    "import io, _io\\n"
-                    "try:\\n"
-                    f"    {statement}\\n"
-                    "except BaseException:\\n"
-                    "    pass\\n"
-                    "print('FALSE_REVIEW_ONLY')\\n"
-                ).replace("\\\\n", "\\n")
+                    "import io, _io\n"
+                    "try:\n"
+                    f"    {statement}\n"
+                    "except BaseException:\n"
+                    "    pass\n"
+                    "print('FALSE_REVIEW_ONLY')\n"
+                ).replace("\\\n", "\n")
                 result = self.run_child(program)
                 self.assertEqual(result.returncode, 92, statement)
                 self.assertEqual(result.stdout, b"")
