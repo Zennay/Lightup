@@ -45,14 +45,16 @@ class _FixturePolicy:
                 return ScopeDecision(True, host, ScopeReason.PRIVATE_LAB)
             return ScopeDecision(False, host, ScopeReason.OUT_OF_SCOPE)
         if target.value in NOT_LAB:
+            normalized = (target.value[1:-1]
+                          if target.value.startswith("[") else target.value)
             if self.explicit and self.requires_grant:
                 reason = (
                     ScopeReason.AUTHORIZATION_MISSING
                     if target.authorization is None
                     else ScopeReason.AUTHORIZATION_EXPIRED
                 )
-                return ScopeDecision(False, "fictional", reason)
-            return ScopeDecision(False, "fictional", ScopeReason.OUT_OF_SCOPE)
+                return ScopeDecision(False, normalized, reason)
+            return ScopeDecision(False, normalized, ScopeReason.OUT_OF_SCOPE)
         raise ValueError("unexpected fixture input")
 
 
@@ -127,7 +129,7 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
             def decide(self, target):
                 permission = target.authorization
                 if self.explicit and permission is not None and permission.valid_from is not None:
-                    return ScopeDecision(False, "fictional", ScopeReason.OUT_OF_SCOPE)
+                    return ScopeDecision(False, target.value, ScopeReason.OUT_OF_SCOPE)
                 return super().decide(target)
         self.assertEqual(audit_installed_scope(IncorrectPolicy)["status"], "HOLD")
 
@@ -146,7 +148,7 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
             def decide(self, target):
                 if self.explicit and target.authorization is not None:
                     return ScopeDecision(
-                        False, "fictional", ScopeReason.AUTHORIZATION_MISSING
+                        False, target.value, ScopeReason.AUTHORIZATION_MISSING
                     )
                 return super().decide(target)
         self.assertEqual(audit_installed_scope(IncorrectPolicy)["status"], "HOLD")
@@ -220,6 +222,40 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
             def decide(self, target):
                 if target.value == "10.0.0.1":
                     return ScopeDecision(True, target.value, ScopeReason.PRIVATE_LAB)
+                return super().decide(target)
+        self.assertEqual(audit_installed_scope(IncorrectPolicy)["status"], "HOLD")
+
+    def test_denied_reserved_ip_cannot_be_relabelled_to_private_lab_host(self):
+        class IncorrectPolicy(_FixturePolicy):
+            def decide(self, target):
+                if target.value == "192.0.2.1" and self.enabled:
+                    return ScopeDecision(
+                        False, "10.0.0.1", ScopeReason.OUT_OF_SCOPE
+                    )
+                return super().decide(target)
+        receipt = audit_installed_scope(IncorrectPolicy)
+        self.assert_never_authority(receipt)
+        self.assertEqual(receipt["status"], "HOLD")
+
+    def test_missing_grant_denial_preserves_exact_ipv4_host(self):
+        class IncorrectPolicy(_FixturePolicy):
+            def decide(self, target):
+                if (self.explicit and target.value == "8.8.8.8"
+                        and target.authorization is None):
+                    return ScopeDecision(
+                        False, "127.0.0.1", ScopeReason.AUTHORIZATION_MISSING
+                    )
+                return super().decide(target)
+        self.assertEqual(audit_installed_scope(IncorrectPolicy)["status"], "HOLD")
+
+    def test_expired_grant_denial_preserves_exact_ipv6_host(self):
+        class IncorrectPolicy(_FixturePolicy):
+            def decide(self, target):
+                if (self.explicit and target.value == "[2001:db8::1]"
+                        and target.authorization is not None):
+                    return ScopeDecision(
+                        False, "::1", ScopeReason.AUTHORIZATION_EXPIRED
+                    )
                 return super().decide(target)
         self.assertEqual(audit_installed_scope(IncorrectPolicy)["status"], "HOLD")
 
