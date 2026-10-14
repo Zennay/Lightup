@@ -23,7 +23,7 @@ IDENTIFIER = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9._:-]{0,95}\Z")
 SCOPE_ITEM = re.compile(r"[a-z0-9][a-z0-9._:/-]{0,239}\Z")
 ROOT_KEYS = frozenset({"schema", "before", "after"})
 GRANT_KEYS = frozenset({
-    "grant_id", "client_id", "engagement_id", "reference", "assets",
+    "grant_id", "client_id", "engagement_id", "approved_by", "reference", "assets",
     "excluded_assets", "capabilities", "max_risk", "valid_from",
     "valid_until", "recurring_retest_allowed",
 })
@@ -108,7 +108,7 @@ def _grant(data: object) -> dict[str, object]:
     if type(data) is not dict or set(data) != GRANT_KEYS:
         raise Rejected("grant_shape")
     result: dict[str, object] = {}
-    for key in ("grant_id", "client_id", "engagement_id", "reference"):
+    for key in ("grant_id", "client_id", "engagement_id", "approved_by", "reference"):
         result[key] = _id(data[key])
     result["assets"] = _members(data["assets"])
     result["excluded_assets"] = _members(data["excluded_assets"], allow_empty=True)
@@ -138,7 +138,7 @@ def review(raw: bytes) -> tuple[dict[str, object], int]:
     try:
         data = _parse(raw)
         before, after = _grant(data["before"]), _grant(data["after"])
-        identity = ("grant_id", "client_id", "engagement_id", "reference")
+        identity = ("grant_id", "client_id", "engagement_id", "approved_by", "reference")
         if any(before[k] != after[k] for k in identity):
             widened.append("identity")
         if not after["assets"].issubset(before["assets"]):
