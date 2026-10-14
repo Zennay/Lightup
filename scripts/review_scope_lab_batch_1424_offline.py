@@ -87,7 +87,12 @@ def main(argv: list[str] | None = None) -> int:
         "merge_approved": False,
         "release_approved": False,
     }
-    sys.stdout.write(json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n")
+    try:
+        sys.stdout.write(json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n")
+    except (OSError, UnicodeError):
+        # Broken output means no usable review receipt; do not log any
+        # input/exception details or return a success/permission code.
+        return 2
     # All statuses are nonzero: review-only is not operational authority.
     return 3 if status == "REVIEW_ONLY" else 2
 
