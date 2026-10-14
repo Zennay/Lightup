@@ -6,10 +6,15 @@ authorization, release attestation, or target-capable executor.
 from __future__ import annotations
 
 import json
+import os
 import re
+import select
+import stat
 import sys
+import time
 
 MAX_INPUT_BYTES = 4096
+READ_DEADLINE_SECONDS = 2.0
 MAX_TOOLS = 8
 MAX_PARAMETERS = 16
 IDENTIFIER = re.compile(r"[a-z][a-z0-9_]{0,63}\Z", re.ASCII)
@@ -100,15 +105,41 @@ def review_bytes(raw: object) -> dict:
     return review_schema(data)
 
 
+def _read_private_pipe() -> bytes | None:
+    """Demand FIFO stdin, full EOF, and bounded real elapsed time.
+
+    This is userland defensive I/O, NOT an operating-system sandbox.
+    """
+    try:
+        if not stat.S_ISFIFO(os.fstat(0).st_mode):
+            return None
+        deadline = time.monotonic() + READ_DEADLINE_SECONDS
+        chunks = []
+        size = 0
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None
+            ready, _, _ = select.select([0], [], [], remaining)
+            if not ready:
+                return None
+            part = os.read(0, min(1024, MAX_INPUT_BYTES + 1 - size))
+            if not part:
+                return b"".join(chunks)
+            chunks.append(part)
+            size += len(part)
+            if size > MAX_INPUT_BYTES:
+                return None
+    except (OSError, ValueError, OverflowError):
+        return None
+
+
 def main(argv=None) -> int:
     args = sys.argv[1:] if argv is None else argv
     if args != ["--stdin-json"]:
         result = _hold()
     else:
-        try:
-            result = review_bytes(sys.stdin.buffer.read(MAX_INPUT_BYTES + 1))
-        except (OSError, ValueError):
-            result = _hold()
+        result = review_bytes(_read_private_pipe())
     print(json.dumps(result, sort_keys=True, separators=(",", ":"), ensure_ascii=True))
     return 3 if result["status"] == "REVIEW_ONLY" else 2
 
