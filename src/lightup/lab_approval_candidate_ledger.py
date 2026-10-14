@@ -160,15 +160,47 @@ class LabApprovalCandidateLedger:
             self._db.rollback()
             raise CandidateHeld("candidate revocation unavailable") from None
 
-    def inspect(self, run_id: str) -> LabApprovalCandidate | None:
-        """A human-review data record, never a permission or scan permit."""
+    def revoke_engagement(
+        self, *, client_id: str, engagement_id: str, actor: str,
+        operator_gate: OperatorGate | None,
+    ) -> int:
+        """Atomically revoke every matching tenant/engagement candidate.
+
+        No global, cross-tenant or wildcard revocation selector is accepted.
+        All revocation writes are lab-only candidate state, never execution.
+        """
+        tenant = _identity(client_id)
+        engagement = _identity(engagement_id)
+        actor_id = _operator(operator_gate, actor, "revoke")
+        stamp = datetime.now(timezone.utc).isoformat()
+        try:
+            self._db.execute("BEGIN IMMEDIATE")
+            result = self._db.execute(
+                """UPDATE lab_stepup_candidates_v1
+                SET revoked_at=?, revoked_by=?
+                WHERE client_id=? AND engagement_id=? AND revoked_at IS NULL""",
+                (stamp, actor_id, tenant, engagement),
+            )
+            if result.rowcount < 1:
+                self._db.rollback()
+                raise CandidateHeld("no matching revocable candidates")
+            count = result.rowcount
+            self._db.commit()
+            return count
+        except sqlite3.Error:
+            self._db.rollback()
+            raise CandidateHeld("engagement revocation unavailable") from None
+
+    def inspect(self, run_id: str, *, client_id: str) -> LabApprovalCandidate | None:
+        """Tenant-scoped review data only, never a permission or scan permit."""
         key = _identity(run_id)
+        tenant = _identity(client_id)
         try:
             row = self._db.execute(
                 """SELECT approval_id,run_id,client_id,engagement_id,asset,
                 capability_id,tool_id,approved_by,approved_at,expires_at,
-                revoked_at FROM lab_stepup_candidates_v1 WHERE run_id=?""",
-                (key,),
+                revoked_at FROM lab_stepup_candidates_v1 WHERE run_id=? AND client_id=?""",
+                (key, tenant),
             ).fetchone()
         except sqlite3.Error:
             raise CandidateHeld("candidate lookup unavailable") from None
@@ -185,9 +217,9 @@ class LabApprovalCandidateLedger:
         except (TypeError, ValueError, CandidateHeld):
             raise CandidateHeld("candidate record corrupted") from None
 
-    def review(self, run_id: str) -> dict[str, object]:
-        """Explicitly non-authorizing receipt, even for unexpired candidates."""
-        candidate = self.inspect(run_id)
+    def review(self, run_id: str, *, client_id: str) -> dict[str, object]:
+        """Tenant-scoped non-authorizing receipt, even for live candidates."""
+        candidate = self.inspect(run_id, client_id=client_id)
         now = datetime.now(timezone.utc)
         status = "REVIEW_ONLY" if (
             candidate is not None and candidate.revoked_at is None
