@@ -4,6 +4,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -208,6 +209,45 @@ class IngressIdentitySnapshotPreflightTests(unittest.TestCase):
             self.assertEqual(reject.returncode, 2)
             self.assertEqual(len(reject.stdout.splitlines()), 1)
             self.assertFalse(any(json.loads(reject.stdout)[key] for key in preflight.FLAGS))
+
+    def test_local_snapshot_open_rejects_symlink_and_nonregular_nodes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            original = root / "nginx.txt"
+            original.write_bytes(NGINX)
+            symlink = root / "alias.txt"
+            symlink.symlink_to(original)
+            with self.assertRaises((preflight.Hold, OSError)):
+                preflight._read_snapshot(str(symlink))
+            self.assertEqual(preflight._read_snapshot(str(original)), NGINX)
+            if hasattr(os, "mkfifo"):
+                fifo = root / "not-a-regular-file"
+                os.mkfifo(fifo)
+                with self.assertRaises((preflight.Hold, OSError)):
+                    preflight._read_snapshot(str(fifo))
+
+    def test_cli_missing_or_symlinked_snapshot_is_atomic_hold(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            nginx = root / "nginx.txt"
+            gunicorn = root / "gunicorn.txt"
+            nginx.write_bytes(NGINX)
+            gunicorn.write_bytes(GUNICORN)
+            alias = root / "alias.txt"
+            alias.symlink_to(nginx)
+            for path in (str(alias), str(root / "missing.txt")):
+                with self.subTest(path=path):
+                    output = io.StringIO()
+                    with contextlib.redirect_stdout(output):
+                        code = preflight.main([
+                            "--nginx-effective", path,
+                            "--gunicorn-effective", str(gunicorn),
+                        ])
+                    self.assertEqual(code, 2)
+                    receipt = json.loads(output.getvalue())
+                    self.assertEqual(receipt["decision"], "HOLD")
+                    self.assertIsNone(receipt["nginx_sha256"])
+                    self.assertFalse(any(receipt[key] for key in preflight.FLAGS))
 
     def test_invalid_cli_never_echoes_sensitive_arguments(self):
         secret = "private-marker-cannot-appear-in-receipt"
