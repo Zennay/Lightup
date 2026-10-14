@@ -26,3 +26,7 @@ A batch result is one privacy-safe fixed-field JSON receipt: `state` (`REVIEW_ON
 - No changes to `main`, active production owner PR #107, preparse owner #1264, branch isolation #1313, runner, CI workflow, network or targets are part of this feature.
 
 **Never translate REVIEW_ONLY into authorization, permit, scan readiness, merge or deployment.**
+
+## W4 local file identity hardening — fail-closed, not attestation
+
+The read-only file intake performs a pre-open local `lstat` (reject symlinks, directories and FIFOs **before** calling `os.open`), then compares device/inode/size/mtime/ctime against the actually opened file descriptor and compares an additional post-read `fstat` snapshot. Bounded same-length tampering and path substitution that change these observed metadata fields produce an opaque `CHANGED_INPUT` HOLD; no private input bytes are logged. This is a race-detection **heuristic**, not a trusted immutable filesystem snapshot or anti-malware/consent proof. In particular a privileged concurrent writer able to preserve metadata could defeat local review consistency, and permission to test assets is **never** inferred. Eight new synthetic unittest methods in `tests/test_scope_review_file_identity_offline.py` cover both readers using deterministic injected metadata changes, symlinks and FIFO non-open behavior. Human and production gates remain unchanged.
