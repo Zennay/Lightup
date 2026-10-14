@@ -125,10 +125,10 @@ calendar-valid ASCII UTC seconds, such as `2026-10-01T09:00:00Z`.
 Unrecognized authority-looking keys are **denied**, not ignored.
 
 ```bash
-PYTHONPATH=src python scripts/review_grant_revision_offline.py /tmp/synthetic-review.json
+PYTHONPATH=src python scripts/review_grant_revision_offline.py lab/fixtures/grant_revision_narrowing_synthetic.json
 ```
 
-The CLI accepts **only a regular local input file** (<=64 KiB) and rejects
+The checked-in fixture uses invented `.test` assets and reduces both risk and scope; it is **not a real grant or real customer**. Expected output is a `REVIEW_ONLY` receipt with all five flags `false` and exit code `3`. Do not chain exit 3 into a scan.\n\nThe CLI accepts **only a regular local input file** (<=64 KiB) and rejects
 symlinks, directories, pipes, oversize input, invalid UTF-8/JSON, duplicate
 JSON keys, nonfinite constants, ambiguous types, unknown keys, and entire
 malformed batches. Errors print an opaque `HOLD` JSON receipt, not a path,
