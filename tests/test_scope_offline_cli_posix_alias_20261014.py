@@ -42,7 +42,12 @@ if _posix is not None:
         "execv", "execve", "execvp", "execvpe",
     ):
         if hasattr(_posix, _name):
-            setattr(_posix, _name, forbidden)
+            def _deny_named(*args, _symbol=_name, **kwargs):
+                if os.environ.get("LIGHTUP_POSIX_DIAGNOSTIC") == "1":
+                    import sys
+                    sys.stderr.write("POSIX_BLOCK:%s\\n" % _symbol)
+                forbidden()
+            setattr(_posix, _name, _deny_named)
 """
 
 
@@ -123,7 +128,7 @@ class OfflineScopePosixAliasTests(unittest.TestCase):
             with self.subTest(status=status):
                 result = subprocess.run(
                     [sys.executable, "-B", str(cli)], cwd=self.root,
-                    env=self.env, input=payload, capture_output=True,
+                    env=dict(self.env, LIGHTUP_POSIX_DIAGNOSTIC="1"), input=payload, capture_output=True,
                     check=False, timeout=15,
                 )
                 self.assertEqual(result.returncode, code, result.stderr)
@@ -137,7 +142,7 @@ class OfflineScopePosixAliasTests(unittest.TestCase):
         self.assertTrue(exporter.is_file())
         result = subprocess.run(
             [sys.executable, "-B", str(exporter)], cwd=self.root,
-            env=self.env, capture_output=True, check=False, timeout=15,
+            env=dict(self.env, LIGHTUP_POSIX_DIAGNOSTIC="1"), capture_output=True, check=False, timeout=15,
         )
         self.assertEqual(result.returncode, 3, result.stderr)
         self.assertEqual(result.stderr, b"")
