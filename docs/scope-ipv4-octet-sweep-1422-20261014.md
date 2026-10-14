@@ -84,3 +84,19 @@ This finite failure-injection regression is non-authorizing, has no user-selecta
 A separate independent strict reference, `NoImplicitAuthorizationPolicy`, checks the **full actual in-memory diagnostic call path**, rather than just an output receipt. Its constructor refuses any explicitly listed hosts or CIDR networks, wrongly typed policy flags, or `require_authorization_for_public=False`. Its `decide()` rejects noncanonical `Target` objects, any attached `Authorization`, or nonempty/non-tuple target labels. The isolated unit test requires **exactly two original constructions**, one private-lab enabled and one disabled, and **exactly 15,360 real `decide()` calls** without implicit authorization.
 
 The separate synthetic `REVIEW_ONLY` is deliberately advisory and still has zero permit, execution or release authority. The original installed source remains RED for #1422. This is a guardrail around a standalone test harness, not a substitute for per-tenant authorization, an actual executor gate or a production policy patch. Do not merge, deploy or scan.
+
+## W54 — actionable, privacy-preserving non-authorizing HOLD diagnostics
+The optional offline script now emits exactly one **bounded, public `diagnostic_code`** alongside its existing status/count/false-authority receipt. The exhaustive allowed values are:
+`RESULT_TYPE_MISMATCH` (wrong decision/field primitive types),
+`HOST_IDENTITY_MISMATCH` (normalized host identity changed),
+`SCOPE_CLASSIFICATION_MISMATCH` (unexpected allow/deny/reason),
+`EVALUATION_EXCEPTION` (a review-only policy raised),
+`SAMPLE_COUNT_MISMATCH` (internal bounded count changed),
+`ARGUMENT_REJECTED` (CLI was given input),
+and `MATCHED_NON_AUTHORIZING` (strict synthetic oracle matched, **not consent**).
+
+No exception string, hostname, IP literal, customer ID, supplied CLI argument, stack trace, file path, scan permit, human approval or arbitrary diagnosis from a policy is ever included. **Every non-match remains `HOLD`, `checked_count=0`, exit 2 and all five authority/release flags literal `False`; even `MATCHED_NON_AUTHORIZING` remains `REVIEW_ONLY`, exit 3**. Both IPv4 and IPv6 share exactly the same classification guard.
+
+New ordinary regressions check an exact receipt key whitelist, the seven category values, nine independent normal/adversarial policies (allow-all, deny-all, spoofed host, type confusion, spoofed reason, hostile `repr`, exception with sensitive text, and the actual installed #1422 source), plus an invalid argument containing a synthetic secret. They verify zero standard output from internal reviews and no raw secret or target in JSON. A final-decision regression modifies only the **15,360th** decision's host identity; all 15,360 calls are observed, but the receipt remains atomic `HOLD`, exactly `HOST_IDENTITY_MISMATCH` and no leaked synthetic private hostname.
+
+The diagnosis is for developer triage only, not a machine-issued permission. Source-owner #100 must still fix the installed #1422 predicate, independently review any real grant and prove the true permanent VPS run. **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NO MERGE/DEPLOY/ACTIVE SCANS.**
