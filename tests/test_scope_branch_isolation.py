@@ -297,5 +297,31 @@ class IsolationCheckTests(unittest.TestCase):
         self.assertEqual(inspect(self.repo, self.base, head, (path,)),
                          ("ADDITIVE_PATHS_MATCH", 1))
 
+    def test_optin_current_head_pinning_denies_stale_review(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "first\n")
+        first = self.commit()
+        self.write("docs/scope-second-commit.md", "later\n")
+        self.commit()
+        self.assertEqual(inspect(self.repo, self.base, first, (path,), (),
+                                 require_current_head=True)[0], "STALE_CURRENT_HEAD")
+        self.assertEqual(inspect(self.repo, self.base, first, (path,), (),
+                                 require_current_head=False),
+                         ("ADDITIVE_PATHS_MATCH", 1))
+
+    def test_optin_current_head_pinning_allows_exact_checkout_commit(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "only file\n")
+        head = self.commit()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(["--repo", str(self.repo), "--base", self.base,
+                         "--head", head, "--allow", path, "--require-current-head"])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out.getvalue())["status"], "REVIEW_ONLY")
+        self.assertEqual(inspect(self.repo, self.base, head, (path,), (),
+                                 require_current_head=1)[0],
+                         "INVALID_CURRENT_HEAD_POLICY")
+
 if __name__ == "__main__":
     unittest.main()
