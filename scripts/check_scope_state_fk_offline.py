@@ -149,7 +149,19 @@ def probe(factory: Callable[[str], object]) -> dict[str, object]:
     }
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    # Never silently pretend to inspect a user-supplied database or target.
+    if argv is None:
+        argv = sys.argv[1:]
+    if argv:
+        result = {
+            "status": "HOLD",
+            "reason": "UNSUPPORTED_ARGUMENTS",
+            "checks": dict.fromkeys(CHECK_NAMES, False),
+            **AUTHORITY,
+        }
+        print(json.dumps(result, sort_keys=True, separators=(",", ":")))
+        return 2
     try:
         from lightup.state import StateStore
         result = probe(StateStore)
