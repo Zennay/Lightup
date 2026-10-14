@@ -5,10 +5,12 @@ Known unsafe current-source admissions are intentional expected failures.
 """
 from __future__ import annotations
 
+from contextlib import redirect_stdout
 from dataclasses import replace
 from datetime import datetime, timezone
 import builtins
 import importlib.util
+import io
 import json
 import os
 import sqlite3
@@ -24,7 +26,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from lightup import activation as activation_module
 from lightup.activation import ActivationGate, ActivationMode, ActivationPolicy, ExecutionPermit
 from lightup.models import Authorization, Target
-from lightup.scope import ScopePolicy, ScopeReason
+from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason
 
 SCRIPT = ROOT / "scripts" / "audit_scope_activation_lab_permit_1422_offline.py"
 SPEC = importlib.util.spec_from_file_location("scope_activation_lab_permit_1422", SCRIPT)
@@ -571,6 +573,50 @@ class ActualActivationPermitChainRED(unittest.TestCase):
         self.assertEqual(receipt["status"], "HOLD")
         self.assertIs(receipt["permit_issued"], False)
         self.assertNotIn("SENSITIVE", json.dumps(receipt))
+
+
+    def test_simulated_owner_scope_fix_turns_receipt_review_only_never_approval(self):
+        """Simulate a source-owner fix without modifying any production code."""
+        original_decide = ScopePolicy.decide
+        unsafe_samples = frozenset(AUDIT.NOT_LAB)
+
+        def simulated_fixed_decision(policy, target):
+            if target.value in unsafe_samples:
+                return ScopeDecision(
+                    allowed=False,
+                    normalized_host=policy.normalize_host(target.value),
+                    reason=ScopeReason.OUT_OF_SCOPE,
+                )
+            return original_decide(policy, target)
+
+        with patch.object(ScopePolicy, "decide", simulated_fixed_decision):
+            receipt = AUDIT.audit()
+            self.assertEqual(receipt["checked"], 56)
+            self.assertEqual(receipt["violations"], 0)
+            self.assertEqual(receipt["status"], "REVIEW_ONLY")
+            self.assertTrue(all(value is False for key, value in receipt.items() if key in AUDIT._DENIED))
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                exit_code = AUDIT.main([])
+            self.assertEqual(exit_code, 3)
+            self.assertEqual(json.loads(buffer.getvalue()), receipt)
+            self.assertNotIn("NO_REAL_PERMIT", buffer.getvalue())
+            self.assertNotIn("192.0.2.1", buffer.getvalue())
+
+        # Even under that simulated source repair, accidentally locking out
+        # a legitimate lab input is a distinct HOLD, never review green.
+        def overblocked_decision(policy, target):
+            if target.value == AUDIT.SAFE_LAB[0]:
+                return ScopeDecision(False, "127.0.0.1", ScopeReason.OUT_OF_SCOPE)
+            return simulated_fixed_decision(policy, target)
+
+        with patch.object(ScopePolicy, "decide", overblocked_decision):
+            broken_receipt = AUDIT.audit()
+        self.assertEqual(broken_receipt["status"], "HOLD")
+        self.assertEqual(broken_receipt["checked"], 56)
+        self.assertEqual(broken_receipt["violations"], 1)
+        self.assertIs(broken_receipt["authorization_verified"], False)
+        self.assertIs(broken_receipt["release_approved"], False)
 
     def test_cli_single_fixed_receipt_no_literal_or_token_reflection(self):
         run = subprocess.run(
