@@ -15,6 +15,8 @@ The tool reads at most 16,384 bytes from **local regular-file or FIFO stdin**; s
     python -B scripts/review_scope_grant_amendment_20261014_offline.py --stdin-json < synthetic-review.json
     python -B -m unittest discover -s tests -p 'test_scope_grant_amendment_20261014_offline.py' -v
 
+**CLI safety:** the only accepted argument sequence is exactly `--stdin-json` once. Missing, duplicate, unknown or malformed arguments exit 2 **without reading stdin and without echoing any argv/pipe content to stdout or stderr**. This intentionally does not provide generic argparse help/error text, which could otherwise disclose a secret supplied as an unknown argument.
+
 JSON input must have exactly three fields: `schema` with the literal value `lightup.grant-amendment-review.v1`, plus `before` and `after`.
 
 Each snapshot must contain exactly these keys:
