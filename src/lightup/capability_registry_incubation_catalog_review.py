@@ -26,6 +26,13 @@ _LAB_ONLY = frozenset({
 })
 _EXPECTED = {**dict.fromkeys(_PLANNED, "planning"), **dict.fromkeys(_LAB_ONLY, "lab_only")}
 
+# Reviewed semantic metadata of the 31-entry source registry on main at
+# 9e51da1585ba8c3d37610ec5a34bce088335713f. This is an ordinary
+# code-review sentinel, NOT a signed manifest or trusted source attestation.
+_REVIEWED_SEMANTIC_FINGERPRINT = (
+    "sha256:37419dd71288587323bc112bf28ad2aafc6561118cde7750852307848cd4af16"
+)
+
 
 @dataclass(frozen=True)
 class IncubationCatalogReview:
@@ -81,9 +88,15 @@ def review_incubation_catalog(raw: bytes) -> IncubationCatalogReview:
         if explicit_activation is not True:
             violations.append((ident, "explicit_activation_required"))
     violations.sort()
+    fingerprint = _fingerprint(records)
+    if not violations and fingerprint != _REVIEWED_SEMANTIC_FINGERPRINT:
+        return IncubationCatalogReview(
+            "HOLD", "semantic_metadata_differs_from_reviewed_reference",
+            fingerprint, (),
+        )
     return IncubationCatalogReview(
         "HOLD" if violations else "REVIEW_ONLY",
         "catalog_change_requires_independent_review" if violations else "incubation_catalog_metadata_only",
-        _fingerprint(records),
+        fingerprint,
         tuple(violations),
     )
