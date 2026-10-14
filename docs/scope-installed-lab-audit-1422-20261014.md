@@ -50,6 +50,12 @@ The same installed-source offline diagnostic now checks **three static synthetic
 
 Any incorrect admission, canonicalization drift, unexpected type or exception yields **atomic HOLD**. Three dedicated negative-mutant unit tests require this behavior: no-grant bypass, expired-grant bypass and normalized-host drift on URL input. The complete static audit has **130 individual policy decisions**, while the original W39 positive/negative matrix and source provenance checks remain untouched. This tests denial-only behavior; **no valid grant is produced or evaluated as an approval**. Even passing output is `REVIEW_ONLY`, never a permit or release authority.
 
+## W41 — expiry remains restrictive across every broad explicit-network address
+
+The previous W39 check denied each fixed forbidden IP under a synthetic overbroad `0.0.0.0/0` / `::/0` explicit-network policy with missing authorization. W41 makes that **dual-condition**: each of the **34 negative IP literals** must also be denied with a static and definitively expired **2000-01-01 UTC** `Authorization`, returning exact `AUTHORIZATION_EXPIRED`. The same immutable synthetic expired record previously used for W40's three hostname variants is reused; there are **no customer credentials or actual permits**.
+
+This adds 34 real checked-out `ScopePolicy.decide` calls (**164 decisions total**) and two dedicated negative-mutant tests that explicitly reject (a) execution admission despite an expired grant and (b) incorrectly reporting a missing rather than expired authorization. There are now **26 dedicated unittest methods**. The static receipt remains deliberately privacy-minimal: only total count, status, and five false flags, and CLI still never exits 0. Neither an expiry result nor REVIEW_ONLY is permission or a source-owner fix.
+
 ## Safety and ownership
 
 This deliberately evaluates **real unmodified** `ScopePolicy.decide(Target(...))` from this checkout, unlike [#1424/#1425](https://github.com/Zennay/Lightup/pull/1425), which supplies a standalone reference reviewer. It does not write to or import the tool executor, production admission wiring, tenancy logic or the neighboring target parser. All three new files are owned by W38; source-owner #100, RED owner #1423, standalone reviewer #1425, CIDR #1318, CI and runners remain untouched.
