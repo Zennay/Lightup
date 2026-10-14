@@ -46,6 +46,17 @@ CREATE TABLE IF NOT EXISTS evidence (
 """
 
 
+RUN_ACTIVATION_MODES = frozenset(
+    {
+        "plan_only",
+        "analysis_only",
+        "passive_discovery",
+        "lab_autonomous",
+        "authorized_assessment",
+    }
+)
+
+
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -91,6 +102,21 @@ class StateStore:
         activation_mode: str = "plan_only",
         authorization_ref: str | None = None,
     ) -> str:
+        if type(activation_mode) is not str or activation_mode not in RUN_ACTIVATION_MODES:
+            raise ValueError("run activation_mode is invalid")
+        if authorization_ref is not None:
+            if type(authorization_ref) is not str or not authorization_ref.strip():
+                raise ValueError("authorization_ref must be a non-empty string")
+            if authorization_ref != authorization_ref.strip():
+                raise ValueError("authorization_ref must not contain surrounding whitespace")
+        if activation_mode == "authorized_assessment":
+            if authorization_ref is None:
+                raise ValueError("authorized assessment runs require authorization_ref")
+        elif authorization_ref is not None:
+            raise ValueError(
+                "authorization_ref is only valid for authorized_assessment runs"
+            )
+
         run_id = str(uuid4())
         with self.connect() as con:
             con.execute(
