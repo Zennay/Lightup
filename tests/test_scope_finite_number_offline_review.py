@@ -1,7 +1,10 @@
 """Real pure numeric admission and synthetic ANALYSIS_ONLY executor tests."""
 from __future__ import annotations
 
+import json
 import math
+import subprocess
+import sys
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -94,6 +97,49 @@ class FiniteNumberOfflineReviewTests(unittest.TestCase):
                 self.assertIs(receipt[flag], False)
             self.assertNotIn("secret", str(receipt))
             self.assertNotIn("real_target", str(receipt))
+
+
+    def test_stdin_cli_privacy_and_fail_closed_invalid_payloads(self):
+        cli = Path(__file__).resolve().parents[1] / "scripts" / "review_scope_finite_number_offline.py"
+        examples = (
+            (b'{"arguments":[["count",2],["weight",0.5]]}', "REVIEW_ONLY", 3),
+            (b'{"arguments":[["count",2],["weight",1e999]]}', "HOLD", 2),
+            (b'{"arguments":[["count",NaN]]}', "HOLD", 2),
+            (b'{"arguments":[["secret",7],["secret",8]]}', "HOLD", 2),
+            (b'{"arguments":[["secret",7]],"arguments":[["secret",8]]}', "HOLD", 2),
+            (b'{"arguments":[["bad.name",7]]}', "HOLD", 2),
+            (b'{"arguments":[]}', "HOLD", 2),
+            (b'{"arguments":[["count",true]]}', "HOLD", 2),
+            (b'{"arguments":[["count",2]]}' + b" " * 8193, "HOLD", 2),
+            (b'{"arguments":[["private",42]],"target":"example.com"}', "HOLD", 2),
+        )
+        for payload, expected_status, expected_code in examples:
+            with self.subTest(data=payload[:20]):
+                run = subprocess.run(
+                    [sys.executable, str(cli)],
+                    input=payload, capture_output=True, timeout=10,
+                    check=False,
+                )
+                self.assertEqual(run.returncode, expected_code, run.stderr.decode())
+                self.assertEqual(run.stderr, b"")
+                receipt = json.loads(run.stdout)
+                self.assertEqual(receipt["status"], expected_status)
+                self.assertEqual(len(run.stdout.splitlines()), 1)
+                for field in ("authorization_verified", "permit_issued",
+                              "execution_enabled", "merge_approved", "release_approved"):
+                    self.assertIs(receipt[field], False)
+                for private in ("secret", "private", "example.com", "NaN", "Infinity"):
+                    self.assertNotIn(private, run.stdout.decode())
+
+    def test_stdin_cli_rejects_unexpected_arguments_without_stdin(self):
+        cli = Path(__file__).resolve().parents[1] / "scripts" / "review_scope_finite_number_offline.py"
+        run = subprocess.run(
+            [sys.executable, str(cli), "--allow-target"],
+            input=b"", capture_output=True, timeout=10, check=False,
+        )
+        self.assertEqual(run.returncode, 2)
+        self.assertEqual(json.loads(run.stdout)["status"], "HOLD")
+        self.assertEqual(run.stderr, b"")
 
     def test_reference_admission_before_real_analysis_executor_and_sqlite(self):
         with tempfile.TemporaryDirectory() as tmp:
