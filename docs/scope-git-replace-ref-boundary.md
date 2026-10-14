@@ -4,7 +4,7 @@
 
 ## Finding
 
-A reviewer accepting a 40-character immutable commit SHA but relying on ordinary local Git object reads can be misled by repository-local **`refs/replace/<sha>`**. Git transparently presents a different commit's tree, blob and ancestry under the unchanged original SHA. A local replacement ref survives removal of inherited `GIT_*` environment variables, and checking `rev-parse HEAD^{commit}` does not fix it.
+A reviewer accepting a 40-character immutable commit SHA but relying on ordinary local Git object reads can be misled by repository-local **`refs/replace/<sha>`**. Git transparently presents a different commit's tree, blob and ancestry under the unchanged original SHA; an orphan replacement can also make an originally related commit appear to have no parent. A local replacement ref survives removal of inherited `GIT_*` environment variables, and checking `rev-parse HEAD^{commit}` does not fix it.
 
 **Concrete disposable proof:** a real original commit changes `src/lightup/protected.py`; a separate benign commit based on the same base only adds `tests/test_scope_synthetic.py`. `git replace <original-head-sha> <benign-head-sha>` causes default `git diff <base> <original-head-sha>` to report only the apparently benign file. The exact same diff with `GIT_NO_REPLACE_OBJECTS=1` instead reveals the original production source edit.
 
@@ -18,7 +18,7 @@ Run locally from a checkout with Git installed:
 python -m unittest discover -s tests -p 'test_scope_git_replace_ref_boundary.py' -v
 ```
 
-The **six** genuine disposable-repository tests cover diff spoofing, unchanged SHA / changed tree, original blob recovery, repository-local refs independent of inherited variables, `HEAD^{commit}` pin insufficiency and original history recovery. Each test uses a temporary directory, does not import production LightUp, opens no network sockets, runs no scans and never alters a real repository.
+The **seven** genuine disposable-repository tests cover diff spoofing, unchanged SHA / changed tree, original blob recovery, repository-local refs independent of inherited variables, `HEAD^{commit}` pin insufficiency, original history recovery and **false parent ancestry under an unrelated orphan replacement commit**. Each test uses a temporary directory, does not import production LightUp, opens no network sockets, runs no scans and never alters a real repository.
 
 ## Owner handoff — not an independent fix
 
