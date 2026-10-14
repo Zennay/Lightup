@@ -1,12 +1,13 @@
 """Offline, non-authorizing capability registry drift review.
 
-This module never grants execution or interprets a human approval. Feed it only
-local, fictional or otherwise authorized metadata snapshots; no target I/O.
+Strict local metadata comparison only: no consent, permit, deployment, or target I/O.
+Both legacy three-field and current five-field manifests fail closed on drift.
 """
 from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from dataclasses import dataclass
 from hashlib import sha256
 from typing import Any
@@ -15,6 +16,9 @@ _ID = re.compile(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*\Z", re.ASCII)
 _STATES = frozenset({"planning", "lab_only", "disabled"})
 _MAX_CAPABILITIES = 128
 _MAX_PAYLOAD_BYTES = 32_768
+_LEGACY_FIELDS = frozenset({"capability_id", "state", "requires_explicit_activation"})
+_FULL_FIELDS = _LEGACY_FIELDS | {"name", "description"}
+RegistryFields = tuple[str, bool, str | None, str | None]
 
 
 @dataclass(frozen=True)
@@ -54,16 +58,61 @@ def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return output
 
 
-def _decode_manifest(raw: bytes) -> dict[str, tuple[str, bool]]:
+def _shape_gate(raw: bytes) -> None:
+    """Bound JSON depth without counting punctuation inside quoted strings."""
+    inside_string = False
+    escaped = False
+    depth = 0
+    objects = 0
+    arrays = 0
+    for byte in raw:
+        if inside_string:
+            if escaped:
+                escaped = False
+            elif byte == 92:
+                escaped = True
+            elif byte == 34:
+                inside_string = False
+        elif byte == 34:
+            inside_string = True
+        elif byte in (123, 91):
+            depth += 1
+            if depth > 3:
+                raise ValueError("nested manifest structure")
+            if byte == 123:
+                objects += 1
+            else:
+                arrays += 1
+            if objects > _MAX_CAPABILITIES + 1 or arrays > 1:
+                raise ValueError("invalid manifest structure")
+        elif byte in (125, 93):
+            depth -= 1
+            if depth < 0:
+                raise ValueError("unbalanced manifest structure")
+    if depth != 0 or inside_string or arrays != 1 or objects < 2:
+        raise ValueError("invalid manifest structure")
+
+
+def _semantic_text(value: object, limit: int) -> str:
+    if type(value) is not str or not 1 <= len(value) <= limit or value.strip() != value:
+        raise ValueError("invalid capability text metadata")
+    if unicodedata.normalize("NFC", value) != value:
+        raise ValueError("noncanonical Unicode capability text")
+    if any(unicodedata.category(ch).startswith("C") or (ch.isspace() and ch != " ") for ch in value):
+        raise ValueError("unsafe capability text metadata")
+    return value
+
+
+def _decode_manifest(raw: bytes) -> dict[str, RegistryFields]:
     if type(raw) is not bytes or not 1 <= len(raw) <= _MAX_PAYLOAD_BYTES:
         raise ValueError("manifest must be bounded bytes")
-    # Canonical manifests contain exactly one list and at most 128 entry objects.
-    # Bound structural nesting before invoking the JSON decoder on hostile input.
-    if raw.count(b"[") != 1 or raw.count(b"{") > _MAX_CAPABILITIES + 1:
-        raise ValueError("invalid manifest structure")
+    _shape_gate(raw)
     try:
-        obj = json.loads(raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys,
-                         parse_constant=lambda _: (_ for _ in ()).throw(ValueError("nonfinite JSON")))
+        obj = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=lambda _: (_ for _ in ()).throw(ValueError("nonfinite JSON")),
+        )
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise ValueError("invalid manifest JSON") from exc
     if type(obj) is not dict or set(obj) != {"capabilities"}:
@@ -71,9 +120,9 @@ def _decode_manifest(raw: bytes) -> dict[str, tuple[str, bool]]:
     records = obj["capabilities"]
     if type(records) is not list or not 1 <= len(records) <= _MAX_CAPABILITIES:
         raise ValueError("invalid capability count")
-    output: dict[str, tuple[str, bool]] = {}
+    output: dict[str, RegistryFields] = {}
     for record in records:
-        if type(record) is not dict or set(record) != {"capability_id", "state", "requires_explicit_activation"}:
+        if type(record) is not dict or frozenset(record) not in (_LEGACY_FIELDS, _FULL_FIELDS):
             raise ValueError("invalid capability fields")
         ident = record["capability_id"]
         state = record["state"]
@@ -86,15 +135,27 @@ def _decode_manifest(raw: bytes) -> dict[str, tuple[str, bool]]:
             raise ValueError("noncanonical explicit-activation flag")
         if ident in output:
             raise ValueError("duplicate capability identifier")
-        output[ident] = (state, activation)
+        name, description = None, None
+        if "name" in record:
+            name = _semantic_text(record["name"], 128)
+            description = _semantic_text(record["description"], 512)
+        output[ident] = (state, activation, name, description)
     return output
 
 
-def _fingerprint(records: dict[str, tuple[str, bool]]) -> str:
-    canonical = [
-        {"capability_id": name, "state": records[name][0], "requires_explicit_activation": records[name][1]}
-        for name in sorted(records)
-    ]
+def _fingerprint(records: dict[str, RegistryFields]) -> str:
+    canonical: list[dict[str, object]] = []
+    for ident in sorted(records):
+        state, activation, name, description = records[ident]
+        entry: dict[str, object] = {
+            "capability_id": ident,
+            "state": state,
+            "requires_explicit_activation": activation,
+        }
+        if name is not None:
+            entry["name"] = name
+            entry["description"] = description
+        canonical.append(entry)
     blob = json.dumps({"capabilities": canonical}, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     return "sha256:" + sha256(blob.encode("ascii")).hexdigest()
 
