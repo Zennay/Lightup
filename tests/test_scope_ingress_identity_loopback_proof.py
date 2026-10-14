@@ -52,6 +52,51 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 fixture.nginx_config(str(root), 28211, 28212)
 
+    def test_untrusted_tmpdir_metacharacters_fail_before_config_generation(self):
+        for value in (
+            "/tmp/a b", "/tmp/a;include", "/tmp/a\\nreturn",
+            "/tmp/a{bad}", "/tmp/a#comment", "/tmp/a$var",
+            "/tmp/a\\tpath", "/tmp/a\\\\escaped",
+        ):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    fixture.nginx_config(Path(value), 28211, 28212)
+
+    def test_disposable_child_environment_never_inherits_execution_hooks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            injected = {
+                "GUNICORN_CMD_ARGS": "--preload --config /tmp/evil.py",
+                "PYTHONPATH": "/tmp/untrusted",
+                "PYTHONSTARTUP": "/tmp/evil.py",
+                "PYTHONINSPECT": "1",
+                "LD_PRELOAD": "/tmp/evil.so",
+                "LD_LIBRARY_PATH": "/tmp/untrusted",
+                "HTTP_PROXY": "http://untrusted.invalid",
+                "NGINX_CONF_PATH": "/tmp/untrusted.conf",
+            }
+            with patch.dict(os.environ, injected):
+                env = fixture._fixture_environment(root)
+            self.assertIs(type(env), dict)
+            self.assertEqual(env["HOME"], str(root))
+            self.assertEqual(env["TMPDIR"], str(root))
+            self.assertEqual(env["PYTHONNOUSERSITE"], "1")
+            self.assertEqual(env["LANG"], "C")
+            self.assertIn("/usr/bin", env["PATH"])
+            self.assertEqual(set(env), {
+                "HOME", "TMPDIR", "PATH", "LANG", "PYTHONNOUSERSITE",
+            })
+            for key in injected:
+                self.assertNotIn(key, env)
+            env["GUNICORN_CMD_ARGS"] = "mutated"
+            self.assertNotIn("GUNICORN_CMD_ARGS", fixture._fixture_environment(root))
+
+    def test_subprocess_environment_requires_plain_absolute_path(self):
+        for root in ("not-a-path", Path("relative"), None):
+            with self.subTest(root=root):
+                with self.assertRaises(ValueError):
+                    fixture._fixture_environment(root)
+
     @staticmethod
     def _synthetic_app(
         path: str,
