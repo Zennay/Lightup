@@ -13,3 +13,7 @@ Unit tests: `PYTHONPATH=src python -m unittest discover -s tests -v`. Require ex
 ## W2 drift hardening (independent follow-up)
 
 After W1, four new adversarial synthetic cases were added: late destination-role mutation, destination-key mutation, registered definition interaction change, and full registry map replacement. The optional preview now pins all of these to its constructor snapshot and denies before issuing even a non-authorizing HOLD receipt. **29 test methods** are staged, but exact final GitHub head CI has not been run; no claim of full repository compatibility. Python reflection and concurrent race resistance are out of scope for this opt-in reference and remain production owner review requirements.
+
+## W3 receipt authority sealing
+
+A further fix makes the preview receipt's four authority flags and HOLD status `init=False` fixed defaults, so callers cannot construct `DestinationReview(..., permit_issued=True)`, `execution_enabled=True`, or `release_approved=True` using the normal constructor. A 30th ordinary test checks constructor rejection. This still is not an authorization decision; Python reflection/substitution outside the preview trust boundary and actual dispatch remain original source-owner concerns. No production activation or target I/O.
