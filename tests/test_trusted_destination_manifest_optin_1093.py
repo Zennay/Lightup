@@ -722,5 +722,29 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
 
+
+    def test_74_known_lab_factory_refuses_replaced_registered_handler(self):
+        from lightup.trusted_destination_manifest_optin import known_lab_destination_manifest
+        from lightup.workers import http_baseline
+        registry = ToolRegistry()
+        definition = http_baseline.HTTP_BASELINE_TOOL
+        registry.register(definition, lambda *_: self.calls.append("unsafe-handler"))
+        self.refused(lambda: known_lab_destination_manifest(registry, definition))
+        self.assertEqual(self.calls, [])
+
+    def test_75_known_lab_factory_detects_handler_swap_after_construction(self):
+        from lightup.trusted_destination_manifest_optin import known_lab_destination_manifest
+        from lightup.workers import service_inventory
+        registry = ToolRegistry()
+        service_inventory.register(registry)
+        definition = service_inventory.SERVICE_INVENTORY_TOOL
+        preview = known_lab_destination_manifest(registry, definition)
+        registry._tools[definition.tool_id] = (
+            definition, lambda *_: self.calls.append("unsafe-handler"))
+        self.refused(lambda: preview.review(
+            {"host": "127.0.0.1", "ports": "80,443"}))
+        self.assertEqual(self.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
