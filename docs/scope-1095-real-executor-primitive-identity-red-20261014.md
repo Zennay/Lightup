@@ -57,6 +57,12 @@ Direct receipt constructors continue rejecting malformed/duplicate/polymorphic a
 
 **No in-process Python object should be treated as an authorization token**: hostile code with native/reflection capabilities can bypass userland invariants. These are defensive data-shape diagnostics only; original production type-admission defects remain **14 expected RED** and require source-owner repair. No runtime registration, target dispatch, network or authorization is introduced.
 
+## W8: real synthetic executor post-validation tampering acceptance
+
+Two additional **ordinary** in-process tests join the isolated synthetic-only `ToolRegistry`, `ToolExecutor`, `ExecutionPolicy` and temporary `StateStore` SQLite producer. A permitted built-in `str` is snapshotted, then both the original input dictionary and a direct `object.__setattr__(receipt, "items", ...)` attack are attempted. The original exact canonical string must be the **only** handler effect and one evidence row must be persisted. A deliberately forged `tuple.__new__` receipt containing a hostile `str` subclass is rejected at `as_arguments()` and at batch construction with **zero handler calls and zero SQLite writes**. These positive and negative effects are confined to dummy `synthetic.invalid` ANALYSIS_ONLY calls, not production target tools.
+
+These tests characterize a narrow, non-authorizing data-shape boundary and **do not fix** the 14 expected RED original source owner tests. Never treat receipt validity as authorization, tenant scope, consent or live revocation proof.
+
 ## Limits and required release gates
 
 All sample names are synthetic and are not queried over DNS. No network, scan, target interaction, customer data, grant, persisted authorization mutation, attack path, CI workflow edit or deployment. Even real SQLite and handler controls provide **typed-value input diagnostics only**; they do not establish customer consent, revocation coherence, live tenant scope, or real-target dispatch safety.
