@@ -29,6 +29,11 @@ LANES = (
     "installed_ingress",
 )
 FLAGS = ("authorized", "permit", "dispatch", "merge", "deploy", "release")
+RECEIPT_KEYS = frozenset({
+    "schema", "status", "input_integrity",
+    "unverified_self_asserted_pass_claims", "verified_evidence", *FLAGS,
+})
+MAX_RECEIPT_BYTES = 512
 
 
 def packet(**overrides):
@@ -55,6 +60,13 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
         self.assertIs(result["verified_evidence"], False)
         for name in FLAGS:
             self.assertIs(result[name], False)
+        self.assertEqual(set(result), RECEIPT_KEYS, "unknown receipt fields risk leaking source data")
+        self.assertEqual(type(result["unverified_self_asserted_pass_claims"]), int)
+        self.assertEqual(type(result["verified_evidence"]), bool)
+        for flag in FLAGS:
+            self.assertEqual(type(result[flag]), bool)
+        wire = (json.dumps(result, sort_keys=True, separators=(",", ":")) + "\\n").encode("ascii")
+        self.assertLessEqual(len(wire), MAX_RECEIPT_BYTES)
         rendered = json.dumps(result)
         self.assertNotIn(SHA, rendered)
         self.assertNotIn("hosted_python_311", rendered)
@@ -356,6 +368,30 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
         finally:
             receiver.close()
             sender.close()
+
+
+    def test_real_cli_single_ascii_receipt_with_no_raw_claim_details(self):
+        cases = (
+            encoded(packet()),
+            encoded(packet(extra_secret="my-example-token", approved=True)),
+            b"INVALID-SECRET" + b"x" * 200,
+            encoded(packet()).replace(b'"pass"', b'"pass\u000aSECRET-TOKEN"', 1),
+        )
+        for payload in cases:
+            with self.subTest(payload_length=len(payload)):
+                child = self.cli(payload)
+                self.assertEqual(child.returncode, 2)
+                self.assertEqual(child.stderr, b"")
+                self.assertEqual(child.stdout.count(b"\\n"), 1)
+                self.assertLessEqual(len(child.stdout), MAX_RECEIPT_BYTES)
+                result = json.loads(child.stdout.decode("ascii"))
+                self.assertEqual(set(result), RECEIPT_KEYS)
+                self.assertEqual(result["status"], "HOLD")
+                self.assertIs(result["verified_evidence"], False)
+                for key in FLAGS:
+                    self.assertIs(result[key], False)
+                self.assertNotIn(b"SECRET", child.stdout)
+                self.assertNotIn(SHA.encode(), child.stdout)
 
 
 if __name__ == "__main__":
