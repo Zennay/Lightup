@@ -49,3 +49,11 @@ High-level file/SQLite methods are not the entire Python API: `os.write`, `write
 One separate Python unittest executes up to eight disposable subprocess mutation variants under broad `except BaseException`. Every installed API must hit exit 92, zero stdout/stderr and no changed fixture bytes; unsupported optional OS functions are skipped. The `_sqlite3` mutation uses a disposable local path but must be intercepted **before** opening it. Existing eight real CLI positive/HOLD checks still must pass.
 
 These controls deliberately do **not** patch the kernel, raw C syscalls, all pre-bound extension aliases, or native binaries. They are negative tests for specific Python entrypoints, not trusted OS confinement or a grant/release/security scan permit. Runtime source owners #1143/#1173 and registered permanent VPS CI remain separate.
+
+## W23 — socketless DNS / reverse lookup tripwires (#1396)
+
+A Python CLI can trigger libc-backed hostname/reverse-DNS resolution with `socket.getaddrinfo`, `gethostbyname`, `gethostbyname_ex`, `gethostbyaddr`, `getnameinfo` or `getfqdn` without first constructing a Python socket. Constructor-only tripwires therefore do **not** prove DNS-free review. This test-only update patches the public `socket` names and independently exposed `_socket` C-extension exports at Python's `sitecustomize` pre-import step. Any attempt aborts with noncatchable `os._exit(92)` before actual DNS and before a benign receipt.
+
+The regression runs up to eleven independent child mutants targeting public/direct resolvers with a broad `except BaseException`. Each supported call must exit 92 with zero stdout and stderr, with the sandbox manifest files unchanged. The existing eight genuine offline scope-review CLI cases (valid and invalid) must still behave as REVIEW_ONLY/HOLD and never request DNS. A synthetic `synthetic.invalid` hostname is passed to intercepted functions but is never queried on a network.
+
+**Limit:** this is Python-level negative testing, not OS/libc egress fencing, not a proof about alternate native resolver APIs or pre-bound method references, not permission for real scans, and never source-owner production authorization enforcement. LightUp remains **INCUBATE M3/M7 PLAN/LAB ONLY**.
