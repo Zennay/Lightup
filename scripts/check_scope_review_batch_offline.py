@@ -66,9 +66,14 @@ def validate_batch(packets: object) -> int:
     return len(packets)
 
 
-def evaluate(raw: bytes) -> dict[str, object]:
+def evaluate(raw: bytes, *, include_summary: bool = False) -> dict[str, object]:
+    """Optional aggregate risk histogram with no tenant, asset or request identifiers."""
     status, reason, checked = "HOLD", "INVALID_BATCH", 0
+    modes = {mode: 0 for mode in sorted(single.MODES)}
+    risks = {str(risk): 0 for risk in range(6)}
     try:
+        if type(include_summary) is not bool:
+            raise BatchHold("INVALID_SUMMARY_POLICY")
         if type(raw) is not bytes or len(raw) > MAX_BATCH_BYTES:
             raise BatchHold("SIZE_LIMIT")
         try:
@@ -76,14 +81,24 @@ def evaluate(raw: bytes) -> dict[str, object]:
         except single.PacketHold as exc:
             raise BatchHold(exc.code) from None
         checked = validate_batch(decoded)
+        if include_summary:
+            # Never accumulate partial sensitive counters before whole-batch
+            # admission succeeds. Counts are shape-only and do not grant access.
+            for row in decoded:
+                modes[row["requested_mode"]] += 1
+                risks[str(row["risk_level"])] += 1
         status, reason = "REVIEW_ONLY", "SHAPE_ONLY_UNVERIFIED"
     except BatchHold as exc:
         checked = 0
         reason = exc.code
-    return {
+    receipt: dict[str, object] = {
         "state": status, "reason": reason, "packets_checked": checked,
         "non_authorizing": True, **single.AUTHORITY_FLAGS,
     }
+    if include_summary is True:
+        receipt["mode_counts"] = modes
+        receipt["risk_counts"] = risks
+    return receipt
 
 
 def _enforce_private_file(info: os.stat_result) -> None:
@@ -141,12 +156,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("batch_file", help="Local regular JSON array file only; never a URL or target")
     parser.add_argument("--require-private-file", action="store_true",
                         help="Fail closed unless local file is owned by current uid, has one link and no group/other permissions (POSIX); never authorizes scope")
+    parser.add_argument("--summary", action="store_true",
+                        help="Show aggregate mode/risk counts only on a valid whole batch, with zero counters on HOLD; still non-authorizing")
     args = parser.parse_args(argv)
     try:
-        receipt = evaluate(read_batch_file(args.batch_file, require_private_file=args.require_private_file))
+        receipt = evaluate(read_batch_file(args.batch_file, require_private_file=args.require_private_file), include_summary=args.summary)
     except BatchHold as exc:
         receipt = {"state": "HOLD", "reason": exc.code, "packets_checked": 0,
                    "non_authorizing": True, **single.AUTHORITY_FLAGS}
+        if args.summary:
+            receipt["mode_counts"] = {mode: 0 for mode in sorted(single.MODES)}
+            receipt["risk_counts"] = {str(risk): 0 for risk in range(6)}
     print(json.dumps(receipt, sort_keys=True, separators=(",", ":")))
     return 0 if receipt["state"] == "REVIEW_ONLY" else 2
 
