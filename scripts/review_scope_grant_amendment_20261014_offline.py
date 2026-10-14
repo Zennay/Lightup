@@ -187,8 +187,13 @@ def _bounded_stdin() -> bytes:
         regular = stat.S_ISREG(before.st_mode)
         if not (regular or stat.S_ISFIFO(before.st_mode)):
             return b""
-        if regular and before.st_size > MAX_INPUT:
-            return b""
+        if regular:
+            # This is a *whole-input* review, not a suffix from a caller-
+            # controlled inherited file offset or a size-less virtual file.
+            if not 0 < before.st_size <= MAX_INPUT:
+                return b""
+            if os.lseek(fd, 0, os.SEEK_CUR) != 0:
+                return b""
         original_blocking = os.get_blocking(fd)
         deadline = time.monotonic() + 2.0
         chunks = bytearray()
@@ -215,7 +220,8 @@ def _bounded_stdin() -> bytes:
                 if identity_before != identity_after:
                     break
                 if regular and (
-                    before.st_size != after.st_size
+                    len(chunks) != before.st_size
+                    or before.st_size != after.st_size
                     or before.st_mtime_ns != after.st_mtime_ns
                     or before.st_ctime_ns != after.st_ctime_ns
                 ):
