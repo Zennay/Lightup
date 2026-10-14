@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 from check_scope_branch_isolation import inspect, main
@@ -162,6 +163,22 @@ class IsolationCheckTests(unittest.TestCase):
             self.assertEqual(inspect(self.repo, self.base, head, (path,), (peer,))[0],
                              "INVALID_PEER_REFS")
 
+
+    def test_missing_git_binary_fails_closed(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "synthetic\n")
+        head = self.commit()
+        with mock.patch("check_scope_branch_isolation.subprocess.run",
+                        side_effect=FileNotFoundError):
+            self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
+                             "MISSING_COMMIT")
+
+    def test_missing_peer_commit_fails_closed(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "synthetic\n")
+        head = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,), ("f" * 40,))[0],
+                         "MISSING_PEER_COMMIT")
 
 if __name__ == "__main__":
     unittest.main()
