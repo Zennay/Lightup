@@ -191,3 +191,47 @@ Dit biedt **geen bewijs dat echte Nginx/Gunicorn-processen al gedraaid hebben**.
 Vanzelfsprekend blijft de normale CI zonder externe netwerk- of
 processenactiviteit. Ook na succesvolle tests zijn echte geïnstalleerde
 proxy- en LightUp-authenticatiechecks en menselijke releasegoedkeuring open.
+
+
+## W64: echte Nginx-only observatie + per-run authenticatie van fixture-antwoorden
+
+**Werkelijk lokaal uitgevoerd op 14 oktober 2026, niet op de permanente
+VPS-runner:** Nginx **1.26.3** is gestart met een uitsluitend tijdelijk eigen
+Nginx-bestand en twee 127.0.0.1-poorten, met Python-stdlib
+`ThreadingHTTPServer` als upstream (dus **niet Gunicorn** en **niet de
+LightUp-webapp**). De eenmalige lokale probe verwerkte **20/20 echte
+HTTP-verzoeken**: anoniem, alle acht onvertrouwde Cookie-/identity-headers
+apart en gecombineerd, alle acht ook bij een fictieve client-cookie, en
+fictieve client- en operator-cookie controles. Onbetrouwbare headers werden
+niet doorgestuurd; het upstream-cookiegedrag stemde overeen met de
+verwachting. Gedocumenteerde response: `REVIEW_ONLY`, `case_count=20`,
+`grants_written=0`, `gunicorn_exercised=false`,
+`lightup_webapp_exercised=false` en **vijf machtigings-/releasevlaggen
+letterlijk false**. Processen na de test beëindigd. Dit is een
+**lokaal repro-resultaat**, geen beveiligingsattest van productie, Gunicorn,
+de geïntegreerde 23-case repo-fixture of de geregistreerde VPS-runner.
+De uitgevoerde lokale probe is als afzonderlijk gesprekbestand bewaard
+met script-SHA256
+`040218cb5530c2b41ae04aa32d9a4d5410348f6986074077487765abfbdedb25`
+en ontvangst-SHA256
+`15df273449ff0f757bcef45fd2f2ebc33182904fc489b69ff953a624fb6c1618`.
+Deze hashes bewijzen uitsluitend de bytes van die lokale bestanden, niet
+de authenticiteit van de geïnstalleerde ingress.
+
+Bij audit van de nog NIET gedraaide twee-binary repo-fixture is een extra
+veiligheidsgat gevonden: dynamisch vrijgekomen loopback-poorten kunnen door
+een ander tijdelijk proces worden ingenomen. Daarom heeft iedere
+`run_fixture()` voortaan een eigen cryptografisch willekeurige
+**48-hexadecimale process-nonce**. Die wordt alleen in de tijdelijke
+synthetische WSGI-code geschreven en in een upstream-responseheader gezet.
+De echte HTTP-client accepteert het antwoord uitsluitend bij de verwachte
+exacte nonce. Onjuiste/ontbrekende/misvormde nonce is atomair HOLD en
+wordt niet uitgegeven in een stdout-receipt. Regressies toetsen noncevorm,
+het geweigerde antwoord vóór iedere verdere acceptatie, dat alle 23
+dezelfde run-nonce gebruiken en dat WSGI die nonce werkelijk terugstuurt.
+
+**Niet bewezen:** de geïnstalleerde Nginx+Gunicorn-keten, de opt-in
+23-gevallen repo-fixture op een echte Gunicorn-host, echte LightUp
+sessions/CSRF/tenant-grants, permanente VPS-runner, onafhankelijke
+security/privacy-review en menselijke toestemming. **INCUBATE M3/M7 ·
+PLAN/LAB ONLY · DRAFT/HOLD; geen merge, deploy, echte grants of scans.**
