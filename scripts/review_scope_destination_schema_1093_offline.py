@@ -15,6 +15,8 @@ import time
 
 MAX_INPUT_BYTES = 4096
 READ_DEADLINE_SECONDS = 2.0
+WRITE_DEADLINE_SECONDS = 2.0
+MAX_RECEIPT_BYTES = 512
 MAX_TOOLS = 8
 MAX_PARAMETERS = 16
 TOOL_ID = re.compile(r"[a-z][a-z0-9_-]{0,63}\Z", re.ASCII)
@@ -135,13 +137,87 @@ def _read_private_pipe() -> bytes | None:
         return None
 
 
+def _seal_receipt(result: object) -> bytes | None:
+    """Reject forged output *before* inspecting or writing to stdout."""
+    if type(result) is not dict or set(result) != {
+        "status", "claimed_tool_count", "claimed_parameter_count", *DENIAL
+    }:
+        return None
+    if any(result[key] is not False for key in DENIAL):
+        return None
+    status = result["status"]
+    count = result["claimed_tool_count"]
+    parameters = result["claimed_parameter_count"]
+    if type(status) is not str or status not in {"HOLD", "REVIEW_ONLY"}:
+        return None
+    if type(count) is not int or type(parameters) is not int:
+        return None
+    if status == "HOLD" and (count != 0 or parameters != 0):
+        return None
+    if status == "REVIEW_ONLY" and not (
+        1 <= count <= MAX_TOOLS and count <= parameters <= count * MAX_PARAMETERS
+    ):
+        return None
+    data = (json.dumps(result, sort_keys=True, separators=(",", ":"),
+                       ensure_ascii=True) + "\n").encode("ascii")
+    return data if len(data) <= MAX_RECEIPT_BYTES else None
+
+
+def _emit_receipt(result: object) -> bool:
+    """Send one sealed, bounded receipt to FIFO/TTY only, without hanging.
+
+    Nonblocking mode is restored on every path. It is briefly changed on
+    the shared open-file-description, so strict concurrent writers should
+    supply a *private* pipe. Python guards are not an OS sandbox.
+    """
+    data = _seal_receipt(result)
+    if data is None:
+        return False
+    changed = False
+    original_blocking = False
+    try:
+        mode = os.fstat(1).st_mode
+        if not (stat.S_ISFIFO(mode) or (stat.S_ISCHR(mode) and os.isatty(1))):
+            return False
+        original_blocking = os.get_blocking(1)
+        if original_blocking:
+            os.set_blocking(1, False)
+            changed = True
+        deadline = time.monotonic() + WRITE_DEADLINE_SECONDS
+        offset = 0
+        while offset < len(data):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return False
+            _, ready, _ = select.select([], [1], [], remaining)
+            if not ready:
+                return False
+            try:
+                sent = os.write(1, data[offset:])
+            except BlockingIOError:
+                continue
+            if sent <= 0:
+                return False
+            offset += sent
+        return True
+    except (OSError, ValueError, OverflowError):
+        return False
+    finally:
+        if changed:
+            try:
+                os.set_blocking(1, original_blocking)
+            except (OSError, ValueError):
+                pass
+
+
 def main(argv=None) -> int:
     args = sys.argv[1:] if argv is None else argv
     if args != ["--stdin-json"]:
         result = _hold()
     else:
         result = review_bytes(_read_private_pipe())
-    print(json.dumps(result, sort_keys=True, separators=(",", ":"), ensure_ascii=True))
+    if not _emit_receipt(result):
+        return 2
     return 3 if result["status"] == "REVIEW_ONLY" else 2
 
 
