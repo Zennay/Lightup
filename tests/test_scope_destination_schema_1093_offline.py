@@ -78,10 +78,15 @@ class ReviewTests(unittest.TestCase):
             with self.subTest(case=str(change)):
                 sample = fixture()
                 change(sample)
-                # Every claimed role removed from a tool is invalid, but metadata
-                # roles may be none while another trusted destination role exists.
-                expected = "REVIEW_ONLY" if sample["tools"][0]["parameters"][0]["role"] == "none" else "HOLD"
-                self.assert_denied(review_schema(sample), expected)
+                self.assert_denied(review_schema(sample), "HOLD")
+
+    def test_non_destination_metadata_does_not_supply_authority(self):
+        sample = fixture()
+        sample["tools"][0]["parameters"].append(
+            {"name": "max_retries", "kind": "integer", "role": "none"})
+        self.assert_denied(review_schema(sample), "REVIEW_ONLY")
+        sample["tools"][0]["parameters"][0]["role"] = "none"
+        self.assert_denied(review_schema(sample), "HOLD")
 
     def test_duplicate_decoded_keys_rejected(self):
         for raw in (
