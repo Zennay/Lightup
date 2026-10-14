@@ -80,6 +80,27 @@ class CountedStrictPolicy(IndependentStrictPolicy):
         return super().decide(target)
 
 
+class PoisonReprDecision:
+    def __repr__(self):
+        raise AssertionError("must not format untrusted scope decision")
+
+    def __str__(self):
+        raise AssertionError("must not stringify untrusted scope decision")
+
+
+class PoisonReprPolicy(IndependentStrictPolicy):
+    def decide(self, target):
+        return PoisonReprDecision()
+
+
+class WrongReasonPolicy(IndependentStrictPolicy):
+    def decide(self, target):
+        result = super().decide(target)
+        return ScopeDecision(
+            result.allowed, result.normalized_host, ScopeReason.INVALID_TARGET
+        )
+
+
 class NoImplicitAuthorizationPolicy(IndependentStrictPolicy):
     """Accept a synthetic preview only when every scope/grant input is inert."""
 
@@ -134,7 +155,21 @@ class UnexpectedErrorPolicy(IndependentStrictPolicy):
 
 
 class OctetSweepTests(unittest.TestCase):
+    CODES = frozenset({
+        "RESULT_TYPE_MISMATCH", "HOST_IDENTITY_MISMATCH",
+        "SCOPE_CLASSIFICATION_MISMATCH", "EVALUATION_EXCEPTION",
+        "SAMPLE_COUNT_MISMATCH", "ARGUMENT_REJECTED",
+        "MATCHED_NON_AUTHORIZING",
+    })
     def assert_non_authorizing(self, receipt, status):
+        self.assertEqual(
+            set(receipt),
+            {"status", "diagnostic_code", "checked_count", "total_count",
+             "authorization_verified", "permit_issued", "execution_enabled",
+             "merge_approved", "release_approved"},
+        )
+        self.assertIs(type(receipt["diagnostic_code"]), str)
+        self.assertIn(receipt["diagnostic_code"], self.CODES)
         self.assertEqual(receipt["status"], status)
         self.assertEqual(receipt["total_count"], TOTAL_DECISIONS)
         self.assertEqual(
@@ -246,6 +281,41 @@ class OctetSweepTests(unittest.TestCase):
         self.assertEqual(
             NoImplicitAuthorizationPolicy.observed_targets, TOTAL_DECISIONS
         )
+
+    def test_diagnostic_codes_are_fixed_and_no_sensitive_values_leak(self):
+        cases = (
+            (IndependentStrictPolicy, "REVIEW_ONLY", "MATCHED_NON_AUTHORIZING"),
+            (TrustAllPolicy, "HOLD", "SCOPE_CLASSIFICATION_MISMATCH"),
+            (DenyAllPolicy, "HOLD", "SCOPE_CLASSIFICATION_MISMATCH"),
+            (WrongIdentityPolicy, "HOLD", "HOST_IDENTITY_MISMATCH"),
+            (WrongTypePolicy, "HOLD", "RESULT_TYPE_MISMATCH"),
+            (WrongReasonPolicy, "HOLD", "SCOPE_CLASSIFICATION_MISMATCH"),
+            (PoisonReprPolicy, "HOLD", "RESULT_TYPE_MISMATCH"),
+            (UnexpectedErrorPolicy, "HOLD", "EVALUATION_EXCEPTION"),
+            (ScopePolicy, "HOLD", "SCOPE_CLASSIFICATION_MISMATCH"),
+        )
+        for factory, expected_status, expected_code in cases:
+            with self.subTest(code=expected_code, factory=factory.__name__):
+                buffer = StringIO()
+                with redirect_stdout(buffer):
+                    receipt = review_ipv4_octet_sweep(factory)
+                self.assertEqual(buffer.getvalue(), "")
+                self.assert_non_authorizing(receipt, expected_status)
+                self.assertEqual(receipt["diagnostic_code"], expected_code)
+                raw = json.dumps(receipt, sort_keys=True)
+                self.assertNotIn("synthetic-secret", raw)
+                self.assertNotIn("0.0.0.2", raw)
+                self.assertNotIn("127.0.0.1", raw)
+
+    def test_invalid_argv_reports_only_argument_rejected(self):
+        output = StringIO()
+        with redirect_stdout(output):
+            exit_code = main(["--target", "private-customer-secret.example"])
+        receipt = json.loads(output.getvalue())
+        self.assertEqual(exit_code, 2)
+        self.assert_non_authorizing(receipt, "HOLD")
+        self.assertEqual(receipt["diagnostic_code"], "ARGUMENT_REJECTED")
+        self.assertNotIn("private-customer-secret.example", output.getvalue())
 
     def test_receipt_flags_are_fresh_literals_after_external_tampering(self):
         first = review_ipv4_octet_sweep(IndependentStrictPolicy)
