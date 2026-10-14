@@ -22,8 +22,8 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from lightup.activation import ActivationGate, ActivationMode, ActivationPolicy, ExecutionPermit
-from lightup.models import Target
-from lightup.scope import ScopePolicy
+from lightup.models import Authorization, Target
+from lightup.scope import ScopePolicy, ScopeReason
 
 SCRIPT = ROOT / "scripts" / "audit_scope_activation_lab_permit_1422_offline.py"
 SPEC = importlib.util.spec_from_file_location("scope_activation_lab_permit_1422", SCRIPT)
@@ -116,6 +116,59 @@ class ActualActivationPermitChainRED(unittest.TestCase):
             ):
                 with self.subTest(sample=literal), self.assertRaises(PermissionError):
                     gate.issue(Target(literal), "synthetic_reference_only")
+
+
+    def test_explicit_public_scope_never_upgrades_lab_only_to_target_active(self):
+        # A policy may permit an explicitly scoped public host or network
+        # syntactically, but LAB_ONLY must not turn EXPLICIT_* into a lab permit.
+        fake_consent = Authorization(owner="synthetic-owner", reference="SYNTHETIC-ONLY")
+        cases = (
+            (
+                ScopePolicy(
+                    allow_private_lab=False,
+                    explicit_hosts=frozenset({"consented.example.test"}),
+                ),
+                Target("consented.example.test", authorization=fake_consent),
+                ScopeReason.EXPLICIT_HOST,
+            ),
+            (
+                ScopePolicy(
+                    allow_private_lab=False,
+                    explicit_networks=("192.0.2.0/24",),
+                ),
+                Target("192.0.2.42", authorization=fake_consent),
+                ScopeReason.EXPLICIT_NETWORK,
+            ),
+            (
+                ScopePolicy(
+                    allow_private_lab=False,
+                    require_authorization_for_public=False,
+                    explicit_hosts=frozenset({"unconsented.example.test"}),
+                ),
+                Target("unconsented.example.test"),
+                ScopeReason.EXPLICIT_HOST,
+            ),
+            (
+                ScopePolicy(
+                    allow_private_lab=False,
+                    require_authorization_for_public=False,
+                    explicit_networks=("198.51.100.0/24",),
+                ),
+                Target("198.51.100.42"),
+                ScopeReason.EXPLICIT_NETWORK,
+            ),
+        )
+        with patch("lightup.activation.token_urlsafe", side_effect=AssertionError("minted")):
+            for policy, target, reason in cases:
+                with self.subTest(sample=target.value, expected_reason=reason.value):
+                    scope_decision = policy.decide(target)
+                    self.assertTrue(scope_decision.allowed)
+                    self.assertIs(scope_decision.reason, reason)
+                    gate = ActivationGate(
+                        policy, ActivationPolicy(mode=ActivationMode.LAB_ONLY)
+                    )
+                    with self.assertRaises(PermissionError):
+                        gate.issue(target, "synthetic_reference_only")
 
     def test_expected_red_is_assertion_not_import_error(self):
         names = tuple(
