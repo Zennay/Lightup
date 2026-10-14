@@ -58,6 +58,17 @@ class IngressIdentitySnapshotPreflightTests(unittest.TestCase):
         self.assertEqual(len(out["gunicorn_sha256"]), 64)
         self.assertFalse(any(out[key] for key in preflight.FLAGS))
 
+    def test_other_canonical_synthetic_host_remains_review_only_without_authority(self):
+        alternate = NGINX.replace(b"fixture.invalid", b"lightup.example.com")
+        original = preflight.review(NGINX, GUNICORN)
+        renamed = preflight.review(alternate, GUNICORN)
+        self.assertEqual(original["decision"], "REVIEW_ONLY")
+        self.assertEqual(renamed["decision"], "REVIEW_ONLY")
+        self.assertNotEqual(original["nginx_sha256"], renamed["nginx_sha256"])
+        self.assertEqual(original["gunicorn_sha256"], renamed["gunicorn_sha256"])
+        for key in preflight.FLAGS:
+            self.assertIs(renamed[key], False)
+
     def test_existing_nginx_template_is_not_misrepresented_as_proven_ingress(self):
         # As shipped, proxy_pass_request_headers is not disabled. A WSGI
         # rejection test alone is not installed proxy transformation proof.
