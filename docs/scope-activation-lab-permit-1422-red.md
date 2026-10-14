@@ -45,11 +45,23 @@ return a nonreflective HOLD without reading stdin.
   broadcast/link-local/IPv4-mapped alias examples that **must fail before permit
   issuance**. These are deliberately `@expectedFailure` in existing
   vulnerable source, with separate assertion-trace integrity canaries.
+- Real in-memory permit metadata integrity checks verify exact synthetic
+  target binding, capability, activation mode/reference, fixed mocked token
+  identity, and timezone-aware timestamp. Forged metadata mutants are
+  caught as additional HOLD violations; no permit is ever dispatched.
 - Disable `allow_private_lab` and confirm non-loopback samples cannot
   be issued a LAB_ONLY permit.
-- `PLAN_ONLY` terminally rejects all fourteen fixtures.
+- `PLAN_ONLY` terminally rejects all sixteen fixtures.
 - CLI real subprocess exit/status/privacy contracts and source-error
   fail-closed behavior.
+- Python-only defense-in-depth during audit: blocks ordinary
+  `builtins.open`, `Path.open`, `os.open`, `os.write`, `os.system`,
+  `sqlite3.connect`, `subprocess.Popen`, network socket creation and basic
+  name lookups. Distinct no-I/O mutant regressions must visibly trip each
+  guard, return a nonreflective HOLD and restore monkeypatched functions.
+  These Python hooks **cannot** mediate native POSIX aliases, threads,
+  alternate system calls or malicious imports: **not an OS sandbox**, not
+  authority, not evidence of real isolation. Run only on trusted offline CI.
 - No tested address is contacted, scanned, resolved or authenticated.
 
 ### Release blocker / source-owner handoff
