@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 import re
 
-_NAME = re.compile(r"[a-z][a-z0-9_]{0,63}\\Z", re.ASCII)
+_NAME = re.compile(r"[a-z][a-z0-9_]{0,63}\Z", re.ASCII)
 _MAX_FIELDS = 32
 
 
