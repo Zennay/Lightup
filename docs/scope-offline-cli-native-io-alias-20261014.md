@@ -17,3 +17,11 @@ The same guard also executes **real existing** `review_scope_finite_number_offli
 ## Limits and release
 
 This extension is **not a kernel filesystem/no-network sandbox**: pre-bound aliases, native extensions and arbitrary syscalls are not globally confined. It adds zero grant issuance, network contact, target scans, customer DB writes or production runtime changes. New test/docs paths are owned solely by this lane and disjoint from the parallel in-progress source-owner branches. Hosted immutable-head Python3.11/3.14 unit and real producer integration logs must be reviewed; a permanent registered runner and explicit human/security/privacy release are separate prerequisites before any production authorization.
+
+## W30 hosted-CI interpreter bootstrap correction
+
+The first exact-head hosted Python3.11/3.14 jobs FAILED on three genuine positive controls (exit92 instead of 3/2). Temporary *branch-only* diagnostics traced the first native alias read to the interpreter's own source-file bootstrap: `_io.open(".../scripts/review_scope_finite_number_offline.py", "rb")` (or the equivalent registry exporter). The direct native alias is invoked before the actual CLI runs, so a blanket alias ban would wrongly reject program startup. The failed CI is not security acceptance evidence.
+
+The isolated fixture now captures **one exact harness-selected trusted entrypoint pathname** from startup environment, before CLI code. Only an exact built-in string pathname matching this selection, read-binary `rb` mode and zero positional/keyword options pass to the original native opener for interpreter bootstrap. All other direct alias paths use strict synthetic read admission, including inherited descriptors, custom openers and executable path-like classes. Negative `python -c` controls inherit no bootstrap exception. The exception cannot be widened by changing the environment after hook installation.
+
+This permits ordinary Python interpreter startup only; it does not grant customer scope, authorization, deployment or general code-file access, and remains a Python test fixture rather than OS sandbox. This correction needs its own immutable-head hosted 3.11/3.14 units and genuine producer integration job logs.
