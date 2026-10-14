@@ -139,3 +139,43 @@ exception, customer identifier or input contents.
 or chain it to an active command. Every output repeats all five false
 authority flags. This is local human-review preparation, not a real-target
 admission or execution decision.
+
+## W5: full-history monotonic narrowing (offline, opt-in)
+
+`lightup.grant_revision_history_review.review_grant_history` accepts an
+exact tuple of **2–8 self-declared original-model AuthorizationGrant versions**
+and checks every *adjacent* change, not merely the oldest and newest.
+This catches temporary expansions of assets, capabilities, risk, validity
+windows, retest rights, excluded-asset access or tenant identity followed
+by a later reversion. Consecutive duplicate/no-op versions are refused.
+There is no partial REVIEW_ONLY on a later bad version: HOLD returns zero
+versions, zero reviewed transitions and no narrowed fields. The same five
+authority flags remain false under both verdicts.
+
+The existing strict local JSON CLI also now accepts the separate top-level
+shape `{"history":[grant_version_1,grant_version_2,...]}` (exactly 2–8).
+The original `{"revisions":[{"current":...,"proposed":...}]}` mode
+remains unchanged. Mixing both modes, unknown fields, invalid order,
+noncanonical types or excessive versions yields opaque HOLD.
+
+Reproducible fictional offline sample:
+
+```bash
+PYTHONPATH=src python scripts/review_grant_revision_offline.py lab/fixtures/grant_revision_history_narrowing_synthetic.json
+```
+
+The sample contains three `.test`-only synthetic snapshots, with two strictly
+narrowing transitions. A valid-looking receipt has `verdict=REVIEW_ONLY`,
+`version_count=3`, `reviewed_transitions=2`, four listed narrowing
+dimensions and **all five false authorization flags**. CLI exit code is still
+**3, never 0** (HOLD remains 2). Passing history shape proves **nothing**
+about the authenticity, completeness, actual chronological order, consent or
+revocation of the submitted snapshots. It is easy for a malicious source
+to omit the bad middle version. Production would additionally need a trusted,
+immutable, tenant-bound revision ledger, signature/version fencing, a trusted
+clock and independent security/operator approval. None is implemented or
+authorized by this optional offline checker.
+
+Synthetic regression suite: `test_grant_revision_history_review.py` and
+`test_grant_revision_history_cli.py`. Both are read-only and do not touch
+customer records, production dispatcher, network targets or worker files.
