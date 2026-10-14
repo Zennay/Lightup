@@ -164,13 +164,13 @@ def gunicorn_config(port: int) -> str:
     if type(port) is not int or not 1024 <= port <= 65535:
         raise ValueError("invalid disposable Gunicorn port")
     return (
-        f"bind = '127.0.0.1:{port}'\\n"
-        "workers = 1\\n"
-        "worker_class = 'sync'\\n"
-        "forwarded_allow_ips = ''\\n"
-        "secure_scheme_headers = {}\\n"
-        "accesslog = None\\n"
-        "errorlog = '/dev/null'\\n"
+        f"bind = '127.0.0.1:{port}'\n"
+        "workers = 1\n"
+        "worker_class = 'sync'\n"
+        "forwarded_allow_ips = ''\n"
+        "secure_scheme_headers = {}\n"
+        "accesslog = None\n"
+        "errorlog = '/dev/null'\n"
     )
 
 
