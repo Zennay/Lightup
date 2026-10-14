@@ -141,56 +141,53 @@ def review_bytes(raw: object) -> dict:
 
 
 def _read_private_pipe() -> bytes | None:
-    """Require FIFO stdin, complete EOF, and finite real elapsed time.
+    """Read bounded private FIFO data; a failed fd restoration forces HOLD.
 
-    Prevent select/read races with another FIFO consumer by making fd0
-    temporarily nonblocking. Restore the parent's shared fd status on every
-    path; private pipes remain necessary for strict concurrent isolation.
-    This Python userland guard is NOT an operating-system sandbox.
+    Nonblocking fd0 prevents select/read races with a competing reader.
+    Temporary flag changes share POSIX open-file-description state: use a
+    private pipe. This is not an OS sandbox or a trusted registry.
     """
-    original_blocking = False
+    result = None
     changed = False
+    original_blocking = False
     try:
-        if not stat.S_ISFIFO(os.fstat(0).st_mode):
-            return None
-        original_blocking = os.get_blocking(0)
-        if original_blocking:
-            # A failed syscall can still have changed the shared fd.
-            # Attempt restoration on *both* success and failure.
-            changed = True
-            os.set_blocking(0, False)
-        deadline = time.monotonic() + READ_DEADLINE_SECONDS
-        chunks = []
-        size = 0
-        while True:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                return None
-            ready, _, _ = select.select([0], [], [], remaining)
-            if not ready:
-                return None
-            try:
-                part = os.read(0, min(1024, MAX_INPUT_BYTES + 1 - size))
-            except BlockingIOError:
-                # A competing reader can drain a ready FIFO before os.read.
-                # Continue bounded by the *same* absolute deadline.
-                continue
-            if not part:
-                return b"".join(chunks)
-            chunks.append(part)
-            size += len(part)
-            if size > MAX_INPUT_BYTES:
-                return None
+        if stat.S_ISFIFO(os.fstat(0).st_mode):
+            original_blocking = os.get_blocking(0)
+            if original_blocking:
+                # A failed switch can still have changed shared fd flags.
+                changed = True
+                os.set_blocking(0, False)
+            deadline = time.monotonic() + READ_DEADLINE_SECONDS
+            chunks = []
+            size = 0
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                ready, _, _ = select.select([0], [], [], remaining)
+                if not ready:
+                    break
+                try:
+                    part = os.read(0, min(1024, MAX_INPUT_BYTES + 1 - size))
+                except BlockingIOError:
+                    continue
+                if not part:
+                    result = b"".join(chunks)
+                    break
+                chunks.append(part)
+                size += len(part)
+                if size > MAX_INPUT_BYTES:
+                    break
     except (OSError, ValueError, OverflowError):
-        return None
+        result = None
     finally:
         if changed:
             try:
                 os.set_blocking(0, original_blocking)
             except (OSError, ValueError):
-                # The shared parent fd may still be nonblocking. Never
-                # treat a completed read as reviewable in that state.
-                return None
+                result = None
+    return result
+
 
 def _seal_receipt(result: object) -> bytes | None:
     """Reject forged output *before* inspecting or writing to stdout."""
@@ -219,54 +216,50 @@ def _seal_receipt(result: object) -> bytes | None:
 
 
 def _emit_receipt(result: object) -> bool:
-    """Send one sealed, bounded receipt to FIFO/TTY only, without hanging.
+    """Emit only sealed denial receipts; restoration failure is non-success.
 
-    Nonblocking mode is restored on every path. It is briefly changed on
-    the shared open-file-description, so strict concurrent writers should
-    supply a *private* pipe. Python guards are not an OS sandbox.
+    Nonblocking writes are deadline-bounded and original fd1 flags are
+    restored when possible. Bytes already written cannot be rolled back.
     """
     data = _seal_receipt(result)
     if data is None:
         return False
+    success = False
     changed = False
     original_blocking = False
     try:
         mode = os.fstat(1).st_mode
-        if not (stat.S_ISFIFO(mode) or (stat.S_ISCHR(mode) and os.isatty(1))):
-            return False
-        original_blocking = os.get_blocking(1)
-        if original_blocking:
-            # Treat an unsuccessful mode switch as potentially mutating.
-            changed = True
-            os.set_blocking(1, False)
-        deadline = time.monotonic() + WRITE_DEADLINE_SECONDS
-        offset = 0
-        while offset < len(data):
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                return False
-            _, ready, _ = select.select([], [1], [], remaining)
-            if not ready:
-                return False
-            try:
-                sent = os.write(1, data[offset:])
-            except BlockingIOError:
-                continue
-            if sent <= 0:
-                return False
-            offset += sent
-        return True
+        if stat.S_ISFIFO(mode) or (stat.S_ISCHR(mode) and os.isatty(1)):
+            original_blocking = os.get_blocking(1)
+            if original_blocking:
+                changed = True
+                os.set_blocking(1, False)
+            deadline = time.monotonic() + WRITE_DEADLINE_SECONDS
+            offset = 0
+            while offset < len(data):
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                _, ready, _ = select.select([], [1], [], remaining)
+                if not ready:
+                    break
+                try:
+                    sent = os.write(1, data[offset:])
+                except BlockingIOError:
+                    continue
+                if sent <= 0:
+                    break
+                offset += sent
+            success = offset == len(data)
     except (OSError, ValueError, OverflowError):
-        return False
+        success = False
     finally:
         if changed:
             try:
                 os.set_blocking(1, original_blocking)
             except (OSError, ValueError):
-                # The caller's shared stdout descriptor may be changed.
-                # Return a failure even if an output write succeeded;
-                # emitted bytes cannot be rolled back at this boundary.
-                return False
+                success = False
+    return success
 
 
 def main(argv=None) -> int:
