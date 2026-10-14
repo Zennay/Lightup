@@ -371,11 +371,9 @@ class OctetSweepTests(unittest.TestCase):
             DictSubclass(base),
             dict(base, status="HOLD", diagnostic_code="MATCHED_NON_AUTHORIZING",
                  checked_count=0),
-            dict(base, status="HOLD", diagnostic_code="EVALUATION_EXCEPTION"),
         )
-        # The last entry is a valid HOLD receipt, and must be rebuilt
-        # without inheriting values from the reference object.
-        for candidate in variants[:-1]:
+        # Every malformed candidate must be converted to a clean HOLD.
+        for candidate in variants:
             with self.subTest(candidate_type=type(candidate).__name__,
                               code=candidate.get("diagnostic_code", "")):
                 output = StringIO()
