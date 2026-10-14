@@ -299,5 +299,20 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
             self.registry, d, (DestinationField("host", DestinationRole.HOST),)))
 
 
+
+    def test_40_replaced_parameter_tuple_cannot_invoke_adversarial_equality(self):
+        class Canary:
+            def __eq__(self, other):
+                raise AssertionError("untrusted tuple equality callback executed")
+        m = self.manifest()
+        object.__setattr__(m._definition, "parameters", (Canary(),))
+        self.refused(lambda: m.review({"host": "localhost"}))
+
+    def test_41_replaced_role_collection_denied_before_traversal(self):
+        m = self.manifest()
+        object.__setattr__(m, "_fields", [DestinationField("host", DestinationRole.HOST)])
+        self.refused(lambda: m.review({"host": "localhost"}))
+
+
 if __name__ == "__main__":
     unittest.main()
