@@ -89,3 +89,13 @@ The synthetic manifest descriptor allowlist removes integer handles on the inter
 The existing real eight-CLI positive/HOLD matrix continues under the stronger hook. The disposable inherited-fd/rebinding test exercises these additional supported Python APIs inside a broad `except BaseException` and requires exit 92, no stdout/stderr and byte-for-byte unchanged synthetic files. It never actually closes an inherited descriptor during the negative control, and leaves the parent's handles untouched.
 
 **This is test-only Python instrumentation**, not kernel descriptor isolation, a substitute for trusted live scope grants, an active assessment permit, or a production feature. Native syscalls and pre-bound C aliases remain outside this fixture. Exact-head hosted tests and independent future registered VPS/human decisions remain mandatory. No real scans or deployment.
+
+## W29 — no custom `open(opener=...)` or user-defined PathLike admission callbacks (#1408)
+
+Path allowlisting on its own does not bind the **actual descriptor** used by Python `builtins.open` and `io.open`. Either method can accept a custom `opener` callback returning an inherited or otherwise unadmitted descriptor, even while its display filename points at `baseline.json`. The test-only hooks now reject all non-`None` custom openers, whether given by keyword or positional argument, **before any callback runs**. The regular review commands do not pass custom openers.
+
+An untrusted `os.PathLike` object can also invoke its own executable `__fspath__` during the old admission guard. This synthetic fixture now permits only **exact built-in `str`** and **exact concrete `pathlib.Path`** types before calling `os.fspath`, never user-defined path-like classes or subclasses; safe CLI-supplied manifest `Path` values remain admitted.
+
+Seven distinct disposable subprocess variants exercise both builtin/`io` callback routes, both positional/keyword forms and custom PathLike routes through builtin/`io`/`os.open`. Each intentionally swallows `BaseException` but must instead exit hard with 92, **zero stdout/stderr** and unchanged synthetic fixture bytes. The existing eight genuine offline CLI positive/HOLD results continue to run under the stronger guard; all authority/permit/execution/merge/release flags remain false.
+
+**Scope:** Python-level self-owned test/docs instrumentation only. Does not constrain native pre-bound aliases, OS syscalls, arbitrary extension modules or user network activity outside the guarded child processes. No real customer files, grant issuance, active assessments or deployment. LightUp remains **INCUBATE M3/M7, PLAN/LAB ONLY** and permanent registered runner/release proofs remain separate gates.

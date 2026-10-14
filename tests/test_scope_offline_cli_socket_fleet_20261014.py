@@ -90,20 +90,34 @@ _READ_ALLOWLIST = frozenset(os.path.join(_READ_ROOT, name) for name in (
     "baseline.json", "equal-but-distinct.json", "changed.json",
 ))
 
+# Never execute untrusted __fspath__ hooks during admission. Exact built-in
+# pathlib paths are used by the real CLI fleet; subclass/path proxies HOLD.
+_CANONICAL_PATH_TYPE = type(pathlib.Path())
+
 def _allowed_read(path):
+    if type(path) is not str and type(path) is not _CANONICAL_PATH_TYPE:
+        return False
     try:
         value = os.fspath(path)
         return type(value) is str and os.path.realpath(value) in _READ_ALLOWLIST
     except (TypeError, ValueError, OSError):
         return False
 
+def _no_custom_opener(args, kwargs):
+    # open(file, mode, buffering, encoding, errors, newline, closefd, opener)
+    # A custom opener may hand back an inherited/unapproved FD even when the
+    # supplied filename points to an allowed synthetic manifest.
+    return kwargs.get("opener") is None and (len(args) < 6 or args[5] is None)
+
 def checked_open(path, mode="r", *args, **kwargs):
-    if not _read_only_mode(mode) or not _allowed_read(path):
+    if (not _read_only_mode(mode) or not _no_custom_opener(args, kwargs)
+            or not _allowed_read(path)):
         forbidden()
     return _real_open(path, mode, *args, **kwargs)
 
 def checked_io_open(path, mode="r", *args, **kwargs):
-    if not _read_only_mode(mode) or not _allowed_read(path):
+    if (not _read_only_mode(mode) or not _no_custom_opener(args, kwargs)
+            or not _allowed_read(path)):
         forbidden()
     return _real_io_open(path, mode, *args, **kwargs)
 
@@ -575,6 +589,50 @@ class OfflineReviewCliSocketFleetTests(unittest.TestCase):
                     env=self.env, capture_output=True, check=False, timeout=15,
                 )
                 self.assertEqual(proc.returncode, 92, command)
+                self.assertEqual(proc.stdout, b"")
+                self.assertEqual(proc.stderr, b"")
+                self.assertEqual(self.fingerprint(), before)
+
+
+    def test_uncatchable_custom_openers_and_user_pathlike_callbacks(self):
+        # Every opener could return inherited stdin instead of the requested
+        # manifest FD; custom __fspath__ can execute code during admission.
+        # No callback must actually run, including under broad BaseException.
+        variants = (
+            ('builtin_keyword',
+             'open("baseline.json", "rb", opener=lambda _p, _f: 0).read(1)'),
+            ('builtin_positional',
+             'open("baseline.json", "rb", -1, None, None, None, True, '
+             'lambda _p, _f: 0).read(1)'),
+            ('io_keyword',
+             'io.open("baseline.json", "rb", opener=lambda _p, _f: 0).read(1)'),
+            ('io_positional',
+             'io.open("baseline.json", "rb", -1, None, None, None, True, '
+             'lambda _p, _f: 0).read(1)'),
+            ('builtin_pathlike', 'open(SyntheticPath(), "rb").read(1)'),
+            ('io_pathlike', 'io.open(SyntheticPath(), "rb").read(1)'),
+            ('os_pathlike', 'os.open(SyntheticPath(), os.O_RDONLY)'),
+        )
+        before = self.fingerprint()
+        for label, statement in variants:
+            with self.subTest(label=label):
+                program = (
+                    "import io, os\n"
+                    "class SyntheticPath:\n"
+                    "    def __fspath__(self):\n"
+                    "        print('CALLBACK_RAN')\n"
+                    "        return 'baseline.json'\n"
+                    "try:\n"
+                    f"    {statement}\n"
+                    "except BaseException:\n"
+                    "    pass\n"
+                    "print('FALSE_REVIEW_ONLY')\n"
+                )
+                proc = subprocess.run(
+                    [sys.executable, "-B", "-c", program], cwd=self.root,
+                    env=self.env, capture_output=True, check=False, timeout=15,
+                )
+                self.assertEqual(proc.returncode, 92, label)
                 self.assertEqual(proc.stdout, b"")
                 self.assertEqual(proc.stderr, b"")
                 self.assertEqual(self.fingerprint(), before)
