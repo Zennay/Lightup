@@ -223,6 +223,37 @@ class OctetSweepTests(unittest.TestCase):
         self.assert_non_authorizing(json.loads(buffer.getvalue()), "REVIEW_ONLY")
         self.assertEqual(len(buffer.getvalue().splitlines()), 1)
 
+    def test_valid_no_argument_cli_never_reads_privacy_sensitive_stdin(self):
+        class PoisonStdin:
+            @property
+            def buffer(self):
+                raise AssertionError("stdin must never be read")
+
+            def read(self, *args, **kwargs):
+                raise AssertionError("stdin must never be read")
+
+        output = StringIO()
+        with patch.object(sys, "stdin", PoisonStdin()), redirect_stdout(output):
+            rc = main([])
+        self.assertEqual(rc, 2)  # installed policy still unsafe: HOLD
+        receipt = json.loads(output.getvalue())
+        self.assert_non_authorizing(receipt, "HOLD")
+        self.assertEqual(len(output.getvalue().splitlines()), 1)
+
+    def test_malicious_empty_argv_list_subclass_denied_without_magic_methods(self):
+        class PoisonList(list):
+            def __len__(self):
+                raise AssertionError("untrusted argv len called")
+
+            def __iter__(self):
+                raise AssertionError("untrusted argv iteration called")
+
+        output = StringIO()
+        with redirect_stdout(output):
+            rc = main(PoisonList())
+        self.assertEqual(rc, 2)
+        self.assert_non_authorizing(json.loads(output.getvalue()), "HOLD")
+
     def test_invalid_argv_holds_without_echo_or_stdin_read(self):
         for argv in (["--help"], ["--target", "secret.example"], [], "bad", [object()]):
             if argv == []:
