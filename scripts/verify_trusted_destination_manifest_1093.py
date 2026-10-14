@@ -8,7 +8,6 @@ GitHub runner is trusted. CI must independently pin the workflow's head SHA.
 """
 from __future__ import annotations
 
-import io
 from contextlib import redirect_stdout, redirect_stderr
 import json
 from pathlib import Path
@@ -19,6 +18,16 @@ from unittest.mock import patch
 
 EXPECTED_TEST_METHODS = 91
 PATTERN = "test_trusted_destination_manifest_optin_1093.py"
+
+
+class _DiscardOutput:
+    """Bounded-memory sink for synthetic test output and tracebacks."""
+
+    def write(self, value: str) -> int:
+        return len(value)
+
+    def flush(self) -> None:
+        return None
 
 
 def _receipt(
@@ -58,7 +67,7 @@ def main() -> int:
     # No external test selection or follow-up dispatch is possible. Standard
     # unittest reports are kept out of the machine-readable minimal receipt.
     try:
-        log = io.StringIO()
+        log = _DiscardOutput()
         def refuse_io(*_args, **_kwargs):
             raise RuntimeError("offline test boundary refused external I/O")
 
