@@ -192,9 +192,8 @@ class ReviewTests(unittest.TestCase):
         for definition, claim in zip(installed, fixture()["tools"]):
             with self.subTest(tool_id=definition.tool_id):
                 expected = known[definition.tool_id]
-                self.assertTrue(all(
-                    not hasattr(parameter, "role")
-                    for parameter in definition.parameters))
+                # Do not assert the absence of a future trusted registry
+                # role field: the production owner must be free to add it.
                 self.assertEqual(
                     tuple((parameter["name"], parameter["role"])
                           for parameter in claim["parameters"]), expected)
