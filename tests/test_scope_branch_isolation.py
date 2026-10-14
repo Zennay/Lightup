@@ -350,5 +350,73 @@ class IsolationCheckTests(unittest.TestCase):
                                  ("tests/test_scope_synthetic_review.py",),
                                  (peer,))[0], "UNBOUNDED_PEER_DIFF")
 
+
+    def test_reverted_production_edit_is_still_rejected_in_history(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "owned\n")
+        self.commit()
+        self.write("src/lightup/scope.py", "UNAUTHORIZED = True\n")
+        self.commit()
+        self.write("src/lightup/scope.py", "ORIGINAL = True\n")
+        head = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
+                         "TRANSIENT_UNOWNED_PATH")
+
+    def test_transient_unowned_file_then_removal_is_rejected(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "owned\n")
+        self.commit()
+        self.write("docs/unowned-transient.md", "outside lane\n")
+        self.commit()
+        (self.repo / "docs/unowned-transient.md").unlink()
+        head = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
+                         "TRANSIENT_UNOWNED_PATH")
+
+    def test_transient_executable_mode_reverted_before_final_head_denied(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "owned\n")
+        self.commit()
+        (self.repo / path).chmod(0o755)
+        self.commit()
+        (self.repo / path).chmod(0o644)
+        head = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
+                         "UNSAFE_HISTORY_TREE_MODE")
+
+    def test_valid_add_then_modify_owned_new_file_is_accepted(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "owned\n")
+        self.commit()
+        self.write(path, "revised safely\n")
+        head = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,)),
+                         ("ADDITIVE_PATHS_MATCH", 1))
+
+    def test_merged_concurrent_history_is_not_implicitly_authorized(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "worker\n")
+        self.commit()
+        self.git("branch", "worker-one")
+        self.git("checkout", "-qb", "worker-two", self.base)
+        self.write("docs/scope-other-worker.md", "peer\n")
+        self.commit()
+        self.git("checkout", "-q", "worker-one")
+        self.git("merge", "--no-ff", "-qm", "synthetic-merge", "worker-two")
+        head = self.sha()
+        self.assertEqual(inspect(
+            self.repo, self.base, head,
+            (path, "docs/scope-other-worker.md"))[0],
+            "NONLINEAR_BRANCH_HISTORY")
+
+    def test_excessive_commit_chain_is_not_silently_reviewed(self):
+        path = "tests/test_scope_synthetic_review.py"
+        for i in range(65):
+            self.write(path, f"synthetic revision {i}\n")
+            self.commit()
+        head = self.sha()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
+                         "UNBOUNDED_HISTORY")
+
 if __name__ == "__main__":
     unittest.main()
