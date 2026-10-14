@@ -56,3 +56,17 @@ matching RFC1918/ULA/loopback never supplies any of these. Exact latest
 HEAD hosted Python3.11/3.14 and *permanent registered VPS* evidence plus
 human release approval remain separate mandatory gates. This draft must not
 merge or deploy on the strength of passing synthetic tests.
+
+## Adversarial W3 proof (independent tests only)
+
+The separate `tests/test_scope_lab_literal_adversarial_offline.py` adds eight
+real stdlib tests. It monkeypatches sockets/DNS, checks deterministic repeat
+calls, samples 1,600 deterministic IPv4 + 1,600 IPv6 values against exact
+literal-class boundaries, rejects IPv4-mapped/Unicode/control variants, and
+verifies that a harmless `&& echo AUTHORITY_SHOULD_NOT_RUN` canary is **never**
+reached for either a REVIEW_ONLY or HOLD input. The helper still never invokes
+production policy, grants, target handlers, real customer assets or network.
+
+These tests cannot establish customer ownership, consent, policy composition,
+registered VPS runner execution, or release readiness. All source integration
+remains owned by #100 and must independently pass security/privacy review.
