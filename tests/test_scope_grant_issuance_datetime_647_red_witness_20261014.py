@@ -11,6 +11,8 @@ RED = (
     "test_red_overridden_start_serializer_must_be_refused_at_issuance",
     "test_red_durable_expiry_must_not_exceed_original_exact_instant",
     "test_red_durable_start_must_not_predate_original_exact_instant",
+    "test_red_post_expiry_live_resolver_must_not_trust_widened_durable_until",
+    "test_red_pre_start_live_resolver_must_not_trust_widened_durable_from",
 )
 
 
