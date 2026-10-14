@@ -187,6 +187,10 @@ class TrustedDestinationManifest:
                 _deny()
             roles[f.parameter] = f.role
         kinds = set(roles.values())
+        # One trusted field per role: two HOST or two PORT selectors are
+        # ambiguous even if their parameter names are distinct.
+        if len(kinds) != len(fields):
+            _deny()
         if (DestinationRole.HOST in kinds) == (DestinationRole.ENDPOINT in kinds):
             _deny()
         if DestinationRole.ENDPOINT in kinds and len(kinds) != 1:
