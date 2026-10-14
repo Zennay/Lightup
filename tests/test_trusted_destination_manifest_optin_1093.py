@@ -541,5 +541,66 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
 
+
+    def test_63_actual_lab_worker_definitions_are_shape_reviewable_without_io(self):
+        """Real currently registered lab workers; never invoke any worker handler."""
+        from unittest.mock import patch
+        from lightup.workers import http_baseline, tls_baseline, service_inventory
+
+        cases = (
+            (http_baseline, http_baseline.HTTP_BASELINE_TOOL,
+             (DestinationField("url", DestinationRole.ENDPOINT),),
+             {"url": "http://127.0.0.1:8080/status"}),
+            (tls_baseline, tls_baseline.TLS_BASELINE_TOOL,
+             (DestinationField("host", DestinationRole.HOST),
+              DestinationField("port", DestinationRole.PORT)),
+             {"host": "127.0.0.1", "port": 443}),
+            (service_inventory, service_inventory.SERVICE_INVENTORY_TOOL,
+             (DestinationField("host", DestinationRole.HOST),
+              DestinationField("ports", DestinationRole.PORT_SET)),
+             {"host": "127.0.0.1", "ports": "80,443"}),
+        )
+        with (patch("socket.getaddrinfo", side_effect=AssertionError("DNS called")),
+              patch("socket.create_connection", side_effect=AssertionError("socket called")),
+              patch("urllib.request.urlopen", side_effect=AssertionError("network called"))):
+            for worker, definition, fields, arguments in cases:
+                with self.subTest(worker=definition.tool_id):
+                    registry = ToolRegistry()
+                    worker.register(registry)
+                    self.assertIs(registry.get(definition.tool_id)[0], definition)
+                    receipt = TrustedDestinationManifest(
+                        registry, definition, fields
+                    ).review(arguments)
+                    self.assertEqual(receipt.destination_fields_checked, len(fields))
+                    self.assertEqual(receipt.status, "hold")
+                    self.assertIs(receipt.authorization_verified, False)
+                    self.assertIs(receipt.execution_enabled, False)
+                    self.assertIs(receipt.permit_issued, False)
+                    self.assertIs(receipt.release_approved, False)
+
+    def test_64_actual_lab_worker_parameters_cannot_smuggle_destinations(self):
+        from lightup.workers import http_baseline, tls_baseline, service_inventory
+        cases = (
+            (http_baseline, http_baseline.HTTP_BASELINE_TOOL,
+             (DestinationField("url", DestinationRole.ENDPOINT),),
+             {"url": "http://127.0.0.1#"}),
+            (tls_baseline, tls_baseline.TLS_BASELINE_TOOL,
+             (DestinationField("host", DestinationRole.HOST),
+              DestinationField("port", DestinationRole.PORT)),
+             {"host": "127.0.0.1", "port": True}),
+            (service_inventory, service_inventory.SERVICE_INVENTORY_TOOL,
+             (DestinationField("host", DestinationRole.HOST),
+              DestinationField("ports", DestinationRole.PORT_SET)),
+             {"host": "127.0.0.1", "ports": "443,80"}),
+        )
+        for worker, definition, fields, arguments in cases:
+            with self.subTest(worker=definition.tool_id):
+                registry = ToolRegistry()
+                worker.register(registry)
+                preview = TrustedDestinationManifest(registry, definition, fields)
+                self.refused(lambda p=preview, args=arguments: p.review(args))
+        self.assertEqual(self.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
