@@ -33,3 +33,10 @@ The opt-in reviewer now refuses alternative numeric-host authorities (whole-numb
 - Obtain independent source-owner/security/privacy review, latest-main composition and explicit human release authorization.
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD/NO MERGE/NO DEPLOY. No grant, target, scanner, DNS/network, production service or workflow dispatch.**
+
+
+## W5 — canonical endpoint text and Unicode ambiguity
+
+The optional shape review now rejects non-ASCII endpoint input *before* `urllib.parse.urlsplit`, including invisible marks and malformed lone-surrogate URI path text, requiring percent-encoded path bytes instead of parser-specific Unicode normalization. This is a conservative plan/lab reference constraint, **not** a deployed Unicode-path behavior change. Two new tests check rejection and a valid percent-encoded Unicode path that still yields only a HOLD receipt. The local synthetic module-replica run now passes 54/54 on Python 3.13; it is not equivalent to exact-GitHub-code Python3.11/3.14 CI.
+
+The earlier numeric-host, hostile-equality, duplicate-role and non-I/O regressions remain. Exact-head full repository tests, durable authorization, authorized destination binding, registered self-hosted VPS runner evidence and separate independent review are still missing. DRAFT/HOLD, no PR, merge or deploy.
