@@ -111,6 +111,11 @@ def _enforce_private_file(info: os.stat_result) -> None:
 def read_batch_file(path: str, *, require_private_file: bool = False) -> bytes:
     if type(require_private_file) is not bool:
         raise BatchHold("INVALID_FILE_POLICY")
+    if require_private_file:
+        try:
+            single._enforce_private_ancestors(path)
+        except single.PacketHold as exc:
+            raise BatchHold(exc.code) from None
     fd = None
     try:
         before = os.lstat(path)
