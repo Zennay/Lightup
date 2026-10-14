@@ -169,6 +169,31 @@ class GrantRevisionReviewTests(unittest.TestCase):
             pass
         self.assert_hold(grant(), grant(scope=FakeScope(**vars(grant().scope))), "invalid_scope")
 
+    def test_canonical_ip_literals_and_networks_are_reviewable_only(self):
+        scope = replace(
+            grant().scope,
+            assets=("127.0.0.1", "2001:db8::1", "192.168.0.0/24"),
+            excluded_assets=(),
+        )
+        synthetic = grant(scope=scope)
+        receipt = review_grant_revision(synthetic, synthetic)
+        self.assertEqual(receipt.verdict, "REVIEW_ONLY")
+        self.assertFalse(receipt.execution_enabled)
+        self.assertFalse(receipt.authorization_verified)
+
+    def test_numeric_host_aliases_and_noncanonical_cidr_fail_closed(self):
+        for alias in (
+            "127.1", "2130706433", "0x7f000001", "0x7f.0.0.1",
+            "192.168.01.1", "2001:0db8::1",
+            "192.168.0.1/24", "192.168.0.0/024",
+        ):
+            with self.subTest(alias=alias):
+                candidate = proposal(
+                    assets=("a.example.test", alias),
+                    excluded_assets=(),
+                )
+                self.assert_hold(grant(), candidate, "invalid_scope")
+
     def test_host_aliases_unicode_and_duplicate_targets_denied(self):
         for assets in (
             ("A.example.test", "b.example.test"),
