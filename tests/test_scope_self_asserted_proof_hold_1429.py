@@ -394,5 +394,95 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
                 self.assertNotIn(SHA.encode(), child.stdout)
 
 
+    def test_receipt_sender_rejects_non_stdout_fd_without_writes(self):
+        from unittest.mock import MagicMock
+        fake = MagicMock()
+        fake.fileno.return_value = 4
+        with patch.object(review.sys, "stdout", fake), \
+             patch.object(review.os, "write", side_effect=AssertionError("wrote alien fd")), \
+             patch.object(review.os, "fstat", side_effect=AssertionError("stat alien fd")):
+            self.assertIsNone(review._emit_hold_receipt(b"{}\\n"))
+
+    def test_receipt_sender_disallows_regular_socket_and_directory(self):
+        from unittest.mock import MagicMock
+        fake = MagicMock()
+        fake.fileno.return_value = 1
+        for mode in (stat.S_IFREG, stat.S_IFSOCK, stat.S_IFDIR, stat.S_IFBLK):
+            with self.subTest(mode=mode), \
+                 patch.object(review.sys, "stdout", fake), \
+                 patch.object(review.os, "fstat", return_value=MagicMock(st_mode=mode)), \
+                 patch.object(review.os, "set_blocking", side_effect=AssertionError("modified descriptor")), \
+                 patch.object(review.os, "write", side_effect=AssertionError("wrote to forbidden sink")):
+                self.assertIsNone(review._emit_hold_receipt(b"{}\\n"))
+
+    def test_receipt_sender_rejects_more_than_512_bytes_without_touching_fd(self):
+        from unittest.mock import MagicMock
+        fake = MagicMock()
+        fake.fileno.side_effect = AssertionError("should not access stdout")
+        with patch.object(review.sys, "stdout", fake):
+            self.assertIsNone(review._emit_hold_receipt(b"Q" * (review.MAX_RECEIPT_BYTES + 1)))
+            self.assertIsNone(review._emit_hold_receipt(b""))
+
+    def test_real_cli_refuses_stdout_regular_file_without_writing(self):
+        with tempfile.TemporaryFile(mode="w+b") as sink:
+            result = subprocess.run(
+                [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                input=encoded(packet()), stdout=sink, stderr=subprocess.PIPE,
+                timeout=8, check=False,
+                env={"PATH": os.defpath, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            self.assertEqual(sink.tell(), 0)
+            sink.seek(0)
+            self.assertEqual(sink.read(), b"")
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stderr, b"")
+
+    @unittest.skipUnless(hasattr(socket, "socketpair"), "local Unix socketpair unavailable")
+    def test_real_cli_refuses_stdout_unix_socket_without_transmitting(self):
+        sender, receiver = socket.socketpair()
+        try:
+            child = subprocess.run(
+                [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                input=encoded(packet()), stdout=receiver, stderr=subprocess.PIPE,
+                timeout=8, check=False,
+                env={"PATH": os.defpath, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            self.assertEqual(child.returncode, 2)
+            self.assertEqual(child.stderr, b"")
+            sender.settimeout(0.2)
+            with self.assertRaises(socket.timeout):
+                sender.recv(1)
+        finally:
+            receiver.close()
+            sender.close()
+
+    @unittest.skipUnless(hasattr(os, "set_blocking"), "POSIX nonblocking fd unavailable")
+    def test_real_cli_full_output_pipe_does_not_wait_forever(self):
+        readfd, writefd = os.pipe()
+        try:
+            os.set_blocking(writefd, False)
+            filled = 0
+            while True:
+                try:
+                    filled += os.write(writefd, b"Q" * 4096)
+                except BlockingIOError:
+                    break
+            self.assertGreater(filled, 0)
+            started = __import__("time").monotonic()
+            proc = subprocess.run(
+                [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                input=encoded(packet()), stdout=writefd, stderr=subprocess.PIPE,
+                timeout=8, check=False,
+                env={"PATH": os.defpath, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            elapsed = __import__("time").monotonic() - started
+            self.assertEqual(proc.returncode, 2)
+            self.assertEqual(proc.stderr, b"")
+            self.assertLess(elapsed, 6, "stalled receiver must not trap the child")
+        finally:
+            os.close(writefd)
+            os.close(readfd)
+
+
 if __name__ == "__main__":
     unittest.main()
