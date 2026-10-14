@@ -41,6 +41,15 @@ The installed-source reviewer must read the exact checkout's original `lightup.s
 
 This is a **local path consistency guard**, not a signed CI provenance attestation and not a guarantee that arbitrary Python startup hooks, filesystem aliases, Git replace references or hostile interpreter environments are absent. The owner must still validate the actual original source independently. For ordinary manual runs prefer the isolated interpreter command above.
 
+## W40 — explicit-host missing/expired authorization must deny
+
+The same installed-source offline diagnostic now checks **three static synthetic hostname spellings** for an explicitly listed host: lower-case `review.invalid`, mixed case plus terminal dot `REVIEW.INVALID.`, and the URL-form `https://review.invalid/no-network`. These are **never resolved or contacted**, and the `.invalid` domain is used precisely to avoid representing a customer asset. For each variant the real `ScopePolicy(allow_private_lab=False, require_authorization_for_public=True, explicit_hosts=frozenset({"review.invalid"}))` is called twice:
+
+- **Absent authorization:** `allowed is False`, canonical `ScopeReason.AUTHORIZATION_MISSING`, normalized host exactly `review.invalid`.
+- **Expired synthetic authorization:** `allowed is False`, canonical `ScopeReason.AUTHORIZATION_EXPIRED`, normalized host exactly `review.invalid`. The only `Authorization` instance in this diagnostic is a static, fictional, definitively expired object (January 1, 2000 UTC). Its label/reference are **not trusted credentials**.
+
+Any incorrect admission, canonicalization drift, unexpected type or exception yields **atomic HOLD**. Three dedicated negative-mutant unit tests require this behavior: no-grant bypass, expired-grant bypass and normalized-host drift on URL input. The complete static audit has **130 individual policy decisions**, while the original W39 positive/negative matrix and source provenance checks remain untouched. This tests denial-only behavior; **no valid grant is produced or evaluated as an approval**. Even passing output is `REVIEW_ONLY`, never a permit or release authority.
+
 ## Safety and ownership
 
 This deliberately evaluates **real unmodified** `ScopePolicy.decide(Target(...))` from this checkout, unlike [#1424/#1425](https://github.com/Zennay/Lightup/pull/1425), which supplies a standalone reference reviewer. It does not write to or import the tool executor, production admission wiring, tenancy logic or the neighboring target parser. All three new files are owned by W38; source-owner #100, RED owner #1423, standalone reviewer #1425, CIDR #1318, CI and runners remain untouched.
