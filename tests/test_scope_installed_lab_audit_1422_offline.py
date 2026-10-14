@@ -46,7 +46,12 @@ class _FixturePolicy:
             return ScopeDecision(False, host, ScopeReason.OUT_OF_SCOPE)
         if target.value in NOT_LAB:
             if self.explicit and self.requires_grant:
-                return ScopeDecision(False, "fictional", ScopeReason.AUTHORIZATION_MISSING)
+                reason = (
+                    ScopeReason.AUTHORIZATION_MISSING
+                    if target.authorization is None
+                    else ScopeReason.AUTHORIZATION_EXPIRED
+                )
+                return ScopeDecision(False, "fictional", reason)
             return ScopeDecision(False, "fictional", ScopeReason.OUT_OF_SCOPE)
         raise ValueError("unexpected fixture input")
 
@@ -105,6 +110,26 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
         receipt = audit_installed_scope(IncorrectPolicy)
         self.assert_never_authority(receipt)
         self.assertEqual(receipt["status"], "HOLD")
+
+    def test_expired_explicit_network_grant_must_deny(self):
+        class IncorrectPolicy(_FixturePolicy):
+            def decide(self, target):
+                if self.explicit and target.authorization is not None:
+                    return ScopeDecision(True, "8.8.8.8", ScopeReason.EXPLICIT_NETWORK)
+                return super().decide(target)
+        receipt = audit_installed_scope(IncorrectPolicy)
+        self.assert_never_authority(receipt)
+        self.assertEqual(receipt["status"], "HOLD")
+
+    def test_expired_explicit_network_must_use_expired_reason(self):
+        class IncorrectPolicy(_FixturePolicy):
+            def decide(self, target):
+                if self.explicit and target.authorization is not None:
+                    return ScopeDecision(
+                        False, "fictional", ScopeReason.AUTHORIZATION_MISSING
+                    )
+                return super().decide(target)
+        self.assertEqual(audit_installed_scope(IncorrectPolicy)["status"], "HOLD")
 
     def test_explicit_host_missing_grant_must_deny(self):
         class IncorrectPolicy(_FixturePolicy):
@@ -212,7 +237,7 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
             "[2002:c000:201::1]", "[2001:0::1]",
         }.issubset(NOT_LAB))
         self.assertEqual(len(EXPLICIT_HOST_DENIALS), 3)
-        self.assertEqual(TOTAL_CHECKS, 130)
+        self.assertEqual(TOTAL_CHECKS, 164)
 
     def test_real_source_audit_performs_no_network_file_or_child_process(self):
         # Mocks MUST NOT be called: catching a forbidden IO exception and then
