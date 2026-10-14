@@ -10,7 +10,7 @@ This standalone tool is a distinct *two-snapshot comparison* for [open issue #95
 
 ## Try with **fictitious** metadata only
 
-The tool reads at most 16,384 bytes from stdin. In a local disposable checkout, run:
+The tool reads at most 16,384 bytes from **local regular-file or FIFO stdin**; sockets, devices and directories are denied. Its FIFO read uses a strict 2-second absolute deadline and requires EOF: an incomplete or even a complete JSON document sent over a pipe whose writer remains open yields HOLD. This is application-level defensive input handling, **not** an OS sandbox. In a local disposable checkout, run:
 
     python -B scripts/review_scope_grant_amendment_20261014_offline.py --stdin-json < synthetic-review.json
     python -B -m unittest discover -s tests -p 'test_scope_grant_amendment_20261014_offline.py' -v
