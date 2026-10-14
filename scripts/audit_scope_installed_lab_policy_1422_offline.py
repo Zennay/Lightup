@@ -97,7 +97,7 @@ def _source_is_this_checkout() -> bool:
         if (
             type(module) is not ModuleType
             or type(module.__dict__.get("__file__")) is not str
-            or module.__dict__["__file__"] != expected
+            or str(Path(module.__dict__["__file__"]).absolute()) != expected
         ):
             return False
     return (
