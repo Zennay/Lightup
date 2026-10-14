@@ -134,6 +134,13 @@ def _nginx_ok(raw: bytes) -> None:
 
 def _gunicorn_ok(raw: bytes) -> None:
     config = _decode(raw)
+    # Match the tiny source grammar used for nginx: CR, vertical-tab, Unicode
+    # line separators and hidden control bytes cannot create alternate keys.
+    if not config.isascii() or any(
+        ord(character) < 32 and character not in "\n\t"
+        for character in config
+    ):
+        raise Hold
     found: dict[str, object] = {}
     for line in config.splitlines():
         stripped = line.strip()
