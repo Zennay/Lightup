@@ -15,6 +15,7 @@ import select
 import stat
 import sys
 import time
+from types import MappingProxyType
 
 MAX_INPUT = 16384
 MAX_MEMBERS = 32
@@ -26,14 +27,14 @@ GRANT_KEYS = frozenset({
     "excluded_assets", "capabilities", "max_risk", "valid_from",
     "valid_until", "recurring_retest_allowed",
 })
-DENIAL = {
+DENIAL = MappingProxyType({
     "authorized": False,
     "permit_issued": False,
     "dispatch_enabled": False,
     "merge_approved": False,
     "deploy_approved": False,
     "release_approved": False,
-}
+})
 
 
 class Rejected(ValueError):
