@@ -76,6 +76,14 @@ The JSON `total_count=201` is only a declared size, **not evidence** that a fail
 
 With this improvement, the reviewer has **34 dedicated unittest methods** and **201 fixed decision cases**. The real source is still expected to short-circuit to HOLD on issue #1422 until its authorized source owner repairs it.
 
+## W45 — reject same-path module export and admission-method rebinding
+
+W39's local source-path check alone cannot detect **an in-process rebinding of named exported classes or methods** while the `lightup.scope` and `lightup.models` modules keep their original checkout `__file__` metadata. In that situation, reviewing a stale cached imported `ScopePolicy` could be mistaken for inspecting the class currently published by the checked-out module.
+
+The opt-in audit now additionally checks **exact object identity** for the `ScopePolicy`, `ScopeDecision`, `ScopeReason`, `Target` and `Authorization` module exports and confirms the imported classes retain their expected `__module__` origins. The initially imported `ScopePolicy.decide`, `ScopePolicy.normalize_host` descriptor and `Authorization.is_current` callable are also frozen as in-process references and compared before attempting to evaluate a target. Any identity difference is an immediate privacy-minimal **HOLD**, not a partial review or an authorization decision. This runs without opening a source file or doing network I/O.
+
+Five new unit test methods inject synthetic source-export substitutions and individual method replacements; each must result in HOLD, then demonstrate the ordinary source guard resumes passing after the injected replacement is removed. The original 201 decision-case matrix is unchanged, with **39 dedicated ordinary unit methods**. This is an **in-process consistency check, not signed source provenance, interpreter sandboxing or a guarantee against modifications made before the audit module first imports**. A hostile checkout, a replaced interpreter or malicious startup code still requires independent reviewed evidence.
+
 ## Safety and ownership
 
 This deliberately evaluates **real unmodified** `ScopePolicy.decide(Target(...))` from this checkout, unlike [#1424/#1425](https://github.com/Zennay/Lightup/pull/1425), which supplies a standalone reference reviewer. It does not write to or import the tool executor, production admission wiring, tenancy logic or the neighboring target parser. All three new files are owned by W38; source-owner #100, RED owner #1423, standalone reviewer #1425, CIDR #1318, CI and runners remain untouched.
