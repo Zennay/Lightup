@@ -142,11 +142,10 @@ def read_batch_file(path: str, *, require_private_file: bool = False) -> bytes:
             raise BatchHold("CHANGED_INPUT")
         if info.st_size > MAX_BATCH_BYTES:
             raise BatchHold("SIZE_LIMIT")
-        raw = os.read(fd, MAX_BATCH_BYTES + 1)
-        if len(raw) > MAX_BATCH_BYTES:
-            raise BatchHold("SIZE_LIMIT")
-        if len(raw) != info.st_size:
-            raise BatchHold("CHANGED_INPUT")
+        try:
+            raw = single._read_bounded_regular(fd, info.st_size, MAX_BATCH_BYTES)
+        except single.PacketHold as exc:
+            raise BatchHold(exc.code) from None
         after = os.fstat(fd)
         if require_private_file:
             _enforce_private_file(after)
