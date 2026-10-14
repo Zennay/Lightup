@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from contextlib import redirect_stdout
 from io import StringIO
-from ipaddress import ip_address, ip_network
+from ipaddress import IPv6Address, ip_address, ip_network
 import json
 from pathlib import Path
 import socket
@@ -113,7 +113,7 @@ class OctetSweepTests(unittest.TestCase):
             self.assertIs(receipt[field], False)
 
     def test_reference_matrix_is_real_and_bounded(self):
-        self.assertEqual(TOTAL_DECISIONS, 13824)
+        self.assertEqual(TOTAL_DECISIONS, 15360)
         self.assert_non_authorizing(
             review_ipv4_octet_sweep(IndependentStrictPolicy), "REVIEW_ONLY"
         )
@@ -124,7 +124,7 @@ class OctetSweepTests(unittest.TestCase):
         )
         expected = {row[0] for row in _samples()}
         expected.update(row[0] for row in _samples_ipv6())
-        self.assertEqual(len(expected), 6912)
+        self.assertEqual(len(expected), 7680)
         CountedStrictPolicy.observed = []
         result = review_ipv4_octet_sweep(CountedStrictPolicy)
         self.assert_non_authorizing(result, "REVIEW_ONLY")
@@ -133,6 +133,53 @@ class OctetSweepTests(unittest.TestCase):
             set(CountedStrictPolicy.observed),
             {(enabled, value) for enabled in (False, True) for value in expected},
         )
+
+    def test_embedded_ipv4_ipv6_authorities_are_explicitly_untrusted(self):
+        from audit_scope_ipv4_octet_sweep_1422_offline import (
+            _expected_ipv6, _samples_ipv6,
+        )
+        entries = list(_samples_ipv6())
+        self.assertEqual(len(entries), 1536)
+        self.assertEqual(len({row[0] for row in entries}), 1536)
+        self.assertTrue(all(row[0].startswith("[") and row[0].endswith("]") for row in entries))
+        for ipv4_first in range(256):
+            inner_ipv4 = f"{ipv4_first}.0.0.1"
+            mapped = IPv6Address(f"::ffff:{inner_ipv4}")
+            sixtofour = IPv6Address(f"2002:{ipv4_first:02x}00:1::1")
+            nat64 = IPv6Address(f"64:ff9b::{inner_ipv4}")
+            self.assertEqual(str(mapped.ipv4_mapped), inner_ipv4)
+            self.assertIsNotNone(sixtofour.sixtofour)
+            self.assertEqual(int(nat64) & ((1 << 32) - 1), int(ip_address(inner_ipv4)))
+            for address in (mapped, sixtofour, nat64):
+                normalized = address.compressed
+                row = (f"[{normalized}]", normalized, int(address) >> 120)
+                self.assertIn(row, entries)
+                for enabled in (False, True):
+                    self.assertEqual(
+                        _expected_ipv6(normalized, row[2], enabled),
+                        (False, ScopeReason.OUT_OF_SCOPE),
+                    )
+
+    def test_embedded_private_ipv4_cannot_be_laundered_into_lab(self):
+        for address in (
+            IPv6Address("::ffff:10.0.0.1"),
+            IPv6Address("2002:0a00:0001::1"),
+            IPv6Address("64:ff9b::10.0.0.1"),
+            IPv6Address("::ffff:127.0.0.1"),
+        ):
+            literal = f"[{address.compressed}]"
+
+            class UnsafeEmbeddedPolicy(IndependentStrictPolicy):
+                def decide(self, target):
+                    if target.value == literal:
+                        return ScopeDecision(
+                            True, address.compressed, ScopeReason.PRIVATE_LAB
+                        )
+                    return super().decide(target)
+
+            self.assert_non_authorizing(
+                review_ipv4_octet_sweep(UnsafeEmbeddedPolicy), "HOLD"
+            )
 
     def test_receipt_flags_are_fresh_literals_after_external_tampering(self):
         first = review_ipv4_octet_sweep(IndependentStrictPolicy)
