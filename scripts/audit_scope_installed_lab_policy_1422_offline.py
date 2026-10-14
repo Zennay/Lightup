@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from os.path import abspath
 import sys
 from types import ModuleType
 
@@ -97,7 +98,7 @@ def _source_is_this_checkout() -> bool:
         if (
             type(module) is not ModuleType
             or type(module.__dict__.get("__file__")) is not str
-            or str(Path(module.__dict__["__file__"]).absolute()) != expected
+            or abspath(module.__dict__["__file__"]) != expected
         ):
             return False
     return (
