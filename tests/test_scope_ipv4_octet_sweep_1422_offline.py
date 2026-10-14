@@ -72,6 +72,14 @@ class WrongTypePolicy(IndependentStrictPolicy):
         return ScopeDecision(1 if result.allowed else 0, target.value, result.reason)
 
 
+class CountedStrictPolicy(IndependentStrictPolicy):
+    observed = []
+
+    def decide(self, target):
+        type(self).observed.append((self.lab, target.value))
+        return super().decide(target)
+
+
 class LateFalseAdmissionPolicy(IndependentStrictPolicy):
     def decide(self, target):
         if target.value == "198.255.254.1":
@@ -108,6 +116,22 @@ class OctetSweepTests(unittest.TestCase):
         self.assertEqual(TOTAL_DECISIONS, 13824)
         self.assert_non_authorizing(
             review_ipv4_octet_sweep(IndependentStrictPolicy), "REVIEW_ONLY"
+        )
+
+    def test_actual_oracle_invokes_every_unique_case_for_both_modes(self):
+        from audit_scope_ipv4_octet_sweep_1422_offline import (
+            _samples, _samples_ipv6,
+        )
+        expected = {row[0] for row in _samples()}
+        expected.update(row[0] for row in _samples_ipv6())
+        self.assertEqual(len(expected), 6912)
+        CountedStrictPolicy.observed = []
+        result = review_ipv4_octet_sweep(CountedStrictPolicy)
+        self.assert_non_authorizing(result, "REVIEW_ONLY")
+        self.assertEqual(len(CountedStrictPolicy.observed), TOTAL_DECISIONS)
+        self.assertEqual(
+            set(CountedStrictPolicy.observed),
+            {(enabled, value) for enabled in (False, True) for value in expected},
         )
 
     def test_receipt_flags_are_fresh_literals_after_external_tampering(self):
