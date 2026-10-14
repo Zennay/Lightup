@@ -105,6 +105,43 @@ def _git_bounded_names(repo: Path, *args: str,
 
 
 
+def _validate_owned_blob(repo: Path, commit: str, path: str, raw: bytes) -> str:
+    """Validate the exact Git blob and text shape at one immutable commit."""
+    tree = _git(repo, "ls-tree", "-z", commit, "--", path)
+    if tree.returncode or not tree.stdout.endswith(b"\x00"):
+        return "INVALID_TREE_ENTRY"
+    if tree.stdout != tree.stdout.rstrip(b"\x00") + b"\x00" or not tree.stdout.startswith(b"100644 blob "):
+        return "UNSAFE_TREE_MODE"
+    metadata, sep, actual = tree.stdout[:-1].partition(b"\t")
+    if not sep or actual != raw or not re.fullmatch(rb"100644 blob [0-9a-f]{40}", metadata):
+        return "INVALID_TREE_ENTRY"
+    # A new .py/.md file must be a bounded ordinary text blob, never a
+    # giant/binary fixture hidden behind an otherwise innocuous path.
+    object_id = metadata.rsplit(b" ", 1)[-1].decode("ascii")
+    blob_size = _git(repo, "cat-file", "-s", object_id)
+    raw_size = blob_size.stdout.strip()
+    if blob_size.returncode or not raw_size.isdigit() or len(raw_size) > 10:
+        return "INVALID_BLOB_SIZE"
+    size = int(raw_size)
+    if size > MAX_TEXT_BYTES:
+        return "ADDED_FILE_TOO_LARGE"
+    content = _git(repo, "cat-file", "blob", object_id)
+    if content.returncode or len(content.stdout) != size:
+        return "INVALID_BLOB_DATA"
+    try:
+        decoded = content.stdout.decode("utf-8", "strict")
+    except UnicodeDecodeError:
+        return "NONCANONICAL_TEXT"
+    # Text can be syntactically valid UTF-8 but render differently from what
+    # the reviewer sees. Reject invisible formatting and terminal controls.
+    if decoded.startswith("\ufeff") or any(
+            (unicodedata.category(char) == "Cf")
+            or (unicodedata.category(char) == "Cc" and char not in "\t\n")
+            for char in decoded):
+        return "NONCANONICAL_TEXT"
+    return "VALID_BLOB"
+
+
 def _check_additive_history(repo: Path, base: str, head: str,
                             owned: set[str]) -> str:
     """Reject hidden out-of-lane edits that are reverted before the final diff.
@@ -151,11 +188,14 @@ def _check_additive_history(repo: Path, base: str, head: str,
                 introduced.add(path)
             elif status != b"M" or path not in introduced:
                 return "INVALID_HISTORY_CHANGE"
-            entry = _git(repo, "ls-tree", "-z", commit, "--", path)
-            if (entry.returncode or not entry.stdout.startswith(b"100644 blob ")
-                    or entry.stdout.count(b"\x00") != 1
-                    or not entry.stdout.endswith(b"\t" + raw_path + b"\x00")):
+            blob_reason = _validate_owned_blob(repo, commit, path, raw_path)
+            if blob_reason == "UNSAFE_TREE_MODE":
                 return "UNSAFE_HISTORY_TREE_MODE"
+            if blob_reason != "VALID_BLOB":
+                return "UNSAFE_HISTORY_BLOB"
+        if _git(repo, "diff", "--check", "--no-ext-diff", "--no-textconv",
+                previous, commit, "--").returncode:
+            return "HISTORY_PATCH_CHECK_FAILED"
         parent = parts[0]
     if parent != head.encode("ascii") or introduced != owned:
         return "HISTORY_MANIFEST_MISMATCH"
@@ -221,38 +261,9 @@ def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
         if not OWNED.fullmatch(path) or path in changed:
             return "UNOWNED_OR_DUPLICATE_PATH", len(fields) // 2
         changed.add(path)
-        tree = _git(repo, "ls-tree", "-z", head, "--", path)
-        if tree.returncode or not tree.stdout.endswith(b"\x00"):
-            return "INVALID_TREE_ENTRY", len(fields) // 2
-        if tree.stdout != tree.stdout.rstrip(b"\x00") + b"\x00" or not tree.stdout.startswith(b"100644 blob "):
-            return "UNSAFE_TREE_MODE", len(fields) // 2
-        metadata, sep, actual = tree.stdout[:-1].partition(b"\t")
-        if not sep or actual != raw or not re.fullmatch(rb"100644 blob [0-9a-f]{40}", metadata):
-            return "INVALID_TREE_ENTRY", len(fields) // 2
-        # A new .py/.md file must be a bounded ordinary text blob, never a
-        # giant/binary fixture hidden behind an otherwise innocuous path.
-        object_id = metadata.rsplit(b" ", 1)[-1].decode("ascii")
-        blob_size = _git(repo, "cat-file", "-s", object_id)
-        raw_size = blob_size.stdout.strip()
-        if blob_size.returncode or not raw_size.isdigit() or len(raw_size) > 10:
-            return "INVALID_BLOB_SIZE", len(fields) // 2
-        size = int(raw_size)
-        if size > MAX_TEXT_BYTES:
-            return "ADDED_FILE_TOO_LARGE", len(fields) // 2
-        content = _git(repo, "cat-file", "blob", object_id)
-        if content.returncode or len(content.stdout) != size:
-            return "INVALID_BLOB_DATA", len(fields) // 2
-        try:
-            decoded = content.stdout.decode("utf-8", "strict")
-        except UnicodeDecodeError:
-            return "NONCANONICAL_TEXT", len(fields) // 2
-        # Text can be syntactically valid UTF-8 but render differently from what
-        # the reviewer sees. Reject invisible formatting and terminal controls.
-        if decoded.startswith("\ufeff") or any(
-                (unicodedata.category(char) == "Cf")
-                or (unicodedata.category(char) == "Cc" and char not in "\t\n")
-                for char in decoded):
-            return "NONCANONICAL_TEXT", len(fields) // 2
+        blob_reason = _validate_owned_blob(repo, head, path, raw)
+        if blob_reason != "VALID_BLOB":
+            return blob_reason, len(fields) // 2
     if changed != set(expected):
         return "OWNERSHIP_MANIFEST_MISMATCH", len(fields) // 2
     if _git(repo, "diff", "--check", "--no-ext-diff", "--no-textconv", base, head, "--").returncode:
