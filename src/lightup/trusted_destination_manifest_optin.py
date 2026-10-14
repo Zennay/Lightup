@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 
 from .ai.orchestration import ParamKind, ToolDefinition, ToolParameter, ToolRegistry
 from .execution_policy import InteractionKind
+from .engagements import RiskLevel
 
 
 class DestinationMetadataRefused(ValueError):
@@ -64,8 +65,11 @@ def _host(value):
     except ValueError:
         pass
     parts = value.split(".")
-    if len(parts) > 1 and all(p.isdecimal() for p in parts):
-        return False  # no noncanonical numeric IPv4 spellings
+    if (value.isdecimal()
+            or (len(parts) > 1 and all(p.isdecimal() for p in parts))
+            or any(p.startswith("0x") and len(p) > 2
+                   and all(c in "0123456789abcdef" for c in p[2:]) for p in parts)):
+        return False  # reject ambiguous alternate numeric-host spellings
     return all(_DNS.fullmatch(part) for part in parts)
 
 
@@ -146,7 +150,11 @@ class TrustedDestinationManifest:
     def __init__(self, registry, definition, fields):
         if type(registry) is not ToolRegistry or type(definition) is not ToolDefinition or type(fields) is not tuple:
             _deny()
-        if type(definition.tool_id) is not str or not _NAME.fullmatch(definition.tool_id):
+        if (type(definition.tool_id) is not str or not _NAME.fullmatch(definition.tool_id)
+                or type(definition.capability_id) is not str or not definition.capability_id
+                or len(definition.capability_id) > 128
+                or type(definition.description) is not str or len(definition.description) > 4096
+                or type(definition.min_risk) is not RiskLevel):
             _deny()
         if type(registry._tools) is not dict:
             _deny()
@@ -163,7 +171,8 @@ class TrustedDestinationManifest:
         registered = {}
         for p in params:
             if (type(p) is not ToolParameter or type(p.name) is not str or not _NAME.fullmatch(p.name)
-                    or p.name in registered or type(p.kind) is not ParamKind or type(p.required) is not bool):
+                    or p.name in registered or type(p.kind) is not ParamKind or type(p.required) is not bool
+                    or type(p.description) is not str or len(p.description) > 4096):
                 _deny()
             registered[p.name] = p
         if not 1 <= len(fields) <= 4:
@@ -186,7 +195,7 @@ class TrustedDestinationManifest:
             _deny()
         for k, v in (("_registry", registry), ("_definition", definition), ("_fields", fields),
                      ("_parameters", params), ("_handler", entry[1]),
-                     ("_snapshot", tuple((p, p.name, p.kind, p.required) for p in params)),
+                     ("_snapshot", tuple((p, p.name, p.kind, p.required, p.description) for p in params)),
                      ("_registry_map", registry._tools),
                      ("_definition_snapshot", (definition.tool_id, definition.capability_id,
                                                definition.interaction, definition.min_risk,
@@ -199,11 +208,18 @@ class TrustedDestinationManifest:
         if (type(registry._tools) is not dict or registry._tools is not self._registry_map
                 or type(definition.tool_id) is not str):
             _deny()
+        if (type(definition.capability_id) is not str
+                or type(definition.interaction) is not InteractionKind
+                or type(definition.min_risk) is not RiskLevel
+                or type(definition.description) is not str
+                or type(definition.parameters) is not tuple):
+            _deny()
         if (definition.tool_id, definition.capability_id, definition.interaction,
                 definition.min_risk, definition.description, definition.parameters) != self._definition_snapshot:
             _deny()
         if (len(self._fields) != len(self._roles_snapshot) or any(
                 type(f) is not DestinationField or f is not original
+                or type(f.parameter) is not str
                 or f.parameter != name or f.role is not role
                 for f, (original, name, role) in zip(self._fields, self._roles_snapshot))):
             _deny()
@@ -211,8 +227,10 @@ class TrustedDestinationManifest:
         if (type(entry) is not tuple or len(entry) != 2 or entry[0] is not definition
                 or entry[1] is not self._handler or definition.parameters is not self._parameters):
             _deny()
-        if any((p.name, p.kind, p.required) != (name, kind, required)
-               for p, name, kind, required in self._snapshot):
+        if any(type(p.name) is not str or type(p.kind) is not ParamKind
+               or type(p.required) is not bool or type(p.description) is not str
+               or (p.name, p.kind, p.required, p.description) != (name, kind, required, description)
+               for p, name, kind, required, description in self._snapshot):
             _deny()
         if type(arguments) is not dict or len(arguments) > 64:
             _deny()
