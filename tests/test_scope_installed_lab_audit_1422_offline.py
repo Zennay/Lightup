@@ -111,6 +111,26 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
         self.assert_never_authority(receipt)
         self.assertEqual(receipt["status"], "HOLD")
 
+    def test_not_yet_effective_explicit_network_must_deny(self):
+        class IncorrectPolicy(_FixturePolicy):
+            def decide(self, target):
+                permission = target.authorization
+                if self.explicit and permission is not None and permission.valid_from is not None:
+                    return ScopeDecision(True, "8.8.8.8", ScopeReason.EXPLICIT_NETWORK)
+                return super().decide(target)
+        result = audit_installed_scope(IncorrectPolicy)
+        self.assert_never_authority(result)
+        self.assertEqual(result["status"], "HOLD")
+
+    def test_not_yet_effective_explicit_network_denial_reason(self):
+        class IncorrectPolicy(_FixturePolicy):
+            def decide(self, target):
+                permission = target.authorization
+                if self.explicit and permission is not None and permission.valid_from is not None:
+                    return ScopeDecision(False, "fictional", ScopeReason.OUT_OF_SCOPE)
+                return super().decide(target)
+        self.assertEqual(audit_installed_scope(IncorrectPolicy)["status"], "HOLD")
+
     def test_expired_explicit_network_grant_must_deny(self):
         class IncorrectPolicy(_FixturePolicy):
             def decide(self, target):
@@ -128,6 +148,26 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
                     return ScopeDecision(
                         False, "fictional", ScopeReason.AUTHORIZATION_MISSING
                     )
+                return super().decide(target)
+        self.assertEqual(audit_installed_scope(IncorrectPolicy)["status"], "HOLD")
+
+    def test_not_yet_effective_explicit_host_must_deny(self):
+        class IncorrectPolicy(_FixturePolicy):
+            def decide(self, target):
+                permission = target.authorization
+                if self.explicit_hosts and permission is not None and permission.valid_from is not None:
+                    return ScopeDecision(True, "review.invalid", ScopeReason.EXPLICIT_HOST)
+                return super().decide(target)
+        result = audit_installed_scope(IncorrectPolicy)
+        self.assert_never_authority(result)
+        self.assertEqual(result["status"], "HOLD")
+
+    def test_not_yet_effective_explicit_host_denial_reason(self):
+        class IncorrectPolicy(_FixturePolicy):
+            def decide(self, target):
+                permission = target.authorization
+                if self.explicit_hosts and permission is not None and permission.valid_from is not None:
+                    return ScopeDecision(False, "review.invalid", ScopeReason.AUTHORIZATION_MISSING)
                 return super().decide(target)
         self.assertEqual(audit_installed_scope(IncorrectPolicy)["status"], "HOLD")
 
@@ -237,7 +277,7 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
             "[2002:c000:201::1]", "[2001:0::1]",
         }.issubset(NOT_LAB))
         self.assertEqual(len(EXPLICIT_HOST_DENIALS), 3)
-        self.assertEqual(TOTAL_CHECKS, 164)
+        self.assertEqual(TOTAL_CHECKS, 201)
 
     def test_real_source_audit_performs_no_network_file_or_child_process(self):
         # Mocks MUST NOT be called: catching a forbidden IO exception and then
