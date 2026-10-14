@@ -171,7 +171,7 @@ class IsolationCheckTests(unittest.TestCase):
         with mock.patch("check_scope_branch_isolation.subprocess.run",
                         side_effect=FileNotFoundError):
             self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
-                             "MISSING_COMMIT")
+                             "INVALID_REPOSITORY_ROOT")
 
     def test_missing_peer_commit_fails_closed(self):
         path = "tests/test_scope_synthetic_review.py"
@@ -179,6 +179,64 @@ class IsolationCheckTests(unittest.TestCase):
         head = self.commit()
         self.assertEqual(inspect(self.repo, self.base, head, (path,), ("f" * 40,))[0],
                          "MISSING_PEER_COMMIT")
+
+    def test_nested_directory_is_not_accepted_as_repository_root(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "safe\\n")
+        head = self.commit()
+        nested = self.repo / "nested"
+        nested.mkdir()
+        self.assertEqual(inspect(nested, self.base, head, (path,))[0],
+                         "INVALID_REPOSITORY_ROOT")
+
+    def test_inherited_git_redirects_are_ignored(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "safe\\n")
+        head = self.commit()
+        with mock.patch.dict(os.environ, {
+            "GIT_DIR": str(self.repo / "nonexistent-attacker-gitdir"),
+            "GIT_WORK_TREE": "/does-not-exist",
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "core.whitespace",
+            "GIT_CONFIG_VALUE_0": "-trailing-space",
+        }):
+            self.assertEqual(inspect(self.repo, self.base, head, (path,)),
+                             ("ADDITIVE_PATHS_MATCH", 1))
+
+    def test_local_whitespace_policy_cannot_disable_trailing_check(self):
+        self.git("config", "core.whitespace", "-trailing-space")
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "bad trailing space \\n")
+        head = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
+                         "PATCH_CHECK_FAILED")
+
+    def test_denied_receipt_does_not_claim_peers_checked(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "safe\\n")
+        head = self.commit()
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = main(["--repo", str(self.repo), "--base", self.base,
+                              "--head", head, "--allow", path, "--peer", "f" * 40])
+        receipt = json.loads(output.getvalue())
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(receipt["peer_heads_submitted"], 1)
+        self.assertEqual(receipt["peer_heads_checked"], 0)
+        for key in ("authorization_verified", "permit_issued", "execution_enabled",
+                    "merge_approved", "release_approved"):
+            self.assertIs(receipt[key], False)
+
+    def test_git_timeout_fails_closed(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "safe\\n")
+        head = self.commit()
+        with mock.patch("check_scope_branch_isolation.subprocess.run",
+                        side_effect=subprocess.TimeoutExpired(["git"], 20)):
+            self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
+                             "INVALID_REPOSITORY_ROOT")
+
 
 if __name__ == "__main__":
     unittest.main()
