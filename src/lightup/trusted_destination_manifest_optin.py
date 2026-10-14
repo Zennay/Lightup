@@ -11,6 +11,18 @@ from urllib.parse import urlsplit
 from .ai.orchestration import ParamKind, ToolDefinition, ToolParameter, ToolRegistry
 from .execution_policy import InteractionKind
 from .engagements import RiskLevel
+# Capture genuine built-in lab objects when this *optional* module is loaded,
+# not when the reviewer is called. Late mutation of worker module globals must
+# never rewrite the expected trusted handler or schema provenance.
+from .workers import http_baseline as _http_baseline
+from .workers import tls_baseline as _tls_baseline
+from .workers import service_inventory as _service_inventory
+
+_ORIGINAL_LAB_TOOLS = (
+    (_http_baseline.HTTP_BASELINE_TOOL, _http_baseline.run_http_baseline),
+    (_tls_baseline.TLS_BASELINE_TOOL, _tls_baseline.run_tls_baseline),
+    (_service_inventory.SERVICE_INVENTORY_TOOL, _service_inventory.run_service_inventory),
+)
 
 
 class DestinationMetadataRefused(ValueError):
@@ -292,19 +304,16 @@ def known_lab_destination_manifest(registry, definition):
     """
     if type(registry) is not ToolRegistry or type(definition) is not ToolDefinition:
         _deny()
-    from .workers import http_baseline, tls_baseline, service_inventory
-
+    # These anchors are captured once on module import and are independent
+    # of subsequent assignments to worker-module global functions/definitions.
     trusted = (
-        (http_baseline.HTTP_BASELINE_TOOL, http_baseline.run_http_baseline,
-         "lab-http-baseline", "web-baseline",
+        (*_ORIGINAL_LAB_TOOLS[0], "lab-http-baseline", "web-baseline",
          ("url",), (DestinationField("url", DestinationRole.ENDPOINT),)),
-        (tls_baseline.TLS_BASELINE_TOOL, tls_baseline.run_tls_baseline,
-         "lab-tls-baseline", "cryptography",
+        (*_ORIGINAL_LAB_TOOLS[1], "lab-tls-baseline", "cryptography",
          ("host", "port"),
          (DestinationField("host", DestinationRole.HOST),
           DestinationField("port", DestinationRole.PORT))),
-        (service_inventory.SERVICE_INVENTORY_TOOL, service_inventory.run_service_inventory,
-         "lab-service-inventory", "network-services",
+        (*_ORIGINAL_LAB_TOOLS[2], "lab-service-inventory", "network-services",
          ("host", "ports"),
          (DestinationField("host", DestinationRole.HOST),
           DestinationField("ports", DestinationRole.PORT_SET))),
