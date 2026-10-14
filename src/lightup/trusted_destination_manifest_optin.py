@@ -6,6 +6,7 @@ from enum import Enum
 import ipaddress
 import math
 import re
+import unicodedata
 from urllib.parse import urlsplit
 
 from .ai.orchestration import ParamKind, ToolDefinition, ToolParameter, ToolRegistry
@@ -89,9 +90,11 @@ def _host(value):
 
 
 def _safe_url_escapes(value):
-    """Refuse malformed, control, or ambiguous percent-encoded URI bytes.
+    """Refuse ambiguous, malformed or invisible percent-encoded URI bytes.
 
-    Conservative offline shape validation; not a URL authorization decision.
+    Each contiguous percent-encoded octet run must be strict UTF-8. Invisible
+    Unicode formats, controls and boundary-changing reserved ASCII bytes
+    cannot be smuggled past lexical admission. No URL decoding or I/O occurs.
     """
     index = 0
     size = len(value)
@@ -99,19 +102,28 @@ def _safe_url_escapes(value):
         if value[index] != "%":
             index += 1
             continue
-        if index + 2 >= size:
+        octets = bytearray()
+        while index < size and value[index] == "%":
+            if index + 2 >= size:
+                return False
+            pair = value[index + 1:index + 3]
+            if any(c not in "0123456789ABCDEF" for c in pair):
+                return False
+            octet = int(pair, 16)
+            if octet < 32 or octet == 127 or octet in (
+                35, 37, 38, 43, 46, 47, 58, 59, 61, 63, 64, 92
+            ):
+                return False
+            octets.append(octet)
+            index += 3
+        try:
+            decoded = bytes(octets).decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
             return False
-        pair = value[index + 1:index + 3]
-        if any(c not in "0123456789ABCDEF" for c in pair):
+        if any(unicodedata.category(char) in ("Cc", "Cf", "Cs")
+               for char in decoded):
             return False
-        octet = int(pair, 16)
-        # Reject controls and reserved bytes whose decoding can reinterpret
-        # authority/path/query boundaries (including double-encoded '%').
-        if octet < 32 or octet == 127 or octet in (35, 37, 38, 43, 46, 47, 58, 59, 61, 63, 64, 92):
-            return False
-        index += 3
     return True
-
 
 def _endpoint(value):
     if type(value) is not str or not value or len(value) > 2048:
