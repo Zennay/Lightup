@@ -90,8 +90,9 @@ def main() -> int:
         else _receipt("HOLD", "CLI_ARGUMENTS_DISALLOWED")
     )
     print(json.dumps(receipt, sort_keys=True, separators=(",", ":")))
-    # HOLD is a nonzero shell condition, but REVIEW_ONLY still never authorizes.
-    return 0 if receipt["status"] == "REVIEW_ONLY" else 2
+    # Both results are deliberately nonzero: shell chaining must not treat a
+    # syntactically reviewable address as a permission to perform a next step.
+    return 3 if receipt["status"] == "REVIEW_ONLY" else 2
 
 
 if __name__ == "__main__":
