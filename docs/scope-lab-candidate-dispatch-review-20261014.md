@@ -20,3 +20,9 @@ assert receipt["execution_enabled"] is False
 Run the 23 real-model SQLite tests with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_lab_candidate_dispatch_review.py' -v`. The original full hosted offline preflight also exercises existing producer and fail-closed regressions.
 
 **Project phase: INCUBATE M3/M7 / PLAN-LAB ONLY. No deployment, no real scans, no authorization or activation.**
+
+## Standalone single-preview snapshot integrity
+
+The individual synthetic `review_lab_candidate_dispatch` previously called `ledger.review` and `ledger.inspect` as separate SQLite reads. Outside a pre-existing transaction, another connection could revoke/freeze the candidate between those reads while the result still appeared `REVIEW_ONLY`. A standalone review now opens **its own SQLite read transaction**, evaluates both reads inside one snapshot, rolls back **only its own read transaction**, and compares `PRAGMA data_version` before/after. Any observed external SQLite commit, closed/forged connection or read error yields `HOLD`, never a partial success. Eleven genuine synthetic SQLite + file-backed WAL tests cover concurrent revocation, freeze, unrelated updates, caller transaction ownership, and zero DB writes from legitimate previews.
+
+The previously merged batch reviewer owns its own snapshot and continues to call the individual reviewer *inside that existing transaction*: the individual reviewer does not open a nested transaction or rollback a transaction owned by a caller. There is no real permission, operator authentication, network call, or ToolExecutor action in either path. `data_version` cannot detect changes after return or prove physical lab/consent authenticity. **REVIEW_ONLY always has five false authority flags** and must never be wired as execution authorization.
