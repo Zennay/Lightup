@@ -457,5 +457,75 @@ class IsolationCheckTests(unittest.TestCase):
         self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
                          "HISTORY_PATCH_CHECK_FAILED")
 
+
+    def test_optin_clean_worktree_accepts_exact_clean_checkout(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "committed\n")
+        head = self.commit()
+        self.assertEqual(inspect(
+            self.repo, self.base, head, (path,), (),
+            require_current_head=True, require_clean_worktree=True),
+            ("ADDITIVE_PATHS_MATCH", 1))
+
+    def test_optin_clean_worktree_rejects_staged_and_unstaged_modifications(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "committed\n")
+        head = self.commit()
+        for staged in (False, True):
+            with self.subTest(staged=staged):
+                self.write(path, "unreviewed worktree change\n")
+                if staged:
+                    self.git("add", path)
+                self.assertEqual(inspect(
+                    self.repo, self.base, head, (path,), (),
+                    require_current_head=True, require_clean_worktree=True)[0],
+                    "DIRTY_WORKTREE")
+                self.git("reset", "--hard", "-q", head)
+
+    def test_optin_clean_worktree_rejects_untracked_paths(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "committed\n")
+        head = self.commit()
+        stray = self.repo / "untracked-review-artifact.txt"
+        stray.write_text("not in commit")
+        self.assertEqual(inspect(
+            self.repo, self.base, head, (path,), (),
+            require_current_head=True, require_clean_worktree=True)[0],
+            "DIRTY_WORKTREE")
+        self.assertEqual(inspect(
+            self.repo, self.base, head, (path,), (),
+            require_current_head=True, require_clean_worktree=False),
+            ("ADDITIVE_PATHS_MATCH", 1))
+
+    def test_optin_clean_worktree_requires_current_head_and_strict_bool(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "committed\n")
+        head = self.commit()
+        for clean, current in ((True, False), (1, True), ("true", True)):
+            self.assertEqual(inspect(
+                self.repo, self.base, head, (path,), (),
+                require_current_head=current, require_clean_worktree=clean)[0],
+                "INVALID_WORKTREE_POLICY")
+
+    def test_cli_dirty_checkout_receipt_is_never_authorizing(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "committed\n")
+        head = self.commit()
+        self.write("other-untracked.txt", "not reviewed\n")
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            code = main([
+                "--repo", str(self.repo), "--base", self.base,
+                "--head", head, "--allow", path,
+                "--require-current-head", "--require-clean-worktree",
+            ])
+        self.assertEqual(code, 1)
+        receipt = json.loads(output.getvalue())
+        self.assertEqual(receipt["reason"], "DIRTY_WORKTREE")
+        self.assertEqual(receipt["status"], "HOLD")
+        for name in ("authorization_verified", "permit_issued",
+                     "execution_enabled", "merge_approved", "release_approved"):
+            self.assertIs(receipt[name], False)
+
 if __name__ == "__main__":
     unittest.main()
