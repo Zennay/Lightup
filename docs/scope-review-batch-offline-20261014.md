@@ -30,3 +30,14 @@ A batch result is one privacy-safe fixed-field JSON receipt: `state` (`REVIEW_ON
 ## W4 local file identity hardening — fail-closed, not attestation
 
 The read-only file intake performs a pre-open local `lstat` (reject symlinks, directories and FIFOs **before** calling `os.open`), then compares device/inode/size/mtime/ctime against the actually opened file descriptor and compares an additional post-read `fstat` snapshot. Bounded same-length tampering and path substitution that change these observed metadata fields produce an opaque `CHANGED_INPUT` HOLD; no private input bytes are logged. This is a race-detection **heuristic**, not a trusted immutable filesystem snapshot or anti-malware/consent proof. In particular a privileged concurrent writer able to preserve metadata could defeat local review consistency, and permission to test assets is **never** inferred. Eight new synthetic unittest methods in `tests/test_scope_review_file_identity_offline.py` cover both readers using deterministic injected metadata changes, symlinks and FIFO non-open behavior. Human and production gates remain unchanged.
+
+## W5 optional POSIX private-file intake policy
+
+For customer-sensitive review preparation, use `--require-private-file` on the **local CLI only**. This opt-in fails closed unless the directly named file is a regular file, owned by the current process's effective UID, has exactly one filesystem hard link, and has **no group or other permission bits** (for example `chmod 600` or `chmod 400`). It checks these conditions before opening, again on the opened descriptor, and after reading. Changing metadata during reading yields a HOLD. Non-POSIX runtimes without `os.geteuid()` fail closed when this mode is requested. The default remains compatible with synthetic fixture files and provides no assurance of file confidentiality. No permission repair (`chmod`, `chown`) is performed automatically. Example:
+
+```sh
+chmod 600 /path/to/local-review.json
+python scripts/check_scope_review_batch_offline.py --require-private-file /path/to/local-review.json
+```
+
+File modes and link counts are **only local privacy hygiene**, not authentic provenance or customer consent; a malicious process with the same UID, inherited directory access, a privileged attacker, permission-changing race, hidden mount permissions or provider-specific filesystem behavior may defeat this heuristic. The result still has all five authority flags `false`. Dedicated synthetic POSIX tests cover insecure 0640/0604/0602, hard links, foreign UID, post-read permissions, malformed policy and CLI privacy-safe HOLD. No user content is echoed.
