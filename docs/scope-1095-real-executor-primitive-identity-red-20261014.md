@@ -31,6 +31,8 @@ New **optional, uninstalled** `src/lightup/primitive_admission_optin_1095.py` re
 
 A distinct new `tests/test_scope_1095_optin_atomic_primitive_snapshot_20261014.py` exercises exact built-in and hostile polymorphic values; no-custom-callback canaries; required/optional/unknown keys; ordinary `dict` admission; copy-on-admission; immutable false authority flags even under attempted caller construction/mutation; batch shapes and upper bound; atomic late-error refusal; and actual `ToolExecutor` + disposable SQLite analysis-only positive controls that run only **after** explicit synthetic preflight. This **does not** fix the original `ParamKind.accepts`: the prior 14 expected RED must remain visible until the source owner repairs them.
 
+**W4 mode/name fence:** The optional preflight now refuses all TARGET_ACTIVE, LAB_ACTIVE, PASSIVE_PUBLIC, and elevated-risk ToolDefinitions even when supplied with valid primitive values. Only built-in `synthetic-*` tool names with `InteractionKind.ANALYSIS` and exact `RiskLevel.ANALYSIS_ONLY` can enter; a second row containing an active tool invalidates the entire batch without returning partial receipt. New tests prove this explicit non-active-only boundary. The checks do not imply trusted tool-definition provenance or customer consent.
+
 The opt-in check intentionally **does not** attest ToolDefinition provenance/lifetime or parameters (separate source-owner #911/#913), tenant authorization, cryptographic binding, canonical tool IDs/argument key lineage (#1094), nor finite numeric value requirements (#1143). Passing a primitive snapshot to an active tool is neither supported nor a valid authorization. Synthetic fixtures use only `synthetic.invalid` in ANALYSIS_ONLY mode.
 
 Execute opt-in tests offline after review:
