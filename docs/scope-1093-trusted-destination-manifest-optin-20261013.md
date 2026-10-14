@@ -124,3 +124,10 @@ This script was **created and committed but not executed on the registered VPS**
 ## W16 — close offline verifier import-time I/O window
 
 Follow-up defensive bug fix to the new script: the initial implementation enabled no-network/no-process guards only for `unittest` execution, leaving test module **discovery/import** outside those guards. A test module or dependency could initiate I/O during import, before the intended block. The checker now wraps both discovery/import **and** execution in the same patch set (DNS, raw socket, socket connection, URL opener, `subprocess.run`/`Popen`, and `os.system`), enforcing a stronger offline-only boundary. It still cannot attest that the checkout or registered runner is trusted, and creates no authorization. Run the source script from an existing permitted runner checkout only; do not treat a JSON HOLD receipt as a production release gate.
+
+
+## W17 — protect machine-readable HOLD receipts from test diagnostics
+
+The optional offline verifier now captures both `stdout` and `stderr` during unittest discovery/import and execution, alongside the enforced network/subprocess no-call boundary. Test prints, warnings and tracebacks therefore cannot be interleaved into the single stable JSON HOLD receipt, and raw synthetic fixture or exception detail is not emitted to its caller. Only bounded pass/failure/error/skip **counts**, the expected and actual test count, and permanently-false authority fields are exposed. The checker continues to refuse all CLI arguments and to fail if the expected 91 methods, zero skips and zero exceptions are not satisfied.
+
+The source has been committed but has **not** been run in the complete exact-head GitHub checkout or on `vps-bb300bba`. This is a convenience for the existing owner-authorized validation lane, not a queue dispatch or proof of an authorized release. No new PR or production integration.
