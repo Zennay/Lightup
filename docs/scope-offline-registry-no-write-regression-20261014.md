@@ -1,6 +1,6 @@
 # Offline registry CLI no-write / no-SQLite regressions (#1362)
 
-LightUp remains **INCUBATE M3/M7 · PLAN/LAB ONLY**. The seven
+LightUp remains **INCUBATE M3/M7 · PLAN/LAB ONLY**. The eight
 source-local export and registry review entrypoints promise read-only
 developer metadata checks. Existing hermetic tests guard Python socket/DNS
 attempts; this independent synthetic test suite additionally proves that
@@ -14,9 +14,9 @@ exception. Test fixtures are created **only by the parent outside the
 hooked subprocess**. Python bytecode generation is disabled for the
 child, so ordinary import cache writes do not obscure validation.
 
-The 14 methods exercise genuine exporter, pairwise comparison,
+The 16 methods exercise genuine exporter, pairwise comparison,
 multi-version history, history versus checkout, Markdown report,
-incubation posture and closed-world catalog CLIs, with unchanged,
+incubation posture, closed-world catalog and semantic field-review CLIs, with unchanged,
 modified/reverted, malformed/absent and hostile arguments. Valid
 catalog controls remain `REVIEW_ONLY` with exit **3**; invalid or
 drifted inputs **HOLD** with exit **2**, never 0. JSON receipts have
