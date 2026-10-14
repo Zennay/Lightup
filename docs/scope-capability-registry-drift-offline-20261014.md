@@ -16,6 +16,12 @@ Run: `python3 scripts/review_scope_capability_registry_offline.py BASELINE.json 
 
 `REVIEW_ONLY` (exit **3**) means these *declared metadata* snapshots match. `HOLD` (exit **2**) means drift or invalid input; changed identifiers are reported without a synthetic promotion/demotion recommendation. **Neither returns exit 0.** All receipts carry `authorization_verified=false`, `permit_issued=false`, `execution_enabled=false`, `merge_approved=false`, `release_approved=false`.
 
+## Generate the current local candidate
+
+The optional `python3 scripts/export_scope_capability_registry_offline.py > CANDIDATE.json` serializes **actual local** `get_capabilities()` metadata using strict builtin model and enum identity. It rejects duplicate/noncanonical IDs, non-builtin boolean flags and malformed registries, then writes only the strict manifest JSON to stdout. The exporter deliberately exits **3 even on successful export**, or **2 for invalid data**; its successful shell exit is not zero. Compare a separately saved trusted, human-selected baseline against the newly generated candidate, rather than a copy against itself. Output provenance depends entirely on the checkout and reviewer: the exporter does **not** attest the repository commit or grant authority.
+
+The 12 original reviewer regressions and a further 12 real in-repository registry exporter regressions cover field identity, metadata drift, unsafe input, canonical ordering and CLI safety; hosted 3.11/3.14 and permanent registered VPS evidence must be gathered per final SHA.
+
 ## What still requires independent checks
 
 Trusted immutable signed/referenced registry baselines, source-owner review, separately attested customer and tenant scope, current valid operator consent and revocation checks, exact-head CI (hosted + permanently registered VPS), independent security/privacy review and human release decision. Never connect this comparison result to `ActivationGate`, `ToolExecutor` or actual target interactions. Project remains **INCUBATE M3/M7 · PLAN/LAB ONLY**.
