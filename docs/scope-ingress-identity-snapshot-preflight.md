@@ -176,3 +176,18 @@ geïnstalleerde Nginx-binary, productie-TLS, Gunicorn of LightUp**.
 Na ieder commit gelden alleen CI-logs van die exacte immutable HEAD.
 Eerdere testsuccessen tellen niet mee voor latere branches. Productie,
 klantgrants, deployment, merge en actieve scans blijven DRAFT/HOLD.
+
+
+## W63: gegarandeerde cleanup-poging bij gedeeltelijke subprocessfout
+
+De optionele lokale proef probeert nu **alle** eigen tijdelijke processen
+in omgekeerde startvolgorde te stoppen, ook wanneer de eerste beëindiging
+een OS-/procesfout geeft. Een onvolledig opgeruimde fixture wordt nooit
+als REVIEW_ONLY behandeld maar faalt met HOLD. Unit-tests gebruiken uitsluitend
+gecontroleerde nep-processen en simuleren exact deze fout, inclusief de
+bevestiging dat het andere proces nog wel een cleanup-poging krijgt.
+Dit biedt **geen bewijs dat echte Nginx/Gunicorn-processen al gedraaid hebben**.
+
+Vanzelfsprekend blijft de normale CI zonder externe netwerk- of
+processenactiviteit. Ook na succesvolle tests zijn echte geïnstalleerde
+proxy- en LightUp-authenticatiechecks en menselijke releasegoedkeuring open.
