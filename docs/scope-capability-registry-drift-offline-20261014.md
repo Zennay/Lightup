@@ -10,9 +10,11 @@ Two regular local UTF-8 JSON manifests representing explicitly chosen baseline a
 {"capabilities":[{"capability_id":"web-baseline","state":"planning","requires_explicit_activation":true,"name":"Web baseline","description":"HTTP/TLS configuration review"}]}
 ```
 
-Each manifest is bounded to 32 KiB / 128 distinct canonical ASCII IDs. Exactly the three legacy or five current fields are required; partial metadata is refused. Names and descriptions must be nonblank bounded NFC Unicode without hidden control/formatting characters; descriptions are included in the canonical fingerprint and must trigger HOLD on semantic change, including upgrade from a legacy manifest. Quoted braces/brackets do not count toward structural nesting.  unknown keys, duplicate JSON keys or IDs, weird numeric bools, invalid state names and nonregular/symlinked files fail closed. Order does not affect canonical SHA-256 metadata fingerprints. The metadata baseline is chosen by the human reviewer; the tool **does not prove repository, manifest, author or grant provenance**.
+Each manifest is bounded to 32 KiB / 128 distinct canonical ASCII IDs. Exactly the three legacy or five current fields are required; partial metadata is refused. Names and descriptions must be nonblank bounded NFC Unicode without hidden control/formatting characters; descriptions are included in the canonical fingerprint and must trigger HOLD on semantic change, including upgrade from a legacy manifest. Quoted braces/brackets do not count toward structural nesting. Unknown keys, duplicate JSON keys or IDs, weird numeric bools, invalid state names and nonregular/symlinked files fail closed. Order does not affect canonical SHA-256 metadata fingerprints. The metadata baseline is chosen by the human reviewer; the tool **does not prove repository, manifest, author or grant provenance**.
 
 Run: `python3 scripts/review_scope_capability_registry_offline.py BASELINE.json CANDIDATE.json`.
+
+The CLI requires **two distinct physical regular files**, not merely two paths: the same file or any hardlink to its inode returns `HOLD`. Identical bytes in two independently stored regular files remain `REVIEW_ONLY` only, with all authority flags false. Symlinks, directories and FIFOs are rejected and cannot block review. These are local file-identity checks, **not** proof of trustworthy baseline provenance.
 
 `REVIEW_ONLY` (exit **3**) means these *declared metadata* snapshots match. `HOLD` (exit **2**) means drift or invalid input; changed identifiers are reported without a synthetic promotion/demotion recommendation. **Neither returns exit 0.** All receipts carry `authorization_verified=false`, `permit_issued=false`, `execution_enabled=false`, `merge_approved=false`, `release_approved=false`.
 
@@ -20,7 +22,7 @@ Run: `python3 scripts/review_scope_capability_registry_offline.py BASELINE.json 
 
 The optional `python3 scripts/export_scope_capability_registry_offline.py > CANDIDATE.json` serializes **actual local** `get_capabilities()` metadata using strict builtin model, enum, boolean, name and description identity. It rejects duplicate/noncanonical IDs, non-builtin boolean flags and malformed registries, then writes only the strict manifest JSON to stdout. The exporter deliberately exits **3 even on successful export**, or **2 for invalid data**; its successful shell exit is not zero. Compare a separately saved trusted, human-selected baseline against the newly generated candidate, rather than a copy against itself. Output provenance depends entirely on the checkout and reviewer: the exporter does **not** attest the repository commit or grant authority.
 
-The original reviewer regressions, 12 in-repository registry exporter regressions and 17 semantic name/description regressions cover field identity, metadata drift, unsafe input, canonical ordering and CLI safety; hosted 3.11/3.14 and permanent registered VPS evidence must be gathered per final SHA.
+The original reviewer regressions, 12 in-repository registry exporter regressions, 17 semantic name/description regressions and six local file-identity regressions cover field identity, metadata drift, unsafe input, canonical ordering and CLI safety; hosted 3.11/3.14 and permanent registered VPS evidence must be gathered per final SHA.
 
 ## What still requires independent checks
 
