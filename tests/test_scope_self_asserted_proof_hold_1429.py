@@ -624,5 +624,102 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
                 os.close(readfd)
 
 
+    def test_all_reviewer_receipts_satisfy_internal_seal(self):
+        for status in ("pass", "fail", "queued", "cancelled", "unknown"):
+            value = packet()
+            for claim in value["claims"]:
+                claim["result"] = status
+            report = review.review_bytes(encoded(value))
+            wire = (json.dumps(report, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")
+            self.assertTrue(review._is_sealed_hold_receipt(wire), status)
+        bad = review.review_bytes(b"SECRET-INVALID-JSON")
+        wire = (json.dumps(bad, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")
+        self.assertTrue(review._is_sealed_hold_receipt(wire))
+
+    def test_sealed_receipt_refuses_forged_flags_types_counts_and_extra_keys(self):
+        base = review.review_bytes(encoded(packet()))
+        variants = []
+        for key in FLAGS:
+            obj = dict(base)
+            obj[key] = True
+            variants.append(obj)
+            obj = dict(base)
+            obj[key] = 0
+            variants.append(obj)
+        for name, value in (
+            ("schema", "lightup.scope.release.granted"),
+            ("status", "PASS"),
+            ("input_integrity", "VERIFIED"),
+            ("verified_evidence", True),
+            ("verified_evidence", 0),
+            ("unverified_self_asserted_pass_claims", True),
+            ("unverified_self_asserted_pass_claims", 4.0),
+            ("unverified_self_asserted_pass_claims", -1),
+            ("unverified_self_asserted_pass_claims", 5),
+        ):
+            obj = dict(base)
+            obj[name] = value
+            variants.append(obj)
+        extra = dict(base)
+        extra["client_secret"] = "SENSITIVE-TOKEN"
+        variants.append(extra)
+        missing = dict(base)
+        missing.pop("release")
+        variants.append(missing)
+        rejected_nonzero = dict(base)
+        rejected_nonzero["input_integrity"] = "REJECTED"
+        rejected_nonzero["unverified_self_asserted_pass_claims"] = 1
+        variants.append(rejected_nonzero)
+        for obj in variants:
+            with self.subTest(keys=repr(obj)[:130]):
+                wire = (json.dumps(obj, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")
+                self.assertFalse(review._is_sealed_hold_receipt(wire))
+
+    def test_sealed_receipt_refuses_raw_untrusted_and_noncanonical_serialization(self):
+        good = review.review_bytes(encoded(packet()))
+        canonical = (json.dumps(good, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")
+        noncanonical = (
+            canonical[:-1],
+            canonical + b"\n",
+            b" " + canonical,
+            canonical + b"SENSITIVE-TRAILER",
+            json.dumps(good).encode("ascii") + b"\n",
+            canonical.replace(b'"status":"HOLD"', b'"status":"HOLD","status":"HOLD"'),
+            canonical.replace(b'"status":"HOLD"', b'"st\\u0061tus":"HOLD","status":"HOLD"'),
+            b"SENSITIVE-SECRET" + canonical,
+            b"Q" * (review.MAX_RECEIPT_BYTES + 1),
+            b"\xff" + canonical,
+            b"NaN",
+            b"",
+            "NOT-BYTES",
+            None,
+        )
+        for case in noncanonical:
+            with self.subTest(sample=repr(case)[:70]):
+                self.assertFalse(review._is_sealed_hold_receipt(case))
+
+    def test_sealed_emitter_never_touches_stdout_for_forged_payload(self):
+        from unittest.mock import MagicMock
+        fake_stdout = MagicMock()
+        fake_stdout.fileno.side_effect = AssertionError("unsafe receipt touched inherited fd1")
+        forged = review.review_bytes(encoded(packet()))
+        forged["release"] = True
+        payload = (json.dumps(forged, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")
+        with patch.object(review.sys, "stdout", fake_stdout):
+            self.assertIsNone(review._emit_hold_receipt(payload))
+            self.assertIsNone(review._emit_hold_receipt(b"SENSITIVE-PAYLOAD\n"))
+            self.assertIsNone(review._emit_hold_receipt(b"{}\n"))
+        fake_stdout.fileno.assert_not_called()
+
+    def test_real_cli_receipt_always_has_sealed_output_even_for_forged_claims(self):
+        for raw in (encoded(packet()), encoded(packet(release=True, raw_token="SECRET-EXTRA")), b"INVALID"):
+            with self.subTest(raw_size=len(raw)):
+                child = self.cli(raw)
+                self.assertEqual(child.returncode, 2)
+                self.assertEqual(child.stderr, b"")
+                self.assertTrue(review._is_sealed_hold_receipt(child.stdout))
+                self.assertNotIn(b"SECRET", child.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
