@@ -1,6 +1,7 @@
 """Disposable SQLite foreign-key and run-provenance reviewer; never authorizes work."""
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 import sys
@@ -24,7 +25,9 @@ CHECK_NAMES = (
     "orphan_lease_denied",
     "raw_orphan_evidence_denied",
     "valid_run_evidence_stored",
+    "valid_run_lease_stored",
     "registered_run_provenance_exact",
+    "registered_evidence_lineage_exact",
     "connection_fk_consistent",
     "delete_cascades_evidence",
     "delete_cascades_lease",
@@ -81,6 +84,27 @@ def probe(factory: Callable[[str], object]) -> dict[str, object]:
                     "SELECT run_id,target,activation_mode,authorization_ref,status "
                     "FROM runs WHERE run_id=?", (run_id,)
                 ).fetchall()
+                evidence_rows = connection.execute(
+                    "SELECT run_id,capability_id,kind,source,sha256,metadata_json "
+                    "FROM evidence WHERE evidence_id=?", (evidence_id,)
+                ).fetchall()
+                checks["registered_evidence_lineage_exact"] = len(evidence_rows) == 1 and (
+                    evidence_rows[0]["run_id"] == run_id
+                    and evidence_rows[0]["capability_id"] == "fixture"
+                    and evidence_rows[0]["kind"] == "review"
+                    and evidence_rows[0]["source"] == "offline"
+                    and evidence_rows[0]["sha256"] == hashlib.sha256(b"control").hexdigest()
+                    and evidence_rows[0]["metadata_json"] == "{}"
+                )
+                lease_rows = connection.execute(
+                    "SELECT run_id,capability_id,worker_id FROM capability_leases "
+                    "WHERE run_id=? AND capability_id=?", (run_id, "fixture")
+                ).fetchall()
+                checks["valid_run_lease_stored"] = len(lease_rows) == 1 and (
+                    lease_rows[0]["run_id"] == run_id
+                    and lease_rows[0]["capability_id"] == "fixture"
+                    and lease_rows[0]["worker_id"] == "offline-worker"
+                )
                 checks["registered_run_provenance_exact"] = len(rows) == 1 and (
                     rows[0]["run_id"] == run_id
                     and rows[0]["target"] == "127.0.0.1"
