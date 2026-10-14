@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from lightup.models import Target
-from lightup.scope import ScopeDecision, ScopeReason
+from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason
 from audit_scope_ipv4_octet_sweep_1422_offline import (
     TOTAL_DECISIONS,
     main,
@@ -171,6 +171,33 @@ class OctetSweepTests(unittest.TestCase):
             self.assert_non_authorizing(
                 review_ipv4_octet_sweep(IndependentStrictPolicy), "REVIEW_ONLY"
             )
+
+    def test_original_checkout_denial_diagnostic_is_io_free(self):
+        # Running an installed-source HOLD must not touch even a lab literal.
+        def forbidden(*args, **kwargs):
+            raise AssertionError("unexpected network or process I/O")
+        with (
+            patch.object(socket, "socket", side_effect=forbidden),
+            patch.object(socket, "getaddrinfo", side_effect=forbidden),
+            patch.object(socket, "create_connection", side_effect=forbidden),
+            patch.object(subprocess, "Popen", side_effect=forbidden),
+        ):
+            self.assert_non_authorizing(
+                review_ipv4_octet_sweep(ScopePolicy), "HOLD"
+            )
+
+    def test_reference_review_only_cli_still_returns_nonzero(self):
+        # An opt-in positive preview is never a successful execution token.
+        with patch(
+            "audit_scope_ipv4_octet_sweep_1422_offline.review_ipv4_octet_sweep",
+            return_value=review_ipv4_octet_sweep(IndependentStrictPolicy),
+        ):
+            buffer = StringIO()
+            with redirect_stdout(buffer):
+                rc = main([])
+        self.assertEqual(rc, 3)
+        self.assert_non_authorizing(json.loads(buffer.getvalue()), "REVIEW_ONLY")
+        self.assertEqual(len(buffer.getvalue().splitlines()), 1)
 
     def test_invalid_argv_holds_without_echo_or_stdin_read(self):
         for argv in (["--help"], ["--target", "secret.example"], [], "bad", [object()]):
