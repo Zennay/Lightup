@@ -1,56 +1,106 @@
 # LightUp #738 — direct-grant datetime identity acceptance (offline)
 
-## Purpose and ownership
+## Purpose, original source ownership and posture
 
-Scope-authorization issue [#738](https://github.com/Zennay/Lightup/issues/738) requires
-`AuthorizationGrant.is_current()` to **fail closed** for a subclass of
-`datetime` stored directly in either grant validity field. Such a subclass
-may override comparison operators and make future or expired grants look current.
+[Issue #738](https://github.com/Zennay/Lightup/issues/738) requires
+`AuthorizationGrant.is_current()` to **fail closed** for subclassed
+`datetime` validity fields that can override comparisons to make future or
+expired authorization look current.
 
-The **production implementation belongs to source owner
-[#100](https://github.com/Zennay/Lightup/pull/100)**. This isolated change
-adds no production implementation and does not touch live dispatch, network,
-state stores, CI workflows, runners or other workers' files.
+**Production repair belongs to the existing [#100 source owner](https://github.com/Zennay/Lightup/pull/100)**.
+This independent draft branch adds no installed enforcement, active target
+functionality, dispatcher changes, persistence, CI workflow or runner edits.
 
-## What the tests really establish
+## Deliverable A — independent expected-RED acceptance
 
-`tests/test_scope_direct_grant_datetime_identity_red_20261014.py` uses
-only synthetic immutable grants, fixed UTC fixture times and the in-process
-policy function. It tests:
+`tests/test_scope_direct_grant_datetime_identity_red_20261014.py`
+exercises real `AuthorizationGrant` + pure `ExecutionPolicy` with synthetic
+fixed UTC values. It includes ordinary positive and expired/future controls,
+inclusive boundaries and **five deliberately expected RED** comparator-spoof
+scenarios (direct and policy). The separate
+`tests/test_scope_direct_grant_red_witness_integrity_20261014.py`
+runs all five expected failures under isolated `unittest.TestResult`,
+refuses hidden runtime exceptions and XPASS, and proves these are actual
+assertion witnesses. No target I/O, sockets, DNS or client DB.
 
-- Ordinary builtin `datetime` before/after and inclusive endpoints.
-- A timezone-naive evaluation instant raises before any authority is granted.
-- A true built-in future grant is denied by the pure `ExecutionPolicy`.
-- Five **expected failures**: polymorphic future lower bound, expired upper
-  bound, both fields, and each kind flowing into the real in-process policy
-  decision. These are deliberately **RED** security acceptance canaries.
-- Input immutability and absence of network/target/database calls.
+These five expected failures are **unresolved real-source safety requirements**,
+not proof of enforcement. After source-owner repair, remove
+`@unittest.expectedFailure` and demand ordinary PASS.
 
-`expectedFailure` is not success of the safety requirement. The genuine
-implementation must first require `type(value) is datetime` for **both**
-stored bounds, validate timezone awareness, retain canonical inclusive
-boundaries (issue #295), and deny malformed state *before* policy or handler
-effects. After source owner repairs production, **remove**
-`@unittest.expectedFailure` on each test and require normal PASS; an
-unexpected success under that decorator is an **XPASS** and must not be
-silently called release-safe.
+## Deliverable B — working opt-in canonical window-shape diagnostic
 
-## Offline command
+`src/lightup/direct_grant_window_shape_review_738.py` adds an ordinary,
+directly usable in-process
+`review_direct_grant_window_shape(grant, observed_at=...)`.
 
-```bash
-python -m unittest discover -s tests -p 'test_scope_direct_grant_datetime_identity_red_20261014.py' -v
+- Accepts only the **exact built-in** `AuthorizationGrant` object, exact
+  `datetime` values (not subtypes) and **exact built-in fixed-offset**
+  `datetime.timezone` objects (UTC and stable nonzero offsets). Custom
+  `tzinfo` implementations are conservatively refused without calling their
+  methods.
+- Refuses malformed/non-aware/omitted time, reversed/empty windows and
+  evaluation instants outside the half-open? **No:** follows legacy issue
+  #295's **inclusive** `valid_from <= observed_at <= valid_until` boundary,
+  including the exact expiry instant.
+- Never falls back to a wall clock. Caller must explicitly provide a trusted
+  time if they need more than local shape checking.
+- Returns only `WindowShapeReview(decision, reason)`: `HOLD` or
+  `REVIEW_ONLY`. All five authority markers are read-only computed
+  hard-false properties and are fixed false in the privacy-safe `as_receipt`
+  dictionary. No grant ID, target, tenant, asset or private data is emitted.
+- This checks **only the declared temporal shape**. It cannot establish that
+  an authorization grant was issued by a trusted human, actually persisted,
+  belongs to a tenant or current request, remains unrevoked, covers an asset,
+  has a permitted capability, or implies an authorized execution.
+- Does not integrate into `ToolExecutor`, grant issuance, web APIs, persistent
+  data or active networking. `REVIEW_ONLY` deliberately does not represent a
+  successful authorization, an execution permit, merge/release permission or
+  self-hosted CI attestation.
+
+Usage (offline synthetic only):
+
+```python
+from datetime import datetime, timedelta, timezone
+from lightup.direct_grant_window_shape_review_738 import review_direct_grant_window_shape
+from lightup.engagements import AuthorizationGrant, ScopeDefinition, RiskLevel
+
+now = datetime(2026, 10, 14, 12, tzinfo=timezone.utc)
+grant = AuthorizationGrant(
+    "fictional", "tenant.test", "engagement.test", "operator.test", "NOT_CONSENT",
+    ScopeDefinition(("fixture.example.test",), RiskLevel.LOW_IMPACT,
+                    allowed_capabilities=("web-baseline",)),
+    now - timedelta(minutes=1), now + timedelta(minutes=1),
+)
+receipt = review_direct_grant_window_shape(grant, observed_at=now).as_receipt()
+assert receipt["decision"] == "REVIEW_ONLY"
+assert not receipt["authorization_verified"]
 ```
 
-Passing offline tests with expected failures only prove that the fixture and
-canaries run; they do **not** establish enforcement. Do not enable active
-targets, issue consent, scan, merge unsafe source or deploy based on this
-document. Real target activation remains disabled until trusted ownership,
-scope, live revocation, independent source/security review and appropriate
-release gates are satisfied.
+## Test execution
 
-## Isolation
+```bash
+python -m unittest discover -s tests -p 'test_scope_direct_grant*738*.py' -v
+```
 
-Branch files are strictly newly added acceptance test + this document;
-no existing source-owner path is modified. This test pack makes no claims
-about active assets. It uses `fixture.example.test` as a synthetic string
-only; no DNS or network I/O is present.
+The opt-in functionality has its own **ordinary PASS** tests in
+`tests/test_scope_direct_grant_window_shape_review_738.py` covering
+malformed/subclass types, UTC and offsets, custom exploding timezone, time
+bounds, privacy, input purity, zero authority and forbidden network/database.
+
+## Independent release prerequisites
+
+1. #100 original source owner **must** enforce exact built-in aware datetime
+   validity fields at the actual production decision boundary.
+2. Convert the five **expected RED** original-source assertions into
+   ordinary PASS and independently review both real code and test witness
+   quality. This standalone diagnostic does *not* fulfill step 1.
+3. Compose against then-current main without overlapping other workers,
+   verify final SHA both GitHub-hosted Python interpreters + genuine producer
+   integration and **registered permanent VPS-runner execution**.
+4. Confirm trusted customer consent and current revocation, tenant, asset,
+   risk and capability gates, privacy/security review and applicable
+   activation/release decision before any real-target work.
+
+**INCUBATE M3/M7, PLAN/LAB ONLY. No real scans, deployment, permit, direct
+authorization, or merge claim is created by this packet.** Entire branch
+touches only its newly added owned paths.
