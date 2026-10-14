@@ -50,6 +50,14 @@ def encoded(item):
     return json.dumps(item, separators=(",", ":")).encode("utf-8")
 
 
+def sealed_hold_receipt():
+    """Canonical HOLD packet used to exercise *downstream* fd guards."""
+    return (json.dumps(
+        review.review_bytes(encoded(packet())),
+        sort_keys=True, separators=(",", ":"),
+    ) + "\n").encode("ascii")
+
+
 class SelfAssertedProofHoldTests(unittest.TestCase):
     def check_hold(self, payload, *, coherent=False, passing=0):
         result = review.review_bytes(payload)
@@ -401,7 +409,7 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
         with patch.object(review.sys, "stdout", fake), \
              patch.object(review.os, "write", side_effect=AssertionError("wrote alien fd")), \
              patch.object(review.os, "fstat", side_effect=AssertionError("stat alien fd")):
-            self.assertIsNone(review._emit_hold_receipt(b"{}\\n"))
+            self.assertIsNone(review._emit_hold_receipt(sealed_hold_receipt()))
 
     def test_receipt_sender_disallows_regular_socket_and_directory(self):
         from unittest.mock import MagicMock
@@ -413,7 +421,7 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
                  patch.object(review.os, "fstat", return_value=MagicMock(st_mode=mode)), \
                  patch.object(review.os, "set_blocking", side_effect=AssertionError("modified descriptor")), \
                  patch.object(review.os, "write", side_effect=AssertionError("wrote to forbidden sink")):
-                self.assertIsNone(review._emit_hold_receipt(b"{}\\n"))
+                self.assertIsNone(review._emit_hold_receipt(sealed_hold_receipt()))
 
     def test_receipt_sender_rejects_more_than_512_bytes_without_touching_fd(self):
         from unittest.mock import MagicMock
@@ -493,7 +501,7 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
              patch.object(review.os, "isatty", return_value=False) as tty_check, \
              patch.object(review.os, "set_blocking", side_effect=AssertionError("set blocked char")), \
              patch.object(review.os, "write", side_effect=AssertionError("wrote to char device")):
-            self.assertIsNone(review._emit_hold_receipt(b"{}"))
+            self.assertIsNone(review._emit_hold_receipt(sealed_hold_receipt()))
             tty_check.assert_called_once_with(1)
 
     def test_real_cli_devnull_output_refused_and_exit_hold(self):
