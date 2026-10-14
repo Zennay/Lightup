@@ -24,6 +24,7 @@ _FLAGS = (
 # Installed automatically by Python before the actual CLI imports anything.
 # Hook BOTH public socket wrappers and the direct _socket C-extension symbol.
 _TRIPWIRE = """import _socket
+import _sqlite3
 import builtins
 import io
 import os
@@ -106,6 +107,13 @@ for name in ("mkdir", "makedirs", "rename", "replace", "remove",
         setattr(os, name, forbidden)
 sqlite3.connect = forbidden
 sqlite3.dbapi2.connect = forbidden
+_sqlite3.connect = forbidden
+# Direct inherited-descriptor writes bypass high-level open()/os.open() hooks.
+# The CLI may emit through sys.stdout, but must never use descriptor write APIs.
+for name in ("write", "writev", "pwrite", "pwritev", "sendfile",
+             "copy_file_range", "splice"):
+    if hasattr(os, name):
+        setattr(os, name, forbidden)
 """
 
 
@@ -300,6 +308,41 @@ class OfflineReviewCliSocketFleetTests(unittest.TestCase):
             with self.subTest(statement=statement):
                 program = (
                     "import io, os, pathlib, sqlite3\n"
+                    "try:\n"
+                    f"    {statement}\n"
+                    "except BaseException:\n"
+                    "    pass\n"
+                    "print('UNEXPECTED_EXECUTION')\n"
+                )
+                proc = subprocess.run(
+                    [sys.executable, "-B", "-c", program], cwd=self.root,
+                    env=self.env, capture_output=True, check=False, timeout=15,
+                )
+                self.assertEqual(proc.returncode, 92, statement)
+                self.assertEqual(proc.stdout, b"")
+                self.assertEqual(proc.stderr, b"")
+                self.assertEqual(self.fingerprint(), before)
+
+
+    def test_uncatchable_low_level_fd_writes_and_direct_sqlite(self):
+        # No write may occur, including attempts made through inherited FDs.
+        variants = (
+            ("write", 'os.write(1, b"synthetic")'),
+            ("writev", 'os.writev(1, [b"synthetic"])'),
+            ("pwrite", 'os.pwrite(1, b"synthetic", 0)'),
+            ("pwritev", 'os.pwritev(1, [b"synthetic"], 0)'),
+            ("sendfile", "os.sendfile(1, 0, 0, 1)"),
+            ("copy_file_range", "os.copy_file_range(0, 1, 1)"),
+            ("splice", "os.splice(0, 1, 1)"),
+            ("direct_sqlite", '_sqlite3.connect("candidate.sqlite")'),
+        )
+        before = self.fingerprint()
+        for api, statement in variants:
+            if api != "direct_sqlite" and not hasattr(os, api):
+                continue
+            with self.subTest(api=api):
+                program = (
+                    "import os, _sqlite3\n"
                     "try:\n"
                     f"    {statement}\n"
                     "except BaseException:\n"
