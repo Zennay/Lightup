@@ -149,6 +149,29 @@ def _enforce_private_ancestors(path: str) -> None:
         directory = os.path.dirname(directory)
 
 
+def _read_bounded_regular(fd: int, expected_size: int, max_bytes: int) -> bytes:
+    """Read to EOF in bounded chunks, refusing growth, shrinkage and short I/O.
+
+    A regular-file read may yield fewer bytes than requested. Re-reading
+    bounded chunks avoids spurious approvals *and* spurious partial-read HOLDs.
+    The caller still verifies descriptor metadata after this step.
+    """
+    chunks: list[bytes] = []
+    remaining = max_bytes + 1
+    while remaining:
+        chunk = os.read(fd, min(remaining, 8192))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        remaining -= len(chunk)
+    result = b"".join(chunks)
+    if len(result) > max_bytes:
+        raise PacketHold("SIZE_LIMIT")
+    if len(result) != expected_size:
+        raise PacketHold("CHANGED_INPUT")
+    return result
+
+
 def _open_private_beneath(path: str) -> int:
     """Open each path component by descriptor, refusing symlink swaps.
 
@@ -214,11 +237,7 @@ def read_packet(path: str, *, require_private_file: bool = False) -> bytes:
             raise PacketHold("CHANGED_INPUT")
         if info.st_size > MAX_BYTES:
             raise PacketHold("SIZE_LIMIT")
-        raw = os.read(fd, MAX_BYTES + 1)
-        if len(raw) > MAX_BYTES:
-            raise PacketHold("SIZE_LIMIT")
-        if len(raw) != info.st_size:
-            raise PacketHold("CHANGED_INPUT")
+        raw = _read_bounded_regular(fd, info.st_size, MAX_BYTES)
         after = os.fstat(fd)
         if require_private_file:
             _enforce_private_file(after)
