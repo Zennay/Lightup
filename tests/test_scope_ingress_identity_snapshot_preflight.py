@@ -117,6 +117,35 @@ class IngressIdentitySnapshotPreflightTests(unittest.TestCase):
                     b"server_name fixture.invalid;\n    " + directive,
                 ))
 
+    def test_unrecognized_config_modules_never_promote_static_review(self):
+        # Unknown extension directives may mutate request Cookie/identity
+        # even if a superficial list of known dangerous directives misses it.
+        for rogue in (
+            b"more_set_input_headers 'Cookie: synthetic';",
+            b"proxy_cookie_path / /;",
+            b"custom_auth_bridge X-Original-Cookie;",
+            b"mod_security on;",
+        ):
+            with self.subTest(rogue=rogue):
+                self.assert_hold(NGINX.replace(
+                    b"server_name fixture.invalid;",
+                    b"server_name fixture.invalid;\\n    " + rogue,
+                ))
+        for rogue in (
+            b"raw_env = ['AUTH_TYPE=operator']",
+            b"forwarder_headers = ['REMOTE_USER']",
+            b"wsgi_app = 'untrusted:app'",
+            b"proxy_protocol = True",
+        ):
+            with self.subTest(rogue=rogue):
+                self.assert_hold(NGINX, GUNICORN + rogue + b"\\n")
+
+    def test_checked_in_nginx_example_is_not_treated_as_effective_proof(self):
+        # It does not explicitly disable implicit request header passthrough.
+        template = (ROOT / "deploy" / "nginx.conf.example").read_bytes()
+        self.assertNotIn(b"proxy_pass_request_headers off;", template)
+        self.assert_hold(b"# configuration file /etc/nginx/nginx.conf:\\n" + template)
+
     def test_spoofed_provenance_comments_cannot_approve_unsafe_header_shape(self):
         bad = NGINX.replace(
             b"proxy_pass_request_headers off;",
