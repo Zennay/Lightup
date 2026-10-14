@@ -42,6 +42,12 @@ New direct no-I/O canaries deny five synthetic fd kinds and assert neither `sele
 
 This is **descriptor-class preflight**, not an OS sandbox: a malicious parent could feed network-derived bytes through a pipe; `stdin` source contents and claimed `pass` labels remain untrusted and never authorize anything.
 
+## W68 — sealed privacy-minimal receipt regression (2026-10-14)
+
+The offline proof reviewer must produce one bounded ASCII JSON line with **exactly the 11 documented output keys**, never extra debugging fields, claim bodies, raw SHAs, targets or credentials. The new sealed-receipt contract checks full key equality, literal boolean flags, integer-only count, length <= **512 bytes**, exactly one newline, and rejection of injected confidential-looking fields on genuine child processes. Every outcome is `HOLD` and always returns exit 2. Existing 625 self-asserted four-lane combinations now additionally prove this entire output schema with each synthetic input, not only a few individual flags.
+
+This makes privacy regressions visible in tests even if a future code refactor accidentally appends a raw input field. It does **not** prove an authenticated real CI source, prevent a malicious parent from exfiltrating the content before supplying it, or provide permission for any active security interaction.
+
 ## Execution and fail-closed result
 
 ```sh
