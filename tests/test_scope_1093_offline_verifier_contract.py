@@ -141,6 +141,66 @@ class TestOfflineVerificationContract(unittest.TestCase):
                                     + [cls("test_01_synthetic")])
         self.assertFalse(verifier._has_expected_test_roster(broken))
 
+    def test_end_to_end_synthetic_exact_roster_yields_only_hold(self):
+        methods = {f"test_{i:02d}_synthetic": lambda self: print("PRIVATE_FIXTURE")
+                   for i in range(1, 92)}
+        cls = type("TestTrustedDestinationMetadata1093", (unittest.TestCase,), methods)
+        cls.__module__ = "test_trusted_destination_manifest_optin_1093"
+        suite = unittest.TestSuite(cls(name) for name in methods)
+        output = io.StringIO()
+        with (patch.object(sys, "argv", ["checker"]),
+              patch.object(verifier.unittest.TestLoader, "discover", return_value=suite),
+              redirect_stdout(output)):
+            exit_code = verifier.main()
+        self.assertEqual(exit_code, 0)
+        data = json.loads(output.getvalue())
+        self.assertEqual(data["tests_run"], 91)
+        self.assertTrue(data["offline_regression_passed"])
+        self.assertEqual(data["status"], "hold")
+        self.assertIs(data["permit_issued"], False)
+        self.assertNotIn("PRIVATE_FIXTURE", output.getvalue())
+
+    def test_end_to_end_duplicate_roster_fails_before_test_execution(self):
+        executed = []
+        def record(self):
+            executed.append(True)
+        methods = {f"test_{i:02d}_synthetic": record for i in range(1, 92)}
+        cls = type("TestTrustedDestinationMetadata1093", (unittest.TestCase,), methods)
+        cls.__module__ = "test_trusted_destination_manifest_optin_1093"
+        suite = unittest.TestSuite([cls(name) for name in list(methods)[:-1]]
+                                   + [cls("test_01_synthetic")])
+        output = io.StringIO()
+        with (patch.object(sys, "argv", ["checker"]),
+              patch.object(verifier.unittest.TestLoader, "discover", return_value=suite),
+              redirect_stdout(output)):
+            exit_code = verifier.main()
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(executed, [])
+        data = json.loads(output.getvalue())
+        self.assertFalse(data["offline_regression_passed"])
+        self.assertIs(data["execution_enabled"], False)
+
+    def test_end_to_end_valid_roster_cannot_call_dns(self):
+        def safe(self):
+            pass
+        def attempt(self):
+            socket.getaddrinfo("localhost", 80)
+        methods = {f"test_{i:02d}_synthetic": (attempt if i == 1 else safe)
+                   for i in range(1, 92)}
+        cls = type("TestTrustedDestinationMetadata1093", (unittest.TestCase,), methods)
+        cls.__module__ = "test_trusted_destination_manifest_optin_1093"
+        suite = unittest.TestSuite(cls(name) for name in methods)
+        output = io.StringIO()
+        with (patch.object(sys, "argv", ["checker"]),
+              patch.object(verifier.unittest.TestLoader, "discover", return_value=suite),
+              redirect_stdout(output)):
+            exit_code = verifier.main()
+        self.assertEqual(exit_code, 1)
+        data = json.loads(output.getvalue())
+        self.assertEqual(data["errors"], 1)
+        self.assertFalse(data["offline_regression_passed"])
+        self.assertIs(data["authorization_verified"], False)
+
     def test_receipt_factory_never_promotes_authority(self):
         receipt = verifier._receipt(True, 91)
         self.assertTrue(receipt["offline_regression_passed"])
