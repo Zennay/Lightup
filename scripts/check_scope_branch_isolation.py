@@ -21,13 +21,17 @@ def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
     return subprocess.run(("git", *args), cwd=repo, capture_output=True, check=False)
 
 
-def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...]) -> tuple[str, int]:
+def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
+            peers: tuple[str, ...] = ()) -> tuple[str, int]:
     """Return a fixed reason code and count; never print private file contents."""
     if not SHA.fullmatch(base) or not SHA.fullmatch(head) or base == head:
         return "INVALID_IMMUTABLE_REFS", 0
     if (not 1 <= len(expected) <= MAX_FILES or len(set(expected)) != len(expected)
             or any(not OWNED.fullmatch(path) for path in expected)):
         return "INVALID_OWNERSHIP_MANIFEST", 0
+    if (len(peers) > MAX_FILES or len(set(peers)) != len(peers)
+            or any(not SHA.fullmatch(peer) or peer in (base, head) for peer in peers)):
+        return "INVALID_PEER_REFS", 0
     if not repo.is_dir():
         return "INVALID_REPOSITORY", 0
     for sha in (base, head):
@@ -35,7 +39,7 @@ def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...]) -> tupl
             return "MISSING_COMMIT", 0
     if _git(repo, "merge-base", "--is-ancestor", base, head).returncode:
         return "NON_DESCENDANT_HEAD", 0
-    diff = _git(repo, "diff", "--name-status", "--no-renames", "-z", base, head, "--")
+    diff = _git(repo, "diff", "--name-status", "--no-renames", "--no-ext-diff", "--no-textconv", "-z", base, head, "--")
     if diff.returncode:
         return "DIFF_UNAVAILABLE", 0
     fields = diff.stdout.split(b"\x00")
@@ -70,6 +74,26 @@ def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...]) -> tupl
         return "OWNERSHIP_MANIFEST_MISMATCH", len(fields) // 2
     if _git(repo, "diff", "--check", base, head, "--").returncode:
         return "PATCH_CHECK_FAILED", len(fields) // 2
+    for peer in peers:
+        if _git(repo, "cat-file", "-e", f"{peer}^{{commit}}").returncode:
+            return "MISSING_PEER_COMMIT", len(fields) // 2
+        if _git(repo, "merge-base", "--is-ancestor", base, peer).returncode:
+            return "NON_DESCENDANT_PEER", len(fields) // 2
+        other = _git(repo, "diff", "--name-only", "--no-renames", "--no-ext-diff",
+                     "--no-textconv", "-z", base, peer, "--")
+        if other.returncode or (other.stdout and not other.stdout.endswith(b"\x00")):
+            return "PEER_DIFF_UNAVAILABLE", len(fields) // 2
+        raw_peers = other.stdout.split(b"\x00") if other.stdout else []
+        if raw_peers:
+            raw_peers.pop()
+        if len(raw_peers) > 2048:
+            return "UNBOUNDED_PEER_DIFF", len(fields) // 2
+        try:
+            peer_paths = {name.decode("ascii", "strict") for name in raw_peers}
+        except UnicodeError:
+            return "NONCANONICAL_PEER_PATH", len(fields) // 2
+        if changed.intersection(peer_paths):
+            return "PEER_PATH_COLLISION", len(fields) // 2
     return "ADDITIVE_PATHS_MATCH", len(fields) // 2
 
 
@@ -79,12 +103,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--base", required=True)
     parser.add_argument("--head", required=True)
     parser.add_argument("--allow", action="append", required=True)
+    parser.add_argument("--peer", action="append", default=[],
+                        help="immutable other worker HEAD SHA (repeat; only supplied peers are checked)")
     args = parser.parse_args(argv)
-    reason, count = inspect(args.repo, args.base, args.head, tuple(args.allow))
+    reason, count = inspect(args.repo, args.base, args.head, tuple(args.allow), tuple(args.peer))
     print(json.dumps({
         "status": "REVIEW_ONLY" if reason == "ADDITIVE_PATHS_MATCH" else "HOLD",
         "reason": reason,
         "changed_files": count,
+        "peer_heads_checked": len(args.peer),
         "authorization_verified": False,
         "permit_issued": False,
         "execution_enabled": False,
