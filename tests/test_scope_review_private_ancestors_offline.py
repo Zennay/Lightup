@@ -106,6 +106,31 @@ class PrivateAncestorTests(unittest.TestCase):
                 for key in packet.AUTHORITY_FLAGS:
                     self.assertIs(response[key], False)
 
+    def test_nonexistent_parent_is_opaque_hold_before_read(self):
+        for reader, error, raw, _ in self.readers():
+            with self.subTest(reader=reader.__name__), tempfile.TemporaryDirectory() as d:
+                missing = Path(d) / "SECRET-missing-dir" / "review.json"
+                with self.assertRaises(error) as outcome:
+                    reader(str(missing), require_private_file=True)
+                self.assertEqual("INPUT_UNAVAILABLE", outcome.exception.code)
+
+    def test_nonexistent_parent_cli_does_not_echo_customer_path(self):
+        for _, _, raw, script in self.readers():
+            with self.subTest(script=script), tempfile.TemporaryDirectory() as d:
+                missing = Path(d) / "SECRET-missing-dir" / "review.json"
+                result = subprocess.run(
+                    [sys.executable, str(SCRIPTS / script), "--require-private-file",
+                     str(missing)],
+                    capture_output=True, text=True, timeout=5,
+                )
+                self.assertEqual(2, result.returncode)
+                response = json.loads(result.stdout)
+                self.assertEqual(("HOLD", "INPUT_UNAVAILABLE"),
+                                 (response["state"], response["reason"]))
+                self.assertNotIn("SECRET-missing-dir", result.stdout + result.stderr)
+                self.assertFalse(result.stderr)
+                self.assertTrue(all(response[k] is False for k in packet.AUTHORITY_FLAGS))
+
     def test_snapshot_cli_inherits_parent_symlink_policy(self):
         with tempfile.TemporaryDirectory() as d:
             root, child, file1 = self.prepare(d, b"[]")
