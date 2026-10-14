@@ -69,8 +69,13 @@ PORT/PORT_SET without HOST, repeated destination roles on different argument
 names, HOST+ENDPOINT, ENDPOINT+PORT, or PORT+PORT_SET are HOLD even if every
 individual parameter has a valid name/kind pair. Mixed multi-tool packets
 reject **atomically** with zero tool/parameter counts, regardless of whether
-the invalid member appears first or last. Shape consistency is explicitly
-not proof that any caller supplied a genuinely trusted destination.
+the invalid member appears first or last. The synthetic acceptance suite
+also exhaustively enumerates all **780** sequences of 1–4 elements from the
+five role values and compares status/counts to an independent fixed allowlist
+of exactly four permitted destination shapes. This is broad **synthetic
+structural** coverage only: it does not authenticate the claims or exercise
+production network authorization. Shape consistency is explicitly not proof
+that any caller supplied a genuinely trusted destination.
 
 
 For example, these three *synthetic* tool shape declarations match currently
