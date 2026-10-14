@@ -15,7 +15,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from lightup.models import Target
 from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason
 
-TOTAL_DECISIONS = 3584
+TOTAL_DECISIONS = 13824
+
 def _samples():
     # Two bounded samples in every /8, and full second-octet sweeps
     # around RFC1918's 172.16/12 and 192.168/16 membership boundaries.
@@ -25,6 +26,13 @@ def _samples():
     for second in range(256):
         yield f"172.{second}.0.1", 172, second
         yield f"192.{second}.0.1", 192, second
+    # Deep bounded third-octet slices in special-purpose (not lab) and
+    # legitimate private-use first-octet ranges. A single bad address
+    # near the end must invalidate the *whole* advisory report.
+    for first in (100, 169, 172, 192, 198):
+        for second in range(256):
+            for third in (1, 64, 128, 254):
+                yield f"{first}.{second}.{third}.1", first, second
 
 
 def _expected(first: int, second: int, lab_enabled: bool):
