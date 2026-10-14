@@ -13,6 +13,14 @@ The current `ScopePolicy.decide()` uses `ipaddress.is_private or is_link_local` 
 - Every HOLD produces a **new isolated immutable receipt**, avoiding cross-call identity contamination even when arbitrary Python code bypasses dataclass frozen and mutates an earlier returned object. The test proves later HOLD keeps every flag false. This still is **not** a kernel, process or cryptographic isolation boundary.
 - The frozen/slotted receipt's **public constructor is also runtime-validated**: no external caller can instantiate misleading truthy, integer-zero, string, `None`, or otherwise non-boolean flag values, nor combine `REVIEW_ONLY` with `UNTRUSTED` or `HOLD` with trusted classification. This guards against dataclass annotation/type confusion; it is **not** a cryptographic trust boundary and does not issue an authorization token.
 
+## Runnable bounded offline CLI (still NO authority)
+`scripts/review_scope_lab_literal_1424_offline.py` is an explicit, optional operator-facing wrapper with exactly one `--literal <canonical-address>` argument. It emits a single **constant-shape JSON** result containing only review status/classification and five exact false flags. Any missing/duplicate/invalid argument returns HOLD without reflecting the input or printing error details. Stdin is ignored; no file of customer addresses is accepted. **There is deliberately no successful zero exit code:** code 2 means HOLD and code 3 means REVIEW_ONLY; neither represents scan consent, an ExecutionPermit or a release.
+
+```bash
+python scripts/review_scope_lab_literal_1424_offline.py --literal 10.2.3.4  # REVIEW_ONLY, exit 3; no permit
+python scripts/review_scope_lab_literal_1424_offline.py --literal 192.0.2.1  # HOLD, exit 2
+```
+
 ## Test and release controls
 `tests/test_scope_lab_literal_review_1424.py` checks positive RFC1918/ULA/loopback controls, negative IANA special-purpose cases, aliases and embedded authority strings, exact type guards (untrusted `__str__` not called), immutable false-only result flags, and patched no-DNS/no-socket/no-disk/no-process runtime.
 
@@ -23,4 +31,4 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_lab_literal_r
 Run this on Python 3.11 and 3.14 **at the exact PR head**, plus the full suite and producer integration. Hosted proof and permanent registered VPS proof are separate requirements. Do **not** deploy or merge into production until source-owner and security reviews explicitly approve integration with the complete grant/tenant/scope/risk/revocation checks.
 
 ## Ownership
-Three entirely new, self-contained paths. Does not touch original `scope.py`, `activation.py`, tool executor, target parser [#1289](https://github.com/Zennay/Lightup/issues/1289), tenant CIDR [PR #1318](https://github.com/Zennay/Lightup/pull/1318), original [#1423](https://github.com/Zennay/Lightup/pull/1423) RED acceptance paths, any other worker, workflows, self-hosted runners, customer state, evidence or deployment.
+Four entirely new, self-contained paths (optional module, CLI, tests and handoff doc). Does not touch original `scope.py`, `activation.py`, tool executor, target parser [#1289](https://github.com/Zennay/Lightup/issues/1289), tenant CIDR [PR #1318](https://github.com/Zennay/Lightup/pull/1318), original [#1423](https://github.com/Zennay/Lightup/pull/1423) RED acceptance paths, any other worker, workflows, self-hosted runners, customer state, evidence or deployment.
