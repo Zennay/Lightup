@@ -60,6 +60,13 @@ def audit() -> dict[str, object]:
     """
     violations = 0
     checked = 0
+    synthetic_mints = 0
+
+    def _synthetic_mint(_length: int = 24) -> str:
+        nonlocal synthetic_mints
+        synthetic_mints += 1
+        return SYNTHETIC_PERMIT_ID
+
     try:
         gate = ActivationGate(
             ScopePolicy(allow_private_lab=True),
@@ -76,7 +83,7 @@ def audit() -> dict[str, object]:
         # Defense-in-depth for this synthetic Python process (NOT an OS sandbox).
         # All first-party modules are imported before the temporary I/O guards.
         with (
-            patch("lightup.activation.token_urlsafe", return_value=SYNTHETIC_PERMIT_ID),
+            patch("lightup.activation.token_urlsafe", side_effect=_synthetic_mint),
             patch.object(socket, "socket", side_effect=_unexpected_io),
             patch.object(socket, "getaddrinfo", side_effect=_unexpected_io),
             patch.object(socket, "gethostbyname", side_effect=_unexpected_io),
@@ -91,19 +98,18 @@ def audit() -> dict[str, object]:
             for literal in SAFE_LAB + NOT_LAB:
                 checked += 1
                 expected_lab = literal in SAFE_LAB
+                before_mints = synthetic_mints
+                rejected = False
+                bad_permit = False
                 try:
                     issued_not_before = datetime.now(timezone.utc)
                     permit = gate.issue(Target(literal), CAPABILITY)
                     issued_not_after = datetime.now(timezone.utc)
                 except PermissionError:
-                    # A reserved, benchmark, documentation or link-local
-                    # address MUST be denied; permitted lab samples should pass.
-                    if expected_lab:
-                        violations += 1
+                    rejected = True
                 else:
-                    if (
-                        not expected_lab
-                        or type(permit) is not ExecutionPermit
+                    bad_permit = (
+                        type(permit) is not ExecutionPermit
                         or permit.mode is not ActivationMode.LAB_ONLY
                         or type(permit.permit_id) is not str
                         or permit.permit_id != SYNTHETIC_PERMIT_ID
@@ -117,27 +123,40 @@ def audit() -> dict[str, object]:
                         or permit.issued_at.tzinfo is None
                         or permit.issued_at.utcoffset() is None
                         or not (issued_not_before <= permit.issued_at <= issued_not_after)
-                    ):
-                        violations += 1
+                    )
+                # A denial is not clean if a synthetic token was minted
+                # before PermissionError, and a lab permit must have exactly
+                # one mint. Count each observation at most once.
+                expected_mints = 1 if expected_lab and not rejected else 0
+                if (
+                    rejected == expected_lab
+                    or bad_permit
+                    or synthetic_mints - before_mints != expected_mints
+                ):
+                    violations += 1
 
                 # Public/special IPs stay denied if private-lab shortcut off.
                 # True loopback legitimately remains LOOPBACK under this switch.
                 if not literal.startswith(("127.", "[::1]")):
                     checked += 1
+                    before_mints = synthetic_mints
+                    denied = False
                     try:
                         locked_gate.issue(Target(literal), CAPABILITY)
                     except PermissionError:
-                        pass
-                    else:
+                        denied = True
+                    if not denied or synthetic_mints != before_mints:
                         violations += 1
 
                 # PLAN_ONLY must never mint a token for any sample.
                 checked += 1
+                before_mints = synthetic_mints
+                denied = False
                 try:
                     plan_gate.issue(Target(literal), CAPABILITY)
                 except PermissionError:
-                    pass
-                else:
+                    denied = True
+                if not denied or synthetic_mints != before_mints:
                     violations += 1
     except Exception:
         # Corrupt source, unanticipated API drift or attempted I/O is HOLD.
