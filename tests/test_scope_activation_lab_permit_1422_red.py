@@ -72,6 +72,14 @@ class ActualActivationPermitChainRED(unittest.TestCase):
     def test_ipv4_link_local_denied_before_permit(self):
         self._must_deny_without_target_io("169.254.1.1")
 
+    @unittest.expectedFailure
+    def test_ipv4_mapped_documentation_denied_before_permit(self):
+        self._must_deny_without_target_io("[::ffff:192.0.2.1]")
+
+    @unittest.expectedFailure
+    def test_ipv6_link_local_denied_before_permit(self):
+        self._must_deny_without_target_io("[fe80::1]")
+
     def test_actual_known_lab_controls_are_not_public_approval(self):
         for literal in AUDIT.SAFE_LAB:
             with self.subTest(sample=literal):
@@ -109,7 +117,7 @@ class ActualActivationPermitChainRED(unittest.TestCase):
             if name.startswith("test_")
             and name.endswith("_denied_before_permit")
         )
-        self.assertEqual(len(names), 8)
+        self.assertEqual(len(names), 10)
         result = unittest.TestResult()
         unittest.TestSuite(type(self)(name) for name in names).run(result)
         self.assertEqual(result.errors, [])
@@ -122,14 +130,24 @@ class ActualActivationPermitChainRED(unittest.TestCase):
     def test_auditor_reports_unsafe_chain_only_as_hold(self):
         result = AUDIT.audit()
         self.assertEqual(result["status"], "HOLD")
-        self.assertEqual(result["checked"], 40)
-        self.assertGreaterEqual(result["violations"], 8)
+        self.assertEqual(result["checked"], 46)
+        self.assertGreaterEqual(result["violations"], 10)
         self.assertEqual(type(result["violations"]), int)
         for key in (
             "authorization_verified", "permit_issued", "execution_enabled",
             "scan_allowed", "merge_approved", "release_approved",
         ):
             self.assertIs(result[key], False)
+
+    def test_ipv4_mapped_and_ipv6_linklocal_lockdown_is_terminal(self):
+        gate = ActivationGate(
+            ScopePolicy(allow_private_lab=False),
+            ActivationPolicy(mode=ActivationMode.LAB_ONLY),
+        )
+        with patch("lightup.activation.token_urlsafe", side_effect=AssertionError("minted")):
+            for literal in ("[::ffff:192.0.2.1]", "[fe80::1]"):
+                with self.subTest(sample=literal), self.assertRaises(PermissionError):
+                    gate.issue(Target(literal), "synthetic_reference_only")
 
     def test_cli_single_fixed_receipt_no_literal_or_token_reflection(self):
         run = subprocess.run(
