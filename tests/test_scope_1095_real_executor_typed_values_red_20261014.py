@@ -483,8 +483,8 @@ class ExpectedRedWitnessIntegrityTests(unittest.TestCase):
 
     def test_red_exception_classifier_rejects_crashes_and_unexpected_success(self):
         @unittest.expectedFailure
-        def _assertion_red(case):
-            case.assertFalse(True, "genuine synthetic type refusal")
+        def _assertion_red(self):
+            self.assertFalse(True, "genuine synthetic type refusal")
 
         @unittest.expectedFailure
         def _crash_red(case):
@@ -510,6 +510,12 @@ class ExpectedRedWitnessIntegrityTests(unittest.TestCase):
         detected = self._unexpected_red_outcomes(results, 3)
         self.assertTrue(any("non-assertion RED exception" in entry for entry in detected))
         self.assertTrue(any("XPASS" in entry for entry in detected))
+
+        # Positive classifier control: a failed unittest assertion is a
+        # legitimate expected security RED, unlike a swallowed TypeError.
+        positive = unittest.TestResult()
+        unittest.TestSuite((SyntheticWitnesses("test_assertion_red"),)).run(positive)
+        self.assertEqual(self._unexpected_red_outcomes(positive, 1), [])
 
     def test_all_registered_source_reds_are_specific_assertion_failures(self):
         witnesses = []
