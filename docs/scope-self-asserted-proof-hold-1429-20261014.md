@@ -48,6 +48,14 @@ The offline proof reviewer must produce one bounded ASCII JSON line with **exact
 
 This makes privacy regressions visible in tests even if a future code refactor accidentally appends a raw input field. It does **not** prove an authenticated real CI source, prevent a malicious parent from exfiltrating the content before supplying it, or provide permission for any active security interaction.
 
+## W69 — bounded receipt delivery and zero surprise output destinations (2026-10-14)
+
+A safe bounded stdin reader is insufficient when the parent process provides a **full stdout pipe** and never consumes its bytes: even the single JSON receipt could block during flush. The opt-in CLI now serializes a single <=512-byte ASCII receipt and attempts a nonblocking `os.write(1, ...)` using a **2-second absolute monotonic output deadline**. An undrainable stdout pipe, write error, unavailable output fd or sink metadata error causes immediate or bounded **exit 2/HOLD**, never success. On a pipe with enough space, the tiny one-write receipt remains one JSON line. Partial delivery to terminals is possible on I/O failure; partial output is never authorization.
+
+The output fd is also checked before any write. Only a FIFO/pipe or local terminal/character descriptor may receive the receipt. Inherited **socket, regular file, directory or block device** stdout destinations are refused entirely: a caller cannot smuggle a network send or on-disk output into the reviewer through a redirected fd1. This intentionally means `> report.json` writes no receipt: collect it through a normal pipe and let an independent process own any optional storage. Both stdin and stdout fd contracts now reject sockets/files while keeping ordinary finite pipe use.
+
+New genuine subprocess regressions use a disposable redirected regular file, an AF_UNIX local socketpair and an **intentionally prefilled unread stdout pipe**. The child must exit within a bounded interval with return code 2, no traceback, no file bytes written and no socket bytes transmitted. Direct tests deny spoofed stdout fileno, forbidden fd mode and oversized receipt before touching the sink. No customer targets, installed ingress, real policy/grant, actual network addresses or deploy infrastructure are involved. This is a Python/userland compatibility proof, **not an OS sandbox or release permission**.
+
 ## Execution and fail-closed result
 
 ```sh
