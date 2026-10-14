@@ -215,6 +215,18 @@ met script-SHA256
 `040218cb5530c2b41ae04aa32d9a4d5410348f6986074077487765abfbdedb25`
 en ontvangst-SHA256
 `15df273449ff0f757bcef45fd2f2ebc33182904fc489b69ff953a624fb6c1618`.
+Op dezelfde geïsoleerde container is de eigen standaardbibliotheek-
+upstream naderhand voorzien van een per-run willekeurige nonce in een echte
+HTTP-responseheader. De **20 daadwerkelijke** Nginx→Python-HTTP-verzoeken
+haalden opnieuw 20/20; de client verifieerde bij elk antwoord deze header,
+terwijl `per_run_response_identity_verified=true` is vastgelegd zonder
+noncewaarde of requestgeheim te publiceren. Definitieve lokale probe-
+SHA256: `610bf9eee124f47ea8bcc95eb776caa1fa8ea0e0d81f7a0af3351e596f6918ba`.
+Definitieve gesaneerde ontvangst-SHA256:
+`7120d708bf98039cdf8f0508cbadf599310595c69642e1808cfab5d35cec933f`.
+De eerdere hashes hierboven horen bij de eerste, nonce-loze uitvoering.
+Opnieuw: lokale Nginx 1.26.3 met Python-stdlib HTTP, **niet Gunicorn**, niet
+de LightUp WSGI, geen echte tenant-/grants-/auth-verificatie en geen VPS.
 Deze hashes bewijzen uitsluitend de bytes van die lokale bestanden, niet
 de authenticiteit van de geïnstalleerde ingress.
 
