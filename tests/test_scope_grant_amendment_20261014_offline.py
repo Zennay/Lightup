@@ -679,6 +679,53 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
             self.assertTrue(reviewer._emit_receipt(receipt))
         self.assertEqual(b"".join(wire), reviewer._seal_receipt(receipt))
 
+    def test_short_stdout_write_is_never_retried_or_mistaken_for_success(self):
+        class Stdout:
+            def fileno(self):
+                return 1
+
+        receipt, _ = reviewer.review(encode(fixture()))
+        sink = SimpleNamespace(st_mode=stat.S_IFIFO, st_dev=3, st_ino=5)
+        with (
+            patch.object(reviewer.sys, "stdout", Stdout()),
+            patch.object(reviewer.os, "fstat", return_value=sink),
+            patch.object(reviewer.os, "get_blocking", return_value=True),
+            patch.object(reviewer.os, "set_blocking"),
+            patch.object(reviewer.select, "select", return_value=([], [1], [])),
+            patch.object(reviewer.os, "write", return_value=5) as send,
+        ):
+            self.assertFalse(reviewer._emit_receipt(receipt))
+        send.assert_called_once()
+
+    def test_256_synthetic_mixed_narrow_and_widen_combinations(self):
+        # Orthogonal narrowing first; then possible authorization expansion.
+        # All accepted packets are still REVIEW_ONLY, never executable.
+        for bits in range(256):
+            packet = fixture()
+            after = packet["after"]
+            if bits & 1:
+                after["assets"] = ["lab-a.example"]
+            if bits & 2:
+                after["capabilities"] = ["tls_baseline"]
+            if bits & 4:
+                after["max_risk"] = 2
+            if bits & 8:
+                after["valid_until"] = "2026-10-14T10:00:00Z"
+            if bits & 16:
+                after["assets"].append("lab-c.example")
+            if bits & 32:
+                after["capabilities"].append("new_tool")
+            if bits & 64:
+                after["max_risk"] = 4
+            if bits & 128:
+                after["valid_from"] = "2026-10-13T00:00:00Z"
+            receipt, code = reviewer.review(encode(packet))
+            with self.subTest(bits=bits):
+                self.assert_denied_authority(receipt, code)
+                if bits & 240:
+                    self.assertEqual((receipt["status"], code), ("HOLD", 2))
+                else:
+                    self.assertEqual((receipt["status"], code), ("REVIEW_ONLY", 3))
     def test_cli_rejects_no_flag(self):
         result = subprocess.run(
             [sys.executable, "-B", str(SCRIPT)],
