@@ -25,3 +25,14 @@ The first exact-head hosted Python3.11/3.14 jobs FAILED on three genuine positiv
 The isolated fixture now captures **one exact harness-selected trusted entrypoint pathname** from startup environment, before CLI code. Only an exact built-in string pathname matching this selection, read-binary `rb` mode and zero positional/keyword options pass to the original native opener for interpreter bootstrap. All other direct alias paths use strict synthetic read admission, including inherited descriptors, custom openers and executable path-like classes. Negative `python -c` controls inherit no bootstrap exception. The exception cannot be widened by changing the environment after hook installation.
 
 This permits ordinary Python interpreter startup only; it does not grant customer scope, authorization, deployment or general code-file access, and remains a Python test fixture rather than OS sandbox. This correction needs its own immutable-head hosted 3.11/3.14 units and genuine producer integration job logs.
+
+## W30 second-source diagnostic: exact standard-library import boundary
+
+The next hosted attempt also FAILED because the interpreter subsequently reads core CPython bytecode through the direct native alias: the immutable diagnostic showed an exact binary __future__.cpython-311.pyc module under the installed standard-library lib/python3.11/__pycache__ directory. This is required before the actual offline CLI can import normal dependencies. Temporary trace output was removed again.
+
+The standalone test hook now freezes the interpreter's sys.base_prefix/lib root on startup and permits a direct native alias read only with exact built-in string pathname, read-binary mode, no extra opener/options, and one of:
+
+- The exact preselected immutable harness-supplied Python entrypoint script.
+- Built-in Python .py/.pyc files whose real resolved location is beneath the current interpreter standard-library lib tree; third-party site-packages excluded.
+
+Untrusted synthetic fixture decoys, inherited descriptor integers, executable PathLike objects, custom openers, arbitrary unselected code paths and other local data files do not receive the exception. Negative python -c controls inherit no entrypoint whitelist. This is narrowly scoped Python test-harness import support, not a general runtime authorization or OS security confinement. New immutable-head hosted positive and negative Python3.11/3.14 and genuine producer CI still required before source-only merge.
