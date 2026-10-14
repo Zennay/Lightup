@@ -84,6 +84,14 @@ The opt-in audit now additionally checks **exact object identity** for the `Scop
 
 Five new unit test methods inject synthetic source-export substitutions and individual method replacements; each must result in HOLD, then demonstrate the ordinary source guard resumes passing after the injected replacement is removed. The original 201 decision-case matrix is unchanged, with **39 dedicated ordinary unit methods**. This is an **in-process consistency check, not signed source provenance, interpreter sandboxing or a guarantee against modifications made before the audit module first imports**. A hostile checkout, a replaced interpreter or malicious startup code still requires independent reviewed evidence.
 
+## W46 — denial reason provenance and conditional real-source RED witness
+
+In every ordinary default-policy decision (private-lab enabled or disabled, **without** explicit hosts/networks), the reviewer now requires the exact `OUT_OF_SCOPE` reason for all forbidden IP literals. For explicitly private-lab-disabled RFC1918/ULA positives, the returned `allowed=False` must also carry `OUT_OF_SCOPE`, not a misleading `PRIVATE_LAB` membership label. A denial bearing `AUTHORIZATION_MISSING` when no authorization-gated explicit network was configured is likewise not evidence of the intended policy. Two synthetic mutation tests produce these misleading false results; both must fail closed to HOLD.
+
+A separate conditional real-checkout test directly asks the actual `ScopePolicy(allow_private_lab=True)` about three known dangerous demonstration-only literals (RFC5737 documentation, RFC2544 benchmarking, and IPv4 link-local). **If any is currently auto-admitted, the actual full offline audit must HOLD**. When the production source owner eventually repairs the defect, this test does not demand that the old defective behavior remain present: it only asserts that a detected unsafe real-source admission is never declared REVIEW_ONLY. The test creates no real grants, never resolves hostnames, and makes no network request.
+
+The fixed static matrix remains **201 genuine policy decisions**; **42 ordinary self-owned unittest methods** cover the matrix, in-process checkout binding and refusal semantics. Passing hosted regressions are *only evidence of the diagnostic's behavior*, not source-owner repair of issue #1422.
+
 ## Safety and ownership
 
 This deliberately evaluates **real unmodified** `ScopePolicy.decide(Target(...))` from this checkout, unlike [#1424/#1425](https://github.com/Zennay/Lightup/pull/1425), which supplies a standalone reference reviewer. It does not write to or import the tool executor, production admission wiring, tenancy logic or the neighboring target parser. All three new files are owned by W38; source-owner #100, RED owner #1423, standalone reviewer #1425, CIDR #1318, CI and runners remain untouched.
