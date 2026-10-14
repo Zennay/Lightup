@@ -159,6 +159,21 @@ http {{
 
 
 
+def gunicorn_config(port: int) -> str:
+    """A disposable strict Gunicorn config, never the installed config."""
+    if type(port) is not int or not 1024 <= port <= 65535:
+        raise ValueError("invalid disposable Gunicorn port")
+    return (
+        f"bind = '127.0.0.1:{port}'\\n"
+        "workers = 1\\n"
+        "worker_class = 'sync'\\n"
+        "forwarded_allow_ips = ''\\n"
+        "secure_scheme_headers = {}\\n"
+        "accesslog = None\\n"
+        "errorlog = '/dev/null'\\n"
+    )
+
+
 def _fixture_environment(root: Path) -> dict[str, str]:
     """Return a fresh, minimal subprocess environment without inherited hooks.
 
@@ -315,6 +330,9 @@ def run_fixture() -> int:
         (root / "nginx.conf").write_text(
             nginx_config(root, proxy_port, app_port), encoding="ascii"
         )
+        (root / "gunicorn-fixture.conf.py").write_text(
+            gunicorn_config(app_port), encoding="ascii"
+        )
         # The global environment may contain Gunicorn arguments, Python
         # import hooks or dynamic-loader overrides; keep those out of both
         # subprocesses, including the preliminary configuration check.
@@ -333,8 +351,8 @@ def run_fixture() -> int:
             services.append(subprocess.Popen(
                 [
                     sys.executable, "-m", "gunicorn",
-                    "--bind", f"127.0.0.1:{app_port}", "--workers", "1",
-                    "--worker-class", "sync", "--chdir", str(root),
+                    "--config", str(root / "gunicorn-fixture.conf.py"),
+                    "--chdir", str(root),
                     "--access-logfile", os.devnull,
                     "--error-logfile", os.devnull,
                     "synthetic_identity_app:application",
