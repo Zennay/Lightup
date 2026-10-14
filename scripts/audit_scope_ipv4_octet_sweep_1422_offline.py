@@ -81,9 +81,11 @@ def _expected_ipv6(normalized: str, first: int, lab_enabled: bool):
     return False, ScopeReason.OUT_OF_SCOPE
 
 
-def _receipt(status: str, count: int):
+def _receipt(status: str, count: int, diagnostic_code: str):
+    # Only fixed public constants, never target, owner, hostname or exception.
     return {
         "status": status,
+        "diagnostic_code": diagnostic_code,
         "checked_count": count,
         "total_count": TOTAL_DECISIONS,
         "authorization_verified": False,
@@ -92,6 +94,22 @@ def _receipt(status: str, count: int):
         "merge_approved": False,
         "release_approved": False,
     }
+
+
+def _decision_mismatch(actual, normalized, expected_allowed, expected_reason):
+    """Return a bounded public category, never a rejected target or secret."""
+    if (
+        type(actual) is not ScopeDecision
+        or type(actual.allowed) is not bool
+        or type(actual.reason) is not ScopeReason
+        or type(actual.normalized_host) is not str
+    ):
+        return "RESULT_TYPE_MISMATCH"
+    if actual.normalized_host != normalized:
+        return "HOST_IDENTITY_MISMATCH"
+    if actual.allowed is not expected_allowed or actual.reason is not expected_reason:
+        return "SCOPE_CLASSIFICATION_MISMATCH"
+    return None
 
 
 def review_ipv4_octet_sweep(policy_factory=ScopePolicy):
@@ -114,38 +132,28 @@ def review_ipv4_octet_sweep(policy_factory=ScopePolicy):
                 expected_allowed, expected_reason = _expected(
                     first, second, lab_enabled
                 )
-                if (
-                    type(actual) is not ScopeDecision
-                    or type(actual.allowed) is not bool
-                    or type(actual.reason) is not ScopeReason
-                    or type(actual.normalized_host) is not str
-                    or actual.normalized_host != literal
-                    or actual.allowed is not expected_allowed
-                    or actual.reason is not expected_reason
-                ):
-                    return _receipt("HOLD", 0)
+                mismatch = _decision_mismatch(
+                    actual, literal, expected_allowed, expected_reason
+                )
+                if mismatch is not None:
+                    return _receipt("HOLD", 0, mismatch)
                 checked += 1
             for literal, normalized, first in _samples_ipv6():
                 actual = policy.decide(Target(literal))
                 expected_allowed, expected_reason = _expected_ipv6(
                     normalized, first, lab_enabled
                 )
-                if (
-                    type(actual) is not ScopeDecision
-                    or type(actual.allowed) is not bool
-                    or type(actual.reason) is not ScopeReason
-                    or type(actual.normalized_host) is not str
-                    or actual.normalized_host != normalized
-                    or actual.allowed is not expected_allowed
-                    or actual.reason is not expected_reason
-                ):
-                    return _receipt("HOLD", 0)
+                mismatch = _decision_mismatch(
+                    actual, normalized, expected_allowed, expected_reason
+                )
+                if mismatch is not None:
+                    return _receipt("HOLD", 0, mismatch)
                 checked += 1
         if checked != TOTAL_DECISIONS:
-            return _receipt("HOLD", 0)
+            return _receipt("HOLD", 0, "SAMPLE_COUNT_MISMATCH")
     except Exception:
-        return _receipt("HOLD", 0)
-    return _receipt("REVIEW_ONLY", checked)
+        return _receipt("HOLD", 0, "EVALUATION_EXCEPTION")
+    return _receipt("REVIEW_ONLY", checked, "MATCHED_NON_AUTHORIZING")
 
 
 def main(argv=None):
@@ -155,7 +163,7 @@ def main(argv=None):
     receipt = (
         review_ipv4_octet_sweep()
         if type(argv) is list and len(argv) == 0
-        else _receipt("HOLD", 0)
+        else _receipt("HOLD", 0, "ARGUMENT_REJECTED")
     )
     print(json.dumps(receipt, sort_keys=True, separators=(",", ":")))
     # REVIEW_ONLY also exits nonzero: it is NOT consent or release.
