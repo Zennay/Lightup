@@ -135,6 +135,15 @@ class LabApprovalCandidateLedger:
                     frozen_by TEXT NOT NULL
                 )
             """)
+            self._db.execute("""
+                CREATE TABLE IF NOT EXISTS lab_stepup_engagement_freezes_v1 (
+                    client_id TEXT NOT NULL,
+                    engagement_id TEXT NOT NULL,
+                    frozen_at TEXT NOT NULL,
+                    frozen_by TEXT NOT NULL,
+                    PRIMARY KEY (client_id, engagement_id)
+                )
+            """)
         except sqlite3.Error:
             raise CandidateHeld("candidate store unavailable") from None
 
@@ -170,6 +179,14 @@ class LabApprovalCandidateLedger:
             if frozen is not None:
                 self._db.rollback()
                 raise CandidateHeld("tenant candidate issuance frozen")
+            blocked_engagement = self._db.execute(
+                """SELECT 1 FROM lab_stepup_engagement_freezes_v1
+                WHERE client_id=? AND engagement_id=?""",
+                (ids[1], ids[2]),
+            ).fetchone()
+            if blocked_engagement is not None:
+                self._db.rollback()
+                raise CandidateHeld("engagement candidate issuance frozen")
             self._db.execute(
                 """INSERT INTO lab_stepup_candidates_v1
                 (approval_id,run_id,client_id,engagement_id,asset,
@@ -289,6 +306,49 @@ class LabApprovalCandidateLedger:
                 self._db.rollback()
             raise CandidateHeld("tenant freeze unavailable") from None
 
+    def freeze_engagement(
+        self, *, client_id: str, engagement_id: str, actor: str,
+        operator_gate: OperatorGate | None,
+    ) -> int:
+        """Atomically block all *future* local candidates for one engagement.
+
+        This is a synthetic candidate HOLD, NOT a per-target revocation,
+        permission decision or live dispatcher shutdown. Freezing an empty
+        engagement is intentional. The transaction must hold the same SQLite
+        write lock as candidate issuance to avoid an issue/freeze race.
+        """
+        tenant = _tenant_id(client_id)
+        engagement = _identity(engagement_id)
+        if any(char in engagement for char in "*?%"):
+            raise CandidateHeld("invalid engagement selector")
+        operator_id = _operator(operator_gate, actor, "freeze")
+        stamp = datetime.now(timezone.utc).isoformat()
+        if self._db.in_transaction:
+            raise CandidateHeld("candidate transaction isolation unavailable")
+        began = False
+        try:
+            self._db.execute("BEGIN IMMEDIATE")
+            began = True
+            self._db.execute(
+                """INSERT INTO lab_stepup_engagement_freezes_v1
+                (client_id,engagement_id,frozen_at,frozen_by)
+                VALUES (?,?,?,?)""",
+                (tenant, engagement, stamp, operator_id),
+            )
+            updated = self._db.execute(
+                """UPDATE lab_stepup_candidates_v1
+                SET revoked_at=?,revoked_by=?
+                WHERE client_id=? AND engagement_id=?
+                AND revoked_at IS NULL""",
+                (stamp, operator_id, tenant, engagement),
+            ).rowcount
+            self._db.commit()
+            return updated
+        except sqlite3.Error:
+            if began:
+                self._db.rollback()
+            raise CandidateHeld("engagement freeze unavailable") from None
+
     def inspect(self, run_id: str, *, client_id: str) -> LabApprovalCandidate | None:
         """Tenant-scoped review data only, never a permission or scan permit."""
         key = _identity(run_id)
@@ -337,6 +397,14 @@ class LabApprovalCandidateLedger:
             candidate = None if held is not None else self.inspect(
                 run_id, client_id=tenant,
             )
+            if candidate is not None:
+                engagement_frozen = self._db.execute(
+                    """SELECT 1 FROM lab_stepup_engagement_freezes_v1
+                    WHERE client_id=? AND engagement_id=?""",
+                    (tenant, candidate.engagement_id),
+                ).fetchone()
+                if engagement_frozen is not None:
+                    candidate = None
         except (CandidateHeld, sqlite3.Error):
             # Privacy-safe consumer receipt: never promote corrupt local state.
             candidate = None
