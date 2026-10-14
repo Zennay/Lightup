@@ -150,6 +150,50 @@ class ScopeStateForeignKeyOfflineTests(unittest.TestCase):
         self.assertFalse(result["checks"]["registered_run_provenance_exact"])
         self.assertEqual(result["status"], "HOLD")
 
+    def test_missing_lease_row_cannot_make_cascade_check_vacuously_green(self):
+        class LeaseOmittingStore(StrictStateStore):
+            def acquire_lease(self, run_id, *args, **kwargs):
+                if run_id != module.MISSING_RUN:
+                    return None
+                return super().acquire_lease(run_id, *args, **kwargs)
+        result = module.probe(LeaseOmittingStore)
+        self.assertTrue(result["checks"]["delete_cascades_lease"])
+        self.assertFalse(result["checks"]["valid_run_lease_stored"])
+        self.assertEqual(result["status"], "HOLD")
+
+    def test_evidence_digest_tamper_denied_despite_valid_run_id(self):
+        class EvidenceTamperStore(StrictStateStore):
+            def add_evidence(self, run_id, *args, **kwargs):
+                evidence_id = super().add_evidence(run_id, *args, **kwargs)
+                if run_id != module.MISSING_RUN:
+                    with self.connect() as connection:
+                        connection.execute(
+                            "UPDATE evidence SET sha256=? WHERE evidence_id=?",
+                            ("0" * 64, evidence_id),
+                        )
+                return evidence_id
+        result = module.probe(EvidenceTamperStore)
+        self.assertTrue(result["checks"]["valid_run_evidence_stored"])
+        self.assertTrue(result["checks"]["valid_run_lease_stored"])
+        self.assertFalse(result["checks"]["registered_evidence_lineage_exact"])
+        self.assertEqual(result["status"], "HOLD")
+
+    def test_evidence_metadata_tamper_denied_independently_of_hash(self):
+        class EvidenceMetadataTamperStore(StrictStateStore):
+            def add_evidence(self, run_id, *args, **kwargs):
+                evidence_id = super().add_evidence(run_id, *args, **kwargs)
+                if run_id != module.MISSING_RUN:
+                    with self.connect() as connection:
+                        connection.execute(
+                            "UPDATE evidence SET metadata_json=? WHERE evidence_id=?",
+                            ('{"unexpected":"claim"}', evidence_id),
+                        )
+                return evidence_id
+        result = module.probe(EvidenceMetadataTamperStore)
+        self.assertTrue(result["checks"]["valid_run_evidence_stored"])
+        self.assertFalse(result["checks"]["registered_evidence_lineage_exact"])
+        self.assertEqual(result["status"], "HOLD")
+
     def test_missing_provenance_row_fails_closed_without_auth(self):
         class BadFactory:
             def __init__(self, _):
