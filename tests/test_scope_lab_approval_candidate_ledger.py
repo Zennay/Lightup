@@ -153,8 +153,11 @@ class CandidateLedgerTests(unittest.TestCase):
             "UPDATE lab_stepup_candidates_v1 SET expires_at='broken' WHERE run_id='lab-run-1'"
         )
         self.db.commit()
-        with self.assertRaises(CandidateHeld):
-            self.ledger.review("lab-run-1", client_id="client-1")
+        receipt = self.ledger.review("lab-run-1", client_id="client-1")
+        self.assertEqual(receipt["status"], "HOLD")
+        for flag in ("authorization_verified", "permit_issued",
+                     "execution_enabled", "merge_approved", "release_approved"):
+            self.assertIs(receipt[flag], False)
 
     def test_corrupt_identity_holds(self):
         self.ledger.issue(**self.items)
@@ -338,6 +341,24 @@ class CandidateLedgerTests(unittest.TestCase):
         self.db.commit()
         with self.assertRaises(CandidateHeld):
             self.ledger.inspect("lab-run-1", client_id="client-1")
+
+    def test_widened_candidate_review_never_promotes_authority(self):
+        self.ledger.issue(**self.items)
+        future = datetime.now(timezone.utc) + timedelta(days=14)
+        self.db.execute(
+            "UPDATE lab_stepup_candidates_v1 SET expires_at=? WHERE run_id=?",
+            (future.isoformat(), "lab-run-1"),
+        )
+        self.db.commit()
+        receipt = self.ledger.review("lab-run-1", client_id="client-1")
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(
+            {k: v for k, v in receipt.items() if k != "status"},
+            dict.fromkeys(
+                ("authorization_verified", "permit_issued", "execution_enabled",
+                 "merge_approved", "release_approved"), False,
+            ),
+        )
 
 
 if __name__ == "__main__":
