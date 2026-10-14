@@ -41,3 +41,9 @@ Unlike `revoke_engagement`, which only revokes **existing** candidate rows, the 
 Twelve isolated, real disposable-SQLite tests cover multi-engagement isolation, cross-tenant sameness, persistent pre-freeze, role denial, wildcard selection denial, transaction isolation, restart durability, tampered revocation markers, and composing with tenant freeze.
 
 **Safety boundary:** all records are operator-supplied **synthetic candidate metadata**, not verified customer authorization; row/database ownership is not tamper-proof. This addition does not change the active `ToolExecutor`, remote systems, egress boundaries, or any true permit decision. An externally authenticated operator gate and verified asset/consent ownership are still required before any runtime integration or activation.
+
+## Exact tenant binding for single-run revocation
+
+The original synthetic helper's `revoke(run_id=...)` selector accepted only a run identifier. A callback that was scoped outside this SQLite module could thereby accidentally revoke another tenant's candidate by knowing its run id. The offline-only `revoke(run_id=..., client_id=...)` now **requires an exact canonical client identity** and constrains its single SQLite update to `WHERE run_id=? AND client_id=? AND revoked_at IS NULL`. Missing client id is an API error; wrong client id produces a safe `CandidateHeld`, zero changed candidate rows, no cross-tenant audit information and no positive release flags. Wildcard-like tenant selectors are refused before operator callbacks. Existing disposable regressions and six new scoped-denial tests cover this boundary, including persistence and caller transaction protection.
+
+No trusted authenticated operator context or trusted customer ownership is proved by a caller-supplied `client_id`. Source-only development and synthetic candidate bookkeeping: **this is NOT installed execution authorization, real target revocation, or a scan permit**.
