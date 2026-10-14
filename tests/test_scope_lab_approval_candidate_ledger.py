@@ -728,6 +728,200 @@ class CandidateLedgerTests(unittest.TestCase):
         self.assertIsNone(self.ledger.inspect("lab-run-1", client_id="client-1").revoked_at)
 
 
+    def test_single_revoke_writes_exact_tenant_tombstone(self):
+        self.ledger.issue(**self.items)
+        self.ledger.revoke(run_id="lab-run-1", client_id="client-1",
+                           actor="operator-1", operator_gate=allow)
+        row = self.db.execute(
+            """SELECT revoked_at,revoked_by FROM lab_stepup_candidate_revocations_v1
+               WHERE run_id=? AND client_id=?""",
+            ("lab-run-1", "client-1"),
+        ).fetchone()
+        self.assertIsNotNone(row)
+        self.assertEqual(row[1], "operator-1")
+        self.assertEqual(row[0], self.ledger.inspect(
+            "lab-run-1", client_id="client-1").revoked_at.isoformat())
+
+    def test_cleared_revocation_timestamp_does_not_resurrect_candidate(self):
+        self.ledger.issue(**self.items)
+        self.ledger.revoke(run_id="lab-run-1", client_id="client-1",
+                           actor="operator-1", operator_gate=allow)
+        self.db.execute(
+            """UPDATE lab_stepup_candidates_v1
+            SET revoked_at=NULL,revoked_by=NULL WHERE run_id=?""",
+            ("lab-run-1",),
+        )
+        self.db.commit()
+        with self.assertRaises(CandidateHeld):
+            self.ledger.inspect("lab-run-1", client_id="client-1")
+        result = self.ledger.review("lab-run-1", client_id="client-1")
+        self.assertEqual(result["status"], "HOLD")
+        self.assertTrue(all(val is False for key, val in result.items()
+                            if key != "status"))
+
+    def test_cleared_only_revoked_at_is_corrupt(self):
+        self.ledger.issue(**self.items)
+        self.ledger.revoke(run_id="lab-run-1", client_id="client-1",
+                           actor="operator-1", operator_gate=allow)
+        self.db.execute(
+            "UPDATE lab_stepup_candidates_v1 SET revoked_at=NULL WHERE run_id=?",
+            ("lab-run-1",),
+        )
+        self.db.commit()
+        self.assertEqual(self.ledger.review(
+            "lab-run-1", client_id="client-1")["status"], "HOLD")
+
+    def test_cleared_only_revoked_by_is_corrupt(self):
+        self.ledger.issue(**self.items)
+        self.ledger.revoke(run_id="lab-run-1", client_id="client-1",
+                           actor="operator-1", operator_gate=allow)
+        self.db.execute(
+            "UPDATE lab_stepup_candidates_v1 SET revoked_by=NULL WHERE run_id=?",
+            ("lab-run-1",),
+        )
+        self.db.commit()
+        with self.assertRaises(CandidateHeld):
+            self.ledger.inspect("lab-run-1", client_id="client-1")
+        self.assertEqual(self.ledger.review(
+            "lab-run-1", client_id="client-1")["status"], "HOLD")
+
+    def test_tombstone_attribution_mismatch_is_corrupt(self):
+        self.ledger.issue(**self.items)
+        self.ledger.revoke(run_id="lab-run-1", client_id="client-1",
+                           actor="operator-1", operator_gate=allow)
+        self.db.execute(
+            "UPDATE lab_stepup_candidates_v1 SET revoked_by=? WHERE run_id=?",
+            ("other-actor", "lab-run-1"),
+        )
+        self.db.commit()
+        with self.assertRaises(CandidateHeld):
+            self.ledger.inspect("lab-run-1", client_id="client-1")
+
+    def test_tombstone_timestamp_mismatch_is_corrupt(self):
+        self.ledger.issue(**self.items)
+        self.ledger.revoke(run_id="lab-run-1", client_id="client-1",
+                           actor="operator-1", operator_gate=allow)
+        self.db.execute(
+            """UPDATE lab_stepup_candidate_revocations_v1
+               SET revoked_at=? WHERE run_id=?""",
+            ("2000-01-01T00:00:00+00:00", "lab-run-1"),
+        )
+        self.db.commit()
+        self.assertEqual(self.ledger.review(
+            "lab-run-1", client_id="client-1")["status"], "HOLD")
+
+    def test_tombstone_owner_mismatch_is_corrupt(self):
+        self.ledger.issue(**self.items)
+        self.ledger.revoke(run_id="lab-run-1", client_id="client-1",
+                           actor="operator-1", operator_gate=allow)
+        self.db.execute(
+            """UPDATE lab_stepup_candidate_revocations_v1
+               SET revoked_by=? WHERE run_id=?""",
+            ("forged-actor", "lab-run-1"),
+        )
+        self.db.commit()
+        self.assertEqual(self.ledger.review(
+            "lab-run-1", client_id="client-1")["status"], "HOLD")
+
+    def test_bulk_engagement_revocation_marks_exact_runs_only(self):
+        self.ledger.issue(**self.items)
+        self.ledger.issue(**dict(self.items, run_id="run-two"))
+        self.ledger.issue(**dict(self.items, run_id="other-eng",
+                                 engagement_id="engagement-2"))
+        self.assertEqual(self.ledger.revoke_engagement(
+            client_id="client-1", engagement_id="engagement-1",
+            actor="operator-1", operator_gate=allow), 2)
+        found = self.db.execute(
+            "SELECT run_id FROM lab_stepup_candidate_revocations_v1 ORDER BY run_id"
+        ).fetchall()
+        self.assertEqual(found, [("lab-run-1",), ("run-two",)])
+        self.assertEqual(self.ledger.review(
+            "other-eng", client_id="client-1")["status"], "REVIEW_ONLY")
+
+    def test_freeze_tenant_writes_exact_client_tombstones(self):
+        self.ledger.issue(**self.items)
+        self.ledger.issue(**dict(self.items, run_id="other-tenant",
+                                 client_id="client-2"))
+        self.assertEqual(self.ledger.freeze_tenant(
+            client_id="client-1", actor="operator-1",
+            operator_gate=lambda *_: True), 1)
+        self.assertEqual(self.db.execute(
+            "SELECT run_id FROM lab_stepup_candidate_revocations_v1"
+        ).fetchall(), [("lab-run-1",)])
+        self.assertEqual(self.ledger.review(
+            "other-tenant", client_id="client-2")["status"], "REVIEW_ONLY")
+
+    def test_freeze_engagement_writes_exact_engagement_tombstones(self):
+        self.ledger.issue(**self.items)
+        self.ledger.issue(**dict(self.items, run_id="other-eng",
+                                 engagement_id="engagement-2"))
+        self.assertEqual(self.ledger.freeze_engagement(
+            client_id="client-1", engagement_id="engagement-1",
+            actor="operator-1", operator_gate=lambda *_: True), 1)
+        self.assertEqual(self.db.execute(
+            "SELECT run_id FROM lab_stepup_candidate_revocations_v1"
+        ).fetchall(), [("lab-run-1",)])
+        self.assertEqual(self.ledger.review(
+            "other-eng", client_id="client-1")["status"], "REVIEW_ONLY")
+
+    def test_duplicate_revoke_keeps_single_tombstone(self):
+        self.ledger.issue(**self.items)
+        self.ledger.revoke(run_id="lab-run-1", client_id="client-1",
+                           actor="operator-1", operator_gate=allow)
+        with self.assertRaises(CandidateHeld):
+            self.ledger.revoke(run_id="lab-run-1", client_id="client-1",
+                               actor="operator-1", operator_gate=allow)
+        self.assertEqual(self.db.execute(
+            "SELECT COUNT(*) FROM lab_stepup_candidate_revocations_v1"
+        ).fetchone()[0], 1)
+
+    def test_wrong_tenant_cannot_write_any_tombstone(self):
+        self.ledger.issue(**self.items)
+        with self.assertRaises(CandidateHeld):
+            self.ledger.revoke(run_id="lab-run-1", client_id="client-2",
+                               actor="operator-1", operator_gate=allow)
+        self.assertEqual(self.db.execute(
+            "SELECT COUNT(*) FROM lab_stepup_candidate_revocations_v1"
+        ).fetchone()[0], 0)
+        self.assertEqual(self.ledger.review(
+            "lab-run-1", client_id="client-1")["status"], "REVIEW_ONLY")
+
+    def test_tombstone_survives_reopening_and_marker_damage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            filename = Path(directory) / "revoked.db"
+            db1 = sqlite3.connect(filename)
+            ledger1 = LabApprovalCandidateLedger(db1)
+            ledger1.issue(**self.items)
+            ledger1.revoke(run_id="lab-run-1", client_id="client-1",
+                           actor="operator-1", operator_gate=allow)
+            db1.close()
+            db2 = sqlite3.connect(filename)
+            db2.execute(
+                """UPDATE lab_stepup_candidates_v1
+                SET revoked_at=NULL,revoked_by=NULL WHERE run_id='lab-run-1'"""
+            )
+            db2.commit()
+            self.assertEqual(LabApprovalCandidateLedger(db2).review(
+                "lab-run-1", client_id="client-1")["status"], "HOLD")
+            db2.close()
+
+    def test_failed_revocation_keeps_outer_transaction_owned_by_caller(self):
+        self.ledger.issue(**self.items)
+        self.db.execute("CREATE TABLE unrelated (detail TEXT)")
+        self.db.execute("BEGIN IMMEDIATE")
+        self.db.execute("INSERT INTO unrelated VALUES ('preserve')")
+        with self.assertRaises(CandidateHeld):
+            self.ledger.revoke(run_id="lab-run-1", client_id="client-1",
+                               actor="operator-1", operator_gate=allow)
+        self.assertTrue(self.db.in_transaction)
+        self.assertEqual(self.db.execute(
+            "SELECT detail FROM unrelated").fetchone(), ("preserve",))
+        self.db.rollback()
+        self.assertEqual(self.db.execute(
+            "SELECT COUNT(*) FROM lab_stepup_candidate_revocations_v1"
+        ).fetchone()[0], 0)
+
+
 
 if __name__ == "__main__":
     unittest.main()

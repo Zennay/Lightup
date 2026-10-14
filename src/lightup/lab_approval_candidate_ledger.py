@@ -144,6 +144,15 @@ class LabApprovalCandidateLedger:
                     PRIMARY KEY (client_id, engagement_id)
                 )
             """)
+            self._db.execute("""
+                CREATE TABLE IF NOT EXISTS lab_stepup_candidate_revocations_v1 (
+                    run_id TEXT NOT NULL,
+                    client_id TEXT NOT NULL,
+                    revoked_at TEXT NOT NULL,
+                    revoked_by TEXT NOT NULL,
+                    PRIMARY KEY (run_id, client_id)
+                )
+            """)
         except sqlite3.Error:
             raise CandidateHeld("candidate store unavailable") from None
 
@@ -224,13 +233,21 @@ class LabApprovalCandidateLedger:
         try:
             self._db.execute("BEGIN IMMEDIATE")
             began = True
+            recorded = self._db.execute(
+                """INSERT INTO lab_stepup_candidate_revocations_v1
+                (run_id,client_id,revoked_at,revoked_by)
+                SELECT run_id,client_id,?,?
+                FROM lab_stepup_candidates_v1
+                WHERE run_id=? AND client_id=? AND revoked_at IS NULL""",
+                (stamp, actor_id, key, tenant),
+            ).rowcount
             result = self._db.execute(
                 """UPDATE lab_stepup_candidates_v1
                 SET revoked_at=?, revoked_by=?
                 WHERE run_id=? AND client_id=? AND revoked_at IS NULL""",
                 (stamp, actor_id, key, tenant),
             )
-            if result.rowcount != 1:
+            if recorded != 1 or result.rowcount != 1:
                 self._db.rollback()
                 raise CandidateHeld("candidate not revocable")
             self._db.commit()
@@ -259,13 +276,21 @@ class LabApprovalCandidateLedger:
         try:
             self._db.execute("BEGIN IMMEDIATE")
             began = True
+            recorded = self._db.execute(
+                """INSERT INTO lab_stepup_candidate_revocations_v1
+                (run_id,client_id,revoked_at,revoked_by)
+                SELECT run_id,client_id,?,?
+                FROM lab_stepup_candidates_v1
+                WHERE client_id=? AND engagement_id=? AND revoked_at IS NULL""",
+                (stamp, actor_id, tenant, engagement),
+            ).rowcount
             result = self._db.execute(
                 """UPDATE lab_stepup_candidates_v1
                 SET revoked_at=?, revoked_by=?
                 WHERE client_id=? AND engagement_id=? AND revoked_at IS NULL""",
                 (stamp, actor_id, tenant, engagement),
             )
-            if result.rowcount < 1:
+            if result.rowcount < 1 or recorded != result.rowcount:
                 self._db.rollback()
                 raise CandidateHeld("no matching revocable candidates")
             count = result.rowcount
@@ -301,12 +326,23 @@ class LabApprovalCandidateLedger:
                    (client_id, frozen_at, frozen_by) VALUES (?, ?, ?)""",
                 (tenant, stamp, operator_id),
             )
+            recorded = self._db.execute(
+                """INSERT INTO lab_stepup_candidate_revocations_v1
+                (run_id,client_id,revoked_at,revoked_by)
+                SELECT run_id,client_id,?,?
+                FROM lab_stepup_candidates_v1
+                WHERE client_id=? AND revoked_at IS NULL""",
+                (stamp, operator_id, tenant),
+            ).rowcount
             updated = self._db.execute(
                 """UPDATE lab_stepup_candidates_v1
                 SET revoked_at=?, revoked_by=?
                 WHERE client_id=? AND revoked_at IS NULL""",
                 (stamp, operator_id, tenant),
             ).rowcount
+            if recorded != updated:
+                self._db.rollback()
+                raise CandidateHeld("tenant candidate provenance incomplete")
             self._db.commit()
             return updated
         except sqlite3.Error:
@@ -343,6 +379,15 @@ class LabApprovalCandidateLedger:
                 VALUES (?,?,?,?)""",
                 (tenant, engagement, stamp, operator_id),
             )
+            recorded = self._db.execute(
+                """INSERT INTO lab_stepup_candidate_revocations_v1
+                (run_id,client_id,revoked_at,revoked_by)
+                SELECT run_id,client_id,?,?
+                FROM lab_stepup_candidates_v1
+                WHERE client_id=? AND engagement_id=?
+                AND revoked_at IS NULL""",
+                (stamp, operator_id, tenant, engagement),
+            ).rowcount
             updated = self._db.execute(
                 """UPDATE lab_stepup_candidates_v1
                 SET revoked_at=?,revoked_by=?
@@ -350,6 +395,9 @@ class LabApprovalCandidateLedger:
                 AND revoked_at IS NULL""",
                 (stamp, operator_id, tenant, engagement),
             ).rowcount
+            if recorded != updated:
+                self._db.rollback()
+                raise CandidateHeld("engagement candidate provenance incomplete")
             self._db.commit()
             return updated
         except sqlite3.Error:
@@ -365,7 +413,14 @@ class LabApprovalCandidateLedger:
             row = self._db.execute(
                 """SELECT approval_id,run_id,client_id,engagement_id,asset,
                 capability_id,tool_id,approved_by,approved_at,expires_at,
-                revoked_at FROM lab_stepup_candidates_v1 WHERE run_id=? AND client_id=?""",
+                revoked_at,revoked_by FROM lab_stepup_candidates_v1
+                WHERE run_id=? AND client_id=?""",
+                (key, tenant),
+            ).fetchone()
+            tombstone = self._db.execute(
+                """SELECT revoked_at,revoked_by
+                FROM lab_stepup_candidate_revocations_v1
+                WHERE run_id=? AND client_id=?""",
                 (key, tenant),
             ).fetchone()
         except sqlite3.Error:
@@ -377,9 +432,25 @@ class LabApprovalCandidateLedger:
                 _identity(item)
             dates = tuple(
                 None if item is None else _stored_utc(item)
-                for item in row[8:]
+                for item in row[8:11]
             )
             issued, expiry, revoked = dates
+            revoked_by = row[11]
+            # An altered per-record revocation marker must never restore a
+            # revoked candidate while the independent local tombstone exists.
+            # This is corruption detection, NOT tamper-proof authorization.
+            if (revoked is None) != (revoked_by is None):
+                raise CandidateHeld("candidate revocation provenance corrupted")
+            if revoked_by is not None:
+                _identity(revoked_by)
+            if tombstone is not None:
+                tombstone_at = _stored_utc(tombstone[0])
+                tombstone_by = _identity(tombstone[1])
+                if (
+                    revoked is None or revoked != tombstone_at
+                    or revoked_by != tombstone_by
+                ):
+                    raise CandidateHeld("candidate tombstone conflict")
             # Check original issuance invariants again on *every* read.
             # An actor with DB write access may be able to widen a stored row.
             if (
