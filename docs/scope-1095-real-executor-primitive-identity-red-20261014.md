@@ -71,6 +71,14 @@ The separate uninstalled opt-in helper has five new ordinary tests for the same 
 
 All fixtures are local synthetic strings, never real targets. The opt-in helper issues **no authorization**, changes no installed source, and is not a substitute for revocation, tenant/customer scope, privacy review or release approval. The owner of production source remains [PR #156](https://github.com/Zennay/Lightup/pull/156); all expected RED tests require ordinary passing treatment after its repair.
 
+## W14 — verify that all expected RED results are security assertions, not crashes
+
+A new ordinary **meta-regression** in `tests/test_scope_1095_real_executor_typed_values_red_20261014.py` collects the current source-owner `@unittest.expectedFailure` type-admission canaries into a separate read-only `unittest.TestResult` and reruns them with local `ANALYSIS_ONLY` synthetic tools and temporary SQLite. It requires all registered RED cases to end in an actual `AssertionError` at a `self.assert*` statement, with **no** unexpected successes, unmasked exceptions or missing witness results. This prevents a `TypeError`, setup crash or other runtime exception from being silently classified as a legitimate failing security requirement by Python's broad `@expectedFailure` mechanism.
+
+A second ordinary test uses synthetic positive/negative classifier fixtures. The legitimate assertion is accepted, while an artificially raised `TypeError` and an unexpectedly successful expected-failure method must be flagged. This safeguard is **not proof that the original production type gate is fixed**: all currently expected RED checks remain unresolved until source owner #156 implements canonical built-in runtime admission and the tests become ordinary PASS. A human review must still verify the intended exact assertion semantics.
+
+No target interaction, external system, CI configuration, original source owner or deployment is touched.
+
 ## Limits and required release gates
 
 All sample names are synthetic and are not queried over DNS. No network, scan, target interaction, customer data, grant, persisted authorization mutation, attack path, CI workflow edit or deployment. Even real SQLite and handler controls provide **typed-value input diagnostics only**; they do not establish customer consent, revocation coherence, live tenant scope, or real-target dispatch safety.
