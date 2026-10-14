@@ -484,5 +484,28 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
             os.close(readfd)
 
 
+    def test_receipt_sender_rejects_character_device_without_tty(self):
+        from unittest.mock import MagicMock
+        fake = MagicMock()
+        fake.fileno.return_value = 1
+        with patch.object(review.sys, "stdout", fake), \
+             patch.object(review.os, "fstat", return_value=MagicMock(st_mode=stat.S_IFCHR)), \
+             patch.object(review.os, "isatty", return_value=False) as tty_check, \
+             patch.object(review.os, "set_blocking", side_effect=AssertionError("set blocked char")), \
+             patch.object(review.os, "write", side_effect=AssertionError("wrote to char device")):
+            self.assertIsNone(review._emit_hold_receipt(b"{}"))
+            tty_check.assert_called_once_with(1)
+
+    def test_real_cli_devnull_output_refused_and_exit_hold(self):
+        child = subprocess.run(
+            [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+            input=encoded(packet()), stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+            timeout=8, check=False,
+            env={"PATH": os.defpath, "PYTHONDONTWRITEBYTECODE": "1"},
+        )
+        self.assertEqual(child.returncode, 2)
+        self.assertEqual(child.stderr, b"")
+
+
 if __name__ == "__main__":
     unittest.main()
