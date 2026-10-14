@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "contract": "scope-authorization-audit-retention",
+  "cases": [
+    {
+      "id": "cross_tenant_read",
+      "request_tenant": "tenant-b",
+      "event_tenant": "tenant-a",
+      "role": "client",
+      "action": "read",
+      "expected": "deny"
+    },
+    {
+      "id": "cross_tenant_export",
+      "request_tenant": "tenant-b",
+      "event_tenant": "tenant-a",
+      "role": "operator",
+      "action": "export",
+      "expected": "deny"
+    },
+    {
+      "id": "same_tenant_read",
+      "request_tenant": "tenant-a",
+      "event_tenant": "tenant-a",
+      "role": "client",
+      "action": "read",
+      "expected": "allow"
+    },
+    {
+      "id": "same_tenant_export",
+      "request_tenant": "tenant-a",
+      "event_tenant": "tenant-a",
+      "role": "client",
+      "action": "export",
+      "expected": "deny"
+    },
+    {
+      "id": "same_tenant_operator_export",
+      "request_tenant": "tenant-a",
+      "event_tenant": "tenant-a",
+      "role": "operator",
+      "action": "export",
+      "expected": "allow"
+    },
+    {
+      "id": "unauthenticated_read",
+      "request_tenant": "tenant-a",
+      "event_tenant": "tenant-a",
+      "role": "anonymous",
+      "action": "read",
+      "expected": "deny"
+    },
+    {
+      "id": "missing_tenant",
+      "request_tenant": "",
+      "event_tenant": "tenant-a",
+      "role": "operator",
+      "action": "read",
+      "expected": "deny"
+    },
+    {
+      "id": "unknown_action",
+      "request_tenant": "tenant-a",
+      "event_tenant": "tenant-a",
+      "role": "operator",
+      "action": "delete",
+      "expected": "deny"
+    }
+  ]
+}
