@@ -351,7 +351,7 @@ def run_fixture() -> int:
             ))
             _wait_listening(services[-1], proxy_port)
 
-            def boundbound_request(*args, **kwargs):
+            def bound_request(*args, **kwargs):
                 return _request(*args, expected_nonce=nonce, **kwargs)
 
             results = (
