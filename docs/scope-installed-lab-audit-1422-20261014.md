@@ -64,6 +64,12 @@ In every one of these **37 additional decisions**, the result must remain `allow
 
 The receipt remains wholly non-authorizing. If any single decision fails, reports HOLD and `checked_count=0`; if every check passes, reports REVIEW_ONLY while authority/permit/dispatch/merge/release flags remain explicitly false. Hosted CI for Python 3.11 and 3.14, genuine producer integration tests and separately registered VPS-run evidence must be tied to this exact revision. A passing test cannot waive the source-owner repair tracked by #1422.
 
+## W43 — keep exact refused-target identity in every negative decision
+
+When the installed policy returns a rejected `ScopeDecision` for a fixed forbidden IP, the reviewer now also verifies that **`normalized_host` is still that very literal IP**. Only outer IPv6 URI brackets are removed from the predefined sample. It checks this invariant under every one of the five evaluated configurations: default private-lab enabled; private-lab disabled; explicitly broad networks with missing authorization, expired authorization, and a future-start authorization. A deny result that quietly replaces a public, documentation or reserved target with a trusted loopback or RFC1918/ULA address must **HOLD**, even if its `allowed=False` and `reason` look correct. This prevents a misleading normalized target from propagating through later review steps; it does not replace any actual executor gate or approve network traffic.
+
+Three new injected mutants independently corrupt (1) an ordinary denial's normalized address, (2) a missing-grant IPv4 decision's address, and (3) an expired-grant IPv6 decision's address. The strict synthetic fixture now returns the exact hostname, not a placeholder. All **201 fixed policy decisions** remain denial-only, with **33 dedicated unittest methods** after W43. No additional target addresses, network probes, customer grants, deployment or production source edits have been introduced.
+
 ## Safety and ownership
 
 This deliberately evaluates **real unmodified** `ScopePolicy.decide(Target(...))` from this checkout, unlike [#1424/#1425](https://github.com/Zennay/Lightup/pull/1425), which supplies a standalone reference reviewer. It does not write to or import the tool executor, production admission wiring, tenancy logic or the neighboring target parser. All three new files are owned by W38; source-owner #100, RED owner #1423, standalone reviewer #1425, CIDR #1318, CI and runners remain untouched.
