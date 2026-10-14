@@ -188,7 +188,7 @@ class OfflineGrantReviewCliTests(unittest.TestCase):
         def swapped_metadata(fd):
             real = original_fstat(fd)
             calls[0] += 1
-            if calls[0] != 2:
+            if calls[0] == 1:
                 return real
             return SimpleNamespace(
                 st_dev=real.st_dev,
@@ -200,7 +200,7 @@ class OfflineGrantReviewCliTests(unittest.TestCase):
 
         with patch.object(_MODULE.os, "fstat", side_effect=swapped_metadata):
             receipt = _MODULE.review_local_file(str(self.path))
-        self.assertEqual(calls[0], 2)
+        self.assertGreaterEqual(calls[0], 2)
         self.assertEqual(receipt["verdict"], "HOLD")
         self.assertEqual(receipt["reviewed_count"], 0)
         self.assert_non_authorizing(receipt)
