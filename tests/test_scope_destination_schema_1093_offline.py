@@ -156,6 +156,10 @@ class ReviewTests(unittest.TestCase):
             mock.patch.object(svc, "inventory") as s_inventory,
             mock.patch("socket.create_connection",
                        side_effect=AssertionError("no network")) as tcp,
+            mock.patch("socket.socket",
+                       side_effect=AssertionError("no raw socket")) as raw_socket,
+            mock.patch.object(http, "HTTPConnection",
+                              side_effect=AssertionError("no HTTP")) as raw_http,
         ):
             for handler, arguments in handlers:
                 with self.subTest(handler=handler.__name__):
@@ -165,6 +169,38 @@ class ReviewTests(unittest.TestCase):
             t_observe.assert_not_called()
             s_inventory.assert_not_called()
             tcp.assert_not_called()
+            raw_socket.assert_not_called()
+            raw_http.assert_not_called()
+
+    def test_known_lab_role_claims_follow_actual_handler_parameter_contract(self):
+        """Test-side fixed expectations; NOT trusted production role metadata."""
+        sys.path.insert(0, str(ROOT / "src"))
+        from lightup.workers.http_baseline import HTTP_BASELINE_TOOL
+        from lightup.workers.tls_baseline import TLS_BASELINE_TOOL
+        from lightup.workers.service_inventory import SERVICE_INVENTORY_TOOL
+
+        known = {
+            "lab-http-baseline": (("url", "endpoint"),),
+            "lab-tls-baseline": (("host", "host"), ("port", "port")),
+            "lab-service-inventory": (
+                ("host", "host"), ("ports", "port_set")),
+        }
+        installed = (
+            HTTP_BASELINE_TOOL, TLS_BASELINE_TOOL, SERVICE_INVENTORY_TOOL
+        )
+        self.assertEqual(set(known), {definition.tool_id for definition in installed})
+        for definition, claim in zip(installed, fixture()["tools"]):
+            with self.subTest(tool_id=definition.tool_id):
+                expected = known[definition.tool_id]
+                self.assertTrue(all(
+                    not hasattr(parameter, "role")
+                    for parameter in definition.parameters))
+                self.assertEqual(
+                    tuple((parameter["name"], parameter["role"])
+                          for parameter in claim["parameters"]), expected)
+                self.assertEqual(
+                    tuple(parameter.name for parameter in definition.parameters),
+                    tuple(name for name, _ in expected))
 
     def test_no_source_truth_can_be_inferred(self):
         fake = fixture()
