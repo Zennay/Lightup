@@ -651,5 +651,35 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
 
+
+    def test_69_tool_ids_allow_canonical_kebab_case_but_not_unsafe_forms(self):
+        for valid in ("lab-http-baseline", "lab-tls-baseline",
+                      "lab-service-inventory", "offline_tool"):
+            with self.subTest(valid=valid):
+                registry = ToolRegistry()
+                definition = ToolDefinition(
+                    valid, "web-baseline", InteractionKind.LAB_ACTIVE,
+                    RiskLevel.LOW_IMPACT, "synthetic", (ToolParameter("host", ParamKind.STRING),))
+                registry.register(definition, lambda *_: self.calls.append("handler"))
+                preview = TrustedDestinationManifest(
+                    registry, definition, (DestinationField("host", DestinationRole.HOST),))
+                self.assertEqual(preview.review({"host": "localhost"}).status, "hold")
+        self.assertEqual(self.calls, [])
+
+    def test_70_unsafe_registered_tool_identifiers_are_rejected(self):
+        for invalid in ("bad/id", "Bad", "-lab", "lab-", "tool id",
+                        "tool🙂", "a" * 65):
+            with self.subTest(invalid=invalid):
+                registry = ToolRegistry()
+                definition = ToolDefinition(
+                    invalid, "web-baseline", InteractionKind.LAB_ACTIVE,
+                    RiskLevel.LOW_IMPACT, "synthetic", (ToolParameter("host", ParamKind.STRING),))
+                registry.register(definition, lambda *_: self.calls.append("handler"))
+                self.refused(lambda r=registry, d=definition:
+                             TrustedDestinationManifest(
+                                 r, d, (DestinationField("host", DestinationRole.HOST),)))
+        self.assertEqual(self.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
