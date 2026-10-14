@@ -22,14 +22,14 @@ The **nine** genuine disposable-repository tests cover diff spoofing, unchanged 
 
 ## Additional optional refusal-only companion
 
-The independent `scripts/check_scope_git_object_identity_preflight.py` now inspects the **local Git checkout** with read-only commands and fixed safe environment. It refuses any local `refs/replace` ref (including packed refs), any legacy `info/grafts` path, an unexpected/nested Git root, missing Git, failed lookups or an inaccessible graft path. It does not delete Git refs/grafts, cannot scan targets, and cannot produce an authorization. Even an apparently clean result is only `REVIEW_ONLY`, never merge/release permission.
+The independent `scripts/check_scope_git_object_identity_preflight.py` now inspects the **local Git checkout** with read-only commands and fixed safe environment. It refuses any local `refs/replace` ref (including packed refs), any legacy `info/grafts` path (even empty or a dangling symlink), an unexpected/nested Git root, missing Git, failed lookups or an inaccessible graft path. It does not delete Git refs/grafts, cannot scan targets, and cannot produce an authorization. Even an apparently clean result is only `REVIEW_ONLY`, never merge/release permission.
 
 ```sh
 python scripts/check_scope_git_object_identity_preflight.py --repo .
 python -m unittest discover -s tests -p 'test_scope_git_object_identity_preflight.py' -v
 ```
 
-This adds **seven more** disposable Git regression tests, for **16 independent methods** total across both new test modules. The preflight intentionally does **not** import or modify the actively owned #1313 checker. It is a conservative negative-only reusable reference, and does not prevent a local malicious actor changing Git state between checks (TOCTOU). A fully trusted commit attestation requires additional source-owner review, pinning and runtime controls.
+This adds **nine more** disposable Git regression tests, for **18 independent methods** total across both new test modules. For symlink-safe graft admission it derives the raw `info/grafts` entry from `git rev-parse --git-common-dir`; `git rev-parse --git-path info/grafts` can dereference a dangling symlink to a nonexistent target and must not be used as a lone existence test. The preflight intentionally does **not** import or modify the actively owned #1313 checker. It is a conservative negative-only reusable reference, and does not prevent a local malicious actor changing Git state between checks (TOCTOU). A fully trusted commit attestation requires additional source-owner review, pinning and runtime controls.
 
 ## Owner handoff — not an independent fix
 
