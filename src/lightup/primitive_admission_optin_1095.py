@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from .ai.orchestration import OrchestrationError, ParamKind, ToolDefinition
+from .engagements import RiskLevel
+from .execution_policy import InteractionKind
 
 MAX_SYNTHETIC_BATCH_ITEMS = 32
 
@@ -79,6 +81,17 @@ def snapshot_exact_primitive_values(
     """
     if type(definition) is not ToolDefinition:
         raise OrchestrationError("untrusted synthetic tool definition")
+    # An optional shape diagnostic MUST NOT be used as an input gate for
+    # real, passive, lab-active or target-active tools. This check supplies
+    # no authorization, even for these synthetic ANALYSIS_ONLY definitions.
+    if (
+        type(definition.tool_id) is not str
+        or not definition.tool_id.startswith("synthetic-")
+        or len(definition.tool_id) <= len("synthetic-")
+        or definition.interaction is not InteractionKind.ANALYSIS
+        or definition.min_risk is not RiskLevel.ANALYSIS_ONLY
+    ):
+        raise OrchestrationError("primitive preflight supports synthetic ANALYSIS_ONLY tools only")
     if type(arguments) is not dict:
         raise OrchestrationError("synthetic arguments must be an ordinary dict")
     if any(type(key) is not str for key in arguments):
