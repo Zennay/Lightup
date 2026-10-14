@@ -83,6 +83,89 @@ class ReviewTests(unittest.TestCase):
                 self.assert_denied(review_schema({"tools": [claim]}),
                                    "REVIEW_ONLY")
 
+    def test_real_lab_handlers_route_exact_arguments_to_mock_producers(self):
+        """Observe argument mapping without invoking any target transport."""
+        sys.path.insert(0, str(ROOT / "src"))
+        from lightup.ai.orchestration import RunContext
+        from lightup.workers import http_baseline as http
+        from lightup.workers import tls_baseline as tls
+        from lightup.workers import service_inventory as svc
+
+        context = RunContext.for_lab("synthetic-destination-flow")
+        url = "http://127.0.0.1:18080/fixture"
+        host = "127.0.0.1"
+        http_observation = http.BaselineObservation(
+            url=url, status=200, headers=(), issues=())
+        tls_observation = tls.TlsObservation(
+            host=host, port=10443, protocol="TLSv1.3",
+            cipher="TLS_AES_128_GCM_SHA256", chain_trusted=True, issues=())
+
+        # Defense in depth: every intended producer is mocked AND the
+        # transport entry points raise before any actual connection.
+        with (
+            mock.patch("socket.socket",
+                       side_effect=AssertionError("no socket allowed")) as raw_socket,
+            mock.patch("socket.create_connection",
+                       side_effect=AssertionError("no TCP allowed")) as tcp,
+            mock.patch.object(http, "HTTPConnection",
+                              side_effect=AssertionError("no HTTP allowed")) as raw_http,
+            mock.patch.object(http, "observe",
+                              return_value=http_observation) as http_producer,
+            mock.patch.object(tls, "observe",
+                              return_value=tls_observation) as tls_producer,
+            mock.patch.object(svc, "inventory",
+                              return_value={80: False, 443: True}) as svc_producer,
+        ):
+            h = http.run_http_baseline(context, {"url": url})
+            t = tls.run_tls_baseline(context, {"host": host, "port": 10443})
+            i = svc.run_service_inventory(
+                context, {"host": host, "ports": "80,443"})
+            http_producer.assert_called_once_with(url)
+            tls_producer.assert_called_once_with(host, 10443)
+            svc_producer.assert_called_once_with(host, (80, 443))
+            self.assertEqual(json.loads(h.evidence_payload)["url"], url)
+            self.assertEqual(json.loads(t.evidence_payload)["port"], 10443)
+            self.assertEqual(json.loads(i.evidence_payload)["host"], host)
+            self.assertEqual(json.loads(i.evidence_payload)["results"],
+                             {"80": False, "443": True})
+            raw_socket.assert_not_called()
+            tcp.assert_not_called()
+            raw_http.assert_not_called()
+
+    def test_real_lab_handlers_deny_nonlab_context_before_any_producer(self):
+        """Lab handler defense-in-depth is independent of claimed metadata."""
+        from dataclasses import replace
+        sys.path.insert(0, str(ROOT / "src"))
+        from lightup.ai.orchestration import RunContext
+        from lightup.labeval import LabIsolationError
+        from lightup.workers import http_baseline as http
+        from lightup.workers import tls_baseline as tls
+        from lightup.workers import service_inventory as svc
+
+        context = replace(RunContext.for_lab("synthetic-denial"),
+                          is_lab=False)
+        handlers = (
+            (http.run_http_baseline, {"url": "http://127.0.0.1:18080/"}),
+            (tls.run_tls_baseline, {"host": "127.0.0.1", "port": 10443}),
+            (svc.run_service_inventory,
+             {"host": "127.0.0.1", "ports": "80,443"}),
+        )
+        with (
+            mock.patch.object(http, "observe") as h_observe,
+            mock.patch.object(tls, "observe") as t_observe,
+            mock.patch.object(svc, "inventory") as s_inventory,
+            mock.patch("socket.create_connection",
+                       side_effect=AssertionError("no network")) as tcp,
+        ):
+            for handler, arguments in handlers:
+                with self.subTest(handler=handler.__name__):
+                    with self.assertRaises(LabIsolationError):
+                        handler(context, arguments)
+            h_observe.assert_not_called()
+            t_observe.assert_not_called()
+            s_inventory.assert_not_called()
+            tcp.assert_not_called()
+
     def test_no_source_truth_can_be_inferred(self):
         fake = fixture()
         fake["tools"][0]["tool_id"] = "unknown_but_well_formed"
