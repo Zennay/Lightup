@@ -37,8 +37,10 @@ def _expect_ipv4(number: int) -> tuple[str, str]:
 def _expect_ipv6(number: int) -> tuple[str, str]:
     if number == 1:
         return "REVIEW_ONLY", "LOOPBACK"
-    # ULA fc00::/7 means exactly the 7 leading bits 1111110.
-    if number > (0xFC << 120) and number >> 121 == 0b1111110:
+    # ULA fc00::/7: exact 7 leading bits 1111110. Independently
+    # reject all-zero /64 interface identifiers (potential subnet-router
+    # anycast) rather than treating them as ordinary reviewed hosts.
+    if number >> 121 == 0b1111110 and (number & ((1 << 64) - 1)) != 0:
         return "REVIEW_ONLY", "PRIVATE_USE"
     return "HOLD", "UNTRUSTED"
 
