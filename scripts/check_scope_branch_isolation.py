@@ -16,6 +16,7 @@ OWNED = re.compile(
     r"scripts/check_scope_[a-z0-9_]+\.py)\Z"
 )
 MAX_FILES = 16
+MAX_TEXT_BYTES = 256 * 1024
 
 
 def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
@@ -97,6 +98,25 @@ def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
         metadata, sep, actual = tree.stdout[:-1].partition(b"\t")
         if not sep or actual != raw or not re.fullmatch(rb"100644 blob [0-9a-f]{40}", metadata):
             return "INVALID_TREE_ENTRY", len(fields) // 2
+        # A new .py/.md file must be a bounded ordinary text blob, never a
+        # giant/binary fixture hidden behind an otherwise innocuous path.
+        object_id = metadata.rsplit(b" ", 1)[-1].decode("ascii")
+        blob_size = _git(repo, "cat-file", "-s", object_id)
+        raw_size = blob_size.stdout.strip()
+        if blob_size.returncode or not raw_size.isdigit() or len(raw_size) > 10:
+            return "INVALID_BLOB_SIZE", len(fields) // 2
+        size = int(raw_size)
+        if size > MAX_TEXT_BYTES:
+            return "ADDED_FILE_TOO_LARGE", len(fields) // 2
+        content = _git(repo, "cat-file", "blob", object_id)
+        if content.returncode or len(content.stdout) != size:
+            return "INVALID_BLOB_DATA", len(fields) // 2
+        try:
+            content.stdout.decode("utf-8", "strict")
+        except UnicodeDecodeError:
+            return "NONCANONICAL_TEXT", len(fields) // 2
+        if b"\x00" in content.stdout:
+            return "NONCANONICAL_TEXT", len(fields) // 2
     if changed != set(expected):
         return "OWNERSHIP_MANIFEST_MISMATCH", len(fields) // 2
     if _git(repo, "diff", "--check", "--no-ext-diff", "--no-textconv", base, head, "--").returncode:
