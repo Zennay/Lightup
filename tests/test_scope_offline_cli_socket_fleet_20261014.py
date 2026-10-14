@@ -65,7 +65,15 @@ _real_open = builtins.open
 _real_io_open = io.open
 _real_path_open = pathlib.Path.open
 _real_os_open = os.open
+_real_os_close = os.close
 _real_fdopen = os.fdopen
+# Track only file descriptors opened through the allowlisted path admission.
+# The numeric fd itself is untrusted until tied to that safe open operation.
+_ADMITTED_READ_FDS = set()
+_FD_READ_ORIGINALS = {
+    name: getattr(os, name) for name in ("read", "readv", "pread", "preadv")
+    if hasattr(os, name)
+}
 
 def _read_only_mode(mode):
     return type(mode) is str and not any(c in mode for c in "wax+")
@@ -106,7 +114,22 @@ def checked_os_open(path, flags, *args, **kwargs):
     if (type(flags) is not int or flags & deny_mask
             or not _allowed_read(path) or kwargs.get("dir_fd") is not None):
         forbidden()
-    return _real_os_open(path, flags, *args, **kwargs)
+    fd = _real_os_open(path, flags, *args, **kwargs)
+    _ADMITTED_READ_FDS.add(fd)
+    return fd
+
+def checked_os_close(fd):
+    try:
+        return _real_os_close(fd)
+    finally:
+        _ADMITTED_READ_FDS.discard(fd)
+
+def _guarded_descriptor_read(name, original):
+    def guarded(fd, *args, **kwargs):
+        if type(fd) is not int or fd not in _ADMITTED_READ_FDS:
+            forbidden()
+        return original(fd, *args, **kwargs)
+    return guarded
 
 def checked_fdopen(fd, mode="r", *args, **kwargs):
     # An inherited FD is unbound to our three reviewed file identities.
@@ -116,7 +139,15 @@ builtins.open = checked_open
 io.open = checked_io_open
 pathlib.Path.open = checked_path_open
 os.open = checked_os_open
+os.close = checked_os_close
 os.fdopen = checked_fdopen
+for _name, _original in _FD_READ_ORIGINALS.items():
+    setattr(os, _name, _guarded_descriptor_read(_name, _original))
+# A previously admitted numeric fd could be retargeted by dup2/dup3;
+# fail hard rather than letting its stale allowlist membership survive.
+for _name in ("dup", "dup2", "dup3"):
+    if hasattr(os, _name):
+        setattr(os, _name, forbidden)
 for name in ("write_text", "write_bytes", "touch", "mkdir",
              "rename", "replace", "unlink", "rmdir", "symlink_to",
              "hardlink_to", "chmod", "lchmod"):
@@ -440,6 +471,41 @@ class OfflineReviewCliSocketFleetTests(unittest.TestCase):
             with self.subTest(statement=statement):
                 program = (
                     "import io, os, pathlib\n"
+                    "try:\n"
+                    f"    {statement}\n"
+                    "except BaseException:\n"
+                    "    pass\n"
+                    "print('UNEXPECTED_EXECUTION')\n"
+                )
+                proc = subprocess.run(
+                    [sys.executable, "-B", "-c", program], cwd=self.root,
+                    env=self.env, capture_output=True, check=False, timeout=15,
+                )
+                self.assertEqual(proc.returncode, 92, statement)
+                self.assertEqual(proc.stdout, b"")
+                self.assertEqual(proc.stderr, b"")
+                self.assertEqual(self.fingerprint(), before)
+
+
+    def test_uncatchable_inherited_descriptor_reads_and_rebindings(self):
+        # Untrusted numeric descriptors were never admitted by guarded
+        # os.open(). Native fd reads must be rejected before observation.
+        variants = (
+            ("read", "os.read(0, 1)"),
+            ("readv", "os.readv(0, [bytearray(1)])"),
+            ("pread", "os.pread(0, 1, 0)"),
+            ("preadv", "os.preadv(0, [bytearray(1)], 0)"),
+            ("dup", "os.dup(0)"),
+            ("dup2", "os.dup2(0, 7)"),
+            ("dup3", "os.dup3(0, 7, 0)"),
+        )
+        before = self.fingerprint()
+        for api, statement in variants:
+            if not hasattr(os, api):
+                continue
+            with self.subTest(api=api):
+                program = (
+                    "import os\n"
                     "try:\n"
                     f"    {statement}\n"
                     "except BaseException:\n"
