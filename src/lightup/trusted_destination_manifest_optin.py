@@ -208,6 +208,10 @@ class TrustedDestinationManifest:
         if (type(registry._tools) is not dict or registry._tools is not self._registry_map
                 or type(definition.tool_id) is not str):
             _deny()
+        # A forged tuple's elements may run arbitrary __eq__ during snapshot
+        # comparison; refuse replacement by identity before any comparisons.
+        if type(self._fields) is not tuple or definition.parameters is not self._parameters:
+            _deny()
         if (type(definition.capability_id) is not str
                 or type(definition.interaction) is not InteractionKind
                 or type(definition.min_risk) is not RiskLevel
