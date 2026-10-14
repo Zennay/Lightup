@@ -158,14 +158,10 @@ class CandidateLedgerTests(unittest.TestCase):
 
     def test_corrupt_identity_holds(self):
         self.ledger.issue(**self.items)
+        # Corrupt a non-tenant field while keeping tenant identity intact.
         self.db.execute(
-            "UPDATE lab_stepup_candidates_v1 SET client_id='other\\nclient' WHERE run_id='lab-run-1'"
-        )
-        self.db.commit()
-        # SQL literal contains a backslash; deny it by rejecting the actual newline.
-        self.db.execute(
-            "UPDATE lab_stepup_candidates_v1 SET client_id=? WHERE run_id=?",
-            ("other\nclient", "lab-run-1"),
+            "UPDATE lab_stepup_candidates_v1 SET asset=? WHERE run_id=?",
+            ("other\\nasset", "lab-run-1"),
         )
         self.db.commit()
         with self.assertRaises(CandidateHeld):
