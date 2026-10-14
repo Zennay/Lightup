@@ -15,7 +15,7 @@ Example from a **local checkout** with both actual commit SHAs filled in:
 ```sh
 python scripts/check_scope_branch_isolation.py --repo . \
   --base <immutable-base-sha> --head <immutable-head-sha> \
-  --require-current-head \
+  --require-current-head --require-clean-worktree \
   --allow scripts/check_scope_branch_isolation.py \
   --allow tests/test_scope_branch_isolation.py \
   --allow docs/scope-branch-isolation-review-20261014.md
@@ -29,12 +29,14 @@ Tests:
 python -m unittest discover -s tests -p 'test_scope_branch_isolation.py' -v
 ```
 
-All 40 test methods use disposable Git repositories or isolated fake Git subprocess failures, including oversize text, invalid UTF-8 and NUL-bearing Git blobs. They cover inherited Git env redirection, nested-checkout paths, overridden whitespace policy, honest HOLD receipts, and timeout behavior. Passing the checker verifies only local change-path constraints, **not contents, provenance of the supplied manifest, consent, safety of code added in files, exact-head hosted CI, permanent VPS execution, secure source changes, or release approval**. Final path/content review, security/privacy review, registered permanent VPS evidence, and explicit human decision remain independent prerequisites.
+All 45 test methods use disposable Git repositories or isolated fake Git subprocess failures, including oversize text, invalid UTF-8 and NUL-bearing Git blobs. They cover inherited Git env redirection, nested-checkout paths, overridden whitespace policy, honest HOLD receipts, and timeout behavior. Passing the checker verifies only local change-path constraints, **not contents, provenance of the supplied manifest, consent, safety of code added in files, exact-head hosted CI, permanent VPS execution, secure source changes, or release approval**. Final path/content review, security/privacy review, registered permanent VPS evidence, and explicit human decision remain independent prerequisites.
 
 This opt-in reviewer accepts ordinary printable multilingual UTF-8. It intentionally rejects Unicode general-category `Cf` (invisible formatting) and `Cc` except newline and tab, plus leading BOM, to reduce reviewer display ambiguity. This is a conservative offline admission policy, **not** a statement that rejected text is intrinsically malicious or that accepted text is safe to run.
 
 For review of a checked-out worker branch, use `--require-current-head` as shown above: it refuses an immutable head SHA that is not the checkout's current `HEAD`. Omitting the flag intentionally allows reviewing *historical* detached snapshots; such a review does not establish freshness and must never be described as a live branch audit.
 
-Name-status and peer-name Git diffs are streamed, never collected without a hard byte ceiling; an oversized listing or stream/process failure yields HOLD. The 40-test suite includes a real 2,050-path concurrent peer-branch canary and a low-ceiling read that must reject a name listing before returning it to the caller.
+Name-status and peer-name Git diffs are streamed, never collected without a hard byte ceiling; an oversized listing or stream/process failure yields HOLD. The 45-test suite includes a real 2,050-path concurrent peer-branch canary and a low-ceiling read that must reject a name listing before returning it to the caller.
 
 Important: a final Git tree that is clean is not proof that each intermediary worker commit stayed in the assigned scope. The history pass rejects add-then-delete, source-edit-then-revert, mode-escalate-then-revert, hidden Unicode, oversized or invalid intermediate text, transitory trailing whitespace, merges and overlong commit chains. The current branch's original immutable base must remain an ancestor and commits must form a single-parent chain. A valid series may revise its own originally added files; it may never borrow an existing production path. Passing this audit cannot authorize any actions outside lab review.
+
+For the additional **optional** checked-out-branch gate, combine `--require-current-head --require-clean-worktree`. This checks the actual checkout index and worktree (staged edits, unstaged edits and untracked non-ignored files) with fsmonitor disabled and a bounded read; any discrepancy produces a non-authorizing HOLD receipt. The historical commit review remains available without these flags. Ignored files and external state cannot be attested by this reviewer; even a clean checkout does not prove anything about consent, other branches, security, CI, or release authority.
