@@ -118,7 +118,7 @@ def nginx_config(root: Path, listen_port: int, upstream_port: int) -> str:
             not 1024 <= upstream_port <= 65535 or
             listen_port == upstream_port):
         raise ValueError("invalid synthetic port")
-    if type(root) is not Path or not root.is_absolute():
+    if not isinstance(root, Path) or not root.is_absolute():
         raise ValueError("invalid temporary directory")
     # Path comes solely from TemporaryDirectory and is not user-controlled.
     pid_path = root / "nginx.pid"
