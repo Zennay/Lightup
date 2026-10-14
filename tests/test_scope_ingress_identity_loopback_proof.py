@@ -342,11 +342,11 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
                 result["untrusted_header_forwarded"] = True
             return result
         with patch.object(fixture.shutil, "which",
-                          return_value="/usr/sbin/nginx"), \\
+                          return_value="/usr/sbin/nginx"), \
              patch.object(fixture.importlib.util, "find_spec",
-                          return_value=object()), \\
+                          return_value=object()), \
              patch.object(fixture, "_free_port",
-                          side_effect=(28211, 28212)), \\
+                          side_effect=(28211, 28212)), \
              patch.object(fixture.subprocess, "run") as check, \\
              patch.object(fixture.subprocess, "Popen",
                           side_effect=(child1, child2)) as spawn, \\
@@ -389,12 +389,12 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
                 "precheck and both children must use identical isolated env",
             )
             self.assertEqual(
-                spawn.call_args_list[0].args[0][3],
+                spawn.call_args_list[0].args[0][4],
                 "127.0.0.1:28211",
             )
             self.assertIn(
-                "127.0.0.1:28212",
-                spawn.call_args_list[1].args[0][-2],
+                "daemon off;",
+                spawn.call_args_list[1].args[0][-1],
             )
             return requests.call_count
 
