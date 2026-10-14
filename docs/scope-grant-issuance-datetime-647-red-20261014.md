@@ -87,3 +87,36 @@ not implied authorization for this worker to edit owner files. Verify
 signed/tenant-bound consent and revocation separately. Run exact-head hosted
 Python3.11+3.14 plus real producer integrations and registered permanent
 VPS evidence before independent security/release review.
+
+## W3 — original real durable execution resolver after spoofed issuance
+
+The same owned real-SQLite regression module now adds **two further genuine
+expected-RED security tests** using the actual
+`DomainStore.resolve_authorization_for_execution(grant)` on original #554
+source, after a synthetic `datetime.isoformat` override persisted a start
+or expiry one year wider than approved in-memory.
+
+- An exact fixed UTC `utcnow()` fixture is patched **within the local
+  in-process test only**, to inspect a future instant after the intended
+  expiry or a past instant before intended start. The resolver can accept
+  the widened persisted grant on those otherwise unauthorized instants.
+  The required security assertion (resolver must return `None`) remains
+  **expected RED** on unmodified original source.
+- Two ordinary control tests demonstrate a normally issued canonical grant
+  returns `None` at those outside-window instants.
+- The separate assertion-witness integrity runner now exercises all
+  **six** expected-RED genuine source canaries. It refuses swallowed
+  `TypeError`, `ValueError`, SQLite exceptions or XPASS.
+- No actual `ToolExecutor`, capability dispatch, target, DNS, network,
+  real customer grant or production database is touched.
+
+These tests prove the durable issuance type bug has a real *authorization
+resolver consequence* in a disposable fixture, not just a differing SQLite
+string. The installed source **is not repaired**: original owner #554 must
+reject polymorphic issuance values before serialization and require
+every formerly RED test to become ordinary PASS after proper composition.
+
+Any green hosted run must be checked at the exact latest head **after**
+these new tests, alongside original producer integrations and the distinct
+permanent VPS jobs. Earlier hosted success was on superseded SHAs and is
+not final-head evidence.
