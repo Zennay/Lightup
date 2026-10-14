@@ -15,7 +15,7 @@ from lightup.capability_registry_drift_review import review_capability_registry_
 _MAX = 32768
 
 
-def read_local_regular_file(path: str) -> bytes:
+def read_local_regular_file(path: str) -> tuple[bytes, tuple[int, int]]:
     flags = os.O_RDONLY
     if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_NONBLOCK"):
         raise ValueError("safe file open not supported")
@@ -31,7 +31,7 @@ def read_local_regular_file(path: str) -> bytes:
             last.st_ino, last.st_dev, last.st_size, last.st_mtime_ns, last.st_ctime_ns
         ):
             raise ValueError("file modified during read")
-        return data
+        return data, (st.st_dev, st.st_ino)
     finally:
         os.close(fd)
 
@@ -41,8 +41,12 @@ def main(args: list[str]) -> int:
         receipt = {"status": "HOLD", "reason": "expected_two_local_manifest_paths"}
     else:
         try:
-            result = review_capability_registry_drift(read_local_regular_file(args[0]), read_local_regular_file(args[1]))
-            receipt = result.as_dict()
+            baseline, original_identity = read_local_regular_file(args[0])
+            candidate, candidate_identity = read_local_regular_file(args[1])
+            if original_identity == candidate_identity:
+                receipt = {"status": "HOLD", "reason": "same_file_is_not_two_snapshots"}
+            else:
+                receipt = review_capability_registry_drift(baseline, candidate).as_dict()
         except (OSError, ValueError, TypeError):
             receipt = {"status": "HOLD", "reason": "unreadable_local_manifest"}
     for key in ("authorization_verified", "permit_issued", "execution_enabled", "merge_approved", "release_approved"):
