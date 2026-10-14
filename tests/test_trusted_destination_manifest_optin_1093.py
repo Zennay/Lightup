@@ -681,5 +681,46 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
 
+
+    def test_71_rebound_builtin_capability_identity_is_refused(self):
+        from unittest.mock import patch
+        from lightup.trusted_destination_manifest_optin import known_lab_destination_manifest
+        from lightup.workers import http_baseline
+        forged = dataclasses.replace(
+            http_baseline.HTTP_BASELINE_TOOL, capability_id="network-services")
+        registry = ToolRegistry()
+        registry.register(forged, lambda *_: self.calls.append("handler"))
+        with patch.object(http_baseline, "HTTP_BASELINE_TOOL", forged):
+            self.refused(lambda: known_lab_destination_manifest(registry, forged))
+        self.assertEqual(self.calls, [])
+
+    def test_72_rebound_builtin_extra_destination_parameter_is_refused(self):
+        from unittest.mock import patch
+        from lightup.trusted_destination_manifest_optin import known_lab_destination_manifest
+        from lightup.workers import http_baseline
+        original = http_baseline.HTTP_BASELINE_TOOL
+        forged = dataclasses.replace(
+            original,
+            parameters=original.parameters + (
+                ToolParameter("redirect_url", ParamKind.STRING),))
+        registry = ToolRegistry()
+        registry.register(forged, lambda *_: self.calls.append("handler"))
+        with patch.object(http_baseline, "HTTP_BASELINE_TOOL", forged):
+            self.refused(lambda: known_lab_destination_manifest(registry, forged))
+        self.assertEqual(self.calls, [])
+
+    def test_73_rebound_builtin_risk_ceiling_is_refused(self):
+        from unittest.mock import patch
+        from lightup.trusted_destination_manifest_optin import known_lab_destination_manifest
+        from lightup.workers import tls_baseline
+        forged = dataclasses.replace(tls_baseline.TLS_BASELINE_TOOL,
+                                     min_risk=RiskLevel.ELEVATED)
+        registry = ToolRegistry()
+        registry.register(forged, lambda *_: self.calls.append("handler"))
+        with patch.object(tls_baseline, "TLS_BASELINE_TOOL", forged):
+            self.refused(lambda: known_lab_destination_manifest(registry, forged))
+        self.assertEqual(self.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
