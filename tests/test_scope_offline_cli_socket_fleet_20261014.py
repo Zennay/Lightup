@@ -201,12 +201,12 @@ class OfflineReviewCliSocketFleetTests(unittest.TestCase):
         for statement in variants:
             with self.subTest(statement=statement):
                 program = (
-                    "import os, subprocess\\n"
-                    "try:\\n"
-                    f"    {statement}\\n"
-                    "except BaseException:\\n"
-                    "    pass\\n"
-                    "print('UNEXPECTED_EXECUTION')\\n"
+                    "import os, subprocess\n"
+                    "try:\n"
+                    f"    {statement}\n"
+                    "except BaseException:\n"
+                    "    pass\n"
+                    "print('UNEXPECTED_EXECUTION')\n"
                 )
                 proc = subprocess.run(
                     [sys.executable, "-B", "-c", program], cwd=self.root,
