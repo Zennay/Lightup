@@ -1,0 +1,48 @@
+{
+  "revisions": [
+    {
+      "current": {
+        "grant_id": "synthetic-grant-001",
+        "client_id": "synthetic-tenant-001",
+        "engagement_id": "synthetic-engagement-001",
+        "approved_by": "synthetic-operator",
+        "reference": "offline-fixture-only",
+        "scope": {
+          "assets": [
+            "app.example.test",
+            "api.example.test"
+          ],
+          "excluded_assets": [],
+          "allowed_capabilities": [
+            "headers",
+            "tls"
+          ],
+          "max_risk": 3
+        },
+        "valid_from": "2026-11-01T08:00:00Z",
+        "valid_until": "2026-11-02T08:00:00Z",
+        "recurring_retest_allowed": false
+      },
+      "proposed": {
+        "grant_id": "synthetic-grant-001",
+        "client_id": "synthetic-tenant-001",
+        "engagement_id": "synthetic-engagement-001",
+        "approved_by": "synthetic-operator",
+        "reference": "offline-fixture-only",
+        "scope": {
+          "assets": [
+            "app.example.test"
+          ],
+          "excluded_assets": [],
+          "allowed_capabilities": [
+            "headers"
+          ],
+          "max_risk": 1
+        },
+        "valid_from": "2026-11-01T09:00:00Z",
+        "valid_until": "2026-11-02T07:00:00Z",
+        "recurring_retest_allowed": false
+      }
+    }
+  ]
+}
