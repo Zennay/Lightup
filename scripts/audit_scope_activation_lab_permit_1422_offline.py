@@ -193,6 +193,8 @@ def audit() -> dict[str, object]:
             # Four real-source explicit public scope decisions remain separate
             # from LAB_ONLY. A policy that syntactically accepts a public
             # host/network can never convert it into a lab permit.
+            public_fixture_before_mints = synthetic_mints
+            public_fixture_before_invalid = invalid_mint_requests
             synthetic_owner = Authorization(
                 owner="synthetic-only", reference="NON_AUTHORITATIVE"
             )
@@ -232,8 +234,17 @@ def audit() -> dict[str, object]:
                     ScopeReason.EXPLICIT_NETWORK,
                 ),
             )
+            if (
+                synthetic_mints != public_fixture_before_mints
+                or invalid_mint_requests != public_fixture_before_invalid
+            ):
+                violations += 1
             for public_policy, public_target, expected_reason in public_cases:
                 checked += 1
+                # Include the policy decision AND later gate construction,
+                # not just issue(): either must not mint ahead of denial.
+                before_mints = synthetic_mints
+                before_invalid_requests = invalid_mint_requests
                 scope_result = public_policy.decide(public_target)
                 bad_scope = (
                     not scope_result.allowed
@@ -242,8 +253,6 @@ def audit() -> dict[str, object]:
                 public_gate = ActivationGate(
                     public_policy, ActivationPolicy(mode=ActivationMode.LAB_ONLY)
                 )
-                before_mints = synthetic_mints
-                before_invalid_requests = invalid_mint_requests
                 denied = False
                 try:
                     public_gate.issue(public_target, CAPABILITY)
@@ -274,7 +283,9 @@ def audit() -> dict[str, object]:
                 (future_owner, ScopeReason.AUTHORIZATION_EXPIRED),
             )
             for fake_auth, expected_reason in denied_public_cases:
-                for public_policy, public_target in (
+                denied_fixture_before_mints = synthetic_mints
+                denied_fixture_before_invalid = invalid_mint_requests
+                denied_fixtures = (
                     (
                         ScopePolicy(
                             allow_private_lab=False,
@@ -289,8 +300,16 @@ def audit() -> dict[str, object]:
                         ),
                         Target("203.0.113.77", authorization=fake_auth),
                     ),
+                )
+                if (
+                    synthetic_mints != denied_fixture_before_mints
+                    or invalid_mint_requests != denied_fixture_before_invalid
                 ):
+                    violations += 1
+                for public_policy, public_target in denied_fixtures:
                     checked += 1
+                    before_mints = synthetic_mints
+                    before_invalid_requests = invalid_mint_requests
                     decision = public_policy.decide(public_target)
                     bad_scope = (
                         decision.allowed or decision.reason is not expected_reason
@@ -299,8 +318,6 @@ def audit() -> dict[str, object]:
                         public_policy,
                         ActivationPolicy(mode=ActivationMode.LAB_ONLY),
                     )
-                    before_mints = synthetic_mints
-                    before_invalid_requests = invalid_mint_requests
                     denied = False
                     try:
                         denied_gate.issue(public_target, CAPABILITY)
