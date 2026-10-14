@@ -11,7 +11,7 @@ import unittest
 from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
-from check_scope_branch_isolation import inspect, main
+from check_scope_branch_isolation import _git_bounded_names, inspect, main
 
 
 class IsolationCheckTests(unittest.TestCase):
@@ -322,6 +322,33 @@ class IsolationCheckTests(unittest.TestCase):
         self.assertEqual(inspect(self.repo, self.base, head, (path,), (),
                                  require_current_head=1)[0],
                          "INVALID_CURRENT_HEAD_POLICY")
+
+    def test_git_name_diff_is_streamed_with_strict_byte_ceiling(self):
+        files = tuple(f"tests/test_scope_synthetic_{i:02d}.py" for i in range(12))
+        for path in files:
+            self.write(path, "synthetic\n")
+        head = self.commit()
+        command = ("diff", "--name-status", "--no-renames", "--no-ext-diff",
+                   "--no-textconv", "-z", self.base, head, "--")
+        over = _git_bounded_names(self.repo, *command, limit=64)
+        self.assertNotEqual(over.returncode, 0)
+        self.assertEqual(over.stdout, b"")
+        under = _git_bounded_names(self.repo, *command, limit=4096)
+        self.assertEqual(under.returncode, 0)
+        self.assertGreater(len(under.stdout), 64)
+        self.assertEqual(inspect(self.repo, self.base, head, files),
+                         ("ADDITIVE_PATHS_MATCH", len(files)))
+
+    def test_large_peer_change_set_fails_closed(self):
+        self.write("tests/test_scope_synthetic_review.py", "ours\n")
+        head = self.commit()
+        self.git("checkout", "-qb", "peer-big", self.base)
+        for i in range(2050):
+            self.write(f"docs/scope-peer-{i:04d}.md", "synthetic\n")
+        peer = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head,
+                                 ("tests/test_scope_synthetic_review.py",),
+                                 (peer,))[0], "UNBOUNDED_PEER_DIFF")
 
 if __name__ == "__main__":
     unittest.main()
