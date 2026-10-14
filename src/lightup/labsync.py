@@ -17,6 +17,7 @@ closed on any non-loopback/non-private target.
 from __future__ import annotations
 
 from .domain import AccessContext, DomainStore, EngagementRecord, FindingRecord
+from .labeval import LabIsolationError
 from .models import RetestStatus, Severity
 from .workers import http_baseline
 
@@ -27,6 +28,22 @@ _CHECK_ID_BY_TITLE = {
     for check_id, _header, title, _severity, _impact, _remediation
     in http_baseline.BASELINE_CHECKS
 }
+
+
+def _require_internal_lab_engagement(
+    store: DomainStore,
+    ctx: AccessContext,
+    engagement_id: str,
+) -> EngagementRecord:
+    """Return the exact durable internal-lab engagement or fail closed."""
+    ctx.require_operator("lab synchronization")
+    engagement = store.get_engagement(ctx, engagement_id)
+    client = store.get_client(ctx, engagement.client_id)
+    if client.name != LAB_CLIENT_NAME:
+        raise LabIsolationError(
+            "lab synchronization requires an engagement owned by the internal lab client"
+        )
+    return engagement
 
 
 def ensure_lab_engagement(
@@ -56,6 +73,7 @@ def persist_lab_findings(
     labrun_result: dict,
 ) -> list[FindingRecord]:
     """Store a lab run's findings as domain findings with evidence references."""
+    _require_internal_lab_engagement(store, ctx, engagement_id)
     records = []
     for finding in labrun_result["findings"]:
         asset = finding.get("target") or labrun_result.get("target", "")
@@ -87,6 +105,7 @@ def persist_coverage(
     Unknown stays unwritten: a later run must never downgrade an engagement's
     recorded coverage back to unknown by simply not touching a domain.
     """
+    _require_internal_lab_engagement(store, ctx, engagement_id)
     written = 0
     for capability_id, status in coverage_domains.items():
         if status == "unknown":
@@ -99,13 +118,30 @@ def persist_coverage(
 def retest_finding(
     store: DomainStore, ctx: AccessContext, finding: FindingRecord
 ) -> FindingRecord:
-    """Re-observe the lab target and update the finding's retest status."""
+    """Re-observe only the exact current persisted internal-lab finding."""
+    engagement = _require_internal_lab_engagement(store, ctx, finding.engagement_id)
+    if finding.client_id != engagement.client_id:
+        raise LabIsolationError("lab finding client does not match its engagement")
     check_id = _CHECK_ID_BY_TITLE.get(finding.title)
     if check_id is None:
         raise ValueError(
             f"finding {finding.finding_id!r} is not a known baseline check; "
             "automated retest is not available for it"
         )
+
+    persisted = next(
+        (
+            item
+            for item in store.list_findings(ctx, engagement_id=engagement.engagement_id)
+            if item.finding_id == finding.finding_id
+        ),
+        None,
+    )
+    if persisted is None:
+        raise LabIsolationError("retest finding is not persisted under the lab engagement")
+    if persisted != finding:
+        raise LabIsolationError("retest requires the exact current persisted lab finding")
+    finding = persisted
     observation = http_baseline.observe(finding.asset)
     still_present = check_id in {issue.check_id for issue in observation.issues}
     if not still_present:
