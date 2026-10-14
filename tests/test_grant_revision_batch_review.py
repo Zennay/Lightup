@@ -112,7 +112,12 @@ class GrantRevisionBatchReviewTests(unittest.TestCase):
         )
         receipt = review_grant_revision_batch(pairs)
         self.assertEqual(receipt.verdict, "HOLD")
-        self.assertEqual(receipt.reason_code, "network_identity_requires_separate_review")
+        # The strict per-grant parser denies a host:port label before
+        # reaching the later multi-tenant CIDR review; either way this
+        # must never produce a syntactically positive batch receipt.
+        self.assertEqual(receipt.reason_code, "revision_held")
+        self.assertEqual(receipt.reviewed_count, 0)
+        self.assertFalse(receipt.execution_enabled)
 
     def test_duplicate_grant_id_denied(self):
         pair = self.make_pair(grant_id="g1", client="client1", assets=("one.example.test",))
