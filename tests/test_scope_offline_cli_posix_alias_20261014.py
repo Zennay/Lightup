@@ -34,6 +34,8 @@ except ImportError:
 
 if _posix is not None:
     _importer_listdir = _posix.listdir
+    import importlib._bootstrap_external as _importlib_bootstrap
+    _TRUSTED_IMPORTER_CODE = _importlib_bootstrap.FileFinder._fill_cache.__code__
     for _name in (
         "open", "read", "readv", "pread", "preadv",
         "write", "writev", "pwrite", "pwritev",
@@ -53,11 +55,7 @@ if _posix is not None:
         import sys as _sys
         try:
             _frame = _sys._getframe(1)
-            if (_frame.f_code.co_name == "_fill_cache"
-                    and _frame.f_globals.get("__name__") in (
-                        "importlib._bootstrap_external",
-                        "_frozen_importlib_external",
-                    )):
+            if _frame.f_code is _TRUSTED_IMPORTER_CODE:
                 return _importer_listdir(*args, **kwargs)
         except (ValueError, AttributeError):
             pass
@@ -106,6 +104,10 @@ class OfflineScopePosixAliasTests(unittest.TestCase):
             ("read", 'posix.read(0, 1)'),
             ("write", 'posix.write(1, b"synthetic")'),
             ("listdir", 'posix.listdir(".")'),
+            ("spoofed_importer_name",
+             'ns={"__name__":"importlib._bootstrap_external","posix":posix}; '
+             'exec("def _fill_cache():\\n return posix.listdir(\\\".\\\")", ns); '
+             'ns["_fill_cache"]()'),
             ("scandir", 'posix.scandir(".")'),
             ("dup", 'posix.dup(0)'),
             ("dup2", 'posix.dup2(0, 7)'),
