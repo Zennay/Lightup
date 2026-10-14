@@ -149,6 +149,38 @@ def _enforce_private_ancestors(path: str) -> None:
         directory = os.path.dirname(directory)
 
 
+def _open_private_beneath(path: str) -> int:
+    """Open each path component by descriptor, refusing symlink swaps.
+
+    This is POSIX local-file hardening for private review ONLY. It does not
+    authenticate file contents or turn a packet into verified authorization.
+    """
+    required = ("O_NOFOLLOW", "O_DIRECTORY")
+    if (not all(hasattr(os, key) for key in required)
+            or os.open not in getattr(os, "supports_dir_fd", ())):
+        raise PacketHold("PRIVATE_PATH_UNSUPPORTED")
+    components = [name for name in os.path.abspath(path).split(os.sep) if name]
+    if not components:
+        raise PacketHold("INPUT_UNAVAILABLE")
+    directory_flags = (os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+                       | getattr(os, "O_CLOEXEC", 0))
+    file_flags = (os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0)
+                  | getattr(os, "O_CLOEXEC", 0))
+    directory_fd = None
+    try:
+        directory_fd = os.open(os.sep, directory_flags)
+        for name in components[:-1]:
+            new_fd = os.open(name, directory_flags, dir_fd=directory_fd)
+            os.close(directory_fd)
+            directory_fd = new_fd
+        return os.open(components[-1], file_flags, dir_fd=directory_fd)
+    except (OSError, OverflowError, ValueError):
+        raise PacketHold("INPUT_UNAVAILABLE") from None
+    finally:
+        if directory_fd is not None:
+            os.close(directory_fd)
+
+
 def _enforce_private_file(info: os.stat_result) -> None:
     """Optional POSIX data-minimisation gate; not proof of trusted origin."""
     if (not hasattr(os, "geteuid") or info.st_uid != os.geteuid()
@@ -172,7 +204,7 @@ def read_packet(path: str, *, require_private_file: bool = False) -> bytes:
         if require_private_file:
             _enforce_private_file(before)
         flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
-        fd = os.open(path, flags)
+        fd = _open_private_beneath(path) if require_private_file else os.open(path, flags)
         info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode):
             raise PacketHold("NOT_REGULAR_FILE")
