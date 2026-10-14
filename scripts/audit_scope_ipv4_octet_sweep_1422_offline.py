@@ -156,15 +156,64 @@ def review_ipv4_octet_sweep(policy_factory=ScopePolicy):
     return _receipt("REVIEW_ONLY", checked, "MATCHED_NON_AUTHORIZING")
 
 
+# Fixed advisory receipt schema; output is reconstructed from validated
+# builtin values rather than trusting a producer's returned dictionary.
+_HOLD_CODES = frozenset({
+    "RESULT_TYPE_MISMATCH", "HOST_IDENTITY_MISMATCH",
+    "SCOPE_CLASSIFICATION_MISMATCH", "EVALUATION_EXCEPTION",
+    "SAMPLE_COUNT_MISMATCH", "ARGUMENT_REJECTED",
+    "RECEIPT_INTEGRITY_FAILURE",
+})
+_RECEIPT_KEYS = frozenset({
+    "status", "diagnostic_code", "checked_count", "total_count",
+    "authorization_verified", "permit_issued", "execution_enabled",
+    "merge_approved", "release_approved",
+})
+_FALSE_FLAGS = (
+    "authorization_verified", "permit_issued", "execution_enabled",
+    "merge_approved", "release_approved",
+)
+
+
+def _safe_cli_receipt(candidate):
+    """Do not print arbitrary or authorizing objects from a diagnostic."""
+    try:
+        if type(candidate) is not dict or frozenset(candidate) != _RECEIPT_KEYS:
+            return _receipt("HOLD", 0, "RECEIPT_INTEGRITY_FAILURE")
+        status = candidate["status"]
+        code = candidate["diagnostic_code"]
+        count = candidate["checked_count"]
+        total = candidate["total_count"]
+        if (
+            type(status) is not str or type(code) is not str
+            or type(count) is not int or type(total) is not int
+            or total != TOTAL_DECISIONS
+            or any(type(candidate[name]) is not bool or candidate[name] is not False
+                   for name in _FALSE_FLAGS)
+        ):
+            return _receipt("HOLD", 0, "RECEIPT_INTEGRITY_FAILURE")
+        if status == "HOLD" and count == 0 and code in _HOLD_CODES:
+            return _receipt("HOLD", 0, code)
+        if (status == "REVIEW_ONLY" and count == TOTAL_DECISIONS
+                and code == "MATCHED_NON_AUTHORIZING"):
+            return _receipt("REVIEW_ONLY", count, code)
+    except Exception:
+        pass
+    return _receipt("HOLD", 0, "RECEIPT_INTEGRITY_FAILURE")
+
+
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
     # Exact, zero-argument interface. Never read stdin or echo raw input.
-    receipt = (
-        review_ipv4_octet_sweep()
-        if type(argv) is list and len(argv) == 0
-        else _receipt("HOLD", 0, "ARGUMENT_REJECTED")
-    )
+    if type(argv) is list and len(argv) == 0:
+        try:
+            candidate = review_ipv4_octet_sweep()
+        except Exception:
+            candidate = _receipt("HOLD", 0, "EVALUATION_EXCEPTION")
+    else:
+        candidate = _receipt("HOLD", 0, "ARGUMENT_REJECTED")
+    receipt = _safe_cli_receipt(candidate)
     print(json.dumps(receipt, sort_keys=True, separators=(",", ":")))
     # REVIEW_ONLY also exits nonzero: it is NOT consent or release.
     return 3 if receipt["status"] == "REVIEW_ONLY" else 2
