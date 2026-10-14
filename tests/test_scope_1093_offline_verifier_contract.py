@@ -76,6 +76,30 @@ class TestOfflineVerificationContract(unittest.TestCase):
         self.assertFalse(data["offline_regression_passed"])
         self.assertEqual(data["skipped"], 91)
 
+    def test_expected_failure_is_not_a_green_result(self):
+        class Case(unittest.TestCase):
+            @unittest.expectedFailure
+            def runTest(self):
+                self.fail("synthetic expected failure")
+        code, data, line = self._call(self._suite(Case))
+        self.assertEqual(code, 1)
+        self.assertFalse(data["offline_regression_passed"])
+        self.assertEqual(data["expected_failures"], 91)
+        self.assertEqual(data["unexpected_successes"], 0)
+        self.assertNotIn("synthetic expected failure", line)
+
+    def test_unexpected_success_is_not_a_green_result(self):
+        class Case(unittest.TestCase):
+            @unittest.expectedFailure
+            def runTest(self):
+                pass
+        code, data, line = self._call(self._suite(Case))
+        self.assertEqual(code, 1)
+        self.assertFalse(data["offline_regression_passed"])
+        self.assertEqual(data["unexpected_successes"], 1)
+        self.assertEqual(data["expected_failures"], 0)
+        self.assertNotIn("unexpected success", line)
+
     def test_failed_test_is_sanitized_and_denied(self):
         class Case(unittest.TestCase):
             def runTest(self):
