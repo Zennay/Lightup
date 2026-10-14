@@ -107,6 +107,12 @@ def _require_nonempty_text(name: str, value: object) -> str:
     return value
 
 
+def _require_bool(name: str, value: object) -> bool:
+    if type(value) is not bool:
+        raise ValueError(f"{name} must be an exact boolean")
+    return value
+
+
 def _canonical_digest(payload: dict) -> str:
     return sha256(
         json.dumps(
@@ -146,16 +152,33 @@ def _validate_authorization(
         raise ValueError("authorization source SHA does not match requested source")
     if authorization.verdict_sha256 != decision.verdict_sha256:
         raise ValueError("authorization verdict digest does not match supplied verdict")
-    if not authorization.reporting_allowed:
+
+    reporting_allowed = _require_bool(
+        "authorization.reporting_allowed", authorization.reporting_allowed
+    )
+    merge_allowed = _require_bool(
+        "authorization.merge_allowed", authorization.merge_allowed
+    )
+    deployment_allowed = _require_bool(
+        "authorization.deployment_allowed", authorization.deployment_allowed
+    )
+    if reporting_allowed is not True:
         raise ValueError("GitHub Check reporting is not authorized")
-    if authorization.merge_allowed or authorization.deployment_allowed:
+    if merge_allowed or deployment_allowed:
         raise ValueError(
             "check-publication authorization must not grant merge or deployment"
         )
 
-    if decision.deployment_authorized:
+    decision_deployment_authorized = _require_bool(
+        "decision.deployment_authorized", decision.deployment_authorized
+    )
+    decision_attack_path_mutation_allowed = _require_bool(
+        "decision.attack_path_mutation_allowed",
+        decision.attack_path_mutation_allowed,
+    )
+    if decision_deployment_authorized:
         raise ValueError("CI verdict must not authorize deployment")
-    if decision.attack_path_mutation_allowed:
+    if decision_attack_path_mutation_allowed:
         raise ValueError("CI verdict must not allow attack-path mutation")
     if decision.future_semantics != "unresolved":
         raise ValueError("CI verdict future_semantics must remain unresolved")
