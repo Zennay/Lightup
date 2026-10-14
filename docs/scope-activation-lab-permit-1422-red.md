@@ -55,8 +55,12 @@ return a nonreflective HOLD without reading stdin.
 - Four additional real `ScopePolicy` + `ActivationGate.issue` controls:
   syntactically allowed **explicit host/network** with a synthetic owner
   reference or with deliberately disabled public-authorization policy
-  never crosses into a LAB_ONLY permit. This does not create actual
-  consent or exercise AUTHORIZED mode; token creation is a hard failure.
+  never crosses into a LAB_ONLY permit. They run through both the separate
+  direct source tests **and the CLI auditor**: 46 private-lab/PLAN decisions
+  plus four explicit-public decisions = 50 total synthetic observations.
+  Even a fake token creation *before* public gate denial increments HOLD.
+  This does not create actual consent or exercise AUTHORIZED mode;
+  token creation is a hard failure.
 - `PLAN_ONLY` terminally rejects all sixteen fixtures.
 - CLI real subprocess exit/status/privacy contracts and source-error
   fail-closed behavior.
