@@ -76,8 +76,11 @@ return a nonreflective HOLD without reading stdin.
   `token_urlsafe(24)` byte-length request is an **exact built-in integer**.
   A mock returning the same fixed token must not conceal a zero/short,
   longer/different, boolean, floating-point or textual entropy request.
-  Seven alternate request-shape mutants construct otherwise valid fake
-  in-memory permits, all of which must increase HOLD violations. This
+  Seven alternative-length mutants and six positional/keyword-shape
+  mutants construct otherwise valid fake in-memory permits. Explicit
+  built-in integer 24 **as the sole positional argument** is required;
+  omitting it and relying on the optional default is not accepted.
+  Every mutant must increase HOLD violations. This
   remains a unit-level regression, not cryptographic entropy attestation.
 - Python-only defense-in-depth during audit: blocks ordinary
   `builtins.open`, `Path.open`, `os.open`, `os.write`, `os.system`,
