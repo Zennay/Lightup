@@ -188,6 +188,10 @@ def audit_installed_scope(policy_factory=ScopePolicy) -> dict[str, object]:
                 return _receipt("HOLD")
 
         for literal in NOT_LAB:
+            # Pin the exact canonical host on every negative decision as well
+            # as its denial reason. A denied decision must never relabel a
+            # public/reserved target as a trusted lab host.
+            expected_host = literal[1:-1] if literal.startswith("[") else literal
             admitted = enabled.decide(Target(literal))
             locked = disabled.decide(Target(literal))
             missing_grant = ungranted_explicit.decide(Target(literal))
@@ -202,7 +206,10 @@ def audit_installed_scope(policy_factory=ScopePolicy) -> dict[str, object]:
             )):
                 return _receipt("HOLD")
             if (
-                missing_grant.allowed is not False
+                any(item.normalized_host != expected_host for item in (
+                    admitted, locked, missing_grant, expired_grant, future_grant
+                ))
+                or missing_grant.allowed is not False
                 or missing_grant.reason is not ScopeReason.AUTHORIZATION_MISSING
                 or expired_grant.allowed is not False
                 or expired_grant.reason is not ScopeReason.AUTHORIZATION_EXPIRED
