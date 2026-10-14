@@ -126,5 +126,42 @@ class IsolationCheckTests(unittest.TestCase):
                          ("tests/test_scope_synthetic_review.py",))[0], "PATCH_CHECK_FAILED")
 
 
+    def test_peer_new_file_collision_rejected(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "owned\n")
+        head = self.commit()
+        self.git("checkout", "-qb", "peer", self.base)
+        self.write(path, "other worker\n")
+        peer = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,), (peer,))[0],
+                         "PEER_PATH_COLLISION")
+
+    def test_disjoint_peer_does_not_grant_release(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "owned\n")
+        head = self.commit()
+        self.git("checkout", "-qb", "peer", self.base)
+        self.write("docs/scope-other-worker.md", "different\n")
+        peer = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,), (peer,)),
+                         ("ADDITIVE_PATHS_MATCH", 1))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = main(["--repo", str(self.repo), "--base", self.base,
+                         "--head", head, "--allow", path, "--peer", peer])
+        self.assertEqual(code, 0)
+        receipt = json.loads(out.getvalue())
+        self.assertEqual(receipt["peer_heads_checked"], 1)
+        self.assertIs(receipt["release_approved"], False)
+
+    def test_untrusted_peer_metadata_rejected(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "owned\n")
+        head = self.commit()
+        for peer in ("main", self.base, head):
+            self.assertEqual(inspect(self.repo, self.base, head, (path,), (peer,))[0],
+                             "INVALID_PEER_REFS")
+
+
 if __name__ == "__main__":
     unittest.main()
