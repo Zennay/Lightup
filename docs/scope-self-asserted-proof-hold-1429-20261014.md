@@ -74,6 +74,10 @@ New isolated tests check all synthetic claim labels, both coherent and rejected 
 
 The six false authorization markers were previously held in an ordinary mutable module dictionary. An in-process import could accidentally mutate a denial value to `True`, remove a key or add an unreviewed field. The W71 sealed stdout serializer would then conservatively suppress malformed output, but **`review_bytes` itself could return a misleading object** to a caller. The false-flag template is now a read-only `MappingProxyType`: all six known entries remain literal false, and attempts to set, delete or add a key raise `TypeError`. Independent tests exercise every marker and verify ordinary real subprocess output continues to be the unchanged canonical HOLD-only report. This only defends accidental mutation of the existing object; arbitrary hostile Python code able to rebind module globals is beyond this script's authority boundary and cannot be regarded as a hardened sandbox.
 
+## W73 — simultaneous backpressure and invalid-argv EOF independence (2026-10-14)
+
+A partial secret-bearing producer can keep fd0 open forever **at the same time** that an undrained parent keeps fd1 completely full. Two independent I/O budgets must compose to finite total process lifetime without stack trace, permission promotion, or lasting mutation of the parent writer's status flags. A genuine child-process acceptance now pre-fills a disposable stdout pipe, restores its parent's blocking state to its original value, deliberately sends only a partial `SECRET-...` stdin packet without EOF, and asserts the child terminates with **exit 2 within 7.5 seconds**, stderr empty and the original parent pipe's blocking mode unchanged. An additional real-process test passes bad argv with an intentionally **unclosed** secret-bearing stdin writer, requiring a sealed privacy-minimal rejected HOLD line without reading or echoing that input. All descriptors are local synthetic test pipes. This validates bounded **combined** transport failure, not any claimed CI/ingress evidence or actual authorization.
+
 ## Execution and fail-closed result
 
 ```sh
