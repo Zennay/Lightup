@@ -376,6 +376,7 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
             if poison and kwargs.get("alternate_name") == "Authorization":
                 result["untrusted_header_forwarded"] = True
             return result
+        captured_files = {}
         with patch.object(fixture.shutil, "which",
                           return_value="/usr/sbin/nginx"), \
              patch.object(fixture.importlib.util, "find_spec",
@@ -393,6 +394,19 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
                  "PYTHONPATH": "/tmp/unsafe",
                  "LD_PRELOAD": "/tmp/unsafe.so",
              }):
+            def inspect_disposable_child(_child, port):
+                if port == 28211:
+                    config_path = Path(spawn.call_args_list[0].args[0][4])
+                    self.assertTrue(config_path.is_file())
+                    captured_files["gunicorn"] = config_path.read_text()
+                    captured_files["nginx"] = (
+                        config_path.parent / "nginx.conf"
+                    ).read_text()
+                    captured_files["wsgi"] = (
+                        config_path.parent / "synthetic_identity_app.py"
+                    ).read_text()
+                    captured_files["root"] = config_path.parent
+            ready.side_effect = inspect_disposable_child
             check.return_value.returncode = 0
             if poison or bad_nonce:
                 with self.assertRaises(RuntimeError):
@@ -415,6 +429,15 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
             self.assertIs(type(nonce), str)
             self.assertEqual(len(nonce), 48)
             self.assertTrue(all(character in "0123456789abcdef" for character in nonce))
+            self.assertEqual(
+                captured_files["gunicorn"], fixture.gunicorn_config(28211)
+            )
+            self.assertEqual(
+                captured_files["nginx"],
+                fixture.nginx_config(captured_files["root"], 28212, 28211),
+            )
+            self.assertIn(nonce, captured_files["wsgi"])
+            self.assertNotIn("STATIC_NONCE_PLACEHOLDER", captured_files["wsgi"])
             envs = [check.call_args.kwargs["env"]] + [
                 call.kwargs["env"] for call in spawn.call_args_list
             ]
