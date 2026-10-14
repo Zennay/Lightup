@@ -338,9 +338,12 @@ def _emit_receipt(receipt: object) -> bool:
                 count = os.write(fd, data[offset:])
             except BlockingIOError:
                 continue
-            if count <= 0:
+            # A compact receipt must be emitted as one atomic pipe write.
+            # Never retry a short positive write: a later piece could be
+            # interleaved with data from another writer on the shared pipe.
+            if count != len(data):
                 break
-            offset += count
+            offset = count
         success = offset == len(data)
     except (OSError, ValueError, TypeError):
         success = False
