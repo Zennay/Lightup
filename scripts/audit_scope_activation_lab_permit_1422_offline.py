@@ -61,10 +61,16 @@ def audit() -> dict[str, object]:
     violations = 0
     checked = 0
     synthetic_mints = 0
+    invalid_mint_requests = 0
 
     def _synthetic_mint(_length: int = 24) -> str:
-        nonlocal synthetic_mints
+        nonlocal synthetic_mints, invalid_mint_requests
         synthetic_mints += 1
+        # Source currently calls token_urlsafe(24). A zero-length,
+        # type-confused or downgraded entropy request cannot pass merely
+        # because this test deliberately returns a fixed fake token.
+        if type(_length) is not int or _length != 24:
+            invalid_mint_requests += 1
         return SYNTHETIC_PERMIT_ID
 
     try:
@@ -99,6 +105,7 @@ def audit() -> dict[str, object]:
                 checked += 1
                 expected_lab = literal in SAFE_LAB
                 before_mints = synthetic_mints
+                before_invalid_requests = invalid_mint_requests
                 rejected = False
                 bad_permit = False
                 try:
@@ -132,6 +139,7 @@ def audit() -> dict[str, object]:
                     rejected == expected_lab
                     or bad_permit
                     or synthetic_mints - before_mints != expected_mints
+                    or invalid_mint_requests != before_invalid_requests
                 ):
                     violations += 1
 
@@ -140,23 +148,33 @@ def audit() -> dict[str, object]:
                 if not literal.startswith(("127.", "[::1]")):
                     checked += 1
                     before_mints = synthetic_mints
+                    before_invalid_requests = invalid_mint_requests
                     denied = False
                     try:
                         locked_gate.issue(Target(literal), CAPABILITY)
                     except PermissionError:
                         denied = True
-                    if not denied or synthetic_mints != before_mints:
+                    if (
+                        not denied
+                        or synthetic_mints != before_mints
+                        or invalid_mint_requests != before_invalid_requests
+                    ):
                         violations += 1
 
                 # PLAN_ONLY must never mint a token for any sample.
                 checked += 1
                 before_mints = synthetic_mints
+                before_invalid_requests = invalid_mint_requests
                 denied = False
                 try:
                     plan_gate.issue(Target(literal), CAPABILITY)
                 except PermissionError:
                     denied = True
-                if not denied or synthetic_mints != before_mints:
+                if (
+                    not denied
+                    or synthetic_mints != before_mints
+                    or invalid_mint_requests != before_invalid_requests
+                ):
                     violations += 1
     except Exception:
         # Corrupt source, unanticipated API drift or attempted I/O is HOLD.
