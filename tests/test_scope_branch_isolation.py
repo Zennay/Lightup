@@ -418,5 +418,44 @@ class IsolationCheckTests(unittest.TestCase):
         self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
                          "UNBOUNDED_HISTORY")
 
+
+    def test_reverted_invisible_unicode_is_caught_in_intermediate_blob(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "name = 'synthetic\u202ehidden'\n")
+        self.commit()
+        self.write(path, "name = 'safe'\n")
+        head = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
+                         "UNSAFE_HISTORY_BLOB")
+
+    def test_reverted_non_utf8_bytes_are_caught_in_history(self):
+        path = "tests/test_scope_synthetic_review.py"
+        dst = self.repo / path
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_bytes(b"\xff\xfe\n")
+        self.commit()
+        self.write(path, "fixed text\n")
+        head = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
+                         "UNSAFE_HISTORY_BLOB")
+
+    def test_reverted_oversize_blob_is_caught_in_history(self):
+        path = "docs/scope-synthetic-review.md"
+        self.write(path, "x" * (256 * 1024 + 1) + "\n")
+        self.commit()
+        self.write(path, "short clean text\n")
+        head = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
+                         "UNSAFE_HISTORY_BLOB")
+
+    def test_reverted_whitespace_error_is_caught_in_history(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "bad trailing space \n")
+        self.commit()
+        self.write(path, "fixed\n")
+        head = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
+                         "HISTORY_PATCH_CHECK_FAILED")
+
 if __name__ == "__main__":
     unittest.main()
