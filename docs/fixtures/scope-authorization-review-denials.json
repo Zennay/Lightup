@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "kind": "scope_authorization_offline_review_cases",
+  "purpose": "Synthetic deny-only contract fixtures; not executable authorizations",
+  "real_target_activation": false,
+  "default_assertions": {
+    "decision": "DENY",
+    "handler_calls": 0,
+    "outbound_requests": 0
+  },
+  "cases": [
+    {
+      "id": "unknown_approver",
+      "condition": "Approval signer absent from trusted authority registry",
+      "expected": {
+        "decision": "DENY",
+        "handler_calls": 0,
+        "outbound_requests": 0
+      }
+    },
+    {
+      "id": "self_approval",
+      "condition": "Creator and approver are the same canonical principal",
+      "expected": {
+        "decision": "DENY",
+        "handler_calls": 0,
+        "outbound_requests": 0
+      }
+    },
+    {
+      "id": "missing_intent",
+      "condition": "Approval lacks explicit capability and asset scope",
+      "expected": {
+        "decision": "DENY",
+        "handler_calls": 0,
+        "outbound_requests": 0
+      }
+    },
+    {
+      "id": "excluded_asset",
+      "condition": "Requested asset appears in the exclusion set",
+      "expected": {
+        "decision": "DENY",
+        "handler_calls": 0,
+        "outbound_requests": 0
+      }
+    },
+    {
+      "id": "risk_above_ceiling",
+      "condition": "Request exceeds approved risk enum bound",
+      "expected": {
+        "decision": "DENY",
+        "handler_calls": 0,
+        "outbound_requests": 0
+      }
+    },
+    {
+      "id": "cross_tenant",
+      "condition": "Engagement and grant tenant identifiers differ",
+      "expected": {
+        "decision": "DENY",
+        "handler_calls": 0,
+        "outbound_requests": 0
+      }
+    },
+    {
+      "id": "noncanonical_identity",
+      "condition": "Caller supplies string or int in place of typed canonical identifier",
+      "expected": {
+        "decision": "DENY",
+        "handler_calls": 0,
+        "outbound_requests": 0
+      }
+    },
+    {
+      "id": "revoked_before_dispatch",
+      "condition": "Persisted grant revoked after queue and before dispatch",
+      "expected": {
+        "decision": "DENY",
+        "handler_calls": 0,
+        "outbound_requests": 0
+      }
+    },
+    {
+      "id": "widened_live_scope",
+      "condition": "Same-id live grant includes new asset or capability",
+      "expected": {
+        "decision": "DENY",
+        "handler_calls": 0,
+        "outbound_requests": 0
+      }
+    },
+    {
+      "id": "widened_live_time",
+      "condition": "Same-id live grant widens validity start or expiry",
+      "expected": {
+        "decision": "DENY",
+        "handler_calls": 0,
+        "outbound_requests": 0
+      }
+    },
+    {
+      "id": "invalid_clock",
+      "condition": "Trusted time source missing or outside validity bounds",
+      "expected": {
+        "decision": "DENY",
+        "handler_calls": 0,
+        "outbound_requests": 0
+      }
+    },
+    {
+      "id": "missing_ledger",
+      "condition": "Canonical audit ledger missing or swapped",
+      "expected": {
+        "decision": "DENY",
+        "handler_calls": 0,
+        "outbound_requests": 0
+      }
+    },
+    {
+      "id": "activation_off",
+      "condition": "Scope checks otherwise pass but M1 real-target activation remains off",
+      "expected": {
+        "decision": "DENY",
+        "handler_calls": 0,
+        "outbound_requests": 0
+      }
+    }
+  ]
+}
