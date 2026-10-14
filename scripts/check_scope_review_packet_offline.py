@@ -134,17 +134,27 @@ def read_packet(path: str) -> bytes:
     """Read only a bounded, regular, non-symlink local file; no external I/O."""
     fd = None
     try:
+        before = os.lstat(path)
+        if stat.S_ISLNK(before.st_mode):
+            raise PacketHold("INPUT_UNAVAILABLE")
+        if not stat.S_ISREG(before.st_mode):
+            raise PacketHold("NOT_REGULAR_FILE")
         flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
         fd = os.open(path, flags)
         info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode):
             raise PacketHold("NOT_REGULAR_FILE")
+        if (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns) != (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns):
+            raise PacketHold("CHANGED_INPUT")
         if info.st_size > MAX_BYTES:
             raise PacketHold("SIZE_LIMIT")
         raw = os.read(fd, MAX_BYTES + 1)
         if len(raw) > MAX_BYTES:
             raise PacketHold("SIZE_LIMIT")
         if len(raw) != info.st_size:
+            raise PacketHold("CHANGED_INPUT")
+        after = os.fstat(fd)
+        if (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns) != (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns):
             raise PacketHold("CHANGED_INPUT")
         return raw
     except (OSError, OverflowError, ValueError) as exc:
