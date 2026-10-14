@@ -70,6 +70,10 @@ The transport-level `_emit_hold_receipt` accepted **any** <=512-byte `bytes` val
 
 New isolated tests check all synthetic claim labels, both coherent and rejected canonical receipts, mutations of each false permission field into `true` or numeric impostors, schema/status tampering, forbidden nonzero rejected-pass counts, unexpected secret fields, mixed newline/whitespace/duplicate-key encodings and actual child-process output. An in-process I/O tripwire asserts malformed receipts do **not even touch stdout's file descriptor**. Existing finite pipe/TTY semantics remain unchanged. No real security targets, external networks, authority grants, production handlers or workflow ownership are involved.
 
+## W72 — immutable denial flag map (2026-10-14)
+
+The six false authorization markers were previously held in an ordinary mutable module dictionary. An in-process import could accidentally mutate a denial value to `True`, remove a key or add an unreviewed field. The W71 sealed stdout serializer would then conservatively suppress malformed output, but **`review_bytes` itself could return a misleading object** to a caller. The false-flag template is now a read-only `MappingProxyType`: all six known entries remain literal false, and attempts to set, delete or add a key raise `TypeError`. Independent tests exercise every marker and verify ordinary real subprocess output continues to be the unchanged canonical HOLD-only report. This only defends accidental mutation of the existing object; arbitrary hostile Python code able to rebind module globals is beyond this script's authority boundary and cannot be regarded as a hardened sandbox.
+
 ## Execution and fail-closed result
 
 ```sh
