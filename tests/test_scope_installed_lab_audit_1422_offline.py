@@ -72,7 +72,14 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
     def test_checkout_source_guard_does_not_hide_policy_evaluation(self):
         # This detects a vacuous HOLD from a source-path mismatch on a clean
         # checkout; fixture REVIEW_ONLY must exercise actual policy decisions.
-        self.assertTrue(_source_is_this_checkout())
+        # A local-only diagnostic on failure; never a customer target or token.
+        detail = []
+        for name in ("lightup.scope", "lightup.models"):
+            module = sys.modules.get(name)
+            filename = getattr(module, "__file__", None)
+            detail.append((name, type(module).__name__, str(filename)))
+        detail.append(("types", ScopeDecision.__module__, ScopeReason.__module__))
+        self.assertTrue(_source_is_this_checkout(), repr(detail))
 
     def test_real_checkout_policy_audit_is_diagnostic_not_permission(self):
         self.assert_never_authority(audit_installed_scope())
