@@ -126,7 +126,13 @@ def read_batch_file(path: str, *, require_private_file: bool = False) -> bytes:
         if require_private_file:
             _enforce_private_file(before)
         flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
-        fd = os.open(path, flags)
+        if require_private_file:
+            try:
+                fd = single._open_private_beneath(path)
+            except single.PacketHold as exc:
+                raise BatchHold(exc.code) from None
+        else:
+            fd = os.open(path, flags)
         info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode):
             raise BatchHold("NOT_REGULAR_FILE")
