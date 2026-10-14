@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import sqlite3
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -18,6 +19,66 @@ from pathlib import Path
 
 
 class FiniteNumberCliNoIoTests(unittest.TestCase):
+    def test_default_python_cannot_create_source_cache_in_disposable_copy(self):
+        """Prove ordinary Python invocation is read-only without -B or env help."""
+        repo = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as root:
+            sandbox = Path(root)
+            scripts = sandbox / "scripts"
+            package = sandbox / "src" / "lightup"
+            scripts.mkdir(parents=True)
+            package.mkdir(parents=True)
+            for source, destination in (
+                (repo / "scripts" / "review_scope_finite_number_offline.py",
+                 scripts / "review_scope_finite_number_offline.py"),
+                (repo / "src" / "lightup" / "finite_number_offline_review.py",
+                 package / "finite_number_offline_review.py"),
+                (repo / "src" / "lightup" / "__init__.py",
+                 package / "__init__.py"),
+            ):
+                shutil.copyfile(source, destination)
+            cli = scripts / "review_scope_finite_number_offline.py"
+
+            env = os.environ.copy()
+            # Do not let host or previous CI process settings mask a bytecode write.
+            env.pop("PYTHONDONTWRITEBYTECODE", None)
+            env.pop("PYTHONPYCACHEPREFIX", None)
+            env["PYTHONNOUSERSITE"] = "1"
+            env.pop("PYTHONPATH", None)
+
+            def fingerprint() -> dict[str, str]:
+                return {
+                    str(p.relative_to(sandbox)): hashlib.sha256(p.read_bytes()).hexdigest()
+                    for p in sandbox.rglob("*") if p.is_file()
+                }
+
+            baseline = fingerprint()
+            for payload, exit_code in (
+                (b'{"arguments":[["count",1]]}', 3),
+                (b'{"arguments":[["count",NaN]]}', 2),
+                (b'{"arguments":[["count",1e-999]]}', 2),
+            ):
+                with self.subTest(payload=payload[:28]):
+                    result = subprocess.run(
+                        [sys.executable, str(cli)],
+                        cwd=sandbox,
+                        env=env,
+                        input=payload,
+                        capture_output=True,
+                        check=False,
+                        timeout=10,
+                    )
+                    self.assertEqual(result.returncode, exit_code, result.stderr)
+                    self.assertEqual(result.stderr, b"")
+                    receipt = json.loads(result.stdout)
+                    self.assertEqual(receipt["status"],
+                                     "REVIEW_ONLY" if exit_code == 3 else "HOLD")
+                    self.assertFalse(receipt["authorization_verified"])
+                    self.assertFalse(receipt["permit_issued"])
+                    self.assertFalse(receipt["execution_enabled"])
+                    self.assertEqual(fingerprint(), baseline)
+                    self.assertFalse(any(sandbox.rglob("*.pyc")))
+
     def test_no_workspace_mutation_or_network_for_success_hold_and_bad_args(self):
         repo = Path(__file__).resolve().parents[1]
         cli = repo / "scripts" / "review_scope_finite_number_offline.py"
