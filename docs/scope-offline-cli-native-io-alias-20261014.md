@@ -36,3 +36,9 @@ The standalone test hook now freezes the interpreter's sys.base_prefix/lib root 
 - Built-in Python .py/.pyc files whose real resolved location is beneath the current interpreter standard-library lib tree; third-party site-packages excluded.
 
 Untrusted synthetic fixture decoys, inherited descriptor integers, executable PathLike objects, custom openers, arbitrary unselected code paths and other local data files do not receive the exception. Negative python -c controls inherit no entrypoint whitelist. This is narrowly scoped Python test-harness import support, not a general runtime authorization or OS security confinement. New immutable-head hosted positive and negative Python3.11/3.14 and genuine producer CI still required before source-only merge.
+
+## W30 end-to-end bootstrap resolution and final negative-control hardening
+
+The third diagnostic hosted head after adding a narrowly frozen interpreter stdlib + owned Python package source allowance produced authentic CLI return codes **3, 2 and 3 as expected**, without hitting exit92. Its three remaining test failures were exclusively caused by temporary diagnostic stderr output, not an authorization bypass. The trace is now **fully removed** in the next immutable-head branch revision.
+
+One additional disposable source-looking decoy called synthetic-private.py was added to the negative matrix. These child mutants now run with the **same explicitly frozen trusted code roots** as the real CLI controls, proving that merely using a Python filename suffix does not admit a foreign arbitrary path. All original five native alias negative routes remain; no real private customer file is opened or target contacted. The isolated exact-head hosted matrix must be green, including both producer integration jobs, before PR merge.
