@@ -308,7 +308,10 @@ class ReviewTests(unittest.TestCase):
             self.assertEqual(output.read(), b"original-data")
 
     def test_cli_rejects_inherited_unix_socket_stdout_without_writing(self):
-        with socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM) as (parent, child):
+        # socketpair returns a tuple, not a tuple context manager. Manage
+        # both sockets individually on CPython 3.11 and 3.14.
+        parent, child = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
             result = subprocess.run(
                 [sys.executable, str(SCRIPT), "--stdin-json"],
                 input=encoded(fixture()), stdout=child,
@@ -318,6 +321,9 @@ class ReviewTests(unittest.TestCase):
             child.close()
             parent.settimeout(1)
             self.assertEqual(parent.recv(512), b"")
+        finally:
+            child.close()
+            parent.close()
 
     def test_cli_real_pty_receipt_stays_denial_only(self):
         master_fd, slave_fd = pty.openpty()
