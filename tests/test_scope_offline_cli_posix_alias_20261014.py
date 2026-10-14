@@ -33,21 +33,36 @@ except ImportError:
     _posix = None
 
 if _posix is not None:
+    _importer_listdir = _posix.listdir
     for _name in (
         "open", "read", "readv", "pread", "preadv",
         "write", "writev", "pwrite", "pwritev",
-        "listdir", "scandir", "walk", "fwalk",
+        "scandir", "walk", "fwalk",
         "dup", "dup2", "dup3", "closerange", "close_range",
         "fork", "forkpty", "system", "popen", "posix_spawn", "posix_spawnp",
         "execv", "execve", "execvp", "execvpe",
     ):
         if hasattr(_posix, _name):
-            def _deny_named(*args, _symbol=_name, **kwargs):
-                if os.environ.get("LIGHTUP_POSIX_DIAGNOSTIC") == "1":
-                    import sys
-                    sys.stderr.write("POSIX_BLOCK:%s\\n" % _symbol)
-                forbidden()
-            setattr(_posix, _name, _deny_named)
+            setattr(_posix, _name, forbidden)
+
+    # CPython's frozen FileFinder._fill_cache calls posix.listdir directly
+    # while importing trusted Python modules. Never allow arbitrary caller
+    # directory enumeration; only this exact importer frame may list its
+    # import path before normal offline CLI code executes.
+    def _guarded_posix_listdir(*args, **kwargs):
+        import sys as _sys
+        try:
+            _frame = _sys._getframe(1)
+            if (_frame.f_code.co_name == "_fill_cache"
+                    and _frame.f_globals.get("__name__") in (
+                        "importlib._bootstrap_external",
+                        "_frozen_importlib_external",
+                    )):
+                return _importer_listdir(*args, **kwargs)
+        except (ValueError, AttributeError):
+            pass
+        forbidden()
+    _posix.listdir = _guarded_posix_listdir
 """
 
 
@@ -128,7 +143,7 @@ class OfflineScopePosixAliasTests(unittest.TestCase):
             with self.subTest(status=status):
                 result = subprocess.run(
                     [sys.executable, "-B", str(cli)], cwd=self.root,
-                    env=dict(self.env, LIGHTUP_POSIX_DIAGNOSTIC="1"), input=payload, capture_output=True,
+                    env=self.env, input=payload, capture_output=True,
                     check=False, timeout=15,
                 )
                 self.assertEqual(result.returncode, code, result.stderr)
@@ -142,7 +157,7 @@ class OfflineScopePosixAliasTests(unittest.TestCase):
         self.assertTrue(exporter.is_file())
         result = subprocess.run(
             [sys.executable, "-B", str(exporter)], cwd=self.root,
-            env=dict(self.env, LIGHTUP_POSIX_DIAGNOSTIC="1"), capture_output=True, check=False, timeout=15,
+            env=self.env, capture_output=True, check=False, timeout=15,
         )
         self.assertEqual(result.returncode, 3, result.stderr)
         self.assertEqual(result.stderr, b"")
