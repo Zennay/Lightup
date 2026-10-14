@@ -120,7 +120,7 @@ def nginx_config(root: Path, listen_port: int, upstream_port: int) -> str:
             not 1024 <= upstream_port <= 65535 or
             listen_port == upstream_port):
         raise ValueError("invalid synthetic port")
-    if (type(root) is not Path or not root.is_absolute() or
+    if (not isinstance(root, Path) or not root.is_absolute() or
             re.fullmatch(r"/[A-Za-z0-9_./-]+", str(root)) is None):
         # The pathname becomes an unquoted Nginx 'pid' directive. Never
         # interpolate a TMPDIR with whitespace, semicolons or braces.
@@ -161,7 +161,7 @@ def _fixture_environment(root: Path) -> dict[str, str]:
     Caller-controlled PYTHONPATH, GUNICORN_CMD_ARGS, LD_PRELOAD and shell
     environment must never determine what the disposable worker executes.
     """
-    if type(root) is not Path or not root.is_absolute():
+    if not isinstance(root, Path) or not root.is_absolute():
         raise ValueError("invalid temporary directory")
     return {
         "HOME": str(root),
