@@ -29,6 +29,7 @@ class TestOfflineVerificationContract(unittest.TestCase):
             return suite
         with (patch.object(sys, "argv", ["verify_trusted_destination_manifest_1093.py"]),
               patch.object(verifier.unittest.TestLoader, "discover", side_effect=discover),
+              patch.object(verifier, "_has_expected_test_roster", return_value=True),
               redirect_stdout(output)):
             result = verifier.main()
         rows = output.getvalue().splitlines()
@@ -119,6 +120,26 @@ class TestOfflineVerificationContract(unittest.TestCase):
             code = verifier.main()
         self.assertEqual(code, 2)
         self.assertFalse(json.loads(output.getvalue())["offline_regression_passed"])
+
+    def test_roster_rejects_correct_count_but_wrong_class(self):
+        class Case(unittest.TestCase):
+            def runTest(self):
+                pass
+        self.assertFalse(verifier._has_expected_test_roster(self._suite(Case)))
+
+    def test_roster_accepts_all_91_unique_expected_methods_only(self):
+        # This is a synthetic class; it does not execute real LightUp tests.
+        class_name = "TestTrustedDestinationMetadata1093"
+        methods = {f"test_{i:02d}_synthetic": lambda self: None
+                   for i in range(1, 92)}
+        cls = type(class_name, (unittest.TestCase,), methods)
+        cls.__module__ = "test_trusted_destination_manifest_optin_1093"
+        suite = unittest.TestSuite(cls(name) for name in methods)
+        self.assertTrue(verifier._has_expected_test_roster(suite))
+        # Duplicate one case number, replacing another case.
+        broken = unittest.TestSuite([cls(name) for name in list(methods)[:-1]]
+                                    + [cls("test_01_synthetic")])
+        self.assertFalse(verifier._has_expected_test_roster(broken))
 
     def test_receipt_factory_never_promotes_authority(self):
         receipt = verifier._receipt(True, 91)
