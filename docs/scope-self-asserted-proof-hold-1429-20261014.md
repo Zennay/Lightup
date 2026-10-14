@@ -1,0 +1,44 @@
+# LightUp scope W65 — self-asserted proof claims stay HOLD (#1429)
+
+**Posture: INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** This isolated, opt-in, uninstalled script is *not* a security gate, release decision, evidence verifier, or production authority. It only examines JSON *submitted by an untrusted party* for internal consistency, then returns **HOLD**. It neither trusts nor validates the truth of any `pass` status.
+
+## Ownership / separation
+
+New paths only: `scripts/scope_self_asserted_proof_hold_1429.py`, `tests/test_scope_self_asserted_proof_hold_1429.py`, this note. No changes to original `ScopePolicy`, grants, executor, existing workers' draft PRs, installed proxy, CI workflow, self-hosted VPS, customer data or deployments. PR #1310 owns *independent GitHub-hosted/VPS metadata verification*. PRs #1425–#1428 own separate lab address and ingress preview work. None of those proofs is replaced here.
+
+## Synthetic input
+
+Exactly one `--stdin-json` argument and up to 16 KiB of UTF-8 JSON bytes. Empty/oversized input, malformed UTF-8, duplicate keys at any nesting depth, JSON NaN/Infinity, unknown fields, mixed commit heads, non-lowercase/non-40-hex SHAs, missing/duplicate/unknown lanes or type confusion **atomically reject**.
+
+```json
+{
+  "schema": "lightup.scope.self_asserted_proof.v1",
+  "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "claims": [
+    {"lane": "hosted_python_311", "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "result": "pass"},
+    {"lane": "hosted_python_314", "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "result": "pass"},
+    {"lane": "registered_vps", "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "result": "queued"},
+    {"lane": "installed_ingress", "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "result": "unknown"}
+  ]
+}
+```
+
+Allowed result strings: `pass`, `fail`, `queued`, `cancelled`, `unknown`. These are self-declarations, **not** verified workflow or ingress observations. No workflow URL or arbitrary credential is accepted. Every lane must share exactly the top-level immutable head. Output intentionally omits that SHA and all raw input, including names, targets, grants, tokens, and claims.
+
+## Execution and fail-closed result
+
+```sh
+printf '%s' '<synthetic JSON from above>' | python -B scripts/scope_self_asserted_proof_hold_1429.py --stdin-json
+python -B -m unittest tests/test_scope_self_asserted_proof_hold_1429.py -v
+```
+
+The only CLI exit is **2 (HOLD)**, even if all four self-assertions say `pass`. `status=HOLD` and every `authorized`, `permit`, `dispatch`, `merge`, `deploy`, `release` flag is exact JSON `false`. A structurally consistent bundle yields `input_integrity=COHERENT` and a count of *unverified* claimed passes. Any invalid member yields `REJECTED` and count zero. A printed coherence label does **not** authorize a call or a merge. The CLI never reads another file or accesses DNS, sockets, subprocesses or customer targets.
+
+## Required independent promotion gates (not met by this script)
+
+- Fetch authentic immutable SHA and per-job raw hosted Python3.11 and Python3.14 logs from GitHub.
+- Fetch genuine registered permanent-VPS runner job logs on that **same** SHA; queued/cancelled is not pass.
+- Validate installed Nginx/Gunicorn identity/provenance and actual ingress request behaviour, independently of synthetic fixtures.
+- Obtain source-owner scope fixes, current target-specific consent, independent security/privacy review and explicit human release authorization.
+
+Until those have separately passed: **do not merge this draft, deploy, issue grants or run active security scans**. A passing synthetic structural test cannot become proof of any other requirement.
