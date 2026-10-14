@@ -192,7 +192,7 @@ class ActiveRequestReviewTests(unittest.TestCase):
     def test_no_credentials_or_target_reflected(self):
         req, grant = sample()
         marker = "PRIVATE_REQUEST_SECRET_87654321"
-        bad = replace(req, request_id=marker, notes=marker)
+        bad = replace(req, request_id=marker + "\\n", notes=marker)
         receipt = self.review(request=bad)
         self.assertNotIn(marker, str(receipt))
         self.assertEqual(receipt.requested_asset_count, 0)
