@@ -8,9 +8,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import sys
+from types import ModuleType
 
 # Audit the source from THIS checkout, not a similarly named installed package.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+_CHECKOUT_SRC = Path(__file__).resolve().parents[1] / "src"
+sys.path.insert(0, str(_CHECKOUT_SRC))
+_EXPECTED_SCOPE = str(_CHECKOUT_SRC / "lightup" / "scope.py")
+_EXPECTED_MODELS = str(_CHECKOUT_SRC / "lightup" / "models.py")
 
 from lightup.models import Target
 from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason
@@ -79,11 +83,37 @@ def _canonical(decision: object) -> bool:
     )
 
 
+def _source_is_this_checkout() -> bool:
+    """Reject accidental reuse of an earlier-imported unrelated package.
+
+    A Python module path is only local diagnostics, NOT a signed provenance
+    attestation. The fixture override does not bypass this source check.
+    """
+    for module_name, expected in (
+        ("lightup.scope", _EXPECTED_SCOPE),
+        ("lightup.models", _EXPECTED_MODELS),
+    ):
+        module = sys.modules.get(module_name)
+        if (
+            type(module) is not ModuleType
+            or type(module.__dict__.get("__file__")) is not str
+            or module.__dict__["__file__"] != expected
+        ):
+            return False
+    return (
+        ScopePolicy.__module__ == "lightup.scope"
+        and ScopeDecision.__module__ == "lightup.scope"
+        and Target.__module__ == "lightup.models"
+    )
+
+
 def audit_installed_scope(policy_factory=ScopePolicy) -> dict[str, object]:
     """Inspect real policy from this checkout; any failed gate holds atomically.
 
     The injectable factory is for unit tests ONLY, not a CLI parameter.
     """
+    if not _source_is_this_checkout():
+        return _receipt("HOLD")
     try:
         enabled = policy_factory(allow_private_lab=True)
         disabled = policy_factory(allow_private_lab=False)
