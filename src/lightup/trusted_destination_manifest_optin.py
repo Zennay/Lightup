@@ -88,6 +88,31 @@ def _host(value):
     return all(_DNS.fullmatch(part) for part in parts)
 
 
+def _safe_url_escapes(value):
+    """Refuse malformed, control, or ambiguous percent-encoded URI bytes.
+
+    Conservative offline shape validation; not a URL authorization decision.
+    """
+    index = 0
+    size = len(value)
+    while index < size:
+        if value[index] != "%":
+            index += 1
+            continue
+        if index + 2 >= size:
+            return False
+        pair = value[index + 1:index + 3]
+        if any(c not in "0123456789ABCDEF" for c in pair):
+            return False
+        octet = int(pair, 16)
+        # Reject controls and reserved bytes whose decoding can reinterpret
+        # authority/path/query boundaries (including double-encoded '%').
+        if octet < 32 or octet == 127 or octet in (35, 37, 47, 63, 64, 92):
+            return False
+        index += 3
+    return True
+
+
 def _endpoint(value):
     if type(value) is not str or not value or len(value) > 2048:
         return False
@@ -99,7 +124,7 @@ def _endpoint(value):
     # Admission must refuse identity-changing input, not silently repair it.
     if not (value.startswith("http://") or value.startswith("https://")):
         return False
-    if "#" in value or value.endswith("?"):
+    if "#" in value or value.endswith("?") or not _safe_url_escapes(value):
         return False
     try:
         p = urlsplit(value)
