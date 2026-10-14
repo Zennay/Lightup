@@ -41,6 +41,14 @@ Execute opt-in tests offline after review:
 PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_1095_optin_atomic_primitive_snapshot_20261014.py' -v
 ```
 
+## W5–W6: metadata and direct receipt constructor admission
+
+The independent opt-in helper now requires the original `ToolDefinition.parameters` to be an **exact built-in tuple** of at most **32** parameter objects, every parameter to be the exact `ToolParameter` class, with built-in string `name`, exact `ParamKind`, and exact built-in `bool` for `required`. This rejects hostile callback-bearing parameter impostors, tuple/list subclasses, truthy/falsy non-bool required fields and oversized argument mappings *before* their contents are interpreted. Real synthetic executor/SQLite tests assert a late-invalid metadata row does not cause any handler or evidence side effects.
+
+Public `PrimitiveValueSnapshot` and `PrimitiveBatchSnapshot` constructors now also validate their exact tuple containers, exact primitive keys/values, duplicate keys, capacity limits and exact child snapshot objects via `__post_init__`. Direct receipt construction cannot launder subclass values, malformed records, oversized batches or forged child objects into a purported canonical snapshot. Immutable read-only release/permit/execution flags remain false and no live authorization is ever issued. A constructor-valid receipt still **does not** prove matching parameter kinds, origin of a tool definition, tenant, risk level, consent, revocation or trusted authority; those remain with the original production owner.
+
+All added tests use ordinary `unittest`, only synthetically named tools, isolated analysis-only SQLite where applicable, and intentionally do not alter the inherited **14 expected RED original-source defects**. Changes continue exclusively in four new PR-owned paths; existing source, deployments, main and other workers are untouched.
+
 ## Limits and required release gates
 
 All sample names are synthetic and are not queried over DNS. No network, scan, target interaction, customer data, grant, persisted authorization mutation, attack path, CI workflow edit or deployment. Even real SQLite and handler controls provide **typed-value input diagnostics only**; they do not establish customer consent, revocation coherence, live tenant scope, or real-target dispatch safety.
