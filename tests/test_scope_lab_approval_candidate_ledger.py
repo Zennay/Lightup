@@ -161,7 +161,7 @@ class CandidateLedgerTests(unittest.TestCase):
         # Corrupt a non-tenant field while keeping tenant identity intact.
         self.db.execute(
             "UPDATE lab_stepup_candidates_v1 SET asset=? WHERE run_id=?",
-            ("other\\nasset", "lab-run-1"),
+            ("other\nasset", "lab-run-1"),
         )
         self.db.commit()
         with self.assertRaises(CandidateHeld):
@@ -196,7 +196,7 @@ class CandidateLedgerTests(unittest.TestCase):
     def test_invalid_tenant_lookup_fails_closed(self):
         self.ledger.issue(**self.items)
         with self.assertRaises(CandidateHeld):
-            self.ledger.inspect("lab-run-1", client_id="client\\nforged")
+            self.ledger.inspect("lab-run-1", client_id="client\nforged")
 
     def test_engagement_revocation_is_tenant_scoped_and_atomic(self):
         self.ledger.issue(**self.items)
