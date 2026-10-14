@@ -14,3 +14,11 @@ The interpreter-only startup exception for exact selected scripts and current tr
 ## Gates and limitations
 
 This is an **additive two-new-path integration test**, not an authorization primitive and not OS-level security confinement. Native syscalls/pre-import aliases outside specific instrumented Python names remain out of scope. Do not interpret REVIEW_ONLY as consent or execution permission. Immutable-head hosted Python 3.11/3.14 unit and separate genuine producer integration success, path conflict review, permanent registered VPS and explicit independent release/permission are separate requirements. **LightUp stays INCUBATE M3/M7 · PLAN/LAB ONLY; no merge/deploy/real scans based on test success.**
+
+## W32 red/green composition fix
+
+The first hosted Python 3.11/3.14 test jobs at initial PR head reported ten genuine RED failures: five distinct registry/history/catalog entrypoints (valid and HOLD cases) returned exit92 because they import helpers from first-party `scripts/*.py`. Existing single CLI acceptance for the finite-NUMBER reviewer and exporter did not exercise these module edges. None of the red jobs counts as a release-ready PASS.
+
+The subsequent narrowly scoped test-only guard amendment adds an **exact trusted scripts directory import root** to the existing strict Python-file startup allowlist. No arbitrary private project/user path is permitted. Three original/owned code roots are now frozen at child launch: builtin interpreter stdlib, first-party `src/lightup`, and first-party `scripts` (plus each exact selected entrypoint). This exception operates only on immutable-looking Python `.py`/`.pyc` suffixes in read-binary mode without opener options; manifest JSON can still be read only by explicit synthetic manifest name.
+
+The composed end-to-end fixture now exercises all seven real review CLIs under that root plus the real exporter, and includes an additional **negative** subprocess for a Python-suffixed decoy located in its own disposable workspace, which must fail hard with 92. Shared source-owner production remains untouched. Current exact-head hosted Python3.11/3.14 unit + real producer logs are required before source-only merge.
