@@ -45,12 +45,13 @@ def sample():
 
 
 class ActiveRequestReviewTests(unittest.TestCase):
-    def review(self, request=None, grant=None, now=NOW):
+    def review(self, request=None, grant=None, now=NOW, capability_id="http-baseline"):
         req, auth = sample()
         return preview_active_request(
             req if request is None else request,
             auth if grant is None else grant,
             now=now,
+            capability_id=capability_id,
         )
 
     def test_positive_is_review_only_not_authorization(self):
@@ -62,9 +63,9 @@ class ActiveRequestReviewTests(unittest.TestCase):
     def test_every_authority_flag_remains_false(self):
         request, grant = sample()
         cases = [
-            preview_active_request(request, grant, now=NOW),
-            preview_active_request(request, None, now=NOW),
-            preview_active_request(replace(request, requested_risk=9), grant, now=NOW),
+            preview_active_request(request, grant, capability_id="http-baseline", now=NOW),
+            preview_active_request(request, None, capability_id="http-baseline", now=NOW),
+            preview_active_request(replace(request, requested_risk=9), grant, capability_id="http-baseline", now=NOW),
         ]
         names = {
             "authorization_verified", "permit_issued", "execution_enabled",
@@ -77,7 +78,7 @@ class ActiveRequestReviewTests(unittest.TestCase):
 
     def test_absent_grant_holds(self):
         req, _ = sample()
-        self.assertEqual(preview_active_request(req, None, now=NOW).reason,
+        self.assertEqual(preview_active_request(req, None, capability_id="http-baseline", now=NOW).reason,
                          "NO_CANONICAL_GRANT")
 
     def test_reject_cross_tenant(self):
@@ -89,6 +90,36 @@ class ActiveRequestReviewTests(unittest.TestCase):
         req, grant = sample()
         self.assertEqual(self.review(grant=replace(grant, approved_by=req.requested_by)).reason,
                          "SELF_APPROVAL")
+
+
+    def test_capability_outside_grant_holds(self):
+        self.assertEqual(
+            self.review(capability_id="tls-baseline").reason,
+            "CAPABILITY_OUTSIDE_GRANT",
+        )
+
+    def test_capability_type_confusion_holds(self):
+        for capability in (None, True, 1, ["http-baseline"]):
+            with self.subTest(capability=capability):
+                self.assertEqual(
+                    self.review(capability_id=capability).reason,
+                    "INVALID_REQUEST_CAPABILITY",
+                )
+
+    def test_capability_alias_and_case_confusion_holds(self):
+        for capability in ("HTTP-baseline", "http-baseline ", "http.baseline", "http-baseline\\n", ""):
+            with self.subTest(capability=capability):
+                self.assertEqual(
+                    self.review(capability_id=capability).reason,
+                    "INVALID_REQUEST_CAPABILITY",
+                )
+
+    def test_explicit_second_capability_is_review_only(self):
+        req, grant = sample()
+        grant = replace(grant, scope=replace(grant.scope,
+                allowed_capabilities=("http-baseline", "tls-baseline")))
+        self.assertEqual(self.review(grant=grant, capability_id="tls-baseline").status,
+                         "REVIEW_ONLY")
 
     def test_no_wildcard_capabilities(self):
         req, grant = sample()
