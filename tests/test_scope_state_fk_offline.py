@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import contextlib
+import io
 import importlib.util
 import json
 import os
@@ -203,6 +204,31 @@ class ScopeStateForeignKeyOfflineTests(unittest.TestCase):
         self.assertNotIn("customer-secret-path", json.dumps(result))
         self.assertFalse(any(result["checks"].values()))
         self.assertFalse(any(result[k] for k in module.AUTHORITY))
+
+    def test_cli_rejects_external_db_argument_without_reading_or_echo(self):
+        # Misleading --db must not make operator believe we inspected that DB.
+        from unittest import mock
+        buffer = io.StringIO()
+        with mock.patch.object(module, "probe", side_effect=AssertionError("must not probe")):
+            with contextlib.redirect_stdout(buffer):
+                exit_code = module.main(["--db=/private/customer-id.sqlite"])
+        self.assertEqual(exit_code, 2)
+        receipt = json.loads(buffer.getvalue())
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(receipt["reason"], "UNSUPPORTED_ARGUMENTS")
+        self.assertNotIn("customer-id", buffer.getvalue())
+        self.assertFalse(any(receipt["checks"].values()))
+        self.assertFalse(any(receipt[k] for k in module.AUTHORITY))
+
+    def test_cli_rejects_target_like_arguments_without_execution(self):
+        from unittest import mock
+        buffer = io.StringIO()
+        with mock.patch.object(module, "probe", side_effect=AssertionError("must not probe")):
+            with contextlib.redirect_stdout(buffer):
+                exit_code = module.main(["https://external.target.invalid", "--scan"])
+        self.assertEqual(exit_code, 2)
+        self.assertEqual(json.loads(buffer.getvalue())["reason"], "UNSUPPORTED_ARGUMENTS")
+        self.assertNotIn("external.target.invalid", buffer.getvalue())
 
     def test_machine_receipt_names_and_flags_are_bounded(self):
         for factory in (StrictStateStore, PermissiveStateStore):
