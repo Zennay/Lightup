@@ -24,6 +24,7 @@ def fixture():
         "grant_id": "grant-demo-01",
         "client_id": "client-demo",
         "engagement_id": "eng-demo",
+        "approved_by": "operator-demo",
         "reference": "reference-demo",
         "assets": ["lab-a.example", "lab-b.example"],
         "excluded_assets": ["lab-b.example"],
