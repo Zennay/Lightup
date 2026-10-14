@@ -177,6 +177,20 @@ class OfflineNoMutationIntegrationTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 3, proc.stderr)
         self.assert_no_authority(proc)
 
+    def test_incubation_field_diagnostics_no_write_or_sqlite(self):
+        proc = run_without_writes("review_scope_incubation_fields_offline.py")
+        self.assertEqual(proc.returncode, 3, proc.stderr)
+        receipt = self.assert_no_authority(proc)
+        self.assertEqual(receipt["status"], "REVIEW_ONLY")
+        self.assertEqual(receipt["changed_fields"], {})
+
+    def test_incubation_field_diagnostics_denies_args_without_write(self):
+        for arg in ("--activate", "https://synthetic.invalid"):
+            with self.subTest(arg=arg):
+                proc = run_without_writes("review_scope_incubation_fields_offline.py", arg)
+                self.assertEqual(proc.returncode, 2, proc.stderr)
+                self.assert_no_authority(proc)
+
     def test_incubation_catalog_no_write(self):
         proc = run_without_writes("review_scope_incubation_catalog_offline.py")
         self.assertEqual(proc.returncode, 3, proc.stderr)
