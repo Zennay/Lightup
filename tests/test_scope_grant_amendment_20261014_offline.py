@@ -314,6 +314,123 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
                 else:
                     self.assertEqual((receipt["status"], code), ("REVIEW_ONLY", 3))
 
+    def test_sealed_receipt_exact_schema_never_forges_authority(self):
+        accepted = [reviewer.review(encode(fixture()))[0]]
+        changed = fixture()
+        changed["after"]["max_risk"] = 4
+        accepted.append(reviewer.review(encode(changed))[0])
+        accepted.append(reviewer.review(b"broken")[0])
+        for receipt in accepted:
+            data = reviewer._seal_receipt(receipt)
+            self.assertIs(type(data), bytes)
+            self.assertLessEqual(len(data), reviewer.MAX_OUTPUT)
+            self.assertEqual(data.count(b"\\n"), 1)
+            self.assertTrue(data.endswith(b"\\n"))
+            self.assertTrue(data.isascii())
+            self.assertEqual(json.loads(data), receipt)
+            self.assertNotIn(b"grant-demo", data)
+            self.assertNotIn(b"operator-demo", data)
+
+        original, _ = reviewer.review(encode(fixture()))
+        for key, replacement in (
+            ("authorized", True),
+            ("permit_issued", 0),
+            ("dispatch_enabled", "false"),
+            ("release_approved", True),
+            ("schema", "different"),
+            ("status", "AUTHORIZED"),
+            ("status", True),
+            ("reason", "approved"),
+            ("widening_dimensions", ["unknown"]),
+            ("widening_dimensions", ["risk", "risk"]),
+            ("widening_dimensions", ["risk"]),
+        ):
+            forged = dict(original)
+            forged[key] = replacement
+            with self.subTest(key=key, replacement=replacement):
+                self.assertIsNone(reviewer._seal_receipt(forged))
+        for mutation in ("extra", "missing"):
+            forged = dict(original)
+            if mutation == "extra":
+                forged["secret"] = "MUST-NOT-OUTPUT"
+            else:
+                del forged["merge_approved"]
+            self.assertIsNone(reviewer._seal_receipt(forged))
+
+    def test_regular_file_stdout_is_rejected_without_writing(self):
+        with tempfile.TemporaryFile() as sink:
+            child = subprocess.run(
+                [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                input=encode(fixture()), stdout=sink, stderr=subprocess.PIPE,
+                timeout=8, check=False,
+            )
+            sink.seek(0)
+            self.assertEqual(sink.read(), b"")
+        self.assertEqual(child.returncode, 2)
+        self.assertFalse(child.stderr)
+
+    @unittest.skipUnless(hasattr(socket, "socketpair") and os.name == "posix", "POSIX socketpair")
+    def test_inherited_socket_stdout_refused_without_writing(self):
+        source, sink = socket.socketpair()
+        try:
+            child = subprocess.run(
+                [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                input=encode(fixture()), stdout=sink,
+                stderr=subprocess.PIPE, timeout=8, check=False,
+            )
+            self.assertEqual(child.returncode, 2)
+            self.assertFalse(child.stderr)
+            sink.close()
+            source.settimeout(3)
+            self.assertEqual(source.recv(2048), b"")
+        finally:
+            source.close()
+            sink.close()
+
+    @unittest.skipUnless(os.name == "posix", "POSIX pipe flags")
+    def test_successful_child_receipt_restores_parent_pipe_mode(self):
+        read_fd, write_fd = os.pipe()
+        try:
+            self.assertTrue(os.get_blocking(write_fd))
+            child = subprocess.run(
+                [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                input=encode(fixture()), stdout=write_fd,
+                stderr=subprocess.PIPE, check=False, timeout=8,
+            )
+            self.assertEqual(child.returncode, 3)
+            self.assertFalse(child.stderr)
+            self.assertTrue(os.get_blocking(write_fd))
+            output = os.read(read_fd, 512)
+            self.assertEqual(json.loads(output)["status"], "REVIEW_ONLY")
+            self.assertEqual(output.count(b"\\n"), 1)
+        finally:
+            os.close(read_fd)
+            os.close(write_fd)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX pipe flags")
+    def test_full_inherited_stdout_returns_finitely_and_restores_parent_mode(self):
+        read_fd, write_fd = os.pipe()
+        try:
+            os.set_blocking(write_fd, False)
+            try:
+                while True:
+                    os.write(write_fd, b"X" * 4096)
+            except BlockingIOError:
+                pass
+            os.set_blocking(write_fd, True)
+            self.assertTrue(os.get_blocking(write_fd))
+            child = subprocess.run(
+                [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                input=encode(fixture()), stdout=write_fd,
+                stderr=subprocess.PIPE, check=False, timeout=8,
+            )
+            self.assertEqual(child.returncode, 2)
+            self.assertFalse(child.stderr)
+            self.assertTrue(os.get_blocking(write_fd))
+        finally:
+            os.close(read_fd)
+            os.close(write_fd)
+
     def test_cli_rejects_no_flag(self):
         result = subprocess.run(
             [sys.executable, "-B", str(SCRIPT)],
