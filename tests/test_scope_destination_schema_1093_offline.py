@@ -19,7 +19,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "review_scope_destination_schema_1093_offline.py"
 sys.path.insert(0, str(ROOT / "scripts"))
 from review_scope_destination_schema_1093_offline import (  # noqa: E402
-    DENIAL, MAX_INPUT_BYTES, _read_private_pipe, _seal_receipt,
+    DENIAL, MAX_INPUT_BYTES, _emit_receipt, _read_private_pipe, _seal_receipt,
     review_bytes, review_schema,
 )
 
@@ -569,6 +569,76 @@ class ReviewTests(unittest.TestCase):
             self.assertEqual(_read_private_pipe(), b'{"tools":[]}')
             self.assertEqual(set_blocking.call_args_list,
                              [mock.call(0, False), mock.call(0, True)])
+
+    def test_stdin_restore_failure_cannot_report_reviewable_payload(self):
+        # A successful read followed by failed descriptor restoration must
+        # never be returned as a REVIEW_ONLY candidate. No real fd mutation.
+        for fault in (OSError("synthetic-restore"), ValueError("bad-fd")):
+            with self.subTest(fault=type(fault).__name__):
+                with (
+                    mock.patch("review_scope_destination_schema_1093_offline.os.fstat",
+                               return_value=types.SimpleNamespace(st_mode=stat.S_IFIFO)),
+                    mock.patch("review_scope_destination_schema_1093_offline.os.get_blocking",
+                               return_value=True),
+                    mock.patch("review_scope_destination_schema_1093_offline.os.set_blocking",
+                               side_effect=[None, fault]) as set_blocking,
+                    mock.patch("review_scope_destination_schema_1093_offline.select.select",
+                               return_value=([0], [], [])),
+                    mock.patch("review_scope_destination_schema_1093_offline.os.read",
+                               side_effect=[encoded(fixture()), b""]) as read,
+                ):
+                    self.assertIsNone(_read_private_pipe())
+                    self.assertEqual(set_blocking.call_args_list, [
+                        mock.call(0, False), mock.call(0, True)])
+                    self.assertEqual(read.call_count, 2)
+
+    def test_stdout_restore_failure_refuses_successful_emit(self):
+        # A write cannot be undone once bytes enter the caller's pipe.
+        # Returning False is still mandatory, so main exits 2 rather than 3.
+        result = review_schema(fixture())
+        receipt = _seal_receipt(result)
+        self.assertIsNotNone(receipt)
+        for fault in (OSError("synthetic-restore"), ValueError("bad-fd")):
+            with self.subTest(fault=type(fault).__name__):
+                with (
+                    mock.patch("review_scope_destination_schema_1093_offline.os.fstat",
+                               return_value=types.SimpleNamespace(st_mode=stat.S_IFIFO)),
+                    mock.patch("review_scope_destination_schema_1093_offline.os.get_blocking",
+                               return_value=True),
+                    mock.patch("review_scope_destination_schema_1093_offline.os.set_blocking",
+                               side_effect=[None, fault]) as set_blocking,
+                    mock.patch("review_scope_destination_schema_1093_offline.select.select",
+                               return_value=([], [1], [])),
+                    mock.patch("review_scope_destination_schema_1093_offline.os.write",
+                               return_value=len(receipt)) as write,
+                ):
+                    self.assertIs(_emit_receipt(result), False)
+                    self.assertEqual(set_blocking.call_args_list, [
+                        mock.call(1, False), mock.call(1, True)])
+                    write.assert_called_once_with(1, receipt)
+
+    def test_fd_mode_change_fault_is_denial_before_io(self):
+        # The initial mode change can fail. Fail closed and do not consume
+        # secrets or write output when it does.
+        for fd in (0, 1):
+            for fault in (OSError("denied"), ValueError("invalid")):
+                with self.subTest(fd=fd, fault=type(fault).__name__):
+                    with (
+                        mock.patch("review_scope_destination_schema_1093_offline.os.fstat",
+                                   return_value=types.SimpleNamespace(st_mode=stat.S_IFIFO)),
+                        mock.patch("review_scope_destination_schema_1093_offline.os.get_blocking",
+                                   return_value=True),
+                        mock.patch("review_scope_destination_schema_1093_offline.os.set_blocking",
+                                   side_effect=fault),
+                        mock.patch("review_scope_destination_schema_1093_offline.os.read") as read,
+                        mock.patch("review_scope_destination_schema_1093_offline.os.write") as write,
+                    ):
+                        if fd == 0:
+                            self.assertIsNone(_read_private_pipe())
+                        else:
+                            self.assertIs(_emit_receipt(review_schema(fixture())), False)
+                        read.assert_not_called()
+                        write.assert_not_called()
 
     def test_cli_stdin_pipe_restores_parent_blocking_state(self):
         # A subprocess duplicates fd0 but shares its POSIX open-file-description.
