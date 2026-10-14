@@ -32,13 +32,17 @@ class IndependentStrictPolicy:
         self.lab = allow_private_lab
 
     def decide(self, target):
-        host = target.value
+        host = target.value[1:-1] if target.value.startswith("[") else target.value
         addr = ip_address(host)
-        loopback = addr in ip_network("127.0.0.0/8")
-        lab = any(
-            addr in ip_network(network)
-            for network in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+        loopback = addr in (
+            ip_network("127.0.0.0/8") if addr.version == 4
+            else ip_network("::1/128")
         )
+        networks = (
+            ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+            if addr.version == 4 else ("fc00::/7",)
+        )
+        lab = any(addr in ip_network(network) for network in networks)
         if loopback:
             return ScopeDecision(True, host, ScopeReason.LOOPBACK)
         if lab and self.lab:
@@ -87,7 +91,7 @@ class OctetSweepTests(unittest.TestCase):
             self.assertIs(receipt[field], False)
 
     def test_reference_matrix_is_real_and_bounded(self):
-        self.assertEqual(TOTAL_DECISIONS, 2048)
+        self.assertEqual(TOTAL_DECISIONS, 3584)
         self.assert_non_authorizing(
             review_ipv4_octet_sweep(IndependentStrictPolicy), "REVIEW_ONLY"
         )
