@@ -26,6 +26,7 @@ _FLAGS = (
 _TRIPWIRE = """import _socket
 import os
 import socket
+import subprocess
 
 def forbidden(*args, **kwargs):
     os._exit(92)
@@ -36,6 +37,14 @@ socket.socketpair = forbidden
 socket.create_connection = forbidden
 socket.create_server = forbidden
 socket.fromfd = forbidden
+subprocess.Popen = forbidden
+os.system = forbidden
+os.popen = forbidden
+for name in ("fork", "forkpty", "spawnv", "spawnve", "spawnvp",
+             "spawnvpe", "execv", "execve", "execvp", "execvpe",
+             "posix_spawn", "posix_spawnp"):
+    if hasattr(os, name):
+        setattr(os, name, forbidden)
 """
 
 
@@ -160,6 +169,39 @@ class OfflineReviewCliSocketFleetTests(unittest.TestCase):
             with self.subTest(statement=statement):
                 program = (
                     "import socket, _socket\n"
+                    "try:\n"
+                    f"    {statement}\n"
+                    "except BaseException:\n"
+                    "    pass\n"
+                    "print('UNEXPECTED_EXECUTION')\n"
+                )
+                proc = subprocess.run(
+                    [sys.executable, "-B", "-c", program], cwd=self.root,
+                    env=self.env, capture_output=True, check=False, timeout=15,
+                )
+                self.assertEqual(proc.returncode, 92, statement)
+                self.assertEqual(proc.stdout, b"")
+                self.assertEqual(proc.stderr, b"")
+                self.assertEqual(self.fingerprint(), before)
+
+
+    def test_uncatchable_child_process_and_shell_tripwires(self):
+        # This never spawns a child: the pre-import fixture exits immediately.
+        variants = (
+            'subprocess.Popen(["/bin/true"])',
+            'subprocess.run(["/bin/true"], check=False)',
+            'os.system("true")',
+            'os.popen("true")',
+            'os.spawnv(os.P_NOWAIT, "/bin/true", ["/bin/true"])',
+            'os.execv("/bin/true", ["/bin/true"])',
+            'os.fork()',
+            'os.posix_spawn("/bin/true", ["/bin/true"], os.environ)',
+        )
+        before = self.fingerprint()
+        for statement in variants:
+            with self.subTest(statement=statement):
+                program = (
+                    "import os, subprocess\n"
                     "try:\n"
                     f"    {statement}\n"
                     "except BaseException:\n"
