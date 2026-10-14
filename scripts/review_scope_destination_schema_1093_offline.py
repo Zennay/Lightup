@@ -155,8 +155,10 @@ def _read_private_pipe() -> bytes | None:
             return None
         original_blocking = os.get_blocking(0)
         if original_blocking:
-            os.set_blocking(0, False)
+            # A failed syscall can still have changed the shared fd.
+            # Attempt restoration on *both* success and failure.
             changed = True
+            os.set_blocking(0, False)
         deadline = time.monotonic() + READ_DEADLINE_SECONDS
         chunks = []
         size = 0
@@ -234,8 +236,9 @@ def _emit_receipt(result: object) -> bool:
             return False
         original_blocking = os.get_blocking(1)
         if original_blocking:
-            os.set_blocking(1, False)
+            # Treat an unsuccessful mode switch as potentially mutating.
             changed = True
+            os.set_blocking(1, False)
         deadline = time.monotonic() + WRITE_DEADLINE_SECONDS
         offset = 0
         while offset < len(data):
