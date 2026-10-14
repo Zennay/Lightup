@@ -70,32 +70,47 @@ _real_fdopen = os.fdopen
 def _read_only_mode(mode):
     return type(mode) is str and not any(c in mode for c in "wax+")
 
+# The eight real review CLIs may inspect only these explicitly supplied,
+# synthetic, regular local manifests. No arbitrary host file reads, even
+# when the attempted read is wrapped in a catch-all exception handler.
+_READ_ROOT = os.path.realpath(os.getcwd())
+_READ_ALLOWLIST = frozenset(os.path.join(_READ_ROOT, name) for name in (
+    "baseline.json", "equal-but-distinct.json", "changed.json",
+))
+
+def _allowed_read(path):
+    try:
+        value = os.fspath(path)
+        return type(value) is str and os.path.realpath(value) in _READ_ALLOWLIST
+    except (TypeError, ValueError, OSError):
+        return False
+
 def checked_open(path, mode="r", *args, **kwargs):
-    if not _read_only_mode(mode):
+    if not _read_only_mode(mode) or not _allowed_read(path):
         forbidden()
     return _real_open(path, mode, *args, **kwargs)
 
 def checked_io_open(path, mode="r", *args, **kwargs):
-    if not _read_only_mode(mode):
+    if not _read_only_mode(mode) or not _allowed_read(path):
         forbidden()
     return _real_io_open(path, mode, *args, **kwargs)
 
 def checked_path_open(path, mode="r", *args, **kwargs):
-    if not _read_only_mode(mode):
+    if not _read_only_mode(mode) or not _allowed_read(path):
         forbidden()
     return _real_path_open(path, mode, *args, **kwargs)
 
 def checked_os_open(path, flags, *args, **kwargs):
     deny_mask = (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC
                  | os.O_APPEND | os.O_EXCL | getattr(os, "O_TMPFILE", 0))
-    if type(flags) is not int or flags & deny_mask:
+    if (type(flags) is not int or flags & deny_mask
+            or not _allowed_read(path) or kwargs.get("dir_fd") is not None):
         forbidden()
     return _real_os_open(path, flags, *args, **kwargs)
 
 def checked_fdopen(fd, mode="r", *args, **kwargs):
-    if not _read_only_mode(mode):
-        forbidden()
-    return _real_fdopen(fd, mode, *args, **kwargs)
+    # An inherited FD is unbound to our three reviewed file identities.
+    forbidden()
 
 builtins.open = checked_open
 io.open = checked_io_open
@@ -390,6 +405,41 @@ class OfflineReviewCliSocketFleetTests(unittest.TestCase):
             with self.subTest(module=module, function=function):
                 program = (
                     "import socket, _socket\n"
+                    "try:\n"
+                    f"    {statement}\n"
+                    "except BaseException:\n"
+                    "    pass\n"
+                    "print('UNEXPECTED_EXECUTION')\n"
+                )
+                proc = subprocess.run(
+                    [sys.executable, "-B", "-c", program], cwd=self.root,
+                    env=self.env, capture_output=True, check=False, timeout=15,
+                )
+                self.assertEqual(proc.returncode, 92, statement)
+                self.assertEqual(proc.stdout, b"")
+                self.assertEqual(proc.stderr, b"")
+                self.assertEqual(self.fingerprint(), before)
+
+
+    def test_uncatchable_out_of_scope_file_reads_and_path_aliases(self):
+        # All attempted reads must abort before accessing the local decoy.
+        # No real host-private files are used or opened in test children.
+        decoy = self.root / "synthetic-private.txt"
+        decoy.write_text("synthetic-secret-never-open", encoding="utf-8")
+        variants = (
+            'open("synthetic-private.txt", "r").read()',
+            'io.open("synthetic-private.txt", "rb").read()',
+            'pathlib.Path("synthetic-private.txt").open("r").read()',
+            'pathlib.Path("synthetic-private.txt").read_text()',
+            'os.open("synthetic-private.txt", os.O_RDONLY)',
+            'os.open("./equal-but-distinct.json/../synthetic-private.txt", os.O_RDONLY)',
+            'os.fdopen(0, "r").read()',
+        )
+        before = self.fingerprint()
+        for statement in variants:
+            with self.subTest(statement=statement):
+                program = (
+                    "import io, os, pathlib\n"
                     "try:\n"
                     f"    {statement}\n"
                     "except BaseException:\n"
