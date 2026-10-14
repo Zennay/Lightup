@@ -721,5 +721,36 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
                 self.assertNotIn(b"SECRET", child.stdout)
 
 
+    def test_six_denial_flags_are_immutable_and_exactly_present(self):
+        self.assertEqual(set(review.FALSE_FLAGS), set(FLAGS))
+        for name in FLAGS:
+            with self.subTest(name=name):
+                self.assertIs(review.FALSE_FLAGS[name], False)
+                with self.assertRaises(TypeError):
+                    review.FALSE_FLAGS[name] = True
+                with self.assertRaises(TypeError):
+                    del review.FALSE_FLAGS[name]
+        with self.assertRaises(TypeError):
+            review.FALSE_FLAGS["release_authorized"] = True
+        self.assertEqual(set(review.FALSE_FLAGS), set(FLAGS))
+        self.check_hold(encoded(packet()), coherent=True, passing=4)
+
+    def test_in_process_attempted_permission_mutation_cannot_change_cli_output(self):
+        for name in FLAGS:
+            try:
+                review.FALSE_FLAGS[name] = True
+            except TypeError:
+                pass
+            else:
+                self.fail("a false permission flag became writable")
+        child = self.cli(encoded(packet()))
+        self.assertEqual(child.returncode, 2)
+        self.assertEqual(child.stderr, b"")
+        self.assertTrue(review._is_sealed_hold_receipt(child.stdout))
+        response = json.loads(child.stdout)
+        for name in FLAGS:
+            self.assertIs(response[name], False)
+
+
 if __name__ == "__main__":
     unittest.main()
