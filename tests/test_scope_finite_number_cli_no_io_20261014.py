@@ -18,6 +18,19 @@ import unittest
 from pathlib import Path
 
 
+# Exit immediately: a caught Python exception would falsely turn the test green.
+# Sitecustomize is loaded before importing the script or its local packages.
+_NETWORK_EXIT_TRIPWIRE = (
+    "import os\n"
+    "import socket\n"
+    "def forbidden(*args, **kwargs):\n"
+    "    os._exit(92)\n"
+    "socket.socket.connect = forbidden\n"
+    "socket.socket.connect_ex = forbidden\n"
+    "socket.getaddrinfo = forbidden\n"
+)
+
+
 class FiniteNumberCliNoIoTests(unittest.TestCase):
     def test_default_python_cannot_create_source_cache_in_disposable_copy(self):
         """Prove ordinary Python invocation is read-only without -B or env help."""
@@ -118,18 +131,71 @@ class FiniteNumberCliNoIoTests(unittest.TestCase):
             self.assertTrue(list(package.rglob("*.pyc")),
                             "test setup masks bytecode writes and cannot prove fix")
 
+    def test_tripwire_kills_swallowed_dns_and_connect_in_actual_cli_copy(self):
+        """Prove attempts cannot be swallowed while preserving REVIEW_ONLY."""
+        repo = Path(__file__).resolve().parents[1]
+        cli_source = (
+            repo / "scripts" / "review_scope_finite_number_offline.py"
+        ).read_text(encoding="utf-8")
+        marker = "def main(args: list[str]) -> int:\n"
+        self.assertEqual(cli_source.count(marker), 1)
+        with tempfile.TemporaryDirectory() as root:
+            sandbox = Path(root)
+            scripts = sandbox / "scripts"
+            package = sandbox / "src" / "lightup"
+            scripts.mkdir(parents=True)
+            package.mkdir(parents=True)
+            (sandbox / "sitecustomize.py").write_text(
+                _NETWORK_EXIT_TRIPWIRE, encoding="utf-8"
+            )
+            for relative in ("__init__.py", "finite_number_offline_review.py"):
+                shutil.copyfile(
+                    repo / "src" / "lightup" / relative, package / relative
+                )
+            mutated_cli = scripts / "review_scope_finite_number_offline.py"
+            env = os.environ.copy()
+            env["PYTHONPATH"] = root
+            env["PYTHONNOUSERSITE"] = "1"
+            for call in (
+                'socket.getaddrinfo("never-resolve.invalid", 443)',
+                'socket.socket().connect(("127.0.0.1", 9))',
+                'socket.socket().connect_ex(("127.0.0.1", 9))',
+            ):
+                with self.subTest(call=call):
+                    injection = (
+                        "    import socket\n"
+                        "    try:\n"
+                        f"        {call}\n"
+                        "    except BaseException:\n"
+                        "        pass  # the former exception-only trap was bypassable\n"
+                    )
+                    mutated_cli.write_text(
+                        cli_source.replace(marker, marker + injection),
+                        encoding="utf-8",
+                    )
+                    result = subprocess.run(
+                        [sys.executable, "-B", str(mutated_cli)],
+                        cwd=sandbox,
+                        env=env,
+                        input=b'{"arguments":[["synthetic",1]]}',
+                        capture_output=True,
+                        timeout=10,
+                        check=False,
+                    )
+                    self.assertEqual(
+                        result.returncode, 92,
+                        "attempt to call a network primitive was not caught",
+                    )
+                    self.assertEqual(result.stdout, b"")
+                    self.assertEqual(result.stderr, b"")
+
     def test_no_workspace_mutation_or_network_for_success_hold_and_bad_args(self):
         repo = Path(__file__).resolve().parents[1]
         cli = repo / "scripts" / "review_scope_finite_number_offline.py"
         with tempfile.TemporaryDirectory() as root:
             sandbox = Path(root)
             (sandbox / "sitecustomize.py").write_text(
-                "import socket\n"
-                "def forbidden(*args, **kwargs):\n"
-                "    raise RuntimeError('synthetic forbidden network operation')\n"
-                "socket.socket.connect = forbidden\n"
-                "socket.socket.connect_ex = forbidden\n"
-                "socket.getaddrinfo = forbidden\n",
+                _NETWORK_EXIT_TRIPWIRE,
                 encoding="utf-8",
             )
             (sandbox / "private-marker.txt").write_bytes(
@@ -155,7 +221,7 @@ class FiniteNumberCliNoIoTests(unittest.TestCase):
             env = os.environ.copy()
             env["PYTHONDONTWRITEBYTECODE"] = "1"
             env["PYTHONNOUSERSITE"] = "1"
-            env["PYTHONPATH"] = root + os.pathsep + env.get("PYTHONPATH", "")
+            env["PYTHONPATH"] = root
             rows = [
                 ([], b'{"arguments":[["count",2],["weight",0.125]]}', 3),
                 ([], b'{"arguments":[["private",1e999]]}', 2),
