@@ -789,5 +789,60 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
 
+
+    def test_79_malformed_percent_escape_authorities_and_paths_denied(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        for candidate in ("http://localhost/%", "http://localhost/%0",
+                          "http://localhost/%zz", "http://localhost/%2f",
+                          "http://localhost/%2F", "http://localhost/%5C",
+                          "http://localhost/%25",
+                          "http://localhost/%00",
+                          "http://localhost/%0A",
+                          "http://localhost/%7F",
+                          "http://localhost/%40user",
+                          "https://localhost/path?x=%3F",
+                          "https://localhost/path?x=%23",
+                          "https://localhost/path?x=%2G"):
+            with self.subTest(value=candidate):
+                self.refused(lambda v=candidate: m.review({"url": v}))
+        self.assertEqual(self.calls, [])
+
+    def test_80_canonical_percent_encoding_is_hold_only(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        for candidate in ("https://localhost/r%C3%A9sum%C3%A9",
+                          "https://localhost/path?q=hello%20world",
+                          "http://[::1]:8080/%E2%82%AC"):
+            with self.subTest(value=candidate):
+                result = m.review({"url": candidate})
+                self.assertEqual(result.status, "hold")
+                self.assertIs(result.permit_issued, False)
+                self.assertIs(result.execution_enabled, False)
+        self.assertEqual(self.calls, [])
+
+    def test_81_percent_escape_corpus_never_uses_network(self):
+        from unittest.mock import patch
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        with (patch("socket.getaddrinfo", side_effect=AssertionError("DNS called")),
+              patch("socket.create_connection", side_effect=AssertionError("socket called")),
+              patch("urllib.request.urlopen", side_effect=AssertionError("network called"))):
+            for code in range(32):
+                self.refused(lambda c=code: m.review(
+                    {"url": "https://localhost/%" + format(c, "02X")}))
+        self.assertEqual(self.calls, [])
+
+    def test_82_lowercase_percent_triplets_are_not_canonical(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        for candidate in ("https://localhost/%c3%a9",
+                          "https://localhost/%2e",
+                          "http://localhost/%7f"):
+            with self.subTest(value=candidate):
+                self.refused(lambda v=candidate: m.review({"url": v}))
+        self.assertEqual(self.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
