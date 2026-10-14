@@ -53,6 +53,18 @@ class ScopeGitObjectIdentityPreflightTests(unittest.TestCase):
         self.assertEqual(self.git("for-each-ref", "--format=%(refname)",
                                   "refs/replace").strip(), "refs/replace/" + self.head)
 
+    def test_packed_replace_ref_is_denied_after_loose_ref_prune(self):
+        self.git("replace", self.head, self.base)
+        self.git("pack-refs", "--all", "--prune")
+        self.assertEqual(inspect(self.repo), "LOCAL_REPLACE_REF_PRESENT")
+        self.assertIn("refs/replace/" + self.head,
+                      self.git("for-each-ref", "--format=%(refname)", "refs/replace"))
+
+    def test_dangling_grafts_symlink_is_refused_conservatively(self):
+        graft = self.repo / ".git" / "info" / "grafts"
+        graft.symlink_to(self.repo / "nonexistent-graft-payload")
+        self.assertEqual(inspect(self.repo), "LEGACY_GRAFT_PRESENT")
+
     def test_grafts_are_denied_even_without_replace_refs(self):
         graft = self.repo / ".git" / "info" / "grafts"
         graft.write_text(self.head + "\n", encoding="ascii")
