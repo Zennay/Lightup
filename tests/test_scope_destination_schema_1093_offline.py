@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import pty
 import socket
 import subprocess
 import sys
@@ -267,6 +268,44 @@ class ReviewTests(unittest.TestCase):
             child.close()
             parent.settimeout(1)
             self.assertEqual(parent.recv(512), b"")
+
+    def test_cli_real_pty_receipt_stays_denial_only(self):
+        master_fd, slave_fd = pty.openpty()
+        try:
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "--stdin-json"],
+                input=encoded(fixture()), stdout=slave_fd,
+                stderr=subprocess.PIPE, timeout=6)
+            self.assertEqual(result.returncode, 3)
+            self.assertFalse(result.stderr)
+            receipt = os.read(master_fd, 512)
+            self.assertEqual(receipt.count(b"\n"), 1)
+            self.assertLess(len(receipt), 512)
+            self.assert_denied(json.loads(receipt), "REVIEW_ONLY")
+        finally:
+            os.close(slave_fd)
+            os.close(master_fd)
+
+    def test_cli_broken_stdout_pipe_no_traceback(self):
+        read_fd, write_fd = os.pipe()
+        try:
+            os.close(read_fd)
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "--stdin-json"],
+                input=encoded(fixture()), stdout=write_fd,
+                stderr=subprocess.PIPE, timeout=6)
+            self.assertEqual(result.returncode, 2)
+            self.assertFalse(result.stderr)
+        finally:
+            os.close(write_fd)
+
+    def test_cli_stdout_device_denies_without_receipt(self):
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "--stdin-json"],
+            input=encoded(fixture()), stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE, timeout=6)
+        self.assertEqual(result.returncode, 2)
+        self.assertFalse(result.stderr)
 
     def test_cli_full_stdout_pipe_cannot_hang_or_leak_fd_blocking(self):
         for initially_blocking in (False, True):
