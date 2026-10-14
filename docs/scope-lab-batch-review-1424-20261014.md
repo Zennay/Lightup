@@ -33,3 +33,10 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_lab_batch_142
 ```
 
 The active source owner [PR #100](https://github.com/Zennay/Lightup/pull/100) remains responsible for fixing the **installed** scope auto-admission weakness [#1422](https://github.com/Zennay/Lightup/issues/1422). This feature deliberately cannot fix that installed production bug. Original `scope.py`, activation, execution policy, tenant CIDR workers, workflow configuration, VPS runner and deployment are not touched. Keep the new batch reviewer DRAFT/HOLD until hosted and permanent VPS evidence plus source/security review have been independently checked.
+
+## W38 — strict argv and exact stream-size admission
+An optional Python entrypoint can also be called directly with hostile argument objects, not just by the shell. The reviewer therefore requires the CLI arguments to be an **exact built-in list of one exact built-in string** before examining the `--stdin-json` marker. A `str` subclass with an overriding comparison method cannot trick or crash the opt-in switch. An absent, unknown, duplicate or unexpected argument refuses with a fixed HOLD **before touching stdin**.
+
+The CLI's read is exactly `stdin.buffer.read(4097)`: the next byte past the 4 KiB limit is observed solely to reject oversize input, never retained or parsed. New in-process tests require the same status on the exact 4096-byte valid JSON boundary and HOLD for 4097 bytes, spy on the read limit, and assert unexpected input types never access a spying stdin object.
+
+Every emission constructs a **new literal False-only receipt map**, rather than copying mutable process-global flag data that another importer could have modified. This is still an offline safety reference, not a user authentication primitive or a sandbox.
