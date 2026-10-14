@@ -18,6 +18,12 @@ The CLI requires **two distinct physical regular files**, not merely two paths: 
 
 `REVIEW_ONLY` (exit **3**) means these *declared metadata* snapshots match. `HOLD` (exit **2**) means drift or invalid input; changed identifiers are reported without a synthetic promotion/demotion recommendation. **Neither returns exit 0.** All receipts carry `authorization_verified=false`, `permit_issued=false`, `execution_enabled=false`, `merge_approved=false`, `release_approved=false`.
 
+## Review which fields changed (read-only)
+
+When metadata differs, the receipt includes both `changed_capabilities` (sorted canonical capability IDs) and `changed_fields`, a map from each ID to exact field labels. Labels are confined to `added`, `removed`, `state`, `requires_explicit_activation`, `name`, and `description`. Multiple fields are reported in stable order. A legacy three-field to full five-field metadata transition reports `name` and `description` drift; it never silently upgrades trust.
+
+**No name/description text or customer content is echoed in receipts**: only canonical ID and these six fixed labels. Malformed manifests remain `HOLD` with empty `changed_fields`, identical reviewed snapshots remain `REVIEW_ONLY` with empty details. Every receipt still hardcodes authorization, permits, execution, merge and release as false. This is explanatory developer metadata, not consent evidence, a signed manifest, or automatic release eligibility.
+
 ## Generate the current local candidate
 
 The optional `python3 scripts/export_scope_capability_registry_offline.py > CANDIDATE.json` serializes **actual local** `get_capabilities()` metadata using strict builtin model, enum, boolean, name and description identity. It rejects duplicate/noncanonical IDs, non-builtin boolean flags and malformed registries, then writes only the strict manifest JSON to stdout. The exporter deliberately exits **3 even on successful export**, or **2 for invalid data**; its successful shell exit is not zero. Compare a separately saved trusted, human-selected baseline against the newly generated candidate, rather than a copy against itself. Output provenance depends entirely on the checkout and reviewer: the exporter does **not** attest the repository commit or grant authority.
