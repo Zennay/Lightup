@@ -45,6 +45,31 @@ class FiniteNumberOfflineReviewTests(unittest.TestCase):
                     (("amount", value),),
                 )
 
+    def test_huge_integer_budget_and_boundary_signs(self):
+        finite_edge = (1 << 4095)
+        for value in (finite_edge, -finite_edge, (1 << 4096) - 1, -((1 << 4096) - 1)):
+            with self.subTest(size=value.bit_length(), negative=value < 0):
+                self.assertEqual(
+                    snapshot_finite_number_arguments((("amount", value),)),
+                    (("amount", value),),
+                )
+        for value in (1 << 4096, -(1 << 4096), 10 ** 2000, -(10 ** 2000)):
+            with self.subTest(size=value.bit_length(), negative=value < 0):
+                with self.assertRaises(ValueError):
+                    snapshot_finite_number_arguments((("amount", value),))
+                receipt = review_finite_number_arguments((("secret", value),))
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertEqual(receipt["checked_count"], 0)
+                self.assertNotIn("secret", str(receipt))
+
+    def test_huge_late_integer_failure_is_atomic(self):
+        controls = tuple((f"n{i}", i) for i in range(31))
+        with self.assertRaises(ValueError):
+            snapshot_finite_number_arguments(controls + (("later", 1 << 4096),))
+        self.assertEqual(
+            snapshot_finite_number_arguments(controls)[0], ("n0", 0)
+        )
+
     def test_nonfinite_and_subtyped_values_fail_closed(self):
         invalid = (
             float("nan"), float("inf"), float("-inf"),
@@ -104,6 +129,8 @@ class FiniteNumberOfflineReviewTests(unittest.TestCase):
         examples = (
             (b'{"arguments":[["count",2],["weight",0.5]]}', "REVIEW_ONLY", 3),
             (b'{"arguments":[["count",2],["weight",1e999]]}', "HOLD", 2),
+            (b'{"arguments":[["huge",' + b'9' * 1300 + b']]}', "HOLD", 2),
+            (b'{"arguments":[["huge",-' + b'9' * 1300 + b']]}', "HOLD", 2),
             (b'{"arguments":[["count",NaN]]}', "HOLD", 2),
             (b'{"arguments":[["secret",7],["secret",8]]}', "HOLD", 2),
             (b'{"arguments":[["secret",7]],"arguments":[["secret",8]]}', "HOLD", 2),
