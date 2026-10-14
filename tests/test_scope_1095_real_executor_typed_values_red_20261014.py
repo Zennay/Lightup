@@ -470,12 +470,17 @@ class ExpectedRedWitnessIntegrityTests(unittest.TestCase):
         if len(result.expectedFailures) != expected_count:
             problems.append("a RED witness did not produce an expected failure")
         for test, traceback_text in result.expectedFailures:
-            final_line = traceback_text.rstrip().splitlines()[-1]
-            # A raised TypeError, ValueError, network failure, etc. is NOT
-            # legitimate evidence of a primitive-admission assertion.
-            if not final_line.startswith("AssertionError:"):
+            detail_lines = traceback_text.rstrip().splitlines()
+            # unittest assertEqual may append multi-line collection diffs
+            # AFTER "AssertionError:". The final line is NOT always the
+            # exception type, so inspect the explicit exception header.
+            assertion_headers = [
+                line for line in detail_lines if line.startswith("AssertionError:")
+            ]
+            if not assertion_headers:
                 problems.append(
-                    "non-assertion RED exception in " + test.id() + ": " + final_line
+                    "non-assertion RED exception in " + test.id() + ": "
+                    + (detail_lines[-1] if detail_lines else "no traceback")
                 )
             if "self.assert" not in traceback_text:
                 problems.append("RED witness did not fail at a unittest assertion: " + test.id())
@@ -487,6 +492,13 @@ class ExpectedRedWitnessIntegrityTests(unittest.TestCase):
             self.assertFalse(True, "genuine synthetic type refusal")
 
         @unittest.expectedFailure
+        def _multiline_assertion_red(self):
+            self.assertEqual(
+                ["synthetic", "first"], ["synthetic", "second"],
+                "synthetic multiline diff, not a crash",
+            )
+
+        @unittest.expectedFailure
         def _crash_red(case):
             raise TypeError("unrelated synthetic test crash")
 
@@ -496,18 +508,20 @@ class ExpectedRedWitnessIntegrityTests(unittest.TestCase):
 
         class SyntheticWitnesses(unittest.TestCase):
             test_assertion_red = _assertion_red
+            test_multiline_assertion_red = _multiline_assertion_red
             test_crash_red = _crash_red
             test_fixed_red = _fixed_red
 
         expected = unittest.TestSuite((
             SyntheticWitnesses("test_assertion_red"),
+            SyntheticWitnesses("test_multiline_assertion_red"),
             SyntheticWitnesses("test_crash_red"),
             SyntheticWitnesses("test_fixed_red"),
         ))
         results = unittest.TestResult()
         expected.run(results)
-        self.assertEqual(results.testsRun, 3)
-        detected = self._unexpected_red_outcomes(results, 3)
+        self.assertEqual(results.testsRun, 4)
+        detected = self._unexpected_red_outcomes(results, 4)
         self.assertTrue(any("non-assertion RED exception" in entry for entry in detected))
         self.assertTrue(any("XPASS" in entry for entry in detected))
 
@@ -516,6 +530,12 @@ class ExpectedRedWitnessIntegrityTests(unittest.TestCase):
         positive = unittest.TestResult()
         unittest.TestSuite((SyntheticWitnesses("test_assertion_red"),)).run(positive)
         self.assertEqual(self._unexpected_red_outcomes(positive, 1), [])
+
+        multiline = unittest.TestResult()
+        unittest.TestSuite((
+            SyntheticWitnesses("test_multiline_assertion_red"),
+        )).run(multiline)
+        self.assertEqual(self._unexpected_red_outcomes(multiline, 1), [])
 
     def test_all_registered_source_reds_are_specific_assertion_failures(self):
         witnesses = []
