@@ -83,6 +83,18 @@ class GitReplaceRefBoundaryTests(unittest.TestCase):
         self.assertEqual(self.git("diff", "--name-only", self.base, self.unsafe,
                                   disable_replace=True).strip(), "src/lightup/protected.py")
 
+    def test_current_head_sha_check_alone_does_not_disarm_git_replacement(self):
+        self.git("checkout", "--detach", "-q", self.unsafe)
+        # HEAD still names the genuine immutable SHA, although normal Git
+        # commands read the substituted commit object in this local checkout.
+        self.assertEqual(self.git("rev-parse", "--verify", "HEAD^{commit}").strip(),
+                         self.unsafe)
+        apparent = self.git("diff", "--name-only", self.base, "HEAD").splitlines()
+        actual = self.git("diff", "--name-only", self.base, "HEAD",
+                          disable_replace=True).splitlines()
+        self.assertEqual(apparent, ["tests/test_scope_synthetic.py"])
+        self.assertEqual(actual, ["src/lightup/protected.py"])
+
     def test_original_object_still_accessible_without_removing_local_replace_ref(self):
         self.assertEqual(self.git("show", "--format=%s", "-s", self.unsafe,
                                   disable_replace=True).strip(), "unsafe original")
