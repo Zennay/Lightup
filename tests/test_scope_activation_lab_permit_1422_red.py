@@ -21,6 +21,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+from lightup import activation as activation_module
 from lightup.activation import ActivationGate, ActivationMode, ActivationPolicy, ExecutionPermit
 from lightup.models import Authorization, Target
 from lightup.scope import ScopePolicy, ScopeReason
@@ -309,6 +310,79 @@ class ActualActivationPermitChainRED(unittest.TestCase):
         self.assertIs(os.write, before_os_write)
         self.assertIs(subprocess.Popen, before_popen)
         self.assertIs(sqlite3.connect, before_db)
+
+
+    def test_denied_locked_gate_never_mints_before_raising(self):
+        baseline = AUDIT.audit()
+        real_gate = ActivationGate
+
+        class PrematureLockedMint:
+            def __init__(self, policy, activation):
+                self.real = real_gate(policy, activation)
+                self.locked = (
+                    activation.mode is ActivationMode.LAB_ONLY
+                    and policy.allow_private_lab is False
+                )
+
+            def issue(self, target, capability):
+                if self.locked and target.value == AUDIT.NOT_LAB[0]:
+                    activation_module.token_urlsafe(24)
+                    raise PermissionError("SENSITIVE-MINT-DENIED")
+                return self.real.issue(target, capability)
+
+        with patch.object(AUDIT, "ActivationGate", PrematureLockedMint):
+            receipt = AUDIT.audit()
+        self.assertEqual(receipt["checked"], baseline["checked"])
+        self.assertEqual(receipt["violations"], baseline["violations"] + 1)
+        self.assertIs(receipt["permit_issued"], False)
+        self.assertNotIn("SENSITIVE", json.dumps(receipt))
+
+    def test_denied_plan_only_never_mints_before_raising(self):
+        baseline = AUDIT.audit()
+        real_gate = ActivationGate
+
+        class PrematurePlanMint:
+            def __init__(self, policy, activation):
+                self.real = real_gate(policy, activation)
+                self.plan = activation.mode is ActivationMode.PLAN_ONLY
+
+            def issue(self, target, capability):
+                if self.plan and target.value == AUDIT.SAFE_LAB[0]:
+                    activation_module.token_urlsafe(24)
+                    raise PermissionError("SENSITIVE-MINT-DENIED")
+                return self.real.issue(target, capability)
+
+        with patch.object(AUDIT, "ActivationGate", PrematurePlanMint):
+            receipt = AUDIT.audit()
+        self.assertEqual(receipt["checked"], baseline["checked"])
+        self.assertEqual(receipt["violations"], baseline["violations"] + 1)
+        self.assertIs(receipt["execution_enabled"], False)
+        self.assertNotIn("SENSITIVE", json.dumps(receipt))
+
+    def test_approved_synthetic_lab_sample_never_double_mints(self):
+        baseline = AUDIT.audit()
+        real_gate = ActivationGate
+
+        class DoubleMint:
+            def __init__(self, policy, activation):
+                self.real = real_gate(policy, activation)
+                self.allowed = (
+                    activation.mode is ActivationMode.LAB_ONLY
+                    and policy.allow_private_lab is True
+                )
+
+            def issue(self, target, capability):
+                permit = self.real.issue(target, capability)
+                if self.allowed and target.value == AUDIT.SAFE_LAB[0]:
+                    activation_module.token_urlsafe(24)
+                return permit
+
+        with patch.object(AUDIT, "ActivationGate", DoubleMint):
+            receipt = AUDIT.audit()
+        self.assertEqual(receipt["checked"], baseline["checked"])
+        self.assertEqual(receipt["violations"], baseline["violations"] + 1)
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertIs(receipt["release_approved"], False)
 
     def test_cli_single_fixed_receipt_no_literal_or_token_reflection(self):
         run = subprocess.run(
