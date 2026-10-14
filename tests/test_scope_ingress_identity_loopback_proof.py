@@ -323,7 +323,7 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
     @staticmethod
     def _mock_proxied_outcome(
         port, path, *, method="GET", cookie=None, alternates=False,
-        alternate_name=None, body=None,
+        alternate_name=None, body=None, expected_nonce=None,
     ):
         # Models only the already defined fake WSGI outcomes, not a real
         # ingress request; prove launch, matrix and cleanup orchestration.
