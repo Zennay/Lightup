@@ -272,6 +272,73 @@ class CandidateLedgerTests(unittest.TestCase):
         self.db.rollback()
         self.assertIsNone(self.ledger.inspect("lab-run-1", client_id="client-1").revoked_at)
 
+    def test_persisted_expiry_widening_is_detected(self):
+        self.ledger.issue(**self.items)
+        widened = datetime.now(timezone.utc) + timedelta(days=30)
+        self.db.execute(
+            "UPDATE lab_stepup_candidates_v1 SET expires_at=? WHERE run_id=?",
+            (widened.isoformat(), "lab-run-1"),
+        )
+        self.db.commit()
+        with self.assertRaises(CandidateHeld):
+            self.ledger.inspect("lab-run-1", client_id="client-1")
+
+    def test_persisted_issued_at_backdating_is_detected(self):
+        original = self.ledger.issue(**self.items)
+        backdated = original.approved_at - timedelta(days=3)
+        self.db.execute(
+            "UPDATE lab_stepup_candidates_v1 SET approved_at=? WHERE run_id=?",
+            (backdated.isoformat(), "lab-run-1"),
+        )
+        self.db.commit()
+        with self.assertRaises(CandidateHeld):
+            self.ledger.inspect("lab-run-1", client_id="client-1")
+
+    def test_persisted_reversed_window_is_detected(self):
+        original = self.ledger.issue(**self.items)
+        expiry = original.approved_at - timedelta(seconds=1)
+        self.db.execute(
+            "UPDATE lab_stepup_candidates_v1 SET expires_at=? WHERE run_id=?",
+            (expiry.isoformat(), "lab-run-1"),
+        )
+        self.db.commit()
+        with self.assertRaises(CandidateHeld):
+            self.ledger.inspect("lab-run-1", client_id="client-1")
+
+    def test_persisted_revocation_before_issue_is_detected(self):
+        original = self.ledger.issue(**self.items)
+        self.ledger.revoke(run_id="lab-run-1", actor="operator-1", operator_gate=allow)
+        impossible = original.approved_at - timedelta(seconds=1)
+        self.db.execute(
+            "UPDATE lab_stepup_candidates_v1 SET revoked_at=? WHERE run_id=?",
+            (impossible.isoformat(), "lab-run-1"),
+        )
+        self.db.commit()
+        with self.assertRaises(CandidateHeld):
+            self.ledger.inspect("lab-run-1", client_id="client-1")
+
+    def test_persisted_noncanonical_utc_alias_is_rejected(self):
+        self.ledger.issue(**self.items)
+        self.db.execute(
+            """UPDATE lab_stepup_candidates_v1
+            SET expires_at=REPLACE(expires_at, '+00:00', 'Z')
+            WHERE run_id=?""", ("lab-run-1",),
+        )
+        self.db.commit()
+        with self.assertRaises(CandidateHeld):
+            self.ledger.inspect("lab-run-1", client_id="client-1")
+
+    def test_persisted_negative_zero_offset_is_rejected(self):
+        self.ledger.issue(**self.items)
+        self.db.execute(
+            """UPDATE lab_stepup_candidates_v1
+            SET approved_at=REPLACE(approved_at, '+00:00', '-00:00')
+            WHERE run_id=?""", ("lab-run-1",),
+        )
+        self.db.commit()
+        with self.assertRaises(CandidateHeld):
+            self.ledger.inspect("lab-run-1", client_id="client-1")
+
 
 if __name__ == "__main__":
     unittest.main()
