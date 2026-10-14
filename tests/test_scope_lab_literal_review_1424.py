@@ -124,6 +124,21 @@ class LiteralReviewOfflineTests(TestCase):
         self.assert_receipt("127.0.0.1", "REVIEW_ONLY", "LOOPBACK")
         self.assert_receipt("192.0.2.1", "HOLD", "UNTRUSTED")
 
+    def test_hold_receipts_do_not_share_mutable_identity_between_calls(self):
+        first = review_lab_literal("192.0.2.1")
+        second = review_lab_literal("8.8.8.8")
+        self.assertIsNot(first, second)
+        self.assertIs(first.permit_issued, False)
+        # Any caller with arbitrary Python object mutation powers can bypass
+        # dataclass frozen, but it must not poison any later returned HOLD.
+        object.__setattr__(first, "permit_issued", True)
+        try:
+            new = self.assert_receipt("203.0.113.1", "HOLD", "UNTRUSTED")
+            self.assertIsNot(new, first)
+            self.assertIsNot(new, second)
+        finally:
+            object.__setattr__(first, "permit_issued", False)
+
     def test_no_dns_socket_disk_or_process_even_for_positive_literal(self):
         # The module is already imported; exercise only the reviewer runtime.
         with (
