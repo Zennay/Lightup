@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from ipaddress import ip_address, ip_network
 from re import fullmatch
 
 from .engagements import AuthorizationGrant, RiskLevel, ScopeDefinition
@@ -48,6 +49,21 @@ def _tokens(values: object, *, allow_empty: bool = False) -> frozenset[str] | No
             or value in result
         ):
             return None
+        # Numeric host aliases (127.1, zero-padded IPv4, noncanonical IPv6)
+        # must not disguise overlap in an operator's cross-tenant batch.
+        # Never perform DNS or external resolution.
+        if "/" in value:
+            try:
+                if str(ip_network(value, strict=True)) != value:
+                    return None
+            except ValueError:
+                return None
+        elif ":" in value or fullmatch(r"[0-9.]+", value) is not None:
+            try:
+                if str(ip_address(value)) != value:
+                    return None
+            except ValueError:
+                return None
         result.add(value)
     return frozenset(result)
 
