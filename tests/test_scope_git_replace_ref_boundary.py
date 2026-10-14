@@ -83,6 +83,29 @@ class GitReplaceRefBoundaryTests(unittest.TestCase):
         self.assertEqual(self.git("diff", "--name-only", self.base, self.unsafe,
                                   disable_replace=True).strip(), "src/lightup/protected.py")
 
+    def test_legacy_git_graft_overrides_history_even_when_replacements_are_disabled(self):
+        before = self.git("show", "-s", "--format=%P", self.unsafe,
+                          disable_replace=True).strip()
+        self.assertEqual(before, self.base)
+        grafts = self.repo / ".git" / "info" / "grafts"
+        grafts.write_text(self.unsafe + "\n", encoding="ascii")
+        after = self.git("show", "-s", "--format=%P", self.unsafe,
+                         disable_replace=True).strip()
+        self.assertEqual(after, "")
+        raw = self.git("cat-file", "commit", self.unsafe,
+                       disable_replace=True)
+        self.assertIn("parent " + self.base, raw)
+
+    def test_legacy_git_graft_alters_rev_list_parent_graph_despite_env_pin(self):
+        expected = self.git("rev-list", "--parents", "-n", "1", self.unsafe,
+                            disable_replace=True).strip()
+        self.assertEqual(expected, self.unsafe + " " + self.base)
+        grafts = self.repo / ".git" / "info" / "grafts"
+        grafts.write_text(self.unsafe + "\n", encoding="ascii")
+        disguised = self.git("rev-list", "--parents", "-n", "1", self.unsafe,
+                             disable_replace=True).strip()
+        self.assertEqual(disguised, self.unsafe)
+
     def test_replace_ref_can_falsify_original_parent_commit_history(self):
         # An unrelated root commit is also a syntactically valid replacement.
         self.git("checkout", "--orphan", "unrelated")
