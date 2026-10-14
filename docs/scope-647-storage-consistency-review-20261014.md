@@ -81,3 +81,38 @@ review, valid customer authorization, source integration/tenant/revocation
 checks and appropriate runner/release evidence.
 
 **Develop-main code merge is not live deployment or scan permission.**
+
+## Bounded fictional-only command-line audit (same review, no I/O)
+
+`scripts/audit_fictional_grant_storage_647_offline.py` now exposes the
+read-only audit to a local terminal, without introducing a real DB connector
+or accepting customer IDs, file paths, target hosts, actual consent records,
+signatures, or any authorization. Only four strict UTC builtin
+`datetime.isoformat()` text arguments are accepted:
+
+```bash
+python scripts/audit_fictional_grant_storage_647_offline.py \
+    --expected-start-utc 2026-10-14T12:00:00+00:00 \
+    --expected-until-utc 2026-10-14T12:15:00+00:00 \
+    --stored-start-utc 2026-10-14T12:00:00+00:00 \
+    --stored-until-utc 2026-10-14T12:15:00+00:00
+```
+
+The local input fixture is **not** trusted permission; the CLI cannot verify
+who selected the expected timestamps or whether those dates correspond to any
+real record. It returns **one privacy-minimal JSON line** (no echoed timestamps
+or exceptions), and deliberately **never exits successfully**:
+
+- Exit **2 / HOLD** for invalid/inconsistent input, widened/narrowed storage.
+- Exit **3 / REVIEW_ONLY** for syntactically canonical equality; *not a permit*.
+- Exit zero is **never possible**, including on a matching fixture, so
+  `audit && run_scan` cannot accidentally authorize a scan.
+
+`tests/test_scope_647_storage_consistency_cli.py` asserts strict flag
+admission, mismatches, microsecond precision, no network/DB, privacy, error
+sanitization and all-nonzero exits. This is an optional offline diagnostic
+for synthetic-only test workflows; no tool uses it in production.
+
+```bash
+python -m unittest discover -s tests -p 'test_scope_647_storage_consistency_cli.py' -v
+```
