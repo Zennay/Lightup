@@ -16,6 +16,7 @@ import sys
 
 from lightup.engagements import AuthorizationGrant, RiskLevel, ScopeDefinition
 from lightup.grant_revision_batch_review import review_grant_revision_batch
+from lightup.grant_revision_history_review import review_grant_history
 
 
 MAX_FILE_BYTES = 65536
@@ -138,16 +139,37 @@ def _batch(value: object) -> tuple[tuple[AuthorizationGrant, AuthorizationGrant]
     return tuple(result)
 
 
+def _history(value: object) -> tuple[AuthorizationGrant, ...]:
+    if type(value) is not dict or frozenset(value) != {"history"}:
+        raise ValueError("invalid history envelope")
+    history = value["history"]
+    if type(history) is not list or not 2 <= len(history) <= 8:
+        raise ValueError("invalid history version count")
+    return tuple(_grant(snapshot) for snapshot in history)
+
+
 def review_local_file(path: str) -> dict[str, object]:
     try:
-        snapshot = _batch(_read_regular_file(path))
-        result = review_grant_revision_batch(snapshot)
-        fields: dict[str, object] = {
-            "verdict": result.verdict,
-            "reason_code": result.reason_code,
-            "reviewed_count": result.reviewed_count,
-            "narrowed_count": result.narrowed_count,
-        }
+        payload = _read_regular_file(path)
+        if type(payload) is dict and frozenset(payload) == {"history"}:
+            result = review_grant_history(_history(payload))
+            fields: dict[str, object] = {
+                "verdict": result.verdict,
+                "reason_code": result.reason_code,
+                "reviewed_count": 1 if result.verdict == "REVIEW_ONLY" else 0,
+                "narrowed_count": len(result.narrowed_fields) if result.verdict == "REVIEW_ONLY" else 0,
+                "version_count": result.version_count,
+                "reviewed_transitions": result.reviewed_transitions,
+            }
+        else:
+            snapshot = _batch(payload)
+            result = review_grant_revision_batch(snapshot)
+            fields = {
+                "verdict": result.verdict,
+                "reason_code": result.reason_code,
+                "reviewed_count": result.reviewed_count,
+                "narrowed_count": result.narrowed_count,
+            }
     except (OSError, ValueError, TypeError, OverflowError, UnicodeError, RecursionError):
         fields = {
             "verdict": "HOLD", "reason_code": "invalid_offline_snapshot",
@@ -158,7 +180,7 @@ def review_local_file(path: str) -> dict[str, object]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Offline non-authorizing grant revision review")
+    parser = argparse.ArgumentParser(description="Offline non-authorizing grant revision or history review")
     parser.add_argument("snapshot", type=Path, help="Local regular JSON file only; never a target")
     args = parser.parse_args(argv)
     result = review_local_file(str(args.snapshot))
