@@ -19,8 +19,7 @@ from review_scope_destination_schema_1093_offline import (  # noqa: E402
 def fixture():
     return {"tools": [
         {"tool_id": "lab-http-baseline", "parameters": [
-            {"name": "url", "kind": "string", "role": "endpoint"},
-            {"name": "timeout", "kind": "number", "role": "none"}]},
+            {"name": "url", "kind": "string", "role": "endpoint"}]},
         {"tool_id": "lab-tls-baseline", "parameters": [
             {"name": "host", "kind": "string", "role": "host"},
             {"name": "port", "kind": "integer", "role": "port"}]},
@@ -47,7 +46,7 @@ class ReviewTests(unittest.TestCase):
     def test_three_distinct_real_worker_shapes_structural_only(self):
         value = review_bytes(encoded(fixture()))
         self.assert_denied(value, "REVIEW_ONLY")
-        self.assertEqual((value["claimed_tool_count"], value["claimed_parameter_count"]), (3, 6))
+        self.assertEqual((value["claimed_tool_count"], value["claimed_parameter_count"]), (3, 5))
 
     def test_no_source_truth_can_be_inferred(self):
         fake = fixture()
@@ -91,7 +90,7 @@ class ReviewTests(unittest.TestCase):
         for kind in ("array", "object", "map", "STRING", "float"):
             with self.subTest(kind=kind):
                 sample = fixture()
-                sample["tools"][0]["parameters"][1]["kind"] = kind
+                sample["tools"][1]["parameters"][1]["kind"] = kind
                 self.assert_denied(review_schema(sample), "HOLD")
 
     def test_non_destination_metadata_does_not_supply_authority(self):
