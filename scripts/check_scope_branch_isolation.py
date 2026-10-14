@@ -5,8 +5,10 @@ import argparse
 import json
 import os
 import re
+import selectors
 import subprocess
 import sys
+import time
 import unicodedata
 from pathlib import Path
 
@@ -18,10 +20,11 @@ OWNED = re.compile(
 )
 MAX_FILES = 16
 MAX_TEXT_BYTES = 256 * 1024
+MAX_DIFF_OUTPUT_BYTES = 512 * 1024
 
 
-def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
-    """Read repository metadata without inherited Git redirection/config injection."""
+def _git_env() -> dict[str, str]:
+    """Discard caller-supplied Git selectors and external config."""
     clean_env = {key: value for key, value in os.environ.items()
                  if not key.startswith("GIT_")}
     clean_env.update({
@@ -29,13 +32,68 @@ def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
         "GIT_CONFIG_GLOBAL": os.devnull,
         "GIT_OPTIONAL_LOCKS": "0",
     })
+    return clean_env
+
+
+def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
+    """Read repository metadata without inherited Git redirection/config injection."""
     command = ("git", "-c", "core.whitespace=blank-at-eol,blank-at-eof,space-before-tab", *args)
     try:
-        return subprocess.run(command, cwd=repo, env=clean_env, capture_output=True,
+        return subprocess.run(command, cwd=repo, env=_git_env(), capture_output=True,
                               check=False, timeout=20)
     except (OSError, subprocess.TimeoutExpired):
         # Missing Git, blocked invocations or timeouts yield an opaque HOLD.
         return subprocess.CompletedProcess(command, 126, b"", b"")
+
+
+def _git_bounded_names(repo: Path, *args: str,
+                       limit: int = MAX_DIFF_OUTPUT_BYTES) -> subprocess.CompletedProcess[bytes]:
+    """Stream Git name lists without ever buffering an unbounded diff in memory.
+
+    All callers supply fixed Git subcommands and immutable hexadecimal refs.
+    Overflow, pipe failures and deadlines produce opaque HOLD (returncode 126).
+    """
+    command = ("git", "-c", "core.whitespace=blank-at-eol,blank-at-eof,space-before-tab", *args)
+    process = None
+    try:
+        process = subprocess.Popen(
+            command, cwd=repo, env=_git_env(),
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        )
+        assert process.stdout is not None
+        chunks: list[bytes] = []
+        seen = 0
+        deadline = time.monotonic() + 20
+        with selectors.DefaultSelector() as selector:
+            selector.register(process.stdout, selectors.EVENT_READ)
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0 or not selector.select(remaining):
+                    return subprocess.CompletedProcess(command, 126, b"", b"")
+                chunk = os.read(process.stdout.fileno(), min(65536, limit - seen + 1))
+                if not chunk:
+                    break
+                seen += len(chunk)
+                if seen > limit:
+                    return subprocess.CompletedProcess(command, 126, b"", b"")
+                chunks.append(chunk)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return subprocess.CompletedProcess(command, 126, b"", b"")
+        return subprocess.CompletedProcess(command, process.wait(timeout=remaining),
+                                           b"".join(chunks), b"")
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return subprocess.CompletedProcess(command, 126, b"", b"")
+    finally:
+        if process is not None:
+            if process.poll() is None:
+                process.kill()
+            try:
+                process.wait(timeout=2)
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+            if process.stdout is not None:
+                process.stdout.close()
 
 
 def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
@@ -75,7 +133,7 @@ def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
             return "MISSING_COMMIT", 0
     if _git(repo, "merge-base", "--is-ancestor", base, head).returncode:
         return "NON_DESCENDANT_HEAD", 0
-    diff = _git(repo, "diff", "--name-status", "--no-renames", "--no-ext-diff", "--no-textconv", "-z", base, head, "--")
+    diff = _git_bounded_names(repo, "diff", "--name-status", "--no-renames", "--no-ext-diff", "--no-textconv", "-z", base, head, "--")
     if diff.returncode:
         return "DIFF_UNAVAILABLE", 0
     fields = diff.stdout.split(b"\x00")
@@ -139,7 +197,7 @@ def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
             return "MISSING_PEER_COMMIT", len(fields) // 2
         if _git(repo, "merge-base", "--is-ancestor", base, peer).returncode:
             return "NON_DESCENDANT_PEER", len(fields) // 2
-        other = _git(repo, "diff", "--name-only", "--no-renames", "--no-ext-diff",
+        other = _git_bounded_names(repo, "diff", "--name-only", "--no-renames", "--no-ext-diff",
                      "--no-textconv", "-z", base, peer, "--")
         if other.returncode or (other.stdout and not other.stdout.endswith(b"\x00")):
             return "PEER_DIFF_UNAVAILABLE", len(fields) // 2
