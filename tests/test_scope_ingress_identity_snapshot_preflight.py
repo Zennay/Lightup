@@ -156,6 +156,68 @@ class IngressIdentitySnapshotPreflightTests(unittest.TestCase):
         self.assert_hold(bad)
         self.assert_hold(NGINX.replace(b"# configuration file ", b"# copied template "))
 
+    def test_nginx_extra_listeners_and_duplicate_names_hold(self):
+        for bad in (
+            NGINX.replace(b"listen 443 ssl;", b"listen 443 ssl;\n    listen 80;"),
+            NGINX.replace(b"listen 443 ssl;", b"listen 443 ssl;\n    listen 444 ssl;"),
+            NGINX.replace(b"server_name fixture.invalid;", b"server_name fixture.invalid;\n    server_name alias.invalid;"),
+            NGINX.replace(b"server_name fixture.invalid;\n", b""),
+            NGINX.replace(b"server_name fixture.invalid;", b"server_name _;"),
+            NGINX.replace(b"server_name fixture.invalid;", b"server_name *.invalid;"),
+        ):
+            with self.subTest(bad=bad[-140:]):
+                self.assert_hold(bad)
+
+    def test_nginx_context_confusion_and_unbalanced_braces_hold(self):
+        for bad in (
+            # A listen directive within location is not a listening server.
+            NGINX.replace(
+                b"    listen 443 ssl;\n", b""
+            ).replace(
+                b"location / {", b"location / {\n        listen 443 ssl;"
+            ),
+            # An otherwise complete location outside the server is not its route.
+            NGINX.replace(
+                b"server {\n    listen 443 ssl;\n    server_name fixture.invalid;\n    location / {",
+                b"server {\n    listen 443 ssl;\n    server_name fixture.invalid;\n}\nlocation / {",
+            ),
+            # A malicious server_name in a nested scope must not be ignored.
+            NGINX.replace(
+                b"proxy_set_header Cookie $http_cookie;",
+                b"proxy_set_header Cookie $http_cookie;\n        server_name shadow.invalid;",
+            ),
+            NGINX + b"}\n",
+            NGINX.replace(b"    }\n}", b"    }\n    }\n}"),
+            NGINX.replace(
+                b"proxy_pass_request_headers off;",
+                b"proxy_pass_request_headers off;\n"
+                b"        proxy_pass_request_headers off;",
+            ),
+        ):
+            with self.subTest(bad=bad[-140:]):
+                self.assert_hold(bad)
+
+    def test_nginx_config_multi_directive_or_header_smuggling_line_holds(self):
+        for bad in (
+            NGINX.replace(
+                b"listen 443 ssl;", b"listen 443 ssl; server_name alias.invalid;"
+            ),
+            NGINX.replace(
+                b"proxy_set_header Cookie $http_cookie;",
+                b"proxy_set_header Cookie $http_cookie; proxy_set_header X-Remote-User admin;",
+            ),
+            NGINX.replace(
+                b"server_name fixture.invalid;",
+                b"server_name fixture.invalid;\rserver_name alias.invalid;",
+            ),
+            NGINX.replace(
+                b"proxy_set_header X-Forwarded-Proto https;",
+                b"proxy_set_header X-Forwarded-Proto https;\x00",
+            ),
+        ):
+            with self.subTest(bad=bad[-140:]):
+                self.assert_hold(bad)
+
     def test_gunicorn_remote_bind_proxy_trust_or_ambiguous_printed_settings_hold(self):
         for bad in (
             GUNICORN.replace(b"127.0.0.1:8766", b"0.0.0.0:8766"),
