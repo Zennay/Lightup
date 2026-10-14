@@ -170,36 +170,69 @@ def review(raw: bytes) -> tuple[dict[str, object], int]:
 
 
 def _bounded_stdin() -> bytes:
-    """Read one finite local file/FIFO, never wait forever for an open writer.
+    """Read one finite local file/FIFO; refuse changed metadata and stale EOF.
 
-    Pipes must reach EOF inside the absolute deadline; a partially received
-    packet (even when it looks complete) is never accepted for review.
+    Make the reader temporarily nonblocking: select() readiness can race with a
+    second reader consuming data. Restore the inherited descriptor flag even
+    on errors. This is a userland heuristic, not file provenance or sandboxing.
     """
+    fd = -1
+    switched = False
+    original_blocking = False
+    output = b""
     try:
         fd = sys.stdin.fileno()
         if fd != 0:
             return b""
-        info = os.fstat(fd)
-        if not (stat.S_ISFIFO(info.st_mode) or stat.S_ISREG(info.st_mode)):
+        before = os.fstat(fd)
+        regular = stat.S_ISREG(before.st_mode)
+        if not (regular or stat.S_ISFIFO(before.st_mode)):
             return b""
-        if stat.S_ISREG(info.st_mode) and info.st_size > MAX_INPUT:
+        if regular and before.st_size > MAX_INPUT:
             return b""
+        original_blocking = os.get_blocking(fd)
         deadline = time.monotonic() + 2.0
         chunks = bytearray()
+        if original_blocking:
+            # Mark as switched *before* the operation, for partial-failure
+            # injection where the flag changes but the setter raises.
+            switched = True
+            os.set_blocking(fd, False)
         while len(chunks) <= MAX_INPUT:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                return b""
+                break
             ready, _, _ = select.select([fd], [], [], remaining)
             if not ready:
-                return b""
-            part = os.read(fd, min(4096, MAX_INPUT + 1 - len(chunks)))
+                break
+            try:
+                part = os.read(fd, min(4096, MAX_INPUT + 1 - len(chunks)))
+            except BlockingIOError:
+                continue
             if not part:
-                return bytes(chunks)
+                after = os.fstat(fd)
+                identity_before = (before.st_dev, before.st_ino, stat.S_IFMT(before.st_mode))
+                identity_after = (after.st_dev, after.st_ino, stat.S_IFMT(after.st_mode))
+                if identity_before != identity_after:
+                    break
+                if regular and (
+                    before.st_size != after.st_size
+                    or before.st_mtime_ns != after.st_mtime_ns
+                    or before.st_ctime_ns != after.st_ctime_ns
+                ):
+                    break
+                output = bytes(chunks)
+                break
             chunks.extend(part)
-        return b""
     except (OSError, ValueError, TypeError):
-        return b""
+        output = b""
+    finally:
+        if switched:
+            try:
+                os.set_blocking(fd, original_blocking)
+            except (OSError, ValueError):
+                output = b""
+    return output
 
 
 RECEIPT_SCHEMA = "lightup.grant-amendment-review.receipt.v1"
