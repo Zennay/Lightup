@@ -247,3 +247,24 @@ dezelfde run-nonce gebruiken en dat WSGI die nonce werkelijk terugstuurt.
 sessions/CSRF/tenant-grants, permanente VPS-runner, onafhankelijke
 security/privacy-review en menselijke toestemming. **INCUBATE M3/M7 ·
 PLAN/LAB ONLY · DRAFT/HOLD; geen merge, deploy, echte grants of scans.**
+
+
+### W64 aanvullend: twee echte negatieve Nginx-injectiecontroles
+
+Naast de 20/20 veilige Nginx-only localhost-proeven is in dezelfde
+tijdelijke container twee keer een **bewust onveilig Nginx-testbestand**
+uitgevoerd (alleen op 127.0.0.1; eigen subprocessen; geen productieservice):
+(1) `proxy_pass_request_headers on;` in plaats van `off;`; en
+(2) `proxy_set_header Cookie $http_x_original_cookie;` in plaats van de
+canonieke `$http_cookie`. Beide simuleren precies een grensoverschrijding
+die een client/operator Cookie of een onbevoegde identiteitsheader
+ten onrechte zou kunnen doen gelden. **Beide werkelijke HTTP-proeven
+eindigden HOLD, diagnostic_code RuntimeError; vijf machtigingsvlaggen
+blijven false.** Geen echte tokens, SQL of grant-mutaties, en geen netwerk
+buiten de lokale host.
+
+Dat geeft een betekenisvolle positieve (20/20 REVIEW_ONLY) plus twee
+negatieve (2/2 HOLD) controles voor de *tijdelijke Nginx→Python-stdlib*
+route. Dit blijft een ander executiepad dan de nog niet uitgevoerde
+Nginx→Gunicorn→LightUp fixture en is geen installed-config attestatie,
+geen CI/VPS-bewijs en geen toestemming voor scans of release.
