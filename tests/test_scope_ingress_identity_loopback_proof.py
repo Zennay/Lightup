@@ -383,6 +383,15 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
             self.assertIs(stop.call_args_list[0].args[0], child2)
             self.assertIs(stop.call_args_list[1].args[0], child1)
             self.assertGreaterEqual(requests.call_count, 1)
+            nonces = {
+                call.kwargs.get("expected_nonce")
+                for call in requests.call_args_list
+            }
+            self.assertEqual(len(nonces), 1)
+            nonce = nonces.pop()
+            self.assertIs(type(nonce), str)
+            self.assertEqual(len(nonce), 48)
+            self.assertTrue(all(character in "0123456789abcdef" for character in nonce))
             envs = [check.call_args.kwargs["env"]] + [
                 call.kwargs["env"] for call in spawn.call_args_list
             ]
@@ -409,6 +418,71 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
                 spawn.call_args_list[1].args[0][-1],
             )
             return requests.call_count
+
+    def test_real_request_rejects_noncanonical_fixture_identity_before_network(self):
+        with patch.object(
+            fixture.http.client, "HTTPConnection",
+            side_effect=AssertionError("no socket creation"),
+        ):
+            for nonce in (None, "a" * 47, "A" * 48, "a" * 49, 4, True):
+                with self.subTest(nonce=nonce):
+                    with self.assertRaises(RuntimeError):
+                        fixture._request(
+                            28211, "/engagements/fixture/grants",
+                            expected_nonce=nonce,
+                        )
+
+    def test_real_request_demands_matching_upstream_response_nonce(self):
+        nonce = "e" * 48
+        for observed in ("f" * 48, None, "e" * 47):
+            with self.subTest(observed=observed):
+                conn = MagicMock()
+                conn.getresponse.return_value.getheader.return_value = observed
+                with patch.object(
+                    fixture.http.client, "HTTPConnection", return_value=conn
+                ) as create:
+                    with self.assertRaisesRegex(RuntimeError, "identity mismatch"):
+                        fixture._request(
+                            28211, "/engagements/fixture/grants",
+                            expected_nonce=nonce,
+                        )
+                create.assert_called_once_with("127.0.0.1", 28211, timeout=3.0)
+                conn.close.assert_called_once()
+
+        conn = MagicMock()
+        conn.getresponse.return_value.getheader.return_value = nonce
+        conn.getresponse.return_value.status = 200
+        conn.getresponse.return_value.read.return_value = b'{"fixture":"synthetic"}'
+        with patch.object(fixture.http.client, "HTTPConnection", return_value=conn):
+            received = fixture._request(
+                28211, "/engagements/fixture/grants",
+                expected_nonce=nonce,
+            )
+        self.assertEqual(received, {"fixture": "synthetic"})
+        conn.close.assert_called_once()
+
+    def test_synthetic_wsgi_nonce_placeholder_cannot_be_faked_as_identity(self):
+        marker = "c" * 48
+        content = fixture.FIXTURE_WSGI
+        self.assertEqual(content.count("STATIC_NONCE_PLACEHOLDER"), 1)
+        synthetic = content.replace("STATIC_NONCE_PLACEHOLDER", marker)
+        scope = {}
+        exec(compile(synthetic, "synthetic_fixture.py", "exec"), scope)
+        starts = []
+        scope["application"](
+            {
+                "PATH_INFO": "/portal/fixture",
+                "REQUEST_METHOD": "GET",
+                "HTTP_COOKIE": "",
+                "CONTENT_LENGTH": "0",
+                "wsgi.input": io.BytesIO(),
+            },
+            lambda status, headers: starts.append((status, headers)),
+        )
+        self.assertEqual(
+            dict(starts[0][1])["X-Fixture-Probe-Id"], marker,
+        )
+        self.assertNotIn("STATIC_NONCE_PLACEHOLDER", str(starts))
 
     def test_cleanup_attempts_every_child_and_never_claims_success_on_error(self):
         first, second = MagicMock(), MagicMock()
