@@ -33,7 +33,7 @@ tests a deliberately narrower address *shape* independently.
 - Output: fixed minimal JSON with a status, fixed reason, coarse class,
   schema version and five **always-false** authority flags. Never echoes
   the supplied address, tenant, owner, authorization reference or claim.
-  HOLD exits 2; REVIEW_ONLY exits 0 **but remains entirely non-authorizing**.
+  HOLD exits 2; REVIEW_ONLY exits 3. **Both deliberately fail shell\n  success checks**, so `review && scan` can never be activated by a review-only\n  result; neither status authorizes target execution.
 
 ## Synthetic command
 
