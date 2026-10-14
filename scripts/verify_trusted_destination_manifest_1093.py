@@ -33,7 +33,8 @@ class _DiscardOutput:
 
 def _receipt(
     passed: bool, count: int, failures: int = 0,
-    errors: int = 0, skipped: int = 0
+    errors: int = 0, skipped: int = 0,
+    expected_failures: int = 0, unexpected_successes: int = 0
 ) -> dict[str, object]:
     return {
         "schema": "lightup-scope-1093-offline-v1",
@@ -44,6 +45,8 @@ def _receipt(
         "failures": failures,
         "errors": errors,
         "skipped": skipped,
+        "expected_failures": expected_failures,
+        "unexpected_successes": unexpected_successes,
         "authorization_verified": False,
         "permit_issued": False,
         "execution_enabled": False,
@@ -139,12 +142,16 @@ def main() -> int:
         failures, errors, skipped = (
             len(result.failures), len(result.errors), len(result.skipped)
         )
+        expected_failures = len(result.expectedFailures)
+        unexpected_successes = len(result.unexpectedSuccesses)
     except Exception:
         passed, count = False, 0
         failures, errors, skipped = 0, 1, 0
+        expected_failures, unexpected_successes = 0, 0
 
     print(json.dumps(
-        _receipt(passed, count, failures, errors, skipped), sort_keys=True
+        _receipt(passed, count, failures, errors, skipped,
+                 expected_failures, unexpected_successes), sort_keys=True
     ))
     return 0 if passed else 1
 
