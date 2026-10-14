@@ -25,6 +25,13 @@ Exactly one `--stdin-json` argument and up to 16 KiB of UTF-8 JSON bytes. Empty/
 
 Allowed result strings: `pass`, `fail`, `queued`, `cancelled`, `unknown`. These are self-declarations, **not** verified workflow or ingress observations. No workflow URL or arbitrary credential is accepted. Every lane must share exactly the top-level immutable head. Output intentionally omits that SHA and all raw input, including names, targets, grants, tokens, and claims.
 
+## W66 — finite one-shot stdin receipt (2026-10-14)
+
+An untrusted producer can keep a pipe open after sending partial data, or even after sending one well-formed JSON object. The original buffered read could wait indefinitely for EOF, making this offline review a potential hung process. The opt-in CLI now uses a single POSIX inherited **stdin fd 0**, `select.select` + bounded `os.read` chunks with an absolute **2-second monotonic read deadline**, and reads at most **16 KiB + 1 byte**. On deadline expiry, incomplete stream, byte overflow, unsupported fd, or read error, it discards all collected bytes and emits only privacy-minimal `HOLD` with exit 2. The producer **must close stdin** for a coherent review; a complete JSON document without EOF is explicitly **not accepted**.
+
+New genuine child-process regressions keep their write pipe intentionally **open** after (a) a secret-bearing fragment, (b) a complete apparently valid all-pass packet, and (c) an oversized secret-bearing packet. They require bounded termination, exactly false release/permit/dispatch and no secret echoes or traceback. A bad-argv unopened pipe must also return HOLD without reading stdin. A valid packet split across two writes **with EOF** remains structurally `COHERENT`, still never authorized. These prove CLI transport liveness and atomicity, **not** external evidence truth, OS-level isolation, production safety or a registered VPS runner.
+
+This bounded-read implementation targets POSIX/Linux hosting. Failure of fd/select on an unsupported runtime is a conservative HOLD, not a fallback to an unbounded read. The script itself opens no other file, network connection or subprocess; normal Python interpreter module startup is not an OS sandbox.
 ## Execution and fail-closed result
 
 ```sh
