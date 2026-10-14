@@ -6,6 +6,7 @@ Uses fixed fictional address literals, no DNS or network activity.
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from os.path import abspath
 import sys
@@ -17,7 +18,7 @@ sys.path.insert(0, str(_CHECKOUT_SRC))
 _EXPECTED_SCOPE = str(_CHECKOUT_SRC / "lightup" / "scope.py")
 _EXPECTED_MODELS = str(_CHECKOUT_SRC / "lightup" / "models.py")
 
-from lightup.models import Target
+from lightup.models import Authorization, Target
 from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason
 
 
@@ -52,9 +53,16 @@ NOT_LAB = (
     "[::ffff:10.0.0.1]", "[::ffff:127.0.0.1]",
     "[2002:c000:201::1]", "[2001:0::1]",
 )
+# Synthetic lexical hostnames: never resolve them or contact their DNS.
+# Each variant MUST remain denied without an authorizing current grant.
+EXPLICIT_HOST_DENIALS = (
+    ("review.invalid", "review.invalid"),
+    ("REVIEW.INVALID.", "review.invalid"),
+    ("https://review.invalid/no-network", "review.invalid"),
+)
 # Two ordinary decisions per literal; a third denies every non-lab literal
 # even when the caller tries a broad explicit-network policy without a grant.
-TOTAL_CHECKS = len(LAB) * 2 + len(NOT_LAB) * 3
+TOTAL_CHECKS = len(LAB) * 2 + len(NOT_LAB) * 3 + len(EXPLICIT_HOST_DENIALS) * 2
 _DENIAL = {
     "authorization_verified": False,
     "permit_issued": False,
@@ -125,6 +133,31 @@ def audit_installed_scope(policy_factory=ScopePolicy) -> dict[str, object]:
             require_authorization_for_public=True,
             explicit_networks=("0.0.0.0/0", "::/0"),
         )
+        host_policy = policy_factory(
+            allow_private_lab=False,
+            require_authorization_for_public=True,
+            explicit_hosts=frozenset({"review.invalid"}),
+        )
+        # Static expired synthetic record; never a customer grant.
+        expired = Authorization(
+            owner="offline-fixture",
+            reference="not-a-permit",
+            valid_until=datetime(2000, 1, 1, tzinfo=timezone.utc),
+        )
+        for literal, expected_host in EXPLICIT_HOST_DENIALS:
+            absent = host_policy.decide(Target(literal))
+            stale = host_policy.decide(Target(literal, authorization=expired))
+            if not all(_canonical(item) for item in (absent, stale)):
+                return _receipt("HOLD")
+            if (
+                absent.allowed is not False
+                or absent.reason is not ScopeReason.AUTHORIZATION_MISSING
+                or absent.normalized_host != expected_host
+                or stale.allowed is not False
+                or stale.reason is not ScopeReason.AUTHORIZATION_EXPIRED
+                or stale.normalized_host != expected_host
+            ):
+                return _receipt("HOLD")
         for literal, normalized, expected_reason in LAB:
             admitted = enabled.decide(Target(literal))
             locked = disabled.decide(Target(literal))
