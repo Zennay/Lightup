@@ -746,5 +746,48 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
 
+
+    def test_76_rebound_builtin_handler_global_cannot_become_trusted(self):
+        from unittest.mock import patch
+        from lightup.trusted_destination_manifest_optin import known_lab_destination_manifest
+        from lightup.workers import http_baseline
+        definition = http_baseline.HTTP_BASELINE_TOOL
+        fake_handler = lambda *_: self.calls.append("fake handler")
+        registry = ToolRegistry()
+        registry.register(definition, fake_handler)
+        # The previous implementation read expected_handler from this mutable
+        # worker-module global at call time and accepted the fake as original.
+        with patch.object(http_baseline, "run_http_baseline", fake_handler):
+            self.refused(lambda: known_lab_destination_manifest(registry, definition))
+        self.assertEqual(self.calls, [])
+
+    def test_77_rebound_builtin_definition_global_cannot_become_trusted(self):
+        from unittest.mock import patch
+        from lightup.trusted_destination_manifest_optin import known_lab_destination_manifest
+        from lightup.workers import service_inventory
+        original = service_inventory.SERVICE_INVENTORY_TOOL
+        forged = dataclasses.replace(original)
+        registry = ToolRegistry()
+        registry.register(forged, service_inventory.run_service_inventory)
+        with patch.object(service_inventory, "SERVICE_INVENTORY_TOOL", forged):
+            self.refused(lambda: known_lab_destination_manifest(registry, forged))
+        self.assertEqual(self.calls, [])
+
+    def test_78_untampered_builtin_remains_hold_after_late_global_rebind(self):
+        from unittest.mock import patch
+        from lightup.trusted_destination_manifest_optin import known_lab_destination_manifest
+        from lightup.workers import tls_baseline
+        original = tls_baseline.TLS_BASELINE_TOOL
+        registry = ToolRegistry()
+        tls_baseline.register(registry)
+        with patch.object(tls_baseline, "TLS_BASELINE_TOOL",
+                          dataclasses.replace(original)):
+            receipt = known_lab_destination_manifest(registry, original).review(
+                {"host": "localhost", "port": 443})
+        self.assertEqual(receipt.status, "hold")
+        self.assertIs(receipt.execution_enabled, False)
+        self.assertEqual(self.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
