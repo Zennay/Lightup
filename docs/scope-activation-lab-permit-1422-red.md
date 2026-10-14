@@ -57,8 +57,16 @@ return a nonreflective HOLD without reading stdin.
   reference or with deliberately disabled public-authorization policy
   never crosses into a LAB_ONLY permit. They run through both the separate
   direct source tests **and the CLI auditor**: 46 private-lab/PLAN decisions
-  plus four explicit-public decisions = 50 total synthetic observations.
+  plus four explicitly permitted public decisions and six missing/expired/
+  not-yet-valid public authorizations = **56 synthetic observations**.
   Even a fake token creation *before* public gate denial increments HOLD.
+  The six added cases exercise **real owner/time checks** for a separately
+  allowlisted public `.test` hostname and documentation IP network: missing
+  `Authorization`, a UTC-valid-from in year 2099, or UTC-valid-until in year
+  2000. `ScopePolicy` must return `AUTHORIZATION_MISSING` or
+  `AUTHORIZATION_EXPIRED` and the real LAB_ONLY `ActivationGate.issue` must
+  terminate without generating a token. A mutation issuing a token before
+  denial for the three synthetic network cases must add three HOLD breaches.
   This does not create actual consent or exercise AUTHORIZED mode;
   token creation is a hard failure.
 - `PLAN_ONLY` terminally rejects all sixteen fixtures.
