@@ -85,7 +85,7 @@ class FiniteNumberCliNoIoTests(unittest.TestCase):
         source = (repo / "scripts" / "review_scope_finite_number_offline.py").read_text(
             encoding="utf-8"
         )
-        guard = "sys.dont_write_bytecode = True\\n"
+        guard = "sys.dont_write_bytecode = True" + chr(10)
         self.assertEqual(source.count(guard), 1)
         with tempfile.TemporaryDirectory() as root:
             sandbox = Path(root)
