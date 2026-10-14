@@ -32,6 +32,10 @@ RISK_DIRECTIVES = frozenset({
     "mirror", "mirror_request_body", "access_by_lua_block",
     "content_by_lua_block", "js_set", "js_content",
 })
+ALLOWED_NGINX_DIRECTIVES = frozenset({
+    "server", "location", "listen", "server_name",
+    "proxy_pass", "proxy_pass_request_headers", "proxy_set_header",
+})
 EXPECTED_FORWARD_HEADERS = {
     "host": "$http_host",
     "cookie": "$http_cookie",
@@ -73,7 +77,10 @@ def _nginx_ok(raw: bytes) -> None:
     # four explicitly reviewed proxy header bindings below.
     for line in lines:
         directive = line.split(None, 1)[0].rstrip(";{}").lower()
-        if directive in RISK_DIRECTIVES or directive.startswith(("lua_", "js_")):
+        if (directive in RISK_DIRECTIVES or
+                directive not in ALLOWED_NGINX_DIRECTIVES and line != "}"):
+            # Unknown Nginx modules can also rewrite request metadata.  A
+            # syntactically opaque directive must never earn REVIEW_ONLY.
             raise Hold
         if "$http_" in line and line not in {
             "proxy_set_header Host $http_host;",
@@ -137,7 +144,9 @@ def _gunicorn_ok(raw: bytes) -> None:
         if not re.fullmatch(r"[a-z_]+", key):
             raise Hold
         if key not in REQUIRED_GUNICORN:
-            continue
+            # Non-reviewed Gunicorn settings (raw_env, forwarder_headers,
+            # WSGI factories or custom middleware) may change identity.
+            raise Hold
         if key in found:
             raise Hold
         try:
