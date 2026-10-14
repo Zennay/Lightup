@@ -80,3 +80,43 @@ bearer tokens, or target networking are exercised. Cross-check issue
 [#1164](https://github.com/Zennay/Lightup/issues/1164), existing WSGI
 [#1163](https://github.com/Zennay/Lightup/pull/1163) and separate method/path
 ingress boundaries #1154/#1158/#1161 before any future integration.
+
+
+## W59: opt-in werkelijke lokale Nginx → Gunicorn → synthetische WSGI-proef
+
+Nieuwe zelfstandige uitvoering: scripts/scope_ingress_identity_loopback_proof.py.
+Vereist dat Nginx en Python Gunicorn al lokaal geïnstalleerd zijn. Het start
+uitsluitend twee nieuwe tijdelijke processen op twee door het OS aangewezen
+hoge 127.0.0.1-poorten, met zelfgegenereerde Nginx-configuratie in een tijdelijke
+directory en een fictieve WSGI-app zonder LightUp-import of database. Er wordt
+geen geïnstalleerde /etc/nginx- of /etc/lightup-configuratie geopend, geen
+productieservice herstart, geen echte klant geraakt en geen echte grant gemaakt.
+Beide processen worden gegarandeerd gestopt na de controle of bij falen.
+
+Zeven echte (maar volledig fictieve) HTTP-fixturecases controleren anonymous,
+alternatieve Cookie-/identiteitsheaders, revoked Cookie, client Cookie,
+operator zonder CSRF, operator met een uitsluitend fictieve WOULD_ALLOW
+zonder mutatie en fictieve client-portal-read. De fake WSGI-app retourneert
+uitsluitend identiteitcategorie, status, aanwezigheid van onbetrouwbare headers
+en nul schrijfacties. Geen tokens, cookies, volledige headers of wachtwoorden.
+De evaluatie is atomair: ontbrekende of foutieve cases produceren HOLD.
+
+Uitvoering: python scripts/scope_ingress_identity_loopback_proof.py
+
+HOLD = exitcode 2; synthetische REVIEW_ONLY = exitcode 3. Ook bij REVIEW_ONLY
+zijn de vijf machtigings-/permit-/uitvoerings-/merge-/releasevlaggen letterlijk
+false. Er is nooit exitcode 0 of een echte autorisatie.
+
+De reguliere unit-tests toetsen de WSGI-fixture en veilige CLI zonder
+automatisch Nginx te starten. De werkelijke tijdelijke subprocess-proef is
+alleen in de test-suite geactiveerd bij de omgevingsvariabele
+LIGHTUP_REAL_NGINX_GUNICORN_LOOPBACK=1. Ontbrekende binaries geven dan
+een testfout in plaats van een valse groenclaim.
+
+**Grenzen:** echte localhost-fixture ≠ geïnstalleerde LightUp Nginx/Gunicorn,
+geen authentiek geïnstalleerd configuratie-/TLS-/proxybewijs, geen echte
+LightUp operator/session/CSRF-evaluatie en geen productie-acceptatie.
+Open #1164 vereist nog een onafhankelijke geïnstalleerde proxy-/WSGI-proef,
+exact-head hosted en feitelijke geregistreerde VPS-jobs, security/privacy
+en expliciete menselijke vrijgave. INCUBATE M3/M7 · PLAN/LAB ONLY ·
+DRAFT/HOLD; GEEN MERGE, DEPLOY, KLANTGRANTS OF ACTIEVE SCANS.
