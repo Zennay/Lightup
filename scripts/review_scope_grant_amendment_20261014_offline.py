@@ -9,8 +9,12 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import json
+import os
 import re
+import select
+import stat
 import sys
+import time
 
 MAX_INPUT = 16384
 MAX_MEMBERS = 32
@@ -164,12 +168,45 @@ def review(raw: bytes) -> tuple[dict[str, object], int]:
     return receipt, (3 if status == "REVIEW_ONLY" else 2)
 
 
+def _bounded_stdin() -> bytes:
+    """Read one finite local file/FIFO, never wait forever for an open writer.
+
+    Pipes must reach EOF inside the absolute deadline; a partially received
+    packet (even when it looks complete) is never accepted for review.
+    """
+    try:
+        fd = sys.stdin.fileno()
+        if fd != 0:
+            return b""
+        info = os.fstat(fd)
+        if not (stat.S_ISFIFO(info.st_mode) or stat.S_ISREG(info.st_mode)):
+            return b""
+        if stat.S_ISREG(info.st_mode) and info.st_size > MAX_INPUT:
+            return b""
+        deadline = time.monotonic() + 2.0
+        chunks = bytearray()
+        while len(chunks) <= MAX_INPUT:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return b""
+            ready, _, _ = select.select([fd], [], [], remaining)
+            if not ready:
+                return b""
+            part = os.read(fd, min(4096, MAX_INPUT + 1 - len(chunks)))
+            if not part:
+                return bytes(chunks)
+            chunks.extend(part)
+        return b""
+    except (OSError, ValueError, TypeError):
+        return b""
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Offline-only grant amendment review; never authorization.")
     parser.add_argument("--stdin-json", action="store_true", required=True)
     args = parser.parse_args(argv)
     assert args.stdin_json is True
-    receipt, code = review(sys.stdin.buffer.read(MAX_INPUT + 1))
+    receipt, code = review(_bounded_stdin())
     print(json.dumps(receipt, sort_keys=True, separators=(",", ":"), ensure_ascii=True))
     return code
 
