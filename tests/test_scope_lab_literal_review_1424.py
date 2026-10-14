@@ -63,6 +63,45 @@ class LiteralReviewOfflineTests(TestCase):
             with self.subTest(value=value):
                 self.assert_receipt(value, "HOLD", "UNTRUSTED")
 
+    def test_outer_private_network_endpoint_literals_are_hold(self):
+        # Without a subnet mask, these inclusive aggregate boundaries
+        # cannot be treated as concrete, individually reviewed hosts.
+        for value in (
+            "127.0.0.0", "127.255.255.255",
+            "10.0.0.0", "10.255.255.255",
+            "172.16.0.0", "172.31.255.255",
+            "192.168.0.0", "192.168.255.255",
+            "fc00::",
+        ):
+            with self.subTest(value=value):
+                self.assert_receipt(value, "HOLD", "UNTRUSTED")
+
+    def test_adjacent_hosts_keep_expected_review_class(self):
+        controls = (
+            ("127.0.0.1", "LOOPBACK"),
+            ("127.255.255.254", "LOOPBACK"),
+            ("10.0.0.1", "PRIVATE_USE"),
+            ("10.255.255.254", "PRIVATE_USE"),
+            ("172.16.0.1", "PRIVATE_USE"),
+            ("172.31.255.254", "PRIVATE_USE"),
+            ("192.168.0.1", "PRIVATE_USE"),
+            ("192.168.255.254", "PRIVATE_USE"),
+            ("fc00::1", "PRIVATE_USE"),
+            ("fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", "PRIVATE_USE"),
+        )
+        for value, classification in controls:
+            with self.subTest(value=value):
+                self.assert_receipt(value, "REVIEW_ONLY", classification)
+        for value in (
+            "126.255.255.255", "128.0.0.0", "9.255.255.255", "11.0.0.0",
+            "172.15.255.255", "172.32.0.0",
+            "192.167.255.255", "192.169.0.0",
+            "fbff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+            "fe00::", "::2",
+        ):
+            with self.subTest(value=value):
+                self.assert_receipt(value, "HOLD", "UNTRUSTED")
+
     def test_noncanonical_or_embedded_authority_is_hold(self):
         values = (
             "", " ", "\n10.0.0.1", "10.0.0.1 ", "010.0.0.1",
