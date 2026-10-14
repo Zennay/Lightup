@@ -1,0 +1,111 @@
+# LightUp #1422 — W44 IPv4/IPv6 octet-boundary sweep (offline only)
+
+**INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NO MERGE/DEPLOY/ACTIVE TARGETS**
+
+## Why this adds separate coverage
+Current `src/lightup/scope.py` uses `ipaddress.is_private or is_link_local` to grant automatic `PRIVATE_LAB` classification. These predicates are **not** equivalent to a trusted lab membership set, so non-routable documentation, benchmark, unspecified, broadcast or link-local addresses can be accidentally admitted. Issue [#1422](https://github.com/Zennay/Lightup/issues/1422) remains unresolved in installed source.
+
+[PR #1423](https://github.com/Zennay/Lightup/pull/1423) owns named RED acceptance; [PR #1426](https://github.com/Zennay/Lightup/pull/1426) owns a fixed 34-address diagnostic matrix; [PR #1425](https://github.com/Zennay/Lightup/pull/1425) owns optional exact-literal candidate preview. This W44 lane adds an **independent bounded IPv4 and IPv6 octet sweep**, not source-owner changes or a duplicate fixed-literal list.
+
+## Implemented
+- `scripts/audit_scope_ipv4_octet_sweep_1422_offline.py` runs **1,024 deterministic IPv4 samples and 768 IPv6 samples**, each twice with `allow_private_lab=True/False`: every first-octet /8 at two edge samples, and every second octet for the 172/8 and 192/8 boundaries. Exactly **3,584 decisions** from real `ScopePolicy.decide(Target(...))`, purely in memory; never a packet, scan or DNS request.
+- The independent expected contract restricts local automatic admission to loopback `127/8` plus private RFC1918 `10/8`, `172.16/12` and `192.168/16`. Switching private-lab mode OFF must disable all private-use automatic admissions but preserve loopback.
+- Every checked `ScopeDecision` must have canonical result and flag types, exact unchanged normalized literal host identity, and exact expected denial/admission reason. **Any** mismatch, exception or partial review yields atomic `HOLD` with `checked_count=0`.
+- `REVIEW_ONLY` on a fully matching synthetic oracle has no authority. The receipt always includes five **literal false** markers: `authorization_verified`, `permit_issued`, `execution_enabled`, `merge_approved`, `release_approved`.
+- The executable takes **no arguments**, reads **no stdin**, emits one short JSON line with no target literals, customer IDs, grants, paths or traceback. Both `HOLD` and `REVIEW_ONLY` exit nonzero (2 and 3). Exit 0 is never a permit.
+- `tests/test_scope_ipv4_octet_sweep_1422_offline.py` checks a separate strict synthetic oracle, deliberate allow-all/deny-all, host-label swap, non-boolean decision, exception-privacy, socket/process denial, strict argv and a real `python -I -B` subprocess.
+- The **actual installed source** is intentionally covered by one `@expectedFailure` assertion plus a second test that verifies the RED witness is an authentic assertion failure, not a masked runtime error. An expected RED must never be called a source fix.
+
+## Offline operator checks
+```bash
+python -I -B scripts/audit_scope_ipv4_octet_sweep_1422_offline.py
+PYTHONPATH=src python -B -m unittest discover -s tests -p 'test_scope_ipv4_octet_sweep_1422_offline.py' -v
+```
+Run exact-head Python **3.11 and 3.14** plus real producer integration tests on hosted CI. Permanent registered VPS proof is a **separate requirement**: queued/cancelled actions do not demonstrate runner execution. This is Python-level no-I/O evidence, **not** an OS sandbox or production release gate.
+
+## Collision and ownership
+Only the following **three newly owned paths** may change in this PR: this document, the offline script and its tests. Original `scope.py`, `models.py`, activation, executor, source-owner [PR #100](https://github.com/Zennay/Lightup/pull/100), parser [PR #1290](https://github.com/Zennay/Lightup/pull/1290), tenant CIDR [PR #1318](https://github.com/Zennay/Lightup/pull/1318), W38–W43 [PR #1426](https://github.com/Zennay/Lightup/pull/1426), workflows, self-hosted runners, customer data and deployment must remain untouched.
+
+**Owner handoff:** repair installed `ScopePolicy.decide` with an explicit, reviewed trusted-lab class rather than a generic non-global predicate, preserve legitimate private/lab/loopback behavior, and convert genuinely RED tests to ordinary PASS after independent security and privacy review. Review of source, per-tenant consent, bounded asset/capability/risk, live revocation and explicit human release decision remain separate mandatory controls. Neither this audit nor any `REVIEW_ONLY` receipt can authorize scanning.
+
+## W45 — bounded IPv6 high-byte and ULA interior sweep
+- Added **768 distinct bracketed IPv6 authority samples** (all 256 first-byte prefixes plus all 256 second-byte choices inside each of `fc00::/8` and `fd00::/8`). Each sample is checked under private-lab on/off, making **1,536 extra decisions**, **3,584 total**.
+- The independently defined expected class accepts only `::1` as IPv6 loopback and `fc00::/7` as IPv6 ULA candidate while private-lab is enabled. Documentation, global, link-local, multicast, unspecified and transition address classes cannot be admitted as lab by a generic non-global predicate.
+- All bracketed target authority values must normalize to the exact canonical unbracketed IPv6 literal without relabeling a denied host. The synthetic strict oracle was extended to evaluate IPv6 directly via explicit address networks, not production's `is_private` heuristic.
+- This adds **no production wiring, authority, network I/O or deployed behavior**; the installed-policy RED canary remains deliberately RED pending source-owner repair.
+
+## W46 — fresh, tamper-resistant non-authority receipt composition
+The five authorization, permit, execution, merge and release flags are now constructed as **fresh literal `False` values on every new result**. No module-global mutable flag dictionary is reused. An independent regression mutates all five fields of a prior synthetic REVIEW_ONLY result and verifies that both later REVIEW_ONLY and HOLD receipts remain exactly false. This prevents a previously returned advisory diagnostic from contaminating a later receipt; it does not turn a receipt into authenticated authority, prevent hostile code inside the same Python process, or provide an OS sandbox.
+
+Hosted CI results from W45 are superseded by the new exact HEAD and must not be reused to claim green W46; permanent registered VPS proof remains separate.
+
+## W47 — deep bounded IPv4 classification and late-denial integrity
+The earlier first- and second-octet matrix now includes **5,120 additional distinct IPv4 literals** across all 256 second-octet values in five first-octet classes: `100/8` (CGNAT 100.64/10), `169/8` (link-local 169.254/16), `172/8` (RFC1918 172.16/12), `192/8` (RFC1918 192.168/16 and special-use), and `198/8` (benchmark 198.18/15). For every pair, sample third octets `1`, `64`, `128`, `254`, none duplicated by the original sampling. Each literal is evaluated with private-lab both on and off.
+
+There are now **6,144 IPv4 + 768 IPv6 distinct static samples**, giving **13,824 original-source `decide()` decisions** per fully matched offline run. The independent acceptance includes exact length/unique-literal checks and synthetic near-end faults for `198.255.254.1` (false admission) and `192.168.254.1` (false denial). Either returns atomic `HOLD` with `checked_count=0`, not a misleading partial approval. Even the strict-oracle `REVIEW_ONLY` remains uninstalled and without authority.
+
+**Release remains HOLD.** This diagnostic does not resolve issue #1422's installed auto-lab classification flaw; source owner #100 must repair policy, with ordinary passing original-code acceptance and separately verified exact-head hosted and registered permanent VPS evidence. No live scans, grants, dispatch, customer target access, merge or deploy are authorized.
+
+## W48 — unique-sample correction and real-source no-I/O acceptance
+The deep-sweep distinct-literal acceptance exposed a duplicated original first-octet fixture at `172.0.0.1` / `192.0.0.1`: the first-byte representative overlapped the second-byte sweep. The initial static sample `<first>.0.0.1` was changed to the equally harmless `<first>.0.0.2`. The total **6,912 IPv4+IPv6 samples are now actually unique**, still resulting in **13,824 in-memory decisions** across lab-enabled and lab-disabled configurations; no production source edits.
+
+Two additional independent unit checks prove that running the **real installed** current policy under socket/DNS/process monkeypatches yields `HOLD` with no network/process I/O; and that injecting a fully matching strict synthetic result into the real offline CLI entrypoint exits **3** (never 0), emits a single JSON line and keeps every permission/merge/release flag exactly false. These are negative authority/side-effect claims, not proofs of a real customer grant. A synthetic REVIEW_ONLY receipt must not be used to dispatch any tool.
+
+Do not infer current head success from a superseded CI run: every owned commit triggers a new exact-head hosted workflow and a separate permanent VPS workflow. Queued or cancelled jobs remain no proof. This branch intentionally stays DRAFT/HOLD until the owner fixes real `ScopePolicy` and humans approve.
+
+## W49 — non-vacuous complete decision execution proof
+A separately tracked strict test-policy now records the private-lab mode and exact synthetic target literal for **every actual `decide()` call**. The ordinary acceptance compares the full observed set with the independently materialized, unique 6,912-literal input set in both modes. It demands exactly **13,824 calls AND 13,824 distinct mode/target tuples**, not merely a forged final `checked_count` reported by a buggy reviewer. The receipt still has all five literal false flags. This test proves only internal bounded diagnostic completeness against a synthetic strict policy; real installed code still fails early on #1422 and must not be counted as green.
+
+No workflow, original production classifier, other scope-worker paths or registered VPS runner config are changed. The latest hosted and permanent CI evidence must be tied to the exact new head; older results are superseded. Keep DRAFT/HOLD.
+
+## W50 — privacy-safe input rejection from an actual zero-argument CLI
+Two additional ordinary regressions call the real no-argument `main([])` entrypoint with a poison `stdin` (both `buffer` and `read` raise) and require the currently defective installed policy's no-echo, one-line, literal-false `HOLD` receipt. A separate deliberately hostile empty `list` subclass has `__len__`/`__iter__` traps: `main()` must reject it as `HOLD` without executing either magic method. This proves that argument-shape checking does not delegate to untrusted container behavior and that the CLI does not harvest an operator's stdin.
+
+Neither regression issues target authorization or alters the source-owner patch. The updated exact-head hosted and independent permanent VPS jobs supersede earlier successes; the unchanged W44–W50 branch is held as a draft until source-owner security/privacy acceptance.
+
+## W51 — IPv4-in-IPv6 admission laundering denied
+A distinct finite family now covers **768 new canonical bracketed IPv6 literals**, sweeping all 256 embedded IPv4 first-octet values under **three transport representations**:
+1. IPv4-mapped IPv6 `::ffff:a.b.c.d`
+2. 6to4 `2002:xxxx:xxxx::1`
+3. NAT64 well-known prefix `64:ff9b::a.b.c.d`.
+
+Even when an embedded IPv4 payload is RFC1918 `10/8` or loopback `127/8`, the enclosing IPv6 address itself is **not** an approved ULA `fc00::/7` or IPv6 loopback `::1`. The exact authority therefore remains `OUT_OF_SCOPE` under **both** lab toggle settings. Any alternative interpretation would need a separately reviewed explicit grant and original execution/authorization owner; this test is not that grant.
+
+A separate synthetic oracle and complete-call witness now exercise **6,144 unique IPv4 + 1,536 unique IPv6 samples = 7,680 unique fixed literals x 2 settings = 15,360 actual `decide()` calls** on the passing reference. Explicit tests verify IPv4-mapped decoding, 6to4 embedded source, NAT64 embedded low bits, canonical IPv6 bracket host normalization and deny-on-all-dialects. Synthetic injected false-admissions for RFC1918/loopback payloads must yield atomic zero-progress `HOLD`. The actual installed classifier is still intentionally RED and returns early HOLD, not a falsely reported 15,360 green original-source tests.
+
+These checks remain **offline and source-only**, do not edit the installed policy, do not give authorization and do not scan or dispatch network targets. Exact current-head hosted Python3.11/3.14 and permanent registered VPS jobs must be verified independently before any CI claim; releases remain blocked by issue #1422.
+
+## W52 — final-decision rollback witness (both policy modes completed)
+The embedded-address matrix ends in the second (`allow_private_lab=False`) pass with the NAT64-wrapped IPv4 `255.0.0.1`. A synthetic deliberately unsafe implementation returns `PRIVATE_LAB` **only on this final decision**, after the other **15,359 actual decisions** have matched the independent reference. A separate regular test demands that all **15,360 real calls occur** yet the entire receipt is reset to **atomic `HOLD`, zero checked count and five exact false privilege/release markers**. No intermediate permission or partial-review receipt may survive; an all-green first mode is not sufficient.
+
+This finite failure-injection regression is non-authorizing, has no user-selectable targets and never performs a network operation. The original installed classifier remains deliberately RED until source-owner remediation. Do not merge/deploy based solely on passing synthetic checks.
+
+## W53 — zero-implicit-authority end-to-end oracle
+A separate independent strict reference, `NoImplicitAuthorizationPolicy`, checks the **full actual in-memory diagnostic call path**, rather than just an output receipt. Its constructor refuses any explicitly listed hosts or CIDR networks, wrongly typed policy flags, or `require_authorization_for_public=False`. Its `decide()` rejects noncanonical `Target` objects, any attached `Authorization`, or nonempty/non-tuple target labels. The isolated unit test requires **exactly two original constructions**, one private-lab enabled and one disabled, and **exactly 15,360 real `decide()` calls** without implicit authorization.
+
+The separate synthetic `REVIEW_ONLY` is deliberately advisory and still has zero permit, execution or release authority. The original installed source remains RED for #1422. This is a guardrail around a standalone test harness, not a substitute for per-tenant authorization, an actual executor gate or a production policy patch. Do not merge, deploy or scan.
+
+## W54 — actionable, privacy-preserving non-authorizing HOLD diagnostics
+The optional offline script now emits exactly one **bounded, public `diagnostic_code`** alongside its existing status/count/false-authority receipt. The exhaustive allowed values are:
+`RESULT_TYPE_MISMATCH` (wrong decision/field primitive types),
+`HOST_IDENTITY_MISMATCH` (normalized host identity changed),
+`SCOPE_CLASSIFICATION_MISMATCH` (unexpected allow/deny/reason),
+`EVALUATION_EXCEPTION` (a review-only policy raised),
+`SAMPLE_COUNT_MISMATCH` (internal bounded count changed),
+`ARGUMENT_REJECTED` (CLI was given input),
+and `MATCHED_NON_AUTHORIZING` (strict synthetic oracle matched, **not consent**).
+
+No exception string, hostname, IP literal, customer ID, supplied CLI argument, stack trace, file path, scan permit, human approval or arbitrary diagnosis from a policy is ever included. **Every non-match remains `HOLD`, `checked_count=0`, exit 2 and all five authority/release flags literal `False`; even `MATCHED_NON_AUTHORIZING` remains `REVIEW_ONLY`, exit 3**. Both IPv4 and IPv6 share exactly the same classification guard.
+
+New ordinary regressions check an exact receipt key whitelist, the seven category values, nine independent normal/adversarial policies (allow-all, deny-all, spoofed host, type confusion, spoofed reason, hostile `repr`, exception with sensitive text, and the actual installed #1422 source), plus an invalid argument containing a synthetic secret. They verify zero standard output from internal reviews and no raw secret or target in JSON. A final-decision regression modifies only the **15,360th** decision's host identity; all 15,360 calls are observed, but the receipt remains atomic `HOLD`, exactly `HOST_IDENTITY_MISMATCH` and no leaked synthetic private hostname.
+
+The diagnosis is for developer triage only, not a machine-issued permission. Source-owner #100 must still fix the installed #1422 predicate, independently review any real grant and prove the true permanent VPS run. **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NO MERGE/DEPLOY/ACTIVE SCANS.**
+
+## W55 — defend the last-mile CLI against forged permit receipts and debug leakage
+A successful read-only diagnostic has **no ability to sign authority**; now the commandline boundary explicitly refuses to pass along a malformed result even if a patched future reviewer returns it. Before JSON serialization, `main()` demands an exact builtin `dict` with an **exact receipt key set**, builtin `str/int/bool` field types, exact `total_count`, only one of the seven fixed W54 diagnosis categories plus `RECEIPT_INTEGRITY_FAILURE`, a correct HOLD/REVIEW_ONLY diagnostic-code/count combination, and **five literal `False` approval/permit/dispatch/merge/release markers**. The CLI reconstructs a **new receipt from validated constants**. A forged status, bad count, inherited `dict` subtype, spoofed `str` subtype, extra key, injected exception text, or any true authorization flag yields only an atomic `HOLD`, zero checked and `RECEIPT_INTEGRITY_FAILURE` with exit 2. An unexpected diagnostic exception is separately caught as `EVALUATION_EXCEPTION` with no traceback.
+
+The commandline diagnostic phase now redirects Python-level `stdout` and `stderr` to a **non-persisting, bounded-memory sink** and emits only the reconstructed one-line public JSON result. Tests deliberately inject synthetic secret-bearing prints to both Python streams on success and on a raised exception; neither must reach the caller. Suppression is **Python stream-level only**, NOT an OS or file-descriptor sandbox: direct native FD writes, hostile native libraries or system-level logging are beyond this helper's claims and remain owner-gated.
+
+Adversarial tests include forged `authorization_verified`, `permit_issued`, `execution_enabled`, `merge_approved`, `release_approved`, `status`, `diagnostic_code`, `checked_count`, `total_count`, extra user-controlled fields and poisoned result subclasses. Additional tests verify that any invalid CLI arguments cannot invoke the reviewer at all, and that both success/error handling always produce **one non-authorizing JSON line**.
+
+These changes affect only this wholly owned offline advisory CLI, its tests and docs. They never authorize a real network target, grant, operator, CI release or deployment. The original installed #1422 classifier remains a known genuine RED; source-owner #100 and independent registered VPS and human security/privacy review are still required. **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NO MERGE / DEPLOY / ACTIVE SCANS.**
