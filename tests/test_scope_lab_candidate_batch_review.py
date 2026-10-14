@@ -1,9 +1,12 @@
 """Genuine SQLite/LightUp-model all-or-none local lab review tests."""
 import sqlite3
+import tempfile
+from pathlib import Path
 import unittest
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
+import lightup.lab_candidate_batch_review as batch_module
 
 from lightup.ai.orchestration import RunContext, ToolCall, ToolDefinition, ToolParameter, ParamKind
 from lightup.engagements import RiskLevel
@@ -162,3 +165,144 @@ class CandidateBatchReviewTests(unittest.TestCase):
             result = self.reviewed(a, b)
         self.assertEqual(result["status"], "REVIEW_ONLY")
         self.assertIs(result["execution_enabled"], False)
+
+
+    def test_batch_read_transaction_released_after_positive_result(self):
+        entry = self.item("run-1", "lab-1")
+        before = self.db.total_changes
+        self.assertFalse(self.db.in_transaction)
+        self.assertEqual(self.reviewed(entry)["status"], "REVIEW_ONLY")
+        self.assertFalse(self.db.in_transaction)
+        self.assertEqual(self.db.total_changes, before)
+
+    def test_batch_read_transaction_released_after_denial(self):
+        entry = self.item("run-1", "lab-1")
+        invalid = replace(entry, call=replace(entry.call, asset="other-lab"))
+        before = self.db.total_changes
+        self.assertEqual(self.reviewed(invalid)["status"], "HOLD")
+        self.assertFalse(self.db.in_transaction)
+        self.assertEqual(self.db.total_changes, before)
+
+    def test_caller_owned_transaction_is_not_rolled_back(self):
+        entry = self.item("run-1", "lab-1")
+        self.db.execute("CREATE TABLE outside_changes (note TEXT)")
+        self.db.execute("BEGIN IMMEDIATE")
+        self.db.execute("INSERT INTO outside_changes VALUES ('retain')")
+        result = self.reviewed(entry)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reviewable_items"], 0)
+        self.assertTrue(self.db.in_transaction)
+        self.assertEqual(
+            self.db.execute("SELECT note FROM outside_changes").fetchone(),
+            ("retain",),
+        )
+        self.db.rollback()
+
+    def test_caller_read_transaction_is_not_silently_consumed(self):
+        entry = self.item("run-1", "lab-1")
+        self.db.execute("BEGIN")
+        self.assertEqual(self.reviewed(entry)["status"], "HOLD")
+        self.assertTrue(self.db.in_transaction)
+        self.db.rollback()
+
+    def test_closed_database_connection_is_fail_closed(self):
+        entry = self.item("run-1", "lab-1")
+        self.db.close()
+        self.assertEqual(self.reviewed(entry)["status"], "HOLD")
+
+    def test_replaced_database_connection_is_fail_closed(self):
+        entry = self.item("run-1", "lab-1")
+        original = self.ledger._db
+        try:
+            self.ledger._db = object()
+            result = self.reviewed(entry)
+            self.assertEqual(result["status"], "HOLD")
+            self.assertEqual(result["reviewable_items"], 0)
+            self.assertFalseFlags(result)
+        finally:
+            self.ledger._db = original
+
+    def _verify_concurrent_writer_denied(self, mutate):
+        # A WAL writer can commit while the batch holds a read snapshot.
+        # This verifies detection of cross-connection changes before result.
+        with tempfile.TemporaryDirectory() as folder:
+            filename = Path(folder) / "candidate-snapshot.db"
+            reader = sqlite3.connect(filename)
+            reader.execute("PRAGMA journal_mode=WAL")
+            writer = sqlite3.connect(filename)
+            previous_db, previous_ledger = self.db, self.ledger
+            self.db = reader
+            self.ledger = LabApprovalCandidateLedger(reader)
+            try:
+                first = self.item("run-1", "lab-1")
+                second = self.item("run-2", "lab-2")
+                real = batch_module.review_lab_candidate_dispatch
+                calls = 0
+
+                def first_read_then_commit(*args):
+                    nonlocal calls
+                    decision = real(*args)
+                    calls += 1
+                    if calls == 1:
+                        mutate(writer)
+                    return decision
+
+                with patch.object(
+                    batch_module, "review_lab_candidate_dispatch",
+                    side_effect=first_read_then_commit,
+                ):
+                    result = self.reviewed(first, second)
+                self.assertEqual(calls, 2)
+                self.assertEqual(result["status"], "HOLD")
+                self.assertEqual(result["reviewable_items"], 0)
+                self.assertFalseFlags(result)
+                self.assertFalse(reader.in_transaction)
+            finally:
+                self.db, self.ledger = previous_db, previous_ledger
+                writer.close()
+                reader.close()
+
+    def test_concurrent_other_connection_revocation_holds_entire_packet(self):
+        def revoke_second(writer):
+            writer.execute(
+                """UPDATE lab_stepup_candidates_v1
+                   SET revoked_at=?, revoked_by=?
+                   WHERE run_id='run-2'""",
+                (datetime.now(timezone.utc).isoformat(), "operator"),
+            )
+            writer.commit()
+
+        self._verify_concurrent_writer_denied(revoke_second)
+
+    def test_concurrent_other_connection_freeze_holds_entire_packet(self):
+        def freeze_engagement(writer):
+            LabApprovalCandidateLedger(writer).freeze_engagement(
+                client_id="client-1",
+                engagement_id="engagement-1",
+                actor="operator",
+                operator_gate=lambda *_: True,
+            )
+
+        self._verify_concurrent_writer_denied(freeze_engagement)
+
+    def test_concurrent_unrelated_candidate_write_also_holds(self):
+        def insert_unrelated(writer):
+            writer.execute(
+                """INSERT INTO lab_stepup_tenant_freezes_v1
+                   (client_id, frozen_at, frozen_by)
+                   VALUES ('unrelated', '2026-10-14T00:00:00+00:00', 'operator')"""
+            )
+            writer.commit()
+
+        self._verify_concurrent_writer_denied(insert_unrelated)
+
+    def test_no_external_change_allows_consecutive_consistent_snapshots(self):
+        first = self.item("run-1", "lab-1")
+        second = self.item("run-2", "lab-2")
+        result_a = self.reviewed(first, second)
+        result_b = self.reviewed(first, second)
+        self.assertEqual(result_a["status"], "REVIEW_ONLY")
+        self.assertEqual(result_b["status"], "REVIEW_ONLY")
+        self.assertEqual(result_a["reviewable_items"], 2)
+        self.assertFalseFlags(result_b)
+        self.assertFalse(self.db.in_transaction)
