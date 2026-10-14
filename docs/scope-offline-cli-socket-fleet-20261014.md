@@ -28,3 +28,8 @@ Every subprocess loads a hermetic `sitecustomize.py` *before* its CLI. It aborts
 Run locally in the existing repository environment: `PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_offline_cli_socket_fleet_20261014.py' -v`.
 
 **No active security scans, customer permission issuance, production deployment or claims of OS isolation.**
+## W20 — no child processes or shell from any offline scope CLI (#1390)
+
+The same early `sitecustomize` test fixture now additionally denies `subprocess.Popen` (covering `subprocess.run`), `os.system`, `os.popen`, available `os.fork`/`forkpty`, `os.spawn*`, `os.exec*` and `os.posix_spawn*` before a review script can invoke them. The original fleet-wide REVIEW_ONLY/HOLD/Markdown/byte-for-byte tests run with these process tripwires active, not just socket tripwires. Eight disposable negative subprocesses intentionally attempt process/shell operations inside `except BaseException`, each requiring noncatchable exit 92, no stdout/stderr and unchanged disposable local files. No real child/shell command, target, scanner, grant or deployment is launched in these negative controls.
+
+This is still only **Python monkeypatch coverage for specific entrypoints**, not an OS-level process sandbox, proof against native syscalls, or a production admission control. Independently owned orchestration, risk-5 operator approval and verified lab-isolation gates remain necessary. Hosted exact-head test evidence and separate permanent VPS evidence must be recorded before broader release.
