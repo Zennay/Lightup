@@ -58,7 +58,7 @@ print(receipt.verdict, receipt.reason_code, receipt.narrowed_fields)
 Local tests (with repository `PYTHONPATH=src`):
 
 ```bash
-PYTHONPATH=src python -m unittest -v tests.test_grant_revision_review
+PYTHONPATH=src python -m unittest discover -s tests -p "test_grant_revision*review.py" -v
 ```
 
 No database/customer state, internet target, socket, DNS, credentials, grant
@@ -88,3 +88,20 @@ logs, and obtain human merge/release approval.
 
 **LightUp INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD · NO MERGE · NO
 DEPLOY · NO REAL SCANS.**
+
+## Atomic multi-client batch extension
+
+`lightup.grant_revision_batch_review.review_grant_revision_batch(pairs)`
+reviews a tuple of 1–32 `(old, proposed)` real grants, without I/O. It
+rejects any malformed or widened pair and duplicate original grant IDs. It
+also conservatively HOLDs when the **self-declared active asset strings** of
+two distinct tenants overlap, avoiding a green-looking operator batch with
+ambiguous assignments. Excluded assets are not counted as active for this
+comparison. Overlap within one tenant remains reviewable, but still grants
+no rights. Even if the first 31 pairs pass and the 32nd fails, the return is
+an atomic `HOLD` with **zero** reviewed/narrowed counts. A positive return
+only says that the self-declared batch met these syntactic constraints; no
+customer entitlement, asset ownership, reviewer approval, revocation,
+release or execution permission is proven. The batch function is also
+uninstalled and non-authorizing. Nine genuine synthetic tests check these
+boundaries, including privacy and the absence of database/network I/O.
