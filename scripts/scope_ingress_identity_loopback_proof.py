@@ -267,6 +267,21 @@ def _stop(proc: subprocess.Popen) -> None:
             proc.wait(timeout=3)
 
 
+def _stop_all(services: list[subprocess.Popen]) -> None:
+    """Try every disposable child even if an earlier termination fails.
+
+    Never hide cleanup faults behind a successful synthetic review.
+    """
+    failed = False
+    for service in reversed(services):
+        try:
+            _stop(service)
+        except (OSError, RuntimeError, subprocess.SubprocessError):
+            failed = True
+    if failed:
+        raise RuntimeError("disposable fixture process cleanup incomplete")
+
+
 def run_fixture() -> int:
     # Never resolve the binary through an inherited attacker-chosen PATH.
     nginx = shutil.which("nginx", path=SAFE_EXECUTABLE_PATH)
@@ -386,8 +401,7 @@ def run_fixture() -> int:
                 raise RuntimeError("incomplete fixture")
             return len(checked)
         finally:
-            for service in reversed(services):
-                _stop(service)
+            _stop_all(services)
 
 
 def receipt(checked: int) -> dict[str, object]:
