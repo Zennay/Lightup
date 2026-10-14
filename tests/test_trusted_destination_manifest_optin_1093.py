@@ -431,5 +431,40 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
 
+
+    def test_55_scheme_case_normalization_is_rejected(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        for bad in ("HTTP://localhost/", "Http://localhost/", "hTTps://localhost/",
+                    "HtTpS://localhost:443/"):
+            with self.subTest(bad=bad):
+                self.refused(lambda value=bad: m.review({"url": value}))
+
+    def test_56_empty_fragment_delimiter_rejected(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        for bad in ("https://localhost#", "https://localhost/path#",
+                    "https://localhost/path?x=1#", "https://localhost/path#?x=1"):
+            with self.subTest(bad=bad):
+                self.refused(lambda value=bad: m.review({"url": value}))
+
+    def test_57_empty_query_delimiter_rejected(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        for bad in ("https://localhost?", "https://localhost/path?"):
+            with self.subTest(bad=bad):
+                self.refused(lambda value=bad: m.review({"url": value}))
+
+    def test_58_canonical_explicit_query_does_not_authorize(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        receipt = m.review({"url": "https://localhost/path?q=hello%20world"})
+        self.assertEqual(receipt.status, "hold")
+        self.assertFalse(receipt.permit_issued)
+        self.assertFalse(receipt.authorization_verified)
+        self.assertFalse(receipt.release_approved)
+        self.assertEqual(self.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
