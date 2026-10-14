@@ -41,8 +41,8 @@ return a nonreflective HOLD without reading stdin.
 ## Coverage
 
 - Six supported exact synthetic loopback/RFC1918/ULA controls.
-- Eight unsafe synthetic documentation/benchmark/unspecified/
-  broadcast/link-local examples that **must fail before permit
+- Ten unsafe synthetic documentation/benchmark/unspecified/
+  broadcast/link-local/IPv4-mapped alias examples that **must fail before permit
   issuance**. These are deliberately `@expectedFailure` in existing
   vulnerable source, with separate assertion-trace integrity canaries.
 - Disable `allow_private_lab` and confirm non-loopback samples cannot
@@ -57,7 +57,7 @@ return a nonreflective HOLD without reading stdin.
 Owner of production PR #100 must repair `ScopePolicy`'s private-lab
 classification using an explicitly reviewed membership rule, then
 independently re-run the real `ActivationGate.issue` chain and promote
-the eight intentional RED canaries to ordinary passing tests. Any
+the ten intentional RED canaries to ordinary passing tests. Any
 genuine permit authority needs verified customer scope, active
 revocation, original ingress and executor-owner integration, exact
 hosted and **registered permanent VPS** raw jobs, independent
