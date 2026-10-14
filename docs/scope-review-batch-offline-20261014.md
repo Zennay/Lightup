@@ -51,3 +51,9 @@ python scripts/check_scope_review_batch_offline.py --require-private-file --summ
 ```
 
 Even aggregate totals may be sensitive for small batches; treat this output as private internal review metadata. It deliberately emits no tenant IDs, asset IDs, applicant names, reference values, target addresses, evidence digests or authorization decisions. It does not compare with persisted grants or imply active testing has been approved. The summary is calculated from **the same validated in-memory bytes**, with no second file read, and is intentionally not persisted or transmitted. Eleven synthetic regression tests cover ordinary totals, all modes, malformed input, late batch rejection, duplicate request, cross-packet scope overlap and aggregate privacy. This is a non-authorizing *report preview*, not an execution plan.
+
+## W8 private-path ancestor rule
+
+The opt-in `--require-private-file` policy now also walks the lexical parent directory chain with local `lstat` and rejects visible parent-directory symlinks as `PRIVATE_PARENT_SYMLINK`. Paths containing an explicit `..` traversal segment yield `PRIVATE_PATH_TRAVERSAL`. Missing or inaccessible parents yield the fixed `INPUT_UNAVAILABLE` HOLD **without leaking the path or creating a traceback**. This stricter rule is **only** active when the private-file flag is explicitly selected; the default offline review remains unchanged. All three CLIs share this rule through the common reader; ten isolated POSIX test methods cover direct parent links, nested links, traversal, CLI privacy, missing directory and inherited multi-snapshot zero-on-HOLD behavior.
+
+**Limitation:** parent `lstat` checks are observational and non-atomic; another process, mount namespace or a privileged actor may change the path after inspection. This is not a trusted filesystem attestation, verified consent, authenticated tenant association, approved target or authorization for any scan, merge or deployment.
