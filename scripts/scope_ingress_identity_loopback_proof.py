@@ -29,15 +29,6 @@ AUTHORITY_FLAGS = (
     "merge_approved",
     "release_approved",
 )
-CASE_NAMES = (
-    "anonymous",
-    "alternate_cookie",
-    "revoked",
-    "client",
-    "operator_no_csrf",
-    "operator_with_csrf",
-    "client_portal",
-)
 ALTERNATE_HEADERS = (
     "X-Forwarded-Cookie",
     "X-Original-Cookie",
@@ -47,6 +38,16 @@ ALTERNATE_HEADERS = (
     "X-Auth-Request-User",
     "X-Forwarded-User",
     "Remote-User",
+)
+CASE_NAMES = (
+    "anonymous",
+    *(f"alternate_{name.lower().replace('-', '_')}" for name in ALTERNATE_HEADERS),
+    "alternate_combined",
+    "revoked",
+    "client",
+    "operator_no_csrf",
+    "operator_with_csrf",
+    "client_portal",
 )
 
 # All credentials here are public fixed synthetic test strings, *never* secrets.
@@ -178,6 +179,7 @@ def _request(
     method: str = "GET",
     cookie: str | None = None,
     alternates: bool = False,
+    alternate_name: str | None = None,
     body: bytes | None = None,
 ) -> dict:
     conn = http.client.HTTPConnection("127.0.0.1", port, timeout=3.0)
@@ -188,6 +190,10 @@ def _request(
         if alternates:
             for name in ALTERNATE_HEADERS:
                 headers[name] = SYNTHETIC_OPERATOR
+        if alternate_name is not None:
+            if type(alternate_name) is not str or alternate_name not in ALTERNATE_HEADERS:
+                raise RuntimeError("unsupported synthetic header")
+            headers[alternate_name] = SYNTHETIC_OPERATOR
         if body is not None:
             headers["Content-Type"] = "application/x-www-form-urlencoded"
         conn.request(method, path, headers=headers, body=body)
@@ -289,7 +295,7 @@ def run_fixture() -> int:
                     proxy_port, "/engagements/fixture/grants", method="POST",
                     body=SYNTHETIC_CSRF
                 ), "anonymous", "DENIED"),
-                ("alternate_cookie", _request(
+                ("alternate_combined", _request(
                     proxy_port, "/engagements/fixture/grants", method="POST",
                     alternates=True, body=SYNTHETIC_CSRF
                 ), "anonymous", "DENIED"),
@@ -313,6 +319,18 @@ def run_fixture() -> int:
                     proxy_port, "/portal/fixture", cookie=SYNTHETIC_CLIENT
                 ), "client", "VISIBLE"),
             )
+            individual_spoofs = tuple(
+                (
+                    f"alternate_{header.lower().replace('-', '_')}",
+                    _request(
+                        proxy_port, "/engagements/fixture/grants",
+                        method="POST", alternate_name=header, body=SYNTHETIC_CSRF,
+                    ),
+                    "anonymous", "DENIED",
+                )
+                for header in ALTERNATE_HEADERS
+            )
+            results += individual_spoofs
             checked = set()
             for name, result, expected_identity, verdict in results:
                 if name in checked or not _expected(result, expected_identity, verdict):
