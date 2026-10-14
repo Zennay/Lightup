@@ -43,6 +43,7 @@ ALTERNATE_HEADERS = (
 CASE_NAMES = (
     "anonymous",
     *(f"alternate_{name.lower().replace('-', '_')}" for name in ALTERNATE_HEADERS),
+    *(f"client_spoof_{name.lower().replace('-', '_')}" for name in ALTERNATE_HEADERS),
     "alternate_combined",
     "revoked",
     "client",
@@ -359,6 +360,21 @@ def run_fixture() -> int:
                 for header in ALTERNATE_HEADERS
             )
             results += individual_spoofs
+            # A real client-equivalent Cookie must not be upgraded to
+            # operator identity by any alternate untrusted identity header.
+            client_spoofs = tuple(
+                (
+                    f"client_spoof_{header.lower().replace('-', '_')}",
+                    _request(
+                        proxy_port, "/engagements/fixture/grants",
+                        method="POST", cookie=SYNTHETIC_CLIENT,
+                        alternate_name=header, body=SYNTHETIC_CSRF,
+                    ),
+                    "client", "DENIED",
+                )
+                for header in ALTERNATE_HEADERS
+            )
+            results += client_spoofs
             checked = set()
             for name, result, expected_identity, verdict in results:
                 if name in checked or not _expected(result, expected_identity, verdict):
