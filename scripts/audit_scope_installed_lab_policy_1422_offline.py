@@ -60,9 +60,9 @@ EXPLICIT_HOST_DENIALS = (
     ("REVIEW.INVALID.", "review.invalid"),
     ("https://review.invalid/no-network", "review.invalid"),
 )
-# Two ordinary decisions per literal; a third denies every non-lab literal
-# even when the caller tries a broad explicit-network policy without a grant.
-TOTAL_CHECKS = len(LAB) * 2 + len(NOT_LAB) * 3 + len(EXPLICIT_HOST_DENIALS) * 2
+# Two ordinary decisions per literal; third/fourth deny every non-lab literal
+# in explicit networks with a missing or definitively expired synthetic grant.
+TOTAL_CHECKS = len(LAB) * 2 + len(NOT_LAB) * 4 + len(EXPLICIT_HOST_DENIALS) * 2
 _DENIAL = {
     "authorization_verified": False,
     "permit_issued": False,
@@ -180,11 +180,18 @@ def audit_installed_scope(policy_factory=ScopePolicy) -> dict[str, object]:
             admitted = enabled.decide(Target(literal))
             locked = disabled.decide(Target(literal))
             missing_grant = ungranted_explicit.decide(Target(literal))
-            if not all(_canonical(item) for item in (admitted, locked, missing_grant)):
+            expired_grant = ungranted_explicit.decide(
+                Target(literal, authorization=expired)
+            )
+            if not all(_canonical(item) for item in (
+                admitted, locked, missing_grant, expired_grant
+            )):
                 return _receipt("HOLD")
             if (
                 missing_grant.allowed is not False
                 or missing_grant.reason is not ScopeReason.AUTHORIZATION_MISSING
+                or expired_grant.allowed is not False
+                or expired_grant.reason is not ScopeReason.AUTHORIZATION_EXPIRED
                 or admitted.allowed is not False
                 or admitted.reason in (ScopeReason.LOOPBACK, ScopeReason.PRIVATE_LAB)
                 or locked.allowed is not False
