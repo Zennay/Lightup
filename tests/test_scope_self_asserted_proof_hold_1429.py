@@ -547,5 +547,82 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
             os.close(writefd)
 
 
+    @unittest.skipUnless(hasattr(os, "get_blocking"), "POSIX fd mode unavailable")
+    def test_real_cli_restores_inherited_parent_pipe_mode_for_both_states(self):
+        # stdout=writefd inherits the *same* open-file description as parent;
+        # the child's O_NONBLOCK flag must not remain changed after exit.
+        for initially_blocking in (True, False):
+            with self.subTest(initially_blocking=initially_blocking):
+                readfd, writefd = os.pipe()
+                try:
+                    os.set_blocking(writefd, initially_blocking)
+                    self.assertEqual(os.get_blocking(writefd), initially_blocking)
+                    child = subprocess.run(
+                        [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                        input=encoded(packet()), stdout=writefd, stderr=subprocess.PIPE,
+                        timeout=8, check=False,
+                        env={"PATH": os.defpath, "PYTHONDONTWRITEBYTECODE": "1"},
+                    )
+                    self.assertEqual(child.returncode, 2)
+                    self.assertEqual(child.stderr, b"")
+                    self.assertEqual(
+                        os.get_blocking(writefd), initially_blocking,
+                        "child must restore parent's original O_NONBLOCK setting",
+                    )
+                    receipt = os.read(readfd, 1024)
+                    self.assertEqual(json.loads(receipt)["status"], "HOLD")
+                finally:
+                    os.close(writefd)
+                    os.close(readfd)
+
+    @unittest.skipUnless(hasattr(os, "get_blocking"), "POSIX fd mode unavailable")
+    def test_real_cli_full_pipe_timeout_restores_parent_blocking_mode(self):
+        readfd, writefd = os.pipe()
+        try:
+            os.set_blocking(writefd, False)
+            while True:
+                try:
+                    os.write(writefd, b"P" * 4096)
+                except BlockingIOError:
+                    break
+            # Explicitly change it back *before* fork; the prior test only
+            # covered an already-NONBLOCK parent on the full-pipe path.
+            os.set_blocking(writefd, True)
+            self.assertTrue(os.get_blocking(writefd))
+            child = subprocess.run(
+                [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                input=encoded(packet()), stdout=writefd, stderr=subprocess.PIPE,
+                timeout=8, check=False,
+                env={"PATH": os.defpath, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            self.assertEqual(child.returncode, 2)
+            self.assertEqual(child.stderr, b"")
+            self.assertTrue(os.get_blocking(writefd), "timed-out stdout mutated parent's O_NONBLOCK")
+        finally:
+            os.close(writefd)
+            os.close(readfd)
+
+    @unittest.skipUnless(hasattr(os, "get_blocking"), "POSIX fd mode unavailable")
+    def test_real_cli_broken_pipe_restores_parent_blocking_mode(self):
+        readfd, writefd = os.pipe()
+        try:
+            os.set_blocking(writefd, True)
+            os.close(readfd)
+            readfd = -1
+            child = subprocess.run(
+                [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                input=encoded(packet()), stdout=writefd, stderr=subprocess.PIPE,
+                timeout=8, check=False,
+                env={"PATH": os.defpath, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            self.assertEqual(child.returncode, 2)
+            self.assertEqual(child.stderr, b"")
+            self.assertTrue(os.get_blocking(writefd), "EPIPE path mutated parent's descriptor")
+        finally:
+            os.close(writefd)
+            if readfd != -1:
+                os.close(readfd)
+
+
 if __name__ == "__main__":
     unittest.main()
