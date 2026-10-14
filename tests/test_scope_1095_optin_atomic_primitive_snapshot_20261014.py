@@ -21,6 +21,7 @@ from lightup.engagements import AssessmentMode, RiskLevel
 from lightup.execution_policy import InteractionKind
 from lightup.primitive_admission_optin_1095 import (
     MAX_SYNTHETIC_BATCH_ITEMS,
+    MAX_SYNTHETIC_PARAMETERS,
     snapshot_exact_primitive_batch,
     snapshot_exact_primitive_values,
 )
@@ -225,6 +226,63 @@ class ExactPrimitiveSnapshotTests(unittest.TestCase):
                 with self.assertRaises(OrchestrationError):
                     snapshot_exact_primitive_values(fake_name, {"value": "ok"})
 
+    def test_metadata_requires_exact_toolparameter_and_boolean_required(self):
+        ordinary = definition("text", ParamKind.STRING)
+        parameter = ordinary.parameters[0]
+
+        class HostileParameter:
+            @property
+            def name(self):
+                raise AssertionError("hostile metadata callback should not run")
+
+        malicious = (
+            HostileParameter(),
+            dataclasses.replace(parameter, required=0),
+            dataclasses.replace(parameter, required=""),
+            dataclasses.replace(parameter, required=1),
+            dataclasses.replace(parameter, name=StrSubclass("value")),
+            dataclasses.replace(parameter, kind="string"),
+        )
+        for item in malicious:
+            with self.subTest(type=type(item).__name__, required=repr(getattr(item, "required", None))):
+                changed = dataclasses.replace(ordinary, parameters=(item,))
+                with self.assertRaises(OrchestrationError):
+                    snapshot_exact_primitive_values(changed, {"value": "ok"})
+
+    def test_parameter_container_must_be_exact_bounded_tuple(self):
+        ordinary = definition("text", ParamKind.STRING)
+
+        class TupleSubclass(tuple):
+            pass
+
+        for params in (
+            list(ordinary.parameters),
+            TupleSubclass(ordinary.parameters),
+            (ordinary.parameters[0],) * (MAX_SYNTHETIC_PARAMETERS + 1),
+        ):
+            with self.subTest(container=type(params).__name__, count=len(params)):
+                with self.assertRaises(OrchestrationError):
+                    snapshot_exact_primitive_values(
+                        dataclasses.replace(ordinary, parameters=params), {"value": "ok"}
+                    )
+        exactly_at_limit = dataclasses.replace(
+            ordinary,
+            parameters=tuple(
+                ToolParameter("v" + str(i), ParamKind.INTEGER, required=False)
+                for i in range(MAX_SYNTHETIC_PARAMETERS)
+            ),
+        )
+        snap = snapshot_exact_primitive_values(exactly_at_limit, {})
+        self.assertEqual(snap.items, ())
+
+    def test_oversized_arguments_fail_before_unknown_key_processing(self):
+        tool = definition("text", ParamKind.STRING)
+        huge = {"value": "ok", **{"extra" + str(i): i for i in range(MAX_SYNTHETIC_PARAMETERS)}}
+        with self.assertRaises(OrchestrationError):
+            snapshot_exact_primitive_values(tool, huge)
+        self.assertEqual(huge["value"], "ok")
+        self.assertEqual(len(huge), MAX_SYNTHETIC_PARAMETERS + 1)
+
     def test_only_exact_tool_definition_accepted(self):
         class DefinitionChild(ToolDefinition):
             pass
@@ -294,6 +352,20 @@ class SyntheticRealExecutorBatchTests(unittest.TestCase):
         self.assertEqual(self.calls, [{"value": "synthetic"}, {"value": 2}])
         self.assertEqual(self.evidence_count(), 2)
         self.assertFalse(batch.execution_enabled)
+
+    def test_late_invalid_metadata_has_zero_handler_or_evidence_effect(self):
+        good = (self.text, {"value": "ok"})
+        bad = dataclasses.replace(
+            self.number,
+            parameters=(dataclasses.replace(
+                self.number.parameters[0], required="truthy-but-not-bool"
+            ),),
+        )
+        before = self.evidence_count()
+        with self.assertRaises(OrchestrationError):
+            snapshot_exact_primitive_batch((good, (bad, {"value": 3})))
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), before)
 
     def test_preflight_does_not_invoke_registry_handlers_or_policy(self):
         batch = snapshot_exact_primitive_batch(((self.text, {"value": "ok"}),))
