@@ -1,4 +1,4 @@
-"""Offline acceptance for issue #1422's deterministic IPv4 boundary sweep."""
+"""Offline acceptance for issue #1422's deterministic dual-stack boundary sweep."""
 from __future__ import annotations
 
 from contextlib import redirect_stdout
@@ -72,6 +72,20 @@ class WrongTypePolicy(IndependentStrictPolicy):
         return ScopeDecision(1 if result.allowed else 0, target.value, result.reason)
 
 
+class LateFalseAdmissionPolicy(IndependentStrictPolicy):
+    def decide(self, target):
+        if target.value == "198.255.254.1":
+            return ScopeDecision(True, target.value, ScopeReason.PRIVATE_LAB)
+        return super().decide(target)
+
+
+class LateFalseDenialPolicy(IndependentStrictPolicy):
+    def decide(self, target):
+        if target.value == "192.168.254.1":
+            return ScopeDecision(False, target.value, ScopeReason.OUT_OF_SCOPE)
+        return super().decide(target)
+
+
 class UnexpectedErrorPolicy(IndependentStrictPolicy):
     def decide(self, target):
         raise RuntimeError("synthetic-secret-must-not-leak")
@@ -91,7 +105,7 @@ class OctetSweepTests(unittest.TestCase):
             self.assertIs(receipt[field], False)
 
     def test_reference_matrix_is_real_and_bounded(self):
-        self.assertEqual(TOTAL_DECISIONS, 3584)
+        self.assertEqual(TOTAL_DECISIONS, 13824)
         self.assert_non_authorizing(
             review_ipv4_octet_sweep(IndependentStrictPolicy), "REVIEW_ONLY"
         )
@@ -111,6 +125,27 @@ class OctetSweepTests(unittest.TestCase):
     def test_unsafe_auto_admission_and_off_switch_are_atomic_hold(self):
         self.assert_non_authorizing(review_ipv4_octet_sweep(TrustAllPolicy), "HOLD")
         self.assert_non_authorizing(review_ipv4_octet_sweep(DenyAllPolicy), "HOLD")
+
+    def test_late_boundaries_never_return_partial_review(self):
+        # Neither the last reserved IPv4 nor deep private-use address may
+        # escape a bounded atomic review by an early positive shortcut.
+        self.assert_non_authorizing(
+            review_ipv4_octet_sweep(LateFalseAdmissionPolicy), "HOLD"
+        )
+        self.assert_non_authorizing(
+            review_ipv4_octet_sweep(LateFalseDenialPolicy), "HOLD"
+        )
+
+    def test_deep_matrix_has_distinct_samples_and_expected_boundaries(self):
+        from audit_scope_ipv4_octet_sweep_1422_offline import _samples
+        rows = list(_samples())
+        self.assertEqual(len(rows), 6144)
+        self.assertEqual(len({row[0] for row in rows}), len(rows))
+        self.assertIn(("100.64.254.1", 100, 64), rows)
+        self.assertIn(("169.254.128.1", 169, 254), rows)
+        self.assertIn(("198.18.1.1", 198, 18), rows)
+        self.assertIn(("192.168.254.1", 192, 168), rows)
+        self.assertIn(("172.31.254.1", 172, 31), rows)
 
     def test_target_identity_laundering_and_type_confusion_hold(self):
         self.assert_non_authorizing(review_ipv4_octet_sweep(WrongIdentityPolicy), "HOLD")
