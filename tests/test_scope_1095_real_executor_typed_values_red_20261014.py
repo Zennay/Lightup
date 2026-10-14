@@ -448,5 +448,84 @@ class ActualExecutorAdmissionTests(unittest.TestCase):
         self._assert_rejected_without_effects("text", SubclassText("unsafe"))
 
 
+class ExpectedRedWitnessIntegrityTests(unittest.TestCase):
+    """Avoid false confidence: unittest.expectedFailure also masks crashes.
+
+    Re-run ONLY the RED witness methods in a private unittest result and
+    distinguish intentional security assertion failures from arbitrary
+    exceptions; never invoke a target, network, scan, grant or real handler.
+    """
+
+    @staticmethod
+    def _unexpected_red_outcomes(result, expected_count):
+        problems = []
+        if result.testsRun != expected_count:
+            problems.append("RED witness count changed during nested run")
+        if result.errors:
+            problems.append("unmasked nested runtime error")
+        if result.failures:
+            problems.append("unmasked nested assertion failure")
+        if result.unexpectedSuccesses:
+            problems.append("RED converted to XPASS; convert to ordinary PASS")
+        if len(result.expectedFailures) != expected_count:
+            problems.append("a RED witness did not produce an expected failure")
+        for test, traceback_text in result.expectedFailures:
+            final_line = traceback_text.rstrip().splitlines()[-1]
+            # A raised TypeError, ValueError, network failure, etc. is NOT
+            # legitimate evidence of a primitive-admission assertion.
+            if not final_line.startswith("AssertionError:"):
+                problems.append(
+                    "non-assertion RED exception in " + test.id() + ": " + final_line
+                )
+            if "self.assert" not in traceback_text:
+                problems.append("RED witness did not fail at a unittest assertion: " + test.id())
+        return problems
+
+    def test_red_exception_classifier_rejects_crashes_and_unexpected_success(self):
+        @unittest.expectedFailure
+        def _assertion_red(case):
+            case.assertFalse(True, "genuine synthetic type refusal")
+
+        @unittest.expectedFailure
+        def _crash_red(case):
+            raise TypeError("unrelated synthetic test crash")
+
+        @unittest.expectedFailure
+        def _fixed_red(case):
+            case.assertTrue(True)
+
+        class SyntheticWitnesses(unittest.TestCase):
+            test_assertion_red = _assertion_red
+            test_crash_red = _crash_red
+            test_fixed_red = _fixed_red
+
+        expected = unittest.TestSuite((
+            SyntheticWitnesses("test_assertion_red"),
+            SyntheticWitnesses("test_crash_red"),
+            SyntheticWitnesses("test_fixed_red"),
+        ))
+        results = unittest.TestResult()
+        expected.run(results)
+        self.assertEqual(results.testsRun, 3)
+        detected = self._unexpected_red_outcomes(results, 3)
+        self.assertTrue(any("non-assertion RED exception" in entry for entry in detected))
+        self.assertTrue(any("XPASS" in entry for entry in detected))
+
+    def test_all_registered_source_reds_are_specific_assertion_failures(self):
+        witnesses = []
+        for klass in (PrimitiveAdmissibilityTests, ActualExecutorAdmissionTests):
+            for name in unittest.defaultTestLoader.getTestCaseNames(klass):
+                if getattr(getattr(klass, name), "__unittest_expecting_failure__", False):
+                    witnesses.append(klass(name))
+        self.assertGreater(len(witnesses), 0, "source-RED witness inventory vanished")
+        result = unittest.TestResult()
+        unittest.TestSuite(witnesses).run(result)
+        problems = self._unexpected_red_outcomes(result, len(witnesses))
+        self.assertEqual(
+            problems, [],
+            "XFAIL status cannot hide crashes or accidental passing tests: " + repr(problems),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
