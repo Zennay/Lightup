@@ -41,3 +41,13 @@ python scripts/check_scope_review_batch_offline.py --require-private-file /path/
 ```
 
 File modes and link counts are **only local privacy hygiene**, not authentic provenance or customer consent; a malicious process with the same UID, inherited directory access, a privileged attacker, permission-changing race, hidden mount permissions or provider-specific filesystem behavior may defeat this heuristic. The result still has all five authority flags `false`. Dedicated synthetic POSIX tests cover insecure 0640/0604/0602, hard links, foreign UID, post-read permissions, malformed policy and CLI privacy-safe HOLD. No user content is echoed.
+
+## W6 optional no-identity review histogram
+
+Use `--summary` to return aggregate, fixed-schema `mode_counts` and `risk_counts` for a fully validated batch **only**. The four canonical modes and six numeric risk levels appear as fixed keys with integer counts; zero-count categories remain present. On any file error, schema error, duplicate, cross-tenant confusion or overlapping scope, the **entire histogram is zero**, the packet count is zero, state is HOLD and all five authority flags remain false. The default output without `--summary` remains backward-compatible.
+
+```sh
+python scripts/check_scope_review_batch_offline.py --require-private-file --summary /path/to/local-review-batch.json
+```
+
+Even aggregate totals may be sensitive for small batches; treat this output as private internal review metadata. It deliberately emits no tenant IDs, asset IDs, applicant names, reference values, target addresses, evidence digests or authorization decisions. It does not compare with persisted grants or imply active testing has been approved. The summary is calculated from **the same validated in-memory bytes**, with no second file read, and is intentionally not persisted or transmitted. Eleven synthetic regression tests cover ordinary totals, all modes, malformed input, late batch rejection, duplicate request, cross-packet scope overlap and aggregate privacy. This is a non-authorizing *report preview*, not an execution plan.
