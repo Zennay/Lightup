@@ -86,14 +86,21 @@ def _git_bounded_names(repo: Path, *args: str,
         return subprocess.CompletedProcess(command, 126, b"", b"")
     finally:
         if process is not None:
-            if process.poll() is None:
-                process.kill()
+            try:
+                if process.poll() is None:
+                    process.kill()
+            except OSError:
+                # Another actor may reap/terminate the child between poll/kill.
+                pass
             try:
                 process.wait(timeout=2)
             except (OSError, subprocess.TimeoutExpired):
                 pass
             if process.stdout is not None:
-                process.stdout.close()
+                try:
+                    process.stdout.close()
+                except OSError:
+                    pass
 
 
 def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
