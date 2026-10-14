@@ -35,6 +35,9 @@ import _io
 import sys
 _TRUSTED_BOOTSTRAP_SCRIPT = os.environ.get("LIGHTUP_SCOPE_BOOTSTRAP_SCRIPT", "")
 _TRUSTED_STDLIB_LIB = os.path.realpath(os.path.join(sys.base_prefix, "lib"))
+_TRUSTED_LIGHTUP_SOURCE = os.environ.get("LIGHTUP_SCOPE_SOURCE_ROOT", "")
+if _TRUSTED_LIGHTUP_SOURCE:
+    _TRUSTED_LIGHTUP_SOURCE = os.path.realpath(_TRUSTED_LIGHTUP_SOURCE)
 
 def _trusted_python_bootstrap(path, mode, args, kwargs):
     if (type(path) is not str or mode != "rb" or args or kwargs):
@@ -45,13 +48,23 @@ def _trusted_python_bootstrap(path, mode, args, kwargs):
         return False
     try:
         candidate = os.path.realpath(path)
-        return (os.path.commonpath((_TRUSTED_STDLIB_LIB, candidate))
-                == _TRUSTED_STDLIB_LIB
-                and "/site-packages/" not in candidate)
+        in_stdlib = (os.path.commonpath((_TRUSTED_STDLIB_LIB, candidate))
+                     == _TRUSTED_STDLIB_LIB
+                     and "/site-packages/" not in candidate)
+        in_own_sources = (
+            bool(_TRUSTED_LIGHTUP_SOURCE)
+            and os.path.commonpath((_TRUSTED_LIGHTUP_SOURCE, candidate))
+            == _TRUSTED_LIGHTUP_SOURCE
+        )
+        return in_stdlib or in_own_sources
     except (OSError, ValueError):
         return False
 
 def checked_direct_io_open(path, mode="r", *args, **kwargs):
+    if os.environ.get("LIGHTUP_SCOPE_DIAG") == "1":
+        import sys
+        sys.stderr.write("NATIVE_IO next-path=%r mode=%r opts=%d/%r\\n" % (
+            path, mode, len(args), tuple(kwargs)))
     if _trusted_python_bootstrap(path, mode, args, kwargs):
         return _real_io_open(path, mode)
     if type(path) not in (str, type(pathlib.Path())):
@@ -141,7 +154,7 @@ class OfflineScopeNativeIOAliasTests(unittest.TestCase):
             with self.subTest(script=script, status=expected_status):
                 result = subprocess.run(
                     [sys.executable, "-B", str(_SCRIPTS / script)],
-                    cwd=self.root, env=dict(self.env, LIGHTUP_SCOPE_BOOTSTRAP_SCRIPT=str(_SCRIPTS / script)), input=payload,
+                    cwd=self.root, env=dict(self.env, LIGHTUP_SCOPE_BOOTSTRAP_SCRIPT=str(_SCRIPTS / script), LIGHTUP_SCOPE_SOURCE_ROOT=str(_REPO / "src" / "lightup"), LIGHTUP_SCOPE_DIAG="1"), input=payload,
                     capture_output=True, check=False, timeout=15,
                 )
                 self.assertEqual(result.returncode, expected_code, result.stderr)
@@ -154,7 +167,7 @@ class OfflineScopeNativeIOAliasTests(unittest.TestCase):
         exporter = subprocess.run(
             [sys.executable, "-B",
              str(_SCRIPTS / "export_scope_capability_registry_offline.py")],
-            cwd=self.root, env=dict(self.env, LIGHTUP_SCOPE_BOOTSTRAP_SCRIPT=str(_SCRIPTS / "export_scope_capability_registry_offline.py")), capture_output=True,
+            cwd=self.root, env=dict(self.env, LIGHTUP_SCOPE_BOOTSTRAP_SCRIPT=str(_SCRIPTS / "export_scope_capability_registry_offline.py"), LIGHTUP_SCOPE_SOURCE_ROOT=str(_REPO / "src" / "lightup"), LIGHTUP_SCOPE_DIAG="1"), capture_output=True,
             check=False, timeout=15,
         )
         self.assertEqual(exporter.returncode, 3, exporter.stderr)
