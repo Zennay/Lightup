@@ -100,6 +100,19 @@ return a nonreflective HOLD without reading stdin.
   authority, not evidence of real isolation. Run only on trusted offline CI.
 - No tested address is contacted, scanned, resolved or authenticated.
 
+### Source-owner remediation simulation (non-authorizing)
+
+An additional mutation regression patches only the in-memory **class**
+`ScopePolicy.decide` during one unit test. It denies the ten documented
+unsafe literals while leaving the real production files untouched. The
+whole 56-check real `ActivationGate` chain must then return exactly
+`REVIEW_ONLY`, zero violations and exit code **3**, with all six authority,
+scan, grant and release flags still `false`. This is a simulated source
+repair, **NOT a real source fix or evidence of authorization**. A second
+mutation additionally denies a genuinely valid loopback control and must
+return **HOLD with exactly one violation**, showing that over-restrictive
+fixes are also visible instead of silently disappearing.
+
 ### Release blocker / source-owner handoff
 
 Owner of production PR #100 must repair `ScopePolicy`'s private-lab
