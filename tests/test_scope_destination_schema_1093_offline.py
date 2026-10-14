@@ -167,7 +167,7 @@ class ReviewTests(unittest.TestCase):
                 self.assertEqual(process.returncode, 2)
                 self.assertFalse(process.stderr)
                 self.assertNotIn(b"synthetic_customer_secret_marker", process.stdout)
-                self.assertEqual(process.stdout.count(b"\\n"), 1)
+                self.assertEqual(process.stdout.count(b"\n"), 1)
                 self.assert_denied(json.loads(process.stdout), "HOLD")
 
     def test_reject_untrusted_structure(self):
