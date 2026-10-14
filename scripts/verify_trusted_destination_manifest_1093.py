@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 
 
 EXPECTED_TEST_METHODS = 91
@@ -56,9 +57,21 @@ def main() -> int:
             top_level_dir=str(root / "tests"),
         )
         log = io.StringIO()
-        result = unittest.TextTestRunner(
-            stream=log, verbosity=0, failfast=True
-        ).run(suite)
+        def refuse_io(*_args, **_kwargs):
+            raise RuntimeError("offline test boundary refused external I/O")
+
+        # Defense in depth: even an accidental future test regression must
+        # not be able to open network sockets or spawn external processes.
+        with (patch("socket.socket", side_effect=refuse_io),
+              patch("socket.create_connection", side_effect=refuse_io),
+              patch("socket.getaddrinfo", side_effect=refuse_io),
+              patch("urllib.request.urlopen", side_effect=refuse_io),
+              patch("subprocess.Popen", side_effect=refuse_io),
+              patch("subprocess.run", side_effect=refuse_io),
+              patch("os.system", side_effect=refuse_io)):
+            result = unittest.TextTestRunner(
+                stream=log, verbosity=0, failfast=True
+            ).run(suite)
         passed = (
             result.wasSuccessful()
             and result.testsRun == EXPECTED_TEST_METHODS
