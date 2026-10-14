@@ -42,6 +42,9 @@ class DestinationReview:
 
 
 _NAME = re.compile(r"[a-z][a-z0-9_]{0,63}\Z", re.ASCII)
+# Production ToolDefinition IDs use kebab-case (e.g. lab-http-baseline).
+# Argument names remain stricter identifiers without hyphens.
+_TOOL_ID = re.compile(r"[a-z](?:[a-z0-9_-]{0,62}[a-z0-9])?\Z", re.ASCII)
 _DNS = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z", re.ASCII)
 _KINDS = {
     DestinationRole.HOST: ParamKind.STRING,
@@ -162,7 +165,7 @@ class TrustedDestinationManifest:
     def __init__(self, registry, definition, fields):
         if type(registry) is not ToolRegistry or type(definition) is not ToolDefinition or type(fields) is not tuple:
             _deny()
-        if (type(definition.tool_id) is not str or not _NAME.fullmatch(definition.tool_id)
+        if (type(definition.tool_id) is not str or not _TOOL_ID.fullmatch(definition.tool_id)
                 or type(definition.capability_id) is not str or not definition.capability_id
                 or len(definition.capability_id) > 128
                 or type(definition.description) is not str or len(definition.description) > 4096
