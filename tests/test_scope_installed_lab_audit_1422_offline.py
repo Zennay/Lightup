@@ -4,6 +4,7 @@ from __future__ import annotations
 from contextlib import redirect_stdout
 import io
 import json
+import os
 from pathlib import Path
 import socket
 import subprocess
@@ -385,6 +386,43 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
              patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns")), \
              patch.object(subprocess, "Popen", side_effect=AssertionError("subprocess")):
             self.assertEqual(audit_installed_scope(_FixturePolicy)["status"], "REVIEW_ONLY")
+
+    def test_entire_passing_fixture_never_attempts_file_network_or_process_io(self):
+        # Earlier real-source IO guards may exit early at #1422. This validates
+        # the FULL 201-decision success path, not just an early HOLD.
+        with patch.object(socket, "socket") as sock, \
+             patch.object(socket, "getaddrinfo") as dns, \
+             patch.object(subprocess, "Popen") as popen, \
+             patch("builtins.open") as py_open, \
+             patch.object(os, "open") as native_open:
+            receipt = audit_installed_scope(_FixturePolicy)
+            self.assertEqual(receipt["status"], "REVIEW_ONLY")
+            self.assert_never_authority(receipt)
+            for forbidden in (sock, dns, popen, py_open, native_open):
+                forbidden.assert_not_called()
+
+    def test_last_case_failure_holds_atomically_without_partial_count(self):
+        # A failure at the very last of 201 calls cannot generate a partial
+        # success count, even after every earlier fixture check passed.
+        evaluated = []
+
+        class LateFailurePolicy(_FixturePolicy):
+            def decide(self, target):
+                evaluated.append(target.value)
+                grant = target.authorization
+                if (self.explicit and target.value == NOT_LAB[-1]
+                        and grant is not None and grant.valid_from is not None):
+                    return ScopeDecision(
+                        True, target.value, ScopeReason.EXPLICIT_NETWORK
+                    )
+                return super().decide(target)
+
+        receipt = audit_installed_scope(LateFailurePolicy)
+        self.assert_never_authority(receipt)
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(receipt["checked_count"], 0)
+        self.assertEqual(len(evaluated), TOTAL_CHECKS)
+        self.assertNotIn(NOT_LAB[-1], json.dumps(receipt))
 
     def test_literal_matrix_covers_each_cidr_edge_and_is_duplicate_free(self):
         positive = [literal for literal, _, _ in LAB]
