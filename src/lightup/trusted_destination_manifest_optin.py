@@ -80,6 +80,12 @@ def _endpoint(value):
     # percent encoding of Unicode paths rather than parser normalization.
     if any(ord(c) < 33 or ord(c) > 126 for c in value) or "\\" in value:
         return False
+    # urlsplit normalizes scheme case and drops empty '#' / '?' delimiters.
+    # Admission must refuse identity-changing input, not silently repair it.
+    if not (value.startswith("http://") or value.startswith("https://")):
+        return False
+    if "#" in value or value.endswith("?"):
+        return False
     try:
         p = urlsplit(value)
         if (p.scheme not in ("http", "https") or not p.netloc or p.username is not None
