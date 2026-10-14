@@ -101,6 +101,29 @@ class LiteralReviewOfflineTests(TestCase):
             with self.assertRaises((AttributeError, TypeError)):
                 receipt.__dict__["permit_issued"] = True
 
+    def test_external_constructor_cannot_forge_review_or_permission(self):
+        # Frozen dataclass still exposes a public constructor: enforce exact
+        # False and coherent status/classification on all external instances.
+        for name in self.flags:
+            for falsy_or_truthy in (True, 0, 1, "", None, "false"):
+                with self.subTest(flag=name, value=repr(falsy_or_truthy)):
+                    with self.assertRaises(ValueError):
+                        LabLiteralReview(**{name: falsy_or_truthy})
+        invalid_shapes = (
+            ("YES", "PRIVATE_USE"),
+            ("REVIEW_ONLY", "UNTRUSTED"),
+            ("HOLD", "PRIVATE_USE"),
+            ("REVIEW_ONLY", "HOLD"),
+            (True, "LOOPBACK"),
+            ("HOLD", False),
+        )
+        for status, classification in invalid_shapes:
+            with self.subTest(status=repr(status), cls=repr(classification)):
+                with self.assertRaises(ValueError):
+                    LabLiteralReview(status=status, classification=classification)
+        self.assert_receipt("127.0.0.1", "REVIEW_ONLY", "LOOPBACK")
+        self.assert_receipt("192.0.2.1", "HOLD", "UNTRUSTED")
+
     def test_no_dns_socket_disk_or_process_even_for_positive_literal(self):
         # The module is already imported; exercise only the reviewer runtime.
         with (
