@@ -14,6 +14,7 @@ import http.client
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import socket
@@ -119,7 +120,10 @@ def nginx_config(root: Path, listen_port: int, upstream_port: int) -> str:
             not 1024 <= upstream_port <= 65535 or
             listen_port == upstream_port):
         raise ValueError("invalid synthetic port")
-    if not isinstance(root, Path) or not root.is_absolute():
+    if (type(root) is not Path or not root.is_absolute() or
+            re.fullmatch(r"/[A-Za-z0-9_./-]+", str(root)) is None):
+        # The pathname becomes an unquoted Nginx 'pid' directive. Never
+        # interpolate a TMPDIR with whitespace, semicolons or braces.
         raise ValueError("invalid temporary directory")
     # Path comes solely from TemporaryDirectory and is not user-controlled.
     pid_path = root / "nginx.pid"
@@ -148,6 +152,24 @@ http {{
     }}
 }}
 """
+
+
+
+def _fixture_environment(root: Path) -> dict[str, str]:
+    """Return a fresh, minimal subprocess environment without inherited hooks.
+
+    Caller-controlled PYTHONPATH, GUNICORN_CMD_ARGS, LD_PRELOAD and shell
+    environment must never determine what the disposable worker executes.
+    """
+    if type(root) is not Path or not root.is_absolute():
+        raise ValueError("invalid temporary directory")
+    return {
+        "HOME": str(root),
+        "TMPDIR": str(root),
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "LANG": "C",
+        "PYTHONNOUSERSITE": "1",
+    }
 
 
 def _free_port() -> int:
@@ -260,12 +282,16 @@ def run_fixture() -> int:
         (root / "nginx.conf").write_text(
             nginx_config(root, proxy_port, app_port), encoding="ascii"
         )
+        # The global environment may contain Gunicorn arguments, Python
+        # import hooks or dynamic-loader overrides; keep those out of both
+        # subprocesses, including the preliminary configuration check.
+        fixture_env = _fixture_environment(root)
         # These are *new, exact, disposable* subprocesses; never nginx -s
         # reload, systemctl or any installed nginx configuration.
         check = subprocess.run(
             [nginx, "-t", "-p", str(root) + os.sep, "-c", str(root / "nginx.conf")],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            timeout=5, check=False,
+            timeout=5, check=False, env=fixture_env,
         )
         if check.returncode != 0:
             raise RuntimeError("disposable nginx configuration invalid")
@@ -280,14 +306,14 @@ def run_fixture() -> int:
                     "--error-logfile", os.devnull,
                     "synthetic_identity_app:application",
                 ],
-                cwd=str(root), stdin=subprocess.DEVNULL,
+                cwd=str(root), env=fixture_env, stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             ))
             _wait_listening(services[-1], app_port)
             services.append(subprocess.Popen(
                 [nginx, "-p", str(root) + os.sep,
                  "-c", str(root / "nginx.conf"), "-g", "daemon off;"],
-                cwd=str(root), stdin=subprocess.DEVNULL,
+                cwd=str(root), env=fixture_env, stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             ))
             _wait_listening(services[-1], proxy_port)
