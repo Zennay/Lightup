@@ -283,7 +283,7 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
             valid + b" {}",
             valid + b"\x00",
             valid.replace(b'"head":', b'"he\\u0061d":' + b'"' + SHA.encode() + b'","head":', 1),
-            valid.replace(b'"lane":', b'"la\\u006ee":', 1),
+            valid.replace(b'"lane":', b'"lan\\u0435":', 1),
             valid.replace(b'"pass"', b'1e999', 1),
             valid.replace(b'"pass"', b'true', 1),
         )
