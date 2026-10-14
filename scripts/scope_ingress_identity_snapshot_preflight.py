@@ -11,9 +11,10 @@ from __future__ import annotations
 import ast
 import hashlib
 import json
+import os
 import re
+import stat
 import sys
-from pathlib import Path
 
 MAX_SNAPSHOT_BYTES = 256 * 1024
 FLAGS = (
@@ -182,9 +183,28 @@ def review(nginx_effective: bytes, gunicorn_effective: bytes) -> dict[str, objec
 
 
 def _read_snapshot(path: str) -> bytes:
-    # No shell, no daemon access and no external network. Bounded local read.
-    with open(path, "rb") as stream:
-        return stream.read(MAX_SNAPSHOT_BYTES + 1)
+    # Only explicitly supplied ordinary, non-symlink files are admissible.
+    # O_NONBLOCK avoids FIFO/device stalls; O_NOFOLLOW denies symlink pivots.
+    # No shell, daemon access, DNS, network or implicit config discovery.
+    if type(path) is not str or not path or not hasattr(os, "O_NOFOLLOW"):
+        raise Hold
+    flags = os.O_RDONLY | os.O_NONBLOCK | os.O_CLOEXEC | os.O_NOFOLLOW
+    fd = os.open(path, flags)
+    try:
+        before = os.fstat(fd)
+        if (not stat.S_ISREG(before.st_mode) or
+                not (0 < before.st_size <= MAX_SNAPSHOT_BYTES)):
+            raise Hold
+        with os.fdopen(fd, "rb", closefd=False) as stream:
+            data = stream.read(MAX_SNAPSHOT_BYTES + 1)
+        after = os.fstat(fd)
+        if (len(data) != before.st_size or
+                after.st_size != before.st_size or
+                after.st_mtime_ns != before.st_mtime_ns):
+            raise Hold
+        return data
+    finally:
+        os.close(fd)
 
 
 def main(argv: object = None) -> int:
@@ -200,7 +220,7 @@ def main(argv: object = None) -> int:
             nginx = _read_snapshot(argv[1])
             gunicorn = _read_snapshot(argv[3])
             receipt = review(nginx, gunicorn)
-        except (OSError, ValueError, TypeError):
+        except (Hold, OSError, ValueError, TypeError):
             pass
     print(json.dumps(receipt, sort_keys=True, separators=(",", ":")))
     return 3 if receipt["decision"] == "REVIEW_ONLY" else 2
