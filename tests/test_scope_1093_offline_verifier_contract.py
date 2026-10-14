@@ -1,0 +1,131 @@
+"""Standalone verifier contract; uses synthetic unittest suites, no targets."""
+from __future__ import annotations
+
+from contextlib import redirect_stdout
+import io
+import json
+from pathlib import Path
+import socket
+import sys
+import unittest
+from unittest.mock import patch
+
+from scripts import verify_trusted_destination_manifest_1093 as verifier
+
+
+class TestOfflineVerificationContract(unittest.TestCase):
+    def setUp(self):
+        self.assertEqual(verifier.EXPECTED_TEST_METHODS, 91)
+
+    @staticmethod
+    def _suite(test_cls, count=91):
+        return unittest.TestSuite(test_cls() for _ in range(count))
+
+    def _call(self, suite=None, *, during_discovery=None):
+        output = io.StringIO()
+        def discover(*_args, **_kwargs):
+            if during_discovery:
+                during_discovery()
+            return suite
+        with (patch.object(sys, "argv", ["verify_trusted_destination_manifest_1093.py"]),
+              patch.object(verifier.unittest.TestLoader, "discover", side_effect=discover),
+              redirect_stdout(output)):
+            result = verifier.main()
+        rows = output.getvalue().splitlines()
+        self.assertEqual(len(rows), 1)
+        data = json.loads(rows[0])
+        self.assertEqual(data["status"], "hold")
+        for flag in ("authorization_verified", "permit_issued", "execution_enabled", "release_approved"):
+            self.assertIs(data[flag], False)
+        return result, data, rows[0]
+
+    def test_discard_output_remains_constant_space(self):
+        sink = verifier._DiscardOutput()
+        self.assertEqual(sink.write("password=SECRET" * 200000), 3000000)
+        self.assertIsNone(sink.flush())
+        self.assertFalse(hasattr(sink, "getvalue"))
+
+    def test_successful_rehearsal_is_always_hold(self):
+        class Case(unittest.TestCase):
+            def runTest(self):
+                print("SYNTHETIC_ONLY_SECRET")
+        exit_code, data, line = self._call(self._suite(Case))
+        self.assertEqual(exit_code, 0)
+        self.assertTrue(data["offline_regression_passed"])
+        self.assertEqual(data["tests_run"], 91)
+        self.assertEqual(data["errors"], 0)
+        self.assertNotIn("SYNTHETIC_ONLY_SECRET", line)
+
+    def test_only_90_tests_is_fail_closed(self):
+        class Case(unittest.TestCase):
+            def runTest(self):
+                pass
+        code, data, _ = self._call(self._suite(Case, 90))
+        self.assertEqual(code, 1)
+        self.assertFalse(data["offline_regression_passed"])
+        self.assertEqual(data["tests_run"], 90)
+
+    def test_skipped_tests_are_not_success(self):
+        class Case(unittest.TestCase):
+            @unittest.skip("synthetic")
+            def runTest(self):
+                raise AssertionError("not entered")
+        code, data, _ = self._call(self._suite(Case))
+        self.assertEqual(code, 1)
+        self.assertFalse(data["offline_regression_passed"])
+        self.assertEqual(data["skipped"], 91)
+
+    def test_failed_test_is_sanitized_and_denied(self):
+        class Case(unittest.TestCase):
+            def runTest(self):
+                self.fail("synthetic-secret-must-not-leak")
+        code, data, line = self._call(self._suite(Case))
+        self.assertEqual(code, 1)
+        self.assertFalse(data["offline_regression_passed"])
+        self.assertEqual(data["failures"], 1)
+        self.assertNotIn("synthetic-secret", line)
+
+    def test_import_time_dns_attempt_is_blocked(self):
+        def attempt_dns():
+            socket.getaddrinfo("localhost", 80)
+        code, data, line = self._call(during_discovery=attempt_dns)
+        self.assertEqual(code, 1)
+        self.assertEqual(data["errors"], 1)
+        self.assertNotIn("offline test boundary", line)
+
+    def test_test_time_subprocess_attempt_is_blocked(self):
+        class Case(unittest.TestCase):
+            def runTest(self):
+                import subprocess
+                subprocess.run(["/bin/false"], check=True)
+        code, data, line = self._call(self._suite(Case))
+        self.assertEqual(code, 1)
+        self.assertEqual(data["errors"], 1)
+        self.assertNotIn("offline test boundary", line)
+
+    def test_external_arguments_are_rejected(self):
+        output = io.StringIO()
+        with (patch.object(sys, "argv", ["checker", "--target", "example.test"]),
+              redirect_stdout(output)):
+            code = verifier.main()
+        self.assertEqual(code, 2)
+        self.assertEqual(json.loads(output.getvalue())["status"], "hold")
+
+    def test_missing_tests_is_rejected_before_discovery(self):
+        output = io.StringIO()
+        with (patch.object(sys, "argv", ["checker"]),
+              patch.object(Path, "is_file", return_value=False),
+              redirect_stdout(output)):
+            code = verifier.main()
+        self.assertEqual(code, 2)
+        self.assertFalse(json.loads(output.getvalue())["offline_regression_passed"])
+
+    def test_receipt_factory_never_promotes_authority(self):
+        receipt = verifier._receipt(True, 91)
+        self.assertTrue(receipt["offline_regression_passed"])
+        for key in ("authorization_verified", "permit_issued", "execution_enabled", "release_approved"):
+            self.assertIs(receipt[key], False)
+
+
+if __name__ == "__main__":
+    unittest.main()
