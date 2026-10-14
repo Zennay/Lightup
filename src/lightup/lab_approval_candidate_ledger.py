@@ -263,7 +263,11 @@ class LabApprovalCandidateLedger:
 
     def review(self, run_id: str, *, client_id: str) -> dict[str, object]:
         """Tenant-scoped non-authorizing receipt, even for live candidates."""
-        candidate = self.inspect(run_id, client_id=client_id)
+        try:
+            candidate = self.inspect(run_id, client_id=client_id)
+        except CandidateHeld:
+            # Privacy-safe consumer receipt: never promote corrupt local state.
+            candidate = None
         now = datetime.now(timezone.utc)
         status = "REVIEW_ONLY" if (
             candidate is not None and candidate.revoked_at is None
