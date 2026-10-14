@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import json
+import os
 import pathlib
+import socket
 import subprocess
 import sys
 import tempfile
@@ -12,7 +14,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "review_scope_destination_schema_1093_offline.py"
 sys.path.insert(0, str(ROOT / "scripts"))
 from review_scope_destination_schema_1093_offline import (  # noqa: E402
-    DENIAL, MAX_INPUT_BYTES, review_bytes, review_schema,
+    DENIAL, MAX_INPUT_BYTES, _seal_receipt, review_bytes, review_schema,
 )
 
 
@@ -209,6 +211,85 @@ class ReviewTests(unittest.TestCase):
             self.assert_denied(json.loads(result.stdout), "HOLD")
             self.assertEqual(stream.tell(), 0)
             self.assertFalse(result.stderr)
+
+    def test_receipt_seal_blocks_forged_authority_and_type_confusion(self):
+        good = review_schema(fixture())
+        self.assert_denied(good, "REVIEW_ONLY")
+        self.assertLess(len(_seal_receipt(good)), 512)
+        for key, forged in (
+            ("authorization_verified", True),
+            ("permit_issued", 1),
+            ("dispatch_enabled", "false"),
+            ("merge_approved", True),
+            ("deploy_approved", True),
+            ("release_approved", True),
+            ("authenticated_registry", True),
+            ("claimed_tool_count", True),
+            ("claimed_parameter_count", 1.0),
+            ("status", "APPROVED"),
+        ):
+            with self.subTest(key=key):
+                changed = dict(good)
+                changed[key] = forged
+                self.assertIsNone(_seal_receipt(changed))
+        changed = dict(good)
+        changed["client_secret"] = "never-echo"
+        self.assertIsNone(_seal_receipt(changed))
+        changed = dict(good)
+        del changed["release_approved"]
+        self.assertIsNone(_seal_receipt(changed))
+        changed = dict(good, status="HOLD")
+        self.assertIsNone(_seal_receipt(changed))
+        self.assertIsNone(_seal_receipt(b"raw-secret"))
+
+    def test_cli_rejects_regular_file_stdout_without_writing(self):
+        with tempfile.TemporaryFile() as output:
+            output.write(b"original-data")
+            output.flush()
+            output.seek(0, os.SEEK_END)
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "--stdin-json"],
+                input=encoded(fixture()), stdout=output,
+                stderr=subprocess.PIPE, timeout=6)
+            self.assertEqual(result.returncode, 2)
+            self.assertFalse(result.stderr)
+            output.seek(0)
+            self.assertEqual(output.read(), b"original-data")
+
+    def test_cli_rejects_inherited_unix_socket_stdout_without_writing(self):
+        with socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM) as (parent, child):
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "--stdin-json"],
+                input=encoded(fixture()), stdout=child,
+                stderr=subprocess.PIPE, timeout=6)
+            self.assertEqual(result.returncode, 2)
+            self.assertFalse(result.stderr)
+            child.close()
+            parent.settimeout(1)
+            self.assertEqual(parent.recv(512), b"")
+
+    def test_cli_full_stdout_pipe_cannot_hang_or_leak_fd_blocking(self):
+        for initially_blocking in (False, True):
+            with self.subTest(initially_blocking=initially_blocking):
+                read_fd, write_fd = os.pipe()
+                try:
+                    os.set_blocking(write_fd, False)
+                    while True:
+                        try:
+                            os.write(write_fd, b"x" * 1024)
+                        except BlockingIOError:
+                            break
+                    os.set_blocking(write_fd, initially_blocking)
+                    result = subprocess.run(
+                        [sys.executable, str(SCRIPT), "--stdin-json"],
+                        input=encoded(fixture()), stdout=write_fd,
+                        stderr=subprocess.PIPE, timeout=6)
+                    self.assertEqual(result.returncode, 2)
+                    self.assertFalse(result.stderr)
+                    self.assertIs(os.get_blocking(write_fd), initially_blocking)
+                finally:
+                    os.close(write_fd)
+                    os.close(read_fd)
 
     def test_cli_real_process_never_exits_success_and_never_echoes_claims(self):
         sample = fixture()
