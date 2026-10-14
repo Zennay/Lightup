@@ -448,6 +448,53 @@ class ActualActivationPermitChainRED(unittest.TestCase):
         self.assertIs(receipt["permit_issued"], False)
         self.assertIs(receipt["scan_allowed"], False)
 
+
+    def test_token_request_positional_shape_cannot_be_spoofed(self):
+        baseline = AUDIT.audit()
+        self.assertEqual(baseline["checked"], 50)
+        self.assertEqual(baseline["violations"], 10)
+        real_gate = ActivationGate
+
+        class IntegerImpersonator(int):
+            pass
+
+        calls = (
+            ("implicit_default", lambda: activation_module.token_urlsafe()),
+            ("keyword", lambda: activation_module.token_urlsafe(nbytes=24)),
+            ("keyword_alias", lambda: activation_module.token_urlsafe(_length=24)),
+            ("extra_positional", lambda: activation_module.token_urlsafe(24, 24)),
+            ("extra_keyword", lambda: activation_module.token_urlsafe(24, ignored=True)),
+            ("integer_subclass", lambda: activation_module.token_urlsafe(IntegerImpersonator(24))),
+        )
+        for name, token_request in calls:
+            with self.subTest(case=name):
+                class SyntheticUnexpectedCall:
+                    def __init__(self, policy, activation):
+                        self.real = real_gate(policy, activation)
+                        self.lab = (
+                            policy.allow_private_lab is True
+                            and activation.mode is ActivationMode.LAB_ONLY
+                        )
+
+                    def issue(self, target, capability):
+                        if self.lab and target.value == AUDIT.SAFE_LAB[0]:
+                            return ExecutionPermit(
+                                permit_id=token_request(),
+                                target="127.0.0.1",
+                                capability_id=capability,
+                                mode=ActivationMode.LAB_ONLY,
+                                activation_reference="LAB",
+                                issued_at=datetime.now(timezone.utc),
+                            )
+                        return self.real.issue(target, capability)
+
+                with patch.object(AUDIT, "ActivationGate", SyntheticUnexpectedCall):
+                    receipt = AUDIT.audit()
+                self.assertEqual(receipt["checked"], baseline["checked"])
+                self.assertEqual(receipt["violations"], baseline["violations"] + 1)
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertEqual(set(receipt), {"status", "checked", "violations", *AUDIT._DENIED})
+
     def test_cli_single_fixed_receipt_no_literal_or_token_reflection(self):
         run = subprocess.run(
             [sys.executable, str(SCRIPT)],
