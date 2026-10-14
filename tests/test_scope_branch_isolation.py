@@ -238,5 +238,15 @@ class IsolationCheckTests(unittest.TestCase):
                              "INVALID_REPOSITORY_ROOT")
 
 
+    def test_peer_casefold_alias_is_rejected_across_operating_systems(self):
+        path = "tests/test_scope_synthetic_review.py"
+        self.write(path, "owned\n")
+        head = self.commit()
+        self.git("checkout", "-qb", "peer-casefold", self.base)
+        self.write("tests/TEST_SCOPE_SYNTHETIC_REVIEW.py", "other worker\n")
+        peer = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,), (peer,))[0],
+                         "PEER_PATH_COLLISION")
+
 if __name__ == "__main__":
     unittest.main()
