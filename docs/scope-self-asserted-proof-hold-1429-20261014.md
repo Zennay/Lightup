@@ -34,6 +34,14 @@ New genuine child-process regressions keep their write pipe intentionally **open
 Additional W66 acceptance enumerates **all 625 combinations** of the five allowed self-asserted status labels across four lanes: every combination remains exact HOLD with six false authorization flags. It also checks an exact 16KiB valid JSON envelope versus 16KiB+1, concatenated object smuggling, Unicode lookalike field names, escaped duplicate-key forms, nonfinite numeric representations and inherited non-stdin fd aliases. This is synthetic contract coverage; 625 fake inputs are not 625 real CI/ingress proofs.
 
 This bounded-read implementation targets POSIX/Linux hosting. Failure of fd/select on an unsupported runtime is a conservative HOLD, not a fallback to an unbounded read. The script itself opens no other file, network connection or subprocess; normal Python interpreter module startup is not an OS sandbox.
+## W67 — inherited stdin descriptor provenance (2026-10-14)
+
+**Pipe/FIFO-only stdin** is enforced before calling `select` or `os.read`. Even fd 0 can originate from a socket, regular file, device, directory or another inherited source: accepting a valid JSON document from such a descriptor would violate the promise of a closed offline, non-networking review. The CLI checks **`os.fstat(0).st_mode`** and accepts only `stat.S_ISFIFO`. Non-pipe descriptors and metadata errors are **HOLD** without even attempting an input read. This policy deliberately rejects `< file.json` input or interactive terminal input; callers must feed exactly one finite pipe (`printf ... | python ... --stdin-json`) and close its writer. It also rejects a socket inherited as stdin even when the socket is locally connected.
+
+New direct no-I/O canaries deny five synthetic fd kinds and assert neither `select` nor `os.read` is invoked. Independent genuine subprocess tests redirect fd 0 from a disposable regular file (asserting its position is unchanged) and an in-process AF_UNIX socketpair (asserting the peer bytes were left unread): both produce a privacy-minimal HOLD, exit 2, and no echo. The existing successful closed-pipe EOF cases remain valid. Only synthetic data is ever used; no network target, grant, credential, production configuration or deployment is contacted.
+
+This is **descriptor-class preflight**, not an OS sandbox: a malicious parent could feed network-derived bytes through a pipe; `stdin` source contents and claimed `pass` labels remain untrusted and never authorize anything.
+
 ## Execution and fail-closed result
 
 ```sh
