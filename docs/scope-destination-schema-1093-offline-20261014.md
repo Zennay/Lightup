@@ -18,9 +18,9 @@ stdout sinks. Feed a finite packet and close the writer end:
     python -m unittest discover -s tests -p 'test_scope_destination_schema_1093_offline.py' -v
 
 Input must be UTF-8 JSON, maximum 4096 bytes, precisely a `tools` array of
-1–8 tool objects, with unique canonical ASCII `tool_id` and 1–16
+1–8 tool objects, with unique lowercase ASCII `tool_id` (hyphens allowed, matching the actual lab tool IDs) and 1–16
 `parameters`. Each parameter is exactly `name`, `kind`, `role`, with
-unique canonical ASCII name. Valid roles: `host`, `endpoint`, `port`,
+unique lowercase ASCII parameter name (underscore allowed; hyphen rejected). The current real `ParamKind` vocabulary is exactly `string`, `integer`, `number`, `boolean`; extra kinds such as `array` and `object` are rejected. Valid roles: `host`, `endpoint`, `port`,
 `port_set`, `none`; string destination roles accept only `string` kind,
 `port` accepts only `integer`. The non-destination `none` role is allowed
 for metadata such as timeout but each tool must claim at least one destination.
@@ -29,10 +29,10 @@ nonfinite numbers and malformed/oversized payloads are HOLD. Any invalid member
 HOLDs the entire packet.
 
 For example, these three *synthetic* tool shape declarations match currently
-documented LAB_ACTIVE argument forms but DO NOT prove they are the actual
-registry definitions: `http_baseline.url` → endpoint/string,
-`tls_baseline.host` + `port` → host/string + port/integer,
-`service_inventory.host` + `ports` → host/string + port_set/string.
+implemented LAB_ACTIVE argument forms but DO NOT prove they are the actual
+registry definitions: `lab-http-baseline.url` → endpoint/string,
+`lab-tls-baseline.host` + `port` → host/string + port/integer,
+`lab-service-inventory.host` + `ports` → host/string + port_set/string.
 
 The reviewer deliberately has **no installed registry/production imports**.
 Therefore an attacker can supply a self-consistent invented tool ID and still
