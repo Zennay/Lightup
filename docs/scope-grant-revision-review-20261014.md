@@ -31,7 +31,7 @@ It enforces:
 - `recurring_retest_allowed` must be a real `bool`: true-to-false is safe;
   false-to-true is rejected.
 - Canonical bounded ASCII token sets. Duplicate, confusable, noncanonical
-  and oversized inputs fail closed rather than being normalized by DNS.
+  and oversized inputs fail closed rather than being normalized by DNS.\n  Numeric IP literals and CIDR entries must also use strict canonical\n  `ipaddress` spelling: decimal/hex/short IPv4 aliases, noncanonical IPv6,\n  host-bit CIDR and noncanonical prefix widths return `HOLD`.
 
 `REVIEW_ONLY` means only *syntactically non-widening relative to supplied
 objects*. Even equality and old expired grants can return `REVIEW_ONLY`.
