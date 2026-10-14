@@ -11,8 +11,10 @@ writer keeps its end open fails atomically to HOLD after at most two seconds.
 All reads use bounded 1024-byte chunks and an absolute monotonic deadline.
 Fd0 is temporarily nonblocking, so another FIFO reader draining bytes between
 `select` and `read` cannot create an unbounded stall; `EAGAIN` retries are
-limited by the same absolute deadline. The inherited fd0 blocking mode is
-restored on all paths, including HOLD and successful EOF. As with fd1, this
+limited by the same absolute deadline. Restoration of the inherited fd0 blocking mode is attempted on
+all paths, including HOLD and successful EOF, even if the initial mode
+switch itself raises. **If restoration fails, the reader returns HOLD
+instead of passing reviewed input through.** As with fd1, nonblocking
 changes a shared POSIX open-file-description *transiently*, so always use a
 private input pipe if simultaneous writers/readers need strict isolation.
 This is a Python userland guard, not an OS sandbox. Stdout receipts are
@@ -20,10 +22,24 @@ independently sealed to an exact 10-field, all-denial ASCII JSON shape (seven
 literal false flags), capped at 512 bytes. Only private FIFO/pipe and real TTY
 stdout sinks are accepted; inherited regular files, sockets, devices and
 full/unconsumed pipes return nonzero without writing private claims. Output
-has its own absolute two-second deadline and restores the original fd1
-blocking mode on success or failure. A shared POSIX open-file-description
-can be transiently nonblocking during the write: use a private output pipe
-when another process could write the same descriptor.
+has its own absolute two-second deadline and **attempts** to restore
+the original fd1 blocking mode on every exit, including an initial mode
+switch error. An unsuccessful restore forces a failure return and CLI exit
+code 2; because a pipe write is irreversible, an already emitted denial-only
+REVIEW_ONLY receipt can still be in the output pipe. **Only an independently
+verified exit code plus actual trusted source evidence is meaningful; even
+a successful REVIEW_ONLY receipt is never authority.** A shared POSIX
+open-file-description can be transiently nonblocking during the write:
+use a private output pipe when another process could write the same descriptor.
+
+
+The descriptor-fault acceptance tests inject both `OSError` and
+`ValueError` at initial mode change and restoration for fd0 and fd1.
+They verify finite failure, no untrusted reads/writes on initial
+switch failure, attempted restoration even after a switch fault, and
+HOLD/non-success on a failed restore after otherwise successful I/O.
+Python cannot guarantee OS-level restoration when `fcntl` itself fails;
+this is deliberately **not** a process-isolation guarantee.
 
 Feed a finite packet via a pipe, not shell `< synthetic.json` redirection.
 The latter passes a **regular file fd0** and intentionally yields HOLD:
