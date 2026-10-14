@@ -77,7 +77,12 @@ def review_schema(payload: object) -> dict:
         if type(params) is not list or not 1 <= len(params) <= MAX_PARAMETERS:
             return _hold()
         seen_params = set()
-        destination_roles = 0
+        # A tool may describe exactly one complete URL or one host selector,
+        # optionally with one split port selector. Never treat a port alone,
+        # two hosts, or an endpoint mixed with host/port fields as coherent.
+        # This is structural review, NOT scope authority.
+        role_counts = {"host": 0, "endpoint": 0, "port": 0,
+                       "port_set": 0, "none": 0}
         for param in params:
             if type(param) is not dict or set(param) != {"name", "kind", "role"}:
                 return _hold()
@@ -88,8 +93,16 @@ def review_schema(payload: object) -> dict:
                     or role not in ROLE_KINDS or kind not in ROLE_KINDS[role]):
                 return _hold()
             seen_params.add(name)
-            destination_roles += role != "none"
-        if not destination_roles:
+            role_counts[role] += 1
+        endpoint_only = (
+            role_counts["endpoint"] == 1 and role_counts["host"] == 0
+            and role_counts["port"] == 0 and role_counts["port_set"] == 0
+        )
+        host_with_optional_port = (
+            role_counts["host"] == 1 and role_counts["endpoint"] == 0
+            and role_counts["port"] + role_counts["port_set"] <= 1
+        )
+        if not (endpoint_only or host_with_optional_port):
             return _hold()
         count += len(params)
     return dict(status="REVIEW_ONLY", claimed_tool_count=len(tools),
