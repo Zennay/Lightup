@@ -25,6 +25,13 @@ _KNOWN_CHECKS = {check_id: (title, severity)
                  for check_id, _header, title, severity, _impact, _remediation
                  in BASELINE_CHECKS}
 
+_HARDENED_HEADERS: tuple[tuple[str, str], ...] = (
+    ("Content-Security-Policy", "default-src 'none'"),
+    ("X-Content-Type-Options", "nosniff"),
+    ("X-Frame-Options", "DENY"),
+    ("Referrer-Policy", "no-referrer"),
+)
+
 
 @dataclass(frozen=True)
 class FixtureProfile:
@@ -80,14 +87,61 @@ PROFILES: dict[str, FixtureProfile] = {
             profile_id="hardened",
             description="All baseline headers present and the banner stripped: "
                         "the planted ground truth is zero findings.",
+            headers=_HARDENED_HEADERS,
+            server_banner=None,
+            expected_check_ids=(),
+        ),
+        FixtureProfile(
+            profile_id="single-missing-content-security-policy",
+            description="Calibration profile: only Content-Security-Policy is missing.",
             headers=(
-                ("Content-Security-Policy", "default-src 'none'"),
                 ("X-Content-Type-Options", "nosniff"),
                 ("X-Frame-Options", "DENY"),
                 ("Referrer-Policy", "no-referrer"),
             ),
             server_banner=None,
-            expected_check_ids=(),
+            expected_check_ids=("missing-content-security-policy",),
+        ),
+        FixtureProfile(
+            profile_id="single-missing-x-content-type-options",
+            description="Calibration profile: only X-Content-Type-Options is missing.",
+            headers=(
+                ("Content-Security-Policy", "default-src 'none'"),
+                ("X-Frame-Options", "DENY"),
+                ("Referrer-Policy", "no-referrer"),
+            ),
+            server_banner=None,
+            expected_check_ids=("missing-x-content-type-options",),
+        ),
+        FixtureProfile(
+            profile_id="single-missing-x-frame-options",
+            description="Calibration profile: only X-Frame-Options is missing.",
+            headers=(
+                ("Content-Security-Policy", "default-src 'none'"),
+                ("X-Content-Type-Options", "nosniff"),
+                ("Referrer-Policy", "no-referrer"),
+            ),
+            server_banner=None,
+            expected_check_ids=("missing-x-frame-options",),
+        ),
+        FixtureProfile(
+            profile_id="single-missing-referrer-policy",
+            description="Calibration profile: only Referrer-Policy is missing.",
+            headers=(
+                ("Content-Security-Policy", "default-src 'none'"),
+                ("X-Content-Type-Options", "nosniff"),
+                ("X-Frame-Options", "DENY"),
+            ),
+            server_banner=None,
+            expected_check_ids=("missing-referrer-policy",),
+        ),
+        FixtureProfile(
+            profile_id="single-server-banner-disclosure",
+            description="Calibration profile: all defensive headers are present "
+                        "and only the verbose Server banner is exposed.",
+            headers=_HARDENED_HEADERS,
+            server_banner="LightUpLab/0.1",
+            expected_check_ids=("server-banner-disclosure",),
         ),
     )
 }
