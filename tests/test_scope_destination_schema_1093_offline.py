@@ -48,6 +48,32 @@ class ReviewTests(unittest.TestCase):
         self.assert_denied(value, "REVIEW_ONLY")
         self.assertEqual((value["claimed_tool_count"], value["claimed_parameter_count"]), (3, 5))
 
+    def test_claims_pin_actual_installed_lab_parameter_shapes(self):
+        # Source-shaped comparison only: no registry registration, handler,
+        # credentials, real target, DNS, socket, dispatch, or authorization.
+        sys.path.insert(0, str(ROOT / "src"))
+        from lightup.workers.http_baseline import HTTP_BASELINE_TOOL
+        from lightup.workers.tls_baseline import TLS_BASELINE_TOOL
+        from lightup.workers.service_inventory import SERVICE_INVENTORY_TOOL
+
+        installed = (HTTP_BASELINE_TOOL, TLS_BASELINE_TOOL,
+                     SERVICE_INVENTORY_TOOL)
+        claimed = fixture()["tools"]
+        self.assertEqual(len(installed), len(claimed))
+        for definition, claim in zip(installed, claimed):
+            with self.subTest(tool_id=definition.tool_id):
+                self.assertEqual(definition.tool_id, claim["tool_id"])
+                self.assertEqual(
+                    [(parameter.name, parameter.kind.value)
+                     for parameter in definition.parameters],
+                    [(parameter["name"], parameter["kind"])
+                     for parameter in claim["parameters"]],
+                )
+                # Roles are presently *absent* from ToolDefinition; claims
+                # cannot assert trusted role ownership for production.
+                self.assert_denied(review_schema({"tools": [claim]}),
+                                   "REVIEW_ONLY")
+
     def test_no_source_truth_can_be_inferred(self):
         fake = fixture()
         fake["tools"][0]["tool_id"] = "unknown_but_well_formed"
