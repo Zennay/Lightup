@@ -10,7 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -307,6 +307,104 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
                     code = fixture.main([])
         self.assertEqual(code, 2)
         self.assertEqual(json.loads(output.getvalue())["verified_cases"], 0)
+
+    @staticmethod
+    def _mock_proxied_outcome(
+        port, path, *, method="GET", cookie=None, alternates=False,
+        alternate_name=None, body=None,
+    ):
+        # Models only the already defined fake WSGI outcomes, not a real
+        # ingress request; prove launch, matrix and cleanup orchestration.
+        if path == "/portal/fixture":
+            identity, verdict = "client", "VISIBLE"
+        elif cookie == fixture.SYNTHETIC_OPERATOR:
+            identity = "operator"
+            verdict = "WOULD_ALLOW" if (
+                method == "POST" and body == fixture.SYNTHETIC_CSRF
+            ) else "DENIED"
+        elif cookie == fixture.SYNTHETIC_CLIENT:
+            identity, verdict = "client", "DENIED"
+        else:
+            identity, verdict = "anonymous", "DENIED"
+        return {
+            "identity": identity, "verdict": verdict,
+            "untrusted_header_forwarded": False,
+            "remote_user_present": False, "auth_type_present": False,
+            "written_grants": 0, "modified_sessions": 0,
+        }
+
+    def _mock_run_fixture(self, *, poison=False):
+        child1, child2 = MagicMock(), MagicMock()
+        outcome = self._mock_proxied_outcome
+        def simulate(*args, **kwargs):
+            result = outcome(*args, **kwargs)
+            if poison and kwargs.get("alternate_name") == "Authorization":
+                result["untrusted_header_forwarded"] = True
+            return result
+        with patch.object(fixture.shutil, "which",
+                          return_value="/usr/sbin/nginx"), \\
+             patch.object(fixture.importlib.util, "find_spec",
+                          return_value=object()), \\
+             patch.object(fixture, "_free_port",
+                          side_effect=(28211, 28212)), \\
+             patch.object(fixture.subprocess, "run") as check, \\
+             patch.object(fixture.subprocess, "Popen",
+                          side_effect=(child1, child2)) as spawn, \\
+             patch.object(fixture, "_wait_listening") as ready, \\
+             patch.object(fixture, "_stop") as stop, \\
+             patch.object(fixture, "_request", side_effect=simulate) as requests, \\
+             patch.dict(os.environ, {
+                 "GUNICORN_CMD_ARGS": "--preload",
+                 "PYTHONPATH": "/tmp/unsafe",
+                 "LD_PRELOAD": "/tmp/unsafe.so",
+             }):
+            check.return_value.returncode = 0
+            if poison:
+                with self.assertRaises(RuntimeError):
+                    fixture.run_fixture()
+            else:
+                self.assertEqual(fixture.run_fixture(), len(fixture.CASE_NAMES))
+            self.assertEqual(check.call_count, 1)
+            self.assertEqual(spawn.call_count, 2)
+            self.assertEqual(ready.call_count, 2)
+            self.assertEqual(stop.call_count, 2)
+            self.assertIs(stop.call_args_list[0].args[0], child2)
+            self.assertIs(stop.call_args_list[1].args[0], child1)
+            self.assertGreaterEqual(requests.call_count, 1)
+            envs = [check.call_args.kwargs["env"]] + [
+                call.kwargs["env"] for call in spawn.call_args_list
+            ]
+            for env in envs:
+                self.assertEqual(set(env), {
+                    "HOME", "TMPDIR", "PATH", "LANG", "PYTHONNOUSERSITE",
+                })
+                self.assertEqual(env["LANG"], "C")
+                self.assertEqual(env["PYTHONNOUSERSITE"], "1")
+                self.assertNotIn("GUNICORN_CMD_ARGS", env)
+                self.assertNotIn("PYTHONPATH", env)
+                self.assertNotIn("LD_PRELOAD", env)
+                self.assertTrue(env["HOME"].startswith("/"))
+            self.assertTrue(
+                all(env == envs[0] for env in envs[1:]),
+                "precheck and both children must use identical isolated env",
+            )
+            self.assertEqual(
+                spawn.call_args_list[0].args[0][3],
+                "127.0.0.1:28211",
+            )
+            self.assertIn(
+                "127.0.0.1:28212",
+                spawn.call_args_list[1].args[0][-2],
+            )
+            return requests.call_count
+
+    def test_full_synthetic_launch_orchestration_checks_all_23_cases(self):
+        self.assertEqual(self._mock_run_fixture(), len(fixture.CASE_NAMES))
+
+    def test_synthetic_launch_aborts_and_cleans_both_processes_on_spoof(self):
+        # Any forbidden header arriving upstream means no partial green
+        # even if all preceding cases seemed harmless.
+        self.assertGreater(self._mock_run_fixture(poison=True), 0)
 
     @unittest.skipUnless(
         os.environ.get("LIGHTUP_REAL_NGINX_GUNICORN_LOOPBACK") == "1",
