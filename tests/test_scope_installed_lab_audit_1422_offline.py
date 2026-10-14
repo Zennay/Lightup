@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 from audit_scope_installed_lab_policy_1422_offline import (
     LAB, NOT_LAB, TOTAL_CHECKS, ScopeDecision, ScopeReason,
-    audit_installed_scope, main,
+    audit_installed_scope, main, _source_is_this_checkout,
 )
 
 
@@ -68,6 +68,11 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
         receipt = audit_installed_scope(_FixturePolicy)
         self.assert_never_authority(receipt)
         self.assertEqual(receipt["status"], "REVIEW_ONLY")
+
+    def test_checkout_source_guard_does_not_hide_policy_evaluation(self):
+        # This detects a vacuous HOLD from a source-path mismatch on a clean
+        # checkout; fixture REVIEW_ONLY must exercise actual policy decisions.
+        self.assertTrue(_source_is_this_checkout())
 
     def test_real_checkout_policy_audit_is_diagnostic_not_permission(self):
         self.assert_never_authority(audit_installed_scope())
