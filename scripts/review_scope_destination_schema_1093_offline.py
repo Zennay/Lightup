@@ -186,7 +186,9 @@ def _read_private_pipe() -> bytes | None:
             try:
                 os.set_blocking(0, original_blocking)
             except (OSError, ValueError):
-                pass
+                # The shared parent fd may still be nonblocking. Never
+                # treat a completed read as reviewable in that state.
+                return None
 
 def _seal_receipt(result: object) -> bytes | None:
     """Reject forged output *before* inspecting or writing to stdout."""
@@ -258,7 +260,10 @@ def _emit_receipt(result: object) -> bool:
             try:
                 os.set_blocking(1, original_blocking)
             except (OSError, ValueError):
-                pass
+                # The caller's shared stdout descriptor may be changed.
+                # Return a failure even if an output write succeeded;
+                # emitted bytes cannot be rolled back at this boundary.
+                return False
 
 
 def main(argv=None) -> int:
