@@ -120,8 +120,10 @@ def _safe_url_escapes(value):
             decoded = bytes(octets).decode("utf-8", errors="strict")
         except UnicodeDecodeError:
             return False
-        if any(unicodedata.category(char) in ("Cc", "Cf", "Cs")
-               for char in decoded):
+        if (unicodedata.normalize("NFC", decoded) != decoded
+                or any(unicodedata.category(char)[0] in ("C", "M")
+                       or (unicodedata.category(char)[0] == "Z" and char != " ")
+                       for char in decoded)):
             return False
     return True
 
