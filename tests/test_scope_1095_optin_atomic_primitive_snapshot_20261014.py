@@ -135,7 +135,7 @@ class ExactPrimitiveSnapshotTests(unittest.TestCase):
         a = snap.as_arguments()
         a["value"] = "other"
         self.assertEqual(snap.as_arguments(), {"value": "safe"})
-        with self.assertRaises(dataclasses.FrozenInstanceError):
+        with self.assertRaises((AttributeError, TypeError)):
             snap.items = ()
 
     def test_batch_all_rows_snapshotted_in_order_without_authority(self):
@@ -152,7 +152,7 @@ class ExactPrimitiveSnapshotTests(unittest.TestCase):
         self.assertFalse(batch.authorization_verified)
         self.assertFalse(batch.permit_issued)
         self.assertFalse(batch.execution_enabled)
-        with self.assertRaises(dataclasses.FrozenInstanceError):
+        with self.assertRaises((AttributeError, TypeError)):
             batch.entries = ()
 
     def test_late_invalid_batch_fails_atomically(self):
@@ -267,6 +267,56 @@ class ExactPrimitiveSnapshotTests(unittest.TestCase):
             with self.subTest(type=type(forged).__name__, count=len(forged)):
                 with self.assertRaises(OrchestrationError):
                     PrimitiveBatchSnapshot(forged)
+
+    def test_tuple_backed_receipt_fields_refuse_object_setattr(self):
+        tool = definition("text", ParamKind.STRING)
+        receipt = snapshot_exact_primitive_values(tool, {"value": "ok"})
+        batch = snapshot_exact_primitive_batch(((tool, {"value": "ok"}),))
+        for item, field, invalid in (
+            (receipt, "items", (("value", StrSubclass("evil")),)),
+            (batch, "entries", (object(),)),
+        ):
+            with self.subTest(item=type(item).__name__):
+                with self.assertRaises((AttributeError, TypeError)):
+                    setattr(item, field, invalid)
+                with self.assertRaises((AttributeError, TypeError)):
+                    object.__setattr__(item, field, invalid)
+                with self.assertRaises((AttributeError, TypeError)):
+                    object.__setattr__(item, "permit_issued", True)
+                self.assertFalse(item.permit_issued)
+                self.assertFalse(item.authorization_verified)
+        self.assertEqual(receipt.as_arguments(), {"value": "ok"})
+        self.assertEqual(batch.entries, (receipt,))
+
+    def test_tuple_new_forgery_cannot_launder_invalid_as_arguments(self):
+        forged = tuple.__new__(
+            PrimitiveValueSnapshot, ((("value", StrSubclass("evil")),),)
+        )
+        self.assertIs(type(forged), PrimitiveValueSnapshot)
+        self.assertFalse(forged.permit_issued)
+        with self.assertRaises(OrchestrationError):
+            forged.as_arguments()
+        with self.assertRaises(OrchestrationError):
+            PrimitiveBatchSnapshot((forged,))
+
+    def test_receipts_preserve_schema_and_refuse_forged_nested_records(self):
+        tool = definition("int", ParamKind.INTEGER)
+        receipt = snapshot_exact_primitive_values(tool, {"value": 7})
+        batch = snapshot_exact_primitive_batch(((tool, {"value": 7}),))
+        self.assertEqual(receipt.items, (("value", 7),))
+        self.assertEqual(batch.entries, (receipt,))
+        self.assertFalse(batch.execution_enabled)
+        for forged_items in (
+            ((1, 7),),
+            (("value", [7]),),
+            (("value", 2), ("value", 3)),
+        ):
+            bad = tuple.__new__(PrimitiveValueSnapshot, (forged_items,))
+            with self.subTest(items=repr(forged_items)):
+                with self.assertRaises(OrchestrationError):
+                    bad.as_arguments()
+                with self.assertRaises(OrchestrationError):
+                    PrimitiveBatchSnapshot((bad,))
 
     def test_direct_receipts_do_not_invoke_hostile_subclass_methods(self):
         class HostileValue(StrSubclass):
