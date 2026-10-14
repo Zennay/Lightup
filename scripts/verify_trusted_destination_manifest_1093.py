@@ -9,6 +9,7 @@ GitHub runner is trusted. CI must independently pin the workflow's head SHA.
 from __future__ import annotations
 
 import io
+from contextlib import redirect_stdout, redirect_stderr
 import json
 from pathlib import Path
 import sys
@@ -69,7 +70,9 @@ def main() -> int:
               patch("urllib.request.urlopen", side_effect=refuse_io),
               patch("subprocess.Popen", side_effect=refuse_io),
               patch("subprocess.run", side_effect=refuse_io),
-              patch("os.system", side_effect=refuse_io)):
+              patch("os.system", side_effect=refuse_io),
+              redirect_stdout(log),
+              redirect_stderr(log)):
             # Discovery imports test modules and their dependencies. Protect
             # BOTH discovery and execution against eager import-time I/O.
             suite = unittest.TestLoader().discover(
