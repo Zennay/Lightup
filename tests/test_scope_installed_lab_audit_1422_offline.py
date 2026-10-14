@@ -128,8 +128,8 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
         self.assertNotIn("secret", json.dumps(receipt))
 
     def test_in_process_strict_fixture_never_uses_network_or_subprocess(self):
-        with patch.object(socket, "socket", side_effect=AssertionError("socket")), \\
-             patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns")), \\
+        with patch.object(socket, "socket", side_effect=AssertionError("socket")), \
+             patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns")), \
              patch.object(subprocess, "Popen", side_effect=AssertionError("subprocess")):
             self.assertEqual(audit_installed_scope(_FixturePolicy)["status"], "REVIEW_ONLY")
 
