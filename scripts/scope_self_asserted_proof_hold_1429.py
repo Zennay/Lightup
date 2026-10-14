@@ -18,6 +18,8 @@ from typing import Any
 MAX_STDIN_BYTES = 16 * 1024
 READ_DEADLINE_SECONDS = 2.0
 READ_CHUNK_BYTES = 4096
+WRITE_DEADLINE_SECONDS = 2.0
+MAX_RECEIPT_BYTES = 512
 INPUT_SCHEMA = "lightup.scope.self_asserted_proof.v1"
 OUTPUT_SCHEMA = "lightup.scope.untrusted_proof_hold.v1"
 HEAD_PATTERN = re.compile(r"[0-9a-f]{40}\Z")
@@ -150,6 +152,41 @@ def _read_bounded_stdin() -> bytes:
     except (OSError, ValueError, TypeError, OverflowError):
         return b""
 
+def _emit_hold_receipt(payload: bytes) -> None:
+    """Best-effort single bounded receipt to a pipe or terminal only.
+
+    A blocked pipe, inherited socket, on-disk file, missing fd or output
+    failure is never a reason to wait indefinitely or return success.
+    """
+    try:
+        if type(payload) is not bytes or not 0 < len(payload) <= MAX_RECEIPT_BYTES:
+            return
+        fd = sys.stdout.fileno()
+        if type(fd) is not int or fd != 1:
+            return
+        mode = os.fstat(fd).st_mode
+        if not (stat.S_ISFIFO(mode) or stat.S_ISCHR(mode)):
+            return
+        os.set_blocking(fd, False)
+        deadline = time.monotonic() + WRITE_DEADLINE_SECONDS
+        sent = 0
+        while sent < len(payload):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return
+            try:
+                written = os.write(fd, payload[sent:])
+            except (BlockingIOError, InterruptedError):
+                written = 0
+            if written > 0:
+                sent += written
+                continue
+            if not select.select([], [fd], [], remaining)[1]:
+                return
+    except (OSError, ValueError, TypeError, OverflowError, AttributeError):
+        return
+
+
 def main(argv: list[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
@@ -159,7 +196,8 @@ def main(argv: list[str] | None = None) -> int:
     else:
         payload = b""
     result = review_bytes(payload)
-    sys.stdout.write(json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n")
+    receipt = (json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")
+    _emit_hold_receipt(receipt)
     return 2  # NEVER success; caller-supplied claims cannot grant authority.
 
 
