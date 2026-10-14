@@ -151,3 +151,28 @@ Reguliere hosted tests bewijzen alléén de offline contracten; de optionele
 reële twee-processen-fixture blijft een aparte uitvoeringsstap. Zelfs een
 geslaagde echte *disposable* localhost-proef geeft geen toestemming voor
 installed ingress, klantgrants, merge, release of scans. **DRAFT/HOLD.**
+
+
+## W61–W62: orkestratie-integriteit en uitvoerbare binary-locatie
+
+Twee test-only scenario's voeren `run_fixture()` met gecontroleerde
+testdubbel-processen volledig uit, zonder echte Nginx-, Gunicorn- of
+netwerkoperaties. De **23 afzonderlijke** synthetische gevallen, drie identieke
+minimale subprocess-omgevingen (Nginx-configcheck, Gunicorn, Nginx),
+localhost-poortbinding en omgekeerde procesopruiming worden getoetst. Een
+test levert opzettelijk een verboden doorgestuurde identiteit terug:
+het hele resultaat wordt afgewezen en **beide processen worden alsnog
+opgeruimd**. De gewone Python-unit-suite beoordeelt dus niet alleen losse
+helpers maar ook de echte orchestrator-aanroepstructuur. Dit is bewust
+**geen bewijs van daadwerkelijke proxybinary-uitvoering**.
+
+Ook de Nginx-binarylocatie wordt voortaan alleen via de vaste lokale
+systeemzoekpaden geselecteerd. Een extern ingestelde PATH mag de optionele
+test niet naar een willekeurige executable sturen. De tests eisen hetzelfde
+vaste pad voor lookup en voor de geïsoleerde subprocessomgeving. Dit is
+slechts een trust-beperking voor de tijdelijke fixture, **geen attestatie van
+geïnstalleerde Nginx-binary, productie-TLS, Gunicorn of LightUp**.
+
+Na ieder commit gelden alleen CI-logs van die exacte immutable HEAD.
+Eerdere testsuccessen tellen niet mee voor latere branches. Productie,
+klantgrants, deployment, merge en actieve scans blijven DRAFT/HOLD.
