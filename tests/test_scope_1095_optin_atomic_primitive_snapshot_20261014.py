@@ -171,6 +171,24 @@ class ExactPrimitiveSnapshotTests(unittest.TestCase):
                 with self.assertRaises(OrchestrationError):
                     snapshot_exact_primitive_batch(batch)
 
+    def test_caller_cannot_construct_or_flip_false_authority_flags(self):
+        tool = definition("text", ParamKind.STRING)
+        receipt = snapshot_exact_primitive_values(tool, {"value": "ok"})
+        batch = snapshot_exact_primitive_batch(((tool, {"value": "ok"}),))
+        for item in (receipt, batch):
+            for flag in ("authorization_verified", "permit_issued", "execution_enabled"):
+                with self.subTest(receipt=type(item).__name__, flag=flag):
+                    self.assertFalse(getattr(item, flag))
+                    with self.assertRaises(TypeError):
+                        type(item)(**{
+                            ("items" if item is receipt else "entries"):
+                                (receipt.items if item is receipt else batch.entries),
+                            flag: True,
+                        })
+                    with self.assertRaises((AttributeError, TypeError)):
+                        object.__setattr__(item, flag, True)
+                    self.assertFalse(getattr(item, flag))
+
     def test_batch_first_and_last_valid_bounds(self):
         tool = definition("text", ParamKind.STRING)
         self.assertEqual(snapshot_exact_primitive_batch(
