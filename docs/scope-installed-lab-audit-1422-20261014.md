@@ -9,7 +9,7 @@ Source: `src/lightup/scope.py` currently treats `ipaddress.is_private` (which me
 ## Offline use
 
 ```bash
-python -B scripts/audit_scope_installed_lab_policy_1422_offline.py
+python -I -B scripts/audit_scope_installed_lab_policy_1422_offline.py
 python -B -m unittest discover -s tests -p 'test_scope_installed_lab_audit_1422_offline.py' -v
 ```
 
@@ -34,6 +34,12 @@ The additional third decision per forbidden literal creates an explicit `ScopePo
 The negative matrix now also includes mapped RFC1918 / mapped loopback IPv6 and 6to4 / Teredo transition samples, alongside neighbors on each side of the RFC1918, 127/8 and ULA ranges. Every denial must preserve exact canonical `ScopeDecision`, exact `bool` and `ScopeReason` types, never an outer duck-type. A cross-version difference can only reduce confidence to HOLD, never grant authority. `total_count` is **124** (11 positive × 2 policy configurations plus 34 negative × 3), with `checked_count=0` on any HOLD.
 
 Two new synthetic negative-control tests prove that admitting one public address without a grant, **or returning an incorrect denial reason** in the explicit-network case, forces atomic HOLD. A separate strict synthetic fixture still demonstrates REVIEW_ONLY without ever granting permission. Hosted Python3.11 and 3.14 and separate permanent VPS evidence must be verified on the **new immutable head**; earlier green jobs do not transfer to this revision.
+
+## W39 safety hardening — prevent accidental different-package review
+
+The installed-source reviewer must read the exact checkout's original `lightup.scope` and `lightup.models` modules, not a different version left in `sys.modules` or inherited from a global Python installation. The auditor now checks both imported modules' **exact built-in module and `__file__` path identities** against the script's source checkout and fails closed to HOLD on mismatch. Synthetic tests explicitly patch the scope/model module paths and replace one preimported module with an invalid object; all must HOLD. An additional real subprocess check runs the CLI with Python `-I -B` (isolated interpreter flags and no bytecode writing).
+
+This is a **local path consistency guard**, not a signed CI provenance attestation and not a guarantee that arbitrary Python startup hooks, filesystem aliases, Git replace references or hostile interpreter environments are absent. The owner must still validate the actual original source independently. For ordinary manual runs prefer the isolated interpreter command above.
 
 ## Safety and ownership
 
