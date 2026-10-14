@@ -204,7 +204,7 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 2)
         receipt = json.loads(result.stdout)
-        self.assertEqual(receipt["widening_dimensions"], ["assets", "exclusions"])
+        self.assertEqual(receipt["widening_dimensions"], ["assets"])
         self.assert_denied_authority(receipt, result.returncode)
 
     def test_cli_rejects_no_flag(self):
