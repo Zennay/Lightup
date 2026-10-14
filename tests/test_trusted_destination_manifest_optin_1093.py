@@ -875,5 +875,40 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
 
+
+    def test_85_invalid_utf8_percent_octets_denied(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        for path in ("%C3", "%A9", "%C0%AF", "%ED%A0%80",
+                     "%F4%90%80%80", "%FF", "%E2%82",
+                     "%E2raw%82%AC"):
+            with self.subTest(path=path):
+                self.refused(lambda suffix=path: m.review(
+                    {"url": "https://localhost/" + suffix}))
+        self.assertEqual(self.calls, [])
+
+    def test_86_encoded_invisible_unicode_control_denied(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        for path in ("%C2%85", "%E2%80%8B", "%EF%BB%BF",
+                     "%E2%80%AE", "%E2%81%A0", "%E2%81%A6"):
+            with self.subTest(path=path):
+                self.refused(lambda suffix=path: m.review(
+                    {"url": "https://localhost/" + suffix}))
+        self.assertEqual(self.calls, [])
+
+    def test_87_visible_unicode_utf8_escapes_remain_hold(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        for path in ("%C3%A9", "%E2%82%AC", "%F0%9F%94%92", "%20"):
+            with self.subTest(path=path):
+                receipt = m.review({"url": "https://localhost/" + path})
+                self.assertEqual(receipt.status, "hold")
+                self.assertIs(receipt.permit_issued, False)
+                self.assertIs(receipt.execution_enabled, False)
+                self.assertIs(receipt.release_approved, False)
+        self.assertEqual(self.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
