@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from ipaddress import ip_address, ip_network
 
 from .engagements import AuthorizationGrant
 from .grant_revision_review import review_grant_revision
@@ -24,6 +25,21 @@ def _hold(reason: str) -> GrantRevisionBatchReview:
     # Atomic: do not report any partially eligible grant, even if a preceding
     # candidate passed syntactic review before a later one failed.
     return GrantRevisionBatchReview("HOLD", reason)
+
+
+def _is_network_literal(asset: str) -> bool:
+    # Canonical bare IPs and CIDRs cannot safely be compared as simple
+    # strings: 192.0.2.1 and 192.0.2.0/24 overlap despite unequal text.
+    # Dedicated network-scope source owners handle CIDR disjointness. This
+    # opt-in reviewer must decline to imply it has verified that property.
+    try:
+        if "/" in asset:
+            ip_network(asset, strict=True)
+        else:
+            ip_address(asset)
+        return True
+    except ValueError:
+        return ":" in asset  # Ambiguous host:port / authority identity: HOLD.
 
 
 def review_grant_revision_batch(pairs: object) -> GrantRevisionBatchReview:
@@ -55,6 +71,12 @@ def review_grant_revision_batch(pairs: object) -> GrantRevisionBatchReview:
         per_tenant_assets.setdefault(new.client_id, set()).update(live_assets)
 
     clients = sorted(per_tenant_assets)
+    if len(clients) > 1 and any(
+        _is_network_literal(asset)
+        for tenant_assets in per_tenant_assets.values()
+        for asset in tenant_assets
+    ):
+        return _hold("network_identity_requires_separate_review")
     for i, left in enumerate(clients):
         for right in clients[i + 1:]:
             if per_tenant_assets[left] & per_tenant_assets[right]:
