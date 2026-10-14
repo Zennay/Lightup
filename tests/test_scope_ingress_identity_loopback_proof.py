@@ -410,6 +410,21 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
             )
             return requests.call_count
 
+    def test_cleanup_attempts_every_child_and_never_claims_success_on_error(self):
+        first, second = MagicMock(), MagicMock()
+        def stop_one(process):
+            if process is second:
+                raise OSError("injected local termination failure")
+        with patch.object(fixture, "_stop", side_effect=stop_one) as stop:
+            with self.assertRaisesRegex(RuntimeError, "cleanup incomplete"):
+                fixture._stop_all([first, second])
+        self.assertEqual(stop.call_count, 2)
+        self.assertIs(stop.call_args_list[0].args[0], second)
+        self.assertIs(stop.call_args_list[1].args[0], first)
+
+    def test_cleanup_empty_process_list_is_safe(self):
+        fixture._stop_all([])
+
     def test_full_synthetic_launch_orchestration_checks_all_23_cases(self):
         self.assertEqual(self._mock_run_fixture(), len(fixture.CASE_NAMES))
 
