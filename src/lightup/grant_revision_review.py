@@ -118,8 +118,8 @@ def review_grant_revision(current: object, proposed: object) -> GrantRevisionRev
     new_assets, new_exclusions, new_caps = new_scope
     if not new_assets <= old_assets:
         return _hold("asset_expansion")
-    # A new exclusion must be retained. Removing one re-enables an asset.
-    if not old_exclusions <= new_exclusions:
+    # Retain exclusions for assets that remain; deleting an asset itself is safe.
+    if not (old_exclusions & new_assets) <= new_exclusions:
         return _hold("exclusion_removed")
     # Empty capabilities in the existing ScopeDefinition mean unrestricted,
     # not "deny all": never treat [] as a safe narrowing target.
