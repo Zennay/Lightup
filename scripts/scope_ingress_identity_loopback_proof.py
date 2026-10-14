@@ -57,6 +57,7 @@ SYNTHETIC_OPERATOR = "lightup_session=fixture_operator"
 SYNTHETIC_CLIENT = "lightup_session=fixture_client"
 SYNTHETIC_REVOKED = "lightup_session=fixture_revoked"
 SYNTHETIC_CSRF = b"csrf=fixture_csrf"
+SAFE_EXECUTABLE_PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 # Fixture-only application; never imports the real LightUp application.
 FIXTURE_WSGI = '''"""Synthetic no-persistence WSGI endpoint; NEVER a real grant issuer."""
@@ -167,7 +168,7 @@ def _fixture_environment(root: Path) -> dict[str, str]:
     return {
         "HOME": str(root),
         "TMPDIR": str(root),
-        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "PATH": SAFE_EXECUTABLE_PATH,
         "LANG": "C",
         "PYTHONNOUSERSITE": "1",
     }
@@ -267,7 +268,8 @@ def _stop(proc: subprocess.Popen) -> None:
 
 
 def run_fixture() -> int:
-    nginx = shutil.which("nginx")
+    # Never resolve the binary through an inherited attacker-chosen PATH.
+    nginx = shutil.which("nginx", path=SAFE_EXECUTABLE_PATH)
     gunicorn = importlib.util.find_spec("gunicorn")
     if nginx is None or gunicorn is None:
         raise RuntimeError("real fixture dependencies not installed")
