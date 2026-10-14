@@ -93,6 +93,7 @@ def preview_active_request(
     request: AssessmentRequest,
     grant: AuthorizationGrant | None,
     *,
+    capability_id: str,
     now: datetime | None = None,
 ) -> ActiveRequestReview:
     """Review syntax and consistency; NEVER validate real consent or issue a permit.
@@ -150,6 +151,10 @@ def preview_active_request(
         # The legacy empty tuple means ALL capabilities: never infer that
         # wildcard is sufficient for an active-review preview.
         return _hold("CAPABILITY_WILDCARD_OR_INVALID")
+    if type(capability_id) is not str or _CAP.fullmatch(capability_id) is None:
+        return _hold("INVALID_REQUEST_CAPABILITY")
+    if capability_id not in scope.allowed_capabilities:
+        return _hold("CAPABILITY_OUTSIDE_GRANT")
     covered = set(scope.assets) - set(scope.excluded_assets)
     if not set(request.requested_assets).issubset(covered):
         return _hold("ASSETS_OUTSIDE_GRANT")
