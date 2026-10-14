@@ -56,6 +56,15 @@ class AtomicDossierCoherenceTests(unittest.TestCase):
         for field in _FIELDS:
             self.assertIs(result.as_dict()[field], False, field)
 
+    def test_real_shuffled_registry_order_remains_review_only(self):
+        import json
+        rows = json.loads(self.raw)
+        rows["capabilities"].reverse()
+        result = review_atomic_incubation_dossier(json.dumps(rows).encode("utf-8"))
+        self.assertEqual(result.status, "REVIEW_ONLY")
+        self.assertEqual(result.changed_fields, ())
+        self.assertEqual(result.catalog_violations, ())
+
     def test_real_name_and_description_diff_still_reports_privacy_safe_hold(self):
         for name, fields in (
             ("name", {"name": "Synthetic secret new name"}),
