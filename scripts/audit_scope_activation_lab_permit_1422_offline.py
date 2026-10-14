@@ -6,7 +6,7 @@ This MUST NOT be used as a scan, permission, grant, merge or release gate.
 from __future__ import annotations
 
 import builtins
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import os
 import socket
@@ -92,7 +92,9 @@ def audit() -> dict[str, object]:
                 checked += 1
                 expected_lab = literal in SAFE_LAB
                 try:
+                    issued_not_before = datetime.now(timezone.utc)
                     permit = gate.issue(Target(literal), CAPABILITY)
+                    issued_not_after = datetime.now(timezone.utc)
                 except PermissionError:
                     # A reserved, benchmark, documentation or link-local
                     # address MUST be denied; permitted lab samples should pass.
@@ -103,6 +105,7 @@ def audit() -> dict[str, object]:
                         not expected_lab
                         or type(permit) is not ExecutionPermit
                         or permit.mode is not ActivationMode.LAB_ONLY
+                        or type(permit.permit_id) is not str
                         or permit.permit_id != SYNTHETIC_PERMIT_ID
                         or type(permit.capability_id) is not str
                         or permit.capability_id != CAPABILITY
@@ -113,6 +116,7 @@ def audit() -> dict[str, object]:
                         or type(permit.issued_at) is not datetime
                         or permit.issued_at.tzinfo is None
                         or permit.issued_at.utcoffset() is None
+                        or not (issued_not_before <= permit.issued_at <= issued_not_after)
                     ):
                         violations += 1
 
