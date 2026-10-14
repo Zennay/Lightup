@@ -44,8 +44,12 @@ NOT_LAB = (
     "[::]", "[ff02::1]", "[fe80::1]", "[2001:db8::1]",
     "[::ffff:192.0.2.1]", "[::192.0.2.1]", "[2001:4860::8888]",
     "[fbff:ffff::1]", "[fe00::1]",
+    "[::ffff:10.0.0.1]", "[::ffff:127.0.0.1]",
+    "[2002:c000:201::1]", "[2001:0::1]",
 )
-TOTAL_CHECKS = (len(LAB) + len(NOT_LAB)) * 2
+# Two ordinary decisions per literal; a third denies every non-lab literal
+# even when the caller tries a broad explicit-network policy without a grant.
+TOTAL_CHECKS = len(LAB) * 2 + len(NOT_LAB) * 3
 _DENIAL = {
     "authorization_verified": False,
     "permit_issued": False,
@@ -83,6 +87,13 @@ def audit_installed_scope(policy_factory=ScopePolicy) -> dict[str, object]:
     try:
         enabled = policy_factory(allow_private_lab=True)
         disabled = policy_factory(allow_private_lab=False)
+        # The broad explicit-network fixture MUST NOT authorize any address
+        # without a current grant: the review is not itself that grant.
+        ungranted_explicit = policy_factory(
+            allow_private_lab=False,
+            require_authorization_for_public=True,
+            explicit_networks=("0.0.0.0/0", "::/0"),
+        )
         for literal, normalized, expected_reason in LAB:
             admitted = enabled.decide(Target(literal))
             locked = disabled.decide(Target(literal))
@@ -104,10 +115,13 @@ def audit_installed_scope(policy_factory=ScopePolicy) -> dict[str, object]:
         for literal in NOT_LAB:
             admitted = enabled.decide(Target(literal))
             locked = disabled.decide(Target(literal))
-            if not (_canonical(admitted) and _canonical(locked)):
+            missing_grant = ungranted_explicit.decide(Target(literal))
+            if not all(_canonical(item) for item in (admitted, locked, missing_grant)):
                 return _receipt("HOLD")
             if (
-                admitted.allowed is not False
+                missing_grant.allowed is not False
+                or missing_grant.reason is not ScopeReason.AUTHORIZATION_MISSING
+                or admitted.allowed is not False
                 or admitted.reason in (ScopeReason.LOOPBACK, ScopeReason.PRIVATE_LAB)
                 or locked.allowed is not False
             ):
