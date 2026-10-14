@@ -107,3 +107,15 @@ Added independent tests against the **actual LightUp source classes** (staged fo
 **Current test suite:** 91 synthetic/offline methods in this branch, of which the new real-worker import/registration cases remain unexecuted in the canonical repo. **No claim that 91/91 passed**: previous local light-stub tests applied only to earlier heads and cannot substitute for exact final SHA Python 3.11/3.14 hosted and registered VPS results. No new pull request, CI queue or runner restart was initiated in compliance with issue #1093's branch-only/noncollision ownership.
 
 The standalone opt-in preview is an exploratory contract, not a trusted TARGET_ACTIVE authorization boundary. Live authorization/destination/tenant/revocation and independent owner/security/privacy review remain mandatory. **INCUBATE · M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD/NO MERGE/NO DEPLOY.**
+
+
+## W15 — runnable offline verification command, without creating CI work
+
+New independent `scripts/verify_trusted_destination_manifest_1093.py` invokes **only** the fixed `test_trusted_destination_manifest_optin_1093.py` test file in an existing checked-out workspace. It insists on the **exact 91-method** expected suite, stops at the first failure, and rejects any external file path, target, network endpoint, authorization reference or caller-supplied command argument. During test execution, network sockets, DNS, URL opening and subprocess/process creation are patched to fail immediately. It uses no credentials or service connectors.
+
+Usage from the genuine repository checkout (offline only):
+`python scripts/verify_trusted_destination_manifest_1093.py`
+
+The stable minimal JSON response always has `status=hold`, `authorization_verified=false`, `permit_issued=false`, `execution_enabled=false`, and `release_approved=false`, even if `offline_regression_passed=true`. The exit code is 0 only when the expected count ran with zero failures/skips/expected failures; otherwise the checker refuses/fails. **A green script response is NOT exact-head GitHub CI evidence, permanent registered VPS proof, consent or release approval**. CI owner must independently pin branch SHA and runner ID, run the exact required Python3.11/3.14+real-producer integration workflows, and obtain human/security/owner release gates.
+
+This script was **created and committed but not executed on the registered VPS**: no new Actions run, duplicate queue or PR was opened under issue #1093's branch-only instruction. No source owner code, main, other workers or real targets were modified.
