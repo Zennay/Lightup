@@ -4,7 +4,10 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+import os
 from pathlib import Path
+import socket
+import tempfile
 import subprocess
 import sys
 import unittest
@@ -206,6 +209,75 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
         receipt = json.loads(result.stdout)
         self.assertEqual(receipt["widening_dimensions"], ["assets"])
         self.assert_denied_authority(receipt, result.returncode)
+
+    def test_subprocess_complete_but_unclosed_fifo_fails_finitely(self):
+        process = subprocess.Popen(
+            [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        try:
+            process.stdin.write(encode(fixture()))
+            process.stdin.flush()
+            self.assertEqual(process.wait(timeout=7), 2)
+            out = process.stdout.read()
+            receipt = json.loads(out)
+            self.assertEqual(receipt["status"], "HOLD")
+            self.assert_denied_authority(receipt, process.returncode)
+            self.assertNotIn(b"grant-demo", out)
+            self.assertFalse(process.stderr.read())
+        finally:
+            process.stdin.close()
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=5)
+            process.stdout.close()
+            process.stderr.close()
+
+    def test_subprocess_partial_unclosed_fifo_fails_finitely(self):
+        process = subprocess.Popen(
+            [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        try:
+            process.stdin.write(b'{"schema":"do-not-echo')
+            process.stdin.flush()
+            self.assertEqual(process.wait(timeout=7), 2)
+            out = process.stdout.read()
+            self.assertEqual(json.loads(out)["status"], "HOLD")
+            self.assertNotIn(b"do-not-echo", out)
+        finally:
+            process.stdin.close()
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=5)
+            process.stdout.close()
+            process.stderr.close()
+
+    def test_subprocess_redirected_bounded_regular_file_is_reviewable(self):
+        with tempfile.TemporaryFile() as source:
+            source.write(encode(fixture()))
+            source.seek(0)
+            result = subprocess.run(
+                [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                stdin=source, capture_output=True, check=False, timeout=8,
+            )
+        self.assertEqual(result.returncode, 3)
+        self.assert_denied_authority(json.loads(result.stdout), result.returncode)
+
+    @unittest.skipUnless(hasattr(socket, "socketpair") and os.name == "posix", "POSIX local socket")
+    def test_subprocess_socket_stdin_refused_without_read(self):
+        source, sink = socket.socketpair()
+        try:
+            with source, sink:
+                result = subprocess.run(
+                    [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                    stdin=sink, capture_output=True, check=False, timeout=8,
+                )
+                self.assertEqual(result.returncode, 2)
+                self.assertEqual(json.loads(result.stdout)["status"], "HOLD")
+        finally:
+            source.close()
+            sink.close()
 
     def test_cli_rejects_no_flag(self):
         result = subprocess.run(
