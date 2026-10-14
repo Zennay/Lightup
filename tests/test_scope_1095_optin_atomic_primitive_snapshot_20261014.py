@@ -592,6 +592,44 @@ class SyntheticRealExecutorBatchTests(unittest.TestCase):
         self.assertEqual(self.calls, [])
         self.assertEqual(self.evidence_count(), before)
 
+    def test_last_of_32_noncanonical_entries_never_partially_reach_real_executor(self):
+        canonical = (self.text, {"value": "safe"})
+        requests = (
+            (canonical,) * (MAX_SYNTHETIC_BATCH_ITEMS - 1)
+            + ((self.number, {"value": FloatSubclass(1.25)}),)
+        )
+        self.assertEqual(len(requests), 32)
+        before = self.evidence_count()
+        with self.assertRaises(OrchestrationError):
+            snapshot_exact_primitive_batch(requests)
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), before)
+
+    def test_24_all_field_orders_are_stable_when_reaching_real_synthetic_executor(self):
+        schema = ExactPrimitiveSnapshotTests._mixed_schema()
+        self.registry.register(schema, self.handler)
+        valid = ExactPrimitiveSnapshotTests._mixed_orders()
+        whole_batch = snapshot_exact_primitive_batch(
+            tuple((schema, row) for row in valid)
+        )
+        self.assertEqual(whole_batch.count, 24)
+        self.assertFalse(whole_batch.permit_issued)
+        expected_arguments = {
+            "label": "synthetic", "count": 2,
+            "measure": 1.25, "enabled": False,
+        }
+        initial = self.evidence_count()
+        for receipt in whole_batch.entries:
+            self.assertEqual(receipt.as_arguments(), expected_arguments)
+            self.executor.execute(
+                self.context,
+                ToolCall(schema.tool_id, "synthetic.invalid",
+                         arguments=receipt.items),
+            )
+        self.assertEqual(self.evidence_count() - initial, 24)
+        self.assertEqual(len(self.calls), 24)
+        self.assertTrue(all(call == expected_arguments for call in self.calls))
+
     def test_preflight_does_not_invoke_registry_handlers_or_policy(self):
         batch = snapshot_exact_primitive_batch(((self.text, {"value": "ok"}),))
         self.assertEqual(batch.count, 1)
