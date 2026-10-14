@@ -15,6 +15,7 @@ Example from a **local checkout** with both actual commit SHAs filled in:
 ```sh
 python scripts/check_scope_branch_isolation.py --repo . \
   --base <immutable-base-sha> --head <immutable-head-sha> \
+  --require-current-head \
   --allow scripts/check_scope_branch_isolation.py \
   --allow tests/test_scope_branch_isolation.py \
   --allow docs/scope-branch-isolation-review-20261014.md
@@ -28,6 +29,8 @@ Tests:
 python -m unittest discover -s tests -p 'test_scope_branch_isolation.py' -v
 ```
 
-All 26 test methods use disposable Git repositories or isolated fake Git subprocess failures, including oversize text, invalid UTF-8 and NUL-bearing Git blobs. They cover inherited Git env redirection, nested-checkout paths, overridden whitespace policy, honest HOLD receipts, and timeout behavior. Passing the checker verifies only local change-path constraints, **not contents, provenance of the supplied manifest, consent, safety of code added in files, exact-head hosted CI, permanent VPS execution, secure source changes, or release approval**. Final path/content review, security/privacy review, registered permanent VPS evidence, and explicit human decision remain independent prerequisites.
+All 28 test methods use disposable Git repositories or isolated fake Git subprocess failures, including oversize text, invalid UTF-8 and NUL-bearing Git blobs. They cover inherited Git env redirection, nested-checkout paths, overridden whitespace policy, honest HOLD receipts, and timeout behavior. Passing the checker verifies only local change-path constraints, **not contents, provenance of the supplied manifest, consent, safety of code added in files, exact-head hosted CI, permanent VPS execution, secure source changes, or release approval**. Final path/content review, security/privacy review, registered permanent VPS evidence, and explicit human decision remain independent prerequisites.
 
 This opt-in reviewer accepts ordinary printable multilingual UTF-8. It intentionally rejects Unicode general-category `Cf` (invisible formatting) and `Cc` except newline and tab, plus leading BOM, to reduce reviewer display ambiguity. This is a conservative offline admission policy, **not** a statement that rejected text is intrinsically malicious or that accepted text is safe to run.
+
+For review of a checked-out worker branch, use `--require-current-head` as shown above: it refuses an immutable head SHA that is not the checkout's current `HEAD`. Omitting the flag intentionally allows reviewing *historical* detached snapshots; such a review does not establish freshness and must never be described as a live branch audit.
