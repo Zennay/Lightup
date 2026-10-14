@@ -24,25 +24,18 @@ FLAGS = (
     "merge_approved",
     "release_approved",
 )
-RISK_DIRECTIVES = frozenset({
-    "include", "rewrite", "set", "map", "auth_request",
-    "auth_request_set", "real_ip_header", "proxy_pass_request_body",
-    "underscores_in_headers", "ignore_invalid_headers",
-    "proxy_redirect", "sub_filter", "add_header", "more_set_headers",
-    "more_clear_headers", "error_page", "return", "try_files",
-    "mirror", "mirror_request_body", "access_by_lua_block",
-    "content_by_lua_block", "js_set", "js_content",
+# This is a deliberately tiny *whole-document* reference grammar, not a
+# generic Nginx parser. Real installed nginx -T typically needs independent
+# ingress-owner review because includes, http blocks and installed extensions
+# cannot be reduced safely to an inventory of familiar directive names.
+EXPECTED_LOCATION_LINES = frozenset({
+    "proxy_pass http://127.0.0.1:8766;",
+    "proxy_pass_request_headers off;",
+    "proxy_set_header Host $http_host;",
+    "proxy_set_header Cookie $http_cookie;",
+    "proxy_set_header X-Forwarded-Proto https;",
+    "proxy_set_header X-Forwarded-For $remote_addr;",
 })
-ALLOWED_NGINX_DIRECTIVES = frozenset({
-    "server", "location", "listen", "server_name",
-    "proxy_pass", "proxy_pass_request_headers", "proxy_set_header",
-})
-EXPECTED_FORWARD_HEADERS = {
-    "host": "$http_host",
-    "cookie": "$http_cookie",
-    "x-forwarded-proto": "https",
-    "x-forwarded-for": "$remote_addr",
-}
 REQUIRED_GUNICORN = {
     "bind": "127.0.0.1:8766",
     "forwarded_allow_ips": "",
@@ -68,66 +61,74 @@ def _decode(raw: bytes) -> str:
 
 def _nginx_ok(raw: bytes) -> None:
     config = _decode(raw)
-    # nginx -T writes this marker for effective configurations.  A marker
-    # supplied by the caller is NOT an authenticated origin attestation.
-    if "# configuration file " not in config:
+    # No hidden carriage-return rewriting, backspace, NEL, Unicode separators
+    # or non-ASCII tokens in this small synthetic reference format.
+    if not config.isascii() or any(
+        ord(character) < 32 and character not in "\n\t"
+        for character in config
+    ):
         raise Hold
-    lines = [line.split("#", 1)[0].strip() for line in config.splitlines()]
-    lines = [line for line in lines if line]
-    # No variables, includes, scripts or scope-rewrite constructs except for
-    # four explicitly reviewed proxy header bindings below.
-    for line in lines:
-        directive = line.split(None, 1)[0].rstrip(";{}").lower()
-        if (directive in RISK_DIRECTIVES or
-                directive not in ALLOWED_NGINX_DIRECTIVES and line != "}"):
-            # Unknown Nginx modules can also rewrite request metadata.  A
-            # syntactically opaque directive must never earn REVIEW_ONLY.
-            raise Hold
-        if "$http_" in line and line not in {
-            "proxy_set_header Host $http_host;",
-            "proxy_set_header Cookie $http_cookie;",
-        }:
-            raise Hold
-        if "proxy_pass_request_headers" in line and line != "proxy_pass_request_headers off;":
-            raise Hold
-    if sum(bool(re.fullmatch(r"server\s*\{", line)) for line in lines) != 1:
+    # This marker is supplied by the caller; it is NOT authenticated provenance.
+    if not any(
+        re.fullmatch(r"# configuration file [^\r\n]+:", line.strip())
+        for line in config.split("\n")
+    ):
         raise Hold
-    locations = [i for i, line in enumerate(lines) if line.startswith("location ")]
-    if len(locations) != 1 or lines[locations[0]] != "location / {":
-        raise Hold
-    location_start = locations[0]
-    try:
-        location_end = lines.index("}", location_start + 1)
-    except ValueError as exc:
-        raise Hold from exc
-    inside = lines[location_start + 1:location_end]
-    # Nested blocks can change effective inheritance or authorization.
-    if any("{" in line or "}" in line for line in inside):
-        raise Hold
-    if sum(line == "proxy_pass http://127.0.0.1:8766;" for line in lines) != 1:
-        raise Hold
-    if sum(line == "proxy_pass_request_headers off;" for line in inside) != 1:
-        raise Hold
-    if sum(line == "listen 443 ssl;" for line in lines) != 1:
-        raise Hold
-    headers: dict[str, str] = {}
-    for line in lines:
-        if not line.lower().startswith("proxy_set_header "):
+
+    # Validate the exact location and nesting of every directive. Checking for
+    # globally present allowlisted tokens alone is unsafe: an unrelated server,
+    # extra public listener, or an out-of-scope location could satisfy that.
+    state = "start"
+    server_directives: set[str] = set()
+    location_directives: set[str] = set()
+    for raw_line in config.split("\n"):
+        line = raw_line.split("#", 1)[0].strip()
+        if not line:
             continue
-        match = re.fullmatch(r"proxy_set_header\s+([A-Za-z0-9-]+)\s+(\S+);", line)
-        if match is None or line not in inside:
+        if line == "server {" and state == "start":
+            state = "server"
+            continue
+        if line == "location / {" and state == "server":
+            if server_directives != {"listen", "server_name"}:
+                raise Hold
+            state = "location"
+            continue
+        if line == "}" and state == "location":
+            if location_directives != EXPECTED_LOCATION_LINES:
+                raise Hold
+            state = "server_closed_location"
+            continue
+        if line == "}" and state == "server_closed_location":
+            state = "end"
+            continue
+
+        if state == "server":
+            if line == "listen 443 ssl;":
+                key = "listen"
+            else:
+                match = re.fullmatch(r"server_name ([a-z0-9.-]+);", line)
+                if match is None:
+                    raise Hold
+                hostname = match.group(1)
+                labels = hostname.split(".")
+                if (len(hostname) > 253 or len(labels) < 2 or
+                        any(re.fullmatch(
+                            r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label,
+                        ) is None for label in labels)):
+                    raise Hold
+                key = "server_name"
+            if key in server_directives:
+                raise Hold
+            server_directives.add(key)
+        elif state == "location":
+            if line not in EXPECTED_LOCATION_LINES or line in location_directives:
+                raise Hold
+            location_directives.add(line)
+        else:
+            # Includes all unknown directives, second server blocks,
+            # duplicate/nested locations, and unmatched/extraneous braces.
             raise Hold
-        key, value = match.group(1).lower(), match.group(2)
-        if key in headers:
-            raise Hold
-        headers[key] = value
-    if headers != EXPECTED_FORWARD_HEADERS:
-        raise Hold
-    if any(line.startswith("proxy_pass ") and line !=
-           "proxy_pass http://127.0.0.1:8766;" for line in lines):
-        raise Hold
-    # No hidden top-level request-header forwarding or a second proxy path.
-    if len([line for line in lines if line.startswith("proxy_pass ")]) != 1:
+    if state != "end":
         raise Hold
 
 
