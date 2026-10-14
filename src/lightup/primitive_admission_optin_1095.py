@@ -9,11 +9,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from .ai.orchestration import OrchestrationError, ParamKind, ToolDefinition
+from .ai.orchestration import OrchestrationError, ParamKind, ToolDefinition, ToolParameter
 from .engagements import RiskLevel
 from .execution_policy import InteractionKind
 
 MAX_SYNTHETIC_BATCH_ITEMS = 32
+MAX_SYNTHETIC_PARAMETERS = 32
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,8 +93,12 @@ def snapshot_exact_primitive_values(
         or definition.min_risk is not RiskLevel.ANALYSIS_ONLY
     ):
         raise OrchestrationError("primitive preflight supports synthetic ANALYSIS_ONLY tools only")
+    if type(definition.parameters) is not tuple or len(definition.parameters) > MAX_SYNTHETIC_PARAMETERS:
+        raise OrchestrationError("synthetic parameter metadata must be a bounded builtin tuple")
     if type(arguments) is not dict:
         raise OrchestrationError("synthetic arguments must be an ordinary dict")
+    if len(arguments) > MAX_SYNTHETIC_PARAMETERS:
+        raise OrchestrationError("too many synthetic arguments")
     if any(type(key) is not str for key in arguments):
         raise OrchestrationError("synthetic argument keys must be builtin strings")
 
@@ -102,7 +107,12 @@ def snapshot_exact_primitive_values(
     for parameter in definition.parameters:
         # The original registry owner owns metadata validation. This is a
         # narrow protective check, not an independent definition attestation.
-        if type(parameter.name) is not str or type(parameter.kind) is not ParamKind:
+        if (
+            type(parameter) is not ToolParameter
+            or type(parameter.name) is not str
+            or type(parameter.kind) is not ParamKind
+            or type(parameter.required) is not bool
+        ):
             raise OrchestrationError("invalid synthetic parameter metadata")
         if parameter.name in seen:
             raise OrchestrationError("duplicate synthetic parameter metadata")
