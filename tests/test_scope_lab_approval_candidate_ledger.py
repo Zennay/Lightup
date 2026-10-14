@@ -94,28 +94,28 @@ class CandidateLedgerTests(unittest.TestCase):
 
     def test_revocation_is_durable_and_cannot_be_reversed(self):
         self.ledger.issue(**self.items)
-        self.ledger.revoke(run_id="lab-run-1", actor="operator-1", operator_gate=allow)
+        self.ledger.revoke(run_id="lab-run-1", client_id="client-1", actor="operator-1", operator_gate=allow)
         self.assertIsNotNone(self.ledger.inspect("lab-run-1", client_id="client-1").revoked_at)
         self.assertEqual(self.ledger.review("lab-run-1", client_id="client-1")["status"], "HOLD")
         with self.assertRaises(CandidateHeld):
-            self.ledger.revoke(run_id="lab-run-1", actor="operator-1", operator_gate=allow)
+            self.ledger.revoke(run_id="lab-run-1", client_id="client-1", actor="operator-1", operator_gate=allow)
         with self.assertRaises(CandidateHeld):
             self.ledger.issue(**self.items)
 
     def test_revoke_requires_operator_gate(self):
         self.ledger.issue(**self.items)
         with self.assertRaises(CandidateHeld):
-            self.ledger.revoke(run_id="lab-run-1", actor="operator-1", operator_gate=None)
+            self.ledger.revoke(run_id="lab-run-1", client_id="client-1", actor="operator-1", operator_gate=None)
         self.assertIsNone(self.ledger.inspect("lab-run-1", client_id="client-1").revoked_at)
 
     def test_revoke_unknown_is_denied(self):
         with self.assertRaises(CandidateHeld):
-            self.ledger.revoke(run_id="missing", actor="operator-1", operator_gate=allow)
+            self.ledger.revoke(run_id="missing", client_id="client-1", actor="operator-1", operator_gate=allow)
 
     def test_revoke_different_actor_is_denied(self):
         self.ledger.issue(**self.items)
         with self.assertRaises(CandidateHeld):
-            self.ledger.revoke(run_id="lab-run-1", actor="different", operator_gate=allow)
+            self.ledger.revoke(run_id="lab-run-1", client_id="client-1", actor="different", operator_gate=allow)
         self.assertIsNone(self.ledger.inspect("lab-run-1", client_id="client-1").revoked_at)
 
     def test_naive_time_rejected_before_operator(self):
@@ -180,7 +180,7 @@ class CandidateLedgerTests(unittest.TestCase):
             second = sqlite3.connect(path)
             fresh = LabApprovalCandidateLedger(second)
             self.assertEqual(fresh.review("lab-run-1", client_id="client-1")["status"], "REVIEW_ONLY")
-            fresh.revoke(run_id="lab-run-1", actor="operator-1", operator_gate=allow)
+            fresh.revoke(run_id="lab-run-1", client_id="client-1", actor="operator-1", operator_gate=allow)
             second.close()
             third = sqlite3.connect(path)
             self.assertEqual(LabApprovalCandidateLedger(third).review(
@@ -254,7 +254,7 @@ class CandidateLedgerTests(unittest.TestCase):
         self.db.execute("BEGIN IMMEDIATE")
         self.db.execute("INSERT INTO unrelated VALUES ('caller-write')")
         with self.assertRaises(CandidateHeld):
-            self.ledger.revoke(run_id="lab-run-1", actor="operator-1", operator_gate=allow)
+            self.ledger.revoke(run_id="lab-run-1", client_id="client-1", actor="operator-1", operator_gate=allow)
         self.assertEqual(self.db.execute("SELECT value FROM unrelated").fetchone(), ("caller-write",))
         self.assertTrue(self.db.in_transaction)
         self.db.rollback()
@@ -310,7 +310,7 @@ class CandidateLedgerTests(unittest.TestCase):
 
     def test_persisted_revocation_before_issue_is_detected(self):
         original = self.ledger.issue(**self.items)
-        self.ledger.revoke(run_id="lab-run-1", actor="operator-1", operator_gate=allow)
+        self.ledger.revoke(run_id="lab-run-1", client_id="client-1", actor="operator-1", operator_gate=allow)
         impossible = original.approved_at - timedelta(seconds=1)
         self.db.execute(
             "UPDATE lab_stepup_candidates_v1 SET revoked_at=? WHERE run_id=?",
@@ -647,6 +647,86 @@ class CandidateLedgerTests(unittest.TestCase):
         with self.assertRaises(CandidateHeld):
             self.ledger.issue(**dict(self.items, run_id="run-new", engagement_id="engagement-2"))
         self.assertEqual(self.ledger.review("lab-run-1", client_id="client-1")["status"], "HOLD")
+
+    def test_single_run_revocation_cannot_modify_other_tenant(self):
+        self.ledger.issue(**self.items)
+        foreign = dict(self.items, client_id="client-2", run_id="foreign-run")
+        self.ledger.issue(**foreign)
+        with self.assertRaises(CandidateHeld):
+            self.ledger.revoke(
+                run_id="foreign-run", client_id="client-1",
+                actor="operator-1", operator_gate=allow,
+            )
+        self.assertIsNone(
+            self.ledger.inspect("foreign-run", client_id="client-2").revoked_at
+        )
+        self.assertEqual(self.ledger.review("foreign-run", client_id="client-2")["status"],
+                         "REVIEW_ONLY")
+
+    def test_single_run_requires_client_id_keyword(self):
+        self.ledger.issue(**self.items)
+        with self.assertRaises(TypeError):
+            self.ledger.revoke(run_id="lab-run-1", actor="operator-1", operator_gate=allow)
+        self.assertIsNone(self.ledger.inspect("lab-run-1", client_id="client-1").revoked_at)
+
+    def test_single_run_wrong_tenant_does_not_consume_revocation(self):
+        self.ledger.issue(**self.items)
+        with self.assertRaises(CandidateHeld):
+            self.ledger.revoke(
+                run_id="lab-run-1", client_id="other-client",
+                actor="operator-1", operator_gate=allow,
+            )
+        self.ledger.revoke(
+            run_id="lab-run-1", client_id="client-1",
+            actor="operator-1", operator_gate=allow,
+        )
+        self.assertEqual(self.ledger.review("lab-run-1", client_id="client-1")["status"], "HOLD")
+
+    def test_single_run_invalid_tenant_denied_before_role_callback(self):
+        self.ledger.issue(**self.items)
+        for tenant in ("*", "client%", "client?", " client-1", "client\n1"):
+            gate = Mock(return_value=True)
+            with self.assertRaises(CandidateHeld):
+                self.ledger.revoke(
+                    run_id="lab-run-1", client_id=tenant,
+                    actor="operator-1", operator_gate=gate,
+                )
+            gate.assert_not_called()
+        self.assertIsNone(self.ledger.inspect("lab-run-1", client_id="client-1").revoked_at)
+
+    def test_single_run_scoped_revoke_persists_across_new_connection(self):
+        with tempfile.TemporaryDirectory() as folder:
+            dbpath = Path(folder) / "scoped-revoke.sqlite"
+            first = sqlite3.connect(dbpath)
+            ledger1 = LabApprovalCandidateLedger(first)
+            ledger1.issue(**self.items)
+            ledger1.revoke(
+                run_id="lab-run-1", client_id="client-1",
+                actor="operator-1", operator_gate=allow,
+            )
+            first.close()
+            second = sqlite3.connect(dbpath)
+            ledger2 = LabApprovalCandidateLedger(second)
+            self.assertEqual(ledger2.review("lab-run-1", client_id="client-1")["status"], "HOLD")
+            second.close()
+
+    def test_single_run_wrong_tenant_does_not_rollback_other_transaction(self):
+        self.ledger.issue(**self.items)
+        self.db.execute("CREATE TABLE unrelated (note TEXT)")
+        self.db.execute("BEGIN IMMEDIATE")
+        self.db.execute("INSERT INTO unrelated VALUES ('preserve')")
+        with self.assertRaises(CandidateHeld):
+            self.ledger.revoke(
+                run_id="lab-run-1", client_id="other-client",
+                actor="operator-1", operator_gate=allow,
+            )
+        self.assertTrue(self.db.in_transaction)
+        self.assertEqual(
+            self.db.execute("SELECT note FROM unrelated").fetchone(), ("preserve",)
+        )
+        self.db.rollback()
+        self.assertIsNone(self.ledger.inspect("lab-run-1", client_id="client-1").revoked_at)
+
 
 
 if __name__ == "__main__":
