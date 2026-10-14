@@ -18,13 +18,13 @@ from review_scope_destination_schema_1093_offline import (  # noqa: E402
 
 def fixture():
     return {"tools": [
-        {"tool_id": "http_baseline", "parameters": [
+        {"tool_id": "lab-http-baseline", "parameters": [
             {"name": "url", "kind": "string", "role": "endpoint"},
             {"name": "timeout", "kind": "number", "role": "none"}]},
-        {"tool_id": "tls_baseline", "parameters": [
+        {"tool_id": "lab-tls-baseline", "parameters": [
             {"name": "host", "kind": "string", "role": "host"},
             {"name": "port", "kind": "integer", "role": "port"}]},
-        {"tool_id": "service_inventory", "parameters": [
+        {"tool_id": "lab-service-inventory", "parameters": [
             {"name": "host", "kind": "string", "role": "host"},
             {"name": "ports", "kind": "string", "role": "port_set"}]},
     ]}
@@ -72,13 +72,26 @@ class ReviewTests(unittest.TestCase):
             lambda v: v["tools"][0]["parameters"][0].update(role="authorized"),
             lambda v: v["tools"][0]["parameters"][0].update(name="Url"),
             lambda v: v["tools"][0]["parameters"][0].update(kind=True),
-            lambda v: v["tools"][0].update(tool_id="http-baseline"),
+            lambda v: v["tools"][0].update(tool_id="HTTP-Baseline"),
             lambda v: v["tools"][0].update(parameters=[]),
             lambda v: v["tools"][0]["parameters"][0].update(role="none"),
         ):
             with self.subTest(case=str(change)):
                 sample = fixture()
                 change(sample)
+                self.assert_denied(review_schema(sample), "HOLD")
+
+    def test_real_lab_worker_id_hyphens_are_allowed_but_parameter_hyphens_denied(self):
+        sample = fixture()
+        self.assert_denied(review_schema(sample), "REVIEW_ONLY")
+        sample["tools"][0]["parameters"][0]["name"] = "bad-parameter"
+        self.assert_denied(review_schema(sample), "HOLD")
+
+    def test_current_paramkind_enum_is_closed_world(self):
+        for kind in ("array", "object", "map", "STRING", "float"):
+            with self.subTest(kind=kind):
+                sample = fixture()
+                sample["tools"][0]["parameters"][1]["kind"] = kind
                 self.assert_denied(review_schema(sample), "HOLD")
 
     def test_non_destination_metadata_does_not_supply_authority(self):
@@ -113,7 +126,7 @@ class ReviewTests(unittest.TestCase):
         for value in (Items(fixture()["tools"]),):
             self.assert_denied(review_schema({"tools": value}), "HOLD")
         sample = fixture()
-        sample["tools"][0]["tool_id"] = Text("http_baseline")
+        sample["tools"][0]["tool_id"] = Text("lab-http-baseline")
         self.assert_denied(review_schema(sample), "HOLD")
         sample = fixture()
         sample["tools"][0]["parameters"][0]["role"] = Text("endpoint")
