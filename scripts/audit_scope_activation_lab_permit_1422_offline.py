@@ -63,13 +63,19 @@ def audit() -> dict[str, object]:
     synthetic_mints = 0
     invalid_mint_requests = 0
 
-    def _synthetic_mint(_length: int = 24) -> str:
+    def _synthetic_mint(*args: object, **kwargs: object) -> str:
         nonlocal synthetic_mints, invalid_mint_requests
         synthetic_mints += 1
-        # Source currently calls token_urlsafe(24). A zero-length,
-        # type-confused or downgraded entropy request cannot pass merely
-        # because this test deliberately returns a fixed fake token.
-        if type(_length) is not int or _length != 24:
+        # Match the source-owned positional token_urlsafe(24) call exactly.
+        # Zero arguments, extra positional/keyword fields, polymorphic
+        # integers or downgraded entropy length all fail the same HOLD
+        # boundary even though the fake token itself is always identical.
+        if (
+            len(args) != 1
+            or kwargs
+            or type(args[0]) is not int
+            or args[0] != 24
+        ):
             invalid_mint_requests += 1
         return SYNTHETIC_PERMIT_ID
 
