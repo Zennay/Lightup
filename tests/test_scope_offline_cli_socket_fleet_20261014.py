@@ -27,6 +27,7 @@ _TRIPWIRE = """import _socket
 import _sqlite3
 import builtins
 import io
+import mmap
 try:
     import fcntl as _fcntl
 except ImportError:  # Python-platform optional; hosted CI is Linux.
@@ -39,6 +40,10 @@ import subprocess
 
 def forbidden(*args, **kwargs):
     os._exit(92)
+
+# Native mmap reads bypass Python os.read/ReadBuffer/open call interception.
+# Real offline review CLIs must not construct any memory-mapped file.
+mmap.mmap = forbidden
 
 _socket.socket = forbidden
 socket.socket = forbidden
@@ -622,6 +627,35 @@ class OfflineReviewCliSocketFleetTests(unittest.TestCase):
                     "    def __fspath__(self):\n"
                     "        print('CALLBACK_RAN')\n"
                     "        return 'baseline.json'\n"
+                    "try:\n"
+                    f"    {statement}\n"
+                    "except BaseException:\n"
+                    "    pass\n"
+                    "print('FALSE_REVIEW_ONLY')\n"
+                )
+                proc = subprocess.run(
+                    [sys.executable, "-B", "-c", program], cwd=self.root,
+                    env=self.env, capture_output=True, check=False, timeout=15,
+                )
+                self.assertEqual(proc.returncode, 92, label)
+                self.assertEqual(proc.stdout, b"")
+                self.assertEqual(proc.stderr, b"")
+                self.assertEqual(self.fingerprint(), before)
+
+
+    def test_uncatchable_memory_map_creation_inherited_fd(self):
+        # Mapping an inherited descriptor could expose its contents without
+        # os.read()/os.open(); a direct anonymous mapping must also be denied.
+        attempts = (
+            ("stdin_readonly", "mmap.mmap(0, 1, access=mmap.ACCESS_READ)"),
+            ("stdin_default", "mmap.mmap(0, 1)"),
+            ("anonymous_mapping", "mmap.mmap(-1, 4096)"),
+        )
+        before = self.fingerprint()
+        for label, statement in attempts:
+            with self.subTest(label=label):
+                program = (
+                    "import mmap\n"
                     "try:\n"
                     f"    {statement}\n"
                     "except BaseException:\n"
