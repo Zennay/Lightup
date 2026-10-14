@@ -62,6 +62,7 @@ class ComposedNativeOfflineScopeFleetTests(unittest.TestCase):
             self.env,
             LIGHTUP_SCOPE_BOOTSTRAP_SCRIPT=str(executable),
             LIGHTUP_SCOPE_SOURCE_ROOT=str(_REPO / "src" / "lightup"),
+            LIGHTUP_SCOPE_SCRIPTS_ROOT=str(_SCRIPTS),
         )
         return subprocess.run(
             [sys.executable, "-B", str(executable), *map(str, args)],
@@ -126,6 +127,37 @@ class ComposedNativeOfflineScopeFleetTests(unittest.TestCase):
                 result = self.run_cli(name, *args, stdin=payload)
                 self.check_receipt(result, "HOLD", markdown=markdown)
                 self.assertEqual(self.fingerprint(), before, name)
+
+
+    def test_code_named_decoy_is_not_trusted_as_import(self):
+        # A Python-looking basename outside frozen interpreter/project code
+        # roots must never become an allowed native alias read.
+        decoy = self.root / "synthetic-private.py"
+        decoy.write_text("# synthetic-only never-read decoy", encoding="utf-8")
+        before = self.fingerprint()
+        env = dict(
+            self.env,
+            LIGHTUP_SCOPE_BOOTSTRAP_SCRIPT=str(
+                _SCRIPTS / "review_scope_finite_number_offline.py"),
+            LIGHTUP_SCOPE_SOURCE_ROOT=str(_REPO / "src" / "lightup"),
+            LIGHTUP_SCOPE_SCRIPTS_ROOT=str(_SCRIPTS),
+        )
+        program = (
+            "import _io\n"
+            "try:\n"
+            "    _io.open('synthetic-private.py', 'rb').read(1)\n"
+            "except BaseException:\n"
+            "    pass\n"
+            "print('FALSE_REVIEW_ONLY')\n"
+        )
+        result = subprocess.run(
+            [sys.executable, "-B", "-c", program], cwd=self.root,
+            env=env, capture_output=True, check=False, timeout=15,
+        )
+        self.assertEqual(result.returncode, 92)
+        self.assertEqual(result.stdout, b"")
+        self.assertEqual(result.stderr, b"")
+        self.assertEqual(self.fingerprint(), before)
 
 
 if __name__ == "__main__":
