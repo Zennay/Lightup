@@ -88,6 +88,10 @@ def _endpoint(value):
         return False
     try:
         p = urlsplit(value)
+        # Python's parser may normalize or discard bytes in surprising cases.
+        # No parser-normalized target identity should pass this shape preview.
+        if p.geturl() != value:
+            return False
         if (p.scheme not in ("http", "https") or not p.netloc or p.username is not None
                 or p.password is not None or p.fragment or "%" in p.netloc or "@" in p.netloc
                 or p.hostname is None or not _host(p.hostname)):
