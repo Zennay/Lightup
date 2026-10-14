@@ -182,6 +182,10 @@ def _request(
     alternate_name: str | None = None,
     body: bytes | None = None,
 ) -> dict:
+    if alternate_name is not None and (
+        type(alternate_name) is not str or alternate_name not in ALTERNATE_HEADERS
+    ):
+        raise RuntimeError("unsupported synthetic header")
     conn = http.client.HTTPConnection("127.0.0.1", port, timeout=3.0)
     try:
         headers = {"Host": "localhost"}
@@ -191,8 +195,6 @@ def _request(
             for name in ALTERNATE_HEADERS:
                 headers[name] = SYNTHETIC_OPERATOR
         if alternate_name is not None:
-            if type(alternate_name) is not str or alternate_name not in ALTERNATE_HEADERS:
-                raise RuntimeError("unsupported synthetic header")
             headers[alternate_name] = SYNTHETIC_OPERATOR
         if body is not None:
             headers["Content-Type"] = "application/x-www-form-urlencoded"
