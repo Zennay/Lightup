@@ -73,7 +73,7 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
             "accesslog = None",
             "errorlog = '/dev/null'",
         ])
-        self.assertTrue(config.endswith("\\n"))
+        self.assertTrue(config.endswith("\n"))
         self.assertNotIn("0.0.0.0", config)
         self.assertNotIn("X-Forwarded", config)
         self.assertNotIn("raw_env", config)
