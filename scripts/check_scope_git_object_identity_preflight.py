@@ -48,14 +48,16 @@ def inspect(repo: Path) -> str:
         return "REPLACE_REF_CHECK_UNAVAILABLE"
     if replacements.stdout:
         return "LOCAL_REPLACE_REF_PRESENT"
-    location = _git(repo, "rev-parse", "--path-format=absolute",
-                    "--git-path", "info/grafts")
-    if location.returncode or not location.stdout.strip():
+    # --git-path info/grafts dereferences symlinks before returning a path;
+    # querying the raw common-dir lets lstat catch even a dangling graft link.
+    common = _git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    if common.returncode or not common.stdout.strip():
         return "GRAFT_PATH_UNAVAILABLE"
     try:
-        graft = Path(os.fsdecode(location.stdout.strip()))
-        if not graft.is_absolute():
+        common_dir = Path(os.fsdecode(common.stdout.strip()))
+        if not common_dir.is_absolute():
             return "GRAFT_PATH_UNAVAILABLE"
+        graft = common_dir / "info" / "grafts"
         graft.lstat()
     except FileNotFoundError:
         pass
