@@ -109,13 +109,22 @@ def review_bytes(raw: object) -> dict:
 
 
 def _read_private_pipe() -> bytes | None:
-    """Demand FIFO stdin, full EOF, and bounded real elapsed time.
+    """Require FIFO stdin, complete EOF, and finite real elapsed time.
 
-    This is userland defensive I/O, NOT an operating-system sandbox.
+    Prevent select/read races with another FIFO consumer by making fd0
+    temporarily nonblocking. Restore the parent's shared fd status on every
+    path; private pipes remain necessary for strict concurrent isolation.
+    This Python userland guard is NOT an operating-system sandbox.
     """
+    original_blocking = False
+    changed = False
     try:
         if not stat.S_ISFIFO(os.fstat(0).st_mode):
             return None
+        original_blocking = os.get_blocking(0)
+        if original_blocking:
+            os.set_blocking(0, False)
+            changed = True
         deadline = time.monotonic() + READ_DEADLINE_SECONDS
         chunks = []
         size = 0
@@ -126,7 +135,12 @@ def _read_private_pipe() -> bytes | None:
             ready, _, _ = select.select([0], [], [], remaining)
             if not ready:
                 return None
-            part = os.read(0, min(1024, MAX_INPUT_BYTES + 1 - size))
+            try:
+                part = os.read(0, min(1024, MAX_INPUT_BYTES + 1 - size))
+            except BlockingIOError:
+                # A competing reader can drain a ready FIFO before os.read.
+                # Continue bounded by the *same* absolute deadline.
+                continue
             if not part:
                 return b"".join(chunks)
             chunks.append(part)
@@ -135,7 +149,12 @@ def _read_private_pipe() -> bytes | None:
                 return None
     except (OSError, ValueError, OverflowError):
         return None
-
+    finally:
+        if changed:
+            try:
+                os.set_blocking(0, original_blocking)
+            except (OSError, ValueError):
+                pass
 
 def _seal_receipt(result: object) -> bytes | None:
     """Reject forged output *before* inspecting or writing to stdout."""
