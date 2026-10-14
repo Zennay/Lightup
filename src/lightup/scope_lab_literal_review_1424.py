@@ -78,9 +78,20 @@ def review_lab_literal(value: object) -> LabLiteralReview:
 
     if type(address) is IPv4Address:
         if address in _V4_LOOPBACK:
+            # The inclusive /8 endpoints are not unambiguous host identities.
+            if address in (_V4_LOOPBACK.network_address,
+                           _V4_LOOPBACK.broadcast_address):
+                return _hold()
             return LabLiteralReview("REVIEW_ONLY", "LOOPBACK")
-        if any(address in network for network in _V4_LAB):
-            return LabLiteralReview("REVIEW_ONLY", "PRIVATE_USE")
+        for network in _V4_LAB:
+            if address in network:
+                # Without a subnet mask we can still conservatively refuse
+                # each *outer* RFC1918 block's network/broadcast identity.
+                # This is a syntactic review, not a live reachability test.
+                if address in (network.network_address,
+                               network.broadcast_address):
+                    return _hold()
+                return LabLiteralReview("REVIEW_ONLY", "PRIVATE_USE")
         return _hold()
 
     if type(address) is IPv6Address:
@@ -89,5 +100,9 @@ def review_lab_literal(value: object) -> LabLiteralReview:
         if address == _V6_LOOPBACK:
             return LabLiteralReview("REVIEW_ONLY", "LOOPBACK")
         if address in _V6_ULA:
+            # IPv6 has no broadcast; avoid suggesting the ULA aggregate's
+            # all-zero network base represents an individually verified host.
+            if address == _V6_ULA.network_address:
+                return _hold()
             return LabLiteralReview("REVIEW_ONLY", "PRIVATE_USE")
     return _hold()
