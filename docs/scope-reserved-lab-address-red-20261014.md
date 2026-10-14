@@ -10,13 +10,13 @@ Synthetic literals reproduced using Python's `ipaddress` semantics:
 - IPv4 TEST-NET: `192.0.2.1`, `198.51.100.1`, `203.0.113.1`.
 - Benchmark testing space: `198.18.0.1`.
 - Unspecified/broadcast: `0.0.0.0`, `255.255.255.255`.
-- IPv6 documentation: `2001:db8::1`.
+- IPv6 documentation: `[2001:db8::1]` (bracketed target authority).
 - IPv4 link-local: `169.254.1.1`.
 
 These strings are used **only in memory** as `Target` values. No DNS resolution, sockets, HTTP requests or probes.
 
 ## Added acceptance
-`tests/test_scope_reserved_lab_address_red_20261014.py` contains eight separate `@unittest.expectedFailure` **known source defects**. A companion integrity test independently executes all eight and requires genuine `AssertionError` witnesses, with zero runtime errors and zero unexpected successes. This is deliberately **not a security PASS**. Two ordinary positive checks preserve current loopback/RFC1918/ULA semantics, and verify disabling private-lab mode denies all synthetic non-loopback targets.
+`tests/test_scope_reserved_lab_address_red_20261014.py` contains eight separate `@unittest.expectedFailure` **known source defects**. A companion integrity test independently executes all eight and requires genuine `AssertionError` witnesses, with zero runtime errors and zero unexpected successes. This is deliberately **not a security PASS**. Two ordinary positive checks preserve current loopback/RFC1918/ULA semantics (bracketed IPv6 target authorities, as required by the existing URL parser), and verify disabling private-lab mode denies all synthetic non-loopback targets.
 
 Run from repository root:
 ```bash
@@ -30,3 +30,6 @@ Current source-owner PR [#100](https://github.com/Zennay/Lightup/pull/100) owns 
 The owner should define an explicit trusted-lab network membership policy independent of `ipaddress.is_private`, avoid blanket non-global admission, and convert every RED canary to ordinary PASS only after fixing the production boundary. Explicit public scope authorization, grant scope, tenant, revocation and execution checks remain separate. A test-only source fix is not authorization to scan or deploy.
 
 All authority/permit/execution/merge/release permissions remain **false/unissued** for this work.
+
+## Exact-head CI feedback and adjustment
+The initial hosted attempt [#38588058526](https://github.com/Zennay/Lightup/actions/runs/38588058526) was **RED on Python 3.11 and 3.14**. Three positive/subtest failures and one unexpected-success canary were caused by unbracketed IPv6 input (`::1`, `fd00::1`, `2001:db8::1`) being refused at the *existing URL authority parser*, never reaching the `ipaddress` classifier. This was a **test fixture mistake**, not a production fix or previously validated deny. The next commit changes only these test string literals to canonical bracketed host authorities. The actual source-owning classification remains unfixed; a new exact-head CI proof is required.
