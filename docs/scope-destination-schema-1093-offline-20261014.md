@@ -71,11 +71,23 @@ registry definitions: `lab-http-baseline.url` → endpoint/string,
 `lab-tls-baseline.host` + `port` → host/string + port/integer,
 `lab-service-inventory.host` + `ports` → host/string + port_set/string.
 
-A dedicated test additionally imports the three **actual, currently installed**
-LAB_ACTIVE ToolDefinition objects and checks their exact tool IDs and
-parameter name/kind shapes against the synthetic fixtures. No registry is
-registered or handler invoked. These source checks deliberately do not
-infer a trusted destination role: ToolParameter currently has no such field.
+Dedicated read-only source tests import the three **actual, currently
+installed** LAB_ACTIVE ToolDefinition objects and compare the exact tool IDs,
+parameter name/kind/required shapes and a separate, explicitly **test-owned**
+known-role mapping against the synthetic fixtures. Future addition of trusted
+source-owned roles is permitted; the reference never asserts their absence.
+
+Additional opt-in integration acceptance invokes the three **real** current
+HTTP/TLS/service-inventory handler functions in a disposable lab context,
+while patching their producer calls and raw socket/HTTP entry points to
+explicitly fail if reached. It checks that the exact destination arguments
+are passed to the *mocked* producer and reflected in synthetic evidence,
+and separately that a synthetic non-lab context is rejected **before** any
+producer invocation. All destinations in these fixtures are 127.0.0.1,
+and **no DNS request, HTTP connection, TLS handshake, socket or scan occurs**.
+These tests intentionally bypass the actual registry/executor to inspect
+handler-local contracts, so they are NOT evidence that production dispatch,
+live grants, resolver binding or network egress fencing is safe.
 
 The reviewer deliberately has **no installed registry/production imports**.
 Therefore an attacker can supply a self-consistent invented tool ID and still
