@@ -231,6 +231,13 @@ def _bounded_stdin() -> bytes:
                 os.set_blocking(fd, original_blocking)
             except (OSError, ValueError):
                 output = b""
+        try:
+            # A setter can silently fail; never return a reviewed packet if
+            # the inherited open-file-description remains unexpectedly changed.
+            if os.get_blocking(fd) is not original_blocking:
+                output = b""
+        except (OSError, ValueError):
+            output = b""
     return output
 
 
@@ -296,7 +303,8 @@ def _emit_receipt(receipt: object) -> bool:
         fd = sys.stdout.fileno()
         if fd != 1:
             return False
-        mode = os.fstat(fd).st_mode
+        original_sink = os.fstat(fd)
+        mode = original_sink.st_mode
         if not (stat.S_ISFIFO(mode) or (stat.S_ISCHR(mode) and os.isatty(fd))):
             return False
         was_blocking = os.get_blocking(fd)
@@ -318,6 +326,14 @@ def _emit_receipt(receipt: object) -> bool:
             _, writable, _ = select.select([], [fd], [], remaining)
             if not writable:
                 break
+            # fd1 could have been replaced by dup2 after the initial local
+            # sink check. This second check narrows that redirection window.
+            sink = os.fstat(fd)
+            if (sink.st_dev, sink.st_ino, stat.S_IFMT(sink.st_mode)) != (
+                original_sink.st_dev, original_sink.st_ino,
+                stat.S_IFMT(original_sink.st_mode),
+            ):
+                break
             try:
                 count = os.write(fd, data[offset:])
             except BlockingIOError:
@@ -334,6 +350,11 @@ def _emit_receipt(receipt: object) -> bool:
                 os.set_blocking(fd, was_blocking)
             except (OSError, ValueError):
                 success = False
+        try:
+            if os.get_blocking(fd) is not was_blocking:
+                success = False
+        except (OSError, ValueError):
+            success = False
     return success
 
 
