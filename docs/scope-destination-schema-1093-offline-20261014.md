@@ -5,7 +5,14 @@ reviewer evaluates **self-asserted, untrusted tool-definition JSON**. It cannot
 authenticate a registry, issue a permit, grant scope, dispatch a handler, scan,
 or approve a merge/deploy/release. Every exit is nonzero (2 HOLD, 3 REVIEW_ONLY).
 
-Use only with disposable synthetic metadata and a closed stdin pipe:
+Use only with disposable synthetic metadata on a private FIFO/pipe stdin.
+A regular file, device, socket, incomplete pipe without EOF, or a pipe whose
+writer keeps its end open fails atomically to HOLD after at most two seconds.
+All reads use bounded 1024-byte chunks and an absolute monotonic deadline.
+This is a Python userland guard, not an OS sandbox or a guarantee about
+stdout sinks. Feed a finite packet and close the writer end:
+
+
 
     python scripts/review_scope_destination_schema_1093_offline.py --stdin-json < synthetic.json
     python -m unittest discover -s tests -p 'test_scope_destination_schema_1093_offline.py' -v
