@@ -15,7 +15,7 @@ from uuid import uuid4
 
 
 MAX_WINDOW = timedelta(hours=24)
-_ACTIONS = frozenset(("issue", "revoke"))
+_ACTIONS = frozenset(("issue", "revoke", "freeze"))
 
 
 class CandidateHeld(PermissionError):
@@ -120,6 +120,13 @@ class LabApprovalCandidateLedger:
                     revoked_by TEXT
                 )
             """)
+            self._db.execute("""
+                CREATE TABLE IF NOT EXISTS lab_stepup_tenant_freezes_v1 (
+                    client_id TEXT PRIMARY KEY,
+                    frozen_at TEXT NOT NULL,
+                    frozen_by TEXT NOT NULL
+                )
+            """)
         except sqlite3.Error:
             raise CandidateHeld("candidate store unavailable") from None
 
@@ -145,6 +152,15 @@ class LabApprovalCandidateLedger:
         try:
             self._db.execute("BEGIN IMMEDIATE")
             began = True
+            # Exact tenant freeze is checked under the SAME write lock as
+            # issuance, eliminating a check/insert race against freeze_tenant.
+            frozen = self._db.execute(
+                "SELECT 1 FROM lab_stepup_tenant_freezes_v1 WHERE client_id=?",
+                (ids[1],),
+            ).fetchone()
+            if frozen is not None:
+                self._db.rollback()
+                raise CandidateHeld("tenant candidate issuance frozen")
             self._db.execute(
                 """INSERT INTO lab_stepup_candidates_v1
                 (approval_id,run_id,client_id,engagement_id,asset,
@@ -226,6 +242,44 @@ class LabApprovalCandidateLedger:
                 self._db.rollback()
             raise CandidateHeld("engagement revocation unavailable") from None
 
+    def freeze_tenant(
+        self, *, client_id: str, actor: str,
+        operator_gate: OperatorGate | None,
+    ) -> int:
+        """Irreversibly HOLD an exact tenant's local candidate ledger state.
+
+        One write transaction simultaneously blocks future issue() calls for
+        this tenant and revokes every unrevoked existing candidate. This is
+        a developer-only simulated administrative candidate freeze, NOT an
+        authenticated shutdown of real lab tools, systems or customer assets.
+        """
+        tenant = _identity(client_id)
+        operator_id = _operator(operator_gate, actor, "freeze")
+        stamp = datetime.now(timezone.utc).isoformat()
+        if self._db.in_transaction:
+            raise CandidateHeld("candidate transaction isolation unavailable")
+        began = False
+        try:
+            self._db.execute("BEGIN IMMEDIATE")
+            began = True
+            self._db.execute(
+                """INSERT INTO lab_stepup_tenant_freezes_v1
+                   (client_id, frozen_at, frozen_by) VALUES (?, ?, ?)""",
+                (tenant, stamp, operator_id),
+            )
+            updated = self._db.execute(
+                """UPDATE lab_stepup_candidates_v1
+                SET revoked_at=?, revoked_by=?
+                WHERE client_id=? AND revoked_at IS NULL""",
+                (stamp, operator_id, tenant),
+            ).rowcount
+            self._db.commit()
+            return updated
+        except sqlite3.Error:
+            if began:
+                self._db.rollback()
+            raise CandidateHeld("tenant freeze unavailable") from None
+
     def inspect(self, run_id: str, *, client_id: str) -> LabApprovalCandidate | None:
         """Tenant-scoped review data only, never a permission or scan permit."""
         key = _identity(run_id)
@@ -264,8 +318,17 @@ class LabApprovalCandidateLedger:
     def review(self, run_id: str, *, client_id: str) -> dict[str, object]:
         """Tenant-scoped non-authorizing receipt, even for live candidates."""
         try:
-            candidate = self.inspect(run_id, client_id=client_id)
-        except CandidateHeld:
+            tenant = _identity(client_id)
+            # A freeze remains authoritative for the local reviewer even if
+            # a writable SQLite candidate row was edited after the freeze.
+            held = self._db.execute(
+                "SELECT 1 FROM lab_stepup_tenant_freezes_v1 WHERE client_id=?",
+                (tenant,),
+            ).fetchone()
+            candidate = None if held is not None else self.inspect(
+                run_id, client_id=tenant,
+            )
+        except (CandidateHeld, sqlite3.Error):
             # Privacy-safe consumer receipt: never promote corrupt local state.
             candidate = None
         now = datetime.now(timezone.utc)
