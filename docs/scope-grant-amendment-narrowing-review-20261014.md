@@ -60,6 +60,12 @@ The input parser refuses oversized buffers, duplicate object keys (including esc
 
 This model only compares **literal self-reported strings**, not real DNS, CIDRs, aliases, wildcards, asset inventories or provenance signatures. Empty `capabilities` is denied because the existing `ScopeDefinition` treats it as unrestricted. Even non-widening input may still be untrusted, expired, revoked, malformed against true production rules or unauthorized. Superset exclusions and subset assets do not independently establish safe reachability.
 
+## Current optional hardening: filedescriptor postconditions and model agreement
+
+After reading stdin the reviewer does **not** accept `REVIEW_ONLY` if the inherited fd0 blocking flag differs from its initial state, including when a simulated `os.set_blocking` call silently fails. Receipt delivery likewise refuses success when fd1 blocking restoration does not actually take effect. Immediately before each bounded write, fd1 device/inode/file-kind must still match the local pipe or TTY originally inspected; detected destination replacement fails closed without sending to the replacement. These checks narrow accidental redirection and shared-FD leaks but cannot turn mutable process filedescriptors into OS security capabilities or prevent all time-of-check/time-of-use races.
+
+Independent synthetic tests instantiate **real installed LightUp `AuthorizationGrant`, `ScopeDefinition` and `RiskLevel` dataclasses** to compare the offline narrowing decision with the actual model's asset exclusions, capability admission, risk and UTC windows. No grant is issued/persisted, no `ExecutionPolicy` or `ToolExecutor` is called, and this does not validate operator consent, trusted issuer, live revocation or destination binding.
+
 ## Actual release/activation gates
 
 Still require: trusted registered operator and customer authorization, tenant/asset/capability provenance and current persisted scope, risk and approval evaluation, exact destination binding at each execution attempt, revocation check immediately before external I/O, independent security/privacy review, exact immutable-head GitHub-hosted CI **and separate registered permanent VPS** test evidence, and explicit human merge/release approval. Do not substitute this local review receipt for any of them.
