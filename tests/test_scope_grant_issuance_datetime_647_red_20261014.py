@@ -118,6 +118,33 @@ class PersistedGrantDatetimeIssuanceRedTests(unittest.TestCase):
         stored_start, _ = self._stored_window(grant.grant_id)
         self.assertEqual(stored_start, self.start.isoformat())
 
+    def test_normal_issued_grant_resolver_denies_after_canonical_expiry(self):
+        from unittest.mock import patch
+        grant = self._issue()
+        with patch("lightup.domain.utcnow", return_value=self.end + timedelta(days=7)):
+            self.assertIsNone(self.store.resolve_authorization_for_execution(grant))
+
+    def test_normal_issued_grant_resolver_denies_before_canonical_start(self):
+        from unittest.mock import patch
+        grant = self._issue()
+        with patch("lightup.domain.utcnow", return_value=self.start - timedelta(days=7)):
+            self.assertIsNone(self.store.resolve_authorization_for_execution(grant))
+
+    @unittest.expectedFailure
+    def test_red_post_expiry_live_resolver_must_not_trust_widened_durable_until(self):
+        # Control lives in disposable SQLite; no real executor or target I/O.
+        from unittest.mock import patch
+        grant = self._issue(end=_cast_datetime(_WideExpiry, self.end))
+        with patch("lightup.domain.utcnow", return_value=self.end + timedelta(days=7)):
+            self.assertIsNone(self.store.resolve_authorization_for_execution(grant))
+
+    @unittest.expectedFailure
+    def test_red_pre_start_live_resolver_must_not_trust_widened_durable_from(self):
+        from unittest.mock import patch
+        grant = self._issue(start=_cast_datetime(_EarlyStart, self.start))
+        with patch("lightup.domain.utcnow", return_value=self.start - timedelta(days=7)):
+            self.assertIsNone(self.store.resolve_authorization_for_execution(grant))
+
 
 if __name__ == "__main__":
     unittest.main()
