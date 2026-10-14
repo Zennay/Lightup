@@ -71,6 +71,49 @@ class GrantRevisionBatchReviewTests(unittest.TestCase):
         self.assertEqual(r.reviewed_count, 0)
         self.assertEqual(r.narrowed_count, 0)
 
+    def test_cross_tenant_ip_inside_cidr_never_claims_disjointness(self):
+        pairs = (
+            self.make_pair(grant_id="g1", client="client1", assets=("192.0.2.0/24",)),
+            self.make_pair(grant_id="g2", client="client2", assets=("192.0.2.12",)),
+        )
+        receipt = review_grant_revision_batch(pairs)
+        self.assertEqual(receipt.verdict, "HOLD")
+        self.assertEqual(receipt.reason_code, "network_identity_requires_separate_review")
+        self.assertEqual(receipt.reviewed_count, 0)
+        self.assertFalse(receipt.execution_enabled)
+
+    def test_even_disjoint_tenant_cidrs_defer_to_separate_network_reviewer(self):
+        for left, right in (
+            ("192.168.1.0/24", "10.10.20.0/24"),
+            ("2001:db8::/64", "2001:db8:1::/64"),
+            ("2001:db8::1", "2001:db8::2"),
+        ):
+            with self.subTest(left=left, right=right):
+                pairs = (
+                    self.make_pair(grant_id="g1", client="client1", assets=(left,)),
+                    self.make_pair(grant_id="g2", client="client2", assets=(right,)),
+                )
+                self.assertEqual(review_grant_revision_batch(pairs).reason_code,
+                                 "network_identity_requires_separate_review")
+
+    def test_single_tenant_ip_snapshot_only_reviews_shape(self):
+        pair = self.make_pair(grant_id="g1", client="client1", assets=("192.168.0.0/24",))
+        receipt = review_grant_revision_batch((pair,))
+        self.assertEqual(receipt.verdict, "REVIEW_ONLY")
+        self.assertFalse(receipt.authorization_verified)
+        self.assertFalse(receipt.execution_enabled)
+
+    def test_cross_tenant_ambiguous_host_port_held_without_dns(self):
+        pairs = (
+            self.make_pair(grant_id="g1", client="client1",
+                           assets=("service.example.test:443",)),
+            self.make_pair(grant_id="g2", client="client2",
+                           assets=("service.example.test",)),
+        )
+        receipt = review_grant_revision_batch(pairs)
+        self.assertEqual(receipt.verdict, "HOLD")
+        self.assertEqual(receipt.reason_code, "network_identity_requires_separate_review")
+
     def test_duplicate_grant_id_denied(self):
         pair = self.make_pair(grant_id="g1", client="client1", assets=("one.example.test",))
         r = review_grant_revision_batch((pair, pair))
