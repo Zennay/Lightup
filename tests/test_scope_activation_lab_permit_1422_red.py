@@ -190,7 +190,7 @@ class ActualActivationPermitChainRED(unittest.TestCase):
     def test_auditor_reports_unsafe_chain_only_as_hold(self):
         result = AUDIT.audit()
         self.assertEqual(result["status"], "HOLD")
-        self.assertEqual(result["checked"], 50)
+        self.assertEqual(result["checked"], 56)
         self.assertGreaterEqual(result["violations"], 10)
         self.assertEqual(type(result["violations"]), int)
         for key in (
@@ -225,7 +225,7 @@ class ActualActivationPermitChainRED(unittest.TestCase):
 
     def test_permit_metadata_mutants_increase_violations_without_reflecting(self):
         baseline = AUDIT.audit()
-        self.assertEqual(baseline["checked"], 50)
+        self.assertEqual(baseline["checked"], 56)
         self.assertEqual(baseline["violations"], 10)
         for field, replacement in (
             ("target", "forged.example.invalid"),
@@ -250,7 +250,7 @@ class ActualActivationPermitChainRED(unittest.TestCase):
                 with patch.object(AUDIT, "ActivationGate", MutatedGate):
                     receipt = AUDIT.audit()
                 self.assertEqual(receipt["status"], "HOLD")
-                self.assertEqual(receipt["checked"], 50)
+                self.assertEqual(receipt["checked"], 56)
                 self.assertEqual(
                     receipt["violations"],
                     baseline["violations"] + len(AUDIT.SAFE_LAB),
@@ -425,7 +425,7 @@ class ActualActivationPermitChainRED(unittest.TestCase):
 
     def test_public_scope_denial_cannot_hide_premature_token_mint(self):
         baseline = AUDIT.audit()
-        self.assertEqual(baseline["checked"], 50)
+        self.assertEqual(baseline["checked"], 56)
         self.assertEqual(baseline["violations"], 10)
         real_gate = ActivationGate
 
@@ -441,7 +441,7 @@ class ActualActivationPermitChainRED(unittest.TestCase):
 
         with patch.object(AUDIT, "ActivationGate", PrematureExplicitMint):
             receipt = AUDIT.audit()
-        self.assertEqual(receipt["checked"], 50)
+        self.assertEqual(receipt["checked"], 56)
         self.assertEqual(receipt["violations"], 11)
         self.assertEqual(receipt["status"], "HOLD")
         self.assertEqual(set(receipt), {"status", "checked", "violations", *AUDIT._DENIED})
@@ -451,7 +451,7 @@ class ActualActivationPermitChainRED(unittest.TestCase):
 
     def test_token_request_positional_shape_cannot_be_spoofed(self):
         baseline = AUDIT.audit()
-        self.assertEqual(baseline["checked"], 50)
+        self.assertEqual(baseline["checked"], 56)
         self.assertEqual(baseline["violations"], 10)
         real_gate = ActivationGate
 
@@ -494,6 +494,83 @@ class ActualActivationPermitChainRED(unittest.TestCase):
                 self.assertEqual(receipt["violations"], baseline["violations"] + 1)
                 self.assertEqual(receipt["status"], "HOLD")
                 self.assertEqual(set(receipt), {"status", "checked", "violations", *AUDIT._DENIED})
+
+
+    def test_missing_future_or_expired_public_consent_is_denied_before_mint(self):
+        missing = None
+        future = Authorization(
+            owner="synthetic-only", reference="FUTURE-ONLY",
+            valid_from=datetime(2099, 1, 1, tzinfo=timezone.utc),
+        )
+        expired = Authorization(
+            owner="synthetic-only", reference="EXPIRED-ONLY",
+            valid_until=datetime(2000, 1, 1, tzinfo=timezone.utc),
+        )
+        for fake_consent, reason in (
+            (missing, ScopeReason.AUTHORIZATION_MISSING),
+            (future, ScopeReason.AUTHORIZATION_EXPIRED),
+            (expired, ScopeReason.AUTHORIZATION_EXPIRED),
+        ):
+            policies = (
+                (
+                    ScopePolicy(
+                        allow_private_lab=False,
+                        explicit_hosts=frozenset({"gated.example.test"}),
+                    ),
+                    Target("gated.example.test", authorization=fake_consent),
+                ),
+                (
+                    ScopePolicy(
+                        allow_private_lab=False,
+                        explicit_networks=("203.0.113.0/24",),
+                    ),
+                    Target("203.0.113.77", authorization=fake_consent),
+                ),
+            )
+            for policy, target in policies:
+                with self.subTest(
+                    target=target.value,
+                    expected_reason=reason.value,
+                    consent_reference=getattr(fake_consent, "reference", None),
+                ):
+                    decision = policy.decide(target)
+                    self.assertFalse(decision.allowed)
+                    self.assertIs(decision.reason, reason)
+                    gate = ActivationGate(
+                        policy, ActivationPolicy(mode=ActivationMode.LAB_ONLY)
+                    )
+                    with patch(
+                        "lightup.activation.token_urlsafe",
+                        side_effect=AssertionError("MINT-BEFORE-DENY"),
+                    ):
+                        with self.assertRaises(PermissionError):
+                            gate.issue(target, "synthetic_reference_only")
+
+    def test_public_expired_consent_mint_before_denial_increments_hold(self):
+        baseline = AUDIT.audit()
+        self.assertEqual(baseline["checked"], 56)
+        self.assertEqual(baseline["violations"], 10)
+        real_gate = ActivationGate
+
+        class EarlyExpiredMint:
+            def __init__(self, policy, activation):
+                self.real = real_gate(policy, activation)
+
+            def issue(self, target, capability):
+                if target.value == "203.0.113.77":
+                    activation_module.token_urlsafe(24)
+                    raise PermissionError("SENSITIVE-EXPIRED-PUBLIC")
+                return self.real.issue(target, capability)
+
+        with patch.object(AUDIT, "ActivationGate", EarlyExpiredMint):
+            receipt = AUDIT.audit()
+        # Same synthetic destination appears in all three non-current
+        # consent cases, and every early mint must be caught independently.
+        self.assertEqual(receipt["checked"], 56)
+        self.assertEqual(receipt["violations"], baseline["violations"] + 3)
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertIs(receipt["permit_issued"], False)
+        self.assertNotIn("SENSITIVE", json.dumps(receipt))
 
     def test_cli_single_fixed_receipt_no_literal_or_token_reflection(self):
         run = subprocess.run(
