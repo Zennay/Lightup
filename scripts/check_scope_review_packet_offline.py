@@ -130,8 +130,17 @@ def _decode(raw: bytes) -> object:
         raise PacketHold("INVALID_JSON") from None
 
 
-def read_packet(path: str) -> bytes:
+def _enforce_private_file(info: os.stat_result) -> None:
+    """Optional POSIX data-minimisation gate; not proof of trusted origin."""
+    if (not hasattr(os, "geteuid") or info.st_uid != os.geteuid()
+            or info.st_nlink != 1 or stat.S_IMODE(info.st_mode) & 0o077):
+        raise PacketHold("PRIVATE_FILE_REQUIRED")
+
+
+def read_packet(path: str, *, require_private_file: bool = False) -> bytes:
     """Read only a bounded, regular, non-symlink local file; no external I/O."""
+    if type(require_private_file) is not bool:
+        raise PacketHold("INVALID_FILE_POLICY")
     fd = None
     try:
         before = os.lstat(path)
@@ -139,11 +148,15 @@ def read_packet(path: str) -> bytes:
             raise PacketHold("INPUT_UNAVAILABLE")
         if not stat.S_ISREG(before.st_mode):
             raise PacketHold("NOT_REGULAR_FILE")
+        if require_private_file:
+            _enforce_private_file(before)
         flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
         fd = os.open(path, flags)
         info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode):
             raise PacketHold("NOT_REGULAR_FILE")
+        if require_private_file:
+            _enforce_private_file(info)
         if (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns) != (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns):
             raise PacketHold("CHANGED_INPUT")
         if info.st_size > MAX_BYTES:
@@ -154,6 +167,8 @@ def read_packet(path: str) -> bytes:
         if len(raw) != info.st_size:
             raise PacketHold("CHANGED_INPUT")
         after = os.fstat(fd)
+        if require_private_file:
+            _enforce_private_file(after)
         if (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns) != (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns):
             raise PacketHold("CHANGED_INPUT")
         return raw
@@ -181,9 +196,11 @@ def evaluate(raw: bytes) -> dict[str, object]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Offline, non-authorizing scope packet shape review")
     parser.add_argument("packet_file", help="Local regular JSON file only; never a URL or target")
+    parser.add_argument("--require-private-file", action="store_true",
+                        help="Fail closed unless local file is owned by current uid, has one link and no group/other permissions (POSIX); never authorizes scope")
     args = parser.parse_args(argv)
     try:
-        result = evaluate(read_packet(args.packet_file))
+        result = evaluate(read_packet(args.packet_file, require_private_file=args.require_private_file))
     except PacketHold as exc:
         result = {"state": "HOLD", "reason": exc.code, "non_authorizing": True, **AUTHORITY_FLAGS}
     print(json.dumps(result, sort_keys=True, separators=(",", ":")))
