@@ -15,7 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 from audit_scope_installed_lab_policy_1422_offline import (
     LAB, NOT_LAB, EXPLICIT_HOST_DENIALS, TOTAL_CHECKS, ScopeDecision, ScopeReason,
-    audit_installed_scope, main, _source_is_this_checkout,
+    ScopePolicy, Authorization, Target, audit_installed_scope, main,
+    _source_is_this_checkout,
 )
 
 
@@ -389,6 +390,44 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
         module = sys.modules["lightup.models"]
         with patch.object(module, "__file__", "/tmp/unrelated/site/lightup/models.py"):
             self.assertEqual(audit_installed_scope(_FixturePolicy)["status"], "HOLD")
+
+
+    def test_scope_export_rebinding_cannot_review_stale_imports(self):
+        module = sys.modules["lightup.scope"]
+        for symbol in ("ScopePolicy", "ScopeDecision", "ScopeReason"):
+            with self.subTest(export=symbol):
+                with patch.dict(module.__dict__, {symbol: object()}):
+                    self.assertEqual(audit_installed_scope(_FixturePolicy)["status"], "HOLD")
+                    self.assertFalse(_source_is_this_checkout())
+        self.assertTrue(_source_is_this_checkout())
+
+    def test_models_export_rebinding_cannot_review_stale_imports(self):
+        module = sys.modules["lightup.models"]
+        for symbol in ("Target", "Authorization"):
+            with self.subTest(export=symbol):
+                with patch.dict(module.__dict__, {symbol: object()}):
+                    self.assertEqual(audit_installed_scope(_FixturePolicy)["status"], "HOLD")
+                    self.assertFalse(_source_is_this_checkout())
+        self.assertTrue(_source_is_this_checkout())
+
+    def test_policy_decide_method_rebinding_holds_before_any_evaluation(self):
+        with patch.object(ScopePolicy, "decide", lambda self, target: None):
+            receipt = audit_installed_scope(_FixturePolicy)
+            self.assert_never_authority(receipt)
+            self.assertEqual(receipt["status"], "HOLD")
+        self.assertTrue(_source_is_this_checkout())
+
+    def test_policy_host_normalizer_rebinding_holds(self):
+        with patch.object(ScopePolicy, "normalize_host", lambda value: "localhost"):
+            self.assertEqual(audit_installed_scope(_FixturePolicy)["status"], "HOLD")
+        self.assertTrue(_source_is_this_checkout())
+
+    def test_authorization_current_method_rebinding_holds(self):
+        with patch.object(Authorization, "is_current", lambda self: True):
+            receipt = audit_installed_scope(_FixturePolicy)
+            self.assert_never_authority(receipt)
+            self.assertEqual(receipt["status"], "HOLD")
+        self.assertTrue(_source_is_this_checkout())
 
     def test_preimported_noncanonical_module_fails_closed(self):
         with patch.dict(sys.modules, {"lightup.scope": object()}):
