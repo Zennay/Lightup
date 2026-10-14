@@ -26,6 +26,7 @@ NOT_LAB = (
     "192.0.2.1", "198.51.100.1", "203.0.113.1",
     "198.18.0.1", "0.0.0.0", "255.255.255.255",
     "[2001:db8::1]", "169.254.1.1",
+    "[::ffff:192.0.2.1]", "[fe80::1]",
 )
 CAPABILITY = "synthetic_reference_only"
 SYNTHETIC_PERMIT_ID = "NO_REAL_PERMIT"
