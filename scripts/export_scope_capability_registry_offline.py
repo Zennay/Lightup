@@ -22,12 +22,15 @@ def snapshot_manifest(records: tuple[Capability, ...]) -> bytes:
     for record in records:
         if type(record) is not Capability or type(record.state) is not CapabilityState:
             raise ValueError("noncanonical registry entry")
-        if type(record.capability_id) is not str or type(record.requires_explicit_activation) is not bool:
+        if (type(record.capability_id) is not str or type(record.requires_explicit_activation) is not bool
+                or type(record.name) is not str or type(record.description) is not str):
             raise ValueError("noncanonical registry metadata")
         result.append({
             "capability_id": record.capability_id,
             "state": record.state.value,
             "requires_explicit_activation": record.requires_explicit_activation,
+            "name": record.name,
+            "description": record.description,
         })
     result.sort(key=lambda item: item["capability_id"])
     encoded = json.dumps({"capabilities": result}, separators=(",", ":"), ensure_ascii=True).encode("ascii")
