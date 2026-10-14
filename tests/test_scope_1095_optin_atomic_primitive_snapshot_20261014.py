@@ -198,6 +198,33 @@ class ExactPrimitiveSnapshotTests(unittest.TestCase):
             ((tool, {"value": "ok"}),) * MAX_SYNTHETIC_BATCH_ITEMS
         ).count, MAX_SYNTHETIC_BATCH_ITEMS)
 
+    def test_cannot_preflight_active_or_passive_tools_even_with_valid_values(self):
+        canonical = definition("text", ParamKind.STRING)
+        for interaction, risk in (
+            (InteractionKind.TARGET_ACTIVE, RiskLevel.STANDARD),
+            (InteractionKind.LAB_ACTIVE, RiskLevel.DESTRUCTIVE_LAB_ONLY),
+            (InteractionKind.PASSIVE_PUBLIC, RiskLevel.PASSIVE),
+            (InteractionKind.ANALYSIS, RiskLevel.PASSIVE),
+        ):
+            with self.subTest(interaction=interaction.value, risk=int(risk)):
+                changed = dataclasses.replace(
+                    canonical, interaction=interaction, min_risk=risk
+                )
+                with self.assertRaises(OrchestrationError):
+                    snapshot_exact_primitive_values(changed, {"value": "safe"})
+                with self.assertRaises(OrchestrationError):
+                    snapshot_exact_primitive_batch(((canonical, {"value": "ok"}),
+                                                    (changed, {"value": "safe"})))
+
+    def test_real_tool_names_cannot_masquerade_as_synthetic_preflight(self):
+        canonical = definition("text", ParamKind.STRING)
+        for tool_id in ("public-records", "service-probe", "synthetic-",
+                        "", "Synthetic-probe"):
+            with self.subTest(tool_id=tool_id):
+                fake_name = dataclasses.replace(canonical, tool_id=tool_id)
+                with self.assertRaises(OrchestrationError):
+                    snapshot_exact_primitive_values(fake_name, {"value": "ok"})
+
     def test_only_exact_tool_definition_accepted(self):
         class DefinitionChild(ToolDefinition):
             pass
