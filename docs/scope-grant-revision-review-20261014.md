@@ -198,3 +198,34 @@ authority flags false.
 Proper network isolation is separately owned by its independent scope
 lane; this change deliberately does **not** take over that work or confer
 a certificate of non-overlap. It introduces no DNS calls or active target I/O.
+
+## W7: atomic multi-tenant full-history dossier
+
+`lightup.grant_revision_history_batch_review.review_grant_history_batch`
+composes **1–16 declared histories**, each with **2–8 grant snapshots**.
+Every transition within each history is checked for monotonic narrowing
+before applying the already-isolated multi-tenant grant batch reviewer
+to each declared oldest/newest pair. A late invalid history, duplicate
+grant ID, same-active-asset cross-tenant conflict, or ambiguous IP/CIDR
+collapses the **entire** packet to HOLD with zero accepted histories and
+zero transitions. The result is non-authorizing, cannot validate omitted
+history or trustworthy consent, and deliberately does not perform IP/CIDR
+network disjointness (that capability belongs to its separate owner).
+
+The same local nonzero-exit CLI supports one more mutually exclusive
+top-level schema: `{"histories":[[grant_snapshot_1,grant_snapshot_2],...]}`.
+A packet must have exactly one of `revisions`, `history`, or
+`histories`. Unrecognized keys, oversized input and authority spoofing
+remain HOLD. The genuine synthetic two-tenant fixture runs with:
+
+```bash
+PYTHONPATH=src python scripts/review_grant_revision_offline.py lab/fixtures/grant_revision_histories_batch_synthetic.json
+```
+
+It returns a `REVIEW_ONLY` *shape receipt only* with 2 reviewed histories,
+2 reviewed transitions, 2 narrowing dimensions, all authority flags
+`false`, and shell exit `3` (never zero). Tests cover cross-tenant
+collisions, later unsafe versions, duplicate grant IDs, network aliases,
+maximal bounded packet size, synthetic user privacy and no target I/O.
+The historical versions are UNTRUSTED self-declared text and **cannot**
+be used to launch assessments, renew grants or skip revocation checks.
