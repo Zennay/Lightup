@@ -93,7 +93,7 @@ class OfflineRiskHistogramTests(unittest.TestCase):
         rows = [request(1), request(2)]
         rows[1]["request_id"] = "req_001"
         r = review(rows, include_summary=True)
-        self.assertEqual("BATCH_ORDER", r["reason"])
+        self.assertEqual("DUPLICATE_REQUEST", r["reason"])
         self.assertZeroOnHold(r)
 
     def test_nonfinite_json_zero_summary(self):
