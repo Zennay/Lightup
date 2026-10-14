@@ -138,6 +138,69 @@ class GrantRevisionHistoryCliTests(unittest.TestCase):
         self.assertEqual(receipt["verdict"], "REVIEW_ONLY")
         self.assert_non_authorizing(receipt)
 
+    def test_shipped_atomic_two_tenant_histories_dossier_is_read_only(self):
+        file = (
+            _ROOT / "lab" / "fixtures"
+            / "grant_revision_histories_batch_synthetic.json"
+        )
+        receipt = _MODULE.review_local_file(str(file))
+        self.assertEqual(receipt["verdict"], "REVIEW_ONLY")
+        self.assertEqual(receipt["reviewed_count"], 2)
+        self.assertEqual(receipt["reviewed_transitions"], 2)
+        self.assertEqual(receipt["narrowed_count"], 2)
+        self.assert_non_authorizing(receipt)
+        result = io.StringIO()
+        with redirect_stdout(result):
+            code = _MODULE.main([str(file)])
+        self.assertEqual(code, 3)
+        self.assert_non_authorizing(json.loads(result.getvalue()))
+
+    def test_multi_history_late_conflict_denies_whole_packet(self):
+        packet = json.loads(
+            (_ROOT / "lab" / "fixtures" /
+             "grant_revision_histories_batch_synthetic.json").read_text(encoding="utf-8")
+        )
+        for version in packet["histories"][1]:
+            version["scope"]["assets"] = ["one.example.test"]
+        result = self.evaluate(packet)
+        self.assertEqual(result["verdict"], "HOLD")
+        self.assertEqual(result["reason_code"], "cross_history_coherence_held")
+        self.assertEqual(result["reviewed_count"], 0)
+        self.assertEqual(result["reviewed_transitions"], 0)
+        self.assert_non_authorizing(result)
+
+    def test_multi_history_cross_tenant_cidr_defers_to_network_lane(self):
+        packet = json.loads(
+            (_ROOT / "lab" / "fixtures" /
+             "grant_revision_histories_batch_synthetic.json").read_text(encoding="utf-8")
+        )
+        for version in packet["histories"][0]:
+            version["scope"]["assets"] = ["192.168.0.0/24"]
+        for version in packet["histories"][1]:
+            version["scope"]["assets"] = ["192.168.0.42"]
+        receipt = self.evaluate(packet)
+        self.assertEqual(receipt["verdict"], "HOLD")
+        self.assertEqual(receipt["reason_code"], "cross_history_coherence_held")
+        self.assert_non_authorizing(receipt)
+
+    def test_malformed_multihistory_denies_without_partial_counts(self):
+        packet = json.loads(
+            (_ROOT / "lab" / "fixtures" /
+             "grant_revision_histories_batch_synthetic.json").read_text(encoding="utf-8")
+        )
+        for malformed in (
+            {"histories": []},
+            {"histories": [packet["histories"][0]] * 17},
+            {"histories": [packet["histories"][0], []]},
+            {"histories": [packet["histories"][0], packet["histories"][1]],
+             "permit_issued": True},
+        ):
+            with self.subTest(rows=repr(list(malformed))):
+                result = self.evaluate(malformed)
+                self.assertEqual(result["verdict"], "HOLD")
+                self.assertEqual(result["reviewed_count"], 0)
+                self.assert_non_authorizing(result)
+
     def test_fifo_and_symlink_refused_in_history_mode(self):
         self.snapshot.write_text(json.dumps(self.packet), encoding="utf-8")
         symlink = Path(self.directory.name) / "linked-history.json"
