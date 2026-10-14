@@ -158,6 +158,8 @@ def _emit_hold_receipt(payload: bytes) -> None:
     A blocked pipe, inherited socket, on-disk file, missing fd or output
     failure is never a reason to wait indefinitely or return success.
     """
+    restore_blocking = False
+    fd = -1
     try:
         if type(payload) is not bytes or not 0 < len(payload) <= MAX_RECEIPT_BYTES:
             return
@@ -169,7 +171,11 @@ def _emit_hold_receipt(payload: bytes) -> None:
         # only actual TTYs, never arbitrary devices (e.g. /dev/null).
         if not (stat.S_ISFIFO(mode) or (stat.S_ISCHR(mode) and os.isatty(fd))):
             return
-        os.set_blocking(fd, False)
+        # Child fd1 and parent pipe writers can share an open-file
+        # description. Keep the caller's prior blocking state after exit.
+        restore_blocking = os.get_blocking(fd)
+        if restore_blocking:
+            os.set_blocking(fd, False)
         deadline = time.monotonic() + WRITE_DEADLINE_SECONDS
         sent = 0
         while sent < len(payload):
@@ -187,6 +193,15 @@ def _emit_hold_receipt(payload: bytes) -> None:
                 return
     except (OSError, ValueError, TypeError, OverflowError, AttributeError):
         return
+    finally:
+        # `set_blocking` changes O_NONBLOCK on the shared open-file
+        # description, not merely the child's descriptor. Restore even on
+        # timeout, EPIPE, or a short write. Never toggle originally-NONBLOCK.
+        if restore_blocking:
+            try:
+                os.set_blocking(fd, True)
+            except (OSError, ValueError, TypeError, AttributeError):
+                pass
 
 
 def main(argv: list[str] | None = None) -> int:
