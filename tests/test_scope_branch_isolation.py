@@ -182,7 +182,7 @@ class IsolationCheckTests(unittest.TestCase):
 
     def test_nested_directory_is_not_accepted_as_repository_root(self):
         path = "tests/test_scope_synthetic_review.py"
-        self.write(path, "safe\\n")
+        self.write(path, "safe\n")
         head = self.commit()
         nested = self.repo / "nested"
         nested.mkdir()
@@ -191,7 +191,7 @@ class IsolationCheckTests(unittest.TestCase):
 
     def test_inherited_git_redirects_are_ignored(self):
         path = "tests/test_scope_synthetic_review.py"
-        self.write(path, "safe\\n")
+        self.write(path, "safe\n")
         head = self.commit()
         with mock.patch.dict(os.environ, {
             "GIT_DIR": str(self.repo / "nonexistent-attacker-gitdir"),
@@ -206,14 +206,14 @@ class IsolationCheckTests(unittest.TestCase):
     def test_local_whitespace_policy_cannot_disable_trailing_check(self):
         self.git("config", "core.whitespace", "-trailing-space")
         path = "tests/test_scope_synthetic_review.py"
-        self.write(path, "bad trailing space \\n")
+        self.write(path, "bad trailing space \n")
         head = self.commit()
         self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
                          "PATCH_CHECK_FAILED")
 
     def test_denied_receipt_does_not_claim_peers_checked(self):
         path = "tests/test_scope_synthetic_review.py"
-        self.write(path, "safe\\n")
+        self.write(path, "safe\n")
         head = self.commit()
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
@@ -230,7 +230,7 @@ class IsolationCheckTests(unittest.TestCase):
 
     def test_git_timeout_fails_closed(self):
         path = "tests/test_scope_synthetic_review.py"
-        self.write(path, "safe\\n")
+        self.write(path, "safe\n")
         head = self.commit()
         with mock.patch("check_scope_branch_isolation.subprocess.run",
                         side_effect=subprocess.TimeoutExpired(["git"], 20)):
