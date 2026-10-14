@@ -63,6 +63,14 @@ Two additional **ordinary** in-process tests join the isolated synthetic-only `T
 
 These tests characterize a narrow, non-authorizing data-shape boundary and **do not fix** the 14 expected RED original source owner tests. Never treat receipt validity as authorization, tenant scope, consent or live revocation proof.
 
+## W11–W12: order-independent primitive admission and bounded batch proof
+
+The source-owner RED acceptance tests now exercise all **24 deterministic key insertion orders** of a four-parameter synthetic ANALYSIS_ONLY ToolDefinition. Each canonical ordering must produce exactly one real in-memory handler call and one disposable SQLite evidence record; ordinary type mismatches in any of the four fields must be denied with zero side effects for every ordering. Three additional individually marked expected RED regressions require the original `ParamKind.accepts` source to reject string, integer-enum and floating-point subclasses across all 24 orderings. These RED tests remain deliberately unresolved until the source owner corrects exact built-in type admission.
+
+The separate uninstalled opt-in helper has five new ordinary tests for the same 24 input orders, canonical schema-order snapshots, rejected noncanonical/builtin-mismatch values, rejection of each subtype, and batch-wide all-or-nothing admission of 24 canonical requests. It must reject the final malformed entry of the maximum **32** synthetic requests without returning any partial result. Two further real synthetic ToolExecutor / disposable SQLite tests assert zero handler/evidence effects from a 32nd-entry failure and that 24 accepted preflight snapshots each keep their canonical argument values when deliberately passed to the existing ANALYSIS_ONLY executor.
+
+All fixtures are local synthetic strings, never real targets. The opt-in helper issues **no authorization**, changes no installed source, and is not a substitute for revocation, tenant/customer scope, privacy review or release approval. The owner of production source remains [PR #156](https://github.com/Zennay/Lightup/pull/156); all expected RED tests require ordinary passing treatment after its repair.
+
 ## Limits and required release gates
 
 All sample names are synthetic and are not queried over DNS. No network, scan, target interaction, customer data, grant, persisted authorization mutation, attack path, CI workflow edit or deployment. Even real SQLite and handler controls provide **typed-value input diagnostics only**; they do not establish customer consent, revocation coherence, live tenant scope, or real-target dispatch safety.
