@@ -129,7 +129,7 @@ class IngressIdentitySnapshotPreflightTests(unittest.TestCase):
             with self.subTest(rogue=rogue):
                 self.assert_hold(NGINX.replace(
                     b"server_name fixture.invalid;",
-                    b"server_name fixture.invalid;\\n    " + rogue,
+                    b"server_name fixture.invalid;\n    " + rogue,
                 ))
         for rogue in (
             b"raw_env = ['AUTH_TYPE=operator']",
@@ -138,13 +138,13 @@ class IngressIdentitySnapshotPreflightTests(unittest.TestCase):
             b"proxy_protocol = True",
         ):
             with self.subTest(rogue=rogue):
-                self.assert_hold(NGINX, GUNICORN + rogue + b"\\n")
+                self.assert_hold(NGINX, GUNICORN + rogue + b"\n")
 
     def test_checked_in_nginx_example_is_not_treated_as_effective_proof(self):
         # It does not explicitly disable implicit request header passthrough.
         template = (ROOT / "deploy" / "nginx.conf.example").read_bytes()
         self.assertNotIn(b"proxy_pass_request_headers off;", template)
-        self.assert_hold(b"# configuration file /etc/nginx/nginx.conf:\\n" + template)
+        self.assert_hold(b"# configuration file /etc/nginx/nginx.conf:\n" + template)
 
     def test_spoofed_provenance_comments_cannot_approve_unsafe_header_shape(self):
         bad = NGINX.replace(
