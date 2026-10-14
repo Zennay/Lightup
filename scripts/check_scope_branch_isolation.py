@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -18,12 +19,21 @@ MAX_FILES = 16
 
 
 def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
+    """Read repository metadata without inherited Git redirection/config injection."""
+    clean_env = {key: value for key, value in os.environ.items()
+                 if not key.startswith("GIT_")}
+    clean_env.update({
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_GLOBAL": os.devnull,
+        "GIT_OPTIONAL_LOCKS": "0",
+    })
+    command = ("git", "-c", "core.whitespace=blank-at-eol,blank-at-eof,space-before-tab", *args)
     try:
-        return subprocess.run(("git", *args), cwd=repo, capture_output=True,
+        return subprocess.run(command, cwd=repo, env=clean_env, capture_output=True,
                               check=False, timeout=20)
     except (OSError, subprocess.TimeoutExpired):
         # Missing Git, blocked invocations or timeouts yield an opaque HOLD.
-        return subprocess.CompletedProcess(("git", *args), 126, b"", b"")
+        return subprocess.CompletedProcess(command, 126, b"", b"")
 
 
 def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
@@ -39,6 +49,18 @@ def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
         return "INVALID_PEER_REFS", 0
     if not repo.is_dir():
         return "INVALID_REPOSITORY", 0
+    # Git's inherited environment or a nested working directory must not select
+    # an unrelated checkout while presenting otherwise valid commit identifiers.
+    root = _git(repo, "rev-parse", "--show-toplevel")
+    if root.returncode or not root.stdout.strip():
+        return "INVALID_REPOSITORY_ROOT", 0
+    try:
+        canonical_repo = repo.resolve(strict=True)
+        canonical_root = Path(os.fsdecode(root.stdout.strip())).resolve(strict=True)
+    except (OSError, ValueError):
+        return "INVALID_REPOSITORY_ROOT", 0
+    if canonical_repo != canonical_root:
+        return "INVALID_REPOSITORY_ROOT", 0
     for sha in (base, head):
         if _git(repo, "cat-file", "-e", f"{sha}^{{commit}}").returncode:
             return "MISSING_COMMIT", 0
@@ -116,7 +138,8 @@ def main(argv: list[str] | None = None) -> int:
         "status": "REVIEW_ONLY" if reason == "ADDITIVE_PATHS_MATCH" else "HOLD",
         "reason": reason,
         "changed_files": count,
-        "peer_heads_checked": len(args.peer),
+        "peer_heads_submitted": len(args.peer),
+        "peer_heads_checked": len(args.peer) if reason == "ADDITIVE_PATHS_MATCH" else 0,
         "authorization_verified": False,
         "permit_issued": False,
         "execution_enabled": False,
