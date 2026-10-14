@@ -38,6 +38,19 @@ class NumericEnum(IntEnum):
     ONE = 1
 
 
+class CallbackString(str):
+    """Synthetic attacker-controlled subtype, local observation only."""
+
+    def __new__(cls, text, hits):
+        value = super().__new__(cls, text)
+        value.hits = hits
+        return value
+
+    def __str__(self):
+        self.hits.append("callback-in-handler")
+        return super().__str__()
+
+
 class PretendInteger:
     def __int__(self):
         raise AssertionError("type admission must never coerce values")
@@ -143,6 +156,15 @@ class ActualExecutorAdmissionTests(unittest.TestCase):
             ),
             self._handler,
         )
+        self.registry.register(
+            ToolDefinition(
+                "synthetic-string-format", "external-attack-surface",
+                InteractionKind.ANALYSIS, RiskLevel.ANALYSIS_ONLY,
+                "Locally render a synthetic string to expose subtype callback",
+                (ToolParameter("value", ParamKind.STRING),),
+            ),
+            self._rendering_handler,
+        )
         self.executor = ToolExecutor(self.registry, self.state)
         self.context = RunContext(
             run_id=str(uuid4()), client_id="offline-tenant",
@@ -156,6 +178,13 @@ class ActualExecutorAdmissionTests(unittest.TestCase):
     def _handler(self, context, arguments):
         self.handler_calls.append(dict(arguments))
         return ToolOutput("offline shape control", "synthetic", b"no target data")
+
+    def _rendering_handler(self, context, arguments):
+        # This is a deliberately side-effect-observable offline synthetic
+        # handler, not a network or target-facing real tool.
+        str(arguments["value"])
+        self.handler_calls.append(dict(arguments))
+        return ToolOutput("offline formatting control", "synthetic", b"no target")
 
     def _evidence_count(self):
         with self.state.connect() as con:
@@ -282,6 +311,38 @@ class ActualExecutorAdmissionTests(unittest.TestCase):
             "label": "synthetic", "count": 2,
             "measure": SubclassFloat(1.25), "enabled": False,
         })
+
+    def test_exact_builtin_string_renders_in_synthetic_handler(self):
+        before = self._evidence_count()
+        self.executor.execute(
+            self.context,
+            ToolCall("synthetic-string-format", "synthetic.invalid",
+                     arguments=(("value", "safe"),)),
+        )
+        self.assertEqual(self.handler_calls[-1], {"value": "safe"})
+        self.assertEqual(self._evidence_count(), before + 1)
+
+    @unittest.expectedFailure
+    def test_red_subclass_string_callback_must_never_reach_rendering_handler(self):
+        hits = []
+        forged_text = CallbackString("synthetic", hits)
+        before_calls = len(self.handler_calls)
+        before_rows = self._evidence_count()
+        denied = False
+        try:
+            self.executor.execute(
+                self.context,
+                ToolCall("synthetic-string-format", "synthetic.invalid",
+                         arguments=(("value", forged_text),)),
+            )
+        except OrchestrationError:
+            denied = True
+        self.assertEqual(hits, [], "caller subtype __str__ executed in synthetic handler")
+        self.assertEqual(len(self.handler_calls), before_calls,
+                         "invalid string must never invoke handler")
+        self.assertEqual(self._evidence_count(), before_rows,
+                         "invalid subtype must not write evidence")
+        self.assertTrue(denied, "invalid string subclass must be refused")
 
     @unittest.expectedFailure
     def test_red_real_executor_string_subclass_must_have_zero_effects(self):
