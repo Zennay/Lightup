@@ -63,6 +63,22 @@ class OfflineGrantReviewCliTests(unittest.TestCase):
                      "merge_approved", "release_approved"):
             self.assertIs(receipt[name], False)
 
+    def test_shipped_synthetic_fixture_is_read_only_and_not_a_permit(self):
+        fixture = (
+            Path(__file__).resolve().parents[1]
+            / "lab" / "fixtures" / "grant_revision_narrowing_synthetic.json"
+        )
+        receipt = _MODULE.review_local_file(str(fixture))
+        self.assertEqual(receipt["verdict"], "REVIEW_ONLY")
+        self.assertEqual(receipt["reviewed_count"], 1)
+        self.assertEqual(receipt["narrowed_count"], 4)
+        self.assert_non_authorizing(receipt)
+        output = io.StringIO()
+        with redirect_stdout(output):
+            code = _MODULE.main([str(fixture)])
+        self.assertEqual(code, 3)
+        self.assertFalse(json.loads(output.getvalue())["execution_enabled"])
+
     def test_positive_syntactic_review_exits_nonzero(self):
         self._write(_packet())
         output = io.StringIO()
