@@ -518,6 +518,7 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
                     self.assertEqual(reviewer._bounded_stdin(), b"")
                 self.assertEqual(change_mode.calls, 2)
 
+    @unittest.skipUnless(os.name == "posix", "POSIX inherited local pipe")
     def test_invalid_cli_arguments_do_not_echo_secrets_or_read_unclosed_stdin(self):
         cases = (
             [],
@@ -528,24 +529,30 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
         )
         for args in cases:
             with self.subTest(args=args):
-                child = subprocess.Popen(
-                    [sys.executable, "-B", str(SCRIPT), *args],
-                    stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
+                reader, writer = os.pipe()
+                process = None
                 try:
-                    child.stdin.write(b"SUPER-SECRET-FROM-PIPE")
-                    child.stdin.flush()
-                    self.assertEqual(child.wait(timeout=5), 2)
-                    self.assertEqual(child.stdout.read(), b"")
-                    self.assertEqual(child.stderr.read(), b"")
+                    # Prefill before spawning, but never close the writer.
+                    # Any unauthorized stdin read either consumes a secret or
+                    # blocks on EOF; correct CLI rejection does neither.
+                    os.write(writer, b"SUPER-SECRET-FROM-PIPE")
+                    process = subprocess.Popen(
+                        [sys.executable, "-B", str(SCRIPT), *args],
+                        stdin=reader, stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                    )
+                    self.assertEqual(process.wait(timeout=5), 2)
+                    self.assertEqual(process.stdout.read(), b"")
+                    self.assertEqual(process.stderr.read(), b"")
                 finally:
-                    child.stdin.close()
-                    if child.poll() is None:
-                        child.kill()
-                        child.wait(timeout=5)
-                    child.stdout.close()
-                    child.stderr.close()
+                    if process is not None:
+                        if process.poll() is None:
+                            process.kill()
+                            process.wait(timeout=5)
+                        process.stdout.close()
+                        process.stderr.close()
+                    os.close(reader)
+                    os.close(writer)
 
     def test_direct_cli_argv_shape_noncanonical_types_refused(self):
         for bad in ("--stdin-json", (), True, ["--stdin-json", "--stdin-json"],
