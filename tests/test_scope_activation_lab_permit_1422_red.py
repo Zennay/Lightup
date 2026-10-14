@@ -704,6 +704,85 @@ class ActualActivationPermitChainRED(unittest.TestCase):
                     set(receipt), {"status", "checked", "violations", *AUDIT._DENIED}
                 )
 
+
+    def test_public_policy_and_gate_constructor_token_mints_never_hide(self):
+        baseline = AUDIT.audit()
+        self.assertEqual(baseline["checked"], 56)
+        self.assertEqual(baseline["violations"], 10)
+        original_policy = ScopePolicy
+        original_gate = ActivationGate
+        host_only = frozenset({"consented.example.test"})
+
+        class PublicPolicyConstructorMint:
+            def __init__(self, *args, **kwargs):
+                self.real = original_policy(*args, **kwargs)
+                if kwargs.get("explicit_hosts") == host_only:
+                    activation_module.token_urlsafe(24)
+
+            def decide(self, target):
+                return self.real.decide(target)
+
+        class PublicGateConstructorMint:
+            def __init__(self, policy, activation):
+                self.real = original_gate(policy, activation)
+                if (
+                    activation.mode is ActivationMode.LAB_ONLY
+                    and policy.explicit_hosts == host_only
+                ):
+                    activation_module.token_urlsafe(24)
+
+            def issue(self, target, capability):
+                return self.real.issue(target, capability)
+
+        for label, replacement in (
+            ("policy", ("ScopePolicy", PublicPolicyConstructorMint)),
+            ("gate", ("ActivationGate", PublicGateConstructorMint)),
+        ):
+            with self.subTest(mutation=label):
+                attribute, fake = replacement
+                with patch.object(AUDIT, attribute, fake):
+                    receipt = AUDIT.audit()
+                self.assertEqual(receipt["checked"], 56)
+                self.assertEqual(receipt["violations"], baseline["violations"] + 1)
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertIs(receipt["authorization_verified"], False)
+                self.assertIs(receipt["permit_issued"], False)
+
+    def test_public_policy_decide_mint_and_expired_fixtures_are_detected(self):
+        baseline = AUDIT.audit()
+        self.assertEqual(baseline["checked"], 56)
+        self.assertEqual(baseline["violations"], 10)
+        real_policy = ScopePolicy
+        original_decide = real_policy.decide
+
+        def public_decision_mint(policy, target):
+            if target.value == "consented.example.test":
+                activation_module.token_urlsafe(24)
+            return original_decide(policy, target)
+
+        with patch.object(real_policy, "decide", public_decision_mint):
+            decision_receipt = AUDIT.audit()
+        self.assertEqual(decision_receipt["checked"], 56)
+        self.assertEqual(decision_receipt["violations"], 11)
+
+        class ExpiredPolicyConstructorMint:
+            def __init__(self, *args, **kwargs):
+                self.real = real_policy(*args, **kwargs)
+                if kwargs.get("explicit_networks") == ("203.0.113.0/24",):
+                    activation_module.token_urlsafe(24)
+
+            def decide(self, target):
+                return self.real.decide(target)
+
+        with patch.object(AUDIT, "ScopePolicy", ExpiredPolicyConstructorMint):
+            expired_receipt = AUDIT.audit()
+        self.assertEqual(expired_receipt["checked"], 56)
+        self.assertEqual(expired_receipt["violations"], 13)
+        self.assertEqual(expired_receipt["status"], "HOLD")
+        self.assertEqual(
+            set(expired_receipt), {"status", "checked", "violations", *AUDIT._DENIED}
+        )
+
     def test_cli_single_fixed_receipt_no_literal_or_token_reflection(self):
         run = subprocess.run(
             [sys.executable, str(SCRIPT)],
