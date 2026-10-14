@@ -260,7 +260,13 @@ canonieke `$http_cookie`. Beide simuleren precies een grensoverschrijding
 die een client/operator Cookie of een onbevoegde identiteitsheader
 ten onrechte zou kunnen doen gelden. **Beide werkelijke HTTP-proeven
 eindigden HOLD, diagnostic_code RuntimeError; vijf machtigingsvlaggen
-blijven false.** Geen echte tokens, SQL of grant-mutaties, en geen netwerk
+blijven false. Daarnaast werd een **derde werkelijke negatieve localhost-
+proef** uitgevoerd: de tijdelijke Python-HTTP-upstream antwoordde met een
+onjuiste `X-Fixture-Probe-Id`-nonce. Ook dit werd op de echte Nginx-
+proxyroute expliciet **HOLD**; er kwam geen onverwachte acceptatie of
+toestemming. Een extra nieuwe mock-orkestratietest eist nu bovendien dat
+na deze nonce-mismatch beide tijdelijke Nginx/Gunicorn-processen nog een
+opruimpoging krijgen.** Geen echte tokens, SQL of grant-mutaties, en geen netwerk
 buiten de lokale host.
 
 Dat geeft een betekenisvolle positieve (20/20 REVIEW_ONLY) plus twee
