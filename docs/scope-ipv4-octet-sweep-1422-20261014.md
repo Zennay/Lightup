@@ -62,3 +62,15 @@ No workflow, original production classifier, other scope-worker paths or registe
 Two additional ordinary regressions call the real no-argument `main([])` entrypoint with a poison `stdin` (both `buffer` and `read` raise) and require the currently defective installed policy's no-echo, one-line, literal-false `HOLD` receipt. A separate deliberately hostile empty `list` subclass has `__len__`/`__iter__` traps: `main()` must reject it as `HOLD` without executing either magic method. This proves that argument-shape checking does not delegate to untrusted container behavior and that the CLI does not harvest an operator's stdin.
 
 Neither regression issues target authorization or alters the source-owner patch. The updated exact-head hosted and independent permanent VPS jobs supersede earlier successes; the unchanged W44–W50 branch is held as a draft until source-owner security/privacy acceptance.
+
+## W51 — IPv4-in-IPv6 admission laundering denied
+A distinct finite family now covers **768 new canonical bracketed IPv6 literals**, sweeping all 256 embedded IPv4 first-octet values under **three transport representations**:
+1. IPv4-mapped IPv6 `::ffff:a.b.c.d`
+2. 6to4 `2002:xxxx:xxxx::1`
+3. NAT64 well-known prefix `64:ff9b::a.b.c.d`.
+
+Even when an embedded IPv4 payload is RFC1918 `10/8` or loopback `127/8`, the enclosing IPv6 address itself is **not** an approved ULA `fc00::/7` or IPv6 loopback `::1`. The exact authority therefore remains `OUT_OF_SCOPE` under **both** lab toggle settings. Any alternative interpretation would need a separately reviewed explicit grant and original execution/authorization owner; this test is not that grant.
+
+A separate synthetic oracle and complete-call witness now exercise **6,144 unique IPv4 + 1,536 unique IPv6 samples = 7,680 unique fixed literals x 2 settings = 15,360 actual `decide()` calls** on the passing reference. Explicit tests verify IPv4-mapped decoding, 6to4 embedded source, NAT64 embedded low bits, canonical IPv6 bracket host normalization and deny-on-all-dialects. Synthetic injected false-admissions for RFC1918/loopback payloads must yield atomic zero-progress `HOLD`. The actual installed classifier is still intentionally RED and returns early HOLD, not a falsely reported 15,360 green original-source tests.
+
+These checks remain **offline and source-only**, do not edit the installed policy, do not give authorization and do not scan or dispatch network targets. Exact current-head hosted Python3.11/3.14 and permanent registered VPS jobs must be verified independently before any CI claim; releases remain blocked by issue #1422.
