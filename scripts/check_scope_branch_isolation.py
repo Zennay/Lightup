@@ -21,6 +21,7 @@ OWNED = re.compile(
 MAX_FILES = 16
 MAX_TEXT_BYTES = 256 * 1024
 MAX_DIFF_OUTPUT_BYTES = 512 * 1024
+MAX_HISTORY_COMMITS = 64
 
 
 def _git_env() -> dict[str, str]:
@@ -102,6 +103,63 @@ def _git_bounded_names(repo: Path, *args: str,
                 except OSError:
                     pass
 
+
+
+def _check_additive_history(repo: Path, base: str, head: str,
+                            owned: set[str]) -> str:
+    """Reject hidden out-of-lane edits that are reverted before the final diff.
+
+    A successful history is linear, bounded and only adds/edits paths first
+    introduced by this worker since the immutable base commit.
+    """
+    history = _git_bounded_names(
+        repo, "rev-list", "--reverse", "--parents", f"{base}..{head}",
+        limit=8192,
+    )
+    if history.returncode or not history.stdout.endswith(b"\n"):
+        return "HISTORY_UNAVAILABLE"
+    lines = history.stdout.splitlines()
+    if not 1 <= len(lines) <= MAX_HISTORY_COMMITS:
+        return "UNBOUNDED_HISTORY"
+    parent = base.encode("ascii")
+    introduced: set[str] = set()
+    for line in lines:
+        parts = line.split()
+        if (len(parts) != 2 or not re.fullmatch(rb"[0-9a-f]{40}", parts[0])
+                or parts[1] != parent):
+            return "NONLINEAR_BRANCH_HISTORY"
+        commit = parts[0].decode("ascii")
+        previous = parent.decode("ascii")
+        diff = _git_bounded_names(
+            repo, "diff", "--name-status", "--no-renames", "--no-ext-diff",
+            "--no-textconv", "-z", previous, commit, "--",
+        )
+        if diff.returncode or not diff.stdout.endswith(b"\x00"):
+            return "HISTORY_DIFF_UNAVAILABLE"
+        fields = diff.stdout[:-1].split(b"\x00")
+        if not fields or len(fields) % 2 or len(fields) // 2 > MAX_FILES:
+            return "INVALID_HISTORY_CHANGESET"
+        for i in range(0, len(fields), 2):
+            status, raw_path = fields[i:i + 2]
+            try:
+                path = raw_path.decode("ascii", "strict")
+            except UnicodeError:
+                return "TRANSIENT_UNOWNED_PATH"
+            if path not in owned:
+                return "TRANSIENT_UNOWNED_PATH"
+            if status == b"A" and path not in introduced:
+                introduced.add(path)
+            elif status != b"M" or path not in introduced:
+                return "INVALID_HISTORY_CHANGE"
+            entry = _git(repo, "ls-tree", "-z", commit, "--", path)
+            if (entry.returncode or not entry.stdout.startswith(b"100644 blob ")
+                    or entry.stdout.count(b"\x00") != 1
+                    or not entry.stdout.endswith(b"\t" + raw_path + b"\x00")):
+                return "UNSAFE_HISTORY_TREE_MODE"
+        parent = parts[0]
+    if parent != head.encode("ascii") or introduced != owned:
+        return "HISTORY_MANIFEST_MISMATCH"
+    return "HISTORY_PATHS_MATCH"
 
 def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
             peers: tuple[str, ...] = (), require_current_head: bool = False
@@ -199,6 +257,9 @@ def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
         return "OWNERSHIP_MANIFEST_MISMATCH", len(fields) // 2
     if _git(repo, "diff", "--check", "--no-ext-diff", "--no-textconv", base, head, "--").returncode:
         return "PATCH_CHECK_FAILED", len(fields) // 2
+    history_reason = _check_additive_history(repo, base, head, changed)
+    if history_reason != "HISTORY_PATHS_MATCH":
+        return history_reason, len(fields) // 2
     for peer in peers:
         if _git(repo, "cat-file", "-e", f"{peer}^{{commit}}").returncode:
             return "MISSING_PEER_COMMIT", len(fields) // 2
