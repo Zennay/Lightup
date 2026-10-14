@@ -203,7 +203,10 @@ def audit_installed_scope(policy_factory=ScopePolicy) -> dict[str, object]:
             if expected_reason is ScopeReason.LOOPBACK:
                 if not (locked.allowed is True and locked.reason is ScopeReason.LOOPBACK):
                     return _receipt("HOLD")
-            elif locked.allowed is not False:
+            elif not (
+                locked.allowed is False
+                and locked.reason is ScopeReason.OUT_OF_SCOPE
+            ):
                 return _receipt("HOLD")
 
         for literal in NOT_LAB:
@@ -235,8 +238,9 @@ def audit_installed_scope(policy_factory=ScopePolicy) -> dict[str, object]:
                 or future_grant.allowed is not False
                 or future_grant.reason is not ScopeReason.AUTHORIZATION_EXPIRED
                 or admitted.allowed is not False
-                or admitted.reason in (ScopeReason.LOOPBACK, ScopeReason.PRIVATE_LAB)
+                or admitted.reason is not ScopeReason.OUT_OF_SCOPE
                 or locked.allowed is not False
+                or locked.reason is not ScopeReason.OUT_OF_SCOPE
             ):
                 return _receipt("HOLD")
     except Exception:
