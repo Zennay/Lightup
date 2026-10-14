@@ -70,6 +70,12 @@ When the installed policy returns a rejected `ScopeDecision` for a fixed forbidd
 
 Three new injected mutants independently corrupt (1) an ordinary denial's normalized address, (2) a missing-grant IPv4 decision's address, and (3) an expired-grant IPv6 decision's address. The strict synthetic fixture now returns the exact hostname, not a placeholder. All **201 fixed policy decisions** remain denial-only, with **33 dedicated unittest methods** after W43. No additional target addresses, network probes, customer grants, deployment or production source edits have been introduced.
 
+## W44 — instrumented receipt count cannot hide skipped cases
+
+The JSON `total_count=201` is only a declared size, **not evidence** that a failing real source executed every case: the offline auditor intentionally returns HOLD immediately on any violation. To catch accidental removal or duplication of a case in the **passing** path, a new test uses a strict synthetic policy that records every `decide(Target(...))` call. Its deterministic reference enumerates each of 11 lab literals under two modes, 34 forbidden IP literals under five modes, and three explicit-host forms under three missing/expired/future authorization windows. The test requires exactly **201 actual calls with matching case identity and multiplicity**, not merely an OK receipt or an integer declaration. It separately verifies the five non-authorizing output flags remain false. This is a synthetic path-coverage witness and is **not a runtime safety attestation**.
+
+With this improvement, the reviewer has **34 dedicated unittest methods** and **201 fixed decision cases**. The real source is still expected to short-circuit to HOLD on issue #1422 until its authorized source owner repairs it.
+
 ## Safety and ownership
 
 This deliberately evaluates **real unmodified** `ScopePolicy.decide(Target(...))` from this checkout, unlike [#1424/#1425](https://github.com/Zennay/Lightup/pull/1425), which supplies a standalone reference reviewer. It does not write to or import the tool executor, production admission wiring, tenancy logic or the neighboring target parser. All three new files are owned by W38; source-owner #100, RED owner #1423, standalone reviewer #1425, CIDR #1318, CI and runners remain untouched.
