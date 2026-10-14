@@ -159,6 +159,7 @@ class OctetSweepTests(unittest.TestCase):
         "RESULT_TYPE_MISMATCH", "HOST_IDENTITY_MISMATCH",
         "SCOPE_CLASSIFICATION_MISMATCH", "EVALUATION_EXCEPTION",
         "SAMPLE_COUNT_MISMATCH", "ARGUMENT_REJECTED",
+        "RECEIPT_INTEGRITY_FAILURE",
         "MATCHED_NON_AUTHORIZING",
     })
     def assert_non_authorizing(self, receipt, status):
@@ -341,6 +342,97 @@ class OctetSweepTests(unittest.TestCase):
         self.assertEqual(result["diagnostic_code"], "HOST_IDENTITY_MISMATCH")
         self.assertNotIn("private-internal-target", json.dumps(result))
         self.assertEqual(result["checked_count"], 0)
+
+    def test_cli_refuses_forged_authorization_and_leaky_receipts(self):
+        base = review_ipv4_octet_sweep(IndependentStrictPolicy)
+        self.assert_non_authorizing(base, "REVIEW_ONLY")
+
+        class DictSubclass(dict):
+            pass
+
+        class StringSubclass(str):
+            pass
+
+        variants = (
+            dict(base, authorization_verified=True),
+            dict(base, permit_issued=True),
+            dict(base, execution_enabled=True),
+            dict(base, merge_approved=True),
+            dict(base, release_approved=True),
+            dict(base, status="APPROVED"),
+            dict(base, diagnostic_code="private-customer-secret.example"),
+            dict(base, checked_count=1),
+            dict(base, total_count=TOTAL_DECISIONS + 1),
+            dict(base, checked_count=True),
+            dict(base, diagnostic_code=StringSubclass("MATCHED_NON_AUTHORIZING")),
+            dict(base, status=StringSubclass("REVIEW_ONLY")),
+            dict(base, checked_count=StringSubclass(str(TOTAL_DECISIONS))),
+            dict(base, target="private-customer-secret.example"),
+            DictSubclass(base),
+            dict(base, status="HOLD", diagnostic_code="MATCHED_NON_AUTHORIZING",
+                 checked_count=0),
+            dict(base, status="HOLD", diagnostic_code="EVALUATION_EXCEPTION"),
+        )
+        # The last entry is a valid HOLD receipt, and must be rebuilt
+        # without inheriting values from the reference object.
+        for candidate in variants[:-1]:
+            with self.subTest(candidate_type=type(candidate).__name__,
+                              code=candidate.get("diagnostic_code", "")):
+                output = StringIO()
+                with patch(
+                    "audit_scope_ipv4_octet_sweep_1422_offline.review_ipv4_octet_sweep",
+                    return_value=candidate,
+                ), redirect_stdout(output):
+                    exit_code = main([])
+                self.assertEqual(exit_code, 2)
+                receipt = json.loads(output.getvalue())
+                self.assert_non_authorizing(receipt, "HOLD")
+                self.assertEqual(
+                    receipt["diagnostic_code"], "RECEIPT_INTEGRITY_FAILURE"
+                )
+                self.assertEqual(len(output.getvalue().splitlines()), 1)
+                self.assertNotIn("private-customer-secret", output.getvalue())
+
+        valid_hold = dict(base, status="HOLD",
+                          diagnostic_code="EVALUATION_EXCEPTION", checked_count=0)
+        with patch(
+            "audit_scope_ipv4_octet_sweep_1422_offline.review_ipv4_octet_sweep",
+            return_value=valid_hold,
+        ), redirect_stdout(StringIO()) as output:
+            exit_code = main([])
+        self.assertEqual(exit_code, 2)
+        self.assert_non_authorizing(json.loads(output.getvalue()), "HOLD")
+        self.assertEqual(
+            json.loads(output.getvalue())["diagnostic_code"], "EVALUATION_EXCEPTION"
+        )
+
+    def test_cli_handles_diagnostic_exception_without_leaking(self):
+        def explode():
+            raise RuntimeError("secret-exception-operator-access-token")
+        output = StringIO()
+        with patch(
+            "audit_scope_ipv4_octet_sweep_1422_offline.review_ipv4_octet_sweep",
+            side_effect=explode,
+        ), redirect_stdout(output):
+            code = main([])
+        self.assertEqual(code, 2)
+        receipt = json.loads(output.getvalue())
+        self.assert_non_authorizing(receipt, "HOLD")
+        self.assertEqual(receipt["diagnostic_code"], "EVALUATION_EXCEPTION")
+        self.assertNotIn("secret-exception", output.getvalue())
+
+    def test_invalid_argv_skips_policy_factory_completely(self):
+        output = StringIO()
+        with patch(
+            "audit_scope_ipv4_octet_sweep_1422_offline.review_ipv4_octet_sweep",
+            side_effect=AssertionError("must not call diagnostic with args"),
+        ), redirect_stdout(output):
+            code = main(["--target", "private-customer-secret"])
+        self.assertEqual(code, 2)
+        receipt = json.loads(output.getvalue())
+        self.assert_non_authorizing(receipt, "HOLD")
+        self.assertEqual(receipt["diagnostic_code"], "ARGUMENT_REJECTED")
+        self.assertNotIn("private-customer", output.getvalue())
 
     def test_receipt_flags_are_fresh_literals_after_external_tampering(self):
         first = review_ipv4_octet_sweep(IndependentStrictPolicy)
