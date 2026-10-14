@@ -298,6 +298,18 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
         self.assertEqual(report["status"], "HOLD")
         self.assertFalse(any(report[key] for key in fixture.AUTHORITY_FLAGS))
 
+    def test_nginx_binary_lookup_uses_fixed_local_system_path(self):
+        with patch.object(fixture.shutil, "which", return_value=None) as lookup:
+            with self.assertRaises(RuntimeError):
+                fixture.run_fixture()
+        lookup.assert_called_once_with(
+            "nginx", path=fixture.SAFE_EXECUTABLE_PATH,
+        )
+        self.assertEqual(
+            fixture.SAFE_EXECUTABLE_PATH,
+            fixture._fixture_environment(Path("/tmp"))["PATH"],
+        )
+
     def test_missing_real_binary_causes_atomic_hold_before_process_start(self):
         with patch.object(fixture.shutil, "which", return_value=None):
             with patch.object(fixture.subprocess, "Popen",
