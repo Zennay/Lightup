@@ -10,7 +10,7 @@ For a candidate active-assessment request it checks:
 - Exact model/enumeration types; mode must be AUTHORIZED_ASSESSMENT and risk in LOW_IMPACT..ELEVATED (never destructive).
 - Nonempty bounded canonical request assets (1–32), strict identifiers, no wildcard/URL-path/Unicode authority aliases, no duplicate assets.
 - Nonempty canonical grant identity; matching tenant ID, distinct reviewer/requester labels, exact boolean retest marker.
-- Explicit bounded grant assets, exclusions and **nonempty** capability list (legacy empty capability list means wildcard; refused for review).
+- Explicit bounded grant assets, exclusions and **nonempty** capability list (legacy empty capability list means wildcard; refused for review); **caller must explicitly name one canonical requested capability and it must occur in the grant**.
 - Risk never exceeds grant; requested asset inventory fully contained in grant and outside exclusions.
 - UTC-only aware datetimes, a non-inverted window, strict half-open `[valid_from, valid_until)` freshness checked against caller-supplied or local UTC time.
 
@@ -22,7 +22,7 @@ A syntactically consistent packet produces `REVIEW_ONLY`, **not** an approval. I
 from datetime import datetime, timezone
 from lightup.scope_request_review import preview_active_request
 # request / grant are already-constructed *untrusted* in-memory model objects:
-receipt = preview_active_request(request, grant, now=datetime.now(timezone.utc))
+receipt = preview_active_request(request, grant, capability_id="http-baseline", now=datetime.now(timezone.utc))
 assert receipt.status in {"HOLD", "REVIEW_ONLY"}
 assert receipt.authorization_verified is False
 assert receipt.execution_enabled is False
