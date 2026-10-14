@@ -30,7 +30,7 @@ only an optional pair of SHA-256 digests on a small accepted static fixture
 shape. These digests are merely fingerprints of the *supplied bytes*, not
 cryptographic authentication of installed process identity or provenance.
 
-The restricted syntactic shape uses a `nginx -T`-style provenance marker,
+The deliberately narrow reference **rejects every unrecognized Nginx directive and every unrecognized Gunicorn setting**, including potential extension modules and middleware variables. A complete real `nginx -T`/`gunicorn --print-config` dump will commonly contain additional legitimate settings and therefore HOLD pending a dedicated installed-ingress review; REVIEW_ONLY is *only* a miniature static fixture compatibility signal. Do not strip real effective settings merely to obtain REVIEW_ONLY.\n\nThe restricted syntactic shape uses a `nginx -T`-style provenance marker,
 one HTTPS server and one exact `location /` routing to
 `http://127.0.0.1:8766`. The location requires request-header pass-through
 to be disabled, explicit canonical Cookie and Host bindings, and bounded
