@@ -165,7 +165,9 @@ def _emit_hold_receipt(payload: bytes) -> None:
         if type(fd) is not int or fd != 1:
             return
         mode = os.fstat(fd).st_mode
-        if not (stat.S_ISFIFO(mode) or stat.S_ISCHR(mode)):
+        # Character devices are not automatically trusted output sinks:
+        # only actual TTYs, never arbitrary devices (e.g. /dev/null).
+        if not (stat.S_ISFIFO(mode) or (stat.S_ISCHR(mode) and os.isatty(fd))):
             return
         os.set_blocking(fd, False)
         deadline = time.monotonic() + WRITE_DEADLINE_SECONDS
