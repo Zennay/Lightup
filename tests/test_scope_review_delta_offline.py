@@ -195,11 +195,11 @@ class ReviewDeltaTests(unittest.TestCase):
             self.assertNotIn("PRIVATE-CUSTOMER-SECRET", proc.stdout + proc.stderr)
             self.assertSafe(json.loads(proc.stdout), reason="INPUT_UNAVAILABLE")
 
-    def test_wrong_run_cannot_make_risk_true_on_hold(self):
-        bad = row()
+    def test_late_invalid_row_cannot_make_result_executable(self):
+        bad = row(2)
         bad["risk_level"] = True
         result = compare([row(1), row(2)], [row(1), bad])
-        self.assertSafe(result, reason="BATCH_ORDER")
+        self.assertSafe(result, reason="ITEM_MODE_RISK")
 
 
 if __name__ == "__main__":
