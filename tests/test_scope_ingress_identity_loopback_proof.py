@@ -345,10 +345,12 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
             "written_grants": 0, "modified_sessions": 0,
         }
 
-    def _mock_run_fixture(self, *, poison=False):
+    def _mock_run_fixture(self, *, poison=False, bad_nonce=False):
         child1, child2 = MagicMock(), MagicMock()
         outcome = self._mock_proxied_outcome
         def simulate(*args, **kwargs):
+            if bad_nonce and kwargs.get("alternate_name") == "Authorization":
+                raise RuntimeError("local fixture child identity mismatch")
             result = outcome(*args, **kwargs)
             if poison and kwargs.get("alternate_name") == "Authorization":
                 result["untrusted_header_forwarded"] = True
@@ -371,7 +373,7 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
                  "LD_PRELOAD": "/tmp/unsafe.so",
              }):
             check.return_value.returncode = 0
-            if poison:
+            if poison or bad_nonce:
                 with self.assertRaises(RuntimeError):
                     fixture.run_fixture()
             else:
@@ -506,6 +508,11 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
         # Any forbidden header arriving upstream means no partial green
         # even if all preceding cases seemed harmless.
         self.assertGreater(self._mock_run_fixture(poison=True), 0)
+
+    def test_synthetic_launch_cleans_both_processes_on_nonce_mismatch(self):
+        # A response from a different ambient service cannot make the batch
+        # succeed or prevent reverse-order child teardown.
+        self.assertGreater(self._mock_run_fixture(bad_nonce=True), 0)
 
     @unittest.skipUnless(
         os.environ.get("LIGHTUP_REAL_NGINX_GUNICORN_LOOPBACK") == "1",
