@@ -28,11 +28,14 @@ START = datetime(2026, 10, 14, 12, tzinfo=timezone.utc)
 UNTIL = START + timedelta(minutes=12)
 
 
-def _review(reference, stored_start=None, stored_end=None):
+_MISSING = object()
+
+
+def _review(reference, stored_start=_MISSING, stored_end=_MISSING):
     return review_grant_window_storage_consistency(
         reference,
-        stored_valid_from=START.isoformat() if stored_start is None else stored_start,
-        stored_valid_until=UNTIL.isoformat() if stored_end is None else stored_end,
+        stored_valid_from=START.isoformat() if stored_start is _MISSING else stored_start,
+        stored_valid_until=UNTIL.isoformat() if stored_end is _MISSING else stored_end,
     )
 
 
@@ -156,7 +159,7 @@ class PureWindowStorageConsistencyTests(unittest.TestCase):
         )
 
     def test_non_string_stored_start_rejected(self):
-        for item in (False, 0, [], {}, b"2026-10-14", datetime.now(timezone.utc)):
+        for item in (None, False, 0, [], {}, b"2026-10-14", datetime.now(timezone.utc)):
             with self.subTest(item=type(item).__name__):
                 self.assert_hold(_review(self.window, stored_start=item),
                                  "stored_start")
