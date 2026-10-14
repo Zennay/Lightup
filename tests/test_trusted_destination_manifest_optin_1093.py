@@ -353,5 +353,23 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
             self.registry, d, (DestinationField("host", DestinationRole.HOST),)))
 
 
+
+    def test_46_duplicate_host_roles_in_distinct_parameters_are_rejected(self):
+        params = [ToolParameter("primary_host", ParamKind.STRING),
+                  ToolParameter("fallback_host", ParamKind.STRING)]
+        fields = (DestinationField("primary_host", DestinationRole.HOST),
+                  DestinationField("fallback_host", DestinationRole.HOST))
+        self.refused(lambda: self.manifest(params, fields))
+
+    def test_47_duplicate_port_roles_in_distinct_parameters_are_rejected(self):
+        params = [ToolParameter("host", ParamKind.STRING),
+                  ToolParameter("primary_port", ParamKind.INTEGER),
+                  ToolParameter("fallback_port", ParamKind.INTEGER)]
+        fields = (DestinationField("host", DestinationRole.HOST),
+                  DestinationField("primary_port", DestinationRole.PORT),
+                  DestinationField("fallback_port", DestinationRole.PORT))
+        self.refused(lambda: self.manifest(params, fields))
+
+
 if __name__ == "__main__":
     unittest.main()
