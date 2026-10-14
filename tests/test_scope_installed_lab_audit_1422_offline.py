@@ -14,19 +14,28 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 from audit_scope_installed_lab_policy_1422_offline import (
-    LAB, NOT_LAB, TOTAL_CHECKS, ScopeDecision, ScopeReason,
+    LAB, NOT_LAB, EXPLICIT_HOST_DENIALS, TOTAL_CHECKS, ScopeDecision, ScopeReason,
     audit_installed_scope, main, _source_is_this_checkout,
 )
 
 
 class _FixturePolicy:
     def __init__(self, *, allow_private_lab, require_authorization_for_public=True,
-                 explicit_networks=()):
+                 explicit_networks=(), explicit_hosts=frozenset()):
         self.enabled = allow_private_lab
         self.explicit = bool(explicit_networks)
         self.requires_grant = require_authorization_for_public
+        self.explicit_hosts = explicit_hosts
 
     def decide(self, target):
+        hosts = dict(EXPLICIT_HOST_DENIALS)
+        if target.value in hosts and "review.invalid" in self.explicit_hosts:
+            reason = (
+                ScopeReason.AUTHORIZATION_MISSING
+                if target.authorization is None
+                else ScopeReason.AUTHORIZATION_EXPIRED
+            )
+            return ScopeDecision(False, hosts[target.value], reason)
         positive = {original: (canonical, reason) for original, canonical, reason in LAB}
         if target.value in positive:
             host, reason = positive[target.value]
@@ -96,6 +105,34 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
         receipt = audit_installed_scope(IncorrectPolicy)
         self.assert_never_authority(receipt)
         self.assertEqual(receipt["status"], "HOLD")
+
+    def test_explicit_host_missing_grant_must_deny(self):
+        class IncorrectPolicy(_FixturePolicy):
+            def decide(self, target):
+                if self.explicit_hosts and target.authorization is None:
+                    return ScopeDecision(True, "review.invalid", ScopeReason.EXPLICIT_HOST)
+                return super().decide(target)
+        receipt = audit_installed_scope(IncorrectPolicy)
+        self.assert_never_authority(receipt)
+        self.assertEqual(receipt["status"], "HOLD")
+
+    def test_explicit_host_expired_grant_must_deny(self):
+        class IncorrectPolicy(_FixturePolicy):
+            def decide(self, target):
+                if self.explicit_hosts and target.authorization is not None:
+                    return ScopeDecision(True, "review.invalid", ScopeReason.EXPLICIT_HOST)
+                return super().decide(target)
+        self.assertEqual(audit_installed_scope(IncorrectPolicy)["status"], "HOLD")
+
+    def test_explicit_host_normalization_is_required_for_denial(self):
+        class IncorrectPolicy(_FixturePolicy):
+            def decide(self, target):
+                if self.explicit_hosts and target.value.startswith("https://"):
+                    return ScopeDecision(
+                        False, target.value, ScopeReason.AUTHORIZATION_MISSING
+                    )
+                return super().decide(target)
+        self.assertEqual(audit_installed_scope(IncorrectPolicy)["status"], "HOLD")
 
     def test_false_denial_reason_for_missing_grant_holds(self):
         class IncorrectPolicy(_FixturePolicy):
@@ -174,7 +211,8 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
             "[::ffff:10.0.0.1]", "[::ffff:127.0.0.1]",
             "[2002:c000:201::1]", "[2001:0::1]",
         }.issubset(NOT_LAB))
-        self.assertGreaterEqual(TOTAL_CHECKS, 120)
+        self.assertEqual(len(EXPLICIT_HOST_DENIALS), 3)
+        self.assertEqual(TOTAL_CHECKS, 130)
 
     def test_real_source_audit_performs_no_network_file_or_child_process(self):
         # Mocks MUST NOT be called: catching a forbidden IO exception and then
