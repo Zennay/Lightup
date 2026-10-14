@@ -52,6 +52,14 @@ def _identity(value: object) -> str:
     return value
 
 
+def _tenant_id(value: object) -> str:
+    """Conservative exact tenant selector: no wildcard-like aliases."""
+    candidate = _identity(value)
+    if any(char in candidate for char in "*?%"):
+        raise CandidateHeld("invalid tenant selector")
+    return candidate
+
+
 def _utc(value: object) -> datetime:
     # Reject datetime subclasses, attacker-defined tzinfo/comparison hooks,
     # naive dates and non-UTC offsets before serialisation.
@@ -139,6 +147,7 @@ class LabApprovalCandidateLedger:
         ids = tuple(_identity(x) for x in (
             run_id, client_id, engagement_id, asset, capability_id, tool_id,
         ))
+        _tenant_id(ids[1])
         expiry = _utc(expires_at)
         now = datetime.now(timezone.utc)
         if expiry <= now or expiry - now > MAX_WINDOW:
@@ -214,7 +223,7 @@ class LabApprovalCandidateLedger:
         No global, cross-tenant or wildcard revocation selector is accepted.
         All revocation writes are lab-only candidate state, never execution.
         """
-        tenant = _identity(client_id)
+        tenant = _tenant_id(client_id)
         engagement = _identity(engagement_id)
         actor_id = _operator(operator_gate, actor, "revoke")
         stamp = datetime.now(timezone.utc).isoformat()
@@ -253,7 +262,7 @@ class LabApprovalCandidateLedger:
         a developer-only simulated administrative candidate freeze, NOT an
         authenticated shutdown of real lab tools, systems or customer assets.
         """
-        tenant = _identity(client_id)
+        tenant = _tenant_id(client_id)
         operator_id = _operator(operator_gate, actor, "freeze")
         stamp = datetime.now(timezone.utc).isoformat()
         if self._db.in_transaction:
@@ -283,7 +292,7 @@ class LabApprovalCandidateLedger:
     def inspect(self, run_id: str, *, client_id: str) -> LabApprovalCandidate | None:
         """Tenant-scoped review data only, never a permission or scan permit."""
         key = _identity(run_id)
-        tenant = _identity(client_id)
+        tenant = _tenant_id(client_id)
         try:
             row = self._db.execute(
                 """SELECT approval_id,run_id,client_id,engagement_id,asset,
@@ -318,7 +327,7 @@ class LabApprovalCandidateLedger:
     def review(self, run_id: str, *, client_id: str) -> dict[str, object]:
         """Tenant-scoped non-authorizing receipt, even for live candidates."""
         try:
-            tenant = _identity(client_id)
+            tenant = _tenant_id(client_id)
             # A freeze remains authoritative for the local reviewer even if
             # a writable SQLite candidate row was edited after the freeze.
             held = self._db.execute(
