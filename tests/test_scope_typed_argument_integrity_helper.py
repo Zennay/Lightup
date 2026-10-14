@@ -1,0 +1,441 @@
+"""Offline, zero-network tests of the independent argument integrity helper."""
+from __future__ import annotations
+
+import unittest
+
+from lightup.ai.orchestration import (
+    OrchestrationError, ParamKind, ToolDefinition, ToolParameter,
+)
+from lightup.ai.typed_argument_integrity import validate_unambiguous_arguments
+from lightup.engagements import RiskLevel
+from lightup.execution_policy import InteractionKind
+
+
+class TypedArgumentIntegrityTests(unittest.TestCase):
+    def setUp(self):
+        self.definition = ToolDefinition(
+            "offline-only", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "offline only",
+            (ToolParameter("value", ParamKind.NUMBER),),
+        )
+
+    def test_finite_values_preserved(self):
+        for value in (0, -12, 2.5, -0.5, 1e200):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    validate_unambiguous_arguments(
+                        self.definition, (("value", value),)
+                    )["value"], value
+                )
+
+    def test_arbitrarily_large_finite_integer_does_not_overflow(self):
+        huge = 10 ** 1000
+        self.assertEqual(
+            validate_unambiguous_arguments(
+                self.definition, (("value", huge),)
+            )["value"], huge
+        )
+
+    def test_nan_and_infinities_rejected(self):
+        for value in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(value=str(value)):
+                with self.assertRaises(OrchestrationError):
+                    validate_unambiguous_arguments(
+                        self.definition, (("value", value),)
+                    )
+
+    def test_duplicates_rejected_regardless_of_order(self):
+        for values in ((1.0, 2.0), ("invalid", 2.0), (2.0, "invalid")):
+            with self.subTest(values=values):
+                with self.assertRaises(OrchestrationError):
+                    validate_unambiguous_arguments(
+                        self.definition, tuple(("value", v) for v in values)
+                    )
+
+    def test_malformed_shapes_and_boolean_rejected(self):
+        malformed = (("value",), ("value", 1, 2), "value")
+        for entry in malformed:
+            with self.subTest(entry=entry):
+                with self.assertRaises(OrchestrationError):
+                    validate_unambiguous_arguments(self.definition, (entry,))
+        for value in (True, False, None, "2.5"):
+            with self.subTest(value=value):
+                with self.assertRaises(OrchestrationError):
+                    validate_unambiguous_arguments(
+                        self.definition, (("value", value),)
+                    )
+
+    def test_schema_missing_and_unknown_names_rejected(self):
+        for pairs in ((), (("other", 1),)):
+            with self.subTest(pairs=pairs):
+                with self.assertRaises(OrchestrationError):
+                    validate_unambiguous_arguments(self.definition, pairs)
+
+    def test_input_pairs_remain_unchanged_after_accept_or_reject(self):
+        """The helper must not rewrite caller-owned arguments."""
+        valid = [("value", 4.5)]
+        snapshot = list(valid)
+        self.assertEqual(
+            validate_unambiguous_arguments(self.definition, valid),
+            {"value": 4.5},
+        )
+        self.assertEqual(valid, snapshot)
+        duplicate = [("value", 4.5), ("value", float("inf"))]
+        with self.assertRaises(OrchestrationError):
+            validate_unambiguous_arguments(self.definition, duplicate)
+        self.assertEqual(len(duplicate), 2)
+        self.assertEqual(duplicate[0], ("value", 4.5))
+        self.assertEqual(duplicate[1][0], "value")
+
+    def test_duplicate_key_preempts_invalid_second_value(self):
+        """Ambiguous provenance is rejected regardless of second value type."""
+        for second in (float("nan"), 1, True, None, {"nested": "input"}):
+            with self.subTest(value=str(second)):
+                with self.assertRaisesRegex(OrchestrationError, "duplicate"):
+                    validate_unambiguous_arguments(
+                        self.definition,
+                        (("value", 0), ("value", second)),
+                    )
+
+    def test_non_sequence_iterators_are_rejected_before_consumption(self):
+        """Do not permit partial validation or side effects from iterators."""
+        seen = []
+        def side_effectful():
+            seen.append("iterated")
+            yield ("value", 3.0)
+        with self.assertRaises(OrchestrationError):
+            validate_unambiguous_arguments(self.definition, side_effectful())
+        self.assertEqual(seen, [])
+
+    def test_argument_name_type_must_be_exact_string(self):
+        """Reject ambiguous, non-string dictionary keys before schema checks."""
+        for name in (b"value", None, 1, ("value",)):
+            with self.subTest(name=name):
+                with self.assertRaises(OrchestrationError):
+                    validate_unambiguous_arguments(
+                        self.definition, ((name, 2.0),)
+                    )
+
+    def test_duplicate_registry_parameter_names_fail_closed(self):
+        """An ambiguous registry schema must not choose a parameter silently."""
+        ambiguous = ToolDefinition(
+            "ambiguous-fixture", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "offline schema only",
+            (
+                ToolParameter("value", ParamKind.NUMBER),
+                ToolParameter("value", ParamKind.NUMBER),
+            ),
+        )
+        with self.assertRaisesRegex(OrchestrationError, "duplicate tool parameter"):
+            validate_unambiguous_arguments(
+                ambiguous, (("value", 5.0),)
+            )
+
+    def test_custom_sequence_subclasses_are_not_evaluated(self):
+        """Do not call user-defined __iter__ or __len__ during parsing."""
+        activity = []
+        class TrapList(list):
+            def __iter__(self):
+                activity.append("iterated")
+                raise AssertionError("untrusted subclass iterator ran")
+            def __len__(self):
+                activity.append("measured")
+                raise AssertionError("untrusted subclass length ran")
+        for argument in (TrapList([("value", 3.0)]),
+                         (TrapList(["value", 3.0]),)):
+            with self.subTest(kind=type(argument[0]).__name__):
+                with self.assertRaises(OrchestrationError):
+                    validate_unambiguous_arguments(self.definition, argument)
+        self.assertEqual(activity, [])
+
+    def test_nonstring_registry_parameter_name_is_rejected(self):
+        """Do not accept malformed source registry metadata as a tool schema."""
+        for name in (None, b"value", 7):
+            with self.subTest(name=name):
+                malformed = ToolDefinition(
+                    "invalid-registry", "web-baseline", InteractionKind.LAB_ACTIVE,
+                    RiskLevel.DESTRUCTIVE_LAB_ONLY, "offline",
+                    (ToolParameter(name, ParamKind.NUMBER),),
+                )
+                with self.assertRaisesRegex(OrchestrationError, "parameter names"):
+                    validate_unambiguous_arguments(malformed, ())
+
+    def test_malformed_registry_rejected_before_argument_iteration(self):
+        """Registry integrity checks run before processing untrusted inputs."""
+        malformed = ToolDefinition(
+            "bad-schema", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "offline",
+            (ToolParameter("value", ParamKind.NUMBER), ToolParameter("value", ParamKind.NUMBER)),
+        )
+        observed = []
+        class SideEffectList(list):
+            def __iter__(self):
+                observed.append("read")
+                raise AssertionError("arguments evaluated before registry validation")
+        with self.assertRaisesRegex(OrchestrationError, "duplicate tool parameter"):
+            validate_unambiguous_arguments(malformed, SideEffectList([("value", 5)]))
+        self.assertEqual(observed, [])
+
+    def test_malformed_registry_entry_is_rejected(self):
+        """An invalid ToolParameter entry is rejected without attribute errors."""
+        malformed = ToolDefinition(
+            "bad-schema", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "offline",
+            (None,),
+        )
+        with self.assertRaisesRegex(OrchestrationError, "invalid definition"):
+            validate_unambiguous_arguments(malformed, ())
+
+    def test_untrusted_definition_subclass_cannot_run_property_code(self):
+        """Reject a forged subclass before its parameter property is touched."""
+        touched = []
+        class TrapDefinition(ToolDefinition):
+            @property
+            def parameters(self):
+                touched.append("accessed")
+                raise AssertionError("untrusted ToolDefinition property evaluated")
+        fake = object.__new__(TrapDefinition)
+        with self.assertRaisesRegex(OrchestrationError, "registered ToolDefinition"):
+            validate_unambiguous_arguments(fake, (("value", 1.0),))
+        self.assertEqual(touched, [])
+
+    def test_helper_import_has_no_eager_orchestration_binding(self):
+        """The helper can be imported from orchestration at module-load time."""
+        import ast
+        import inspect
+        import lightup.ai.typed_argument_integrity as helper
+        tree = ast.parse(inspect.getsource(helper))
+        eager = [
+            node for node in tree.body
+            if isinstance(node, ast.ImportFrom)
+            and node.module == "orchestration"
+        ]
+        self.assertEqual(eager, [], "avoid eager circular import of orchestration")
+        self.assertEqual(
+            validate_unambiguous_arguments(
+                self.definition, (("value", 2.5),)
+            ), {"value": 2.5}
+        )
+
+    def test_numeric_subclass_cannot_execute_float_conversion_hook(self):
+        """Never trigger attacker-controlled __float__ during finite checking."""
+        observed = []
+        class TrapFloat(float):
+            def __float__(self):
+                observed.append("coerced")
+                raise AssertionError("numeric coercion hook invoked")
+        with self.assertRaisesRegex(OrchestrationError, "built-in number"):
+            validate_unambiguous_arguments(
+                self.definition, (("value", TrapFloat(2.5)),)
+            )
+        self.assertEqual(observed, [])
+
+    def test_integer_subclass_rejected_before_execution(self):
+        """INTEGER values cannot rely on custom int-subclass behavior."""
+        integer_definition = ToolDefinition(
+            "integer-only", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "offline integer only",
+            (ToolParameter("count", ParamKind.INTEGER),),
+        )
+        class TrapInt(int):
+            def __index__(self):
+                raise AssertionError("custom index hook must not be used")
+        with self.assertRaisesRegex(OrchestrationError, "built-in integer"):
+            validate_unambiguous_arguments(
+                integer_definition, (("count", TrapInt(7)),)
+            )
+        self.assertEqual(
+            validate_unambiguous_arguments(integer_definition, (("count", 7),)),
+            {"count": 7},
+        )
+        with self.assertRaises(OrchestrationError):
+            validate_unambiguous_arguments(integer_definition, (("count", True),))
+
+    def test_string_subclass_denied_before_user_defined_string_hooks(self):
+        string_definition = ToolDefinition(
+            "string-fixture", "web-baseline", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "local fixture",
+            (ToolParameter("label", ParamKind.STRING),),
+        )
+        calls = []
+        class TrapString(str):
+            def __str__(self):
+                calls.append("str")
+                raise AssertionError("user string hook invoked")
+        with self.assertRaisesRegex(OrchestrationError, "built-in string"):
+            validate_unambiguous_arguments(
+                string_definition, (("label", TrapString("safe")),)
+            )
+        self.assertEqual(calls, [])
+        self.assertEqual(
+            validate_unambiguous_arguments(string_definition, (("label", "safe"),)),
+            {"label": "safe"},
+        )
+
+    def test_invalid_registry_kind_and_required_flag_rejected(self):
+        for kind, required in ((None, True), ("number", True),
+                               (ParamKind.NUMBER, 1),
+                               (ParamKind.NUMBER, "yes")):
+            with self.subTest(kind=kind, required=required):
+                malformed = ToolDefinition(
+                    "bad-schema", "web-baseline", InteractionKind.LAB_ACTIVE,
+                    RiskLevel.DESTRUCTIVE_LAB_ONLY, "offline",
+                    (ToolParameter("value", kind, required),),
+                )
+                with self.assertRaisesRegex(OrchestrationError, "invalid kind or required"):
+                    validate_unambiguous_arguments(
+                        malformed, (("value", 2.5),)
+                    )
+
+
+    def test_nonfinite_number_denied_before_schema_callback(self):
+        from unittest.mock import patch
+        events = []
+        def trap_validate(definition, arguments):
+            events.append("schema")
+            raise AssertionError("schema invoked before finiteness check")
+        with patch.object(ToolDefinition, "validate_arguments", trap_validate):
+            for value in (float("nan"), float("inf"), float("-inf")):
+                with self.subTest(value=str(value)):
+                    with self.assertRaisesRegex(OrchestrationError, "must be finite"):
+                        validate_unambiguous_arguments(
+                            self.definition, (("value", value),)
+                        )
+        self.assertEqual(events, [])
+
+    def test_finite_number_reaches_schema_once(self):
+        from unittest.mock import patch
+        events = []
+        original = ToolDefinition.validate_arguments
+        def capture(definition, arguments):
+            events.append(dict(arguments))
+            return original(definition, arguments)
+        with patch.object(ToolDefinition, "validate_arguments", capture):
+            result = validate_unambiguous_arguments(
+                self.definition, (("value", 2.5),)
+            )
+        self.assertEqual(result, {"value": 2.5})
+        self.assertEqual(events, [{"value": 2.5}])
+
+    def test_nonfinite_rejection_preserves_input_pairs(self):
+        for number in (float("nan"), float("inf"), float("-inf")):
+            pairs = [("value", number)]
+            with self.subTest(number=repr(number)):
+                with self.assertRaises(OrchestrationError):
+                    validate_unambiguous_arguments(self.definition, pairs)
+                self.assertIs(pairs[0][1], number)
+                self.assertEqual(len(pairs), 1)
+
+
+    def test_negative_zero_and_subnormal_floats_are_finite(self):
+        from unittest.mock import patch
+        import math
+        values = (-0.0, 5e-324, -5e-324)
+        original = ToolDefinition.validate_arguments
+        invoked = []
+        def capture(definition, arguments):
+            invoked.append(arguments["value"])
+            return original(definition, arguments)
+        with patch.object(ToolDefinition, "validate_arguments", capture):
+            for value in values:
+                with self.subTest(value=repr(value)):
+                    output = validate_unambiguous_arguments(
+                        self.definition, (("value", value),)
+                    )
+                    self.assertEqual(output["value"], value)
+                    self.assertEqual(math.copysign(1, output["value"]), math.copysign(1, value))
+        self.assertEqual(len(invoked), len(values))
+
+    def test_nonfinite_denial_does_not_invoke_float_subclass_hook(self):
+        events = []
+        class TrapFloat(float):
+            def __float__(self):
+                events.append("float")
+                raise AssertionError("subclass float hook invoked")
+        with self.assertRaisesRegex(OrchestrationError, "built-in number"):
+            validate_unambiguous_arguments(
+                self.definition, (("value", TrapFloat(float("inf"))),)
+            )
+        self.assertEqual(events, [])
+
+
+    def test_finite_numeric_boundaries_do_not_rewrite_original_value(self):
+        import sys
+        import math
+        values = (sys.float_info.max, sys.float_info.min, -sys.float_info.max, 0.0)
+        for value in values:
+            with self.subTest(value=value):
+                args = [("value", value)]
+                validated = validate_unambiguous_arguments(self.definition, args)
+                self.assertIs(validated["value"], value)
+                self.assertIs(args[0][1], value)
+                self.assertTrue(math.isfinite(validated["value"]))
+
+    def test_boolean_rejected_before_schema_callback(self):
+        from unittest.mock import patch
+        for value in (True, False):
+            with self.subTest(value=value):
+                with patch.object(
+                    ToolDefinition, "validate_arguments",
+                    side_effect=AssertionError("schema called"),
+                ):
+                    with self.assertRaisesRegex(OrchestrationError, "built-in number"):
+                        validate_unambiguous_arguments(self.definition, (("value", value),))
+
+
+    def test_unknown_key_denial_preempts_nonfinite_value_validation(self):
+        from unittest.mock import patch
+        with patch.object(
+            ToolDefinition, "validate_arguments",
+            side_effect=AssertionError("schema called"),
+        ):
+            for value in (float("nan"), float("inf"), float("-inf")):
+                with self.subTest(value=repr(value)):
+                    with self.assertRaisesRegex(OrchestrationError, "unknown tool argument"):
+                        validate_unambiguous_arguments(
+                            self.definition, (("unknown", value),)
+                        )
+
+    def test_finite_number_input_identity_preserved_after_schema_validation(self):
+        from unittest.mock import patch
+        original = ToolDefinition.validate_arguments
+        calls = []
+        def capture(definition, arguments):
+            calls.append(arguments["value"])
+            return original(definition, arguments)
+        huge = 10 ** 1000
+        with patch.object(ToolDefinition, "validate_arguments", capture):
+            result = validate_unambiguous_arguments(
+                self.definition, (("value", huge),)
+            )
+        self.assertIs(result["value"], huge)
+        self.assertEqual(calls, [huge])
+
+
+    def test_schema_failure_is_propagated_without_retry(self):
+        from unittest.mock import patch
+        calls = []
+        def deny(definition, arguments):
+            calls.append(dict(arguments))
+            raise OrchestrationError("synthetic schema denial")
+        with patch.object(ToolDefinition, "validate_arguments", deny):
+            with self.assertRaisesRegex(OrchestrationError, "synthetic schema denial"):
+                validate_unambiguous_arguments(
+                    self.definition, (("value", 3.5),)
+                )
+        self.assertEqual(calls, [{"value": 3.5}])
+
+    def test_duplicate_key_denial_preempts_nonfinite_checks(self):
+        from unittest.mock import patch
+        with patch.object(
+            ToolDefinition, "validate_arguments",
+            side_effect=AssertionError("schema called"),
+        ):
+            with self.assertRaisesRegex(OrchestrationError, "duplicate tool argument"):
+                validate_unambiguous_arguments(
+                    self.definition, (("value", 1.0), ("value", float("nan")))
+                )
+
+
+if __name__ == "__main__":
+    unittest.main()
