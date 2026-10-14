@@ -16,15 +16,6 @@ from lightup.models import Target
 from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason
 
 TOTAL_DECISIONS = 3584
-_DENY_FLAGS = {
-    "authorization_verified": False,
-    "permit_issued": False,
-    "execution_enabled": False,
-    "merge_approved": False,
-    "release_approved": False,
-}
-
-
 def _samples():
     # Two bounded samples in every /8, and full second-octet sweeps
     # around RFC1918's 172.16/12 and 192.168/16 membership boundaries.
@@ -74,7 +65,11 @@ def _receipt(status: str, count: int):
         "status": status,
         "checked_count": count,
         "total_count": TOTAL_DECISIONS,
-        **_DENY_FLAGS,
+        "authorization_verified": False,
+        "permit_issued": False,
+        "execution_enabled": False,
+        "merge_approved": False,
+        "release_approved": False,
     }
 
 
