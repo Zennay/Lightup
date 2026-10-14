@@ -31,6 +31,8 @@ An untrusted producer can keep a pipe open after sending partial data, or even a
 
 New genuine child-process regressions keep their write pipe intentionally **open** after (a) a secret-bearing fragment, (b) a complete apparently valid all-pass packet, and (c) an oversized secret-bearing packet. They require bounded termination, exactly false release/permit/dispatch and no secret echoes or traceback. A bad-argv unopened pipe must also return HOLD without reading stdin. A valid packet split across two writes **with EOF** remains structurally `COHERENT`, still never authorized. These prove CLI transport liveness and atomicity, **not** external evidence truth, OS-level isolation, production safety or a registered VPS runner.
 
+Additional W66 acceptance enumerates **all 625 combinations** of the five allowed self-asserted status labels across four lanes: every combination remains exact HOLD with six false authorization flags. It also checks an exact 16KiB valid JSON envelope versus 16KiB+1, concatenated object smuggling, Unicode lookalike field names, escaped duplicate-key forms, nonfinite numeric representations and inherited non-stdin fd aliases. This is synthetic contract coverage; 625 fake inputs are not 625 real CI/ingress proofs.
+
 This bounded-read implementation targets POSIX/Linux hosting. Failure of fd/select on an unsupported runtime is a conservative HOLD, not a fallback to an unbounded read. The script itself opens no other file, network connection or subprocess; normal Python interpreter module startup is not an OS sandbox.
 ## Execution and fail-closed result
 
