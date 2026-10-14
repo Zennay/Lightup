@@ -33,7 +33,7 @@ The latter passes a **regular file fd0** and intentionally yields HOLD:
 
 Input must be UTF-8 JSON, maximum 4096 bytes, precisely a `tools` array of
 1–8 tool objects, with unique lowercase ASCII `tool_id` (hyphens allowed, matching the actual lab tool IDs) and 1–16
-`parameters`. Each parameter is exactly `name`, `kind`, `role`, with
+`parameters`. Each parameter is exactly `name`, `kind`, `role`, `required`, with
 unique lowercase ASCII parameter name (underscore allowed; hyphen rejected). The current real `ParamKind` vocabulary is exactly `string`, `integer`, `number`, `boolean`; extra kinds such as `array` and `object` are rejected. Valid roles: `host`, `endpoint`, `port`,
 `port_set`, `none`; string destination roles accept only `string` kind,
 `port` accepts only `integer`. The non-destination `none` role is allowed
@@ -46,6 +46,17 @@ A well-formed tool also needs a **single unambiguous destination shape**:
 either exactly one ENDPOINT field, or exactly one HOST field with at most
 one of PORT **or** PORT_SET. HOST alone is valid. Non-destination metadata
 with role NONE may accompany any valid shape but can never establish one.
+All parameters must declare `required` with an **exact JSON boolean**
+(not 0/1, string, missing, nullable or a Python bool subclass). Each
+destination-bearing HOST/ENDPOINT/PORT/PORT_SET parameter must be **required:
+true**; only NONE metadata may be optional (`required: false`).
+This follows the installed `ToolParameter.required` field: if the destination
+can disappear from an actual call, its structural declaration is incomplete.
+The test imports the three actual LAB_ACTIVE ToolDefinitions and compares
+tool IDs, parameter names, kind **and requiredness**. Claims still originate
+from an untrusted caller, so a forged `required: true` is never an
+authorization or proof of actual runtime arguments.
+
 PORT/PORT_SET without HOST, repeated destination roles on different argument
 names, HOST+ENDPOINT, ENDPOINT+PORT, or PORT+PORT_SET are HOLD even if every
 individual parameter has a valid name/kind pair. Mixed multi-tool packets
