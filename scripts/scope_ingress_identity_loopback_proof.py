@@ -15,6 +15,7 @@ import importlib.util
 import json
 import os
 import re
+import secrets
 from pathlib import Path
 import shutil
 import socket
@@ -111,6 +112,7 @@ def application(environ, start_response):
         ("Content-Type", "application/json"),
         ("Content-Length", str(len(payload))),
         ("Cache-Control", "no-store"),
+        ("X-Fixture-Probe-Id", "STATIC_NONCE_PLACEHOLDER"),
     ])
     return [payload]
 '''
@@ -205,11 +207,16 @@ def _request(
     alternates: bool = False,
     alternate_name: str | None = None,
     body: bytes | None = None,
+    expected_nonce: str | None = None,
 ) -> dict:
     if alternate_name is not None and (
         type(alternate_name) is not str or alternate_name not in ALTERNATE_HEADERS
     ):
         raise RuntimeError("unsupported synthetic header")
+    # Separate a real response from any ambient listener that won a freed
+    # ephemeral port. The probe identifier comes only from our new child.
+    if type(expected_nonce) is not str or re.fullmatch(r"[0-9a-f]{48}", expected_nonce) is None:
+        raise RuntimeError("unbound local fixture response")
     conn = http.client.HTTPConnection("127.0.0.1", port, timeout=3.0)
     try:
         headers = {"Host": "localhost"}
@@ -224,6 +231,8 @@ def _request(
             headers["Content-Type"] = "application/x-www-form-urlencoded"
         conn.request(method, path, headers=headers, body=body)
         result = conn.getresponse()
+        if result.getheader("X-Fixture-Probe-Id") != expected_nonce:
+            raise RuntimeError("local fixture child identity mismatch")
         wire = result.read(4097)
         if result.status != 200 or len(wire) > 4096:
             raise RuntimeError("unexpected synthetic response")
@@ -290,8 +299,14 @@ def run_fixture() -> int:
         raise RuntimeError("real fixture dependencies not installed")
     with tempfile.TemporaryDirectory(prefix="lightup-local-fixture-") as directory:
         root = Path(directory).resolve()
+        nonce = secrets.token_hex(24)
+        # One freshly bound, private per-run identity; never emitted as
+        # permission, receipt, log, hostname or client-provided header.
+        if type(nonce) is not str or re.fullmatch(r"[0-9a-f]{48}", nonce) is None:
+            raise RuntimeError("invalid disposable fixture identity")
         (root / "synthetic_identity_app.py").write_text(
-            FIXTURE_WSGI, encoding="utf-8"
+            FIXTURE_WSGI.replace("STATIC_NONCE_PLACEHOLDER", nonce),
+            encoding="utf-8",
         )
         app_port = _free_port()
         proxy_port = _free_port()
@@ -336,39 +351,42 @@ def run_fixture() -> int:
             ))
             _wait_listening(services[-1], proxy_port)
 
+            def boundbound_request(*args, **kwargs):
+                return _request(*args, expected_nonce=nonce, **kwargs)
+
             results = (
-                ("anonymous", _request(
+                ("anonymous", bound_request(
                     proxy_port, "/engagements/fixture/grants", method="POST",
                     body=SYNTHETIC_CSRF
                 ), "anonymous", "DENIED"),
-                ("alternate_combined", _request(
+                ("alternate_combined", bound_request(
                     proxy_port, "/engagements/fixture/grants", method="POST",
                     alternates=True, body=SYNTHETIC_CSRF
                 ), "anonymous", "DENIED"),
-                ("revoked", _request(
+                ("revoked", bound_request(
                     proxy_port, "/engagements/fixture/grants", method="POST",
                     cookie=SYNTHETIC_REVOKED, body=SYNTHETIC_CSRF
                 ), "anonymous", "DENIED"),
-                ("client", _request(
+                ("client", bound_request(
                     proxy_port, "/engagements/fixture/grants", method="POST",
                     cookie=SYNTHETIC_CLIENT, body=SYNTHETIC_CSRF
                 ), "client", "DENIED"),
-                ("operator_no_csrf", _request(
+                ("operator_no_csrf", bound_request(
                     proxy_port, "/engagements/fixture/grants", method="POST",
                     cookie=SYNTHETIC_OPERATOR, body=b"csrf=wrong"
                 ), "operator", "DENIED"),
-                ("operator_with_csrf", _request(
+                ("operator_with_csrf", bound_request(
                     proxy_port, "/engagements/fixture/grants", method="POST",
                     cookie=SYNTHETIC_OPERATOR, body=SYNTHETIC_CSRF
                 ), "operator", "WOULD_ALLOW"),
-                ("client_portal", _request(
+                ("client_portal", bound_request(
                     proxy_port, "/portal/fixture", cookie=SYNTHETIC_CLIENT
                 ), "client", "VISIBLE"),
             )
             individual_spoofs = tuple(
                 (
                     f"alternate_{header.lower().replace('-', '_')}",
-                    _request(
+                    bound_request(
                         proxy_port, "/engagements/fixture/grants",
                         method="POST", alternate_name=header, body=SYNTHETIC_CSRF,
                     ),
@@ -382,7 +400,7 @@ def run_fixture() -> int:
             client_spoofs = tuple(
                 (
                     f"client_spoof_{header.lower().replace('-', '_')}",
-                    _request(
+                    bound_request(
                         proxy_port, "/engagements/fixture/grants",
                         method="POST", cookie=SYNTHETIC_CLIENT,
                         alternate_name=header, body=SYNTHETIC_CSRF,
