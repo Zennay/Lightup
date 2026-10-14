@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from lightup.models import Target
 from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason
 
-TOTAL_DECISIONS = 13824
+TOTAL_DECISIONS = 15360
 
 def _samples():
     # Two bounded samples in every /8, and full second-octet sweeps
@@ -58,6 +58,19 @@ def _samples_ipv6():
         for second in range(256):
             addr = IPv6Address((first << 120) | (second << 112) | 2)
             yield f"[{addr.compressed}]", addr.compressed, first
+
+    # IPv4 hidden inside an IPv6 authority is never implicitly trusted
+    # by its RFC1918/loopback inner bytes: mapped, 6to4 and NAT64 are
+    # separate network/translation contexts requiring explicit review.
+    for ipv4_first in range(256):
+        ipv4_literal = f"{ipv4_first}.0.0.1"
+        for encoded in (
+            f"::ffff:{ipv4_literal}",
+            f"2002:{ipv4_first:02x}00:1::1",
+            f"64:ff9b::{ipv4_literal}",
+        ):
+            addr = IPv6Address(encoded)
+            yield f"[{addr.compressed}]", addr.compressed, int(addr) >> 120
 
 
 def _expected_ipv6(normalized: str, first: int, lab_enabled: bool):
