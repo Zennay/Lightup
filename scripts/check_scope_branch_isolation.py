@@ -39,7 +39,8 @@ def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
 
 
 def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
-            peers: tuple[str, ...] = ()) -> tuple[str, int]:
+            peers: tuple[str, ...] = (), require_current_head: bool = False
+            ) -> tuple[str, int]:
     """Return a fixed reason code and count; never print private file contents."""
     if not SHA.fullmatch(base) or not SHA.fullmatch(head) or base == head:
         return "INVALID_IMMUTABLE_REFS", 0
@@ -63,6 +64,12 @@ def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
         return "INVALID_REPOSITORY_ROOT", 0
     if canonical_repo != canonical_root:
         return "INVALID_REPOSITORY_ROOT", 0
+    if type(require_current_head) is not bool:
+        return "INVALID_CURRENT_HEAD_POLICY", 0
+    if require_current_head:
+        current = _git(repo, "rev-parse", "--verify", "HEAD^{commit}")
+        if current.returncode or current.stdout.strip() != head.encode("ascii"):
+            return "STALE_CURRENT_HEAD", 0
     for sha in (base, head):
         if _git(repo, "cat-file", "-e", f"{sha}^{{commit}}").returncode:
             return "MISSING_COMMIT", 0
@@ -161,8 +168,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--allow", action="append", required=True)
     parser.add_argument("--peer", action="append", default=[],
                         help="immutable other worker HEAD SHA (repeat; only supplied peers are checked)")
+    parser.add_argument("--require-current-head", action="store_true",
+                        help="deny an older SHA than the checkout's actual current HEAD")
     args = parser.parse_args(argv)
-    reason, count = inspect(args.repo, args.base, args.head, tuple(args.allow), tuple(args.peer))
+    reason, count = inspect(args.repo, args.base, args.head, tuple(args.allow),
+                            tuple(args.peer), args.require_current_head)
     print(json.dumps({
         "status": "REVIEW_ONLY" if reason == "ADDITIVE_PATHS_MATCH" else "HOLD",
         "reason": reason,
