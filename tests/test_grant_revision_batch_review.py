@@ -2,11 +2,34 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import datetime, timezone
 import unittest
 from unittest.mock import patch
 
+from lightup.engagements import AuthorizationGrant, RiskLevel, ScopeDefinition
 from lightup.grant_revision_batch_review import review_grant_revision_batch
-from test_grant_revision_review import grant
+
+
+def grant(**overrides):
+    values = {
+        "grant_id": "g1",
+        "client_id": "client1",
+        "engagement_id": "eng1",
+        "approved_by": "operator1",
+        "reference": "ref1",
+        "scope": ScopeDefinition(
+            assets=("a.example.test", "b.example.test"),
+            excluded_assets=("b.example.test",),
+            allowed_capabilities=("headers", "tls"),
+            max_risk=RiskLevel.STANDARD,
+        ),
+        "valid_from": datetime(2026, 10, 1, tzinfo=timezone.utc),
+        "valid_until": datetime(2026, 10, 2, tzinfo=timezone.utc),
+        "recurring_retest_allowed": True,
+    }
+    values.update(overrides)
+    return AuthorizationGrant(**values)
+
 
 
 class GrantRevisionBatchReviewTests(unittest.TestCase):
