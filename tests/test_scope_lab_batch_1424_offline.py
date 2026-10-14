@@ -1,6 +1,7 @@
 """#1424: genuine opt-in atomic offline lab literal batch safety tests."""
 from __future__ import annotations
 
+import io
 import json
 import os
 from pathlib import Path
@@ -12,7 +13,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_ROOT / "scripts"))
 sys.path.insert(0, str(_ROOT / "src"))
 
-from review_scope_lab_batch_1424_offline import review_batch_json
+from review_scope_lab_batch_1424_offline import main as batch_cli_main, review_batch_json
 
 
 _FLAGS = (
@@ -98,6 +99,72 @@ class OfflineLabBatchReviewTests(TestCase):
         for raw in raw_cases:
             with self.subTest(size=len(raw), preview=repr(raw[:60])):
                 self.assert_batch(raw, "HOLD", 0)
+
+    def test_exact_bounded_input_byte_boundary(self):
+        raw = _raw(["10.0.0.1"])
+        self.assertLess(len(raw), 4096)
+        padded = raw + b" " * (4096 - len(raw))
+        self.assertEqual(len(padded), 4096)
+        self.assert_batch(padded, "REVIEW_ONLY", 1)
+        self.assert_batch(padded + b" ", "HOLD", 0)
+
+    def test_direct_main_rejects_polymorphic_argv_before_reading_stdin(self):
+        class FakeStr(str):
+            def __eq__(self, _other):
+                raise AssertionError("untrusted argv comparison")
+
+        class Spy:
+            @property
+            def buffer(self):
+                raise AssertionError("stdin must not be read without opt-in")
+
+        for args in (
+            (), ("--stdin-json",), ["--stdin-json", "--stdin-json"],
+            [FakeStr("--stdin-json")], [False], [None],
+            [object()], [1], [], ["--unrelated"],
+        ):
+            with self.subTest(type=type(args).__name__, length=len(args)):
+                output = io.StringIO()
+                with mock.patch("sys.stdout", output), mock.patch("sys.stdin", Spy()):
+                    code = batch_cli_main(args)
+                self.assertEqual(code, 2)
+                receipt = json.loads(output.getvalue())
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertEqual(receipt["reviewed_count"], 0)
+                for key in _FLAGS:
+                    self.assertIs(receipt[key], False, key)
+
+    def test_direct_main_reads_only_bounded_bytes_under_explicit_optin(self):
+        raw = _raw(["10.0.0.1", "fd00::1"])
+
+        class TrackedBuffer(io.BytesIO):
+            def __init__(self, value):
+                super().__init__(value)
+                self.read_limits = []
+
+            def read(self, limit=-1):
+                self.read_limits.append(limit)
+                return super().read(limit)
+
+        class FakeStdin:
+            def __init__(self, value):
+                self.buffer = TrackedBuffer(value)
+
+        for data, expected_status, expected_exit in (
+            (raw, "REVIEW_ONLY", 3),
+            (raw + b" " * 4097, "HOLD", 2),
+        ):
+            with self.subTest(length=len(data)):
+                stream = FakeStdin(data)
+                output = io.StringIO()
+                with mock.patch("sys.stdout", output), mock.patch("sys.stdin", stream):
+                    code = batch_cli_main(["--stdin-json"])
+                self.assertEqual(code, expected_exit)
+                self.assertEqual(stream.buffer.read_limits, [4097])
+                receipt = json.loads(output.getvalue())
+                self.assertEqual(receipt["status"], expected_status)
+                for key in _FLAGS:
+                    self.assertIs(receipt[key], False, key)
 
     def test_nonbyte_spoofs_never_call_user_getters(self):
         class FakeBytes(bytes):
