@@ -475,6 +475,7 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
             with self.subTest(changed=changed_field):
                 with patch.object(reviewer.sys, "stdin", Stdin()), \
                      patch.object(reviewer.os, "fstat", side_effect=[original, after]), \
+                     patch.object(reviewer.os, "lseek", return_value=0), \
                      patch.object(reviewer.os, "get_blocking", return_value=False), \
                      patch.object(reviewer.select, "select", return_value=([0], [], [])), \
                      patch.object(reviewer.os, "read", side_effect=[b"{}", b""]):
@@ -490,6 +491,7 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
                 return 0
         with patch.object(reviewer.sys, "stdin", Stdin()), \
              patch.object(reviewer.os, "fstat", side_effect=[original, original]), \
+             patch.object(reviewer.os, "lseek", return_value=0), \
              patch.object(reviewer.os, "get_blocking", return_value=False), \
              patch.object(reviewer.select, "select", return_value=([0], [], [])), \
              patch.object(reviewer.os, "read", side_effect=[b"{}", b""]):
@@ -726,6 +728,54 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
                     self.assertEqual((receipt["status"], code), ("HOLD", 2))
                 else:
                     self.assertEqual((receipt["status"], code), ("REVIEW_ONLY", 3))
+    def test_regular_file_stdin_midfile_offset_never_mints_review(self):
+        synthetic = encode(fixture())
+        with tempfile.TemporaryFile() as stream:
+            stream.write(b"PREFIX" + synthetic)
+            stream.flush()
+            stream.seek(6)
+            child = subprocess.run(
+                [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                stdin=stream, capture_output=True, check=False, timeout=8,
+            )
+        self.assertEqual(child.returncode, 2)
+        receipt = json.loads(child.stdout)
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(receipt["reason"], "invalid_input")
+        self.assert_denied_authority(receipt, child.returncode)
+        self.assertFalse(child.stderr)
+
+    def test_regular_file_declared_size_must_equal_received_bytes(self):
+        class Stdin:
+            def fileno(self):
+                return 0
+        previous = SimpleNamespace(
+            st_mode=stat.S_IFREG, st_dev=9, st_ino=11,
+            st_size=3, st_mtime_ns=123, st_ctime_ns=456,
+        )
+        with (
+            patch.object(reviewer.sys, "stdin", Stdin()),
+            patch.object(reviewer.os, "fstat", side_effect=[previous, previous]),
+            patch.object(reviewer.os, "lseek", return_value=0),
+            patch.object(reviewer.os, "get_blocking", return_value=False),
+            patch.object(reviewer.select, "select", return_value=([0], [], [])),
+            patch.object(reviewer.os, "read", side_effect=[b"{}", b""]),
+        ):
+            self.assertEqual(reviewer._bounded_stdin(), b"")
+
+    def test_regular_file_size_zero_refused_without_any_read(self):
+        class Stdin:
+            def fileno(self):
+                return 0
+        virtual = SimpleNamespace(st_mode=stat.S_IFREG, st_size=0)
+        with (
+            patch.object(reviewer.sys, "stdin", Stdin()),
+            patch.object(reviewer.os, "fstat", return_value=virtual),
+            patch.object(reviewer.os, "read") as reader,
+        ):
+            self.assertEqual(reviewer._bounded_stdin(), b"")
+        reader.assert_not_called()
+
     def test_cli_rejects_no_flag(self):
         result = subprocess.run(
             [sys.executable, "-B", str(SCRIPT)],
