@@ -61,10 +61,6 @@ def _trusted_python_bootstrap(path, mode, args, kwargs):
         return False
 
 def checked_direct_io_open(path, mode="r", *args, **kwargs):
-    if os.environ.get("LIGHTUP_SCOPE_DIAG") == "1":
-        import sys
-        sys.stderr.write("NATIVE_IO next-path=%r mode=%r opts=%d/%r\\n" % (
-            path, mode, len(args), tuple(kwargs)))
     if _trusted_python_bootstrap(path, mode, args, kwargs):
         return _real_io_open(path, mode)
     if type(path) not in (str, type(pathlib.Path())):
@@ -88,6 +84,9 @@ class OfflineScopeNativeIOAliasTests(unittest.TestCase):
         (self.root / "synthetic-private.txt").write_text(
             "synthetic-only-not-a-secret", encoding="utf-8"
         )
+        (self.root / "synthetic-private.py").write_text(
+            "# synthetic code-looking decoy, never read", encoding="utf-8"
+        )
         (self.root / "baseline.json").write_text(
             '{"synthetic":"manifest"}', encoding="utf-8"
         )
@@ -107,12 +106,17 @@ class OfflineScopeNativeIOAliasTests(unittest.TestCase):
     def run_child(self, program: str):
         return subprocess.run(
             [sys.executable, "-B", "-c", program], cwd=self.root,
-            env=self.env, capture_output=True, check=False, timeout=15,
+            env=dict(self.env,
+                     LIGHTUP_SCOPE_BOOTSTRAP_SCRIPT=str(
+                         _SCRIPTS / "review_scope_finite_number_offline.py"),
+                     LIGHTUP_SCOPE_SOURCE_ROOT=str(_REPO / "src" / "lightup")),
+            capture_output=True, check=False, timeout=15,
         )
 
     def test_direct_native_alias_reads_abort_before_a_decoy_is_touched(self):
         statements = (
             ("local_decoy", '_io.open("synthetic-private.txt", "rb").read(1)'),
+            ("python_named_decoy", '_io.open("synthetic-private.py", "rb").read(1)'),
             ("inherited_stdin", '_io.open(0, "rb", closefd=False).read(1)'),
             ("foreign_opener",
              '_io.open("baseline.json", "rb", opener=lambda _path, _flags: 0).read(1)'),
@@ -154,7 +158,7 @@ class OfflineScopeNativeIOAliasTests(unittest.TestCase):
             with self.subTest(script=script, status=expected_status):
                 result = subprocess.run(
                     [sys.executable, "-B", str(_SCRIPTS / script)],
-                    cwd=self.root, env=dict(self.env, LIGHTUP_SCOPE_BOOTSTRAP_SCRIPT=str(_SCRIPTS / script), LIGHTUP_SCOPE_SOURCE_ROOT=str(_REPO / "src" / "lightup"), LIGHTUP_SCOPE_DIAG="1"), input=payload,
+                    cwd=self.root, env=dict(self.env, LIGHTUP_SCOPE_BOOTSTRAP_SCRIPT=str(_SCRIPTS / script), LIGHTUP_SCOPE_SOURCE_ROOT=str(_REPO / "src" / "lightup")), input=payload,
                     capture_output=True, check=False, timeout=15,
                 )
                 self.assertEqual(result.returncode, expected_code, result.stderr)
@@ -167,7 +171,7 @@ class OfflineScopeNativeIOAliasTests(unittest.TestCase):
         exporter = subprocess.run(
             [sys.executable, "-B",
              str(_SCRIPTS / "export_scope_capability_registry_offline.py")],
-            cwd=self.root, env=dict(self.env, LIGHTUP_SCOPE_BOOTSTRAP_SCRIPT=str(_SCRIPTS / "export_scope_capability_registry_offline.py"), LIGHTUP_SCOPE_SOURCE_ROOT=str(_REPO / "src" / "lightup"), LIGHTUP_SCOPE_DIAG="1"), capture_output=True,
+            cwd=self.root, env=dict(self.env, LIGHTUP_SCOPE_BOOTSTRAP_SCRIPT=str(_SCRIPTS / "export_scope_capability_registry_offline.py"), LIGHTUP_SCOPE_SOURCE_ROOT=str(_REPO / "src" / "lightup")), capture_output=True,
             check=False, timeout=15,
         )
         self.assertEqual(exporter.returncode, 3, exporter.stderr)
