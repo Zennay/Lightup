@@ -499,6 +499,155 @@ class CandidateLedgerTests(unittest.TestCase):
         self.assertTrue(all(value is False for key, value in receipt.items()
                             if key != "status"))
 
+    def test_engagement_freeze_revokes_only_exact_engagement(self):
+        self.ledger.issue(**self.items)
+        self.ledger.issue(**dict(self.items, run_id="run-same", asset="lab-2"))
+        self.ledger.issue(**dict(self.items, run_id="run-other-eng",
+                                 engagement_id="engagement-2"))
+        self.ledger.issue(**dict(self.items, run_id="run-other-tenant",
+                                 client_id="client-2"))
+        count = self.ledger.freeze_engagement(
+            client_id="client-1", engagement_id="engagement-1",
+            actor="operator-1", operator_gate=lambda actor, action: action == "freeze",
+        )
+        self.assertEqual(count, 2)
+        for run in ("lab-run-1", "run-same"):
+            self.assertEqual(self.ledger.review(run, client_id="client-1")["status"], "HOLD")
+            self.assertIsNotNone(self.ledger.inspect(run, client_id="client-1").revoked_at)
+        self.assertEqual(self.ledger.review("run-other-eng", client_id="client-1")["status"], "REVIEW_ONLY")
+        self.assertEqual(self.ledger.review("run-other-tenant", client_id="client-2")["status"], "REVIEW_ONLY")
+
+    def test_engagement_freeze_prevents_later_run_but_not_other_engagement(self):
+        self.ledger.freeze_engagement(
+            client_id="client-1", engagement_id="engagement-1",
+            actor="operator-1", operator_gate=lambda *_: True,
+        )
+        with self.assertRaises(CandidateHeld):
+            self.ledger.issue(**self.items)
+        allowed = self.ledger.issue(
+            **dict(self.items, engagement_id="engagement-2")
+        )
+        self.assertEqual(allowed.engagement_id, "engagement-2")
+
+    def test_engagement_freeze_empty_dossier_is_durable(self):
+        self.assertEqual(self.ledger.freeze_engagement(
+            client_id="client-1", engagement_id="engagement-1",
+            actor="operator-1", operator_gate=lambda *_: True,
+        ), 0)
+        with self.assertRaises(CandidateHeld):
+            self.ledger.issue(**self.items)
+
+    def test_engagement_freeze_different_tenant_same_engagement_allowed(self):
+        self.ledger.freeze_engagement(
+            client_id="client-1", engagement_id="engagement-1",
+            actor="operator-1", operator_gate=lambda *_: True,
+        )
+        candidate = self.ledger.issue(**dict(self.items, client_id="client-2"))
+        self.assertEqual(candidate.client_id, "client-2")
+
+    def test_engagement_freeze_double_invocation_is_denied_without_undo(self):
+        self.ledger.freeze_engagement(
+            client_id="client-1", engagement_id="engagement-1",
+            actor="operator-1", operator_gate=lambda *_: True,
+        )
+        with self.assertRaises(CandidateHeld):
+            self.ledger.freeze_engagement(
+                client_id="client-1", engagement_id="engagement-1",
+                actor="operator-1", operator_gate=lambda *_: True,
+            )
+        with self.assertRaises(CandidateHeld):
+            self.ledger.issue(**self.items)
+
+    def test_engagement_freeze_requires_exact_operator_true(self):
+        for gate in (None, lambda *_: False, lambda *_: 1):
+            with self.assertRaises(CandidateHeld):
+                self.ledger.freeze_engagement(
+                    client_id="client-1", engagement_id="engagement-1",
+                    actor="operator-1", operator_gate=gate,
+                )
+        self.assertIsNotNone(self.ledger.issue(**self.items))
+
+    def test_engagement_freeze_exception_redacts_private_callback(self):
+        with self.assertRaises(CandidateHeld) as ctx:
+            self.ledger.freeze_engagement(
+                client_id="client-1", engagement_id="engagement-1",
+                actor="operator-1",
+                operator_gate=Mock(side_effect=ValueError("private-approval-details")),
+            )
+        self.assertNotIn("private-approval-details", str(ctx.exception))
+        self.assertIsNone(ctx.exception.__cause__)
+        self.assertIsNotNone(self.ledger.issue(**self.items))
+
+    def test_engagement_freeze_rejects_wildcard_before_operator(self):
+        for value in ("*", "eng%", "eng?", " eng", "eng\nname"):
+            gate = Mock(return_value=True)
+            with self.assertRaises(CandidateHeld):
+                self.ledger.freeze_engagement(
+                    client_id="client-1", engagement_id=value,
+                    actor="operator-1", operator_gate=gate,
+                )
+            gate.assert_not_called()
+
+    def test_engagement_freeze_does_not_rollback_foreign_transaction(self):
+        self.ledger.issue(**self.items)
+        self.db.execute("CREATE TABLE unrelated (value TEXT)")
+        self.db.execute("BEGIN IMMEDIATE")
+        self.db.execute("INSERT INTO unrelated VALUES ('caller')")
+        with self.assertRaises(CandidateHeld):
+            self.ledger.freeze_engagement(
+                client_id="client-1", engagement_id="engagement-1",
+                actor="operator-1", operator_gate=lambda *_: True,
+            )
+        self.assertTrue(self.db.in_transaction)
+        self.assertEqual(self.db.execute("SELECT value FROM unrelated").fetchone(), ("caller",))
+        self.db.rollback()
+        self.assertIsNone(self.ledger.inspect("lab-run-1", client_id="client-1").revoked_at)
+
+    def test_engagement_freeze_persists_across_sqlite_reopen(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "engagement-freeze.sqlite"
+            db1 = sqlite3.connect(path)
+            LabApprovalCandidateLedger(db1).freeze_engagement(
+                client_id="client-1", engagement_id="engagement-1",
+                actor="operator-1", operator_gate=lambda *_: True,
+            )
+            db1.close()
+            db2 = sqlite3.connect(path)
+            ledger2 = LabApprovalCandidateLedger(db2)
+            with self.assertRaises(CandidateHeld):
+                ledger2.issue(**self.items)
+            self.assertEqual(ledger2.review("lab-run-1", client_id="client-1")["status"], "HOLD")
+            db2.close()
+
+    def test_engagement_freeze_tampered_candidate_marker_still_holds(self):
+        self.ledger.issue(**self.items)
+        self.ledger.freeze_engagement(
+            client_id="client-1", engagement_id="engagement-1",
+            actor="operator-1", operator_gate=lambda *_: True,
+        )
+        self.db.execute(
+            "UPDATE lab_stepup_candidates_v1 SET revoked_at=NULL,revoked_by=NULL WHERE run_id=?",
+            ("lab-run-1",),
+        )
+        self.db.commit()
+        receipt = self.ledger.review("lab-run-1", client_id="client-1")
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertTrue(all(value is False for key, value in receipt.items() if key != "status"))
+
+    def test_tenant_freeze_and_engagement_freeze_compose(self):
+        self.ledger.issue(**self.items)
+        self.ledger.freeze_engagement(
+            client_id="client-1", engagement_id="engagement-1",
+            actor="operator-1", operator_gate=lambda *_: True,
+        )
+        self.ledger.freeze_tenant(
+            client_id="client-1", actor="operator-1",
+            operator_gate=lambda *_: True,
+        )
+        with self.assertRaises(CandidateHeld):
+            self.ledger.issue(**dict(self.items, run_id="run-new", engagement_id="engagement-2"))
+        self.assertEqual(self.ledger.review("lab-run-1", client_id="client-1")["status"], "HOLD")
+
 
 if __name__ == "__main__":
     unittest.main()
