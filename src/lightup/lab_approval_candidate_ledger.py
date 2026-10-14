@@ -121,8 +121,13 @@ class LabApprovalCandidateLedger:
             raise CandidateHeld("candidate validity must be within 24 hours")
         actor_id = _operator(operator_gate, actor, "issue")
         approval_id = str(uuid4())
+        # Never rollback a caller-owned open transaction on a rejected call.
+        if self._db.in_transaction:
+            raise CandidateHeld("candidate transaction isolation unavailable")
+        began = False
         try:
             self._db.execute("BEGIN IMMEDIATE")
+            began = True
             self._db.execute(
                 """INSERT INTO lab_stepup_candidates_v1
                 (approval_id,run_id,client_id,engagement_id,asset,
@@ -132,7 +137,8 @@ class LabApprovalCandidateLedger:
             )
             self._db.commit()
         except sqlite3.Error:
-            self._db.rollback()
+            if began:
+                self._db.rollback()
             raise CandidateHeld("candidate issuance refused") from None
         return LabApprovalCandidate(
             approval_id, *ids, actor_id, now, expiry, None,
@@ -144,8 +150,13 @@ class LabApprovalCandidateLedger:
         key = _identity(run_id)
         actor_id = _operator(operator_gate, actor, "revoke")
         stamp = datetime.now(timezone.utc).isoformat()
+        # Never rollback a caller-owned open transaction on a rejected call.
+        if self._db.in_transaction:
+            raise CandidateHeld("candidate transaction isolation unavailable")
+        began = False
         try:
             self._db.execute("BEGIN IMMEDIATE")
+            began = True
             result = self._db.execute(
                 """UPDATE lab_stepup_candidates_v1
                 SET revoked_at=?, revoked_by=?
@@ -157,7 +168,8 @@ class LabApprovalCandidateLedger:
                 raise CandidateHeld("candidate not revocable")
             self._db.commit()
         except sqlite3.Error:
-            self._db.rollback()
+            if began:
+                self._db.rollback()
             raise CandidateHeld("candidate revocation unavailable") from None
 
     def revoke_engagement(
@@ -173,8 +185,13 @@ class LabApprovalCandidateLedger:
         engagement = _identity(engagement_id)
         actor_id = _operator(operator_gate, actor, "revoke")
         stamp = datetime.now(timezone.utc).isoformat()
+        # Never rollback a caller-owned open transaction on a rejected call.
+        if self._db.in_transaction:
+            raise CandidateHeld("candidate transaction isolation unavailable")
+        began = False
         try:
             self._db.execute("BEGIN IMMEDIATE")
+            began = True
             result = self._db.execute(
                 """UPDATE lab_stepup_candidates_v1
                 SET revoked_at=?, revoked_by=?
@@ -188,7 +205,8 @@ class LabApprovalCandidateLedger:
             self._db.commit()
             return count
         except sqlite3.Error:
-            self._db.rollback()
+            if began:
+                self._db.rollback()
             raise CandidateHeld("engagement revocation unavailable") from None
 
     def inspect(self, run_id: str, *, client_id: str) -> LabApprovalCandidate | None:
