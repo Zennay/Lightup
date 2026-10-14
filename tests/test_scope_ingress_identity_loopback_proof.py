@@ -140,15 +140,43 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
         modified["grant_token"] = "never-accepted"
         self.assertFalse(fixture._expected(modified, "anonymous", "DENIED"))
 
+    def test_each_alternate_identity_header_has_independent_exact_case(self):
+        self.assertEqual(len(fixture.ALTERNATE_HEADERS), 8)
+        names = tuple(
+            f"alternate_{value.lower().replace('-', '_')}"
+            for value in fixture.ALTERNATE_HEADERS
+        )
+        self.assertEqual(len(names), len(set(names)))
+        self.assertTrue(set(names).issubset(set(fixture.CASE_NAMES)))
+        self.assertIn("alternate_combined", fixture.CASE_NAMES)
+        self.assertEqual(len(fixture.CASE_NAMES), 15)
+
+    def test_invalid_alt_header_selector_denied_before_http_object_created(self):
+        with patch.object(
+            fixture.http.client, "HTTPConnection",
+            side_effect=AssertionError("must not even create client"),
+        ):
+            with self.assertRaises(RuntimeError):
+                fixture._request(
+                    28211, "/engagements/fixture/grants",
+                    alternate_name="X-Untrusted-Identity",
+                )
+            with self.assertRaises(RuntimeError):
+                fixture._request(
+                    28211, "/engagements/fixture/grants",
+                    alternate_name=True,
+                )
+
     def test_receipts_never_mint_real_authorization(self):
-        for count in (0, 1, 6, 7, True, 8, -1, "7"):
+        total = len(fixture.CASE_NAMES)
+        for count in (0, 1, total - 1, total, True, total + 1, -1, str(total)):
             with self.subTest(count=count):
                 receipt = fixture.receipt(count)
-                reviewed = type(count) is int and count == 7
+                reviewed = type(count) is int and count == total
                 self.assertEqual(
                     receipt["status"], "REVIEW_ONLY" if reviewed else "HOLD"
                 )
-                self.assertEqual(receipt["verified_cases"], 7 if reviewed else 0)
+                self.assertEqual(receipt["verified_cases"], total if reviewed else 0)
                 self.assertEqual(set(receipt), {
                     "status", "diagnostic_code", "verified_cases",
                     *fixture.AUTHORITY_FLAGS,
@@ -170,7 +198,11 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
         self.assertEqual(json.loads(output.getvalue())["status"], "HOLD")
 
     def test_cli_nonzero_exit_code_for_every_possible_review_state(self):
-        for result, expected in ((7, 3), (6, 2), (0, 2)):
+        for result, expected in (
+            (len(fixture.CASE_NAMES), 3),
+            (len(fixture.CASE_NAMES) - 1, 2),
+            (0, 2),
+        ):
             with self.subTest(result=result):
                 output = io.StringIO()
                 with patch.object(fixture, "run_fixture", return_value=result):
