@@ -42,6 +42,18 @@ Duplicate JSON keys, Unicode lookalikes, subclasses in direct API calls,
 nonfinite numbers and malformed/oversized payloads are HOLD. Any invalid member
 HOLDs the entire packet.
 
+A well-formed tool also needs a **single unambiguous destination shape**:
+either exactly one ENDPOINT field, or exactly one HOST field with at most
+one of PORT **or** PORT_SET. HOST alone is valid. Non-destination metadata
+with role NONE may accompany any valid shape but can never establish one.
+PORT/PORT_SET without HOST, repeated destination roles on different argument
+names, HOST+ENDPOINT, ENDPOINT+PORT, or PORT+PORT_SET are HOLD even if every
+individual parameter has a valid name/kind pair. Mixed multi-tool packets
+reject **atomically** with zero tool/parameter counts, regardless of whether
+the invalid member appears first or last. Shape consistency is explicitly
+not proof that any caller supplied a genuinely trusted destination.
+
+
 For example, these three *synthetic* tool shape declarations match currently
 implemented LAB_ACTIVE argument forms but DO NOT prove they are the actual
 registry definitions: `lab-http-baseline.url` → endpoint/string,
