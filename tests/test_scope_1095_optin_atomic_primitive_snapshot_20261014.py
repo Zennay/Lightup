@@ -22,6 +22,8 @@ from lightup.execution_policy import InteractionKind
 from lightup.primitive_admission_optin_1095 import (
     MAX_SYNTHETIC_BATCH_ITEMS,
     MAX_SYNTHETIC_PARAMETERS,
+    PrimitiveBatchSnapshot,
+    PrimitiveValueSnapshot,
     snapshot_exact_primitive_batch,
     snapshot_exact_primitive_values,
 )
@@ -225,6 +227,57 @@ class ExactPrimitiveSnapshotTests(unittest.TestCase):
                 fake_name = dataclasses.replace(canonical, tool_id=tool_id)
                 with self.assertRaises(OrchestrationError):
                     snapshot_exact_primitive_values(fake_name, {"value": "ok"})
+
+    def test_direct_receipt_constructor_rejects_type_confusion(self):
+        valid = PrimitiveValueSnapshot((("value", "synthetic"),))
+        self.assertEqual(valid.as_arguments(), {"value": "synthetic"})
+        self.assertFalse(valid.permit_issued)
+        for forged in (
+            [("value", "synthetic")],
+            (["value", "synthetic"],),
+            (("value", StrSubclass("synthetic")),),
+            ((StrSubclass("value"), "synthetic"),),
+            (("value", object()),),
+            (("value", 1), ("value", 2)),
+            (("value",),),
+            (("value", 1, 2),),
+            (("value", "synthetic"),) * (MAX_SYNTHETIC_PARAMETERS + 1),
+        ):
+            with self.subTest(container=type(forged).__name__, length=len(forged)):
+                with self.assertRaises(OrchestrationError):
+                    PrimitiveValueSnapshot(forged)
+
+    def test_direct_batch_constructor_rejects_noncanonical_entries(self):
+        valid = PrimitiveValueSnapshot((("value", "ok"),))
+        batch = PrimitiveBatchSnapshot((valid,))
+        self.assertEqual(batch.count, 1)
+        self.assertFalse(batch.authorization_verified)
+
+        class SnapshotSubclass(PrimitiveValueSnapshot):
+            pass
+
+        child = SnapshotSubclass(valid.items)
+        for forged in (
+            [], (),
+            [valid],
+            ({"value": "ok"},),
+            (child,),
+            (valid,) * (MAX_SYNTHETIC_BATCH_ITEMS + 1),
+        ):
+            with self.subTest(type=type(forged).__name__, count=len(forged)):
+                with self.assertRaises(OrchestrationError):
+                    PrimitiveBatchSnapshot(forged)
+
+    def test_direct_receipts_do_not_invoke_hostile_subclass_methods(self):
+        class HostileValue(StrSubclass):
+            def __str__(self):
+                raise AssertionError("no conversion permitted")
+            def __repr__(self):
+                raise AssertionError("no custom repr permitted")
+        with self.assertRaises(OrchestrationError):
+            PrimitiveValueSnapshot((("value", HostileValue("never-used")),))
+        with self.assertRaises(OrchestrationError):
+            PrimitiveBatchSnapshot((object(),))
 
     def test_metadata_requires_exact_toolparameter_and_boolean_required(self):
         ordinary = definition("text", ParamKind.STRING)
