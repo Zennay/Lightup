@@ -1,0 +1,32 @@
+# Git replace-ref identity ambiguity — scope review acceptance (#1314)
+
+**Posture:** LightUp INCUBATE M3/M7, **PLAN/LAB ONLY, DRAFT/HOLD, NO MERGE/NO DEPLOY**. This is an offline synthetic *negative* security acceptance oracle. It is **not** a production check, release/CI attestation, target permission or a grant.
+
+## Finding
+
+A reviewer accepting a 40-character immutable commit SHA but relying on ordinary local Git object reads can be misled by repository-local **`refs/replace/<sha>`**. Git transparently presents a different commit's tree, blob and ancestry under the unchanged original SHA. A local replacement ref survives removal of inherited `GIT_*` environment variables, and checking `rev-parse HEAD^{commit}` does not fix it.
+
+**Concrete disposable proof:** a real original commit changes `src/lightup/protected.py`; a separate benign commit based on the same base only adds `tests/test_scope_synthetic.py`. `git replace <original-head-sha> <benign-head-sha>` causes default `git diff <base> <original-head-sha>` to report only the apparently benign file. The exact same diff with `GIT_NO_REPLACE_OBJECTS=1` instead reveals the original production source edit.
+
+This is an **offline Git interpretation ambiguity**, not evidence of an actual exploit against a deployed LightUp instance, and not evidence of malicious activity in any existing worker branch.
+
+## Test-only deliverables
+
+Run locally from a checkout with Git installed:
+
+```sh
+python -m unittest discover -s tests -p 'test_scope_git_replace_ref_boundary.py' -v
+```
+
+The **six** genuine disposable-repository tests cover diff spoofing, unchanged SHA / changed tree, original blob recovery, repository-local refs independent of inherited variables, `HEAD^{commit}` pin insufficiency and original history recovery. Each test uses a temporary directory, does not import production LightUp, opens no network sockets, runs no scans and never alters a real repository.
+
+## Owner handoff — not an independent fix
+
+- The active source-owner [draft #1313](https://github.com/Zennay/Lightup/pull/1313) must decide whether to set `GIT_NO_REPLACE_OBJECTS=1` **for every Git subprocess**, including `diff`, `rev-list`, `cat-file`, `ls-tree`, `status` and `rev-parse`. Prefer enforcing this centrally in the owner's sanitized Git environment rather than only individual callers.
+- Consider rejecting any detected local replacement refs in stricter review mode, but do not infer that absence of a checked ref is a trusted release proof. Exact current-head pinning, clean-worktree checks and Git env sanitization remain independent controls.
+- Review the end-to-end local trust boundary, Git configuration, ref/object provenance and TOCTOU separately; this synthetic reference alone does not prove all possible Git integrity issues are resolved.
+- Require source-owner review, exact immutable new-branch Python3.11/3.14 hosted unit and real-producer jobs, separately registered permanent VPS execution evidence, independent security/privacy approval and explicit human release decision. **This branch cannot merge or deploy automatically.**
+
+## Collision boundary
+
+This small PR adds only `tests/test_scope_git_replace_ref_boundary.py` and `docs/scope-git-replace-ref-boundary.md` on a dedicated branch off untouched `main`. It does **not** edit #1313's checker/docs/tests, another worker's files, CI workflows, production authorization, VPS runners, targets, grants or evidence-remediation.
