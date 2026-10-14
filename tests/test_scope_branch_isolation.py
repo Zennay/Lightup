@@ -273,5 +273,29 @@ class IsolationCheckTests(unittest.TestCase):
         self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
                          "NONCANONICAL_TEXT")
 
+    def test_invisible_control_text_is_rejected_before_review(self):
+        for index, payload in enumerate((
+            "\ufeff# utf-8 bom\n",
+            "print('synthetic')\x1b[31m\n",
+            "name = 'synthetic\u202ehidden'\n",
+            "name = 'synthetic\u200bhidden'\n",
+            "# changed\rprint('synthetic')\n",
+            "name = 'synthetic\u2066isolate\u2069'\n",
+        )):
+            with self.subTest(index=index):
+                self.git("checkout", "-q", self.base)
+                path = "tests/test_scope_synthetic_review.py"
+                self.write(path, payload)
+                head = self.commit()
+                self.assertEqual(inspect(self.repo, self.base, head, (path,))[0],
+                                 "NONCANONICAL_TEXT")
+
+    def test_normal_multilingual_text_remains_reviewable(self):
+        path = "docs/scope-synthetic-review.md"
+        self.write(path, "Bevoegdheid: eigenaar; résumé; 日本語; café\n")
+        head = self.commit()
+        self.assertEqual(inspect(self.repo, self.base, head, (path,)),
+                         ("ADDITIVE_PATHS_MATCH", 1))
+
 if __name__ == "__main__":
     unittest.main()
