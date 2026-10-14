@@ -371,5 +371,43 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
         self.refused(lambda: self.manifest(params, fields))
 
 
+
+    def test_48_oversized_url_short_circuits_before_parser(self):
+        from unittest.mock import patch
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        with patch("lightup.trusted_destination_manifest_optin.urlsplit",
+                   side_effect=AssertionError("parser called for oversized URL")):
+            self.refused(lambda: m.review({"url": "http://localhost/" + "a" * 50000}))
+
+    def test_49_oversized_host_short_circuits_before_ipaddress(self):
+        from unittest.mock import patch
+        m = self.manifest()
+        with patch("lightup.trusted_destination_manifest_optin.ipaddress.ip_address",
+                   side_effect=AssertionError("IP parser called for oversized host")):
+            self.refused(lambda: m.review({"host": "a" * 50000}))
+
+    def test_50_hostile_role_metadata_no_equality_callback(self):
+        class RoleCanary:
+            def __eq__(self, other):
+                raise AssertionError("role equality callback called")
+        d = self.make([ToolParameter("host", ParamKind.STRING)])
+        self.refused(lambda: TrustedDestinationManifest(
+            self.registry, d, (DestinationField("host", RoleCanary()),)))
+
+    def test_51_hostile_parameter_kind_no_equality_callback(self):
+        class KindCanary:
+            def __eq__(self, other):
+                raise AssertionError("kind equality callback called")
+        d = self.make([ToolParameter("host", KindCanary())])
+        self.refused(lambda: TrustedDestinationManifest(
+            self.registry, d, (DestinationField("host", DestinationRole.HOST),)))
+
+    def test_52_oversized_registered_parameter_description_rejected(self):
+        d = self.make([ToolParameter("host", ParamKind.STRING, description="s" * 4097)])
+        self.refused(lambda: TrustedDestinationManifest(
+            self.registry, d, (DestinationField("host", DestinationRole.HOST),)))
+
+
 if __name__ == "__main__":
     unittest.main()
