@@ -17,6 +17,7 @@ import sys
 from lightup.engagements import AuthorizationGrant, RiskLevel, ScopeDefinition
 from lightup.grant_revision_batch_review import review_grant_revision_batch
 from lightup.grant_revision_history_review import review_grant_history
+from lightup.grant_revision_history_batch_review import review_grant_history_batch
 
 
 MAX_FILE_BYTES = 65536
@@ -148,6 +149,20 @@ def _history(value: object) -> tuple[AuthorizationGrant, ...]:
     return tuple(_grant(snapshot) for snapshot in history)
 
 
+def _histories(value: object) -> tuple[tuple[AuthorizationGrant, ...], ...]:
+    if type(value) is not dict or frozenset(value) != {"histories"}:
+        raise ValueError("invalid histories envelope")
+    histories = value["histories"]
+    if type(histories) is not list or not 1 <= len(histories) <= 16:
+        raise ValueError("invalid histories count")
+    result = []
+    for row in histories:
+        if type(row) is not list or not 2 <= len(row) <= 8:
+            raise ValueError("invalid per-grant history shape")
+        result.append(tuple(_grant(snapshot) for snapshot in row))
+    return tuple(result)
+
+
 def review_local_file(path: str) -> dict[str, object]:
     try:
         payload = _read_regular_file(path)
@@ -159,6 +174,15 @@ def review_local_file(path: str) -> dict[str, object]:
                 "reviewed_count": 1 if result.verdict == "REVIEW_ONLY" else 0,
                 "narrowed_count": len(result.narrowed_fields) if result.verdict == "REVIEW_ONLY" else 0,
                 "version_count": result.version_count,
+                "reviewed_transitions": result.reviewed_transitions,
+            }
+        elif type(payload) is dict and frozenset(payload) == {"histories"}:
+            result = review_grant_history_batch(_histories(payload))
+            fields = {
+                "verdict": result.verdict,
+                "reason_code": result.reason_code,
+                "reviewed_count": result.reviewed_histories,
+                "narrowed_count": result.narrowed_dimensions,
                 "reviewed_transitions": result.reviewed_transitions,
             }
         else:
