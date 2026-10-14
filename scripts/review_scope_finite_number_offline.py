@@ -16,6 +16,50 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from lightup.finite_number_offline_review import review_finite_number_arguments
 
 _MAX_INPUT_BYTES = 8192
+_MAX_JSON_CONTAINERS = 34  # One envelope, one arguments list, <=32 argument rows.
+_MAX_INT_DECIMAL_DIGITS = 1234  # Any int <=4096 bits fits in this many digits.
+_MAX_FLOAT_TOKEN_BYTES = 256
+
+
+def _preparse_json_shape(raw: bytes) -> None:
+    """Bound pre-decoding nested containers without treating quoted text as JSON.
+
+    JSON decoding still validates complete syntax and field semantics; this
+    lexical pass is only a resource guard, not a trusted authorization source.
+    """
+    in_string = False
+    escaped = False
+    depth = 0
+    containers = 0
+    for byte in raw:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif byte == 92:  # JSON string backslash
+                escaped = True
+            elif byte == 34:
+                in_string = False
+        elif byte == 34:
+            in_string = True
+        elif byte in (91, 123):  # '[' or '{'
+            depth += 1
+            containers += 1
+            if depth > 3 or containers > _MAX_JSON_CONTAINERS:
+                raise ValueError("invalid JSON resource boundary")
+        elif byte in (93, 125):
+            depth -= 1
+            if depth < 0:
+                raise ValueError("invalid JSON resource boundary")
+    if depth or in_string:
+        raise ValueError("invalid JSON resource boundary")
+
+
+def _parse_bounded_json_int(token: str) -> int:
+    """Reject oversized decimal tokens *before* allocating Python bignums."""
+    if len(token.lstrip("-")) > _MAX_INT_DECIMAL_DIGITS:
+        raise ValueError("oversized integer token")
+    return int(token)
+
 
 
 def _unique_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -37,6 +81,8 @@ def _parse_exact_finite_json_float(token: str) -> float:
     Purely lexical protection against silently losing a nonzero quantity when
     parsing an offline numeric preview; this is not a production runtime gate.
     """
+    if len(token) > _MAX_FLOAT_TOKEN_BYTES:
+        raise ValueError("oversized floating-point token")
     result = float(token)
     if not math.isfinite(result):
         raise ValueError("invalid float boundary")
@@ -53,11 +99,13 @@ def main(args: list[str]) -> int:
             raw = sys.stdin.buffer.read(_MAX_INPUT_BYTES + 1)
             if not raw or len(raw) > _MAX_INPUT_BYTES:
                 raise ValueError("invalid size")
+            _preparse_json_shape(raw)
             obj = json.loads(
                 raw.decode("utf-8"),
                 object_pairs_hook=_unique_keys,
                 parse_constant=_reject_constant,
                 parse_float=_parse_exact_finite_json_float,
+                parse_int=_parse_bounded_json_int,
             )
             if type(obj) is not dict or set(obj) != {"arguments"}:
                 raise ValueError("invalid envelope")
