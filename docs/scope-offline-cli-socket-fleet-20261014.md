@@ -41,3 +41,11 @@ The very same eight real opt-in offline CLI entrypoints now also run under early
 Ten deliberately mutated disposable child processes attempt each distinct write or SQLite route under a catch-all, and each must exit 92 with zero stdout/stderr and an unchanged disposable parent sandbox. The real CLI happy/HOLD matrix is exercised with these fail-hard hooks, keeping normal output non-authorizing and avoiding all real network/targets. This complements prior #1362's catchable marker-based test without modifying that independently owned suite.
 
 **Limits:** Python monkeypatch-based evidence is not a kernel filesystem sandbox, cannot police native syscalls or aliases saved before hook installation, and does not prove production consent/authorization. No durable grant issuance, active scans, remote access, deployment or production state mutation are added.
+
+## W22 — low-level file descriptor and `_sqlite3` no-I/O regressions (#1394)
+
+High-level file/SQLite methods are not the entire Python API: `os.write`, `writev`, `pwrite`, `pwritev`, `sendfile`, `copy_file_range` and `splice` can directly change data through inherited or pre-opened descriptors without calling the previously protected `open()` methods. Likewise, direct `_sqlite3.connect` can bypass a wrapper patched only at `sqlite3.connect`. The early child-process test hook now rejects these APIs with immediate `os._exit(92)`, wherever the OS/Python interpreter exposes them. Clean real CLI cases continue to use `sys.stdout` for developer receipts.
+
+One separate Python unittest executes up to eight disposable subprocess mutation variants under broad `except BaseException`. Every installed API must hit exit 92, zero stdout/stderr and no changed fixture bytes; unsupported optional OS functions are skipped. The `_sqlite3` mutation uses a disposable local path but must be intercepted **before** opening it. Existing eight real CLI positive/HOLD checks still must pass.
+
+These controls deliberately do **not** patch the kernel, raw C syscalls, all pre-bound extension aliases, or native binaries. They are negative tests for specific Python entrypoints, not trusted OS confinement or a grant/release/security scan permit. Runtime source owners #1143/#1173 and registered permanent VPS CI remain separate.
