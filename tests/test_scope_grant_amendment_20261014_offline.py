@@ -279,6 +279,40 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
             source.close()
             sink.close()
 
+    def test_denial_flags_are_immutable(self):
+        with self.assertRaises(TypeError):
+            reviewer.DENIAL["authorized"] = True
+        with self.assertRaises(TypeError):
+            reviewer.DENIAL["release_approved"] = True
+        self.assertIs(reviewer.review(encode(fixture()))[0]["authorized"], False)
+
+    def test_all_128_synthetic_widening_combinations_have_zero_authority(self):
+        # 7 orthogonal widening dimensions; any chosen bit requires HOLD.
+        for bits in range(128):
+            item = fixture()
+            after = item["after"]
+            if bits & 1:
+                after["grant_id"] = "other-grant"
+            if bits & 2:
+                after["assets"].append("new.example")
+            if bits & 4:
+                after["excluded_assets"] = []
+            if bits & 8:
+                after["capabilities"].append("other_tool")
+            if bits & 16:
+                after["max_risk"] = 4
+            if bits & 32:
+                after["valid_until"] = "2026-10-16T00:00:00Z"
+            if bits & 64:
+                after["recurring_retest_allowed"] = True
+            receipt, code = reviewer.review(encode(item))
+            with self.subTest(bits=bits):
+                self.assert_denied_authority(receipt, code)
+                if bits:
+                    self.assertEqual((receipt["status"], code), ("HOLD", 2))
+                else:
+                    self.assertEqual((receipt["status"], code), ("REVIEW_ONLY", 3))
+
     def test_cli_rejects_no_flag(self):
         result = subprocess.run(
             [sys.executable, "-B", str(SCRIPT)],
