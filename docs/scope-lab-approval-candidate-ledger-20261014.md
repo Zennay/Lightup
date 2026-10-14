@@ -21,3 +21,9 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_lab_approval_
 ```
 
 **NO REAL SCANS · NO ACTIVE LAB PAYLOADS · NO DEPLOY · NO CLAIM OF AUTHORIZATION.**
+
+## Read-time integrity hardening (follow-up)
+
+Every persisted candidate is revalidated on read: exact canonical builtin UTC `isoformat` encoding, ordered issuance/expiry, max 24-hour original window, and revocation not preceding issuance. This blocks accidental or attacker-controlled SQLite edits from producing an inflated `REVIEW_ONLY` receipt. The human-facing `review` operation returns a privacy-safe `HOLD` receipt (all five authority flags false) even if a row is malformed; direct `inspect` raises `CandidateHeld` for explicit owner diagnostics.
+
+**Important:** this is not a tamper-evident signed ledger, trusted operator identity, actual current consent or executor permission. Full SQLite write access can replace entire rows; this helper never authorizes a real target. Tested with synthetic disposable SQLite time-widening, backdating, malformed timezone aliases and impossible revocation chronology.
