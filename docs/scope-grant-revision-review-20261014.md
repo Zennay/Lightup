@@ -229,3 +229,17 @@ collisions, later unsafe versions, duplicate grant IDs, network aliases,
 maximal bounded packet size, synthetic user privacy and no target I/O.
 The historical versions are UNTRUSTED self-declared text and **cannot**
 be used to launch assessments, renew grants or skip revocation checks.
+
+## W8: snapshot input boundary safety
+
+The local-only CLI now requires genuine nonzero `O_NOFOLLOW` and
+`O_NONBLOCK` OS capabilities; on a platform that cannot enforce them it
+returns opaque HOLD instead of silently following a symlink or waiting
+forever on a named pipe. The opened regular file is checked by `fstat`
+before and after its <=64 KiB read; changed inode, device, size or
+modification time yields atomic HOLD with no reviewed items. Synthetic
+tests prove both missing-OS-flag cases and a mid-read metadata mutation
+yield HOLD. This is a defensive **best-effort local consistency check**,
+not a secure filesystem snapshot, cryptographic integrity attestation
+or trusted version ledger. A malicious local editor could still fake
+metadata or omit history; this offline diagnostic never authorizes.
