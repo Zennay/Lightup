@@ -10,6 +10,7 @@ import tempfile
 import unittest
 from datetime import datetime, timezone
 from enum import IntEnum
+from itertools import permutations
 from pathlib import Path
 from uuid import uuid4
 
@@ -255,6 +256,78 @@ class ActualExecutorAdmissionTests(unittest.TestCase):
         self.assertEqual(self._evidence_count(), before_rows,
                          "mixed malformed arguments must not persist partial evidence")
         self.assertTrue(denied, "mixed malformed value must raise OrchestrationError")
+
+    @staticmethod
+    def _permuted_mixed_payloads(overrides=None):
+        """All 24 four-field orders; no randomness or external input."""
+        fields = {
+            "label": "synthetic", "count": 2, "measure": 1.25,
+            "enabled": False,
+        }
+        if overrides:
+            fields.update(overrides)
+        for ordered in permutations(tuple(fields.items())):
+            yield dict(ordered)
+
+    def test_all_24_mixed_builtin_key_orders_dispatch_only_canonical_values(self):
+        initial_rows = self._evidence_count()
+        initial_calls = len(self.handler_calls)
+        for payload in self._permuted_mixed_payloads():
+            with self.subTest(keys=tuple(payload)):
+                self._execute_mixed(payload)
+                self.assertEqual(self.handler_calls[-1], payload)
+        self.assertEqual(len(self.handler_calls) - initial_calls, 24)
+        self.assertEqual(self._evidence_count() - initial_rows, 24)
+
+    def test_all_24_orders_refuse_each_canonical_mismatch_before_any_effect(self):
+        # False is a builtin bool, but NOT an INTEGER or NUMBER.
+        for field, invalid in (
+            ("label", 3),
+            ("count", False),
+            ("measure", "1.25"),
+            ("enabled", 1),
+        ):
+            for payload in self._permuted_mixed_payloads({field: invalid}):
+                with self.subTest(field=field, keys=tuple(payload)):
+                    self._assert_mixed_rejected_without_effects(payload)
+        self.assertEqual(len(self.handler_calls), 0)
+        self.assertEqual(self._evidence_count(), 0)
+
+    def _assert_polymorphic_rejected_in_all_24_orders(self, field, value):
+        forbidden_dispatches = []
+        initial_calls = len(self.handler_calls)
+        initial_rows = self._evidence_count()
+        for payload in self._permuted_mixed_payloads({field: value}):
+            try:
+                self._execute_mixed(payload)
+            except OrchestrationError:
+                pass
+            else:
+                forbidden_dispatches.append(tuple(payload))
+        self.assertEqual(
+            forbidden_dispatches, [],
+            "noncanonical subtype must be rejected for ALL input field orders",
+        )
+        self.assertEqual(len(self.handler_calls), initial_calls)
+        self.assertEqual(self._evidence_count(), initial_rows)
+
+    @unittest.expectedFailure
+    def test_red_all_24_orders_reject_polymorphic_string(self):
+        self._assert_polymorphic_rejected_in_all_24_orders(
+            "label", SubclassText("synthetic")
+        )
+
+    @unittest.expectedFailure
+    def test_red_all_24_orders_reject_polymorphic_integer_enum(self):
+        self._assert_polymorphic_rejected_in_all_24_orders(
+            "count", NumericEnum.ONE
+        )
+
+    @unittest.expectedFailure
+    def test_red_all_24_orders_reject_polymorphic_float(self):
+        self._assert_polymorphic_rejected_in_all_24_orders(
+            "measure", SubclassFloat(1.25)
+        )
 
     def test_mixed_builtin_primitive_values_dispatch_once(self):
         before = self._evidence_count()
