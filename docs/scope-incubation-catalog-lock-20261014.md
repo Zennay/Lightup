@@ -45,6 +45,29 @@ unchanged assumed catalog, `HOLD` exits **2** otherwise. Even
 synthetic unexpected/removed/reclassified entries, metadata malformations,
 stable order, bounded privacy-safe receipts and actual CLI exit behavior.
 
+## Full semantic identity follow-up (#1356)
+
+A completely unchanged set of IDs, states and activation booleans is **not**
+enough: changing a public capability name or description may mislead a reviewer
+without changing the operational state. The closed-world audit now compares
+the **canonical complete five-field metadata** against a separately reviewed
+incubation fingerprint (SHA-256
+`37419dd71288587323bc112bf28ad2aafc6561118cde7750852307848cd4af16`,
+derived from 31 canonical entries at the source-only #1355 merge). Any
+metadata-only edit also produces `HOLD`, with a generic reason and no
+capability names, descriptions, inputs or arbitrary text echoed. A later
+intentional capability rename, description or catalog change requires an
+explicit code-review update of this pin. Pure manifest reordering does not
+alter the fingerprint.
+
+The pin is an **unsigned code literal in the same repository**, not a
+trusted out-of-band source, genuine signed build attestation or cryptographic
+permission to run an assessment. A malicious or careless developer could
+change both the registry and pin; this checker cannot prove provenance.
+Runtime policy, customer authorization and explicit operator approval remain
+independent, enforced gates. All five authority flags stay false and CLI
+exit codes remain 2/3 even when metadata matches.
+
 ## Remaining boundaries
 
 This is a second, complementary check, **not a replacement** for the
