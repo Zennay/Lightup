@@ -23,11 +23,15 @@ from pathlib import Path
 _NETWORK_EXIT_TRIPWIRE = (
     "import os\n"
     "import socket\n"
+    "import subprocess\n"
     "def forbidden(*args, **kwargs):\n"
     "    os._exit(92)\n"
     "socket.socket.connect = forbidden\n"
     "socket.socket.connect_ex = forbidden\n"
     "socket.getaddrinfo = forbidden\n"
+    "subprocess.Popen = forbidden\n"
+    "os.system = forbidden\n"
+    "os.popen = forbidden\n"
 )
 
 
@@ -186,6 +190,64 @@ class FiniteNumberCliNoIoTests(unittest.TestCase):
                         result.returncode, 92,
                         "attempt to call a network primitive was not caught",
                     )
+                    self.assertEqual(result.stdout, b"")
+                    self.assertEqual(result.stderr, b"")
+
+    def test_tripwire_kills_swallowed_subprocess_and_shell_in_real_cli_copy(self):
+        """No catchable error may hide Python child-process attempts."""
+        repo = Path(__file__).resolve().parents[1]
+        cli_source = (
+            repo / "scripts" / "review_scope_finite_number_offline.py"
+        ).read_text(encoding="utf-8")
+        marker = "def main(args: list[str]) -> int:\n"
+        self.assertEqual(cli_source.count(marker), 1)
+        with tempfile.TemporaryDirectory() as root:
+            sandbox = Path(root)
+            scripts = sandbox / "scripts"
+            package = sandbox / "src" / "lightup"
+            scripts.mkdir(parents=True)
+            package.mkdir(parents=True)
+            (sandbox / "sitecustomize.py").write_text(
+                _NETWORK_EXIT_TRIPWIRE, encoding="utf-8"
+            )
+            for relative in ("__init__.py", "finite_number_offline_review.py"):
+                shutil.copyfile(
+                    repo / "src" / "lightup" / relative, package / relative
+                )
+            mutated_cli = scripts / "review_scope_finite_number_offline.py"
+            env = os.environ.copy()
+            env["PYTHONPATH"] = root
+            env["PYTHONNOUSERSITE"] = "1"
+            calls = (
+                'subprocess.Popen(["/bin/true"])',
+                'subprocess.run(["/bin/true"], check=False)',
+                'os.system("true")',
+                'os.popen("true")',
+            )
+            for call in calls:
+                with self.subTest(call=call):
+                    injection = (
+                        "    import os\n"
+                        "    import subprocess\n"
+                        "    try:\n"
+                        f"        {call}\n"
+                        "    except BaseException:\n"
+                        "        pass  # cannot swallow uncatchable process tripwire\n"
+                    )
+                    mutated_cli.write_text(
+                        cli_source.replace(marker, marker + injection),
+                        encoding="utf-8",
+                    )
+                    result = subprocess.run(
+                        [sys.executable, "-B", str(mutated_cli)],
+                        cwd=sandbox,
+                        env=env,
+                        input=b'{"arguments":[["synthetic",1]]}',
+                        capture_output=True,
+                        timeout=10,
+                        check=False,
+                    )
+                    self.assertEqual(result.returncode, 92)
                     self.assertEqual(result.stdout, b"")
                     self.assertEqual(result.stderr, b"")
 
