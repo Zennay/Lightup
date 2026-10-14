@@ -18,7 +18,12 @@ MAX_FILES = 16
 
 
 def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
-    return subprocess.run(("git", *args), cwd=repo, capture_output=True, check=False)
+    try:
+        return subprocess.run(("git", *args), cwd=repo, capture_output=True,
+                              check=False, timeout=20)
+    except (OSError, subprocess.TimeoutExpired):
+        # Missing Git, blocked invocations or timeouts yield an opaque HOLD.
+        return subprocess.CompletedProcess(("git", *args), 126, b"", b"")
 
 
 def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
@@ -72,7 +77,7 @@ def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
             return "INVALID_TREE_ENTRY", len(fields) // 2
     if changed != set(expected):
         return "OWNERSHIP_MANIFEST_MISMATCH", len(fields) // 2
-    if _git(repo, "diff", "--check", base, head, "--").returncode:
+    if _git(repo, "diff", "--check", "--no-ext-diff", "--no-textconv", base, head, "--").returncode:
         return "PATCH_CHECK_FAILED", len(fields) // 2
     for peer in peers:
         if _git(repo, "cat-file", "-e", f"{peer}^{{commit}}").returncode:
