@@ -51,11 +51,6 @@ def main() -> int:
     # No external test selection or follow-up dispatch is possible. Standard
     # unittest reports are kept out of the machine-readable minimal receipt.
     try:
-        suite = unittest.TestLoader().discover(
-            start_dir=str(root / "tests"),
-            pattern=PATTERN,
-            top_level_dir=str(root / "tests"),
-        )
         log = io.StringIO()
         def refuse_io(*_args, **_kwargs):
             raise RuntimeError("offline test boundary refused external I/O")
@@ -69,6 +64,13 @@ def main() -> int:
               patch("subprocess.Popen", side_effect=refuse_io),
               patch("subprocess.run", side_effect=refuse_io),
               patch("os.system", side_effect=refuse_io)):
+            # Discovery imports test modules and their dependencies. Protect
+            # BOTH discovery and execution against eager import-time I/O.
+            suite = unittest.TestLoader().discover(
+                start_dir=str(root / "tests"),
+                pattern=PATTERN,
+                top_level_dir=str(root / "tests"),
+            )
             result = unittest.TextTestRunner(
                 stream=log, verbosity=0, failfast=True
             ).run(suite)
