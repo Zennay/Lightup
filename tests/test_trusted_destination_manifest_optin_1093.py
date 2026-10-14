@@ -230,5 +230,74 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
 
 
 
+
+    def test_31_numeric_host_aliases_denied(self):
+        m = self.manifest()
+        for alias in ("2130706433", "0x7f000001", "0x7f.0.0.1", "0x7f.0x0.0x0.0x1"):
+            with self.subTest(alias=alias):
+                self.refused(lambda value=alias: m.review({"host": value}))
+
+    def test_32_numeric_endpoint_aliases_denied(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        for alias in ("http://2130706433/", "http://0x7f.0.0.1/", "https://0x7f000001:443/"):
+            with self.subTest(alias=alias):
+                self.refused(lambda value=alias: m.review({"url": value}))
+
+    def test_33_mutated_capability_cannot_trigger_equality_callback(self):
+        class Canary:
+            def __eq__(self, other):
+                raise AssertionError("untrusted metadata callback executed")
+        m = self.manifest()
+        object.__setattr__(m._definition, "capability_id", Canary())
+        self.refused(lambda: m.review({"host": "localhost"}))
+
+    def test_34_mutated_description_cannot_trigger_equality_callback(self):
+        class Canary:
+            def __eq__(self, other):
+                raise AssertionError("untrusted metadata callback executed")
+        m = self.manifest()
+        object.__setattr__(m._definition, "description", Canary())
+        self.refused(lambda: m.review({"host": "localhost"}))
+
+    def test_35_parameter_description_drift_is_rejected(self):
+        class Canary:
+            def __eq__(self, other):
+                raise AssertionError("untrusted metadata callback executed")
+        m = self.manifest()
+        object.__setattr__(m._parameters[0], "description", Canary())
+        self.refused(lambda: m.review({"host": "localhost"}))
+
+    def test_36_role_key_subclass_denied_without_comparison(self):
+        class Canary(str):
+            def __eq__(self, other):
+                raise AssertionError("untrusted metadata callback executed")
+        m = self.manifest()
+        object.__setattr__(m._fields[0], "parameter", Canary("host"))
+        self.refused(lambda: m.review({"host": "localhost"}))
+
+    def test_37_integer_risk_rejected_after_registration(self):
+        m = self.manifest()
+        object.__setattr__(m._definition, "min_risk", 2)
+        self.refused(lambda: m.review({"host": "localhost"}))
+
+    def test_38_canonical_ipv6_endpoint_remains_nonauthorizing(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        receipt = m.review({"url": "https://[2001:db8::1]:443/health"})
+        self.assertEqual(receipt.status, "hold")
+        self.assertIs(receipt.permit_issued, False)
+        self.assertEqual(self.calls, [])
+
+    def test_39_constructor_rejects_noncanonical_description(self):
+        class Canary:
+            def __eq__(self, other):
+                raise AssertionError("untrusted metadata callback executed")
+        d = self.make([ToolParameter("host", ParamKind.STRING)])
+        object.__setattr__(d, "description", Canary())
+        self.refused(lambda: TrustedDestinationManifest(
+            self.registry, d, (DestinationField("host", DestinationRole.HOST),)))
+
+
 if __name__ == "__main__":
     unittest.main()
