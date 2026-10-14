@@ -10,6 +10,7 @@ import json
 import os
 import re
 import select
+import stat
 import sys
 import time
 from typing import Any
@@ -126,6 +127,11 @@ def _read_bounded_stdin() -> bytes:
     try:
         fd = sys.stdin.fileno()
         if type(fd) is not int or fd != 0:
+            return b""
+        # fd 0 may have been inherited as a socket, regular file, device,
+        # or directory: never read such sources, even if JSON looks valid.
+        # Accept only a pipe/FIFO deliberately supplied by the caller.
+        if not stat.S_ISFIFO(os.fstat(fd).st_mode):
             return b""
         while True:
             remaining = deadline - time.monotonic()
