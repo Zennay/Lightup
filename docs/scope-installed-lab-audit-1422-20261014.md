@@ -92,6 +92,14 @@ A separate conditional real-checkout test directly asks the actual `ScopePolicy(
 
 The fixed static matrix remains **201 genuine policy decisions**; **42 ordinary self-owned unittest methods** cover the matrix, in-process checkout binding and refusal semantics. Passing hosted regressions are *only evidence of the diagnostic's behavior*, not source-owner repair of issue #1422.
 
+## W47 — full path I/O absence and late-failure atomicity
+
+Previously the actual installed source was expected to HOLD early on its known reserved-address defect; a real-source no-I/O witness therefore did **not** necessarily test the whole review matrix. The new full-pass control uses the deterministic synthetic strict policy and still evaluates all **201** fixed `ScopePolicy.decide` calls. Throughout that entire successful fixture run, mocked `socket.socket`, `socket.getaddrinfo`, `subprocess.Popen`, `builtins.open` and `os.open` must receive **zero calls**. This is an in-process attempt detector after imports, not OS-level process isolation or a guarantee about native extension and inherited descriptor effects.
+
+A separate adversarial policy preserves valid responses for the first 200 calls, then misclassifies the final forbidden literal under a future-start explicit-network grant. The result must be **atomic HOLD** with `checked_count=0`, no literal echoed and all five authority/dispatch/release fields false, even though exactly **201 simulated decisions** had been evaluated. The fixture is synthetic, safe and non-authorizing: no customer targets, file system writes, DNS calls or scans.
+
+These **two additional regression methods** bring the isolated self-owned tests to **44**, without increasing the fixed **201** policy matrix or changing production code. Hosted and permanent VPS claims remain exact-commit-gated; no CI green result from an earlier head proves these new tests.
+
 ## Safety and ownership
 
 This deliberately evaluates **real unmodified** `ScopePolicy.decide(Target(...))` from this checkout, unlike [#1424/#1425](https://github.com/Zennay/Lightup/pull/1425), which supplies a standalone reference reviewer. It does not write to or import the tool executor, production admission wiring, tenancy logic or the neighboring target parser. All three new files are owned by W38; source-owner #100, RED owner #1423, standalone reviewer #1425, CIDR #1318, CI and runners remain untouched.
