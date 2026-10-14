@@ -93,13 +93,16 @@ geen geïnstalleerde /etc/nginx- of /etc/lightup-configuratie geopend, geen
 productieservice herstart, geen echte klant geraakt en geen echte grant gemaakt.
 Beide processen worden gegarandeerd gestopt na de controle of bij falen.
 
-Zeven echte (maar volledig fictieve) HTTP-fixturecases controleren anonymous,
-alternatieve Cookie-/identiteitsheaders, revoked Cookie, client Cookie,
+Vijftien echte (maar volledig fictieve) HTTP-fixturecases controleren anonymous,
+ieder van acht alternatieve Cookie-/identiteitsheaders afzonderlijk plus
+alle acht gecombineerd, revoked Cookie, client Cookie,
 operator zonder CSRF, operator met een uitsluitend fictieve WOULD_ALLOW
 zonder mutatie en fictieve client-portal-read. De fake WSGI-app retourneert
 uitsluitend identiteitcategorie, status, aanwezigheid van onbetrouwbare headers
 en nul schrijfacties. Geen tokens, cookies, volledige headers of wachtwoorden.
 De evaluatie is atomair: ontbrekende of foutieve cases produceren HOLD.
+Onbekende alternatieve headerselectors worden geweigerd voordat een HTTP-
+client wordt gemaakt; elk individueel geval heeft een apart uniek bewijslabel.
 
 Uitvoering: python scripts/scope_ingress_identity_loopback_proof.py
 
