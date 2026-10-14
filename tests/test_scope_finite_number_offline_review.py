@@ -165,6 +165,44 @@ class FiniteNumberOfflineReviewTests(unittest.TestCase):
                 for private in ("secret", "private", "example.com", "NaN", "Infinity"):
                     self.assertNotIn(private, run.stdout.decode())
 
+    def test_cli_bounded_numeric_json_resource_admission(self):
+        cli = Path(__file__).resolve().parents[1] / "scripts" / "review_scope_finite_number_offline.py"
+        valid_int = str((1 << 4096) - 1).encode("ascii")
+        invalid_int = str(1 << 4096).encode("ascii")
+        max_rows = json.dumps(
+            {"arguments": [[f"n{i}", i] for i in range(32)]}
+        ).encode("ascii")
+        beyond_rows = json.dumps(
+            {"arguments": [[f"n{i}", i] for i in range(33)]}
+        ).encode("ascii")
+        cases = (
+            (b'{"arguments":[["amount",' + valid_int + b']]}', 3),
+            (b'{"arguments":[["amount",-' + valid_int + b']]}', 3),
+            (b'{"arguments":[["amount",' + invalid_int + b']]}', 2),
+            (b'{"arguments":[["amount",' + b'1' * 1235 + b']]}', 2),
+            (b'{"arguments":[["amount",1e' + b'0' * 300 + b'1]]}', 2),
+            (b'{"arguments":[["amount",[[1]]]]}', 2),
+            (b'{"arguments":[["amount",1],["next",2]],"extra":[{}]}', 2),
+            (b'{"arguments":[["amount",1]],"x":"[[\\\"[[]]}"}', 2),
+            (max_rows, 3),
+            (beyond_rows, 2),
+        )
+        for payload, expected in cases:
+            with self.subTest(prefix=payload[:28], size=len(payload)):
+                process = subprocess.run(
+                    [sys.executable, str(cli)], input=payload,
+                    capture_output=True, timeout=10, check=False,
+                )
+                self.assertEqual(process.returncode, expected, process.stderr)
+                self.assertEqual(process.stderr, b"")
+                output = json.loads(process.stdout)
+                self.assertEqual(output["status"], "REVIEW_ONLY" if expected == 3 else "HOLD")
+                self.assertEqual(len(process.stdout.splitlines()), 1)
+                for key in ("authorization_verified", "permit_issued",
+                            "execution_enabled", "merge_approved", "release_approved"):
+                    self.assertIs(output[key], False)
+                self.assertNotIn("amount", process.stdout.decode("utf-8"))
+
     def test_stdin_cli_rejects_unexpected_arguments_without_stdin(self):
         cli = Path(__file__).resolve().parents[1] / "scripts" / "review_scope_finite_number_offline.py"
         run = subprocess.run(
