@@ -6,7 +6,7 @@ Known unsafe current-source admissions are intentional expected failures.
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime
+from datetime import datetime, timezone
 import builtins
 import importlib.util
 import json
@@ -178,6 +178,9 @@ class ActualActivationPermitChainRED(unittest.TestCase):
             ("activation_reference", "USER-CONTROLLED"),
             ("capability_id", "different-synthetic-capability"),
             ("issued_at", datetime(2026, 1, 1)),  # Naive timestamp
+            ("issued_at", datetime(2000, 1, 1, tzinfo=timezone.utc)),
+            ("issued_at", datetime(2100, 1, 1, tzinfo=timezone.utc)),
+            ("permit_id", type("ForgedPermitId", (str,), {})("NO_REAL_PERMIT")),
         ):
             with self.subTest(field=field):
                 class MutatedGate:
