@@ -640,6 +640,31 @@ class ReviewTests(unittest.TestCase):
                         read.assert_not_called()
                         write.assert_not_called()
 
+    def test_initial_switch_fault_still_attempts_original_fd_restoration(self):
+        # Even a raising initial set_blocking() may have affected the
+        # shared open-file-description. Restoration must still be attempted.
+        for fd in (0, 1):
+            for fault in (OSError("switch-fault"), ValueError("switch-fault")):
+                with self.subTest(fd=fd, fault=type(fault).__name__):
+                    with (
+                        mock.patch("review_scope_destination_schema_1093_offline.os.fstat",
+                                   return_value=types.SimpleNamespace(st_mode=stat.S_IFIFO)),
+                        mock.patch("review_scope_destination_schema_1093_offline.os.get_blocking",
+                                   return_value=True),
+                        mock.patch("review_scope_destination_schema_1093_offline.os.set_blocking",
+                                   side_effect=[fault, None]) as set_blocking,
+                        mock.patch("review_scope_destination_schema_1093_offline.os.read") as read,
+                        mock.patch("review_scope_destination_schema_1093_offline.os.write") as write,
+                    ):
+                        if fd == 0:
+                            self.assertIsNone(_read_private_pipe())
+                        else:
+                            self.assertIs(_emit_receipt(review_schema(fixture())), False)
+                        self.assertEqual(set_blocking.call_args_list, [
+                            mock.call(fd, False), mock.call(fd, True)])
+                        read.assert_not_called()
+                        write.assert_not_called()
+
     def test_cli_stdin_pipe_restores_parent_blocking_state(self):
         # A subprocess duplicates fd0 but shares its POSIX open-file-description.
         # Both accepted EOF and HOLD must leave the parent's mode unchanged.
