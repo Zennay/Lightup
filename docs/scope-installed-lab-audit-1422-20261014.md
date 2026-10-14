@@ -56,6 +56,14 @@ The previous W39 check denied each fixed forbidden IP under a synthetic overbroa
 
 This adds 34 real checked-out `ScopePolicy.decide` calls (**164 decisions total**) and two dedicated negative-mutant tests that explicitly reject (a) execution admission despite an expired grant and (b) incorrectly reporting a missing rather than expired authorization. There are now **26 dedicated unittest methods**. The static receipt remains deliberately privacy-minimal: only total count, status, and five false flags, and CLI still never exits 0. Neither an expiry result nor REVIEW_ONLY is permission or a source-owner fix.
 
+## W42 — authorization not yet effective is denied before its start instant
+
+W42 adds the missing **future-validity start boundary**, without changing a production policy or creating an effective grant. A fixed fictional `Authorization(owner="offline-fixture", reference="not-effective-permit", valid_from=2999-01-01T00:00:00+00:00)` is supplied to the **actual checked-out** `ScopePolicy.decide` for each of the **34 already forbidden IP literals** inside explicit `0.0.0.0/0` and `::/0` networks, and each of the **3 synthetic `review.invalid` hostname spellings**. This document does not authorize use of those broad networks: they are a simulation used to prove fail-closed decisions without ever contacting targets.
+
+In every one of these **37 additional decisions**, the result must remain `allowed is False` with exact `ScopeReason.AUTHORIZATION_EXPIRED` (this is the existing implementation's generic out-of-validity reason, including a start date in the future). The synthetic future record is intentionally not presently effective and never tested as a valid grant. Four negative mutation tests independently demand atomic HOLD when a not-yet-effective host or network grant is incorrectly admitted **or** receives the wrong denial reason. The matrix now comprises **201 fixed, static actual source policy decisions**, with **30 dedicated unit methods**.
+
+The receipt remains wholly non-authorizing. If any single decision fails, reports HOLD and `checked_count=0`; if every check passes, reports REVIEW_ONLY while authority/permit/dispatch/merge/release flags remain explicitly false. Hosted CI for Python 3.11 and 3.14, genuine producer integration tests and separately registered VPS-run evidence must be tied to this exact revision. A passing test cannot waive the source-owner repair tracked by #1422.
+
 ## Safety and ownership
 
 This deliberately evaluates **real unmodified** `ScopePolicy.decide(Target(...))` from this checkout, unlike [#1424/#1425](https://github.com/Zennay/Lightup/pull/1425), which supplies a standalone reference reviewer. It does not write to or import the tool executor, production admission wiring, tenancy logic or the neighboring target parser. All three new files are owned by W38; source-owner #100, RED owner #1423, standalone reviewer #1425, CIDR #1318, CI and runners remain untouched.
