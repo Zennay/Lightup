@@ -130,6 +130,20 @@ def _decode(raw: bytes) -> object:
         raise PacketHold("INVALID_JSON") from None
 
 
+def _enforce_private_ancestors(path: str) -> None:
+    """Reject syntactic parent traversal and visible parent symlinks (POSIX heuristic)."""
+    if ".." in os.fspath(path).split(os.sep):
+        raise PacketHold("PRIVATE_PATH_TRAVERSAL")
+    directory = os.path.dirname(os.path.abspath(path))
+    while directory and directory != os.path.dirname(directory):
+        parent = os.lstat(directory)
+        if stat.S_ISLNK(parent.st_mode):
+            raise PacketHold("PRIVATE_PARENT_SYMLINK")
+        if not stat.S_ISDIR(parent.st_mode):
+            raise PacketHold("PRIVATE_PARENT_NOT_DIRECTORY")
+        directory = os.path.dirname(directory)
+
+
 def _enforce_private_file(info: os.stat_result) -> None:
     """Optional POSIX data-minimisation gate; not proof of trusted origin."""
     if (not hasattr(os, "geteuid") or info.st_uid != os.geteuid()
@@ -141,6 +155,8 @@ def read_packet(path: str, *, require_private_file: bool = False) -> bytes:
     """Read only a bounded, regular, non-symlink local file; no external I/O."""
     if type(require_private_file) is not bool:
         raise PacketHold("INVALID_FILE_POLICY")
+    if require_private_file:
+        _enforce_private_ancestors(path)
     fd = None
     try:
         before = os.lstat(path)
