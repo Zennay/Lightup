@@ -39,8 +39,16 @@ unique lowercase ASCII parameter name (underscore allowed; hyphen rejected). The
 `port` accepts only `integer`. The non-destination `none` role is allowed
 for metadata such as timeout but each tool must claim at least one destination.
 Duplicate JSON keys, Unicode lookalikes, subclasses in direct API calls,
-nonfinite numbers and malformed/oversized payloads are HOLD. Any invalid member
-HOLDs the entire packet.
+nonfinite numbers and malformed/oversized payloads are HOLD. This includes
+**dictionary field names** supplied through the direct Python API: a custom
+str subclass that happens to compare equal to `tools`, `tool_id`,
+`parameters`, `name`, `kind`, `role`, `required` or an output receipt key
+must not become a trusted-looking canonical field. Field key identities are
+checked before membership/set hashing, so hostile str subclasses do not get
+rehashed or compared as a side effect of validation. Ordinary Python/JSON
+parser-created built-in strings remain valid. This is *Python API input
+hygiene*, not proof against arbitrary in-process code or an OS sandbox.
+Any invalid member HOLDs the entire packet.
 
 A well-formed tool also needs a **single unambiguous destination shape**:
 either exactly one ENDPOINT field, or exactly one HOST field with at most
