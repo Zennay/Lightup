@@ -7,6 +7,9 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import stat
+import tempfile
+import socket
 import sys
 import unittest
 from unittest.mock import patch
@@ -299,6 +302,60 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
              patch.object(review.select, "select", side_effect=AssertionError("selected alien fd")), \
              patch.object(review.os, "read", side_effect=AssertionError("read alien fd")):
             self.assertEqual(review._read_bounded_stdin(), b"")
+
+
+    def test_reader_rejects_non_pipe_descriptor_kinds_before_read(self):
+        from unittest.mock import MagicMock
+        fake_stdin = MagicMock()
+        fake_stdin.fileno.return_value = 0
+        for mode in (stat.S_IFSOCK, stat.S_IFREG, stat.S_IFDIR, stat.S_IFCHR, stat.S_IFBLK):
+            with self.subTest(mode=mode), \
+                 patch.object(review.sys, "stdin", fake_stdin), \
+                 patch.object(review.os, "fstat", return_value=MagicMock(st_mode=mode)), \
+                 patch.object(review.select, "select", side_effect=AssertionError("selected non-pipe")), \
+                 patch.object(review.os, "read", side_effect=AssertionError("read non-pipe")):
+                self.assertEqual(review._read_bounded_stdin(), b"")
+
+    def test_real_cli_regular_file_stdin_does_not_read_synthetic_secret(self):
+        payload = encoded(packet())
+        with tempfile.TemporaryFile(mode="w+b") as file:
+            file.write(payload + b"SECRET-TAIL")
+            file.flush()
+            file.seek(0)
+            child = subprocess.run(
+                [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                stdin=file, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                timeout=8, check=False,
+                env={"PATH": os.defpath, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            self.assertEqual(file.tell(), 0, "the inherited regular fd must not be read")
+        self.assertEqual(child.returncode, 2)
+        self.assertEqual(child.stderr, b"")
+        self.assertEqual(json.loads(child.stdout)["input_integrity"], "REJECTED")
+        self.assertNotIn(SHA.encode(), child.stdout)
+        self.assertNotIn(b"SECRET", child.stdout)
+
+    @unittest.skipUnless(hasattr(socket, "socketpair"), "local Unix socketpair unavailable")
+    def test_real_cli_unix_socket_stdin_refused_without_socket_read(self):
+        # This is a synthetic local AF_UNIX descriptor, no remote traffic.
+        sender, receiver = socket.socketpair()
+        try:
+            sender.sendall(encoded(packet()))
+            sender.shutdown(socket.SHUT_WR)
+            child = subprocess.run(
+                [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                stdin=receiver, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                timeout=8, check=False,
+                env={"PATH": os.defpath, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            self.assertEqual(child.returncode, 2)
+            self.assertEqual(child.stderr, b"")
+            self.assertEqual(json.loads(child.stdout)["input_integrity"], "REJECTED")
+            # Parent's peer data remains unread because the child rejected fd0.
+            self.assertEqual(receiver.recv(1, socket.MSG_PEEK), encoded(packet())[:1])
+        finally:
+            receiver.close()
+            sender.close()
 
 
 if __name__ == "__main__":
