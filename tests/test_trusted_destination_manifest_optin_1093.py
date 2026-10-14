@@ -933,5 +933,55 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
 
+
+    def test_90_known_lab_review_never_invokes_policy_executor_or_evidence(self):
+        from unittest.mock import patch
+        from lightup.trusted_destination_manifest_optin import known_lab_destination_manifest
+        from lightup.ai.orchestration import ToolExecutor
+        from lightup.execution_policy import ExecutionPolicy
+        from lightup.state import StateStore
+        from lightup.workers import http_baseline
+        registry = ToolRegistry()
+        http_baseline.register(registry)
+        definition = http_baseline.HTTP_BASELINE_TOOL
+        with (patch.object(ExecutionPolicy, "decide",
+                           side_effect=AssertionError("policy decision attempted")),
+              patch.object(ToolExecutor, "execute",
+                           side_effect=AssertionError("tool execution attempted")),
+              patch.object(StateStore, "add_evidence",
+                           side_effect=AssertionError("evidence write attempted")),
+              patch("socket.getaddrinfo",
+                    side_effect=AssertionError("DNS attempted")),
+              patch("socket.create_connection",
+                    side_effect=AssertionError("socket attempted"))):
+            receipt = known_lab_destination_manifest(registry, definition).review(
+                {"url": "http://127.0.0.1:8080/status"})
+        self.assertEqual(receipt.status, "hold")
+        self.assertIs(receipt.execution_enabled, False)
+        self.assertIs(receipt.permit_issued, False)
+        self.assertEqual(self.calls, [])
+
+    def test_91_bad_lab_metadata_does_not_invoke_policy_or_evidence(self):
+        from unittest.mock import patch
+        from lightup.trusted_destination_manifest_optin import known_lab_destination_manifest
+        from lightup.ai.orchestration import ToolExecutor
+        from lightup.execution_policy import ExecutionPolicy
+        from lightup.state import StateStore
+        from lightup.workers import tls_baseline
+        registry = ToolRegistry()
+        tls_baseline.register(registry)
+        with (patch.object(ExecutionPolicy, "decide",
+                           side_effect=AssertionError("policy decision attempted")),
+              patch.object(ToolExecutor, "execute",
+                           side_effect=AssertionError("tool execution attempted")),
+              patch.object(StateStore, "add_evidence",
+                           side_effect=AssertionError("evidence write attempted"))):
+            preview = known_lab_destination_manifest(
+                registry, tls_baseline.TLS_BASELINE_TOOL)
+            self.refused(lambda: preview.review(
+                {"host": "localhost", "port": False}))
+        self.assertEqual(self.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
