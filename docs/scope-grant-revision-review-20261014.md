@@ -105,3 +105,37 @@ customer entitlement, asset ownership, reviewer approval, revocation,
 release or execution permission is proven. The batch function is also
 uninstalled and non-authorizing. Nine genuine synthetic tests check these
 boundaries, including privacy and the absence of database/network I/O.
+
+## Usable local JSON CLI (W4, still non-authorizing)
+
+`scripts/review_grant_revision_offline.py` is an opt-in read-only command-line
+entrypoint for a **local** untrusted snapshot; it is not part of the app's
+CLI, web endpoints, authorization ledger or active executor. Input is an exact
+UTF-8 JSON object with a single `revisions` key containing 1–32 objects;
+each object has exactly `current` and `proposed` grant snapshots.
+
+Every grant must contain exactly `grant_id`, `client_id`,
+`engagement_id`, `approved_by`, `reference`, `scope`,
+`valid_from`, `valid_until`, and `recurring_retest_allowed`.
+Each `scope` contains exactly `assets`, `excluded_assets`,
+`allowed_capabilities`, and `max_risk`. Asset/capability/exclusion
+collections are JSON string arrays (maximum 128 each); risk is a genuine
+integer 0–5; retest is a literal JSON boolean; timestamps are exact
+calendar-valid ASCII UTC seconds, such as `2026-10-01T09:00:00Z`.
+Unrecognized authority-looking keys are **denied**, not ignored.
+
+```bash
+PYTHONPATH=src python scripts/review_grant_revision_offline.py /tmp/synthetic-review.json
+```
+
+The CLI accepts **only a regular local input file** (<=64 KiB) and rejects
+symlinks, directories, pipes, oversize input, invalid UTF-8/JSON, duplicate
+JSON keys, nonfinite constants, ambiguous types, unknown keys, and entire
+malformed batches. Errors print an opaque `HOLD` JSON receipt, not a path,
+exception, customer identifier or input contents.
+
+**Crucially, exit code is always NONZERO:** `3` for `REVIEW_ONLY`,
+`2` for `HOLD`. Do not treat a subprocess exit 3 as successful consent
+or chain it to an active command. Every output repeats all five false
+authority flags. This is local human-review preparation, not a real-target
+admission or execution decision.
