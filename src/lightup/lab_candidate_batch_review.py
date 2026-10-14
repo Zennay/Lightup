@@ -38,7 +38,7 @@ def _review_rows(
 ) -> dict[str, object]:
     """Inspect every envelope inside a single, existing SQLite snapshot."""
     seen_runs: set[tuple[str, str]] = set()
-    asset_owners: dict[str, str] = {}
+    seen_assets: set[str] = set()
     for item in items:
         if type(item) is not LabCandidateReviewItem:
             return _result(0)
@@ -54,13 +54,14 @@ def _review_rows(
         if run_key in seen_runs:
             return _result(0)
         seen_runs.add(run_key)
-        # A declared synthetic lab asset is never shared between tenants in
-        # a packet. Casefold is not DNS/ownership/egress verification.
+        # Risk-5 candidate packets must not silently duplicate a declared
+        # lab target across independent runs, even under one tenant. A human
+        # can review distinct packets separately; none authorizes execution.
+        # Casefold catches obvious ASCII aliases, NOT real asset ownership.
         asset_key = call.asset.casefold()
-        prior = asset_owners.get(asset_key)
-        if prior is not None and prior != context.client_id:
+        if asset_key in seen_assets:
             return _result(0)
-        asset_owners[asset_key] = context.client_id
+        seen_assets.add(asset_key)
     return _result(len(items))
 
 

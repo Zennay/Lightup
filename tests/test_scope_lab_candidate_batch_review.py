@@ -306,3 +306,60 @@ class CandidateBatchReviewTests(unittest.TestCase):
         self.assertEqual(result_a["reviewable_items"], 2)
         self.assertFalseFlags(result_b)
         self.assertFalse(self.db.in_transaction)
+
+
+    def test_same_tenant_same_lab_asset_two_runs_holds_entire_packet(self):
+        first = self.item("run-1", "shared-lab", client="client-1")
+        second = self.item("run-2", "shared-lab", client="client-1")
+        result = self.reviewed(first, second)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reviewable_items"], 0)
+        self.assertFalseFlags(result)
+
+    def test_same_tenant_casefold_lab_asset_alias_holds(self):
+        first = self.item("run-1", "SharedLab")
+        second = self.item("run-2", "sharedlab")
+        self.assertEqual(self.reviewed(first, second)["status"], "HOLD")
+
+    def test_different_engagements_same_lab_asset_holds(self):
+        first = self.item("run-1", "same-lab", engagement="eng-1")
+        second = self.item("run-2", "same-lab", engagement="eng-2")
+        result = self.reviewed(first, second)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reviewable_items"], 0)
+
+    def test_duplicate_last_in_32_item_packet_holds_all(self):
+        items = [
+            self.item(f"run-{i}", f"lab-{i}")
+            for i in range(31)
+        ]
+        items.append(self.item("run-31", "lab-0"))
+        result = self.reviewed(*items)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reviewable_items"], 0)
+        self.assertFalseFlags(result)
+
+    def test_distinct_lab_assets_across_32_runs_reviewable_without_authority(self):
+        items = tuple(
+            self.item(f"run-{i}", f"lab-{i}") for i in range(32)
+        )
+        result = self.reviewed(*items)
+        self.assertEqual(result["status"], "REVIEW_ONLY")
+        self.assertEqual(result["reviewable_items"], 32)
+        self.assertFalseFlags(result)
+
+    def test_distinct_assets_same_tenant_different_engagements_reviewable(self):
+        a = self.item("run-1", "lab-alpha", engagement="eng-1")
+        b = self.item("run-2", "lab-beta", engagement="eng-2")
+        result = self.reviewed(a, b)
+        self.assertEqual(result["status"], "REVIEW_ONLY")
+        self.assertEqual(result["reviewable_items"], 2)
+        self.assertFalseFlags(result)
+
+    def test_duplicate_alias_holds_independent_of_packet_order(self):
+        first = self.item("run-1", "LAB-A")
+        second = self.item("run-2", "lab-a")
+        for pair in ((first, second), (second, first)):
+            result = self.reviewed(*pair)
+            self.assertEqual(result["status"], "HOLD")
+            self.assertEqual(result["reviewable_items"], 0)
