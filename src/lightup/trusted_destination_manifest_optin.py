@@ -295,18 +295,21 @@ def known_lab_destination_manifest(registry, definition):
     from .workers import http_baseline, tls_baseline, service_inventory
 
     trusted = (
-        (http_baseline.HTTP_BASELINE_TOOL, "lab-http-baseline", "web-baseline",
+        (http_baseline.HTTP_BASELINE_TOOL, http_baseline.run_http_baseline,
+         "lab-http-baseline", "web-baseline",
          ("url",), (DestinationField("url", DestinationRole.ENDPOINT),)),
-        (tls_baseline.TLS_BASELINE_TOOL, "lab-tls-baseline", "cryptography",
+        (tls_baseline.TLS_BASELINE_TOOL, tls_baseline.run_tls_baseline,
+         "lab-tls-baseline", "cryptography",
          ("host", "port"),
          (DestinationField("host", DestinationRole.HOST),
           DestinationField("port", DestinationRole.PORT))),
-        (service_inventory.SERVICE_INVENTORY_TOOL, "lab-service-inventory", "network-services",
+        (service_inventory.SERVICE_INVENTORY_TOOL, service_inventory.run_service_inventory,
+         "lab-service-inventory", "network-services",
          ("host", "ports"),
          (DestinationField("host", DestinationRole.HOST),
           DestinationField("ports", DestinationRole.PORT_SET))),
     )
-    for actual, expected_id, expected_capability, expected_parameters, role_fields in trusted:
+    for actual, expected_handler, expected_id, expected_capability, expected_parameters, role_fields in trusted:
         if definition is actual:
             params = definition.parameters
             # A module-global ToolDefinition reference may be rebound or mutated.
@@ -324,6 +327,13 @@ def known_lab_destination_manifest(registry, definition):
                            for p in params)):
                 _deny()
             if tuple(p.name for p in params) != expected_parameters:
+                _deny()
+            # A registered definition without the original worker function
+            # cannot be presented as the known built-in LAB worker.
+            entry = registry._tools.get(expected_id)
+            if (type(entry) is not tuple or len(entry) != 2
+                    or entry[0] is not definition
+                    or entry[1] is not expected_handler):
                 _deny()
             return TrustedDestinationManifest(registry, definition, role_fields)
     _deny()
