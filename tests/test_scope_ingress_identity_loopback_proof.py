@@ -347,12 +347,12 @@ class ScopeIngressLoopbackFixtureTests(unittest.TestCase):
                           return_value=object()), \
              patch.object(fixture, "_free_port",
                           side_effect=(28211, 28212)), \
-             patch.object(fixture.subprocess, "run") as check, \\
+             patch.object(fixture.subprocess, "run") as check, \
              patch.object(fixture.subprocess, "Popen",
-                          side_effect=(child1, child2)) as spawn, \\
-             patch.object(fixture, "_wait_listening") as ready, \\
-             patch.object(fixture, "_stop") as stop, \\
-             patch.object(fixture, "_request", side_effect=simulate) as requests, \\
+                          side_effect=(child1, child2)) as spawn, \
+             patch.object(fixture, "_wait_listening") as ready, \
+             patch.object(fixture, "_stop") as stop, \
+             patch.object(fixture, "_request", side_effect=simulate) as requests, \
              patch.dict(os.environ, {
                  "GUNICORN_CMD_ARGS": "--preload",
                  "PYTHONPATH": "/tmp/unsafe",
