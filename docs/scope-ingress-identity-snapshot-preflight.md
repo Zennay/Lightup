@@ -123,3 +123,31 @@ Open #1164 vereist nog een onafhankelijke geïnstalleerde proxy-/WSGI-proef,
 exact-head hosted en feitelijke geregistreerde VPS-jobs, security/privacy
 en expliciete menselijke vrijgave. INCUBATE M3/M7 · PLAN/LAB ONLY ·
 DRAFT/HOLD; GEEN MERGE, DEPLOY, KLANTGRANTS OF ACTIEVE SCANS.
+
+
+## W60: procesisolatie en client-identiteit monotone uitwerking
+
+De tijdelijke echte localhost-fixture heeft nu **23 onderscheiden synthetische HTTP-cases**:
+de eerdere 15 plus acht nieuwe negatieven waarin een al bestaande, fictieve
+client-cookie samen met ieder van de acht onbevoegde identiteit- of
+Cookie-doorgeefheaders wordt aangeboden. De check vereist expliciet dat een
+client een client blijft, een operator-grant wordt geweigerd en zowel echte
+als fictieve state writes nul blijven. De WSGI-test bevestigt onafhankelijk
+dat zelfs bij losse direct aangeleverde client+spoof-hints geen operatorrol
+of synthetische toestemming verschijnt.
+
+Nginx- en Gunicorn-subprocessen van de optionele proef starten met een
+nieuw minimaal omgevingswoordenboek zonder geërfde `GUNICORN_CMD_ARGS`,
+`PYTHONPATH`, `PYTHONINSPECT`, `PYTHONSTARTUP`, `LD_PRELOAD`, externe
+proxy-instellingen of shell-hooks. Het lokale Nginx PID-configuratiepad moet
+uit een absoluut en uitsluitend syntactisch veilig TMPDIR-pad bestaan;
+spaties, puntkomma's, dollar-variabelen, newlines, accolades en commentaar-
+tekens kunnen zo geen instructie in het config-bestand injecteren.
+Adversariële regressies toetsen zowel de positieve veilige vorm als
+vroegtijdige weigering en de scheiding van omgevingsvariabelen.
+
+Geen productie- of geïnstalleerde service wordt gestart of herladen.
+Reguliere hosted tests bewijzen alléén de offline contracten; de optionele
+reële twee-processen-fixture blijft een aparte uitvoeringsstap. Zelfs een
+geslaagde echte *disposable* localhost-proef geeft geen toestemming voor
+installed ingress, klantgrants, merge, release of scans. **DRAFT/HOLD.**
