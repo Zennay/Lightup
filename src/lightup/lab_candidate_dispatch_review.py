@@ -7,6 +7,7 @@ operator, checks real lab network isolation, or enables active execution.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import sqlite3
 from typing import Any
 
 from .ai.orchestration import RunContext, ToolCall, ToolDefinition
@@ -51,7 +52,69 @@ def review_lab_candidate_dispatch(
     call: ToolCall,
     definition: ToolDefinition,
 ) -> dict[str, object]:
-    """Compare an untrusted local lab candidate against a genuine run/call.
+    """Consistent offline preview of one lab candidate, never authority.
+
+    A standalone call owns one SQLite read snapshot. A caller already holding
+    a transaction (e.g. the separate atomic batch reviewer) keeps ownership:
+    no nested BEGIN, no committing or rolling back their transaction. Any
+    cross-connection write observed during a standalone review forces HOLD.
+    """
+    # Validate exact outer types before any attribute/property access.
+    if (
+        type(ledger) is not LabApprovalCandidateLedger
+        or type(context) is not RunContext
+        or type(call) is not ToolCall
+        or type(definition) is not ToolDefinition
+    ):
+        return _receipt(False)
+    db = getattr(ledger, "_db", None)
+    if type(db) is not sqlite3.Connection:
+        return _receipt(False)
+    try:
+        if db.in_transaction:
+            # Batch reviewer owns a cross-item SQLite snapshot. This still
+            # cannot authenticate operator identity or confer execution.
+            return _review_inside_snapshot(ledger, context, call, definition)
+    except sqlite3.Error:
+        return _receipt(False)
+
+    began = False
+    rollback_ok = True
+    outcome = _receipt(False)
+    first_version = None
+    try:
+        first_version = db.execute("PRAGMA data_version").fetchone()[0]
+        if type(first_version) is not int:
+            return _receipt(False)
+        db.execute("BEGIN")
+        began = True
+        outcome = _review_inside_snapshot(ledger, context, call, definition)
+    except sqlite3.Error:
+        outcome = _receipt(False)
+    finally:
+        if began:
+            try:
+                db.rollback()
+            except sqlite3.Error:
+                rollback_ok = False
+    if not rollback_ok or first_version is None:
+        return _receipt(False)
+    try:
+        last_version = db.execute("PRAGMA data_version").fetchone()[0]
+    except sqlite3.Error:
+        return _receipt(False)
+    if type(last_version) is not int or first_version != last_version:
+        return _receipt(False)
+    return outcome
+
+
+def _review_inside_snapshot(
+    ledger: LabApprovalCandidateLedger,
+    context: RunContext,
+    call: ToolCall,
+    definition: ToolDefinition,
+) -> dict[str, object]:
+    """Compare a genuine LightUp envelope inside an existing read snapshot.
 
     REVIEW_ONLY never grants authorization. A stored candidate cannot substitute
     for a trusted human operator, approved target, dispatch policy or network
