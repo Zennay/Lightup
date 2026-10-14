@@ -84,9 +84,9 @@ class TenantCidrAdversarialTests(unittest.TestCase):
         rng = random.Random(0xD16C)
         for _ in range(160):
             left, right = rng.sample(range(64), 2)
-            first = f"fd00:0:0:{left:x}::/64"
-            disjoint = f"fd00:0:0:{right:x}::/64"
-            nested = f"fd00:0:0:{left:x}:8000::/65"
+            first = str(ipaddress.ip_network(f"fd00:0:0:{left:x}::/64"))
+            disjoint = str(ipaddress.ip_network(f"fd00:0:0:{right:x}::/64"))
+            nested = str(ipaddress.ip_network(f"fd00:0:0:{left:x}:8000::/65"))
             valid = review_network_inventory(snapshot([
                 record(0, first), record(1, disjoint, tenant="OTHER"),
             ]))
