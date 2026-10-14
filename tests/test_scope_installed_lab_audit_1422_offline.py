@@ -185,6 +185,22 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
             file_open.assert_not_called()
             popen.assert_not_called()
 
+    def test_preimported_foreign_scope_path_refuses_review(self):
+        module = sys.modules["lightup.scope"]
+        with patch.object(module, "__file__", "/tmp/unrelated/site/lightup/scope.py"):
+            receipt = audit_installed_scope(_FixturePolicy)
+            self.assert_never_authority(receipt)
+            self.assertEqual(receipt["status"], "HOLD")
+
+    def test_preimported_foreign_models_path_refuses_review(self):
+        module = sys.modules["lightup.models"]
+        with patch.object(module, "__file__", "/tmp/unrelated/site/lightup/models.py"):
+            self.assertEqual(audit_installed_scope(_FixturePolicy)["status"], "HOLD")
+
+    def test_preimported_noncanonical_module_fails_closed(self):
+        with patch.dict(sys.modules, {"lightup.scope": object()}):
+            self.assertEqual(audit_installed_scope(_FixturePolicy)["status"], "HOLD")
+
     def test_invalid_cli_arguments_hold_without_echo(self):
         for args in (["--literal", "customer-secret.example"], ["--help"], ["--json", "--json"]):
             with self.subTest(args=args):
@@ -195,6 +211,17 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
                 self.assertEqual(json.loads(buffer.getvalue())["status"], "HOLD")
                 self.assertNotIn("customer-secret", buffer.getvalue())
                 self.assertEqual(len(buffer.getvalue().splitlines()), 1)
+
+    def test_isolated_interpreter_remains_non_authorizing(self):
+        script = ROOT / "scripts" / "audit_scope_installed_lab_policy_1422_offline.py"
+        process = subprocess.run(
+            [sys.executable, "-I", "-B", str(script)],
+            capture_output=True, text=True, timeout=15, cwd=ROOT, check=False,
+        )
+        self.assertIn(process.returncode, (2, 3))
+        self.assertFalse(process.stderr)
+        self.assertEqual(len(process.stdout.splitlines()), 1)
+        self.assert_never_authority(json.loads(process.stdout))
 
     def test_cli_real_subprocess_is_single_receipt_and_never_success(self):
         script = ROOT / "scripts" / "audit_scope_installed_lab_policy_1422_offline.py"
