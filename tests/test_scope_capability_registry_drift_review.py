@@ -77,6 +77,14 @@ class CapabilityDriftReviewTests(unittest.TestCase):
                 self.assertEqual(r.status, "HOLD")
                 self.verify_non_authority(r)
 
+    def test_deep_nested_json_cannot_crash_review(self):
+        depth = 13000
+        malicious = b'{"capabilities":' + b'[' * depth + b']' * depth + b'}'
+        self.assertLessEqual(len(malicious), 32768)
+        r = review_capability_registry_drift(self.initial, malicious)
+        self.assertEqual(r.status, "HOLD")
+        self.verify_non_authority(r)
+
     def test_type_spoofing_fails_closed(self):
         class BytesSubclass(bytes):
             pass
