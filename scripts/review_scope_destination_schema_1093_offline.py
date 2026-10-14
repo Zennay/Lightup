@@ -44,6 +44,20 @@ def _hold() -> dict:
     return dict(status="HOLD", claimed_tool_count=0, claimed_parameter_count=0, **DENIAL)
 
 
+
+def _exact_fields(value: object, required: frozenset[str]) -> bool:
+    """Use only built-in dict and string keys; no polymorphic field aliases.
+
+    Validate key *identities* before any membership/set/hash operation on
+    untrusted keys. This is API-boundary hygiene, not an OS sandbox.
+    """
+    return (
+        type(value) is dict
+        and all(type(key) is str for key in value)
+        and set(value) == required
+    )
+
+
 def _unique_object(pairs):
     result = {}
     for key, value in pairs:
@@ -59,7 +73,7 @@ def _reject_constant(_value):
 
 def review_schema(payload: object) -> dict:
     """Review untrusted JSON-compatible claims without granting any authority."""
-    if type(payload) is not dict or set(payload) != {"tools"}:
+    if not _exact_fields(payload, frozenset({"tools"})):
         return _hold()
     tools = payload["tools"]
     if type(tools) is not list or not 1 <= len(tools) <= MAX_TOOLS:
@@ -67,7 +81,7 @@ def review_schema(payload: object) -> dict:
     seen_tools = set()
     count = 0
     for tool in tools:
-        if type(tool) is not dict or set(tool) != {"tool_id", "parameters"}:
+        if not _exact_fields(tool, frozenset({"tool_id", "parameters"})):
             return _hold()
         tool_id, params = tool["tool_id"], tool["parameters"]
         if (type(tool_id) is not str or not TOOL_ID.fullmatch(tool_id)
@@ -84,9 +98,9 @@ def review_schema(payload: object) -> dict:
         role_counts = {"host": 0, "endpoint": 0, "port": 0,
                        "port_set": 0, "none": 0}
         for param in params:
-            if type(param) is not dict or set(param) != {
-                "name", "kind", "role", "required"
-            }:
+            if not _exact_fields(
+                param, frozenset({"name", "kind", "role", "required"})
+            ):
                 return _hold()
             name, kind, role = param["name"], param["kind"], param["role"]
             required = param["required"]
@@ -176,9 +190,9 @@ def _read_private_pipe() -> bytes | None:
 
 def _seal_receipt(result: object) -> bytes | None:
     """Reject forged output *before* inspecting or writing to stdout."""
-    if type(result) is not dict or set(result) != {
+    if not _exact_fields(result, frozenset({
         "status", "claimed_tool_count", "claimed_parameter_count", *DENIAL
-    }:
+    })):
         return None
     if any(result[key] is not False for key in DENIAL):
         return None
