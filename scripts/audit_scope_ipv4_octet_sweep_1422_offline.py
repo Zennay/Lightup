@@ -1,4 +1,4 @@
-"""Issue #1422: bounded offline IPv4 auto-lab admission sweep (review only).
+"""Issue #1422: bounded offline IPv4/IPv6 auto-lab admission sweep (review only).
 
 An intentionally uninstalled diagnostic for the checked-out ScopePolicy.
 It never contacts, resolves, scans, or authorizes any address.
@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from ipaddress import IPv6Address
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -14,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from lightup.models import Target
 from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason
 
-TOTAL_DECISIONS = 2048
+TOTAL_DECISIONS = 3584
 _DENY_FLAGS = {
     "authorization_verified": False,
     "permit_issued": False,
@@ -44,6 +45,26 @@ def _expected(first: int, second: int, lab_enabled: bool):
         or (first == 192 and second == 168)
     )
     if lab_enabled and private:
+        return True, ScopeReason.PRIVATE_LAB
+    return False, ScopeReason.OUT_OF_SCOPE
+
+
+def _samples_ipv6():
+    # All 256 IPv6 first-byte classes, plus all 256 second-byte boundaries
+    # inside each of fc00::/8 and fd00::/8 (combined RFC4193 fc00::/7).
+    for first in range(256):
+        addr = IPv6Address((first << 120) | 1)
+        yield f"[{addr.compressed}]", addr.compressed, first
+    for first in (0xFC, 0xFD):
+        for second in range(256):
+            addr = IPv6Address((first << 120) | (second << 112) | 2)
+            yield f"[{addr.compressed}]", addr.compressed, first
+
+
+def _expected_ipv6(normalized: str, first: int, lab_enabled: bool):
+    if normalized == "::1":
+        return True, ScopeReason.LOOPBACK
+    if lab_enabled and first in (0xFC, 0xFD):
         return True, ScopeReason.PRIVATE_LAB
     return False, ScopeReason.OUT_OF_SCOPE
 
@@ -83,6 +104,22 @@ def review_ipv4_octet_sweep(policy_factory=ScopePolicy):
                     or type(actual.reason) is not ScopeReason
                     or type(actual.normalized_host) is not str
                     or actual.normalized_host != literal
+                    or actual.allowed is not expected_allowed
+                    or actual.reason is not expected_reason
+                ):
+                    return _receipt("HOLD", 0)
+                checked += 1
+            for literal, normalized, first in _samples_ipv6():
+                actual = policy.decide(Target(literal))
+                expected_allowed, expected_reason = _expected_ipv6(
+                    normalized, first, lab_enabled
+                )
+                if (
+                    type(actual) is not ScopeDecision
+                    or type(actual.allowed) is not bool
+                    or type(actual.reason) is not ScopeReason
+                    or type(actual.normalized_host) is not str
+                    or actual.normalized_host != normalized
                     or actual.allowed is not expected_allowed
                     or actual.reason is not expected_reason
                 ):
