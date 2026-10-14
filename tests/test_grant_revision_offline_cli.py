@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -163,6 +164,46 @@ class OfflineGrantReviewCliTests(unittest.TestCase):
         packet = _packet()
         packet["revisions"] *= 33
         self.assertEqual(self._review(packet)["verdict"], "HOLD")
+
+    def test_unsupported_nofollow_platform_never_reads_snapshot(self):
+        self._write(_packet())
+        with patch.object(_MODULE.os, "O_NOFOLLOW", 0, create=True):
+            receipt = _MODULE.review_local_file(str(self.path))
+        self.assertEqual(receipt["verdict"], "HOLD")
+        self.assertEqual(receipt["reason_code"], "invalid_offline_snapshot")
+        self.assert_non_authorizing(receipt)
+
+    def test_unsupported_nonblocking_platform_never_reads_snapshot(self):
+        self._write(_packet())
+        with patch.object(_MODULE.os, "O_NONBLOCK", 0, create=True):
+            receipt = _MODULE.review_local_file(str(self.path))
+        self.assertEqual(receipt["verdict"], "HOLD")
+        self.assert_non_authorizing(receipt)
+
+    def test_mutated_snapshot_during_read_atomically_holds(self):
+        self._write(_packet())
+        original_fstat = os.fstat
+        calls = [0]
+
+        def swapped_metadata(fd):
+            real = original_fstat(fd)
+            calls[0] += 1
+            if calls[0] != 2:
+                return real
+            return SimpleNamespace(
+                st_dev=real.st_dev,
+                st_ino=real.st_ino,
+                st_size=real.st_size,
+                st_mode=real.st_mode,
+                st_mtime_ns=real.st_mtime_ns + 1,
+            )
+
+        with patch.object(_MODULE.os, "fstat", side_effect=swapped_metadata):
+            receipt = _MODULE.review_local_file(str(self.path))
+        self.assertEqual(calls[0], 2)
+        self.assertEqual(receipt["verdict"], "HOLD")
+        self.assertEqual(receipt["reviewed_count"], 0)
+        self.assert_non_authorizing(receipt)
 
     def test_reject_symlink_to_snapshot(self):
         self._write(_packet())
