@@ -136,3 +136,17 @@ The source has been committed but has **not** been run in the complete exact-hea
 ## W18 — deterministic, bounded-memory offline evidence receipt
 
 The offline script previously redirected test output into an in-memory `StringIO` buffer. Its contents were not emitted, but an unexpectedly verbose or adversarial imported test could cause unnecessary memory growth. The new `_DiscardOutput` stream drops synthetic stdout, stderr and unittest traceback text on every write while preserving the correct stream protocol for `unittest.TextTestRunner`; only a tiny fixed JSON HOLD receipt is emitted after validation. A standalone local Python3.13 sanity check confirmed `unittest.TextTestRunner` accepts the stream API, **not** that the full GitHub 91-method test suite passes. All no-network/no-process discovery+execution restrictions remain active. This script is an offline rehearsal only and is not registered CI/VPS release proof.
+
+
+## W19 — independently tested verifier, not just staged tests (2026-10-14)
+
+**Material implementation:** The standalone offline verifier now checks the complete discovered test roster *before execution*, not merely the count. Every test must belong to module `test_trusted_destination_manifest_optin_1093`, class `TestTrustedDestinationMetadata1093`, and have a unique canonical numbered `test_01_...` through `test_91_...` identifier. Replaced, missing or duplicate cases fail closed. This check is an additional check on unittest discovery, **not a trust attestation of the file bytes**; exact source revisions still need independently pinned CI head SHA and trusted runner identity.
+
+**New independent tests, actually executed:** The entirely separate `tests/test_scope_1093_offline_verifier_contract.py` tests the verifier itself using synthetic in-memory unittest cases; it does not import real HTTP/TLS scanners or hit targets. A local Python **3.13.5** checkout of the two exact committed files (confirmed via Git blob hashes **`57b53f92bd0e6a467e6925d9f2166233aaa4100a`** for the verifier and **`930d4f39326a7191be38b71ce281083f1dafba3c`** for this test file) completed:
+
+`python -m unittest discover -s tests -p test_scope_1093_offline_verifier_contract.py -v`
+→ **15/15 PASS**.
+
+Covered: 91 correct synthetic cases are accepted only as `status=hold`; 90 cases refused; 91 with duplicate/wrong IDs refused **before any test runs**; skips, assertion failures, import-time DNS, test-time process invocation, missing test files and caller-supplied target arguments refuse; stdout/stderr/traceback contents never enter JSON; default and successful receipts always carry all four authorization/release booleans FALSE. An independent invocation with the older **75-test local source-shaped stub** was deliberately refused with `offline_regression_passed=false`, `status=hold`, exit code 1 because its roster was not the required 91. This deliberately failing older stub is **not** CI failure evidence for the GitHub branch.
+
+**Limits:** Python `unittest.mock` network/process denial is defense in depth for accidental I/O, **not** an OS-level sandbox for arbitrary hostile Python; use only in an independently isolated no-egress workspace. The new 15/15 contract pass establishes the verifier's synthetic behavior, **not** successful execution of all 91 actual LightUp integration tests. The earlier tests and remaining production/runner release gates remain explicitly unproven. No PR, CI dispatch, merge, deployment, real target or competing worker source touched.
