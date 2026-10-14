@@ -20,7 +20,8 @@ def main(argv: list[str] | None = None) -> int:
     # No argparse diagnostics: unknown, malformed or duplicate inputs must not
     # appear on stderr or be echoed in a usage message.
     if (type(arguments) is list and len(arguments) == 2
-            and arguments[0] == "--literal" and type(arguments[1]) is str):
+            and type(arguments[0]) is str and arguments[0] == "--literal"
+            and type(arguments[1]) is str):
         result = review_lab_literal(arguments[1])
 
     receipt = {
@@ -32,7 +33,12 @@ def main(argv: list[str] | None = None) -> int:
         "merge_approved": result.merge_approved,
         "release_approved": result.release_approved,
     }
-    sys.stdout.write(json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n")
+    try:
+        sys.stdout.write(json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n")
+    except (OSError, UnicodeError):
+        # A closed pipe or damaged text sink must fail closed with no
+        # traceback. Never mistake missing/truncated review output for assent.
+        return 2
     return 3 if result.status == "REVIEW_ONLY" else 2
 
 
