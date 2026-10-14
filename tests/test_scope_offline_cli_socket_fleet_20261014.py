@@ -59,6 +59,10 @@ class OfflineReviewCliSocketFleetTests(unittest.TestCase):
         self.assertIn("capabilities", source)
         self.original = self.root / "baseline.json"
         self.original.write_bytes(exporter.stdout)
+        # Historical snapshots must have distinct physical inode identities.
+        # Reusing one path triggers an intentional HOLD even with equal bytes.
+        self.equal = self.root / "equal-but-distinct.json"
+        self.equal.write_bytes(exporter.stdout)
         source["capabilities"][0]["requires_explicit_activation"] = False
         self.changed = self.root / "changed.json"
         self.changed.write_text(json.dumps(source), encoding="utf-8")
@@ -96,13 +100,13 @@ class OfflineReviewCliSocketFleetTests(unittest.TestCase):
     def test_eight_real_offline_entrypoints_never_allocate_sockets(self):
         cases = (
             ("review_scope_capability_registry_offline.py",
-             (self.original, self.original), b"", False),
+             (self.original, self.equal), b"", False),
             ("review_scope_registry_history_offline.py",
-             (self.original, self.original), b"", False),
+             (self.original, self.equal), b"", False),
             ("review_scope_history_against_checkout_offline.py",
-             (self.original, self.original), b"", False),
+             (self.original, self.equal), b"", False),
             ("render_scope_registry_history_offline.py",
-             (self.original, self.original), b"", True),
+             (self.original, self.equal), b"", True),
             ("review_scope_incubation_registry_offline.py", (), b"", False),
             ("review_scope_incubation_catalog_offline.py", (), b"", False),
             ("review_scope_finite_number_offline.py", (),
