@@ -119,7 +119,10 @@ def inspect(repo: Path, base: str, head: str, expected: tuple[str, ...],
             peer_paths = {name.decode("ascii", "strict") for name in raw_peers}
         except UnicodeError:
             return "NONCANONICAL_PEER_PATH", len(fields) // 2
-        if changed.intersection(peer_paths):
+        # Exact Git paths may collide on a case-insensitive checkout even if
+        # their stored tree spelling differs (e.g. Linux vs. macOS/Windows).
+        if {path.casefold() for path in changed}.intersection(
+                path.casefold() for path in peer_paths):
             return "PEER_PATH_COLLISION", len(fields) // 2
     return "ADDITIVE_PATHS_MATCH", len(fields) // 2
 
