@@ -27,6 +27,10 @@ _TRIPWIRE = """import _socket
 import _sqlite3
 import builtins
 import io
+try:
+    import fcntl as _fcntl
+except ImportError:  # Python-platform optional; hosted CI is Linux.
+    _fcntl = None
 import os
 import pathlib
 import socket
@@ -148,6 +152,19 @@ for _name, _original in _FD_READ_ORIGINALS.items():
 for _name in ("dup", "dup2", "dup3"):
     if hasattr(os, _name):
         setattr(os, _name, forbidden)
+# fcntl duplicates descriptors without invoking os.dup/dup2/dup3. An
+# admitted numeric descriptor may not be copied outside our provenance set.
+if _fcntl is not None:
+    _real_fcntl = _fcntl.fcntl
+    _FD_DUP_COMMANDS = frozenset(
+        getattr(_fcntl, name) for name in ("F_DUPFD", "F_DUPFD_CLOEXEC")
+        if hasattr(_fcntl, name)
+    )
+    def checked_fcntl(fd, cmd, *args):
+        if type(cmd) is not int or cmd in _FD_DUP_COMMANDS:
+            forbidden()
+        return _real_fcntl(fd, cmd, *args)
+    _fcntl.fcntl = checked_fcntl
 for name in ("write_text", "write_bytes", "touch", "mkdir",
              "rename", "replace", "unlink", "rmdir", "symlink_to",
              "hardlink_to", "chmod", "lchmod"):
@@ -517,6 +534,39 @@ class OfflineReviewCliSocketFleetTests(unittest.TestCase):
                     env=self.env, capture_output=True, check=False, timeout=15,
                 )
                 self.assertEqual(proc.returncode, 92, statement)
+                self.assertEqual(proc.stdout, b"")
+                self.assertEqual(proc.stderr, b"")
+                self.assertEqual(self.fingerprint(), before)
+
+
+    def test_uncatchable_fcntl_descriptor_duplication(self):
+        # fcntl(F_DUPFD*) does not pass through os.dup*. All attempted
+        # duplications are intercepted before native fcntl sees a descriptor.
+        try:
+            import fcntl
+        except ImportError:
+            self.skipTest("fcntl is not available on this platform")
+        commands = tuple(
+            name for name in ("F_DUPFD", "F_DUPFD_CLOEXEC")
+            if hasattr(fcntl, name)
+        )
+        self.assertTrue(commands, "expected a supported fcntl duplicate command")
+        before = self.fingerprint()
+        for command in commands:
+            with self.subTest(command=command):
+                program = (
+                    "import fcntl\n"
+                    "try:\n"
+                    f"    fcntl.fcntl(0, fcntl.{command}, 7)\n"
+                    "except BaseException:\n"
+                    "    pass\n"
+                    "print('UNEXPECTED_EXECUTION')\n"
+                )
+                proc = subprocess.run(
+                    [sys.executable, "-B", "-c", program], cwd=self.root,
+                    env=self.env, capture_output=True, check=False, timeout=15,
+                )
+                self.assertEqual(proc.returncode, 92, command)
                 self.assertEqual(proc.stdout, b"")
                 self.assertEqual(proc.stderr, b"")
                 self.assertEqual(self.fingerprint(), before)
