@@ -60,9 +60,9 @@ EXPLICIT_HOST_DENIALS = (
     ("REVIEW.INVALID.", "review.invalid"),
     ("https://review.invalid/no-network", "review.invalid"),
 )
-# Two ordinary decisions per literal; third/fourth deny every non-lab literal
-# in explicit networks with a missing or definitively expired synthetic grant.
-TOTAL_CHECKS = len(LAB) * 2 + len(NOT_LAB) * 4 + len(EXPLICIT_HOST_DENIALS) * 2
+# Two ordinary decisions per literal; three more deny every non-lab IP
+# with missing, expired, or not-yet-effective synthetic authorization.
+TOTAL_CHECKS = len(LAB) * 2 + len(NOT_LAB) * 5 + len(EXPLICIT_HOST_DENIALS) * 3
 _DENIAL = {
     "authorization_verified": False,
     "permit_issued": False,
@@ -144,10 +144,18 @@ def audit_installed_scope(policy_factory=ScopePolicy) -> dict[str, object]:
             reference="not-a-permit",
             valid_until=datetime(2000, 1, 1, tzinfo=timezone.utc),
         )
+        # This synthetic grant starts in the distant future and can never be
+        # a currently valid customer permission. No clock is injected.
+        future = Authorization(
+            owner="offline-fixture",
+            reference="not-effective-permit",
+            valid_from=datetime(2999, 1, 1, tzinfo=timezone.utc),
+        )
         for literal, expected_host in EXPLICIT_HOST_DENIALS:
             absent = host_policy.decide(Target(literal))
             stale = host_policy.decide(Target(literal, authorization=expired))
-            if not all(_canonical(item) for item in (absent, stale)):
+            premature = host_policy.decide(Target(literal, authorization=future))
+            if not all(_canonical(item) for item in (absent, stale, premature)):
                 return _receipt("HOLD")
             if (
                 absent.allowed is not False
@@ -156,6 +164,9 @@ def audit_installed_scope(policy_factory=ScopePolicy) -> dict[str, object]:
                 or stale.allowed is not False
                 or stale.reason is not ScopeReason.AUTHORIZATION_EXPIRED
                 or stale.normalized_host != expected_host
+                or premature.allowed is not False
+                or premature.reason is not ScopeReason.AUTHORIZATION_EXPIRED
+                or premature.normalized_host != expected_host
             ):
                 return _receipt("HOLD")
         for literal, normalized, expected_reason in LAB:
@@ -183,8 +194,11 @@ def audit_installed_scope(policy_factory=ScopePolicy) -> dict[str, object]:
             expired_grant = ungranted_explicit.decide(
                 Target(literal, authorization=expired)
             )
+            future_grant = ungranted_explicit.decide(
+                Target(literal, authorization=future)
+            )
             if not all(_canonical(item) for item in (
-                admitted, locked, missing_grant, expired_grant
+                admitted, locked, missing_grant, expired_grant, future_grant
             )):
                 return _receipt("HOLD")
             if (
@@ -192,6 +206,8 @@ def audit_installed_scope(policy_factory=ScopePolicy) -> dict[str, object]:
                 or missing_grant.reason is not ScopeReason.AUTHORIZATION_MISSING
                 or expired_grant.allowed is not False
                 or expired_grant.reason is not ScopeReason.AUTHORIZATION_EXPIRED
+                or future_grant.allowed is not False
+                or future_grant.reason is not ScopeReason.AUTHORIZATION_EXPIRED
                 or admitted.allowed is not False
                 or admitted.reason in (ScopeReason.LOOPBACK, ScopeReason.PRIVATE_LAB)
                 or locked.allowed is not False
