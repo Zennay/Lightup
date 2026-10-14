@@ -249,6 +249,63 @@ def audit() -> dict[str, object]:
                     or invalid_mint_requests != before_invalid_requests
                 ):
                     violations += 1
+
+            # An explicit public allowlist is NOT proof of authorization.
+            # Missing, not-yet-valid and expired synthetic consent must fail
+            # in ScopePolicy and must never mint during LAB_ONLY admission.
+            expired_owner = Authorization(
+                owner="synthetic-only", reference="EXPIRED-ONLY",
+                valid_until=datetime(2000, 1, 1, tzinfo=timezone.utc),
+            )
+            future_owner = Authorization(
+                owner="synthetic-only", reference="FUTURE-ONLY",
+                valid_from=datetime(2099, 1, 1, tzinfo=timezone.utc),
+            )
+            denied_public_cases = (
+                (None, ScopeReason.AUTHORIZATION_MISSING),
+                (expired_owner, ScopeReason.AUTHORIZATION_EXPIRED),
+                (future_owner, ScopeReason.AUTHORIZATION_EXPIRED),
+            )
+            for fake_auth, expected_reason in denied_public_cases:
+                for public_policy, public_target in (
+                    (
+                        ScopePolicy(
+                            allow_private_lab=False,
+                            explicit_hosts=frozenset({"gated.example.test"}),
+                        ),
+                        Target("gated.example.test", authorization=fake_auth),
+                    ),
+                    (
+                        ScopePolicy(
+                            allow_private_lab=False,
+                            explicit_networks=("203.0.113.0/24",),
+                        ),
+                        Target("203.0.113.77", authorization=fake_auth),
+                    ),
+                ):
+                    checked += 1
+                    decision = public_policy.decide(public_target)
+                    bad_scope = (
+                        decision.allowed or decision.reason is not expected_reason
+                    )
+                    denied_gate = ActivationGate(
+                        public_policy,
+                        ActivationPolicy(mode=ActivationMode.LAB_ONLY),
+                    )
+                    before_mints = synthetic_mints
+                    before_invalid_requests = invalid_mint_requests
+                    denied = False
+                    try:
+                        denied_gate.issue(public_target, CAPABILITY)
+                    except PermissionError:
+                        denied = True
+                    if (
+                        bad_scope
+                        or not denied
+                        or synthetic_mints != before_mints
+                        or invalid_mint_requests != before_invalid_requests
+                    ):
+                        violations += 1
     except Exception:
         # Corrupt source, unanticipated API drift or attempted I/O is HOLD.
         return {"status": "HOLD", "checked": 0, "violations": 1, **_DENIED}
