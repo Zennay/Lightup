@@ -129,6 +129,20 @@ class ActualExecutorAdmissionTests(unittest.TestCase):
                 ),
                 self._handler,
             )
+        self.registry.register(
+            ToolDefinition(
+                "synthetic-mixed-values", "external-attack-surface",
+                InteractionKind.ANALYSIS, RiskLevel.ANALYSIS_ONLY,
+                "Offline multi-field primitive type admission only",
+                (
+                    ToolParameter("label", ParamKind.STRING),
+                    ToolParameter("count", ParamKind.INTEGER),
+                    ToolParameter("measure", ParamKind.NUMBER),
+                    ToolParameter("enabled", ParamKind.BOOLEAN),
+                ),
+            ),
+            self._handler,
+        )
         self.executor = ToolExecutor(self.registry, self.state)
         self.context = RunContext(
             run_id=str(uuid4()), client_id="offline-tenant",
@@ -191,6 +205,83 @@ class ActualExecutorAdmissionTests(unittest.TestCase):
     def test_numeric_protocol_objects_are_never_coerced(self):
         self._assert_rejected_without_effects("integer", PretendInteger())
         self._assert_rejected_without_effects("number", PretendInteger())
+
+    def _execute_mixed(self, arguments):
+        return self.executor.execute(
+            self.context,
+            ToolCall("synthetic-mixed-values", "synthetic.invalid",
+                     arguments=tuple(arguments.items())),
+        )
+
+    def _assert_mixed_rejected_without_effects(self, arguments):
+        before_calls = len(self.handler_calls)
+        before_rows = self._evidence_count()
+        denied = False
+        try:
+            self._execute_mixed(arguments)
+        except OrchestrationError:
+            denied = True
+        self.assertEqual(len(self.handler_calls), before_calls,
+                         "bad late typed field must not invoke the mixed handler")
+        self.assertEqual(self._evidence_count(), before_rows,
+                         "mixed malformed arguments must not persist partial evidence")
+        self.assertTrue(denied, "mixed malformed value must raise OrchestrationError")
+
+    def test_mixed_builtin_primitive_values_dispatch_once(self):
+        before = self._evidence_count()
+        self._execute_mixed({
+            "label": "synthetic", "count": 2, "measure": 1.25,
+            "enabled": False,
+        })
+        self.assertEqual(self._evidence_count(), before + 1)
+        self.assertEqual(self.handler_calls[-1], {
+            "label": "synthetic", "count": 2, "measure": 1.25,
+            "enabled": False,
+        })
+
+    def test_mixed_late_canonical_mismatch_denies_atomically(self):
+        self._assert_mixed_rejected_without_effects({
+            "label": "synthetic", "count": 2, "measure": "not-a-number",
+            "enabled": False,
+        })
+        self._assert_mixed_rejected_without_effects({
+            "label": "synthetic", "count": 2, "measure": 1.25,
+            "enabled": "false",
+        })
+
+    @unittest.expectedFailure
+    def test_red_mixed_text_subclass_before_valid_fields_must_deny(self):
+        self._assert_mixed_rejected_without_effects({
+            "label": SubclassText("synthetic"), "count": 2,
+            "measure": 1.25, "enabled": False,
+        })
+
+    @unittest.expectedFailure
+    def test_red_mixed_enum_after_valid_text_must_deny(self):
+        self._assert_mixed_rejected_without_effects({
+            "label": "synthetic", "count": NumericEnum.ONE,
+            "measure": 1.25, "enabled": False,
+        })
+
+    @unittest.expectedFailure
+    def test_red_mixed_float_subclass_after_valid_prefix_must_deny(self):
+        self._assert_mixed_rejected_without_effects({
+            "label": "synthetic", "count": 2,
+            "measure": SubclassFloat(1.25), "enabled": False,
+        })
+
+    @unittest.expectedFailure
+    def test_red_mixed_after_prior_valid_dispatch_preserves_previous_evidence(self):
+        self._execute_mixed({
+            "label": "synthetic", "count": 2, "measure": 1.25,
+            "enabled": False,
+        })
+        self.assertEqual(len(self.handler_calls), 1)
+        self.assertEqual(self._evidence_count(), 1)
+        self._assert_mixed_rejected_without_effects({
+            "label": "synthetic", "count": 2,
+            "measure": SubclassFloat(1.25), "enabled": False,
+        })
 
     @unittest.expectedFailure
     def test_red_real_executor_string_subclass_must_have_zero_effects(self):
