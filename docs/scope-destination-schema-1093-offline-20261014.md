@@ -9,12 +9,20 @@ Use only with disposable synthetic metadata on a private FIFO/pipe stdin.
 A regular file, device, socket, incomplete pipe without EOF, or a pipe whose
 writer keeps its end open fails atomically to HOLD after at most two seconds.
 All reads use bounded 1024-byte chunks and an absolute monotonic deadline.
-This is a Python userland guard, not an OS sandbox or a guarantee about
-stdout sinks. Feed a finite packet and close the writer end:
+This is a Python userland guard, not an OS sandbox. Stdout receipts are
+independently sealed to an exact 10-field, all-denial ASCII JSON shape (seven
+literal false flags), capped at 512 bytes. Only private FIFO/pipe and real TTY
+stdout sinks are accepted; inherited regular files, sockets, devices and
+full/unconsumed pipes return nonzero without writing private claims. Output
+has its own absolute two-second deadline and restores the original fd1
+blocking mode on success or failure. A shared POSIX open-file-description
+can be transiently nonblocking during the write: use a private output pipe
+when another process could write the same descriptor.
 
+Feed a finite packet via a pipe, not shell `< synthetic.json` redirection.
+The latter passes a **regular file fd0** and intentionally yields HOLD:
 
-
-    python scripts/review_scope_destination_schema_1093_offline.py --stdin-json < synthetic.json
+    cat synthetic.json | python scripts/review_scope_destination_schema_1093_offline.py --stdin-json
     python -m unittest discover -s tests -p 'test_scope_destination_schema_1093_offline.py' -v
 
 Input must be UTF-8 JSON, maximum 4096 bytes, precisely a `tools` array of
