@@ -20,13 +20,19 @@ EXPECTED_TEST_METHODS = 91
 PATTERN = "test_trusted_destination_manifest_optin_1093.py"
 
 
-def _receipt(passed: bool, count: int) -> dict[str, object]:
+def _receipt(
+    passed: bool, count: int, failures: int = 0,
+    errors: int = 0, skipped: int = 0
+) -> dict[str, object]:
     return {
         "schema": "lightup-scope-1093-offline-v1",
         "status": "hold",
         "offline_regression_passed": passed,
         "tests_run": count,
         "expected_tests": EXPECTED_TEST_METHODS,
+        "failures": failures,
+        "errors": errors,
+        "skipped": skipped,
         "authorization_verified": False,
         "permit_issued": False,
         "execution_enabled": False,
@@ -82,10 +88,16 @@ def main() -> int:
             and not result.unexpectedSuccesses
         )
         count = result.testsRun
+        failures, errors, skipped = (
+            len(result.failures), len(result.errors), len(result.skipped)
+        )
     except Exception:
         passed, count = False, 0
+        failures, errors, skipped = 0, 1, 0
 
-    print(json.dumps(_receipt(passed, count), sort_keys=True))
+    print(json.dumps(
+        _receipt(passed, count, failures, errors, skipped), sort_keys=True
+    ))
     return 0 if passed else 1
 
 
