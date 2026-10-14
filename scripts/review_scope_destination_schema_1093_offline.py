@@ -17,8 +17,9 @@ MAX_INPUT_BYTES = 4096
 READ_DEADLINE_SECONDS = 2.0
 MAX_TOOLS = 8
 MAX_PARAMETERS = 16
-IDENTIFIER = re.compile(r"[a-z][a-z0-9_]{0,63}\Z", re.ASCII)
-KINDS = frozenset({"string", "integer", "number", "boolean", "array", "object"})
+TOOL_ID = re.compile(r"[a-z][a-z0-9_-]{0,63}\Z", re.ASCII)
+PARAMETER_NAME = re.compile(r"[a-z][a-z0-9_]{0,63}\Z", re.ASCII)
+KINDS = frozenset({"string", "integer", "number", "boolean"})
 ROLE_KINDS = {
     "none": KINDS,
     "host": frozenset({"string"}),
@@ -67,7 +68,7 @@ def review_schema(payload: object) -> dict:
         if type(tool) is not dict or set(tool) != {"tool_id", "parameters"}:
             return _hold()
         tool_id, params = tool["tool_id"], tool["parameters"]
-        if (type(tool_id) is not str or not IDENTIFIER.fullmatch(tool_id)
+        if (type(tool_id) is not str or not TOOL_ID.fullmatch(tool_id)
                 or tool_id in seen_tools):
             return _hold()
         seen_tools.add(tool_id)
@@ -79,7 +80,7 @@ def review_schema(payload: object) -> dict:
             if type(param) is not dict or set(param) != {"name", "kind", "role"}:
                 return _hold()
             name, kind, role = param["name"], param["kind"], param["role"]
-            if (type(name) is not str or not IDENTIFIER.fullmatch(name)
+            if (type(name) is not str or not PARAMETER_NAME.fullmatch(name)
                     or name in seen_params or type(kind) is not str
                     or kind not in KINDS or type(role) is not str
                     or role not in ROLE_KINDS or kind not in ROLE_KINDS[role]):
