@@ -61,7 +61,7 @@ class ReservedAddressNotPrivateLabRED(unittest.TestCase):
 
     @unittest.expectedFailure
     def test_documentation_ipv6_not_lab(self):
-        self.assert_not_auto_admitted("2001:db8::1")
+        self.assert_not_auto_admitted("[2001:db8::1]")
 
     @unittest.expectedFailure
     def test_link_local_ipv4_not_implicitly_lab(self):
@@ -70,11 +70,11 @@ class ReservedAddressNotPrivateLabRED(unittest.TestCase):
     def test_supported_loopback_and_private_use_controls(self):
         for address, reason in (
             ("127.0.0.1", ScopeReason.LOOPBACK),
-            ("::1", ScopeReason.LOOPBACK),
+            ("[::1]", ScopeReason.LOOPBACK),
             ("10.3.4.5", ScopeReason.PRIVATE_LAB),
             ("172.16.1.2", ScopeReason.PRIVATE_LAB),
             ("192.168.2.3", ScopeReason.PRIVATE_LAB),
-            ("fd00::1", ScopeReason.PRIVATE_LAB),
+            ("[fd00::1]", ScopeReason.PRIVATE_LAB),
         ):
             with self.subTest(address=address):
                 result = self.policy.decide(Target(address))
@@ -86,8 +86,8 @@ class ReservedAddressNotPrivateLabRED(unittest.TestCase):
         for address in (
             "192.0.2.1", "198.51.100.1", "203.0.113.1",
             "198.18.0.1", "0.0.0.0", "255.255.255.255",
-            "2001:db8::1", "169.254.1.1",
-            "10.3.4.5", "192.168.2.3", "fd00::1",
+            "[2001:db8::1]", "169.254.1.1",
+            "10.3.4.5", "192.168.2.3", "[fd00::1]",
         ):
             with self.subTest(address=address):
                 result = locked.decide(Target(address))
