@@ -107,6 +107,78 @@ def _safe_fields(values: object) -> bool:
     return ids == sorted(set(ids))
 
 
+
+def _coherent_components(catalog: object, posture: object, fields: object,
+                         fingerprint: str) -> bool:
+    """Prove that a favorable component status matches its actual evidence.
+
+    Do not trust one component's status label without verifying its fixed,
+    version-pinned reason, violation cardinality and sibling relationships.
+    This is a *local* review-consistency test, never independent attestation.
+    """
+    if any(
+        type(value) is not str
+        for value in (catalog.status, catalog.reason, posture.status,
+                      posture.reason, fields.status, fields.reason)
+    ):
+        return False
+    if posture.status == "REVIEW_ONLY":
+        if posture.reason != "incubation_metadata_only" or posture.violations:
+            return False
+    elif posture.status == "HOLD":
+        if (posture.reason != "incubation_posture_requires_independent_review"
+                or not posture.violations):
+            return False
+    else:
+        return False
+
+    if catalog.status == "REVIEW_ONLY":
+        return (
+            catalog.reason == "incubation_catalog_metadata_only"
+            and not catalog.violations
+            and posture.status == "REVIEW_ONLY"
+            and fields.status == "REVIEW_ONLY"
+            and fields.reason == "unchanged_reviewed_fields_only"
+            and fields.catalog_fingerprint == fingerprint
+            and not fields.changed_fields
+        )
+    if catalog.status != "HOLD":
+        return False
+
+    if catalog.reason == "semantic_metadata_differs_from_reviewed_reference":
+        return (
+            not catalog.violations
+            and posture.status == "REVIEW_ONLY"
+            and fields.status == "HOLD"
+            and fields.reason == "metadata_fields_require_review"
+            and fields.catalog_fingerprint == fingerprint
+            and bool(fields.changed_fields)
+        )
+
+    if catalog.reason != "catalog_change_requires_independent_review":
+        return False
+    if not catalog.violations:
+        return False
+    if (
+        fields.status != "HOLD"
+        or fields.reason != "invalid_or_changed_catalog_boundary"
+        or fields.catalog_fingerprint is not None
+        or fields.changed_fields
+    ):
+        return False
+
+    catalog_changes = set(catalog.violations)
+    for ident, code in posture.violations:
+        match = {
+            "explicit_activation_required": "explicit_activation_required",
+            "sensitive_lab_capability_reclassified": "incubation_state_changed",
+            "required_lab_capability_missing": "required_capability_missing",
+        }.get(code)
+        if (ident, match) not in catalog_changes:
+            return False
+    return True
+
+
 def review_atomic_incubation_dossier(raw: bytes) -> IncubationDossier:
     """Review identical raw bytes across all three; never issue runtime authority."""
     if type(raw) is not bytes:
@@ -138,6 +210,8 @@ def review_atomic_incubation_dossier(raw: bytes) -> IncubationDossier:
     if fields.status == "HOLD" and fields.changed_fields and not (
         catalog.reason == "semantic_metadata_differs_from_reviewed_reference"
     ):
+        return _invalid()
+    if not _coherent_components(catalog, posture, fields, fingerprint):
         return _invalid()
 
     all_review_only = checks == ("REVIEW_ONLY", "REVIEW_ONLY", "REVIEW_ONLY")
