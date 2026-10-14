@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -141,6 +142,184 @@ class DomainStoreTest(unittest.TestCase):
                 ScopeDefinition(assets=(), max_risk=RiskLevel.STANDARD),
                 valid_from, valid_until,
             )
+
+    def test_persisted_grant_requires_explicit_known_non_lab_capabilities(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Strict scope"
+        )
+        valid_from, valid_until = _grant_window()
+
+        invalid_scopes = (
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=(),
+            ),
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("future-unknown-capability",),
+            ),
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("wireless-lab",),
+            ),
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.DESTRUCTIVE_LAB_ONLY,
+                allowed_capabilities=("web-baseline",),
+            ),
+        )
+        for index, scope in enumerate(invalid_scopes):
+            with self.subTest(index=index):
+                with self.assertRaises(ValueError):
+                    self.store.record_authorization_grant(
+                        self.operator,
+                        engagement.engagement_id,
+                        "CISO Acme",
+                        f"AUTH-INVALID-{index}",
+                        scope,
+                        valid_from,
+                        valid_until,
+                    )
+        self.assertEqual(
+            self.store.list_authorization_grants(
+                self.operator, engagement.engagement_id
+            ),
+            [],
+        )
+
+    def test_revoke_engagement_authorization_revokes_current_and_future_grants(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Emergency scope"
+        )
+        now = datetime.now(timezone.utc)
+        current = self.store.record_authorization_grant(
+            self.operator,
+            engagement.engagement_id,
+            "CISO Acme",
+            "AUTH-CURRENT",
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("web-baseline",),
+            ),
+            now - timedelta(hours=1),
+            now + timedelta(days=2),
+        )
+        future = self.store.record_authorization_grant(
+            self.operator,
+            engagement.engagement_id,
+            "CISO Acme",
+            "AUTH-FUTURE",
+            ScopeDefinition(
+                assets=("api.acme.example",),
+                max_risk=RiskLevel.LOW_IMPACT,
+                allowed_capabilities=("api-baseline",),
+            ),
+            now + timedelta(days=3),
+            now + timedelta(days=5),
+        )
+        self.assertEqual(
+            self.store.get_current_grant(self.operator, engagement.engagement_id).grant_id,
+            current.grant_id,
+        )
+
+        revoked = self.store.revoke_engagement_authorization(
+            self.operator, engagement.engagement_id, "customer withdrew authorization"
+        )
+
+        self.assertEqual(
+            {grant.grant_id for grant in revoked}, {current.grant_id, future.grant_id}
+        )
+        self.assertIsNone(
+            self.store.get_current_grant(self.operator, engagement.engagement_id)
+        )
+        for grant in self.store.list_authorization_grants(
+            self.operator, engagement.engagement_id
+        ):
+            self.assertTrue(grant.is_revoked)
+            self.assertEqual(grant.revoked_by, self.operator.user_id)
+            self.assertEqual(
+                grant.revocation_reason, "customer withdrew authorization"
+            )
+            self.assertIsNotNone(grant.revoked_at)
+        self.assertEqual(
+            self.store.revoke_engagement_authorization(
+                self.operator, engagement.engagement_id, "repeat withdrawal"
+            ),
+            (),
+        )
+
+    def test_authorization_revocation_is_operator_only_and_requires_reason(self):
+        engagement = self.store.create_engagement(
+            self.operator, self.client_a.client_id, "Revocation boundary"
+        )
+        valid_from, valid_until = _grant_window()
+        self.store.record_authorization_grant(
+            self.operator,
+            engagement.engagement_id,
+            "CISO Acme",
+            "AUTH-REVOKE",
+            ScopeDefinition(
+                assets=("app.acme.example",),
+                max_risk=RiskLevel.STANDARD,
+                allowed_capabilities=("web-baseline",),
+            ),
+            valid_from,
+            valid_until,
+        )
+        with self.assertRaises(RoleError):
+            self.store.revoke_engagement_authorization(
+                self.ctx_a, engagement.engagement_id, "not allowed"
+            )
+        with self.assertRaises(ValueError):
+            self.store.revoke_engagement_authorization(
+                self.operator, engagement.engagement_id, "   "
+            )
+        self.assertIsNotNone(
+            self.store.get_current_grant(self.operator, engagement.engagement_id)
+        )
+
+    def test_legacy_authorization_table_migrates_revocation_columns(self):
+        path = Path(self.tmp.name) / "legacy-domain.db"
+        con = sqlite3.connect(path)
+        con.execute(
+            """
+            CREATE TABLE authorization_grants (
+                grant_id TEXT PRIMARY KEY,
+                client_id TEXT NOT NULL,
+                engagement_id TEXT NOT NULL,
+                approved_by TEXT NOT NULL,
+                reference TEXT NOT NULL,
+                assets_json TEXT NOT NULL,
+                excluded_assets_json TEXT NOT NULL,
+                allowed_capabilities_json TEXT NOT NULL,
+                max_risk INTEGER NOT NULL,
+                valid_from TEXT NOT NULL,
+                valid_until TEXT NOT NULL,
+                recurring_retest_allowed INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        con.close()
+
+        DomainStore(path)
+
+        con = sqlite3.connect(path)
+        try:
+            columns = {
+                row[1] for row in con.execute(
+                    "PRAGMA table_info(authorization_grants)"
+                ).fetchall()
+            }
+        finally:
+            con.close()
+        self.assertTrue(
+            {"revoked_at", "revoked_by", "revocation_reason"}.issubset(columns)
+        )
 
     def test_risk_elevation_requires_second_operator(self):
         engagement = self.store.create_engagement(self.operator, self.client_a.client_id, "Q4")

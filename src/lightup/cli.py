@@ -10,7 +10,7 @@ from .scope import ScopePolicy
 
 def _policy(args: argparse.Namespace) -> ScopePolicy:
     return ScopePolicy(
-        allow_private_lab=not args.no_private_lab,
+        allow_private_lab=bool(args.allow_private_lab),
         explicit_hosts=frozenset(args.allow_host or []),
         explicit_networks=tuple(args.allow_cidr or []),
         require_authorization_for_public=True,
@@ -22,7 +22,17 @@ def build_parser() -> argparse.ArgumentParser:
     shared = argparse.ArgumentParser(add_help=False)
     shared.add_argument("--allow-host", action="append", default=[])
     shared.add_argument("--allow-cidr", action="append", default=[])
-    shared.add_argument("--no-private-lab", action="store_true")
+    private_lab = shared.add_mutually_exclusive_group()
+    private_lab.add_argument(
+        "--allow-private-lab",
+        action="store_true",
+        help="explicitly trust ordinary private IP space as isolated lab scope",
+    )
+    private_lab.add_argument(
+        "--no-private-lab",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
 
     sub = parser.add_subparsers(dest="command", required=True)
     scope = sub.add_parser("scope-check", parents=[shared])

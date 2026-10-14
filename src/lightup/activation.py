@@ -33,6 +33,7 @@ class ExecutionPermit:
     mode: ActivationMode
     activation_reference: str
     issued_at: datetime
+    authorization_reference: str | None = None
 
 
 class ActivationGate:
@@ -59,10 +60,12 @@ class ActivationGate:
             if decision.reason.value not in {"loopback", "private_lab"}:
                 raise PermissionError("lab-only mode cannot issue permits for public targets")
             reference = self.activation_policy.activation_reference or "LAB"
+            authorization_reference = None
         else:
             if target.authorization is None or not target.authorization.is_current():
                 raise PermissionError("authorized execution requires current target authorization")
             reference = self.activation_policy.activation_reference or target.authorization.reference
+            authorization_reference = target.authorization.reference
 
         return ExecutionPermit(
             permit_id=token_urlsafe(24),
@@ -70,5 +73,6 @@ class ActivationGate:
             capability_id=capability_id,
             mode=self.activation_policy.mode,
             activation_reference=reference,
+            authorization_reference=authorization_reference,
             issued_at=datetime.now(timezone.utc),
         )
