@@ -409,5 +409,27 @@ class TestTrustedDestinationMetadata1093(unittest.TestCase):
             self.registry, d, (DestinationField("host", DestinationRole.HOST),)))
 
 
+
+    def test_53_non_ascii_endpoint_path_and_invisible_mark_refused(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        for bad in ("https://localhost/résumé",
+                    "https://localhost/\u200bpath",
+                    "https://localhost/\ud800",
+                    "https://localhost/\ufeff",
+                    "https://localhost/\u2060"):
+            with self.subTest(bad=repr(bad)):
+                self.refused(lambda value=bad: m.review({"url": value}))
+
+    def test_54_percent_encoded_unicode_path_remains_nonauthorizing(self):
+        fields = (DestinationField("url", DestinationRole.ENDPOINT),)
+        m = self.manifest([ToolParameter("url", ParamKind.STRING)], fields)
+        r = m.review({"url": "https://localhost/r%C3%A9sum%C3%A9"})
+        self.assertEqual(r.status, "hold")
+        self.assertIs(r.execution_enabled, False)
+        self.assertIs(r.authorization_verified, False)
+        self.assertEqual(self.calls, [])
+
+
 if __name__ == "__main__":
     unittest.main()
