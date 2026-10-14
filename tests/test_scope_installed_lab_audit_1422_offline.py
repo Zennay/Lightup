@@ -133,6 +133,33 @@ class InstalledScopeLabAuditTests(unittest.TestCase):
              patch.object(subprocess, "Popen", side_effect=AssertionError("subprocess")):
             self.assertEqual(audit_installed_scope(_FixturePolicy)["status"], "REVIEW_ONLY")
 
+    def test_literal_matrix_covers_each_cidr_edge_and_is_duplicate_free(self):
+        positive = [literal for literal, _, _ in LAB]
+        self.assertEqual(len(positive), len(set(positive)))
+        self.assertEqual(len(NOT_LAB), len(set(NOT_LAB)))
+        self.assertFalse(set(positive).intersection(NOT_LAB))
+        self.assertTrue({
+            "9.255.255.255", "11.0.0.1", "172.15.255.255",
+            "172.32.0.0", "192.167.255.255", "192.169.0.1",
+            "126.255.255.255", "128.0.0.1",
+            "[fbff:ffff::1]", "[fe00::1]",
+        }.issubset(NOT_LAB))
+        self.assertGreaterEqual(TOTAL_CHECKS, 80)
+
+    def test_real_source_audit_performs_no_network_file_or_child_process(self):
+        # Mocks MUST NOT be called: catching a forbidden IO exception and then
+        # returning HOLD would otherwise conceal an actual attempted side effect.
+        with patch.object(socket, "socket") as sock, \
+             patch.object(socket, "getaddrinfo") as dns, \
+             patch("builtins.open") as file_open, \
+             patch.object(subprocess, "Popen") as popen:
+            result = audit_installed_scope()
+            self.assert_never_authority(result)
+            sock.assert_not_called()
+            dns.assert_not_called()
+            file_open.assert_not_called()
+            popen.assert_not_called()
+
     def test_invalid_cli_arguments_hold_without_echo(self):
         for args in (["--literal", "customer-secret.example"], ["--help"], ["--json", "--json"]):
             with self.subTest(args=args):
