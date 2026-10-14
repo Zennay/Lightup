@@ -124,9 +124,16 @@ class LabLiteralReviewTests(unittest.TestCase):
 
     def test_cli_review_only_is_non_authorizing(self):
         process = self._cli(b"10.2.3.4\n")
-        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertEqual(process.returncode, 3, process.stderr)
         self.assertNoAuthority(json.loads(process.stdout))
         self.assertIn(b"REVIEW_ONLY", process.stdout)
+
+    def test_cli_never_reports_shell_success_for_review_only_shape(self):
+        for literal in (b"127.0.0.1", b"10.1.2.3", b"fd00::1"):
+            with self.subTest(literal=literal):
+                process = self._cli(literal)
+                self.assertEqual(process.returncode, 3)
+                self.assertEqual(json.loads(process.stdout)["status"], "REVIEW_ONLY")
 
     def test_cli_hold_returns_nonzero_and_fixed_privacy_receipt(self):
         marker = b"private-target-secret.example"
