@@ -507,5 +507,45 @@ class SelfAssertedProofHoldTests(unittest.TestCase):
         self.assertEqual(child.stderr, b"")
 
 
+    @unittest.skipUnless(hasattr(os, "openpty"), "POSIX PTY unavailable")
+    def test_real_cli_terminal_output_stays_coherent_and_non_authorizing(self):
+        master, slave = os.openpty()
+        try:
+            child = subprocess.run(
+                [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                input=encoded(packet()), stdout=slave, stderr=subprocess.PIPE,
+                timeout=8, check=False,
+                env={"PATH": os.defpath, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            self.assertEqual(child.returncode, 2)
+            self.assertEqual(child.stderr, b"")
+            receipt = os.read(master, 1024).decode("ascii").strip()
+            result = json.loads(receipt)
+            self.assertEqual(set(result), RECEIPT_KEYS)
+            self.assertEqual(result["status"], "HOLD")
+            self.assertEqual(result["input_integrity"], "COHERENT")
+            for name in FLAGS:
+                self.assertIs(result[name], False)
+            self.assertNotIn(SHA, receipt)
+        finally:
+            os.close(slave)
+            os.close(master)
+
+    def test_real_cli_closed_output_pipe_exits_hold_without_traceback(self):
+        readfd, writefd = os.pipe()
+        os.close(readfd)
+        try:
+            child = subprocess.run(
+                [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                input=encoded(packet()), stdout=writefd, stderr=subprocess.PIPE,
+                timeout=8, check=False,
+                env={"PATH": os.defpath, "PYTHONDONTWRITEBYTECODE": "1"},
+            )
+            self.assertEqual(child.returncode, 2)
+            self.assertEqual(child.stderr, b"")
+        finally:
+            os.close(writefd)
+
+
 if __name__ == "__main__":
     unittest.main()
