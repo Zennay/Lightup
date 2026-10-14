@@ -96,6 +96,18 @@ class OctetSweepTests(unittest.TestCase):
             review_ipv4_octet_sweep(IndependentStrictPolicy), "REVIEW_ONLY"
         )
 
+    def test_receipt_flags_are_fresh_literals_after_external_tampering(self):
+        first = review_ipv4_octet_sweep(IndependentStrictPolicy)
+        first["authorization_verified"] = True
+        first["permit_issued"] = True
+        first["execution_enabled"] = True
+        first["merge_approved"] = True
+        first["release_approved"] = True
+        later_review = review_ipv4_octet_sweep(IndependentStrictPolicy)
+        later_hold = review_ipv4_octet_sweep(TrustAllPolicy)
+        self.assert_non_authorizing(later_review, "REVIEW_ONLY")
+        self.assert_non_authorizing(later_hold, "HOLD")
+
     def test_unsafe_auto_admission_and_off_switch_are_atomic_hold(self):
         self.assert_non_authorizing(review_ipv4_octet_sweep(TrustAllPolicy), "HOLD")
         self.assert_non_authorizing(review_ipv4_octet_sweep(DenyAllPolicy), "HOLD")
