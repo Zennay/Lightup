@@ -152,6 +152,47 @@ def _read_bounded_stdin() -> bytes:
     except (OSError, ValueError, TypeError, OverflowError):
         return b""
 
+def _is_sealed_hold_receipt(payload: object) -> bool:
+    """Require canonical, minimal non-authorizing output before any fd access."""
+    if type(payload) is not bytes or not 0 < len(payload) <= MAX_RECEIPT_BYTES:
+        return False
+    if not payload.endswith(b"\n") or payload.count(b"\n") != 1:
+        return False
+    try:
+        parsed = json.loads(
+            payload[:-1].decode("ascii", "strict"),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_nonfinite,
+        )
+        expected_keys = {
+            "schema", "status", "input_integrity",
+            "unverified_self_asserted_pass_claims", "verified_evidence",
+            *FALSE_FLAGS,
+        }
+        if type(parsed) is not dict or set(parsed) != expected_keys:
+            return False
+        if type(parsed["schema"]) is not str or parsed["schema"] != OUTPUT_SCHEMA:
+            return False
+        if type(parsed["status"]) is not str or parsed["status"] != "HOLD":
+            return False
+        integrity = parsed["input_integrity"]
+        if type(integrity) is not str or integrity not in {"COHERENT", "REJECTED"}:
+            return False
+        count = parsed["unverified_self_asserted_pass_claims"]
+        if type(count) is not int or not 0 <= count <= len(LANES):
+            return False
+        if integrity == "REJECTED" and count != 0:
+            return False
+        if type(parsed["verified_evidence"]) is not bool or parsed["verified_evidence"] is not False:
+            return False
+        if any(type(parsed[key]) is not bool or parsed[key] is not False for key in FALSE_FLAGS):
+            return False
+        canonical = (json.dumps(parsed, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")
+        return payload == canonical
+    except (RejectedClaim, ValueError, UnicodeError, TypeError, RecursionError, OverflowError):
+        return False
+
+
 def _emit_hold_receipt(payload: bytes) -> None:
     """Best-effort single bounded receipt to a pipe or terminal only.
 
@@ -161,7 +202,7 @@ def _emit_hold_receipt(payload: bytes) -> None:
     restore_blocking = False
     fd = -1
     try:
-        if type(payload) is not bytes or not 0 < len(payload) <= MAX_RECEIPT_BYTES:
+        if not _is_sealed_hold_receipt(payload):
             return
         fd = sys.stdout.fileno()
         if type(fd) is not int or fd != 1:
