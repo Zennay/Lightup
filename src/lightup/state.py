@@ -9,6 +9,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
+from .engagements import AssessmentMode
+
 
 SCHEMA = """
 PRAGMA journal_mode=WAL;
@@ -71,6 +73,10 @@ class EvidenceRecord:
 
 
 class StateStore:
+    _PLAN_ONLY_MODE = "plan_only"
+    _ASSESSMENT_MODES = frozenset(mode.value for mode in AssessmentMode)
+    _CANONICAL_RUN_MODES = frozenset({_PLAN_ONLY_MODE, *_ASSESSMENT_MODES})
+
     def __init__(self, path: str | Path):
         self.path = str(path)
         with self.connect() as con:
@@ -85,18 +91,59 @@ class StateStore:
         finally:
             con.close()
 
+    @classmethod
+    def _canonical_run_mode(cls, activation_mode: AssessmentMode | str) -> str:
+        if type(activation_mode) is AssessmentMode:
+            return activation_mode.value
+        if type(activation_mode) is not str:
+            raise ValueError(
+                "activation_mode must be an exact canonical string or AssessmentMode"
+            )
+        if activation_mode not in cls._CANONICAL_RUN_MODES:
+            raise ValueError(f"unknown activation_mode {activation_mode!r}")
+        return activation_mode
+
+    @staticmethod
+    def _canonical_authorization_ref(authorization_ref: str | None) -> str:
+        if type(authorization_ref) is not str:
+            raise ValueError(
+                "authorized_assessment requires an exact authorization_ref string"
+            )
+        if not authorization_ref or authorization_ref != authorization_ref.strip():
+            raise ValueError(
+                "authorized_assessment requires a canonical non-empty authorization_ref"
+            )
+        return authorization_ref
+
     def create_run(
         self,
         target: str,
-        activation_mode: str = "plan_only",
+        activation_mode: AssessmentMode | str = _PLAN_ONLY_MODE,
         authorization_ref: str | None = None,
     ) -> str:
+        mode = self._canonical_run_mode(activation_mode)
+        if mode == AssessmentMode.AUTHORIZED_ASSESSMENT.value:
+            canonical_authorization_ref = self._canonical_authorization_ref(
+                authorization_ref
+            )
+        else:
+            if authorization_ref is not None:
+                raise ValueError(f"{mode} runs cannot carry authorization_ref")
+            canonical_authorization_ref = None
+
         run_id = str(uuid4())
         with self.connect() as con:
             con.execute(
                 "INSERT INTO runs(run_id,target,authorization_ref,activation_mode,status,created_at) "
                 "VALUES(?,?,?,?,?,?)",
-                (run_id, target, authorization_ref, activation_mode, "planned", utcnow().isoformat()),
+                (
+                    run_id,
+                    target,
+                    canonical_authorization_ref,
+                    mode,
+                    "planned",
+                    utcnow().isoformat(),
+                ),
             )
         return run_id
 
