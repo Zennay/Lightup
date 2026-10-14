@@ -64,6 +64,12 @@ The bounded stdout writer now snapshots `os.get_blocking(1)` and temporarily cha
 
 Important limitation: the state can be transiently nonblocking **while** the child writes, because this is a shared POSIX open-file description. Restoring the state on exit eliminates the persistent leak, not the brief cross-process race. Integrators requiring strict simultaneous writer isolation should supply a dedicated private pipe, not a shared writer. This remains synthetic diagnostics, not a hardened OS sandbox or permission to release.
 
+## W71 — sealed stdout payload admission before fd access (2026-10-14)
+
+The transport-level `_emit_hold_receipt` accepted **any** <=512-byte `bytes` value. Although normal `main` already created a privacy-minimal HOLD packet, an accidental future direct call or refactor could send arbitrary secret-bearing bytes through this lower-level output helper. **W71 requires exact canonical HOLD JSON as an independent precondition before touching inherited fd1**. The emitter now checks exactly the 11 known keys, canonical lower-level compact ASCII serialization plus one trailing newline, exact schema, `status=HOLD`, canonical `COHERENT|REJECTED`, 0–4 **int-not-bool** unverified claimed passes (exactly 0 for REJECTED), `verified_evidence=false`, and **six literal false authorization flags**. Duplicate JSON keys, extra unknown fields, type-confused values, mixed case, unexpected trailing bytes, non-ASCII and noncanonical whitespace are rejected before `fileno/fstat/write`. This guard is deliberately conservative; it does not validate the truth of any input claims.
+
+New isolated tests check all synthetic claim labels, both coherent and rejected canonical receipts, mutations of each false permission field into `true` or numeric impostors, schema/status tampering, forbidden nonzero rejected-pass counts, unexpected secret fields, mixed newline/whitespace/duplicate-key encodings and actual child-process output. An in-process I/O tripwire asserts malformed receipts do **not even touch stdout's file descriptor**. Existing finite pipe/TTY semantics remain unchanged. No real security targets, external networks, authority grants, production handlers or workflow ownership are involved.
+
 ## Execution and fail-closed result
 
 ```sh
