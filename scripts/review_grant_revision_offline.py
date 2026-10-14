@@ -50,14 +50,27 @@ def _no_constant(_: str) -> None:
 def _read_regular_file(path: str) -> object:
     # A symlink, named pipe or character device may leak information or hang;
     # never let an untrusted review CLI read one as a snapshot.
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+    # Refuse unsupported platforms rather than silently following symlinks
+    # or blocking indefinitely on a FIFO when the safety flags are absent.
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    nonblock = getattr(os, "O_NONBLOCK", 0)
+    if not nofollow or not nonblock:
+        raise ValueError("unsupported offline input platform")
+    flags = os.O_RDONLY | nofollow | nonblock
     fd = os.open(path, flags)
     try:
-        details = os.fstat(fd)
-        if not stat.S_ISREG(details.st_mode) or details.st_size > MAX_FILE_BYTES:
+        before = os.fstat(fd)
+        if not stat.S_ISREG(before.st_mode) or before.st_size > MAX_FILE_BYTES:
             raise ValueError("untrusted input file")
         with os.fdopen(fd, "rb", closefd=False) as stream:
             raw = stream.read(MAX_FILE_BYTES + 1)
+        after = os.fstat(fd)
+        if (
+            before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns
+        ) != (
+            after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns
+        ):
+            raise ValueError("input file changed during read")
         if not raw or len(raw) > MAX_FILE_BYTES:
             raise ValueError("invalid input size")
         return json.loads(
