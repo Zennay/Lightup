@@ -76,7 +76,9 @@ def _host(value):
 def _endpoint(value):
     if type(value) is not str or not value or len(value) > 2048:
         return False
-    if any(ord(c) < 33 or ord(c) == 127 for c in value) or "\\" in value:
+    # An endpoint identity must be a canonical ASCII URI; require explicit
+    # percent encoding of Unicode paths rather than parser normalization.
+    if any(ord(c) < 33 or ord(c) > 126 for c in value) or "\\" in value:
         return False
     try:
         p = urlsplit(value)
