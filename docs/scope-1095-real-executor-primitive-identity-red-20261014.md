@@ -4,7 +4,7 @@
 
 ## Purpose and immutable ownership boundary
 
-This branch starts from original ToolRegistry owner [PR #156](https://github.com/Zennay/Lightup/pull/156) exact head `e84f2cd74d24f143c02b38cc05cb1c4c64352966`. Only two newly introduced tests/docs paths belong to this work. **No modifications** to `src/lightup/ai/orchestration.py`, original registry/executor, default deployment, workflows or other workers. Parent PR #156 remains owner of production source; [issue #1095](https://github.com/Zennay/Lightup/issues/1095) describes the mismatch.
+This branch starts from original ToolRegistry owner [PR #156](https://github.com/Zennay/Lightup/pull/156) exact head `e84f2cd74d24f143c02b38cc05cb1c4c64352966`. Only four newly introduced paths belong to this work: two isolated unit suites, this handoff and an optional offline primitive snapshot helper. **No modifications** to `src/lightup/ai/orchestration.py`, original registry/executor, default deployment, workflows or other workers. Parent PR #156 remains owner of production source; [issue #1095](https://github.com/Zennay/Lightup/issues/1095) describes the mismatch.
 
 The real source implementation uses `isinstance` in `ParamKind.accepts`. Accordingly STRING currently admits subclasses of `str`, INTEGER admits subclasses of `int` and `IntEnum`, and NUMBER admits subclasses of `int`/`float` and `IntEnum`. Builtin `bool` is correctly excluded from INTEGER and NUMBER. Subclass admissibility is **unfixed** until the original owner installs strict exact-builtin checks.
 
@@ -21,6 +21,22 @@ Run after review, via hosted workflow and permanent registered VPS on the exact 
 
 ```sh
 PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_1095_real_executor_typed_values_red_20261014.py' -v
+```
+
+## W2–W3: opt-in non-authorizing exact-primitive batch snapshots
+
+New **optional, uninstalled** `src/lightup/primitive_admission_optin_1095.py` rejects subclass/IntEnum runtime values *before* creating canonical immutable-value snapshots, and only accepts exact built-in `str`, `int`, `float` or `bool` according to the original parameter kind. `snapshot_exact_primitive_values` validates one ordinary dictionary, required/unknown arguments and duplicate parameter declarations. `snapshot_exact_primitive_batch` validates **all 1–32 rows before returning any results**. It performs no handler, authorization, network, policy, SQLite or other I/O.
+
+`PrimitiveValueSnapshot`/ `PrimitiveBatchSnapshot` expose read-only `authorization_verified`, `permit_issued`, `execution_enabled` properties that always evaluate to `False`. They are NOT dataclass constructor parameters and cannot be set via ordinary assignment or even `object.__setattr__` because they are read-only properties. A normal `as_arguments()` call creates a fresh ordinary dictionary from immutable built-in values, so mutating caller input after preflight cannot alter its snapshot. This is a shape-preserving synthetic reference, **not a security authorization token**. The caller of any eventual executor retains all existing issuer, customer consent, tenant, asset, live revocation, risk, and pre-I/O policy responsibilities.
+
+A distinct new `tests/test_scope_1095_optin_atomic_primitive_snapshot_20261014.py` exercises exact built-in and hostile polymorphic values; no-custom-callback canaries; required/optional/unknown keys; ordinary `dict` admission; copy-on-admission; immutable false authority flags even under attempted caller construction/mutation; batch shapes and upper bound; atomic late-error refusal; and actual `ToolExecutor` + disposable SQLite analysis-only positive controls that run only **after** explicit synthetic preflight. This **does not** fix the original `ParamKind.accepts`: the prior 14 expected RED must remain visible until the source owner repairs them.
+
+The opt-in check intentionally **does not** attest ToolDefinition provenance/lifetime or parameters (separate source-owner #911/#913), tenant authorization, cryptographic binding, canonical tool IDs/argument key lineage (#1094), nor finite numeric value requirements (#1143). Passing a primitive snapshot to an active tool is neither supported nor a valid authorization. Synthetic fixtures use only `synthetic.invalid` in ANALYSIS_ONLY mode.
+
+Execute opt-in tests offline after review:
+
+```sh
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_1095_optin_atomic_primitive_snapshot_20261014.py' -v
 ```
 
 ## Limits and required release gates
