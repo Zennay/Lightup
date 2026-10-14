@@ -95,6 +95,30 @@ The web shell (`docs/webapp.md`) serves the operator dashboard on `/` and the
 client portal on `/portal/<client_id>`, behind session authentication with
 CSRF protection.
 
+### Export finding summaries
+
+Signed-in portal users can choose **Download CSV** beside Findings. The download
+contains finding ID, title, severity, retest status and remediation for the
+selected client. Operators explicitly select one client; client users can
+download only their own client.
+
+For an existing database, terminal users can sign in interactively and export:
+
+```bash
+PYTHONPATH=src python -m lightup.finding_export_cli --db lightup.db \
+  --email you@example.com --client-id CLIENT_ID > findings.csv
+```
+
+Add `--engagement-id ENGAGEMENT_ID` to limit the export to one engagement.
+The command prompts for the password and refuses unsafe fallback input.
+Keep the destination private and review free text before sharing. Exports omit
+targets, raw evidence and arbitrary metadata, redact known credential patterns
+and guard spreadsheet formula-like values.
+
+See [terminal export](docs/authenticated-finding-csv-cli.md),
+[portal downloads](docs/session-finding-csv-download.md) and
+[web entry points](docs/finding-export-entrypoints.md).
+
 ## Platform layers
 
 - `lightup.domain` — multi-client persistence with in-code tenant isolation.
