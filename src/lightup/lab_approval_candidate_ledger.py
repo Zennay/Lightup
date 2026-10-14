@@ -204,9 +204,17 @@ class LabApprovalCandidateLedger:
         )
 
     def revoke(
-        self, *, run_id: str, actor: str, operator_gate: OperatorGate | None,
+        self, *, run_id: str, client_id: str, actor: str,
+        operator_gate: OperatorGate | None,
     ) -> None:
+        """Single-run candidate revocation requires an exact tenant binding.
+
+        A guessable or stolen run_id from another tenant can never select
+        that tenant's candidate row, even if an operator callback is wrong.
+        This remains a local non-authorizing SQLite candidate record only.
+        """
         key = _identity(run_id)
+        tenant = _tenant_id(client_id)
         actor_id = _operator(operator_gate, actor, "revoke")
         stamp = datetime.now(timezone.utc).isoformat()
         # Never rollback a caller-owned open transaction on a rejected call.
@@ -219,8 +227,8 @@ class LabApprovalCandidateLedger:
             result = self._db.execute(
                 """UPDATE lab_stepup_candidates_v1
                 SET revoked_at=?, revoked_by=?
-                WHERE run_id=? AND revoked_at IS NULL""",
-                (stamp, actor_id, key),
+                WHERE run_id=? AND client_id=? AND revoked_at IS NULL""",
+                (stamp, actor_id, key, tenant),
             )
             if result.rowcount != 1:
                 self._db.rollback()
