@@ -53,7 +53,13 @@ def _asset(value: object) -> bool:
         return str(ip_address(value)) == value
     except ValueError:
         labels = value.split(".")
-        return len(labels) >= 2 and all(_LABEL.fullmatch(label) for label in labels)
+        # Numeric dotted aliases (including leading-zero IPv4-looking forms)
+        # must never be reinterpreted as DNS after the IP parser rejects them.
+        return (
+            len(labels) >= 2
+            and not all(label.isdecimal() for label in labels)
+            and all(_LABEL.fullmatch(label) for label in labels)
+        )
 
 
 def _assets(values: object, *, limit: int) -> bool:
