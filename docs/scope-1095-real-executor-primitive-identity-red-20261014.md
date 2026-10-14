@@ -49,6 +49,14 @@ Public `PrimitiveValueSnapshot` and `PrimitiveBatchSnapshot` constructors now al
 
 All added tests use ordinary `unittest`, only synthetically named tools, isolated analysis-only SQLite where applicable, and intentionally do not alter the inherited **14 expected RED original-source defects**. Changes continue exclusively in four new PR-owned paths; existing source, deployments, main and other workers are untouched.
 
+## W7: tuple-backed receipt immutability and forged tuple defense
+
+The prior opt-in `@dataclass(frozen=True, slots=True)` receipt design could still have its `items` or `entries` field replaced with `object.__setattr__` from in-process code; therefore the earlier literal immutable-field claim was too strong. W7 replaces only those two **new diagnostic-only** receipt classes with `collections.namedtuple`-derived slotless tuple subclasses, preserving public constructors, `items`, `entries`, `as_arguments()`, `count` and the three false-only nonauthority flags. Tuple-backed fields now resist both regular and `object.__setattr__` mutation. The field mutability regression runs on real constructed snapshots and verifies no effects on synthetic invocation arguments.
+
+Direct receipt constructors continue rejecting malformed/duplicate/polymorphic and oversized records. More critically, a deliberate `tuple.__new__(PrimitiveValueSnapshot, ...)` bypass of ordinary class construction is checked again when `as_arguments()` is called and when constructing a canonical `PrimitiveBatchSnapshot`; forged nested primitive values cannot silently become ordinary synthetic arguments. The new tests never use live target tools.
+
+**No in-process Python object should be treated as an authorization token**: hostile code with native/reflection capabilities can bypass userland invariants. These are defensive data-shape diagnostics only; original production type-admission defects remain **14 expected RED** and require source-owner repair. No runtime registration, target dispatch, network or authorization is introduced.
+
 ## Limits and required release gates
 
 All sample names are synthetic and are not queried over DNS. No network, scan, target interaction, customer data, grant, persisted authorization mutation, attack path, CI workflow edit or deployment. Even real SQLite and handler controls provide **typed-value input diagnostics only**; they do not establish customer consent, revocation coherence, live tenant scope, or real-target dispatch safety.
