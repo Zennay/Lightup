@@ -80,6 +80,40 @@ class CountedStrictPolicy(IndependentStrictPolicy):
         return super().decide(target)
 
 
+class NoImplicitAuthorizationPolicy(IndependentStrictPolicy):
+    """Accept a synthetic preview only when every scope/grant input is inert."""
+
+    observed_modes = []
+    observed_targets = 0
+
+    def __init__(
+        self, *, allow_private_lab, explicit_hosts, explicit_networks,
+        require_authorization_for_public,
+    ):
+        if (
+            type(allow_private_lab) is not bool
+            or type(explicit_hosts) is not frozenset
+            or explicit_hosts
+            or type(explicit_networks) is not tuple
+            or explicit_networks
+            or require_authorization_for_public is not True
+        ):
+            raise AssertionError("offline diagnostic must have no explicit grants")
+        type(self).observed_modes.append(allow_private_lab)
+        super().__init__(allow_private_lab=allow_private_lab)
+
+    def decide(self, target):
+        if (
+            type(target) is not Target
+            or target.authorization is not None
+            or type(target.labels) is not tuple
+            or target.labels
+        ):
+            raise AssertionError("scope diagnostic must not attach authority")
+        type(self).observed_targets += 1
+        return super().decide(target)
+
+
 class LateFalseAdmissionPolicy(IndependentStrictPolicy):
     def decide(self, target):
         if target.value == "198.255.254.1":
@@ -199,6 +233,19 @@ class OctetSweepTests(unittest.TestCase):
         receipt = review_ipv4_octet_sweep(LastDecisionUnsafePolicy)
         self.assertEqual(LastDecisionUnsafePolicy.calls, TOTAL_DECISIONS)
         self.assert_non_authorizing(receipt, "HOLD")
+
+    def test_exact_policy_configuration_and_targets_never_mint_authority(self):
+        NoImplicitAuthorizationPolicy.observed_modes = []
+        NoImplicitAuthorizationPolicy.observed_targets = 0
+        self.assert_non_authorizing(
+            review_ipv4_octet_sweep(NoImplicitAuthorizationPolicy), "REVIEW_ONLY"
+        )
+        self.assertEqual(
+            NoImplicitAuthorizationPolicy.observed_modes, [True, False]
+        )
+        self.assertEqual(
+            NoImplicitAuthorizationPolicy.observed_targets, TOTAL_DECISIONS
+        )
 
     def test_receipt_flags_are_fresh_literals_after_external_tampering(self):
         first = review_ipv4_octet_sweep(IndependentStrictPolicy)
