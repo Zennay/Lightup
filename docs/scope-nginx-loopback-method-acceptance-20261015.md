@@ -83,3 +83,9 @@ Dit geeft sterkere onafhankelijke labacceptatie voor issue #1154 dan alleen de W
 De tijdelijke Nginx-probe ontving eerder ongemerkt de standaardomgeving van de gehoste of VPS-runner. Het is geen productie-kwetsbaarheid, maar onnodige blootstelling voor een los subprocess. Zowel de disposable `nginx -t` als de daadwerkelijke disposable `nginx` krijgen nu een **gesloten environment** met alleen `HOME` en `TMPDIR` op hun eigen wegwerpmap en `LANG/LC_ALL=C`. `GITHUB_TOKEN`, AWS-credentials, proxyinstellingen, LightUp-databasepaden of andere runner-omgevingsvariabelen worden niet doorgestuurd. Een regressie bewijst deze noninheritance met uitsluitend synthetische tokens.
 
 Ook dit blijft uitsluitend veilig lokaal testmateriaal voor [#1154](https://github.com/Zennay/Lightup/issues/1154), **niet** een release-gate voor echte targets: productiebeveiliging, geregistreerde permanente VPS-acceptatie, onafhankelijke review en echte toestemming zijn ongewijzigd vereist.
+
+## W8 — sessie-intrekking mag niet door header-spoofing worden omzeild
+
+De werkelijke LightUp-webapp-test via het tijdelijke Nginx-proces controleert nu ook per ieder van de vier methode-overrideheaders dat een vervalste `POST /logout` met verkeerd CSRF **403** teruggeeft en de operator-sessie werkelijk **actief laat** in de tijdelijke SQLite-bron. Daarna moet een geldig `POST /logout` met de originele sessie-CSRF ondanks de vervalste GET-header precies die operator-sessie **intrekken** (`303`, token niet meer vindbaar, volgende `GET /` terug naar `/login`). Dit is geen alleen-in-process WSGI-test: de requests doorlopen daadwerkelijk de eigen tijdelijke Nginx-listener. Alle namen en logins zijn fictief.
+
+Dit sluit een aanvullend aspect van [#1154](https://github.com/Zennay/Lightup/issues/1154) af in de **synthetische labacceptatie**, niet in de geïnstalleerde productie-infrastructuur. Opt-in, geen echte grants, geen scans, geen release.
