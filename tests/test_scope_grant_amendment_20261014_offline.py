@@ -1113,13 +1113,14 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
         self.assertIn(b'"max_risk":3', literal)
         for occurrence in (0, 1):
             with self.subTest(occurrence=occurrence):
-                raw = literal.replace(
-                    b'"max_risk":3', b'"max_risk":-0',
-                    occurrence + 1,
-                ) if occurrence == 1 else literal.replace(
-                    b'"max_risk":3', b'"max_risk":-0', 1,
-                )
-                # Both before/after -0 and either position remain invalid.
+                needle = b'"max_risk":3'
+                segments = literal.split(needle)
+                self.assertEqual(len(segments), 3)
+                if occurrence == 0:
+                    raw = segments[0] + b'"max_risk":-0' + needle.join(segments[1:])
+                else:
+                    raw = needle.join(segments[:2]) + b'"max_risk":-0' + segments[2]
+                # Before-only and after-only -0 are independently rejected.
                 out, code = reviewer.review(raw)
                 self.assertEqual((out["status"], code), ("HOLD", 2))
                 self.assertEqual(out["reason"], "invalid_input")
