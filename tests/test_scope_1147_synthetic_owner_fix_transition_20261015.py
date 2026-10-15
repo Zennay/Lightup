@@ -1,0 +1,201 @@
+"""Synthetic #1147 source-owner integration contract; NO source/runtime changes.
+
+This is a bounded in-memory simulation of one *possible* owner-side repair.
+Patch only the installed ToolCall.arguments_dict method during inert tests.
+All source files, actual permissions, grant decisions and target adapters remain
+unchanged. The source owner must independently implement and validate the fix.
+"""
+from __future__ import annotations
+
+import contextlib
+import io
+import json
+import unittest
+from datetime import datetime, timezone
+from unittest.mock import patch
+
+from lightup.ai.orchestration import (
+    OrchestrationError, ParamKind, RunContext, ToolCall, ToolDefinition,
+    ToolDenied, ToolExecutor, ToolOutput, ToolParameter, ToolRegistry,
+)
+
+from lightup.engagements import AssessmentMode, RiskLevel
+from lightup.execution_policy import InteractionKind
+
+from test_scope_1147_expected_red_integrity_20261015 import (
+    EXPECTED_ORDINARY_CONTROL_NAMES,
+    EXPECTED_SOURCE_RED,
+)
+
+
+def _strict_preprojection(call: ToolCall) -> dict[str, object]:
+    """Reference contract only: reject duplicate *exact* names before dict.
+
+    This is deliberately not a production implementation or authorization
+    decision. Name-type/alias canonicalization belongs to separate owners.
+    """
+    seen: set[str] = set()
+    projected: dict[str, object] = {}
+    for name, value in call.arguments:
+        if name in seen:
+            raise OrchestrationError("fictional-fixture: duplicate argument name")
+        seen.add(name)
+        projected[name] = value
+    return projected
+
+
+def _fixture():
+    # Local import prevents unittest discovery accidentally collecting 25
+    # original source cases a second time from this module.
+    from test_scope_1147_duplicate_key_installed_matrix_20261015 import (
+        DuplicateArgumentKeysInstalledSource1147,
+    )
+    return DuplicateArgumentKeysInstalledSource1147
+
+
+class Scope1147OwnerIntegrationTransitionTests(unittest.TestCase):
+    def _run_installed_case_without_xfail_wrapper(self, name: str) -> None:
+        fixture = _fixture()(name)
+        fixture.setUp()
+        try:
+            # Direct invocation purposefully ignores @expectedFailure metadata.
+            # A future real fix must turn the nine missing-denial assertions
+            # into ordinary PASS rather than keep xfail status forever.
+            getattr(fixture, name)()
+        finally:
+            fixture.doCleanups()
+
+    def test_all_nine_current_source_red_become_plain_pass_under_isolated_fix(self):
+        self.assertEqual(len(EXPECTED_SOURCE_RED), 9)
+        with patch.object(ToolCall, "arguments_dict", _strict_preprojection):
+            for name in sorted(EXPECTED_SOURCE_RED):
+                with self.subTest(original_red=name):
+                    self._run_installed_case_without_xfail_wrapper(name)
+
+    def test_seven_compatible_safe_controls_still_pass_after_synthetic_fix(self):
+        # Existing duplicate-key/no-grant test changes the denial precedence:
+        # duplicate admission is rejected BEFORE no-grant policy can run.
+        # Exercise no-grant with UNIQUE keys in a separate installed test.
+        safe = sorted(
+            name for name in EXPECTED_ORDINARY_CONTROL_NAMES
+            if not name.startswith("test_current_source_")
+            and name != "test_target_active_without_grant_stays_denied_even_with_duplicate_keys"
+        )
+        self.assertEqual(len(safe), 7)
+        with patch.object(ToolCall, "arguments_dict", _strict_preprojection):
+            for name in safe:
+                with self.subTest(control=name):
+                    self._run_installed_case_without_xfail_wrapper(name)
+
+    def test_duplicate_target_is_rejected_before_no_grant_policy(self):
+        # The old no-grant fixture itself carries duplicate keys. Its original
+        # ToolDenied expectation MUST change after a pre-schema duplicate fix.
+        with patch.object(ToolCall, "arguments_dict", _strict_preprojection):
+            with self.assertRaises(OrchestrationError):
+                self._run_installed_case_without_xfail_wrapper(
+                    "test_target_active_without_grant_stays_denied_even_with_duplicate_keys"
+                )
+
+    def test_unique_target_without_grant_still_denied_by_real_installed_policy(self):
+        fixture = _fixture()("test_unique_names_permit_exact_once_with_durable_evidence")
+        fixture.setUp()
+        invoked: list[dict[str, object]] = []
+
+        def inert_target(_context, arguments):
+            invoked.append(dict(arguments))
+            return ToolOutput("should never run", "note", b"should-not-exist")
+
+        registry = ToolRegistry()
+        registry.register(
+            ToolDefinition(
+                tool_id="fictional-target", capability_id="web-baseline",
+                interaction=InteractionKind.TARGET_ACTIVE,
+                min_risk=RiskLevel.STANDARD,
+                description="fictional no-grant target-only fixture",
+                parameters=(ToolParameter("selector", ParamKind.STRING),),
+            ),
+            inert_target,
+        )
+        ctx = RunContext(
+            run_id=fixture.run_id,
+            client_id="fictional-client",
+            engagement_id="fictional-engagement",
+            mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
+            approved_risk=RiskLevel.STANDARD,
+            authorization=None,
+            is_lab=False,
+            created_at=datetime.now(timezone.utc),
+        )
+        try:
+            with patch.object(ToolCall, "arguments_dict", _strict_preprojection):
+                with self.assertRaises(ToolDenied):
+                    ToolExecutor(registry, fixture.state).execute(
+                        ctx, ToolCall(
+                            tool_id="fictional-target", asset="fixture-only.invalid",
+                            arguments=(("selector", "only-unique-key"),),
+                        ),
+                    )
+            self.assertEqual(invoked, [])
+            self.assertEqual(fixture.evidence_count(), 0)
+        finally:
+            fixture.doCleanups()
+
+    def test_eight_unsafe_positive_witnesses_must_be_retired_after_real_fix(self):
+        witnesses = sorted(
+            name for name in EXPECTED_ORDINARY_CONTROL_NAMES
+            if name.startswith("test_current_source_")
+        )
+        self.assertEqual(len(witnesses), 8)
+        with patch.object(ToolCall, "arguments_dict", _strict_preprojection):
+            for name in witnesses:
+                with self.subTest(obsolete_source_witness=name):
+                    with self.assertRaises(OrchestrationError):
+                        self._run_installed_case_without_xfail_wrapper(name)
+
+    def test_known_source_red_receipt_downgrades_to_hold_when_owner_fixes_it(self):
+        from scripts import scope_1147_red_receipt_cli as receipt_cli
+
+        output = io.StringIO()
+        with (
+            patch.object(ToolCall, "arguments_dict", _strict_preprojection),
+            contextlib.redirect_stdout(output),
+        ):
+            status = receipt_cli.main([])
+        self.assertEqual(status, 3)
+        self.assertEqual(output.getvalue().count("\n"), 1)
+        receipt = json.loads(output.getvalue())
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(receipt["reason"], "UNVERIFIED")
+        for key in ("can_authorize", "can_dispatch", "can_merge",
+                    "can_deploy", "can_scan", "can_release"):
+            self.assertIs(receipt[key], False)
+
+    def test_original_unmodified_main_implementation_is_restored_after_patch(self):
+        original_method = ToolCall.arguments_dict
+        call = ToolCall(
+            tool_id="fixture-analysis", asset="fixture-only.invalid",
+            arguments=(("selector", "first"), ("selector", "last")),
+        )
+        self.assertEqual(call.arguments_dict(), {"selector": "last"})
+        with patch.object(ToolCall, "arguments_dict", _strict_preprojection):
+            self.assertIs(ToolCall.arguments_dict, _strict_preprojection)
+            with self.assertRaises(OrchestrationError):
+                call.arguments_dict()
+        self.assertIs(ToolCall.arguments_dict, original_method)
+        self.assertEqual(call.arguments_dict(), {"selector": "last"})
+
+    def test_unique_values_preserve_exact_typed_identity_in_simulation(self):
+        marker = object()
+        call = ToolCall(
+            tool_id="fixture-analysis", asset="fixture-only.invalid",
+            arguments=(("selector", "preserved"), ("note", marker)),
+        )
+        with patch.object(ToolCall, "arguments_dict", _strict_preprojection):
+            result = call.arguments_dict()
+        self.assertEqual(tuple(result), ("selector", "note"))
+        self.assertEqual(result["selector"], "preserved")
+        self.assertIs(result["note"], marker)
+
+
+if __name__ == "__main__":
+    unittest.main()
