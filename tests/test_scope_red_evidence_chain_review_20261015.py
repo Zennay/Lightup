@@ -103,6 +103,51 @@ class DebtEvidenceChainTests(unittest.TestCase):
         self.assertEqual(r["summary"]["missing_owner_issues"], 1)
         self.assertEqual(r["status"], "HOLD")
 
+    def test_matching_source_red_is_still_release_blocker(self):
+        _, r = call(raw())
+        self.assertEqual(r["summary"]["release_blocking_signal"],
+                         "UNFIXED_EXPECTED_SOURCE_REDS")
+
+    def test_matching_unexpected_fail_is_blocker_even_if_watched(self):
+        fail = log(red="FAIL")
+        _, r = call(raw(cases=[record(status="failed"), record(OK, "passed")],
+                        left=fail, right=fail))
+        self.assertTrue(r["summary"]["reported_suite_failures_present"])
+        self.assertEqual(r["summary"]["release_blocking_signal"],
+                         "UNEXPECTED_SUITE_FAILURES")
+
+    def test_untracked_expected_red_cannot_hide_in_matching_footers(self):
+        extra = "test_other (test_scope_chain.Sample.test_other) ... expected failure\\n"
+        def augment(text):
+            return text.replace("Ran 2 tests", extra+"Ran 3 tests").replace(
+                "expected failures=1", "expected failures=2")
+        _, r = call(raw(left=augment(log()), right=augment(log())))
+        self.assertEqual(r["summary"]["untracked_expected_red_311"], 1)
+        self.assertEqual(r["summary"]["untracked_expected_red_314"], 1)
+        self.assertEqual(r["summary"]["classification"],
+                         "DISAGREEMENT_IN_UNVERIFIED_EVIDENCE")
+
+    def test_untracked_unexpected_failure_cannot_hide_in_matching_footers(self):
+        extra = "test_other (test_scope_chain.Sample.test_other) ... FAIL\\n"
+        def augment(text):
+            return text.replace("Ran 2 tests", extra+"Ran 3 tests").replace(
+                "OK (expected failures=1)",
+                "FAILED (failures=1, expected failures=1)")
+        _, r = call(raw(left=augment(log()), right=augment(log())))
+        self.assertEqual(r["summary"]["untracked_unexpected_failure_311"], 1)
+        self.assertEqual(r["summary"]["untracked_unexpected_failure_314"], 1)
+        self.assertEqual(r["summary"]["release_blocking_signal"],
+                         "UNEXPECTED_SUITE_FAILURES")
+
+    def test_both_claimed_all_pass_still_non_authorizing(self):
+        clean = log(red="ok")
+        _, r = call(raw(cases=[record(status="passed"), record(OK, "passed")],
+                        left=clean, right=clean))
+        self.assertEqual(r["summary"]["release_blocking_signal"],
+                         "NO_FAILURE_REPORTED_STILL_NOT_AUTHORITY")
+        self.assertEqual(r["status"], "HOLD")
+        self.assertFalse(r["permit_issued"])
+
     def test_owner_boolean_rejected(self):
         _, r = call(raw(cases=[record(owner=True)]))
         self.assertNotIn("summary", r)
