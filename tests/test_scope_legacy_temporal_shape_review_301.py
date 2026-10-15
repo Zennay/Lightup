@@ -119,6 +119,11 @@ def _source_has_only_offline_effects(source):
             elif isinstance(node.func, ast.Attribute):
                 if node.func.attr not in permitted_methods:
                     return False
+                if node.func.attr == "append" and not (
+                    isinstance(node.func.value, ast.Name)
+                    and node.func.value.id == "snapshots"
+                ):
+                    return False
             else:
                 return False
     return True
@@ -252,6 +257,7 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
             "datetime.now()",
             "os.system('echo forbidden')",
             "obj.astimezone().open()",
+            "external.append(authorization)",
             "getattr(obj, 'scope')",
         ):
             with self.subTest(mutant=mutant):
