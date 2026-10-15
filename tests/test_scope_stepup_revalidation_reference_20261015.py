@@ -820,5 +820,54 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
         self.assertEqual(candidate.review_count, 0)
 
 
+    def test_independent_tool_change_during_registry_copy_is_rejected(self):
+        fence, request, _, tool = fixture()
+        original = ToolSnapshot.__getattribute__
+        reads = []
+        replacement = ToolSnapshot("lab-tool", "lab-capability", 5)
+        def hook(value, name):
+            if value is replacement and name == "capability":
+                reads.append(1)
+                if len(reads) == 3:
+                    object.__setattr__(
+                        replacement, "capability", "lab-other-capability"
+                    )
+            return original(value, name)
+        with patch.object(ToolSnapshot, "__getattribute__", hook):
+            with self.assertRaises(ValueError):
+                fence.replace_synthetic_tool(replacement)
+        self.assertGreaterEqual(len(reads), 3)
+        # Original approval and registry are untouched on failed replace.
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=lambda: True),
+            "REVIEW_ONLY"
+        )
+        self.assertEqual(fence._tool.capability, tool.capability)
+
+    def test_revocation_clears_both_approval_and_registry_metadata(self):
+        fence, request, _, _ = fixture()
+        fence.revoke()
+        self.assertIsNone(fence._approval)
+        self.assertIsNone(fence._approval_seal)
+        self.assertIsNone(fence._tool)
+        self.assertIsNone(fence._tool_seal)
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=lambda: True), "HOLD"
+        )
+
+    def test_failed_tool_replacement_does_not_increment_epoch(self):
+        fence, request, _, _ = fixture()
+        before = fence._epoch
+        with self.assertRaises(ValueError):
+            fence.replace_synthetic_tool(
+                ToolSnapshot("lab-tool", "not-a-synthetic-capability", 5)
+            )
+        self.assertEqual(fence._epoch, before)
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=lambda: True),
+            "REVIEW_ONLY"
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
