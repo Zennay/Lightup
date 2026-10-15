@@ -46,6 +46,9 @@ def review(auth=_DEFAULT_AUTH, now=MID):
 
 def assert_non_authorizing(testcase, result, status, reason):
     testcase.assertIs(type(result), LegacyTemporalReview)
+    # A non-empty NamedTuple is truthy by default; a diagnostic must NEVER
+    # be usable as authorization by a naive 'if review(...):' caller.
+    testcase.assertIs(bool(result), False)
     testcase.assertEqual((result.status, result.reason), (status, reason))
     receipt = result.as_receipt()
     testcase.assertEqual((receipt["status"], receipt["reason"]), (status, reason))
@@ -744,6 +747,45 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
             assert_non_authorizing(self, review(), "REVIEW_ONLY", "temporal_shape_only")
             assert_non_authorizing(self, review(fixture(end=False)),
                                    "HOLD", "invalid_shape")
+
+    def test_every_review_status_refuses_boolean_permit_confusion(self):
+        fixtures = [
+            review(),
+            review(fixture(end=False)),
+            review(fixture(start=END, end=START)),
+            review(fixture(start=None, end=None)),
+            review_legacy_authorization_batch((fixture(),), observed_at=MID),
+            review_legacy_authorization_batch(
+                (fixture(), fixture(end=False)), observed_at=MID
+            ),
+            LegacyTemporalReview("APPROVED", "fake_grant"),
+            LegacyTemporalReview("REVIEW_ONLY", "temporal_shape_only"),
+        ]
+        for verdict in fixtures:
+            with self.subTest(status=tuple.__getitem__(verdict, 0)):
+                self.assertIs(bool(verdict), False)
+                if verdict:
+                    self.fail("offline review incorrectly counted as permit")
+                receipt = LegacyTemporalReview.as_receipt(verdict)
+                for key in (
+                    "authorization_verified", "permit_issued",
+                    "execution_enabled", "target_dispatch_allowed",
+                    "merge_approved", "release_approved"
+                ):
+                    self.assertIs(receipt[key], False)
+
+    def test_boolean_review_never_calls_patched_status_getter(self):
+        verdict = LegacyTemporalReview("REVIEW_ONLY", "temporal_shape_only")
+        hit = []
+
+        def forbidden_getter(instance, name):
+            hit.append(name)
+            raise AssertionError("evaluation should not call a getter")
+
+        with patch.object(LegacyTemporalReview, "__getattribute__",
+                          forbidden_getter):
+            self.assertIs(bool(verdict), False)
+        self.assertEqual(hit, [])
 
     def test_receipt_snapshot_is_fresh_and_non_authorizing(self):
         verdict = review()
