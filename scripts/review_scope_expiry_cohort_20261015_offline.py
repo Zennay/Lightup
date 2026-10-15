@@ -151,6 +151,36 @@ def _receipt(status: str) -> dict[str, object]:
     return {"status": status, **DENIAL_FLAGS}
 
 
+
+def _emit_receipt(receipt: dict[str, object]) -> bool:
+    """One bounded nonblocking write to a local pipe or real terminal only.
+
+    A regular-file/socket/device stdout can silently move claimed authorization
+    metadata somewhere unexpected. Refuse those destinations without emitting
+    anything. A filled or broken pipe must not hang or dump a traceback.
+    """
+    payload = (json.dumps(receipt, separators=(",", ":"), ensure_ascii=True) +
+               "\n").encode("ascii")
+    if len(payload) > 512:
+        return False
+    try:
+        fd = sys.stdout.fileno()
+        if fd != 1:
+            return False
+        mode = os.fstat(fd).st_mode
+        if not (stat.S_ISFIFO(mode) or
+                (stat.S_ISCHR(mode) and os.isatty(fd))):
+            return False
+        was_blocking = os.get_blocking(fd)
+        try:
+            os.set_blocking(fd, False)
+            return os.write(fd, payload) == len(payload)
+        finally:
+            os.set_blocking(fd, was_blocking)
+    except (OSError, ValueError, TypeError):
+        return False
+
+
 def main(argv: list[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
@@ -164,8 +194,7 @@ def main(argv: list[str] | None = None) -> int:
         result = _receipt("HOLD")
         code = 2
     # Fixed-schema aggregate-only output; no client/target/timestamp echoes.
-    sys.stdout.write(json.dumps(result, separators=(",", ":"), ensure_ascii=True) + "\n")
-    return code
+    return code if _emit_receipt(result) else 2
 
 
 if __name__ == "__main__":
