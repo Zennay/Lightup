@@ -130,6 +130,47 @@ class GitHubRestImportTests(unittest.TestCase):
         with self.assertRaises(InvalidSnapshot):
             evaluate(doc)
 
+    def test_real_issues_api_pr_pseudorow_is_excluded_not_claimed(self):
+        doc = fixture()
+        doc["issue_pages"][0]["records"].append({
+            "number": 820099, "state": "open",
+            "pull_request": {"url": "https://api.github.com/repos/Zennay/Lightup/pulls/820099"},
+        })
+        result = evaluate(doc)
+        self.assertEqual(result["excluded_pr_pseudorows_from_issue_pages"], [820099])
+        self.assertTrue(result["snapshot_complete_self_asserted"])
+        self.assertTrue(result["candidate_list_suppressed"])
+        self.assertFalse(result["can_authorize"])
+
+    def test_pseudorow_cannot_be_selected_as_scope_issue(self):
+        doc = fixture()
+        doc["issue_pages"][0]["records"].append({
+            "number": 820099, "state": "open",
+            "pull_request": {"url": "synthetic"},
+        })
+        doc["scope_issue_numbers"].append(820099)
+        with self.assertRaises(InvalidSnapshot):
+            evaluate(doc)
+
+    def test_pr_marker_must_be_native_dict(self):
+        doc = fixture()
+        doc["issue_pages"][0]["records"].append({
+            "number": 820099, "state": "open", "pull_request": True,
+        })
+        with self.assertRaises(InvalidSnapshot):
+            evaluate(doc)
+
+    def test_duplicate_pseudorows_across_pages_denied(self):
+        doc = fixture()
+        doc["issue_pages"][0]["records"].append({
+            "number": 820099, "state": "open", "pull_request": {"url": "fake"}
+        })
+        doc["issue_pages"][0]["records"].append({
+            "number": 820099, "state": "open", "pull_request": {"url": "fake"}
+        })
+        with self.assertRaises(InvalidSnapshot):
+            evaluate(doc)
+
     def test_issues_endpoint_cannot_include_pr_pseudorows(self):
         doc = fixture()
         doc["issue_pages"][0]["records"][0]["pull_request"] = {"url": "ignored"}
