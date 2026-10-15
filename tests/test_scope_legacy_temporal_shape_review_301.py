@@ -155,9 +155,11 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
     def test_no_external_effects_or_clock_lookup(self):
         # Imports already complete: actual reviewer must not open files, spawn
         # processes, resolve hosts, or read current time for synthetic review.
-        with patch("builtins.open", side_effect=AssertionError("file access")), \\
-             patch("socket.socket", side_effect=AssertionError("network access")), \\
-             patch("subprocess.Popen", side_effect=AssertionError("process access")):
+        with (
+            patch("builtins.open", side_effect=AssertionError("file access")),
+            patch("socket.socket", side_effect=AssertionError("network access")),
+            patch("subprocess.Popen", side_effect=AssertionError("process access")),
+        ):
             assert_non_authorizing(self, review(), "REVIEW_ONLY", "temporal_shape_only")
             assert_non_authorizing(self, review(fixture(end=False)),
                                    "HOLD", "invalid_shape")
