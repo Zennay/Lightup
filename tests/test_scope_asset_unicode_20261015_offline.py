@@ -355,6 +355,46 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
         self.assertEqual(child.stdout, b"")
         self.assertEqual(child.stderr, b"")
 
+    def test_real_regular_file_mutation_during_read_denies_snapshot(self):
+        """Modify ONLY a disposable synthetic local regular file while reading."""
+        data = json.dumps(synthetic_claim()).encode("utf-8")
+        program = textwrap.dedent("""
+            import importlib.util
+            import os
+            import sys
+            from unittest import mock
+            spec = importlib.util.spec_from_file_location("offline_review_1437", sys.argv[1])
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            original = os.read
+            mutated = [False]
+            def mutate(fd, count):
+                result = original(fd, count)
+                if result and not mutated[0]:
+                    mutated[0] = True
+                    os.ftruncate(fd, 0)
+                return result
+            before = os.get_blocking(0)
+            try:
+                with mock.patch.object(module.os, "read", side_effect=mutate):
+                    module._read_local_stdin()
+            except module.ReviewInputError:
+                if not mutated[0] or os.get_blocking(0) != before:
+                    raise AssertionError("snapshot rejection did not restore input")
+                sys.exit(0)
+            raise AssertionError("modified synthetic input file was accepted")
+        """)
+        with tempfile.TemporaryFile() as source:
+            source.write(data)
+            source.seek(0)
+            child = subprocess.run([sys.executable, "-c", program, str(SCRIPT)],
+                                   stdin=source, capture_output=True, timeout=5,
+                                   check=False)
+        self.assertEqual(child.returncode, 0,
+                         child.stderr.decode(errors="replace"))
+        self.assertEqual(child.stdout, b"")
+        self.assertEqual(child.stderr, b"")
+
     def test_regular_file_snapshot_and_seeked_file_hold(self):
         data = json.dumps(synthetic_claim()).encode("utf-8")
         with tempfile.TemporaryFile(mode="w+b") as fixture:
