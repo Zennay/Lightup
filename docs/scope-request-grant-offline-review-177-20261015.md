@@ -122,8 +122,15 @@ checks for orphan records written by other SQLite connections that disabled
 FK enforcement. Any broken dependent grant in the table atomically makes the
 optional review HOLD, including when the specifically selected grant is valid.
 This offline scan can be expensive for large local databases, so it is neither
-installed nor appropriate as a live dispatch path. A clean SQLite snapshot is
-still not signed permission or evidence of genuine customer consent.
+installed nor appropriate as a live dispatch path. Both opt-in SQLite readers
+now have a **per-connection VM progress budget** (2,000,000 approximate
+virtual-machine instructions); intentionally pathological or oversized
+read-only queries interrupt and return the same privacy-safe HOLD. Real
+disposable two-grant snapshots remain reviewable. The batch checks the
+global FK table **once per immutable read transaction**, not once per grant,
+but rechecks it again on the next independent review. A clean SQLite
+snapshot is still not signed permission or evidence of genuine customer
+consent.
 
 The synthetic acceptance suite creates real `DomainStore` customers,
 approved requests, engagements and grants with SQLite, then independently
