@@ -198,9 +198,9 @@ class ReviewRevocationMetadataTests(unittest.TestCase):
         ))
 
     def test_control_and_unicode_format_provenance_is_inconsistent(self):
-        for value in ("bad\\x00actor", "bad\\nactor", "bad\\tactor",
-                      "bad\\u202eactor", "bad\\u200bactor",
-                      "bad\\ue000actor", "bad\\ud800actor"):
+        for value in ("bad\x00actor", "bad\nactor", "bad\tactor",
+                      "bad\u202eactor", "bad\u200bactor",
+                      "bad\ue000actor", "bad\ud800actor"):
             with self.subTest(value=ascii(value)):
                 r = review_revocation_metadata(
                     revoked_at=DATE, revoked_by=value,
@@ -213,8 +213,8 @@ class ReviewRevocationMetadataTests(unittest.TestCase):
 
     def test_nfc_composed_unicode_provenance_stays_eligible_for_review(self):
         r = review_revocation_metadata(
-            revoked_at=DATE, revoked_by="caf\\u00e9",
-            revocation_reason="contr\\u00f4le fictif",
+            revoked_at=DATE, revoked_by="caf\u00e9",
+            revocation_reason="contr\u00f4le fictif",
         )
         self.assertHold(r)
         self.assertEqual(r.classification, "revocation_recorded")
@@ -224,7 +224,7 @@ class ReviewRevocationMetadataTests(unittest.TestCase):
             with self.subTest(field=field):
                 kwargs = {"revoked_at": DATE, "revoked_by": "fictional-reviewer",
                           "revocation_reason": "fictional-reason"}
-                kwargs[field] = "Cafe\\u0301"
+                kwargs[field] = "Cafe\u0301"
                 r = review_revocation_metadata(**kwargs)
                 self.assertHold(r)
                 self.assertEqual(r.classification, "inconsistent")
