@@ -23,6 +23,7 @@ class Issue297OfflineWitnessTests(unittest.TestCase):
         self.assertEqual(receipt["unsafe_allow_count"], 8)
         self.assertEqual(receipt["denied_review_count"], 0)
         self.assertEqual(receipt["error_review_count"], 0)
+        self.assertEqual(receipt["network_blocked_review_count"], 0)
         self.assertEqual(
             {x["classification"] for x in receipt["observations"]},
             {"UNSAFE_ALLOW"},
@@ -145,6 +146,42 @@ class Issue297OfflineWitnessTests(unittest.TestCase):
             "PRIVATE-ISSUER-DATA",
             json.dumps(receipt) + text_report,
         )
+
+    def test_fake_source_socket_attempt_is_blocked_and_reported(self):
+        class NetworkAttemptPolicy:
+            def __init__(self, **_):
+                pass
+
+            def decide(self, _target):
+                # Must hit the socket tripwire, not an actual system socket.
+                socket.socket()
+                raise AssertionError("unreachable")
+
+        with patch.object(witness, "ScopePolicy", NetworkAttemptPolicy):
+            receipt = witness.evaluate()
+            human = witness.render_dutch(receipt)
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(receipt["network_blocked_review_count"], 8)
+        self.assertEqual(receipt["unsafe_allow_count"], 0)
+        self.assertIn("Gestopte netwerkpogingen voor review: 8", human)
+        self.assertFalse(any(receipt["permissions"].values()))
+
+    def test_fake_source_dns_attempt_is_blocked_and_reported(self):
+        class DNSAttemptPolicy:
+            def __init__(self, **_):
+                pass
+
+            def decide(self, _target):
+                socket.getaddrinfo("example.test", 443)
+                raise AssertionError("unreachable")
+
+        with patch.object(witness, "ScopePolicy", DNSAttemptPolicy):
+            receipt = witness.evaluate()
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(receipt["network_blocked_review_count"], 8)
+        self.assertEqual(receipt["error_review_count"], 0)
+        self.assertEqual(receipt["unsafe_allow_count"], 0)
+        self.assertFalse(any(receipt["permissions"].values()))
 
     def test_cli_does_not_write_any_files(self):
         # The implementation is pure reporting with no cwd, os.open or tempfile.
