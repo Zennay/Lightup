@@ -432,6 +432,14 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
             root = Path(folder)
             original = root / "fictional_secret_candidate.conf"
             original.write_text("THIS_IS_NOT_A_REAL_NGINX_CONFIGURATION", encoding="utf-8")
+            nested = root / "clean" / "inner"
+            nested.mkdir(parents=True)
+            safe = nested / "synthetic.conf"
+            safe.write_text("synthetic contents only", encoding="utf-8")
+            self.assertEqual(check._read_candidate_file(str(safe)),
+                             "synthetic contents only")
+            symlink_parent = root / "alias-parent"
+            symlink_parent.symlink_to(nested, target_is_directory=True)
             link = root / "link.conf"
             link.symlink_to(original)
             large = root / "oversized.conf"
@@ -440,6 +448,10 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
             if hasattr(os, "mkfifo"):
                 os.mkfifo(fifo)
             cases = [(("--candidate-file", str(link)), "symlink"),
+                     (("--candidate-file", str(symlink_parent / safe.name)),
+                      "symlink-parent"),
+                     (("--candidate-file", str(root / "clean" / ".." / "clean"
+                                                / "inner" / safe.name)), "parent-traversal"),
                      (("--candidate-file", str(large)), "oversized"),
                      (("--candidate-file", str(root)), "directory"),
                      (("--candidate-file", str(root / "missing")), "absent"),
