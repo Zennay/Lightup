@@ -391,6 +391,46 @@ class OfflineAttemptJournalTests(unittest.TestCase):
         self.assertEqual(backlog["recorded_count"], 0)
         self.assertIs(backlog["authorization_allowed"], False)
 
+    def test_backlog_refuses_nonfixture_attempt_id_without_disclosure(self):
+        self.journal.reserve(self.attempt)
+        self.con.execute(
+            "UPDATE offline_scope_1454_attempts SET attempt_id=?",
+            ("nonfixture-production-identity",),
+        )
+        self.con.commit()
+        projection = self.journal.review_backlog().as_dict()
+        self.assertEqual(projection["status"], "HOLD")
+        self.assertEqual(projection["reserved_count"], 0)
+        self.assertNotIn("production-identity", str(projection))
+        self.assertIs(projection["dispatch_allowed"], False)
+        self.assertEqual(self.count(), 1)
+
+    def test_backlog_rejects_unicode_confusables_and_whitespace_in_ids(self):
+        self.journal.reserve(self.attempt)
+        for malformed in (
+            "fixture-UPPERCASE", "fixture-\u0131d", "fixture-id\n",
+            "fixture-", "fixture-id ", "fixture-id.example.org",
+        ):
+            with self.subTest(kind=repr(malformed)):
+                self.con.execute(
+                    "UPDATE offline_scope_1454_attempts SET attempt_id=?",
+                    (malformed,),
+                )
+                self.con.commit()
+                projection = self.journal.review_backlog().as_dict()
+                self.assertEqual(projection["status"], "HOLD")
+                self.assertEqual(projection["requires_manual_reconciliation"], 0)
+                self.assertIs(projection["authorization_allowed"], False)
+
+    def test_backlog_validation_keeps_fictional_attempt_ids_private(self):
+        self.assertEqual(self.journal.reserve(self.attempt).status, "REVIEW_ONLY")
+        view = self.journal.review_backlog().as_dict()
+        self.assertEqual(view["status"], "REVIEW_ONLY")
+        self.assertEqual(view["reserved_count"], 1)
+        self.assertNotIn(self.attempt.attempt_id, str(view))
+        self.assertNotIn("operation_fingerprint", str(view))
+        self.assertNotIn("sealed_binding", str(view))
+
     def test_corrupt_backlog_binding_fails_closed(self):
         self.journal.reserve(self.attempt)
         self.con.execute(
