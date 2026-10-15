@@ -13,6 +13,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import scope_777_strict_direct_policy_gate as gate
 from lightup.execution_policy import ExecutionPolicy, InteractionKind, PolicyDecision
+from lightup.engagements import RiskLevel
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "scope_777_strict_direct_policy_gate.py"
 FALSE = ("authorization_verified", "permit_issued", "dispatch_enabled",
@@ -131,6 +132,88 @@ class StrictProductionPolicyGateTests(unittest.TestCase):
     def test_bool_spoofed_policy_result_raises_not_green(self):
         with patch.object(ExecutionPolicy, "decide",
                           return_value=PolicyDecision(1, "forged")):
+            with self.assertRaises(ValueError):
+                gate._scan_pure_local()
+
+
+    def test_each_negative_guard_detects_single_fail_open_mutation(self):
+        cases = (
+            ("missing-grant", lambda r: r.interaction is InteractionKind.TARGET_ACTIVE
+             and r.authorization is None),
+            ("expired", lambda r: r.interaction is InteractionKind.TARGET_ACTIVE
+             and r.authorization is not None
+             and r.authorization.valid_until < datetime.now(timezone.utc)),
+            ("not-yet-valid", lambda r: r.interaction is InteractionKind.TARGET_ACTIVE
+             and r.authorization is not None
+             and r.authorization.valid_from > datetime.now(timezone.utc)),
+            ("wrong-asset", lambda r: r.interaction is InteractionKind.TARGET_ACTIVE
+             and r.asset == "other.example.test"),
+            ("excluded-asset", lambda r: r.interaction is InteractionKind.TARGET_ACTIVE
+             and r.authorization is not None
+             and r.authorization.scope.excluded_assets == ("example.test",)),
+            ("wrong-capability", lambda r: r.interaction is InteractionKind.TARGET_ACTIVE
+             and r.capability_id == "unapproved-check"),
+            ("risk-escalation", lambda r: r.interaction is InteractionKind.TARGET_ACTIVE
+             and r.requested_risk is RiskLevel.ELEVATED),
+            ("destructive-risk", lambda r: r.interaction is InteractionKind.TARGET_ACTIVE
+             and r.requested_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY),
+            ("lab-without-lab-target", lambda r: r.interaction is InteractionKind.LAB_ACTIVE
+             and not r.is_lab),
+            ("analysis-with-active-risk", lambda r: r.interaction is InteractionKind.ANALYSIS
+             and r.requested_risk is RiskLevel.LOW_IMPACT),
+            ("passive-with-active-risk", lambda r: r.interaction is InteractionKind.PASSIVE_PUBLIC
+             and r.requested_risk is RiskLevel.LOW_IMPACT),
+        )
+        self.assertEqual(len(cases), 11)
+        for label, matcher in cases:
+            with self.subTest(regression=label):
+                result = self._narrow_then_break_one_boundary(matcher)
+                self._verify_result(result)
+                self.assertEqual(result["invalid_allowed"], 0)
+                self.assertEqual(result["negative_controls_allowed"], 1)
+                self.assertEqual(result["status"], "HOLD")
+
+    def test_analysis_positive_control_cannot_be_accidentally_denied(self):
+        original = ExecutionPolicy.decide
+
+        def narrow_but_forbid_analysis(self, request):
+            if request.interaction is InteractionKind.TARGET_ACTIVE and request.authorization:
+                g = request.authorization
+                if (type(g.approved_by) is not str or not g.approved_by.strip()
+                        or g.approved_by != g.approved_by.strip()
+                        or type(g.reference) is not str or not g.reference.strip()
+                        or g.reference != g.reference.strip()):
+                    return PolicyDecision(False, "noncanonical")
+            if (request.interaction is InteractionKind.ANALYSIS
+                    and request.requested_risk is RiskLevel.ANALYSIS_ONLY):
+                return PolicyDecision(False, "unsafe regression to legacy analysis")
+            return original(self, request)
+
+        with patch.object(ExecutionPolicy, "decide", narrow_but_forbid_analysis):
+            result = gate._scan_pure_local()
+        self._verify_result(result)
+        self.assertEqual(result["invalid_allowed"], 0)
+        self.assertEqual(result["negative_controls_allowed"], 0)
+        self.assertEqual(result["status"], "HOLD")
+
+    def test_mutating_grant_fails_closed(self):
+        original = ExecutionPolicy.decide
+
+        def mutable(self, request):
+            answer = original(self, request)
+            if request.authorization is not None:
+                object.__setattr__(request.authorization, "reference", "MODIFIED")
+            return answer
+
+        with patch.object(ExecutionPolicy, "decide", mutable):
+            with self.assertRaises(ValueError):
+                gate._scan_pure_local()
+
+    def test_policy_decision_subclass_not_treated_as_canonical(self):
+        class FakeDecision(PolicyDecision):
+            pass
+        with patch.object(ExecutionPolicy, "decide",
+                          return_value=FakeDecision(True, "forged")):
             with self.assertRaises(ValueError):
                 gate._scan_pure_local()
 
