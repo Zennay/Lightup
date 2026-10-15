@@ -130,6 +130,15 @@ authorization or runtime grant is created.
 
 ## Pinned stdout object — descriptor replacement safety (W11)
 
+In addition, **stdout eligibility and pinned-object identity now share
+the same single `fstat(1)` snapshot**. Previously an eligibility check
+could observe a FIFO, then a *second* `fstat(1)` could observe a newly
+substituted socket; using that second result for pin comparison would
+wrongly carry FIFO admission onto the socket. The first checked metadata
+object is now the reference identity throughout pinning. Dedicated
+negative controls simulate FIFO→socket replacement and a socket as
+the very first snapshot; both refuse any receipt.
+
 A call to `fstat(1)` does **not** reserve file descriptor 1: another
 thread can replace it with `dup2()` between verification and
 `os.write(1, ...)`. The offline CLI now obtains a duplicate of the
