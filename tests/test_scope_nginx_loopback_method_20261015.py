@@ -1,5 +1,6 @@
 """Synthetic, opt-in #1154 ingress proof; no production configuration changes."""
 import contextlib
+import http.client
 import importlib.util
 import io
 import json
@@ -91,6 +92,42 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                 self.assertEqual(receipt["verdict"], expected)
                 self.assertTrue(all(receipt[k] is False for k in check.FALSE_FLAGS))
                 self.assertEqual(probe.call_count, 2 if candidate else 1)
+
+    def test_malformed_upstream_receipts_always_fail_closed(self):
+        good = {
+            "method": "POST", "path": "/__scope_method_fixture__",
+            "body": "x", "override_headers": {},
+        }
+        self.assertTrue(check._receipt_is_exact(good, "POST"))
+        bad = [None, False, 1, [], (), "", "APPROVED",
+               {**good, "method": True},
+               {**good, "path": True},
+               {**good, "body": True},
+               {**good, "override_headers": []},
+               {**good, "override_headers": {"X-Method-Override": "GET"}},
+               {**good, "authorizes_targets": True},
+               {key: val for key, val in good.items() if key != "body"}]
+        for receipt in bad:
+            with self.subTest(receipt=repr(receipt)):
+                self.assertFalse(check._receipt_is_exact(receipt, "POST"))
+        self.assertFalse(check._receipt_is_exact(good, "GET"))
+
+    def test_http_upstream_disconnect_is_opaque_hold(self):
+        # A truncated upstream response must never leak the HTTP client's
+        # diagnostic to stderr or become an authorization-looking result.
+        with patch.object(check, "TEMPLATE") as temp, \\
+             patch.object(check.shutil, "which", return_value="/lab/nginx"), \\
+             patch.object(check, "run_probe",
+                          side_effect=http.client.IncompleteRead(b"secret!")):
+            temp.read_text.return_value = self.template
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                status = check.main()
+        receipt = json.loads(out.getvalue())
+        self.assertEqual(status, 2)
+        self.assertEqual(receipt["verdict"], "HOLD")
+        self.assertTrue(all(receipt[k] is False for k in check.FALSE_FLAGS))
+        self.assertNotIn("secret", out.getvalue())
 
     def test_candidate_file_cli_is_read_only_and_non_authorizing(self):
         if not shutil.which("nginx"):
