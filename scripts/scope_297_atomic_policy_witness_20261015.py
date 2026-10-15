@@ -20,9 +20,11 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "tests"))
 
 from lightup.models import Authorization, Target
 from lightup.scope import ScopePolicy, ScopeReason, ScopeDecision
+from scope_297_synthetic_authorization_20261015 import fake_authorization
 
 
 @dataclass(frozen=True)
@@ -39,7 +41,7 @@ class Case:
 HOST = "security.example.test"
 DOCUMENTATION_IP = "198.51.100.42"
 DOCUMENTATION_NET = "198.51.100.0/24"
-FAKE_GRANT = Authorization(
+FAKE_GRANT = fake_authorization(
     owner="invented-test-owner",
     reference="SYNTHETIC-NOT-A-REAL-GRANT",
     valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
