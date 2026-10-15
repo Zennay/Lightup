@@ -6,7 +6,7 @@ A REVIEW_ONLY result explicitly is NOT permission to execute anything.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 from threading import Lock
 from typing import Callable
@@ -20,12 +20,11 @@ def _synthetic(value: object) -> bool:
 
 
 def _aware(value: object) -> bool:
-    if type(value) is not datetime or value.tzinfo is None:
+    # Only exact stdlib fixed-offset timezone objects; arbitrary tzinfo
+    # callbacks must never execute while the ledger lock is held.
+    if type(value) is not datetime or type(value.tzinfo) is not timezone:
         return False
-    try:
-        return value.utcoffset() is not None
-    except (TypeError, ValueError, OverflowError):
-        return False
+    return value.utcoffset() is not None
 
 
 @dataclass(frozen=True)
