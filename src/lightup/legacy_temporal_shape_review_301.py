@@ -64,8 +64,11 @@ def review_legacy_authorization_window(
     if type(authorization) is not Authorization or not _canonical_datetime(observed_at):
         return hold
 
-    start = authorization.valid_from
-    end = authorization.valid_until
+    try:
+        start = authorization.valid_from
+        end = authorization.valid_until
+    except AttributeError:
+        return hold
     if (start is not None and not _canonical_datetime(start)) or (
         end is not None and not _canonical_datetime(end)
     ):
@@ -85,4 +88,11 @@ def review_legacy_authorization_window(
         end_utc is not None and observed_utc > end_utc
     ):
         return LegacyTemporalReview("HOLD", "outside_window")
+    # A supposedly frozen dataclass can still be mutated with object.__setattr__.
+    # Refuse obvious in-call field drift; this is not a cross-thread lock.
+    try:
+        if authorization.valid_from is not start or authorization.valid_until is not end:
+            return hold
+    except AttributeError:
+        return hold
     return LegacyTemporalReview("REVIEW_ONLY", "temporal_shape_only")
