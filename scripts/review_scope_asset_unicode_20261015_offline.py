@@ -134,7 +134,9 @@ def _read_local_stdin() -> bytes:
     if not (is_file or stat.S_ISFIFO(initial.st_mode)):
         raise ReviewInputError("stdin must be local pipe or regular file")
     pinned = os.dup(0)
+    original_blocking = None
     try:
+        original_blocking = os.get_blocking(pinned)
         if not _same_descriptor(initial, os.fstat(pinned)):
             raise ReviewInputError("stdin changed before pinning")
         if not _same_descriptor(initial, os.fstat(0)):
@@ -144,6 +146,9 @@ def _read_local_stdin() -> bytes:
                 raise ReviewInputError("stdin regular-file offset not zero")
             if not 0 < initial.st_size <= MAX_INPUT_BYTES:
                 raise ReviewInputError("stdin regular-file length invalid")
+        # A readable select() does not guarantee the subsequent read can block safely.
+        # Pin fd0, read non-blocking, and preserve its preexisting blocking flag.
+        os.set_blocking(pinned, False)
         data = bytearray()
         deadline = time.monotonic() + INPUT_DEADLINE_SECONDS
         while True:
@@ -157,7 +162,11 @@ def _read_local_stdin() -> bytes:
             readable, _, _ = select.select([pinned], [], [], remaining)
             if not readable:
                 raise ReviewInputError("stdin timeout")
-            chunk = os.read(pinned, MAX_INPUT_BYTES + 1 - len(data))
+            try:
+                chunk = os.read(pinned, MAX_INPUT_BYTES + 1 - len(data))
+            except BlockingIOError:
+                # FIFO drained between readiness check and read; retry until deadline.
+                continue
             if not chunk:
                 break
             data.extend(chunk)
@@ -175,7 +184,11 @@ def _read_local_stdin() -> bytes:
             raise ReviewInputError("stdin snapshot changed")
         return bytes(data)
     finally:
-        os.close(pinned)
+        try:
+            if original_blocking is not None:
+                os.set_blocking(pinned, original_blocking)
+        finally:
+            os.close(pinned)
 
 
 def _is_deny_only_receipt(receipt: Any) -> bool:

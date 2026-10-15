@@ -5,6 +5,7 @@ import importlib.util
 import json
 import os
 import tempfile
+import textwrap
 import pathlib
 import random
 import socket
@@ -190,6 +191,65 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
         self.assert_hold(json.loads(proc.stdout))
         self.assertNotIn(b"SENSITIVE-ASSET-EXAMPLE", proc.stdout)
         self.assertEqual(proc.stderr, b"")
+
+    def test_fifo_eagain_after_readiness_uses_deadline_and_restores_fd_mode(self):
+        data = json.dumps(synthetic_claim()).encode()
+        program = textwrap.dedent("""
+            import importlib.util
+            import json
+            import os
+            from unittest import mock
+            import sys
+            spec = importlib.util.spec_from_file_location("offline_review_1437", sys.argv[1])
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            original = os.read
+            errors = [3]
+            def intermittent(fd, size):
+                if errors[0]:
+                    errors[0] -= 1
+                    raise BlockingIOError(11, "temporary EAGAIN")
+                return original(fd, size)
+            before = os.get_blocking(0)
+            with mock.patch.object(module.os, "read", side_effect=intermittent):
+                read = module._read_local_stdin()
+            after = os.get_blocking(0)
+            print(json.dumps({"same": read == DATA, "before": before, "after": after}))
+        """).replace("DATA", repr(data))
+        child = subprocess.run([sys.executable, "-c", program, str(SCRIPT)],
+                               input=data, capture_output=True, timeout=5, check=False)
+        self.assertEqual(child.returncode, 0, child.stderr.decode(errors="replace"))
+        outcome = json.loads(child.stdout)
+        self.assertTrue(outcome["same"])
+        self.assertEqual(outcome["before"], outcome["after"])
+        self.assertEqual(child.stderr, b"")
+
+    def test_regular_file_stdin_restores_blocking_mode_after_snapshot(self):
+        data = json.dumps(synthetic_claim()).encode()
+        program = textwrap.dedent("""
+            import importlib.util
+            import json
+            import os
+            import sys
+            spec = importlib.util.spec_from_file_location("offline_review_1437", sys.argv[1])
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            before = os.get_blocking(0)
+            read = module._read_local_stdin()
+            after = os.get_blocking(0)
+            print(json.dumps({"same": read == DATA, "before": before, "after": after}))
+        """).replace("DATA", repr(data))
+        with tempfile.TemporaryFile() as fixture:
+            fixture.write(data)
+            fixture.seek(0)
+            child = subprocess.run([sys.executable, "-c", program, str(SCRIPT)],
+                                   stdin=fixture, capture_output=True, timeout=5,
+                                   check=False)
+        self.assertEqual(child.returncode, 0, child.stderr.decode(errors="replace"))
+        outcome = json.loads(child.stdout)
+        self.assertTrue(outcome["same"])
+        self.assertEqual(outcome["before"], outcome["after"])
+        self.assertEqual(child.stderr, b"")
 
     def test_regular_file_snapshot_and_seeked_file_hold(self):
         data = json.dumps(synthetic_claim()).encode("utf-8")
