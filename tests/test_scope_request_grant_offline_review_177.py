@@ -125,6 +125,15 @@ class RequestGrantOfflineReviewTests(unittest.TestCase):
         self.assert_hold(req=replace(request(), client_id="other"))
         self.assert_hold(req=replace(request(), decided_by="other"))
 
+    def test_self_approved_request_never_counts_as_independent_operator_review(self):
+        # Client identity cannot also be the independent request decider.
+        self.assert_hold(req=replace(
+            request(), requested_by=request().decided_by
+        ))
+        self.assert_hold(req=replace(
+            request(), decided_by=request().requested_by
+        ))
+
     def test_asset_expansion_and_duplicate_claims_hold(self):
         cases = [
             ("app.example.test", "outside.example.test"),
