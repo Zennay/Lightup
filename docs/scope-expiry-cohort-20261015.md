@@ -55,6 +55,24 @@ regressions cover a writer that keeps the pipe open, rejected Unix socket
 stdin, and an accepted local temporary-file fd0 control. No external
 connections or scans occur.
 
+## Bounded and private local output (W5)
+
+The CLI emits a **single ASCII JSON line of at most 512 bytes** by one
+nonblocking `os.write` to fd1. Only a **local pipe or actual TTY** is eligible:
+regular files, Unix/TCP sockets, and non-terminal device nodes are refused
+without creating a receipt. A pipe with no reader or a saturated pipe must not
+hang, retry a partial message, or print a Python traceback. The CLI restores
+fd1's original blocking setting even after output errors and always exits
+nonzero. If delivery fails, it returns exit 2; absence of a receipt **must
+never** be interpreted as permission or as an approved result.
+
+This deliberate restriction means `> out.json` redirection is not supported
+for the opt-in preview; use a local pipe consumer if a receipt is needed. These
+are userland fail-closed precautions, not an OS-level isolation guarantee.
+The dedicated real subprocess tests exercise discarded file/socket sinks,
+closed readers and an actually filled local pipe. No scan, real grant or
+outbound network call is performed.
+
 ## Result contract
 
 A structurally valid packet prints exactly one opaque JSON line and exits **3**, `REVIEW_ONLY`. Counts are mutually exclusive: `expired` (after inclusive end), `not_yet_started` (before start), `current_expiring_within_horizon`, and `current_later`. A malformed packet prints generic `HOLD`, exits **2** and reports **no counts**. Both results carry *six literal false bits*:
