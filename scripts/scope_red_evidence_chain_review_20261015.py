@@ -61,7 +61,17 @@ def parse(raw):
 
 def review(raw):
     envelope, debt, summaries, observed = parse(raw)
-    wanted = {row["test"]: row for row in envelope["debt_snapshot"]["cases"]}
+    wanted = {}
+    issue_owners = {}
+    for row in envelope["debt_snapshot"]["cases"]:
+        # The lower-level snapshot allows one test to be claimed by more than
+        # one issue. The cross-log evidence chain cannot safely resolve a
+        # single observed method to multiple competing issue/owner claims.
+        if row["test"] in wanted:
+            raise ChainError("ambiguous test-to-issue mapping")
+        wanted[row["test"]] = row
+        issue_owners.setdefault(row["issue"], set()).add(row["owner_pr"])
+    conflicting_owner_issues = sum(len(owners) > 1 for owners in issue_owners.values())
     left, right = (observed[name] for name in LOG_NAMES)
     lsum, rsum = (summaries[name] for name in LOG_NAMES)
     missing_l = wanted.keys() - left.keys()
@@ -97,12 +107,13 @@ def review(raw):
         "expected_failures", "unexpected_successes"))
     risk = (len(missing_l) + len(missing_r) + diverged + mismatched_l + mismatched_r
             + different_method_set + footer_diff + debt["unowned_issues"]
-            + untracked_red_311 + untracked_red_314
+            + conflicting_owner_issues + untracked_red_311 + untracked_red_314
             + untracked_failures_311 + untracked_failures_314)
     return {
         "watched_tests": len(wanted),
         "watched_issues": debt["issues"],
         "missing_owner_issues": debt["unowned_issues"],
+        "conflicting_owner_issues": conflicting_owner_issues,
         "debt_expected_red_claimed": debt["expected_red"],
         "paired_expected_red_reported": matched_red,
         "watched_missing_311": len(missing_l),
