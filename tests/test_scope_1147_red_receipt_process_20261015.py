@@ -171,6 +171,28 @@ class Scope1147ReceiptProcessTests(unittest.TestCase):
         finally:
             fixture.doCleanups()
 
+    def test_cli_cannot_report_known_red_after_source_control_roster_loss(self):
+        # The original source issue may still exist, but losing a safe
+        # regression control makes this receipt untrustworthy: stay HOLD.
+        sensitive = "no-echo-fixture-unsafe-control-roster"
+        output = io.StringIO()
+        with (
+            patch(
+                "test_scope_1147_expected_red_integrity_20261015.verify_source_test_roster",
+                side_effect=AssertionError(sensitive),
+            ),
+            contextlib.redirect_stdout(output),
+        ):
+            status = receipt_cli.main([])
+        self.assertEqual(status, 3)
+        self.assertNotIn(sensitive, output.getvalue())
+        self.assertEqual(output.getvalue().count("\n"), 1)
+        report = json.loads(output.getvalue())
+        self.assertEqual(report["status"], "HOLD")
+        self.assertEqual(report["reason"], "UNVERIFIED")
+        for flag in EXPECTED_FLAGS:
+            self.assertIs(report[flag], False)
+
     def test_refuses_extra_arguments_without_echoing_them(self):
         sensitive_marker = "secret-fixture--not-a-real-customer.invalid"
         proc, report = self.run_receipt("--target", sensitive_marker)
