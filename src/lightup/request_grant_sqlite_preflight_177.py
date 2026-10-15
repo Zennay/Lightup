@@ -131,6 +131,51 @@ def _has_provenance_fk(connection: sqlite3.Connection) -> bool:
 
 
 
+
+def _all_grant_lineage_consistent(connection: sqlite3.Connection) -> bool:
+    """Conservative multi-tenant consistency of ALL persisted grant origins.
+
+    A valid SQLite FK to an approved request cannot establish that the
+    grant belongs to that request's client, nor that its engagement/client
+    and approving operator match. Check those independent links for every
+    grant under the same read snapshot; even an unrelated corrupt tenant
+    blocks a structural provenance preview, never production actions.
+    """
+    rows = connection.execute(
+        "SELECT g.approved_request_id AS approved_request_id, "
+        "g.client_id AS grant_client, g.engagement_id AS grant_engagement, "
+        "g.approved_by AS grant_approver, "
+        "r.request_id AS request_id, r.client_id AS request_client, "
+        "r.requested_by AS requester, r.decided_by AS decider, "
+        "r.status AS request_status, r.requested_mode AS request_mode, "
+        "e.engagement_id AS engagement_id, e.client_id AS engagement_client "
+        "FROM authorization_grants AS g "
+        "LEFT JOIN assessment_requests AS r "
+        "ON r.request_id=g.approved_request_id "
+        "LEFT JOIN engagements AS e "
+        "ON e.engagement_id=g.engagement_id"
+    )
+    for row in rows:
+        if (
+            not all(_identifier(row[column]) for column in (
+                "approved_request_id", "grant_client", "grant_engagement",
+                "grant_approver", "request_id", "request_client",
+                "requester", "decider", "engagement_id",
+                "engagement_client",
+            ))
+            or row["approved_request_id"] != row["request_id"]
+            or row["grant_client"] != row["request_client"]
+            or row["grant_client"] != row["engagement_client"]
+            or row["grant_engagement"] != row["engagement_id"]
+            or row["grant_approver"] != row["decider"]
+            or row["requester"] == row["decider"]
+            or row["request_status"] != RequestStatus.APPROVED.value
+            or row["request_mode"] != AssessmentMode.AUTHORIZED_ASSESSMENT.value
+        ):
+            return False
+    return True
+
+
 def _no_ambiguous_concurrent_targets(
     connection: sqlite3.Connection,
     grant: AuthorizationGrant,
@@ -196,8 +241,12 @@ def _load_review(
     for table in ("assessment_requests", "authorization_grants", "engagements"):
         if not _is_real_table(connection, table):
             return _HOLD
-    if not fk_prechecked and not _has_provenance_fk(connection):
-        # Shipped M3/M7 schema currently lacks this column and FK.
+    if not fk_prechecked and (
+        not _has_provenance_fk(connection)
+        or not _all_grant_lineage_consistent(connection)
+    ):
+        # Shipped M3/M7 schema lacks approved request FK; an unrelated
+        # stored tenant/decider mismatch also fails this global snapshot.
         return _HOLD
 
     grants = connection.execute(
@@ -402,7 +451,10 @@ def review_persisted_grant_batch(
                 # One immutable read transaction: check the entire FK table
                 # exactly once rather than repeating that potentially costly
                 # scan for every one of the bounded batch's 32 grants.
-                if not _has_provenance_fk(con):
+                if (
+                    not _has_provenance_fk(con)
+                    or not _all_grant_lineage_consistent(con)
+                ):
                     return _HOLD
                 tenant: str | None = None
                 requests: set[str] = set()
