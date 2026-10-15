@@ -60,8 +60,17 @@ def _canonical_claim(value: object) -> bool:
         # separators that can obscure provenance in logs and reviewer UIs.
         if category[0] == "C" or (category[0] == "Z" and ch != " "):
             return False
-        # U+034F (COMBINING GRAPHEME JOINER) is invisible despite Mn category.
-        if ch == "\u034f":
+        # Some default-ignorable marks are Mn (not Cf), remain NFKC-stable,
+        # and can visually mask an identity. Do not reject *all* combining
+        # marks: ordinary names in several scripts legitimately require them.
+        cp = ord(ch)
+        if (ch == "\u034f"  # COMBINING GRAPHEME JOINER
+                or 0x180B <= cp <= 0x180D  # Mongolian free variation selectors
+                or cp == 0x180F
+                or 0xFE00 <= cp <= 0xFE0F  # VS1 .. VS16
+                or 0xE0100 <= cp <= 0xE01EF  # supplementary selectors
+                or category == "Me"  # enclosing circles/keycaps
+                or "OVERLAY" in unicodedata.name(ch, "")):
             return False
     return True
 
