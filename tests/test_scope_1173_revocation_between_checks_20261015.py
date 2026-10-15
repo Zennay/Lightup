@@ -190,6 +190,87 @@ class RevocationBetweenApprovalAndIsolationTests(unittest.TestCase):
         saved = self.state.get_evidence(result.evidence_id)
         self.assertEqual(saved.source, self.call.tool_id)
 
+
+    @unittest.expectedFailure
+    def test_concurrent_registry_swap_after_final_snapshot_must_deny(self):
+        """RED: checked handler identity must remain bound through raw dispatch.
+
+        The second registered-tool lookup returns its old tuple while another
+        thread swaps the mapping. The third lookup inside the raw ToolExecutor
+        then finds a different inert handler. No real capability is invoked.
+        """
+        observed = Event()
+        resume = Event()
+        original_get = self.registry.get
+        lookups = [0]
+
+        def replacement(_context, _arguments):
+            self.events.append("substituted-handler")
+            return ToolOutput("swapped-fixture", "test-only", b"inert-replaced")
+
+        swapped = Mock(side_effect=replacement)
+
+        def synchronized_get(tool_id):
+            lookups[0] += 1
+            snapshot = original_get(tool_id)
+            if lookups[0] == 2:
+                self.events.append("final-snapshot-observed")
+                observed.set()
+                if not resume.wait(5):
+                    raise AssertionError("tool snapshot interleaving timeout")
+            return snapshot
+
+        def fixture_only(_context, _call):
+            self.events.append("isolation-verified")
+            return True
+
+        with patch.object(self.registry, "get", side_effect=synchronized_get):
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                pending = pool.submit(self._assert_denied_without_effect, fixture_only)
+                try:
+                    self.assertTrue(observed.wait(5), "second registry lookup missing")
+                    self.registry._tools[self.call.tool_id] = (
+                        self.definition, swapped,
+                    )
+                finally:
+                    resume.set()
+                pending.result(timeout=10)
+        swapped.assert_not_called()
+        self.assertEqual(0, self._count())
+
+    def test_registry_swap_inside_isolation_is_already_denied(self):
+        """GREEN: swapping a handler *before* the final identity check denies."""
+        original, _ = self.registry.get(self.call.tool_id)
+
+        def substituted(_context, _arguments):
+            self.events.append("never-call-substitute")
+            return ToolOutput("should-not-execute", "test-only", b"no-op")
+
+        swapped = Mock(side_effect=substituted)
+
+        def replace_before_final_get(_context, _call):
+            self.registry._tools[self.call.tool_id] = (original, swapped)
+            return True
+
+        self._assert_denied_without_effect(replace_before_final_get)
+        swapped.assert_not_called()
+        self.assertEqual(0, self._count())
+
+    def test_registry_swap_red_witness_requires_missing_denial(self):
+        """GREEN: the registry RED may not be masked by a timeout or crash."""
+        probe = type(self)("test_concurrent_registry_swap_after_final_snapshot_must_deny")
+        probe.setUp()
+        try:
+            with self.assertRaises(AssertionError) as caught:
+                probe.test_concurrent_registry_swap_after_final_snapshot_must_deny()
+            self.assertIn("ToolDenied not raised", str(caught.exception))
+            self.assertIn("final-snapshot-observed", probe.events)
+            self.assertIn("substituted-handler", probe.events)
+            self.assertEqual(probe._count(), 1)
+            probe.handler.assert_not_called()
+        finally:
+            probe.doCleanups()
+
     def test_red_witness_requires_the_exact_missing_denial_assertion(self):
         """Do not mistake setup/type/socket failures for genuine source RED."""
         matrix = (
