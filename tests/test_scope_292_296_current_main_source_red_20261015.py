@@ -2,7 +2,7 @@
 
 Test inputs are synthetic and evaluated only in memory. A fixture Authorization
 is not real customer consent. Do not use these tests as a grant/scan permit.
-The installed source currently violates the twenty-one expected-failure cases; an
+The installed source currently violates the twenty-five expected-failure cases; an
 unexpectedSuccess means the source changed and this suite must be promoted to
 ordinary passing tests by the production owner before release.
 """
@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 import sys
 import unittest
-from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network, ip_network
+from ipaddress import IPv4Address, IPv4Interface, IPv4Network, IPv6Address, IPv6Interface, IPv6Network, ip_network
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -56,8 +56,11 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
         invalid = (
             134744072, True, None, bytes((8, 8, 8, 8)),
             IPv4Address("8.8.8.8"), IPv4Network("8.8.8.8/32"),
+            IPv4Interface("8.8.8.8/24"), IPv4Interface("8.8.8.8/0"),
             IPv6Address("2001:4860:4860::8888"),
             IPv6Network("2001:4860:4860::8888/128"),
+            IPv6Interface("2001:4860:4860::8888/64"),
+            IPv6Interface("2001:4860:4860::8888/0"),
             _NetworkStr("8.8.8.0/24"),
             "", " ", "8.8.8.8", "2001:4860:4860::8888",
             "8.8.8.8/24", "2001:4860:4860::8888/64",
@@ -188,6 +191,27 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
     @unittest.expectedFailure
     def test_296_ipv6_hostbit_zero_prefix_without_public_auth_gate_mints_scope(self):
         self._assert_rejected("2001:4860:4860::8888/0", "[2606:4700:4700::1111]", require_auth=False)
+
+    @unittest.expectedFailure
+    def test_292_ipv4_interface_object_must_not_widen_scope(self):
+        # ip_network(IPv4Interface, strict=False) can silently widen /24 hostbits.
+        self._assert_rejected(IPv4Interface("8.8.8.8/24"), "8.8.8.9")
+
+    @unittest.expectedFailure
+    def test_292_ipv6_interface_object_must_not_widen_scope(self):
+        self._assert_rejected(
+            IPv6Interface("2001:4860:4860::8888/64"), "[2001:4860:4860::8844]"
+        )
+
+    @unittest.expectedFailure
+    def test_292_ipv4_interface_zero_prefix_must_not_widen_public_family(self):
+        self._assert_rejected(IPv4Interface("8.8.8.8/0"), "1.1.1.1")
+
+    @unittest.expectedFailure
+    def test_292_ipv6_interface_zero_prefix_must_not_widen_public_family(self):
+        self._assert_rejected(
+            IPv6Interface("2001:4860:4860::8888/0"), "[2606:4700:4700::1111]"
+        )
 
     def test_292_bytearray_is_never_permission(self):
         self._assert_rejected(bytearray(b"\x08\x08\x08\x08"), "8.8.8.8")
@@ -335,7 +359,7 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
         with self.assertRaises(AssertionError):
             self._assert_true_source_red_partition(proof, names + ("missing-case",))
 
-    def test_twenty_one_expected_reds_are_real_assertions_not_masked_errors(self):
+    def test_twenty_five_expected_reds_are_real_assertions_not_masked_errors(self):
         names = (
             "test_292_integer_must_not_create_ipv4_host_authority",
             "test_292_raw_bytes_must_not_create_ipv4_host_authority",
@@ -358,11 +382,15 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
             "test_292_integer_without_public_auth_gate_still_mints_invalid_scope",
             "test_296_ipv4_hostbit_zero_prefix_without_public_auth_gate_mints_scope",
             "test_296_ipv6_hostbit_zero_prefix_without_public_auth_gate_mints_scope",
+            "test_292_ipv4_interface_object_must_not_widen_scope",
+            "test_292_ipv6_interface_object_must_not_widen_scope",
+            "test_292_ipv4_interface_zero_prefix_must_not_widen_public_family",
+            "test_292_ipv6_interface_zero_prefix_must_not_widen_public_family",
         )
-        self.assertEqual(len(names), 21, "source-owner RED count changed; revise the review gate")
+        self.assertEqual(len(names), 25, "source-owner RED count changed; revise the review gate")
         proof = unittest.TestResult()
         # A red witness that performs target I/O is not valid evidence:
-        # prohibit networking and new subprocesses throughout all 21 replays.
+        # prohibit networking and new subprocesses throughout all 25 replays.
         with (
             patch("socket.socket", side_effect=AssertionError("network forbidden")),
             patch("socket.getaddrinfo", side_effect=AssertionError("DNS forbidden")),
