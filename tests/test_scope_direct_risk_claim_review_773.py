@@ -41,6 +41,17 @@ class ExplodingScope(ScopeDefinition):
         raise AssertionError("foreign scope descriptor was accessed")
 
 
+class ExplodingComparator:
+    def __lt__(self, other):
+        raise AssertionError("foreign risk comparator should not be called")
+
+    def __gt__(self, other):
+        raise AssertionError("foreign risk comparator should not be called")
+
+    def __repr__(self):
+        raise AssertionError("foreign risk value should not be reflected")
+
+
 class DirectRiskReviewTests(unittest.TestCase):
     def scope(self, risk=RiskLevel.STANDARD):
         return ScopeDefinition(
@@ -118,7 +129,8 @@ class DirectRiskReviewTests(unittest.TestCase):
         foreign = (
             -1, 0, 1, 3, 4, 99, True, False, 3.0, 4.0,
             "3", None, ForeignRisk.ELEVATED, ForeignRisk.SPOOFED,
-            MisleadingRisk(),
+            float("nan"), float("inf"), -float("inf"),
+            ExplodingComparator(), MisleadingRisk(),
         )
         for max_risk in foreign:
             with self.subTest(case=type(max_risk).__name__):
@@ -132,12 +144,32 @@ class DirectRiskReviewTests(unittest.TestCase):
     def test_noncanonical_requested_types_all_hold(self):
         foreign = (
             -1, 0, 1, 3, 4, 99, True, False, 3.0, 4.0,
-            "3", None, ForeignRisk.ELEVATED, MisleadingRisk(),
+            "3", None, ForeignRisk.ELEVATED, float("nan"),
+            float("inf"), ExplodingComparator(), MisleadingRisk(),
         )
         for request in foreign:
             receipt = inspect_direct_scope_risk(self.scope(), request)
             self.assertIs(receipt.status, ReviewStatus.HOLD)
             self.assert_non_authorizing(receipt)
+
+    def test_batch_noncanonical_numeric_and_comparator_claims_hold_opaquely(self):
+        """Installed RED cases must never reach synthetic reviewer comparisons."""
+        bad = (
+            0, 4, 99, True, False, 0.0, 2.5,
+            float("nan"), float("inf"),
+            ForeignRisk.ELEVATED, ExplodingComparator(),
+        )
+        known_good = (self.scope(RiskLevel.STANDARD), RiskLevel.LOW_IMPACT)
+        for ceiling in bad:
+            with self.subTest(type=type(ceiling).__name__):
+                receipt = inspect_direct_scope_risk_batch((
+                    known_good,
+                    (self.scope(ceiling), RiskLevel.ANALYSIS_ONLY),
+                ))
+                self.assertIs(receipt.status, ReviewStatus.HOLD)
+                self.assertEqual(receipt.reason_code, "batch_hold")
+                self.assert_non_authorizing(receipt)
+                self.assertEqual(receipt.to_dict()["status"], "HOLD")
 
     def test_destructive_lab_tier_always_holds(self):
         for max_risk, requested in (
