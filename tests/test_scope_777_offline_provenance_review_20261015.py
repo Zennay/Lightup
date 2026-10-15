@@ -153,7 +153,6 @@ class SyntheticProvenanceReviewTests(unittest.TestCase):
             destination.seek(0)
             self.assertEqual(destination.read(), b"")
 
-
     def test_rejects_socket_stdout_with_no_bytes(self):
         left, right = socket.socketpair()
         try:
