@@ -185,5 +185,22 @@ class RemediationCatalogTests(unittest.TestCase):
                 self.assertNotIn(phrase, text)
 
 
+    def test_catalog_cannot_be_rewritten_by_importing_review_code(self):
+        with self.assertRaises(TypeError):
+            CATALOG["client_consent"] = remediation("explicit_human_release")
+        with self.assertRaises(TypeError):
+            del CATALOG["operator_step_up"]
+        with self.assertRaises(AttributeError):
+            remediation("client_consent").owner_role = "ANY_WORKER"
+        self.assertEqual(tuple(CATALOG), GATES)
+
+    def test_optimized_python_cannot_skip_coverage_guard(self):
+        # A missing gate must never silently disappear when Python runs with -O.
+        script = ROOT / "scripts" / "scope_release_remediation_catalog_20261015.py"
+        text = script.read_text()
+        self.assertIn("if tuple(CATALOG) != GATES:", text)
+        self.assertNotIn("assert tuple(CATALOG)", text)
+
+
 if __name__ == "__main__":
     unittest.main()
