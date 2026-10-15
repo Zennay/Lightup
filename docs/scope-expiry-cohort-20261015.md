@@ -219,6 +219,18 @@ year 9999 overflow boundaries, and rejection of non-leap-year century
 dates (1900/2100), year 0000 and 24:00 rollover. None of these time
 fields is authenticated or used to permit active scanning.
 
+## Fragmented local pipe and early EOF acceptance (W18)
+
+Three real CLI subprocess controls stream the same fictional JSON object
+through a local FIFO-like anonymous pipe in **two, five and four writes**,
+with small deterministic delays, and compare the single JSON receipt
+**byte-for-byte** against a one-shot write. Read chunk boundaries must never
+alter expiry counting, nonzero REVIEW_ONLY exit 3, false authority flags
+or absence of stderr. A separate early-EOF/truncated JSON control must
+return only the generic anonymous HOLD (exit 2), with no partial count
+leak. The existing held-open pipe deadline and overflow tests continue
+to cover slow or nonterminating local writers. No network or targets.
+
 ## Actual immutable grant-model acceptance for #347 (W17)
 
 This separate synthetic, in-memory acceptance exercises the **installed**
