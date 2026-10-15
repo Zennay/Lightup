@@ -80,6 +80,21 @@ strict timestamp invariants as the single-item reviewer.
   deterministically shuffled bad-member permutations, in-call rebindings
   and real file/network/process tripwire controls.
 
+## W4: stored-field identity cannot be spoofed by an attribute getter
+
+The single-item reviewer pins exact identity between the **materialized
+instance dictionary values** and the values returned by attribute getters.
+It checks this twice, with the final dictionary read **after** the last
+getter invocation. A patched getter that returns a fabricated valid end-time
+while the actual stored field is `False`, or a getter that rebinds a stored
+field after an earlier valid comparison, now returns opaque HOLD. The two
+synthetic regressions use `unittest.mock.patch.object` and do not change
+installed `Authorization.is_current` or any source-owner files.
+
+This is a defensive, opt-in review contract. It is not proof of cross-thread
+atomicity or safety after return, and it cannot authorize a scan or customer
+engagement.
+
 ## Hard gate: not a production fix
 
 This does **not** repair `Authorization.is_current()`. Release requires the
