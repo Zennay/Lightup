@@ -188,6 +188,35 @@ def _read_local_stdin() -> bytes:
             data.extend(chunk)
             if len(data) > MAX_INPUT_BYTES:
                 raise ReviewInputError("stdin oversized")
+        # Compare the actual regular-file bytes with an independently read
+        # second snapshot. File size/timestamps alone are not content proof.
+        # Rewind only our pinned local regular file, never FIFOs or sockets.
+        if is_file:
+            if os.lseek(pinned, 0, os.SEEK_SET) != 0:
+                raise ReviewInputError("stdin failed to rewind")
+            confirm = bytearray()
+            while True:
+                if time.monotonic() >= deadline:
+                    raise ReviewInputError("stdin readback timeout")
+                if not _same_descriptor(initial, os.fstat(0)):
+                    raise ReviewInputError("stdin rebound during readback")
+                if not _same_descriptor(initial, os.fstat(pinned)):
+                    raise ReviewInputError("stdin pinned fd changed during readback")
+                if os.fstat(pinned).st_size != initial.st_size:
+                    raise ReviewInputError("stdin size changed during readback")
+                # fd is nonblocking and regular; retry EAGAIN within the same
+                # total two-second deadline if the platform reports it.
+                try:
+                    again = os.read(pinned, MAX_INPUT_BYTES + 1 - len(confirm))
+                except BlockingIOError:
+                    continue
+                if not again:
+                    break
+                confirm.extend(again)
+                if len(confirm) > MAX_INPUT_BYTES:
+                    raise ReviewInputError("stdin readback oversized")
+            if confirm != data:
+                raise ReviewInputError("stdin regular-file bytes changed")
         final = os.fstat(pinned)
         if not _same_descriptor(initial, final) or not _same_descriptor(initial, os.fstat(0)):
             raise ReviewInputError("stdin changed before EOF")

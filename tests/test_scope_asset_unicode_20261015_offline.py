@@ -463,6 +463,52 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
         self.assertEqual(child.stdout, b"")
         self.assertEqual(child.stderr, b"")
 
+    def test_same_size_regular_file_rewrite_fails_second_byte_readback(self):
+        """Synthetic in-process mutation; falsified stable stats must not suffice."""
+        good = json.dumps(synthetic_claim(), separators=(",", ":")).encode()
+        other = good.replace(b"app.example.test", b"bad.example.test")
+        self.assertEqual(len(good), len(other))
+        program = textwrap.dedent("""
+            import importlib.util, os, sys
+            from unittest import mock
+            spec = importlib.util.spec_from_file_location("review_offline", sys.argv[1])
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            original_read = os.read
+            original_stat = os.fstat(0)
+            original_block = os.get_blocking(0)
+            changed = [False]
+            def rewrite_after_first_read(fd, limit):
+                value = original_read(fd, limit)
+                if value and not changed[0]:
+                    changed[0] = True
+                    os.pwrite(fd, OTHER, 0)
+                return value
+            def stable_stat(fd):
+                actual = os.fstat(fd)
+                return original_stat if actual.st_ino == original_stat.st_ino else actual
+            try:
+                with mock.patch.object(module.os, "read", side_effect=rewrite_after_first_read):
+                    with mock.patch.object(module.os, "fstat", side_effect=stable_stat):
+                        module._read_local_stdin()
+            except module.ReviewInputError:
+                if not changed[0] or os.get_blocking(0) != original_block:
+                    raise AssertionError("readback refusal or cleanup incorrect")
+                sys.exit(0)
+            raise AssertionError("same-size rewritten bytes accepted")
+        """).replace("OTHER", repr(other))
+        with tempfile.TemporaryFile(mode="w+b") as fd:
+            fd.write(good)
+            fd.flush()
+            fd.seek(0)
+            result = subprocess.run(
+                [sys.executable, "-c", program, str(SCRIPT)],
+                stdin=fd, capture_output=True, timeout=5, check=False,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, b"")
+        self.assertEqual(result.stderr, b"")
+
     def test_real_regular_file_mutation_during_read_denies_snapshot(self):
         """Modify ONLY a disposable synthetic local regular file while reading."""
         data = json.dumps(synthetic_claim()).encode("utf-8")
@@ -574,7 +620,7 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
             "typing": {"Any"},
         }
         allowed_os_attrs = {
-            "stat_result", "SEEK_CUR", "fstat", "dup", "lseek", "read", "close",
+            "stat_result", "SEEK_CUR", "SEEK_SET", "fstat", "dup", "lseek", "read", "close",
             "get_blocking", "set_blocking", "isatty", "write",
         }
         deny_dynamic_calls = {
