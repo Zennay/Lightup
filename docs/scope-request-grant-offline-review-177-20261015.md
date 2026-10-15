@@ -204,7 +204,11 @@ engagement, matching decision operator, independently signed request
 mode and AUTHORIZED engagement state. It also checks strict UTC chronology
 for each stored grant: request creation <= independent decision <= grant
 persistence <= declared validity start < validity end, with engagement
-creation no later than grant persistence. A malformed child in an
+creation no later than grant persistence. Each grant's **exact risk
+enum** must be no higher than its own approved request's risk, and the
+destructive-lab-only ceiling cannot pass this planning-only review.
+An unrelated tenant's elevated risk claim (even with existing parent FKs)
+therefore invalidates the whole read-only structural snapshot. A malformed child in an
 *unselected other tenant* yields global
 HOLD rather than a false claim that this local provenance dataset is clean.
 The same audit runs once per batch transaction and again on the next
