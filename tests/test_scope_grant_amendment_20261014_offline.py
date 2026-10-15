@@ -1106,6 +1106,58 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
                 with self.assertRaises(reviewer.Rejected):
                     reviewer._instant(malformed)
 
+    def test_negative_zero_risk_is_rejected_before_json_normalization(self):
+        # RFC8259 admits "-0", but json.loads turns it into int(0).
+        # That ambiguity cannot be presented as a canonical risk-zero grant.
+        literal = encode(fixture())
+        self.assertIn(b'"max_risk":3', literal)
+        for occurrence in (0, 1):
+            with self.subTest(occurrence=occurrence):
+                raw = literal.replace(
+                    b'"max_risk":3', b'"max_risk":-0',
+                    occurrence + 1,
+                ) if occurrence == 1 else literal.replace(
+                    b'"max_risk":3', b'"max_risk":-0', 1,
+                )
+                # Both before/after -0 and either position remain invalid.
+                out, code = reviewer.review(raw)
+                self.assertEqual((out["status"], code), ("HOLD", 2))
+                self.assertEqual(out["reason"], "invalid_input")
+                self.assert_denied_authority(out, code)
+
+    def test_strict_json_number_tokens_allow_only_literal_risk_levels(self):
+        for literal in ("0", "1", "2", "3", "4"):
+            with self.subTest(allowed=literal):
+                self.assertEqual(reviewer._strict_risk_integer(literal), int(literal))
+                packet = fixture()
+                packet["before"]["max_risk"] = int(literal)
+                packet["after"]["max_risk"] = int(literal)
+                receipt, code = reviewer.review(encode(packet))
+                self.assertEqual((receipt["status"], code), ("REVIEW_ONLY", 3))
+                self.assert_denied_authority(receipt, code)
+        for literal in (
+            "-0", "-1", "5", "9", "000", "١", "9" * 4097,
+        ):
+            with self.subTest(denied=literal[:20]):
+                with self.assertRaises(reviewer.Rejected):
+                    reviewer._strict_risk_integer(literal)
+
+    def test_ambiguous_numeric_aliases_fail_in_real_cli_without_echo(self):
+        canonical = encode(fixture())
+        for numeric in (b"-0", b"4.0", b"0e0", b"4e0", b"5", b"-2", b"9" * 4097):
+            with self.subTest(token=numeric[:20]):
+                raw = canonical.replace(b'"max_risk":3', b'"max_risk":' + numeric, 1)
+                result = subprocess.run(
+                    [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+                    input=raw, capture_output=True, check=False, timeout=8,
+                )
+                self.assertEqual(result.returncode, 2)
+                self.assertFalse(result.stderr)
+                receipt = json.loads(result.stdout)
+                self.assertEqual(receipt["reason"], "invalid_input")
+                self.assert_denied_authority(receipt, result.returncode)
+                self.assertNotIn(numeric[:20], result.stdout)
+
     def test_cli_rejects_no_flag(self):
         result = subprocess.run(
             [sys.executable, "-B", str(SCRIPT)],
