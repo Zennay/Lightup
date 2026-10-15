@@ -45,6 +45,13 @@ def _pure_scope_decision_at(auth, instant):
         return decision
 
 
+class _FalseyDatetimeSubclass(datetime):
+    # Even a datetime-shaped polymorphic object may lie about truthiness.
+    # Canonical legacy boundary values must use exact built-in datetime.
+    def __bool__(self):
+        return False
+
+
 class LegacyFalsyBoundaryRedTests(unittest.TestCase):
     def test_builtin_aware_valid_window(self):
         self.assertTrue(_authorization(start=NOW - timedelta(hours=1),
@@ -118,6 +125,26 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
     def test_red_zero_expiry_must_not_authorize_scope(self):
         decision = _pure_scope_decision(_authorization(end=0))
         self.assertFalse(decision.allowed)
+
+    @unittest.expectedFailure
+    def test_red_falsey_datetime_subclass_must_not_disable_future_start(self):
+        future = NOW + timedelta(days=1)
+        deceptive = _FalseyDatetimeSubclass(
+            future.year, future.month, future.day,
+            future.hour, future.minute, future.second,
+            future.microsecond, tzinfo=timezone.utc,
+        )
+        self.assertFalse(_authorization(start=deceptive).is_current(NOW))
+
+    @unittest.expectedFailure
+    def test_red_falsey_datetime_subclass_must_not_disable_expired_end(self):
+        expired = NOW - timedelta(days=1)
+        deceptive = _FalseyDatetimeSubclass(
+            expired.year, expired.month, expired.day,
+            expired.hour, expired.minute, expired.second,
+            expired.microsecond, tzinfo=timezone.utc,
+        )
+        self.assertFalse(_authorization(end=deceptive).is_current(NOW))
 
     def test_all_inputs_remain_unchanged_after_pure_scope_decision(self):
         # No CI calendar dependence: inject NOW through the real
