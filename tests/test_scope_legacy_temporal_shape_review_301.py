@@ -416,6 +416,50 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
         self.assertEqual(touched, [])
         self.assertIs(object.__getattribute__(auth, "__dict__")["valid_until"], END)
 
+    def test_single_late_stored_field_drift_is_a_hold(self):
+        import lightup.legacy_temporal_shape_review_301 as review_module
+
+        auth = fixture()
+        original = review_module._stored_fields
+        reads = [0]
+
+        def change_at_last_read(subject):
+            reads[0] += 1
+            data = original(subject)
+            if subject is auth and reads[0] == 2:
+                object.__setattr__(subject, "valid_until", False)
+            return data
+
+        with patch.object(review_module, "_stored_fields",
+                          side_effect=change_at_last_read):
+            verdict = review(auth)
+        self.assertEqual(reads[0], 2)
+        assert_non_authorizing(self, verdict, "HOLD", "invalid_shape")
+
+    def test_batch_final_storage_read_detects_late_rebinding(self):
+        import lightup.legacy_temporal_shape_review_301 as review_module
+
+        auth = fixture()
+        original = review_module._stored_fields
+        reads = [0]
+
+        def change_at_final_batch_read(subject):
+            reads[0] += 1
+            data = original(subject)
+            # Batch snapshot + single review initial + single review final,
+            # followed by the batch-wide final consistency check.
+            if subject is auth and reads[0] == 4:
+                object.__setattr__(subject, "valid_from", False)
+            return data
+
+        with patch.object(review_module, "_stored_fields",
+                          side_effect=change_at_final_batch_read):
+            verdict = review_legacy_authorization_batch(
+                (auth,), observed_at=MID
+            )
+        self.assertEqual(reads[0], 4)
+        assert_non_authorizing(self, verdict, "HOLD", "invalid_batch")
+
     def test_batch_exact_tuple_size_bounds_and_no_authority(self):
         for size in (1, 2, 16, 32):
             claim = tuple(fixture() for _ in range(size))
