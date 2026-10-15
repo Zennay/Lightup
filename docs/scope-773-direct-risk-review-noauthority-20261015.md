@@ -29,7 +29,7 @@ not be represented as a passing production fix. Source-owner review is needed.
   only status and reason, **never** authority flags; fresh `to_dict()` outputs
   cannot mutate the underlying tuple or elevate a later receipt. A caller can
   still manually construct a fake tuple, so serialization now enforces exact
-  `ReviewStatus` and the six allowed constant status/reason combinations;
+  `ReviewStatus` and the seven allowed constant status/reason combinations;
   unknown statuses, swapped reasons, foreign objects and subclasses are
   rendered as one generic `HOLD/invalid_receipt`, never reflected verbatim.
   The flags: `authorized`, `may_scan`,
@@ -47,7 +47,10 @@ not be represented as a passing production fix. Source-owner review is needed.
   batch receipt has the same six hardcoded `False` flags as single review.
 - Batch regressions cover both exact bounds, non-iterable malicious tuple
   subclasses, 300 deterministic shuffled negative cases and on-call
-  no-file/network/subprocess tripwires. This remains a reviewer aid, not a
+  no-file/network/subprocess tripwires. Added a 125-case 5x5x5
+  batch-risk oracle, deterministic bad-member-at-every-position proofs,
+  and polymorphic string-equality refusal during serialization.
+  This remains a reviewer aid, not a
   production authorization or any proof of asset consent.
 - The API receives only in-memory objects. No command-line entrypoint is
   provided. Never substitute this reviewer for the actual installed
