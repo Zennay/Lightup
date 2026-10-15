@@ -225,3 +225,83 @@ def review_persisted_request_grant(
     except (OSError, sqlite3.Error, KeyError, ValueError, TypeError, OverflowError):
         # No filesystem/schema/SQL/identifier detail is reflected to caller.
         return _HOLD
+
+
+def review_persisted_grant_batch(
+    database_path: object,
+    grant_ids: object,
+    *,
+    reviewed_at: object,
+) -> RequestGrantReview:
+    """Single-transaction, bounded, read-only review of 1..32 persisted grants.
+
+    Individual REVIEW_ONLY proofs are required before checking duplicate
+    persisted requests, cross-tenant records and overlapping effective targets.
+    A bad member atomically denies the *entire* batch. This never grants a
+    permission; the real M3/M7 schema lacking approved-request FK still HOLDS.
+    """
+    if type(grant_ids) is not tuple or not 1 <= len(grant_ids) <= 32:
+        return _HOLD
+    if not all(_identifier(grant_id) for grant_id in grant_ids):
+        return _HOLD
+    if len(set(grant_ids)) != len(grant_ids):
+        return _HOLD
+    if type(database_path) not in (str, PosixPath, WindowsPath) or not _utc_instant(reviewed_at):
+        return _HOLD
+
+    try:
+        path = Path(database_path).resolve(strict=True)
+        if not path.is_file():
+            return _HOLD
+        uri = path.as_uri() + "?mode=ro"
+        with closing(sqlite3.connect(uri, uri=True, timeout=1, isolation_level=None)) as con:
+            con.row_factory = sqlite3.Row
+            con.execute("PRAGMA query_only=ON")
+            con.execute("PRAGMA foreign_keys=ON")
+            con.execute("PRAGMA trusted_schema=OFF")
+            con.execute("BEGIN")
+            try:
+                tenant: str | None = None
+                requests: set[str] = set()
+                effective_assets: set[str] = set()
+                for grant_id in grant_ids:
+                    decision = _load_review(con, grant_id, reviewed_at)
+                    if decision.status is not ReviewStatus.REVIEW_ONLY:
+                        return _HOLD
+                    row = con.execute(
+                        "SELECT client_id, approved_request_id, assets_json, "
+                        "excluded_assets_json FROM authorization_grants "
+                        "WHERE grant_id=? LIMIT 2",
+                        (grant_id,),
+                    ).fetchall()
+                    if len(row) != 1:
+                        return _HOLD
+                    grant = row[0]
+                    client = grant["client_id"]
+                    request_id = grant["approved_request_id"]
+                    assets = _json_array(grant["assets_json"])
+                    excluded = _json_array(grant["excluded_assets_json"])
+                    if (
+                        not _identifier(client)
+                        or not _identifier(request_id)
+                        or request_id in requests
+                        or (tenant is not None and tenant != client)
+                        or assets is None
+                        or excluded is None
+                    ):
+                        return _HOLD
+                    effective = set(assets) - set(excluded)
+                    if effective_assets.intersection(effective):
+                        return _HOLD
+                    effective_assets.update(effective)
+                    requests.add(request_id)
+                    tenant = client
+                # Return the same immutable NON-authorizing structural receipt.
+                return RequestGrantReview(
+                    ReviewStatus.REVIEW_ONLY,
+                    "structurally_coherent_untrusted_snapshot",
+                )
+            finally:
+                con.execute("ROLLBACK")
+    except (OSError, sqlite3.Error, KeyError, ValueError, TypeError, OverflowError):
+        return _HOLD
