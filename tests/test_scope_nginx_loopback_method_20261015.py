@@ -210,26 +210,31 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
     def test_malformed_upstream_receipts_always_fail_closed(self):
         good = {
             "method": "POST", "path": "/__scope_method_fixture__",
-            "body": "x", "override_headers": {},
+            "body": "x", "nonce": "synthetic-nonce-001",
+            "override_headers": {},
         }
-        self.assertTrue(check._receipt_is_exact(good, "POST"))
+        self.assertTrue(check._receipt_is_exact(good, "POST", "synthetic-nonce-001"))
         bad = [None, False, 1, [], (), "", "APPROVED",
                {**good, "method": True},
                {**good, "path": True},
                {**good, "body": True},
                {**good, "override_headers": []},
                {**good, "override_headers": {"X-Method-Override": "GET"}},
+               {**good, "nonce": True},
+               {**good, "nonce": "stale-replayed-nonce"},
                {**good, "authorizes_targets": True},
                {key: val for key, val in good.items() if key != "body"}]
         for receipt in bad:
             with self.subTest(receipt=repr(receipt)):
-                self.assertFalse(check._receipt_is_exact(receipt, "POST"))
-        self.assertFalse(check._receipt_is_exact(good, "GET"))
+                self.assertFalse(check._receipt_is_exact(receipt, "POST", "synthetic-nonce-001"))
+        self.assertFalse(check._receipt_is_exact(good, "GET", "synthetic-nonce-001"))
+        self.assertFalse(check._receipt_is_exact(good, "POST", "fresh-nonce-002"))
 
     def test_synthetic_upstream_http_framing_is_exact_and_bounded(self):
         message = json.dumps({
             "method": "POST", "path": "/__scope_method_fixture__",
-            "body": "x", "override_headers": {},
+            "body": "x", "nonce": "synthetic-nonce-001",
+            "override_headers": {},
         }, sort_keys=True).encode("ascii")
         ordinary = [
             ("Content-Type", "application/json"),
@@ -240,7 +245,7 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
         valid.getheaders.return_value = ordinary
         valid.read.return_value = message
         self.assertTrue(check._receipt_is_exact(
-            check._decode_lab_response(valid), "POST",
+            check._decode_lab_response(valid), "POST", "synthetic-nonce-001",
         ))
         valid.read.assert_called_once_with(len(message) + 1)
         # Mixed case is valid HTTP; case-sensitive header parsing is not.
@@ -249,7 +254,7 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
             ("CONTENT-length", str(len(message))),
         ]
         self.assertTrue(check._receipt_is_exact(
-            check._decode_lab_response(valid), "POST",
+            check._decode_lab_response(valid), "POST", "synthetic-nonce-001",
         ))
         # Even if a valid JSON prefix fits in the first 4 KiB, the witness
         # must reject any unexplained trailing bytes or missing HTTP bytes.
@@ -284,6 +289,31 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                 fake.read.return_value = message
                 with self.assertRaises(RuntimeError):
                     check._decode_lab_response(fake)
+
+    def test_requests_issue_distinct_challenges_and_reject_replayed_receipts(self):
+        # A stale but otherwise byte-perfect response must not stand in for a
+        # fresh Nginx/WSGI roundtrip. Use only a disposable synthetic echo.
+        if not shutil.which("nginx"):
+            self.skipTest("real Nginx unavailable; nonce replay not probed")
+        protected = self.template.replace(
+            "        proxy_request_buffering on;",
+            "".join(f'        proxy_set_header {name} "";\n'
+                    for name in check.OVERRIDE_NAMES)
+            + "        proxy_request_buffering on;",
+        )
+        real_request = check._request
+        observed = []
+        def witness(port, method, headers):
+            receipt, nonce = real_request(port, method, headers)
+            observed.append(nonce)
+            self.assertTrue(check._receipt_is_exact(receipt, method, nonce))
+            self.assertFalse(check._receipt_is_exact(receipt, method, nonce + "-replay"))
+            return receipt, nonce
+        with patch.object(check, "_request", side_effect=witness):
+            self.assertTrue(check.run_probe(protected))
+        self.assertEqual(len(observed), 42)
+        self.assertEqual(len(observed), len(set(observed)))
+        self.assertTrue(all(len(nonce) == 32 for nonce in observed))
 
     def test_http_upstream_disconnect_is_opaque_hold(self):
         # A truncated upstream response must never leak the HTTP client's
