@@ -271,6 +271,93 @@ class RevocationBetweenApprovalAndIsolationTests(unittest.TestCase):
         finally:
             probe.doCleanups()
 
+
+    def _assert_post_snapshot_definition_change_denied(self, changed_definition):
+        """Stage an in-memory definition substitution only after final approval check."""
+        observed = Event()
+        resume = Event()
+        initial_get = self.registry.get
+        reads = [0]
+        self.last_policy_request = None
+        policy_decide = self.executor.policy.decide
+
+        def audit_decide(request):
+            self.last_policy_request = request
+            return policy_decide(request)
+
+        def inspected_get(tool_id):
+            reads[0] += 1
+            checked = initial_get(tool_id)
+            if reads[0] == 2:
+                self.events.append("definition-snapshot-checked")
+                observed.set()
+                if not resume.wait(5):
+                    raise AssertionError("definition-swap barrier timeout")
+            return checked
+
+        with patch.object(self.registry, "get", side_effect=inspected_get):
+            with patch.object(self.executor.policy, "decide", side_effect=audit_decide):
+                with ThreadPoolExecutor(max_workers=1) as pool:
+                    pending = pool.submit(
+                        self._assert_denied_without_effect,
+                        lambda _context, _call: True,
+                    )
+                    try:
+                        self.assertTrue(observed.wait(5), "final definition check missing")
+                        # Same handler object, but different security-relevant
+                        # tool identity metadata as seen at raw dispatch.
+                        self.registry._tools[self.call.tool_id] = (
+                            changed_definition, self.handler,
+                        )
+                    finally:
+                        resume.set()
+                    pending.result(timeout=10)
+
+    @unittest.expectedFailure
+    def test_capability_swap_after_final_snapshot_must_not_dispatch(self):
+        """RED: a trusted step-up for web-baseline is not valid for api-baseline."""
+        different_capability = replace(
+            self.definition, capability_id="api-baseline"
+        )
+        self._assert_post_snapshot_definition_change_denied(different_capability)
+
+    @unittest.expectedFailure
+    def test_risk_downgrade_after_final_snapshot_must_not_dispatch(self):
+        """RED: dispatch may not silently reinterpret approved risk-5 metadata."""
+        changed_risk = replace(self.definition, min_risk=RiskLevel.ELEVATED)
+        self._assert_post_snapshot_definition_change_denied(changed_risk)
+
+    def test_capability_and_risk_swap_reds_have_exact_policy_and_evidence(self):
+        """GREEN witness: no expected RED hides a crash or missing interleaving."""
+        examples = (
+            ("test_capability_swap_after_final_snapshot_must_not_dispatch",
+             "api-baseline", RiskLevel.DESTRUCTIVE_LAB_ONLY),
+            ("test_risk_downgrade_after_final_snapshot_must_not_dispatch",
+             "web-baseline", RiskLevel.ELEVATED),
+        )
+        for method, capability, risk in examples:
+            with self.subTest(case=method):
+                probe = type(self)(method)
+                probe.setUp()
+                try:
+                    with self.assertRaises(AssertionError) as caught:
+                        getattr(probe, method)()
+                    self.assertIn("ToolDenied not raised", str(caught.exception))
+                    self.assertIn("definition-snapshot-checked", probe.events)
+                    probe.handler.assert_called_once()
+                    self.assertEqual(1, probe._count())
+                    self.assertEqual(
+                        probe.last_policy_request.capability_id, capability
+                    )
+                    self.assertIs(probe.last_policy_request.requested_risk, risk)
+                    with probe.state.connect() as connection:
+                        row = connection.execute(
+                            "SELECT capability_id FROM evidence LIMIT 1"
+                        ).fetchone()
+                    self.assertEqual(row[0], capability)
+                finally:
+                    probe.doCleanups()
+
     def test_red_witness_requires_the_exact_missing_denial_assertion(self):
         """Do not mistake setup/type/socket failures for genuine source RED."""
         matrix = (
