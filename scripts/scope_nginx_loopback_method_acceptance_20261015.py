@@ -422,31 +422,47 @@ def run_probe(template: str, *, force_rewrite: bool = False,
 
 
 def _read_candidate_file(path: str) -> str:
-    """Bounded local read of a deliberate template snapshot, not a grant.
+    """Read a bounded local snapshot without following ANY path symlinks.
 
-    Do not follow symlinks or read pipes, sockets, devices or /proc. Never
-    return the pathname, user input, or file bytes in a public verdict.
+    Each parent is opened relative to a pinned directory descriptor with
+    O_DIRECTORY|O_NOFOLLOW. The final component is also opened O_NOFOLLOW.
+    Refuse traversal (..), device files, FIFOs, or a concurrent mutation.
+    No input path, file contents or OS exception detail enters the verdict.
     """
     if type(path) is not str or not path or len(path) > 4096:
         raise ValueError("invalid candidate file")
-    flags = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0)
-    if not hasattr(os, "O_NOFOLLOW"):
-        raise ValueError("no no-follow primitive")
-    flags |= os.O_NOFOLLOW
-    descriptor = os.open(path, flags)
+    if not all(hasattr(os, flag) for flag in ("O_NOFOLLOW", "O_DIRECTORY")):
+        raise ValueError("no safe path traversal primitives")
+    parts = Path(path).parts
+    names = parts[1:] if Path(path).is_absolute() else parts
+    if not names or any(name in ("", ".", "..") for name in names):
+        raise ValueError("unsafe candidate path")
+    close_on_exec = getattr(os, "O_CLOEXEC", 0)
+    dir_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | close_on_exec
+    read_flags = (os.O_RDONLY | os.O_NOFOLLOW | close_on_exec
+                  | getattr(os, "O_NONBLOCK", 0))
+    directory = os.open("/" if Path(path).is_absolute() else ".", dir_flags)
     try:
-        original = os.fstat(descriptor)
-        if not stat.S_ISREG(original.st_mode) or not 1 <= original.st_size <= 65536:
-            raise ValueError("invalid candidate file")
-        raw = os.read(descriptor, original.st_size + 1)
-        latest = os.fstat(descriptor)
-        stamp = lambda x: (x.st_dev, x.st_ino, x.st_mode, x.st_size,
-                           x.st_mtime_ns, x.st_ctime_ns)
-        if len(raw) != original.st_size or stamp(original) != stamp(latest):
-            raise ValueError("candidate changed during read")
-        return raw.decode("utf-8", errors="strict")
+        for name in names[:-1]:
+            child = os.open(name, dir_flags, dir_fd=directory)
+            os.close(directory)
+            directory = child
+        descriptor = os.open(names[-1], read_flags, dir_fd=directory)
+        try:
+            original = os.fstat(descriptor)
+            if not stat.S_ISREG(original.st_mode) or not 1 <= original.st_size <= 65536:
+                raise ValueError("invalid candidate file")
+            raw = os.read(descriptor, original.st_size + 1)
+            latest = os.fstat(descriptor)
+            stamp = lambda x: (x.st_dev, x.st_ino, x.st_mode, x.st_size,
+                               x.st_mtime_ns, x.st_ctime_ns)
+            if len(raw) != original.st_size or stamp(original) != stamp(latest):
+                raise ValueError("candidate changed during read")
+            return raw.decode("utf-8", errors="strict")
+        finally:
+            os.close(descriptor)
     finally:
-        os.close(descriptor)
+        os.close(directory)
 
 
 def _get_template(argv) -> str:
