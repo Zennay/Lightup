@@ -69,6 +69,7 @@ def assess(raw: bytes) -> dict[str, object]:
         "provenance": "SELF_ASSERTED_UNVERIFIED",
         "reason_code": "INDEPENDENT_SOURCE_AND_HUMAN_REVIEW_REQUIRED",
         "needs_attention": [g for g in GATES if checks[g] != "SELF_REPORTED"],
+        "gate_states": {g: checks[g] for g in GATES},
         "self_reported_count": sum(checks[g] == "SELF_REPORTED" for g in GATES),
         **{flag: False for flag in FLAGS},
     }
@@ -87,6 +88,7 @@ def main() -> int:
             "provenance": "UNVERIFIED",
             "reason_code": "INVALID_OR_INCOMPLETE_PACKET",
             "needs_attention": list(GATES),
+            "gate_states": {g: "UNKNOWN" for g in GATES},
             "self_reported_count": 0,
             **{flag: False for flag in FLAGS},
         }
