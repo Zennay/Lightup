@@ -6,11 +6,13 @@ from __future__ import annotations
 
 from ipaddress import ip_network
 import json
+from io import BytesIO, StringIO
 import os
 import subprocess
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -232,6 +234,79 @@ class OfflineExactNetworks292296(unittest.TestCase):
                     "authorizes_release",
                 })
                 self.assertFalse(any(v for k, v in packet.items() if k != "disposition"))
+
+    def test_exact_byte_boundary_complete_json_and_plus_one_fail_closed(self):
+        base = self._payload(["198.51.100.0/24"])
+        exact = b" " * (guard.MAX_JSON_BYTES - len(base)) + base
+        self.assertEqual(len(exact), guard.MAX_JSON_BYTES)
+        self.assertEqual(guard.review(exact), "REVIEW_ONLY")
+        self.assertEqual(guard.review(exact + b" "), "HOLD")
+        for raw, status, disposition in (
+            (exact, 3, "REVIEW_ONLY"),
+            (exact + b" ", 2, "HOLD"),
+        ):
+            done = self._cli(raw)
+            self.assertEqual(done.returncode, status)
+            self.assertEqual(done.stderr, b"")
+            self.assertEqual(json.loads(done.stdout)["disposition"], disposition)
+            self.assertFalse(json.loads(done.stdout)["authorizes_target_io"])
+
+    def test_main_stdin_io_error_produces_only_private_hold_receipt(self):
+        class BrokenReader:
+            def read(self, _):
+                raise OSError("private synthetic input failure")
+
+        output = StringIO()
+        with (
+            patch.object(guard.sys, "stdin", SimpleNamespace(buffer=BrokenReader())),
+            patch.object(guard.sys, "stdout", output),
+        ):
+            status = guard.main()
+        self.assertEqual(status, 2)
+        self.assertEqual(output.getvalue(), guard.receipt("HOLD") + "\n")
+        self.assertNotIn("private", output.getvalue())
+
+    def test_main_broken_pipe_never_exits_review_only(self):
+        class BrokenOutput:
+            def write(self, _):
+                raise BrokenPipeError("private synthetic broken pipe")
+            def flush(self):
+                raise AssertionError("flush should not run after broken write")
+
+        reader = SimpleNamespace(buffer=BytesIO(self._payload(["198.51.100.0/24"])))
+        with (
+            patch.object(guard.sys, "stdin", reader),
+            patch.object(guard.sys, "stdout", BrokenOutput()),
+        ):
+            self.assertEqual(guard.main(), 2)
+
+    def test_main_short_output_write_returns_fail_closed(self):
+        class ShortOutput:
+            def write(self, text):
+                return len(text) - 1
+            def flush(self):
+                raise AssertionError("incomplete receipt must not be flushed")
+
+        reader = SimpleNamespace(buffer=BytesIO(self._payload(["198.51.100.0/24"])))
+        with (
+            patch.object(guard.sys, "stdin", reader),
+            patch.object(guard.sys, "stdout", ShortOutput()),
+        ):
+            self.assertEqual(guard.main(), 2)
+
+    def test_main_stdout_flush_error_never_exits_review_only(self):
+        class FailingFlush:
+            def write(self, text):
+                return len(text)
+            def flush(self):
+                raise OSError("synthetic output unavailable")
+
+        reader = SimpleNamespace(buffer=BytesIO(self._payload(["198.51.100.0/24"])))
+        with (
+            patch.object(guard.sys, "stdin", reader),
+            patch.object(guard.sys, "stdout", FailingFlush()),
+        ):
+            self.assertEqual(guard.main(), 2)
 
     def test_real_cli_valid_returns_nonzero_and_no_grant(self):
         done = self._cli(self._payload(["8.8.8.0/24"]))
