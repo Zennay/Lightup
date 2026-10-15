@@ -167,6 +167,9 @@ class OfflineRevalidationFence:
         # These are review-only canaries, not tamper-proof Python secrets.
         self._approval_seal: tuple[object, ...] | None = None
         self._tool_seal: tuple[object, ...] | None = None
+        # One per-run/per-asset approval lifetime. Do not silently turn this
+        # instance into a different run, target or expanded grant window.
+        self._bound_approval: tuple[object, ...] | None = None
         self._review_count = 0
 
     @property
@@ -225,6 +228,9 @@ class OfflineRevalidationFence:
         with self._lock:
             if self._closed:
                 raise ValueError("revoked review instance cannot be reopened")
+            if (self._bound_approval is not None
+                    and before_approval != self._bound_approval):
+                raise ValueError("synthetic approval lifetime is immutable")
             if (
                 not frozen.is_well_formed()
                 or not snapshot.is_well_formed()
@@ -238,6 +244,8 @@ class OfflineRevalidationFence:
             self._tool = snapshot
             self._approval_seal = self._approval_fields(frozen)
             self._tool_seal = self._tool_fields(snapshot)
+            if self._bound_approval is None:
+                self._bound_approval = self._approval_seal
             self._epoch += 1
 
     def revoke(self) -> None:
@@ -245,6 +253,8 @@ class OfflineRevalidationFence:
             self._closed = True
             self._approval = None
             self._approval_seal = None
+            # The original binding is intentionally not reusable, even
+            # though revocation already closes the instance.
             # Discard both halves of the obsolete identity; leave no stale
             # synthetic capability registered on a permanently closed fence.
             self._tool = None
@@ -265,6 +275,11 @@ class OfflineRevalidationFence:
                 or self._tool_fields(tool) != original
             ):
                 raise ValueError("synthetic tool changed during registry intake")
+            # Every tool-registry replacement could hide a new handler
+            # behind identical public metadata. Invalidate the old approval
+            # regardless of the apparent tool/capability/risk equality.
+            self._approval = None
+            self._approval_seal = None
             self._tool = snapshot
             self._tool_seal = self._tool_fields(snapshot)
             self._epoch += 1
