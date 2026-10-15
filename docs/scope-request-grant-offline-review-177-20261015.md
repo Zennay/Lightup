@@ -200,8 +200,12 @@ The optional local viewer now performs a bounded, **read-only left-join
 audit of every stored grant** in the same immutable SQLite snapshot,
 enforcing exact canonical identity, one tenant across request/grant/
 engagement, matching decision operator, independently signed request
-(requester != reviewer), real APPROVED status and AUTHORIZED_ASSESSMENT
-mode. A malformed child in an *unselected other tenant* yields global
+(requester != reviewer), real APPROVED status, AUTHORIZED_ASSESSMENT
+mode and AUTHORIZED engagement state. It also checks strict UTC chronology
+for each stored grant: request creation <= independent decision <= grant
+persistence <= declared validity start < validity end, with engagement
+creation no later than grant persistence. A malformed child in an
+*unselected other tenant* yields global
 HOLD rather than a false claim that this local provenance dataset is clean.
 The same audit runs once per batch transaction and again on the next
 independent snapshot; the SQLite VM budget remains active.
@@ -210,8 +214,9 @@ Real disposable `DomainStore` SQLite tests create a genuinely separate
 second synthetic client/engagement/approved request and verify it does
 not interfere with the first client's `REVIEW_ONLY` structural preview.
 They then tamper the *other tenant* client, engagement, approver, requester,
-decision, status or mode without breaking SQLite's native FK and require
-the single and batch readers both to return HOLD. This is a **conservative
+decision, status, mode, creation/approval/grant timestamps or the declared
+window without breaking SQLite's native FK and require the single and batch
+readers both to return HOLD. This is a **conservative
 whole-database health preview**, never a multi-tenant live permission
 oracle. Source-owner must actually bind tenant, engagement and decision
 by authenticated transactional production constraints.
