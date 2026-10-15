@@ -97,7 +97,13 @@ def inspect_direct_scope_risk(
     if type(scope) is not ScopeDefinition:
         return RiskReviewReceipt(ReviewStatus.HOLD, "noncanonical_scope")
 
-    max_risk = scope.max_risk
+    # Frozen dataclasses can be built with object.__new__ or have their
+    # instance dictionary altered. An absent risk ceiling is HOLD, not an
+    # exception or an implicit default.
+    try:
+        max_risk = scope.max_risk
+    except (AttributeError, TypeError):
+        return RiskReviewReceipt(ReviewStatus.HOLD, "noncanonical_risk")
     if type(max_risk) is not RiskLevel or type(requested_risk) is not RiskLevel:
         return RiskReviewReceipt(ReviewStatus.HOLD, "noncanonical_risk")
 
@@ -147,7 +153,11 @@ def inspect_direct_scope_risk_batch(claims: object) -> RiskReviewReceipt:
             return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
         if type(ceiling) is not RiskLevel:
             return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
-        if inspect_direct_scope_risk(scope, requested_risk).status is not ReviewStatus.REVIEW_ONLY:
+        try:
+            single = inspect_direct_scope_risk(scope, requested_risk)
+        except (AttributeError, TypeError):
+            return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
+        if single.status is not ReviewStatus.REVIEW_ONLY:
             return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
         snapshots.append((scope, ceiling))
     for scope, ceiling in snapshots:
