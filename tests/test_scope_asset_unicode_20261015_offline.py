@@ -464,7 +464,7 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
             "stat", "sys", "time", "typing",
         }
         allowed_os_attrs = {
-            "stat_result", "fstat", "dup", "lseek", "read", "close",
+            "stat_result", "SEEK_CUR", "fstat", "dup", "lseek", "read", "close",
             "get_blocking", "set_blocking", "isatty", "write",
         }
         deny_dynamic_calls = {"__import__", "eval", "exec", "compile", "open"}
