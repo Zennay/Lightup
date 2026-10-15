@@ -246,6 +246,23 @@ and therefore **never** provide authority. No actual installed
 authorization, source-owner files, real grants or execution paths use
 this experimental module.
 
+## W12: forged tuple comparisons cannot execute callbacks
+
+Since `LegacyTemporalReceipt` inherits built-in tuple storage, default
+tuple equality/hash could otherwise traverse untrusted raw values from a
+deliberate `tuple.__new__` constructor bypass. The receipt explicitly
+implements both equality and inequality only between exact receipt types,
+using canonicalized built-in string status/reason values. Forged raw
+payloads therefore cannot invoke foreign equality/inequality hooks.
+`__hash__ = None` makes receipts unhashable so a forged value's own
+`__hash__` is never evaluated. Ordinary synthetic tests demonstrate
+denial of all three callback classes, while the receipt itself and all
+six authority fields remain falsey/denied.
+
+The mapping remains advisory, offline and entirely separate from real
+Authorization and execution; it is not a security boundary against an
+attacker able to monkeypatch Python builtins or modify this module.
+
 ## Hard gate: not a production fix
 
 This does **not** repair `Authorization.is_current()`. Release requires the
