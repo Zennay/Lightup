@@ -279,6 +279,44 @@ class OfflineAttemptJournalTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 OfflineAttemptJournal(con)
 
+    def test_trigger_added_after_open_cannot_ignore_reservation(self):
+        self.con.execute("""
+            CREATE TRIGGER late_ignore_insert
+            BEFORE INSERT ON offline_scope_1454_attempts
+            BEGIN SELECT RAISE(IGNORE); END
+        """)
+        self.con.commit()
+        self.assert_non_authorizing(self.journal.reserve(self.attempt), "HOLD")
+        self.assertEqual(self.count(), 0)
+
+    def test_trigger_added_after_open_cannot_mutate_reserved_phase(self):
+        self.con.execute("""
+            CREATE TRIGGER late_mutate_insert
+            AFTER INSERT ON offline_scope_1454_attempts
+            BEGIN
+                UPDATE offline_scope_1454_attempts
+                   SET phase='uncertain' WHERE attempt_id=NEW.attempt_id;
+            END
+        """)
+        self.con.commit()
+        self.assert_non_authorizing(self.journal.reserve(self.attempt), "HOLD")
+        self.assertEqual(self.count(), 0)
+
+    def test_trigger_added_after_open_cannot_undo_terminal_phase(self):
+        self.journal.reserve(self.attempt)
+        self.con.execute("""
+            CREATE TRIGGER late_undo_update
+            AFTER UPDATE ON offline_scope_1454_attempts
+            BEGIN
+                UPDATE offline_scope_1454_attempts
+                   SET phase='reserved' WHERE attempt_id=NEW.attempt_id;
+            END
+        """)
+        self.con.commit()
+        self.assert_non_authorizing(
+            self.journal.mark_uncertain(self.attempt), "HOLD")
+        self.assertEqual(self.journal.review_phase(self.attempt)[0], "reserved")
+
     def test_real_sqlite_preinsert_failure_atomic_hold(self):
         self.con.execute("""
             CREATE TRIGGER refuse_offline_reservation
