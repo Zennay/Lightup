@@ -121,6 +121,22 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                           check.render_loopback_config(
                               owner_style, 18011, 18012, Path(root)))
 
+    def test_every_baseline_directive_is_required_exactly_once(self):
+        # Property-style mutation sweep of the actual maintained template.
+        # Every directive in the baseline must survive; a whitelisted
+        # directive duplicated anywhere is still an unsupported candidate.
+        with tempfile.TemporaryDirectory() as tmp:
+            for position, directive in enumerate(check._BASE_DIRECTIVES):
+                with self.subTest(position=position, directive=directive):
+                    self.assertIn(directive, self.template)
+                    removed = self.template.replace(directive, "", 1)
+                    doubled = self.template.replace(
+                        directive, directive + "\n" + directive, 1)
+                    for changed in (removed, doubled):
+                        with self.assertRaises(ValueError):
+                            check.render_loopback_config(
+                                changed, 17991, 17992, Path(tmp))
+
     def test_runtime_output_never_confers_permission_on_holds(self):
         with patch.object(check, "TEMPLATE") as fake_template:
             fake_template.read_text.return_value = self.template
