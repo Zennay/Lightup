@@ -110,6 +110,41 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
                         "fixture-only-no-adapter",
                     )
 
+    @unittest.expectedFailure
+    def test_current_main_256_documentation_ipv6_scope_collisions_red(self):
+        """Materialize every synthetic decision before asserting the source RED."""
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset({"2001"}),
+            require_authorization_for_public=True,
+        )
+        violations = []
+        with self.no_network():
+            for hextet in range(256):
+                literal = str(ipaddress.IPv6Address(f"2001:db8:{hextet:x}::1"))
+                decision = policy.decide(Target(literal, authorization=SYNTHETIC_AUTH))
+                if (decision.allowed or
+                        decision.normalized_host not in (None, literal)):
+                    violations.append(hextet)
+        self.assertEqual(
+            violations, [],
+            f"{len(violations)} synthetic documentation IPv6 identities misbound",
+        )
+
+    def test_256_bracketed_documentation_ipv6_never_match_unrelated_host(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset({"2001"}),
+            require_authorization_for_public=True,
+        )
+        with self.no_network():
+            for hextet in range(256):
+                literal = str(ipaddress.IPv6Address(f"2001:db8:{hextet:x}::1"))
+                decision = policy.decide(Target("[" + literal + "]", authorization=SYNTHETIC_AUTH))
+                self.assertFalse(decision.allowed, (hextet, decision))
+                self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+                self.assertEqual(decision.normalized_host, literal)
+
     def test_valid_bracketed_authority_remains_full_canonical_identity(self):
         with self.no_network():
             for literal in DOC_IPV6:
@@ -144,6 +179,8 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
                 "True is not false",
             "test_authorized_activation_must_not_mint_wrong_host_permit_red":
                 "PermissionError not raised",
+            "test_current_main_256_documentation_ipv6_scope_collisions_red":
+                "256 synthetic documentation IPv6 identities misbound",
         }
         for name, expected_message in red_cases.items():
             with self.subTest(name=name):
