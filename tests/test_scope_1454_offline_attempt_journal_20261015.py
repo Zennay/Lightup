@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import dataclasses
+from contextlib import closing
 import hashlib
 import os
 from pathlib import Path
@@ -84,7 +85,7 @@ class OfflineAttemptJournalTests(unittest.TestCase):
         self.assert_non_authorizing(receipt, "REVIEW_ONLY")
         self.assertEqual(calls, [])
         self.assertEqual(self.count(), 1)
-        with sqlite3.connect(self.path) as second:
+        with closing(sqlite3.connect(self.path)) as second:
             row = second.execute(
                 "SELECT phase FROM offline_scope_1454_attempts WHERE attempt_id=?",
                 (self.attempt.attempt_id,)
@@ -184,7 +185,7 @@ class OfflineAttemptJournalTests(unittest.TestCase):
         self.assertEqual(self.count(), 0)
 
     def test_dirty_customer_schema_is_rejected_without_changes(self):
-        with sqlite3.connect(str(Path(self.temp.name) / "not_a_fixture.db")) as con:
+        with closing(sqlite3.connect(str(Path(self.temp.name) / "not_a_fixture.db"))) as con:
             con.execute("CREATE TABLE customer_records (sensitive TEXT)")
             con.execute("INSERT INTO customer_records VALUES ('do-not-touch')")
             with self.assertRaises(ValueError):
@@ -229,12 +230,12 @@ class OfflineAttemptJournalTests(unittest.TestCase):
 
     def test_new_connection_still_denies_replay_after_crash_simulation(self):
         self.journal.reserve(self.attempt)
-        with sqlite3.connect(self.path, timeout=2) as con:
+        with closing(sqlite3.connect(self.path, timeout=2)) as con:
             replay = OfflineAttemptJournal(con)
             self.assert_non_authorizing(replay.reserve(self.attempt), "HOLD")
             self.assertEqual(replay.review_phase(self.attempt)[0], "reserved")
             self.assert_non_authorizing(replay.mark_uncertain(self.attempt), "REVIEW_ONLY")
-        with sqlite3.connect(self.path, timeout=2) as con:
+        with closing(sqlite3.connect(self.path, timeout=2)) as con:
             again = OfflineAttemptJournal(con)
             self.assertEqual(again.review_phase(self.attempt)[0], "uncertain")
             self.assert_non_authorizing(again.reserve(self.attempt), "HOLD")
@@ -245,7 +246,7 @@ class OfflineAttemptJournalTests(unittest.TestCase):
         errors: list[str] = []
         def contender() -> None:
             try:
-                with sqlite3.connect(self.path, timeout=5) as con:
+                with closing(sqlite3.connect(self.path, timeout=5)) as con:
                     candidate = OfflineAttemptJournal(con)
                     barrier.wait(timeout=5)
                     results.append(candidate.reserve(self.attempt).status)
