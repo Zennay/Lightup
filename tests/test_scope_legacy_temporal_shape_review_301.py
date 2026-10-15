@@ -315,6 +315,37 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
                     ), "HOLD", "invalid_batch"
                 )
 
+    def test_single_hidden_stored_falsy_window_cannot_appear_reviewable(self):
+        auth = fixture(end=False)
+        original = Authorization.__getattribute__
+
+        def lying_getter(instance, name):
+            if instance is auth and name == "valid_until":
+                return END
+            return original(instance, name)
+
+        with patch.object(Authorization, "__getattribute__", lying_getter):
+            verdict = review(auth)
+        assert_non_authorizing(self, verdict, "HOLD", "invalid_shape")
+
+    def test_single_late_getter_mutation_of_stored_window_is_denied(self):
+        auth = fixture()
+        original = Authorization.__getattribute__
+        read_count = {"end": 0}
+
+        def late_mutator(instance, name):
+            value = original(instance, name)
+            if instance is auth and name == "valid_until":
+                read_count["end"] += 1
+                if read_count["end"] == 2:
+                    object.__setattr__(instance, "valid_until", False)
+            return value
+
+        with patch.object(Authorization, "__getattribute__", late_mutator):
+            verdict = review(auth)
+        self.assertEqual(read_count["end"], 2)
+        assert_non_authorizing(self, verdict, "HOLD", "invalid_shape")
+
     def test_batch_exact_tuple_size_bounds_and_no_authority(self):
         for size in (1, 2, 16, 32):
             claim = tuple(fixture() for _ in range(size))
