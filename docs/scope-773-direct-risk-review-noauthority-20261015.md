@@ -90,10 +90,19 @@ outputs, live mocked file/network/subprocess denial tripwires, an AST import
 allowlist canary, and three `expectedFailure` installed-source witnesses
 for the *installed* direct-int-99 policy gap.
 
-The three installed-policy expected-RED witnesses cover raw integer `99`,
-boolean `True` and foreign `IntEnum(99)` risk ceilings. Each is a genuine
-synthetic `TARGET_ACTIVE` decision on the unchanged mainline source and is
-**not** evidence that the requested authority is safe.
+Eight installed-policy `expectedFailure` RED witnesses now exercise the
+actual in-memory `ExecutionPolicy.decide(TARGET_ACTIVE)`: raw int `99`,
+boolean `True`, foreign `IntEnum(99)`, the additional raw integer
+alias matrix (`-1, 0..6, 99`), boolean `False`, a foreign-enum alias
+matrix, float aliases including NaN/infinity, and a custom
+right-hand comparison object returning `False`. A separate **normally
+passing** positive/negative oracle covers all 25 combinations of five exact
+canonical risk ceilings and requested levels, so a source fix cannot make the
+review suite look green by denying canonical valid cases. Each test is an
+entirely fictional, in-memory `TARGET_ACTIVE` decision on the unchanged
+installed mainline source; the expected-RED markers **do not** fix it.
+The risk-only reviewer independently rejects NaN, infinity and hostile
+numeric comparators before invoking equality, numeric conversion or hooks.
 
 An expected failure on the installed policy is a documented **RED**,
 not a fix, a green authorization decision, or authorization to touch targets.
