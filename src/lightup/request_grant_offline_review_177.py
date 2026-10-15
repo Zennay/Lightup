@@ -184,12 +184,20 @@ def review_request_grant(
         or not set(grant.scope.excluded_assets).issubset(grant.scope.assets)
         or not _capabilities(grant.scope.allowed_capabilities)
         or type(grant.recurring_retest_allowed) is not bool
+        # The approved request has no independent recurring-retest consent
+        # field: the snapshot cannot prove authorization for repeat actions.
+        or grant.recurring_retest_allowed is not False
         or not _utc_instant(grant.valid_from)
         or not _utc_instant(grant.valid_until)
     ):
         return _HOLD
 
-    if not (decided_at <= grant.valid_from <= reviewed_at <= grant.valid_until):
+    # Real DomainStore rejects empty windows; structurally reviewing one
+    # as coherent would produce misleading "REVIEW_ONLY" offline evidence.
+    if (
+        not (grant.valid_from < grant.valid_until)
+        or not (decided_at <= grant.valid_from <= reviewed_at <= grant.valid_until)
+    ):
         return _HOLD
     return _REVIEW
 
