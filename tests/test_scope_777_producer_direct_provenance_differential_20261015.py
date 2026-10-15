@@ -112,6 +112,47 @@ class ApprovalProvenanceDifferentialTests(unittest.TestCase):
             ), original
         )
 
+
+    def test_malformed_direct_provenance_never_crashes_or_mutates(self):
+        """Non-xfail side-effect and typed-result controls prevent masking errors."""
+        from lightup.execution_policy import PolicyDecision
+
+        original = self._issue()
+        before = self.store.list_authorization_grants(
+            self.operator, self.engagement.engagement_id
+        )
+        invalid_cases = (
+            ("blank-actor", {"approved_by": ""}),
+            ("space-actor", {"approved_by": " \t "}),
+            ("padded-actor", {"approved_by": " fictional-operator "}),
+            ("subclass-actor", {"approved_by": SyntheticString("fictional-operator")}),
+            ("bytes-actor", {"approved_by": b"fictional-operator"}),
+            ("null-actor", {"approved_by": None}),
+            ("unicode-actor", {"approved_by": "\u2003fictional-operator"}),
+            ("blank-reference", {"reference": ""}),
+            ("space-reference", {"reference": "\t "}),
+            ("padded-reference", {"reference": " ROE-FICTIONAL "}),
+            ("subclass-reference", {"reference": SyntheticString("ROE-FICTIONAL")}),
+            ("integer-reference", {"reference": 123}),
+            ("null-reference", {"reference": None}),
+            ("unicode-reference", {"reference": "ROE-FICTIONAL\u00a0"}),
+        )
+        for name, patch in invalid_cases:
+            with self.subTest(case=name):
+                candidate = replace(original, **patch)
+                snapshot = dict(candidate.__dict__)
+                decision = self._decide(candidate)
+                # This deliberately does not assert denied; the 14 RED
+                # controls below own that requirement. This green control
+                # ensures errors cannot be mistaken for expected failures.
+                self.assertIs(type(decision), PolicyDecision)
+                self.assertEqual(candidate.__dict__, snapshot)
+                self.assertEqual(
+                    self.store.list_authorization_grants(
+                        self.operator, self.engagement.engagement_id
+                    ), before
+                )
+
     # These are RED acceptance controls against the current, unintegrated
     # direct ExecutionPolicy. A green test suite with these xfails is NOT
     # evidence that production rejects malformed in-memory grant objects.
