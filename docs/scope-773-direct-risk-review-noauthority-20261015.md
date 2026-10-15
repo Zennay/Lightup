@@ -54,7 +54,10 @@ not be represented as a passing production fix. Source-owner review is needed.
   production authorization or any proof of asset consent.
 - The exact-tuple batch now snapshots the identity of each `RiskLevel`
   ceiling before evaluating later elements and checks **every** prior ceiling
-  again before returning `REVIEW_ONLY`. A synthetic scope changed through
+  again before returning `REVIEW_ONLY`. Partially constructed exact `ScopeDefinition`
+  values missing their `max_risk` field also fail closed without a traceback,
+  whether reviewed alone or while a batch callback is evaluating an entry.
+  A synthetic scope changed through
   `object.__setattr__` or its normally mutable `__dict__` while another
   entry is evaluated causes one opaque `HOLD`; a deleted field also returns
   `HOLD`, not a traceback. Deterministic injected mutations, an in-call
