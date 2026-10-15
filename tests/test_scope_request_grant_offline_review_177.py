@@ -9,11 +9,13 @@ from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
+from lightup.capabilities import CapabilityState, get_capabilities
 from lightup.domain import AssessmentRequestRecord, RequestStatus
 from lightup.engagements import AssessmentMode, AuthorizationGrant, RiskLevel, ScopeDefinition
 from lightup.request_grant_offline_review_177 import (
     ReviewStatus,
     review_request_grant,
+    review_request_grant_batch,
 )
 
 
@@ -49,7 +51,7 @@ def grant():
         scope=ScopeDefinition(
             assets=("app.example.test", "10.1.2.3"),
             max_risk=RiskLevel.LOW_IMPACT,
-            allowed_capabilities=("analysis",),
+            allowed_capabilities=("web-baseline",),
             excluded_assets=(),
         ),
         valid_from=VALID_FROM,
@@ -167,7 +169,7 @@ class RequestGrantOfflineReviewTests(unittest.TestCase):
                     grant().scope, excluded_assets=excluded
                 )))
         for allowed in (
-            ["analysis"], ("analysis", "analysis"), ("",), (1,), (" bad",),
+            ["web-baseline"], ("web-baseline", "web-baseline"), ("",), (1,), (" bad",),
         ):
             with self.subTest(capabilities=allowed):
                 self.assert_hold(auth=replace(grant(), scope=replace(
@@ -259,7 +261,7 @@ class RequestGrantOfflineReviewTests(unittest.TestCase):
             grant().scope, allowed_capabilities=()
         )))
         self.assert_hold(auth=replace(grant(), scope=replace(
-            grant().scope, allowed_capabilities=("analysis", "analysis")
+            grant().scope, allowed_capabilities=("web-baseline", "web-baseline")
         )))
 
     def test_exclusions_must_belong_to_granted_asset_set(self):
@@ -300,6 +302,131 @@ class RequestGrantOfflineReviewTests(unittest.TestCase):
         poisoned = VALID_FROM.replace(tzinfo=PoisonTimezone())
         self.assert_hold(auth=replace(grant(), valid_from=poisoned))
         self.assert_hold(at=poisoned)
+
+    def test_grant_and_review_time_require_exact_builtin_utc(self):
+        nonutc = timezone(timedelta(hours=1))
+        for value in (
+            VALID_FROM.replace(tzinfo=nonutc),
+            VALID_FROM.replace(tzinfo=timezone(timedelta(hours=-5))),
+            datetime(2030, 1, 31, 11),
+        ):
+            with self.subTest(value=value):
+                self.assert_hold(auth=replace(grant(), valid_from=value))
+                self.assert_hold(auth=replace(grant(), valid_until=value))
+                self.assert_hold(at=value)
+
+    def test_capability_catalog_rejects_unknown_and_lab_only(self):
+        capabilities = get_capabilities()
+        self.assertTrue(any(cap.state is CapabilityState.LAB_ONLY for cap in capabilities))
+        self.assertTrue(any(cap.state is CapabilityState.PLANNING for cap in capabilities))
+        for capability in capabilities:
+            with self.subTest(capability=capability.capability_id):
+                candidate = replace(grant(), scope=replace(
+                    grant().scope, allowed_capabilities=(capability.capability_id,)
+                ))
+                result = review(auth=candidate)
+                if capability.state is CapabilityState.PLANNING:
+                    self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
+                else:
+                    self.assertIs(result.status, ReviewStatus.HOLD)
+                self.assert_no_authority(result)
+        for item in (
+            "analysis", "web-baselinE", "LAB_ACTIVE",
+            "unknown-capability", "web-baseline ", "", 17, True,
+        ):
+            with self.subTest(invalid_id=item):
+                self.assert_hold(auth=replace(grant(), scope=replace(
+                    grant().scope, allowed_capabilities=(item,)
+                )))
+
+    @staticmethod
+    def _batch_pairs():
+        req1 = request()
+        req2 = replace(request(), request_id="request-second")
+        grant1 = replace(grant(), scope=replace(
+            grant().scope, assets=("app.example.test",)
+        ))
+        grant2 = replace(grant(), grant_id="grant-second", scope=replace(
+            grant().scope, assets=("10.1.2.3",)
+        ))
+        return ((req1, grant1), (req2, grant2))
+
+    def test_atomic_batch_two_valid_is_still_non_authorizing(self):
+        result = review_request_grant_batch(self._batch_pairs(), reviewed_at=NOW)
+        self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(result)
+
+    def test_atomic_batch_rejects_unsupported_shapes_and_bounds(self):
+        base = self._batch_pairs()
+        for packet in (
+            None, [], (), list(base), (list(base[0]),),
+            ("fake",), ((base[0][0],),), ((base[0][0], base[0][1], 42),),
+            base * 17, (base[0], base[1], None),
+        ):
+            with self.subTest(kind=str(type(packet)), size=len(packet) if hasattr(packet, "__len__") else -1):
+                result = review_request_grant_batch(packet, reviewed_at=NOW)
+                self.assertIs(result.status, ReviewStatus.HOLD)
+                self.assert_no_authority(result)
+        for i in range(33):
+            packet = base[:1] * i
+            if i != 1:
+                self.assertIs(review_request_grant_batch(packet, reviewed_at=NOW).status, ReviewStatus.HOLD)
+
+    def test_atomic_batch_rejects_duplicate_claims(self):
+        first, second = self._batch_pairs()
+        bad_cases = (
+            (first, first),
+            (first, (replace(second[0], request_id=first[0].request_id), second[1])),
+            (first, (second[0], replace(second[1], grant_id=first[1].grant_id))),
+            (first, (second[0], replace(second[1], scope=replace(
+                second[1].scope, assets=first[1].scope.assets
+            )))),
+        )
+        for packet in bad_cases:
+            with self.subTest(packet_type="duplicate"):
+                result = review_request_grant_batch(packet, reviewed_at=NOW)
+                self.assertIs(result.status, ReviewStatus.HOLD)
+                self.assert_no_authority(result)
+
+    def test_atomic_batch_rejects_tenant_spoofing_and_partial_success(self):
+        first, second = self._batch_pairs()
+        other_client = "client-independent"
+        cross_tenant = (
+            first,
+            (replace(second[0], client_id=other_client),
+             replace(second[1], client_id=other_client)),
+        )
+        invalid_second = (first, (
+            replace(second[0], status=RequestStatus.SUBMITTED), second[1]
+        ))
+        for packet in (cross_tenant, invalid_second):
+            result = review_request_grant_batch(packet, reviewed_at=NOW)
+            self.assertIs(result.status, ReviewStatus.HOLD)
+            self.assert_no_authority(result)
+
+    def test_atomic_batch_allows_separate_fully_excluded_grants(self):
+        first, second = self._batch_pairs()
+        # Redundant declared assets are not effective grant membership when
+        # the corresponding record fully excludes them. No authority follows.
+        excluded_first = (first[0], replace(first[1], scope=replace(
+            first[1].scope, excluded_assets=first[1].scope.assets
+        )))
+        duplicate_second = (second[0], replace(second[1], scope=replace(
+            second[1].scope, assets=first[1].scope.assets
+        )))
+        result = review_request_grant_batch(
+            (excluded_first, duplicate_second), reviewed_at=NOW
+        )
+        self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(result)
+
+    def test_atomic_batch_is_io_free(self):
+        from unittest.mock import patch
+        with patch("socket.socket", side_effect=AssertionError("not network")), \\
+             patch("sqlite3.connect", side_effect=AssertionError("not sqlite")):
+            result = review_request_grant_batch(self._batch_pairs(), reviewed_at=NOW)
+        self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(result)
 
     def test_no_raw_input_echo_on_denial(self):
         poisoned = replace(request(), requested_assets=("secret-password.example.test",))
