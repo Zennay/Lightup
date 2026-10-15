@@ -227,6 +227,10 @@ def _read_local_stdin() -> bytes:
             or final.st_ctime_ns != initial.st_ctime_ns
         ):
             raise ReviewInputError("stdin snapshot changed")
+        # File/FIFO reads can be delayed after select indicated readiness.
+        # Never allow a late EOF/readback result to bypass the total deadline.
+        if time.monotonic() >= deadline:
+            raise ReviewInputError("stdin completed after deadline")
         return bytes(data)
     finally:
         try:

@@ -510,6 +510,51 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
         self.assertEqual(result.stdout, b"")
         self.assertEqual(result.stderr, b"")
 
+    def test_file_readback_completion_after_deadline_is_hold(self):
+        """The final monotonic check must reject a late second EOF."""
+        data = json.dumps(synthetic_claim()).encode()
+        program = textwrap.dedent("""
+            import importlib.util, os, sys
+            from unittest import mock
+            spec = importlib.util.spec_from_file_location("review_offline", sys.argv[1])
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            real_read, real_seek = os.read, os.lseek
+            readback = [False]
+            second_eof = [False]
+            def seek(fd, pos, whence):
+                if pos == 0 and whence == os.SEEK_SET:
+                    readback[0] = True
+                return real_seek(fd, pos, whence)
+            def read(fd, amount):
+                chunk = real_read(fd, amount)
+                if readback[0] and not chunk:
+                    second_eof[0] = True
+                return chunk
+            def clock():
+                return 12.1 if second_eof[0] else 10.0
+            old_mode = os.get_blocking(0)
+            try:
+                with mock.patch.object(module.os, "lseek", side_effect=seek):
+                    with mock.patch.object(module.os, "read", side_effect=read):
+                        with mock.patch.object(module.time, "monotonic", side_effect=clock):
+                            module._read_local_stdin()
+            except module.ReviewInputError:
+                if not second_eof[0] or os.get_blocking(0) != old_mode:
+                    raise AssertionError("late completion did not fail closed")
+                sys.exit(0)
+            raise AssertionError("late input completion was accepted")
+        """)
+        with tempfile.TemporaryFile(mode="w+b") as fd:
+            fd.write(data)
+            fd.flush()
+            fd.seek(0)
+            proc = subprocess.run([sys.executable, "-c", program, str(SCRIPT)],
+                                  stdin=fd, capture_output=True, timeout=5, check=False)
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode(errors="replace"))
+        self.assertEqual(proc.stdout, b"")
+        self.assertEqual(proc.stderr, b"")
+
     def test_readback_eagain_retries_without_widening_deadline(self):
         """The second real-file read may transiently report EAGAIN."""
         data = json.dumps(synthetic_claim()).encode()
