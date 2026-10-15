@@ -10,12 +10,13 @@ from datetime import datetime, timedelta, timezone
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from lightup.capabilities import CapabilityState, get_capabilities
-from lightup.domain import AssessmentRequestRecord, RequestStatus
-from lightup.engagements import AssessmentMode, AuthorizationGrant, RiskLevel, ScopeDefinition
+from lightup.domain import AssessmentRequestRecord, EngagementRecord, RequestStatus
+from lightup.engagements import AssessmentMode, AuthorizationGrant, EngagementStatus, RiskLevel, ScopeDefinition
 from lightup.request_grant_offline_review_177 import (
     ReviewStatus,
     review_request_grant,
     review_request_grant_batch,
+    review_request_grant_engagement,
 )
 
 
@@ -429,6 +430,77 @@ class RequestGrantOfflineReviewTests(unittest.TestCase):
             result = review_request_grant_batch(self._batch_pairs(), reviewed_at=NOW)
         self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
         self.assert_no_authority(result)
+
+    @staticmethod
+    def _engagement():
+        return EngagementRecord(
+            engagement_id="engagement-fixture",
+            client_id="client-fixture",
+            name="Test fixture only",
+            status=EngagementStatus.AUTHORIZED,
+            created_at="2030-01-30T00:00:00+00:00",
+        )
+
+    def test_engagement_three_way_match_is_only_reviewable(self):
+        result = review_request_grant_engagement(
+            request(), grant(), self._engagement(), reviewed_at=NOW
+        )
+        self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(result)
+
+    def test_engagement_claim_must_match_exact_tenant_and_id(self):
+        for changes in (
+            {"engagement_id": "engagement-other"},
+            {"client_id": "client-other"},
+            {"engagement_id": "engagement-fixture "},
+            {"client_id": ""},
+            {"status": "authorized"},
+            {"status": EngagementStatus.DRAFT},
+            {"status": EngagementStatus.AUTHORIZATION_PENDING},
+            {"status": EngagementStatus.RUNNING},
+            {"status": EngagementStatus.CLOSED},
+            {"created_at": "2030-01-30T00:00:00Z"},
+            {"created_at": "2030-01-30T00:00:00+01:00"},
+            {"created_at": "2030-01-30T24:00:00+00:00"},
+            {"created_at": "2030-02-02T00:00:00+00:00"},
+            {"created_at": ""},
+        ):
+            with self.subTest(changes=changes):
+                outcome = review_request_grant_engagement(
+                    request(), grant(), replace(self._engagement(), **changes),
+                    reviewed_at=NOW,
+                )
+                self.assertIs(outcome.status, ReviewStatus.HOLD)
+                self.assert_no_authority(outcome)
+
+    def test_engagement_guard_cannot_mask_untrusted_grant_time(self):
+        for invalid in (None, False, "2030-01-31", datetime(2030, 1, 31)):
+            with self.subTest(valid_from=invalid):
+                outcome = review_request_grant_engagement(
+                    request(), replace(grant(), valid_from=invalid),
+                    self._engagement(), reviewed_at=NOW,
+                )
+                self.assertIs(outcome.status, ReviewStatus.HOLD)
+                self.assert_no_authority(outcome)
+
+    def test_engagement_rejects_fake_instances_and_after_creation_grants(self):
+        class FakeEngagement(EngagementRecord):
+            pass
+
+        for engagement in (None, {}, FakeEngagement(**self._engagement().__dict__)):
+            outcome = review_request_grant_engagement(
+                request(), grant(), engagement, reviewed_at=NOW
+            )
+            self.assertIs(outcome.status, ReviewStatus.HOLD)
+            self.assert_no_authority(outcome)
+        after_creation = replace(
+            self._engagement(), created_at=(VALID_FROM + timedelta(seconds=1)).isoformat()
+        )
+        outcome = review_request_grant_engagement(
+            request(), grant(), after_creation, reviewed_at=NOW
+        )
+        self.assertIs(outcome.status, ReviewStatus.HOLD)
+        self.assert_no_authority(outcome)
 
     def test_no_raw_input_echo_on_denial(self):
         poisoned = replace(request(), requested_assets=("secret-password.example.test",))
