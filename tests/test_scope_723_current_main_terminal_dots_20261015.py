@@ -224,10 +224,10 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
         policy_entries = (
             " " + _HOST,
             _HOST + " ",
-            "\\t" + _HOST,
-            _HOST + "\\n",
-            "\\r" + _HOST,
-            _HOST + "\\u00a0",
+            "\t" + _HOST,
+            _HOST + "\n",
+            "\r" + _HOST,
+            _HOST + "\u00a0",
         )
         for entry in policy_entries:
             with self.subTest(repr_entry=repr(entry)):
@@ -253,7 +253,7 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
         targets = (
             "https://" + _HOST + "/synthetic-only",
             "https://" + _HOST.upper() + ":443/synthetic-only?q=1",
-            "\\t" + _HOST + " ",
+            "\t" + _HOST + " ",
             _HOST + ".",
         )
         for target in targets:
