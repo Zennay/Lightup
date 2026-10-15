@@ -391,5 +391,80 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
         self.assertEqual(fence.review_count, 1)
 
 
+    def test_expiry_during_probe_rejects_fresh_clock_observation(self):
+        fence, request, approval, _ = fixture()
+        self.assert_non_authorizing(
+            fence.review(
+                request, NOW, isolation_probe=lambda: True,
+                fresh_clock_probe=lambda: approval.expires_at,
+            ), "HOLD"
+        )
+        self.assertEqual(fence.review_count, 0)
+
+    def test_fresh_clock_inside_window_still_only_reviews(self):
+        fence, request, approval, _ = fixture()
+        calls = []
+        def clock():
+            calls.append("clock")
+            return approval.issued_at + timedelta(minutes=2)
+        self.assert_non_authorizing(
+            fence.review(
+                request, NOW, isolation_probe=lambda: True,
+                fresh_clock_probe=clock,
+            ), "REVIEW_ONLY"
+        )
+        self.assertEqual(calls, ["clock"])
+        self.assertEqual(fence.review_count, 1)
+
+    def test_fresh_clock_must_be_aware_canonical_and_monotone(self):
+        samples = (None, False, 0, "2026-10-15", datetime(2026, 10, 15),
+                   NOW - timedelta(microseconds=1))
+        for sample in samples:
+            with self.subTest(value=type(sample)):
+                fence, request, _, _ = fixture()
+                self.assert_non_authorizing(
+                    fence.review(
+                        request, NOW, isolation_probe=lambda: True,
+                        fresh_clock_probe=lambda: sample,
+                    ), "HOLD"
+                )
+                self.assertEqual(fence.review_count, 0)
+
+    def test_fresh_clock_callback_revocation_still_invalidates_epoch(self):
+        fence, request, _, _ = fixture()
+        def current_time():
+            fence.revoke()
+            return NOW + timedelta(seconds=1)
+        self.assert_non_authorizing(
+            fence.review(
+                request, NOW, isolation_probe=lambda: True,
+                fresh_clock_probe=current_time,
+            ), "HOLD"
+        )
+        self.assertEqual(fence.review_count, 0)
+
+    def test_invalid_clock_callback_is_rejected_before_probe(self):
+        fence, request, _, _ = fixture()
+        called = []
+        for bad in ("yes", 1, True, [], {}):
+            self.assert_non_authorizing(
+                fence.review(
+                    request, NOW,
+                    isolation_probe=lambda: called.append(1) or True,
+                    fresh_clock_probe=bad,
+                ), "HOLD"
+            )
+        self.assertEqual(called, [])
+        def raises():
+            raise RuntimeError("lab-secret details")
+        self.assert_non_authorizing(
+            fence.review(
+                request, NOW, isolation_probe=lambda: True,
+                fresh_clock_probe=raises,
+            ), "HOLD"
+        )
+        self.assertEqual(fence.review_count, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
