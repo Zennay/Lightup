@@ -47,7 +47,7 @@ class EndToEndRestSmokeTests(unittest.TestCase):
     def test_nederlands_report_mentions_synthetic_conflict(self):
         report = render(EXAMPLE.read_bytes())
         self.assertIn("Conflictgroep 1: PR #820001, #820002", report)
-        self.assertIn("tests/old_owner.py", report)
+        self.assertIn(r"tests/old\_owner.py", report)
         self.assertIn("HOLD", report)
 
     def test_import_cli_returns_two_from_checked_in_example(self):
@@ -62,7 +62,7 @@ class EndToEndRestSmokeTests(unittest.TestCase):
         process = subprocess.run(cmd, input=EXAMPLE.read_bytes(),
                                  capture_output=True, timeout=10)
         self.assertEqual(process.returncode, 2)
-        self.assertIn("tests/old_owner.py", process.stdout.decode("utf-8"))
+        self.assertIn(r"tests/old\_owner.py", process.stdout.decode("utf-8"))
         self.assertNotIn(b"Traceback", process.stderr)
 
 
