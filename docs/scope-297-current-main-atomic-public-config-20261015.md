@@ -12,7 +12,7 @@ This independent current-main proof complements [issue #297](https://github.com/
 
 `tests/test_scope_297_current_main_atomic_public_config_20261015.py` invokes the actual installed `ScopePolicy.decide` and current `models.Target` / `Authorization` directly. The synthetic owner/reference and imaginary `example.test` domain are *not* customer consent.
 
-Eight `@unittest.expectedFailure` contracts specify **denial**, not mere diagnostics, when any unrelated configured public CIDR is malformed, including invalid IPv4 and IPv6 prefix lengths, mixed valid/invalid CIDR entries, an HTTPS-form target, and an auth-disabled policy. On unpatched source, these paths return `allowed=True`, demonstrating a still-open source defect; `expectedFailure` is **not** remediation.
+Eight `@unittest.expectedFailure` contracts specify **denial**, not mere diagnostics. Six show that malformed CIDR policy entries must not be ignored via an allowlisted public hostname (including IPv4/IPv6 prefix errors, mixed valid/invalid CIDRs, HTTPS-form targets and auth-disabled mode). Two more prove the reverse direction: malformed non-string hostname policy entries (integer or bytes) must not be ignored when deciding a public IP inside an otherwise valid allowlisted network. On unpatched source, these paths return `allowed=True`, demonstrating a still-open source defect; `expectedFailure` is **not** remediation.
 
 Ten ordinary tests preserve canonical positive host authorization, unknown-host denial, the no-grant denial path, public-IP requirements, a non-authorizing parse failure, configuration immutability, and three ordinary source witnesses (a six-vector actual unsafe-allow matrix, two reverse-direction unsafe network allows, and an assertion check) distinguishing real missing denials from unrelated exceptions. Per-test socket construction and DNS lookups are patched to fail; no network or filesystem side effects. Tests use standard-library unittest only.
 
@@ -28,7 +28,7 @@ If the repository's test directory is not a Python package, run the same module 
 PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_297_current_main_atomic_public_config_20261015.py' -v
 ```
 
-**Acceptance:** eight explicit source RED cases remain reported as *expected failures* before source-owner remediation, while all ten ordinary controls pass. After owner-reviewed installed source remediation, promote the six REDs to ordinary tests and require zero permitted public decisions from malformed whole-policy config, without target I/O and without changing correct canonical policy behavior.
+**Acceptance:** eight explicit source RED cases remain reported as *expected failures* before source-owner remediation, while all ten ordinary controls pass. After owner-reviewed installed source remediation, promote all eight REDs to ordinary tests and require zero permitted public decisions from malformed whole-policy config, without target I/O and without changing correct canonical policy behavior.
 
 ## Ownership / dependency boundaries
 
