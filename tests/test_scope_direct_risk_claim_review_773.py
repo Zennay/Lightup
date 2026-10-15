@@ -16,7 +16,9 @@ from lightup.execution_policy import ExecutionPolicy, ExecutionRequest, Interact
 from review_scope_direct_risk_claim_773 import (
     ReviewStatus,
     RiskReviewReceipt,
+    MAX_SYNTHETIC_REVIEW_ITEMS,
     inspect_direct_scope_risk,
+    inspect_direct_scope_risk_batch,
 )
 
 
@@ -201,8 +203,14 @@ class DirectRiskReviewTests(unittest.TestCase):
             denied_receipt = inspect_direct_scope_risk(
                 corrupt, RiskLevel.LOW_IMPACT
             )
+            batch_receipt = inspect_direct_scope_risk_batch((
+                (allowed, RiskLevel.LOW_IMPACT),
+                (corrupt, RiskLevel.LOW_IMPACT),
+            ))
         self.assertIs(valid_receipt.status, ReviewStatus.REVIEW_ONLY)
         self.assertIs(denied_receipt.status, ReviewStatus.HOLD)
+        self.assertIs(batch_receipt.status, ReviewStatus.HOLD)
+        self.assert_non_authorizing(batch_receipt)
         self.assert_non_authorizing(valid_receipt)
         self.assert_non_authorizing(denied_receipt)
 
@@ -228,6 +236,103 @@ class DirectRiskReviewTests(unittest.TestCase):
                     {"open", "eval", "exec", "compile", "__import__", "input"},
                 )
         self.assertEqual(set(imported), allowed)
+
+    def test_atomic_batch_exact_limits_and_no_authority(self):
+        for size in (1, 2, MAX_SYNTHETIC_REVIEW_ITEMS):
+            claims = tuple(
+                (self.scope(RiskLevel.ELEVATED), RiskLevel.PASSIVE)
+                for _ in range(size)
+            )
+            receipt = inspect_direct_scope_risk_batch(claims)
+            self.assertIs(receipt.status, ReviewStatus.REVIEW_ONLY)
+            self.assertEqual(receipt.reason_code, "batch_risk_shape_only")
+            self.assert_non_authorizing(receipt)
+            serialized = receipt.to_dict()
+            self.assertIs(serialized["may_dispatch"], False)
+            self.assertIs(serialized["may_issue_grant"], False)
+            self.assertEqual(
+                set(serialized), {
+                    "status", "reason_code", "authorized", "may_scan",
+                    "may_dispatch", "may_issue_grant", "release_ready",
+                    "may_deploy",
+                },
+            )
+
+    def test_atomic_batch_malformed_inputs_are_opaque_hold(self):
+        class PoisonTuple(tuple):
+            def __iter__(self):
+                raise AssertionError("subclass iteration invoked")
+            def __len__(self):
+                raise AssertionError("subclass length invoked")
+
+        known_good = (self.scope(), RiskLevel.PASSIVE)
+        malformed = (
+            (),
+            tuple(known_good for _ in range(MAX_SYNTHETIC_REVIEW_ITEMS + 1)),
+            [known_good],
+            PoisonTuple((known_good,)),
+            (PoisonTuple(known_good),),
+            (None,),
+            ((),),
+            ((self.scope(),),),
+            ((self.scope(), RiskLevel.PASSIVE, "third"),),
+            ((ExplodingScope(("fictional.invalid",), RiskLevel.STANDARD),
+              RiskLevel.PASSIVE),),
+            ((self.scope(), MisleadingRisk()),),
+            ((self.scope(99), RiskLevel.STANDARD),),
+            ((self.scope(RiskLevel.PASSIVE), RiskLevel.STANDARD),),
+            ((self.scope(RiskLevel.DESTRUCTIVE_LAB_ONLY), RiskLevel.STANDARD),),
+        )
+        receipts = [inspect_direct_scope_risk_batch(value) for value in malformed]
+        for receipt in receipts:
+            self.assertIs(receipt.status, ReviewStatus.HOLD)
+            self.assertEqual(receipt.reason_code, "batch_hold")
+            self.assert_non_authorizing(receipt)
+            self.assertEqual(
+                receipt.to_dict(),
+                receipts[0].to_dict(),
+                "all malformed batch claim shapes must receive the same opaque HOLD",
+            )
+
+    def test_batch_permutations_never_hide_a_single_bad_risk(self):
+        import random
+
+        good = (self.scope(RiskLevel.STANDARD), RiskLevel.LOW_IMPACT)
+        invalid = (self.scope(ForeignRisk.SPOOFED), RiskLevel.STANDARD)
+        rng = random.Random(773)
+        for size in (1, 2, 3, 8, MAX_SYNTHETIC_REVIEW_ITEMS):
+            claims = [good for _ in range(size)]
+            for _ in range(60):
+                # Every position receives an invalid entry in one permutation.
+                position = rng.randrange(size)
+                permuted = list(claims)
+                permuted[position] = invalid
+                rng.shuffle(permuted)
+                receipt = inspect_direct_scope_risk_batch(tuple(permuted))
+                self.assertIs(receipt.status, ReviewStatus.HOLD)
+                self.assertEqual(receipt.reason_code, "batch_hold")
+                self.assert_non_authorizing(receipt)
+            self.assertIs(
+                inspect_direct_scope_risk_batch(tuple(claims)).status,
+                ReviewStatus.REVIEW_ONLY,
+            )
+
+    def test_atomic_batch_no_io_or_untrusted_repr(self):
+        class HostileRisk:
+            def __repr__(self):
+                raise AssertionError("risk input was reflected")
+            def __iter__(self):
+                raise AssertionError("risk input was iterated")
+
+        for size in (1, 16, MAX_SYNTHETIC_REVIEW_ITEMS):
+            claims = tuple(
+                (self.scope(), RiskLevel.PASSIVE)
+                for _ in range(size - 1)
+            ) + ((self.scope(), HostileRisk()),)
+            receipt = inspect_direct_scope_risk_batch(claims)
+            self.assertEqual(receipt.to_dict()["status"], "HOLD")
+            self.assertNotIn("fictional.invalid", repr(receipt))
+            self.assert_non_authorizing(receipt)
 
     def test_canonical_risk_request_order_only_narrows(self):
         levels = [RiskLevel.ANALYSIS_ONLY, RiskLevel.PASSIVE,
