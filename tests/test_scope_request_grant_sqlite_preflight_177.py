@@ -108,10 +108,11 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
         )
         assert key in ("grant_id", "request_id", "engagement_id")
         with sqlite3.connect(self.path) as con:
-            con.execute(
+            updated = con.execute(
                 f"UPDATE {table} SET {field}=? WHERE {key}=?",
                 (value, key_value),
-            )
+            ).rowcount
+            self.assertEqual(updated, 1, "synthetic mutation must affect exactly one row")
 
     def test_shipped_domain_schema_without_request_fk_is_always_hold(self):
         self.assert_hold()
@@ -147,19 +148,27 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
         self.assertIs(self.review(grant_id=" ").status, ReviewStatus.HOLD)
 
     def test_invalid_request_state_mode_and_risk_hold(self):
-        for table, field, val, key, keyval in (
-            ("assessment_requests", "status", "rejected", "request_id", self.request.request_id),
-            ("assessment_requests", "status", "approve", "request_id", self.request.request_id),
-            ("assessment_requests", "requested_mode", "passive_discovery", "request_id", self.request.request_id),
-            ("assessment_requests", "requested_risk", "invalid", "request_id", self.request.request_id),
-            ("assessment_requests", "requested_risk", 0, "request_id", self.request.request_id),
-            ("authorization_grants", "max_risk", 4, "grant_id", self.grant.grant_id),
-        ):
+        corruptions = (
+            ("assessment_requests", "status", "rejected", "request_id"),
+            ("assessment_requests", "status", "approve", "request_id"),
+            ("assessment_requests", "requested_mode", "passive_discovery", "request_id"),
+            ("assessment_requests", "requested_risk", "invalid", "request_id"),
+            ("assessment_requests", "requested_risk", 0, "request_id"),
+            ("authorization_grants", "max_risk", 4, "grant_id"),
+        )
+        for index, (table, field, val, key) in enumerate(corruptions):
             with self.subTest(field=field, value=val):
+                if index:
+                    self._reset_fixture()
                 self.upgrade_synthetic_only()
-                self.update(table, field, val, key, keyval)
+                # Re-resolve the ID of the fresh fixture rather than reusing
+                # a stale UUID from the first setup.
+                identity = (
+                    self.request.request_id if key == "request_id"
+                    else self.grant.grant_id
+                )
+                self.update(table, field, val, key, identity)
                 self.assert_hold()
-                self._reset_fixture()
 
     def _reset_fixture(self):
         # Re-initialize a fresh disposable DB between independent corruptions.
@@ -167,22 +176,31 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
         self.setUp()
 
     def test_real_tenant_and_decider_lineage_mismatches_hold(self):
-        for table, field, val, key, keyval in (
-            ("authorization_grants", "client_id", "foreign", "grant_id", self.grant.grant_id),
-            ("engagements", "client_id", "foreign", "engagement_id", self.engagement),
-            ("assessment_requests", "client_id", "foreign", "request_id", self.request.request_id),
-        ):
+        corruptions = (
+            ("authorization_grants", "client_id", "foreign", "grant_id"),
+            ("engagements", "client_id", "foreign", "engagement_id"),
+            ("assessment_requests", "client_id", "foreign", "request_id"),
+        )
+        for index, (table, field, val, key) in enumerate(corruptions):
             with self.subTest(field=field, value=val):
+                if index:
+                    self._reset_fixture()
                 self.upgrade_synthetic_only()
-                self.update(table, field, val, key, keyval)
+                identity = {
+                    "grant_id": self.grant.grant_id,
+                    "request_id": self.request.request_id,
+                    "engagement_id": self.engagement,
+                }[key]
+                self.update(table, field, val, key, identity)
                 self.assert_hold()
-                self._reset_fixture()
+        self._reset_fixture()
         self.upgrade_synthetic_only()
         with sqlite3.connect(self.path) as con:
-            con.execute(
+            changed = con.execute(
                 "UPDATE authorization_grants SET approved_by=? WHERE grant_id=?",
                 ("different-operator", self.grant.grant_id),
-            )
+            ).rowcount
+            self.assertEqual(changed, 1)
         self.assert_hold()
 
     def test_corrupt_json_and_unknown_capability_hold(self):
