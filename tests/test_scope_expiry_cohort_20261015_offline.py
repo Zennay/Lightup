@@ -395,5 +395,78 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
         self.assertNoAuthority(receipt)
 
 
+    def test_regular_file_output_sink_refused_without_creating_receipt(self):
+        cmd = [sys.executable, str(ROOT / "scripts" /
+                                  "review_scope_expiry_cohort_20261015_offline.py")]
+        with tempfile.TemporaryFile(mode="w+b") as sink:
+            proc = subprocess.run(
+                cmd, input=encoded(document()), stdout=sink,
+                stderr=subprocess.PIPE, check=False, timeout=5,
+            )
+            sink.seek(0)
+            self.assertEqual(sink.read(), b"")
+        self.assertEqual(proc.returncode, 2)
+        self.assertEqual(proc.stderr, b"")
+
+    def test_local_unix_socket_output_sink_refused_without_data(self):
+        cmd = [sys.executable, str(ROOT / "scripts" /
+                                  "review_scope_expiry_cohort_20261015_offline.py")]
+        with socket.socketpair() as (reader, writer):
+            proc = subprocess.run(
+                cmd, input=encoded(document()), stdout=writer,
+                stderr=subprocess.PIPE, check=False, timeout=5,
+            )
+            writer.close()
+            self.assertEqual(reader.recv(1024), b"")
+        self.assertEqual(proc.returncode, 2)
+        self.assertEqual(proc.stderr, b"")
+
+    def test_closed_output_pipe_fails_nonzero_without_traceback(self):
+        cmd = [sys.executable, str(ROOT / "scripts" /
+                                  "review_scope_expiry_cohort_20261015_offline.py")]
+        proc = subprocess.Popen(
+            cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        try:
+            proc.stdout.close()  # Deliberately remove the sole pipe reader.
+            proc.stdin.write(encoded(document()))
+            proc.stdin.close()
+            status = proc.wait(timeout=5)
+            self.assertEqual(status, 2)
+            self.assertEqual(proc.stderr.read(), b"")
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait(timeout=2)
+            proc.stderr.close()
+
+    def test_filled_output_pipe_refused_without_waiting_for_reader(self):
+        """Never await a full pipe's consumer while emitting non-authority."""
+        cmd = [sys.executable, str(ROOT / "scripts" /
+                                  "review_scope_expiry_cohort_20261015_offline.py")]
+        read_fd, write_fd = os.pipe()
+        try:
+            os.set_blocking(write_fd, False)
+            filled = 0
+            for _ in range(256):
+                try:
+                    filled += os.write(write_fd, b"x" * 4096)
+                except BlockingIOError:
+                    break
+            self.assertGreater(filled, 0)
+            started = time.monotonic()
+            proc = subprocess.run(
+                cmd, input=encoded(document()), stdout=write_fd,
+                stderr=subprocess.PIPE, check=False, timeout=5,
+            )
+            self.assertEqual(proc.returncode, 2)
+            self.assertEqual(proc.stderr, b"")
+            self.assertLess(time.monotonic() - started, 4.5)
+        finally:
+            os.close(write_fd)
+            os.close(read_fd)
+
+
 if __name__ == "__main__":
     unittest.main()
