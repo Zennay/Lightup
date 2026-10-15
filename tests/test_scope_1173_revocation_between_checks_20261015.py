@@ -358,6 +358,54 @@ class RevocationBetweenApprovalAndIsolationTests(unittest.TestCase):
                 finally:
                     probe.doCleanups()
 
+
+    @unittest.expectedFailure
+    def test_mutated_asset_during_isolation_must_not_dispatch(self):
+        """RED: a caller-owned frozen ToolCall can be forcibly changed in-process."""
+        def corrupt_call(_context, _call):
+            self.events.append("callback-mutates-asset")
+            object.__setattr__(self.call, "asset", "different-synthetic-lab")
+            return True
+        self._assert_denied_without_effect(corrupt_call)
+
+    @unittest.expectedFailure
+    def test_mutated_client_during_isolation_must_not_dispatch(self):
+        """RED: a forged tenant on frozen RunContext must not taint evidence."""
+        def corrupt_tenant(_context, _call):
+            self.events.append("callback-mutates-tenant")
+            object.__setattr__(self.context, "client_id", "other-synthetic-client")
+            return True
+        self._assert_denied_without_effect(corrupt_tenant)
+
+    def test_mutated_frozen_envelope_source_reds_have_evidence_witness(self):
+        """GREEN: record metadata reveals rejected original grant identity drift."""
+        cases = (
+            ("test_mutated_asset_during_isolation_must_not_dispatch",
+             "asset", "different-synthetic-lab"),
+            ("test_mutated_client_during_isolation_must_not_dispatch",
+             "client_id", "other-synthetic-client"),
+        )
+        for method, key, expected in cases:
+            with self.subTest(method=method):
+                probe = type(self)(method)
+                probe.setUp()
+                try:
+                    with self.assertRaises(AssertionError) as caught:
+                        getattr(probe, method)()
+                    self.assertIn("ToolDenied not raised", str(caught.exception))
+                    self.assertIn("resolver", probe.events)
+                    self.assertIn("handler", probe.events)
+                    probe.handler.assert_called_once()
+                    self.assertEqual(1, probe._count())
+                    with probe.state.connect() as connection:
+                        evidence = connection.execute(
+                            "SELECT metadata_json FROM evidence LIMIT 1"
+                        ).fetchone()
+                    import json
+                    self.assertEqual(json.loads(evidence[0])[key], expected)
+                finally:
+                    probe.doCleanups()
+
     def test_red_witness_requires_the_exact_missing_denial_assertion(self):
         """Do not mistake setup/type/socket failures for genuine source RED."""
         matrix = (
