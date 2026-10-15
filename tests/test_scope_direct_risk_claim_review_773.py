@@ -199,7 +199,11 @@ class DirectRiskReviewTests(unittest.TestCase):
             with self.subTest(case=type(receipt.status).__name__):
                 self.assertEqual(receipt.to_dict(), expected)
                 self.assertNotIn(fake_claim, str(receipt.to_dict()))
-                self.assert_non_authorizing(receipt)
+                for flag in (
+                    "authorized", "may_scan", "may_dispatch",
+                    "may_issue_grant", "release_ready", "may_deploy",
+                ):
+                    self.assertIs(receipt.to_dict()[flag], False)
 
     def test_subclass_receipt_serialization_does_not_use_overrides(self):
         class HostileReceipt(RiskReviewReceipt):
