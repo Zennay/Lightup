@@ -194,6 +194,60 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
                 )
                 self.assert_hold()
 
+    def test_backdated_grant_activation_cannot_precede_record_creation(self):
+        self.upgrade_synthetic_only()
+        with sqlite3.connect(self.path) as con:
+            original = con.execute(
+                "SELECT created_at, valid_from FROM authorization_grants WHERE grant_id=?",
+                (self.grant.grant_id,),
+            ).fetchone()
+        recorded = datetime.fromisoformat(original[0])
+        decided = datetime.fromisoformat(self.request.decided_at)
+        # Keep the claimed grant window after approval so the regression
+        # specifically detects backdating BEFORE grant persistence.
+        self.assertLess(decided, recorded)
+        self.assertLess(recorded, datetime.fromisoformat(original[1]))
+        retroactive_start = recorded - timedelta(microseconds=1)
+        self.assertGreaterEqual(retroactive_start, decided)
+        self.update(
+            "authorization_grants", "valid_from", retroactive_start.isoformat(),
+            "grant_id", self.grant.grant_id,
+        )
+        result = self.review()
+        self.assertIs(result.status, ReviewStatus.HOLD)
+        self.assert_no_authority(result)
+
+    def test_grant_cannot_predate_its_engagement_even_if_window_matches(self):
+        self.upgrade_synthetic_only()
+        with sqlite3.connect(self.path) as con:
+            recorded = datetime.fromisoformat(con.execute(
+                "SELECT created_at FROM authorization_grants WHERE grant_id=?",
+                (self.grant.grant_id,),
+            ).fetchone()[0])
+        future_engagement_creation = recorded + timedelta(seconds=1)
+        # Engagement still predates the declared validity window; only the
+        # new durable grant-record chronology check can reject this.
+        self.assertLess(future_engagement_creation, self.valid_from)
+        self.update(
+            "engagements", "created_at", future_engagement_creation.isoformat(),
+            "engagement_id", self.engagement,
+        )
+        result = self.review()
+        self.assertIs(result.status, ReviewStatus.HOLD)
+        self.assert_no_authority(result)
+
+    def test_exact_grant_created_at_equal_to_start_is_only_reviewable(self):
+        self.upgrade_synthetic_only()
+        # Monotonic equality is allowed for structural review, never as
+        # verified consent or execution permission.
+        self.update(
+            "authorization_grants", "created_at", self.valid_from.isoformat(),
+            "grant_id", self.grant.grant_id,
+        )
+        result = self.review()
+        self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(result)
+
     def test_persisted_self_approval_must_hold_even_with_matching_fk(self):
         self.upgrade_synthetic_only()
         with sqlite3.connect(self.path) as con:
