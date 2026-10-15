@@ -6,6 +6,7 @@ ScopePolicy must implement and independently review any actual source change.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from ipaddress import ip_network
 from pathlib import Path
@@ -24,6 +25,7 @@ from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason
 import scope_297_atomic_policy_witness_20261015 as report
 import test_scope_297_current_main_atomic_public_config_20261015 as source_tests
 from scope_297_synthetic_authorization_20261015 import fake_authorization, FICTIONAL_ASSETS
+import scope_297_synthetic_authorization_20261015 as synthetic_factory
 
 ORIGINAL_DECIDE = ScopePolicy.decide
 REFERENCE_DENIAL_REASON = ScopeReason.INVALID_TARGET
@@ -103,6 +105,51 @@ class AtomicPolicyReferenceAcceptance(unittest.TestCase):
         else:
             # The installed main Authorization has no assets property yet.
             self.assertFalse(hasattr(FAKE_VALID_GRANT, "assets"))
+
+    def test_fixture_explicit_owner_bound_model_path_with_no_wildcards(self):
+        # Exercise the branch that exists in the active #100 owner's model,
+        # even while current main uses its older Authorization dataclass.
+        @dataclass(frozen=True)
+        class SyntheticOwnerBoundModel:
+            owner: str
+            reference: str
+            valid_from: datetime
+            valid_until: datetime
+            assets: tuple[str, ...] = ()
+
+            def allows_asset(self, host: str) -> bool:
+                return host.lower() in self.assets
+
+        with patch.object(synthetic_factory, "Authorization", SyntheticOwnerBoundModel):
+            grant = synthetic_factory.fake_authorization(
+                owner="fictitious",
+                reference="NOT-A-CONSENT",
+                valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
+                valid_until=datetime(2090, 1, 1, tzinfo=timezone.utc),
+            )
+        self.assertEqual(grant.assets, FICTIONAL_ASSETS)
+        self.assertTrue(grant.allows_asset("security.example.test"))
+        self.assertTrue(grant.allows_asset("198.51.100.42"))
+        self.assertFalse(grant.allows_asset("customer.example.test"))
+        self.assertFalse(grant.allows_asset("*"))
+
+    def test_fixture_legacy_model_path_never_adds_unknown_asset_kwarg(self):
+        @dataclass(frozen=True)
+        class SyntheticLegacyModel:
+            owner: str
+            reference: str
+            valid_from: datetime
+            valid_until: datetime
+
+        with patch.object(synthetic_factory, "Authorization", SyntheticLegacyModel):
+            grant = synthetic_factory.fake_authorization(
+                owner="fictional",
+                reference="NOT-A-CONSENT",
+                valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
+                valid_until=datetime(2090, 1, 1, tzinfo=timezone.utc),
+            )
+        self.assertIsInstance(grant, SyntheticLegacyModel)
+        self.assertFalse(hasattr(grant, "assets"))
 
     def test_all_ten_installed_source_red_contracts_pass_under_reference_guard(self):
         original_reds = [
