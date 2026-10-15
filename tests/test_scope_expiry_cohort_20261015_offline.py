@@ -563,14 +563,14 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
             st_dev=initial.st_dev, st_ino=initial.st_ino,
             st_size=2, st_mtime_ns=12, st_ctime_ns=11,
         )
-        with mock.patch.object(reviewer.sys, "stdin") as stdin, \\
+        with mock.patch.object(reviewer.sys, "stdin") as stdin, \
                 mock.patch.object(reviewer.os, "fstat", side_effect=[
                     initial, initial, initial, changed,
-                ]), \\
-                mock.patch.object(reviewer.os, "lseek", side_effect=[0, 2]), \\
-                mock.patch.object(reviewer.os, "get_blocking", return_value=True), \\
-                mock.patch.object(reviewer.os, "set_blocking") as blocking, \\
-                mock.patch.object(reviewer.select, "select", return_value=([0], [], [])), \\
+                ]), \
+                mock.patch.object(reviewer.os, "lseek", side_effect=[0, 2]), \
+                mock.patch.object(reviewer.os, "get_blocking", return_value=True), \
+                mock.patch.object(reviewer.os, "set_blocking") as blocking, \
+                mock.patch.object(reviewer.select, "select", return_value=([0], [], [])), \
                 mock.patch.object(reviewer.os, "read", side_effect=[b"{}", b""]):
             stdin.fileno.return_value = 0
             with self.assertRaises(ValueError):
@@ -584,12 +584,12 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
                                    st_dev=8, st_ino=10)
         swapped = SimpleNamespace(st_mode=original.st_mode,
                                   st_dev=8, st_ino=11)
-        with mock.patch.object(reviewer.sys, "stdin") as stdin, \\
+        with mock.patch.object(reviewer.sys, "stdin") as stdin, \
                 mock.patch.object(reviewer.os, "fstat",
-                                  side_effect=[original, swapped]), \\
-                mock.patch.object(reviewer.os, "get_blocking", return_value=True), \\
-                mock.patch.object(reviewer.os, "set_blocking") as blocking, \\
-                mock.patch.object(reviewer.select, "select", return_value=([0], [], [])), \\
+                                  side_effect=[original, swapped]), \
+                mock.patch.object(reviewer.os, "get_blocking", return_value=True), \
+                mock.patch.object(reviewer.os, "set_blocking") as blocking, \
+                mock.patch.object(reviewer.select, "select", return_value=([0], [], [])), \
                 mock.patch.object(reviewer.os, "read") as read:
             stdin.fileno.return_value = 0
             with self.assertRaises(ValueError):
@@ -604,11 +604,11 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
                                    st_dev=8, st_ino=10)
         swapped = SimpleNamespace(st_mode=original.st_mode,
                                   st_dev=8, st_ino=11)
-        with mock.patch.object(reviewer.sys, "stdout") as stdout, \\
+        with mock.patch.object(reviewer.sys, "stdout") as stdout, \
                 mock.patch.object(reviewer.os, "fstat",
-                                  side_effect=[original, original, swapped]), \\
-                mock.patch.object(reviewer.os, "get_blocking", return_value=True), \\
-                mock.patch.object(reviewer.os, "set_blocking") as blocking, \\
+                                  side_effect=[original, original, swapped]), \
+                mock.patch.object(reviewer.os, "get_blocking", return_value=True), \
+                mock.patch.object(reviewer.os, "set_blocking") as blocking, \
                 mock.patch.object(reviewer.os, "write") as write:
             stdout.fileno.return_value = 1
             self.assertFalse(reviewer._emit_receipt(reviewer._receipt("HOLD")))
