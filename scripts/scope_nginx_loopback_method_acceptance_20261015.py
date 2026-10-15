@@ -67,6 +67,37 @@ def render_loopback_config(template: str, frontend: int, backend: int, root: Pat
         raise ValueError("unexpected upstream")
     if re.search(r"\b(?:proxy_method|include|rewrite|return|error_page)\s+", uncommented):
         raise ValueError("unexpected server directive")
+    # Closed-world source: never carry an unreviewed Nginx directive into a
+    # runnable fixture. Otherwise 'mirror', 'auth_request', additional
+    # locations or a nested remote egress could bypass the proxy_pass check.
+    allowed = {
+        "server {", "location / {", "}",
+        "listen 443 ssl;", "server_name lightup.example.com;",
+        "ssl_certificate /etc/letsencrypt/live/lightup.example.com/fullchain.pem;",
+        "ssl_certificate_key /etc/letsencrypt/live/lightup.example.com/privkey.pem;",
+        "ssl_protocols TLSv1.2 TLSv1.3;",
+        "client_max_body_size 64k;", "client_header_timeout 10s;",
+        "client_body_timeout 10s;", "send_timeout 30s;", "access_log off;",
+        "proxy_pass http://127.0.0.1:8766;",
+        "proxy_set_header Host $http_host;",
+        "proxy_set_header X-Forwarded-Proto https;",
+        "proxy_set_header X-Forwarded-For $remote_addr;",
+        "proxy_set_header X-Forwarded-Host \"\";",
+        "proxy_set_header Forwarded \"\";",
+        "proxy_set_header X-Forwarded-Ssl \"\";",
+        "proxy_set_header X-Forwarded-Protocol \"\";",
+        "proxy_request_buffering on;", "proxy_connect_timeout 5s;",
+        "proxy_send_timeout 30s;", "proxy_read_timeout 35s;",
+        *(f'proxy_set_header {name} "";' for name in OVERRIDE_NAMES),
+    }
+    directives = [line.split("#", 1)[0].strip() for line in template.splitlines()]
+    directives = [line for line in directives if line]
+    if any(line not in allowed for line in directives):
+        raise ValueError("unreviewed Nginx directive")
+    if (directives.count("server {") != 1
+            or directives.count("location / {") != 1
+            or directives.count("}") != 2):
+        raise ValueError("invalid server/location layout")
     if any(char in str(root) for char in ('\n', '\r', '"')):
         raise ValueError("unsafe temp path")
 
@@ -124,12 +155,12 @@ def _available_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def _request(port: int, method: str, override: str) -> dict:
+def _request(port: int, method: str, overrides: dict[str, str]) -> dict:
     conn = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
     try:
         # This HTTP client may ONLY contact the loopback listener above.
         headers = {"Host": "localhost", "Content-Type": "text/plain"}
-        headers.update({name: override for name in OVERRIDE_NAMES})
+        headers.update(overrides)
         conn.request(method, "/__scope_method_fixture__", body=b"x" if method == "POST" else None,
                      headers=headers)
         response = conn.getresponse()
@@ -185,8 +216,17 @@ def run_probe(template: str, *, force_rewrite: bool = False,
                 raise RuntimeError("disposable nginx never listened")
             # Both directions: a client must not upgrade GET to a write method
             # or downgrade POST to a CSRF-exempt GET.
-            for method, override in (("GET", "DELETE"), ("POST", "GET")):
-                receipt = _request(port, method, override)
+            cases = [
+                (method, {name: spoof})
+                for name in OVERRIDE_NAMES
+                for method, spoof in (("GET", "DELETE"), ("POST", "GET"))
+            ]
+            cases += [
+                ("GET", {name: "POST" for name in OVERRIDE_NAMES}),
+                ("POST", {name: "GET" for name in OVERRIDE_NAMES}),
+            ]
+            for method, overrides in cases:
+                receipt = _request(port, method, overrides)
                 if receipt.get("method") != method:
                     return False
                 if receipt.get("path") != "/__scope_method_fixture__":
