@@ -36,6 +36,43 @@ source RED cases still require exactly 18 genuine `AssertionError` results
 and no network/process I/O. All mutation controls use disposable in-memory
 `unittest.TestResult` objects and alter no production file.
 
+## Optional offline configuration preflight (new, not installed as policy)
+
+Standalone tool: `scripts/scope_292_296_exact_network_preflight.py`, covered by
+`tests/test_scope_292_296_exact_network_preflight_20261015.py`.
+This is **real runnable code** but deliberately **not imported by ScopePolicy**
+or any executor. It audits only locally supplied configuration *syntax*; it
+cannot issue a grant, validate asset ownership, approve customer/operator
+consent, dispatch actions, scan, or deploy. It never calls DNS, HTTP, socket,
+shell or tool execution.
+
+Example of local use (all synthetic data, no customer targets):
+
+```sh
+printf '%s\\n' '{"explicit_networks":["198.51.100.0/24","2001:db8::/64"]}' |
+  python scripts/scope_292_296_exact_network_preflight.py
+# {"authorizes_execution":false,"authorizes_release":false,"authorizes_scan":false,"disposition":"REVIEW_ONLY","is_grant":false}
+# Exit status 3, never 0.
+```
+
+The single JSON object must have **exactly** the `explicit_networks` field
+containing a list of at most 128 exact canonical slash-bearing CIDR strings.
+The input is strict UTF-8, at most 16 KiB; duplicate object keys, malformed
+JSON, special float constants, extra fields, wrong types, noncanonical CIDRs
+(including host-bit widening, dotted-mask aliases and bare IPs) are **HOLD**.
+`REVIEW_ONLY` means only that offline *syntax* passed; it does not confer
+network membership, ownership, risk approval, grants or deployment permission.
+Both `HOLD` and `REVIEW_ONLY` receipts contain **four explicit false
+authority flags and an `is_grant:false` field** and nonzero exit code
+(`2` or `3` respectively). They never echo CIDRs, raw input, credentials
+or errors. Canonical `/0` is still a valid *syntax*, not a grant.
+
+The CLI/test module is a dry-run acceptance artifact pending source-owner
+coordination, **not** a production admission replacement or an automatic
+configuration migration. In particular its standalone list review cannot
+atomically validate another worker's live `ScopePolicy` input in the face of
+concurrent mutation; that requires #294 snapshot / #297 atomicity work.
+
 ## Owner implementation checklist (not applied to installed source)
 
 1. Validate the **whole** explicit-network configuration before any permission decision, rather than filtering invalid values and keeping the others; issue #297 independently owns broader policy atomicity.
