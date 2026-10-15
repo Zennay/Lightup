@@ -233,27 +233,26 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
         object.__setattr__(incomplete, "valid_from", START)
         assert_non_authorizing(self, review(incomplete), "HOLD", "invalid_shape")
 
-    def test_mutating_frozen_window_during_review_cannot_yield_review_only(self):
+    def test_getter_side_effect_cannot_execute_or_mutate_the_reviewed_window(self):
         auth = fixture()
-        original = Authorization.__getattribute__
-        calls = {"end": 0}
+        calls = []
 
-        def injecting_getattribute(instance, name):
-            if instance is auth and name == "valid_until":
-                calls["end"] += 1
-                if calls["end"] == 1:
-                    # Rebinding a frozen instance via object.__setattr__ is
-                    # possible. Without final identity readback, the original
-                    # window could have returned stale REVIEW_ONLY.
-                    object.__setattr__(
-                        instance, "valid_from", END + timedelta(seconds=1)
-                    )
-            return original(instance, name)
+        def forbidden_getter(instance, name):
+            if instance is auth:
+                calls.append(name)
+                object.__setattr__(instance, "valid_until", False)
+                raise AssertionError("untrusted getter invoked")
+            return object.__getattribute__(instance, name)
 
-        with patch.object(Authorization, "__getattribute__", injecting_getattribute):
-            result = review(auth)
-        self.assertGreaterEqual(calls["end"], 1)
-        assert_non_authorizing(self, result, "HOLD", "invalid_shape")
+        with patch.object(Authorization, "__getattribute__", forbidden_getter):
+            assert_non_authorizing(self, review(auth),
+                                   "REVIEW_ONLY", "temporal_shape_only")
+            assert_non_authorizing(
+                self, review_legacy_authorization_batch((auth,), observed_at=MID),
+                "REVIEW_ONLY", "temporal_shape_only"
+            )
+        self.assertEqual(calls, [])
+        self.assertIs(object.__getattribute__(auth, "__dict__")["valid_until"], END)
 
     def test_source_effect_guard_detects_offline_policy_regressions(self):
         path = Path(__file__).resolve().parent.parent / "src/lightup/legacy_temporal_shape_review_301.py"
@@ -382,23 +381,27 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
             verdict = review(auth)
         assert_non_authorizing(self, verdict, "HOLD", "invalid_shape")
 
-    def test_single_late_getter_mutation_of_stored_window_is_denied(self):
+    def test_late_getter_mutation_hook_is_not_invoked(self):
         auth = fixture()
-        original = Authorization.__getattribute__
-        read_count = {"end": 0}
+        touched = []
 
         def late_mutator(instance, name):
-            value = original(instance, name)
-            if instance is auth and name == "valid_until":
-                read_count["end"] += 1
-                if read_count["end"] == 2:
-                    object.__setattr__(instance, "valid_until", False)
-            return value
+            if instance is auth:
+                touched.append(name)
+                object.__setattr__(instance, "valid_until", False)
+                raise AssertionError("late mutation hook invoked")
+            return object.__getattribute__(instance, name)
 
         with patch.object(Authorization, "__getattribute__", late_mutator):
-            verdict = review(auth)
-        self.assertEqual(read_count["end"], 2)
-        assert_non_authorizing(self, verdict, "HOLD", "invalid_shape")
+            assert_non_authorizing(
+                self, review(auth), "REVIEW_ONLY", "temporal_shape_only"
+            )
+            assert_non_authorizing(
+                self, review_legacy_authorization_batch((auth,), observed_at=MID),
+                "REVIEW_ONLY", "temporal_shape_only"
+            )
+        self.assertEqual(touched, [])
+        self.assertIs(object.__getattribute__(auth, "__dict__")["valid_until"], END)
 
     def test_batch_exact_tuple_size_bounds_and_no_authority(self):
         for size in (1, 2, 16, 32):
