@@ -244,6 +244,44 @@ class DirectRiskReviewTests(unittest.TestCase):
             self.assertTrue(all(s is ReviewStatus.HOLD
                                 for s in reviews[first_hold:]))
 
+    def installed_direct_decision(self, max_risk, requested_risk):
+        """Only a local synthetic model fixture; never a target/scan."""
+        grant = AuthorizationGrant(
+            grant_id="synthetic-grant", client_id="synthetic-client",
+            engagement_id="synthetic-engagement",
+            approved_by="synthetic-operator", reference="fictional-ref",
+            scope=self.scope(max_risk),
+            valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
+            valid_until=datetime(2099, 1, 1, tzinfo=timezone.utc),
+        )
+        return ExecutionPolicy().decide(ExecutionRequest(
+            interaction=InteractionKind.TARGET_ACTIVE,
+            asset="fictional.invalid",
+            capability_id="fictional-capability",
+            requested_risk=requested_risk,
+            authorization=grant,
+        ))
+
+    @unittest.expectedFailure
+    def test_known_installed_policy_bool_true_active_risk_expected_red(self):
+        """bool is int-like; truthiness must not mint a risk ceiling."""
+        decision = self.installed_direct_decision(True, RiskLevel.PASSIVE)
+        self.assertFalse(
+            decision.allowed,
+            "boolean max_risk=True must never allow TARGET_ACTIVE",
+        )
+
+    @unittest.expectedFailure
+    def test_known_installed_policy_foreign_intenum_99_expected_red(self):
+        """A foreign IntEnum numerically equal to 99 is not RiskLevel."""
+        decision = self.installed_direct_decision(
+            ForeignRisk.SPOOFED, RiskLevel.STANDARD
+        )
+        self.assertFalse(
+            decision.allowed,
+            "foreign IntEnum max_risk=99 must never allow TARGET_ACTIVE",
+        )
+
     @unittest.expectedFailure
     def test_known_installed_policy_direct_int_99_authority_gap_expected_red(self):
         """Source-owner #773 must eventually reject this, not this reviewer.
@@ -252,21 +290,7 @@ class DirectRiskReviewTests(unittest.TestCase):
         a false passing authorization fix. Remove decorator only after a real
         owner fix makes the negative test pass on the exact tested source head.
         """
-        grant = AuthorizationGrant(
-            grant_id="synthetic-grant", client_id="synthetic-client",
-            engagement_id="synthetic-engagement",
-            approved_by="synthetic-operator", reference="fictional-ref",
-            scope=self.scope(99),
-            valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
-            valid_until=datetime(2099, 1, 1, tzinfo=timezone.utc),
-        )
-        decision = ExecutionPolicy().decide(ExecutionRequest(
-            interaction=InteractionKind.TARGET_ACTIVE,
-            asset="fictional.invalid",
-            capability_id="fictional-capability",
-            requested_risk=RiskLevel.STANDARD,
-            authorization=grant,
-        ))
+        decision = self.installed_direct_decision(99, RiskLevel.STANDARD)
         self.assertFalse(
             decision.allowed,
             "direct noncanonical scope.max_risk=99 must never authorize TARGET_ACTIVE",
