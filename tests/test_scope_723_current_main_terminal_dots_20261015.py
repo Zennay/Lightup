@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import os
 import socket
+import subprocess
+import urllib.request
 import sys
 import unittest
 from unittest.mock import patch
@@ -15,7 +17,7 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from lightup.models import Authorization, Target
-from lightup.scope import ScopePolicy, ScopeReason
+from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason
 
 
 _HOST = "terminal-dot.example.test"
@@ -272,6 +274,57 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
                 )
             self.assertTrue(_decision(_HOST).allowed)
             self.assertFalse(_decision("unlisted.example.test").allowed)
+
+    def test_entire_264_case_malformed_matrix_is_process_and_network_free(self):
+        # Every W2, W4 and W5 syntactic variant is evaluated as a genuine
+        # installed ScopePolicy decision, not a mock source and not a scan.
+        # Results may currently be unsafe (tracked as separate REDs), but
+        # this green invariant requires that none touches target I/O.
+        tests = []
+        for dots in range(2, 34):
+            suffix = "." * dots
+            for value in (_HOST + suffix, "https://" + _HOST + suffix + "/synthetic-only"):
+                tests.append((value, _HOST, True))
+            for value in (_HOST, _HOST + "."):
+                tests.append((value, _HOST + suffix, True))
+            for value in ("LOCALHOST" + suffix, "http://localhost" + suffix + "/synthetic-only"):
+                tests.append((value, None, False))
+        for value in ("..", "...", "https://../synthetic-only", "http://.../synthetic-only"):
+            tests.append((value, "", True))
+        for dots in range(2, 18):
+            suffix = "." * dots
+            for value in (_HOST + suffix, "https://" + _HOST + suffix + "/lab-only"):
+                tests.append((value, _HOST, False))
+            for value in (_HOST, _HOST + "."):
+                tests.append((value, _HOST + suffix, False))
+        for value in ("..", "...", "http://../lab-only", "https://.../lab-only"):
+            tests.append((value, "", False))
+        self.assertEqual(len(tests), 264)
+
+        with (
+            patch.object(socket, "socket", side_effect=AssertionError("socket prohibited")),
+            patch.object(socket, "getaddrinfo", side_effect=AssertionError("DNS prohibited")),
+            patch.object(socket, "gethostbyname", side_effect=AssertionError("DNS prohibited")),
+            patch.object(socket, "create_connection", side_effect=AssertionError("connect prohibited")),
+            patch.object(subprocess, "Popen", side_effect=AssertionError("process prohibited")),
+            patch.object(subprocess, "run", side_effect=AssertionError("process prohibited")),
+            patch.object(os, "system", side_effect=AssertionError("shell prohibited")),
+            patch.object(urllib.request, "urlopen", side_effect=AssertionError("HTTP prohibited")),
+        ):
+            observed = []
+            for value, declared, requires_auth in tests:
+                policy = ScopePolicy(
+                    allow_private_lab=False,
+                    explicit_hosts=frozenset((declared,)) if declared is not None else frozenset(),
+                    require_authorization_for_public=requires_auth,
+                )
+                # No trusted operator data or real targets are supplied.
+                marker = _SYNTHETIC_ONLY if requires_auth else None
+                decision = policy.decide(Target(value, authorization=marker))
+                self.assertIs(type(decision), ScopeDecision)
+                self.assertIs(type(decision.allowed), bool)
+                observed.append(decision)
+            self.assertEqual(len(observed), 264)
 
     def test_policy_side_url_decorations_cannot_grant_embedded_hostname(self):
         policy_entries = (
