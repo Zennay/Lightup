@@ -15,6 +15,11 @@ from lightup.execution_policy import ExecutionPolicy, ExecutionRequest, Interact
 
 
 FIXTURE_NOW = datetime(2026, 10, 15, 12, 0, tzinfo=timezone.utc)
+# Direct policy reads the real clock; fixed ±1-day windows would expire and
+# invalidate this source-owner reference witness the day after creation.
+WINDOW_START = datetime(2000, 1, 1, tzinfo=timezone.utc)
+WINDOW_END = datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+LATER = datetime(2050, 1, 1, tzinfo=timezone.utc)
 FIXTURE_ASSET = "fictional-revocation-matrix.example.test"
 FIXTURE_CAP = "fictional-readonly-capability"
 ORIGINAL_CURRENT = AuthorizationGrant.is_current
@@ -41,8 +46,8 @@ def grant(**kwargs):
             max_risk=RiskLevel.STANDARD,
             allowed_capabilities=(FIXTURE_CAP,),
         ),
-        valid_from=FIXTURE_NOW - timedelta(days=1),
-        valid_until=FIXTURE_NOW + timedelta(days=1),
+        valid_from=WINDOW_START,
+        valid_until=WINDOW_END,
     )
     return replace(value, **kwargs)
 
@@ -74,6 +79,18 @@ class TestOnlyRevocationReferenceAcceptance(unittest.TestCase):
         # Source owner must retire it when the genuine installed fix lands.
         self.assertTrue(grant(revoked_by="fictional-operator").is_current(FIXTURE_NOW))
         self.assertTrue(active_decision(grant(revocation_reason="withdrawn")).allowed)
+
+    def test_original_source_witness_does_not_silently_expire_after_2026(self):
+        # This ordinary unsafe-source diagnostic is intentionally retired on fix.
+        stale = grant(revoked_by="fictional-operator")
+        self.assertTrue(stale.is_current(LATER))
+        self.assertTrue(active_decision(stale).allowed)
+
+    def test_reference_still_deny_stale_actor_after_original_fixture_date(self):
+        stale = grant(revoked_by="fictional-operator")
+        with patch.object(AuthorizationGrant, "is_current", new=reference_current):
+            self.assertFalse(stale.is_current(LATER))
+            self.assertFalse(active_decision(stale).allowed)
 
     def test_reference_blocks_stale_actor_in_real_installed_policy_chain(self):
         with patch.object(AuthorizationGrant, "is_current", new=reference_current):
