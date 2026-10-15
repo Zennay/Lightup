@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+from types import MappingProxyType
 import socket
 import sys
 from unittest.mock import patch
@@ -55,14 +56,14 @@ CASES = (
     Case("host_bytes_to_network", DOCUMENTATION_IP, frozenset({b"security.example.test"}), (DOCUMENTATION_NET,), ScopeReason.EXPLICIT_NETWORK),
 )
 
-FROZEN_FALSE_PERMISSIONS = {
+FROZEN_FALSE_PERMISSIONS = MappingProxyType({
     "can_authorize": False,
     "can_grant": False,
     "can_scan": False,
     "can_merge": False,
     "can_deploy": False,
     "can_release": False,
-}
+})
 
 
 class NetworkAttemptBlocked(RuntimeError):
@@ -164,11 +165,26 @@ def evaluate() -> dict:
 
 
 def render_dutch(receipt: dict) -> str:
+    by_id = {
+        item["case_id"]: item["classification"] for item in receipt["observations"]
+    }
+    network_to_host = sum(
+        status == "UNSAFE_ALLOW"
+        for case_id, status in by_id.items()
+        if case_id.startswith("network_")
+    )
+    host_to_network = sum(
+        status == "UNSAFE_ALLOW"
+        for case_id, status in by_id.items()
+        if case_id.startswith("host_")
+    )
     lines = [
         "LightUp #297 — offline autorisatieproef met fictieve gegevens",
         "UITKOMST: HOLD — geen toestemming, scan, grant of vrijgave",
         f"Gecontroleerde paden: {receipt['case_count']}",
         f"Onveilige toestemmingen gezien: {receipt['unsafe_allow_count']}",
+        f"Fout netwerkbeleid omzeild via hostnaam: {network_to_host}",
+        f"Fout hostbeleid omzeild via IP-netwerk: {host_to_network}",
         f"Andere toestemmingen voor review: {receipt['other_allow_review_count']}",
         f"Weigeringen voor review: {receipt['denied_review_count']}",
         f"Fouten voor review: {receipt['error_review_count']}",
@@ -177,7 +193,12 @@ def render_dutch(receipt: dict) -> str:
     ]
     for item in receipt["observations"]:
         lines.append(f"  {item['case_id']}: {item['classification']}")
-    lines.append("Let op: alleen originele geïnstalleerde broncode + CI + eigenaar mogen vrijgave onderbouwen.")
+    lines.append(
+        "Herstelroute: valideer al het host- en netwerkbeleid samen, vóór publieke toegang."
+    )
+    lines.append(
+        "Let op: alleen originele geïnstalleerde broncode + CI + eigenaar mogen vrijgave onderbouwen."
+    )
     return "\n".join(lines)
 
 
