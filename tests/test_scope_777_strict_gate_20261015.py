@@ -218,5 +218,36 @@ class StrictProductionPolicyGateTests(unittest.TestCase):
                 gate._scan_pure_local()
 
 
+    def test_mutating_nested_scope_fails_closed(self):
+        original = ExecutionPolicy.decide
+
+        def mutate_scope(self, request):
+            verdict = original(self, request)
+            if request.authorization is not None:
+                # A shallow request/grant dict snapshot sees the *same* object
+                # and misses this mutation without independent deep snapshot.
+                object.__setattr__(request.authorization.scope, "assets",
+                                   ("tampered.example.test",))
+            return verdict
+
+        with patch.object(ExecutionPolicy, "decide", mutate_scope):
+            with self.assertRaises(ValueError):
+                gate._scan_pure_local()
+
+    def test_mutating_nested_scope_from_negative_request_fails_closed(self):
+        original = ExecutionPolicy.decide
+
+        def mutate_only_negative(self, request):
+            verdict = original(self, request)
+            if request.authorization is not None and request.asset == "other.example.test":
+                object.__setattr__(request.authorization.scope, "allowed_capabilities",
+                                   ("tampered-capability",))
+            return verdict
+
+        with patch.object(ExecutionPolicy, "decide", mutate_only_negative):
+            with self.assertRaises(ValueError):
+                gate._scan_pure_local()
+
+
 if __name__ == "__main__":
     unittest.main()
