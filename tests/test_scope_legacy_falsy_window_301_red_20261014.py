@@ -146,6 +146,38 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
         )
         self.assertFalse(_authorization(end=deceptive).is_current(NOW))
 
+    @unittest.expectedFailure
+    def test_red_falsey_datetime_subclass_cannot_open_public_scope_early(self):
+        future = NOW + timedelta(days=1)
+        deceptive = _FalseyDatetimeSubclass(
+            future.year, future.month, future.day,
+            future.hour, future.minute, future.second,
+            future.microsecond, tzinfo=timezone.utc,
+        )
+        grant = _authorization(start=deceptive)
+        original = repr(grant)
+        decision = _pure_scope_decision_at(grant, NOW)
+        self.assertEqual(decision.normalized_host,
+                         "scope.fixture.example.test")
+        self.assertEqual(repr(grant), original)
+        self.assertFalse(decision.allowed, "future start must deny scope")
+
+    @unittest.expectedFailure
+    def test_red_falsey_datetime_subclass_cannot_open_public_scope_expired(self):
+        expired = NOW - timedelta(days=1)
+        deceptive = _FalseyDatetimeSubclass(
+            expired.year, expired.month, expired.day,
+            expired.hour, expired.minute, expired.second,
+            expired.microsecond, tzinfo=timezone.utc,
+        )
+        grant = _authorization(end=deceptive)
+        original = repr(grant)
+        decision = _pure_scope_decision_at(grant, NOW)
+        self.assertEqual(decision.normalized_host,
+                         "scope.fixture.example.test")
+        self.assertEqual(repr(grant), original)
+        self.assertFalse(decision.allowed, "expired end must deny scope")
+
     def test_all_inputs_remain_unchanged_after_pure_scope_decision(self):
         # No CI calendar dependence: inject NOW through the real
         # ScopePolicy -> Authorization.is_current() wall-clock boundary.
