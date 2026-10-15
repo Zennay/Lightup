@@ -638,6 +638,68 @@ class OfflineAttemptJournalTests(unittest.TestCase):
             self.journal.mark_recorded(other, "d" * 64), "HOLD")
         self.assertEqual(self.count(), 1)
 
+    def test_mutated_attempt_id_during_reserve_never_gets_review_receipt(self):
+        attempt = fixture()
+        def tamper(sql):
+            if sql.strip().upper() == "BEGIN IMMEDIATE":
+                object.__setattr__(
+                    attempt, "attempt_id", "fixture-mutated-attempt"
+                )
+        self.con.set_trace_callback(tamper)
+        try:
+            receipt = self.journal.reserve(attempt)
+        finally:
+            self.con.set_trace_callback(None)
+        self.assert_non_authorizing(receipt, "HOLD")
+        self.assertEqual(self.count(), 0)
+        self.assertFalse(self.con.in_transaction)
+
+    def test_mutated_run_during_reserve_cannot_claim_valid_provenance(self):
+        attempt = fixture()
+        def tamper(sql):
+            if sql.strip().upper() == "BEGIN IMMEDIATE":
+                object.__setattr__(attempt, "run_id", "fixture-mutated-run")
+        self.con.set_trace_callback(tamper)
+        try:
+            receipt = self.journal.reserve(attempt)
+        finally:
+            self.con.set_trace_callback(None)
+        self.assert_non_authorizing(receipt, "HOLD")
+        self.assertEqual(self.count(), 0)
+        self.assertFalse(self.con.in_transaction)
+
+    def test_mutated_grant_during_terminal_transition_is_denied(self):
+        attempt = fixture()
+        self.journal.reserve(attempt)
+        def tamper(sql):
+            if sql.strip().upper() == "BEGIN IMMEDIATE":
+                object.__setattr__(attempt, "grant_id", "fixture-mutated-grant")
+        self.con.set_trace_callback(tamper)
+        try:
+            receipt = self.journal.mark_recorded(attempt, "a" * 64)
+        finally:
+            self.con.set_trace_callback(None)
+        self.assert_non_authorizing(receipt, "HOLD")
+        self.assertEqual(self.con.execute(
+            "SELECT phase FROM offline_scope_1454_attempts"
+        ).fetchone()[0], "reserved")
+        self.assertFalse(self.con.in_transaction)
+
+    def test_mutated_client_during_phase_read_denies_identity(self):
+        attempt = fixture()
+        self.journal.reserve(attempt)
+        def tamper(sql):
+            if sql.strip().upper() == "BEGIN":
+                object.__setattr__(attempt, "client_id", "fixture-new-client")
+        self.con.set_trace_callback(tamper)
+        try:
+            phase, receipt = self.journal.review_phase(attempt)
+        finally:
+            self.con.set_trace_callback(None)
+        self.assertEqual(phase, "unknown")
+        self.assert_non_authorizing(receipt, "HOLD")
+        self.assertFalse(self.con.in_transaction)
+
     def test_phase_read_uses_single_explicit_sqlite_snapshot(self):
         self.assert_non_authorizing(self.journal.reserve(self.attempt), "REVIEW_ONLY")
         trace = []
