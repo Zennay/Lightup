@@ -24,8 +24,10 @@ not be represented as a passing production fix. Source-owner review is needed.
   polymorphic objects and foreign scope subclasses are **HOLD**.
 - Requests above the canonical risk ceiling, and any destructive-lab tier
   in this direct-target risk-only comparison, are **HOLD**.
-- Matching canonical limits are merely **REVIEW_ONLY**. The receipt has six
-  immutable literal-false booleans: `authorized`, `may_scan`,
+- Matching canonical limits are merely **REVIEW_ONLY**. The typed immutable
+  receipt exposes six literal-false read-only booleans. Its constructor accepts
+  only status and reason, **never** authority flags; fresh `to_dict()` outputs
+  cannot mutate the underlying tuple or elevate a later receipt. The flags: `authorized`, `may_scan`,
   `may_dispatch`, `may_issue_grant`, `release_ready`, `may_deploy`.
 - This intentionally does **not** inspect asset membership, exclusions,
   capabilities, requester identity, grant signatures, consent, timestamps,
@@ -45,7 +47,8 @@ PYTHONPATH=src python -m unittest discover -s tests \
 The unit suite checks the full five-by-five canonical risk matrix,
 invalid raw types, spoofed enum/numeric forms, foreign scope subclasses,
 destructive-tier denial, monotonicity, all-six-false receipt invariants,
-secret non-reflection, receipt immutability, and one `expectedFailure`
+secret non-reflection, constructor-forgery rejection, immutable fresh snapshot
+outputs, and one `expectedFailure`
 for the *installed* direct-int-99 policy gap.
 
 An expected failure on the installed policy is a documented **RED**,
