@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import sys
+import unicodedata
 from collections import defaultdict
 from pathlib import PurePosixPath
 
@@ -42,6 +43,15 @@ def _positive_int(value):
 def _path(value):
     if type(value) is not str or not (1 <= len(value) <= 260):
         raise InvalidSnapshot('invalid changed path')
+    # Preserve exact Git path identity but refuse visual control/invisible text.
+    # In particular U+202E can make a path look like a different owned file.
+    if unicodedata.normalize('NFC', value) != value:
+        raise InvalidSnapshot('ambiguous path normalization')
+    if any(unicodedata.category(ch) in ('Cc', 'Cf', 'Cs')
+           or unicodedata.bidirectional(ch) in (
+               'LRE', 'RLE', 'LRO', 'RLO', 'PDF', 'LRI', 'RLI', 'FSI', 'PDI')
+           for ch in value):
+        raise InvalidSnapshot('invisible or bidirectional path')
     if '\\' in value or '\x00' in value or '\r' in value or '\n' in value:
         raise InvalidSnapshot('invalid changed path')
     parts = value.split('/')
