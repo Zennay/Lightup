@@ -134,9 +134,18 @@ class _LoopbackServer(WSGIServer):
 
 
 def _echo_wsgi(environ, start_response):
+    # Read only the tiny, self-generated lab payload, never arbitrary client
+    # data. Request-body equality catches an upstream method/frame rewrite
+    # that leaves REQUEST_METHOD apparently unchanged.
+    size = int(environ.get("CONTENT_LENGTH") or "0")
+    if size not in (0, 1):
+        start_response("400 Bad Request", [("Content-Length", "0")])
+        return [b""]
+    payload = environ["wsgi.input"].read(size)
     result = {
         "method": environ.get("REQUEST_METHOD"),
         "path": environ.get("PATH_INFO"),
+        "body": payload.decode("ascii") if payload in (b"", b"x") else "INVALID",
         "override_headers": {
             name: environ.get("HTTP_" + name.upper().replace("-", "_"))
             for name in OVERRIDE_NAMES
@@ -155,14 +164,20 @@ def _available_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def _request(port: int, method: str, overrides: dict[str, str]) -> dict:
+def _request(port: int, method: str, overrides) -> dict:
+    # Use HTTPConnection's low-level header API: a dict would coalesce
+    # duplicate names, masking case variants before reaching real Nginx.
+    pairs = tuple(overrides.items()) if isinstance(overrides, dict) else tuple(overrides)
     conn = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
     try:
-        # This HTTP client may ONLY contact the loopback listener above.
-        headers = {"Host": "localhost", "Content-Type": "text/plain"}
-        headers.update(overrides)
-        conn.request(method, "/__scope_method_fixture__", body=b"x" if method == "POST" else None,
-                     headers=headers)
+        conn.putrequest(method, "/__scope_method_fixture__", skip_host=True)
+        conn.putheader("Host", "localhost")
+        conn.putheader("Content-Type", "text/plain")
+        if method == "POST":
+            conn.putheader("Content-Length", "1")
+        for name, value in pairs:
+            conn.putheader(name, value)
+        conn.endheaders(b"x" if method == "POST" else None)
         response = conn.getresponse()
         body = response.read(4096)
         if response.status != 200 or not body:
@@ -225,11 +240,23 @@ def run_probe(template: str, *, force_rewrite: bool = False,
                 ("GET", {name: "POST" for name in OVERRIDE_NAMES}),
                 ("POST", {name: "GET" for name in OVERRIDE_NAMES}),
             ]
+            # Independent duplicate-name and mixed-case real HTTP transport
+            # probes. HTTP headers are case-insensitive; dict-only tests cannot
+            # prove the actual reverse proxy rejects both spellings.
+            for name in OVERRIDE_NAMES:
+                cases.extend((
+                    ("GET", [(name.lower(), "DELETE")]),
+                    ("POST", [(name.swapcase(), "GET")]),
+                    ("GET", [(name, "DELETE"), (name.lower(), "POST")]),
+                    ("POST", [(name.lower(), "GET"), (name, "DELETE")]),
+                ))
             for method, overrides in cases:
                 receipt = _request(port, method, overrides)
                 if receipt.get("method") != method:
                     return False
                 if receipt.get("path") != "/__scope_method_fixture__":
+                    return False
+                if receipt.get("body") != ("x" if method == "POST" else ""):
                     return False
                 if receipt.get("override_headers"):
                     return False
