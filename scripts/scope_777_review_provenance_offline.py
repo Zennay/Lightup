@@ -7,12 +7,15 @@ from __future__ import annotations
 
 import json
 import os
+import select
 import stat
 import sys
+import time
 import unicodedata
 
 MAX_INPUT_BYTES = 4096
 MAX_VALUE_BYTES = 128
+MAX_INPUT_WAIT_SECONDS = 2.0
 AUTHORITY_FLAGS = (
     "authorization_verified", "permit_issued", "dispatch_enabled",
     "merge_approved", "deploy_approved", "release_approved",
@@ -74,6 +77,48 @@ def review_bytes(data: bytes) -> dict[str, str | bool]:
     return _receipt("REVIEW_ONLY")
 
 
+def _read_bounded_local() -> bytes:
+    """Read to EOF with a monotonic deadline, never waiting forever on a FIFO."""
+    chunks: list[bytes] = []
+    total = 0
+    deadline = time.monotonic() + MAX_INPUT_WAIT_SECONDS
+    was_blocking = os.get_blocking(0)
+    try:
+        os.set_blocking(0, False)
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("untrusted input held open")
+            if not select.select([0], [], [], remaining)[0]:
+                raise TimeoutError("untrusted input timed out")
+            try:
+                part = os.read(0, MAX_INPUT_BYTES + 1 - total)
+            except BlockingIOError:
+                continue
+            if not part:
+                break
+            chunks.append(part)
+            total += len(part)
+            if total > MAX_INPUT_BYTES:
+                break
+    finally:
+        os.set_blocking(0, was_blocking)
+    return b"".join(chunks)
+
+
+def _write_nonblocking_receipt(payload: bytes) -> None:
+    """One small atomic pipe/TTY write; never wait on an unconsumed output."""
+    if len(payload) > 512:
+        raise ValueError("oversized receipt")
+    was_blocking = os.get_blocking(1)
+    try:
+        os.set_blocking(1, False)
+        if os.write(1, payload) != len(payload):
+            raise OSError("partial receipt")
+    finally:
+        os.set_blocking(1, was_blocking)
+
+
 def main() -> int:
     if len(sys.argv) != 1:
         return 2
@@ -87,11 +132,15 @@ def main() -> int:
         if not (stat.S_ISFIFO(stdout_mode) or
                 (stat.S_ISCHR(stdout_mode) and os.isatty(1))):
             return 2
-        data = sys.stdin.buffer.read(MAX_INPUT_BYTES + 1)
-        receipt = review_bytes(data)
-        sys.stdout.write(json.dumps(receipt, separators=(",", ":"), sort_keys=True) + "\n")
-        sys.stdout.flush()
-    except (OSError, BrokenPipeError, ValueError):
+        try:
+            data = _read_bounded_local()
+        except TimeoutError:
+            receipt = _receipt("HOLD")
+        else:
+            receipt = review_bytes(data)
+        encoded = (json.dumps(receipt, separators=(",", ":"), sort_keys=True) + "\n").encode("ascii")
+        _write_nonblocking_receipt(encoded)
+    except (OSError, TimeoutError, ValueError):
         return 2
     return 3 if receipt["status"] == "REVIEW_ONLY" else 2
 
