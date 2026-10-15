@@ -139,6 +139,49 @@ class DuplicateArgumentKeysInstalledSource1147(unittest.TestCase):
         self.assertEqual(self.calls, [{"selector": "unique", "note": "new"}])
         self.assertEqual(self.evidence_count(), 1)
 
+    def test_current_source_equal_duplicate_values_still_invoke_handler(self):
+        # Even equal repeated keys are structurally ambiguous and must be denied.
+        result = self.executor.execute(
+            self.context, self.call(("selector", "same"), ("selector", "same"))
+        )
+        self.assertEqual(self.calls, [{"selector": "same"}])
+        self.assertEqual(self.evidence_count(), 1)
+        self.assertEqual(self.state.get_evidence(result.evidence_id).run_id, self.run_id)
+
+    def test_current_source_interleaved_triple_duplicate_uses_last(self):
+        result = self.executor.execute(
+            self.context,
+            self.call(
+                ("selector", "first"), ("note", "distinct"),
+                ("selector", "middle"), ("selector", "last"),
+            ),
+        )
+        self.assertEqual(self.calls, [{"selector": "last", "note": "distinct"}])
+        self.assertEqual(self.evidence_count(), 1)
+        self.assertEqual(self.state.get_evidence(result.evidence_id).run_id, self.run_id)
+
+    @unittest.expectedFailure
+    def test_required_denial_of_identical_duplicate_keys_before_any_effect(self):
+        with self.assertRaises(OrchestrationError):
+            self.executor.execute(
+                self.context, self.call(("selector", "same"), ("selector", "same"))
+            )
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), 0)
+
+    @unittest.expectedFailure
+    def test_required_denial_of_interleaved_triple_keys_before_any_effect(self):
+        with self.assertRaises(OrchestrationError):
+            self.executor.execute(
+                self.context,
+                self.call(
+                    ("selector", "first"), ("note", "distinct"),
+                    ("selector", "middle"), ("selector", "last"),
+                ),
+            )
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), 0)
+
     @unittest.expectedFailure
     def test_required_denial_of_duplicate_valid_keys_before_any_effect(self):
         # Expected source RED. On a fixed source: ordinary PASS, never XFAIL.
