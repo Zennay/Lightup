@@ -110,11 +110,18 @@ def _has_provenance_fk(connection: sqlite3.Connection) -> bool:
         and target[4] == "request_id"
     ):
         return False
-    # A declared FK can be bypassed if a different writer has disabled
-    # PRAGMA foreign_keys. Verify the existing grant table, not just the
-    # currently selected row; fail closed on any broken dependent grant.
-    # This read-only, potentially costly consistency scan is deliberately
-    # limited to the optional offline reviewer (never a live dispatch gate).
+    # SQLite foreign keys permit NULL child values by default, and a
+    # normal PRAGMA foreign_key_check will NOT report that missing consent.
+    # A stored grant without a canonical approved request reference must
+    # block the entire snapshot, including otherwise coherent selected rows.
+    # Bounded by the connection's read-only VM work budget.
+    for row in connection.execute(
+        "SELECT approved_request_id FROM authorization_grants"
+    ):
+        if not _identifier(row[0]):
+            return False
+    # A declared FK can also be bypassed if a different writer has disabled
+    # PRAGMA foreign_keys. Verify all child rows, not just the selected one.
     return connection.execute(
         "PRAGMA foreign_key_check(authorization_grants)"
     ).fetchone() is None
