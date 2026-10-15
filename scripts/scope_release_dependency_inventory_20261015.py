@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import sys
+from scope_release_stdin_20261015 import read_bounded_stdin
 
 GATES = (
     "client_consent",
@@ -77,7 +78,7 @@ def assess(raw: bytes) -> dict[str, object]:
 def main() -> int:
     try:
         # Never consume unbounded stdin; ignore surplus and never echo data.
-        raw = sys.stdin.buffer.read(MAX_BYTES + 1)
+        raw = read_bounded_stdin(MAX_BYTES)
         result = assess(raw)
     except (InvalidPacket, OSError):
         result = {
