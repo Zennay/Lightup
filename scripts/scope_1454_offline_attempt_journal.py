@@ -111,6 +111,45 @@ class ReviewReceipt:
         }
 
 
+@dataclass(frozen=True)
+class OfflineBacklogReview:
+    """Aggregate counts only; never an executable capability or consent token."""
+
+    receipt: ReviewReceipt
+    reserved_count: int
+    uncertain_count: int
+    recorded_count: int
+
+    def __post_init__(self) -> None:
+        if (
+            type(self) is not OfflineBacklogReview
+            or type(self.receipt) is not ReviewReceipt
+            or any(type(n) is not int or not 0 <= n <= 256 for n in (
+                self.reserved_count, self.uncertain_count, self.recorded_count
+            ))
+            or self.reserved_count + self.uncertain_count + self.recorded_count > 256
+            or (self.receipt.status == "HOLD" and
+                (self.reserved_count or self.uncertain_count or self.recorded_count))
+        ):
+            raise ValueError("invalid offline backlog review")
+
+    def __bool__(self) -> bool:
+        raise TypeError("an offline backlog can never act as permission")
+
+    def as_dict(self) -> dict[str, object]:
+        safe = self.receipt.as_dict()
+        trustworthy = safe["status"] == "REVIEW_ONLY"
+        return {
+            **safe,
+            "reserved_count": self.reserved_count if trustworthy else 0,
+            "uncertain_count": self.uncertain_count if trustworthy else 0,
+            "recorded_count": self.recorded_count if trustworthy else 0,
+            "requires_manual_reconciliation": (
+                self.reserved_count + self.uncertain_count if trustworthy else 0
+            ),
+        }
+
+
 def _hold() -> ReviewReceipt:
     return ReviewReceipt("HOLD", "manual_review_required")
 
@@ -373,3 +412,39 @@ class OfflineAttemptJournal:
         else:
             return "unknown", _hold()
         return phase, _review()
+
+    def review_backlog(self) -> OfflineBacklogReview:
+        """Privacy-minimal, capped *offline* counts; no ID/hash/target export.
+
+        A suspicious row, schema change, SQLite error, open caller transaction,
+        or more than 256 records produces generic HOLD and zero visible counts.
+        Neither REVIEW_ONLY nor a low backlog grants execution authority.
+        """
+        hold = OfflineBacklogReview(_hold(), 0, 0, 0)
+        try:
+            if self._con.in_transaction or not self._schema_valid():
+                return hold
+            rows = self._con.execute(
+                "SELECT sealed_binding,phase,evidence_digest "
+                "FROM offline_scope_1454_attempts LIMIT 257"
+            ).fetchall()
+            if len(rows) > 256:
+                return hold
+            counts = {"reserved": 0, "uncertain": 0, "recorded": 0}
+            for digest_binding, phase, evidence in rows:
+                if type(digest_binding) is not str or _SHA.fullmatch(digest_binding) is None:
+                    return hold
+                if phase == "recorded":
+                    if type(evidence) is not str or _SHA.fullmatch(evidence) is None:
+                        return hold
+                elif phase in ("reserved", "uncertain"):
+                    if evidence is not None:
+                        return hold
+                else:
+                    return hold
+                counts[phase] += 1
+            return OfflineBacklogReview(
+                _review(), counts["reserved"], counts["uncertain"], counts["recorded"]
+            )
+        except sqlite3.Error:
+            return hold
