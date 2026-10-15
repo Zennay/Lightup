@@ -41,3 +41,13 @@ remain equal. A partial/missing verbose listing is marked
 authentic GitHub checkout, test discovery, running interpreter, or trusted
 source provenance. All output remains aggregate-only, HOLD and exit 2;
 never echo raw names or permit real scans/merge/release.
+
+## W9: reject post-summary case-line injection
+
+A verbose method row only counts when it occurs **before** the unique
+`Ran N tests` suite summary. A `test_...` row inserted between
+`Ran N tests` and `OK/FAILED`, or appended *after* the result, is
+strictly invalid; so is `OK/FAILED` before `Ran N tests`. Such rows
+cannot create false watched-test coverage and all malformed inputs remain
+opaque HOLD, without leaking the raw log. This order check also protects
+W8's chain review, which reuses the exact same parser.
