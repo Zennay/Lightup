@@ -87,7 +87,7 @@ class _AssertionWitnessResult(unittest.TestResult):
         self.real_expected_types = []
 
     def addExpectedFailure(self, test, err):
-        self.real_expected_types.append(err[0])
+        self.real_expected_types.append((err[0], str(err[1])))
         super().addExpectedFailure(test, err)
 
 
@@ -133,7 +133,10 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
                 self.assertFalse(result.failures)
                 self.assertFalse(result.unexpectedSuccesses)
                 self.assertEqual(len(result.expectedFailures), 1)
-                self.assertEqual(result.real_expected_types, [AssertionError])
+                self.assertEqual(
+                    result.real_expected_types,
+                    [(AssertionError, "True is not false")],
+                )
 
     def test_entire_source_contract_avoids_network_and_dns(self):
         with (
@@ -145,7 +148,10 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
                 result = _AssertionWitnessResult()
                 TerminalDotCurrentMainSourceRed(name).run(result)
                 self.assertEqual(len(result.expectedFailures), 1, name)
-                self.assertEqual(result.real_expected_types, [AssertionError])
+                self.assertEqual(
+                    result.real_expected_types,
+                    [(AssertionError, "True is not false")],
+                )
             self.assertTrue(_decision(_HOST).allowed)
             self.assertFalse(_decision("unlisted.example.test").allowed)
 
