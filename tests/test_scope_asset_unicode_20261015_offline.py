@@ -682,6 +682,30 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
                                  "REVIEW_ONLY" if code == 3 else "HOLD")
                 self.assertTrue(all(verdict[key] is False for key in mod.FALSE_FLAGS))
 
+    def test_af_unix_socket_input_is_rejected_before_any_read(self):
+        data = json.dumps(synthetic_claim()).encode("utf-8")
+        with socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM) as (left, right):
+            left.sendall(data)
+            child = subprocess.run(
+                [sys.executable, str(SCRIPT), "--stdin-json"],
+                stdin=right, capture_output=True, timeout=5, check=False,
+            )
+        self.assertEqual(child.returncode, 2)
+        self.assert_hold(json.loads(child.stdout))
+        self.assertEqual(child.stderr, b"")
+
+    def test_disconnected_local_receipt_reader_never_prints_traceback(self):
+        data = json.dumps(synthetic_claim()).encode("utf-8")
+        child = subprocess.Popen(
+            [sys.executable, str(SCRIPT), "--stdin-json"],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        assert child.stdout is not None
+        child.stdout.close()
+        _, err = child.communicate(input=data, timeout=5)
+        self.assertEqual(child.returncode, 2)
+        self.assertEqual(err, b"")
+
     def test_output_is_local_pipe_only_not_regular_file_or_socket(self):
         data = json.dumps(synthetic_claim()).encode("utf-8")
         with tempfile.TemporaryFile(mode="w+b") as sink:
