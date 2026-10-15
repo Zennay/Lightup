@@ -6,7 +6,7 @@ A REVIEW_ONLY result explicitly is NOT permission to execute anything.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import re
 from threading import Lock
 from typing import Callable
@@ -36,6 +36,7 @@ class ReviewRequest:
     tool: str
     capability: str
     risk: int
+    started_at: datetime
 
     def is_synthetic(self) -> bool:
         return (
@@ -43,6 +44,7 @@ class ReviewRequest:
             and all(_synthetic(getattr(self, k)) for k in
                     ("run", "client", "engagement", "asset", "tool", "capability"))
             and type(self.risk) is int and self.risk == 5
+            and _aware(self.started_at)
         )
 
 
@@ -58,7 +60,10 @@ class ReferenceApproval:
             and type(self.request) is ReviewRequest
             and self.request.is_synthetic()
             and _aware(self.issued_at) and _aware(self.expires_at)
-            and self.issued_at < self.expires_at
+            and self.issued_at < self.request.started_at < self.expires_at
+            # Independent per-target destructive opt-in must expire within
+            # 24 hours, never be minted after the fictional run began.
+            and self.expires_at - self.issued_at <= timedelta(hours=24)
         )
 
 
@@ -162,7 +167,7 @@ class OfflineRevalidationFence:
         return (
             request.run, request.client, request.engagement, request.asset,
             request.tool, request.capability, request.risk,
-            value.issued_at, value.expires_at,
+            request.started_at, value.issued_at, value.expires_at,
         )
 
     @staticmethod
@@ -259,6 +264,7 @@ class OfflineRevalidationFence:
                     or tool.tool != initial_request.tool
                     or tool.capability != initial_request.capability
                     or tool.risk != initial_request.risk
+                    or fresh_now < initial_request.started_at
                     or fresh_now < approval.issued_at
                     or fresh_now >= approval.expires_at):
                 return _hold()
