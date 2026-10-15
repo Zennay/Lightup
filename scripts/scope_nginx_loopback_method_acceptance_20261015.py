@@ -7,7 +7,9 @@ from __future__ import annotations
 
 import http.client
 import json
+import os
 import re
+import stat
 import shutil
 import socket
 import subprocess
@@ -274,13 +276,49 @@ def run_probe(template: str, *, force_rewrite: bool = False,
             thread.join(timeout=2)
 
 
-def main() -> int:
+def _read_candidate_file(path: str) -> str:
+    """Bounded local read of a deliberate template snapshot, not a grant.
+
+    Do not follow symlinks or read pipes, sockets, devices or /proc. Never
+    return the pathname, user input, or file bytes in a public verdict.
+    """
+    if type(path) is not str or not path or len(path) > 4096:
+        raise ValueError("invalid candidate file")
+    flags = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0)
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise ValueError("no no-follow primitive")
+    flags |= os.O_NOFOLLOW
+    descriptor = os.open(path, flags)
+    try:
+        original = os.fstat(descriptor)
+        if not stat.S_ISREG(original.st_mode) or not 1 <= original.st_size <= 65536:
+            raise ValueError("invalid candidate file")
+        raw = os.read(descriptor, original.st_size + 1)
+        latest = os.fstat(descriptor)
+        stamp = lambda x: (x.st_dev, x.st_ino, x.st_mode, x.st_size,
+                           x.st_mtime_ns, x.st_ctime_ns)
+        if len(raw) != original.st_size or stamp(original) != stamp(latest):
+            raise ValueError("candidate changed during read")
+        return raw.decode("utf-8", errors="strict")
+    finally:
+        os.close(descriptor)
+
+
+def _get_template(argv) -> str:
+    if not argv:
+        return TEMPLATE.read_text(encoding="utf-8")
+    if len(argv) != 2 or argv[0] != "--candidate-file":
+        raise ValueError("invalid candidate arguments")
+    return _read_candidate_file(argv[1])
+
+
+def main(argv=()) -> int:
     # Opacity: do not print submitted headers, upstream responses, paths or
     # process stderr. Real customer data MUST NOT be used.
     verdict = "HOLD"
     reason = "inconclusive"
     try:
-        template = TEMPLATE.read_text(encoding="utf-8")
+        template = _get_template(argv)
         if not shutil.which("nginx"):
             reason = "nginx_unavailable"
         elif not run_probe(template):
@@ -297,4 +335,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))
