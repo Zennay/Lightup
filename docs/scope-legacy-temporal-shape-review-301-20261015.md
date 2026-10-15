@@ -153,6 +153,28 @@ A code-level allowlist is not a complete Python sandbox, and even two
 reads are not a lock or a provable atomic snapshot. These tests only
 establish the stated *offline reference module* constraints.
 
+## W8: non-authorizing receipts also bypass getter hooks
+
+The pure `LegacyTemporalReview.as_receipt` method previously consulted
+`self.status` and `self.reason`; the batch reviewer similarly consulted
+`verdict.status` / `verdict.reason`. The class is a `NamedTuple`, but its
+`__getattribute__` can be monkeypatched at runtime, just like the legacy
+Authorization dataclass. W8 now reads those **exact tuple slots** using
+`tuple.__getitem__(value, 0/1)`, checks `type(... ) is str` before
+doing any equality test, and accepts only the enumerated status/reason
+pairs. Forged objects with hostile `__eq__` or `__repr__` never have
+those callbacks invoked. Non-authority flags remain literally false.
+
+Ordinary synthetic tests patch the named tuple class getter to raise on
+any access, verify both receipt conversion and batch inspection make
+**zero getter calls**, and prove untrusted comparison payloads become
+opaque HOLD. The offline AST tripwire now rejects `self.status`,
+`self.reason`, `verdict.status`, `verdict.reason` and any
+noncanonical tuple slot access. Caller code must invoke the canonical
+`LegacyTemporalReview.as_receipt(receipt)` function if it wants to
+avoid an already externally monkeypatched instance method lookup.
+This is not a Python sandbox or a production grant implementation.
+
 ## Hard gate: not a production fix
 
 This does **not** repair `Authorization.is_current()`. Release requires the
