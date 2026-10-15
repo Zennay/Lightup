@@ -108,6 +108,23 @@ class CaseRosterTests(unittest.TestCase):
         _, result = run(b'{"schema_version":1,"schema_version":1,"raw_log":"x","watch":[],"complete":true}')
         self.assertNotIn("summary", result)
 
+    def test_escaped_lone_surrogate_log_fails_closed(self):
+        # Python json.loads accepts this but UTF-8 cannot encode the character.
+        obj = json.loads(payload())
+        obj["raw_log"] = "\\ud800"
+        p, result = run(json.dumps(obj).encode())
+        self.assertEqual(p.returncode, 2)
+        self.assertEqual(p.stderr, b"")
+        self.assertNotIn("summary", result)
+
+    def test_escaped_low_surrogate_log_fails_closed(self):
+        obj = json.loads(payload())
+        obj["raw_log"] = "\\udfff"
+        p, result = run(json.dumps(obj).encode())
+        self.assertEqual(p.returncode, 2)
+        self.assertEqual(p.stderr, b"")
+        self.assertNotIn("summary", result)
+
     def test_extra_untrusted_keys_rejected(self):
         obj = json.loads(payload())
         obj["authorized"] = True
