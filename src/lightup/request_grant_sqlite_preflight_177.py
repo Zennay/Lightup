@@ -104,11 +104,13 @@ def _load_review(
     connection: sqlite3.Connection,
     grant_id: str,
     reviewed_at,
+    *,
+    fk_prechecked: bool = False,
 ) -> RequestGrantReview:
     for table in ("assessment_requests", "authorization_grants", "engagements"):
         if not _is_real_table(connection, table):
             return _HOLD
-    if not _has_provenance_fk(connection):
+    if not fk_prechecked and not _has_provenance_fk(connection):
         # Shipped M3/M7 schema currently lacks this column and FK.
         return _HOLD
 
@@ -294,11 +296,18 @@ def review_persisted_grant_batch(
             con.execute("PRAGMA trusted_schema=OFF")
             con.execute("BEGIN")
             try:
+                # One immutable read transaction: check the entire FK table
+                # exactly once rather than repeating that potentially costly
+                # scan for every one of the bounded batch's 32 grants.
+                if not _has_provenance_fk(con):
+                    return _HOLD
                 tenant: str | None = None
                 requests: set[str] = set()
                 effective_assets: set[str] = set()
                 for grant_id in grant_ids:
-                    decision = _load_review(con, grant_id, reviewed_at)
+                    decision = _load_review(
+                        con, grant_id, reviewed_at, fk_prechecked=True
+                    )
                     if decision.status is not ReviewStatus.REVIEW_ONLY:
                         return _HOLD
                     row = con.execute(
