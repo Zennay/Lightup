@@ -219,6 +219,19 @@ year 9999 overflow boundaries, and rejection of non-leap-year century
 dates (1900/2100), year 0000 and 24:00 rollover. None of these time
 fields is authenticated or used to permit active scanning.
 
+## Escaped JSON key identities and approval spoofing (W19)
+
+The key validator uses JSON `object_pairs_hook`, which must reject
+duplicate *decoded* key identities even if the wire spellings differ by
+`\\uXXXX` escapes. Four direct-parser and real-subprocess negative
+controls include an escaped duplicate top-level horizon, escaped
+duplicate per-window start, an invisible zero-width discriminator in a
+numeric field name, and an escaped synthetic `approved` property.
+Each must return **opaque HOLD only**: exit 2, empty stderr, no counts,
+literal false authority flags. The tests exercise parser normalization;
+they do not treat any textual scope claim or self-asserted approval as
+trusted authorization.
+
 ## Fragmented local pipe and early EOF acceptance (W18)
 
 Three real CLI subprocess controls stream the same fictional JSON object
