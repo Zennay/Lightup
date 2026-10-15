@@ -269,6 +269,31 @@ class OfflineRevalidationFence:
             self._tool_seal = self._tool_fields(snapshot)
             self._epoch += 1
 
+    def _valid_snapshot_locked(
+        self, request_fields: tuple[object, ...], observed_at: datetime
+    ) -> bool:
+        """Read-only, same-mutex check; both admission phases use one contract.
+
+        The review never grants authority, and this lock never wraps a handler.
+        """
+        approval, tool = self._approval, self._tool
+        if self._closed or approval is None or tool is None:
+            return False
+        if not approval.is_well_formed() or not tool.is_well_formed():
+            return False
+        if (self._approval_fields(approval) != self._approval_seal
+                or self._tool_fields(tool) != self._tool_seal):
+            return False
+        if self._request_fields(approval.request) != request_fields:
+            return False
+        if (tool.tool, tool.capability, tool.risk) != request_fields[4:7]:
+            return False
+        return (
+            observed_at >= approval.request.started_at
+            and observed_at >= approval.issued_at
+            and observed_at < approval.expires_at
+        )
+
     def review(
         self,
         request: ReviewRequest,
@@ -298,8 +323,10 @@ class OfflineRevalidationFence:
         # The expensive, untrusted verifier deliberately executes OUTSIDE the
         # lock; changes while it runs must invalidate the captured epoch.
         with self._lock:
-            # A revoked reviewer cannot call any untrusted verifier again.
-            if self._closed:
+            # Reject missing/stale/wrong-scope approval and changed registry
+            # BEFORE ever invoking an untrusted verifier. A second identical
+            # identity check under the lock after callbacks closes the race.
+            if not self._valid_snapshot_locked(original_fields, now):
                 return _hold()
             epoch = self._epoch
         try:
@@ -315,23 +342,9 @@ class OfflineRevalidationFence:
             return _hold()
 
         with self._lock:
-            approval, tool = self._approval, self._tool
-            if (self._closed or epoch != self._epoch
-                    or approval is None or tool is None):
-                return _hold()
-            if not approval.is_well_formed() or not tool.is_well_formed():
-                return _hold()
-            if (self._approval_fields(approval) != self._approval_seal
-                    or self._tool_fields(tool) != self._tool_seal):
-                return _hold()
-            if (self._request_fields(request) != original_fields
-                    or self._request_fields(approval.request) != original_fields
-                    or tool.tool != initial_request.tool
-                    or tool.capability != initial_request.capability
-                    or tool.risk != initial_request.risk
-                    or fresh_now < initial_request.started_at
-                    or fresh_now < approval.issued_at
-                    or fresh_now >= approval.expires_at):
+            if (epoch != self._epoch
+                    or self._request_fields(request) != original_fields
+                    or not self._valid_snapshot_locked(original_fields, fresh_now)):
                 return _hold()
             self._review_count += 1
             # Never emit an authorization or execution permit.
