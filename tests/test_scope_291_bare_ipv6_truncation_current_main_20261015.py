@@ -94,6 +94,40 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
             self.assertEqual(present.normalized_host, literal)
             self.assertEqual(present.reason, ScopeReason.EXPLICIT_NETWORK)
 
+    def test_expected_reds_have_exact_source_assertion_not_masked_runtime_error(self):
+        """Unexpected green, DNS trap, TypeError or a crash must never masquerade as RED."""
+        red_cases = {
+            "test_current_main_bare_literal_never_normalizes_to_short_hostname_red":
+                "not found in",
+            "test_current_main_truncated_explicit_hostname_must_not_admit_ipv6_red":
+                "True is not false",
+            "test_current_main_attached_claim_cannot_rescue_truncated_host_red":
+                "True is not false",
+        }
+        for name, expected_message in red_cases.items():
+            with self.subTest(name=name):
+                result = unittest.TestResult()
+                ScopeIpv6NoTruncationAcceptance(name).run(result)
+                self.assertEqual(result.errors, [])
+                self.assertEqual(result.failures, [])
+                self.assertEqual(result.unexpectedSuccesses, [])
+                self.assertEqual(len(result.expectedFailures), 1)
+                traceback_text = result.expectedFailures[0][1]
+                self.assertIn("AssertionError:", traceback_text)
+                self.assertIn(expected_message, traceback_text)
+                for forbidden in (
+                    "DNS forbidden", "network forbidden", "sockets forbidden",
+                    "TypeError:", "ValueError:", "AttributeError:",
+                ):
+                    self.assertNotIn(forbidden, traceback_text)
+
+    def test_no_network_guards_are_active(self):
+        with self.no_network():
+            with self.assertRaisesRegex(AssertionError, "DNS forbidden"):
+                socket.getaddrinfo("example.test", 443)
+            with self.assertRaisesRegex(AssertionError, "sockets forbidden"):
+                socket.socket()
+
     def test_unrelated_truncated_host_is_not_a_real_ipv6_network_membership(self):
         """A positive comparator prevents confusing host and CIDR authorization."""
         policy = ScopePolicy(
