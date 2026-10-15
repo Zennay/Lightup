@@ -2,7 +2,7 @@
 
 This is an opt-in diagnostic, not installed in ActivationGate, ScopePolicy, or
 any execution path. REVIEW_ONLY never means authorized or allowed to scan.
-No network, filesystem, storage, clock lookup, or customer interaction occurs.
+No network, filesystem I/O, persistent storage, clock lookup, or customer interaction occurs.
 """
 from __future__ import annotations
 
@@ -87,14 +87,13 @@ def review_legacy_authorization_window(
         "valid_from" not in fields or "valid_until" not in fields
     ):
         return hold
+    # Read only materialized storage. Even exact Authorization instances can
+    # have __getattribute__ replaced at class level with a malicious callback;
+    # invoking auth.valid_from would permit arbitrary target or filesystem I/O.
     try:
-        start = authorization.valid_from
-        end = authorization.valid_until
-        # The actual instance dictionary, not an overridden attribute getter,
-        # is the reference identity. Deny contradictory stored/read fields.
-        if fields["valid_from"] is not start or fields["valid_until"] is not end:
-            return hold
-    except (AttributeError, KeyError):
+        start = fields["valid_from"]
+        end = fields["valid_until"]
+    except KeyError:
         return hold
     if (start is not None and not _canonical_datetime(start)) or (
         end is not None and not _canonical_datetime(end)
@@ -120,26 +119,17 @@ def review_legacy_authorization_window(
         end_utc is not None and observed_utc > end_utc
     ):
         return LegacyTemporalReview("HOLD", "outside_window")
-    # A supposedly frozen dataclass can still be mutated with object.__setattr__.
-    # Refuse obvious in-call field drift; this is not a cross-thread lock.
-    try:
-        # Read attribute getters first, then inspect the actual dictionary.
-        # A getter that mutates the stored value cannot hide that mutation
-        # behind the earlier, valid-looking object identity.
-        actual_start = authorization.valid_from
-        actual_end = authorization.valid_until
-        final_fields = _stored_fields(authorization)
-        if (
-            final_fields is None
-            or "valid_from" not in final_fields
-            or "valid_until" not in final_fields
-            or final_fields["valid_from"] is not start
-            or final_fields["valid_until"] is not end
-            or actual_start is not start
-            or actual_end is not end
-        ):
-            return hold
-    except (AttributeError, TypeError, KeyError):
+    # A nominally frozen dataclass remains mutable through object.__setattr__.
+    # Re-read actual storage without invoking class getter hooks. This detects
+    # observable in-call drift but is NOT a thread-safe transactional snapshot.
+    final_fields = _stored_fields(authorization)
+    if (
+        final_fields is None
+        or "valid_from" not in final_fields
+        or "valid_until" not in final_fields
+        or final_fields["valid_from"] is not start
+        or final_fields["valid_until"] is not end
+    ):
         return hold
     return LegacyTemporalReview("REVIEW_ONLY", "temporal_shape_only")
 
@@ -206,8 +196,6 @@ def review_legacy_authorization_batch(
                 or "valid_until" not in fields
                 or fields["valid_from"] is not start
                 or fields["valid_until"] is not end
-                or authorization.valid_from is not start
-                or authorization.valid_until is not end
             ):
                 return hold
         except (TypeError, AttributeError, KeyError):
