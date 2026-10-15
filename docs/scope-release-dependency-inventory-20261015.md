@@ -60,3 +60,15 @@ A wholly synthetic, checked-in [fictional packet](fixtures/scope-release-fiction
     python scripts/scope_release_dependency_nl_20261015.py < docs/fixtures/scope-release-fictional-packet-20261015.json
 
 Each command must exit 2 with an explicit HOLD/non-allowed receipt or summary. The new regression reads the actual committed fixture and verifies one unverified self-report, eight remaining attention IDs and all six release/dispatch/scan flags literally false. **21 local groups now passed** (13 base + 8 Dutch), but this local proof is never an integrated security sign-off.
+
+## W4 — deadline en transportgrens voor beide lokale CLI's
+
+Beide standalone reviewers gebruiken nu één gedeelde, **uitsluitend lokale** stdin-lezer. Een anonieme pipe waarvan de schrijver de laatste bytes nooit afsluit mag de offline review niet onbeperkt vasthouden: na een **monotone EOF-deadline van 2 seconden** volgt de bestaande generieke HOLD (exit 2). Een compleet JSON-document zonder EOF is bewust ook HOLD, omdat de transportbron geen volledig afgesloten snapshot heeft geleverd.
+
+- Maximaal 8192 inputbytes, met slechts één extra byte om overschrijding te herkennen. De deadline geldt voor het hele lezen, niet opnieuw per fragment.
+- Normale gesloten pipes en reeds geopende reguliere lokale stdin-bestanden blijven toegestaan. Niet-lokale AF_UNIX-socket-stdin en character devices worden zonder lezen afgewezen.
+- De oorspronkelijke blocking-mode van stdin wordt na alle aflooproutes teruggezet; er wordt geen pad geopend, geen netwerkverbinding gelegd en geen klantgegevens in de terugkoppeling opgenomen.
+- Afzonderlijke nieuwe echte subprocessregressies in `tests/test_scope_release_stdin_deadline_20261015.py` controleren onafgesloten partiële én volledig gevulde pipes, fragmenten gevolgd door EOF, grenswaarden, gewone bestanden, AF_UNIX/character devices en nooit toegekende permissies.
+
+Deze grens verbetert de betrouwbaarheid van **niet-geïnstalleerde** reviewers, maar maakt geen claim over echte runtime-mandaten, operatorconsent, daadwerkelijke runnerregistratie of vrijgave. Geen actief scanverkeer, merge, dispatch, grant of deployment.
+
