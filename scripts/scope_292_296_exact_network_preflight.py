@@ -88,9 +88,32 @@ def receipt(disposition: str) -> str:
     )
 
 
+def _read_bounded_stream(reader: Any) -> bytes:
+    """Read until EOF or one byte over budget, even on legitimate short reads.
+
+    A single `read(n)` need not return all available bytes for every supported
+    file-like stream. Accepting a valid prefix without the remaining bytes
+    would falsely classify an incomplete policy as REVIEW_ONLY. Do not treat
+    `None`, text, or an over-returning reader as EOF.
+    """
+    parts: list[bytes] = []
+    remaining = MAX_JSON_BYTES + 1
+    while remaining:
+        part = reader.read(remaining)
+        if type(part) is not bytes or len(part) > remaining:
+            raise ValueError("invalid or oversized input chunk")
+        if not part:
+            break
+        parts.append(part)
+        remaining -= len(part)
+    if not remaining:
+        raise ValueError("input byte limit exceeded")
+    return b"".join(parts)
+
+
 def main() -> int:
     try:
-        raw = sys.stdin.buffer.read(MAX_JSON_BYTES + 1)
+        raw = _read_bounded_stream(sys.stdin.buffer)
         result = review(raw)
     except (OSError, ValueError, TypeError, RecursionError):
         result = "HOLD"
