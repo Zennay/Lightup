@@ -12,7 +12,7 @@ from threading import Lock
 from typing import Callable
 
 
-_SYNTHETIC_ID = re.compile(r"lab-[a-z0-9_-]{1,60}\\Z")
+_SYNTHETIC_ID = re.compile(r"lab-[a-z0-9_-]{1,60}\Z")
 
 
 def _synthetic(value: object) -> bool:
