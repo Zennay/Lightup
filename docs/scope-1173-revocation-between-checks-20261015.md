@@ -16,17 +16,45 @@ A deterministic, entirely synthetic callback can revoke, expire or rescope the a
 
 The independent real-source test `tests/test_scope_1173_revocation_between_checks_20261015.py` runs the actual owner opt-in adapter against a disposable SQLite evidence ledger, with a no-op registered handler and socket-creation tripwire.
 
-- Four **intentional installed-source expected RED** tests require denial if trusted approval is revoked, expired or reassigned after first approval read but during isolation verification, including **one truly concurrent deterministic two-thread revocation** while a lab verification callback is held at a synchronization barrier. This is a controlled lab-only in-memory reproduction, not a claim about network-exposed concurrency. The source currently dispatches nonetheless.
-- Three **ordinary green controls** verify already-revoked approvals deny before isolation, false lab isolation denies before handler, and an unmodified synthetic approval+fixture verifier allows only the inert local handler.
+- Five **intentional installed-source expected RED** tests require denial if trusted approval is revoked, expired or reassigned after first approval read but during isolation verification, including **one truly concurrent deterministic two-thread revocation** while a lab verification callback is held at a synchronization barrier. This is a controlled lab-only in-memory reproduction, not a claim about network-exposed concurrency. The source currently dispatches nonetheless.
+- Five **ordinary green controls** verify already-revoked approvals deny before isolation, false lab isolation denies before handler, and an unmodified synthetic approval+fixture verifier allows only the inert local handler.
 - A fourth **ordinary green RED-integrity witness** calls all four failing bodies directly, verifies the exact missing-denial assertion, callback ordering, handler invocation and temporary SQLite evidence; it rejects masked setup/network exceptions, unrelated failure, and false green.
 
 No real customer consent, trusted human approval, actual isolation attestation, outgoing network access, scanning, destructive payload, external actor, or deployment is involved. `isolation_verifier=lambda: True` is **strictly a synthetic test fixture** and cannot authorize real use.
+
+
+## Final registry snapshot versus handler dispatch (new independent gate)
+
+In the same source-owner adapter, the second registry lookup validates the original
+definition and handler identity, **then** delegates to the unwrapped
+`ToolExecutor.execute`, which performs its own third lookup. The identity
+validated before dispatch is not locked or passed atomically to raw execution.
+
+Three extra entirely synthetic real-source tests distinguish:
+
+1. **Expected RED:** a worker thread pauses the final registry lookup after
+   capturing the validated handler tuple; a second thread replaces the exact
+   registered handler with another inert fake. The final snapshot check sees
+   the old handler, while raw dispatch sees and invokes the new one.
+2. **Ordinary green:** a tool substitution made during the isolation callback
+   *before* the second lookup is already correctly denied by the adapter.
+3. **Ordinary green witness:** verifies that the new RED is a precise missing
+   `ToolDenied` assertion with the replacement handler called and synthetic
+   SQLite evidence written; setup errors, barrier timeouts or unexpected green
+   cannot masquerade as the intended failure.
+
+These tests distinguish the **existing early identity check working correctly**
+from the remaining **post-check to raw-dispatch** mutable-registry gap. They are
+not an instruction to swap a live registry or proof of an externally reachable
+race. Owner closure requires stable registered-tool identity through atomic
+authorization + handler dispatch, without turning the experimental wrapper into
+production authorization.
 
 ## Owner closure and proof
 
 1. #1172 / #107 owners decide and implement atomic operator revocation/approval consumption bound to exact run, tenant, engagement, asset, capability, tool and current clock, while preserving denial-before-handler and evidence.
 2. Persisted operator issuance/revocation, real lab isolation and network egress must be independently verified; callback-only revalidation is not enough for concurrent processes.
-3. Convert the four expected REDs to ordinary PASS **only on actual repaired source**, update the witness, retain valid synthetic controls; no masking of a red as a generic expected failure.
+3. Convert the five expected REDs to ordinary PASS **only on actual repaired source**, update the witness, retain valid synthetic controls; no masking of a red as a generic expected failure.
 4. Exact-head Python 3.11/3.14 offline unit and real producer-integrations, registered permanent VPS runner, independent security/privacy review and explicit human release are separate mandatory gates.
 
 Run offline only:
