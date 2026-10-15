@@ -148,3 +148,17 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_294_duplicate
 ```
 
 **Both improvements are strictly isolated metadata hardening.** No code in real `src/lightup/scope.py`, authorization grants, active executor, target transport, worker-owned branches or deploy pipeline was changed. Real #294 mutable policy snapshots, #292/#296 network admission, #177 customer consent and #347 pre-I/O revocation remain source-owner and review blockers; hold until exact-head hosted + registered VPS, security/privacy and explicit human release. **Never merge, deploy, issue grants or scan from a REVIEW_ONLY result.**
+
+## W10 — fail the CI gate if installed REDs are masked by non-assertion exceptions
+
+The installed #294 tests are deliberately decorated with `@unittest.expectedFailure` because the original `ScopePolicy` bug is still open. By default, Python unittest also counts unrelated `TypeError`, imports, runtime crashes and unexpected I/O as expected failures: **green expected-RED counts alone do not prove an actual security assertion ran correctly**.
+
+New self-owned `tests/test_scope_294_current_main_red_witness_integrity_20261015.py` separately re-runs the **exact six pinned installed tests** in an in-memory `unittest.TestResult`, asserts exactly six distinct `expectedFailures`, **zero errors/failures/unexpectedSuccesses/skips**, and examines the captured traceback so each red must contain `AssertionError:` and no unrelated exception marker. A synthetic `@expectedFailure` caused by `TypeError` is deliberately **rejected by the verifier**, as is a synthetic case that unexpectedly passes. An additional guard reruns the original six under DNS/socket/subprocess tripwires.
+
+The helper itself issues no permission and changes no source-owned code; it is a validation integrity gate that must be **kept green while those six installed defects remain genuinely unresolved**. When the production source owner eventually fixes immutable snapshots, converting the six red tests to normal passing tests and revising this gate with explicit security approval is required. It must never be removed solely to silence CI.
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_294_current_main_red_witness_integrity_20261015.py' -v
+```
+
+**This is not installed source remediation, registered VPS proof, consent, revocation or human release authority.** Keep INCUBATE / DRAFT-HOLD.
