@@ -13,10 +13,6 @@ from __future__ import annotations
 
 import unittest
 
-from test_scope_1147_duplicate_key_installed_matrix_20261015 import (
-    DuplicateArgumentKeysInstalledSource1147,
-)
-
 # Pin each regression to a concrete original-source weakness; do not derive
 # the denominator from what the test loader happens to discover.
 EXPECTED_SOURCE_RED = frozenset({
@@ -70,6 +66,11 @@ def verify_source_red_receipt(
 
 class Scope1147ExpectedRedIntegrityTests(unittest.TestCase):
     def test_exact_original_source_red_signatures_and_all_controls(self):
+        # Import only inside the meta-test: unittest discover would otherwise
+        # auto-collect this imported TestCase *again* from this module.
+        from test_scope_1147_duplicate_key_installed_matrix_20261015 import (
+            DuplicateArgumentKeysInstalledSource1147,
+        )
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(
             DuplicateArgumentKeysInstalledSource1147
         )
