@@ -621,5 +621,28 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
         self.assertEqual(fence.review_count, 0)
 
 
+    def test_unexpected_receipt_fields_are_opaque_hold(self):
+        victim = ReviewReceipt("REVIEW_ONLY", "synthetic_snapshot_consistent")
+        object.__setattr__(victim, "lab_secret", "lab-sensitive-text")
+        receipt = victim.as_dict()
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(receipt["reason"], "not_verified")
+        self.assertNotIn("lab-", str(receipt))
+
+    def test_deleted_default_backed_dataclass_field_cannot_fall_through(self):
+        for name in (
+            "authorization_verified", "permit_issued", "execution_enabled",
+            "dispatch_allowed", "merge_approved", "release_approved",
+        ):
+            with self.subTest(field=name):
+                result = ReviewReceipt("REVIEW_ONLY", "synthetic_snapshot_consistent")
+                self.assertIn(name, vars(result))
+                object.__delattr__(result, name)
+                self.assertNotIn(name, vars(result))
+                # getattr may fall through to the dataclass class-level False.
+                self.assertIs(getattr(result, name), False)
+                self.assertEqual(result.as_dict()["status"], "HOLD")
+
+
 if __name__ == "__main__":
     unittest.main()
