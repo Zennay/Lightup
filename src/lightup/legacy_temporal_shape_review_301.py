@@ -64,6 +64,17 @@ def review_legacy_authorization_window(
     if type(authorization) is not Authorization or not _canonical_datetime(observed_at):
         return hold
 
+    # Dataclass fields with class-level None defaults may appear present on
+    # object.__new__ instances even when the instance never set those fields.
+    # Require explicitly materialized validity fields, not inherited defaults.
+    try:
+        fields = vars(authorization)
+    except TypeError:
+        return hold
+    if type(fields) is not dict or (
+        "valid_from" not in fields or "valid_until" not in fields
+    ):
+        return hold
     try:
         start = authorization.valid_from
         end = authorization.valid_until
