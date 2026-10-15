@@ -86,6 +86,24 @@ class LegacyTemporalReceipt(tuple, Mapping[str, str | bool]):
     def __bool__(self) -> bool:
         return False
 
+    def __eq__(self, other: object) -> bool:
+        # Built-in tuple comparison would evaluate arbitrary equality hooks
+        # on a raw forged tuple payload; compare only canonical safe strings.
+        return (
+            type(other) is LegacyTemporalReceipt
+            and _canonical_receipt_pair(self) == _canonical_receipt_pair(other)
+        )
+
+    def __ne__(self, other: object) -> bool:
+        return not (
+            type(other) is LegacyTemporalReceipt
+            and _canonical_receipt_pair(self) == _canonical_receipt_pair(other)
+        )
+
+    # A raw forged tuple might contain an object with a hostile __hash__.
+    # Receipts are mapping views, not set keys, so forbid hashing outright.
+    __hash__ = None
+
     def __repr__(self) -> str:
         status, reason = _canonical_receipt_pair(self)
         return "LegacyTemporalReceipt(" + status + ", " + reason + "; no_authority)"
