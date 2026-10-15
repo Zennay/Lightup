@@ -335,14 +335,20 @@ class DuplicateArgumentKeysInstalledSource1147(unittest.TestCase):
         self.assertEqual(self.evidence_count(), 0)
 
     @unittest.expectedFailure
-    def test_required_order_permutations_of_duplicated_values_are_both_denied(self):
-        for values in (("alpha", "beta"), ("beta", "alpha")):
-            with self.subTest(values=values):
-                with self.assertRaises(OrchestrationError):
-                    self.executor.execute(
-                        self.context,
-                        self.call(("selector", values[0]), ("selector", values[1])),
-                    )
+    def test_required_order_alpha_then_beta_is_denied_before_any_effect(self):
+        with self.assertRaises(OrchestrationError):
+            self.executor.execute(
+                self.context, self.call(("selector", "alpha"), ("selector", "beta"))
+            )
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), 0)
+
+    @unittest.expectedFailure
+    def test_required_order_beta_then_alpha_is_denied_before_any_effect(self):
+        with self.assertRaises(OrchestrationError):
+            self.executor.execute(
+                self.context, self.call(("selector", "beta"), ("selector", "alpha"))
+            )
         self.assertEqual(self.calls, [])
         self.assertEqual(self.evidence_count(), 0)
 
