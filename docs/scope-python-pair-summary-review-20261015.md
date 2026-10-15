@@ -26,3 +26,18 @@ separately owned #301 expiration fixture and production #107/#1172 + ledger
 #1454/#1455 must still be fixed and reviewed before real use. Independent
 privacy/security, customer/operator consent and explicit human GO remain
 required. No real targets, network, grants, scans or deployment.
+
+## W7: compare exact verbose case identities, not just equal totals
+
+W7 additionally parses exact canonical `unittest -v` method rows where
+available, counts mismatching method identities and changed per-method
+outcomes, rejects duplicate case rows, impossible more-rows-than-suite and
+individual case-state totals exceeding the suite footer. Two logs can report
+identical aggregate counts while exercising *different* methods; that is
+now explicitly `MISMATCH`, not equality. A matching name with changed
+`expected failure` / `ok` is likewise detected even if global counts
+remain equal. A partial/missing verbose listing is marked
+`PARTIAL_OR_MISSING`; `SELF_REPORTED_FULL` still does not establish
+authentic GitHub checkout, test discovery, running interpreter, or trusted
+source provenance. All output remains aggregate-only, HOLD and exit 2;
+never echo raw names or permit real scans/merge/release.
