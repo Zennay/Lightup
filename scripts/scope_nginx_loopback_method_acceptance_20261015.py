@@ -189,6 +189,26 @@ def _request(port: int, method: str, overrides) -> dict:
         conn.close()
 
 
+def _receipt_is_exact(receipt, method: str) -> bool:
+    # Even a local upstream can fail unexpectedly or return a malformed JSON
+    # shape. No duck-typed list/number, extra fields or fake boolean values
+    # may be misclassified as trustworthy WSGI evidence.
+    if type(receipt) is not dict or set(receipt) != {
+        "method", "path", "body", "override_headers",
+    }:
+        return False
+    return (
+        type(receipt["method"]) is str
+        and receipt["method"] == method
+        and type(receipt["path"]) is str
+        and receipt["path"] == "/__scope_method_fixture__"
+        and type(receipt["body"]) is str
+        and receipt["body"] == ("x" if method == "POST" else "")
+        and type(receipt["override_headers"]) is dict
+        and not receipt["override_headers"]
+    )
+
+
 def run_probe(template: str, *, force_rewrite: bool = False,
               nginx_bin: str | None = None) -> bool:
     """Return true ONLY for a full synthetic Nginx method+header boundary pass."""
@@ -254,13 +274,7 @@ def run_probe(template: str, *, force_rewrite: bool = False,
                 ))
             for method, overrides in cases:
                 receipt = _request(port, method, overrides)
-                if receipt.get("method") != method:
-                    return False
-                if receipt.get("path") != "/__scope_method_fixture__":
-                    return False
-                if receipt.get("body") != ("x" if method == "POST" else ""):
-                    return False
-                if receipt.get("override_headers"):
+                if not _receipt_is_exact(receipt, method):
                     return False
             return True
         finally:
@@ -328,7 +342,8 @@ def main(argv=()) -> int:
         else:
             verdict = "REVIEW_ONLY"
             reason = "synthetic_loopback_pass"
-    except (OSError, ValueError, RuntimeError, TimeoutError, subprocess.SubprocessError):
+    except (OSError, ValueError, RuntimeError, TimeoutError,
+            http.client.HTTPException, subprocess.SubprocessError):
         reason = "inconclusive"
     print(json.dumps({"verdict": verdict, "reason": reason, **FALSE_FLAGS}, sort_keys=True))
     return 3 if verdict == "REVIEW_ONLY" else 2
