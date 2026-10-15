@@ -101,6 +101,15 @@ Three direct-source installed parser acceptance methods pin this separation:
 
 The two deliberately RED tests also flow through the independent exception witness and network-tripwire controls. **164 additionally materialized parser calls**, separate from the **360 actual `ScopePolicy.decide` malformed scenario checks**. This extends total self-owned test methods to **18 genuine source expected-REDs and 21 ordinary passing/witness methods**. It changes no production source and is not consent/asset approval or target I/O. Hosted evidence for previous commits does not prove the W8 exact HEAD.
 
+
+## W9: port-qualified malformed authority identities, no transport execution
+
+Prior W7/W8 regressions cover bare hosts and synthetic HTTP paths. W9 adds a **distinct host:port normalization boundary**: a syntactically malformed hostname or IPv4 literal ending with 2, 3, 7 or 17 trailing dots **before** a separately spelled numeric URL port must *not* become a trusted explicit-host, loopback, private-lab or exact declared-CIDR identity. It is still #723's target host-text root-dot bug, **not** #1289's general request-envelope/URL parsing owner task.
+
+The **new actual-source intentional expected-RED** test materializes 40 distinct `ScopePolicy.decide` calls across five synthetic host identities (fictional explicitly listed DNS, `localhost`, `127.0.0.1`, opted-in synthetic `10.42.43.44` private-lab, and TEST-NET-2 `198.51.100.23` declared CIDR) × four illegal root-dot widths × two synthetic numeric ports (80 and 8443). The fake `Authorization` in the public-host/network fixtures is explicitly **not customer consent**. Any one incorrectly allowed input makes the aggregate assertion genuinely RED.
+
+Two independent **ordinary passing controls** keep canonical port-qualified DNS/loopback scope and public-CIDR missing-consent behavior intact; the second exercises the exact same **40** installed-source decisions with socket, DNS, connection, HTTP, subprocess and shell tripwires, proving the suite does not contact the synthetic URL targets. These **40 new malformed cases** extend the previous **360** independently materialized bad `ScopePolicy.decide` cases to **400**. The **164** direct `normalize_host` parser probes remain distinct. Across the existing self-owned module there are now **19 intentional source REDs and 23 ordinary green/witness methods**. No code executing target interactions or grants was edited, and no source-owner #100 or other-worker branch is changed. Exact-head CI, permanent VPS execution and independent release approval remain separate HOLD gates.
+
 ## To validate
 
 ```sh
