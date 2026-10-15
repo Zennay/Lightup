@@ -85,6 +85,53 @@ persistent cross-record linkage, consent, dispatch or trusted grant is created.
 - Under **no circumstances** should `REVIEW_ONLY` be converted into a grant,
   permit, approval, dispatch, release, or CI PASS.
 
+## Read-only persisted SQLite proof (opt-in; synthetic migration only)
+
+`src/lightup/request_grant_sqlite_preflight_177.py` adds
+`review_persisted_request_grant(local_database_path, grant_id, reviewed_at=...)`.
+This API makes **only read-only** SQLite queries against a deliberately chosen
+local file; it opens `mode=ro` + `query_only=ON`, verifies a real table (not a
+view), uses a single transaction snapshot and always closes the connection.
+It never creates a database or grant and never emits customer data, an
+authenticated permit, permission to contact a host, or a release decision.
+
+Current `main` does not have `authorization_grants.approved_request_id`
+or a declared foreign-key reference to
+`assessment_requests(request_id)`. Consequently, it can **only return HOLD
+for a normal unmodified LightUp database** even when the submitted request and
+grant happen to match by customer or target. Adding a same-named plain text
+column without an actual SQLite FK is **still HOLD**: self-asserted strings
+are not a trustworthy durable authorization chain.
+
+In a disposable test database **only**, a hypothetical explicit FK migration
+can be simulated with `ALTER TABLE authorization_grants ADD COLUMN
+approved_request_id TEXT REFERENCES assessment_requests(request_id)`.
+The synthetic acceptance suite creates real `DomainStore` customers,
+approved requests, engagements and grants with SQLite, then independently
+mutates submitted status/mode, tenant, grant scope/capabilities, timestamp,
+retake flag and linkage to prove denial and row immutability. A perfect
+synthetic FK + self-consistent triple is **still REVIEW_ONLY** with all six
+authority fields exactly `False`.
+
+**Important boundaries:** A declared FK and a read-only DB snapshot are
+*not* independent proof of customer consent, signer's identity, immutable
+operator decision or present-day revocation. Fake schemas can be fabricated,
+and the result is not signed; this code must never be installed as the
+authoritative admission path. Actual source-owner work still needs a real
+migration, correct ownership of risk and permission lifecycle, independent
+authorization controls before every active dispatch, security/privacy
+review, permanent VPS evidence and explicit human release.
+
+Run real disposable SQLite acceptance with:
+
+```sh
+python -m unittest discover -s tests -p 'test_scope_request_grant_sqlite_preflight_177.py' -v
+```
+
+Do **not** run this opt-in reviewer on a real customer database without
+separate permission to process those local records. It performs no outbound
+traffic, but reading sensitive records still requires authorization.
+
 ## Required production integration (not done here)
 
 An independent source owner must implement durable approved-request linkage
