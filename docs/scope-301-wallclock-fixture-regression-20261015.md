@@ -62,6 +62,24 @@ fixture route, **not** a claim that a mutable/cache-backed production runtime
 has been secured. The separate run/executor revocation and concurrency
 source owners keep their implementation responsibility.
 
+## Fully hermetic ordinary PASS fixtures (W4)
+
+The original normal immutability assertion and the new expired-window
+immutability control are no longer tied even to a moving real-time window
+with a generous margin. Both now evaluate the installed
+`ScopePolicy.decide(Target(...))` through a **test-local frozen evaluation
+clock** (`lightup.models.datetime.now(timezone.utc)`). The production logic
+continues to be executed unmodified, including the actual legacy
+`Authorization.is_current()`. Assertions verify the provider receives the
+aware UTC timezone, a positive in-window `EXPLICIT_HOST`, an expired
+`AUTHORIZATION_EXPIRED`, and identical before/after authorization records.
+
+This removes the *entire real-calendar dependency* of these ordinary PASS
+controls, including machine-clock drift or test suites running years after
+the historical 2026-10-14 constant. It does not confer consent or alter the
+ten existing intentional #301 RED checks for malformed falsey validity
+boundaries.
+
 ## Ownership and proof gates
 
 Only this original time-window test module and this standalone explanation
