@@ -1064,5 +1064,59 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
 
 
 
+    def test_real_durable_grant_issue347_naive_clock_and_inverted_windows(self):
+        """Pin #347 model behavior without changing installed authorization."""
+        from datetime import datetime, timedelta, timezone
+        from lightup.engagements import AuthorizationGrant, RiskLevel, ScopeDefinition
+
+        utc = timezone.utc
+        start = datetime(2026, 10, 15, 12, 0, 0, tzinfo=utc)
+        end = start + timedelta(hours=2)
+        def grant(from_time, until_time):
+            return AuthorizationGrant(
+                grant_id="fixture-issue347",
+                client_id="fictional-client",
+                engagement_id="fictional-engagement",
+                approved_by="fictional-reviewer",
+                reference="offline-issue347",
+                scope=ScopeDefinition(assets=(),
+                                      max_risk=RiskLevel.ANALYSIS_ONLY),
+                valid_from=from_time,
+                valid_until=until_time,
+            )
+        normal = grant(start, end)
+        for instant, expected in (
+            (start - timedelta(seconds=1), False),
+            (start, True),
+            (start + timedelta(minutes=30), True),
+            (end, True),
+            (end + timedelta(seconds=1), False),
+        ):
+            with self.subTest(edge=instant):
+                self.assertIs(normal.is_current(now=instant), expected)
+                for offset_hours in (-5, 2, 13):
+                    alternative = instant.astimezone(
+                        timezone(timedelta(hours=offset_hours))
+                    )
+                    self.assertIs(
+                        normal.is_current(now=alternative), expected,
+                    )
+
+        # The producer requires a timezone-aware evaluation clock.
+        with self.assertRaises(ValueError):
+            normal.is_current(now=datetime(2026, 10, 15, 12, 0, 0))
+
+        # Immutable dataclass can be constructed with an inverted interval:
+        # the model must not accidentally make such a grant current.
+        inverted = grant(end, start)
+        for instant in (
+            start - timedelta(seconds=1), start,
+            start + timedelta(hours=1), end,
+            end + timedelta(seconds=1),
+        ):
+            with self.subTest(inverted_at=instant):
+                self.assertIs(inverted.is_current(now=instant), False)
+
+
 if __name__ == "__main__":
     unittest.main()
