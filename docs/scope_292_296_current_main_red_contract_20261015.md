@@ -112,6 +112,32 @@ configuration migration. In particular its standalone list review cannot
 atomically validate another worker's live `ScopePolicy` input in the face of
 concurrent mutation; that requires #294 snapshot / #297 atomicity work.
 
+## Current follow-up: independent RED witness and stream completeness
+
+Two independent owner-safe changes make the existing #292/#296 evidence harder to
+misinterpret, **without touching installed `ScopePolicy`**:
+
+1. The original 18 `@expectedFailure` cases now require distinct test-method
+   identities and a fixed count of **exactly eighteen**. More importantly the
+   captured trace must identify the actual `_assert_rejected` helper and
+   its `self.assertFalse(result.allowed, ...)` line: a forged exception with
+   the **same** error message no longer counts as installed source failure.
+   New negative controls simulate a matching-text fake and a duplicated
+   replay to prove both are rejected. This gate only describes present source
+   defects, which must become ordinary PASS tests after source-owner fixes.
+2. The standalone offline CLI is tested against **72 deterministic chunk
+   combinations** (9 syntactically valid or invalid JSON byte streams ×
+   8 chunk sizes from 1 to 2,048 bytes). It must produce exactly the same
+   private HOLD/REVIEW_ONLY receipt and nonzero exit as complete input; it
+   may not parse a valid prefix and disregard a second object, duplicate
+   keys, malformed bytes or an extra 16,385th byte. A separate test simulates
+   a valid prefix followed by a reader `OSError` and requires generic HOLD.
+   All cases are synthetic bytes and purely offline.
+
+Neither branch-local fixture, passing syntax, or reviewer receipt provides
+customer ownership or operator consent. The embedded test authorization is
+never a release grant.
+
 ## Owner implementation checklist (not applied to installed source)
 
 1. Validate the **whole** explicit-network configuration before any permission decision, rather than filtering invalid values and keeping the others; issue #297 independently owns broader policy atomicity.
