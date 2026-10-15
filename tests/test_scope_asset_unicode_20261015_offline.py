@@ -563,6 +563,42 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
             os.close(wr)
             os.close(rd)
 
+    def test_real_subprocess_malformed_claims_have_identical_opaque_hold_bytes(self):
+        secret = b"FICTIONAL-CLIENT-NEVER-ECHO-1437"
+        base = synthetic_claim()
+        malformed = [
+            b"",
+            b"null",
+            b"{}",
+            b"\xff",
+            b" ",
+            b"{" + b"X" * (mod.MAX_INPUT_BYTES + 1) + b"}",
+            b'{"assets":[], "assets":[]}',
+            b'{"as\u0073ets":[]}',
+            b'{"scope":"FICTIONAL-CLIENT-NEVER-ECHO-1437", "approved":true}',
+            b'{"assets":["\u0061pp.example.test"],"excluded_assets":[],"allowed_capabilities":["x"]}',
+            b'{"assets":["EXAMPLE.TEST"],"excluded_assets":[],"allowed_capabilities":["x"]}',
+            b'{"assets": ["api.example.test"], "excluded_assets": [], "allowed_capabilities": []}',
+            b'{"assets": [], "excluded_assets": [], "allowed_capabilities": ["x"]}',
+            b'{"assets":NaN,"excluded_assets":[],"allowed_capabilities":["x"]}',
+            b'{"assets":["http://example.test"],"excluded_assets":[],"allowed_capabilities":["x"]}',
+            b'{"assets":[false],"excluded_assets":[],"allowed_capabilities":["x"]}',
+            json.dumps({**base, "approved": "FICTIONAL-CLIENT-NEVER-ECHO-1437"}).encode(),
+            json.dumps({**base, "assets": ["FICTIONAL-CLIENT-NEVER-ECHO-1437"]}).encode(),
+        ]
+        expected = json.dumps({"status": "HOLD", **mod.FALSE_FLAGS},
+                              sort_keys=True, separators=(",", ":")).encode() + b"\n"
+        for case in malformed:
+            with self.subTest(malformed=case[:48]):
+                proc = subprocess.run(
+                    [sys.executable, str(SCRIPT), "--stdin-json"],
+                    input=case, capture_output=True, timeout=5, check=False,
+                )
+                self.assertEqual(proc.returncode, 2)
+                self.assertEqual(proc.stderr, b"")
+                self.assertEqual(proc.stdout, expected)
+                self.assertNotIn(secret, proc.stdout)
+
     def test_real_cli_never_success_or_leaks_input(self):
         payloads = [
             (json.dumps(synthetic_claim()).encode(), 3, "REVIEW_ONLY"),
