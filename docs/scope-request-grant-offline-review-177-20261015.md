@@ -190,6 +190,47 @@ Source-owner follow-up: enforce stable request→grant cardinality or
 design signed, immutable explicit amendment/retest approvals with a
 proper migration and atomic uniqueness constraints.
 
+## W15: full-table tenant and operator lineage, including unrelated tenants
+
+A declared `approved_request_id REFERENCES assessment_requests(request_id)`
+FK verifies only **row existence**, not that the grant's `client_id`,
+its engagement's client and its approved request's client all agree, or
+that `approved_by` is the independent requester-review decision-maker.
+The optional local viewer now performs a bounded, **read-only left-join
+audit of every stored grant** in the same immutable SQLite snapshot,
+enforcing exact canonical identity, one tenant across request/grant/
+engagement, matching decision operator, independently signed request
+(requester != reviewer), real APPROVED status and AUTHORIZED_ASSESSMENT
+mode. A malformed child in an *unselected other tenant* yields global
+HOLD rather than a false claim that this local provenance dataset is clean.
+The same audit runs once per batch transaction and again on the next
+independent snapshot; the SQLite VM budget remains active.
+
+Real disposable `DomainStore` SQLite tests create a genuinely separate
+second synthetic client/engagement/approved request and verify it does
+not interfere with the first client's `REVIEW_ONLY` structural preview.
+They then tamper the *other tenant* client, engagement, approver, requester,
+decision, status or mode without breaking SQLite's native FK and require
+the single and batch readers both to return HOLD. This is a **conservative
+whole-database health preview**, never a multi-tenant live permission
+oracle. Source-owner must actually bind tenant, engagement and decision
+by authenticated transactional production constraints.
+
+### W15 sibling grant policy and exclusion validation
+
+A neighboring same-tenant grant's exclusion list must itself be an exact
+unique subset of the grant's canonical assets. Without validating it, a
+forged `excluded_assets_json` could make a conflicting target disappear
+in a set subtraction. The read-only reviewer now also validates each
+neighbor's canonical bounded asset IDs, exact nonduplicate exclusion
+membership, known PLANNING-only capability IDs, risk enum (not destructive
+lab-only), and no independent recurring-retest claim. Invalid sibling
+metadata makes the selected solo review and any associated one-ID batch
+HOLD. Tests cover malformed exclusions, duplicates, foreign assets, empty
+or duplicate claimed assets, invalid capabilities, destructive risk, and
+retest opt-in; a well-formed fully excluded neighbor still cannot authorize
+anything and is allowed as `REVIEW_ONLY` evidence for the other grant.
+
 ## W14: require a request FK value on every stored grant
 
 SQLite `REFERENCES` is not the same as `NOT NULL REFERENCES`: a nullable
