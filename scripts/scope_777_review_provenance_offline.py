@@ -6,6 +6,8 @@ grant, a dispatch gate, or an installed production component. Synthetic data onl
 from __future__ import annotations
 
 import json
+import os
+import stat
 import sys
 import unicodedata
 
@@ -76,6 +78,15 @@ def main() -> int:
     if len(sys.argv) != 1:
         return 2
     try:
+        stdin_mode = os.fstat(0).st_mode
+        stdout_mode = os.fstat(1).st_mode
+        # Never use inherited network sockets, device input or redirected files.
+        # A pipe or complete regular-file stdin is an offline caller-controlled input.
+        if not (stat.S_ISFIFO(stdin_mode) or stat.S_ISREG(stdin_mode)):
+            return 2
+        if not (stat.S_ISFIFO(stdout_mode) or
+                (stat.S_ISCHR(stdout_mode) and os.isatty(1))):
+            return 2
         data = sys.stdin.buffer.read(MAX_INPUT_BYTES + 1)
         receipt = review_bytes(data)
         sys.stdout.write(json.dumps(receipt, separators=(",", ":"), sort_keys=True) + "\n")
