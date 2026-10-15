@@ -39,3 +39,11 @@ Uitvoer is een enkel JSON-object met uitsluitend `HOLD` (exit 2) of `REVIEW_ONLY
 ## Grenzen
 
 Lokale TCP-loopback-sockets zijn nodig om de echte Nginx → WSGI-grens te meten. Dit zijn **geen netwerk-scans**; de helper verstuurt uitsluitend twee zelfgemaakte request-berichten naar zijn eigen tijdelijke server. Het is geen bewijs voor werkelijke DNS/TLS, installed ingress configuratie, Nginx-plugins, application sessions, cookies, CSRF of tenant-auditing.
+
+## W2 — transportintegriteit en afzonderlijke headerstrip (15 oktober 2026)
+
+De test is uitgebreid van 10 naar **26 echte requestvarianten per Nginx-proef**: de vier namen elk als GET→DELETE- en POST→GET-poging, hun gecombineerde varianten en per header twee alleen-kleine-/gewisselde hoofdletterwaarden plus dubbele HTTP-headerregels met verschillende casing. De helper gebruikt voor de laatste groep `http.client.putheader` in plaats van een Python-dictionary, omdat een dictionary dubbele keys onzichtbaar zou samenvoegen. De WSGI-echo leest uitsluitend de eigen testbody van 0 of 1 byte en vergelijkt naast de originele methode en het pad ook de POST-body; corrupte requestframing kan dus geen positieve `REVIEW_ONLY` opleveren.
+
+Een extra integratietest start een **echte wegwerp-Nginx** tegen een kandidatenconfig met alle vier lege `proxy_set_header`-waarden, verwijdert vervolgens *één voor één* telkens precies één headerstrip en vereist dat elke corrupte versie door de netwerkproef wordt afgewezen. Dit is geen statische regexclaim. Wanneer `nginx` ontbreekt, wordt de netwerkproef expliciet geskipt en is er **geen Nginx-bewijs**. Alle zes permissievelden blijven letterlijk `false`, ook wanneer de synthetische positieve fixture slaagt.
+
+De echte op de VPS geïnstalleerde proxyconfig is nog niet op deze manier geaudit; geen productierelease. Deze uitbreiding is volledig in de drie reeds eigen nieuwe bestanden gebleven. Vorige CI-resultaten op oudere SHA's blijven uitdrukkelijk ongeldig als bewijs voor de nieuwe code.
