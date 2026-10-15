@@ -106,6 +106,26 @@ A structurally valid packet prints exactly one opaque JSON line and exits **3**,
 
 No zero exit is possible for a normal input. No input values, timestamps, paths, client identifiers, or raw JSON snippets are echoed; even REVIEW_ONLY cannot show which anonymous row contributed to a count. A REVIEW_ONLY aggregation is not evidence of persisted, authentic, approved, current or non-revoked authorization.
 
+## Pinned stdin object — read/EOF descriptor replacement safety (W12)
+
+Like stdout, a successful fd0 `fstat()` is not a durable reservation:
+another local thread can replace fd0 after validation. Input now duplicates
+the verified open-file description and reads exclusively from that **pinned**
+descriptor, rather than calling `os.read(0, ...)`. It checks both the
+original and pinned descriptor device/inode/type before each read and again
+at EOF. File-size, mtime/ctime and offset checks apply to the pinned regular
+file; FIFO readers keep the same two-second bounded EOF policy. The pinned
+descriptor is closed in `finally` even on invalid input, and its
+blocking state is restored before closure.
+
+Tests demonstrate a simulated original fd0 rebinding denies the packet
+before read; a differently bound duplicate is rejected and closed;
+the only descriptors handed to select/read are the pinned fd; and a
+changed regular-file mtime produces HOLD with resource cleanup.
+This protects against redirected bytes *after* an identity check but cannot
+prove that the original sender or its content was trusted; no scan
+authorization or runtime grant is created.
+
 ## Pinned stdout object — descriptor replacement safety (W11)
 
 A call to `fstat(1)` does **not** reserve file descriptor 1: another
