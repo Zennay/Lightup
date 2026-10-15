@@ -220,6 +220,9 @@ class OfflineAttemptJournal:
         except sqlite3.Error:
             raise ValueError("synthetic offline connection required") from None
         self._con = connection
+        # Retain the inspector for EVERY operation, not only construction.
+        # SQLite schema can change on the supplied connection after init.
+        self._schema_valid = _trusted_schema
 
     def _rollback_quietly(self) -> None:
         try:
@@ -243,6 +246,12 @@ class OfflineAttemptJournal:
                 return _hold()
             self._con.execute("BEGIN IMMEDIATE")
             owned_transaction = True
+            # Inspect under the same SQLite write transaction as mutation.
+            # No REVIEW_ONLY receipt may survive later trigger/table/ATTACH
+            # injection or a TEMP-table shadow introduced after init.
+            if not self._schema_valid():
+                self._rollback_quietly()
+                return _hold()
             row = self._con.execute(
                 "SELECT sealed_binding,phase FROM offline_scope_1454_attempts "
                 "WHERE attempt_id=?", (attempt.attempt_id,)
@@ -289,6 +298,12 @@ class OfflineAttemptJournal:
                 return _hold()
             self._con.execute("BEGIN IMMEDIATE")
             owned_transaction = True
+            # Inspect under the same SQLite write transaction as mutation.
+            # No REVIEW_ONLY receipt may survive later trigger/table/ATTACH
+            # injection or a TEMP-table shadow introduced after init.
+            if not self._schema_valid():
+                self._rollback_quietly()
+                return _hold()
             self._con.execute(
                 "INSERT INTO offline_scope_1454_attempts "
                 "(attempt_id,sealed_binding,phase,evidence_digest) "
@@ -332,6 +347,8 @@ class OfflineAttemptJournal:
         if binding is None:
             return "unknown", _hold()
         try:
+            if not self._schema_valid():
+                return "unknown", _hold()
             row = self._con.execute(
                 "SELECT sealed_binding,phase FROM offline_scope_1454_attempts "
                 "WHERE attempt_id=?", (attempt.attempt_id,)
