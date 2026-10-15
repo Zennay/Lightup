@@ -51,7 +51,7 @@ Example of local use (all synthetic data, no customer targets):
 ```sh
 printf '%s\\n' '{"explicit_networks":["198.51.100.0/24","2001:db8::/64"]}' |
   python scripts/scope_292_296_exact_network_preflight.py
-# {"authorizes_execution":false,"authorizes_release":false,"authorizes_scan":false,"disposition":"REVIEW_ONLY","is_grant":false}
+# {"authorizes_execution":false,"authorizes_release":false,"authorizes_scan":false,"authorizes_target_io":false,"disposition":"REVIEW_ONLY","is_grant":false}
 # Exit status 3, never 0.
 ```
 
@@ -63,9 +63,22 @@ JSON, special float constants, extra fields, wrong types, noncanonical CIDRs
 `REVIEW_ONLY` means only that offline *syntax* passed; it does not confer
 network membership, ownership, risk approval, grants or deployment permission.
 Both `HOLD` and `REVIEW_ONLY` receipts contain **four explicit false
-authority flags and an `is_grant:false` field** and nonzero exit code
+authority flags (`authorizes_scan`, `authorizes_target_io`, `authorizes_execution`,
+`authorizes_release`) and an `is_grant:false` field** and nonzero exit code
 (`2` or `3` respectively). They never echo CIDRs, raw input, credentials
 or errors. Canonical `/0` is still a valid *syntax*, not a grant.
+
+Additional protection in this own offline preflight: receipt generation refuses
+any caller-controlled `str` subclass and arbitrary disposition object, always
+mapping them to HOLD. There is an explicit `authorizes_target_io:false` flag,
+separate from scan, execution and release flags, so REVIEW_ONLY cannot be
+misrepresented as target-I/O permission. Five additional executable tests cover
+forged dispositions, identical privacy-minimal receipts across different
+synthetic networks, **508 host-bit-widening examples** (127 per IPv4/IPv6
+family for both subnet and /0 variants), **all 33 IPv4 + 129 IPv6 canonical
+prefix lengths**, and real CLI success/failure responses with every authority
+bit false. These are **syntactic** controls only, never a customer consent or
+scope grant.
 
 The CLI/test module is a dry-run acceptance artifact pending source-owner
 coordination, **not** a production admission replacement or an automatic
