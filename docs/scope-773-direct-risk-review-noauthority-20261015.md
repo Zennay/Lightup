@@ -48,7 +48,8 @@ The unit suite checks the full five-by-five canonical risk matrix,
 invalid raw types, spoofed enum/numeric forms, foreign scope subclasses,
 destructive-tier denial, monotonicity, all-six-false receipt invariants,
 secret non-reflection, constructor-forgery rejection, immutable fresh snapshot
-outputs, and one `expectedFailure`
+outputs, live mocked file/network/subprocess denial tripwires, an AST import
+allowlist canary, and one `expectedFailure`
 for the *installed* direct-int-99 policy gap.
 
 An expected failure on the installed policy is a documented **RED**,
