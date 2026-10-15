@@ -208,5 +208,51 @@ class SyntheticProvenanceReviewTests(unittest.TestCase):
             os.close(read_fd)
             os.close(write_fd)
 
+
+    def test_seeked_regular_file_input_is_hold(self):
+        with tempfile.TemporaryFile() as source:
+            source.write(b'X' + OK)
+            source.seek(1)
+            p = subprocess.run([sys.executable, str(SCRIPT)], stdin=source,
+                               capture_output=True, timeout=3)
+            self.assertEqual(p.returncode, 2)
+            self.assertEqual(json.loads(p.stdout), {"status": "HOLD", **FALSE_FLAGS})
+            self.assertEqual(p.stderr, b"")
+
+    def test_oversized_regular_file_is_hold(self):
+        with tempfile.TemporaryFile() as source:
+            source.write(OK + b" " * (review.MAX_INPUT_BYTES + 1))
+            source.seek(0)
+            p = subprocess.run([sys.executable, str(SCRIPT)], stdin=source,
+                               capture_output=True, timeout=3)
+            self.assertEqual(p.returncode, 2)
+            self.assertEqual(json.loads(p.stdout), {"status": "HOLD", **FALSE_FLAGS})
+
+    def test_empty_regular_file_is_hold(self):
+        with tempfile.TemporaryFile() as source:
+            p = subprocess.run([sys.executable, str(SCRIPT)], stdin=source,
+                               capture_output=True, timeout=3)
+            self.assertEqual(p.returncode, 2)
+            self.assertEqual(json.loads(p.stdout), {"status": "HOLD", **FALSE_FLAGS})
+
+    def test_file_snapshot_modified_after_read_is_hold(self):
+        from unittest.mock import patch
+        # Deterministic mutation witness at the boundary, without flaky threads.
+        import scope_777_review_provenance_offline as module
+        with tempfile.TemporaryFile() as source:
+            source.write(OK)
+            source.seek(0)
+            before = os.fstat(source.fileno())
+            snapshot = (before.st_dev, before.st_ino, before.st_mode,
+                        before.st_size, before.st_mtime_ns, before.st_ctime_ns)
+            with patch.object(module.os, "fstat", wraps=os.fstat) as mocked:
+                # Different metadata after a real independent write, not a fake pass.
+                source.write(b" ")
+                source.flush()
+                with self.assertRaises(ValueError):
+                    module._verify_regular_input(source.fileno(), snapshot, len(OK))
+                self.assertGreaterEqual(mocked.call_count, 1)
+
+
 if __name__ == "__main__":
     unittest.main()
