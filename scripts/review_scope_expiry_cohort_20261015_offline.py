@@ -113,11 +113,11 @@ def review(payload: bytes) -> dict[str, object]:
 
 
 def _read_bounded_stdin() -> bytes:
-    """Read one local regular-file/FIFO packet with a fixed monotonic EOF deadline.
+    """Read one local regular-file/FIFO packet from a pinned fd with EOF deadline.
 
-    Byte limits alone cannot protect a CLI when a producer sends a prefix and
-    keeps the pipe open indefinitely. No sockets, TTYs, device nodes, filenames
-    or network endpoints are admitted. Restore fd0's original blocking state.
+    The original fd0 may be rebound with dup2() between fstat and read. Pin
+    its original open-file description, then independently check that fd0
+    still points to it before each read and after EOF. No sockets/TTYs.
     """
     fd = sys.stdin.fileno()
     if fd != 0:
@@ -127,50 +127,64 @@ def _read_bounded_stdin() -> bytes:
     if not (stat.S_ISFIFO(initial.st_mode) or regular):
         raise ValueError("stdin must be a local pipe or regular file")
     if regular:
-        # Reject partial/seeked regular files and oversized snapshots *before*
-        # reading. Never silently review a truncated or suffix-only record.
         if not 0 < initial.st_size <= MAX_INPUT_BYTES:
             raise ValueError("invalid regular-file size")
         if os.lseek(fd, 0, os.SEEK_CUR) != 0:
             raise ValueError("nonzero regular-file offset")
 
-    was_blocking = os.get_blocking(fd)
+    pinned_fd = os.dup(fd)
     try:
-        os.set_blocking(fd, False)
-        deadline = time.monotonic() + MAX_INPUT_SECONDS
-        chunks = bytearray()
-        while len(chunks) <= MAX_INPUT_BYTES:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise ValueError("stdin EOF deadline")
-            readable, _, _ = select.select([fd], [], [], remaining)
-            if not readable:
-                raise ValueError("stdin EOF deadline")
-            before = os.fstat(fd)
-            if (before.st_dev, before.st_ino, before.st_mode) != (
-                initial.st_dev, initial.st_ino, initial.st_mode
-            ):
-                raise ValueError("stdin descriptor identity drift")
-            chunk = os.read(fd, min(4096, MAX_INPUT_BYTES + 1 - len(chunks)))
-            if not chunk:
-                final = os.fstat(fd)
-                if (final.st_dev, final.st_ino, final.st_mode) != (
-                    initial.st_dev, initial.st_ino, initial.st_mode
-                ):
-                    raise ValueError("stdin EOF identity drift")
-                if regular:
-                    if (final.st_size, final.st_mtime_ns, final.st_ctime_ns) != (
-                        initial.st_size, initial.st_mtime_ns, initial.st_ctime_ns
-                    ):
-                        raise ValueError("regular-file snapshot changed")
-                    if (len(chunks) != initial.st_size or
-                            os.lseek(fd, 0, os.SEEK_CUR) != initial.st_size):
-                        raise ValueError("incomplete regular-file snapshot")
-                return bytes(chunks)
-            chunks.extend(chunk)
-        raise ValueError("stdin byte limit")
+        pinned = os.fstat(pinned_fd)
+        original_id = (initial.st_dev, initial.st_ino, initial.st_mode)
+        if (pinned.st_dev, pinned.st_ino, pinned.st_mode) != original_id:
+            raise ValueError("stdin pin mismatch")
+        was_blocking = os.get_blocking(pinned_fd)
+        try:
+            os.set_blocking(pinned_fd, False)
+            deadline = time.monotonic() + MAX_INPUT_SECONDS
+            chunks = bytearray()
+            while len(chunks) <= MAX_INPUT_BYTES:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise ValueError("stdin EOF deadline")
+                readable, _, _ = select.select([pinned_fd], [], [], remaining)
+                if not readable:
+                    raise ValueError("stdin EOF deadline")
+                before_live = os.fstat(fd)
+                before_pinned = os.fstat(pinned_fd)
+                if (before_live.st_dev, before_live.st_ino,
+                        before_live.st_mode) != original_id or (
+                        before_pinned.st_dev, before_pinned.st_ino,
+                        before_pinned.st_mode) != original_id:
+                    raise ValueError("stdin descriptor identity drift")
+                chunk = os.read(
+                    pinned_fd, min(4096, MAX_INPUT_BYTES + 1 - len(chunks))
+                )
+                if not chunk:
+                    final_live = os.fstat(fd)
+                    final = os.fstat(pinned_fd)
+                    if (final_live.st_dev, final_live.st_ino,
+                            final_live.st_mode) != original_id or (
+                            final.st_dev, final.st_ino,
+                            final.st_mode) != original_id:
+                        raise ValueError("stdin EOF identity drift")
+                    if regular:
+                        if (final.st_size, final.st_mtime_ns,
+                                final.st_ctime_ns) != (
+                                initial.st_size, initial.st_mtime_ns,
+                                initial.st_ctime_ns):
+                            raise ValueError("regular-file snapshot changed")
+                        if (len(chunks) != initial.st_size or
+                                os.lseek(pinned_fd, 0, os.SEEK_CUR)
+                                != initial.st_size):
+                            raise ValueError("incomplete regular-file snapshot")
+                    return bytes(chunks)
+                chunks.extend(chunk)
+            raise ValueError("stdin byte limit")
+        finally:
+            os.set_blocking(pinned_fd, was_blocking)
     finally:
-        os.set_blocking(fd, was_blocking)
+        os.close(pinned_fd)
 
 
 def _receipt(status: str) -> dict[str, object]:
