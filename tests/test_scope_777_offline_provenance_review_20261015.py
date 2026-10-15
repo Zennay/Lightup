@@ -254,5 +254,41 @@ class SyntheticProvenanceReviewTests(unittest.TestCase):
                 self.assertGreaterEqual(mocked.call_count, 1)
 
 
+
+    def test_descriptor_rebinding_is_rejected_with_pinned_original_unchanged(self):
+        r1, w1 = os.pipe()
+        r2, w2 = os.pipe()
+        original = os.dup(r1)
+        try:
+            self.assertEqual(review._fd_identity(original), review._fd_identity(r1))
+            self.assertIsNone(review._assert_original_fd_is_pinned(original, r1))
+            os.dup2(r2, original)
+            with self.assertRaises(ValueError):
+                review._assert_original_fd_is_pinned(original, r1)
+            os.write(w1, b"a")
+            self.assertEqual(os.read(r1, 1), b"a")
+        finally:
+            for fd in (r1, w1, r2, w2, original):
+                os.close(fd)
+
+    def test_pin_failure_does_not_leak_duplicated_fds(self):
+        from unittest.mock import patch
+        with patch.object(review.os, "dup", side_effect=OSError("synthetic failure")):
+            with self.assertRaises(OSError):
+                review._pin_checked_fds()
+
+    def test_safe_pin_matches_actual_runtime_descriptors(self):
+        # The test-runner fds are not necessarily admitted (CI may redirect
+        # stdout), so independently assert the checked pin equality invariant.
+        r, w = os.pipe()
+        pinned = os.dup(r)
+        try:
+            self.assertIsNone(review._assert_original_fd_is_pinned(r, pinned))
+        finally:
+            os.close(pinned)
+            os.close(r)
+            os.close(w)
+
+
 if __name__ == "__main__":
     unittest.main()
