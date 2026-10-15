@@ -29,6 +29,10 @@ The separately added `scripts/scope_737_revocation_batch_triage.py` reviews **on
 
 This batch preview is not sourced from tenant storage, never contacts actual systems, and cannot prove current authorization, consent, operator revocation or complete evidence. `tests/test_scope_737_revocation_batch_triage_20261015.py` adds **18 methods** covering 64-item boundary, malformed atomic rejection, spoofing, privacy, all-status HOLD, immutability and mixed-cohort summaries.
 
+## W7 — hidden Unicode provenance text stays noncanonical
+
+This strictly optional reviewer also rejects hidden control characters (including embedded newlines, NUL, tabs), bidirectional override controls, zero-width/format marks, unassigned/private-use/surrogate code points, and **non-NFC composed forms** in `revoked_by` or `revocation_reason`. Exact built-in `str` values with visible NFC-composed international text remain eligible for **review only**, never approved. No Unicode normalization silently rewrites an actor identity or input string. This deliberately conservative field-shape policy is not a global identity rule; production owner must choose policy with privacy and local-language review. The standalone source, JSON CLI, and real `python -m` subprocess tests pin these rules with fictional inputs and no secret echoes.
+
 ## W5 — opt-in stdin-only JSON v1 interface (bounded, never authorizing)
 
 A new independent `scripts/scope_737_revocation_review_cli.py` exposes the same HOLD-only batch review through an **explicitly invoked offline CLI**, with **no network calls, no target lookup, no filesystem reads/writes, no persistence and no handler execution**. Its *only* input is a 64 KiB-limited UTF-8 JSON document from stdin; its *only* output is a one-line JSON response with fixed result/decision codes and count-only classifications. There are no CLI flags that confer grants or dispatch authority.
