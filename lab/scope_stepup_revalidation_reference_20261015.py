@@ -90,21 +90,24 @@ class ReviewReceipt:
     def as_dict(self) -> dict[str, str | bool]:
         # Treat a poisoned or user-constructed receipt as HOLD, never echo a
         # caller-provided status/reason/identifier. No flag is an authority.
-        flags = (
-            self.authorization_verified, self.permit_issued,
-            self.execution_enabled, self.dispatch_allowed,
-            self.merge_approved, self.release_approved,
-        ) if type(self) is ReviewReceipt else ()
-        valid = (
-            type(self) is ReviewReceipt
-            and all(type(flag) is bool and flag is False for flag in flags)
-            and type(self.status) is str and type(self.reason) is str
-            and (
-                (self.status == "HOLD" and self.reason == "not_verified")
-                or (self.status == "REVIEW_ONLY"
-                    and self.reason == "synthetic_snapshot_consistent")
+        try:
+            flags = (
+                self.authorization_verified, self.permit_issued,
+                self.execution_enabled, self.dispatch_allowed,
+                self.merge_approved, self.release_approved,
+            ) if type(self) is ReviewReceipt else ()
+            valid = (
+                type(self) is ReviewReceipt
+                and all(type(flag) is bool and flag is False for flag in flags)
+                and type(self.status) is str and type(self.reason) is str
+                and (
+                    (self.status == "HOLD" and self.reason == "not_verified")
+                    or (self.status == "REVIEW_ONLY"
+                        and self.reason == "synthetic_snapshot_consistent")
+                )
             )
-        )
+        except (AttributeError, TypeError):
+            valid = False
         status = self.status if valid else "HOLD"
         reason = self.reason if valid else "not_verified"
         return {
@@ -119,8 +122,14 @@ class ReviewReceipt:
         }
 
 
-_HOLD = ReviewReceipt("HOLD", "not_verified")
-_REVIEW = ReviewReceipt("REVIEW_ONLY", "synthetic_snapshot_consistent")
+def _hold() -> ReviewReceipt:
+    # Fresh value each time: callers cannot poison a shared global singleton
+    # and silently change future HOLD receipts via object.__setattr__.
+    return ReviewReceipt("HOLD", "not_verified")
+
+
+def _review() -> ReviewReceipt:
+    return ReviewReceipt("REVIEW_ONLY", "synthetic_snapshot_consistent")
 
 
 class OfflineRevalidationFence:
@@ -209,7 +218,7 @@ class OfflineRevalidationFence:
                 or isolation_probe is None or not callable(isolation_probe)
                 or (fresh_clock_probe is not None
                     and not callable(fresh_clock_probe))):
-            return _HOLD
+            return _hold()
 
         # Hold a private immutable copy of every caller-controlled field.
         # A callback that rewrites a frozen dataclass with object.__setattr__
@@ -219,7 +228,7 @@ class OfflineRevalidationFence:
             for name in ReviewRequest.__dataclass_fields__
         })
         if request != initial_request:
-            return _HOLD
+            return _hold()
 
         # The expensive, untrusted verifier deliberately executes OUTSIDE the
         # lock; changes while it runs must invalidate the captured epoch.
@@ -227,32 +236,32 @@ class OfflineRevalidationFence:
             epoch = self._epoch
         try:
             if isolation_probe() is not True:
-                return _HOLD
+                return _hold()
             # Optional second synthetic clock observation can prove that an
             # isolation callback did not outlive the original approval window.
             # Never execute clock callbacks under the ledger lock.
             fresh_now = now if fresh_clock_probe is None else fresh_clock_probe()
         except Exception:
-            return _HOLD
+            return _hold()
         if not _aware(fresh_now) or fresh_now < now:
-            return _HOLD
+            return _hold()
 
         with self._lock:
             approval, tool = self._approval, self._tool
             if epoch != self._epoch or approval is None or tool is None:
-                return _HOLD
+                return _hold()
             if not approval.is_well_formed() or not tool.is_well_formed():
-                return _HOLD
+                return _hold()
             if (self._approval_fields(approval) != self._approval_seal
                     or self._tool_fields(tool) != self._tool_seal):
-                return _HOLD
+                return _hold()
             if (request != initial_request or approval.request != initial_request
                     or tool.tool != initial_request.tool
                     or tool.capability != initial_request.capability
                     or tool.risk != initial_request.risk
                     or fresh_now < approval.issued_at
                     or fresh_now >= approval.expires_at):
-                return _HOLD
+                return _hold()
             self._review_count += 1
             # Never emit an authorization or execution permit.
-            return _REVIEW
+            return _review()
