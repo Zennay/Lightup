@@ -219,6 +219,18 @@ year 9999 overflow boundaries, and rejection of non-leap-year century
 dates (1900/2100), year 0000 and 24:00 rollover. None of these time
 fields is authenticated or used to permit active scanning.
 
+## Uniform HOLD privacy on adversarial inputs (W16)
+
+Twelve distinct real subprocess payloads—including invalid UTF-8, severe
+JSON nesting, short/trailing JSON, duplicate keys, wrong horizon types,
+oversized stdin, undeclared approval flags, and invented client/tenant
+strings—must all produce an **identical** JSON object: `HOLD`,
+exit code 2, exactly six literal `false` authority flags, **no count fields
+and no stderr**. Neither an error category nor supplied identifiers may be
+reflected in the receipt. This is only a fail-closed *content* invariant;
+execution time may differ for different malformed packets, and the
+reviewer is not a cryptographic privacy mechanism.
+
 ## Installed runtime import isolation (W14)
 
 The new acceptance test scans only installed Python source under
