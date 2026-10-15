@@ -111,8 +111,14 @@ def _bounded_networks(raw: object) -> tuple[str, ...] | None:
         if type(value) is not str or not 0 < len(value) <= _MAX_NETWORK_LENGTH:
             return None
         try:
-            ip_network(value, strict=False)
+            parsed = ip_network(value, strict=True)
         except ValueError:
+            return None
+        # A review must not quietly mint an expanded CIDR, normalize host
+        # bits, abbreviate a bare IP to /32 or /128, or rewrite IPv6 spellings.
+        # Exact on-wire network identity is deliberately stricter than the
+        # legacy installed ScopePolicy parser (which remains source-owned).
+        if str(parsed) != value:
             return None
     return copied
 
