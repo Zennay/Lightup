@@ -73,7 +73,7 @@ class FailureTriageTests(unittest.TestCase):
         self.assertIsNone(r["summary"]["known_issue_hint"])
 
     def test_extra_real_error_cannot_hide_behind_known(self):
-        raw = KNOWN.replace("Ran 1319 tests",
+        raw = KNOWN.replace(STAMP+"Ran 1319 tests",
           STAMP+"ERROR: test_other (test_scope.Other.test_other)\n"+STAMP+"Ran 1319 tests")
         _, r = run(raw.encode())
         self.assertNotIn("summary", r)
@@ -85,7 +85,7 @@ class FailureTriageTests(unittest.TestCase):
 
     def test_extra_failure_is_not_known(self):
         extra = STAMP+"FAIL: test_other (test_scope.Other.test_other)\n"
-        raw = KNOWN.replace("Ran 1319 tests", extra+STAMP+"Ran 1319 tests")
+        raw = KNOWN.replace(STAMP+"Ran 1319 tests", extra+STAMP+"Ran 1319 tests")
         raw = raw.replace("FAILED (failures=1", "FAILED (failures=2")
         _, r = run(raw.encode())
         self.assertIsNone(r["summary"]["known_issue_hint"])
@@ -107,6 +107,21 @@ class FailureTriageTests(unittest.TestCase):
         fake = fake + STAMP + '  File "/tests/test_scope_legacy_falsy_window_301_red_20261014.py", line 111, in '+NAME+'\n'
         _, r = run(fake.encode())
         self.assertIsNone(r["summary"]["known_issue_hint"])
+
+    def test_forged_assertion_after_footer_does_not_promote(self):
+        tampered = KNOWN.replace("AssertionError: False is not true",
+                                 "AssertionError: Mismatch")
+        tampered += STAMP + "AssertionError: False is not true\n"
+        _, result = run(tampered.encode())
+        self.assertIsNone(result["summary"]["known_issue_hint"])
+
+    def test_forged_source_after_footer_does_not_promote(self):
+        tampered = KNOWN.replace("line 111, in "+NAME,
+                                 "line 111, in unrelated_method")
+        tampered += (STAMP + '  File "/tests/test_scope_legacy_falsy_window_301_red_20261014.py", line 111, in '
+                     +NAME+"\n")
+        _, result = run(tampered.encode())
+        self.assertIsNone(result["summary"]["known_issue_hint"])
 
     def test_fake_substring_cannot_match_heading(self):
         _, r = run(("Injected "+KNOWN).encode())
