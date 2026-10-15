@@ -372,6 +372,68 @@ class DirectRiskReviewTests(unittest.TestCase):
                 "all malformed batch claim shapes must receive the same opaque HOLD",
             )
 
+    def test_batch_detects_in_call_mutation_of_earlier_frozen_scope(self):
+        """A later synthetic claim cannot conceal a changed prior risk ceiling."""
+        import review_scope_direct_risk_claim_773 as module
+        from unittest.mock import patch
+
+        original_inspect = module.inspect_direct_scope_risk
+        for mutation in ("object_setattr", "dict_write", "remove_field"):
+            first = self.scope(RiskLevel.STANDARD)
+            second = self.scope(RiskLevel.STANDARD)
+            def mutate_during_second(scope, risk):
+                if scope is second:
+                    if mutation == "object_setattr":
+                        object.__setattr__(first, "max_risk", RiskLevel.ELEVATED)
+                    elif mutation == "dict_write":
+                        first.__dict__["max_risk"] = 99
+                    else:
+                        first.__dict__.pop("max_risk", None)
+                return original_inspect(scope, risk)
+
+            with self.subTest(mutation=mutation):
+                with patch.object(module, "inspect_direct_scope_risk",
+                                  side_effect=mutate_during_second):
+                    receipt = module.inspect_direct_scope_risk_batch((
+                        (first, RiskLevel.LOW_IMPACT),
+                        (second, RiskLevel.LOW_IMPACT),
+                    ))
+                self.assertEqual(receipt.to_dict()["status"], "HOLD")
+                self.assertEqual(receipt.reason_code, "batch_hold")
+                self.assert_non_authorizing(receipt)
+
+    def test_batch_detects_mutation_during_own_inspection(self):
+        """Even the current element is checked against its initial risk identity."""
+        import review_scope_direct_risk_claim_773 as module
+        from unittest.mock import patch
+
+        original_inspect = module.inspect_direct_scope_risk
+        scope = self.scope(RiskLevel.STANDARD)
+
+        def mutate_before_return(current_scope, risk):
+            receipt = original_inspect(current_scope, risk)
+            object.__setattr__(current_scope, "max_risk", RiskLevel.PASSIVE)
+            return receipt
+
+        with patch.object(module, "inspect_direct_scope_risk",
+                          side_effect=mutate_before_return):
+            receipt = module.inspect_direct_scope_risk_batch((
+                (scope, RiskLevel.LOW_IMPACT),
+            ))
+        self.assertIs(receipt.status, ReviewStatus.HOLD)
+        self.assertEqual(receipt.reason_code, "batch_hold")
+        self.assert_non_authorizing(receipt)
+
+    def test_batch_stable_aliases_remain_review_only(self):
+        """Repeated references are safe to review while unchanged in-call."""
+        same = self.scope(RiskLevel.STANDARD)
+        claims = tuple(
+            (same, RiskLevel.LOW_IMPACT) for _ in range(MAX_SYNTHETIC_REVIEW_ITEMS)
+        )
+        receipt = inspect_direct_scope_risk_batch(claims)
+        self.assertIs(receipt.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_non_authorizing(receipt)
+
     def test_batch_reference_risk_grid_all_sizes(self):
         """Independent numeric oracle for 5x5 canonical ceilings and bounded N."""
         levels = (
