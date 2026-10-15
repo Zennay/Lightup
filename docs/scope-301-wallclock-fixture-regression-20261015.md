@@ -80,6 +80,16 @@ the historical 2026-10-14 constant. It does not confer consent or alter the
 ten existing intentional #301 RED checks for malformed falsey validity
 boundaries.
 
+## Final fixture-path closure (W5)
+
+The earlier ordinary `test_canonical_expired_explicit_host_scope_denied`
+also used implicit host wall-clock time, even though its historical window
+was far past the current date. It now exercises the same installed source
+with the exact frozen `NOW` via the hermetic helper. This closes the last
+ordinary PASS test in this #301 module that implicitly depended on a
+machine calendar. The existing intentionally expected-RED malformed-bound
+tests are unchanged, and source owner #100/#104 still owns actual repair.
+
 ## Ownership and proof gates
 
 Only this original time-window test module and this standalone explanation
