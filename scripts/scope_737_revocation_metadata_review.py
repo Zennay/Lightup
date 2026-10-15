@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import unicodedata
 
 
 @dataclass(frozen=True)
@@ -23,7 +24,13 @@ class RevocationReview:
 
 
 def _canonical_text(value: object) -> bool:
-    return type(value) is str and bool(value) and value == value.strip() and len(value) <= 256
+    # Reject hidden control/format/private-use characters and non-NFC forms;
+    # visually deceptive provenance is not a canonical review artifact.
+    if type(value) is not str or not value or len(value) > 256:
+        return False
+    if value != value.strip() or unicodedata.normalize("NFC", value) != value:
+        return False
+    return not any(unicodedata.category(ch).startswith("C") for ch in value)
 
 
 def review_revocation_metadata(
