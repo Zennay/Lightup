@@ -55,6 +55,25 @@ regressions cover a writer that keeps the pipe open, rejected Unix socket
 stdin, and an accepted local temporary-file fd0 control. No external
 connections or scans occur.
 
+## Complete snapshot and FD-identity preflight (W8)
+
+A regular-file packet must start at **byte offset zero** and have a declared
+file size of **1–16 KiB** before any parsing. After actual EOF, the checker
+compares read-byte count, resulting offset, original/final size and original/
+final mtime/ctime to detect truncation, appends or concurrent file mutation.
+This prevents a seeked input from being treated as a complete consent record.
+For both local regular-file and pipe intake, the descriptor device/inode/type
+must remain unchanged across reads and at EOF; output also rechecks its
+descriptor identity immediately before the single bounded receipt write.
+Any mismatch causes **HOLD** or a failed receipt, never a permit.
+
+Subprocess canaries cover seeked inputs and empty/oversized regular files.
+Isolated deterministic fstat mocks check a simulated modified file, switched
+input identity and switched output identity (no write permitted). These are
+**best-effort userland consistency checks, not a kernel-locked snapshot or
+proof of source authenticity**. External provenance, live revocation and
+customer permissions still require a separate trusted enforcement layer.
+
 ## Bounded and private local output (W5)
 
 The CLI emits a **single ASCII JSON line of at most 512 bytes** by one
