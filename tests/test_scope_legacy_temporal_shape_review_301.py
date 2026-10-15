@@ -106,7 +106,7 @@ def _source_has_only_offline_effects(source):
         "__future__", "datetime", "typing", "lightup.models", "collections.abc"
     }
     permitted_calls = {
-        "type", "len", "range", "tuple", "list", "_stored_fields",
+        "type", "len", "range", "tuple", "list", "KeyError", "_stored_fields",
         "LegacyTemporalReceipt", "LegacyTemporalReview", "iter", "_canonical_receipt_pair", "_canonical_datetime",
         "review_legacy_authorization_window"
     }
