@@ -612,6 +612,67 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
         self.assertIs(batch.status, ReviewStatus.HOLD)
         self.assert_no_authority(batch)
 
+    def test_single_grant_holds_when_other_stored_grant_reuses_approval(self):
+        self.upgrade_synthetic_only()
+        second_id = self._second_synthetic_grant("api.example.test")
+        # Two fully coherent, independent synthetic requests initially pass.
+        self.assertIs(self.review().status, ReviewStatus.REVIEW_ONLY)
+        self.assertIs(self.review(grant_id=second_id).status, ReviewStatus.REVIEW_ONLY)
+
+        with sqlite3.connect(self.path) as con:
+            modified = con.execute(
+                "UPDATE authorization_grants SET approved_request_id=? "
+                "WHERE grant_id=?",
+                (self.request.request_id, second_id),
+            ).rowcount
+            self.assertEqual(modified, 1)
+            # The declared FK still points to a real row! Ordinary FK
+            # checks alone do not detect that consent was reused.
+            self.assertEqual(con.execute(
+                "PRAGMA foreign_key_check(authorization_grants)"
+            ).fetchall(), [])
+
+        for inspected in (self.grant.grant_id, second_id):
+            with self.subTest(grant_id=inspected):
+                decision = self.review(grant_id=inspected)
+                self.assertIs(decision.status, ReviewStatus.HOLD)
+                self.assert_no_authority(decision)
+                one_entry_batch = review_persisted_grant_batch(
+                    self.path, (inspected,), reviewed_at=self.reviewed_at
+                )
+                self.assertIs(one_entry_batch.status, ReviewStatus.HOLD)
+                self.assert_no_authority(one_entry_batch)
+
+    def test_unreviewed_expired_grant_still_blocks_reused_approval(self):
+        self.upgrade_synthetic_only()
+        second_id = self._second_synthetic_grant("api.example.test")
+        with sqlite3.connect(self.path) as con:
+            changed = con.execute(
+                "UPDATE authorization_grants "
+                "SET approved_request_id=?, valid_until=? WHERE grant_id=?",
+                (
+                    self.request.request_id,
+                    (self.now - timedelta(days=3)).isoformat(),
+                    second_id,
+                ),
+            ).rowcount
+            self.assertEqual(changed, 1)
+        # A stale, expired record is still persisted approval reuse without
+        # any authenticated replacement/revocation provenance.
+        decision = self.review()
+        self.assertIs(decision.status, ReviewStatus.HOLD)
+        self.assert_no_authority(decision)
+
+    def test_distinct_approved_requests_remain_review_only(self):
+        self.upgrade_synthetic_only()
+        second_id = self._second_synthetic_grant("api.example.test")
+        first_decision = self.review()
+        second_decision = self.review(grant_id=second_id)
+        self.assertIs(first_decision.status, ReviewStatus.REVIEW_ONLY)
+        self.assertIs(second_decision.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(first_decision)
+        self.assert_no_authority(second_decision)
+
     def test_atomic_persisted_batch_two_valid_is_still_review_only(self):
         self.upgrade_synthetic_only()
         second_id = self._second_synthetic_grant()
