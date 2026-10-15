@@ -29,6 +29,22 @@ The separately added `scripts/scope_737_revocation_batch_triage.py` reviews **on
 
 This batch preview is not sourced from tenant storage, never contacts actual systems, and cannot prove current authorization, consent, operator revocation or complete evidence. `tests/test_scope_737_revocation_batch_triage_20261015.py` adds **18 methods** covering 64-item boundary, malformed atomic rejection, spoofing, privacy, all-status HOLD, immutability and mixed-cohort summaries.
 
+## W5 — opt-in stdin-only JSON v1 interface (bounded, never authorizing)
+
+A new independent `scripts/scope_737_revocation_review_cli.py` exposes the same HOLD-only batch review through an **explicitly invoked offline CLI**, with **no network calls, no target lookup, no filesystem reads/writes, no persistence and no handler execution**. Its *only* input is a 64 KiB-limited UTF-8 JSON document from stdin; its *only* output is a one-line JSON response with fixed result/decision codes and count-only classifications. There are no CLI flags that confer grants or dispatch authority.
+
+Input strict schema is `{"schema_version":1,"records":[{"revoked_at":"2026-10-15T10:00:00Z","revoked_by":"fictional","revocation_reason":"fixture"}]}`. Each record has **exactly** those three fields; 1–64 rows; duplicate object keys (including Unicode-escaped duplicates), extra keys, missing keys, non-standard JSON number constants, mismatched version, non-UTF8 or oversized raw input fail closed with a generic `HOLD/invalid_input` response and exit status **2**. Valid input shape exits **0**, but response is **still always `HOLD`** and `can_authorize=False`, `can_dispatch=False`, `can_release=False`. The only timestamp converted to an actual timezone-aware datetime is an exact ASCII whole-second UTC `YYYY-MM-DDTHH:MM:SSZ` string; everything else is marked inconsistent by the safe metadata review, never guessed/canonicalized into authority.
+
+No raw `revoked_by`, `revocation_reason`, target identity, input bytes, or client-provided object ever appears in either success or failure output. The response includes aggregate counts, not individual client data. This CLI is **preview-only**, not wired into the product.
+
+To run with *fabricated lab data only*:
+
+```sh
+printf '%s\\n' '{"schema_version":1,"records":[{"revoked_at":null,"revoked_by":"fictional-operator","revocation_reason":"fictional-withdrawal"}]}' | python -m scripts.scope_737_revocation_review_cli
+```
+
+The `tests/test_scope_737_revocation_review_cli_20261015.py` suite adds 28 independent method-level cases for invalid schema, JSON duplicate keys, encoded key aliases, UTC time parsing, malformed time, privacy, 64 KiB and 64-entry limits, atomic rejection, literal CLI stdin/stdout, and permanently non-authorizing outputs. Keep synthetic only. **Success means review behavior works, NOT real authorization or source-owner repair.**
+
 ## Real proof plan
 
 ```sh
