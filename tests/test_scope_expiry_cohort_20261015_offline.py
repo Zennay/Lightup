@@ -470,5 +470,48 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
             os.close(read_fd)
 
 
+    def test_fd0_fd1_original_blocking_flags_restored_after_real_process(self):
+        """FD mode changes must not survive success OR malformed input HOLD."""
+        cmd = [sys.executable, str(ROOT / "scripts" /
+                                  "review_scope_expiry_cohort_20261015_offline.py")]
+        for raw, expected in ((encoded(document()), 3),
+                              (b'{"incomplete":', 2)):
+            with self.subTest(expected=expected):
+                input_read, input_write = os.pipe()
+                output_read, output_write = os.pipe()
+                proc = None
+                try:
+                    self.assertTrue(os.get_blocking(input_read))
+                    self.assertTrue(os.get_blocking(output_write))
+                    proc = subprocess.Popen(
+                        cmd, stdin=input_read, stdout=output_write,
+                        stderr=subprocess.PIPE,
+                    )
+                    os.write(input_write, raw)
+                    os.close(input_write)
+                    input_write = -1
+                    self.assertEqual(proc.wait(timeout=5), expected)
+                    self.assertTrue(os.get_blocking(input_read))
+                    self.assertTrue(os.get_blocking(output_write))
+                    os.close(output_write)
+                    output_write = -1
+                    receipt = json.loads(os.read(output_read, 4096).decode("ascii"))
+                    self.assertEqual(
+                        receipt["status"],
+                        "REVIEW_ONLY" if expected == 3 else "HOLD",
+                    )
+                    self.assertNoAuthority(receipt)
+                    self.assertEqual(proc.stderr.read(), b"")
+                finally:
+                    if proc is not None:
+                        if proc.poll() is None:
+                            proc.kill()
+                            proc.wait(timeout=2)
+                        proc.stderr.close()
+                    for fd in (input_read, input_write, output_read, output_write):
+                        if fd >= 0:
+                            os.close(fd)
+
+
 if __name__ == "__main__":
     unittest.main()
