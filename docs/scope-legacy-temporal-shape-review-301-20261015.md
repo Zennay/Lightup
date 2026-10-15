@@ -199,6 +199,26 @@ items and internal comparison paths still have different costs. It only
 removes the obvious early-exit-by-position distinction while preserving
 strict bounds, no external I/O and no authority.
 
+## W10: diagnostic verdicts are always falsy
+
+Unlike a plain 2-element Python NamedTuple, `LegacyTemporalReview`
+defines `__bool__` to return the exact builtin `False` for **all**
+HOLD, REVIEW_ONLY, forged status and error states. This prevents
+`if review_legacy_authorization_window(...):` and
+`if review_legacy_authorization_batch(...):` from accidentally
+interpreting a positive-looking review as an executable permit.
+A forged `LegacyTemporalReview("APPROVED", "fake_grant")` is
+also falsy. The code does not touch target execution or installed
+Authorization rules.
+
+The same ordinary tests verify this for every synthetic verdict,
+and show a patched verdict-attribute getter is never triggered
+by the boolean check. Receipt dictionaries themselves are normal,
+truthy Python dictionaries; **never test whether a receipt exists
+to infer authorization**. Examine its six immutable false-valued
+authorization and release fields, and enforce actual permission
+in the independent installed source-owned control-plane.
+
 ## Hard gate: not a production fix
 
 This does **not** repair `Authorization.is_current()`. Release requires the
