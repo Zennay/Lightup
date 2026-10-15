@@ -54,8 +54,20 @@ def _canonical_claim(value: object) -> bool:
     # circled characters) must not silently impersonate ordinary identities.
     if unicodedata.normalize("NFKC", value) != value:
         return False
+    letter_scripts: set[str] = set()
     for ch in value:
         category = unicodedata.category(ch)
+        # Block a conservative subset of mixed-script lookalikes that NFKC
+        # cannot distinguish (e.g. Cyrillic O within Latin "Operator").
+        # Single-script international names remain reviewable.
+        if category.startswith("L"):
+            char_name = unicodedata.name(ch, "")
+            for script in ("LATIN", "GREEK", "CYRILLIC", "ARMENIAN"):
+                if char_name.startswith(script + " "):
+                    letter_scripts.add(script)
+                    if len(letter_scripts) > 1:
+                        return False
+                    break
         # Reject format/control/private/unassigned characters and non-ASCII
         # separators that can obscure provenance in logs and reviewer UIs.
         if category[0] == "C" or (category[0] == "Z" and ch != " "):
