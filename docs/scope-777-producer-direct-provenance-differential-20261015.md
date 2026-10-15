@@ -30,6 +30,13 @@ JSON parse. BOM, invalid UTF-8, ambiguous/duplicate keys including decoded
 escape aliases, unknown fields, nonfinite numbers, malformed or deeply nested
 JSON, and spoofed approval flags are generic `HOLD`.
 
+At the actual CLI boundary, input must be a local pipe/FIFO or regular
+file; output must be a local pipe/FIFO or real TTY. An inherited socket,
+device stdin, regular-file stdout or socket stdout is refused before data is
+read or emitted. This is a conservative local preflight, **not** a hardened
+descriptor pinning or race-resistant production authorization boundary.
+No network connection is made by the reviewer.
+
 Its *only* receipts are `REVIEW_ONLY` (lexical consistency, exit 3) or `HOLD`
 (exit 2), with six literal false authority/permit/dispatch/merge/deploy/release
 fields and no echoed input. Both outcomes are nonzero. It never authenticates
@@ -52,10 +59,11 @@ PYTHONPATH=src python -m unittest discover -s tests \
 ```
 
 **Executed local reference validation:** the same isolated reviewer and
-regression fixtures were executed under Python with all **12 / 12 standard
+regression fixtures were executed under Python with all **16 / 16 standard
 library test methods passing**, including real subprocess exit-code and privacy
 checks, size/type boundaries, JSON-escape collisions, spoofed extra permit
-fields and no input mutation. These were executed outside a full LightUp
+fields, local file input, socket stdin/stdout refusal, rejected regular-file
+stdout, and no input mutation. These were executed outside a full LightUp
 checkout because the GitHub repository could not be cloned from this sandbox.
 **This is not exact-head hosted/VPS CI proof.** The complete LightUp suite and
 earlier SQLite producer/direct differential remain unexecuted in this run,
