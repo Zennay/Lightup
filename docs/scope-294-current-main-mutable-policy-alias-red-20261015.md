@@ -26,3 +26,19 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 The required evidence is *exactly six expected failures and three ordinary positive controls*, with no unexpected failures or accidental successes. An `expectedFailure` acknowledges the **original installed problem still exists** and must not be interpreted as remediation or release readiness. Source owner #100 must implement validated immutable snapshots in `scope.py` and then convert these six expected RED canaries to plain passing tests. Other source boundaries #177 consent, #347 revocation, identity, destination and ingress still need independent review, canonical registered permanent VPS proof, privacy/security and explicit human approval.
 
 **Never merge, deploy, issue grants, scan external targets, or infer authorization from CI. DRAFT/HOLD.**
+
+## Independent W2: opt-in non-authorizing collection snapshot reference
+
+The follow-on **new-only** `src/lightup/scope_collection_snapshot_review_294.py` and `tests/test_scope_collection_snapshot_review_294_20261015.py` provide a real reusable but **not installed** reference for safe policy-metadata review.
+
+- `snapshot_untrusted_scope_collections(hosts, networks)` accepts strictly **exact built-in** set/frozenset/list/tuple host containers and list/tuple network containers with exact built-in string members; it enforces 128-element limits, bounded string lengths and syntactically parseable CIDRs. Invalid values yield generic `HOLD` without calling untrusted coercion methods. A valid shape produces **REVIEW_ONLY**, never authority.
+- The reference copies admitted collections to an independent `frozenset` and `tuple`, so **subsequent caller-owned set/list mutation cannot change that detached review snapshot**. This makes *no* claim of atomic concurrency for mutations during snapshotting.
+- `inspect_existing_scope_policy(policy)` requires an **exact** installed `ScopePolicy`, exact boolean switches and already immutable canonical collection types. A currently installed policy constructed with mutable set/list receives `HOLD`; the reference does **not** patch or intercept `ScopePolicy.decide`.
+- Every receipt is always false in a boolean context, all six authority/release properties are hard False and public serialization omits host/network data. Code does **not** return or construct an executable policy, grant or permit.
+- Dedicated tests cover detached snapshot behavior after additions/removals, exact-type confusion, hostile subclasses, malformed CIDRs, over-budget collections, forged status, mutation protection, privacy and real DNS/socket/subprocess tripwires.
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_collection_snapshot_review_294_20261015.py' -v
+```
+
+Passing W2 cannot cancel or convert the six original *installed* `expectedFailure` canaries; it is an opt-in helper for security review and future source-owner handoff, not an authorization bypass fix. Source owner must independently integrate/validate an actual fail-closed production configuration boundary; independent current-head hosted and permanently registered VPS proof, customer consent, pre-I/O revocation, security/privacy review and explicit human approval remain separate blockers.
