@@ -1,0 +1,167 @@
+"""Pure offline and actual local-CLI acceptance for #292/#296 config preflight.
+
+Not a grant source, permission evaluator, or target scanner.
+"""
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+ROOT = Path(__file__).resolve().parent.parent
+SCRIPTS = ROOT / "scripts"
+sys.path.insert(0, str(SCRIPTS))
+
+import scope_292_296_exact_network_preflight as guard
+
+
+class _TrickStr(str):
+    def __str__(self):
+        return "8.8.8.0/24"
+
+
+class OfflineExactNetworks292296(unittest.TestCase):
+    def _payload(self, networks):
+        return json.dumps({"explicit_networks": networks}).encode("utf-8")
+
+    def _cli(self, raw: bytes):
+        return subprocess.run(
+            [sys.executable, str(SCRIPTS / "scope_292_296_exact_network_preflight.py")],
+            input=raw,
+            capture_output=True,
+            timeout=8,
+            check=False,
+        )
+
+    def test_empty_collection_review_only_but_never_permits(self):
+        self.assertEqual(guard.review(self._payload([])), "REVIEW_ONLY")
+        response = json.loads(guard.receipt("REVIEW_ONLY"))
+        self.assertEqual(response["disposition"], "REVIEW_ONLY")
+        for key in ("is_grant", "authorizes_scan", "authorizes_execution", "authorizes_release"):
+            self.assertIs(response[key], False)
+
+    def test_canonical_v4_v6_and_syntactic_zero_prefix_review_only(self):
+        self.assertEqual(
+            guard.review(self._payload([
+                "8.8.8.0/24", "8.8.8.8/32",
+                "2001:4860:4860::/64", "2001:4860:4860::8888/128",
+                "0.0.0.0/0", "::/0",
+            ])),
+            "REVIEW_ONLY",
+        )
+        self.assertNotEqual(guard.receipt("REVIEW_ONLY").find('"is_grant":false'), -1)
+
+    def test_noncanonical_host_bits_fail_closed_ipv4_ipv6(self):
+        for text in (
+            "8.8.8.8/24", "8.8.8.8/0",
+            "2001:4860:4860::8888/64", "2001:4860:4860::8888/0",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(guard.review(self._payload([text])), "HOLD")
+
+    def test_aliases_and_missing_prefix_fail_closed(self):
+        for value in (
+            "8.8.8.8", "2001:4860:4860::8888",
+            "8.8.8.0/255.255.255.0",
+            "2001:4860:4860:0000::/64",
+            "8.8.8.0/24 ", " 8.8.8.0/24",
+            "8.8.8.0/33", "8.8.8.0//24",
+        ):
+            with self.subTest(value=value):
+                self.assertEqual(guard.review(self._payload([value])), "HOLD")
+
+    def test_nonstring_coercions_fail_closed(self):
+        for value in (134744072, True, False, None, 8.8, {}, ["8.8.8.0/24"]):
+            with self.subTest(value=value):
+                self.assertEqual(guard.review(self._payload([value])), "HOLD")
+
+    def test_direct_review_rejects_string_subclasses(self):
+        self.assertIs(guard._canonical(_TrickStr("not-cidr")), False)
+
+    def test_cardinality_128_accepted_129_hold(self):
+        networks = [f"198.51.100.{i}/32" for i in range(128)]
+        self.assertEqual(guard.review(self._payload(networks)), "REVIEW_ONLY")
+        networks.append("198.51.100.128/32")
+        self.assertEqual(guard.review(self._payload(networks)), "HOLD")
+
+    def test_oversized_utf8_payload_rejected_at_boundary(self):
+        self.assertEqual(guard.review(b" " * (guard.MAX_JSON_BYTES + 1)), "HOLD")
+        raw = self._payload(["8.8.8.0/24"])
+        self.assertEqual(guard.review(raw), "REVIEW_ONLY")
+
+    def test_overlong_single_network_rejected(self):
+        self.assertEqual(guard.review(self._payload(["8.8.8.0/" + "1" * 260])), "HOLD")
+
+    def test_malformed_utf8_and_json_are_hold(self):
+        for raw in (b"\xff", b"{", b"", b"null", b"[]", b'"text"', b"\xef\xbb\xbf{}"):
+            with self.subTest(raw=repr(raw)):
+                self.assertEqual(guard.review(raw), "HOLD")
+
+    def test_duplicate_object_keys_fail_closed(self):
+        raw = b'{"explicit_networks":["8.8.8.0/24"],"explicit_networks":[]}'
+        self.assertEqual(guard.review(raw), "HOLD")
+
+    def test_unknown_or_missing_envelope_fields_fail_closed(self):
+        for raw in (
+            b'{}',
+            b'{"explicit_networks":[],"grant":true}',
+            b'{"explicit_networks":"8.8.8.0/24"}',
+            b'{"explicit_networks":null}',
+        ):
+            self.assertEqual(guard.review(raw), "HOLD")
+
+    def test_nonfinite_json_constants_rejected(self):
+        for text in ('NaN', 'Infinity', '-Infinity'):
+            raw = ('{"explicit_networks":[' + text + ']}').encode()
+            self.assertEqual(guard.review(raw), "HOLD")
+
+    def test_output_receipt_is_privacy_constant_and_false_authority(self):
+        self.assertEqual(guard.receipt("SECRET.example.net"), guard.receipt("HOLD"))
+        self.assertNotIn("SECRET", guard.receipt("SECRET.example.net"))
+        for disposition in ("HOLD", "REVIEW_ONLY"):
+            value = json.loads(guard.receipt(disposition))
+            self.assertEqual(set(value), {
+                "disposition", "is_grant", "authorizes_scan",
+                "authorizes_execution", "authorizes_release",
+            })
+            self.assertFalse(any(x for k, x in value.items() if k != "disposition"))
+
+    def test_pure_review_makes_no_dns_socket_or_process_calls(self):
+        with (
+            patch("socket.socket", side_effect=AssertionError("socket forbidden")),
+            patch("socket.getaddrinfo", side_effect=AssertionError("DNS forbidden")),
+            patch("subprocess.Popen", side_effect=AssertionError("process forbidden")),
+            patch("os.system", side_effect=AssertionError("shell forbidden")),
+        ):
+            self.test_canonical_v4_v6_and_syntactic_zero_prefix_review_only()
+            self.test_noncanonical_host_bits_fail_closed_ipv4_ipv6()
+
+    def test_real_cli_valid_returns_nonzero_and_no_grant(self):
+        done = self._cli(self._payload(["8.8.8.0/24"]))
+        self.assertEqual(done.returncode, 3, done.stderr.decode(errors="replace"))
+        self.assertEqual(done.stderr, b"")
+        self.assertEqual(json.loads(done.stdout)["disposition"], "REVIEW_ONLY")
+        self.assertFalse(json.loads(done.stdout)["authorizes_execution"])
+
+    def test_real_cli_invalid_is_private_and_nonzero(self):
+        marker = "PRIVATE-SYNTHETIC-TARGET-NEVER-PRINT"
+        done = self._cli(self._payload([marker]))
+        self.assertEqual(done.returncode, 2, done.stderr.decode(errors="replace"))
+        self.assertEqual(done.stderr, b"")
+        self.assertEqual(json.loads(done.stdout)["disposition"], "HOLD")
+        self.assertNotIn(marker.encode(), done.stdout + done.stderr)
+        self.assertNotIn(b"PRIVATE", done.stdout + done.stderr)
+
+    def test_real_cli_oversize_is_hold_and_never_leaks(self):
+        done = self._cli(b"x" * (guard.MAX_JSON_BYTES + 100))
+        self.assertEqual(done.returncode, 2)
+        self.assertEqual(json.loads(done.stdout)["disposition"], "HOLD")
+        self.assertEqual(done.stderr, b"")
+
+
+if __name__ == "__main__":
+    unittest.main()
