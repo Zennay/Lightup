@@ -8,6 +8,7 @@ from __future__ import annotations
 import ipaddress
 import socket
 import unittest
+from datetime import datetime, timedelta, timezone
 from contextlib import ExitStack
 from unittest.mock import patch
 
@@ -145,6 +146,72 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
                 self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
                 self.assertEqual(decision.normalized_host, literal)
 
+    @unittest.expectedFailure
+    def test_authorized_gate_must_not_mint_any_token_for_128_wrong_hosts_red(self):
+        """Synthetic public-scope collision must be denied BEFORE token issuance."""
+        gate = ActivationGate(
+            ScopePolicy(
+                allow_private_lab=False,
+                explicit_hosts=frozenset({"2001"}),
+                require_authorization_for_public=True,
+            ),
+            ActivationPolicy(
+                mode=ActivationMode.AUTHORIZED,
+                activation_reference="FIXTURE-ONLY",
+            ),
+        )
+        wrong_identity_tokens = []
+        with self.no_network(), patch(
+            "lightup.activation.token_urlsafe",
+            side_effect=lambda size: wrong_identity_tokens.append(size) or "FAKE-NON-LIVE-TOKEN",
+        ):
+            for hextet in range(128):
+                literal = str(ipaddress.IPv6Address(f"2001:db8:{hextet:x}::beef"))
+                try:
+                    gate.issue(
+                        Target(literal, authorization=SYNTHETIC_AUTH),
+                        "fixture-only-no-adapter",
+                    )
+                except PermissionError:
+                    continue
+        self.assertEqual(
+            wrong_identity_tokens, [],
+            f"{len(wrong_identity_tokens)} synthetic wrong-host tokens minted",
+        )
+
+    def test_missing_or_expired_claim_never_mints_token_even_with_bad_host_normalization(self):
+        """Negative controls: keep temporal checks strict before token generation."""
+        now = datetime.now(timezone.utc)
+        expired = Authorization(
+            owner="offline-fixture-only",
+            reference="not-a-real-approval",
+            valid_until=now - timedelta(days=2),
+        )
+        future = Authorization(
+            owner="offline-fixture-only",
+            reference="not-a-real-approval",
+            valid_from=now + timedelta(days=2),
+        )
+        gate = ActivationGate(
+            ScopePolicy(
+                allow_private_lab=False,
+                explicit_hosts=frozenset({"2001"}),
+                require_authorization_for_public=True,
+            ),
+            ActivationPolicy(mode=ActivationMode.AUTHORIZED, activation_reference="FIXTURE-ONLY"),
+        )
+        with self.no_network(), patch(
+            "lightup.activation.token_urlsafe",
+            side_effect=AssertionError("token MUST NOT be minted"),
+        ):
+            for auth in (None, expired, future):
+                with self.subTest(auth=auth):
+                    with self.assertRaises(PermissionError):
+                        gate.issue(
+                            Target(DOC_IPV6[0], authorization=auth),
+                            "fixture-only-no-adapter",
+                        )
+
     def test_valid_bracketed_authority_remains_full_canonical_identity(self):
         with self.no_network():
             for literal in DOC_IPV6:
@@ -181,6 +248,8 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
                 "PermissionError not raised",
             "test_current_main_256_documentation_ipv6_scope_collisions_red":
                 "256 synthetic documentation IPv6 identities misbound",
+            "test_authorized_gate_must_not_mint_any_token_for_128_wrong_hosts_red":
+                "128 synthetic wrong-host tokens minted",
         }
         for name, expected_message in red_cases.items():
             with self.subTest(name=name):
