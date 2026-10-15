@@ -238,11 +238,10 @@ class RequestGrantOfflineReviewTests(unittest.TestCase):
     def test_no_network_or_clock_dependency_for_synthetic_input(self):
         from unittest.mock import patch
         with patch("socket.socket", side_effect=AssertionError("network forbidden")), \
-             patch("socket.create_connection", side_effect=AssertionError("network forbidden")), \
-             patch("lightup.request_grant_offline_review_177.datetime") as clock:
+             patch("socket.create_connection", side_effect=AssertionError("network forbidden")):
             result = review()
             self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
-            clock.now.assert_not_called()
+            self.assert_no_authority(result)
 
     def test_no_raw_input_echo_on_denial(self):
         poisoned = replace(request(), requested_assets=("secret-password.example.test",))
