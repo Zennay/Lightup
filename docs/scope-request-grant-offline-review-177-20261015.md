@@ -183,13 +183,13 @@ traffic, but reading sensitive records still requires authorization.
 
 ## Real producer RED contract (source owner outstanding)
 
-Four **intentional** `unittest.expectedFailure` canaries now invoke actual
+Five **intentional** `unittest.expectedFailure` canaries now invoke actual
 `DomainStore.record_authorization_grant` in disposable SQLite databases
 and demand a fail-closed exception when (a) the tenant has **no approved
 assessment request**, (b) the granted asset **exceeds** the only approved
 request, (c) the grant's named approver is **not** the decision operator,
-or (d) the only matching request was explicitly **rejected**. Today all four
-demonstrate the unfixed issuance bypass as **expected RED**, never as a
+(d) the only matching request was explicitly **rejected**, or (e) an\noperator attempts to **approve their own submitted request** through real\n`DomainStore.review_assessment_request`. Today all five
+demonstrate unresolved issuance/approval bypasses as **expected RED**, never as a
 passing security invariant. They are not fixtures for real clients.
 
 The independent source owner must implement the genuine persisted request
