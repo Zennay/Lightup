@@ -51,3 +51,12 @@ Gebruik:
     python scripts/scope_release_dependency_nl_20261015.py < fictional.json
 
 De acht extra eigen tests in `tests/test_scope_release_dependency_nl_20261015.py` controleren normale, volledig zelfgerapporteerde, misvormde, te grote en potentieel gevoelige fictieve packets in echte lokale subprocessen, consistente uitkomst ongeacht JSON-volgorde en de onveranderlijke negen veiligheidsvoorbehouden. **Totaal lokaal geverifieerd: 20/20 tests**, Python 3.13. De volledige GitHub-hosted Python 3.11/3.14 en permanent geregistreerde VPS-run voor de laatste exacte commit moeten onafhankelijk worden beoordeeld; CI-wachtrij is geen succes.
+
+## W3 — runnable fictional example
+
+A wholly synthetic, checked-in [fictional packet](fixtures/scope-release-fictional-packet-20261015.json) is provided for reproducible local review. It includes no customer asset, domain, IP, grant, credential or real approval. It demonstrates a self-reported gate next to eight still missing/blocked ones without treating either status as permission.
+
+    python scripts/scope_release_dependency_inventory_20261015.py < docs/fixtures/scope-release-fictional-packet-20261015.json
+    python scripts/scope_release_dependency_nl_20261015.py < docs/fixtures/scope-release-fictional-packet-20261015.json
+
+Each command must exit 2 with an explicit HOLD/non-allowed receipt or summary. The new regression reads the actual committed fixture and verifies one unverified self-report, eight remaining attention IDs and all six release/dispatch/scan flags literally false. **21 local groups now passed** (13 base + 8 Dutch), but this local proof is never an integrated security sign-off.
