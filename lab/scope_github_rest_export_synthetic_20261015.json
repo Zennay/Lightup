@@ -1,0 +1,108 @@
+{
+  "repository": "Zennay/Lightup",
+  "scope_issue_numbers": [
+    810001,
+    810002
+  ],
+  "issue_pages": [
+    {
+      "page": 1,
+      "has_next": false,
+      "records": [
+        {
+          "number": 810001,
+          "state": "open",
+          "title": "SYNTHETIC: scope review task A"
+        },
+        {
+          "number": 810002,
+          "state": "open",
+          "title": "SYNTHETIC: scope review task B"
+        }
+      ]
+    }
+  ],
+  "pr_pages": [
+    {
+      "page": 1,
+      "has_next": false,
+      "records": [
+        {
+          "number": 820001,
+          "state": "open",
+          "draft": true,
+          "base": {
+            "ref": "main",
+            "sha": "3333333333333333333333333333333333333333",
+            "repo": {
+              "full_name": "Zennay/Lightup"
+            }
+          },
+          "head": {
+            "sha": "1111111111111111111111111111111111111111",
+            "repo": {
+              "full_name": "Zennay/Lightup"
+            }
+          }
+        },
+        {
+          "number": 820002,
+          "state": "open",
+          "draft": true,
+          "base": {
+            "ref": "main",
+            "sha": "3333333333333333333333333333333333333333",
+            "repo": {
+              "full_name": "Zennay/Lightup"
+            }
+          },
+          "head": {
+            "sha": "2222222222222222222222222222222222222222",
+            "repo": {
+              "full_name": "Zennay/Lightup"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "pr": 820001,
+      "issues": [
+        810001
+      ]
+    },
+    {
+      "pr": 820002,
+      "issues": [
+        810002
+      ]
+    }
+  ],
+  "file_pages": [
+    {
+      "pr": 820001,
+      "page": 1,
+      "has_next": false,
+      "records": [
+        {
+          "filename": "tests/old_scope.py",
+          "status": "renamed",
+          "previous_filename": "tests/old_owner.py"
+        }
+      ]
+    },
+    {
+      "pr": 820002,
+      "page": 1,
+      "has_next": false,
+      "records": [
+        {
+          "filename": "tests/old_owner.py",
+          "status": "modified"
+        }
+      ]
+    }
+  ]
+}
