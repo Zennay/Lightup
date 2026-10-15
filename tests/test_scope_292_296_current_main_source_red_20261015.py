@@ -185,8 +185,16 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
             "test_296_noncanonical_dotted_host_mask_must_require_32",
         )
         proof = unittest.TestResult()
-        for name in names:
-            type(self)(name).run(proof)
+        # A red witness that performs target I/O is not valid evidence:
+        # prohibit networking and new subprocesses throughout all 16 replays.
+        with (
+            patch("socket.socket", side_effect=AssertionError("network forbidden")),
+            patch("socket.getaddrinfo", side_effect=AssertionError("DNS forbidden")),
+            patch("subprocess.Popen", side_effect=AssertionError("process forbidden")),
+            patch("os.system", side_effect=AssertionError("system command forbidden")),
+        ):
+            for name in names:
+                type(self)(name).run(proof)
         self.assertEqual(proof.testsRun, len(names))
         self.assertEqual(proof.failures, [])
         self.assertEqual(proof.errors, [])
