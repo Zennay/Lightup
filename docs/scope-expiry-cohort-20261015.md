@@ -119,7 +119,9 @@ descriptor is closed in `finally` even on invalid input, and its
 blocking state is restored before closure.
 
 Tests demonstrate a simulated original fd0 rebinding denies the packet
-before read; a differently bound duplicate is rejected and closed;
+before read; a different pin is rejected and closed; two additional
+mid-stream and EOF fd0 replacements must reject an already-partially-read
+or apparently complete packet without accepting any counts;
 the only descriptors handed to select/read are the pinned fd; and a
 changed regular-file mtime produces HOLD with resource cleanup.
 This protects against redirected bytes *after* an identity check but cannot
