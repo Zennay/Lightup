@@ -532,14 +532,18 @@ class OfflineAttemptJournal:
             if not self._schema_valid():
                 return hold
             rows = self._con.execute(
-                "SELECT sealed_binding,operation_fingerprint,phase,evidence_digest "
+                "SELECT attempt_id,sealed_binding,operation_fingerprint,"
+                "phase,evidence_digest "
                 "FROM offline_scope_1454_attempts LIMIT 257"
             ).fetchall()
             if len(rows) > 256:
                 return hold
             counts = {"reserved": 0, "uncertain": 0, "recorded": 0}
-            for digest_binding, fingerprint, phase, evidence in rows:
-                if (type(digest_binding) is not str or _SHA.fullmatch(digest_binding) is None
+            for attempt_id, digest_binding, fingerprint, phase, evidence in rows:
+                # Read the identity internally to reject non-fixture or
+                # Unicode-confusable records, but never export the ID.
+                if (type(attempt_id) is not str or _ID.fullmatch(attempt_id) is None
+                    or type(digest_binding) is not str or _SHA.fullmatch(digest_binding) is None
                     or type(fingerprint) is not str or _SHA.fullmatch(fingerprint) is None):
                     return hold
                 if phase == "recorded":
