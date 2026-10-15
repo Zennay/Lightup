@@ -497,6 +497,31 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
                         count += 1
             self.assertEqual(count, 40)
 
+    def test_legacy_strip_mutation_proves_all_244_malformed_alias_groups(self):
+        # Model only the known unsafe text operation independently of
+        # installed source. This green mutation-sensitivity control survives
+        # a future fix of the production normalizer.
+        groups = {}
+        for value in _reference_bad_root_cases():
+            raw = value.strip()
+            parsed = urlparse(raw if "://" in raw else f"//{raw}", scheme="")
+            self.assertIsNotNone(parsed.hostname)
+            unsafe_alias = parsed.hostname.rstrip(".").lower()
+            self.assertIsNone(_reference_target_host(value))
+            groups[unsafe_alias] = groups.get(unsafe_alias, 0) + 1
+        self.assertEqual(
+            groups,
+            {
+                _HOST: 48,
+                "localhost": 48,
+                "127.0.0.1": 48,
+                "10.42.43.44": 48,
+                "198.51.100.23": 48,
+                "": 4,
+            },
+        )
+        self.assertEqual(sum(groups.values()), 244)
+
     def test_pure_fail_closed_reference_covers_244_bad_and_30_good_hosts(self):
         # A narrowly scoped REVIEW-ONLY reference for the source owner.
         # It returns a lexical identity or None, never an authorization.
