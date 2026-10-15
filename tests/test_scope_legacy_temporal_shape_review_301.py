@@ -31,9 +31,12 @@ def fixture(*, start=START, end=END):
     )
 
 
-def review(auth=None, now=MID):
+_DEFAULT_AUTH = object()
+
+
+def review(auth=_DEFAULT_AUTH, now=MID):
     return review_legacy_authorization_window(
-        fixture() if auth is None else auth, observed_at=now
+        fixture() if auth is _DEFAULT_AUTH else auth, observed_at=now
     )
 
 
