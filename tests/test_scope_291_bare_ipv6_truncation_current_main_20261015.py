@@ -248,6 +248,51 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
                         "fixture-only-no-adapter",
                     )
 
+    @unittest.expectedFailure
+    def test_1024_bare_ipv6_lexical_variants_never_alias_dns_label_red(self):
+        """Compact, upper, expanded and expanded-upper are identical IP identities."""
+        bad = []
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset({"2001"}),
+            require_authorization_for_public=True,
+        )
+        with self.no_network():
+            for suffix in range(256):
+                ip = ipaddress.IPv6Address(f"2001:db8:5:{suffix:x}::4")
+                for kind, literal in enumerate(
+                    (str(ip), str(ip).upper(), ip.exploded, ip.exploded.upper())
+                ):
+                    decision = policy.decide(Target(literal, authorization=SYNTHETIC_AUTH))
+                    exact = decision.normalized_host
+                    try:
+                        matched = exact is not None and ipaddress.IPv6Address(exact) == ip
+                    except ValueError:
+                        matched = False
+                    if decision.allowed or (exact is not None and not matched):
+                        bad.append((suffix, kind))
+        self.assertEqual(
+            bad, [],
+            f"{len(bad)} synthetic bare IPv6 lexical forms misbound",
+        )
+
+    def test_1024_bracketed_ipv6_lexical_variants_preserve_identity_without_alias(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset({"2001"}),
+            require_authorization_for_public=True,
+        )
+        with self.no_network():
+            for suffix in range(256):
+                ip = ipaddress.IPv6Address(f"2001:db8:5:{suffix:x}::4")
+                for literal in (str(ip), str(ip).upper(), ip.exploded, ip.exploded.upper()):
+                    decision = policy.decide(
+                        Target("[" + literal + "]", authorization=SYNTHETIC_AUTH)
+                    )
+                    self.assertFalse(decision.allowed, (literal, decision))
+                    self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+                    self.assertEqual(ipaddress.IPv6Address(decision.normalized_host), ip)
+
     def test_valid_bracketed_authority_remains_full_canonical_identity(self):
         with self.no_network():
             for literal in DOC_IPV6:
@@ -286,6 +331,8 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
                 "256 synthetic documentation IPv6 identities misbound",
             "test_authorized_gate_must_not_mint_any_token_for_128_wrong_hosts_red":
                 "128 synthetic wrong-host tokens minted",
+            "test_1024_bare_ipv6_lexical_variants_never_alias_dns_label_red":
+                "1024 synthetic bare IPv6 lexical forms misbound",
         }
         for name, expected_message in red_cases.items():
             with self.subTest(name=name):
