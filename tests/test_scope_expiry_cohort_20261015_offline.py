@@ -304,5 +304,25 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
         self.assertNoAuthority(result)
 
 
+    def test_deeply_nested_json_cannot_escape_generic_hold(self):
+        """A 16KiB nested packet must not dump a Python traceback or input."""
+        payload = b"[" * 1500 + b"0" + b"]" * 1500
+        code, result, stderr = subprocess_review(payload)
+        self.assertEqual(code, 2)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(set(result), {"status", *reviewer.DENIAL_FLAGS})
+        self.assertNoAuthority(result)
+        self.assertEqual(stderr, b"")
+
+    def test_non_utf8_input_has_opaque_hold_without_traceback(self):
+        payload = b"\\xff".replace(b"\\\\xff", b"\\xff")
+        code, result, stderr = subprocess_review(payload)
+        self.assertEqual(code, 2)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertNoAuthority(result)
+        self.assertEqual(stderr, b"")
+
+
+
 if __name__ == "__main__":
     unittest.main()
