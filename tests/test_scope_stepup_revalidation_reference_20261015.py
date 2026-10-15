@@ -516,5 +516,43 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
 
 
 
+    def test_poisoned_hold_receipt_does_not_taint_next_denial(self):
+        fence, request, _, _ = fixture()
+        first = fence.review(request, NOW)
+        self.assert_non_authorizing(first, "HOLD")
+        object.__setattr__(first, "status", "REVIEW_ONLY")
+        object.__setattr__(first, "reason", "synthetic_snapshot_consistent")
+        later = fence.review(request, NOW)
+        self.assertIsNot(first, later)
+        self.assert_non_authorizing(later, "HOLD")
+        self.assertEqual(fence.review_count, 0)
+
+    def test_poisoned_review_receipt_does_not_taint_next_review(self):
+        fence, request, _, _ = fixture()
+        first = fence.review(request, NOW, isolation_probe=lambda: True)
+        self.assert_non_authorizing(first, "REVIEW_ONLY")
+        object.__setattr__(first, "status", "APPROVED")
+        object.__setattr__(first, "reason", "lab-secret")
+        self.assert_non_authorizing(first, "HOLD")
+        later = fence.review(request, NOW, isolation_probe=lambda: True)
+        self.assertIsNot(first, later)
+        self.assert_non_authorizing(later, "REVIEW_ONLY")
+        self.assertEqual(fence.review_count, 2)
+
+    def test_deleted_or_incomplete_receipt_fields_fall_to_hold(self):
+        for field in ("status", "reason", "permit_issued", "execution_enabled"):
+            with self.subTest(field=field):
+                victim = ReviewReceipt("REVIEW_ONLY", "synthetic_snapshot_consistent")
+                object.__delattr__(victim, field)
+                data = victim.as_dict()
+                self.assertEqual(data["status"], "HOLD")
+                self.assertEqual(data["reason"], "not_verified")
+                self.assertTrue(all(data[name] is False for name in (
+                    "authorization_verified", "permit_issued",
+                    "execution_enabled", "dispatch_allowed",
+                    "merge_approved", "release_approved",
+                )))
+
+
 if __name__ == "__main__":
     unittest.main()
