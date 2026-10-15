@@ -168,6 +168,16 @@ class OfflineRevalidationFence:
                 or (isolation_probe is not None and not callable(isolation_probe))):
             return _HOLD
 
+        # Hold a private immutable copy of every caller-controlled field.
+        # A callback that rewrites a frozen dataclass with object.__setattr__
+        # must not silently replace the reviewed identity after validation.
+        initial_request = ReviewRequest(**{
+            name: getattr(request, name)
+            for name in ReviewRequest.__dataclass_fields__
+        })
+        if request != initial_request:
+            return _HOLD
+
         # The expensive, untrusted verifier deliberately executes OUTSIDE the
         # lock; changes while it runs must invalidate the captured epoch.
         with self._lock:
@@ -184,9 +194,10 @@ class OfflineRevalidationFence:
                 return _HOLD
             if not approval.is_well_formed() or not tool.is_well_formed():
                 return _HOLD
-            if (approval.request != request or tool.tool != request.tool
-                    or tool.capability != request.capability
-                    or tool.risk != request.risk
+            if (request != initial_request or approval.request != initial_request
+                    or tool.tool != initial_request.tool
+                    or tool.capability != initial_request.capability
+                    or tool.risk != initial_request.risk
                     or now < approval.issued_at or now >= approval.expires_at):
                 return _HOLD
             self._review_count += 1
