@@ -57,10 +57,10 @@ class RiskFiveSeparateApprovalContract(TestCase):
         self.executor = ToolExecutor(self.registry, self.state)
         self.call = ToolCall("fixture-risk-five", "127.0.0.1")
 
-    def _execute_offline(self, context=None):
+    def _execute_offline(self, context=None, call=None):
         """Tripwire proves no network is needed even for a defective permit."""
         with patch.object(socket, "socket", side_effect=AssertionError("network forbidden")):
-            return self.executor.execute(context or self.context, self.call)
+            return self.executor.execute(context or self.context, call or self.call)
 
     def _evidence_count(self):
         with self.state.connect() as db:
@@ -158,6 +158,41 @@ class RiskFiveSeparateApprovalContract(TestCase):
         self.handler.assert_not_called()
         self.assertEqual(0, self._evidence_count())
 
+
+    @expectedFailure
+    def test_unapproved_risk_five_run_cannot_change_target_asset(self):
+        """RED: lab context alone cannot authorize another synthetic target."""
+        different_target = ToolCall("fixture-risk-five", "127.0.0.2")
+        with self.assertRaises(ToolDenied):
+            self._execute_offline(call=different_target)
+        self.handler.assert_not_called()
+        self.assertEqual(0, self._evidence_count())
+
+    @expectedFailure
+    def test_unapproved_risk_five_run_cannot_change_tool_capability(self):
+        """RED: step-up must bind tool AND capability, not only run/lab flag."""
+        second_handler = Mock(return_value=ToolOutput(
+            summary="synthetic-api-only",
+            evidence_kind="test-fixture",
+            evidence_payload=b"offline-fixture-second-tool",
+        ))
+        self.registry.register(
+            ToolDefinition(
+                tool_id="fixture-risk-five-api",
+                capability_id="api-baseline",
+                interaction=InteractionKind.LAB_ACTIVE,
+                min_risk=RiskLevel.DESTRUCTIVE_LAB_ONLY,
+                description="second inert fixture; no external interaction",
+            ),
+            second_handler,
+        )
+        different_tool = ToolCall("fixture-risk-five-api", "127.0.0.1")
+        with self.assertRaises(ToolDenied):
+            self._execute_offline(call=different_tool)
+        self.handler.assert_not_called()
+        second_handler.assert_not_called()
+        self.assertEqual(0, self._evidence_count())
+
     def test_intentional_red_methods_fail_only_on_missing_denial(self):
         """GREEN witness: don't mask wrong fixture/setup/runtime as expected RED.
 
@@ -172,6 +207,10 @@ class RiskFiveSeparateApprovalContract(TestCase):
             ("test_risk_five_policy_cannot_treat_is_lab_as_operator_approval",
              "True is not false"),
             ("test_forged_risk_five_context_cannot_supply_missing_approval",
+             "ToolDenied not raised"),
+            ("test_unapproved_risk_five_run_cannot_change_target_asset",
+             "ToolDenied not raised"),
+            ("test_unapproved_risk_five_run_cannot_change_tool_capability",
              "ToolDenied not raised"),
         )
         for method, witness in cases:
