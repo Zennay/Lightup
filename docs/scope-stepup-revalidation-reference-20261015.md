@@ -28,7 +28,7 @@ Run from repository root:
 python -m unittest discover -s tests -p 'test_scope_stepup_revalidation_reference_20261015.py' -v
 ```
 
-The twenty-one tests cover matching synthetic snapshot (review-only), revoked/missing grant, both temporal boundaries, seven mismatched identities, tool swaps, bad probe outcomes, same-thread revoke/swap/reissue, two synchronized cross-thread races, four-round concurrent four-reader revocation fanout, tool-registry ABA, revoke/restore ABA, and two frozen-request mutation/laundering canaries, caller-object mutation, wrong datetime values, string subclass/boolean/polymorphic shapes and redacted output.
+The thirty-one tests cover matching synthetic snapshot (review-only), revoked/missing grant, both temporal boundaries, seven mismatched identities, tool swaps, bad probe outcomes, same-thread revoke/swap/reissue, two synchronized cross-thread races, four-round concurrent four-reader revocation fanout, tool-registry ABA, revoke/restore ABA, and two frozen-request mutation/laundering canaries, caller-object mutation, wrong datetime values, string subclass/boolean/polymorphic shapes and redacted output.
 
 The normal full project suite may run on GitHub-hosted CI. **Never conflate hosted tests with registered permanent VPS proof** or green unit tests with production safety.
 
@@ -53,3 +53,13 @@ The mutable caller-owned ReviewRequest is now copied to a fresh exact ReviewRequ
 ## W4 timezone callback safety
 
 Only exact built-in fixed-offset `datetime.timezone` objects are accepted on review-window and evaluation timestamps. Custom `tzinfo` subclasses (including those capable of triggering arbitrary callbacks, errors or resource access) are rejected before invoking `utcoffset`, including while the ledger lock is held. An additional synthetic test uses a custom timezone that raises on invocation and proves **zero calls**. This conservative offline shape rule can reject otherwise sensible IANA `ZoneInfo` times; it does not replace the source owner's production time-policy design. A new exact-SHA run is required; the previous W3 checks cannot validate W4.
+
+## W5/W6 synthetic seal, required isolation probe and fresh-time callback
+
+A reviewer can no longer emit even `REVIEW_ONLY` without an explicitly callable `isolation_probe` returning the literal built-in `True`. Stored approval and tool snapshots have separately pinned immutable tuples of exact field values. This detects in-place tampering of supposedly frozen Python dataclass instances (including widening the original expiry timestamp) that does **not** increment the normal epoch. The tuples are **diagnostic canaries**, not a secure enclave: arbitrary Python code with access to the same process can still rewrite other private attributes or race after the final check.
+
+A caller may additionally pass `fresh_clock_probe` to obtain a second synthetic datetime observation **after** the isolation callback. It must return an exact built-in aware datetime with an exact fixed-offset `timezone` and cannot move backward relative to `now`. If the new instant is at or beyond the exclusive expiry, the whole review yields `HOLD`; the clock callback runs outside the ledger lock, and revocation while it runs invalidates the epoch. Missing optional freshness callback intentionally means the initial **synthetic fixed instant** is used; thus `REVIEW_ONLY` must *never* be interpreted as current live consent or proof of freshness. A source owner must provide a trusted time source and verify immediately before real dispatch. The offline race oracle itself does not do so.
+
+Ten new methods cover missing/noncallable isolation probes, approval expiry/registry in-place tampering, unchanged callers, only-once valid probe, expired/valid post-callback time, malformed/non-monotone times, revocation during clock read and invalid/erroring callback. Own suite now **31** tests, pending exact latest-head hosted verification. All previous run receipts are superseded.
+
+**Release fence remains DRAFT/HOLD.** No customer identities, network endpoints, production wiring, grants, permissions, real I/O or scanning.
