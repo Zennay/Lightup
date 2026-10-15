@@ -8,8 +8,8 @@ production owner. It does not authorize, deploy, scan or issue grants.
 
 The current installed `ScopePolicy.normalize_host()` passes a bare IPv6
 literal to `urlparse("//" + value)`. For example, synthetic
-`2606:4700:4700::1111` becomes normalized host `2606`, **not** the
-literal. A policy explicitly admitting the unrelated DNS label `2606`
+`2001:db8:1::1111` becomes normalized host `2001`, **not** the
+literal. A policy explicitly admitting the unrelated DNS label `2001`
 can then return `EXPLICIT_HOST` for the IPv6 target. An attached
 `Authorization(owner=..., reference=...)` does not cure this lexical
 identity substitution. These are *in-memory hypothetical inputs*, not
@@ -87,3 +87,14 @@ not a real authorized grant. Both PLAN_ONLY and LAB_ONLY are checked as green
 denial comparators; neither permits the same request. This is an explicit
 acceptance requirement for the existing source owner, not a proposal to
 activate targets.
+
+## Privacy/scope fixture improvement
+
+All executable test inputs now use **RFC 3849 documentation-only IPv6
+addresses** (`2001:db8:1::1111`, `2001:db8:2::2222`,
+`2001:db8:3::3333`) rather than routable public-server addresses. The
+separate synthetic DNS label `2001` collides with the current parser's
+first-hextet truncation without involving a real endpoint. For explicit
+/128 controls, `allow_private_lab=False` guarantees documentation address
+classification cannot hide the explicit scope decision. DNS and socket
+operations remain blocked by the actual test guard.
