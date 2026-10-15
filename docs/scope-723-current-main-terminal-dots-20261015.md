@@ -56,6 +56,18 @@ There is a further installed-source interaction between unrestricted `rstrip("."
 
 With this W4 addition, the self-owned module has **10 documented source expected-RED tests** and **16 ordinary passing control/witness tests**, including 196 separately materialized in-memory malformed target/policy probes in the three W2 matrices plus W4's four. No network or real customers. Previous W3 hosted evidence does not validate W4 until run logs show this exact commit.
 
+
+## W5: separate authorization-opt-out source RED without synthetic grants (2026-10-15)
+
+Three additional expected-RED **actual installed** `ScopePolicy.decide` methods isolate the parsing/configuration defect from the legacy fake `Authorization` test fixture. They explicitly choose `require_authorization_for_public=False` in *synthetic in-memory policy objects*, meaning **no Authorization object at all is supplied**. This is not a suggestion to disable real authorization and not an executable permit; it makes a dangerous parser/configuration identity shortcut testable even when the approval boundary is absent.
+
+- Malformed input Target: 16 two-to-17 trailing-dot counts × bare/HTTPS form = **32 genuine decisions**.
+- Malformed configured allowlist entry: 16 invalid two-to-17 trailing-dot counts × canonical/singly rooted Target = **32 genuine decisions**.
+- Dot-only Target with invalid empty configured host: **4 genuine decisions**.
+- A separate green control confirms that when `require_authorization_for_public=True`, even malformed matches **do not** grant a public explicit host without Authorization; that is merely a control, not evidence of trusted live consent.
+
+These **68 additional** source calls are fully materialized before one aggregate denial assertion per RED test; independent existing witness gates require exact genuine AssertionErrors and reject masked exceptions. This makes **13 expected source REDs, 17 ordinary in-memory green tests, and 264 explicitly materialized malformed target/config decisions** for this self-owned module. Earlier hosted success does not validate the W5 commit. Never merge, issue consent, dispatch or scan based on this offline characterization.
+
 ## To validate
 
 ```sh
