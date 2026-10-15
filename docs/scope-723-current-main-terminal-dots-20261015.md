@@ -75,6 +75,19 @@ A new independent **ordinary green** method replays **all 264** malformed synthe
 
 This is **not** a test against real customer infrastructure, a live network or a grant engine. Inputs are entirely fictional; neither DNS nor HTTP calls are made. The new check may detect unintended target I/O introduced by future code changes while remaining independent of the source-owner PR #100. CI must run on the new exact HEAD to validate this W6 implementation.
 
+
+## W7: malformed IPv4 literal trailing-dots cross *three* authority paths (#723)
+
+Current source `normalize_host(value)` strips an arbitrary number of root dots **before** `ip_address(...)`, so malformed input can be mistaken for a canonical IPv4 literal. A new collision-free extension of the already self-owned source acceptance module covers three distinct installed-source admission paths without changing the production owner or the parallel network/CIDR workers:
+
+1. **Loopback:** malformed bare/HTTP `127.0.0.1..` variants must *never* inherit `LOOPBACK`; default fixture has `allow_private_lab=False` and no fake grant.
+2. **Private lab:** malformed bare/HTTP `10.42.43.44..` variants must *never* inherit `PRIVATE_LAB`; the opt-in private-lab flag appears solely in an in-memory offline policy fixture, not in production.
+3. **Explicit CIDR:** malformed bare/HTTP `198.51.100.23..` variants must *never* inherit `EXPLICIT_NETWORK`, even with a separately synthetic `198.51.100.0/24` declared network and deliberately fake Authorization. These TEST-NET-2 values are never contacted.
+
+Each new source-RED test **materializes 32 decisions** (two syntactic forms × 16 trailing-dot widths 2–17), totaling **96** source decisions. The ordinary green IPv4 control preserves normal loopback, explicitly enabled private-lab scope, absence-of-grant before public CIDR, and deny-by-default behavior when lab is disabled. A further green **96-case I/O canary** executes actual installed `ScopePolicy.decide` with socket/DNS/HTTP/subprocess/shell entry points patched to throw on use. Together with W2/W4/W5/W6, there are now **360 separately materialized malformed decisions**, **16 genuine source expected-RED tests**, and **20 ordinary positive/witness tests** in the self-owned module.
+
+**Separation from other worker work:** network CIDR *configuration typing* is owned by #292/#296, reserved-IP policy by #1422, and real dynamic consent/asset binding by production #100. W7 is strictly **source identity text parsing on the target side** within the same owned #723 root-dot bug; no CIDR parsing implementation, grants, scanner, runner, production source, or other worker files change. The source owner must reject invalid multiple terminal dots **before** any loopback, private-lab or CIDR membership decision and convert all expected-RED cases to ordinary PASS after reviewed repair. Passing hosted checks containing intentional REDs do not grant production authority.
+
 ## To validate
 
 ```sh
