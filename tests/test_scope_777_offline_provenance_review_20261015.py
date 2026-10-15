@@ -208,6 +208,5 @@ class SyntheticProvenanceReviewTests(unittest.TestCase):
             os.close(read_fd)
             os.close(write_fd)
 
-
 if __name__ == "__main__":
     unittest.main()
