@@ -162,6 +162,10 @@ def _bounded_networks(raw: object) -> tuple[str, ...] | None:
         # legacy installed ScopePolicy parser (which remains source-owned).
         if str(parsed) != value:
             return None
+    # A review must not silently accept duplicate explicit network lines.
+    # Keep the caller's exact CIDR order; no union/overlap normalization here.
+    if len(set(copied)) != len(copied):
+        return None
     return copied
 
 
