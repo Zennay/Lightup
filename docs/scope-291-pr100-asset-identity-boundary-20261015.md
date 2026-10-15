@@ -132,3 +132,55 @@ must preserve the full identity as `EXPLICIT_NETWORK`.
 This is a normal-green isolated test of test sensitivity and
 membership order, not an installed fix, live grant or authorization
 recommendation. Neither PR #100 nor current main is modified.
+
+## W5: parser integrity cannot depend on the customer-claim toggle
+
+The source-owner model exposes a `require_authorization_for_public`
+scope setting. The fifth genuine expected-RED exercises **the same
+bare IPv6/short DNS host collision with that option explicitly
+disabled**, without attaching any fictional Authorization. This is
+a scope-decision test only: the separate AUTHORIZED ActivationGate
+still requires an actual current claim. The invariant is stricter:
+**a configuration toggle must never change the identity of the
+target or authorize a different literal via an unrelated DNS entry.**
+
+A sixth genuine expected-RED captures **all 128 in-memory synthetic
+ExecutionPermits actually returned** for 128 different documentation
+IPv6 targets by the real owner-source ActivationGate. It records
+the original input and each returned `permit.target` then requires
+zero wrong-host issuances. Current code returns 128 permits bound
+to the *same truncated* alias `2001`. This complements, rather than
+duplicates, W2's token-call counter: neither the permit identity
+nor its generation can silently evade testing. The independent
+expected-RED assertion witness checks the exact violation count.
+
+Both synthetic repair mutation controls (fail-closed rejection or
+full IPv6 normalization) rerun **all six** source REDs and require
+six `unexpectedSuccess` results: no repair may keep silently
+green intentional failures.
+
+## W6: prevent overzealous parser repair from breaking correct DNS authority
+
+Two new ordinary-green controls exercise the **actual proposed**
+`ScopePolicy.decide` and `ActivationGate.issue` under the new
+asset-bound owner model:
+
+1. One explicitly allowed RFC2606 `scope-fixture.example.test`
+   DNS hostname, with the *same exact fictional asset*, still obtains
+   a fully bound **fake in-memory** permit preserving the exact target,
+   separate authorization reference, and fixed fake permit token.
+2. Three nearly identical non-allowlisted DNS identities (subdomain,
+   suffix and similar-label), plus an exact allowed host with a
+   mismatching fictitious asset, must be denied by the real gate
+   **before any token-generation function can run**.
+
+These prove that correctly fixing the IPv6 input identity issue
+does not require broadly disabling well-formed, explicitly permitted
+DNS names and does not widen membership via near-match aliases.
+There is never a DNS lookup, network target, adapter call, real
+authorization or deployment.
+
+**Own module after W6: six genuine installed-source expected-RED
+and thirteen ordinary PASS/witness methods**, on only two self-owned
+test/documentation paths. Correctness on the *latest immutable commit*
+still requires new hosted preflight and independent registered VPS.
