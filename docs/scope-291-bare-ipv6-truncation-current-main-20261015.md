@@ -19,16 +19,18 @@ permission to test the displayed addresses.
 
 New file `tests/test_scope_291_bare_ipv6_truncation_current_main_20261015.py`:
 
-- Three **real expected-RED** cases prove bare IPv6 must never turn into
+- Four **real expected-RED** cases prove bare IPv6 must never turn into
   a shortened name, that a synthetic explicit-host allowlist cannot
-  admit the mismatched IPv6 literal, and that a fabricated authorization
-  claim cannot make this truncated-host membership safe.
-- Five **normal green/witness controls** prove bracketed IPv6 remains intact,
+  admit the mismatched IPv6 literal, a fabricated authorization
+  claim on the wrong identity, and the **real ActivationGate** handing out a
+  synthetic in-memory execution permit for that falsely matched identity.
+- Six **normal green/witness controls** prove bracketed IPv6 remains intact,
   explicit `/128` network membership still requires an authorization
   object under the existing canonical flow, and the same literal in
   bracketed form cannot accidentally match an unrelated host or network. A
+  PLAN_ONLY/LAB_ONLY comparators still reject the fake active request; a
   standalone network-tripwire self-test proves DNS/socket monkeypatches really
-  reject calls. A RED-integrity witness reruns the three intentional failures
+  reject calls. A RED-integrity witness reruns the four intentional failures
   and rejects masked crashes, accidental success and network-trigger errors.
 - All tests are pure in-process: actual DNS lookups, sockets and outbound
   connections are patched to raise immediately. No real network
@@ -46,7 +48,7 @@ PYTHONPATH=src python -m unittest -v \
 ```
 
 **Important:** `unittest.expectedFailure` is a red-signal quarantine,
-not a successful security fix. The three source-negative cases must
+not a successful security fix. The four source-negative cases must
 report exactly as **expected failures**, not ordinary passing tests or
 unexpected successes. The owner must repair the installed source and
 convert these cases to normal green tests before considering this
@@ -73,3 +75,15 @@ GitHub Actions jobs are distinct from a job actually executed on the registered
 permanent VPS runner. Never reuse an earlier SHA's green jobs as proof after a
 new test/documentation commit. The local negative cases are expected to remain
 RED until the production source owner repairs the identity boundary.
+
+## Distinguishing synthetic and real permits
+
+The new `ActivationGate` expected-RED case instantiates a purely in-memory
+fictional `Authorization` and asks the real production gate to deny an
+unrelated bare IPv6 target. Current source instead produces a synthetic
+`ExecutionPermit` bound to the truncated hextet. No adapter executes, no
+customer has consented, no network traffic occurs, and the returned object is
+not a real authorized grant. Both PLAN_ONLY and LAB_ONLY are checked as green
+denial comparators; neither permits the same request. This is an explicit
+acceptance requirement for the existing source owner, not a proposal to
+activate targets.
