@@ -375,6 +375,34 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                 finally:
                     conn.close()
 
+            def send_raw_double_method_header(port, name, method):
+                # Dict-based APIs flatten duplicate field names. Exercise
+                # actual HTTP/1.1 on the proxy for opposite-casing values.
+                conn = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+                body = (
+                    urlencode({"name": "Duplicate Must Not Write",
+                               "csrf": "forged"}).encode("ascii")
+                    if method == "POST" else b""
+                )
+                try:
+                    conn.putrequest(method, "/clients" if method == "POST" else "/",
+                                    skip_host=True)
+                    conn.putheader("Host", "localhost")
+                    conn.putheader("Cookie", "lightup_session=" + op_token)
+                    conn.putheader(name, "GET" if method == "POST" else "DELETE")
+                    conn.putheader(name.lower(), "POST" if method == "POST" else "POST")
+                    if method == "POST":
+                        conn.putheader("Content-Type", "application/x-www-form-urlencoded")
+                        conn.putheader("Origin", "http://localhost")
+                        conn.putheader("Content-Length", str(len(body)))
+                    conn.endheaders(body or None)
+                    response = conn.getresponse()
+                    status = response.status
+                    response.read(8192)
+                    return status
+                finally:
+                    conn.close()
+
             def verify_real_app(port):
                 baseline = len(store.list_clients(operator))
                 request_baseline = len(store.list_assessment_requests(operator))
@@ -402,6 +430,15 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                         headers={name: "GET"}
                     )
                     if code != 403 or len(store.list_clients(operator)) != baseline:
+                        return False
+                    # The Nginx→actual webapp role/CSRF boundary must also
+                    # survive *two* raw wire headers differing only by case,
+                    # not just flattened Python dictionaries.
+                    if send_raw_double_method_header(port, name, "GET") != 200:
+                        return False
+                    if send_raw_double_method_header(port, name, "POST") != 403:
+                        return False
+                    if len(store.list_clients(operator)) != baseline:
                         return False
                     # A real client session with its own valid CSRF does not
                     # gain operator write access from a spoofed GET.
