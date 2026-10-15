@@ -106,6 +106,25 @@ are not a trustworthy durable authorization chain.
 In a disposable test database **only**, a hypothetical explicit FK migration
 can be simulated with `ALTER TABLE authorization_grants ADD COLUMN
 approved_request_id TEXT REFERENCES assessment_requests(request_id)`.
+**W10 chronology and FK integrity:** The persisted grant record must also
+have been created **on or after engagement creation** and **on or before
+its own `valid_from`**. Retroactively activating a permission interval before
+the durable grant existed is a structural HOLD even if the requested risk,
+request approval and proposed assets otherwise match. Exact equality between
+grant recording and validity start is acceptable *only* as untrusted
+REVIEW_ONLY evidence.
+
+The provenance FK must be an **independent single-column** constraint to
+`assessment_requests(request_id)`; a composite FK with
+`approved_request_id` merely appearing as its first column is **not**
+acceptable. `PRAGMA foreign_key_check(authorization_grants)` additionally
+checks for orphan records written by other SQLite connections that disabled
+FK enforcement. Any broken dependent grant in the table atomically makes the
+optional review HOLD, including when the specifically selected grant is valid.
+This offline scan can be expensive for large local databases, so it is neither
+installed nor appropriate as a live dispatch path. A clean SQLite snapshot is
+still not signed permission or evidence of genuine customer consent.
+
 The synthetic acceptance suite creates real `DomainStore` customers,
 approved requests, engagements and grants with SQLite, then independently
 mutates submitted status/mode, tenant, grant scope/capabilities, timestamp,
