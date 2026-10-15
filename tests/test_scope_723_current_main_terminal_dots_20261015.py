@@ -136,6 +136,59 @@ class TerminalDotCurrentMainSourceRed(unittest.TestCase):
         self.assertFalse(any(decision.allowed for decision in decisions))
 
     @unittest.expectedFailure
+    def test_ipv4_loopback_multi_root_dots_must_not_gain_loopback_trust(self):
+        # IP-looking text is parsed through the same rstrip('.') path:
+        # the invalid address must never become 127.0.0.1 loopback.
+        values = tuple(
+            value for dots in range(2, 18)
+            for value in (
+                "127.0.0.1" + "." * dots,
+                "http://127.0.0.1" + "." * dots + "/synthetic-only",
+            )
+        )
+        policy = ScopePolicy(allow_private_lab=False)
+        decisions = tuple(policy.decide(Target(value)) for value in values)
+        self.assertEqual(len(decisions), 32)
+        self.assertFalse(any(decision.allowed for decision in decisions))
+
+    @unittest.expectedFailure
+    def test_ipv4_private_lab_multi_root_dots_must_not_gain_private_scope(self):
+        # Opt-in synthetic lab flag must not broaden malformed *text*.
+        values = tuple(
+            value for dots in range(2, 18)
+            for value in (
+                "10.42.43.44" + "." * dots,
+                "http://10.42.43.44" + "." * dots + "/synthetic-only",
+            )
+        )
+        policy = ScopePolicy(allow_private_lab=True)
+        decisions = tuple(policy.decide(Target(value)) for value in values)
+        self.assertEqual(len(decisions), 32)
+        self.assertFalse(any(decision.allowed for decision in decisions))
+
+    @unittest.expectedFailure
+    def test_ipv4_declared_cidr_multi_root_dots_must_not_gain_network_scope(self):
+        # RFC 5737 TEST-NET-2 only, with fake Authorization never accepted
+        # as real permission: the error happens before network membership.
+        values = tuple(
+            value for dots in range(2, 18)
+            for value in (
+                "198.51.100.23" + "." * dots,
+                "http://198.51.100.23" + "." * dots + "/synthetic-only",
+            )
+        )
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=("198.51.100.0/24",),
+        )
+        decisions = tuple(
+            policy.decide(Target(value, authorization=_SYNTHETIC_ONLY))
+            for value in values
+        )
+        self.assertEqual(len(decisions), 32)
+        self.assertFalse(any(decision.allowed for decision in decisions))
+
+    @unittest.expectedFailure
     def test_matrix_32_malformed_target_dot_counts_and_url_forms_must_deny(self):
         # Materialize *all* decisions before the assertion: no early exit
         # silently truncates the 64-case input matrix.
@@ -193,6 +246,9 @@ _RED_NAMES = (
     "test_malformed_config_without_auth_and_policy_optout_must_deny",
     "test_only_dots_and_empty_config_without_auth_optout_must_deny",
     "test_all_dots_target_must_not_match_empty_declared_hostname",
+    "test_ipv4_loopback_multi_root_dots_must_not_gain_loopback_trust",
+    "test_ipv4_private_lab_multi_root_dots_must_not_gain_private_scope",
+    "test_ipv4_declared_cidr_multi_root_dots_must_not_gain_network_scope",
     "test_matrix_32_malformed_target_dot_counts_and_url_forms_must_deny",
     "test_matrix_32_malformed_config_dot_counts_and_targets_must_deny",
     "test_matrix_32_malformed_localhost_dot_counts_and_url_forms_must_deny",
@@ -242,7 +298,7 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
 
     def test_original_source_witnesses_are_real_assertions_not_errors(self):
         # @expectedFailure also catches accidental TypeError and ValueError.
-        # An independent TestResult must observe exactly thirteen AssertionError
+        # An independent TestResult must observe exactly sixteen AssertionError
         # failures, not silently accept an unrelated crash or unexpected green.
         for name in _RED_NAMES:
             with self.subTest(case=name):
@@ -274,6 +330,68 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
                 )
             self.assertTrue(_decision(_HOST).allowed)
             self.assertFalse(_decision("unlisted.example.test").allowed)
+
+    def test_canonical_ipv4_categories_remain_separate_and_auth_gate_stays_required(self):
+        self.assertEqual(
+            ScopePolicy(allow_private_lab=False).decide(Target("127.0.0.1")).reason,
+            ScopeReason.LOOPBACK,
+        )
+        self.assertEqual(
+            ScopePolicy(allow_private_lab=True).decide(Target("10.42.43.44")).reason,
+            ScopeReason.PRIVATE_LAB,
+        )
+        network = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=("198.51.100.0/24",),
+        )
+        self.assertEqual(
+            network.decide(Target("198.51.100.23")).reason,
+            ScopeReason.AUTHORIZATION_MISSING,
+        )
+        decision = network.decide(Target("198.51.100.23", authorization=_SYNTHETIC_ONLY))
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_NETWORK)
+        self.assertEqual(
+            ScopePolicy(allow_private_lab=False).decide(Target("10.42.43.44")).reason,
+            ScopeReason.OUT_OF_SCOPE,
+        )
+
+    def test_all_96_malformed_ipv4_decisions_have_no_external_io(self):
+        # All real installed-source scope decisions, zero actual I/O.
+        cases = []
+        for dots in range(2, 18):
+            for ip in ("127.0.0.1", "10.42.43.44", "198.51.100.23"):
+                cases.extend(
+                    (ip + "." * dots, "http://" + ip + "." * dots + "/synthetic-only")
+                )
+        self.assertEqual(len(cases), 96)
+        with (
+            patch.object(socket, "socket", side_effect=AssertionError("network attempted")),
+            patch.object(socket, "getaddrinfo", side_effect=AssertionError("DNS attempted")),
+            patch.object(socket, "gethostbyname", side_effect=AssertionError("DNS attempted")),
+            patch.object(socket, "create_connection", side_effect=AssertionError("network attempted")),
+            patch.object(urllib.request, "urlopen", side_effect=AssertionError("HTTP attempted")),
+            patch.object(subprocess, "Popen", side_effect=AssertionError("process attempted")),
+            patch.object(subprocess, "run", side_effect=AssertionError("process attempted")),
+            patch.object(os, "system", side_effect=AssertionError("shell attempted")),
+        ):
+            results = []
+            for value in cases:
+                if "127.0.0.1" in value:
+                    policy, auth = ScopePolicy(allow_private_lab=False), None
+                elif "10.42.43.44" in value:
+                    policy, auth = ScopePolicy(allow_private_lab=True), None
+                else:
+                    policy = ScopePolicy(
+                        allow_private_lab=False,
+                        explicit_networks=("198.51.100.0/24",),
+                    )
+                    auth = _SYNTHETIC_ONLY
+                result = policy.decide(Target(value, authorization=auth))
+                self.assertIs(type(result), ScopeDecision)
+                self.assertIs(type(result.allowed), bool)
+                results.append(result)
+            self.assertEqual(len(results), 96)
 
     def test_entire_264_case_malformed_matrix_is_process_and_network_free(self):
         # Every W2, W4 and W5 syntactic variant is evaluated as a genuine
