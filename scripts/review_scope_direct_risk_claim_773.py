@@ -52,10 +52,30 @@ class RiskReviewReceipt(NamedTuple):
         return False
 
     def to_dict(self) -> dict[str, str | bool]:
-        """Create a fresh, bounded, literal-false, non-authorizing snapshot."""
+        """Serialize only canonical, bounded reviewer-owned receipts.
+
+        NamedTuple constructors are public: callers can fabricate arbitrary
+        status/reason payloads. Such untrusted objects must never be reflected
+        or serialized as APPROVED/REVIEW_ONLY with a forged reason. Unknown,
+        polymorphic and inconsistent shapes collapse to a generic HOLD.
+        """
+        status = "HOLD"
+        reason_code = "invalid_receipt"
+        if type(self) is RiskReviewReceipt:
+            raw_status, raw_reason = self
+            valid_hold = (
+                "noncanonical_scope", "noncanonical_risk",
+                "lab_only_risk", "above_ceiling", "batch_hold",
+            )
+            valid_review = ("risk_shape_only", "batch_risk_shape_only")
+            if type(raw_status) is ReviewStatus and type(raw_reason) is str:
+                if raw_status is ReviewStatus.HOLD and raw_reason in valid_hold:
+                    status, reason_code = raw_status.value, raw_reason
+                elif raw_status is ReviewStatus.REVIEW_ONLY and raw_reason in valid_review:
+                    status, reason_code = raw_status.value, raw_reason
         return {
-            "status": self.status.value,
-            "reason_code": self.reason_code,
+            "status": status,
+            "reason_code": reason_code,
             "authorized": False,
             "may_scan": False,
             "may_dispatch": False,
