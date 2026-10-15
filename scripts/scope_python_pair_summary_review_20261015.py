@@ -11,6 +11,7 @@ import sys
 from scope_unittest_summary_review_20261015 import (
     FALSE_KEYS, InvalidLog, extract, MAX_BYTES,
 )
+from scope_unittest_case_roster_review_20261015 import CASE, ID, MAP, VALID
 
 MAX_ENVELOPE = 2 * MAX_BYTES + 32768
 COMPARE = ("reported_tests", "reported_result", "failures", "errors",
@@ -34,6 +35,32 @@ def _nonfinite(_):
     raise PairError("nonfinite")
 
 
+def _observed_methods(log, reported_total, summary):
+    """Conservative parsed unittest verbose rows; not authenticated test source."""
+    methods = {}
+    for line in log.splitlines():
+        if len(line) > 2048:
+            continue
+        match = CASE.fullmatch(line)
+        if match is None:
+            continue
+        method, fullname, raw_verdict = match.groups()
+        if ID.fullmatch(fullname) is None or fullname.rsplit(".", 1)[-1] != method:
+            continue
+        if fullname in methods:
+            raise PairError("duplicate method in claimed log")
+        methods[fullname] = MAP.get(raw_verdict, "skipped")
+    if len(methods) > reported_total:
+        raise PairError("method rows exceed reported test count")
+    for status, field in (("failed", "failures"), ("error", "errors"),
+                          ("expected_failure", "expected_failures"),
+                          ("unexpected_success", "unexpected_successes"),
+                          ("skipped", "skipped")):
+        if sum(v == status for v in methods.values()) > summary[field]:
+            raise PairError("method statuses contradict unittest footer")
+    return methods
+
+
 def check(raw):
     if type(raw) is not bytes or not 0 < len(raw) <= MAX_ENVELOPE:
         raise PairError("size")
@@ -49,6 +76,7 @@ def check(raw):
             or type(data["complete"]) is not bool):
         raise PairError("shape")
     summaries = {}
+    observed = {}
     for tag in ("python_311_log", "python_314_log"):
         text = data[tag]
         if type(text) is not str:
@@ -63,7 +91,12 @@ def check(raw):
             summaries[tag] = extract(encoded)
         except InvalidLog as exc:
             raise PairError("unparseable log") from exc
+        observed[tag] = _observed_methods(text, summaries[tag]["reported_tests"], summaries[tag])
     left, right = summaries.values()
+    methods311, methods314 = observed.values()
+    different_names = len(methods311.keys() ^ methods314.keys())
+    changed_results = sum(methods311[key] != methods314[key]
+                          for key in methods311.keys() & methods314.keys())
     differences = sum(left[name] != right[name] for name in COMPARE)
     return {
         "claimed_interpreters": 2,
@@ -76,7 +109,16 @@ def check(raw):
         "reported_result_311": left["reported_result"],
         "reported_result_314": right["reported_result"],
         "different_summary_fields": differences,
-        "classification": "MISMATCH" if differences else "UNAUTHENTICATED_EQUALITY",
+        "different_method_names": different_names,
+        "changed_method_results": changed_results,
+        "reported_method_rows_311": len(methods311),
+        "reported_method_rows_314": len(methods314),
+        "method_listing": (
+            "SELF_REPORTED_FULL" if len(methods311) == left["reported_tests"]
+            and len(methods314) == right["reported_tests"]
+            else "PARTIAL_OR_MISSING"),
+        "classification": ("MISMATCH" if differences or different_names or changed_results
+                           else "UNAUTHENTICATED_EQUALITY"),
         "coverage": "SELF_ASSERTED_UNVERIFIED" if data["complete"] else "INCOMPLETE",
         "source_provenance": "UNTRUSTED_LOG_TEXT",
     }
