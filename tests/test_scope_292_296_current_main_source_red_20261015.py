@@ -68,7 +68,7 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
 
     @unittest.expectedFailure
     def test_296_ipv6_host_bits_must_not_widen_scope(self):
-        self._assert_rejected("2001:4860:4860::8888/64", "2001:4860:4860::8844")
+        self._assert_rejected("2001:4860:4860::8888/64", "[2001:4860:4860::8844]")
 
     @unittest.expectedFailure
     def test_292_ipv4_address_object_must_not_mint_explicit_scope(self):
@@ -80,7 +80,7 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
 
     @unittest.expectedFailure
     def test_292_ipv6_address_object_must_not_mint_explicit_scope(self):
-        self._assert_rejected(IPv6Address("2001:4860:4860::8888"), "2001:4860:4860::8888")
+        self._assert_rejected(IPv6Address("2001:4860:4860::8888"), "[2001:4860:4860::8888]")
 
     @unittest.expectedFailure
     def test_296_dotted_netmask_host_bits_must_not_widen_scope(self):
@@ -109,11 +109,11 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
         self._assert_rejected("8.8.8.8/32", "8.8.8.9")
 
     def test_296_canonical_ipv6_single_host_preserved(self):
-        result = self._review("2001:4860:4860::8888/128", "2001:4860:4860::8888")
+        result = self._review("2001:4860:4860::8888/128", "[2001:4860:4860::8888]")
         self.assertIsNotNone(result)
         self.assertTrue(result.allowed)
         self.assertEqual(result.reason, ScopeReason.EXPLICIT_NETWORK)
-        self._assert_rejected("2001:4860:4860::8888/128", "2001:4860:4860::8844")
+        self._assert_rejected("2001:4860:4860::8888/128", "[2001:4860:4860::8844]")
 
     def test_explicit_public_network_needs_authorization(self):
         policy = ScopePolicy(
