@@ -35,6 +35,7 @@ class RequestGrantReview:
 
 _HOLD = RequestGrantReview(ReviewStatus.HOLD, "invalid_or_unverified_input")
 _REVIEW = RequestGrantReview(ReviewStatus.REVIEW_ONLY, "structurally_coherent_untrusted_snapshot")
+_IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\\Z", re.ASCII)
 _DNS_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z", re.ASCII)
 _DECISION_INSTANT = re.compile(
     r"[0-9]{4}-[0-9]{2}-[0-9]{2}T"
@@ -44,7 +45,7 @@ _DECISION_INSTANT = re.compile(
 
 
 def _identifier(value: object) -> bool:
-    return type(value) is str and bool(value) and value == value.strip() and value.isascii()
+    return type(value) is str and bool(_IDENTIFIER.fullmatch(value))
 
 
 def _asset(value: object) -> bool:
@@ -78,7 +79,7 @@ def _utc_instant(value: object) -> bool:
     if type(value) is not datetime:
         return False
     try:
-        return value.utcoffset() is not None and value.astimezone(timezone.utc).tzinfo is timezone.utc
+        return type(value.tzinfo) is timezone and value.utcoffset() is not None
     except (TypeError, ValueError, OverflowError):
         return False
 
@@ -121,8 +122,9 @@ def review_request_grant(
     ):
         return _HOLD
 
+    created_at = _decision_time(request.created_at)
     decided_at = _decision_time(request.decided_at)
-    if decided_at is None or decided_at > reviewed_at:
+    if created_at is None or decided_at is None or not (created_at <= decided_at <= reviewed_at):
         return _HOLD
 
     if (
@@ -142,7 +144,9 @@ def review_request_grant(
         or type(grant.scope.excluded_assets) is not tuple
         or not all(_asset(v) for v in grant.scope.excluded_assets)
         or len(set(grant.scope.excluded_assets)) != len(grant.scope.excluded_assets)
+        or not set(grant.scope.excluded_assets).issubset(grant.scope.assets)
         or type(grant.scope.allowed_capabilities) is not tuple
+        or not grant.scope.allowed_capabilities
         or not all(_identifier(v) for v in grant.scope.allowed_capabilities)
         or len(set(grant.scope.allowed_capabilities)) != len(grant.scope.allowed_capabilities)
         or type(grant.recurring_retest_allowed) is not bool
