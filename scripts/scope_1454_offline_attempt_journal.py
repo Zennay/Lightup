@@ -245,6 +245,14 @@ class OfflineAttemptJournal:
             if self._con.execute("SELECT changes()").fetchone()[0] != 1:
                 self._con.rollback()
                 return _hold()
+            observed = self._con.execute(
+                "SELECT phase,evidence_digest FROM offline_scope_1454_attempts "
+                "WHERE attempt_id=? AND sealed_binding=?",
+                (attempt.attempt_id, binding),
+            ).fetchone()
+            if observed is None or tuple(observed) != (next_phase, evidence_digest):
+                self._con.rollback()
+                return _hold()
             self._con.commit()
             return _review()
         except sqlite3.Error:
@@ -268,6 +276,19 @@ class OfflineAttemptJournal:
                 "VALUES(?,?,'reserved',NULL)",
                 (attempt.attempt_id, binding),
             )
+            # A trigger installed *after* journal construction must never make
+            # an ignored or altered INSERT look like a successful reservation.
+            if self._con.execute("SELECT changes()").fetchone()[0] != 1:
+                self._con.rollback()
+                return _hold()
+            stored = self._con.execute(
+                "SELECT sealed_binding,phase,evidence_digest "
+                "FROM offline_scope_1454_attempts WHERE attempt_id=?",
+                (attempt.attempt_id,),
+            ).fetchone()
+            if stored is None or tuple(stored) != (binding, "reserved", None):
+                self._con.rollback()
+                return _hold()
             self._con.commit()
             return _review()
         except sqlite3.Error:
