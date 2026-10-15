@@ -6,10 +6,76 @@ No network, filesystem I/O, persistent storage, clock lookup, or customer intera
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import NamedTuple
 
 from lightup.models import Authorization
+
+
+
+_RECEIPT_KEYS = (
+    "status", "reason",
+    "authorization_verified", "permit_issued", "execution_enabled",
+    "target_dispatch_allowed", "merge_approved", "release_approved",
+)
+
+_RECEIPT_PAIRS = (
+    ("HOLD", "invalid_shape"),
+    ("HOLD", "invalid_batch"),
+    ("HOLD", "unbounded_window"),
+    ("HOLD", "inverted_window"),
+    ("HOLD", "outside_window"),
+    ("REVIEW_ONLY", "temporal_shape_only"),
+)
+
+
+class LegacyTemporalReceipt(tuple, Mapping[str, str | bool]):
+    """Immutable, falsy, permission-free synthetic review receipt.
+
+    Underlying built-in tuple storage cannot be changed with setitem,
+    attribute assignment or object.__setattr__. Mapping keys are only
+    static labels; all six authority/release fields always return False.
+    """
+
+    __slots__ = ()
+
+    def __new__(cls, status: object, reason: object) -> LegacyTemporalReceipt:
+        if (
+            type(status) is not str or type(reason) is not str
+            or (status, reason) not in _RECEIPT_PAIRS
+        ):
+            status, reason = "HOLD", "invalid_shape"
+        return tuple.__new__(cls, (status, reason))
+
+    def __getitem__(self, key: object) -> str | bool:
+        if type(key) is not str:
+            raise KeyError("noncanonical receipt key")
+        if key == "status":
+            return tuple.__getitem__(self, 0)
+        if key == "reason":
+            return tuple.__getitem__(self, 1)
+        if key in _RECEIPT_KEYS[2:]:
+            return False
+        raise KeyError("unknown receipt key")
+
+    def __iter__(self):
+        return iter(_RECEIPT_KEYS)
+
+    def __len__(self) -> int:
+        return 8
+
+    def __bool__(self) -> bool:
+        return False
+
+    def __repr__(self) -> str:
+        return (
+            "LegacyTemporalReceipt("
+            + tuple.__getitem__(self, 0)
+            + ", "
+            + tuple.__getitem__(self, 1)
+            + "; no_authority)"
+        )
 
 
 class LegacyTemporalReview(NamedTuple):
@@ -25,40 +91,13 @@ class LegacyTemporalReview(NamedTuple):
         """
         return False
 
-    def as_receipt(self) -> dict[str, str | bool]:
-        """Only static classifications; never disclose claims or give authority."""
-        allowed = (
-            ("HOLD", "invalid_shape"),
-            ("HOLD", "invalid_batch"),
-            ("HOLD", "unbounded_window"),
-            ("HOLD", "inverted_window"),
-            ("HOLD", "outside_window"),
-            ("REVIEW_ONLY", "temporal_shape_only"),
-        )
-        # Even a NamedTuple class can have __getattribute__ monkeypatched.
-        # Avoid both its untrusted attribute getters and hostile equality
-        # methods on forged status/reason objects.
+    def as_receipt(self) -> LegacyTemporalReceipt:
+        """Return immutable, always-falsy status with six denied authority flags."""
         if type(self) is not LegacyTemporalReview:
-            status, reason = "HOLD", "invalid_shape"
-        else:
-            status = tuple.__getitem__(self, 0)
-            reason = tuple.__getitem__(self, 1)
-            if (
-                type(status) is not str
-                or type(reason) is not str
-                or (status, reason) not in allowed
-            ):
-                status, reason = "HOLD", "invalid_shape"
-        return {
-            "status": status,
-            "reason": reason,
-            "authorization_verified": False,
-            "permit_issued": False,
-            "execution_enabled": False,
-            "target_dispatch_allowed": False,
-            "merge_approved": False,
-            "release_approved": False,
-        }
+            return LegacyTemporalReceipt("HOLD", "invalid_shape")
+        return LegacyTemporalReceipt(
+            tuple.__getitem__(self, 0), tuple.__getitem__(self, 1)
+        )
 
 
 def _canonical_datetime(value: object) -> bool:
