@@ -92,6 +92,41 @@ class AtomicPublicConfigurationSourceContract(unittest.TestCase):
             target="https://security.example.test/path",
         )
 
+    @unittest.expectedFailure
+    def test_red_nonstring_host_entry_cannot_be_bypassed_by_public_ip_network(self):
+        # Atomic public policy validation is bidirectional: malformed hosts
+        # must not be ignored just because the chosen target is an IP literal.
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset({42}),
+            explicit_networks=("8.8.8.0/24",),
+        )
+        self.assertFalse(policy.decide(Target("8.8.8.8", FAKE_AUTH)).allowed)
+
+    @unittest.expectedFailure
+    def test_red_bytes_host_entry_cannot_be_bypassed_by_public_ip_network(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset({b"security.example.test"}),
+            explicit_networks=("8.8.8.0/24",),
+        )
+        self.assertFalse(policy.decide(Target("8.8.8.8", FAKE_AUTH)).allowed)
+
+    def test_both_host_shape_reds_are_actual_unsafe_network_allows(self):
+        # Ordinary witness: a runtime exception must not pass as RED evidence.
+        for invalid_host in (42, b"security.example.test"):
+            with self.subTest(invalid_host_type=type(invalid_host).__name__):
+                policy = ScopePolicy(
+                    allow_private_lab=False,
+                    explicit_hosts=frozenset({invalid_host}),
+                    explicit_networks=("8.8.8.0/24",),
+                )
+                decision = policy.decide(Target("8.8.8.8", FAKE_AUTH))
+                self.assertEqual(
+                    (decision.allowed, decision.reason),
+                    (True, ScopeReason.EXPLICIT_NETWORK),
+                )
+
     def test_canonical_host_and_network_still_authorize_with_synthetic_grant(self):
         policy = policy_with_bad_networks(("203.0.113.0/24", "2001:db8::/32"))
         decision = policy.decide(Target("https://security.example.test/page", FAKE_AUTH))
