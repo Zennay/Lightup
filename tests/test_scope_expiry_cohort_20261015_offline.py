@@ -1163,5 +1163,41 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
         self.assertNoAuthority(receipt)
 
 
+    def test_json_escaped_duplicate_and_invisible_key_aliases_always_hold(self):
+        """JSON object_pairs_hook must catch duplicate identities after decoding."""
+        original = encoded(document())
+        escape = bytes([92])
+        candidates = [
+            original.replace(
+                b'"horizon_hours":24',
+                b'"horizon_hours":24,"horizon_' + escape + b'u0068ours":24',
+            ),
+            original.replace(
+                b'"valid_from":"2026-10-13T00:00:00Z"',
+                b'"valid_from":"2026-10-13T00:00:00Z",'
+                b'"valid_' + escape + b'u0066rom":"2026-10-13T00:00:00Z"',
+            ),
+            original.replace(
+                b'"horizon_hours":24',
+                b'"horizon_hours":24,"horizon_' + escape + b'u200bhours":24',
+            ),
+            original.replace(
+                b'"windows":[',
+                b'"' + escape + b'u0061pproved":true,"windows":[',
+            ),
+        ]
+        for i, packet in enumerate(candidates):
+            with self.subTest(case=i):
+                with self.assertRaises(ValueError):
+                    reviewer.review(packet)
+                status, receipt, stderr = subprocess_review(packet)
+                self.assertEqual(status, 2)
+                self.assertEqual(stderr, b"")
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertEqual(set(receipt),
+                                 {"status", *reviewer.DENIAL_FLAGS})
+                self.assertNoAuthority(receipt)
+
+
 if __name__ == "__main__":
     unittest.main()
