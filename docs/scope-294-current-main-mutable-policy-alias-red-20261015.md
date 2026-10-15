@@ -115,3 +115,17 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_294_snapshot_
 ```
 
 **No promotion to authorization:** installed `ScopePolicy` still contains the original #294 mutable-alias issue, #292/#296 configuration parsing requires its source owner, and #177/#347 consent/revoke are untouched; independent exact-HEAD hosted and permanently registered VPS CI and human approval remain separate.
+
+## W8 — numeric/hex IPv4 aliases are not acceptable DNS host metadata
+
+The opt-in reviewer previously marked `127.1`, `2130706433`, `0x7f000001`, `0177.0.0.1`, and normal dotted IPv4 strings `REVIEW_ONLY` in an *explicit hostnames* collection. Different clients can interpret these forms as IPv4 addresses instead of DNS hostnames, creating metadata identity ambiguity. A conservative standalone host shape review now **HOLDs** 1–4 numeric/hex labels in IP-like spellings; it does not normalize, resolve, convert, scan or authorize any such target.
+
+Digit-bearing genuine DNS names such as `127.example.test`, `ip4-127.example.test` and `8.8.8.8.example.test` continue as *literal*, review-only metadata, never a permission; exact CIDR strings belong in the separate `networks` list and remain review-only even for reserved/lab special-use ranges. Note that this does **not** establish actual destination safety, canonical runtime `Target` parsing, or IDNA equivalence; those source-owned issues require separate evidence.
+
+New add-only `tests/test_scope_294_numeric_host_alias_hold_20261015.py` covers canonical IPv4, decimal shorthand, octal/hex aliases, invalid numeric quadrants, ordinary numeric-containing DNS, atomic mixed-list refusal, unchanged installed policy, **actual offline JSON CLI subprocess** privacy/nonzero-denial, and no socket/DNS/dispatch. Review-only remains Boolean false with all six permission flags false.
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_294_numeric_host_alias_hold_20261015.py' -v
+```
+
+**Remain INCUBATE / PLAN-LAB ONLY / DRAFT-HOLD.** The original six installed #294 expected REDs and all real authorization, grant provenance, revocation, permanent VPS and human approval blockers are unchanged.
