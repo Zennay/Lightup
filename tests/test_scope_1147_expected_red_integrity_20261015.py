@@ -11,6 +11,7 @@ No customer data, runtime source, target access, sockets or grants.
 """
 from __future__ import annotations
 
+import sys
 import unittest
 
 # Pin each regression to a concrete original-source weakness; do not derive
@@ -77,6 +78,27 @@ class Scope1147ExpectedRedIntegrityTests(unittest.TestCase):
         result = unittest.TestResult()
         suite.run(result)
         verify_source_red_receipt(result)
+
+    def test_unittest_discovery_does_not_collect_25_source_cases_twice(self):
+        module = sys.modules[__name__]
+        self.assertNotIn(
+            "DuplicateArgumentKeysInstalledSource1147", vars(module),
+            "module-level imported TestCase silently duplicates test discovery",
+        )
+        discovered = unittest.defaultTestLoader.loadTestsFromModule(module)
+
+        def flatten(suite):
+            for item in suite:
+                if isinstance(item, unittest.TestSuite):
+                    yield from flatten(item)
+                else:
+                    yield item
+
+        cases = list(flatten(discovered))
+        self.assertEqual(len(cases), 5)
+        self.assertTrue(
+            all(type(case) is Scope1147ExpectedRedIntegrityTests for case in cases)
+        )
 
     def test_validator_rejects_fake_expected_failure_from_crash(self):
         class BrokenReference(unittest.TestCase):
