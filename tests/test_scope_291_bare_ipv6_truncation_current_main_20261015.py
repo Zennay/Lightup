@@ -23,18 +23,20 @@ DOC_IPV6 = (
     "2001:db8:2::2222",
     "2001:db8:3::3333",
 )
-SYNTHETIC_AUTH = Authorization(
-    owner="offline-fixture-only",
-    reference="not-a-real-customer-approval",
-)
-
-def _fictional_auth_for_asset(asset: str) -> Authorization:
+def _fictional_auth_for_asset(
+    asset: str, *, valid_from=None, valid_until=None
+) -> Authorization:
     """Build a synthetic claimed asset matching either main or #100's owner model.
 
     Runtime field probing is deliberately read-only, not a grant-verification
     heuristic: owner-bound source adds an `assets` field; current main does not.
     """
-    kwargs = {"owner": "offline-fixture-only", "reference": "never-a-real-consent"}
+    kwargs = {
+        "owner": "offline-fixture-only",
+        "reference": "never-a-real-consent",
+        "valid_from": valid_from,
+        "valid_until": valid_until,
+    }
     if "assets" in Authorization.__dataclass_fields__:
         kwargs["assets"] = (asset,)
     return Authorization(**kwargs)
@@ -229,15 +231,11 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
     def test_missing_or_expired_claim_never_mints_token_even_with_bad_host_normalization(self):
         """Negative controls: keep temporal checks strict before token generation."""
         now = datetime.now(timezone.utc)
-        expired = Authorization(
-            owner="offline-fixture-only",
-            reference="not-a-real-approval",
-            valid_until=now - timedelta(days=2),
+        expired = _fictional_auth_for_asset(
+            "2001", valid_until=now - timedelta(days=2)
         )
-        future = Authorization(
-            owner="offline-fixture-only",
-            reference="not-a-real-approval",
-            valid_from=now + timedelta(days=2),
+        future = _fictional_auth_for_asset(
+            "2001", valid_from=now + timedelta(days=2)
         )
         gate = ActivationGate(
             ScopePolicy(
@@ -291,7 +289,7 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
                 self.assertEqual(permit.mode, ActivationMode.AUTHORIZED)
                 with self.assertRaises(PermissionError):
                     gate.issue(
-                        Target("[" + other + "]", authorization=SYNTHETIC_AUTH),
+                        Target("[" + other + "]", authorization=_fictional_auth_for_asset(other)),
                         "fixture-only-no-adapter",
                     )
 
