@@ -837,9 +837,9 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
             if bits & 8:
                 updated["max_risk"] = 1
             if bits & 16:
-                updated["valid_from"] = "2026-10-14T12:00:00Z"
+                updated["valid_from"] = "2026-10-14T06:00:00Z"
             if bits & 32:
-                updated["valid_until"] = "2026-10-14T12:00:00Z"
+                updated["valid_until"] = "2026-10-14T18:00:00Z"
             if bits & 64:
                 updated["assets"].append("lab-c.example")
             if bits & 128:
