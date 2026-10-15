@@ -477,5 +477,38 @@ class SyntheticProvenanceReviewTests(unittest.TestCase):
                 self.assertEqual(p.stderr, b"")
                 self.assertEqual(json.loads(p.stdout), {"status": "HOLD", **FALSE_FLAGS})
 
+
+    def test_mixed_script_confusables_are_hold(self):
+        suspicious = ("Оperator",  # Cyrillic O + Latin rest
+                      "Opеrator",  # Cyrillic e + Latin rest
+                      "Μicrosoft",  # Greek Mu + Latin rest
+                      "ROE-К05",  # Cyrillic Ka + Latin prefix
+                      "Αuthority",  # Greek capital Alpha + Latin rest
+                      "Oрerator",  # Cyrillic small Er + Latin rest
+                      "Աuthority")  # Armenian capital Ayb + Latin rest
+        for value in suspicious:
+            for field in ("approved_by", "reference"):
+                with self.subTest(value=value, field=field):
+                    payload = {"approved_by": "fictional-operator", "reference": "ROE-FICTIONAL"}
+                    payload[field] = value
+                    self.assert_receipt(json.dumps(payload).encode("utf-8"), "HOLD")
+
+    def test_single_script_international_names_remain_review_only(self):
+        for name in ("Αλέξανδρος", "Александр", "Արամ", "José", "शंकर"):
+            with self.subTest(name=name):
+                claim = {"approved_by": name, "reference": "ROE-FICTIONAL"}
+                self.assert_receipt(json.dumps(claim).encode("utf-8"), "REVIEW_ONLY")
+
+    def test_mixed_script_real_cli_generic_hold(self):
+        for name in ("Оperator", "Μicrosoft", "Աuthority"):
+            with self.subTest(name=name):
+                claim = {"approved_by": name, "reference": "ROE-FICTIONAL"}
+                p = subprocess.run([sys.executable, str(SCRIPT)],
+                                   input=json.dumps(claim).encode("utf-8"),
+                                   capture_output=True, timeout=4)
+                self.assertEqual(p.returncode, 2)
+                self.assertEqual(p.stderr, b"")
+                self.assertEqual(json.loads(p.stdout), {"status": "HOLD", **FALSE_FLAGS})
+
 if __name__ == "__main__":
     unittest.main()
