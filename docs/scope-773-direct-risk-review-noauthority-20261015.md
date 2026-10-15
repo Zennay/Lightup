@@ -27,7 +27,12 @@ not be represented as a passing production fix. Source-owner review is needed.
 - Matching canonical limits are merely **REVIEW_ONLY**. The typed immutable
   receipt exposes six literal-false read-only booleans. Its constructor accepts
   only status and reason, **never** authority flags; fresh `to_dict()` outputs
-  cannot mutate the underlying tuple or elevate a later receipt. The flags: `authorized`, `may_scan`,
+  cannot mutate the underlying tuple or elevate a later receipt. A caller can
+  still manually construct a fake tuple, so serialization now enforces exact
+  `ReviewStatus` and the six allowed constant status/reason combinations;
+  unknown statuses, swapped reasons, foreign objects and subclasses are
+  rendered as one generic `HOLD/invalid_receipt`, never reflected verbatim.
+  The flags: `authorized`, `may_scan`,
   `may_dispatch`, `may_issue_grant`, `release_ready`, `may_deploy`.
 - This intentionally does **not** inspect asset membership, exclusions,
   capabilities, requester identity, grant signatures, consent, timestamps,
