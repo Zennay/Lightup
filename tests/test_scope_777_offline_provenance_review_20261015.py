@@ -7,6 +7,7 @@ import subprocess
 import sys
 import unittest
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import scope_777_review_provenance_offline as review
 
 SCRIPT = Path(__file__).parents[1] / "scripts" / "scope_777_review_provenance_offline.py"
