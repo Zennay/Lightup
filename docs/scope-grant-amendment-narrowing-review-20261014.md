@@ -26,7 +26,7 @@ Each snapshot must contain exactly these keys:
 | `grant_id`, `client_id`, `engagement_id`, `approved_by`, `reference` | Opaque bounded ASCII identifier, never displayed | All must match exactly. |
 | `assets` | Before: nonempty list. After: empty list permitted to revoke *all* asset targets. Otherwise at most 32 distinct canonical lowercase opaque identifiers | `after` must be a subset of `before`; zero after-assets is the strongest narrowing, never a new scan permit. |
 | `excluded_assets` | At most 32 distinct canonical lowercase opaque identifiers | `after` must be a superset of `before`. |
-| `capabilities` | Nonempty list of at most 32 distinct canonical lowercase opaque identifiers | `after` must be a subset of `before`. |
+| `capabilities` | Before: **empty means unrestricted** in real `ScopeDefinition`, or 1–32 distinct canonical lowercase capabilities. After: **1–32 only**, never empty. | An originally unrestricted grant may be narrowed to any explicit nonempty after-list. Otherwise `after` must be a subset of `before`; an empty after-list is always HOLD because it removes the restriction. |
 | `max_risk` | Exact integer 0–4, **not bool**; 5 (destructive lab) refused | Must stay unchanged or decrease. |
 | `valid_from`, `valid_until` | Exact RFC3339 UTC `YYYY-MM-DDTHH:MM:SSZ`, increasing | Start not earlier; end not later. |
 | `recurring_retest_allowed` | Exact JSON boolean | A false value may not become true. |
@@ -53,6 +53,8 @@ The output receipt is independently sealed against forged keys, approval flags, 
 The input parser refuses oversized buffers, duplicate object keys (including escaped aliases), non-finite numbers, floating-point values, invalid UTF-8, BOM, scalar roots, trailing documents, unexpected keys, duplicate member entries, and wrong Python/JSON primitive types.
 
 **Complete target revocation:** `after.assets: []` is a legitimate structural narrowing only when `before.assets` described an existing, nonempty asset scope. The actual LightUp `ScopeDefinition.allows_asset` returns false for every target if `assets=()`. A zero-asset proposal can yield `REVIEW_ONLY`, but **never an authorized or dispatch-enabled receipt**; every independent widening of identity, capabilities, exclusion removals, risk, window or retest permission remains HOLD. Crucially, `after.capabilities: []` continues to be invalid because real `ScopeDefinition` interprets that as unrestricted capabilities, not revocation. These differ deliberately.
+
+**Unrestricted capability baseline:** `before.capabilities: []` represents the real LightUp model's **all tools allowed** rule. The only safe amendment reviewed from such a baseline supplies a **nonempty explicit** `after.capabilities` list. The offline comparator now treats that as a structural narrowing instead of mistaking it for an added-capability widening. In contrast, `after.capabilities: []` is always `HOLD`, even when the original was unrestricted. A deterministic 64-case composition matrix proves that this legitimate restriction cannot hide any concurrent expansion of target assets, risk, exclusions, validity window, approver identity or retest permission. Synthetic real-model `ScopeDefinition.allows_capability` assertions independently verify the baseline semantics. Even the resulting `REVIEW_ONLY` receipt has all six authorization/release flags literally false, and the tool is not connected to the live grant issuance path.
 
 ## Interpretation
 
