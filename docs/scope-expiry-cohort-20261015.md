@@ -106,6 +106,22 @@ A structurally valid packet prints exactly one opaque JSON line and exits **3**,
 
 No zero exit is possible for a normal input. No input values, timestamps, paths, client identifiers, or raw JSON snippets are echoed; even REVIEW_ONLY cannot show which anonymous row contributed to a count. A REVIEW_ONLY aggregation is not evidence of persisted, authentic, approved, current or non-revoked authorization.
 
+## Fixed-schema, deny-only receipt gate (W9)
+
+Before **any** output descriptor can be written, the reviewer independently
+revalidates the complete resulting JSON object. `HOLD` can contain only the
+literal status and six literal `false` authority flags, **no counts**.
+`REVIEW_ONLY` can contain only four nonnegative built-in integer counts with
+a coherent total of **1–32**, plus exactly those same six false flags.
+Unknown statuses (`PASS`, `APPROVED`), unexpected target/client keys, boolean
+count aliases, noninteger/negative/unbounded counts, or any flag that is not
+**literally False** produce no receipt and exit 2.
+
+Dedicated controls try forged `approved` shapes, client names, all six
+false-flag substitutions and 32-window counting. This gate limits accidental
+metadata disclosure; it does **not** authenticate data or produce permission.
+As before, a missing receipt must never be interpreted as success.
+
 ## Verification
 
 ```sh
