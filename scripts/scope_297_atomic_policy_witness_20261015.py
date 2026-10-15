@@ -8,7 +8,7 @@ Every operational invocation returns exit 2 / HOLD, even when no defect is seen.
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
@@ -69,20 +69,48 @@ class NetworkAttemptBlocked(RuntimeError):
     """Synthetic network tripwire. No socket or DNS call can escape."""
 
 
+class NetworkTripwire:
+    """Count attempted networking even if a caller suppresses the exception."""
+
+    def __init__(self):
+        self.attempts = 0
+
+    def block(self, *_args, **_kwargs):
+        self.attempts += 1
+        raise NetworkAttemptBlocked("network forbidden")
+
+
 @contextmanager
 def disconnected():
-    with (
-        patch.object(socket, "getaddrinfo", side_effect=NetworkAttemptBlocked("network forbidden")),
-        patch.object(socket, "socket", side_effect=NetworkAttemptBlocked("network forbidden")),
-    ):
-        yield
+    tripwire = NetworkTripwire()
+    with ExitStack() as stack:
+        # Pure in-process tripwire, not a host-level network sandbox.
+        # Patch the most common stdlib socket/DNS entry points rather than
+        # relying on getaddrinfo() as the only resolver route.
+        for api in (
+            "socket",
+            "socketpair",
+            "create_connection",
+            "create_server",
+            "getaddrinfo",
+            "gethostbyname",
+            "gethostbyname_ex",
+            "gethostbyaddr",
+            "getnameinfo",
+            "getfqdn",
+        ):
+            stack.enter_context(
+                patch.object(socket, api, side_effect=tripwire.block)
+            )
+        yield tripwire
 
 
 def evaluate() -> dict:
     """Evaluate only the eight pinned synthetic cases; NEVER return authority."""
     observations = []
-    with disconnected():
+    with disconnected() as tripwire:
         for case in CASES:
+            attempts_before = tripwire.attempts
             try:
                 # A future strict constructor may reject malformed policy
                 # before decide(): that is REVIEW, not a CLI crash or a GO.
@@ -110,6 +138,10 @@ def evaluate() -> dict:
             except Exception:
                 # Do not expose exception strings: could contain private config.
                 classification = "ERROR_REVIEW"
+            # A caller may catch NetworkAttemptBlocked and return a normal
+            # decision. The attempt still happened and must not disappear.
+            if tripwire.attempts > attempts_before:
+                classification = "NETWORK_BLOCKED_REVIEW"
             observations.append({
                 "case_id": case.case_id,
                 "classification": classification,
