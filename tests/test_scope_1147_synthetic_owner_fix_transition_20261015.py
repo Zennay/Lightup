@@ -7,6 +7,9 @@ unchanged. The source owner must independently implement and validate the fix.
 """
 from __future__ import annotations
 
+import contextlib
+import io
+import json
 import unittest
 from unittest.mock import patch
 
@@ -84,6 +87,24 @@ class Scope1147OwnerIntegrationTransitionTests(unittest.TestCase):
                 with self.subTest(obsolete_source_witness=name):
                     with self.assertRaises(OrchestrationError):
                         self._run_installed_case_without_xfail_wrapper(name)
+
+    def test_known_source_red_receipt_downgrades_to_hold_when_owner_fixes_it(self):
+        from scripts import scope_1147_red_receipt_cli as receipt_cli
+
+        output = io.StringIO()
+        with (
+            patch.object(ToolCall, "arguments_dict", _strict_preprojection),
+            contextlib.redirect_stdout(output),
+        ):
+            status = receipt_cli.main([])
+        self.assertEqual(status, 3)
+        self.assertEqual(output.getvalue().count("\n"), 1)
+        receipt = json.loads(output.getvalue())
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(receipt["reason"], "UNVERIFIED")
+        for key in ("can_authorize", "can_dispatch", "can_merge",
+                    "can_deploy", "can_scan", "can_release"):
+            self.assertIs(receipt[key], False)
 
     def test_original_unmodified_main_implementation_is_restored_after_patch(self):
         original_method = ToolCall.arguments_dict
