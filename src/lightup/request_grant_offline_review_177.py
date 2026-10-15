@@ -13,8 +13,8 @@ from datetime import datetime, timezone
 from enum import Enum
 
 from .capabilities import CapabilityState, get_capabilities
-from .domain import AssessmentRequestRecord, RequestStatus
-from .engagements import AssessmentMode, AuthorizationGrant, RiskLevel, ScopeDefinition
+from .domain import AssessmentRequestRecord, EngagementRecord, RequestStatus
+from .engagements import AssessmentMode, AuthorizationGrant, EngagementStatus, RiskLevel, ScopeDefinition
 
 
 class ReviewStatus(str, Enum):
@@ -208,3 +208,36 @@ def review_request_grant_batch(
         seen_assets.update(effective)
         tenant = request.client_id
     return _REVIEW
+
+
+def review_request_grant_engagement(
+    request: object,
+    grant: object,
+    engagement: object,
+    *,
+    reviewed_at: object,
+) -> RequestGrantReview:
+    """Non-authorizing cross-check of a *claimed* engagement snapshot.
+
+    REVIEW_ONLY must never imply an authenticated request→engagement link:
+    that foreign key does not exist in current production persistence.
+    """
+    if type(engagement) is not EngagementRecord or not _utc_instant(reviewed_at):
+        return _HOLD
+    if (
+        not _identifier(engagement.engagement_id)
+        or not _identifier(engagement.client_id)
+        or engagement.status is not EngagementStatus.AUTHORIZED
+        or type(grant) is not AuthorizationGrant
+        or type(request) is not AssessmentRequestRecord
+        or engagement.engagement_id != grant.engagement_id
+        or engagement.client_id != grant.client_id
+        or engagement.client_id != request.client_id
+    ):
+        return _HOLD
+    created_at = _decision_time(engagement.created_at)
+    if created_at is None or not _utc_instant(grant.valid_from):
+        return _HOLD
+    if not (created_at <= grant.valid_from <= reviewed_at):
+        return _HOLD
+    return review_request_grant(request, grant, reviewed_at=reviewed_at)
