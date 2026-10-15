@@ -290,6 +290,43 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     check._decode_lab_response(fake)
 
+    def test_upstream_json_parser_rejects_duplicate_and_nonfinite_evidence(self):
+        # A duplicate nonce/method with last-wins JSON semantics would make a
+        # replay or rewritten upstream's evidence misleading. Parse all object
+        # depths without silently normalizing duplicates.
+        encoded_alias = b'{"method":"POST","' + b"\\\\u006dethod" + b'":"GET"}'
+        malformed = (
+            b'{"method":"POST","method":"GET"}',
+            encoded_alias,
+            b'{"outer":{"nonce":"new","nonce":"replayed"}}',
+            b'{"nonce":NaN}',
+            b'{"nonce":Infinity}',
+            b'{"nonce":-Infinity}',
+        )
+        for payload in malformed:
+            with self.subTest(payload=payload[:36]):
+                result = Mock()
+                result.status = 200
+                result.getheaders.return_value = [
+                    ("Content-Type", "application/json"),
+                    ("Content-Length", str(len(payload))),
+                ]
+                result.read.return_value = payload
+                with self.assertRaises(ValueError):
+                    check._decode_lab_response(result)
+        # Valid ordinary JSON still passes through decoding, before the
+        # independent method/path/body/nonce/headers trust-boundary checker.
+        clean = b'{"nonce":"synthetic-fresh"}'
+        result = Mock()
+        result.status = 200
+        result.getheaders.return_value = [
+            ("Content-Type", "application/json"),
+            ("Content-Length", str(len(clean))),
+        ]
+        result.read.return_value = clean
+        self.assertEqual(check._decode_lab_response(result),
+                         {"nonce": "synthetic-fresh"})
+
     def test_requests_issue_distinct_challenges_and_reject_replayed_receipts(self):
         # A stale but otherwise byte-perfect response must not stand in for a
         # fresh Nginx/WSGI roundtrip. Use only a disposable synthetic echo.
