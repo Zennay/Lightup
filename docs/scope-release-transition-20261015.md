@@ -81,3 +81,21 @@ expired test fixture is owner-gated under
 [PR #1452](https://github.com/Zennay/Lightup/pull/1452);
 this review does not modify it. Do not merge, deploy, issue real
 grants or scan targets based on this output.
+
+## W7 — de verschilrapportage noemt ook de juiste reparatieroute
+
+Elk van de negen veranderde **of** onveranderde controlepunten toont nu
+de vastgelegde bron-/menselijke eigenaar, de concrete benodigde
+vervolgstap, wat onafhankelijk aangetoond moet worden en waarom een
+zelfgerapporteerde status zelfs bij verbetering nog geen vrijgave
+oplevert. Ook bij atomair ongeldige twee-snapshot input blijven alle
+negen herstelvragen staan; er worden **geen** fictieve voortgang of
+gevoelige brongegevens overgenomen. Zowel gewone inventarisatie als
+twee-snapshot-verschillenrapport gebruiken exact dezelfde onveranderbare
+catalogus. Meer details staan in
+[scope-release-remediation-owner-map](scope-release-remediation-owner-map-20261015.md).
+
+**Belangrijk:** issue-/PR-nummers in de catalogus zijn
+eigenaarschapshints, geen geverifieerde actuele GitHub-status.
+Veranderingen aan deze read-only rapportage hebben geen effect op echte
+`ToolExecutor`-/grant-/SQLite-/runner- of deploymentpaden.
