@@ -19,6 +19,7 @@ from lightup.request_grant_offline_review_177 import ReviewStatus
 from lightup.request_grant_sqlite_preflight_177 import (
     review_persisted_request_grant,
     review_persisted_grant_batch,
+    _has_provenance_fk,
 )
 
 
@@ -335,6 +336,63 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
                 (self.request.request_id, self.grant.grant_id),
             )
         self.assert_hold()
+
+    def test_declared_fk_must_be_exactly_one_independent_column(self):
+        # Isolated in-memory SQLite schema only; no real client database.
+        with sqlite3.connect(":memory:") as con:
+            con.executescript("""
+                CREATE TABLE assessment_requests(
+                    request_id TEXT NOT NULL,
+                    client_id TEXT NOT NULL,
+                    UNIQUE(request_id, client_id)
+                );
+                CREATE TABLE authorization_grants(
+                    grant_id TEXT PRIMARY KEY,
+                    approved_request_id TEXT,
+                    client_id TEXT,
+                    FOREIGN KEY(approved_request_id, client_id)
+                        REFERENCES assessment_requests(request_id, client_id)
+                );
+            """)
+            introspection = con.execute(
+                "PRAGMA foreign_key_list(authorization_grants)"
+            ).fetchall()
+            self.assertEqual(len(introspection), 2)
+            self.assertEqual(introspection[0][3], "approved_request_id")
+            self.assertEqual(introspection[0][1], 0)
+            self.assertFalse(_has_provenance_fk(con))
+
+    def test_single_column_fk_is_required_but_not_release_authority(self):
+        with sqlite3.connect(":memory:") as con:
+            con.executescript("""
+                CREATE TABLE assessment_requests(request_id TEXT PRIMARY KEY);
+                CREATE TABLE authorization_grants(
+                    grant_id TEXT PRIMARY KEY,
+                    approved_request_id TEXT
+                        REFERENCES assessment_requests(request_id)
+                );
+            """)
+            self.assertTrue(_has_provenance_fk(con))
+            # The isolated schema lacks the full requested asset/engagement
+            # evidence, so a real review remains HOLD.
+        self.upgrade_synthetic_only()
+        actual = self.review()
+        self.assertIs(actual.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(actual)
+
+    def test_fk_to_wrong_parent_column_cannot_imply_approved_request(self):
+        with sqlite3.connect(":memory:") as con:
+            con.executescript("""
+                CREATE TABLE assessment_requests(
+                    request_id TEXT PRIMARY KEY,
+                    alias TEXT UNIQUE
+                );
+                CREATE TABLE authorization_grants(
+                    approved_request_id TEXT
+                        REFERENCES assessment_requests(alias)
+                );
+            """)
+            self.assertFalse(_has_provenance_fk(con))
 
     def test_sqlite_fk_schema_still_cannot_authorize_real_targets(self):
         self.upgrade_synthetic_only()
