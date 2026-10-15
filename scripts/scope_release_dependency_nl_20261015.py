@@ -19,6 +19,14 @@ EXPLANATIONS = {
     "explicit_human_release": ("Expliciet besluit door een mens", "Vrijgave vereist een afzonderlijk, expliciet menselijk besluit."),
 }
 
+# Fixed vocabulary only; never interpolate user-supplied names or comments.
+STATUS_NL = {
+    "UNKNOWN": "Niet controleerbaar",
+    "MISSING": "Ontbreekt",
+    "BLOCKED": "Geblokkeerd",
+    "SELF_REPORTED": "Alleen zelf gemeld",
+}
+
 
 def summarize(raw: bytes) -> str:
     try:
@@ -41,8 +49,9 @@ def summarize(raw: bytes) -> str:
     lines.extend(["", "## Voorwaarden die echte controle nodig hebben", ""])
     for gate in GATES:
         label, cause = EXPLANATIONS[gate]
+        status = STATUS_NL[result["gate_states"][gate]] if result else STATUS_NL["UNKNOWN"]
         # Every gate is independently unverified, including self-reported ones.
-        lines.append(f"- **{label}:** {cause}")
+        lines.append(f"- **{label} — {status}:** {cause}")
     lines.extend([
         "",
         "## Wat wel en niet kan",
