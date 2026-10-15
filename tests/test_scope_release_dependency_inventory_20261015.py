@@ -122,5 +122,13 @@ class GateInventoryTests(unittest.TestCase):
             review.assess(BytesSubclass(json.dumps(packet()).encode()))
 
 
+    def test_repo_fictional_fixture_is_always_non_authorizing(self):
+        fixture = (SCRIPT.parents[1] / "docs" / "fixtures" /
+                   "scope-release-fictional-packet-20261015.json").read_bytes()
+        result = self.cli(fixture)
+        self.assertEqual(result["self_reported_count"], 1)
+        self.assertEqual(len(result["needs_attention"]), len(review.GATES) - 1)
+
+
 if __name__ == "__main__":
     unittest.main()
