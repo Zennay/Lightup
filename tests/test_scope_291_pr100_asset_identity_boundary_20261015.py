@@ -220,6 +220,47 @@ class SourceOwnerAssetIPv6Boundary(unittest.TestCase):
             with self.assertRaisesRegex(AssertionError, "network socket forbidden"):
                 socket.socket()
 
+    def test_synthetic_source_fix_switches_real_reds_to_unexpected_success(self):
+        """A safe lexical denial must retire REDs, never keep them masked."""
+        original = ScopePolicy.normalize_host
+
+        def reject_bare_ipv6(value):
+            if type(value) is str:
+                try:
+                    ip = ipaddress.ip_address(value)
+                except ValueError:
+                    pass
+                else:
+                    if isinstance(ip, ipaddress.IPv6Address):
+                        return None
+            return original(value)
+
+        names = (
+            "test_red_owner_asset_alias_cannot_admit_bare_ipv6",
+            "test_red_owner_alias_cannot_mint_wrong_identity_permit",
+            "test_red_128_distinct_wrong_ipv6_assets_all_denied",
+            "test_red_128_wrong_asset_gate_tokens_must_never_be_created",
+        )
+        with self.no_network(), patch.object(
+            ScopePolicy, "normalize_host", new=staticmethod(reject_bare_ipv6)
+        ):
+            for name in names:
+                with self.subTest(name=name):
+                    result = unittest.TestResult()
+                    SourceOwnerAssetIPv6Boundary(name).run(result)
+                    self.assertEqual(result.errors, [])
+                    self.assertEqual(result.failures, [])
+                    self.assertEqual(result.expectedFailures, [])
+                    self.assertEqual(len(result.unexpectedSuccesses), 1)
+            # A safe bracketed /128 is still allowed under this local deny-only
+            # simulation; the synthetic repair cannot break canonical scope.
+            control = unittest.TestResult()
+            SourceOwnerAssetIPv6Boundary(
+                "test_bracketed_exact_ipv6_cidr_asset_retains_whole_identity"
+            ).run(control)
+            self.assertTrue(control.wasSuccessful())
+            self.assertEqual(control.testsRun, 1)
+
     def test_owner_source_reds_are_real_assertions_not_masked_exceptions(self):
         expected_messages = {
             "test_red_owner_asset_alias_cannot_admit_bare_ipv6": "True is not false",
