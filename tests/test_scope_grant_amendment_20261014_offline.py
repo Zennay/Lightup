@@ -1071,6 +1071,41 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
                 self.assertIn(expected, out["widening_dimensions"])
                 self.assert_denied_authority(out, code)
 
+    def test_canonical_utc_fields_deny_every_unicode_decimal_confusable(self):
+        # A Python regex \\d accepts Unicode Nd digits. The reviewer must
+        # fail at the *format* gate, without depending on datetime parser
+        # leniency or future normalization in standard-library upgrades.
+        canonical = "2026-10-14T12:34:56Z"
+        positions = [i for i, char in enumerate(canonical) if char.isdecimal()]
+        for replacement in ("٢", "２", "𝟚"):
+            for pos in positions:
+                variant = canonical[:pos] + replacement + canonical[pos + 1:]
+                with self.subTest(glyph=replacement, position=pos):
+                    with self.assertRaises(reviewer.Rejected) as ctx:
+                        reviewer._instant(variant)
+                    self.assertEqual(str(ctx.exception), "instant_format")
+                    item = fixture()
+                    item["after"]["valid_until"] = variant
+                    receipt, code = reviewer.review(encode(item))
+                    self.assertEqual((receipt["status"], code), ("HOLD", 2))
+                    self.assertEqual(receipt["reason"], "invalid_input")
+                    self.assert_denied_authority(receipt, code)
+
+    def test_utc_ascii_digits_are_still_accepted_at_both_boundaries(self):
+        for ts in (
+            "0001-01-01T00:00:00Z", "2024-02-29T23:59:59Z",
+            "2026-10-14T00:00:00Z", "9999-12-31T23:59:59Z",
+        ):
+            with self.subTest(timestamp=ts):
+                self.assertEqual(reviewer._instant(ts).tzinfo.utcoffset(None).total_seconds(), 0)
+        for malformed in (
+            "2026-10-14T12:34:60Z", "2026-02-29T12:34:56Z",
+            "2026-10-14T24:00:00Z", "2026-10-14t12:34:56z",
+        ):
+            with self.subTest(timestamp=malformed):
+                with self.assertRaises(reviewer.Rejected):
+                    reviewer._instant(malformed)
+
     def test_cli_rejects_no_flag(self):
         result = subprocess.run(
             [sys.executable, "-B", str(SCRIPT)],
