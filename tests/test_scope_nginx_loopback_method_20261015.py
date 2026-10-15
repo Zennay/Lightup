@@ -115,8 +115,8 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
     def test_http_upstream_disconnect_is_opaque_hold(self):
         # A truncated upstream response must never leak the HTTP client's
         # diagnostic to stderr or become an authorization-looking result.
-        with patch.object(check, "TEMPLATE") as temp, \\
-             patch.object(check.shutil, "which", return_value="/lab/nginx"), \\
+        with patch.object(check, "TEMPLATE") as temp, \
+             patch.object(check.shutil, "which", return_value="/lab/nginx"), \
              patch.object(check, "run_probe",
                           side_effect=http.client.IncompleteRead(b"secret!")):
             temp.read_text.return_value = self.template
