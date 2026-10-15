@@ -76,6 +76,12 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 from test_scope_1147_expected_red_integrity_20261015 import (
                     verify_source_red_receipt,
+                    verify_source_test_roster,
+                )
+                verify_source_test_roster(
+                    unittest.defaultTestLoader.getTestCaseNames(
+                        DuplicateArgumentKeysInstalledSource1147
+                    )
                 )
                 suite = unittest.defaultTestLoader.loadTestsFromTestCase(
                     DuplicateArgumentKeysInstalledSource1147
