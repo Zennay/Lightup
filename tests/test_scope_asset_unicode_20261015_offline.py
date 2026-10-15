@@ -168,6 +168,48 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
             with self.subTest(alias=alias):
                 self.assert_hold(receipt(sample))
 
+    def test_legacy_ipv4_parser_differential_is_conservative(self):
+        """Numeric parsing only, with no hostname resolution or network traffic."""
+        from ipaddress import IPv4Address
+
+        rng = random.Random(1437_22)
+        numeric_values = (0, 1, 7, 8, 10, 15, 16, 64, 127, 255, 256,
+                          511, 1024, 65535, 0x7f000001, 0xffffffff)
+        encoders = (
+            str, lambda n: "0" + format(n, "o"),
+            lambda n: "0x" + format(n, "x"),
+        )
+        parsed = 0
+        rejected_aliases = 0
+        for _ in range(1200):
+            parts = [
+                rng.choice(encoders)(rng.choice(numeric_values))
+                for _ in range(rng.randint(1, 4))
+            ]
+            candidate = ".".join(parts)
+            try:
+                legacy_value = socket.inet_aton(candidate)
+            except OSError:
+                continue
+            parsed += 1
+            try:
+                canonical = str(IPv4Address(candidate)) == candidate
+            except ValueError:
+                canonical = False
+            expected = "REVIEW_ONLY" if canonical else "HOLD"
+            payload = synthetic_claim()
+            payload["assets"] = [candidate]
+            outcome = receipt(payload)
+            with self.subTest(candidate=candidate):
+                self.assertEqual(outcome["status"], expected)
+                self.assertTrue(all(outcome[k] is False for k in mod.FALSE_FLAGS))
+                if canonical:
+                    self.assertEqual(legacy_value, socket.inet_aton(candidate))
+                else:
+                    rejected_aliases += 1
+        self.assertGreater(parsed, 100)
+        self.assertGreater(rejected_aliases, 80)
+
     def test_numeric_ipv4_aliases_fail_closed(self):
         for text in ("127.1", "2130706433", "0177.0.0.1", "127.000.0.1",
                      "1.2.3.999", "1.2.3", "0", "000", "1.2.3.4.5"):
