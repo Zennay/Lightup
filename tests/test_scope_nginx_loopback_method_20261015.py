@@ -212,6 +212,31 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
         self.assertTrue(all(receipt[k] is False for k in check.FALSE_FLAGS))
         self.assertNotIn("secret", out.getvalue())
 
+    def test_owner_style_header_placement_is_proved_by_real_nginx(self):
+        # PR #1155 places the four strips before X-Forwarded-Ssl. The earlier
+        # protected candidate exercised a different but valid placement.
+        # Verify the owner-style ordering through real network traffic too.
+        if not shutil.which("nginx"):
+            self.skipTest("nginx unavailable; owner-style traffic not proved")
+        candidate = self.template.replace(
+            '        proxy_set_header X-Forwarded-Ssl "";',
+            "        # Client-supplied method overrides are not trusted.\n"
+            + "".join(f'        proxy_set_header {name} "";\n'
+                      for name in check.OVERRIDE_NAMES)
+            + '        proxy_set_header X-Forwarded-Ssl "";',
+        )
+        self.assertTrue(check.run_probe(candidate))
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "owner-style-synthetic.conf"
+            path.write_text(candidate, encoding="utf-8")
+            receipt = io.StringIO()
+            with contextlib.redirect_stdout(receipt):
+                code = check.main(("--candidate-file", str(path)))
+        self.assertEqual(code, 3)
+        report = json.loads(receipt.getvalue())
+        self.assertEqual(report["verdict"], "REVIEW_ONLY")
+        self.assertTrue(all(report[k] is False for k in check.FALSE_FLAGS))
+
     def test_candidate_file_cli_is_read_only_and_non_authorizing(self):
         if not shutil.which("nginx"):
             self.skipTest("real nginx needed for a candidate-file receipt")
