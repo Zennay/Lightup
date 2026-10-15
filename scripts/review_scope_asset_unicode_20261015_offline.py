@@ -184,6 +184,8 @@ def _is_deny_only_receipt(receipt: Any) -> bool:
     if not all(receipt.get(key) is False for key in FALSE_FLAGS):
         return False
     status = receipt.get("status")
+    if type(status) is not str:
+        return False
     if status == "HOLD":
         return set(receipt) == {"status", *FALSE_FLAGS}
     if status != "REVIEW_ONLY":
@@ -214,6 +216,8 @@ def _emit_local_receipt(receipt: dict[str, Any]) -> bool:
         if not (stat.S_ISFIFO(first.st_mode)
                 or (stat.S_ISCHR(first.st_mode) and os.isatty(1))):
             return False
+        if _same_descriptor(first, os.fstat(0)):
+            return False  # stdin and stdout must not alias the same pipe
         pinned = os.dup(1)
     except OSError:
         return False

@@ -221,11 +221,16 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
         self.assertEqual(proc.stderr, b"")
 
     def test_receipt_gate_refuses_caller_forged_success_or_leaky_shape(self):
+        class ForgedStatus(str):
+            def __eq__(self, other):
+                return other in {"HOLD", "REVIEW_ONLY"}
+
         self.assertTrue(mod._is_deny_only_receipt({"status": "HOLD", **mod.FALSE_FLAGS}))
         self.assertTrue(mod._is_deny_only_receipt(receipt(synthetic_claim())))
         forged = [
             {"status": "APPROVED", **mod.FALSE_FLAGS},
             {"status": "PASS", **mod.FALSE_FLAGS},
+            {"status": ForgedStatus("REVIEW_ONLY"), **mod.FALSE_FLAGS},
             {"status": "HOLD", **mod.FALSE_FLAGS, "asset_count": 0},
             {"status": "REVIEW_ONLY", **mod.FALSE_FLAGS},
             {**receipt(synthetic_claim()), "asset": "PRIVATE-ASSET"},
@@ -240,6 +245,20 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
         for item in forged:
             with self.subTest(receipt=item):
                 self.assertFalse(mod._is_deny_only_receipt(item))
+
+    def test_installed_source_never_imports_untrusted_reviewer(self):
+        for path in (ROOT / "src" / "lightup").rglob("*.py"):
+            with self.subTest(path=str(path.relative_to(ROOT))):
+                self.assertNotIn("review_scope_asset_unicode_20261015_offline",
+                                 path.read_text(encoding="utf-8"))
+
+    def test_local_input_output_alias_is_rejected(self):
+        reader, writer = os.pipe()
+        try:
+            self.assertTrue(mod._same_descriptor(os.fstat(reader), os.fstat(writer)))
+        finally:
+            os.close(reader)
+            os.close(writer)
 
     def test_output_is_local_pipe_only_not_regular_file_or_socket(self):
         data = json.dumps(synthetic_claim()).encode("utf-8")
