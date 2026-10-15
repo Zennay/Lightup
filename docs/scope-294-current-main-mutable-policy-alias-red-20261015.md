@@ -87,3 +87,17 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_294_duplicate
 ```
 
 A shape REVIEW_ONLY after this additional narrowing remains explicitly **not authorization, consent, grant, approval, scan permission or release readiness**, and does not fix installed #294/#292/#296 policy code. DRAFT/HOLD.
+
+## W6 — opt-in lexical host-metadata review cannot swallow URL authority
+
+**Source-owner boundaries remain unchanged.** An exact-host metadata field in the new offline reviewer previously classified values like `https://fixture.example.test`, `fixture.example.test:443`, `user@fixture.example.test`, `fixture..example.test` or a bidi/zero-width formatting character as `REVIEW_ONLY`, despite those not being ordinary hostname-shaped declarations. This was a concrete ambiguity **in the new uninstalled reviewer**, not evidence that production source issued such a permission.
+
+New `_lexical_host_metadata_identity` performs only a bounded local lexical shape check: exact string type, at most 253 code points, nonempty labels of at most 63 code points, alphanumeric start/end and interior letters/numbers/combining marks/hyphens. No IDNA decode, case folding, alias merging, DNS, browser parsing, port/URI userinfo interpretation or permission is performed. Literal `bücher.example.test`, `xn--bcher-kva.example.test` and uppercase names remain **distinct** metadata, never a grant; resolver and actual IDNA/canonicalization issues remain for source owner #285/#1437.
+
+New `tests/test_scope_294_host_metadata_syntax_review_20261015.py` has nine tests for forbidden URI, path, userinfo, port, query, fragment and malformed label syntax; invisible/bidi/surrogate/space; lexically safe IDN and punycode controls, atomic mixed manifests, no input leakage, true current installed-policy diagnostic, and no DNS/socket/subprocess. Any rejected manifest emits only generic privacy-minimal **HOLD**; accepted shape remains only **REVIEW_ONLY**, false in Boolean contexts with all six authority/release fields False.
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_294_host_metadata_syntax_review_20261015.py' -v
+```
+
+Explicit limitation: this lexical gate **does not prove real DNS/IDNA validity**, does not make authorization decisions, and does not repair source-owned installed `ScopePolicy` #294/#292/#296, grant provenance #177, revoke #347 or runtime executor trust. Remain INCUBATE / DRAFT-HOLD.
