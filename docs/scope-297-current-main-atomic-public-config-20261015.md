@@ -43,7 +43,7 @@ Keep the issue open and this PR draft until actual source-level enforcement is i
 
 ## W4: installed-source reviewer CLI, without granting authority
 
-In addition to the 22 real installed-source unit contracts, the draft now includes:
+In addition to the 25 real installed-source unit contracts, the draft now includes:
 - `scripts/scope_297_atomic_policy_witness_20261015.py` — one-command, **hardcoded fictional inputs only** diagnostic on the actual installed `ScopePolicy.decide`. Reports eight known host/network cross-path cases without publishing the input targets or fake grant data, includes DNS/socket tripwires, and **always exits code 2 / HOLD**.
 - `tests/test_scope_297_atomic_policy_witness_cli_20261015.py` — 23 separate deterministic offline controls on real source behavior, JSON/Dutch output, immutable hold flags, user-supplied-target refusal, no network/shell/files, privacy-minimal unexpected decision/constructor exception review and future *deny* behavior staying HOLD.
 
@@ -73,7 +73,7 @@ The reporter now distinguishes an attempted source-level socket or DNS operation
 
 The standalone synthetic-only CLI now tracks blocked operations **per case** rather than inferring that no network attempt happened merely because `ScopePolicy.decide` returned a normal decision. A source callback can catch its own `NetworkAttemptBlocked` exception; its attempted access is still recorded as `NETWORK_BLOCKED_REVIEW` ahead of any `UNSAFE_ALLOW` or `DENIED_REVIEW` classification. The network tripwire uses a scoped `ExitStack` and restores every patched module-level API after exit. This is a best-effort Python API tripwire only, **not process/container/VPS-level egress isolation**.
 
-The tripwire covers common Python socket and resolver entry points: `socket`, `socketpair`, `create_connection`, `create_server`, `getaddrinfo`, `gethostbyname`, `gethostbyname_ex`, `gethostbyaddr`, `getnameinfo` and `getfqdn`. Six new offline unittest methods prove that swallowed socket/DNS exceptions still count, cases do not taint each other, helper entry points are intercepted, and patched APIs are restored. **23 CLI tests** total; the 22 installed-source controls are unchanged.
+The tripwire covers common Python socket and resolver entry points: `socket`, `socketpair`, `create_connection`, `create_server`, `getaddrinfo`, `gethostbyname`, `gethostbyname_ex`, `gethostbyaddr`, `getnameinfo` and `getfqdn`. Six new offline unittest methods prove that swallowed socket/DNS exceptions still count, cases do not taint each other, helper entry points are intercepted, and patched APIs are restored. **23 CLI tests** total; the 25 installed-source controls are unchanged.
 
 Even a report of zero intercepted attempts cannot establish network isolation. The whole review remains non-authorizing with status HOLD, exit code 2 and all `can_*` flags false. Current commit CI evidence must be pinned separately from earlier runs and cannot be inferred from the prior 14-test branch.
 
@@ -91,4 +91,10 @@ The own installed-source regression module now additionally contains **two delib
 - Host policy → explicit public network: six non-string malformed host entries × three documentation-only addresses within an explicitly configured synthetic network = **18 true installed-source decisions**.
 - Overall **58 additional direct source admission decisions** with no real targets or sockets; this proves wider coverage of the *same #297 whole-configuration atomicity requirement*, not independent new vulnerabilities or a production patch.
 
-After adding these, the original file has **12 ordinary tests and 10 intentionallly expected source-RED cases**. The separate reporter file has **23 ordinary HOLD tests**. The product source owner must convert all 10 RED requirements to ordinary passing denials when repairing default `ScopePolicy`. All other security and runner release gates remain unchanged.
+After adding these, the original file has **15 ordinary tests and 10 intentionally expected source-RED cases**. The separate reporter file has **23 ordinary HOLD tests**. The product source owner must convert all 10 RED requirements to ordinary passing denials when repairing default `ScopePolicy`. All other security and runner release gates remain unchanged.
+
+### W10: preserve real canonical authority semantics through owner repair
+
+Three new **ordinary passing** current-installed-source golden controls cover (a) correctly allowlisted fictional IPv4 and bracketed IPv6 documentation networks with a synthetic current grant, (b) neighboring unlisted IPv4 and IPv6 targets staying `OUT_OF_SCOPE`, and (c) expired fictional grants staying `AUTHORIZATION_EXPIRED` for valid host, IPv4 and IPv6 public scopes. These preserve legitimate existing behavior when the production owner eventually tightens the default whole-policy validation; they do not authorize any actual target and do not change owner source code. All artificial values are hardcoded and there is no network I/O.
+
+The source-test file now has **15 ordinary checks + 10 deliberately expected source REDs**, and the reporter-test file has **23 ordinary HOLD checks**. After source remediation, only the 10 RED requirements should become ordinary passing denials; do not weaken the valid canonical positive and negative contracts.
