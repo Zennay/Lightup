@@ -148,6 +148,7 @@ def _all_grant_lineage_consistent(connection: sqlite3.Connection) -> bool:
         "r.request_id AS request_id, r.client_id AS request_client, "
         "r.requested_by AS requester, r.decided_by AS decider, "
         "r.status AS request_status, r.requested_mode AS request_mode, "
+        "r.requested_risk AS request_risk, g.max_risk AS grant_risk, "
         "r.created_at AS request_created_at, r.decided_at AS request_decided_at, "
         "g.created_at AS grant_created_at, g.valid_from AS grant_valid_from, "
         "g.valid_until AS grant_valid_until, "
@@ -166,8 +167,15 @@ def _all_grant_lineage_consistent(connection: sqlite3.Connection) -> bool:
         grant_from = _decision_time(row["grant_valid_from"])
         grant_until = _decision_time(row["grant_valid_until"])
         engagement_created = _decision_time(row["engagement_created_at"])
+        requested_risk = _risk(row["request_risk"])
+        granted_risk = _risk(row["grant_risk"])
         if (
-            any(value is None for value in (
+            requested_risk is None
+            or granted_risk is None
+            or granted_risk > requested_risk
+            or requested_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY
+            or granted_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY
+            or any(value is None for value in (
                 request_created, request_decided, grant_created,
                 grant_from, grant_until, engagement_created,
             ))
