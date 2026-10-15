@@ -24,7 +24,7 @@ New file `tests/test_scope_291_bare_ipv6_truncation_current_main_20261015.py`:
   admit the mismatched IPv6 literal, a fabricated authorization
   claim on the wrong identity, and the **real ActivationGate** handing out a
   synthetic in-memory execution permit for that falsely matched identity.
-- Eight **normal green/witness controls** prove bracketed IPv6 remains intact,
+- Nine **normal green/witness controls** prove bracketed IPv6 remains intact,
   explicit `/128` network membership still requires an authorization
   object under the existing canonical flow, and the same literal in
   bracketed form cannot accidentally match an unrelated host or network. A
@@ -135,3 +135,20 @@ synthetic request.
 Both are pure in-memory acceptance only. The real source owner must deny
 wrong-host admission before any permit/token generation; the isolated tests
 do not repair runtime source or authorize any real execution.
+
+## W5: end-to-end positive scope remains exact, never broadens
+
+An additional independent normal-green test constructs **64 separately
+configured canonical bracketed IPv6 /128 targets** in RFC3849 documentation
+space. Using a fixed fake token response, each in-memory AUTHORIZED
+`ActivationGate.issue()` permit **must preserve the full exact IPv6
+identity**, capability, mode and explicitly fake token. It then
+tries **64 unrelated /128 IPv6 addresses** with the same fictional claim,
+which must all be denied by the *actual* gate.
+
+This is important after the production owner fixes bare IPv6 parsing:
+the repair must not break the existing safe bracketed IPv6 route,
+and it must not turn a single /128 grant into a whole IPv6 prefix,
+generic host or sibling-network grant. All 128 interactions are
+pure in-memory, with DNS/socket tripwires; no network target,
+durable grant or adapter has been contacted.
