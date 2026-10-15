@@ -107,7 +107,7 @@ def _read_bounded_local() -> bytes:
 
 
 def _write_nonblocking_receipt(payload: bytes) -> None:
-    """One small atomic pipe/TTY write; never wait on an unconsumed output."""
+    """One bounded nonblocking write; never wait on an unconsumed output."""
     if len(payload) > 512:
         raise ValueError("oversized receipt")
     was_blocking = os.get_blocking(1)
