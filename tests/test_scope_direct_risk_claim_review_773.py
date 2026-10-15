@@ -73,6 +73,18 @@ class DirectRiskReviewTests(unittest.TestCase):
                     self.assertIs(receipt.status, expected)
                     self.assert_non_authorizing(receipt)
 
+    def test_missing_exact_scope_risk_ceiling_is_opaque_hold(self):
+        """Partially built and field-deleted exact frozen scopes must not crash."""
+        partial = object.__new__(ScopeDefinition)
+        deleted = self.scope(RiskLevel.STANDARD)
+        deleted.__dict__.pop("max_risk")
+        for scope in (partial, deleted):
+            receipt = inspect_direct_scope_risk(scope, RiskLevel.LOW_IMPACT)
+            self.assertIs(receipt.status, ReviewStatus.HOLD)
+            self.assertEqual(receipt.reason_code, "noncanonical_risk")
+            self.assert_non_authorizing(receipt)
+            self.assertEqual(receipt.to_dict()["may_dispatch"], False)
+
     def test_noncanonical_ceiling_types_all_hold(self):
         foreign = (
             -1, 0, 1, 3, 4, 99, True, False, 3.0, 4.0,
@@ -401,6 +413,30 @@ class DirectRiskReviewTests(unittest.TestCase):
                 self.assertEqual(receipt.to_dict()["status"], "HOLD")
                 self.assertEqual(receipt.reason_code, "batch_hold")
                 self.assert_non_authorizing(receipt)
+
+    def test_batch_detects_deletion_during_inspection(self):
+        """A later callback clearing a field never leaks a partial verdict."""
+        import review_scope_direct_risk_claim_773 as module
+        from unittest.mock import patch
+
+        original = module.inspect_direct_scope_risk
+        first = self.scope(RiskLevel.ELEVATED)
+        second = self.scope(RiskLevel.ELEVATED)
+
+        def drop_current(current, risk):
+            if current is first:
+                current.__dict__.pop("max_risk", None)
+            return original(current, risk)
+
+        with patch.object(module, "inspect_direct_scope_risk",
+                          side_effect=drop_current):
+            receipt = module.inspect_direct_scope_risk_batch((
+                (first, RiskLevel.LOW_IMPACT),
+                (second, RiskLevel.LOW_IMPACT),
+            ))
+        self.assertIs(receipt.status, ReviewStatus.HOLD)
+        self.assertEqual(receipt.reason_code, "batch_hold")
+        self.assert_non_authorizing(receipt)
 
     def test_batch_detects_mutation_during_own_inspection(self):
         """Even the current element is checked against its initial risk identity."""
