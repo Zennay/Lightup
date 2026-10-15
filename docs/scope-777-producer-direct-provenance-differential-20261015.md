@@ -13,7 +13,7 @@ The fourth regular (non-xfail) regression probes all 14 malformed direct-object 
 ## Acceptance and interpretation
 
 - **Current baseline:** direct `ExecutionPolicy.decide` checks validity, risk, asset and capability but does not enforce canonical provenance. Fourteen expected failures intentionally flag the gap; green CI including expected failures **does not** mean the gap is fixed.
-- **Production-owner closure:** on the integrated source SHA, fourteen xfails must become ordinary passing denial tests, the three producer/positive tests must still pass, and `approved_by`/`reference` must be exactly built-in `str`, nonempty after strip, and stored without leading/trailing whitespace.
+- **Production-owner closure:** on the integrated source SHA, fourteen xfails must become ordinary passing denial tests, the four ordinary producer/direct-no-crash tests must still pass, and `approved_by`/`reference` must be exactly built-in `str`, nonempty after strip, and stored without leading/trailing whitespace.
 - Rejection must be pure; no change to direct grant, original persisted snapshot, queue, evidence, handler, or target.
 - Do not merge, run real active assessments, deploy, make grants, assume VPS success, or promote this branch. Require independent owner review, original PR #100 integration, trusted consent, precise destination and per-dispatch revocation, hosted exact-head CI and canonical registered VPS proof followed by human approval.
 - Per [#777](https://github.com/Zennay/Lightup/issues/777), retain **branch-only** while the canonical self-hosted runner queue is saturated; this branch has no new PR or manually dispatched runner job.
@@ -33,15 +33,19 @@ JSON, and spoofed approval flags are generic `HOLD`.
 At the actual CLI boundary, input must be a local pipe/FIFO or regular
 file; output must be a local pipe/FIFO or real TTY. An inherited socket,
 device stdin, regular-file stdout or socket stdout is refused before data is
-read or emitted. This is a conservative local preflight, **not** a hardened
-descriptor pinning or race-resistant production authorization boundary.
+read or emitted. This is a conservative, uninstalled local preflight, **not** a production
+consent or race-proof authorization boundary.
 No network connection is made by the reviewer.
 Bounded stdin reads use a monotonic two-second EOF deadline, with the fd
 restored to its original blocking mode afterwards. A timed-out incomplete
 claim receives the same generic HOLD output. Output uses one nonblocking
 receipt write of at most 512 bytes and restores the original fd mode, so a
-filled pipe cannot hang the program. This does not establish race-resistant
-fd pinning or replace real target authorization.
+filled pipe cannot hang the program. The admitted input and output descriptors are now checked and pinned
+with `os.dup` before untrusted I/O. All reads/writes go to those pinned
+descriptors; original-to-pinned identity is checked after admission and again
+before output. The tool closes both duplicates, including on failed pinning.
+These safeguards do not replace authenticated operator consent, source-of-truth
+revocation or real target authorization.
 
 Its *only* receipts are `REVIEW_ONLY` (lexical consistency, exit 3) or `HOLD`
 (exit 2), with six literal false authority/permit/dispatch/merge/deploy/release
@@ -65,15 +69,40 @@ PYTHONPATH=src python -m unittest discover -s tests \
 ```
 
 **Executed local reference validation:** the same isolated reviewer and
-regression fixtures were executed under Python with all **18 / 18 standard
+regression fixtures were executed under Python with all **27 / 27 standard
 library test methods passing**, including real subprocess exit-code and privacy
 checks, size/type boundaries, JSON-escape collisions, spoofed extra permit
 fields, local file input, socket stdin/stdout refusal, rejected regular-file
-stdout, and no input mutation. These were executed outside a full LightUp
+stdout, complete regular-file snapshots (start offset, bounds and mutation),
+positive and negative descriptor rebinding checks, failure-path descriptor
+closure, and no input mutation. These were executed outside a full LightUp
 checkout because the GitHub repository could not be cloned from this sandbox.
 **This is not exact-head hosted/VPS CI proof.** The complete LightUp suite and
 earlier SQLite producer/direct differential remain unexecuted in this run,
 pending canonical repository CI.
+
+
+### W4: strict file snapshot + descriptor ownership acceptance (2026-10-15)
+
+After the earlier 18-method evidence, W4 added 9 independent tests and two
+fail-closed protections:
+
+1. **Regular input must be a complete immutable snapshot.** For fd0 files,
+   reject seeked/nonzero starts, empty/oversized files and changed
+   `st_dev/st_ino/st_mode/st_size/st_mtime_ns/st_ctime_ns` or incomplete
+   consumption before any `REVIEW_ONLY` verdict.
+2. **Pin the actual allowed endpoints before I/O.** Check pipe/file/TTY type,
+   `os.dup` both input and output, verify identities before and after pinning,
+   read/write only the pinned descriptors, detect original-fd rebinding and
+   close duplicates even if the second `dup` fails.
+
+**Actually executed locally:** Python 3.13.5 compile and 27/27 standalone
+reviewer tests passed twice (including `PYTHONHASHSEED=random`). GitHub
+contents were re-fetched and match the exact locally tested script and tests
+in character count and code-point FNV32 diagnostic. These are **not** full
+repository Python 3.11/3.14 hosted checks, registered VPS CI, installed
+ingress proof, or a production-authority fix. The 14 deliberate RED direct
+policy acceptance cases remain unresolved by their original source owner.
 
 ## Verification
 
