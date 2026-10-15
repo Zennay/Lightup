@@ -115,6 +115,10 @@ def _bounded_hosts(raw: object) -> frozenset[str] | None:
         copied = tuple(raw)
     except RuntimeError:
         return None
+    # A mutable caller can enlarge the list after the initial len(raw)
+    # observation. Enforce the bound on the actual detached snapshot too.
+    if len(copied) > _MAX_ITEMS:
+        return None
     if not all(_lexical_host_metadata_identity(item) for item in copied):
         return None
     # A list/tuple pretending to represent an identity set must not silently
@@ -131,6 +135,8 @@ def _bounded_networks(raw: object) -> tuple[str, ...] | None:
     try:
         copied = tuple(raw)
     except RuntimeError:
+        return None
+    if len(copied) > _MAX_ITEMS:
         return None
     for value in copied:
         if type(value) is not str or not 0 < len(value) <= _MAX_NETWORK_LENGTH:
