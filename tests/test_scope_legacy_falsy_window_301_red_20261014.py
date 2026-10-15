@@ -7,7 +7,7 @@ import os
 import random
 import sys
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -53,6 +53,18 @@ class _FalseyDatetimeSubclass(datetime):
     # Canonical legacy boundary values must use exact built-in datetime.
     def __bool__(self):
         return False
+
+
+class _NullOffsetTimezone(tzinfo):
+    # tzinfo is non-None but utcoffset() says this datetime is naive.
+    def utcoffset(self, dt):
+        return None
+
+    def tzname(self, dt):
+        return "NOT-A-REAL-TIMEZONE"
+
+    def dst(self, dt):
+        return None
 
 
 class LegacyFalsyBoundaryRedTests(unittest.TestCase):
@@ -254,7 +266,78 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
                 )
                 self.assertEqual(repr(grant), before)
 
-    def test_reference_type_repair_flips_all_fourteen_legacy_boundary_reds(self):
+    def test_installed_naive_boundaries_raise_instead_of_explicitly_denial(self):
+        # Source must not silently be credited with an AUTHORIZATION_EXPIRED
+        # denial when it actually raises a Python mixed-aware comparison.
+        naive_future = (NOW + timedelta(days=1)).replace(tzinfo=None)
+        naive_expired = (NOW - timedelta(days=1)).replace(tzinfo=None)
+        pseudo_future = (NOW + timedelta(days=1)).replace(
+            tzinfo=_NullOffsetTimezone()
+        )
+        pseudo_expired = (NOW - timedelta(days=1)).replace(
+            tzinfo=_NullOffsetTimezone()
+        )
+        for position, value in (
+            ("start", naive_future), ("end", naive_expired),
+            ("start", pseudo_future), ("end", pseudo_expired),
+        ):
+            with self.subTest(position=position, boundary=repr(value)):
+                grant = _authorization(
+                    start=value if position == "start" else None,
+                    end=value if position == "end" else None,
+                )
+                before = repr(grant)
+                with self.assertRaises(TypeError):
+                    grant.is_current(NOW)
+                with self.assertRaises(TypeError):
+                    _pure_scope_decision_at(grant, NOW)
+                self.assertEqual(repr(grant), before)
+
+    @unittest.expectedFailure
+    def test_red_naive_datetime_future_start_must_explicitly_deny(self):
+        naive = (NOW + timedelta(days=1)).replace(tzinfo=None)
+        self.assertIs(_authorization(start=naive).is_current(NOW), False)
+
+    @unittest.expectedFailure
+    def test_red_naive_datetime_expired_end_must_explicitly_deny(self):
+        naive = (NOW - timedelta(days=1)).replace(tzinfo=None)
+        self.assertIs(_authorization(end=naive).is_current(NOW), False)
+
+    @unittest.expectedFailure
+    def test_red_null_offset_timezone_future_start_must_explicitly_deny(self):
+        pseudo = (NOW + timedelta(days=1)).replace(
+            tzinfo=_NullOffsetTimezone()
+        )
+        self.assertIs(_authorization(start=pseudo).is_current(NOW), False)
+
+    @unittest.expectedFailure
+    def test_red_null_offset_timezone_expired_end_must_explicitly_deny(self):
+        pseudo = (NOW - timedelta(days=1)).replace(
+            tzinfo=_NullOffsetTimezone()
+        )
+        self.assertIs(_authorization(end=pseudo).is_current(NOW), False)
+
+    @unittest.expectedFailure
+    def test_red_naive_public_scope_must_explicitly_deny(self):
+        pseudo = (NOW + timedelta(days=1)).replace(tzinfo=None)
+        decision = _pure_scope_decision_at(
+            _authorization(start=pseudo), NOW,
+            allow_preclock_denial=True,
+        )
+        self.assertFalse(decision.allowed)
+
+    @unittest.expectedFailure
+    def test_red_null_offset_timezone_public_scope_must_explicitly_deny(self):
+        pseudo = (NOW - timedelta(days=1)).replace(
+            tzinfo=_NullOffsetTimezone()
+        )
+        decision = _pure_scope_decision_at(
+            _authorization(end=pseudo), NOW,
+            allow_preclock_denial=True,
+        )
+        self.assertFalse(decision.allowed)
+
+    def test_reference_type_repair_flips_all_twenty_legacy_boundary_reds(self):
         # A test-only patch demonstrates that the installed-source RED tests
         # detect a missing exact-type guard, not merely a bad test fixture.
         # This reference repair does not modify LightUp's installed code.
@@ -266,6 +349,7 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
             ):
                 if boundary is not None and (
                     type(boundary) is not datetime or boundary.tzinfo is None
+                    or boundary.utcoffset() is None
                 ):
                     return False
             return original(authorization, now)
@@ -285,6 +369,12 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
             "test_red_falsey_datetime_subclass_must_not_disable_expired_end",
             "test_red_falsey_datetime_subclass_cannot_open_public_scope_early",
             "test_red_falsey_datetime_subclass_cannot_open_public_scope_expired",
+            "test_red_naive_datetime_future_start_must_explicitly_deny",
+            "test_red_naive_datetime_expired_end_must_explicitly_deny",
+            "test_red_null_offset_timezone_future_start_must_explicitly_deny",
+            "test_red_null_offset_timezone_expired_end_must_explicitly_deny",
+            "test_red_naive_public_scope_must_explicitly_deny",
+            "test_red_null_offset_timezone_public_scope_must_explicitly_deny",
         )
         with patch.object(Authorization, "is_current", reference_narrowing):
             for name in red_methods:
