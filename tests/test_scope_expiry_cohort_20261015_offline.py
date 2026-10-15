@@ -902,6 +902,22 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
                     else:
                         self.assertEqual(proc.stdout, original)
 
+    def test_offline_reviewer_not_wired_into_installed_runtime(self):
+        """Prevent an accidental authorizing import without production-owner review."""
+        source_root = ROOT / "src" / "lightup"
+        self.assertTrue(source_root.is_dir())
+        forbidden = "review_scope_expiry_cohort_20261015_offline"
+        matched = []
+        for source in source_root.rglob("*.py"):
+            if forbidden in source.read_text(encoding="utf-8"):
+                matched.append(source.relative_to(ROOT).as_posix())
+        self.assertEqual(
+            matched, [],
+            "Offline synthetic reviewer must remain uninstalled, "
+            "without runtime imports: " + repr(matched),
+        )
+
+
 
 if __name__ == "__main__":
     unittest.main()
