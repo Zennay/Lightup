@@ -9,6 +9,7 @@ from __future__ import annotations
 import unittest
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 
 from lightup.engagements import AuthorizationGrant, RiskLevel, ScopeDefinition
 from lightup.execution_policy import (
@@ -60,6 +61,17 @@ def decision(current_grant: AuthorizationGrant, **request_overrides: object):
     return ExecutionPolicy().decide(replace(request, **request_overrides))
 
 
+def decision_at_clock(current_grant: AuthorizationGrant, time: datetime):
+    """Use the real installed policy under an exact synthetic future clock.
+
+    Only the engagements module's imported wall clock is scoped-patched, NOT
+    AuthorizationGrant.is_current or ExecutionPolicy.decide themselves.
+    """
+    with patch("lightup.engagements.datetime") as clock:
+        clock.now.return_value = time
+        return decision(current_grant)
+
+
 class DurableRevocationProvenanceSourceAcceptance(unittest.TestCase):
     def test_canonical_never_revoked_is_current_at_bounded_instant(self):
         valid = grant()
@@ -78,6 +90,19 @@ class DurableRevocationProvenanceSourceAcceptance(unittest.TestCase):
         stale = grant(revoked_by="fictional-revoker")
         self.assertTrue(stale.is_current(NOW))
         self.assertTrue(stale.is_current(LATER))
+
+    def test_real_policy_remains_valid_when_clock_moves_to_2050(self):
+        self.assertTrue(decision_at_clock(grant(), LATER).allowed)
+
+    def test_real_policy_stale_source_witness_stays_visible_in_2050(self):
+        # Temporary original-source witness: remove/invert on owner fix.
+        self.assertTrue(
+            decision_at_clock(grant(revoked_by="fictional-operator"), LATER).allowed
+        )
+
+    def test_real_policy_expired_window_still_denies_in_2050(self):
+        expired = grant(valid_until=NOW)
+        self.assertFalse(decision_at_clock(expired, LATER).allowed)
 
     def test_explicit_revocation_denies_direct_current_check(self):
         revoked = grant(
