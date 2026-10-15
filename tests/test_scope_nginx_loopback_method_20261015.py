@@ -68,6 +68,29 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
             self.assertIs(receipt[field], False)
         self.assertEqual(set(receipt), {"verdict", "reason", *check.FALSE_FLAGS})
 
+    def test_review_only_requires_negative_mutant_to_be_detected(self):
+        # Isolate the CLI truth table from Nginx availability; the real
+        # subprocess positive/negative witness is separately tested above.
+        with patch.object(check, "TEMPLATE") as fake_template, \\
+             patch.object(check.shutil, "which", return_value="/lab/nginx"):
+            fake_template.read_text.return_value = self.template
+            for candidate, mutation, expected, exit_code in (
+                (True, False, "REVIEW_ONLY", 3),
+                (True, True, "HOLD", 2),
+                (False, False, "HOLD", 2),
+            ):
+                with self.subTest(candidate=candidate, mutation=mutation), \\
+                     patch.object(check, "run_probe",
+                                  side_effect=[candidate, mutation]) as probe:
+                    out = io.StringIO()
+                    with contextlib.redirect_stdout(out):
+                        code = check.main()
+                receipt = json.loads(out.getvalue())
+                self.assertEqual(code, exit_code)
+                self.assertEqual(receipt["verdict"], expected)
+                self.assertTrue(all(receipt[k] is False for k in check.FALSE_FLAGS))
+                self.assertEqual(probe.call_count, 2 if candidate else 1)
+
     def test_disposable_fixture_detects_deliberate_method_rewrite(self):
         if not shutil.which("nginx"):
             self.skipTest("real nginx unavailable; loopback e2e not proved here")
