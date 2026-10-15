@@ -68,6 +68,52 @@ class TerminalDotCurrentMainSourceRed(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertNotEqual(decision.reason, ScopeReason.LOOPBACK)
 
+    @unittest.expectedFailure
+    def test_matrix_32_malformed_target_dot_counts_and_url_forms_must_deny(self):
+        # Materialize *all* decisions before the assertion: no early exit
+        # silently truncates the 64-case input matrix.
+        targets = tuple(
+            target
+            for count in range(2, 34)
+            for target in (
+                _HOST + "." * count,
+                "https://" + _HOST + "." * count + "/synthetic-only",
+            )
+        )
+        decisions = tuple(_decision(target) for target in targets)
+        self.assertEqual(len(decisions), 64)
+        self.assertFalse(any(decision.allowed for decision in decisions))
+
+    @unittest.expectedFailure
+    def test_matrix_32_malformed_config_dot_counts_and_targets_must_deny(self):
+        # The bad *configured* hostname must not gain authority from a
+        # plain or singly rooted input target (distinct from target parser).
+        pairs = tuple(
+            (target, _HOST + "." * count)
+            for count in range(2, 34)
+            for target in (_HOST, _HOST + ".")
+        )
+        decisions = tuple(_decision(target, declaration) for target, declaration in pairs)
+        self.assertEqual(len(decisions), 64)
+        self.assertFalse(any(decision.allowed for decision in decisions))
+
+    @unittest.expectedFailure
+    def test_matrix_32_malformed_localhost_dot_counts_and_url_forms_must_deny(self):
+        # No synthetic Authorization is supplied: loopback trust alone is
+        # enough to reproduce the installed source bypass.
+        targets = tuple(
+            target
+            for count in range(2, 34)
+            for target in (
+                "LOCALHOST" + "." * count,
+                "http://localhost" + "." * count + "/synthetic-only",
+            )
+        )
+        decisions = tuple(ScopePolicy(allow_private_lab=False).decide(Target(target))
+                          for target in targets)
+        self.assertEqual(len(decisions), 64)
+        self.assertFalse(any(decision.allowed for decision in decisions))
+
 
 _RED_NAMES = (
     "test_double_terminal_dot_target_must_not_inherit_explicit_host",
@@ -76,6 +122,9 @@ _RED_NAMES = (
     "test_triple_terminal_dot_policy_must_not_authorize_rooted_target",
     "test_double_terminal_dot_localhost_must_not_inherit_loopback",
     "test_triple_terminal_dot_localhost_must_not_inherit_loopback",
+    "test_matrix_32_malformed_target_dot_counts_and_url_forms_must_deny",
+    "test_matrix_32_malformed_config_dot_counts_and_targets_must_deny",
+    "test_matrix_32_malformed_localhost_dot_counts_and_url_forms_must_deny",
 )
 
 
@@ -122,7 +171,7 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
 
     def test_original_source_witnesses_are_real_assertions_not_errors(self):
         # @expectedFailure also catches accidental TypeError and ValueError.
-        # An independent TestResult must observe exactly six AssertionError
+        # An independent TestResult must observe exactly nine AssertionError
         # failures, not silently accept an unrelated crash or unexpected green.
         for name in _RED_NAMES:
             with self.subTest(case=name):
