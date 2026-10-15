@@ -119,7 +119,7 @@ def main(argv: list[str] | None = None) -> int:
         data = sys.stdin.buffer.read(MAX_INPUT_BYTES + 1)
         result = review(data)
         code = 3
-    except (ValueError, TypeError, UnicodeError, OverflowError, OSError):
+    except (ValueError, TypeError, UnicodeError, OverflowError, OSError, RecursionError):
         result = _receipt("HOLD")
         code = 2
     # Fixed-schema aggregate-only output; no client/target/timestamp echoes.
