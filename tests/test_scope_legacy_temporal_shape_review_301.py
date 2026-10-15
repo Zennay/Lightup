@@ -107,14 +107,14 @@ def _source_has_only_offline_effects(source):
     }
     # Bounded append mutates only the local, synthetic in-memory snapshot list.
     # It does not touch a client record, target, filesystem, or process.
-    permitted_methods = {"astimezone", "append", "__getattribute__"}
+    permitted_methods = {"astimezone", "append", "__getattribute__", "__getitem__"}
     for node in ast.walk(tree):
         # An attribute access on the untrusted Authorization instance itself
         # can dispatch a monkeypatched getter; use only _stored_fields().
         if (
             isinstance(node, ast.Attribute)
             and isinstance(node.value, ast.Name)
-            and node.value.id == "authorization"
+            and node.value.id in {"authorization", "verdict", "self"}
         ):
             return False
         if isinstance(node, (ast.Import, ast.ImportFrom)):
@@ -140,6 +140,17 @@ def _source_has_only_offline_effects(source):
                     and node.args[0].id == "authorization"
                     and isinstance(node.args[1], ast.Constant)
                     and node.args[1].value == "__dict__"
+                ):
+                    return False
+                if node.func.attr == "__getitem__" and not (
+                    isinstance(node.func.value, ast.Name)
+                    and node.func.value.id == "tuple"
+                    and len(node.args) == 2
+                    and isinstance(node.args[0], ast.Name)
+                    and node.args[0].id in {"self", "verdict"}
+                    and isinstance(node.args[1], ast.Constant)
+                    and type(node.args[1].value) is int
+                    and node.args[1].value in (0, 1)
                 ):
                     return False
             else:
@@ -220,6 +231,76 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
             LegacyTemporalReview("REVIEW_ONLY", "temporal_shape_only",
                                  permit_issued=True)
 
+    def test_receipt_uses_builtin_tuple_slots_not_patchable_getters(self):
+        valid = LegacyTemporalReview("REVIEW_ONLY", "temporal_shape_only")
+        invalid = LegacyTemporalReview("APPROVED", "pretend_grant")
+        calls = []
+
+        def hostile_getattribute(instance, name):
+            calls.append(name)
+            raise AssertionError("receipt getter executed")
+
+        with patch.object(LegacyTemporalReview, "__getattribute__",
+                          hostile_getattribute):
+            # Canonical method lookup via class, as patched instance lookup
+            # is untrusted. The method itself must never invoke the getter.
+            accepted = LegacyTemporalReview.as_receipt(valid)
+            denied = LegacyTemporalReview.as_receipt(invalid)
+        self.assertEqual(calls, [])
+        self.assertEqual((accepted["status"], accepted["reason"]),
+                         ("REVIEW_ONLY", "temporal_shape_only"))
+        self.assertEqual((denied["status"], denied["reason"]),
+                         ("HOLD", "invalid_shape"))
+        for receipt in (accepted, denied):
+            for key in set(receipt) - {"status", "reason"}:
+                self.assertIs(receipt[key], False)
+
+    def test_batch_avoids_patchable_receipt_getter(self):
+        auth = fixture()
+        calls = []
+
+        def hostile_getattribute(instance, name):
+            calls.append(name)
+            raise AssertionError("batch verdict getter executed")
+
+        with patch.object(LegacyTemporalReview, "__getattribute__",
+                          hostile_getattribute):
+            valid = review_legacy_authorization_batch(
+                (auth, auth), observed_at=MID
+            )
+            bad = review_legacy_authorization_batch(
+                (auth, fixture(end=False)), observed_at=MID
+            )
+        self.assertEqual(calls, [])
+        assert_non_authorizing(self, valid, "REVIEW_ONLY", "temporal_shape_only")
+        assert_non_authorizing(self, bad, "HOLD", "invalid_batch")
+
+    def test_forged_tuple_payload_never_runs_equality_hooks(self):
+        import lightup.legacy_temporal_shape_review_301 as review_module
+
+        class _EvilEquality:
+            def __eq__(self, other):
+                raise AssertionError("malicious comparator executed")
+
+            def __repr__(self):
+                raise AssertionError("malicious repr executed")
+
+        forged = LegacyTemporalReview("REVIEW_ONLY", _EvilEquality())
+        receipt = LegacyTemporalReview.as_receipt(forged)
+        self.assertEqual((receipt["status"], receipt["reason"]),
+                         ("HOLD", "invalid_shape"))
+        for key in set(receipt) - {"status", "reason"}:
+            self.assertIs(receipt[key], False)
+
+        with patch.object(
+            review_module, "review_legacy_authorization_window",
+            return_value=forged
+        ):
+            decision = review_legacy_authorization_batch(
+                (fixture(),), observed_at=MID
+            )
+        assert_non_authorizing(self, decision, "HOLD", "invalid_batch")
+
     def test_extreme_builtin_offsets_cannot_escape_as_overflow_exception(self):
         eastern = timezone(timedelta(hours=23))
         western = timezone(timedelta(hours=-23))
@@ -279,6 +360,14 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
             "authorization.valid_until",
             "authorization.__dict__",
             "authorization.reference",
+            "self.status",
+            "self.reason",
+            "verdict.status",
+            "verdict.reason",
+            "tuple.__getitem__(authorization, 0)",
+            "tuple.__getitem__(verdict, 2)",
+            "tuple.__getitem__(verdict, True)",
+            "tuple.__getitem__(other, 0)",
             "vars(authorization)",
             "object.__getattribute__(authorization, 'reference')",
             "object.__getattribute__(other, '__dict__')",
