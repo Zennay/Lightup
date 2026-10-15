@@ -253,10 +253,13 @@ class OfflineAttemptJournal:
                 self._rollback_quietly()
                 return _hold()
             row = self._con.execute(
-                "SELECT sealed_binding,phase FROM offline_scope_1454_attempts "
+                "SELECT sealed_binding,phase,evidence_digest "
+                "FROM offline_scope_1454_attempts "
                 "WHERE attempt_id=?", (attempt.attempt_id,)
             ).fetchone()
-            if row is None or row[0] != binding or row[1] != expected:
+            # The only mutable phase entering this transition is a pristine
+            # reserved attempt. A pre-populated digest is already corruption.
+            if (row is None or tuple(row) != (binding, expected, None)):
                 self._rollback_quietly()
                 return _hold()
             self._con.execute(
@@ -350,13 +353,23 @@ class OfflineAttemptJournal:
             if not self._schema_valid():
                 return "unknown", _hold()
             row = self._con.execute(
-                "SELECT sealed_binding,phase FROM offline_scope_1454_attempts "
+                "SELECT sealed_binding,phase,evidence_digest "
+                "FROM offline_scope_1454_attempts "
                 "WHERE attempt_id=?", (attempt.attempt_id,)
             ).fetchone()
         except sqlite3.Error:
             return "unknown", _hold()
-        if row is None or row[0] != binding or row[1] not in (
-            "reserved", "uncertain", "recorded"
-        ):
+        if row is None or row[0] != binding:
             return "unknown", _hold()
-        return row[1], _review()
+        phase, digest = row[1], row[2]
+        # A 'recorded' claim without an exact sha256 is not evidence.
+        # Nonterminal records must not carry fabricated evidence data.
+        if phase == "recorded":
+            if type(digest) is not str or _SHA.fullmatch(digest) is None:
+                return "unknown", _hold()
+        elif phase in ("reserved", "uncertain"):
+            if digest is not None:
+                return "unknown", _hold()
+        else:
+            return "unknown", _hold()
+        return phase, _review()
