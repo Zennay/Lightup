@@ -33,6 +33,17 @@ not be represented as a passing production fix. Source-owner review is needed.
   capabilities, requester identity, grant signatures, consent, timestamps,
   revocation, network destination, ingress, or runtime identity. It therefore
   **cannot** be composed as sufficient evidence to authorize or release.
+- The optional `inspect_direct_scope_risk_batch(claims)` independently
+  classifies **1–32 synthetic pairs** using an exact outer tuple and exact
+  per-entry two-tuples. Missing, overbound, subclassed, malformed, lab-only,
+  noncanonical and above-ceiling entries force a whole-batch, fixed-shape
+  **HOLD**, with no positions, values, targets or partial success counts
+  returned. Only a fully canonical batch yields **REVIEW_ONLY**. Every
+  batch receipt has the same six hardcoded `False` flags as single review.
+- Batch regressions cover both exact bounds, non-iterable malicious tuple
+  subclasses, 300 deterministic shuffled negative cases and on-call
+  no-file/network/subprocess tripwires. This remains a reviewer aid, not a
+  production authorization or any proof of asset consent.
 - The API receives only in-memory objects. No command-line entrypoint is
   provided. Never substitute this reviewer for the actual installed
   `ExecutionPolicy`, `ActivationGate` and per-dispatch grant resolver.
