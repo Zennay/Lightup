@@ -39,3 +39,24 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_297_current_m
 - No claim of full CI green, production safety, release or customer permission follows from this tests-only branch.
 
 Keep the issue open and this PR draft until actual source-level enforcement is integrated and independently verified.
+
+
+## W4: installed-source reviewer CLI, without granting authority
+
+In addition to the 18 real installed-source unit contracts, the draft now includes:
+- `scripts/scope_297_atomic_policy_witness_20261015.py` — one-command, **hardcoded fictional inputs only** diagnostic on the actual installed `ScopePolicy.decide`. Reports eight known host/network cross-path cases without publishing the input targets or fake grant data, includes DNS/socket tripwires, and **always exits code 2 / HOLD**.
+- `tests/test_scope_297_atomic_policy_witness_cli_20261015.py` — 11 separate deterministic offline controls on real source behavior, JSON/Dutch output, immutable hold flags, user-supplied-target refusal, no network/shell/files, privacy-minimal unexpected exception review and future *deny* behavior staying HOLD.
+
+Invocation from the repo root:
+
+```sh
+python scripts/scope_297_atomic_policy_witness_20261015.py
+python scripts/scope_297_atomic_policy_witness_20261015.py --json
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_297_atomic_policy_witness_cli_20261015.py' -v
+```
+
+Operational execution intentionally returns **2** regardless of observations; that exit code is not a CI regression. Use the unittest command (not the CLI exit status) to check the reporter's behavior. The command has **no --target, --client, --grant, --hosts, --networks, --run, --scan, --authorize, --deploy or --release input**. It cannot grant authority to a real target or use an external config to change cases.
+
+Important: unlike the independent opt-in shape validator in [draft #1239](https://github.com/Zennay/Lightup/pull/1239), this tool **does not validate/rewrite configs or compute a permit**. It only illustrates the actual still-unsafe decisions of installed source for fixed fictional proof points. Even if the installed source later denies all eight, the report remains HOLD pending full operator/security/privacy and release checks. A source exception is reported generically as ERROR_REVIEW, not treated as a safe release pass. Human interpretation of tests and exact commit CI logs is mandatory.
+
+Do not run against a live target, connect to production, merge, or deploy this draft for these review outputs.
