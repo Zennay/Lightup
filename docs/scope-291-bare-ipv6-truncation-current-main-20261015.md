@@ -19,18 +19,18 @@ permission to test the displayed addresses.
 
 New file `tests/test_scope_291_bare_ipv6_truncation_current_main_20261015.py`:
 
-- Five **real expected-RED** cases prove bare IPv6 must never turn into
+- Six **real expected-RED** cases prove bare IPv6 must never turn into
   a shortened name, that a synthetic explicit-host allowlist cannot
   admit the mismatched IPv6 literal, a fabricated authorization
   claim on the wrong identity, and the **real ActivationGate** handing out a
   synthetic in-memory execution permit for that falsely matched identity.
-- Seven **normal green/witness controls** prove bracketed IPv6 remains intact,
+- Eight **normal green/witness controls** prove bracketed IPv6 remains intact,
   explicit `/128` network membership still requires an authorization
   object under the existing canonical flow, and the same literal in
   bracketed form cannot accidentally match an unrelated host or network. A
   PLAN_ONLY/LAB_ONLY comparators still reject the fake active request; a
   standalone network-tripwire self-test proves DNS/socket monkeypatches really
-  reject calls. A RED-integrity witness reruns the five intentional failures
+  reject calls. A RED-integrity witness reruns the six intentional failures
   and rejects masked crashes, accidental success and network-trigger errors.
 - All tests are pure in-process: actual DNS lookups, sockets and outbound
   connections are patched to raise immediately. No real network
@@ -48,7 +48,7 @@ PYTHONPATH=src python -m unittest -v \
 ```
 
 **Important:** `unittest.expectedFailure` is a red-signal quarantine,
-not a successful security fix. The five source-negative cases must
+not a successful security fix. The six source-negative cases must
 report exactly as **expected failures**, not ordinary passing tests or
 unexpected successes. The owner must repair the installed source and
 convert these cases to normal green tests before considering this
@@ -114,3 +114,24 @@ against the unrelated DNS label, with exact preserved IPv6 identity.
 Neither path uses sockets, DNS, real assets, imports any live worker or
 issues an active permit. This matrix is still a source-owner acceptance
 contract, **not** an implemented production fix or authorization grant.
+
+## W4: permit token-creation boundary, not merely a scope verdict
+
+The sixth real current-main expected-RED case drives **128 distinct RFC3849
+IPv6 targets** through the installed `ActivationGate.issue()` in synthetic
+AUTHORIZED mode. A narrowly patched `lightup.activation.token_urlsafe`
+returns only the fixed literal `FAKE-NON-LIVE-TOKEN`, recording every attempt.
+It proves **128 token-generation attempts for 128 wrong-host identities**,
+instead of only demonstrating a `ScopeDecision` mismatch. No real secret,
+customer authorization, persistent grant, network request or adapter exists.
+
+The eighth independent green control supplies a missing, expired and
+future-dated fictional Authorization to the same bad lexical host under
+AUTHORIZED mode. All are denied **before** `token_urlsafe` may be invoked.
+That proves ordinary temporal gates still reject those three conditions,
+while establishing that they do not rescue a valid-looking, wrong-identity
+synthetic request.
+
+Both are pure in-memory acceptance only. The real source owner must deny
+wrong-host admission before any permit/token generation; the isolated tests
+do not repair runtime source or authorize any real execution.
