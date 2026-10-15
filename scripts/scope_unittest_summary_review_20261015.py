@@ -48,11 +48,13 @@ def extract(raw):
         raise InvalidLog("ambiguous test suite")
     tests, (state, body) = totals[0], finishes[0]
     counts = dict.fromkeys(KEYS.values(), 0)
+    seen = set()
     if body:
         for part in body.split(", "):
             match = PART.fullmatch(part)
-            if match is None or counts[KEYS[match.group(1)]] != 0:
+            if match is None or match.group(1) in seen:
                 raise InvalidLog("result")
+            seen.add(match.group(1))
             counts[KEYS[match.group(1)]] = int(match.group(2))
     elif body is not None:
         raise InvalidLog("empty result")
