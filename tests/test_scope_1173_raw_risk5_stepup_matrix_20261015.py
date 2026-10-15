@@ -193,6 +193,16 @@ class RiskFiveSeparateApprovalContract(TestCase):
         second_handler.assert_not_called()
         self.assertEqual(0, self._evidence_count())
 
+
+    @expectedFailure
+    def test_untrusted_lab_flag_cannot_select_external_risk_five_asset(self):
+        """RED: is_lab=True alone is not a verified isolation or egress proof."""
+        outside_lab = ToolCall("fixture-risk-five", "outside-lab.example.test")
+        with self.assertRaises(ToolDenied):
+            self._execute_offline(call=outside_lab)
+        self.handler.assert_not_called()
+        self.assertEqual(0, self._evidence_count())
+
     def test_intentional_red_methods_fail_only_on_missing_denial(self):
         """GREEN witness: don't mask wrong fixture/setup/runtime as expected RED.
 
@@ -211,6 +221,8 @@ class RiskFiveSeparateApprovalContract(TestCase):
             ("test_unapproved_risk_five_run_cannot_change_target_asset",
              "ToolDenied not raised"),
             ("test_unapproved_risk_five_run_cannot_change_tool_capability",
+             "ToolDenied not raised"),
+            ("test_untrusted_lab_flag_cannot_select_external_risk_five_asset",
              "ToolDenied not raised"),
         )
         for method, witness in cases:
