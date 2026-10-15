@@ -23,17 +23,18 @@ from lightup.models import Authorization, Target
 from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason
 import scope_297_atomic_policy_witness_20261015 as report
 import test_scope_297_current_main_atomic_public_config_20261015 as source_tests
+from scope_297_synthetic_authorization_20261015 import fake_authorization, FICTIONAL_ASSETS
 
 ORIGINAL_DECIDE = ScopePolicy.decide
 REFERENCE_DENIAL_REASON = ScopeReason.INVALID_TARGET
 
-FAKE_VALID_GRANT = Authorization(
+FAKE_VALID_GRANT = fake_authorization(
     owner="synthetic_reference_test_only",
     reference="NOT_REAL_CONSENT",
     valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
     valid_until=datetime(2090, 1, 1, tzinfo=timezone.utc),
 )
-FAKE_EXPIRED_GRANT = Authorization(
+FAKE_EXPIRED_GRANT = fake_authorization(
     owner="synthetic_reference_test_only",
     reference="EXPIRED_NOT_CONSENT",
     valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
@@ -79,6 +80,29 @@ class AtomicPolicyReferenceAcceptance(unittest.TestCase):
         self.network.start()
         self.addCleanup(self.network.stop)
         self.addCleanup(self.dns.stop)
+
+    def test_fixture_has_only_reserved_documentation_or_test_assets(self):
+        from ipaddress import ip_address
+
+        self.assertEqual(len(FICTIONAL_ASSETS), len(set(FICTIONAL_ASSETS)))
+        for value in FICTIONAL_ASSETS:
+            with self.subTest(asset=value):
+                if value.endswith(".test"):
+                    self.assertEqual(value, "security.example.test")
+                else:
+                    self.assertFalse(ip_address(value).is_global)
+
+    def test_owner_asset_binding_is_explicit_where_model_supports_it(self):
+        if "assets" in getattr(Authorization, "__dataclass_fields__", {}):
+            self.assertEqual(FAKE_VALID_GRANT.assets, FICTIONAL_ASSETS)
+            for value in FICTIONAL_ASSETS:
+                self.assertTrue(FAKE_VALID_GRANT.allows_asset(value))
+            self.assertFalse(
+                FAKE_VALID_GRANT.allows_asset("unlisted.example.test")
+            )
+        else:
+            # The installed main Authorization has no assets property yet.
+            self.assertFalse(hasattr(FAKE_VALID_GRANT, "assets"))
 
     def test_all_ten_installed_source_red_contracts_pass_under_reference_guard(self):
         original_reds = [
