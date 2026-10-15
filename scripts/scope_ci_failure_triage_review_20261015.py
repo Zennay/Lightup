@@ -58,14 +58,18 @@ def diagnose(raw):
         i, kind, name, fullname = failures[0]
         if (kind == "FAIL" and name == KNOWN_NAME
                 and fullname == KNOWN_CLASS + KNOWN_NAME):
-            # Only inspect the bounded matching failure block, not a stray
-            # assertion/stack trace from another test somewhere in the log.
-            section = lines[i+1:i+20]
-            while section and not section[0].strip().endswith("------"):
-                section.pop(0)
-            known = (any(_line_matches_known(l) for l in section)
-                     and any(EXPRESSION.fullmatch(l) for l in section)
-                     and any(ASSERT.fullmatch(l) for l in section))
+            # Only inspect a fully delimited, local traceback. Matching
+            # text outside the closing divider is untrusted unrelated data.
+            section = lines[i+1:i+24]
+            divider = re.compile(r"^" + STAMP + r"-{70}$")
+            if section and divider.fullmatch(section[0]):
+                end = next((j for j, line in enumerate(section[1:], 1)
+                            if divider.fullmatch(line)), None)
+                if end is not None and end > 1:
+                    body = section[1:end]
+                    known = (any(_line_matches_known(l) for l in body)
+                             and any(EXPRESSION.fullmatch(l) for l in body)
+                             and any(ASSERT.fullmatch(l) for l in body))
     return {
         "reported_tests": summary["reported_tests"],
         "reported_result": summary["reported_result"],
