@@ -200,6 +200,25 @@ reclassification of expiry windows. This tests deterministic presentation
 only: a caller's supplied `as_of_utc` is **not** a trusted clock or
 evidence of live customer consent.
 
+## Anonymous temporal consistency and calendar boundaries (W15)
+
+A deterministic **150-receipt, 4,800-window classification matrix** runs a full
+32-window fictional cohort at 30 increasing UTC instants against five
+horizons (1, 6, 24, 72, and 720 hours). Every aggregate is compared against
+an independently assembled Python UTC-datetime oracle and rechecked for six
+literal false-authority bits. The test also asserts that as review time
+advances, the expired cohort cannot shrink and the future cohort cannot grow;
+increasing a horizon must not move rows from expiring-soon into later or change
+the expired/future counts. Reverse-order permutations of the same anonymous
+windows must yield byte-equivalent fields, without row identifiers or
+per-target disclosure. These are *coherence invariants of synthetic
+untrusted claims only*; no real grant is created or validated.
+
+A second edge suite covers UTC year 0001, Gregorian leap day 2000/2024,
+year 9999 overflow boundaries, and rejection of non-leap-year century
+dates (1900/2100), year 0000 and 24:00 rollover. None of these time
+fields is authenticated or used to permit active scanning.
+
 ## Installed runtime import isolation (W14)
 
 The new acceptance test scans only installed Python source under
