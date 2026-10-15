@@ -191,6 +191,78 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
             self.assertEqual(model_datetime.now.call_count, len(offsets))
             self.assertEqual(repr(grant), initial)
 
+    def test_calendar_year_shift_invariance_and_timezone_equivalence(self):
+        # Each synthetic time window is evaluated at fixed, varied calendar
+        # years. A successful historical fixture must not expire in CI simply
+        # because the current calendar year has changed.
+        for year in (2024, 2026, 2030, 2050, 2099):
+            instant = datetime(year, 10, 14, 12, tzinfo=timezone.utc)
+            grant = _authorization(
+                start=instant - timedelta(minutes=5),
+                end=instant + timedelta(minutes=5),
+            )
+            before = repr(grant)
+            for offset in (
+                timedelta(hours=-11), timedelta(hours=-5, minutes=-30),
+                timedelta(0), timedelta(hours=5, minutes=45),
+                timedelta(hours=14),
+            ):
+                equivalent_instant = instant.astimezone(timezone(offset))
+                with self.subTest(year=year, offset=offset):
+                    decision = _pure_scope_decision_at(
+                        grant, equivalent_instant
+                    )
+                    self.assertIs(decision.allowed, True)
+                    self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+                    self.assertEqual(repr(grant), before)
+            for delta, expected_allowed in (
+                (-301, False), (-300, True), (300, True), (301, False)
+            ):
+                with self.subTest(year=year, seconds=delta):
+                    decision = _pure_scope_decision_at(
+                        grant, instant + timedelta(seconds=delta)
+                    )
+                    self.assertIs(decision.allowed, expected_allowed)
+                    self.assertEqual(
+                        decision.reason,
+                        ScopeReason.EXPLICIT_HOST if expected_allowed
+                        else ScopeReason.AUTHORIZATION_EXPIRED,
+                    )
+
+    def test_repeated_multi_grant_clock_evaluations_never_replay_prior_scope(self):
+        # Alternate independent fictional authorization records across time.
+        # A previous admissible decision must not confer new authority on a
+        # separate, not-yet-current or expired record.
+        windows = (
+            (-2, -1), (-1, 1), (1, 2), (-3, 3), (-4, -3),
+        )
+        grants = [
+            _authorization(
+                start=NOW + timedelta(days=start),
+                end=NOW + timedelta(days=end),
+            ) for start, end in windows
+        ]
+        before = tuple(map(repr, grants))
+        events = [
+            (index, day)
+            for index in range(len(grants))
+            for day in (-5, -3, -2, -1, 0, 1, 2, 3, 5)
+        ] * 8
+        random.Random(1301).shuffle(events)
+        for index, day in events:
+            start, end = windows[index]
+            decision = _pure_scope_decision_at(
+                grants[index], NOW + timedelta(days=day)
+            )
+            allowed = start <= day <= end
+            self.assertIs(decision.allowed, allowed)
+            self.assertEqual(
+                decision.reason,
+                ScopeReason.EXPLICIT_HOST if allowed
+                else ScopeReason.AUTHORIZATION_EXPIRED,
+            )
+        self.assertEqual(tuple(map(repr, grants)), before)
+
     def test_expired_scope_decision_does_not_mutate_authorization(self):
         a = _authorization(
             start=NOW - timedelta(days=2),
