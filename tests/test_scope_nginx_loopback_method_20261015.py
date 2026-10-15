@@ -71,7 +71,7 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
     def test_review_only_requires_negative_mutant_to_be_detected(self):
         # Isolate the CLI truth table from Nginx availability; the real
         # subprocess positive/negative witness is separately tested above.
-        with patch.object(check, "TEMPLATE") as fake_template, \\
+        with patch.object(check, "TEMPLATE") as fake_template, \
              patch.object(check.shutil, "which", return_value="/lab/nginx"):
             fake_template.read_text.return_value = self.template
             for candidate, mutation, expected, exit_code in (
@@ -79,7 +79,7 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                 (True, True, "HOLD", 2),
                 (False, False, "HOLD", 2),
             ):
-                with self.subTest(candidate=candidate, mutation=mutation), \\
+                with self.subTest(candidate=candidate, mutation=mutation), \
                      patch.object(check, "run_probe",
                                   side_effect=[candidate, mutation]) as probe:
                     out = io.StringIO()
