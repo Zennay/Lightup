@@ -108,7 +108,7 @@ class ScopeCollectionSnapshotReferenceTests(unittest.TestCase):
 
     def test_128_boundary_and_129_refusal_are_deterministic(self):
         hosts = [f"host-{i}.example.test" for i in range(128)]
-        networks = ["8.8.8.0/24"] * 128
+        networks = [f"8.8.8.{i}/32" for i in range(128)]
         self.assertEqual(snapshot_untrusted_scope_collections(hosts, networks).status, "REVIEW_ONLY")
         for collection in (
             snapshot_untrusted_scope_collections(hosts + ["extra.example.test"], networks),
