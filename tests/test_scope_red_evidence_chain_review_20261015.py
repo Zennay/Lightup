@@ -148,6 +148,29 @@ class DebtEvidenceChainTests(unittest.TestCase):
         self.assertEqual(r["status"], "HOLD")
         self.assertFalse(r["permit_issued"])
 
+    def test_same_full_method_claimed_by_two_issues_is_rejected(self):
+        _, r = call(raw(cases=[record(issue=1147), record(issue=301)]))
+        self.assertNotIn("summary", r)
+        self.assertEqual(r["status"], "HOLD")
+
+    def test_same_issue_two_claimed_owners_explicit_collision(self):
+        _, r = call(raw(cases=[record(owner=1462),
+                               record(OK, "passed", owner=1450)]))
+        self.assertEqual(r["summary"]["conflicting_owner_issues"], 1)
+        self.assertEqual(r["summary"]["classification"],
+                         "DISAGREEMENT_IN_UNVERIFIED_EVIDENCE")
+        self.assertFalse(r["release_approved"])
+
+    def test_same_issue_same_claimed_owner_no_collision(self):
+        _, r = call(raw())
+        self.assertEqual(r["summary"]["conflicting_owner_issues"], 0)
+
+    def test_unique_methods_different_issues_do_not_conflict(self):
+        _, r = call(raw(cases=[record(issue=1147, owner=1462),
+                               record(OK, "passed", owner=1452, issue=301)]))
+        self.assertEqual(r["summary"]["conflicting_owner_issues"], 0)
+        self.assertEqual(r["summary"]["watched_issues"], 2)
+
     def test_owner_boolean_rejected(self):
         _, r = call(raw(cases=[record(owner=True)]))
         self.assertNotIn("summary", r)
