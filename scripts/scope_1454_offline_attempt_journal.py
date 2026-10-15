@@ -363,7 +363,8 @@ class OfflineAttemptJournal:
         consent, isolation, handler permission, or a replayable lease.
         """
         binding = _sealed(attempt)
-        if binding is None:
+        fingerprint = _operation_fingerprint(attempt)
+        if binding is None or fingerprint is None:
             return _hold()
         owned_transaction = False
         try:
