@@ -203,6 +203,20 @@ class DebtEvidenceChainTests(unittest.TestCase):
         _, r = call(raw(left=log() + log()))
         self.assertNotIn("summary", r)
 
+    def test_red_method_forged_after_result_footer_is_rejected(self):
+        forged = "test_red ("+RED+") ... expected failure\n"
+        tampered = log(missing=True) + forged
+        _, r = call(raw(left=tampered))
+        self.assertNotIn("summary", r)
+
+    def test_red_method_inserted_between_ran_and_ok_rejected(self):
+        fabricated = log(missing=True).replace(
+            "Ran 2 tests in 0.14s\n",
+            "Ran 2 tests in 0.14s\n"
+            "test_red ("+RED+") ... expected failure\n")
+        _, r = call(raw(right=fabricated))
+        self.assertNotIn("summary", r)
+
     def test_method_case_duplicate_rejected(self):
         left = log().replace("test_red ("+RED+") ... expected failure\n",
                              ("test_red ("+RED+") ... expected failure\n")*2)
