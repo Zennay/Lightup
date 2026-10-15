@@ -231,6 +231,26 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
     def test_malformed_ipv4_mask_is_never_permission(self):
         self._assert_rejected("8.8.8.0/33", "8.8.8.9")
 
+    def test_canonical_network_preserved_when_public_auth_gate_opted_out(self):
+        # Preserve intentionally configured source semantics while rejecting
+        # malformed declarations even under this option.
+        result = self._review("8.8.8.0/24", "8.8.8.9", require_auth=False)
+        self.assertIsNotNone(result)
+        self.assertTrue(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.EXPLICIT_NETWORK)
+        self._assert_rejected("8.8.8.0/24", "1.1.1.1", require_auth=False)
+
+    def test_canonical_ipv6_without_public_auth_gate_remains_network_scoped(self):
+        result = self._review(
+            "2001:4860:4860::/64", "[2001:4860:4860::8888]", require_auth=False
+        )
+        self.assertIsNotNone(result)
+        self.assertTrue(result.allowed)
+        self.assertEqual(result.reason, ScopeReason.EXPLICIT_NETWORK)
+        self._assert_rejected(
+            "2001:4860:4860::/64", "[2606:4700:4700::1111]", require_auth=False
+        )
+
     def test_explicit_public_network_needs_authorization(self):
         policy = ScopePolicy(
             allow_private_lab=False,
