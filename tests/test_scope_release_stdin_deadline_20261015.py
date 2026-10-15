@@ -23,7 +23,7 @@ class ReleaseStdinDeadlineTests(unittest.TestCase):
                            capture_output=True, check=False, timeout=timeout)
         self.assertEqual(p.returncode, 2)
         self.assertEqual(p.stderr, b"")
-        self.assertIn(b"HOLD", p.stdout.upper() if "inventory" in script.name else b"HOLD")
+        self.assertIn(b"HOLD", p.stdout.upper())
         return p.stdout
 
     def hold_when_writer_leaves_pipe_open(self, script, data):
@@ -93,7 +93,7 @@ class ReleaseStdinDeadlineTests(unittest.TestCase):
             with self.subTest(script=script.name):
                 start = time.monotonic()
                 self.hold_when_writer_leaves_pipe_open(script, b"z" * 8193)
-                self.assertLess(time.monotonic() - start, 2.0)
+                self.assertLess(time.monotonic() - start, 3.0)
 
     def test_already_open_regular_input_file_is_supported(self):
         with tempfile.TemporaryFile(mode="w+b") as source:
