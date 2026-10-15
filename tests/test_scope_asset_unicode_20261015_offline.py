@@ -1,6 +1,7 @@
 """Synthetic, offline scope metadata review tests. No targets or grants."""
 from __future__ import annotations
 
+import ast
 import importlib.util
 import json
 import os
@@ -328,6 +329,53 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
         for item in forged:
             with self.subTest(receipt=item):
                 self.assertFalse(mod._is_deny_only_receipt(item))
+
+    def test_static_offline_import_and_effect_boundary_with_negative_controls(self):
+        """Fixture gate: no socket/http/process launch/target data facilities."""
+        allowed = {
+            "__future__", "json", "ipaddress", "os", "re", "select",
+            "stat", "sys", "time", "typing",
+        }
+        deny_os_calls = {
+            "open", "system", "popen", "fork", "execv", "execve",
+            "spawnv", "spawnve", "listdir", "scandir", "walk",
+        }
+        deny_dynamic_calls = {"__import__", "eval", "exec", "compile", "open"}
+
+        def offenses(source):
+            findings = []
+            for node in ast.walk(ast.parse(source)):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.name.partition(".")[0] not in allowed:
+                            findings.append(("import", alias.name))
+                if isinstance(node, ast.ImportFrom):
+                    if (node.module or "").partition(".")[0] not in allowed:
+                        findings.append(("import-from", node.module))
+                if isinstance(node, ast.Call):
+                    if isinstance(node.func, ast.Name) and node.func.id in deny_dynamic_calls:
+                        findings.append(("dynamic", node.func.id))
+                    if (
+                        isinstance(node.func, ast.Attribute)
+                        and isinstance(node.func.value, ast.Name)
+                        and node.func.value.id == "os"
+                        and node.func.attr in deny_os_calls
+                    ):
+                        findings.append(("os-effect", node.func.attr))
+            return findings
+
+        self.assertEqual(offenses(SCRIPT.read_text(encoding="utf-8")), [])
+        fake_mutants = (
+            "import socket\nsocket.create_connection(('example.invalid',80))",
+            "from urllib import request\nrequest.urlopen('http://example.invalid')",
+            "import subprocess\nsubprocess.run(['python'])",
+            "import os\nos.system('echo mutated')",
+            "__import__('socket')",
+            "open('secrets.txt')",
+        )
+        for mutated in fake_mutants:
+            with self.subTest(mutant=mutated[:32]):
+                self.assertNotEqual(offenses(mutated), [])
 
     def test_installed_source_never_imports_untrusted_reviewer(self):
         for path in (ROOT / "src" / "lightup").rglob("*.py"):
