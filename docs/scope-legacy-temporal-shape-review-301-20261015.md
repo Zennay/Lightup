@@ -112,6 +112,27 @@ This diagnostic still does not establish trustworthy source provenance,
 operator/client consent, a concurrency lock or installed authorization.
 The original source owner must independently repair the installed method.
 
+## W6: read *no* replaceable Authorization getter hooks
+
+The reviewer now obtains `valid_from` and `valid_until` **only from**
+`object.__getattribute__(authorization, "__dict__")` and rechecks that
+materialized dictionary at the end of the single or full bounded batch
+review. It **never invokes** `authorization.valid_from`,
+`authorization.valid_until` or `vars(authorization)`: any of those could
+invoke a class-level monkeypatched `__getattribute__` with network,
+filesystem or mutation side effects. The old getter-identity check in
+W4/W5 was useful for spotting spoofing but itself executed those hooks;
+W6 instead eliminates that whole callback path.
+
+New ordinary synthetic tests patch the class getter to raise and mutate
+the nominally frozen object if called. Both single and 1–32-member batch
+review must still complete with the correct **non-authorizing** verdict,
+zero getter invocations and unchanged stored window. Earlier
+dual-spoofed-expiry regressions continue to demand HOLD where the real
+stored validity value is falsy. No external resources are accessed, no
+source-owned installed auth code is changed. As before, storage is **not**
+locked: concurrent mutations cannot be ruled out outside the checks.
+
 ## Hard gate: not a production fix
 
 This does **not** repair `Authorization.is_current()`. Release requires the
