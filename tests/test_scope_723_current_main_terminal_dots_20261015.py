@@ -69,6 +69,23 @@ class TerminalDotCurrentMainSourceRed(unittest.TestCase):
         self.assertNotEqual(decision.reason, ScopeReason.LOOPBACK)
 
     @unittest.expectedFailure
+    def test_all_dots_target_must_not_match_empty_declared_hostname(self):
+        # Additional #723/#297 interaction: rstrip('.') turns only-dots
+        # target text into the empty string and silently matches an invalid
+        # empty explicit_hosts declaration when synthetic auth is present.
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset(("",)),
+        )
+        targets = ("..", "...", "https://../synthetic-only", "http://.../synthetic-only")
+        decisions = tuple(
+            policy.decide(Target(value, authorization=_SYNTHETIC_ONLY))
+            for value in targets
+        )
+        self.assertEqual(len(decisions), 4)
+        self.assertFalse(any(decision.allowed for decision in decisions))
+
+    @unittest.expectedFailure
     def test_matrix_32_malformed_target_dot_counts_and_url_forms_must_deny(self):
         # Materialize *all* decisions before the assertion: no early exit
         # silently truncates the 64-case input matrix.
@@ -122,6 +139,7 @@ _RED_NAMES = (
     "test_triple_terminal_dot_policy_must_not_authorize_rooted_target",
     "test_double_terminal_dot_localhost_must_not_inherit_loopback",
     "test_triple_terminal_dot_localhost_must_not_inherit_loopback",
+    "test_all_dots_target_must_not_match_empty_declared_hostname",
     "test_matrix_32_malformed_target_dot_counts_and_url_forms_must_deny",
     "test_matrix_32_malformed_config_dot_counts_and_targets_must_deny",
     "test_matrix_32_malformed_localhost_dot_counts_and_url_forms_must_deny",
@@ -171,7 +189,7 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
 
     def test_original_source_witnesses_are_real_assertions_not_errors(self):
         # @expectedFailure also catches accidental TypeError and ValueError.
-        # An independent TestResult must observe exactly nine AssertionError
+        # An independent TestResult must observe exactly ten AssertionError
         # failures, not silently accept an unrelated crash or unexpected green.
         for name in _RED_NAMES:
             with self.subTest(case=name):
@@ -302,6 +320,19 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
             decision = _decision(value)
             self.assertFalse(decision.allowed)
             self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_dot_only_targets_cannot_gain_authority_without_empty_policy_entry(self):
+        # The original defect requires a corrupt policy declaration too.
+        # Unlisted empty host must not be a grant even with fake fixtures.
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset((_HOST,)),
+        )
+        for value in ("..", "...", "https://../synthetic-only"):
+            with self.subTest(value=value):
+                decision = policy.decide(Target(value, authorization=_SYNTHETIC_ONLY))
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
 
     def test_policy_collections_and_synthetic_authorization_unchanged(self):
         policy = ScopePolicy(explicit_hosts=frozenset((_HOST,)))
