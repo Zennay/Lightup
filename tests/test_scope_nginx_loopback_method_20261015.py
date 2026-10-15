@@ -9,7 +9,7 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from urllib.parse import urlencode
 
 from lightup.domain import DomainStore, Role
@@ -225,6 +225,65 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
             with self.subTest(receipt=repr(receipt)):
                 self.assertFalse(check._receipt_is_exact(receipt, "POST"))
         self.assertFalse(check._receipt_is_exact(good, "GET"))
+
+    def test_synthetic_upstream_http_framing_is_exact_and_bounded(self):
+        message = json.dumps({
+            "method": "POST", "path": "/__scope_method_fixture__",
+            "body": "x", "override_headers": {},
+        }, sort_keys=True).encode("ascii")
+        ordinary = [
+            ("Content-Type", "application/json"),
+            ("Content-Length", str(len(message))),
+        ]
+        valid = Mock()
+        valid.status = 200
+        valid.getheaders.return_value = ordinary
+        valid.read.return_value = message
+        self.assertTrue(check._receipt_is_exact(
+            check._decode_lab_response(valid), "POST",
+        ))
+        valid.read.assert_called_once_with(len(message) + 1)
+        # Mixed case is valid HTTP; case-sensitive header parsing is not.
+        valid.getheaders.return_value = [
+            ("content-type", "application/json"),
+            ("CONTENT-length", str(len(message))),
+        ]
+        self.assertTrue(check._receipt_is_exact(
+            check._decode_lab_response(valid), "POST",
+        ))
+        # Even if a valid JSON prefix fits in the first 4 KiB, the witness
+        # must reject any unexplained trailing bytes or missing HTTP bytes.
+        cases = [
+            ("missing_length", [ordinary[0]], message),
+            ("duplicate_length", ordinary + [ordinary[1]], message),
+            ("conflicting_length", ordinary + [("CONTENT-LENGTH", "1")], message),
+            ("chunked_conflict", ordinary + [("Transfer-Encoding", "chunked")], message),
+            ("wrong_type", [("Content-Type", "text/plain"), ordinary[1]], message),
+            ("duplicate_type", ordinary + [ordinary[0]], message),
+            ("leading_zero_length", [ordinary[0], ("Content-Length", "0" + str(len(message)))], message),
+            ("whitespace_length", [ordinary[0], ("Content-Length", " " + str(len(message)))], message),
+            ("too_large", [ordinary[0], ("Content-Length", "4097")], message),
+            ("empty", [ordinary[0], ("Content-Length", "0")], message),
+            ("short_body", ordinary, message[:-1]),
+            ("extra_body", ordinary, message + b"EXTRA"),
+            ("bad_header_type", [("Content-Type", b"application/json"), ordinary[1]], message),
+        ]
+        for label, headers, payload in cases:
+            with self.subTest(label=label):
+                fake = Mock()
+                fake.status = 200
+                fake.getheaders.return_value = headers
+                fake.read.return_value = payload
+                with self.assertRaises((RuntimeError, ValueError)):
+                    check._decode_lab_response(fake)
+        for bad_status in (204, 301, 400, 500):
+            with self.subTest(http_status=bad_status):
+                fake = Mock()
+                fake.status = bad_status
+                fake.getheaders.return_value = ordinary
+                fake.read.return_value = message
+                with self.assertRaises(RuntimeError):
+                    check._decode_lab_response(fake)
 
     def test_http_upstream_disconnect_is_opaque_hold(self):
         # A truncated upstream response must never leak the HTTP client's
