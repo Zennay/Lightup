@@ -398,6 +398,28 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
                 self.assert_hold()
                 self._reset_fixture()
 
+    def test_real_sqlite_empty_validity_interval_cannot_be_reviewed(self):
+        self.upgrade_synthetic_only()
+        self.update(
+            "authorization_grants", "valid_until", self.valid_from.isoformat(),
+            "grant_id", self.grant.grant_id,
+        )
+        # At the one coincident instant, old inclusive comparisons would
+        # have reported REVIEW_ONLY for an impossible zero-length interval.
+        receipt = self.review(instant=self.valid_from)
+        self.assertIs(receipt.status, ReviewStatus.HOLD)
+        self.assert_no_authority(receipt)
+
+    def test_real_sqlite_retest_flag_true_has_no_matching_request_optin(self):
+        self.upgrade_synthetic_only()
+        self.update(
+            "authorization_grants", "recurring_retest_allowed", 1,
+            "grant_id", self.grant.grant_id,
+        )
+        result = self.review()
+        self.assertIs(result.status, ReviewStatus.HOLD)
+        self.assert_no_authority(result)
+
     def test_corrupt_grant_dates_and_retest_flag_hold(self):
         for field, value in (
             ("valid_from", "2030-01-31T24:00:00+00:00"),
