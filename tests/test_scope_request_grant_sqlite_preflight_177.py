@@ -942,6 +942,57 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
         self.assertIs(reviewed.status, ReviewStatus.REVIEW_ONLY)
         self.assert_no_authority(reviewed)
 
+    def test_unselected_other_tenant_impossible_time_or_status_holds(self):
+        # Separate other-tenant approvals need coherent chronology as well,
+        # even if the caller chose a completely different client's grant.
+        faults = (
+            ("assessment_requests", "created_at", "after-decision", "request_id"),
+            ("assessment_requests", "decided_at", "after-grant", "request_id"),
+            ("authorization_grants", "created_at", "before-request", "grant_id"),
+            ("authorization_grants", "valid_from", "before-persistence", "grant_id"),
+            ("authorization_grants", "valid_until", "empty-window", "grant_id"),
+            ("engagements", "created_at", "after-grant", "engagement_id"),
+            ("engagements", "status", "draft", "engagement_id"),
+        )
+        for index, (table, field, value, key) in enumerate(faults):
+            with self.subTest(table=table, field=field, value=value):
+                if index:
+                    self._reset_fixture()
+                self.upgrade_synthetic_only()
+                req_id, eng_id, grant_id = self._other_tenant_authorized_grant()
+                self.assertIs(self.review().status, ReviewStatus.REVIEW_ONLY)
+                if value == "after-decision" or value == "after-grant":
+                    value = (self.now + timedelta(days=2)).isoformat()
+                elif value == "before-request":
+                    value = (self.now - timedelta(days=2)).isoformat()
+                elif value == "before-persistence":
+                    value = (self.now - timedelta(days=1)).isoformat()
+                elif value == "empty-window":
+                    value = self.valid_from.isoformat()
+                identity = {
+                    "request_id": req_id,
+                    "engagement_id": eng_id,
+                    "grant_id": grant_id,
+                }[key]
+                with sqlite3.connect(self.path) as con:
+                    changed = con.execute(
+                        f"UPDATE {table} SET {field}=? WHERE {key}=?",
+                        (value, identity),
+                    ).rowcount
+                    self.assertEqual(changed, 1)
+                    self.assertEqual(
+                        con.execute("PRAGMA foreign_key_check").fetchall(), [],
+                    )
+                decision = self.review()
+                self.assertIs(decision.status, ReviewStatus.HOLD)
+                self.assert_no_authority(decision)
+                batch = review_persisted_grant_batch(
+                    self.path, (self.grant.grant_id,),
+                    reviewed_at=self.reviewed_at,
+                )
+                self.assertIs(batch.status, ReviewStatus.HOLD)
+                self.assert_no_authority(batch)
+
     def test_unreviewed_other_tenant_lineage_corruption_blocks_snapshot(self):
         # A clean FK proves the request exists, NOT that it approved this
         # tenant, this engagement, or the claimed human decision-maker.
