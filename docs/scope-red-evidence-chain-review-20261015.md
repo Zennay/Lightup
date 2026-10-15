@@ -63,3 +63,12 @@ unexpected full-suite failures, still-unfixed source REDs, incomplete or
 divergent evidence, and logs with no reported failures that STILL have no
 release authority. Nothing can promote a log, self-declared completion or
 an expected-RED into approval; all six authority flags remain false.
+
+## W8 ownership ambiguity hardening
+
+The chain now rejects an identical fully-qualified test method claimed by
+**different issue IDs** (lower-level issue/test pairs could otherwise be
+collapsed silently into a single method). It also counts same-issue claims
+with competing PR owners as `conflicting_owner_issues` and surfaces a
+review disagreement. Owner IDs remain caller claims, not validated GitHub
+ownership or consent. No authority or release action can follow.
