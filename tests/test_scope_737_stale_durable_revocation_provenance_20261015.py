@@ -19,6 +19,12 @@ from lightup.execution_policy import (
 
 
 NOW = datetime(2026, 10, 15, 12, 0, tzinfo=timezone.utc)
+# Stable fixtures: direct ExecutionPolicy uses the ACTUAL current UTC clock.
+# A ±1-day window around NOW would expire after 2026-10-16 and turn original
+# source RED tests into misleading successes or break positive controls.
+WINDOW_START = datetime(2000, 1, 1, tzinfo=timezone.utc)
+WINDOW_END = datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+LATER = datetime(2050, 1, 1, tzinfo=timezone.utc)
 ASSET = "fixture-revocation.example.test"
 CAPABILITY = "fixture-read-only-baseline"
 
@@ -35,8 +41,8 @@ def grant(**overrides: object) -> AuthorizationGrant:
             max_risk=RiskLevel.STANDARD,
             allowed_capabilities=(CAPABILITY,),
         ),
-        valid_from=NOW - timedelta(days=1),
-        valid_until=NOW + timedelta(days=1),
+        valid_from=WINDOW_START,
+        valid_until=WINDOW_END,
     )
     return replace(base, **overrides)
 
@@ -62,6 +68,16 @@ class DurableRevocationProvenanceSourceAcceptance(unittest.TestCase):
 
     def test_canonical_never_revoked_preserves_target_policy_allow(self):
         self.assertTrue(decision(grant()).allowed)
+
+    def test_clean_grant_still_current_long_after_original_fixture_date(self):
+        # Expiry must never accidentally turn an unsafe-source RED green.
+        self.assertTrue(grant().is_current(LATER))
+
+    def test_original_stale_provenance_canary_is_still_unsafe_in_2050(self):
+        # Explicit diagnostic; owner must retire/invert after the source fix.
+        stale = grant(revoked_by="fictional-revoker")
+        self.assertTrue(stale.is_current(NOW))
+        self.assertTrue(stale.is_current(LATER))
 
     def test_explicit_revocation_denies_direct_current_check(self):
         revoked = grant(
