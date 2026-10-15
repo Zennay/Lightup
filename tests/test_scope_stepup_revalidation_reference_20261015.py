@@ -45,7 +45,7 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
 
     def test_matching_snapshot_is_only_review_never_permission(self):
         fence, request, _, _ = fixture()
-        self.assert_non_authorizing(fence.review(request, NOW), "REVIEW_ONLY")
+        self.assert_non_authorizing(fence.review(request, NOW, isolation_probe=lambda: True), "REVIEW_ONLY")
         self.assertEqual(fence.review_count, 1)
 
     def test_missing_or_revoked_approval_is_atomic_hold(self):
@@ -190,7 +190,7 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
         object.__setattr__(request, "asset", "lab-mutated")
         stable = ReviewRequest("lab-run", "lab-client", "lab-engagement",
                                "lab-asset", "lab-tool", "lab-capability", 5)
-        self.assert_non_authorizing(fence.review(stable, NOW), "REVIEW_ONLY")
+        self.assert_non_authorizing(fence.review(stable, NOW, isolation_probe=lambda: True), "REVIEW_ONLY")
 
     def test_corrupt_time_shapes_never_get_approved(self):
         fence, request, approval, tool = fixture()
@@ -327,6 +327,68 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
                 replace(approval, issued_at=hostile_time), tool
             )
         self.assertEqual(bad_zone.calls, 0)
+
+
+    def test_no_isolation_probe_is_never_review_only(self):
+        fence, request, _, _ = fixture()
+        self.assert_non_authorizing(fence.review(request, NOW), "HOLD")
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=None), "HOLD"
+        )
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=True), "HOLD"
+        )
+        self.assertEqual(fence.review_count, 0)
+
+    def test_in_place_approval_expiry_widening_without_epoch_is_detected(self):
+        fence, request, approval, _ = fixture()
+        after_original_expiry = approval.expires_at + timedelta(minutes=1)
+        object.__setattr__(
+            fence._approval, "expires_at", after_original_expiry + timedelta(days=1)
+        )
+        self.assert_non_authorizing(
+            fence.review(request, after_original_expiry, isolation_probe=lambda: True),
+            "HOLD",
+        )
+        self.assertEqual(fence.review_count, 0)
+
+    def test_in_place_registry_replacement_with_same_request_denied(self):
+        fence, request, _, _ = fixture()
+        object.__setattr__(fence._tool, "capability", "lab-other")
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=lambda: True), "HOLD"
+        )
+        self.assertEqual(fence.review_count, 0)
+
+    def test_in_place_approval_identity_mutation_within_probe_denied(self):
+        fence, request, _, _ = fixture()
+        def mutate_owned_approval():
+            object.__setattr__(
+                fence._approval.request, "asset", "lab-other-asset"
+            )
+            return True
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=mutate_owned_approval),
+            "HOLD",
+        )
+        self.assertEqual(fence.review_count, 0)
+
+    def test_probe_checked_exactly_once_on_valid_review(self):
+        fence, request, _, _ = fixture()
+        calls = []
+        def probe():
+            calls.append(1)
+            return True
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=probe), "REVIEW_ONLY"
+        )
+        self.assertEqual(calls, [1])
+        self.assertEqual(fence.review_count, 1)
+        fence.revoke()
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=probe), "HOLD"
+        )
+        self.assertEqual(fence.review_count, 1)
 
 
 if __name__ == "__main__":
