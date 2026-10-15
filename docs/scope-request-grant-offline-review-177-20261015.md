@@ -80,7 +80,7 @@ persistent cross-record linkage, consent, dispatch or trusted grant is created.
 - **Both** outcomes have exact literal `False` for `authorized`,
   `grant_allowed`, `dispatch_allowed`, `scan_allowed`,
   `merge_allowed`, and `deploy_allowed`. The receipt contains only
-  fixed, non-customer-specific reasons. Nothing is installed into grant
+  fixed, non-customer-specific reasons. The frozen/slotted receipt constructor now rejects spoofed `True` / truthy-ish / non-boolean authority flags, forged status strings or mismatched reasons; callers cannot construct a normal positive receipt through the public API. **This is not a cryptographically authenticated receipt and an adversarial in-process Python interpreter can still alter objects through reflection.** No runtime component should ever treat it as an authority. Nothing is installed into grant
   persistence, `ActivationGate`, `ScopePolicy`, `ToolExecutor`, or web ingress.
 - Under **no circumstances** should `REVIEW_ONLY` be converted into a grant,
   permit, approval, dispatch, release, or CI PASS.
