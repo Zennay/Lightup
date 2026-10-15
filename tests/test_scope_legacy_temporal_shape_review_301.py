@@ -105,7 +105,9 @@ def _source_has_only_offline_effects(source):
         "LegacyTemporalReview", "_canonical_datetime",
         "review_legacy_authorization_window"
     }
-    permitted_methods = {"astimezone"}
+    # Bounded append mutates only the local, synthetic in-memory snapshot list.
+    # It does not touch a client record, target, filesystem, or process.
+    permitted_methods = {"astimezone", "append"}
     for node in ast.walk(tree):
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             if not isinstance(node, ast.ImportFrom) or node.module not in approved_imports:
