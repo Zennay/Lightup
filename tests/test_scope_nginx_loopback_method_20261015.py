@@ -14,6 +14,7 @@ from urllib.parse import urlencode
 
 from lightup.domain import DomainStore, Role
 from lightup.webapp import create_app
+from lightup.webapp.security import WebSecurity
 
 SOURCE = (Path(__file__).resolve().parents[1] / "scripts"
           / "scope_nginx_loopback_method_acceptance_20261015.py")
@@ -475,6 +476,80 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
             ))
             self.assertTrue(check.run_probe(
                 template, wsgi_app=app, oracle=verify_real_app
+            ))
+
+    def test_real_app_production_security_mode_keeps_canonical_method(self):
+        # Simulate the deployed HTTPS-terminating proxy semantics locally,
+        # without TLS certificates, customer hosts, or installed services.
+        # Unlike the dev-mode app fixture, this invokes real WebSecurity's
+        # production host/proxy-peer/protocol checks before any route.
+        if not shutil.which("nginx"):
+            self.skipTest("no disposable Nginx; production-mode WSGI unproven")
+        with tempfile.TemporaryDirectory(prefix="lightup-scope-prodshape-") as folder:
+            store = DomainStore(Path(folder) / "isolated.sqlite3")
+            user = store.bootstrap_operator(
+                "prodshape@lab.invalid", "Synthetic", "fictional-password"
+            )
+            operator = store.context_for_user(user.user_id)
+            token, csrf = store.create_session(user.user_id)
+            app = create_app(
+                store,
+                security=WebSecurity(public_origin="https://lightup.example.com"),
+            )
+            template = self.template.replace(
+                "        proxy_request_buffering on;",
+                "".join(f'        proxy_set_header {name} "";\n'
+                        for name in check.OVERRIDE_NAMES)
+                + "        proxy_request_buffering on;",
+            )
+
+            def send(port, method, path, spoof, *, form=None):
+                headers = {
+                    "Host": "lightup.example.com",
+                    "Cookie": "lightup_session=" + token,
+                }
+                payload = None
+                if form is not None:
+                    payload = urlencode(form).encode("ascii")
+                    headers["Content-Type"] = "application/x-www-form-urlencoded"
+                    headers["Origin"] = "https://lightup.example.com"
+                headers.update(spoof)
+                conn = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+                try:
+                    conn.request(method, path, body=payload, headers=headers)
+                    result = conn.getresponse()
+                    return result.status, dict(result.getheaders()), result.read(8192)
+                finally:
+                    conn.close()
+
+            def proof(port):
+                baseline = len(store.list_clients(operator))
+                for name in check.OVERRIDE_NAMES:
+                    status, headers, _ = send(
+                        port, "GET", "/", {name: "POST"},
+                    )
+                    if status != 200 or headers.get("Strict-Transport-Security") != "max-age=31536000":
+                        return False
+                    # A malicious "downgrade" to GET must not bypass CSRF
+                    # despite a real HTTPS-production-mode origin/proxy check.
+                    status, headers, _ = send(
+                        port, "POST", "/clients", {name: "GET"},
+                        form={"name": "Must Never Exist", "csrf": "invalid"},
+                    )
+                    if status != 403 or len(store.list_clients(operator)) != baseline:
+                        return False
+                status, headers, _ = send(
+                    port, "POST", "/clients",
+                    {check.OVERRIDE_NAMES[0]: "GET"},
+                    form={"name": "Prodshape Synthetic", "csrf": csrf},
+                )
+                return status == 303 and len(store.list_clients(operator)) == baseline + 1
+
+            self.assertFalse(check.run_probe(
+                template, force_rewrite=True, wsgi_app=app, oracle=proof
+            ))
+            self.assertTrue(check.run_probe(
+                template, wsgi_app=app, oracle=proof
             ))
 
     def test_disposable_fixture_detects_deliberate_method_rewrite(self):
