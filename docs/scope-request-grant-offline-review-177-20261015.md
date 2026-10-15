@@ -190,6 +190,29 @@ Source-owner follow-up: enforce stable request→grant cardinality or
 design signed, immutable explicit amendment/retest approvals with a
 proper migration and atomic uniqueness constraints.
 
+## W13: detect hidden concurrent same-target grants in single-record review
+
+A caller can omit conflicting grants from a requested batch, and the real
+`DomainStore.get_current_grant` does not establish authenticated priority
+between overlapping persisted grants. A single read-only review therefore
+scans **other stored grants for the same client** in the same SQLite snapshot.
+When two granted **effective assets** overlap *and their declared UTC validity
+intervals overlap*, **both single-grant reviews HOLD**. This remains true
+when their approved request IDs are different and all foreign keys are valid.
+Malformed same-client neighboring grant windows/asset JSON also HOLD rather
+than silently skipping evidence that could hide a conflict.
+
+The review distinguishes harmless cases: a second grant for a disjoint
+asset is allowed as structural REVIEW_ONLY, a matching asset excluded in
+the other grant does not count as active, and a future **non-overlapping**
+validity interval does not conflict. Independent disposable SQLite tests
+exercise those boundaries. The progress-handler VM budget bounds the
+additional scan. This is only an offline conservative metadata review,
+NOT an installed conflict scheduler, expiration/revocation enforcement,
+or permission to choose one grant for target interaction. The source
+owner must define authenticated supersession/amendment policy before any
+real dispatch can use overlapping grant histories.
+
 ## Atomic persisted batch, same read snapshot
 
 The second optional API `review_persisted_grant_batch(local_database_path,
