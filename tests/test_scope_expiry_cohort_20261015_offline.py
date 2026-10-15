@@ -6,6 +6,8 @@ import os
 import socket
 import subprocess
 import sys
+import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -322,6 +324,75 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
         self.assertNoAuthority(result)
         self.assertEqual(stderr, b"")
 
+
+
+    def test_open_pipe_without_eof_cannot_keep_cli_alive(self):
+        """Even a completely valid JSON prefix is HOLD without timely EOF."""
+        cmd = [sys.executable, str(ROOT / "scripts" /
+                                  "review_scope_expiry_cohort_20261015_offline.py")]
+        proc = subprocess.Popen(
+            cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, env={**os.environ, "PYTHONPATH": str(ROOT / "src")},
+        )
+        try:
+            started = time.monotonic()
+            proc.stdin.write(encoded(document()))
+            proc.stdin.flush()  # Deliberately NEVER close the writer here.
+            status = proc.wait(timeout=4.5)
+            elapsed = time.monotonic() - started
+            output = proc.stdout.read()
+            error = proc.stderr.read()
+            self.assertEqual(status, 2)
+            self.assertLess(elapsed, 4.5)
+            self.assertEqual(error, b"")
+            receipt = json.loads(output.decode("ascii"))
+            self.assertEqual(receipt["status"], "HOLD")
+            self.assertEqual(set(receipt), {"status", *reviewer.DENIAL_FLAGS})
+            self.assertNoAuthority(receipt)
+            self.assertEqual(len(output.splitlines()), 1)
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait(timeout=2)
+            proc.stdin.close()
+            proc.stdout.close()
+            proc.stderr.close()
+
+    def test_local_unix_socket_stdin_is_never_admitted(self):
+        """No socket I/O is trusted as an offline packet, even over AF_UNIX."""
+        cmd = [sys.executable, str(ROOT / "scripts" /
+                                  "review_scope_expiry_cohort_20261015_offline.py")]
+        with socket.socketpair() as (reader, writer):
+            writer.sendall(encoded(document()))
+            writer.shutdown(socket.SHUT_WR)
+            proc = subprocess.run(
+                cmd, stdin=reader, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, check=False, timeout=5,
+            )
+        self.assertEqual(proc.returncode, 2)
+        self.assertEqual(proc.stderr, b"")
+        receipt = json.loads(proc.stdout.decode("ascii"))
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(set(receipt), {"status", *reviewer.DENIAL_FLAGS})
+        self.assertNoAuthority(receipt)
+
+    def test_staged_regular_file_fd0_valid_control(self):
+        """A local fixture supplied through fd0, not an input pathname, works."""
+        cmd = [sys.executable, str(ROOT / "scripts" /
+                                  "review_scope_expiry_cohort_20261015_offline.py")]
+        with tempfile.TemporaryFile(mode="w+b") as fixture:
+            fixture.write(encoded(document()))
+            fixture.seek(0)
+            proc = subprocess.run(
+                cmd, stdin=fixture, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, check=False, timeout=5,
+            )
+        self.assertEqual(proc.returncode, 3)
+        self.assertEqual(proc.stderr, b"")
+        receipt = json.loads(proc.stdout.decode("ascii"))
+        self.assertEqual(receipt["status"], "REVIEW_ONLY")
+        self.assertEqual(receipt["expired"], 1)
+        self.assertNoAuthority(receipt)
 
 
 if __name__ == "__main__":
