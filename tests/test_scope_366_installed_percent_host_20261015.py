@@ -154,6 +154,27 @@ class InstalledPercentEncodedHostScopeTests(unittest.TestCase):
                 with self.subTest(raw=raw):
                     self._deny_unlisted(self.host_policy, raw)
 
+    def test_all_256_percent_octets_are_literal_in_host_ip_and_loopback(self):
+        # Exhaust all one-byte %XX spellings rather than assuming a shortlist
+        # catches future urlparse / adapter behavior. No decode, DNS or I/O.
+        lab_policy = ScopePolicy(allow_private_lab=True)
+        for code in range(256):
+            for digits in (f"{code:02x}", f"{code:02X}"):
+                token = "%" + digits
+                with self.subTest(escape=digits):
+                    self._deny_unlisted(self.host_policy, "security" + token + ".example.test")
+                    self._deny_unlisted(self.network_policy, "192" + token + ".0.2.7")
+                    self._deny_unlisted(lab_policy, "local" + token + "host")
+
+    def test_malformed_percent_sequences_are_not_decoded_into_authority(self):
+        # Broken escapes must never repair to a declared host or loopback.
+        for token in ("%", "%G0", "%0G", "%2", "%u002e", "%%2e", "%zz"):
+            with self.subTest(token=token):
+                self._deny_unlisted(self.host_policy, "security" + token + "example.test")
+                self._deny_unlisted(
+                    ScopePolicy(allow_private_lab=True), "local" + token + "host"
+                )
+
     def test_normalization_keeps_literal_percent_escape(self):
         for raw in ("security%2eexample%2etest", "localhost%2e", "127%2e0%2e0%2e1"):
             with self.subTest(raw=raw):
