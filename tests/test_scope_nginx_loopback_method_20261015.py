@@ -184,14 +184,17 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
         with patch.object(check, "TEMPLATE") as fake_template, \
              patch.object(check.shutil, "which", return_value="/lab/nginx"):
             fake_template.read_text.return_value = self.template
-            for candidate, mutation, expected, exit_code in (
-                (True, False, "REVIEW_ONLY", 3),
-                (True, True, "HOLD", 2),
-                (False, False, "HOLD", 2),
+            for candidate, get_mutant, post_mutant, expected, exit_code in (
+                (True, False, False, "REVIEW_ONLY", 3),
+                (True, True, False, "HOLD", 2),
+                (True, False, True, "HOLD", 2),
+                (False, False, False, "HOLD", 2),
             ):
-                with self.subTest(candidate=candidate, mutation=mutation), \
+                with self.subTest(candidate=candidate,
+                                  get_mutant=get_mutant,
+                                  post_mutant=post_mutant), \
                      patch.object(check, "run_probe",
-                                  side_effect=[candidate, mutation]) as probe:
+                                  side_effect=[candidate, get_mutant, post_mutant]) as probe:
                     out = io.StringIO()
                     with contextlib.redirect_stdout(out):
                         code = check.main()
@@ -199,7 +202,10 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                 self.assertEqual(code, exit_code)
                 self.assertEqual(receipt["verdict"], expected)
                 self.assertTrue(all(receipt[k] is False for k in check.FALSE_FLAGS))
-                self.assertEqual(probe.call_count, 2 if candidate else 1)
+                self.assertEqual(
+                    probe.call_count,
+                    1 if not candidate else (2 if get_mutant else 3),
+                )
 
     def test_malformed_upstream_receipts_always_fail_closed(self):
         good = {
@@ -523,6 +529,10 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                 template, force_rewrite=True, wsgi_app=app,
                 oracle=verify_real_app
             ))
+            self.assertFalse(check.run_probe(
+                template, force_rewrite_post=True, wsgi_app=app,
+                oracle=verify_real_app
+            ))
             self.assertTrue(check.run_probe(
                 template, wsgi_app=app, oracle=verify_real_app
             ))
@@ -611,6 +621,9 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
             self.assertFalse(check.run_probe(
                 template, force_rewrite=True, wsgi_app=app, oracle=proof
             ))
+            self.assertFalse(check.run_probe(
+                template, force_rewrite_post=True, wsgi_app=app, oracle=proof
+            ))
             self.assertTrue(check.run_probe(
                 template, wsgi_app=app, oracle=proof
             ))
@@ -629,6 +642,8 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
         self.assertTrue(check.run_probe(stripped))
         # A deliberately vulnerable proxy_method rewrite MUST be caught.
         self.assertFalse(check.run_probe(stripped, force_rewrite=True))
+        # A GET incorrectly promoted into POST is independently detected.
+        self.assertFalse(check.run_probe(stripped, force_rewrite_post=True))
 
     def test_single_missing_stripping_rule_is_detected_by_real_nginx(self):
         if not shutil.which("nginx"):
