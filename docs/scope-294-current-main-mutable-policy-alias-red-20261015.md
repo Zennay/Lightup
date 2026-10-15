@@ -101,3 +101,17 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_294_host_meta
 ```
 
 Explicit limitation: this lexical gate **does not prove real DNS/IDNA validity**, does not make authorization decisions, and does not repair source-owned installed `ScopePolicy` #294/#292/#296, grant provenance #177, revoke #347 or runtime executor trust. Remain INCUBATE / DRAFT-HOLD.
+
+## W7 — enforce the review cardinality budget on the actual detached copy
+
+A caller-owned exact `list` can be changed after `len(raw)` is observed but before `tuple(raw)` constructs the immutable detached snapshot. The earlier opt-in helper checked only the size of `raw` before copying, so an interleaved growth from one entry to 129 could be labelled `REVIEW_ONLY` despite a maximum of 128. This is a **real size-budget defect in the isolated metadata reviewer**, not evidence of a changed real grant.
+
+Both `_bounded_hosts` and `_bounded_networks` now enforce `len(copied) <= 128` **after** the independent tuple copy as well as the original precheck, before validating/surfacing metadata. The new test `tests/test_scope_294_snapshot_copy_bounds_20261015.py` deterministically injects growth precisely between the original size check and copy, then requires a generic **HOLD** and no private or partial data; baseline 128 distinct valid inputs still produce only **REVIEW_ONLY**, 129 reject.
+
+The deterministic fixture changes only its own in-memory list; it does not need racing live threads, DNS, sockets, scanning, subprocess dispatch, permanent VPS, customer grants or production policy changes. This additional limit is a per-collection bounded snapshot check, **not a claim that two separate caller-owned collections are snapshotted atomically together**.
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_294_snapshot_copy_bounds_20261015.py' -v
+```
+
+**No promotion to authorization:** installed `ScopePolicy` still contains the original #294 mutable-alias issue, #292/#296 configuration parsing requires its source owner, and #177/#347 consent/revoke are untouched; independent exact-HEAD hosted and permanently registered VPS CI and human approval remain separate.
