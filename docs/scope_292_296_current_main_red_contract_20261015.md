@@ -10,7 +10,7 @@
 
 ## Implemented executable acceptance
 
-`tests/test_scope_292_296_current_main_source_red_20261015.py` asserts that malformed declarations either fail to construct/evaluate or return `allowed=False`. Eighteen deliberately `@expectedFailure` canaries demonstrate eighteen real fail-open cases on installed `main`, including stdlib IPv4Address/IPv4Network/IPv6Address/IPv6Network instances, host-bit CIDR widening, bare public IPv4/IPv6 addresses accepted as implicit /32 or /128, dotted IPv4 masks and non-canonical expanded IPv6 notation; a separate witness executes all eighteen and requires **eighteen real AssertionError failures**, not a masked parser exception or unexpected success. Positive controls preserve canonical IPv4 `/24`, IPv4 `/32`, IPv6 `/64` and IPv6 `/128` semantics, and confirm missing synthetic authorization denies public network membership. Negative controls test bytearray, None, nonsense strings and no-network/no-process tripwires.
+`tests/test_scope_292_296_current_main_source_red_20261015.py` asserts that malformed declarations either fail to construct/evaluate or return `allowed=False`. Twenty-one deliberately `@expectedFailure` canaries demonstrate twenty-one real fail-open cases on installed `main`, including stdlib IPv4Address/IPv4Network/IPv6Address/IPv6Network instances, host-bit CIDR widening, bare public IPv4/IPv6 addresses accepted as implicit /32 or /128, dotted IPv4 masks and non-canonical expanded IPv6 notation; a separate witness executes all twenty-one and requires **twenty-one real AssertionError failures**, not a masked parser exception or unexpected success. Positive controls preserve canonical IPv4 `/24`, IPv4 `/32`, IPv6 `/64` and IPv6 `/128` semantics, and confirm missing synthetic authorization denies public network membership. Negative controls test bytearray, None, nonsense strings and no-network/no-process tripwires.
 
 ## Current-main review additions — strict canonical oracle + falsification
 
@@ -31,8 +31,8 @@ scope. This does not authorize the example network addresses or query DNS.
 Four additional *mutation controls* deliberately simulate an incorrect
 producer: a masked parser `TypeError`, an unexpected all-green
 `@expectedFailure`, a forged unrelated `AssertionError` and a missing
-replay case. The witness must reject each false proof. Original 18 installed
-source RED cases still require exactly 18 genuine `AssertionError` results
+replay case. The witness must reject each false proof. Original 21 installed
+source RED cases still require exactly 21 genuine `AssertionError` results
 and no network/process I/O. All mutation controls use disposable in-memory
 `unittest.TestResult` objects and alter no production file.
 
@@ -112,13 +112,33 @@ configuration migration. In particular its standalone list review cannot
 atomically validate another worker's live `ScopePolicy` input in the face of
 concurrent mutation; that requires #294 snapshot / #297 atomicity work.
 
+## Installed source risk if optional public-authorization gate is disabled
+
+Three additional **actual installed-source expected-REDs** isolate the
+`ScopePolicy(require_authorization_for_public=False)` configuration:
+malformed integer network declarations (#292), IPv4 host-bit `/0` widening
+(#296), and IPv6 host-bit `/0` widening (#296) must not create
+`EXPLICIT_NETWORK` authority merely because the separate, explicit
+public-authorization switch is opted out. They currently do so even with
+**no synthetic `Authorization` object passed to the `Target`**, because
+installed `_networks()` still uses `ip_network(strict=False)`.
+Two normal-green controls establish that canonical IPv4 and IPv6 CIDRs
+continue to match *only their stated network* with that switch disabled;
+valid behavior must not be broken by the source-owner remediation.
+
+The expected-RED witness now checks **21 distinct actual assertion failures**
+rather than 18, with matching issue-specific test identities. They are
+synthetic, offline policy unit decisions; the opt-out setting is not a
+legitimate substitute for verified customer/operator provenance in
+production and cannot be treated as a release or scanning permit.
+
 ## Current follow-up: independent RED witness and stream completeness
 
 Two independent owner-safe changes make the existing #292/#296 evidence harder to
 misinterpret, **without touching installed `ScopePolicy`**:
 
-1. The original 18 `@expectedFailure` cases now require distinct test-method
-   identities and a fixed count of **exactly eighteen**. More importantly the
+1. The original 21 `@expectedFailure` cases now require distinct test-method
+   identities and a fixed count of **exactly twenty-one**. More importantly the
    captured trace must identify the actual `_assert_rejected` helper and
    its `self.assertFalse(result.allowed, ...)` line: a forged exception with
    the **same** error message no longer counts as installed source failure.
@@ -151,7 +171,7 @@ never a release grant.
 ## Conditions before owner integration or closing issues
 
 1. Original source owner updates only their production-owned `ScopePolicy`: exact built-in nonempty string entries, strict canonical network declarations and no implicit host-bit widening. Choose fail-closed handling that cannot mint a permit.
-2. Convert all eighteen `@expectedFailure` cases to normal passing assertions **after** original source fix. The witness must then be revised to require eighteen ordinary successes, not simply deleted; leaving `unexpectedSuccess` is correctly a failed gate.
+2. Convert all twenty-one `@expectedFailure` cases to normal passing assertions **after** original source fix. The witness must then be revised to require twenty-one ordinary successes, not simply deleted; leaving `unexpectedSuccess` is correctly a failed gate.
 3. Complete exact-commit CI on both supported Python versions, and independently verify self-hosted **permanently registered** VPS evidence. A queued job, hosted preflight or branch-local unittest is not proof of permanent VPS execution.
 4. Preserve actual `#177` verified assessment/customer/operator consent, `#347` live revocation before any I/O, tenant/asset/capability/destination/ingress binding, security/privacy review and explicit human approval. These cannot be inferred from this test suite.
 5. Keep this PR **DRAFT/HOLD**. No merge, production deployment, grants, real-target discovery or scans.
