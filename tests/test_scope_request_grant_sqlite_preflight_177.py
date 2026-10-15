@@ -175,6 +175,35 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
         self.tmp.cleanup()
         self.setUp()
 
+    def test_persisted_grant_created_at_must_follow_review_decision(self):
+        decided = datetime.fromisoformat(self.request.decided_at)
+        for index, invalid in enumerate((
+            (decided - timedelta(seconds=1)).isoformat(),
+            (self.reviewed_at + timedelta(seconds=1)).isoformat(),
+            "2030-01-31T24:00:00+00:00",
+            "2030-01-31T10:00:00+01:00",
+            "",
+        )):
+            with self.subTest(created_at=invalid):
+                if index:
+                    self._reset_fixture()
+                self.upgrade_synthetic_only()
+                self.update(
+                    "authorization_grants", "created_at", invalid,
+                    "grant_id", self.grant.grant_id,
+                )
+                self.assert_hold()
+
+    def test_persisted_self_approval_must_hold_even_with_matching_fk(self):
+        self.upgrade_synthetic_only()
+        with sqlite3.connect(self.path) as con:
+            affected = con.execute(
+                "UPDATE assessment_requests SET requested_by=? WHERE request_id=?",
+                (self.operator.user_id, self.request.request_id),
+            ).rowcount
+            self.assertEqual(affected, 1)
+        self.assert_hold()
+
     def test_real_tenant_and_decider_lineage_mismatches_hold(self):
         corruptions = (
             ("authorization_grants", "client_id", "foreign", "grant_id"),
