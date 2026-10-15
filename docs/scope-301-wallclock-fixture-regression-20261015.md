@@ -45,6 +45,23 @@ on every calendar date, including beyond October 2026. It exercises the real
 scope-to-legacy-authorization path without modifying production clock injection
 or relaxing any of the existing expected-RED source security canaries.
 
+## Chronological cache/replay regression (W3)
+
+The same immutable fictional authorization is reevaluated at **642 seeded,
+shuffled synthetic clock instants**, spanning two minutes before and after its
+one-minute inclusive authorization window. The actual installed
+`ScopePolicy.decide()` path must recheck current validity for **every**
+decision, including after a prior in-window allowance. An out-of-window
+decision must remain `AUTHORIZATION_EXPIRED`, not reuse any prior
+`EXPLICIT_HOST` conclusion. The exact normalized host and original grant
+remain unchanged. Tests use local in-memory clock substitution only, with
+zero sleep, target I/O, cache store, customer approval or authorization issuance.
+
+This is specifically a temporal non-caching regression for the #301
+fixture route, **not** a claim that a mutable/cache-backed production runtime
+has been secured. The separate run/executor revocation and concurrency
+source owners keep their implementation responsibility.
+
 ## Ownership and proof gates
 
 Only this original time-window test module and this standalone explanation
