@@ -253,8 +253,9 @@ class OfflineRevalidationFence:
             self._closed = True
             self._approval = None
             self._approval_seal = None
-            # The original binding is intentionally not reusable, even
-            # though revocation already closes the instance.
+            # Permanently closed, so even the historical synthetic binding
+            # can be discarded without allowing it to be reused.
+            self._bound_approval = None
             # Discard both halves of the obsolete identity; leave no stale
             # synthetic capability registered on a permanently closed fence.
             self._tool = None
