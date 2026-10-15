@@ -275,6 +275,82 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
         self.assertEqual(outcome["before"], outcome["after"])
         self.assertEqual(child.stderr, b"")
 
+    def test_forged_fd0_identity_is_denied_at_each_read_boundary(self):
+        """Child-local adversarial fstat mutation: before read, midstream, EOF."""
+        data = json.dumps(synthetic_claim()).encode()
+        for threshold in (2, 3, 4):
+            program = textwrap.dedent("""
+                import importlib.util, os, sys
+                from unittest import mock
+                spec = importlib.util.spec_from_file_location("offline_review_1437", sys.argv[1])
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                origin = os.fstat
+                initial = origin(0)
+                fields = list(initial)
+                fields[1] += 12345
+                forged = os.stat_result(fields)
+                seen = [0]
+                def fake_fstat(fd):
+                    if fd == 0:
+                        seen[0] += 1
+                        if seen[0] >= THRESHOLD:
+                            return forged
+                    return origin(fd)
+                prior = os.get_blocking(0)
+                try:
+                    with mock.patch.object(module.os, "fstat", side_effect=fake_fstat):
+                        module._read_local_stdin()
+                except module.ReviewInputError:
+                    if os.get_blocking(0) != prior:
+                        raise AssertionError("stdin nonblocking flag not restored")
+                    sys.exit(0)
+                raise AssertionError("falsified descriptor identity was accepted")
+            """).replace("THRESHOLD", str(threshold))
+            with self.subTest(threshold=threshold):
+                child = subprocess.run(
+                    [sys.executable, "-c", program, str(SCRIPT)], input=data,
+                    capture_output=True, timeout=5, check=False,
+                )
+                self.assertEqual(child.returncode, 0,
+                                 child.stderr.decode(errors="replace"))
+                self.assertEqual(child.stdout, b"")
+                self.assertEqual(child.stderr, b"")
+
+    def test_forged_stdout_identity_refuses_to_emit_receipt(self):
+        program = textwrap.dedent("""
+            import importlib.util, os, sys
+            from unittest import mock
+            spec = importlib.util.spec_from_file_location("offline_review_1437", sys.argv[1])
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            origin = os.fstat
+            fields = list(origin(1))
+            fields[1] += 12345
+            forged = os.stat_result(fields)
+            seen = [0]
+            def fake_fstat(fd):
+                if fd == 1:
+                    seen[0] += 1
+                    if seen[0] >= 2:
+                        return forged
+                return origin(fd)
+            with mock.patch.object(module.os, "fstat", side_effect=fake_fstat):
+                accepted = module._emit_local_receipt(
+                    {"status": "HOLD", **module.FALSE_FLAGS}
+                )
+            if accepted:
+                raise AssertionError("stdout identity swap was accepted")
+        """)
+        child = subprocess.run(
+            [sys.executable, "-c", program, str(SCRIPT)],
+            input=b"", capture_output=True, timeout=5, check=False,
+        )
+        self.assertEqual(child.returncode, 0,
+                         child.stderr.decode(errors="replace"))
+        self.assertEqual(child.stdout, b"")
+        self.assertEqual(child.stderr, b"")
+
     def test_regular_file_snapshot_and_seeked_file_hold(self):
         data = json.dumps(synthetic_claim()).encode("utf-8")
         with tempfile.TemporaryFile(mode="w+b") as fixture:
