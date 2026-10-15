@@ -243,11 +243,14 @@ def _emit_receipt(receipt: dict[str, object]) -> bool:
         fd = sys.stdout.fileno()
         if fd != 1:
             return False
-        mode = os.fstat(fd).st_mode
+        original = os.fstat(fd)
+        # A second fstat after validating 'mode' could observe a replacement
+        # socket/file and accidentally authorize that NEW object. Validate
+        # the exact snapshot which is subsequently compared with the dup.
+        mode = original.st_mode
         if not (stat.S_ISFIFO(mode) or
                 (stat.S_ISCHR(mode) and os.isatty(fd))):
             return False
-        original = os.fstat(fd)
         # Pin the checked object. A late dup2(1) must never redirect this
         # receipt to an attacker-supplied socket/file after our fstat check.
         pinned_fd = os.dup(fd)
