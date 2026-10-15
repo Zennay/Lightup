@@ -36,6 +36,12 @@ device stdin, regular-file stdout or socket stdout is refused before data is
 read or emitted. This is a conservative local preflight, **not** a hardened
 descriptor pinning or race-resistant production authorization boundary.
 No network connection is made by the reviewer.
+Bounded stdin reads use a monotonic two-second EOF deadline, with the fd
+restored to its original blocking mode afterwards. A timed-out incomplete
+claim receives the same generic HOLD output. Output uses one nonblocking
+receipt write of at most 512 bytes and restores the original fd mode, so a
+filled pipe cannot hang the program. This does not establish race-resistant
+fd pinning or replace real target authorization.
 
 Its *only* receipts are `REVIEW_ONLY` (lexical consistency, exit 3) or `HOLD`
 (exit 2), with six literal false authority/permit/dispatch/merge/deploy/release
@@ -59,7 +65,7 @@ PYTHONPATH=src python -m unittest discover -s tests \
 ```
 
 **Executed local reference validation:** the same isolated reviewer and
-regression fixtures were executed under Python with all **16 / 16 standard
+regression fixtures were executed under Python with all **18 / 18 standard
 library test methods passing**, including real subprocess exit-code and privacy
 checks, size/type boundaries, JSON-escape collisions, spoofed extra permit
 fields, local file input, socket stdin/stdout refusal, rejected regular-file
