@@ -290,5 +290,27 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
             self.assertEqual(fence.review_count, 0)
 
 
+    def test_frozen_claim_mutated_by_callback_never_retargets_review(self):
+        fence, request, _, _ = fixture()
+        def corrupt_input():
+            object.__setattr__(request, "asset", "lab-other-asset")
+            return True
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=corrupt_input), "HOLD"
+        )
+        self.assertEqual(fence.review_count, 0)
+
+    def test_cannot_mutate_bad_claim_into_good_during_probe(self):
+        fence, original, _, _ = fixture()
+        request = replace(original, asset="lab-unapproved")
+        def launder_input():
+            object.__setattr__(request, "asset", original.asset)
+            return True
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=launder_input), "HOLD"
+        )
+        self.assertEqual(fence.review_count, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
