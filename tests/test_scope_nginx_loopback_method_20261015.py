@@ -375,6 +375,8 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
 
             def verify_real_app(port):
                 baseline = len(store.list_clients(operator))
+                request_baseline = len(store.list_assessment_requests(operator))
+                portal = f"/portal/{client.client_id}/requests"
                 for name in check.OVERRIDE_NAMES:
                     spoof = {name: "POST"}
                     code, _, body = send(
@@ -416,6 +418,35 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                     )
                     if code != 403 or store.session_context(op_token) is None:
                         return False
+                    # A GET with an override to POST must not create an
+                    # assessment request. This is a real client portal route,
+                    # not an artificial unmatched URL.
+                    code, _, _ = send(
+                        port, "GET", portal, token=client_token,
+                        headers={name: "POST"},
+                    )
+                    if code != 404 or len(store.list_assessment_requests(operator)) != request_baseline:
+                        return False
+                    # A client POST with a forged CSRF must not submit an
+                    # assessment request even with a method downgrade header.
+                    code, _, _ = send(
+                        port, "POST", portal, token=client_token,
+                        form={"assets": "synthetic.invalid", "risk": "1",
+                              "csrf": "forged"},
+                        headers={name: "GET"},
+                    )
+                    if code != 403 or len(store.list_assessment_requests(operator)) != request_baseline:
+                        return False
+                # Positive client-portal control: a valid same-session CSRF
+                # must still reach the actual POST route despite GET spoofing.
+                code, _, _ = send(
+                    port, "POST", portal, token=client_token,
+                    form={"assets": "synthetic.invalid", "risk": "1",
+                          "csrf": client_csrf},
+                    headers={check.OVERRIDE_NAMES[0]: "GET"},
+                )
+                if code != 303 or len(store.list_assessment_requests(operator)) != request_baseline + 1:
+                    return False
                 # A *legitimate* operator POST is still a POST even with
                 # forged GET metadata, and needs the actual session CSRF.
                 code, _, _ = send(
