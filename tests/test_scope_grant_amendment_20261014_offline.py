@@ -915,6 +915,76 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
         self.assertEqual((receipt["status"], code), ("HOLD", 2))
         self.assert_denied_authority(receipt, code)
 
+    def test_before_unrestricted_capabilities_may_be_strictly_narrowed(self):
+        from lightup.engagements import RiskLevel, ScopeDefinition
+
+        grant = fixture()
+        grant["before"]["capabilities"] = []
+        grant["after"]["capabilities"] = ["tls_baseline"]
+        receipt, code = reviewer.review(encode(grant))
+        self.assertEqual((receipt["status"], code), ("REVIEW_ONLY", 3))
+        self.assert_denied_authority(receipt, code)
+        before = ScopeDefinition(
+            assets=("lab-a.example",), max_risk=RiskLevel.STANDARD,
+            allowed_capabilities=(),
+        )
+        after = ScopeDefinition(
+            assets=("lab-a.example",), max_risk=RiskLevel.STANDARD,
+            allowed_capabilities=("tls_baseline",),
+        )
+        for name in ("tls_baseline", "http_headers", "unknown_tool", ""):
+            self.assertTrue(before.allows_capability(name))
+            if after.allows_capability(name):
+                self.assertTrue(before.allows_capability(name))
+        self.assertFalse(after.allows_capability("unknown_tool"))
+
+    def test_no_caps_after_stays_hold_even_if_before_was_unrestricted(self):
+        packet = fixture()
+        packet["before"]["capabilities"] = []
+        packet["after"]["capabilities"] = []
+        output, code = reviewer.review(encode(packet))
+        self.assertEqual((output["status"], code), ("HOLD", 2))
+        self.assert_denied_authority(output, code)
+
+    def test_unrestricted_before_constraining_caps_cannot_mask_other_widenings(self):
+        # Six independent expansion dimensions: narrowed tool list is NOT
+        # consent for wider assets, risk, time, exclusions or retest rights.
+        flags = (
+            ("assets", ["lab-a.example", "lab-b.example", "lab-c.example"], "assets"),
+            ("max_risk", 4, "risk"),
+            ("excluded_assets", [], "exclusions"),
+            ("valid_until", "2026-10-16T00:00:00Z", "window"),
+            ("approved_by", "unapproved-other", "identity"),
+            ("recurring_retest_allowed", True, "recurring_retest"),
+        )
+        for mask in range(64):
+            packet = fixture()
+            packet["before"]["capabilities"] = []
+            packet["after"]["capabilities"] = ["tls_baseline"]
+            expected = set()
+            for bit, (field, replacement, reason) in enumerate(flags):
+                if mask & (1 << bit):
+                    packet["after"][field] = replacement
+                    expected.add(reason)
+            outcome, code = reviewer.review(encode(packet))
+            with self.subTest(mask=mask):
+                self.assert_denied_authority(outcome, code)
+                if expected:
+                    self.assertEqual((outcome["status"], code), ("HOLD", 2))
+                    self.assertEqual(outcome["widening_dimensions"], sorted(expected))
+                else:
+                    self.assertEqual((outcome["status"], code), ("REVIEW_ONLY", 3))
+
+    def test_unrestricted_before_with_revoked_targets_still_never_authorizes(self):
+        packet = fixture()
+        packet["before"]["capabilities"] = []
+        packet["after"]["capabilities"] = ["tls_baseline"]
+        packet["after"]["assets"] = []
+        packet["after"]["max_risk"] = 1
+        output, code = reviewer.review(encode(packet))
+        self.assertEqual((output["status"], code), ("REVIEW_ONLY", 3))
+        self.assert_denied_authority(output, code)
+
     def test_cli_rejects_no_flag(self):
         result = subprocess.run(
             [sys.executable, "-B", str(SCRIPT)],
