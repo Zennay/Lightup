@@ -59,3 +59,17 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_294_offline_m
 ```
 
 **Release remains blocked by installed source-owner #294 and original six expected-RED tests, live customer consent #177, revocation #347, independent permanently registered VPS CI, security/privacy and explicit human approval.**
+
+## W4: exact CIDR spelling, no silent scope inflation (#294 / related #296)
+
+The optional reference formerly passed `ip_network(text, strict=False)` for network shape. That silently rewrote noncanonical spellings (for example `8.8.8.8/24` into `8.8.8.0/24`) and treated bare IPs as implicit /32 or /128; such a rewrite is inappropriate to label as *canonical review metadata*.
+
+This patch narrows **only the new uninstalled review helper** to `ip_network(value, strict=True)` followed by `str(parsed) == value`. Consequently, the separate reviewer now **HOLDs** host-bit CIDR forms, bare IPs, legacy address/mask aliases, padded prefix lengths and noncanonical IPv6 spellings without silently converting any of them into an accepted network. It still handles **exact** canonical IPv4/IPv6 CIDR strings as `REVIEW_ONLY`, with every authority flag False. The installed `ScopePolicy` source and its original product authorization vulnerabilities are NOT changed.
+
+New add-only `tests/test_scope_294_exact_network_spelling_review_20261015.py` covers valid IPv4/IPv6 identities, host-bit and alias refusal, bare literal vs /32, `int`/`bool`/`bytes`/`bytearray` coercion admission, atomic all-or-nothing mixed input, caller mutation after review, current legacy installed policy flagged HOLD, and explicit DNS/socket/subprocess tripwires. CLI path uses the same strict helper and returns generic HOLD without echoing user network data. This is intentionally narrower than installed source: do not interpret passing reviewer tests as repair of #292, #294, #296, or real permissions.
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_294_exact_network_spelling_review_20261015.py' -v
+```
+
+**Release still requires original source-owner fixes, installed expected-RED -> plain-PASS conversion, real #177 consent, #347 revocation, independent registered VPS runner evidence and human/security/privacy sign-off.**
