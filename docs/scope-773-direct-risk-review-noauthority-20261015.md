@@ -49,8 +49,13 @@ invalid raw types, spoofed enum/numeric forms, foreign scope subclasses,
 destructive-tier denial, monotonicity, all-six-false receipt invariants,
 secret non-reflection, constructor-forgery rejection, immutable fresh snapshot
 outputs, live mocked file/network/subprocess denial tripwires, an AST import
-allowlist canary, and one `expectedFailure`
+allowlist canary, and three `expectedFailure` installed-source witnesses
 for the *installed* direct-int-99 policy gap.
+
+The three installed-policy expected-RED witnesses cover raw integer `99`,
+boolean `True` and foreign `IntEnum(99)` risk ceilings. Each is a genuine
+synthetic `TARGET_ACTIVE` decision on the unchanged mainline source and is
+**not** evidence that the requested authority is safe.
 
 An expected failure on the installed policy is a documented **RED**,
 not a fix, a green authorization decision, or authorization to touch targets.
