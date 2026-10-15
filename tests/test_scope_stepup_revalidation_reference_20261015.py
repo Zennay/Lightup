@@ -869,5 +869,104 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
         )
 
 
+    def test_invalid_or_missing_stored_snapshot_never_calls_probe(self):
+        fence, request, _, _ = fixture()
+        calls = []
+        candidate = OfflineRevalidationFence()
+        self.assert_non_authorizing(candidate.review(
+            request, NOW, isolation_probe=lambda: calls.append("uninitialized") or True
+        ), "HOLD")
+        self.assertEqual(calls, [])
+        fence.revoke()
+        self.assert_non_authorizing(fence.review(
+            request, NOW, isolation_probe=lambda: calls.append("revoked") or True
+        ), "HOLD")
+        self.assertEqual(calls, [])
+
+    def test_wrong_tenant_target_tool_or_risk_never_calls_probe(self):
+        variants = (
+            ("client", "lab-unapproved"),
+            ("asset", "lab-unapproved"),
+            ("tool", "lab-unapproved"),
+            ("capability", "lab-unapproved"),
+            ("risk", 4),
+        )
+        for field, other in variants:
+            with self.subTest(field=field):
+                fence, request, _, _ = fixture()
+                events = []
+                self.assert_non_authorizing(fence.review(
+                    replace(request, **{field: other}), NOW,
+                    isolation_probe=lambda: events.append("isolation") or True,
+                    fresh_clock_probe=lambda: events.append("clock") or NOW,
+                ), "HOLD")
+                self.assertEqual(events, [])
+                self.assertEqual(fence.review_count, 0)
+
+    def test_expired_or_premature_clock_never_calls_probe(self):
+        fence, request, approval, _ = fixture()
+        for moment in (
+            approval.issued_at - timedelta(microseconds=1),
+            approval.expires_at,
+            approval.expires_at + timedelta(hours=1),
+        ):
+            with self.subTest(moment=moment):
+                events = []
+                self.assert_non_authorizing(fence.review(
+                    request, moment,
+                    isolation_probe=lambda: events.append("isolation") or True,
+                    fresh_clock_probe=lambda: events.append("clock") or moment,
+                ), "HOLD")
+                self.assertEqual(events, [])
+
+    def test_corrupted_registry_and_approval_seals_reject_before_probe(self):
+        for field in ("approval", "tool"):
+            with self.subTest(field=field):
+                fence, request, _, _ = fixture()
+                if field == "approval":
+                    object.__setattr__(fence._approval.request, "asset", "lab-changed")
+                else:
+                    object.__setattr__(fence._tool, "capability", "lab-changed")
+                calls = []
+                self.assert_non_authorizing(fence.review(
+                    request, NOW,
+                    isolation_probe=lambda: calls.append("unsafe-probe") or True,
+                ), "HOLD")
+                self.assertEqual(calls, [])
+                self.assertEqual(fence.review_count, 0)
+
+    def test_valid_two_phase_review_invokes_both_callbacks_once(self):
+        fence, request, _, _ = fixture()
+        events = []
+        def verifier():
+            events.append("isolation")
+            return True
+        def clock():
+            events.append("clock")
+            return NOW + timedelta(seconds=1)
+        self.assert_non_authorizing(
+            fence.review(
+                request, NOW, isolation_probe=verifier, fresh_clock_probe=clock
+            ), "REVIEW_ONLY"
+        )
+        self.assertEqual(events, ["isolation", "clock"])
+        self.assertEqual(fence.review_count, 1)
+
+    def test_registry_epoch_changed_by_valid_probe_rejected_at_second_phase(self):
+        fence, request, _, tool = fixture()
+        observed = []
+        def isolation():
+            observed.append("isolation")
+            fence.replace_synthetic_tool(tool)
+            return True
+        self.assert_non_authorizing(fence.review(
+            request, NOW,
+            isolation_probe=isolation,
+            fresh_clock_probe=lambda: observed.append("clock") or NOW,
+        ), "HOLD")
+        self.assertEqual(observed, ["isolation", "clock"])
+        self.assertEqual(fence.review_count, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
