@@ -1061,5 +1061,83 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
         ), "HOLD")
 
 
+    def test_missing_request_fields_are_generic_hold_without_probe(self):
+        for field in ("run", "client", "engagement", "asset", "tool",
+                      "capability", "risk", "started_at"):
+            with self.subTest(field=field):
+                fence, request, _, _ = fixture()
+                candidate = replace(request)
+                object.__delattr__(candidate, field)
+                events = []
+                self.assertFalse(candidate.is_synthetic())
+                self.assert_non_authorizing(
+                    fence.review(
+                        candidate, NOW,
+                        isolation_probe=lambda: events.append("unexpected") or True,
+                    ), "HOLD"
+                )
+                self.assertEqual(events, [])
+                self.assertEqual(fence.review_count, 0)
+
+    def test_missing_approval_fields_reject_intake_without_mutation(self):
+        for field in ("request", "issued_at", "expires_at"):
+            with self.subTest(field=field):
+                fence, request, approval, tool = fixture()
+                original_count, original_epoch = fence.review_count, fence._epoch
+                corrupt = replace(approval)
+                object.__delattr__(corrupt, field)
+                self.assertFalse(corrupt.is_well_formed())
+                with self.assertRaises(ValueError):
+                    fence.replace_synthetic_reference(corrupt, tool)
+                self.assertEqual(fence._epoch, original_epoch)
+                self.assertEqual(fence.review_count, original_count)
+                self.assert_non_authorizing(
+                    fence.review(request, NOW, isolation_probe=lambda: True),
+                    "REVIEW_ONLY"
+                )
+
+    def test_missing_tool_fields_reject_registration_and_preserve_snapshot(self):
+        for field in ("tool", "capability", "risk"):
+            with self.subTest(field=field):
+                fence, request, _, tool = fixture()
+                damaged = replace(tool)
+                object.__delattr__(damaged, field)
+                self.assertFalse(damaged.is_well_formed())
+                original_epoch = fence._epoch
+                with self.assertRaises(ValueError):
+                    fence.replace_synthetic_tool(damaged)
+                self.assertEqual(fence._epoch, original_epoch)
+                self.assert_non_authorizing(
+                    fence.review(request, NOW, isolation_probe=lambda: True),
+                    "REVIEW_ONLY"
+                )
+
+    def test_missing_stored_approval_fields_denied_before_probe(self):
+        for field in ("request", "issued_at", "expires_at"):
+            with self.subTest(field=field):
+                fence, request, _, _ = fixture()
+                object.__delattr__(fence._approval, field)
+                events = []
+                self.assert_non_authorizing(fence.review(
+                    request, NOW,
+                    isolation_probe=lambda: events.append("invalid") or True,
+                ), "HOLD")
+                self.assertEqual(events, [])
+                self.assertEqual(fence.review_count, 0)
+
+    def test_missing_stored_registry_fields_denied_before_probe(self):
+        for field in ("tool", "capability", "risk"):
+            with self.subTest(field=field):
+                fence, request, _, _ = fixture()
+                object.__delattr__(fence._tool, field)
+                events = []
+                self.assert_non_authorizing(fence.review(
+                    request, NOW,
+                    isolation_probe=lambda: events.append("invalid") or True,
+                ), "HOLD")
+                self.assertEqual(events, [])
+                self.assertEqual(fence.review_count, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
