@@ -36,16 +36,30 @@ def _pure_scope_decision(auth):
 
 
 def _pure_scope_decision_at(auth, instant, *, allow_preclock_denial=False):
-    # Run installed scope and authorization code, replacing only the clock.
-    # A strict source fix may reject malformed temporal fields BEFORE reading
-    # the clock; valid-window tests still require exactly one aware UTC read.
-    with patch("lightup.models.datetime") as model_datetime:
-        model_datetime.now.return_value = instant
+    # Inject the explicit instant into the REAL installed is_current method.
+    # Do not replace lightup.models.datetime: a future exact built-in
+    # datetime type check must continue to see the actual datetime class.
+    if type(instant) is not datetime or instant.utcoffset() is None:
+        raise ValueError("synthetic evaluation time must be aware datetime")
+    installed_is_current = Authorization.is_current
+    calls = []
+
+    def evaluate_at(grant, now=None):
+        # ScopePolicy.decide() currently delegates a no-argument clock read.
+        # Make the test fail if it unexpectedly changes this contract.
+        if now is not None:
+            raise AssertionError("unexpected scope-supplied clock override")
+        calls.append(grant)
+        return installed_is_current(grant, instant)
+
+    with patch.object(Authorization, "is_current", evaluate_at):
         decision = _pure_scope_decision(auth)
-        if not (allow_preclock_denial and decision.allowed is False
-                and model_datetime.now.call_count == 0):
-            model_datetime.now.assert_called_once_with(timezone.utc)
+
+    if allow_preclock_denial and decision.allowed is False and not calls:
         return decision
+    if len(calls) != 1 or calls[0] is not auth:
+        raise AssertionError("scope must evaluate the exact grant once")
+    return decision
 
 
 class _FalseyDatetimeSubclass(datetime):
@@ -408,6 +422,33 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
         self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
         self.assertEqual(repr(a), before)
 
+    def test_scope_clock_injection_preserves_runtime_datetime_class(self):
+        # A source owner may add: type(boundary) is datetime. The prior mock
+        # of lightup.models.datetime would fail that otherwise-correct guard.
+        from lightup import models as installed_models
+
+        grant = _authorization(
+            start=NOW - timedelta(hours=1),
+            end=NOW + timedelta(hours=1),
+        )
+        true_installed = Authorization.is_current
+        seen = []
+
+        def assert_actual_datetime_then_delegate(authorization, now=None):
+            self.assertIs(installed_models.datetime, datetime)
+            self.assertIs(type(authorization.valid_from), datetime)
+            self.assertIs(type(authorization.valid_until), datetime)
+            seen.append(authorization)
+            return true_installed(authorization, now)
+
+        with patch.object(
+            Authorization, "is_current", assert_actual_datetime_then_delegate
+        ):
+            decision = _pure_scope_decision_at(grant, NOW)
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+        self.assertEqual(seen, [grant])
+
     def test_scope_decision_stays_pure_across_exact_expiry_transition(self):
         # Mock only the legacy model's wall-clock provider. This exercises the
         # real ScopePolicy -> Authorization path, not an Authorization stub.
@@ -427,16 +468,12 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
              ScopeReason.AUTHORIZATION_EXPIRED),
         )
         for instant, expected_allowed, expected_reason in cases:
-            with self.subTest(at=instant.isoformat()), patch(
-                "lightup.models.datetime"
-            ) as model_datetime:
-                model_datetime.now.return_value = instant
-                decision = _pure_scope_decision(grant)
+            with self.subTest(at=instant.isoformat()):
+                decision = _pure_scope_decision_at(grant, instant)
                 self.assertIs(decision.allowed, expected_allowed)
                 self.assertEqual(decision.reason, expected_reason)
                 self.assertEqual(decision.normalized_host,
                                  "scope.fixture.example.test")
-                model_datetime.now.assert_called_once_with(timezone.utc)
                 self.assertEqual(repr(grant), original)
 
     def test_randomized_out_of_order_scope_decisions_never_cache_authority(self):
@@ -451,21 +488,20 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
         offsets = list(range(-150, 151)) * 2
         offsets.extend((-61, -60, 0, 60, 61) * 8)
         random.Random(301).shuffle(offsets)
-        with patch("lightup.models.datetime") as model_datetime:
-            for delta in offsets:
-                model_datetime.now.return_value = NOW + timedelta(seconds=delta)
-                decision = _pure_scope_decision(grant)
-                expected = -60 <= delta <= 60
-                self.assertIs(decision.allowed, expected)
-                self.assertEqual(
-                    decision.reason,
-                    ScopeReason.EXPLICIT_HOST if expected
-                    else ScopeReason.AUTHORIZATION_EXPIRED,
-                )
-                self.assertEqual(decision.normalized_host,
-                                 "scope.fixture.example.test")
-            self.assertEqual(model_datetime.now.call_count, len(offsets))
-            self.assertEqual(repr(grant), initial)
+        for delta in offsets:
+            decision = _pure_scope_decision_at(
+                grant, NOW + timedelta(seconds=delta)
+            )
+            expected = -60 <= delta <= 60
+            self.assertIs(decision.allowed, expected)
+            self.assertEqual(
+                decision.reason,
+                ScopeReason.EXPLICIT_HOST if expected
+                else ScopeReason.AUTHORIZATION_EXPIRED,
+            )
+            self.assertEqual(decision.normalized_host,
+                             "scope.fixture.example.test")
+        self.assertEqual(repr(grant), initial)
 
     def test_calendar_year_shift_invariance_and_timezone_equivalence(self):
         # Each synthetic time window is evaluated at fixed, varied calendar
