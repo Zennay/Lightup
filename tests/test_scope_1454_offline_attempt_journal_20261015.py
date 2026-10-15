@@ -778,7 +778,7 @@ class OfflineAttemptJournalTests(unittest.TestCase):
         schema = next(i for i, s in enumerate(normalized)
                       if "SQLITE_MASTER" in s)
         read = next(i for i, s in enumerate(normalized)
-                    if "SELECT SEALED_BINDING" in s)
+                    if "SELECT ATTEMPT_ID,SEALED_BINDING" in s)
         rollback = next(i for i, s in enumerate(normalized)
                         if s == "ROLLBACK")
         self.assertLess(begin, schema)
