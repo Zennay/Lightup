@@ -18,6 +18,49 @@ The fourth regular (non-xfail) regression probes all 14 malformed direct-object 
 - Do not merge, run real active assessments, deploy, make grants, assume VPS success, or promote this branch. Require independent owner review, original PR #100 integration, trusted consent, precise destination and per-dispatch revocation, hosted exact-head CI and canonical registered VPS proof followed by human approval.
 - Per [#777](https://github.com/Zennay/Lightup/issues/777), retain **branch-only** while the canonical self-hosted runner queue is saturated; this branch has no new PR or manually dispatched runner job.
 
+
+## Independent offline reviewer (non-authorizing)
+
+The uninstalled `scripts/scope_777_review_provenance_offline.py` is an executable,
+standard-library-only *untrusted metadata* reviewer. It accepts only one bounded
+UTF-8 JSON object containing exactly `approved_by` and `reference`; each must
+be an exact non-empty, non-padded string of at most 128 UTF-8 bytes, with no
+control/invisible characters. Its 4,096-byte maximum input is enforced before
+JSON parse. BOM, invalid UTF-8, ambiguous/duplicate keys including decoded
+escape aliases, unknown fields, nonfinite numbers, malformed or deeply nested
+JSON, and spoofed approval flags are generic `HOLD`.
+
+Its *only* receipts are `REVIEW_ONLY` (lexical consistency, exit 3) or `HOLD`
+(exit 2), with six literal false authority/permit/dispatch/merge/deploy/release
+fields and no echoed input. Both outcomes are nonzero. It never authenticates
+an operator, checks a durable grant, mints tokens or writes state. Do **not** use
+real customer records, and never treat `REVIEW_ONLY` as consent.
+
+Synthetic-only example:
+
+```bash
+printf '%s' '{"approved_by":"fictional-operator","reference":"ROE-FICTIONAL"}' \
+  | python scripts/scope_777_review_provenance_offline.py
+# Expected process exit 3, REVIEW_ONLY plus six false flags.
+```
+
+Run exactly the standalone review acceptance in a checkout:
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests \
+  -p 'test_scope_777_offline_provenance_review_20261015.py' -v
+```
+
+**Executed local reference validation:** the same isolated reviewer and
+regression fixtures were executed under Python with all **12 / 12 standard
+library test methods passing**, including real subprocess exit-code and privacy
+checks, size/type boundaries, JSON-escape collisions, spoofed extra permit
+fields and no input mutation. These were executed outside a full LightUp
+checkout because the GitHub repository could not be cloned from this sandbox.
+**This is not exact-head hosted/VPS CI proof.** The complete LightUp suite and
+earlier SQLite producer/direct differential remain unexecuted in this run,
+pending canonical repository CI.
+
 ## Verification
 
 From a clean source checkout with the repository's established test environment:
