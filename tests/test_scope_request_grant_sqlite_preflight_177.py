@@ -167,6 +167,23 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
             )
 
     @unittest.expectedFailure
+    def test_red_domain_recurring_retest_without_request_consent_must_be_denied(self):
+        # The approved request model has NO field attesting to independent
+        # customer authorization for recurring active assessments.
+        with self.assertRaises(ValueError):
+            self.store.record_authorization_grant(
+                self.operator, self.engagement, self.operator.user_id,
+                "UNCONSENTED-RECURRING-SYNTHETIC",
+                ScopeDefinition(
+                    assets=("app.example.test",),
+                    max_risk=RiskLevel.LOW_IMPACT,
+                    allowed_capabilities=("web-baseline",),
+                ),
+                self.valid_from, self.now + timedelta(days=1),
+                recurring_retest_allowed=True,
+            )
+
+    @unittest.expectedFailure
     def test_red_operator_cannot_approve_own_client_request(self):
         other = self.store.create_client(self.operator, "Operator-created fixture")
         submitted = self.store.submit_assessment_request(
