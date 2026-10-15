@@ -10,6 +10,10 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import urlencode
+
+from lightup.domain import DomainStore, Role
+from lightup.webapp import create_app
 
 SOURCE = (Path(__file__).resolve().parents[1] / "scripts"
           / "scope_nginx_loopback_method_acceptance_20261015.py")
@@ -301,6 +305,92 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                     self.assertTrue(all(receipt[k] is False for k in check.FALSE_FLAGS))
                     self.assertNotIn("fictional_secret", out.getvalue())
                     self.assertNotIn("THIS_IS_NOT_A_REAL", out.getvalue())
+
+    def test_actual_lightup_wsgi_role_and_csrf_survive_real_nginx(self):
+        # This WSGI test uses the actual LightUp web app and a disposable
+        # tenant SQLite DB; it never opens an external listener or emits a
+        # real customer authorization grant.
+        if not shutil.which("nginx"):
+            self.skipTest("nginx missing: cannot prove integrated WSGI security")
+        with tempfile.TemporaryDirectory(prefix="lightup-scope-real-app-") as tmp:
+            store = DomainStore(Path(tmp) / "app.sqlite3")
+            op_user = store.bootstrap_operator(
+                "synthetic-op@lab.invalid", "Operator", "synthetic-password"
+            )
+            operator = store.context_for_user(op_user.user_id)
+            client = store.create_client(operator, "Synthetic Alpha")
+            client_user = store.create_user(
+                operator, "synthetic-client@lab.invalid", "Client",
+                Role.CLIENT_ADMIN, client.client_id
+            )
+            op_token, op_csrf = store.create_session(op_user.user_id)
+            client_token, _ = store.create_session(client_user.user_id)
+            app = create_app(store)
+            template = self.template.replace(
+                "        proxy_request_buffering on;",
+                "".join(f'        proxy_set_header {name} "";\n'
+                        for name in check.OVERRIDE_NAMES)
+                + "        proxy_request_buffering on;",
+            )
+
+            def send(port, method, path, *, token=None, form=None, headers=None):
+                request_headers = {"Host": "localhost"}
+                if token:
+                    request_headers["Cookie"] = "lightup_session=" + token
+                data = None
+                if form is not None:
+                    data = urlencode(form).encode("ascii")
+                    request_headers["Content-Type"] = (
+                        "application/x-www-form-urlencoded"
+                    )
+                    request_headers["Origin"] = "http://localhost"
+                request_headers.update(headers or {})
+                conn = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+                try:
+                    conn.request(method, path, body=data, headers=request_headers)
+                    response = conn.getresponse()
+                    return response.status, dict(response.getheaders()), response.read(32768)
+                finally:
+                    conn.close()
+
+            def verify_real_app(port):
+                baseline = len(store.list_clients(operator))
+                for name in check.OVERRIDE_NAMES:
+                    spoof = {name: "POST"}
+                    code, _, body = send(
+                        port, "GET", "/", token=op_token, headers=spoof
+                    )
+                    if code != 200 or b"Active testing" not in body:
+                        return False
+                    code, h, body = send(
+                        port, "GET", "/", headers=spoof
+                    )
+                    if code != 303 or h.get("Location") != "/login":
+                        return False
+                    code, _, _ = send(
+                        port, "GET", "/", token=client_token, headers=spoof
+                    )
+                    if code != 403:
+                        return False
+                    code, _, _ = send(
+                        port, "POST", "/clients", token=op_token,
+                        form={"name": "Never Created", "csrf": "forged"},
+                        headers={name: "GET"}
+                    )
+                    if code != 403 or len(store.list_clients(operator)) != baseline:
+                        return False
+                # A *legitimate* operator POST is still a POST even with
+                # forged GET metadata, and needs the actual session CSRF.
+                code, _, _ = send(
+                    port, "POST", "/clients", token=op_token,
+                    form={"name": "Synthetic Valid", "csrf": op_csrf},
+                    headers={check.OVERRIDE_NAMES[0]: "GET"},
+                )
+                return (code == 303 and
+                        len(store.list_clients(operator)) == baseline + 1)
+            self.assertTrue(check.run_probe(
+                template, wsgi_app=app, oracle=verify_real_app
+            ))
 
     def test_disposable_fixture_detects_deliberate_method_rewrite(self):
         if not shutil.which("nginx"):
