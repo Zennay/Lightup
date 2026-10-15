@@ -156,5 +156,36 @@ class ApprovalProvenanceDifferentialTests(unittest.TestCase):
         )
 
 
+
+    @unittest.expectedFailure
+    def test_red_bytes_approver(self):
+        self._assert_direct_rejected_without_durable_mutation(
+            approved_by=b"fictional-operator"
+        )
+
+    @unittest.expectedFailure
+    def test_red_integer_reference(self):
+        self._assert_direct_rejected_without_durable_mutation(reference=123)
+
+    @unittest.expectedFailure
+    def test_red_none_approver(self):
+        self._assert_direct_rejected_without_durable_mutation(approved_by=None)
+
+    @unittest.expectedFailure
+    def test_red_none_reference(self):
+        self._assert_direct_rejected_without_durable_mutation(reference=None)
+
+    @unittest.expectedFailure
+    def test_red_unicode_padded_approver(self):
+        self._assert_direct_rejected_without_durable_mutation(
+            approved_by="\u2003fictional-operator"
+        )
+
+    @unittest.expectedFailure
+    def test_red_unicode_padded_reference(self):
+        self._assert_direct_rejected_without_durable_mutation(
+            reference="ROE-FICTIONAL\u00a0"
+        )
+
 if __name__ == "__main__":
     unittest.main()
