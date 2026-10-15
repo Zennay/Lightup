@@ -310,6 +310,59 @@ class OfflineAttemptJournalTests(unittest.TestCase):
         self.con.rollback()
         self.assertEqual(self.journal.review_phase(self.attempt)[0], "reserved")
 
+    def test_corrupted_reserved_digest_must_not_finish_attempt(self):
+        self.assert_non_authorizing(self.journal.reserve(self.attempt), "REVIEW_ONLY")
+        self.con.execute(
+            "UPDATE offline_scope_1454_attempts SET evidence_digest=?",
+            ("a" * 64,),
+        )
+        self.con.commit()
+        self.assert_non_authorizing(
+            self.journal.mark_uncertain(self.attempt), "HOLD")
+        self.assert_non_authorizing(
+            self.journal.mark_recorded(self.attempt, "b" * 64), "HOLD")
+        phase, receipt = self.journal.review_phase(self.attempt)
+        self.assertEqual(phase, "unknown")
+        self.assert_non_authorizing(receipt, "HOLD")
+        self.assertEqual(self.con.execute(
+            "SELECT phase FROM offline_scope_1454_attempts"
+        ).fetchone()[0], "reserved")
+
+    def test_recorded_without_exact_digest_must_not_be_reviewed(self):
+        self.assert_non_authorizing(self.journal.reserve(self.attempt), "REVIEW_ONLY")
+        for bad_digest in (None, "", "a" * 63, "A" * 64, "a" * 65):
+            with self.subTest(digest=repr(bad_digest)):
+                self.con.execute(
+                    "UPDATE offline_scope_1454_attempts "
+                    "SET phase='recorded', evidence_digest=?",
+                    (bad_digest,),
+                )
+                self.con.commit()
+                phase, receipt = self.journal.review_phase(self.attempt)
+                self.assertEqual(phase, "unknown")
+                self.assert_non_authorizing(receipt, "HOLD")
+
+    def test_uncertain_phase_with_digest_must_not_be_reviewed(self):
+        self.assert_non_authorizing(self.journal.reserve(self.attempt), "REVIEW_ONLY")
+        self.con.execute(
+            "UPDATE offline_scope_1454_attempts "
+            "SET phase='uncertain', evidence_digest=?",
+            ("c" * 64,),
+        )
+        self.con.commit()
+        phase, receipt = self.journal.review_phase(self.attempt)
+        self.assertEqual(phase, "unknown")
+        self.assert_non_authorizing(receipt, "HOLD")
+
+    def test_valid_recorded_sha256_remains_review_only(self):
+        self.assert_non_authorizing(self.journal.reserve(self.attempt), "REVIEW_ONLY")
+        exact = hashlib.sha256(b"fictional-evidence").hexdigest()
+        self.assert_non_authorizing(
+            self.journal.mark_recorded(self.attempt, exact), "REVIEW_ONLY")
+        phase, receipt = self.journal.review_phase(self.attempt)
+        self.assertEqual(phase, "recorded")
+        self.assert_non_authorizing(receipt, "REVIEW_ONLY")
+
     def test_late_benign_trigger_cannot_pass_offline_schema_check(self):
         self.con.execute("""
             CREATE TRIGGER late_benign_trigger AFTER INSERT
