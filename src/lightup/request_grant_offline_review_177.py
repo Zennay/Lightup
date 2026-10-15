@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 
+from .capabilities import CapabilityState, get_capabilities
 from .domain import AssessmentRequestRecord, RequestStatus
 from .engagements import AssessmentMode, AuthorizationGrant, RiskLevel, ScopeDefinition
 
@@ -37,6 +38,12 @@ _HOLD = RequestGrantReview(ReviewStatus.HOLD, "invalid_or_unverified_input")
 _REVIEW = RequestGrantReview(ReviewStatus.REVIEW_ONLY, "structurally_coherent_untrusted_snapshot")
 _IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z", re.ASCII)
 _DNS_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z", re.ASCII)
+# Static high-level planning capability catalog; review metadata, never grant rights.
+_PLANNING_CAPS = frozenset(
+    capability.capability_id
+    for capability in get_capabilities()
+    if capability.state is CapabilityState.PLANNING
+)
 _DECISION_INSTANT = re.compile(
     r"[0-9]{4}-[0-9]{2}-[0-9]{2}T"
     r"(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]"
@@ -76,12 +83,9 @@ def _assets(values: object) -> bool:
 
 
 def _utc_instant(value: object) -> bool:
-    if type(value) is not datetime:
-        return False
-    try:
-        return type(value.tzinfo) is timezone and value.utcoffset() is not None
-    except (TypeError, ValueError, OverflowError):
-        return False
+    # Compare identity before invoking any untrusted tzinfo callback or arithmetic.
+    # A builtin fixed offset such as +01:00 is aware but NOT the required UTC.
+    return type(value) is datetime and value.tzinfo is timezone.utc
 
 
 def _decision_time(value: object) -> datetime | None:
@@ -92,6 +96,15 @@ def _decision_time(value: object) -> datetime | None:
     except ValueError:
         return None
     return instant if _utc_instant(instant) else None
+
+
+def _capabilities(values: object) -> bool:
+    return (
+        type(values) is tuple
+        and 0 < len(values) <= len(_PLANNING_CAPS)
+        and all(type(item) is str and item in _PLANNING_CAPS for item in values)
+        and len(set(values)) == len(values)
+    )
 
 
 def review_request_grant(
@@ -145,10 +158,7 @@ def review_request_grant(
         or not all(_asset(v) for v in grant.scope.excluded_assets)
         or len(set(grant.scope.excluded_assets)) != len(grant.scope.excluded_assets)
         or not set(grant.scope.excluded_assets).issubset(grant.scope.assets)
-        or type(grant.scope.allowed_capabilities) is not tuple
-        or not grant.scope.allowed_capabilities
-        or not all(_identifier(v) for v in grant.scope.allowed_capabilities)
-        or len(set(grant.scope.allowed_capabilities)) != len(grant.scope.allowed_capabilities)
+        or not _capabilities(grant.scope.allowed_capabilities)
         or type(grant.recurring_retest_allowed) is not bool
         or not _utc_instant(grant.valid_from)
         or not _utc_instant(grant.valid_until)
@@ -157,4 +167,44 @@ def review_request_grant(
 
     if not (decided_at <= grant.valid_from <= reviewed_at <= grant.valid_until):
         return _HOLD
+    return _REVIEW
+
+
+def review_request_grant_batch(
+    pairs: object, *, reviewed_at: object
+) -> RequestGrantReview:
+    """Atomic, bounded, non-authorizing review of one tenant's fake proposals.
+
+    A valid batch is REVIEW_ONLY, not a persisted consent record. Duplicate
+    requests, duplicated grant identities, multi-tenant packets and repeated
+    granted assets produce one generic HOLD for the *entire* batch. No partial
+    approvals, per-record receipt, I/O, current clock lookup or active tools.
+    """
+    if type(pairs) is not tuple or not (1 <= len(pairs) <= 32):
+        return _HOLD
+    if not _utc_instant(reviewed_at):
+        return _HOLD
+    request_ids: set[str] = set()
+    grant_ids: set[str] = set()
+    seen_assets: set[str] = set()
+    tenant: str | None = None
+    for pair in pairs:
+        if type(pair) is not tuple or len(pair) != 2:
+            return _HOLD
+        request, grant = pair
+        if review_request_grant(request, grant, reviewed_at=reviewed_at) is not _REVIEW:
+            return _HOLD
+        if (
+            request.request_id in request_ids
+            or grant.grant_id in grant_ids
+            or (tenant is not None and request.client_id != tenant)
+        ):
+            return _HOLD
+        effective = set(grant.scope.assets) - set(grant.scope.excluded_assets)
+        if seen_assets.intersection(effective):
+            return _HOLD
+        request_ids.add(request.request_id)
+        grant_ids.add(grant.grant_id)
+        seen_assets.update(effective)
+        tenant = request.client_id
     return _REVIEW
