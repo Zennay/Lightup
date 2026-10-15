@@ -7,7 +7,7 @@ handler, mutate a grant, fetch a target, or decide a real authorization.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 @dataclass(frozen=True)
@@ -48,8 +48,12 @@ def review_revocation_metadata(
     if at_present:
         if type(revoked_at) is not datetime:
             codes.append("noncanonical_revoked_at")
-        elif revoked_at.tzinfo is None or revoked_at.utcoffset() is None:
+        elif revoked_at.tzinfo is None:
             codes.append("naive_revoked_at")
+        elif type(revoked_at.tzinfo) is not timezone:
+            # Never call polymorphic tzinfo.utcoffset()/dst() in this
+            # non-authorizing review; foreign zones require owner validation.
+            codes.append("noncanonical_revocation_timezone")
 
     if actor_present and not _canonical_text(revoked_by):
         codes.append("noncanonical_revoked_by")
