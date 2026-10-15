@@ -117,25 +117,63 @@ def review_bytes(data: bytes) -> dict[str, Any]:
         return {"status": "HOLD", **FALSE_FLAGS}
 
 
+def _same_descriptor(expected: os.stat_result, current: os.stat_result) -> bool:
+    return (
+        expected.st_dev == current.st_dev
+        and expected.st_ino == current.st_ino
+        and stat.S_IFMT(expected.st_mode) == stat.S_IFMT(current.st_mode)
+    )
+
+
 def _read_local_stdin() -> bytes:
-    mode = os.fstat(0).st_mode
-    if not (stat.S_ISREG(mode) or stat.S_ISFIFO(mode)):
-        raise ReviewInputError("stdin must be a local file or pipe")
-    data = bytearray()
-    deadline = time.monotonic() + INPUT_DEADLINE_SECONDS
-    while True:
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            raise ReviewInputError("stdin timeout")
-        readable, _, _ = select.select([0], [], [], remaining)
-        if not readable:
-            raise ReviewInputError("stdin timeout")
-        chunk = os.read(0, MAX_INPUT_BYTES + 1 - len(data))
-        if not chunk:
-            return bytes(data)
-        data.extend(chunk)
-        if len(data) > MAX_INPUT_BYTES:
-            raise ReviewInputError("stdin over size")
+    """Consume one bounded snapshot from a pinned local pipe/regular fd0."""
+    initial = os.fstat(0)
+    is_file = stat.S_ISREG(initial.st_mode)
+    if not (is_file or stat.S_ISFIFO(initial.st_mode)):
+        raise ReviewInputError("stdin must be local pipe or regular file")
+    pinned = os.dup(0)
+    try:
+        if not _same_descriptor(initial, os.fstat(pinned)):
+            raise ReviewInputError("stdin changed before pinning")
+        if not _same_descriptor(initial, os.fstat(0)):
+            raise ReviewInputError("stdin changed after pinning")
+        if is_file:
+            if os.lseek(pinned, 0, os.SEEK_CUR) != 0:
+                raise ReviewInputError("stdin regular-file offset not zero")
+            if not 0 < initial.st_size <= MAX_INPUT_BYTES:
+                raise ReviewInputError("stdin regular-file length invalid")
+        data = bytearray()
+        deadline = time.monotonic() + INPUT_DEADLINE_SECONDS
+        while True:
+            if not _same_descriptor(initial, os.fstat(0)):
+                raise ReviewInputError("stdin descriptor rebound")
+            if not _same_descriptor(initial, os.fstat(pinned)):
+                raise ReviewInputError("stdin pinned descriptor changed")
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise ReviewInputError("stdin timeout")
+            readable, _, _ = select.select([pinned], [], [], remaining)
+            if not readable:
+                raise ReviewInputError("stdin timeout")
+            chunk = os.read(pinned, MAX_INPUT_BYTES + 1 - len(data))
+            if not chunk:
+                break
+            data.extend(chunk)
+            if len(data) > MAX_INPUT_BYTES:
+                raise ReviewInputError("stdin oversized")
+        final = os.fstat(pinned)
+        if not _same_descriptor(initial, final) or not _same_descriptor(initial, os.fstat(0)):
+            raise ReviewInputError("stdin changed before EOF")
+        if is_file and (
+            len(data) != initial.st_size
+            or final.st_size != initial.st_size
+            or final.st_mtime_ns != initial.st_mtime_ns
+            or final.st_ctime_ns != initial.st_ctime_ns
+        ):
+            raise ReviewInputError("stdin snapshot changed")
+        return bytes(data)
+    finally:
+        os.close(pinned)
 
 
 def main(argv: list[str] | None = None) -> int:

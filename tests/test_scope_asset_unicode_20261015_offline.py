@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
+import tempfile
 import pathlib
 import random
 import subprocess
@@ -186,6 +188,35 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 2)
         self.assert_hold(json.loads(proc.stdout))
         self.assertNotIn(b"SENSITIVE-ASSET-EXAMPLE", proc.stdout)
+        self.assertEqual(proc.stderr, b"")
+
+    def test_regular_file_snapshot_and_seeked_file_hold(self):
+        data = json.dumps(synthetic_claim()).encode("utf-8")
+        with tempfile.TemporaryFile(mode="w+b") as fixture:
+            fixture.write(data)
+            fixture.flush()
+            fixture.seek(0)
+            correct = subprocess.run([sys.executable, str(SCRIPT), "--stdin-json"],
+                                     stdin=fixture, capture_output=True,
+                                     timeout=5, check=False)
+            self.assertEqual(correct.returncode, 3)
+            self.assert_review(json.loads(correct.stdout))
+            self.assertEqual(correct.stderr, b"")
+            fixture.seek(1)
+            shifted = subprocess.run([sys.executable, str(SCRIPT), "--stdin-json"],
+                                     stdin=fixture, capture_output=True,
+                                     timeout=5, check=False)
+            self.assertEqual(shifted.returncode, 2)
+            self.assert_hold(json.loads(shifted.stdout))
+            self.assertEqual(shifted.stderr, b"")
+
+    def test_reject_nonlocal_stdin_descriptor(self):
+        with open(os.devnull, "rb") as invalid:
+            proc = subprocess.run([sys.executable, str(SCRIPT), "--stdin-json"],
+                                  stdin=invalid, capture_output=True,
+                                  timeout=5, check=False)
+        self.assertEqual(proc.returncode, 2)
+        self.assert_hold(json.loads(proc.stdout))
         self.assertEqual(proc.stderr, b"")
 
     def test_real_cli_never_success_or_leaks_input(self):
