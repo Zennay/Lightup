@@ -253,7 +253,7 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
             "getattr(obj, 'scope')",
         ):
             with self.subTest(mutant=mutant):
-                self.assertFalse(_source_has_only_offline_effects(source + "\\n" + mutant))
+                self.assertFalse(_source_has_only_offline_effects(source + "\n" + mutant))
 
     def test_batch_fixed_offset_instant_and_inclusive_metaproperties(self):
         offsets = (-12, -8, -1, 0, 1, 5.5, 12, 14)
