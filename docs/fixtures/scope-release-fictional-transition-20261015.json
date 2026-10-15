@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "previous": {
+    "schema": 1,
+    "checks": {
+      "client_consent": "SELF_REPORTED",
+      "asset_and_capability_scope": "MISSING",
+      "live_grant_and_revocation": "MISSING",
+      "operator_step_up": "BLOCKED",
+      "durable_prehandler_evidence": "MISSING",
+      "installed_ingress_and_egress": "MISSING",
+      "permanent_vps_ci": "MISSING",
+      "independent_security_privacy_review": "MISSING",
+      "explicit_human_release": "MISSING"
+    }
+  },
+  "current": {
+    "schema": 1,
+    "checks": {
+      "client_consent": "MISSING",
+      "asset_and_capability_scope": "MISSING",
+      "live_grant_and_revocation": "MISSING",
+      "operator_step_up": "SELF_REPORTED",
+      "durable_prehandler_evidence": "MISSING",
+      "installed_ingress_and_egress": "MISSING",
+      "permanent_vps_ci": "BLOCKED",
+      "independent_security_privacy_review": "MISSING",
+      "explicit_human_release": "MISSING"
+    }
+  }
+}
