@@ -19,6 +19,8 @@ The review takes only `revoked_at`, `revoked_by`, and `revocation_reason`, with 
 - Noncanonical text, subclassed/spoofing objects, oversized (>256) or blank/padded values, noncanonical or naive timestamps: `inconsistent` / specific bounded reason codes.
 - The output is frozen, does not reflect raw actor/reason strings or host/tenant identity, and does not invoke untrusted input `__bool__` / `__str__` / `__eq__` / `strip`.
 
+- This offline review accepts only **exact built-in `datetime.timezone` fixed-offset tzinfo** on exact datetimes; any other timezone object, including potentially legitimate custom/ZoneInfo objects, is flagged for owner review without calling custom `utcoffset` or `dst` code. It does not claim to normalize arbitrary civil timezones. A specific test uses a hostile tzinfo whose callbacks deliberately raise if invoked.
+
 This is only a **review preview**, not a complete source grant coherence or current grant check. It is intentionally stricter about completeness of revocation metadata than the current installed source. This cannot substitute for real source-owner repair, live persisted source of truth, or operator/customer authorization.
 
 ## Real proof plan
@@ -27,7 +29,7 @@ This is only a **review preview**, not a complete source grant coherence or curr
 python -m unittest discover -s tests -p 'test_scope_737_offline_revocation_metadata_review_20261015.py' -v
 ```
 
-The 22 additional tests include explicit authorizing-flag tripwires, unchanged input, spoofing and type confusion, 80+ adversarial combinations, privacy-safe result rendering, and source/current independent acceptance. Use original exact-SHA GitHub logs and both Python 3.11/3.14 plus producer integrations; verify permanent registered VPS separately, not by queued labels.
+The 23 additional tests include explicit authorizing-flag tripwires, unchanged input, spoofing and type confusion, 80+ adversarial combinations, privacy-safe result rendering, and source/current independent acceptance. Use original exact-SHA GitHub logs and both Python 3.11/3.14 plus producer integrations; verify permanent registered VPS separately, not by queued labels.
 
 ## Owner handoff and release gate
 
