@@ -422,8 +422,10 @@ class RequestGrantOfflineReviewTests(unittest.TestCase):
 
     def test_atomic_batch_is_io_free(self):
         from unittest.mock import patch
-        with patch("socket.socket", side_effect=AssertionError("not network")), \\
-             patch("sqlite3.connect", side_effect=AssertionError("not sqlite")):
+        with (
+            patch("socket.socket", side_effect=AssertionError("not network")),
+            patch("sqlite3.connect", side_effect=AssertionError("not sqlite")),
+        ):
             result = review_request_grant_batch(self._batch_pairs(), reviewed_at=NOW)
         self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
         self.assert_no_authority(result)
