@@ -154,5 +154,30 @@ class SyntheticProvenanceReviewTests(unittest.TestCase):
             self.assertEqual(destination.read(), b"")
 
 
+    def test_rejects_socket_stdout_with_no_bytes(self):
+        left, right = socket.socketpair()
+        try:
+            with subprocess.Popen([sys.executable, str(SCRIPT)], stdin=subprocess.PIPE,
+                                  stdout=left, stderr=subprocess.PIPE) as proc:
+                left.close()
+                _, err = proc.communicate(input=OK, timeout=3)
+                self.assertEqual(proc.returncode, 2)
+                self.assertEqual(err, b"")
+                right.settimeout(3)
+                self.assertEqual(right.recv(4096), b"")
+        finally:
+            left.close()
+            right.close()
+
+    def test_accepts_regular_file_stdin_as_review_only(self):
+        with tempfile.TemporaryFile() as source:
+            source.write(OK)
+            source.seek(0)
+            p = subprocess.run([sys.executable, str(SCRIPT)], stdin=source,
+                               capture_output=True, timeout=3)
+            self.assertEqual(p.returncode, 3)
+            self.assertEqual(p.stderr, b"")
+            self.assertEqual(json.loads(p.stdout), {"status": "REVIEW_ONLY", **FALSE_FLAGS})
+
 if __name__ == "__main__":
     unittest.main()
