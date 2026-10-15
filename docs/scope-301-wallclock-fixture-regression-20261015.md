@@ -143,6 +143,26 @@ confusion**. On source-owner repair, both must become ordinary PASS,
 together with the earlier direct `is_current()` REDs, without weakening
 canonical inclusive datetime semantics.
 
+## Reference repair mutation witness (W9)
+
+A dedicated ordinary-PASS acceptance method runs the four W7/W8
+**intentional source-RED** test methods through normal `unittest.TestCase.run`
+while applying a **test-local monkeypatch** to the legacy
+`Authorization.is_current()` implementation. The toy reference repair
+rejects any present `valid_from` or `valid_until` that is not an exact
+built-in aware `datetime`. All four real-source REDs must flip to
+`unexpectedSuccess` (that is, their assertions now pass); no errors,
+ordinary failures or lingering expected failures may be hidden. A real
+canonical timezone-aware authorization remains allowed on the existing
+installed scope route under that same reference narrowing.
+
+This checks that the W7/W8 tests will reveal a successful *class of source
+repair* rather than stay eternally green merely because they are decorated
+with `expectedFailure`. The monkeypatch is installed **only in this
+single synthetic test process**, and is automatically reverted. It is
+**not a production implementation** and makes no statement about durable
+operator consent, revocation, ingestion, egress or current live grants.
+
 ## Ownership and proof gates
 
 Only this original time-window test module and this standalone explanation
