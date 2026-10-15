@@ -451,6 +451,35 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
             )
         return granted.grant_id
 
+    def test_other_orphan_grant_fk_corruption_holds_entire_sqlite_snapshot(self):
+        self.upgrade_synthetic_only()
+        unrelated = self._second_synthetic_grant("api.example.test")
+        self.assertIs(self.review().status, ReviewStatus.REVIEW_ONLY)
+        # Simulate a separate misconfigured writer with foreign_keys=OFF:
+        # the FK is DECLARED but not necessarily enforced on all writers.
+        with sqlite3.connect(self.path) as con:
+            con.execute("PRAGMA foreign_keys=OFF")
+            affected = con.execute(
+                "UPDATE authorization_grants SET approved_request_id=? WHERE grant_id=?",
+                ("ghost-approved-request", unrelated),
+            ).rowcount
+            self.assertEqual(affected, 1)
+            broken = con.execute(
+                "PRAGMA foreign_key_check(authorization_grants)"
+            ).fetchall()
+            self.assertTrue(broken)
+        # This review concerns the *first*, otherwise intact grant.
+        # Broken provenance in a different grant prevents even structural
+        # REVIEW_ONLY for a shared untrusted database snapshot.
+        receipt = self.review()
+        self.assertIs(receipt.status, ReviewStatus.HOLD)
+        self.assert_no_authority(receipt)
+        batch = review_persisted_grant_batch(
+            self.path, (self.grant.grant_id,), reviewed_at=self.reviewed_at,
+        )
+        self.assertIs(batch.status, ReviewStatus.HOLD)
+        self.assert_no_authority(batch)
+
     def test_atomic_persisted_batch_two_valid_is_still_review_only(self):
         self.upgrade_synthetic_only()
         second_id = self._second_synthetic_grant()
