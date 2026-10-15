@@ -212,5 +212,17 @@ class GateTransitionTests(unittest.TestCase):
                 p.wait(timeout=2)
 
 
+    def test_checked_in_fictional_pair_documents_withdrawn_claims_without_authority(self):
+        fixture = (ROOT / "docs" / "fixtures" /
+                   "scope-release-fictional-transition-20261015.json").read_bytes()
+        result = self.cli(fixture)
+        self.assertEqual([x["gate"] for x in result["changes"]],
+                         [GATES[0], GATES[3], GATES[6]])
+        self.assertEqual(result["withdrawn_claims"], [GATES[0]])
+        self.assertEqual(result["new_unverified_claims"], [GATES[3]])
+        self.assertEqual(result["new_blockers"], [GATES[6]])
+        self.assertEqual(result["status"], "HOLD")
+
+
 if __name__ == "__main__":
     unittest.main()
