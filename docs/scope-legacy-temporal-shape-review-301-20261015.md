@@ -133,6 +133,26 @@ stored validity value is falsy. No external resources are accessed, no
 source-owned installed auth code is changed. As before, storage is **not**
 locked: concurrent mutations cannot be ruled out outside the checks.
 
+## W7: getter-regression and late-drift canaries
+
+An offline AST tripwire rejects *any* direct `authorization.<attribute>`
+access in this isolated module, including `valid_from`, `valid_until`,
+`__dict__` and `reference`. Negative source mutants also reject
+`vars(authorization)` and arbitrary `object.__getattribute__` reads.
+Only the exact built-in `object.__getattribute__(authorization, "__dict__")`
+storage primitive and whitelisted memory operations are accepted. This
+static check supplements (and does not replace) full hosted runtime tests.
+
+Independent synthetic regressions hook the **internal storage-read helper**
+instead of a potentially malicious class getter. One rebinds a stored expiry
+on the single-item final reread; the other rebinds a stored start on the
+final bounded-batch reread. Both must yield HOLD without leaks, permission
+flags, network activity or altering installed production behavior.
+
+A code-level allowlist is not a complete Python sandbox, and even two
+reads are not a lock or a provable atomic snapshot. These tests only
+establish the stated *offline reference module* constraints.
+
 ## Hard gate: not a production fix
 
 This does **not** repair `Authorization.is_current()`. Release requires the
