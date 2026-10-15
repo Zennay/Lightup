@@ -117,7 +117,7 @@ class DebtEvidenceChainTests(unittest.TestCase):
                          "UNEXPECTED_SUITE_FAILURES")
 
     def test_untracked_expected_red_cannot_hide_in_matching_footers(self):
-        extra = "test_other (test_scope_chain.Sample.test_other) ... expected failure\\n"
+        extra = "test_other (test_scope_chain.Sample.test_other) ... expected failure\n"
         def augment(text):
             return text.replace("Ran 2 tests", extra+"Ran 3 tests").replace(
                 "expected failures=1", "expected failures=2")
@@ -128,7 +128,7 @@ class DebtEvidenceChainTests(unittest.TestCase):
                          "DISAGREEMENT_IN_UNVERIFIED_EVIDENCE")
 
     def test_untracked_unexpected_failure_cannot_hide_in_matching_footers(self):
-        extra = "test_other (test_scope_chain.Sample.test_other) ... FAIL\\n"
+        extra = "test_other (test_scope_chain.Sample.test_other) ... FAIL\n"
         def augment(text):
             return text.replace("Ran 2 tests", extra+"Ran 3 tests").replace(
                 "OK (expected failures=1)",
