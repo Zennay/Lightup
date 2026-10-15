@@ -7,6 +7,7 @@ import os
 import sys
 import unittest
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -117,6 +118,37 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
         before = repr(a)
         self.assertTrue(_pure_scope_decision(a).allowed)
         self.assertEqual(repr(a), before)
+
+    def test_scope_decision_stays_pure_across_exact_expiry_transition(self):
+        # Mock only the legacy model's wall-clock provider. This exercises the
+        # real ScopePolicy -> Authorization path, not an Authorization stub.
+        # The fixed NOW constant remains appropriate for explicit-clock tests.
+        grant = _authorization(
+            start=NOW - timedelta(minutes=1),
+            end=NOW + timedelta(minutes=1),
+        )
+        original = repr(grant)
+        cases = (
+            (NOW - timedelta(minutes=1, microseconds=1), False,
+             ScopeReason.AUTHORIZATION_EXPIRED),
+            (NOW - timedelta(minutes=1), True, ScopeReason.EXPLICIT_HOST),
+            (NOW, True, ScopeReason.EXPLICIT_HOST),
+            (NOW + timedelta(minutes=1), True, ScopeReason.EXPLICIT_HOST),
+            (NOW + timedelta(minutes=1, microseconds=1), False,
+             ScopeReason.AUTHORIZATION_EXPIRED),
+        )
+        for instant, expected_allowed, expected_reason in cases:
+            with self.subTest(at=instant.isoformat()), patch(
+                "lightup.models.datetime"
+            ) as model_datetime:
+                model_datetime.now.return_value = instant
+                decision = _pure_scope_decision(grant)
+                self.assertIs(decision.allowed, expected_allowed)
+                self.assertEqual(decision.reason, expected_reason)
+                self.assertEqual(decision.normalized_host,
+                                 "scope.fixture.example.test")
+                model_datetime.now.assert_called_once_with(timezone.utc)
+                self.assertEqual(repr(grant), original)
 
     def test_expired_scope_decision_does_not_mutate_authorization(self):
         current_utc = datetime.now(timezone.utc)
