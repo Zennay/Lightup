@@ -20,6 +20,7 @@ _SCHEMA = """
 CREATE TABLE IF NOT EXISTS offline_scope_1454_attempts (
     attempt_id TEXT PRIMARY KEY,
     sealed_binding TEXT NOT NULL,
+    operation_fingerprint TEXT NOT NULL UNIQUE,
     phase TEXT NOT NULL CHECK(phase IN ('reserved', 'uncertain', 'recorded')),
     evidence_digest TEXT
 );
@@ -200,6 +201,20 @@ def _sealed(attempt: SyntheticAttempt) -> str | None:
         return None
 
 
+def _operation_fingerprint(attempt: SyntheticAttempt) -> str | None:
+    """Stable per-run synthetic action key, independent of an arbitrary attempt ID."""
+    if _sealed(attempt) is None:
+        return None
+    details = (
+        attempt.run_id, attempt.client_id, attempt.engagement_id,
+        attempt.grant_id, attempt.tool_id, attempt.capability_id,
+        attempt.asset, attempt.risk,
+    )
+    return hashlib.sha256(
+        json.dumps(details, separators=(",", ":"), ensure_ascii=True).encode("ascii")
+    ).hexdigest()
+
+
 class OfflineAttemptJournal:
     """Synthetic SQLite reference, deliberately NOT an execution wrapper.
 
@@ -292,7 +307,8 @@ class OfflineAttemptJournal:
         evidence_digest: str | None = None,
     ) -> ReviewReceipt:
         binding = _sealed(attempt)
-        if binding is None:
+        fingerprint = _operation_fingerprint(attempt)
+        if binding is None or fingerprint is None:
             return _hold()
         owned_transaction = False
         try:
@@ -308,13 +324,13 @@ class OfflineAttemptJournal:
                 self._rollback_quietly()
                 return _hold()
             row = self._con.execute(
-                "SELECT sealed_binding,phase,evidence_digest "
+                "SELECT sealed_binding,operation_fingerprint,phase,evidence_digest "
                 "FROM offline_scope_1454_attempts "
                 "WHERE attempt_id=?", (attempt.attempt_id,)
             ).fetchone()
-            # The only mutable phase entering this transition is a pristine
-            # reserved attempt. A pre-populated digest is already corruption.
-            if (row is None or tuple(row) != (binding, expected, None)):
+            # A record must remain bound to the SAME operation, not just the
+            # same attempt ID; no already-filled evidence on reserved phase.
+            if (row is None or tuple(row) != (binding, fingerprint, expected, None)):
                 self._rollback_quietly()
                 return _hold()
             self._con.execute(
@@ -364,9 +380,9 @@ class OfflineAttemptJournal:
                 return _hold()
             self._con.execute(
                 "INSERT INTO offline_scope_1454_attempts "
-                "(attempt_id,sealed_binding,phase,evidence_digest) "
-                "VALUES(?,?,'reserved',NULL)",
-                (attempt.attempt_id, binding),
+                "(attempt_id,sealed_binding,operation_fingerprint,phase,evidence_digest) "
+                "VALUES(?,?,?,'reserved',NULL)",
+                (attempt.attempt_id, binding, fingerprint),
             )
             # A trigger installed *after* journal construction must never make
             # an ignored or altered INSERT look like a successful reservation.
@@ -374,11 +390,13 @@ class OfflineAttemptJournal:
                 self._rollback_quietly()
                 return _hold()
             stored = self._con.execute(
-                "SELECT sealed_binding,phase,evidence_digest "
+                "SELECT sealed_binding,operation_fingerprint,phase,evidence_digest "
                 "FROM offline_scope_1454_attempts WHERE attempt_id=?",
                 (attempt.attempt_id,),
             ).fetchone()
-            if stored is None or tuple(stored) != (binding, "reserved", None):
+            if stored is None or tuple(stored) != (
+                binding, fingerprint, "reserved", None
+            ):
                 self._rollback_quietly()
                 return _hold()
             self._con.commit()
@@ -402,21 +420,22 @@ class OfflineAttemptJournal:
     def review_phase(self, attempt: SyntheticAttempt) -> tuple[str, ReviewReceipt]:
         """Returns only a fixed state label. No authority or private payload."""
         binding = _sealed(attempt)
-        if binding is None:
+        fingerprint = _operation_fingerprint(attempt)
+        if binding is None or fingerprint is None:
             return "unknown", _hold()
         try:
             if not self._schema_valid():
                 return "unknown", _hold()
             row = self._con.execute(
-                "SELECT sealed_binding,phase,evidence_digest "
+                "SELECT sealed_binding,operation_fingerprint,phase,evidence_digest "
                 "FROM offline_scope_1454_attempts "
                 "WHERE attempt_id=?", (attempt.attempt_id,)
             ).fetchone()
         except sqlite3.Error:
             return "unknown", _hold()
-        if row is None or row[0] != binding:
+        if row is None or row[0] != binding or row[1] != fingerprint:
             return "unknown", _hold()
-        phase, digest = row[1], row[2]
+        phase, digest = row[2], row[3]
         # A 'recorded' claim without an exact sha256 is not evidence.
         # Nonterminal records must not carry fabricated evidence data.
         if phase == "recorded":
@@ -441,14 +460,15 @@ class OfflineAttemptJournal:
             if self._con.in_transaction or not self._schema_valid():
                 return hold
             rows = self._con.execute(
-                "SELECT sealed_binding,phase,evidence_digest "
+                "SELECT sealed_binding,operation_fingerprint,phase,evidence_digest "
                 "FROM offline_scope_1454_attempts LIMIT 257"
             ).fetchall()
             if len(rows) > 256:
                 return hold
             counts = {"reserved": 0, "uncertain": 0, "recorded": 0}
-            for digest_binding, phase, evidence in rows:
-                if type(digest_binding) is not str or _SHA.fullmatch(digest_binding) is None:
+            for digest_binding, fingerprint, phase, evidence in rows:
+                if (type(digest_binding) is not str or _SHA.fullmatch(digest_binding) is None
+                    or type(fingerprint) is not str or _SHA.fullmatch(fingerprint) is None):
                     return hold
                 if phase == "recorded":
                     if type(evidence) is not str or _SHA.fullmatch(evidence) is None:
