@@ -105,6 +105,52 @@ class SourceOwnerAssetIPv6Boundary(unittest.TestCase):
             f"{len(wrongly_admitted)} owner-source wrong-asset admissions",
         )
 
+    @unittest.expectedFailure
+    def test_red_128_wrong_asset_gate_tokens_must_never_be_created(self):
+        """Cross-check actual #100 permit/token boundary, not only scope decisions."""
+        requested_tokens = []
+        gate = _gate(_scope())
+        with self.no_network(), patch(
+            "lightup.activation.token_urlsafe",
+            side_effect=lambda count: requested_tokens.append(count) or "FAKE-NEVER-LIVE",
+        ):
+            for number in range(128):
+                literal = str(ipaddress.IPv6Address(f"2001:db8:55::{number + 1:x}"))
+                try:
+                    gate.issue(
+                        Target(literal, authorization=_authorization(asset=ALIAS)),
+                        CAPABILITY,
+                    )
+                except PermissionError:
+                    continue
+        self.assertEqual(
+            requested_tokens, [],
+            f"{len(requested_tokens)} wrong-asset fake permit tokens created",
+        )
+
+    def test_128_bracketed_wrong_asset_does_not_generate_any_token(self):
+        """A matched CIDR cannot silently replace exact client asset membership."""
+        scope = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=("2001:db8:55::/120",),
+            require_authorization_for_public=True,
+        )
+        gate = _gate(scope)
+        with self.no_network(), patch(
+            "lightup.activation.token_urlsafe",
+            side_effect=AssertionError("token for mismatched asset forbidden"),
+        ):
+            for number in range(128):
+                literal = str(ipaddress.IPv6Address(f"2001:db8:55::{number + 1:x}"))
+                target = Target(
+                    "[" + literal + "]", authorization=_authorization(asset=ALIAS)
+                )
+                result = scope.decide(target)
+                self.assertFalse(result.allowed)
+                self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_ASSET_MISMATCH)
+                with self.assertRaises(PermissionError):
+                    gate.issue(target, CAPABILITY)
+
     def test_exact_ipv6_asset_does_not_match_unrelated_alias(self):
         with self.no_network():
             result = _scope().decide(
@@ -179,6 +225,7 @@ class SourceOwnerAssetIPv6Boundary(unittest.TestCase):
             "test_red_owner_asset_alias_cannot_admit_bare_ipv6": "True is not false",
             "test_red_owner_alias_cannot_mint_wrong_identity_permit": "PermissionError not raised",
             "test_red_128_distinct_wrong_ipv6_assets_all_denied": "128 owner-source wrong-asset admissions",
+            "test_red_128_wrong_asset_gate_tokens_must_never_be_created": "128 wrong-asset fake permit tokens created",
         }
         for method, message in expected_messages.items():
             with self.subTest(method=method):
