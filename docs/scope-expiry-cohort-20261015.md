@@ -219,6 +219,21 @@ year 9999 overflow boundaries, and rejection of non-leap-year century
 dates (1900/2100), year 0000 and 24:00 rollover. None of these time
 fields is authenticated or used to permit active scanning.
 
+## Actual immutable grant-model acceptance for #347 (W17)
+
+This separate synthetic, in-memory acceptance exercises the **installed**
+`AuthorizationGrant.is_current(now=...)` method (read only, no source
+changes). Start and end instants must remain inclusive; one second outside
+either boundary is not current. Equivalent `timezone-aware` clocks with
+UTC−05, UTC+02 and UTC+13 offsets must agree with the corresponding UTC
+instant. A naive `datetime` evaluation must raise `ValueError`.
+A frozen dataclass that can nevertheless be constructed with
+`valid_from > valid_until` must **never** become current at any tested
+instant. This fills remaining explicitly named checks from open [issue
+#347](https://github.com/Zennay/Lightup/issues/347), but is only a
+regression proof; it does not close the issue or solve request/grant
+provenance, trusted clock, persisted revocation or executor admission.
+
 ## Uniform HOLD privacy on adversarial inputs (W16)
 
 Twelve distinct real subprocess payloads—including invalid UTF-8, severe
