@@ -69,12 +69,22 @@ def review(raw: bytes) -> dict:
     issue_rows, issues_complete = _pages(data["issue_pages"], "issue")
     pr_rows, prs_complete = _pages(data["pr_pages"], "PR")
     raw_issues = {}
+    seen_issue_rows = set()
+    excluded_pr_pseudorows = []
     for row in issue_rows:
-        if type(row) is not dict or row.get("pull_request") is not None:
-            raise InvalidSnapshot("PR mistakenly included among issue rows")
+        if type(row) is not dict:
+            raise InvalidSnapshot("invalid issue row")
         number = _positive_int(row.get("number"))
-        if number in raw_issues or row.get("state") not in ("open", "closed"):
+        if number in seen_issue_rows or row.get("state") not in ("open", "closed"):
             raise InvalidSnapshot("duplicate/invalid issue")
+        seen_issue_rows.add(number)
+        # GitHub GET /issues also returns pull requests as issue-shaped rows.
+        # Ignore those for Notion scope issue selection, but report their count.
+        if row.get("pull_request") is not None:
+            if type(row["pull_request"]) is not dict:
+                raise InvalidSnapshot("invalid pull-request marker")
+            excluded_pr_pseudorows.append(number)
+            continue
         raw_issues[number] = row
     scope = data["scope_issue_numbers"]
     if type(scope) is not list or len(scope) > MAX_ROWS:
@@ -191,6 +201,7 @@ def review(raw: bytes) -> dict:
         "conflict_observations": grouped["review_groups"],
         "observed_path_collisions": path_collisions,
         "open_fork_prs_require_review": sorted(n for n, p in prs.items() if p["open"] and p["fork"]),
+        "excluded_pr_pseudorows_from_issue_pages": sorted(excluded_pr_pseudorows),
         "missing_claim_declarations": sorted(n for n, p in prs.items() if p["open"] and n not in claimed),
         "candidate_list_suppressed": True,
         "unclaimed_candidates_not_permission": [],
@@ -208,7 +219,7 @@ def main() -> int:
             "source_provenance_verified": False, "worker_activity_verified": False,
             "snapshot_complete_self_asserted": False, "head_pinning_verified": False,
             "conflict_observations": [], "observed_path_collisions": [],
-            "open_fork_prs_require_review": [], "missing_claim_declarations": [],
+            "open_fork_prs_require_review": [], "excluded_pr_pseudorows_from_issue_pages": [], "missing_claim_declarations": [],
             "candidate_list_suppressed": True, "unclaimed_candidates_not_permission": [],
             "reason": "Invalid offline GitHub export",
         }
