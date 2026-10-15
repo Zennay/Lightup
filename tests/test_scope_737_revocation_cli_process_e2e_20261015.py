@@ -103,7 +103,7 @@ class RevocationRealCliSubprocessTests(unittest.TestCase):
         self.assertEqual(data["class_counts"], [])
 
     def test_real_process_denies_hidden_unicode_control_without_leak(self):
-        private = "fictional\\u202esecret"
+        private = "fictional\u202esecret"
         proc = run_cli(envelope([
             fixture("2026-10-15T10:00:00Z", private, "fixture")
         ]))
