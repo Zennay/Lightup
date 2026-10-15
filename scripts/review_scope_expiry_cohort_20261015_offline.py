@@ -122,9 +122,17 @@ def _read_bounded_stdin() -> bytes:
     fd = sys.stdin.fileno()
     if fd != 0:
         raise ValueError("stdin descriptor is not canonical")
-    mode = os.fstat(fd).st_mode
-    if not (stat.S_ISFIFO(mode) or stat.S_ISREG(mode)):
+    initial = os.fstat(fd)
+    regular = stat.S_ISREG(initial.st_mode)
+    if not (stat.S_ISFIFO(initial.st_mode) or regular):
         raise ValueError("stdin must be a local pipe or regular file")
+    if regular:
+        # Reject partial/seeked regular files and oversized snapshots *before*
+        # reading. Never silently review a truncated or suffix-only record.
+        if not 0 < initial.st_size <= MAX_INPUT_BYTES:
+            raise ValueError("invalid regular-file size")
+        if os.lseek(fd, 0, os.SEEK_CUR) != 0:
+            raise ValueError("nonzero regular-file offset")
 
     was_blocking = os.get_blocking(fd)
     try:
@@ -138,8 +146,26 @@ def _read_bounded_stdin() -> bytes:
             readable, _, _ = select.select([fd], [], [], remaining)
             if not readable:
                 raise ValueError("stdin EOF deadline")
+            before = os.fstat(fd)
+            if (before.st_dev, before.st_ino, before.st_mode) != (
+                initial.st_dev, initial.st_ino, initial.st_mode
+            ):
+                raise ValueError("stdin descriptor identity drift")
             chunk = os.read(fd, min(4096, MAX_INPUT_BYTES + 1 - len(chunks)))
             if not chunk:
+                final = os.fstat(fd)
+                if (final.st_dev, final.st_ino, final.st_mode) != (
+                    initial.st_dev, initial.st_ino, initial.st_mode
+                ):
+                    raise ValueError("stdin EOF identity drift")
+                if regular:
+                    if (final.st_size, final.st_mtime_ns, final.st_ctime_ns) != (
+                        initial.st_size, initial.st_mtime_ns, initial.st_ctime_ns
+                    ):
+                        raise ValueError("regular-file snapshot changed")
+                    if (len(chunks) != initial.st_size or
+                            os.lseek(fd, 0, os.SEEK_CUR) != initial.st_size):
+                        raise ValueError("incomplete regular-file snapshot")
                 return bytes(chunks)
             chunks.extend(chunk)
         raise ValueError("stdin byte limit")
@@ -171,9 +197,15 @@ def _emit_receipt(receipt: dict[str, object]) -> bool:
         if not (stat.S_ISFIFO(mode) or
                 (stat.S_ISCHR(mode) and os.isatty(fd))):
             return False
+        original = os.fstat(fd)
         was_blocking = os.get_blocking(fd)
         try:
             os.set_blocking(fd, False)
+            current = os.fstat(fd)
+            if (current.st_dev, current.st_ino, current.st_mode) != (
+                original.st_dev, original.st_ino, original.st_mode
+            ):
+                return False
             return os.write(fd, payload) == len(payload)
         finally:
             os.set_blocking(fd, was_blocking)
