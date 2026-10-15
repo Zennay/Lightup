@@ -21,6 +21,7 @@ from lightup.request_grant_sqlite_preflight_177 import (
     review_persisted_request_grant,
     review_persisted_grant_batch,
     _has_provenance_fk,
+    _bound_sqlite_work,
 )
 
 
@@ -618,6 +619,29 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
         )
         self.assertIs(outcome.status, ReviewStatus.HOLD)
         self.assert_no_authority(outcome)
+
+    def test_offline_sqlite_vm_budget_interrupts_pathological_local_query(self):
+        # Exercise the very same per-connection progress cap without creating
+        # millions of real rows or contacting any external system.
+        with sqlite3.connect(":memory:") as con:
+            _bound_sqlite_work(con)
+            with self.assertRaises(sqlite3.OperationalError):
+                con.execute(
+                    "WITH RECURSIVE counter(n) AS "
+                    "(SELECT 0 UNION ALL SELECT n+1 FROM counter "
+                    "WHERE n < 10000000) SELECT count(*) FROM counter"
+                ).fetchone()
+
+    def test_sqlite_progress_limit_does_not_break_small_genuine_snapshots(self):
+        self.upgrade_synthetic_only()
+        second = self._second_synthetic_grant()
+        self.assertIs(self.review().status, ReviewStatus.REVIEW_ONLY)
+        whole = review_persisted_grant_batch(
+            self.path, (self.grant.grant_id, second),
+            reviewed_at=self.reviewed_at,
+        )
+        self.assertIs(whole.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(whole)
 
     def test_atomic_persisted_batch_denies_all_invalid_shapes(self):
         self.upgrade_synthetic_only()
