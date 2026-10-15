@@ -263,6 +263,35 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
             with self.subTest(mutant=mutant):
                 self.assertFalse(_source_has_only_offline_effects(source + "\n" + mutant))
 
+    def test_full_temporal_grid_matches_independent_inclusive_reference(self):
+        # An independent arithmetic oracle avoids reusing the source's
+        # comparison implementation. No customer, grant, or target exists.
+        minutes = (-75, -45, -30, -15, 0, 15, 30, 45, 75)
+        for offset in (-8, 0, 5.5):
+            zone = timezone(timedelta(hours=offset))
+            for start_offset in minutes:
+                for end_offset in minutes:
+                    first = (MID + timedelta(minutes=start_offset)).astimezone(zone)
+                    last = (MID + timedelta(minutes=end_offset)).astimezone(zone)
+                    auth = fixture(start=first, end=last)
+                    if start_offset > end_offset:
+                        expected = ("HOLD", "inverted_window")
+                        batch_expected = ("HOLD", "invalid_batch")
+                    elif start_offset <= 0 <= end_offset:
+                        expected = ("REVIEW_ONLY", "temporal_shape_only")
+                        batch_expected = expected
+                    else:
+                        expected = ("HOLD", "outside_window")
+                        batch_expected = ("HOLD", "invalid_batch")
+                    with self.subTest(zone=offset, start=start_offset, end=end_offset):
+                        assert_non_authorizing(self, review(auth), *expected)
+                        assert_non_authorizing(
+                            self,
+                            review_legacy_authorization_batch(
+                                (auth,), observed_at=MID
+                            ), *batch_expected
+                        )
+
     def test_batch_fixed_offset_instant_and_inclusive_metaproperties(self):
         offsets = (-12, -8, -1, 0, 1, 5.5, 12, 14)
         for offset in offsets:
