@@ -463,9 +463,9 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
             "__future__", "json", "ipaddress", "os", "re", "select",
             "stat", "sys", "time", "typing",
         }
-        deny_os_calls = {
-            "open", "system", "popen", "fork", "execv", "execve",
-            "spawnv", "spawnve", "listdir", "scandir", "walk",
+        allowed_os_attrs = {
+            "stat_result", "fstat", "dup", "lseek", "read", "close",
+            "get_blocking", "set_blocking", "isatty", "write",
         }
         deny_dynamic_calls = {"__import__", "eval", "exec", "compile", "open"}
 
@@ -479,16 +479,19 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
                 if isinstance(node, ast.ImportFrom):
                     if (node.module or "").partition(".")[0] not in allowed:
                         findings.append(("import-from", node.module))
-                if isinstance(node, ast.Call):
-                    if isinstance(node.func, ast.Name) and node.func.id in deny_dynamic_calls:
-                        findings.append(("dynamic", node.func.id))
-                    if (
-                        isinstance(node.func, ast.Attribute)
-                        and isinstance(node.func.value, ast.Name)
-                        and node.func.value.id == "os"
-                        and node.func.attr in deny_os_calls
-                    ):
-                        findings.append(("os-effect", node.func.attr))
+                if (
+                    isinstance(node, ast.Attribute)
+                    and isinstance(node.value, ast.Name)
+                    and node.value.id == "os"
+                    and node.attr not in allowed_os_attrs
+                ):
+                    findings.append(("os-effect", node.attr))
+                if (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Name)
+                    and node.func.id in deny_dynamic_calls
+                ):
+                    findings.append(("dynamic", node.func.id))
             return findings
 
         self.assertEqual(offenses(SCRIPT.read_text(encoding="utf-8")), [])
@@ -497,6 +500,10 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
             "from urllib import request\nrequest.urlopen('http://example.invalid')",
             "import subprocess\nsubprocess.run(['python'])",
             "import os\nos.system('echo mutated')",
+            "import os\nos.execvp('sh', ['sh'])",
+            "import os\nos.ftruncate(4, 0)",
+            "import os\nos.unlink('/tmp/fake')",
+            "import os\nos.environ.get('TOKEN')",
             "__import__('socket')",
             "open('secrets.txt')",
         )
