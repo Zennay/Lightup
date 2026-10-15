@@ -69,7 +69,7 @@ PYTHONPATH=src python -m unittest discover -s tests \
 ```
 
 **Executed local reference validation:** the same isolated reviewer and
-regression fixtures were executed under Python with all **27 / 27 standard
+regression fixtures were executed under Python with all **29 / 29 standard
 library test methods passing**, including real subprocess exit-code and privacy
 checks, size/type boundaries, JSON-escape collisions, spoofed extra permit
 fields, local file input, socket stdin/stdout refusal, rejected regular-file
@@ -82,9 +82,9 @@ earlier SQLite producer/direct differential remain unexecuted in this run,
 pending canonical repository CI.
 
 
-### W4: strict file snapshot + descriptor ownership acceptance (2026-10-15)
+### W4/W5: strict snapshots, pinned descriptors and fuzz acceptance (2026-10-15)
 
-After the earlier 18-method evidence, W4 added 9 independent tests and two
+After the earlier 18-method evidence, W4/W5 added 11 independent tests and two
 fail-closed protections:
 
 1. **Regular input must be a complete immutable snapshot.** For fd0 files,
@@ -96,7 +96,14 @@ fail-closed protections:
    read/write only the pinned descriptors, detect original-fd rebinding and
    close duplicates even if the second `dup` fails.
 
-**Actually executed locally:** Python 3.13.5 compile and 27/27 standalone
+**New deterministic W5 fuzz:** 2,048 seeded untrusted byte payloads ranging
+from zero through above the exact 4KiB input ceiling, and 192 extra
+non-whitespace/trailing-document mutations of an otherwise valid claim.
+Every verdict has only the fixed status and six strictly false authority
+flags; trailing mutations must be exactly HOLD. This is no real customer
+data, scans or network request.
+
+**Actually executed locally:** Python 3.13.5 compile and 29/29 standalone
 reviewer tests passed twice (including `PYTHONHASHSEED=random`). GitHub
 contents were re-fetched and match the exact locally tested script and tests
 in character count and code-point FNV32 diagnostic. These are **not** full
