@@ -11,9 +11,16 @@ import contextlib
 import io
 import json
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import patch
 
-from lightup.ai.orchestration import OrchestrationError, ToolCall
+from lightup.ai.orchestration import (
+    OrchestrationError, ParamKind, RunContext, ToolCall, ToolDefinition,
+    ToolDenied, ToolExecutor, ToolOutput, ToolParameter, ToolRegistry,
+)
+
+from lightup.engagements import AssessmentMode, RiskLevel
+from lightup.execution_policy import InteractionKind
 
 from test_scope_1147_expected_red_integrity_20261015 import (
     EXPECTED_ORDINARY_CONTROL_NAMES,
@@ -65,16 +72,73 @@ class Scope1147OwnerIntegrationTransitionTests(unittest.TestCase):
                 with self.subTest(original_red=name):
                     self._run_installed_case_without_xfail_wrapper(name)
 
-    def test_all_eight_safe_controls_still_pass_after_synthetic_fix(self):
+    def test_seven_compatible_safe_controls_still_pass_after_synthetic_fix(self):
+        # Existing duplicate-key/no-grant test changes the denial precedence:
+        # duplicate admission is rejected BEFORE no-grant policy can run.
+        # Exercise no-grant with UNIQUE keys in a separate installed test.
         safe = sorted(
             name for name in EXPECTED_ORDINARY_CONTROL_NAMES
             if not name.startswith("test_current_source_")
+            and name != "test_target_active_without_grant_stays_denied_even_with_duplicate_keys"
         )
-        self.assertEqual(len(safe), 8)
+        self.assertEqual(len(safe), 7)
         with patch.object(ToolCall, "arguments_dict", _strict_preprojection):
             for name in safe:
                 with self.subTest(control=name):
                     self._run_installed_case_without_xfail_wrapper(name)
+
+    def test_duplicate_target_is_rejected_before_no_grant_policy(self):
+        # The old no-grant fixture itself carries duplicate keys. Its original
+        # ToolDenied expectation MUST change after a pre-schema duplicate fix.
+        with patch.object(ToolCall, "arguments_dict", _strict_preprojection):
+            with self.assertRaises(OrchestrationError):
+                self._run_installed_case_without_xfail_wrapper(
+                    "test_target_active_without_grant_stays_denied_even_with_duplicate_keys"
+                )
+
+    def test_unique_target_without_grant_still_denied_by_real_installed_policy(self):
+        fixture = _fixture()("test_unique_names_permit_exact_once_with_durable_evidence")
+        fixture.setUp()
+        invoked: list[dict[str, object]] = []
+
+        def inert_target(_context, arguments):
+            invoked.append(dict(arguments))
+            return ToolOutput("should never run", "note", b"should-not-exist")
+
+        registry = ToolRegistry()
+        registry.register(
+            ToolDefinition(
+                tool_id="fictional-target", capability_id="web-baseline",
+                interaction=InteractionKind.TARGET_ACTIVE,
+                min_risk=RiskLevel.STANDARD,
+                description="fictional no-grant target-only fixture",
+                parameters=(ToolParameter("selector", ParamKind.STRING),),
+            ),
+            inert_target,
+        )
+        ctx = RunContext(
+            run_id=fixture.run_id,
+            client_id="fictional-client",
+            engagement_id="fictional-engagement",
+            mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
+            approved_risk=RiskLevel.STANDARD,
+            authorization=None,
+            is_lab=False,
+            created_at=datetime.now(timezone.utc),
+        )
+        try:
+            with patch.object(ToolCall, "arguments_dict", _strict_preprojection):
+                with self.assertRaises(ToolDenied):
+                    ToolExecutor(registry, fixture.state).execute(
+                        ctx, ToolCall(
+                            tool_id="fictional-target", asset="fixture-only.invalid",
+                            arguments=(("selector", "only-unique-key"),),
+                        ),
+                    )
+            self.assertEqual(invoked, [])
+            self.assertEqual(fixture.evidence_count(), 0)
+        finally:
+            fixture.doCleanups()
 
     def test_eight_unsafe_positive_witnesses_must_be_retired_after_real_fix(self):
         witnesses = sorted(
