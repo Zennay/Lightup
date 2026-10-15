@@ -210,6 +210,33 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
         self.assertGreater(parsed, 100)
         self.assertGreater(rejected_aliases, 80)
 
+    def test_exact_dns_label_name_and_capability_ceiling_boundaries(self):
+        longest_name = ".".join(["a" * 63] * 3 + ["b" * 61])
+        over_name = ".".join(["a" * 63] * 3 + ["b" * 62])
+        self.assertEqual((len(longest_name), len(over_name)), (253, 254))
+        for name in ("a" * 63 + ".test", "a--b.example.test", longest_name):
+            with self.subTest(valid=name[:24]):
+                sample = synthetic_claim()
+                sample["assets"] = [name]
+                self.assertEqual(receipt(sample)["status"], "REVIEW_ONLY")
+        for name in ("a" * 64 + ".test", over_name, "a" * 63 + "..test",
+                     "xn--" + "a" * 59 + ".test", "a." + "b" * 64):
+            with self.subTest(invalid=name[:24]):
+                sample = synthetic_claim()
+                sample["assets"] = [name]
+                self.assert_hold(receipt(sample))
+        for cap in ("x" * 96, "web-baseline_v1.2", "a", "a1_b2-c3.d4"):
+            with self.subTest(valid_cap=cap[:24]):
+                sample = synthetic_claim()
+                sample["allowed_capabilities"] = [cap]
+                self.assertEqual(receipt(sample)["status"], "REVIEW_ONLY")
+        for cap in ("x" * 97, "web..baseline", "web_.baseline", "web/scan",
+                    "_web", "web-", "web__v1"):
+            with self.subTest(invalid_cap=cap[:24]):
+                sample = synthetic_claim()
+                sample["allowed_capabilities"] = [cap]
+                self.assert_hold(receipt(sample))
+
     def test_numeric_ipv4_aliases_fail_closed(self):
         for text in ("127.1", "2130706433", "0177.0.0.1", "127.000.0.1",
                      "1.2.3.999", "1.2.3", "0", "000", "1.2.3.4.5"):
