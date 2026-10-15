@@ -184,3 +184,31 @@ authorization or deployment.
 and thirteen ordinary PASS/witness methods**, on only two self-owned
 test/documentation paths. Correctness on the *latest immutable commit*
 still requires new hosted preflight and independent registered VPS.
+
+## W7: owner-asset source proof independent of IPv6 text spelling
+
+A seventh genuine expected-RED directly drives **1,024 bare IPv6
+string representations** through the **actual unmerged #100 ScopePolicy
+with a fictional matching DNS asset of `"2001"`**. It materializes
+four representations of each of 256 distinct documentation-only IPv6
+addresses: compact lowercase, compact uppercase, fully expanded
+lowercase and fully expanded uppercase. All must be denied because the
+original IPv6 identity is not the permitted DNS asset. Current owner
+source wrongly admits all 1,024 by shortening the host string to its
+first hextet; the assertion witness requires the exact count.
+
+An independent normal-green test drives the same **1,024 fully
+bracketed representations** through the real owner policy with the
+same fictional alias and independently verifies both that all are
+out of scope and that the full normalized IPv6 identity remains
+equivalent to the original network address.
+
+Both synthetic in-memory correction mutants now rerun **all seven**
+deliberately failing source tests. A corrected full-literal parser or
+explicit bare-IPv6 denial must flip all seven to unexpected-success,
+not hide new runtime errors or silently degrade existing valid
+bracketed/host/CIDR behavior. Every address is synthetic RFC3849.
+No resolver, network, customer target, real grant or execution adapter.
+
+**W7 own test inventory: seven genuine expected-RED and fourteen
+normal PASS/witness test methods.**
