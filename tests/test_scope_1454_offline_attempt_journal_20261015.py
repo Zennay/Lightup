@@ -416,6 +416,24 @@ class OfflineAttemptJournalTests(unittest.TestCase):
         self.assertEqual(projection["status"], "HOLD")
         self.assertEqual(projection["requires_manual_reconciliation"], 0)
 
+    def test_backlog_mutated_counters_are_privacy_redacted(self):
+        self.journal.reserve(self.attempt)
+        backlog = self.journal.review_backlog()
+        object.__setattr__(backlog, "reserved_count", "fixture-client-sensitive")
+        projection = backlog.as_dict()
+        self.assertEqual(projection["status"], "HOLD")
+        self.assertEqual(projection["reserved_count"], 0)
+        self.assertNotIn("fixture-client-sensitive", str(projection))
+        self.assertIs(projection["dispatch_allowed"], False)
+
+    def test_backlog_mutated_extra_claims_are_privacy_redacted(self):
+        backlog = self.journal.review_backlog()
+        object.__setattr__(backlog, "private_payload", "fixture-secret-do-not-expose")
+        projection = backlog.as_dict()
+        self.assertEqual(projection["status"], "HOLD")
+        self.assertNotIn("fixture-secret", str(projection))
+        self.assertIs(projection["release_allowed"], False)
+
     def test_corrupted_reserved_digest_must_not_finish_attempt(self):
         self.assert_non_authorizing(self.journal.reserve(self.attempt), "REVIEW_ONLY")
         self.con.execute(
