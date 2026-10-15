@@ -23,6 +23,7 @@ from lightup.ai.orchestration import (
     RunContext,
     ToolCall,
     ToolDefinition,
+    ToolDenied,
     ToolExecutor,
     ToolOutput,
     ToolParameter,
@@ -279,6 +280,71 @@ class DuplicateArgumentKeysInstalledSource1147(unittest.TestCase):
         self.assertEqual(
             self.state.get_evidence(initial_evidence_id).run_id, self.run_id
         )
+
+    def test_current_source_duplicate_order_changes_effective_handler_arguments(self):
+        # A source witness: simply reordering equivalent multi-entries changes
+        # the value that is actually delivered to the inert callback.
+        first = self.executor.execute(
+            self.context, self.call(("selector", "alpha"), ("selector", "beta"))
+        )
+        second = self.executor.execute(
+            self.context, self.call(("selector", "beta"), ("selector", "alpha"))
+        )
+        self.assertEqual(self.calls, [{"selector": "beta"}, {"selector": "alpha"}])
+        self.assertNotEqual(first.evidence_id, second.evidence_id)
+        self.assertEqual(self.evidence_count(), 2)
+
+    def test_target_active_without_grant_stays_denied_even_with_duplicate_keys(self):
+        # Deliberately fictional target, no grant and no network-capable worker.
+        # This bounds the observed issue to argument integrity: it does NOT
+        # demonstrate a real authorization bypass.
+        invoked: list[dict[str, object]] = []
+
+        def inert_target(_context, arguments):
+            invoked.append(arguments)
+            return ToolOutput("should not run", "note", b"never")
+
+        registry = ToolRegistry()
+        registry.register(
+            ToolDefinition(
+                "fictional-target", "web-baseline",
+                InteractionKind.TARGET_ACTIVE, RiskLevel.STANDARD,
+                "offline denied target-only fixture",
+                (ToolParameter("selector", ParamKind.STRING),),
+            ),
+            inert_target,
+        )
+        context = RunContext(
+            run_id=self.run_id,
+            client_id="fictional-no-grant",
+            engagement_id="fictional-no-engagement",
+            mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
+            approved_risk=RiskLevel.STANDARD,
+            authorization=None,
+            is_lab=False,
+            created_at=datetime.now(timezone.utc),
+        )
+        with self.assertRaises(ToolDenied):
+            ToolExecutor(registry, self.state).execute(
+                context, ToolCall(
+                    "fictional-target", "no-target.invalid",
+                    (("selector", "first"), ("selector", "last")),
+                ),
+            )
+        self.assertEqual(invoked, [])
+        self.assertEqual(self.evidence_count(), 0)
+
+    @unittest.expectedFailure
+    def test_required_order_permutations_of_duplicated_values_are_both_denied(self):
+        for values in (("alpha", "beta"), ("beta", "alpha")):
+            with self.subTest(values=values):
+                with self.assertRaises(OrchestrationError):
+                    self.executor.execute(
+                        self.context,
+                        self.call(("selector", values[0]), ("selector", values[1])),
+                    )
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), 0)
 
     @unittest.expectedFailure
     def test_required_denial_of_identical_duplicate_keys_before_any_effect(self):
