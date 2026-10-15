@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from lightup.domain import AccessContext, DomainStore, Role
 from lightup.engagements import AssessmentMode, EngagementStatus, RiskLevel, ScopeDefinition
 from lightup.request_grant_offline_review_177 import ReviewStatus
+from lightup import request_grant_sqlite_preflight_177 as persisted_review
 from lightup.request_grant_sqlite_preflight_177 import (
     review_persisted_request_grant,
     review_persisted_grant_batch,
@@ -580,6 +581,43 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
         )
         self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
         self.assert_no_authority(result)
+
+    def test_persisted_batch_scans_fk_consistency_once_per_snapshot(self):
+        self.upgrade_synthetic_only()
+        second_id = self._second_synthetic_grant()
+        with patch.object(
+            persisted_review, "_has_provenance_fk",
+            wraps=persisted_review._has_provenance_fk,
+        ) as inspected:
+            review = review_persisted_grant_batch(
+                self.path, (self.grant.grant_id, second_id),
+                reviewed_at=self.reviewed_at,
+            )
+        self.assertIs(review.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(review)
+        self.assertEqual(inspected.call_count, 1)
+
+    def test_fk_consistency_is_rechecked_each_independent_snapshot(self):
+        self.upgrade_synthetic_only()
+        second_id = self._second_synthetic_grant()
+        candidate = (self.grant.grant_id, second_id)
+        self.assertIs(
+            review_persisted_grant_batch(
+                self.path, candidate, reviewed_at=self.reviewed_at
+            ).status, ReviewStatus.REVIEW_ONLY,
+        )
+        with sqlite3.connect(self.path) as con:
+            con.execute("PRAGMA foreign_keys=OFF")
+            self.assertEqual(con.execute(
+                "UPDATE authorization_grants SET approved_request_id=? "
+                "WHERE grant_id=?",
+                ("orphaned-after-review", second_id),
+            ).rowcount, 1)
+        outcome = review_persisted_grant_batch(
+            self.path, candidate, reviewed_at=self.reviewed_at
+        )
+        self.assertIs(outcome.status, ReviewStatus.HOLD)
+        self.assert_no_authority(outcome)
 
     def test_atomic_persisted_batch_denies_all_invalid_shapes(self):
         self.upgrade_synthetic_only()
