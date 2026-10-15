@@ -95,26 +95,36 @@ class ReviewReceipt:
     def as_dict(self) -> dict[str, str | bool]:
         # Treat a poisoned or user-constructed receipt as HOLD, never echo a
         # caller-provided status/reason/identifier. No flag is an authority.
+        names = (
+            "status", "reason", "authorization_verified", "permit_issued",
+            "execution_enabled", "dispatch_allowed", "merge_approved",
+            "release_approved",
+        )
+        # Inspect actual instance storage. Plain attribute reads can fall
+        # back to dataclass class defaults after __delattr__, falsely passing
+        # the six-false test on an incomplete/forged receipt.
         try:
-            flags = (
-                self.authorization_verified, self.permit_issued,
-                self.execution_enabled, self.dispatch_allowed,
-                self.merge_approved, self.release_approved,
-            ) if type(self) is ReviewReceipt else ()
+            values = vars(self) if type(self) is ReviewReceipt else {}
             valid = (
                 type(self) is ReviewReceipt
-                and all(type(flag) is bool and flag is False for flag in flags)
-                and type(self.status) is str and type(self.reason) is str
+                and set(values) == set(names)
+                and all(
+                    type(values[name]) is bool and values[name] is False
+                    for name in names[2:]
+                )
+                and type(values["status"]) is str
+                and type(values["reason"]) is str
                 and (
-                    (self.status == "HOLD" and self.reason == "not_verified")
-                    or (self.status == "REVIEW_ONLY"
-                        and self.reason == "synthetic_snapshot_consistent")
+                    (values["status"] == "HOLD"
+                     and values["reason"] == "not_verified")
+                    or (values["status"] == "REVIEW_ONLY"
+                        and values["reason"] == "synthetic_snapshot_consistent")
                 )
             )
-        except (AttributeError, TypeError):
+        except (AttributeError, KeyError, TypeError):
             valid = False
-        status = self.status if valid else "HOLD"
-        reason = self.reason if valid else "not_verified"
+        status = values["status"] if valid else "HOLD"
+        reason = values["reason"] if valid else "not_verified"
         return {
             "status": status,
             "reason": reason,
