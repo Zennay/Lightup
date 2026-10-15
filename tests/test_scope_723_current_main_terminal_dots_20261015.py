@@ -10,6 +10,7 @@ import os
 import socket
 import subprocess
 import urllib.request
+from urllib.parse import urlparse
 import sys
 import unittest
 from unittest.mock import patch
@@ -29,6 +30,39 @@ def _decision(value: str, declared_host: str = _HOST):
         allow_private_lab=False,
         explicit_hosts=frozenset((declared_host,)),
     ).decide(Target(value, authorization=_SYNTHETIC_ONLY))
+
+
+def _reference_terminal_root_identity(host: str | None) -> str | None:
+    """Pure review oracle: zero/one root dot only; NEVER issues scope rights."""
+    if not host or host.endswith(".."):
+        return None
+    normalized = host[:-1] if host.endswith(".") else host
+    return normalized.lower() or None
+
+
+def _reference_target_host(value: str) -> str | None:
+    """Mirror only installed URL host extraction, then apply strict root-dot rule."""
+    raw = value.strip()
+    if not raw:
+        return None
+    parsed = urlparse(raw if "://" in raw else f"//{raw}", scheme="")
+    return _reference_terminal_root_identity(parsed.hostname)
+
+
+def _reference_bad_root_cases() -> tuple[str, ...]:
+    """240 differently spelled hosts plus four dot-only host identities."""
+    hosts = (_HOST, "localhost", "127.0.0.1", "10.42.43.44", "198.51.100.23")
+    cases = tuple(
+        variant
+        for host in hosts
+        for dots in range(2, 18)
+        for variant in (
+            host + "." * dots,
+            "http://" + host + "." * dots + "/synthetic-only",
+            "https://" + host + "." * dots + ":8443/synthetic-only",
+        )
+    )
+    return cases + ("..", "...", "http://../synthetic-only", "https://.../synthetic-only")
 
 
 class TerminalDotCurrentMainSourceRed(unittest.TestCase):
@@ -134,6 +168,17 @@ class TerminalDotCurrentMainSourceRed(unittest.TestCase):
         )
         self.assertEqual(len(decisions), 4)
         self.assertFalse(any(decision.allowed for decision in decisions))
+
+    @unittest.expectedFailure
+    def test_installed_normalizer_must_match_pure_fail_closed_root_dot_oracle(self):
+        # This compares all 244 actual source parser outputs, not just an
+        # aggregate ScopeDecision. It is intentionally RED until source owner
+        # changes normalization; no URL is opened or DNS resolved.
+        cases = _reference_bad_root_cases()
+        actual = tuple(ScopePolicy.normalize_host(value) for value in cases)
+        expected = tuple(_reference_target_host(value) for value in cases)
+        self.assertEqual(len(cases), 244)
+        self.assertFalse(any(left != right for left, right in zip(actual, expected)))
 
     @unittest.expectedFailure
     def test_port_qualified_multi_root_dot_authorities_must_deny_every_path(self):
@@ -306,6 +351,7 @@ _RED_NAMES = (
     "test_malformed_config_without_auth_and_policy_optout_must_deny",
     "test_only_dots_and_empty_config_without_auth_optout_must_deny",
     "test_all_dots_target_must_not_match_empty_declared_hostname",
+    "test_installed_normalizer_must_match_pure_fail_closed_root_dot_oracle",
     "test_port_qualified_multi_root_dot_authorities_must_deny_every_path",
     "test_parser_itself_must_reject_multi_root_dot_identities",
     "test_parser_itself_must_reject_dot_only_and_empty_normalized_host",
@@ -361,7 +407,7 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
 
     def test_original_source_witnesses_are_real_assertions_not_errors(self):
         # @expectedFailure also catches accidental TypeError and ValueError.
-        # An independent TestResult must observe exactly nineteen AssertionError
+        # An independent TestResult must observe exactly twenty AssertionError
         # failures, not silently accept an unrelated crash or unexpected green.
         for name in _RED_NAMES:
             with self.subTest(case=name):
@@ -450,6 +496,40 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
                         self.assertIs(type(result.allowed), bool)
                         count += 1
             self.assertEqual(count, 40)
+
+    def test_pure_fail_closed_reference_covers_244_bad_and_30_good_hosts(self):
+        # A narrowly scoped REVIEW-ONLY reference for the source owner.
+        # It returns a lexical identity or None, never an authorization.
+        invalid = _reference_bad_root_cases()
+        self.assertEqual(len(invalid), 244)
+        self.assertEqual(len(set(invalid)), 244)
+        self.assertTrue(all(_reference_target_host(value) is None for value in invalid))
+
+        hosts = (_HOST, "localhost", "127.0.0.1", "10.42.43.44", "198.51.100.23")
+        legitimate = tuple(
+            (variant, host)
+            for host in hosts
+            for variant in (
+                host,
+                host + ".",
+                host.upper() + ".",
+                "http://" + host + "/synthetic-only",
+                "http://" + host + "./synthetic-only",
+                "https://" + host + ".:8443/synthetic-only",
+            )
+        )
+        self.assertEqual(len(legitimate), 30)
+        for value, canonical in legitimate:
+            with self.subTest(value=value):
+                self.assertEqual(_reference_target_host(value), canonical)
+        # Configuration-side lexical review uses only already isolated
+        # hostname text, never target-URL syntax or mutable authorization.
+        for dots in range(2, 18):
+            self.assertIsNone(_reference_terminal_root_identity(_HOST + "." * dots))
+        self.assertEqual(_reference_terminal_root_identity(_HOST + "."), _HOST)
+        self.assertIsNone(_reference_terminal_root_identity(""))
+        self.assertIsNone(_reference_terminal_root_identity("."))
+        self.assertIsNone(_reference_terminal_root_identity(None))
 
     def test_parser_positive_control_normalizes_exact_and_single_root_dot(self):
         identities = (_HOST, "localhost", "127.0.0.1", "10.42.43.44", "198.51.100.23")
