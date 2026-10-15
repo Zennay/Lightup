@@ -193,6 +193,88 @@ class AtomicPublicConfigurationSourceContract(unittest.TestCase):
                     "RED must be a genuine unsafe allow, not a hidden crash",
                 )
 
+    @staticmethod
+    def _matrix_network_to_host_decisions():
+        # Ten distinct malformed CIDRs x four canonical forms of one fictional
+        # exact-match hostname. The loop fully materializes every source call.
+        malformed = (
+            "not-a-cidr",
+            "198.51.100.0/33",
+            "198.51.100.0/-1",
+            "198.51.100.0/abc",
+            "198.51.100.0/",
+            "198.51.100.999/24",
+            "2001:db8::/129",
+            "2001:db8::/999",
+            "2001:db8::/x",
+            "",
+        )
+        forms = (
+            HOST,
+            "SECURITY.EXAMPLE.TEST",
+            "https://security.example.test/alpha",
+            "https://security.example.test/beta?x=1",
+        )
+        return [
+            policy_with_bad_networks((bad,)).decide(
+                Target(host_form, authorization=FAKE_AUTH)
+            )
+            for bad in malformed
+            for host_form in forms
+        ]
+
+    @staticmethod
+    def _matrix_host_to_network_decisions():
+        # Six non-string host collection entries x three fictional
+        # documentation-IP literals. No external assets or network I/O.
+        malformed = (
+            None, False, 17, 3.25, b"invalid-host", ("tuple",)
+        )
+        targets = (
+            "198.51.100.42", "198.51.100.43", "198.51.100.44"
+        )
+        return [
+            ScopePolicy(
+                allow_private_lab=False,
+                explicit_hosts=frozenset({bad}),
+                explicit_networks=("198.51.100.0/24",),
+            ).decide(Target(ip, authorization=FAKE_AUTH))
+            for bad in malformed
+            for ip in targets
+        ]
+
+    def test_matrix_witness_40_actual_network_to_host_allows(self):
+        decisions = self._matrix_network_to_host_decisions()
+        self.assertEqual(len(decisions), 40)
+        for decision in decisions:
+            self.assertEqual(
+                (decision.allowed, decision.reason),
+                (True, ScopeReason.EXPLICIT_HOST),
+                "Only a real unsafe installed-source permit is a RED witness",
+            )
+
+    @unittest.expectedFailure
+    def test_red_matrix_all_40_bad_network_to_host_admissions_must_deny(self):
+        decisions = self._matrix_network_to_host_decisions()
+        self.assertEqual(len(decisions), 40)
+        self.assertEqual(sum(item.allowed for item in decisions), 0)
+
+    def test_matrix_witness_18_actual_host_to_network_allows(self):
+        decisions = self._matrix_host_to_network_decisions()
+        self.assertEqual(len(decisions), 18)
+        for decision in decisions:
+            self.assertEqual(
+                (decision.allowed, decision.reason),
+                (True, ScopeReason.EXPLICIT_NETWORK),
+                "Only a real unsafe installed-source permit is a RED witness",
+            )
+
+    @unittest.expectedFailure
+    def test_red_matrix_all_18_bad_host_to_network_admissions_must_deny(self):
+        decisions = self._matrix_host_to_network_decisions()
+        self.assertEqual(len(decisions), 18)
+        self.assertEqual(sum(item.allowed for item in decisions), 0)
+
     def test_expected_red_is_missing_denial_not_unrelated_exception(self):
         # A RED that crashes with TypeError/ValueError is NOT a valid security finding.
         # This deliberate incorrect expectation proves a normal assertion is needed.
