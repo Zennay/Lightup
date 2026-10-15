@@ -128,6 +128,40 @@ class SourceOwnerAssetIPv6Boundary(unittest.TestCase):
             f"{len(requested_tokens)} wrong-asset fake permit tokens created",
         )
 
+    @unittest.expectedFailure
+    def test_red_ipv6_alias_is_never_public_scope_even_without_claim_requirement(self):
+        """A policy opt-out cannot turn unrelated IPv6 into allowed DNS scope."""
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset((ALIAS,)),
+            require_authorization_for_public=False,
+        )
+        with self.no_network():
+            decision = policy.decide(Target(LITERAL))
+        self.assertFalse(decision.allowed, decision)
+
+    @unittest.expectedFailure
+    def test_red_128_wrong_ipv6_permits_cannot_share_short_dns_identity(self):
+        """Detect actual returned fake permits, not just token generation count."""
+        wrong_permits = []
+        with self.no_network(), patch(
+            "lightup.activation.token_urlsafe", return_value="FAKE-NEVER-LIVE"
+        ):
+            gate = _gate(_scope())
+            for suffix in range(128):
+                literal = str(ipaddress.IPv6Address(f"2001:db8:55::{suffix + 1:x}"))
+                try:
+                    permit = gate.issue(
+                        Target(literal, authorization=_authorization()), CAPABILITY
+                    )
+                except PermissionError:
+                    continue
+                wrong_permits.append((literal, permit.target))
+        self.assertEqual(
+            wrong_permits, [],
+            f"{len(wrong_permits)} IPv6 targets became short-host permits",
+        )
+
     def test_128_bracketed_wrong_asset_does_not_generate_any_token(self):
         """A matched CIDR cannot silently replace exact client asset membership."""
         scope = ScopePolicy(
@@ -240,6 +274,8 @@ class SourceOwnerAssetIPv6Boundary(unittest.TestCase):
             "test_red_owner_alias_cannot_mint_wrong_identity_permit",
             "test_red_128_distinct_wrong_ipv6_assets_all_denied",
             "test_red_128_wrong_asset_gate_tokens_must_never_be_created",
+            "test_red_ipv6_alias_is_never_public_scope_even_without_claim_requirement",
+            "test_red_128_wrong_ipv6_permits_cannot_share_short_dns_identity",
         )
         with self.no_network(), patch.object(
             ScopePolicy, "normalize_host", new=staticmethod(reject_bare_ipv6)
@@ -281,6 +317,8 @@ class SourceOwnerAssetIPv6Boundary(unittest.TestCase):
             "test_red_owner_alias_cannot_mint_wrong_identity_permit",
             "test_red_128_distinct_wrong_ipv6_assets_all_denied",
             "test_red_128_wrong_asset_gate_tokens_must_never_be_created",
+            "test_red_ipv6_alias_is_never_public_scope_even_without_claim_requirement",
+            "test_red_128_wrong_ipv6_permits_cannot_share_short_dns_identity",
         )
         with self.no_network(), patch.object(
             ScopePolicy, "normalize_host", new=staticmethod(preserve_bare_ipv6)
@@ -312,6 +350,8 @@ class SourceOwnerAssetIPv6Boundary(unittest.TestCase):
             "test_red_owner_alias_cannot_mint_wrong_identity_permit": "PermissionError not raised",
             "test_red_128_distinct_wrong_ipv6_assets_all_denied": "128 owner-source wrong-asset admissions",
             "test_red_128_wrong_asset_gate_tokens_must_never_be_created": "128 wrong-asset fake permit tokens created",
+            "test_red_ipv6_alias_is_never_public_scope_even_without_claim_requirement": "True is not false",
+            "test_red_128_wrong_ipv6_permits_cannot_share_short_dns_identity": "128 IPv6 targets became short-host permits",
         }
         for method, message in expected_messages.items():
             with self.subTest(method=method):
