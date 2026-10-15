@@ -115,6 +115,81 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
             ).rowcount
             self.assertEqual(updated, 1, "synthetic mutation must affect exactly one row")
 
+    # Producer-level acceptance is intentionally RED until source-owner #177
+    # adds the actual durable approved-request FK invariant. These tests
+    # exercise REAL DomainStore methods against disposable local SQLite.
+    @unittest.expectedFailure
+    def test_red_domain_grant_without_approved_request_must_be_denied(self):
+        other = self.store.create_client(self.operator, "No approval synthetic client")
+        engagement = self.store.create_engagement(
+            self.operator, other.client_id, "No request fixture"
+        )
+        with self.assertRaises(ValueError):
+            self.store.record_authorization_grant(
+                self.operator, engagement.engagement_id, self.operator.user_id,
+                "NOT-A-CONSENT-RECORD",
+                ScopeDefinition(
+                    assets=("unapproved.example.test",),
+                    max_risk=RiskLevel.LOW_IMPACT,
+                    allowed_capabilities=("web-baseline",),
+                ),
+                self.valid_from, self.now + timedelta(days=1),
+            )
+
+    @unittest.expectedFailure
+    def test_red_domain_grant_target_beyond_approved_request_must_be_denied(self):
+        with self.assertRaises(ValueError):
+            self.store.record_authorization_grant(
+                self.operator, self.engagement, self.operator.user_id,
+                "SYNTHETIC-ASSET-EXPANSION",
+                ScopeDefinition(
+                    assets=("outside-approved-request.example.test",),
+                    max_risk=RiskLevel.LOW_IMPACT,
+                    allowed_capabilities=("web-baseline",),
+                ),
+                self.valid_from, self.now + timedelta(days=1),
+            )
+
+    @unittest.expectedFailure
+    def test_red_domain_grant_wrong_approval_operator_must_be_denied(self):
+        with self.assertRaises(ValueError):
+            self.store.record_authorization_grant(
+                self.operator, self.engagement, "unrelated-operator",
+                "SYNTHETIC-UNBOUND-APPROVER",
+                ScopeDefinition(
+                    assets=("app.example.test",),
+                    max_risk=RiskLevel.LOW_IMPACT,
+                    allowed_capabilities=("web-baseline",),
+                ),
+                self.valid_from, self.now + timedelta(days=1),
+            )
+
+    @unittest.expectedFailure
+    def test_red_domain_rejected_request_must_never_authorize_grant(self):
+        other = self.store.create_client(self.operator, "Rejected synthetic client")
+        member = AccessContext(
+            "rejected-client-member", Role.CLIENT_MEMBER, other.client_id
+        )
+        request = self.store.submit_assessment_request(
+            member, ("rejected.example.test",),
+            AssessmentMode.AUTHORIZED_ASSESSMENT, RiskLevel.STANDARD,
+        )
+        self.store.review_assessment_request(self.operator, request.request_id, False)
+        engagement = self.store.create_engagement(
+            self.operator, other.client_id, "Rejected request fixture"
+        )
+        with self.assertRaises(ValueError):
+            self.store.record_authorization_grant(
+                self.operator, engagement.engagement_id, self.operator.user_id,
+                "REJECTED-REQUEST-IS-NOT-CONSENT",
+                ScopeDefinition(
+                    assets=("rejected.example.test",),
+                    max_risk=RiskLevel.LOW_IMPACT,
+                    allowed_capabilities=("web-baseline",),
+                ),
+                self.valid_from, self.now + timedelta(days=1),
+            )
+
     def test_shipped_domain_schema_without_request_fk_is_always_hold(self):
         self.assert_hold()
         # Regression: even existing matching APPROVED request cannot imply
