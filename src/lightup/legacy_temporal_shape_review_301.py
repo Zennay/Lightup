@@ -78,9 +78,14 @@ def review_legacy_authorization_window(
 
     # Exact built-in datetime and timezone implementations only. No comparison
     # hooks, network resolution, or current-time lookup on untrusted objects.
-    observed_utc = observed_at.astimezone(timezone.utc)
-    start_utc = start.astimezone(timezone.utc) if start is not None else None
-    end_utc = end.astimezone(timezone.utc) if end is not None else None
+    try:
+        observed_utc = observed_at.astimezone(timezone.utc)
+        start_utc = start.astimezone(timezone.utc) if start is not None else None
+        end_utc = end.astimezone(timezone.utc) if end is not None else None
+    except (OverflowError, ValueError):
+        # Even exact built-in aware datetimes can overflow the representable
+        # year range when normalized from an extreme fixed offset.
+        return hold
 
     if start_utc is not None and end_utc is not None and start_utc > end_utc:
         return LegacyTemporalReview("HOLD", "inverted_window")
