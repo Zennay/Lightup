@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 import sys
-from scope_release_stdin_20261015 import read_bounded_stdin
 
 GATES = (
     "client_consent",
@@ -76,6 +75,8 @@ def assess(raw: bytes) -> dict[str, object]:
 
 
 def main() -> int:
+    # Keep pure in-memory assess() importable by isolated spec loaders.
+    from scope_release_stdin_20261015 import read_bounded_stdin
     try:
         # Never consume unbounded stdin; ignore surplus and never echo data.
         raw = read_bounded_stdin(MAX_BYTES)
