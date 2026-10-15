@@ -163,6 +163,26 @@ single synthetic test process**, and is automatically reverted. It is
 **not a production implementation** and makes no statement about durable
 operator consent, revocation, ingestion, egress or current live grants.
 
+## Early-denial clock contract fix (W10)
+
+The first W9 hosted run on SHA `d611bb3...` correctly identified a
+**test-harness** mistake, unrelated to production behavior: the synthetic
+reference type guard denies malformed date inputs *before* calling
+`datetime.now()`, but the test helper previously required a clock read in
+all cases. Both Python unit jobs observed two W9 witness assertions failing
+(the two real public-scope REDs); producer integrations were skipped.
+
+The corrected helper permits **zero clock reads only when both conditions
+hold**: the caller explicitly opted into pre-clock rejection for these two
+malformed-grant cases **and** the resulting scope decision is denied.
+All canonical positive/ordinary-window tests still require exactly one
+aware-UTC clock read. A denied result after a clock read must also have
+exactly one aware UTC call; multiple or incorrect clock reads still fail.
+This preserves and strengthens the intended monotonic fail-closed
+contract: rejecting malformed authorization *before* time evaluation is a
+legitimate safe implementation. It does not authorize any real target,
+issue a durable grant, or fix installed production source.
+
 ## Ownership and proof gates
 
 Only this original time-window test module and this standalone explanation
