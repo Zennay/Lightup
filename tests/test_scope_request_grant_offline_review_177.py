@@ -14,6 +14,7 @@ from lightup.domain import AssessmentRequestRecord, EngagementRecord, RequestSta
 from lightup.engagements import AssessmentMode, AuthorizationGrant, EngagementStatus, RiskLevel, ScopeDefinition
 from lightup.request_grant_offline_review_177 import (
     ReviewStatus,
+    RequestGrantReview,
     review_request_grant,
     review_request_grant_batch,
     review_request_grant_engagement,
@@ -569,6 +570,49 @@ class RequestGrantOfflineReviewTests(unittest.TestCase):
         over = review_request_grant_engagement_batch(tuple(pairs) + (pairs[0],), reviewed_at=NOW)
         self.assertIs(over.status, ReviewStatus.HOLD)
         self.assert_no_authority(over)
+
+    def test_result_constructor_cannot_forge_authority_flags(self):
+        fields = (
+            "authorized", "grant_allowed", "dispatch_allowed",
+            "scan_allowed", "merge_allowed", "deploy_allowed",
+        )
+
+        class FakeBool:
+            def __bool__(self):
+                raise AssertionError("never ask untrusted object for truthiness")
+
+        for field in fields:
+            for invalid in (True, 1, "true", FakeBool()):
+                with self.subTest(field=field, type=type(invalid).__name__):
+                    with self.assertRaisesRegex(ValueError, "invalid non-authorizing review receipt"):
+                        RequestGrantReview(
+                            ReviewStatus.REVIEW_ONLY,
+                            "structurally_coherent_untrusted_snapshot",
+                            **{field: invalid},
+                        )
+
+    def test_result_constructor_cannot_forge_status_or_reason(self):
+        for status, reason in (
+            ("REVIEW_ONLY", "structurally_coherent_untrusted_snapshot"),
+            (ReviewStatus.REVIEW_ONLY, "invalid_or_unverified_input"),
+            (ReviewStatus.HOLD, "structurally_coherent_untrusted_snapshot"),
+            (ReviewStatus.REVIEW_ONLY, "approved"),
+            (ReviewStatus.HOLD, "secret-token-name"),
+            (ReviewStatus.HOLD, None),
+            (None, "invalid_or_unverified_input"),
+        ):
+            with self.subTest(status=status, reason=reason):
+                with self.assertRaisesRegex(ValueError, "invalid non-authorizing review receipt"):
+                    RequestGrantReview(status, reason)
+
+        for status, reason in (
+            (ReviewStatus.HOLD, "invalid_or_unverified_input"),
+            (ReviewStatus.REVIEW_ONLY, "structurally_coherent_untrusted_snapshot"),
+        ):
+            candidate = RequestGrantReview(status, reason)
+            self.assert_no_authority(candidate)
+            with self.assertRaises((FrozenInstanceError, AttributeError)):
+                candidate.extra_permit = True
 
     def test_no_raw_input_echo_on_denial(self):
         poisoned = replace(request(), requested_assets=("secret-password.example.test",))
