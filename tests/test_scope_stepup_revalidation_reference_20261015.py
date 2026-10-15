@@ -7,7 +7,8 @@ from threading import Event, Thread
 import unittest
 
 from lab.scope_stepup_revalidation_reference_20261015 import (
-    OfflineRevalidationFence, ReferenceApproval, ReviewRequest, ToolSnapshot,
+    OfflineRevalidationFence, ReferenceApproval, ReviewReceipt, ReviewRequest,
+    ToolSnapshot,
 )
 
 
@@ -464,6 +465,55 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
             ), "HOLD"
         )
         self.assertEqual(fence.review_count, 0)
+
+
+    def test_poisoned_receipt_status_and_reason_clamp_to_generic_hold(self):
+        for status, reason in (
+            ("APPROVED", "lab-secret"),
+            ("RELEASE", "synthetic_snapshot_consistent"),
+            ("REVIEW_ONLY", "lab-secret"),
+            ("HOLD", "lab-private"),
+            (True, "not_verified"),
+            ("APPROVED", None),
+        ):
+            with self.subTest(status=type(status), reason=type(reason)):
+                forged = ReviewReceipt(status, reason)
+                receipt = forged.as_dict()
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertEqual(receipt["reason"], "not_verified")
+                self.assertNotIn("lab-", str(receipt))
+                self.assertTrue(all(receipt[name] is False for name in (
+                    "authorization_verified", "permit_issued",
+                    "execution_enabled", "dispatch_allowed",
+                    "merge_approved", "release_approved",
+                )))
+
+    def test_tampered_receipt_flags_cannot_claim_review_status(self):
+        for name in (
+            "authorization_verified", "permit_issued", "execution_enabled",
+            "dispatch_allowed", "merge_approved", "release_approved",
+        ):
+            with self.subTest(name=name):
+                forged = ReviewReceipt("REVIEW_ONLY", "synthetic_snapshot_consistent")
+                object.__setattr__(forged, name, True)
+                receipt = forged.as_dict()
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertEqual(receipt["reason"], "not_verified")
+                self.assertIs(receipt[name], False)
+
+    def test_noncanonical_receipt_subclass_never_keeps_review_status(self):
+        class ForgedReceipt(ReviewReceipt):
+            pass
+        forged = ForgedReceipt("REVIEW_ONLY", "synthetic_snapshot_consistent")
+        result = ReviewReceipt.as_dict(forged)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "not_verified")
+        for name in (
+            "authorization_verified", "permit_issued", "execution_enabled",
+            "dispatch_allowed", "merge_approved", "release_approved",
+        ):
+            self.assertIs(result[name], False)
+
 
 
 if __name__ == "__main__":
