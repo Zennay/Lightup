@@ -510,6 +510,46 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
         self.assertEqual(result.stdout, b"")
         self.assertEqual(result.stderr, b"")
 
+    def test_readback_eagain_retries_without_widening_deadline(self):
+        """The second real-file read may transiently report EAGAIN."""
+        data = json.dumps(synthetic_claim()).encode()
+        program = textwrap.dedent("""
+            import importlib.util, json, os, sys
+            from unittest import mock
+            spec = importlib.util.spec_from_file_location("review_offline", sys.argv[1])
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            real_read, real_lseek = os.read, os.lseek
+            in_readback = [False]
+            fail_once = [True]
+            def traced_seek(fd, pos, whence):
+                if pos == 0 and whence == os.SEEK_SET:
+                    in_readback[0] = True
+                return real_lseek(fd, pos, whence)
+            def eagain_in_readback(fd, size):
+                if in_readback[0] and fail_once[0]:
+                    fail_once[0] = False
+                    raise BlockingIOError(11, "transient readback EAGAIN")
+                return real_read(fd, size)
+            original_mode = os.get_blocking(0)
+            with mock.patch.object(module.os, "read", side_effect=eagain_in_readback):
+                with mock.patch.object(module.os, "lseek", side_effect=traced_seek):
+                    payload = module._read_local_stdin()
+            assert payload == DATA and not fail_once[0]
+            assert os.get_blocking(0) == original_mode
+            print(json.dumps({"matched": True, "restored": True}))
+        """).replace("DATA", repr(data))
+        with tempfile.TemporaryFile(mode="w+b") as fd:
+            fd.write(data)
+            fd.flush()
+            fd.seek(0)
+            proc = subprocess.run([sys.executable, "-c", program, str(SCRIPT)],
+                                  stdin=fd, capture_output=True, timeout=5, check=False)
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode(errors="replace"))
+        self.assertEqual(json.loads(proc.stdout),
+                         {"matched": True, "restored": True})
+        self.assertEqual(proc.stderr, b"")
+
     def test_real_regular_file_mutation_during_read_denies_snapshot(self):
         """Modify ONLY a disposable synthetic local regular file while reading."""
         data = json.dumps(synthetic_claim()).encode("utf-8")
