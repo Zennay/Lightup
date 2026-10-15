@@ -128,6 +128,26 @@ Run real disposable SQLite acceptance with:
 python -m unittest discover -s tests -p 'test_scope_request_grant_sqlite_preflight_177.py' -v
 ```
 
+### Atomic persisted batch, same read snapshot
+
+The second optional API `review_persisted_grant_batch(local_database_path,
+grant_ids_tuple, reviewed_at=...)` evaluates **1–32 distinct exact grant IDs**
+in **one** SQLite read transaction. Each persisted grant must independently
+pass FK/schema/request/engagement/asset/risk/calendar checks before a **global**
+tenant and effective-target-overlap review. A duplicate ID, one unknown grant,
+duplicate approved-request ID, mixed client, overlapping effective asset, or
+33rd entry returns one fixed, privacy-safe `HOLD` for the **entire** batch.
+Separate per-grant reads can observe different database versions, so the
+shared-transaction batch is the safer read-only evidence *preview*, not a
+live grant gate. Neither outcome supplies permissions, even when two
+isolated synthetic records and both declared FKs are structurally coherent.
+
+The tests create two real disposable SQLite grants, plus two separately
+authorized synthetic tenant records, and confirm atomic HOLD on cross-tenant
+and overlapping assets. A before/after SQLite row comparison and no-socket
+tripwire verify lack of side effects. The current production schema still
+cannot pass because there is no approved-request FK.
+
 Do **not** run this opt-in reviewer on a real customer database without
 separate permission to process those local records. It performs no outbound
 traffic, but reading sensitive records still requires authorization.
