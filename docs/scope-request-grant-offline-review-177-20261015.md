@@ -21,14 +21,14 @@ token, scan, or action on any customer system.
 | Gate | Explicit HOLD trigger |
 | --- | --- |
 | Types | non-exact request/grant/scope objects, impersonated strings or enum values, bool/int risk type confusion |
-| Request approval | status other than exact `APPROVED`, mode other than `AUTHORIZED_ASSESSMENT`, no named operator or decision timestamp |
+| Request approval | status other than exact `APPROVED`, mode other than `AUTHORIZED_ASSESSMENT`, no named operator, malformed request creation timestamp or decision timestamp; decision predates request creation |
 | Tenant/provenance | mismatched request/grant client or grant approver vs request decider |
-| Assets | grant target not *exactly* present in requested assets; blank, duplicate, mixed-case, non-canonical, URL/port/wildcard, Unicode or variant-IP spelling |
-| Risk | grant risk above approved risk, destructive lab-only mode, malformed risk |
-| Time | decision in future, missing/invalid UTC decision, malformed or naive grant times, grant precedes decision, grant not current at explicit review instant |
+| Assets | grant target not *exactly* present in requested assets; blank, duplicate, mixed-case, non-canonical, URL/port/wildcard, Unicode or variant-IP spelling; excluded assets not among the granted set |
+| Risk | grant risk above approved risk, destructive lab-only mode, malformed risk, empty wildcard capabilities (meaning unrestricted in the real model) |
+| Time | decision in future, missing/invalid UTC decision, malformed or naive grant times, hostile custom timezone object, grant precedes decision, grant not current at explicit review instant |
 | Metadata | invalid excluded target/capability item collection; malformed recurring retest flag |
 
-The conservative **exact-string** comparison deliberately refuses aliases
+All identity fields also use a bounded (max 128 characters) ASCII identifier grammar with no whitespace or control characters. Empty allowed capability tuples are refused because the real ScopeDefinition interprets an empty allowlist as **unlimited tools**. The reviewer also requires a canonical request-created timestamp to precede the decision.\n\nThe conservative **exact-string** comparison deliberately refuses aliases
 instead of equating non-canonical host/IP representations. DNS names must be
 lowercase ASCII labels with no trailing dot. IPv4 and IPv6 literals are
 syntactically reviewed via standard-library `ipaddress`; no lookup occurs.
