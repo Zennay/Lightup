@@ -59,6 +59,19 @@ six authority flags false, with zero persistence or operational side effects.
 Only source-owner implementation of a real durable request→grant→engagement
 chain can resolve issue #177.
 
+## Atomic composed 3-way review
+
+`review_request_grant_engagement_batch(entries, reviewed_at=...)` composes
+both strictly offline checks. It accepts an exact tuple of **1–32 exact
+three-tuples** (request, grant, engagement). It refuses any invalid three-way
+engagement lineage before applying the single-tenant, duplicate request/grant ID
+and effective target-overlap checks to the **entire** group. Malformed
+container types, duplicate records, mixed clients, one revoked/draft engagement,
+unknown asset, risk escalation or a 33rd record are all an **atomic HOLD**.
+Thirty-two distinct entirely synthetic, coherent records are still
+`REVIEW_ONLY` only, with all six authority flags literally false. No
+persistent cross-record linkage, consent, dispatch or trusted grant is created.
+
 ## Results and hard boundary
 
 - `HOLD`: malformed or incoherent untrusted snapshots.
