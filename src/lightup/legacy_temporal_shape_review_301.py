@@ -30,6 +30,21 @@ _RECEIPT_PAIRS = (
 )
 
 
+def _canonical_receipt_pair(receipt: LegacyTemporalReceipt) -> tuple[str, str]:
+    """A bypassed tuple.__new__ cannot smuggle noncanonical result labels."""
+    try:
+        status = tuple.__getitem__(receipt, 0)
+        reason = tuple.__getitem__(receipt, 1)
+    except (IndexError, TypeError):
+        return "HOLD", "invalid_shape"
+    if (
+        type(status) is not str or type(reason) is not str
+        or (status, reason) not in _RECEIPT_PAIRS
+    ):
+        return "HOLD", "invalid_shape"
+    return status, reason
+
+
 class LegacyTemporalReceipt(tuple, Mapping[str, str | bool]):
     """Immutable, falsy, permission-free synthetic review receipt.
 
@@ -51,12 +66,12 @@ class LegacyTemporalReceipt(tuple, Mapping[str, str | bool]):
     def __getitem__(self, key: object) -> str | bool:
         if type(key) is not str:
             raise KeyError("noncanonical receipt key")
-        if key == "status":
-            return tuple.__getitem__(self, 0)
-        if key == "reason":
-            return tuple.__getitem__(self, 1)
         if key in _RECEIPT_KEYS[2:]:
             return False
+        if key == "status":
+            return _canonical_receipt_pair(self)[0]
+        if key == "reason":
+            return _canonical_receipt_pair(self)[1]
         raise KeyError("unknown receipt key")
 
     def __iter__(self):
@@ -65,17 +80,15 @@ class LegacyTemporalReceipt(tuple, Mapping[str, str | bool]):
     def __len__(self) -> int:
         return 8
 
+    def __contains__(self, key: object) -> bool:
+        return type(key) is str and key in _RECEIPT_KEYS
+
     def __bool__(self) -> bool:
         return False
 
     def __repr__(self) -> str:
-        return (
-            "LegacyTemporalReceipt("
-            + tuple.__getitem__(self, 0)
-            + ", "
-            + tuple.__getitem__(self, 1)
-            + "; no_authority)"
-        )
+        status, reason = _canonical_receipt_pair(self)
+        return "LegacyTemporalReceipt(" + status + ", " + reason + "; no_authority)"
 
 
 class LegacyTemporalReview(NamedTuple):
