@@ -50,3 +50,16 @@ flags false. Both logs failing in matching ways are still failing.
 The existing source owners retain #301/#1452, #1147, #1173/#1172,
 #1454/#1455 and actual registered VPS CI #1144.
 **INCUBATE M3/M7, DRAFT/HOLD; no merge, deploy, real grant or scan.**
+
+## W8 additional safety result
+
+Matching suite footers and method IDs are **not a waiver** for either an
+unpatched expected source RED or an unexpected suite failure. The aggregate
+receipt now includes `untracked_expected_red_311/314` and
+`untracked_unexpected_failure_311/314` (counts of claimed source results
+not covered by the watched test set); any such gap is a disagreement in
+unverified evidence. `release_blocking_signal` explicitly distinguishes
+unexpected full-suite failures, still-unfixed source REDs, incomplete or
+divergent evidence, and logs with no reported failures that STILL have no
+release authority. Nothing can promote a log, self-declared completion or
+an expected-RED into approval; all six authority flags remain false.
