@@ -3,10 +3,12 @@
 Independent of installed Authorization.is_current, which remains a known RED.
 All identities are synthetic and no target I/O is performed.
 """
+import ast
 import os
 import sys
 import unittest
 import random
+from pathlib import Path
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone, tzinfo
 from unittest.mock import patch
@@ -86,6 +88,38 @@ class _FakeAuthorization(Authorization):
 
 class _TupleSubclass(tuple):
     pass
+
+
+
+def _source_has_only_offline_effects(source):
+    """Offline static tripwire, deliberately independent of runtime reviewer."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return False
+    approved_imports = {
+        "__future__", "datetime", "typing", "lightup.models"
+    }
+    permitted_calls = {
+        "type", "vars", "len", "range", "tuple", "list",
+        "LegacyTemporalReview", "_canonical_datetime",
+        "review_legacy_authorization_window"
+    }
+    permitted_methods = {"astimezone"}
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            if not isinstance(node, ast.ImportFrom) or node.module not in approved_imports:
+                return False
+        if isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name):
+                if node.func.id not in permitted_calls:
+                    return False
+            elif isinstance(node.func, ast.Attribute):
+                if node.func.attr not in permitted_methods:
+                    return False
+            else:
+                return False
+    return True
 
 
 class LegacyTemporalShapeReviewTests(unittest.TestCase):
@@ -203,6 +237,46 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
             result = review(auth)
         self.assertGreaterEqual(calls["end"], 1)
         assert_non_authorizing(self, result, "HOLD", "invalid_shape")
+
+    def test_source_effect_guard_detects_offline_policy_regressions(self):
+        path = Path(__file__).resolve().parent.parent / "src/lightup/legacy_temporal_shape_review_301.py"
+        source = path.read_text(encoding="utf-8")
+        self.assertTrue(_source_has_only_offline_effects(source))
+        for mutant in (
+            "open('/tmp/should-not-exist', 'w')",
+            "__import__('socket')",
+            "from socket import socket",
+            "import subprocess",
+            "datetime.now()",
+            "os.system('echo forbidden')",
+            "obj.astimezone().open()",
+            "getattr(obj, 'scope')",
+        ):
+            with self.subTest(mutant=mutant):
+                self.assertFalse(_source_has_only_offline_effects(source + "\\n" + mutant))
+
+    def test_batch_fixed_offset_instant_and_inclusive_metaproperties(self):
+        offsets = (-12, -8, -1, 0, 1, 5.5, 12, 14)
+        for offset in offsets:
+            zone = timezone(timedelta(hours=offset))
+            claim = fixture(start=START.astimezone(zone),
+                            end=END.astimezone(zone))
+            for instant in (START, MID, END):
+                with self.subTest(offset=offset, at=instant.isoformat()):
+                    assert_non_authorizing(
+                        self,
+                        review_legacy_authorization_batch(
+                            (claim, claim), observed_at=instant.astimezone(zone)
+                        ), "REVIEW_ONLY", "temporal_shape_only"
+                    )
+            for instant in (START - timedelta(microseconds=1),
+                            END + timedelta(microseconds=1)):
+                assert_non_authorizing(
+                    self,
+                    review_legacy_authorization_batch(
+                        (claim,), observed_at=instant.astimezone(zone)
+                    ), "HOLD", "invalid_batch"
+                )
 
     def test_batch_exact_tuple_size_bounds_and_no_authority(self):
         for size in (1, 2, 16, 32):
