@@ -638,6 +638,86 @@ class OfflineAttemptJournalTests(unittest.TestCase):
             self.journal.mark_recorded(other, "d" * 64), "HOLD")
         self.assertEqual(self.count(), 1)
 
+    def test_phase_read_uses_single_explicit_sqlite_snapshot(self):
+        self.assert_non_authorizing(self.journal.reserve(self.attempt), "REVIEW_ONLY")
+        trace = []
+        self.con.set_trace_callback(trace.append)
+        try:
+            phase, receipt = self.journal.review_phase(self.attempt)
+        finally:
+            self.con.set_trace_callback(None)
+        self.assertEqual(phase, "reserved")
+        self.assert_non_authorizing(receipt, "REVIEW_ONLY")
+        normalized = [line.strip().upper() for line in trace]
+        begin = next(i for i, s in enumerate(normalized) if s == "BEGIN")
+        schema = next(i for i, s in enumerate(normalized)
+                      if "SQLITE_MASTER" in s)
+        phase_read = next(i for i, s in enumerate(normalized)
+                          if "SELECT SEALED_BINDING" in s)
+        rollback = next(i for i, s in enumerate(normalized)
+                        if s == "ROLLBACK")
+        self.assertLess(begin, schema)
+        self.assertLess(schema, phase_read)
+        self.assertLess(phase_read, rollback)
+        self.assertFalse(self.con.in_transaction)
+
+    def test_backlog_read_uses_single_explicit_sqlite_snapshot(self):
+        self.assert_non_authorizing(self.journal.reserve(self.attempt), "REVIEW_ONLY")
+        trace = []
+        self.con.set_trace_callback(trace.append)
+        try:
+            report = self.journal.review_backlog().as_dict()
+        finally:
+            self.con.set_trace_callback(None)
+        self.assertEqual(report["status"], "REVIEW_ONLY")
+        self.assertEqual(report["reserved_count"], 1)
+        normalized = [line.strip().upper() for line in trace]
+        begin = next(i for i, s in enumerate(normalized) if s == "BEGIN")
+        schema = next(i for i, s in enumerate(normalized)
+                      if "SQLITE_MASTER" in s)
+        read = next(i for i, s in enumerate(normalized)
+                    if "SELECT SEALED_BINDING" in s)
+        rollback = next(i for i, s in enumerate(normalized)
+                        if s == "ROLLBACK")
+        self.assertLess(begin, schema)
+        self.assertLess(schema, read)
+        self.assertLess(read, rollback)
+        self.assertFalse(self.con.in_transaction)
+
+    def test_caller_owned_transaction_never_used_for_phase_read(self):
+        self.journal.reserve(self.attempt)
+        self.con.execute("BEGIN IMMEDIATE")
+        phase, receipt = self.journal.review_phase(self.attempt)
+        self.assertEqual(phase, "unknown")
+        self.assert_non_authorizing(receipt, "HOLD")
+        self.assertTrue(self.con.in_transaction)
+        self.con.rollback()
+        self.assertEqual(self.journal.review_phase(self.attempt)[0], "reserved")
+
+    def test_repeat_snapshot_reads_release_transaction_after_each_review(self):
+        self.journal.reserve(self.attempt)
+        for _ in range(7):
+            self.assertEqual(self.journal.review_phase(self.attempt)[0], "reserved")
+            self.assertFalse(self.con.in_transaction)
+            self.assertEqual(self.journal.review_backlog().as_dict()["reserved_count"], 1)
+            self.assertFalse(self.con.in_transaction)
+        self.assert_non_authorizing(self.journal.mark_uncertain(self.attempt),
+                                    "REVIEW_ONLY")
+        self.assertEqual(self.journal.review_backlog().as_dict()["uncertain_count"], 1)
+
+    def test_snapshot_errors_return_hold_without_leaking_counts(self):
+        self.journal.reserve(self.attempt)
+        self.con.execute("CREATE TABLE late_schema_mutation (fixture TEXT)")
+        self.con.commit()
+        for _ in range(3):
+            phase, receipt = self.journal.review_phase(self.attempt)
+            self.assertEqual(phase, "unknown")
+            self.assert_non_authorizing(receipt, "HOLD")
+            backlog = self.journal.review_backlog().as_dict()
+            self.assertEqual(backlog["status"], "HOLD")
+            self.assertEqual(backlog["reserved_count"], 0)
+            self.assertFalse(self.con.in_transaction)
+
     def test_new_connection_still_denies_replay_after_crash_simulation(self):
         self.journal.reserve(self.attempt)
         with closing(sqlite3.connect(self.path, timeout=2)) as con:
