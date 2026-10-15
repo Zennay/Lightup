@@ -121,6 +121,28 @@ canonical exact built-in aware datetimes or None, and then convert these
 expected-RED tests to ordinary PASS after production repair. The two RED
 regressions must never be interpreted as consent or release evidence.
 
+## Real public-scope effect of malformed datetime (W8)
+
+The previously documented W7 source-REDs exercised
+`Authorization.is_current()` directly. W8 adds **two more intentionally
+expected-RED tests against the actual installed
+`ScopePolicy.decide(Target(...))` path** on a fictional explicitly declared
+`scope.fixture.example.test` host.
+
+At a frozen UTC evaluation instant, a `datetime` subclass with a lying,
+false-valued `__bool__` carries (a) a future authorization start or (b) a
+past authorization expiry. The legacy code currently skips both fields and
+the public scope gate incorrectly permits that in-memory fictional host.
+Each test verifies normalized host identity and immutable synthetic grant
+before requiring a DENY that current source fails to supply. No DNS,
+network, handler, customer request, real grant or active adapter is used.
+
+These are not ordinary green security controls; their expected-RED status
+means the actual public-scope boundary is **still vulnerable to type
+confusion**. On source-owner repair, both must become ordinary PASS,
+together with the earlier direct `is_current()` REDs, without weakening
+canonical inclusive datetime semantics.
+
 ## Ownership and proof gates
 
 Only this original time-window test module and this standalone explanation
