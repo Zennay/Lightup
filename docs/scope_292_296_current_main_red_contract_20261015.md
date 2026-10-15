@@ -12,6 +12,16 @@
 
 `tests/test_scope_292_296_current_main_source_red_20261015.py` asserts that malformed declarations either fail to construct/evaluate or return `allowed=False`. Sixteen deliberately `@expectedFailure` canaries demonstrate sixteen real fail-open cases on installed `main`, including stdlib IPv4Address/IPv4Network/IPv6Address/IPv6Network instances, host-bit CIDR widening, bare public IPv4/IPv6 addresses accepted as implicit /32 or /128, dotted IPv4 masks and non-canonical expanded IPv6 notation; a separate witness executes all sixteen and requires **sixteen real AssertionError failures**, not a masked parser exception or unexpected success. Positive controls preserve canonical IPv4 `/24`, IPv4 `/32`, IPv6 `/64` and IPv6 `/128` semantics, and confirm missing synthetic authorization denies public network membership. Negative controls test bytearray, None, nonsense strings and no-network/no-process tripwires.
 
+## Owner implementation checklist (not applied to installed source)
+
+1. Validate the **whole** explicit-network configuration before any permission decision, rather than filtering invalid values and keeping the others; issue #297 independently owns broader policy atomicity.
+2. On each original value check `type(value) is str`, non-empty, no surrounding whitespace, an explicit slash prefix, and that `ip_network(value, strict=True)` parses it without widening. For the canonical-display contract require the input to match the canonical `str(network)` exactly. A valid single host must use explicit `/32` or `/128`.
+3. Do not accept numeric, byte-like, standard-library IP/network objects, `str` subclasses, dotted-mask aliases, expanded IPv6 spellings, or host-bit-bearing declarations as policy authority. Do not silently normalize and grant on the broader CIDR.
+4. Keep scope/authorization decisions deny-by-default on bad configuration and preserve the caller's explicit canonical CIDRs. Coordinate with #294's snapshot owner so validation is never bypassed by later caller mutation; maintain the independent #177/#347 live gates.
+5. Replace each `expectedFailure` with normal passing tests **only after** the source fix. The companion witness deliberately asserts the current failures and must be switched to strict green semantics in the same owner-controlled integration, preventing intentional REDs being mistaken for release proof.
+
+**Isolation assurance:** The replay witness forbids sockets, DNS, subprocesses and shell calls for all sixteen synthetic RED fixtures. No customer asset or runtime code is involved.
+
 ## Conditions before owner integration or closing issues
 
 1. Original source owner updates only their production-owned `ScopePolicy`: exact built-in nonempty string entries, strict canonical network declarations and no implicit host-bit widening. Choose fail-closed handling that cannot mint a permit.
