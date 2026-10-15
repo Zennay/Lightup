@@ -13,6 +13,8 @@ import time
 from typing import Any
 
 MAX_INPUT_BYTES = 8192
+MAX_OUTPUT_BYTES = 512
+OUTPUT_DEADLINE_SECONDS = 0.5
 MAX_MEMBERS = 32
 MAX_NAME_BYTES = 253
 INPUT_DEADLINE_SECONDS = 2.0
@@ -176,6 +178,44 @@ def _read_local_stdin() -> bytes:
         os.close(pinned)
 
 
+def _emit_local_receipt(receipt: dict[str, Any]) -> bool:
+    """One bounded, non-blocking local FIFO/TTY receipt; no files or sockets."""
+    data = (json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")
+    if not 0 < len(data) <= MAX_OUTPUT_BYTES:
+        return False
+    try:
+        first = os.fstat(1)
+        if not (stat.S_ISFIFO(first.st_mode)
+                or (stat.S_ISCHR(first.st_mode) and os.isatty(1))):
+            return False
+        pinned = os.dup(1)
+    except OSError:
+        return False
+    try:
+        if not _same_descriptor(first, os.fstat(pinned)):
+            return False
+        if not _same_descriptor(first, os.fstat(1)):
+            return False
+        original_blocking = os.get_blocking(pinned)
+        try:
+            os.set_blocking(pinned, False)
+            _, writable, _ = select.select([], [pinned], [], OUTPUT_DEADLINE_SECONDS)
+            if not writable:
+                return False
+            if not _same_descriptor(first, os.fstat(1)):
+                return False
+            if not _same_descriptor(first, os.fstat(pinned)):
+                return False
+            # Non-blocking <= PIPE_BUF write: an unavailable pipe emits no partial receipt.
+            return os.write(pinned, data) == len(data)
+        finally:
+            os.set_blocking(pinned, original_blocking)
+    except (OSError, ValueError, OverflowError):
+        return False
+    finally:
+        os.close(pinned)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
     if args != ["--stdin-json"]:
@@ -185,7 +225,8 @@ def main(argv: list[str] | None = None) -> int:
             receipt = review_bytes(_read_local_stdin())
         except (ReviewInputError, OSError, ValueError):
             receipt = {"status": "HOLD", **FALSE_FLAGS}
-    sys.stdout.write(json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n")
+    if not _emit_local_receipt(receipt):
+        return 2
     return 3 if receipt["status"] == "REVIEW_ONLY" else 2
 
 

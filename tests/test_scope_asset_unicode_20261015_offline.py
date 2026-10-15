@@ -7,6 +7,7 @@ import os
 import tempfile
 import pathlib
 import random
+import socket
 import subprocess
 import sys
 import unittest
@@ -218,6 +219,65 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 2)
         self.assert_hold(json.loads(proc.stdout))
         self.assertEqual(proc.stderr, b"")
+
+    def test_output_is_local_pipe_only_not_regular_file_or_socket(self):
+        data = json.dumps(synthetic_claim()).encode("utf-8")
+        with tempfile.TemporaryFile(mode="w+b") as sink:
+            result = subprocess.run([sys.executable, str(SCRIPT), "--stdin-json"],
+                                    input=data, stdout=sink, stderr=subprocess.PIPE,
+                                    timeout=5, check=False)
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(result.stderr, b"")
+            sink.seek(0)
+            self.assertEqual(sink.read(), b"")
+        with open(os.devnull, "wb") as sink:
+            result = subprocess.run([sys.executable, str(SCRIPT), "--stdin-json"],
+                                    input=data, stdout=sink, stderr=subprocess.PIPE,
+                                    timeout=5, check=False)
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(result.stderr, b"")
+        with socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM) as (left, right):
+            result = subprocess.run([sys.executable, str(SCRIPT), "--stdin-json"],
+                                    input=data, stdout=right, stderr=subprocess.PIPE,
+                                    timeout=5, check=False)
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(result.stderr, b"")
+            right.shutdown(socket.SHUT_WR)
+            left.settimeout(2)
+            self.assertEqual(left.recv(1024), b"")
+
+    def test_full_local_output_pipe_never_blocks_or_emits_partial_result(self):
+        rd, wr = os.pipe()
+        try:
+            os.set_blocking(wr, False)
+            while True:
+                try:
+                    os.write(wr, b"z" * 512)
+                except BlockingIOError:
+                    break
+            os.set_blocking(wr, True)
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "--stdin-json"],
+                input=json.dumps(synthetic_claim()).encode(),
+                stdout=wr, stderr=subprocess.PIPE, timeout=5, check=False,
+            )
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(result.stderr, b"")
+            os.set_blocking(rd, False)
+            remaining = bytearray()
+            while True:
+                try:
+                    chunk = os.read(rd, 8192)
+                except BlockingIOError:
+                    break
+                if not chunk:
+                    break
+                remaining.extend(chunk)
+            self.assertTrue(remaining)
+            self.assertEqual(set(remaining), {ord("z")})
+        finally:
+            os.close(wr)
+            os.close(rd)
 
     def test_real_cli_never_success_or_leaks_input(self):
         payloads = [
