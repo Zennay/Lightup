@@ -95,6 +95,17 @@ def _lexical_host_metadata_identity(value: object) -> bool:
     if type(value) is not str or not 0 < len(value) <= _MAX_HOST_LENGTH:
         return False
     labels = value.split(".")
+    # Numeric host strings may be interpreted as IPv4 aliases by URL clients
+    # (for example 127.1, 2130706433, 0x7f000001 or 0177.0.0.1).
+    # They do not belong in an *explicit DNS host* review collection. This
+    # lexical HOLD is independent of real target parsing and never permits IP.
+    def _numeric_label(label: str) -> bool:
+        if label.isdecimal():
+            return True
+        return (len(label) > 2 and label[:2].lower() == "0x"
+                and all(char in "0123456789abcdefABCDEF" for char in label[2:]))
+    if 1 <= len(labels) <= 4 and all(_numeric_label(label) for label in labels):
+        return False
     for label in labels:
         if not label or len(label) > 63:
             return False
