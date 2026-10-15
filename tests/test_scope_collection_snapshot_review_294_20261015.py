@@ -173,10 +173,16 @@ class ScopeCollectionSnapshotReferenceTests(unittest.TestCase):
 
     def test_receipt_has_no_settable_authority_and_public_data_is_minimal(self):
         receipt = snapshot_untrusted_scope_collections({"secret.example.test"}, ["8.8.8.0/24"])
-        with self.assertRaises((FrozenInstanceError, AttributeError)):
+        # CPython 3.11 may raise TypeError from frozen+slots __setattr__;
+        # 3.14 raises FrozenInstanceError/AttributeError. In every case,
+        # separately assert that neither private data nor authority changed.
+        original_hosts = receipt._hosts
+        with self.assertRaises((FrozenInstanceError, AttributeError, TypeError)):
             receipt.permit_issued = True
-        with self.assertRaises((FrozenInstanceError, AttributeError)):
+        with self.assertRaises((FrozenInstanceError, AttributeError, TypeError)):
             receipt._hosts = frozenset({"different.example.test"})
+        self.assertIs(receipt.permit_issued, False)
+        self.assertIs(receipt._hosts, original_hosts)
         public = receipt.to_public_dict()
         self.assertNotIn("secret.example.test", repr(receipt))
         self.assertNotIn("secret.example.test", repr(public))
