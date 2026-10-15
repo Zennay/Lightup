@@ -136,6 +136,36 @@ class TerminalDotCurrentMainSourceRed(unittest.TestCase):
         self.assertFalse(any(decision.allowed for decision in decisions))
 
     @unittest.expectedFailure
+    def test_parser_itself_must_reject_multi_root_dot_identities(self):
+        # Failing safely at the *normalizer* is stronger than relying on a
+        # later caller to remember an independent deny condition.
+        spellings = tuple(
+            value
+            for dots in range(2, 18)
+            for host in (
+                _HOST,
+                "localhost",
+                "127.0.0.1",
+                "10.42.43.44",
+                "198.51.100.23",
+            )
+            for value in (
+                host + "." * dots,
+                "http://" + host + "." * dots + "/synthetic-only",
+            )
+        )
+        normalized = tuple(ScopePolicy.normalize_host(value) for value in spellings)
+        self.assertEqual(len(normalized), 160)
+        self.assertFalse(any(value is not None for value in normalized))
+
+    @unittest.expectedFailure
+    def test_parser_itself_must_reject_dot_only_and_empty_normalized_host(self):
+        values = ("..", "...", "http://../synthetic-only", "https://.../synthetic-only")
+        normalized = tuple(ScopePolicy.normalize_host(value) for value in values)
+        self.assertEqual(len(normalized), 4)
+        self.assertFalse(any(value is not None for value in normalized))
+
+    @unittest.expectedFailure
     def test_ipv4_loopback_multi_root_dots_must_not_gain_loopback_trust(self):
         # IP-looking text is parsed through the same rstrip('.') path:
         # the invalid address must never become 127.0.0.1 loopback.
@@ -246,6 +276,8 @@ _RED_NAMES = (
     "test_malformed_config_without_auth_and_policy_optout_must_deny",
     "test_only_dots_and_empty_config_without_auth_optout_must_deny",
     "test_all_dots_target_must_not_match_empty_declared_hostname",
+    "test_parser_itself_must_reject_multi_root_dot_identities",
+    "test_parser_itself_must_reject_dot_only_and_empty_normalized_host",
     "test_ipv4_loopback_multi_root_dots_must_not_gain_loopback_trust",
     "test_ipv4_private_lab_multi_root_dots_must_not_gain_private_scope",
     "test_ipv4_declared_cidr_multi_root_dots_must_not_gain_network_scope",
@@ -298,7 +330,7 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
 
     def test_original_source_witnesses_are_real_assertions_not_errors(self):
         # @expectedFailure also catches accidental TypeError and ValueError.
-        # An independent TestResult must observe exactly sixteen AssertionError
+        # An independent TestResult must observe exactly eighteen AssertionError
         # failures, not silently accept an unrelated crash or unexpected green.
         for name in _RED_NAMES:
             with self.subTest(case=name):
@@ -330,6 +362,15 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
                 )
             self.assertTrue(_decision(_HOST).allowed)
             self.assertFalse(_decision("unlisted.example.test").allowed)
+
+    def test_parser_positive_control_normalizes_exact_and_single_root_dot(self):
+        identities = (_HOST, "localhost", "127.0.0.1", "10.42.43.44", "198.51.100.23")
+        for expected in identities:
+            for value in (expected, expected + ".", "http://" + expected + "./synthetic-only"):
+                with self.subTest(value=value):
+                    self.assertEqual(ScopePolicy.normalize_host(value), expected)
+        self.assertIsNone(ScopePolicy.normalize_host(""))
+        self.assertIsNone(ScopePolicy.normalize_host("   "))
 
     def test_canonical_ipv4_categories_remain_separate_and_auth_gate_stays_required(self):
         self.assertEqual(
