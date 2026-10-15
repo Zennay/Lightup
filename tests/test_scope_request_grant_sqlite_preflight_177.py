@@ -867,6 +867,50 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
         self.assertIs(review.status, ReviewStatus.REVIEW_ONLY)
         self.assert_no_authority(review)
 
+    def test_unselected_same_tenant_grant_must_have_valid_exclusions_and_scope(self):
+        # The *selected* grant is unchanged and covers app.example.test.
+        # Historically an unrelated same-client grant with fabricated
+        # excluded_assets_json / policy metadata could be silently skipped.
+        corruptions = (
+            ("excluded_assets_json", '["app.example.test"]'),
+            ("excluded_assets_json", '["api.example.test","api.example.test"]'),
+            ("excluded_assets_json", '["api.example.test",3]'),
+            ("assets_json", '[]'),
+            ("assets_json", '["api.example.test","api.example.test"]'),
+            ("assets_json", '["api.example.test","INVALID.example.test"]'),
+            ("allowed_capabilities_json", '["unsupported-capability"]'),
+            ("allowed_capabilities_json", '[]'),
+            ("max_risk", 4),
+            ("recurring_retest_allowed", 1),
+        )
+        for index, (field, value) in enumerate(corruptions):
+            with self.subTest(sibling_field=field, value=value):
+                if index:
+                    self._reset_fixture()
+                self.upgrade_synthetic_only()
+                other = self._second_synthetic_grant("api.example.test")
+                self.assertIs(self.review().status, ReviewStatus.REVIEW_ONLY)
+                self.update("authorization_grants", field, value, "grant_id", other)
+                result = self.review()
+                self.assertIs(result.status, ReviewStatus.HOLD)
+                self.assert_no_authority(result)
+                single_batch = review_persisted_grant_batch(
+                    self.path, (self.grant.grant_id,), reviewed_at=self.reviewed_at,
+                )
+                self.assertIs(single_batch.status, ReviewStatus.HOLD)
+                self.assert_no_authority(single_batch)
+
+    def test_other_same_tenant_grant_can_only_exclude_its_own_asset(self):
+        self.upgrade_synthetic_only()
+        other = self._second_synthetic_grant("api.example.test")
+        self.update(
+            "authorization_grants", "excluded_assets_json",
+            '["api.example.test"]', "grant_id", other,
+        )
+        result = self.review()
+        self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(result)
+
     def test_other_same_client_corrupt_window_holds_solo_snapshot(self):
         self.upgrade_synthetic_only()
         second_id = self._second_synthetic_grant("api.example.test")
