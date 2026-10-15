@@ -107,7 +107,7 @@ def _source_has_only_offline_effects(source):
     }
     permitted_calls = {
         "type", "len", "range", "tuple", "list", "_stored_fields",
-        "LegacyTemporalReceipt", "LegacyTemporalReview", "iter", "_canonical_datetime",
+        "LegacyTemporalReceipt", "LegacyTemporalReview", "iter", "_canonical_receipt_pair", "_canonical_datetime",
         "review_legacy_authorization_window"
     }
     # Bounded append mutates only the local, synthetic in-memory snapshot list.
@@ -152,7 +152,7 @@ def _source_has_only_offline_effects(source):
                     and node.func.value.id == "tuple"
                     and len(node.args) == 2
                     and isinstance(node.args[0], ast.Name)
-                    and node.args[0].id in {"self", "verdict"}
+                    and node.args[0].id in {"self", "verdict", "receipt"}
                     and isinstance(node.args[1], ast.Constant)
                     and type(node.args[1].value) is int
                     and node.args[1].value in (0, 1)
@@ -381,6 +381,7 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
             "tuple.__getitem__(verdict, 2)",
             "tuple.__getitem__(verdict, True)",
             "tuple.__getitem__(other, 0)",
+            "tuple.__getitem__(other, 1)",
             "tuple.__new__(object, ('REVIEW_ONLY', 'x'))",
             "other.__new__(cls, ())",
             "vars(authorization)",
@@ -846,6 +847,53 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
         self.assertEqual(
             LegacyTemporalReceipt("APPROVED", "fake_grant")["status"], "HOLD"
         )
+
+    def test_tuple_new_bypass_cannot_forge_status_or_invoke_comparators(self):
+        class _Danger:
+            def __eq__(self, other):
+                raise AssertionError("payload equality hook invoked")
+            def __str__(self):
+                raise AssertionError("payload str hook invoked")
+            def __repr__(self):
+                raise AssertionError("payload repr hook invoked")
+
+        variants = (
+            (),
+            ("APPROVED", "grant"),
+            ("REVIEW_ONLY", _Danger()),
+            (_Danger(), "pretend_grant"),
+            ("REVIEW_ONLY", "outside_window"),
+        )
+        for raw in variants:
+            # Direct tuple construction bypasses the public __new__ validator.
+            forged = tuple.__new__(LegacyTemporalReceipt, raw)
+            with self.subTest(length=len(raw)):
+                self.assertIs(bool(forged), False)
+                self.assertEqual((forged["status"], forged["reason"]),
+                                 ("HOLD", "invalid_shape"))
+                self.assertEqual((dict(forged)["status"],
+                                  dict(forged)["reason"]),
+                                 ("HOLD", "invalid_shape"))
+                self.assertNotIn("APPROVED", repr(forged))
+                self.assertNotIn("pretend_grant", repr(forged))
+                for name in (
+                    "authorization_verified", "permit_issued",
+                    "execution_enabled", "target_dispatch_allowed",
+                    "merge_approved", "release_approved"
+                ):
+                    self.assertIs(forged[name], False)
+                self.assertIs(bool(forged), False)
+
+    def test_immutable_receipt_mapping_membership_and_no_key_callbacks(self):
+        receipt = review().as_receipt()
+        self.assertIn("status", receipt)
+        self.assertIn("permit_issued", receipt)
+        self.assertNotIn("APPROVED", receipt)
+        self.assertEqual(set(receipt.keys()), set(receipt))
+        class _Danger:
+            def __eq__(self, other):
+                raise AssertionError("key equality hook invoked")
+        self.assertNotIn(_Danger(), receipt)
 
     def test_receipt_never_executes_untrusted_key_comparators(self):
         class _HostileKey:
