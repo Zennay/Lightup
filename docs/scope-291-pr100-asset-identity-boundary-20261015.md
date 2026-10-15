@@ -34,10 +34,10 @@ checks, or token issuance.
 Only one new test module and this documentation:
 `tests/test_scope_291_pr100_asset_identity_boundary_20261015.py`
 
-- Three **real expected-RED** cases on unmerged #100 source: wrong
+- Four **real expected-RED** cases on unmerged #100 source: wrong
   explicit-host+asset acceptance, synthetic ActivationGate permit for the
   wrong address, and 128 distinct RFC3849 wrong-asset admissions.
-- Eight regular green comparators and integrity guards: an asset
+- Nine regular green comparators and integrity guards: an asset
   containing the **correct** full IPv6 does **not** satisfy the
   unrelated DNS alias, empty assets grant nothing, bracketed IPv6
   `/128` with matching exact asset retains target/authorization
@@ -60,7 +60,7 @@ PYTHONPATH=src python -m unittest -v \
 
 `@unittest.expectedFailure` is an **expected source defect**, not a
 test of corrected security. After the original owner repairs the
-production parser, all three source REDs must become ordinary passing
+production parser, all four source REDs must become ordinary passing
 tests. The exact-head hosted job and separate permanently registered
 VPS runner must independently complete; parent main may have unrelated
 CI failures. Hosted success is never proof of registered VPS execution
@@ -72,3 +72,26 @@ This child branch does not contain the separate current-main tests from
 It does not prove deployment readiness, source-owner signoff or actual
 asset ownership. Related issues #1289, #1422, #177 and pre-I/O
 revocation remain independent release gates.
+
+## W2: installed #100 permit boundary at scale
+
+This tests-only branch now also proves the **real proposed ActivationGate**
+can generate a synthetic in-memory execution-permit token for each of **128
+different bare RFC3849 IPv6 targets**, while the sole fictional allowed
+asset is the unrelated DNS alias `"2001"`. The token generator is patched
+to return only `FAKE-NEVER-LIVE`; every call is counted, no secret or real
+client token is created. This is a fourth genuine installed-source
+expected-RED test, guarded by the independent assertion witness.
+
+An additional ordinary-green matrix sends the same **128 identities in
+bracketed IPv6 form** through an exact `/120` network scope, paired with
+the **incorrect** claimed DNS asset. In all cases the actual source-owned
+ScopePolicy must return `AUTHORIZATION_ASSET_MISMATCH`, and the actual
+ActivationGate must reject before the fake token function is touched.
+This distinguishes a lexical alias from the correct independent asset
+gate. All paths are in-memory, without sockets, real permissions or
+adapter execution.
+
+Total own module: **4 expected-RED and 9 normal PASS/witness methods**.
+Separate current-main PR #1448 remains unchanged. The original #100
+source branch is *not* modified.
