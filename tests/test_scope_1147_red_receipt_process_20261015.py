@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -176,6 +177,57 @@ class Scope1147ReceiptProcessTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 3)
         self.assertEqual(report["reason"], "INVALID_INVOCATION")
         self.assertNotIn(sensitive_marker, proc.stdout)
+
+    def test_original_source_receipt_from_unrelated_working_directory(self):
+        # Explicit repo-local PYTHONPATH is required for python -m outside the
+        # repository; receipt must never derive its safety scope from cwd.
+        original, expected = self.run_receipt()
+        self.assertEqual(original.returncode, 2)
+        env = os.environ.copy()
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
+        env["PYTHONPATH"] = os.pathsep.join(
+            (str(ROOT), str(ROOT / "src"), str(ROOT / "tests"))
+        )
+        with tempfile.TemporaryDirectory() as unrelated_cwd:
+            proc = subprocess.run(
+                [sys.executable, "-m", MODULE],
+                cwd=unrelated_cwd, env=env,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, timeout=15, check=False,
+            )
+            self.assertEqual(list(Path(unrelated_cwd).iterdir()), [])
+        self.assertEqual(proc.returncode, 2)
+        self.assertEqual(proc.stderr, "")
+        self.assertEqual(proc.stdout, original.stdout)
+        self.assertEqual(json.loads(proc.stdout), expected)
+
+    def test_process_invocation_does_not_derive_authority_from_untrusted_cwd(self):
+        # An unrelated directory and stray .invalid marker must not create
+        # approval, change the receipt or leave any output files behind.
+        env = os.environ.copy()
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
+        env["PYTHONPATH"] = os.pathsep.join(
+            (str(ROOT), str(ROOT / "src"), str(ROOT / "tests"))
+        )
+        with tempfile.TemporaryDirectory() as unrelated_cwd:
+            marker = Path(unrelated_cwd) / "untrusted-fixture.invalid"
+            marker.write_text("not authorization", encoding="utf-8")
+            proc = subprocess.run(
+                [sys.executable, "-m", MODULE],
+                cwd=unrelated_cwd, env=env,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, timeout=15, check=False,
+            )
+            self.assertEqual(sorted(p.name for p in Path(unrelated_cwd).iterdir()),
+                             [marker.name])
+        self.assertEqual(proc.returncode, 2)
+        self.assertEqual(proc.stderr, "")
+        self.assertNotIn(marker.name, proc.stdout)
+        result = json.loads(proc.stdout)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "KNOWN_SOURCE_RED_CONFIRMED")
+        for flag in EXPECTED_FLAGS:
+            self.assertIs(result[flag], False)
 
     def test_repeatable_process_receipt_has_no_broadening_or_output_drift(self):
         first, first_report = self.run_receipt()
