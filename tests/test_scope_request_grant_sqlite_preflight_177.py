@@ -148,7 +148,7 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
             ("assessment_requests", "status", "rejected", "request_id", self.request.request_id),
             ("assessment_requests", "status", "approve", "request_id", self.request.request_id),
             ("assessment_requests", "requested_mode", "passive_discovery", "request_id", self.request.request_id),
-            ("assessment_requests", "requested_risk", "3", "request_id", self.request.request_id),
+            ("assessment_requests", "requested_risk", "invalid", "request_id", self.request.request_id),
             ("assessment_requests", "requested_risk", 0, "request_id", self.request.request_id),
             ("authorization_grants", "max_risk", 4, "grant_id", self.grant.grant_id),
         ):
@@ -168,12 +168,8 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
             ("authorization_grants", "client_id", "foreign", "grant_id", self.grant.grant_id),
             ("engagements", "client_id", "foreign", "engagement_id", self.engagement),
             ("assessment_requests", "client_id", "foreign", "request_id", self.request.request_id),
-            ("authorization_grants", "decided_by", "fake", "grant_id", self.grant.grant_id),
         ):
             with self.subTest(field=field, value=val):
-                # grant table does not have decided_by, use actual approved_by below
-                if table == "authorization_grants" and field == "decided_by":
-                    continue
                 self.upgrade_synthetic_only()
                 self.update(table, field, val, key, keyval)
                 self.assert_hold()
@@ -223,14 +219,32 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
         self.update("engagements", "status", "running", "engagement_id", self.engagement)
         self.assert_hold()
 
-    def test_missing_fk_constraint_does_not_create_provenance(self):
+    def test_self_asserted_fk_like_column_without_sqlite_constraint_hold(self):
+        # Never trust self-asserted approved_request_id without an actual FK.
+        with sqlite3.connect(self.path) as con:
+            con.execute(
+                "ALTER TABLE authorization_grants "
+                "ADD COLUMN approved_request_id TEXT"
+            )
+            con.execute(
+                "UPDATE authorization_grants SET approved_request_id=? WHERE grant_id=?",
+                (self.request.request_id, self.grant.grant_id),
+            )
+        self.assert_hold()
+
+    def test_sqlite_fk_schema_still_cannot_authorize_real_targets(self):
         self.upgrade_synthetic_only()
         with sqlite3.connect(self.path) as con:
-            # In an independent file a similarly named column without declared
-            # reference is merely a self-asserted string: never sufficient.
             rows = con.execute("PRAGMA foreign_key_list(authorization_grants)").fetchall()
-            self.assertTrue(any(row[3] == "approved_request_id" for row in rows))
-        self.assertIs(self.review().status, ReviewStatus.REVIEW_ONLY)
+            self.assertTrue(any(
+                row[2] == "assessment_requests"
+                and row[3] == "approved_request_id"
+                and row[4] == "request_id"
+                for row in rows
+            ))
+        result = self.review()
+        self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(result)
 
     def test_no_changes_after_review_of_real_sqlite_snapshot(self):
         self.upgrade_synthetic_only()
