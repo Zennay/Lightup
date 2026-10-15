@@ -24,11 +24,11 @@ token, scan, or action on any customer system.
 | Request approval | status other than exact `APPROVED`, mode other than `AUTHORIZED_ASSESSMENT`, no named operator, malformed request creation timestamp or decision timestamp; decision predates request creation |
 | Tenant/provenance | mismatched request/grant client or grant approver vs request decider |
 | Assets | grant target not *exactly* present in requested assets; blank, duplicate, mixed-case, non-canonical, URL/port/wildcard, Unicode or variant-IP spelling; excluded assets not among the granted set |
-| Risk | grant risk above approved risk, destructive lab-only mode, malformed risk, empty wildcard capabilities (meaning unrestricted in the real model) |
-| Time | decision in future, missing/invalid UTC decision, malformed or naive grant times, hostile custom timezone object, grant precedes decision, grant not current at explicit review instant |
+| Risk | grant risk above approved risk, destructive lab-only mode, malformed risk, empty wildcard capabilities (meaning unrestricted in the real model), unknown IDs, or LAB_ONLY/DISABLED IDs rather than canonical PLANNING capabilities |
+| Time | decision in future, missing/invalid UTC decision, malformed, non-UTC-offset or naive grant times, hostile custom timezone object, grant precedes decision, grant not current at explicit review instant |
 | Metadata | invalid excluded target/capability item collection; malformed recurring retest flag |
 
-All identity fields also use a bounded (max 128 characters) ASCII identifier grammar with no whitespace or control characters. Empty allowed capability tuples are refused because the real ScopeDefinition interprets an empty allowlist as **unlimited tools**. The reviewer also requires a canonical request-created timestamp to precede the decision.
+All identity fields also use a bounded (max 128 characters) ASCII identifier grammar with no whitespace or control characters. Empty allowed capability tuples are refused because the real ScopeDefinition interprets an empty allowlist as **unlimited tools**. The reviewer also requires a canonical request-created timestamp to precede the decision, strict built-in UTC timezone identity for supplied datetime objects, and a real high-level PLANNING-only capability ID from the currently installed catalogue. The catalogue check does not authenticate the caller or any authorization.
 
 The conservative **exact-string** comparison deliberately refuses aliases
 instead of equating non-canonical host/IP representations. DNS names must be
@@ -38,6 +38,10 @@ The reviewer does **not** prove whether assets belong to a customer, whether
 a hostname resolves, whether a request belongs to an engagement, or whether
 a declared approval is signed or persisted. Source-owner canonical scope
 rules are authoritative; this toy format is only a strict offline reference.
+
+## Atomic multi-request review (opt-in)
+
+`review_request_grant_batch(pairs, reviewed_at=...)` accepts only an exact Python tuple of 1–32 exact two-tuples of untrusted request/grant snapshots, all on one declared client. Every member must already be structurally REVIEW_ONLY using the single-grant reviewer. Duplicate request IDs, duplicate grant IDs, effective granted-asset overlaps, mixed tenants, malformed entries and input above the limit cause a single **atomic HOLD**. No per-item status, no granted asset/client ID, no partial acceptance. A completely coherent batch remains **REVIEW_ONLY with all six false flags**. Excluded assets are not treated as effective scope membership during overlap checking; overlapping claims without actual granted membership are still not permission. The batch performs no I/O or issuing step and is **not** a release authority.
 
 ## Results and hard boundary
 
@@ -64,7 +68,7 @@ deployment authorization are required before a real active path can be enabled.
 
 ## Test
 
-Offline synthetic fixtures only:
+Offline synthetic fixtures only; real Python 3.11/3.14 CI validates single/batch denial, catalog and exact UTC isolation:
 
 ```sh
 python -m unittest discover -s tests -p 'test_scope_request_grant_offline_review_177.py' -v
