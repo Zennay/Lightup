@@ -1118,5 +1118,50 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
                 self.assertIs(inverted.is_current(now=instant), False)
 
 
+    def test_fragmented_fifo_packet_matches_single_write_and_partial_hold(self):
+        """Local pipe framing must not change the no-authority classification."""
+        cmd = [sys.executable, str(ROOT / "scripts" /
+                                  "review_scope_expiry_cohort_20261015_offline.py")]
+        raw = encoded(document())
+        expected_code, expected_receipt, expected_err = subprocess_review(raw)
+        self.assertEqual(expected_code, 3)
+        self.assertEqual(expected_err, b"")
+        expected_line = (json.dumps(expected_receipt, separators=(",", ":"),
+                                    ensure_ascii=True) + "\n").encode("ascii")
+        for cuts in ((1,), (1, 2, 3, 4), (7, 32, 121)):
+            with self.subTest(cuts=cuts):
+                proc = subprocess.Popen(
+                    cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                try:
+                    start = 0
+                    for stop in (*cuts, len(raw)):
+                        proc.stdin.write(raw[start:stop])
+                        proc.stdin.flush()
+                        start = stop
+                        time.sleep(0.01)
+                    proc.stdin.close()
+                    self.assertEqual(proc.wait(timeout=5), 3)
+                    self.assertEqual(proc.stderr.read(), b"")
+                    self.assertEqual(proc.stdout.read(), expected_line)
+                finally:
+                    if proc.poll() is None:
+                        proc.kill()
+                        proc.wait(timeout=2)
+                    if not proc.stdin.closed:
+                        proc.stdin.close()
+                    proc.stdout.close()
+                    proc.stderr.close()
+
+        # A producer closing early must not emit any partially healthy counts.
+        code, receipt, stderr = subprocess_review(raw[:-1])
+        self.assertEqual(code, 2)
+        self.assertEqual(stderr, b"")
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(set(receipt), {"status", *reviewer.DENIAL_FLAGS})
+        self.assertNoAuthority(receipt)
+
+
 if __name__ == "__main__":
     unittest.main()
