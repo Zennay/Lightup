@@ -340,6 +340,7 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
             )
             operator = store.context_for_user(op_user.user_id)
             client = store.create_client(operator, "Synthetic Alpha")
+            other_client = store.create_client(operator, "Synthetic Beta")
             client_user = store.create_user(
                 operator, "synthetic-client@lab.invalid", "Client",
                 Role.CLIENT_ADMIN, client.client_id
@@ -434,6 +435,17 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                         port, "POST", portal, token=client_token,
                         form={"assets": "synthetic.invalid", "risk": "1",
                               "csrf": "forged"},
+                        headers={name: "GET"},
+                    )
+                    if code != 403 or len(store.list_assessment_requests(operator)) != request_baseline:
+                        return False
+                    # The client's valid own CSRF must not allow a request in
+                    # another tenant just because a header demands GET.
+                    wrong_tenant = f"/portal/{other_client.client_id}/requests"
+                    code, _, _ = send(
+                        port, "POST", wrong_tenant, token=client_token,
+                        form={"assets": "synthetic.invalid", "risk": "1",
+                              "csrf": client_csrf},
                         headers={name: "GET"},
                     )
                     if code != 403 or len(store.list_assessment_requests(operator)) != request_baseline:
@@ -538,6 +550,20 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                     )
                     if status != 403 or len(store.list_clients(operator)) != baseline:
                         return False
+                    # A real, otherwise-correct CSRF must not defeat the
+                    # production Origin and Fetch Metadata gates if a client
+                    # spoofs the HTTP method to a "safe" GET.
+                    for adversarial in (
+                        {"Origin": "https://attacker.invalid"},
+                        {"Sec-Fetch-Site": "cross-site"},
+                    ):
+                        status, _, _ = send(
+                            port, "POST", "/clients",
+                            {name: "GET", **adversarial},
+                            form={"name": "Cross Origin Forbidden", "csrf": csrf},
+                        )
+                        if status != 403 or len(store.list_clients(operator)) != baseline:
+                            return False
                 status, headers, _ = send(
                     port, "POST", "/clients",
                     {check.OVERRIDE_NAMES[0]: "GET"},
