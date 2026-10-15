@@ -211,7 +211,11 @@ class OfflineRevalidationFence:
                 or type(tool) is not ToolSnapshot
                 or not tool.is_well_formed()):
             raise ValueError("invalid synthetic reference")
-        # Copy caller-owned objects, including the request, to avoid aliasing.
+        # Snapshot exact caller fields on both sides of the copy. A caller
+        # can mutate even frozen dataclasses in-process via object.__setattr__;
+        # never store a mixed-time, split-identity or malformed reference.
+        before_approval = self._approval_fields(approval)
+        before_tool = self._tool_fields(tool)
         request = ReviewRequest(**{
             name: getattr(approval.request, name)
             for name in ReviewRequest.__dataclass_fields__
@@ -221,6 +225,15 @@ class OfflineRevalidationFence:
         with self._lock:
             if self._closed:
                 raise ValueError("revoked review instance cannot be reopened")
+            if (
+                not frozen.is_well_formed()
+                or not snapshot.is_well_formed()
+                or self._approval_fields(frozen) != before_approval
+                or self._tool_fields(snapshot) != before_tool
+                or self._approval_fields(approval) != before_approval
+                or self._tool_fields(tool) != before_tool
+            ):
+                raise ValueError("synthetic approval/registry changed during intake")
             self._approval = frozen
             self._tool = snapshot
             self._approval_seal = self._approval_fields(frozen)
