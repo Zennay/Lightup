@@ -43,7 +43,7 @@ Keep the issue open and this PR draft until actual source-level enforcement is i
 
 ## W4: installed-source reviewer CLI, without granting authority
 
-In addition to the 18 real installed-source unit contracts, the draft now includes:
+In addition to the 22 real installed-source unit contracts, the draft now includes:
 - `scripts/scope_297_atomic_policy_witness_20261015.py` — one-command, **hardcoded fictional inputs only** diagnostic on the actual installed `ScopePolicy.decide`. Reports eight known host/network cross-path cases without publishing the input targets or fake grant data, includes DNS/socket tripwires, and **always exits code 2 / HOLD**.
 - `tests/test_scope_297_atomic_policy_witness_cli_20261015.py` — 23 separate deterministic offline controls on real source behavior, JSON/Dutch output, immutable hold flags, user-supplied-target refusal, no network/shell/files, privacy-minimal unexpected decision/constructor exception review and future *deny* behavior staying HOLD.
 
@@ -73,7 +73,7 @@ The reporter now distinguishes an attempted source-level socket or DNS operation
 
 The standalone synthetic-only CLI now tracks blocked operations **per case** rather than inferring that no network attempt happened merely because `ScopePolicy.decide` returned a normal decision. A source callback can catch its own `NetworkAttemptBlocked` exception; its attempted access is still recorded as `NETWORK_BLOCKED_REVIEW` ahead of any `UNSAFE_ALLOW` or `DENIED_REVIEW` classification. The network tripwire uses a scoped `ExitStack` and restores every patched module-level API after exit. This is a best-effort Python API tripwire only, **not process/container/VPS-level egress isolation**.
 
-The tripwire covers common Python socket and resolver entry points: `socket`, `socketpair`, `create_connection`, `create_server`, `getaddrinfo`, `gethostbyname`, `gethostbyname_ex`, `gethostbyaddr`, `getnameinfo` and `getfqdn`. Six new offline unittest methods prove that swallowed socket/DNS exceptions still count, cases do not taint each other, helper entry points are intercepted, and patched APIs are restored. **23 CLI tests** total; the original 18 installed-source controls are unchanged.
+The tripwire covers common Python socket and resolver entry points: `socket`, `socketpair`, `create_connection`, `create_server`, `getaddrinfo`, `gethostbyname`, `gethostbyname_ex`, `gethostbyaddr`, `getnameinfo` and `getfqdn`. Six new offline unittest methods prove that swallowed socket/DNS exceptions still count, cases do not taint each other, helper entry points are intercepted, and patched APIs are restored. **23 CLI tests** total; the 22 installed-source controls are unchanged.
 
 Even a report of zero intercepted attempts cannot establish network isolation. The whole review remains non-authorizing with status HOLD, exit code 2 and all `can_*` flags false. Current commit CI evidence must be pinned separately from earlier runs and cannot be inferred from the prior 14-test branch.
 
@@ -81,4 +81,14 @@ Even a report of zero intercepted attempts cannot establish network isolation. T
 
 The same offline report now explains *why* the synthetic installed-source permissions are unsafe in Dutch, with separate fixed-family summaries: six invalid-network-policy-to-hostname bypasses and two invalid-host-policy-to-network bypasses. It also gives the product source owner's required remediation direction: validate both public host and network policy together before any public grant or permit. No extra target details or grant values are printed.
 
-The six always-false authority flags are wrapped in a `MappingProxyType` before every report copies them, so callers cannot mutate the global defaults to true. Three deterministic offline tests require both family counts, no automatic success after an imagined source repair, and attempted authority-flag mutation to raise `TypeError`. Total reporter tests: **23**, independent of the original 18 installed-source acceptance tests. Reporting remains **exit 2 / HOLD** and does not implement or grant production authorization.
+The six always-false authority flags are wrapped in a `MappingProxyType` before every report copies them, so callers cannot mutate the global defaults to true. Three deterministic offline tests require both family counts, no automatic success after an imagined source repair, and attempted authority-flag mutation to raise `TypeError`. Total reporter tests: **23**, independent of the 22 installed-source acceptance tests. Reporting remains **exit 2 / HOLD** and does not implement or grant production authorization.
+
+### W9: 58 genuine installed-source matrix admissions (not just one expected failure)
+
+The own installed-source regression module now additionally contains **two deliberate source RED aggregations and two separate ordinary source-witness tests**. Every aggregation computes *all* actual installed `ScopePolicy.decide` decisions before asserting the intended zero-authorization invariant; the ordinary witnesses require the observed unsafe allow behavior with exact reason, so a crash cannot be accepted as a valid RED.
+
+- Network policy → public hostname: ten wholly malformed CIDRs × four legitimate spellings/URL forms of a **fictional** exact hostname = **40 true installed-source decisions**.
+- Host policy → explicit public network: six non-string malformed host entries × three documentation-only addresses within an explicitly configured synthetic network = **18 true installed-source decisions**.
+- Overall **58 additional direct source admission decisions** with no real targets or sockets; this proves wider coverage of the *same #297 whole-configuration atomicity requirement*, not independent new vulnerabilities or a production patch.
+
+After adding these, the original file has **12 ordinary tests and 10 intentionallly expected source-RED cases**. The separate reporter file has **23 ordinary HOLD tests**. The product source owner must convert all 10 RED requirements to ordinary passing denials when repairing default `ScopePolicy`. All other security and runner release gates remain unchanged.
