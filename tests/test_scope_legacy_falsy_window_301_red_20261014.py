@@ -106,7 +106,10 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
 
     def test_all_inputs_remain_unchanged_after_pure_scope_decision(self):
-        a = _authorization(start=NOW - timedelta(days=1), end=NOW + timedelta(days=1))
+        # decide() reads the real clock, so the window must straddle real now.
+        real_now = datetime.now(timezone.utc)
+        a = _authorization(start=real_now - timedelta(days=1),
+                           end=real_now + timedelta(days=1))
         before = repr(a)
         self.assertTrue(_pure_scope_decision(a).allowed)
         self.assertEqual(repr(a), before)
