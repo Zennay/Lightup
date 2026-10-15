@@ -166,6 +166,67 @@ class DirectRiskReviewTests(unittest.TestCase):
             self.assertIs(receipt.may_scan, False)
             self.assertIs(receipt.to_dict()["may_scan"], False)
 
+    def test_forged_receipt_status_or_reason_cannot_escape_as_output(self):
+        class HostilePayload:
+            def __repr__(self):
+                raise AssertionError("untrusted receipt was reflected")
+            @property
+            def value(self):
+                raise AssertionError("untrusted status property was evaluated")
+
+        fake_claim = "fictional-secret-claim-773"
+        forged = (
+            RiskReviewReceipt("APPROVED", fake_claim),
+            RiskReviewReceipt(ReviewStatus.REVIEW_ONLY, fake_claim),
+            RiskReviewReceipt(ReviewStatus.HOLD, fake_claim),
+            RiskReviewReceipt(ReviewStatus.HOLD, "risk_shape_only"),
+            RiskReviewReceipt(ReviewStatus.REVIEW_ONLY, "batch_hold"),
+            RiskReviewReceipt(ReviewStatus.REVIEW_ONLY, 17),
+            RiskReviewReceipt(HostilePayload(), fake_claim),
+            RiskReviewReceipt(ReviewStatus.HOLD, HostilePayload()),
+        )
+        expected = {
+            "status": "HOLD",
+            "reason_code": "invalid_receipt",
+            "authorized": False,
+            "may_scan": False,
+            "may_dispatch": False,
+            "may_issue_grant": False,
+            "release_ready": False,
+            "may_deploy": False,
+        }
+        for receipt in forged:
+            with self.subTest(case=type(receipt.status).__name__):
+                self.assertEqual(receipt.to_dict(), expected)
+                self.assertNotIn(fake_claim, str(receipt.to_dict()))
+                self.assert_non_authorizing(receipt)
+
+    def test_subclass_receipt_serialization_does_not_use_overrides(self):
+        class HostileReceipt(RiskReviewReceipt):
+            def __getattribute__(self, name):
+                raise AssertionError("noncanonical receipt attribute accessed")
+        forged = HostileReceipt(ReviewStatus.REVIEW_ONLY, "risk_shape_only")
+        exported = RiskReviewReceipt.to_dict(forged)
+        self.assertEqual(exported["status"], "HOLD")
+        self.assertEqual(exported["reason_code"], "invalid_receipt")
+        self.assertIs(exported["authorized"], False)
+        self.assertIs(exported["may_dispatch"], False)
+
+    def test_legitimate_single_and_batch_receipts_remain_canonical(self):
+        single = inspect_direct_scope_risk(self.scope(), RiskLevel.LOW_IMPACT)
+        batch = inspect_direct_scope_risk_batch(
+            ((self.scope(), RiskLevel.LOW_IMPACT),)
+        )
+        denied = inspect_direct_scope_risk(self.scope(99), RiskLevel.LOW_IMPACT)
+        for receipt, expected_status in (
+            (single, "REVIEW_ONLY"),
+            (batch, "REVIEW_ONLY"),
+            (denied, "HOLD"),
+        ):
+            self.assertEqual(receipt.to_dict()["status"], expected_status)
+            self.assertEqual(receipt.to_dict()["reason_code"], receipt.reason_code)
+            self.assert_non_authorizing(receipt)
+
     def test_review_receipt_is_exact_immutable_tuple(self):
         receipt = inspect_direct_scope_risk(
             self.scope(RiskLevel.STANDARD), RiskLevel.LOW_IMPACT
