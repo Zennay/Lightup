@@ -156,17 +156,60 @@ class OfflineAttemptJournal:
     def __init__(self, connection: sqlite3.Connection):
         if type(connection) is not sqlite3.Connection or connection.in_transaction:
             raise ValueError("synthetic offline connection required")
+        def _canonical_sql(sql: str) -> str:
+            return " ".join(sql.strip().rstrip(";").split()).casefold()
+
+        expected = {
+            _canonical_sql(_SCHEMA),
+            _canonical_sql(_SCHEMA.replace("IF NOT EXISTS ", "")),
+        }
+
+        def _trusted_schema() -> bool:
+            # An attacker-controlled same-name table, trigger, view, attached
+            # DB or TEMP shadow table must never be counted as a reservation.
+            databases = [row[1] for row in connection.execute("PRAGMA database_list")]
+            if databases != ["main"]:
+                return False
+            if connection.execute(
+                "SELECT 1 FROM sqlite_temp_master LIMIT 1"
+            ).fetchone() is not None:
+                return False
+            objects = connection.execute(
+                "SELECT type,name,sql FROM sqlite_master WHERE sql IS NOT NULL"
+            ).fetchall()
+            if len(objects) != 1:
+                return False
+            kind, name, sql = objects[0]
+            return (
+                kind == "table"
+                and name == "offline_scope_1454_attempts"
+                and type(sql) is str
+                and _canonical_sql(sql) in expected
+            )
+
         try:
-            names = {
-                row[0] for row in connection.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table'"
-                )
-            }
-            if names - {"offline_scope_1454_attempts"}:
-                raise ValueError("synthetic offline connection required")
+            # Read-only schema inspection BEFORE any write. Existing unrelated
+            # customer tables, views, triggers or attached databases are denied.
+            objects = connection.execute(
+                "SELECT type,name,sql FROM sqlite_master WHERE sql IS NOT NULL"
+            ).fetchall()
+            if objects:
+                if not _trusted_schema():
+                    raise ValueError("synthetic offline connection required")
+            else:
+                if [row[1] for row in connection.execute(
+                    "PRAGMA database_list"
+                )] != ["main"]:
+                    raise ValueError("synthetic offline connection required")
+                if connection.execute(
+                    "SELECT 1 FROM sqlite_temp_master LIMIT 1"
+                ).fetchone() is not None:
+                    raise ValueError("synthetic offline connection required")
             connection.execute(_SCHEMA)
             connection.commit()
-        except sqlite3.Error as exc:
+            if not _trusted_schema():
+                raise ValueError("synthetic offline connection required")
+        except sqlite3.Error:
             raise ValueError("synthetic offline connection required") from None
         self._con = connection
 
