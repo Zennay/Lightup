@@ -112,6 +112,11 @@ def review_legacy_authorization_window(
     # A supposedly frozen dataclass can still be mutated with object.__setattr__.
     # Refuse obvious in-call field drift; this is not a cross-thread lock.
     try:
+        # Read attribute getters first, then inspect the actual dictionary.
+        # A getter that mutates the stored value cannot hide that mutation
+        # behind the earlier, valid-looking object identity.
+        actual_start = authorization.valid_from
+        actual_end = authorization.valid_until
         final_fields = vars(authorization)
         if (
             type(final_fields) is not dict
@@ -119,8 +124,8 @@ def review_legacy_authorization_window(
             or "valid_until" not in final_fields
             or final_fields["valid_from"] is not start
             or final_fields["valid_until"] is not end
-            or authorization.valid_from is not start
-            or authorization.valid_until is not end
+            or actual_start is not start
+            or actual_end is not end
         ):
             return hold
     except (AttributeError, TypeError, KeyError):
