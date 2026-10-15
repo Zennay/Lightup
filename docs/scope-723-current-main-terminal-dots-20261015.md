@@ -88,6 +88,19 @@ Each new source-RED test **materializes 32 decisions** (two syntactic forms × 1
 
 **Separation from other worker work:** network CIDR *configuration typing* is owned by #292/#296, reserved-IP policy by #1422, and real dynamic consent/asset binding by production #100. W7 is strictly **source identity text parsing on the target side** within the same owned #723 root-dot bug; no CIDR parsing implementation, grants, scanner, runner, production source, or other worker files change. The source owner must reject invalid multiple terminal dots **before** any loopback, private-lab or CIDR membership decision and convert all expected-RED cases to ordinary PASS after reviewed repair. Passing hosted checks containing intentional REDs do not grant production authority.
 
+
+## W8: enforce fail-closed at the *normalization* boundary, not only at admit
+
+Earlier acceptance focuses on `ScopePolicy.decide`, which currently hides the originating malformed spelling once `normalize_host` has stripped **all** trailing dots. A future policy fix must not merely block one known caller while leaving the public normalizer capable of producing trusted canonical host identities from malformed raw text.
+
+Three direct-source installed parser acceptance methods pin this separation:
+
+- **Source RED #1:** **160** actual `ScopePolicy.normalize_host` invocations (five synthetically named DNS/localhost/IPv4 identities × 16 malformed widths of 2–17 trailing dots × bare and HTTP URL forms), expected to reject with `None` rather than return a canonical trusted host.
+- **Source RED #2:** four dot-only malformed bare and synthetic URL values must also be rejected with `None`, not the empty normalized string.
+- **Ordinary passing compatibility control:** five canonical identities remain normalized as before when bare, spelled with **exactly one** legal root dot, or embedded in a synthetic HTTP URL. Blank/whitespace-only inputs retain existing `None` behavior.
+
+The two deliberately RED tests also flow through the independent exception witness and network-tripwire controls. **164 additionally materialized parser calls**, separate from the **360 actual `ScopePolicy.decide` malformed scenario checks**. This extends total self-owned test methods to **18 genuine source expected-REDs and 21 ordinary passing/witness methods**. It changes no production source and is not consent/asset approval or target I/O. Hosted evidence for previous commits does not prove the W8 exact HEAD.
+
 ## To validate
 
 ```sh
