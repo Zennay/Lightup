@@ -140,6 +140,35 @@ class OfflineExactNetworks292296(unittest.TestCase):
             self.test_canonical_v4_v6_and_syntactic_zero_prefix_review_only()
             self.test_noncanonical_host_bits_fail_closed_ipv4_ipv6()
 
+    def test_deeply_nested_json_is_generic_hold_not_traceback(self):
+        # Trigger parser recursion before envelope checking, within byte limit.
+        nested = b"[" * 1100 + b"0" + b"]" * 1100
+        self.assertLess(len(nested), guard.MAX_JSON_BYTES)
+        self.assertEqual(guard.review(nested), "HOLD")
+        done = self._cli(nested)
+        self.assertEqual(done.returncode, 2)
+        self.assertEqual(done.stderr, b"")
+        self.assertEqual(json.loads(done.stdout)["disposition"], "HOLD")
+
+    def test_mixed_valid_invalid_networks_fail_whole_snapshot(self):
+        good = "8.8.8.0/24"
+        bad = "8.8.8.8/0"
+        for values in ([good, bad], [bad, good], [good, None]):
+            with self.subTest(values=repr(values)):
+                self.assertEqual(guard.review(self._payload(values)), "HOLD")
+
+    def test_review_output_cannot_expose_sensitive_input(self):
+        marker = "SYNTHETIC-SECRET-NETWORK-INPUT"
+        malicious = self._payload([marker, "8.8.8.0/24"])
+        result = guard.receipt(guard.review(malicious))
+        self.assertNotIn(marker, result)
+        self.assertNotIn("8.8.8.0", result)
+        self.assertEqual(json.loads(result)["is_grant"], False)
+
+    def test_max_exact_bytes_does_not_bypass_parser_rejection(self):
+        raw = b" " * guard.MAX_JSON_BYTES
+        self.assertEqual(guard.review(raw), "HOLD")
+
     def test_real_cli_valid_returns_nonzero_and_no_grant(self):
         done = self._cli(self._payload(["8.8.8.0/24"]))
         self.assertEqual(done.returncode, 3, done.stderr.decode(errors="replace"))
