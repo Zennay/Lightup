@@ -110,6 +110,20 @@ The **new actual-source intentional expected-RED** test materializes 40 distinct
 
 Two independent **ordinary passing controls** keep canonical port-qualified DNS/loopback scope and public-CIDR missing-consent behavior intact; the second exercises the exact same **40** installed-source decisions with socket, DNS, connection, HTTP, subprocess and shell tripwires, proving the suite does not contact the synthetic URL targets. These **40 new malformed cases** extend the previous **360** independently materialized bad `ScopePolicy.decide` cases to **400**. The **164** direct `normalize_host` parser probes remain distinct. Across the existing self-owned module there are now **19 intentional source REDs and 23 ordinary green/witness methods**. No code executing target interactions or grants was edited, and no source-owner #100 or other-worker branch is changed. Exact-head CI, permanent VPS execution and independent release approval remain separate HOLD gates.
 
+
+## W10: independently reviewable fail-closed *lexical oracle* (NOT a permission engine)
+
+Repeated source-RED aggregates can demonstrate at least one dangerous admission without showing the exact intended normalization rule. This W10 self-owned test-only change introduces two explicit **pure lexical review helpers** confined to the existing test file, not the product source:
+
+- `_reference_terminal_root_identity` accepts only already extracted string host identity text (never a grant) and preserves **zero or exactly one** trailing DNS-root dot. Two or more trailing dots, all-dot/blank and missing host return `None`. It is case-normalizing; it never opens a socket or authorizes a target.
+- `_reference_target_host` mirrors the currently installed URL-host extraction via Python `urlparse`, then applies that **strict terminal-dot-only** lexical oracle. It is explicitly **not a complete URL validation proposal**: authority parsing, scheme, username, invalid ports and alternative ingress normalization are owned by issue #1289 and its workers. Do not use this test helper as a release-time checker without separate design review.
+
+**Green candidate-oracle proof:** 244 different malformed synthetic hosts are covered (five dummy host/localhost/IPv4 values × 16 illegal terminal-dot counts × bare/synthetic HTTP/synthetic HTTPS-with-port forms, plus four all-dot inputs) and all must lexically return `None`. Another **30 valid spelling controls** preserve canonical, upper/lower-case, 0/1 root dot and harmless syntactic host-port URL compatibility. Explicit policy-side malformed host spelling is rejected by the same *text identity* helper without interpreting policy text as a URL; this preserves separation from #367/#368 ownership.
+
+**New genuine installed-source RED:** the exact **same 244 malformed inputs** are evaluated by the installed `ScopePolicy.normalize_host` and compared with the pure reference. A mismatch is an intentional `@expectedFailure` (`AssertionError("True is not false")`) and passes through the existing independent anti-masking and zero-DNS/socket witness gates. A future source-owner repair that makes installed normalization strictly equal to the reviewed rule must convert the RED test to an ordinary PASS, not leave it marked expected failure.
+
+This W10 exercise is independent of the original **400** source-scope decision cases and 164 prior direct parser probes. After W10 the owned module has **20 deliberate source RED methods and 24 normal controls**. **No production patch, grant, target interaction, other worker file changes, merge or deployment**. Exact HEAD hosted producer CI and separately registered permanent VPS runner evidence remain prerequisites for any future review, not permissions.
+
 ## To validate
 
 ```sh
