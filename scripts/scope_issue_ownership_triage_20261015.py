@@ -34,7 +34,7 @@ def triage(blob: bytes) -> str:
             lines.append("")
             lines.append(f"- Conflictklasse: {group['review_priority']} (alleen triage).")
             lines.extend(f"- Dubbele issueclaim: #{n}" for n in group["duplicate_issues"])
-            lines.extend(f"- Exact gedeeld bestand: \`{_safe_path(path)}\`" for path in group["colliding_paths"])
+            lines.extend(f"- Exact gedeeld bestand: `{_safe_path(path)}`" for path in group["colliding_paths"])
             lines.append("")
     lines.extend([
         "## Betrouwbaarheid van de momentopname",
