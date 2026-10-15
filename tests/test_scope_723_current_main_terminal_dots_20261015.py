@@ -204,6 +204,73 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
             self.assertTrue(_decision(_HOST).allowed)
             self.assertFalse(_decision("unlisted.example.test").allowed)
 
+    def test_policy_side_url_decorations_cannot_grant_embedded_hostname(self):
+        policy_entries = (
+            "https://" + _HOST,
+            "http://operator@" + _HOST,
+            _HOST + ":443",
+            _HOST + "/synthetic-path",
+            _HOST + "?synthetic-query=1",
+            _HOST + "#synthetic-fragment",
+            "//" + _HOST,
+        )
+        for entry in policy_entries:
+            with self.subTest(policy_entry=entry):
+                decision = _decision(_HOST, entry)
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_policy_side_whitespace_decorations_cannot_grant_host(self):
+        policy_entries = (
+            " " + _HOST,
+            _HOST + " ",
+            "\\t" + _HOST,
+            _HOST + "\\n",
+            "\\r" + _HOST,
+            _HOST + "\\u00a0",
+        )
+        for entry in policy_entries:
+            with self.subTest(repr_entry=repr(entry)):
+                decision = _decision(_HOST, entry)
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_policy_side_wildcard_leading_dot_and_suffix_never_expand_scope(self):
+        entries = (
+            "*.example.test",
+            ".example.test",
+            "example.test",
+            _HOST + ".attacker.test",
+            "terminal-dot.example",
+        )
+        for entry in entries:
+            with self.subTest(policy_entry=entry):
+                decision = _decision(_HOST, entry)
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_canonical_target_url_and_whitespace_still_match_exact_policy(self):
+        targets = (
+            "https://" + _HOST + "/synthetic-only",
+            "https://" + _HOST.upper() + ":443/synthetic-only?q=1",
+            "\\t" + _HOST + " ",
+            _HOST + ".",
+        )
+        for target in targets:
+            with self.subTest(target=target):
+                decision = _decision(target)
+                self.assertTrue(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+                self.assertEqual(decision.normalized_host, _HOST)
+
+    def test_single_root_dot_policy_entry_remains_canonical(self):
+        for policy_entry in (_HOST + ".", _HOST.upper() + "."):
+            for target in (_HOST, _HOST.upper() + "."):
+                with self.subTest(config=policy_entry, target=target):
+                    decision = _decision(target, policy_entry)
+                    self.assertTrue(decision.allowed)
+                    self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+
     def test_masked_runtime_error_cannot_masquerade_as_source_red(self):
         # A plain @expectedFailure would swallow this unrelated exception.
         # Our independent witness must *recognize* and reject this outcome.
