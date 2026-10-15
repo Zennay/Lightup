@@ -671,5 +671,41 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
         self.assertNoAuthority(result)
 
 
+    def test_utc_expiry_results_ignore_host_timezone_at_dst_boundaries(self):
+        """Actual subprocess output may not change with OS TZ or DST folds."""
+        cmd = [sys.executable, str(ROOT / "scripts" /
+                                  "review_scope_expiry_cohort_20261015_offline.py")]
+        cases = [
+            ("2026-03-29T01:00:00Z",
+             "2026-03-29T00:30:00Z", "2026-03-29T01:30:00Z"),
+            ("2026-10-25T01:00:00Z",
+             "2026-10-25T00:30:00Z", "2026-10-25T01:30:00Z"),
+        ]
+        for instant, start, end in cases:
+            packet = encoded({
+                "as_of_utc": instant,
+                "horizon_hours": 1,
+                "windows": [{"valid_from": start, "valid_until": end}],
+            })
+            original = None
+            for timezone in ("UTC", "Europe/London", "Pacific/Kiritimati",
+                             "America/New_York"):
+                with self.subTest(instant=instant, timezone=timezone):
+                    proc = subprocess.run(
+                        cmd, input=packet, stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE, timeout=5, check=False,
+                        env={**os.environ, "TZ": timezone},
+                    )
+                    self.assertEqual(proc.returncode, 3)
+                    self.assertEqual(proc.stderr, b"")
+                    receipt = json.loads(proc.stdout.decode("ascii"))
+                    self.assertEqual(receipt["current_expiring_within_horizon"], 1)
+                    self.assertNoAuthority(receipt)
+                    if original is None:
+                        original = proc.stdout
+                    else:
+                        self.assertEqual(proc.stdout, original)
+
+
 if __name__ == "__main__":
     unittest.main()
