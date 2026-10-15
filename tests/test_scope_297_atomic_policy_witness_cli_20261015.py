@@ -289,6 +289,39 @@ class Issue297OfflineWitnessTests(unittest.TestCase):
         for name in names:
             self.assertIs(getattr(socket, name), original[name])
 
+    def test_default_authority_flags_are_unmodifiable(self):
+        with self.assertRaises(TypeError):
+            witness.FROZEN_FALSE_PERMISSIONS["can_scan"] = True
+        with self.assertRaises(TypeError):
+            witness.FROZEN_FALSE_PERMISSIONS["can_grant"] = True
+        self.assertFalse(any(witness.FROZEN_FALSE_PERMISSIONS.values()))
+        receipt = witness.evaluate()
+        self.assertEqual(receipt["permissions"], witness.FROZEN_FALSE_PERMISSIONS)
+        self.assertFalse(any(receipt["permissions"].values()))
+
+    def test_human_report_separates_network_and_host_config_errors(self):
+        report = witness.render_dutch(witness.evaluate())
+        self.assertIn("Fout netwerkbeleid omzeild via hostnaam: 6", report)
+        self.assertIn("Fout hostbeleid omzeild via IP-netwerk: 2", report)
+        self.assertIn("Herstelroute: valideer al het host- en netwerkbeleid samen", report)
+        self.assertIn("UITKOMST: HOLD", report)
+
+    def test_human_report_never_calls_undetected_denial_authorization(self):
+        class StrictDeny:
+            def __init__(self, **_):
+                pass
+
+            def decide(self, _target):
+                return witness.ScopeDecision(False, None, witness.ScopeReason.OUT_OF_SCOPE)
+
+        with patch.object(witness, "ScopePolicy", StrictDeny):
+            receipt = witness.evaluate()
+        report = witness.render_dutch(receipt)
+        self.assertIn("Fout netwerkbeleid omzeild via hostnaam: 0", report)
+        self.assertIn("Fout hostbeleid omzeild via IP-netwerk: 0", report)
+        self.assertIn("UITKOMST: HOLD", report)
+        self.assertFalse(any(receipt["permissions"].values()))
+
     def test_cli_does_not_write_any_files(self):
         # The implementation is pure reporting with no cwd, os.open or tempfile.
         with (
