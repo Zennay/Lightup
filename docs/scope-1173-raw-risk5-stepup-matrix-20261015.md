@@ -15,7 +15,7 @@ Three **intentional installed-source expected-RED** acceptance tests require:
 2. The policy boundary not to treat caller-supplied `is_lab=True` as risk-5 approval;
 3. A forged `dataclasses.replace` run context not to mint independent approval provenance.
 
-Five **ordinary positive controls** verify the already-existing risk-4 ceiling, lab-mode separation, immutable denial inputs, missing step-up/attestation fields, and temporal metadata non-escalation. If RED cases report `expectedFailure`, that proves **the production gap is still open**. A green workflow running expected RED is never proof that the gap is fixed.
+Six **ordinary positive controls** verify the already-existing risk-4 ceiling, lab-mode separation, immutable denial inputs, missing step-up/attestation fields, temporal metadata non-escalation, **and a direct source-RED witness** that rejects masked import/runtime/fixture failures. The witness calls each expected-RED body outside unittest's expected-failure harness and requires the precise expected missing-denial assertion. If RED cases report `expectedFailure`, that proves **the production gap is still open**. A green workflow running expected RED is never proof that the gap is fixed.
 
 ## Required integrated fix / closure
 
