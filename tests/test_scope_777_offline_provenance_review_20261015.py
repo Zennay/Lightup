@@ -290,5 +290,52 @@ class SyntheticProvenanceReviewTests(unittest.TestCase):
             os.close(w)
 
 
+
+    def test_second_descriptor_pin_failure_closes_first_copy(self):
+        from unittest.mock import patch
+        real_dup, real_close = os.dup, os.close
+        made = []
+        closed = []
+
+        def controlled_dup(fd):
+            if len(made) == 1:
+                raise OSError("synthetic second dup failure")
+            new_fd = real_dup(fd)
+            made.append(new_fd)
+            return new_fd
+
+        def controlled_close(fd):
+            closed.append(fd)
+            return real_close(fd)
+
+        with patch.object(review.os, "dup", side_effect=controlled_dup):
+            with patch.object(review.os, "close", side_effect=controlled_close):
+                with self.assertRaises(OSError):
+                    review._pin_checked_fds()
+        self.assertEqual(len(made), 1)
+        self.assertEqual(closed, made)
+        with self.assertRaises(OSError):
+            os.fstat(made[0])
+
+    def test_changed_output_fd_refuses_original_destination(self):
+        source_read, source_write = os.pipe()
+        other_read, other_write = os.pipe()
+        replaceable = os.dup(source_write)
+        pinned = os.dup(replaceable)
+        try:
+            os.dup2(other_write, replaceable)
+            with self.assertRaises(ValueError):
+                review._assert_original_fd_is_pinned(replaceable, pinned)
+            # The nonauthorizing process would return 2 without writing a
+            # receipt; do not write to either destination in this test.
+            for fd in (source_read, other_read):
+                os.set_blocking(fd, False)
+                with self.assertRaises(BlockingIOError):
+                    os.read(fd, 1)
+        finally:
+            for fd in (source_read, source_write, other_read, other_write,
+                       replaceable, pinned):
+                os.close(fd)
+
 if __name__ == "__main__":
     unittest.main()
