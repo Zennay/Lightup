@@ -10,7 +10,7 @@ This supplements [open #1173](https://github.com/Zennay/Lightup/issues/1173), wh
 
 `tests/test_scope_1173_raw_risk5_stepup_matrix_20261015.py` exercises real installed `ToolExecutor`, `ExecutionPolicy`, `RunContext.for_lab`, `ToolRegistry`, and a disposable SQLite `StateStore`. A single inert local handler returns fixed synthetic bytes. A socket tripwire rejects any network creation. No customer, target, credential, scan, live adapter, real approval, or exploit exists.
 
-Three **intentional installed-source expected-RED** acceptance tests require:
+Five **intentional installed-source expected-RED** acceptance tests require:
 1. Risk-5 lab dispatch to be denied without distinct trusted operator approval, before handler or evidence;
 2. The policy boundary not to treat caller-supplied `is_lab=True` as risk-5 approval;
 3. A forged `dataclasses.replace` run context not to mint independent approval provenance.
@@ -22,7 +22,7 @@ Six **ordinary positive controls** verify the already-existing risk-4 ceiling, l
 - Durable operator-only risk-5 approval and revocation, bound to exact run, client, engagement, asset, tool, capability, approval time, and independent operator identity, with no inference from a model, `is_lab`, or caller risk ceiling.
 - Trusted environment-isolation attestation plus enforced egress isolation; mere loopback or a lab flag is not trusted proof.
 - The mandatory step-up must guard **every raw and integrated risk-5 handler route**, including registry operations. No alternate executor may bypass it.
-- Replace all three expected REDs with ordinary passing deny-before-handler/evidence tests **on the integrated source**; verify positive approval and revocation controls without launching active handlers.
+- Replace all five expected REDs with ordinary passing deny-before-handler/evidence tests **on the integrated source**; verify positive approval and revocation controls without launching active handlers.
 - Exact immutable-head Python 3.11/3.14 unit tests and genuine producer integrations, registered permanent VPS proof, independent security/privacy review, owner sign-off, customer consent as applicable, and explicit human release approval.
 
 Run only offline via the repository's established CI. For isolated tests: `PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_1173_raw_risk5_stepup_matrix_20261015.py' -v`.
