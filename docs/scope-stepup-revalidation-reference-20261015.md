@@ -28,7 +28,7 @@ Run from repository root:
 python -m unittest discover -s tests -p 'test_scope_stepup_revalidation_reference_20261015.py' -v
 ```
 
-The forty-one tests cover matching synthetic snapshot (review-only), revoked/missing grant, both temporal boundaries, seven mismatched identities, tool swaps, bad probe outcomes, same-thread revoke/swap/reissue, two synchronized cross-thread races, four-round concurrent four-reader revocation fanout, tool-registry ABA, revoke/restore ABA, and two frozen-request mutation/laundering canaries, caller-object mutation, wrong datetime values, string subclass/boolean/polymorphic shapes and redacted output.
+The forty-three tests cover matching synthetic snapshot (review-only), revoked/missing grant, both temporal boundaries, seven mismatched identities, tool swaps, bad probe outcomes, same-thread revoke/swap/reissue, two synchronized cross-thread races, four-round concurrent four-reader revocation fanout, tool-registry ABA, revoke/restore ABA, and two frozen-request mutation/laundering canaries, caller-object mutation, wrong datetime values, string subclass/boolean/polymorphic shapes and redacted output.
 
 The normal full project suite may run on GitHub-hosted CI. **Never conflate hosted tests with registered permanent VPS proof** or green unit tests with production safety.
 
@@ -60,7 +60,7 @@ A reviewer can no longer emit even `REVIEW_ONLY` without an explicitly callable 
 
 A caller may additionally pass `fresh_clock_probe` to obtain a second synthetic datetime observation **after** the isolation callback. It must return an exact built-in aware datetime with an exact fixed-offset `timezone` and cannot move backward relative to `now`. If the new instant is at or beyond the exclusive expiry, the whole review yields `HOLD`; the clock callback runs outside the ledger lock, and revocation while it runs invalidates the epoch. Missing optional freshness callback intentionally means the initial **synthetic fixed instant** is used; thus `REVIEW_ONLY` must *never* be interpreted as current live consent or proof of freshness. A source owner must provide a trusted time source and verify immediately before real dispatch. The offline race oracle itself does not do so.
 
-Ten new methods cover missing/noncallable isolation probes, approval expiry/registry in-place tampering, unchanged callers, only-once valid probe, expired/valid post-callback time, malformed/non-monotone times, revocation during clock read and invalid/erroring callback. Own suite now **41** tests, pending exact latest-head hosted verification. All previous run receipts are superseded.
+Ten new methods cover missing/noncallable isolation probes, approval expiry/registry in-place tampering, unchanged callers, only-once valid probe, expired/valid post-callback time, malformed/non-monotone times, revocation during clock read and invalid/erroring callback. Own suite now **43** tests, pending exact latest-head hosted verification. All previous run receipts are superseded.
 
 **Release fence remains DRAFT/HOLD.** No customer identities, network endpoints, production wiring, grants, permissions, real I/O or scanning.
 
@@ -72,7 +72,7 @@ The independent permanently registered VPS runner, integrated producer canaries,
 
 ## W8 result-instance isolation
 
-The earlier `_HOLD` and `_REVIEW` global dataclass instances were shared by all callers. Despite `frozen=True`, test-process code could use `object.__setattr__` to rewrite the shared result status and contaminate **future** review receipts. Each call now creates its own `ReviewReceipt` value. The output serializer also catches deleted/missing receipt fields and produces a generic non-authorizing `HOLD` instead of an exception or leaked detail. Three real synthetic tests check HOLD poisoning, REVIEW_ONLY poisoning, and missing fields. The **41 own methods** are not production authorization checks.
+The earlier `_HOLD` and `_REVIEW` global dataclass instances were shared by all callers. Despite `frozen=True`, test-process code could use `object.__setattr__` to rewrite the shared result status and contaminate **future** review receipts. Each call now creates its own `ReviewReceipt` value. The output serializer also catches deleted/missing receipt fields and produces a generic non-authorizing `HOLD` instead of an exception or leaked detail. Three real synthetic tests check HOLD poisoning, REVIEW_ONLY poisoning, and missing fields. The **43 own methods** are not production authorization checks.
 
 The Python interpreter is not a trusted boundary against malicious in-process code; there is no production handler or release path in this branch.
 
@@ -80,4 +80,12 @@ The Python interpreter is not a trusted boundary against malicious in-process co
 
 `ReviewRequest` includes an exact fixed-offset aware `started_at` instant. An offline `ReferenceApproval` is now well-formed only when approval was strictly issued *before* the run began and the run began *before* the approval's exclusive expiry. Its total grant validity is no longer allowed to exceed **24 hours**. The synthetic review also rejects a clock observation prior to the submitted run start, and the separately sealed tuples pin this new timestamp across an untrusted callback. Four new regression methods require denial for post-run/equal-time approval, 24-hour-plus-one-microsecond windows, malformed run clock values and callback mutation of the run's start timestamp. Exactly 24 hours is accepted as a fictional review boundary but **never** as permission.
 
-This is an offline policy oracle. It does not prove operator identity, tenant consent, durable issuance, revocation or real handler admission; those remain owned by source PRs #1172 and #107. New own suite **41 tests**, exact-latest-hosted and separate registered VPS CI status must be checked after the code changes.
+This is an offline policy oracle. It does not prove operator identity, tenant consent, durable issuance, revocation or real handler admission; those remain owned by source PRs #1172 and #107. New own suite **43 tests**, exact-latest-hosted and separate registered VPS CI status must be checked after the code changes.
+
+## W10 actual hosted regression and receipt storage repair
+
+Hosted [W9 preflight #38763523776](https://github.com/Zennay/Lightup/actions/runs/38763523776) on preceding immutable `9020e209...` executed 41 own methods but reported **two failing subtests** within the newly written deleted-field receipt regression on **both Python 3.11 and 3.14**, in addition to the unrelated original #301 date-expired fixture. The two failures were real own implementation bugs: a deleted frozen dataclass instance field could still be read as the `False` class default, so a partial result was incorrectly classified as REVIEW_ONLY. This was not an installed runtime/target test and **must never be counted green**.
+
+The reference serializer has now been corrected to compare exactly the required eight keys of the **actual instance dictionary**, reject absent or extra fields before testing six literal booleans, and return a generic HOLD on malformed/subclassed values. Two additional tests independently pin Python's surprising `getattr` class-fallback behavior and injected private fields. New total **43** own tests pending new exact SHA verification. This corrects only synthetic receipt integrity, not real approvals.
+
+Prior W9 and earlier hosted receipts are superseded. Full-suite #301 owner and permanent VPS runner remain unrelated independent gates. Keep DRAFT/HOLD.
