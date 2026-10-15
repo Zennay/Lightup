@@ -5,6 +5,7 @@ from dataclasses import replace
 from datetime import datetime, timedelta, timezone, tzinfo
 from threading import Event, Thread
 import unittest
+from unittest.mock import patch
 
 from lab.scope_stepup_revalidation_reference_20261015 import (
     OfflineRevalidationFence, ReferenceApproval, ReviewReceipt, ReviewRequest,
@@ -757,6 +758,66 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
         self.assert_non_authorizing(
             fence.review(request, NOW, isolation_probe=lambda: True), "HOLD"
         )
+
+
+    def test_intake_rejects_expiry_mutated_between_validation_and_copy(self):
+        fence, request, approval, tool = fixture()
+        candidate = OfflineRevalidationFence()
+        original = ReviewRequest.__getattribute__
+        reads = []
+        def hook(value, name):
+            if value is request and name == "run":
+                reads.append(1)
+                if len(reads) == 3:
+                    object.__setattr__(
+                        approval, "expires_at", NOW + timedelta(days=3)
+                    )
+            return original(value, name)
+        with patch.object(ReviewRequest, "__getattribute__", hook):
+            with self.assertRaises(ValueError):
+                candidate.replace_synthetic_reference(approval, tool)
+        self.assertGreaterEqual(len(reads), 3)
+        self.assertIsNone(candidate._approval)
+        self.assert_non_authorizing(
+            candidate.review(request, NOW, isolation_probe=lambda: True), "HOLD"
+        )
+        self.assertEqual(fence.review_count, 0)
+
+    def test_intake_rejects_valid_but_mixed_asset_snapshots(self):
+        _, request, approval, tool = fixture()
+        candidate = OfflineRevalidationFence()
+        original = ReviewRequest.__getattribute__
+        reads = []
+        def hook(value, name):
+            if value is request and name == "run":
+                reads.append(1)
+                if len(reads) == 3:
+                    object.__setattr__(request, "asset", "lab-other-asset")
+            return original(value, name)
+        with patch.object(ReviewRequest, "__getattribute__", hook):
+            with self.assertRaises(ValueError):
+                candidate.replace_synthetic_reference(approval, tool)
+        self.assertGreaterEqual(len(reads), 3)
+        self.assertIsNone(candidate._approval)
+        self.assertEqual(candidate.review_count, 0)
+
+    def test_intake_rejects_registered_capability_swapped_during_copy(self):
+        _, request, approval, tool = fixture()
+        candidate = OfflineRevalidationFence()
+        original = ToolSnapshot.__getattribute__
+        reads = []
+        def hook(value, name):
+            if value is tool and name == "capability":
+                reads.append(1)
+                if len(reads) == 3:
+                    object.__setattr__(tool, "capability", "lab-other-capability")
+            return original(value, name)
+        with patch.object(ToolSnapshot, "__getattribute__", hook):
+            with self.assertRaises(ValueError):
+                candidate.replace_synthetic_reference(approval, tool)
+        self.assertGreaterEqual(len(reads), 3)
+        self.assertIsNone(candidate._tool)
+        self.assertEqual(candidate.review_count, 0)
 
 
 if __name__ == "__main__":
