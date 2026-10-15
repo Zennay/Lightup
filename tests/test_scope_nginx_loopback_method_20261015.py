@@ -41,6 +41,12 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
             self.template + "\nlocation /side { proxy_pass http://192.0.2.1; }",
             self.template + "\ninclude /tmp/untrusted.conf;",
             self.template + "\nproxy_method POST;",
+            self.template.replace("        proxy_read_timeout 35s;",
+                                  "        mirror /external;\\n        proxy_read_timeout 35s;"),
+            self.template.replace("        proxy_read_timeout 35s;",
+                                  "        auth_request /verify;\\n        proxy_read_timeout 35s;"),
+            self.template.replace("        proxy_read_timeout 35s;",
+                                  "        resolver 1.1.1.1;\\n        proxy_read_timeout 35s;"),
         ):
             with self.subTest(change=modified[-60:]), tempfile.TemporaryDirectory() as folder:
                 with self.assertRaises(ValueError):
