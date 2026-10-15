@@ -116,7 +116,7 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
             (("after", "recurring_retest_allowed"), 1),
             (("after", "assets"), "lab.example"),
             (("after", "capabilities"), []),
-            (("before", "assets"), []),
+            (("before", "assets"), "not-a-list"),
             (("after", "assets"), ["lab-a.example", "lab-a.example"]),
             (("after", "assets"), ["UPPERCASE.example"]),
             (("after", "grant_id"), ""),
@@ -984,6 +984,78 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
         output, code = reviewer.review(encode(packet))
         self.assertEqual((output["status"], code), ("REVIEW_ONLY", 3))
         self.assert_denied_authority(output, code)
+
+    def test_already_revoked_assets_remain_valid_non_authorizing_review(self):
+        from lightup.engagements import RiskLevel, ScopeDefinition
+
+        item = fixture()
+        item["before"]["assets"] = []
+        item["after"]["assets"] = []
+        out, code = reviewer.review(encode(item))
+        self.assertEqual((out["status"], code), ("REVIEW_ONLY", 3))
+        self.assert_denied_authority(out, code)
+        actual = ScopeDefinition(
+            assets=(), max_risk=RiskLevel.STANDARD,
+            allowed_capabilities=("http_headers", "tls_baseline"),
+        )
+        for asset in ("lab-a.example", "lab-b.example", "new.example", ""):
+            self.assertFalse(actual.allows_asset(asset))
+
+    def test_assets_cannot_return_after_a_full_revocation(self):
+        for targets in (
+            ["lab-a.example"], ["lab-b.example"], ["new.example"],
+            ["lab-a.example", "lab-b.example"],
+        ):
+            item = fixture()
+            item["before"]["assets"] = []
+            item["after"]["assets"] = targets
+            out, code = reviewer.review(encode(item))
+            with self.subTest(targets=targets):
+                self.assertEqual((out["status"], code), ("HOLD", 2))
+                self.assertEqual(out["widening_dimensions"], ["assets"])
+                self.assert_denied_authority(out, code)
+
+    def test_sequential_complete_revocation_stays_monotone(self):
+        # Two independent snapshots, no persisted grant issuance. The second
+        # review is from the *already-revoked* state, not the original grant.
+        first = fixture()
+        first["after"]["assets"] = []
+        first["after"]["max_risk"] = 1
+        second = fixture()
+        second["before"] = copy.deepcopy(first["after"])
+        second["after"] = copy.deepcopy(second["before"])
+        second["after"]["capabilities"] = ["tls_baseline"]
+        second["after"]["recurring_retest_allowed"] = False
+        merged = fixture()
+        merged["after"] = copy.deepcopy(second["after"])
+        for pair in (first, second, merged):
+            out, code = reviewer.review(encode(pair))
+            self.assertEqual((out["status"], code), ("REVIEW_ONLY", 3))
+            self.assert_denied_authority(out, code)
+        second["after"]["assets"] = ["lab-a.example"]
+        out, code = reviewer.review(encode(second))
+        self.assertEqual((out["status"], code), ("HOLD", 2))
+        self.assertIn("assets", out["widening_dimensions"])
+
+    def test_empty_before_assets_cannot_hide_other_expansion(self):
+        fields = (
+            ("approved_by", "operator-other", "identity"),
+            ("valid_from", "2026-10-13T00:00:00Z", "window"),
+            ("max_risk", 4, "risk"),
+            ("recurring_retest_allowed", True, "recurring_retest"),
+            ("excluded_assets", [], "exclusions"),
+            ("capabilities", ["http_headers", "tls_baseline", "new_tool"], "capabilities"),
+        )
+        for name, replacement, expected in fields:
+            item = fixture()
+            item["before"]["assets"] = []
+            item["after"]["assets"] = []
+            item["after"][name] = replacement
+            with self.subTest(name=name):
+                out, code = reviewer.review(encode(item))
+                self.assertEqual((out["status"], code), ("HOLD", 2))
+                self.assertIn(expected, out["widening_dimensions"])
+                self.assert_denied_authority(out, code)
 
     def test_cli_rejects_no_flag(self):
         result = subprocess.run(
