@@ -215,6 +215,39 @@ def _available_port() -> int:
         return int(sock.getsockname()[1])
 
 
+def _decode_lab_response(response) -> dict:
+    """Demand an exact, bounded HTTP framing receipt, not just parseable JSON.
+
+    A prefix of a longer response, ambiguous Content-Length, or conflicting
+    HTTP framing cannot be used as evidence of a valid upstream boundary.
+    The bounded fixture echo always emits one JSON Content-Type and length.
+    """
+    if response.status != 200:
+        raise RuntimeError("unexpected synthetic upstream status")
+    pairs = response.getheaders()
+    if type(pairs) not in (list, tuple):
+        raise RuntimeError("untrusted upstream headers")
+    lengths = [value for name, value in pairs
+               if type(name) is str and name.lower() == "content-length"]
+    content_types = [value for name, value in pairs
+                     if type(name) is str and name.lower() == "content-type"]
+    if (len(lengths) != 1 or len(content_types) != 1
+            or content_types[0] != "application/json"
+            or any(type(name) is not str or type(value) is not str
+                   for name, value in pairs)
+            or any(name.lower() == "transfer-encoding" for name, _ in pairs)):
+        raise RuntimeError("untrusted upstream response metadata")
+    if not lengths[0].isascii() or not lengths[0].isdecimal():
+        raise RuntimeError("untrusted upstream framing")
+    size = int(lengths[0])
+    if not 1 <= size <= 4096 or str(size) != lengths[0]:
+        raise RuntimeError("untrusted upstream length")
+    body = response.read(size + 1)
+    if type(body) is not bytes or len(body) != size:
+        raise RuntimeError("incomplete or extra synthetic upstream bytes")
+    return json.loads(body)
+
+
 def _request(port: int, method: str, overrides) -> dict:
     # Use HTTPConnection's low-level header API: a dict would coalesce
     # duplicate names, masking case variants before reaching real Nginx.
@@ -230,10 +263,7 @@ def _request(port: int, method: str, overrides) -> dict:
             conn.putheader(name, value)
         conn.endheaders(b"x" if method == "POST" else None)
         response = conn.getresponse()
-        body = response.read(4096)
-        if response.status != 200 or not body:
-            raise RuntimeError("upstream did not return a complete lab receipt")
-        return json.loads(body)
+        return _decode_lab_response(response)
     finally:
         conn.close()
 
