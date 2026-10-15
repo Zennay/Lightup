@@ -28,7 +28,7 @@ Run from repository root:
 python -m unittest discover -s tests -p 'test_scope_stepup_revalidation_reference_20261015.py' -v
 ```
 
-The tests cover matching synthetic snapshot (review-only), revoked/missing grant, both temporal boundaries, seven mismatched identities, tool swaps, bad probe outcomes, same-thread revoke/swap/reissue, two synchronized cross-thread races, caller-object mutation, wrong datetime values, string subclass/boolean/polymorphic shapes and redacted output.
+The eighteen tests cover matching synthetic snapshot (review-only), revoked/missing grant, both temporal boundaries, seven mismatched identities, tool swaps, bad probe outcomes, same-thread revoke/swap/reissue, two synchronized cross-thread races, four-round concurrent four-reader revocation fanout, tool-registry ABA and revoke/restore ABA, caller-object mutation, wrong datetime values, string subclass/boolean/polymorphic shapes and redacted output.
 
 The normal full project suite may run on GitHub-hosted CI. **Never conflate hosted tests with registered permanent VPS proof** or green unit tests with production safety.
 
@@ -41,3 +41,7 @@ The normal full project suite may run on GitHub-hosted CI. **Never conflate host
 5. Owner integration, independent privacy/security review, exact integrated SHA hosted Python 3.11/3.14 + producer integration, a separately **permanently registered** VPS runner execution, and explicit human GO remain absent.
 
 **Never merge, deploy, activate, issue real grants, scan real targets or claim a release pass from this reference.**
+
+## Observed first hosted preflight (superseded before W2)
+
+The first exact SHA `5c40664050fb6458d1553b167d303ce4b4aa8176` hosted preflight [#38760164774](https://github.com/Zennay/Lightup/actions/runs/38760164774) executed all 15 original new test methods **OK** on both Python 3.11 and 3.14. The full suite ran 1,252 tests and failed one **unrelated pre-existing** `test_scope_legacy_falsy_window_301_red_20261014.test_all_inputs_remain_unchanged_after_pure_scope_decision` because its fixed expiry time had elapsed; the owning [#301/#1452](https://github.com/Zennay/Lightup/pull/1452) fixture fix has not been imported. Producer jobs were skipped; overall check was FAILED, not green. W2 adds three own race methods (18 total) on a new immutable head: do not apply the older CI receipt to W2. Do not edit the fixture owned by another PR.
