@@ -108,6 +108,28 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
         self.assertFalse(result.allowed)
         self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
 
+    def test_six_expected_reds_are_real_assertions_not_masked_errors(self):
+        names = (
+            "test_292_integer_must_not_create_ipv4_host_authority",
+            "test_292_raw_bytes_must_not_create_ipv4_host_authority",
+            "test_292_boolean_must_not_create_ipv4_host_authority",
+            "test_292_string_subclass_must_not_create_network_authority",
+            "test_296_ipv4_host_bits_must_not_widen_scope",
+            "test_296_ipv6_host_bits_must_not_widen_scope",
+        )
+        proof = unittest.TestResult()
+        for name in names:
+            type(self)(name).run(proof)
+        self.assertEqual(proof.testsRun, len(names))
+        self.assertEqual(proof.failures, [])
+        self.assertEqual(proof.errors, [])
+        self.assertEqual(proof.unexpectedSuccesses, [])
+        self.assertEqual(len(proof.expectedFailures), len(names))
+        for case, trace in proof.expectedFailures:
+            self.assertIn(case._testMethodName, names)
+            self.assertIn("AssertionError", trace)
+            self.assertIn("invalid network declaration minted scope authority", trace)
+
     def test_offline_decisions_make_no_network_or_process_calls(self):
         with (
             patch("socket.socket", side_effect=AssertionError("network forbidden")),
