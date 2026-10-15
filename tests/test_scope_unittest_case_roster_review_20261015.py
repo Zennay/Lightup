@@ -111,7 +111,7 @@ class CaseRosterTests(unittest.TestCase):
     def test_escaped_lone_surrogate_log_fails_closed(self):
         # Python json.loads accepts this but UTF-8 cannot encode the character.
         obj = json.loads(payload())
-        obj["raw_log"] = "\\ud800"
+        obj["raw_log"] = chr(0xD800)
         p, result = run(json.dumps(obj).encode())
         self.assertEqual(p.returncode, 2)
         self.assertEqual(p.stderr, b"")
@@ -119,7 +119,7 @@ class CaseRosterTests(unittest.TestCase):
 
     def test_escaped_low_surrogate_log_fails_closed(self):
         obj = json.loads(payload())
-        obj["raw_log"] = "\\udfff"
+        obj["raw_log"] = chr(0xDFFF)
         p, result = run(json.dumps(obj).encode())
         self.assertEqual(p.returncode, 2)
         self.assertEqual(p.stderr, b"")
