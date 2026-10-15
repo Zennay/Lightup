@@ -38,6 +38,19 @@ class DuplicateArgumentKeysInstalledSource1147(unittest.TestCase):
     def setUp(self):
         self.tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(self.tempdir.cleanup)
+        # Hard offline tripwires: even a future source regression in a
+        # supposedly inert test cannot emit DNS queries or open sockets.
+        # Stop guards before tempdir cleanup (unittest cleanup order is LIFO).
+        self.network_guards = []
+        for name in ("socket.socket", "socket.create_connection", "socket.getaddrinfo"):
+            guard = patch(
+                name, side_effect=AssertionError(
+                    "scope-1147 offline tests must never use network or DNS"
+                )
+            )
+            mock = guard.start()
+            self.addCleanup(guard.stop)
+            self.network_guards.append(mock)
         self.state = StateStore(Path(self.tempdir.name) / "fictional-only.sqlite3")
         self.run_id = self.state.create_run(
             target="fixture-only.invalid", activation_mode="plan_only"
@@ -91,6 +104,17 @@ class DuplicateArgumentKeysInstalledSource1147(unittest.TestCase):
             asset="fixture-only.invalid",
             arguments=tuple(pairs),
         )
+
+    def test_socket_and_dns_tripwires_remain_uninvoked_in_positive_control(self):
+        result = self.executor.execute(
+            self.context, self.call(("selector", "offline-only"))
+        )
+        self.assertEqual(self.calls, [{"selector": "offline-only"}])
+        self.assertEqual(self.evidence_count(), 1)
+        self.assertEqual(self.state.get_evidence(result.evidence_id).run_id, self.run_id)
+        self.assertEqual(len(self.network_guards), 3)
+        for guard in self.network_guards:
+            guard.assert_not_called()
 
     def test_unique_names_permit_exact_once_with_durable_evidence(self):
         result = self.executor.execute(
