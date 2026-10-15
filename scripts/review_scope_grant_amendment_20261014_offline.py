@@ -103,13 +103,15 @@ def _instant(value: object) -> datetime:
         raise Rejected("instant_invalid") from exc
 
 
-def _grant(data: object) -> dict[str, object]:
+def _grant(data: object, *, allow_empty_assets: bool = False) -> dict[str, object]:
     if type(data) is not dict or set(data) != GRANT_KEYS:
         raise Rejected("grant_shape")
     result: dict[str, object] = {}
     for key in ("grant_id", "client_id", "engagement_id", "approved_by", "reference"):
         result[key] = _id(data[key])
-    result["assets"] = _members(data["assets"])
+    # After-state may revoke *all* assets. Empty before-state is refused:
+    # this reviewer compares an existing nonempty grant with a new proposal.
+    result["assets"] = _members(data["assets"], allow_empty=allow_empty_assets)
     result["excluded_assets"] = _members(data["excluded_assets"], allow_empty=True)
     # Empty capabilities mean *unrestricted* in the live ScopeDefinition:
     # never accept them as a narrowing proof.
@@ -136,7 +138,8 @@ def review(raw: bytes) -> tuple[dict[str, object], int]:
     widened: list[str] = []
     try:
         data = _parse(raw)
-        before, after = _grant(data["before"]), _grant(data["after"])
+        before = _grant(data["before"])
+        after = _grant(data["after"], allow_empty_assets=True)
         identity = ("grant_id", "client_id", "engagement_id", "approved_by", "reference")
         if any(before[k] != after[k] for k in identity):
             widened.append("identity")
