@@ -201,6 +201,34 @@ declared fictional host through real installed scope code. This tightens
 the source owner's eventual repair acceptance without claiming the
 temporary test-local patch has been integrated or provides real consent.
 
+## Concrete source-ALLOW proof, not exception-masked RED (W12)
+
+In Python `@unittest.expectedFailure` can classify either an **assertion
+failure** or an **unexpected exception** as an expected failure. Therefore,
+the preceding fourteen intentionally expected-RED checks alone do not
+prove that the source *actually authorized a forbidden target*: an unrelated
+`TypeError`, `ValueError`, or an adapter/setup bug might count as RED.
+
+Two new **ordinary PASS** checks demand positive proof against the actual,
+currently installed source, without patching its authorization logic:
+
+1. Ten deliberately malformed falsey start/end values (eight scalar field
+   cases plus two malicious `datetime.__bool__` subclass cases) must return
+   an actual `True` from `Authorization.is_current(NOW)`, and must not
+   mutate their fictional grant. Any thrown exception fails the witness.
+2. Four cases must return an actual `ScopeDecision(allowed=True,
+   reason=EXPLICIT_HOST)` for a *fictional* explicitly declared public
+   host: end `False`, end `0`, future falsey-datetime subclass, or expired
+   falsey-datetime subclass. The real `ScopePolicy.decide` path runs under
+   the same hermetic injected UTC test time and must not throw or mutate.
+
+**Safety note:** these are deliberately **PASS observations of broken
+installed source**, not passing security policy. Their expected outcome
+must be revised/retired when source-owner #100/#104 properly denies all
+malformed temporal fields. The intended strict behavior remains captured
+by the separately expected-RED tests and the isolated narrowing witness.
+The proof does not issue real consent, target network requests or scans.
+
 ## Ownership and proof gates
 
 Only this original time-window test module and this standalone explanation
