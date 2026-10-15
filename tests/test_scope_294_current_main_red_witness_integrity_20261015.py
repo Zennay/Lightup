@@ -7,15 +7,22 @@ identities and checks their captured failure reasons. Nothing is authorized.
 """
 from __future__ import annotations
 
+import importlib
 import os
 import sys
 import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(__file__))
-from test_scope_294_current_main_mutable_alias_red_20261015 import (
-    MutableScopePolicyInputIdentityTests,
-)
+
+
+def _source_case_class():
+    # Deferred import: unittest discovery inspects module globals for every
+    # TestCase subclass. A module-level import would add six extra REDs to
+    # the main suite, misleadingly inflating expectedFailure counts.
+    return importlib.import_module(
+        "test_scope_294_current_main_mutable_alias_red_20261015"
+    ).MutableScopePolicyInputIdentityTests
 
 RED_CASES = (
     "test_red_mutable_host_set_must_be_snapshotted_at_construction",
@@ -69,11 +76,11 @@ def _all_real_assertion_reds(result: unittest.TestResult, expected: int) -> bool
 class InstalledScopeMutationRedWitnessIntegrityTests(unittest.TestCase):
     def test_exact_six_source_canaries_are_assertion_red_not_error(self):
         case_methods = {
-            name for name in dir(MutableScopePolicyInputIdentityTests)
+            name for name in dir(_source_case_class())
             if name.startswith("test_red_")
         }
         self.assertEqual(case_methods, set(RED_CASES))
-        result = _run(MutableScopePolicyInputIdentityTests, RED_CASES)
+        result = _run(_source_case_class(), RED_CASES)
         self.assertTrue(
             _all_real_assertion_reds(result, 6),
             "six installed security canaries must fail on assertions, not errors",
@@ -105,7 +112,7 @@ class InstalledScopeMutationRedWitnessIntegrityTests(unittest.TestCase):
         with patch("socket.socket", side_effect=AssertionError("socket forbidden")), \
              patch("socket.getaddrinfo", side_effect=AssertionError("DNS forbidden")), \
              patch("subprocess.Popen", side_effect=AssertionError("process forbidden")):
-            result = _run(MutableScopePolicyInputIdentityTests, RED_CASES)
+            result = _run(_source_case_class(), RED_CASES)
         self.assertTrue(_all_real_assertion_reds(result, 6))
 
 
