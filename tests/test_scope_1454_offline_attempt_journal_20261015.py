@@ -310,6 +310,112 @@ class OfflineAttemptJournalTests(unittest.TestCase):
         self.con.rollback()
         self.assertEqual(self.journal.review_phase(self.attempt)[0], "reserved")
 
+    def test_backlog_reports_only_capped_phase_counts_without_identities(self):
+        from scope_1454_offline_attempt_journal import OfflineBacklogReview
+        a = self.attempt
+        b = fixture(attempt_id="fixture-attempt-b")
+        c = fixture(attempt_id="fixture-attempt-c")
+        self.journal.reserve(a)
+        self.journal.reserve(b)
+        self.journal.reserve(c)
+        self.journal.mark_uncertain(b)
+        self.journal.mark_recorded(c, hashlib.sha256(b"fixture").hexdigest())
+        backlog = self.journal.review_backlog()
+        self.assertIs(type(backlog), OfflineBacklogReview)
+        self.assertEqual(backlog.as_dict()["status"], "REVIEW_ONLY")
+        self.assertEqual((
+            backlog.as_dict()["reserved_count"],
+            backlog.as_dict()["uncertain_count"],
+            backlog.as_dict()["recorded_count"],
+            backlog.as_dict()["requires_manual_reconciliation"]
+        ), (1, 1, 1, 2))
+        serialized = str(backlog.as_dict())
+        for secret in ("fixture-attempt", "fixture-client", "fixture-asset",
+                       "fixture-grant", "fixture-tool", "fixture-run"):
+            self.assertNotIn(secret, serialized)
+        for field in (
+            "authorization_allowed", "permit_allowed", "dispatch_allowed",
+            "merge_allowed", "deploy_allowed", "release_allowed",
+        ):
+            self.assertIs(backlog.as_dict()[field], False)
+        with self.assertRaises(TypeError):
+            bool(backlog)
+
+    def test_empty_backlog_is_review_only_but_never_permission(self):
+        backlog = self.journal.review_backlog()
+        projection = backlog.as_dict()
+        self.assertEqual(projection["status"], "REVIEW_ONLY")
+        self.assertEqual(projection["requires_manual_reconciliation"], 0)
+        self.assertIs(projection["dispatch_allowed"], False)
+
+    def test_corrupt_backlog_evidence_row_fails_closed(self):
+        self.journal.reserve(self.attempt)
+        self.con.execute(
+            "UPDATE offline_scope_1454_attempts "
+            "SET phase='recorded', evidence_digest='broken'"
+        )
+        self.con.commit()
+        backlog = self.journal.review_backlog().as_dict()
+        self.assertEqual(backlog["status"], "HOLD")
+        self.assertEqual(backlog["recorded_count"], 0)
+        self.assertIs(backlog["authorization_allowed"], False)
+
+    def test_corrupt_backlog_binding_fails_closed(self):
+        self.journal.reserve(self.attempt)
+        self.con.execute(
+            "UPDATE offline_scope_1454_attempts SET sealed_binding='bad'"
+        )
+        self.con.commit()
+        self.assertEqual(self.journal.review_backlog().as_dict()["status"], "HOLD")
+
+    def test_backlog_schema_poisoning_and_open_transaction_are_hold(self):
+        self.journal.reserve(self.attempt)
+        self.con.execute("BEGIN IMMEDIATE")
+        projection = self.journal.review_backlog().as_dict()
+        self.assertEqual(projection["status"], "HOLD")
+        self.assertEqual(projection["reserved_count"], 0)
+        self.assertTrue(self.con.in_transaction)
+        self.con.rollback()
+        self.con.execute("CREATE TABLE late_customer (secret TEXT)")
+        self.con.commit()
+        projection = self.journal.review_backlog().as_dict()
+        self.assertEqual(projection["status"], "HOLD")
+        self.assertEqual(projection["reserved_count"], 0)
+
+    def test_backlog_cap_above_256_is_generic_hold_without_ids(self):
+        binding = "a" * 64
+        for index in range(257):
+            self.con.execute(
+                "INSERT INTO offline_scope_1454_attempts "
+                "(attempt_id,sealed_binding,phase,evidence_digest) "
+                "VALUES(?,?,'reserved',NULL)",
+                (f"fixture-batch-{index}", binding)
+            )
+        self.con.commit()
+        projection = self.journal.review_backlog().as_dict()
+        self.assertEqual(projection["status"], "HOLD")
+        self.assertEqual(projection["reserved_count"], 0)
+        self.assertIs(projection["release_allowed"], False)
+
+    def test_backlog_dead_connection_is_generic_hold(self):
+        self.con.close()
+        projection = self.journal.review_backlog().as_dict()
+        self.assertEqual(projection["status"], "HOLD")
+        self.assertEqual(projection["uncertain_count"], 0)
+
+    def test_backlog_forged_count_and_receipt_fail_closed(self):
+        from scope_1454_offline_attempt_journal import OfflineBacklogReview
+        with self.assertRaises(ValueError):
+            OfflineBacklogReview(ReviewReceipt("HOLD", "manual_review_required"), 1, 0, 0)
+        with self.assertRaises(ValueError):
+            OfflineBacklogReview(ReviewReceipt("REVIEW_ONLY",
+                                              "not_an_execution_authorization"), True, 0, 0)
+        backlog = self.journal.review_backlog()
+        object.__setattr__(backlog.receipt, "status", "APPROVED")
+        projection = backlog.as_dict()
+        self.assertEqual(projection["status"], "HOLD")
+        self.assertEqual(projection["requires_manual_reconciliation"], 0)
+
     def test_corrupted_reserved_digest_must_not_finish_attempt(self):
         self.assert_non_authorizing(self.journal.reserve(self.attempt), "REVIEW_ONLY")
         self.con.execute(
