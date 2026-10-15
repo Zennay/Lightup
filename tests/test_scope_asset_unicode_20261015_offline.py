@@ -236,7 +236,8 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
                                     timeout=5, check=False)
             self.assertEqual(result.returncode, 2)
             self.assertEqual(result.stderr, b"")
-        with socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM) as (left, right):
+        left, right = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
             result = subprocess.run([sys.executable, str(SCRIPT), "--stdin-json"],
                                     input=data, stdout=right, stderr=subprocess.PIPE,
                                     timeout=5, check=False)
@@ -245,6 +246,9 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
             right.shutdown(socket.SHUT_WR)
             left.settimeout(2)
             self.assertEqual(left.recv(1024), b"")
+        finally:
+            left.close()
+            right.close()
 
     def test_full_local_output_pipe_never_blocks_or_emits_partial_result(self):
         rd, wr = os.pipe()
