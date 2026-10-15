@@ -50,14 +50,58 @@ class ReviewReceipt:
     deploy_allowed: bool = False
     release_allowed: bool = False
 
+    def __post_init__(self) -> None:
+        # Prevent a caller constructing an "APPROVED" or truthy receipt with
+        # the same schema as the non-authorizing reviewer output.
+        expected = {
+            "HOLD": "manual_review_required",
+            "REVIEW_ONLY": "not_an_execution_authorization",
+        }
+        if (
+            type(self) is not ReviewReceipt
+            or type(self.status) is not str
+            or type(self.reason) is not str
+            or expected.get(self.status) != self.reason
+            or any(
+                type(getattr(self, field)) is not bool
+                or getattr(self, field) is not False
+                for field in (
+                    "authorization_allowed", "permit_allowed", "dispatch_allowed",
+                    "merge_allowed", "deploy_allowed", "release_allowed",
+                )
+            )
+        ):
+            raise ValueError("offline review receipt must be non-authorizing")
+
     def __bool__(self) -> bool:
         raise TypeError("an offline receipt can never act as execution permission")
 
     def as_dict(self) -> dict[str, object]:
         # Fixed literal output; never includes an ID, hash, path or exception.
+        expected = {
+            "HOLD": "manual_review_required",
+            "REVIEW_ONLY": "not_an_execution_authorization",
+        }
+        state = vars(self) if type(self) is ReviewReceipt else {}
+        schema = {
+            "status", "reason", "authorization_allowed", "permit_allowed",
+            "dispatch_allowed", "merge_allowed", "deploy_allowed",
+            "release_allowed",
+        }
+        canonical = (
+            type(state) is dict
+            and set(state) == schema
+            and type(state["status"]) is str
+            and type(state["reason"]) is str
+            and expected.get(state["status"]) == state["reason"]
+            and all(type(state[k]) is bool and state[k] is False
+                    for k in schema - {"status", "reason"})
+        )
+        status = state["status"] if canonical else "HOLD"
+        reason = expected[status]
         return {
-            "status": self.status,
-            "reason": self.reason,
+            "status": status,
+            "reason": reason,
             "authorization_allowed": False,
             "permit_allowed": False,
             "dispatch_allowed": False,
