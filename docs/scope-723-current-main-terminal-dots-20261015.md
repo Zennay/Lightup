@@ -124,6 +124,25 @@ Repeated source-RED aggregates can demonstrate at least one dangerous admission 
 
 This W10 exercise is independent of the original **400** source-scope decision cases and 164 prior direct parser probes. After W10 the owned module has **20 deliberate source RED methods and 24 normal controls**. **No production patch, grant, target interaction, other worker file changes, merge or deployment**. Exact HEAD hosted producer CI and separately registered permanent VPS runner evidence remain prerequisites for any future review, not permissions.
 
+
+## W11: explicit 244-case legacy normalization mutation inventory
+
+A passing review oracle could theoretically be too permissive or accept a partially truncated corpus while a single existing source expected-RED still passed. W11 adds an independent ordinary **mutation sensitivity / provenance** test: it models precisely the known *old, unsafe* lexical operation `parsed.hostname.rstrip(".").lower()` on each of **all 244 synthetic malformed host spellings**, and proves its six disjoint alias buckets:
+
+| Unsafe canonical alias under old `rstrip` | Distinct malformed input spellings |
+|---|---:|
+| Fictional allowlisted `terminal-dot.example.test` | 48 |
+| Loopback `localhost` | 48 |
+| Loopback IPv4 `127.0.0.1` | 48 |
+| Synthetic private lab `10.42.43.44` | 48 |
+| Documentation-only TEST-NET-2 `198.51.100.23` | 48 |
+| Empty invalid host `""` | 4 |
+| **Total** | **244** |
+
+Each input must also separately be rejected by the *safe reference helper* as `None`. This test does **not** assert that installed source stays unsafe: the mutation is **entirely local to the test** and must remain green when the source owner later corrects the real implementation. It gives reviewers concrete per-family counts and prevents one surviving bad input from serving as a proxy for hundreds of unexamined variants. No network, execution, grants, production edit or other worker files.
+
+The actual installed-source `@expectedFailure` differential still marks the existing #723 source bug unfixed. With W11 the own suite has **20 intentional source RED methods and 25 ordinary green/witness methods**. Exact new immutable W11 HEAD requires its **own** hosted and permanent VPS checks; successful W10 logs are superseded for release evidence.
+
 ## To validate
 
 ```sh
