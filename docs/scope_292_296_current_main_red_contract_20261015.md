@@ -132,6 +132,33 @@ synthetic, offline policy unit decisions; the opt-out setting is not a
 legitimate substitute for verified customer/operator provenance in
 production and cannot be treated as a release or scanning permit.
 
+## Offline canonical JSON wire boundary (no authority)
+
+The standalone, **not-installed** `scripts/scope_292_296_exact_network_preflight.py`
+now distinguishes canonical CIDR bytes on stdin from **parser-normalized JSON
+escape aliases**. Previously JSON strings such as `"8.8.8.0\\/24"` or
+`"\\u0038.8.8.0/24"` decoded to a legal CIDR, and escaped variants
+of the sole `explicit_networks` envelope key normalized silently to the
+trusted key. That is ambiguous source metadata for a security-sensitive
+scope review. The new rule requires a byte-level match with the exact
+ASCII JSON envelope after dropping **only legal JSON whitespace outside
+strings**. Thus harmless indentation/spaces are allowed but escapes in
+network literals, slash aliases and envelope keys produce a private
+`HOLD`. Any actual scope authority still requires separate reviewed
+customer/operator consent; `REVIEW_ONLY` has five false authority flags
+and returns exit 3, never zero.
+
+The implementation is bounded by the existing 16-KiB input cap, retains
+every byte *inside* JSON strings while stripping structural whitespace,
+and only compares against a canonical JSON envelope **after** strict
+UTF-8/duplicate-key parsing and exact-string strict canonical CIDR validation.
+No raw targets or parser exception strings enter receipts. Independent
+normal-green tests cover six alias forms, ordinary indented/whitespace
+variants, actual CLI subprocess HOLD receipts, in-string whitespace
+preservation, and escaped slash/quote handling. This does **not** change
+production config parsing or grant authorization. #292/#296 source-owner
+remediation remains necessary and independent.
+
 ## Installed-source discovery: stdlib interface objects are not network declarations
 
 Four additional, isolated source-level **expected REDs** for #292/#296 use
