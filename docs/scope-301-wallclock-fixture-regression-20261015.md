@@ -32,17 +32,17 @@ so the normal immutability test fails for a correct authorization denial.
 ## Hermetic clock-edge regression (W2)
 
 The installed production `ScopePolicy.decide(Target(...))` is called under a
-test-local patch of the `lightup.models.datetime.now(timezone.utc)` provider.
+test-local explicit-time delegation to the actual installed `Authorization.is_current` method.
 The test checks **five exact instants** against one immutable fictional
 authorization: one microsecond before `valid_from`, exactly at `valid_from`,
 inside the validity interval, exactly at `valid_until`, and one microsecond
 after `valid_until`. This ensures both inclusive edges and strict outside
 denials. Each case requires the correct `ScopeReason`, exact normalized host,
-exact timezone-aware clock invocation, and an unmodified authorization object.
+one call to the exact installed authorization method with a timezone-aware evaluation instant, and an unmodified authorization object.
 
 Unlike an ordinary wall-clock snapshot, this regression executes deterministically
 on every calendar date, including beyond October 2026. It exercises the real
-scope-to-legacy-authorization path without modifying production clock injection
+scope-to-legacy-authorization path without replacing the runtime datetime symbol
 or relaxing any of the existing expected-RED source security canaries.
 
 ## Chronological cache/replay regression (W3)
@@ -68,10 +68,10 @@ The original normal immutability assertion and the new expired-window
 immutability control are no longer tied even to a moving real-time window
 with a generous margin. Both now evaluate the installed
 `ScopePolicy.decide(Target(...))` through a **test-local frozen evaluation
-clock** (`lightup.models.datetime.now(timezone.utc)`). The production logic
+instant** (the real `Authorization.is_current` is called with explicit `now`). The production logic
 continues to be executed unmodified, including the actual legacy
-`Authorization.is_current()`. Assertions verify the provider receives the
-aware UTC timezone, a positive in-window `EXPLICIT_HOST`, an expired
+`Authorization.is_current()`. Assertions verify the installed method receives the
+aware evaluation instant, a positive in-window `EXPLICIT_HOST`, an expired
 `AUTHORIZATION_EXPIRED`, and identical before/after authorization records.
 
 This removes the *entire real-calendar dependency* of these ordinary PASS
@@ -172,12 +172,12 @@ reference type guard denies malformed date inputs *before* calling
 all cases. Both Python unit jobs observed two W9 witness assertions failing
 (the two real public-scope REDs); producer integrations were skipped.
 
-The corrected helper permits **zero clock reads only when both conditions
-hold**: the caller explicitly opted into pre-clock rejection for these two
-malformed-grant cases **and** the resulting scope decision is denied.
-All canonical positive/ordinary-window tests still require exactly one
-aware-UTC clock read. A denied result after a clock read must also have
-exactly one aware UTC call; multiple or incorrect clock reads still fail.
+The W10 version of the helper permitted **zero mocked clock reads only for
+explicit malformed-grant denial**. W14 replaces that mechanism with an
+explicit-time delegation wrapper: normal decisions call the exact
+authorization record's real installed `is_current` once. Explicit early
+denial may omit that call only in the narrowly marked malformed cases.
+The `datetime` class itself is no longer replaced.
 This preserves and strengthens the intended monotonic fail-closed
 contract: rejecting malformed authorization *before* time evaluation is a
 legitimate safe implementation. It does not authorize any real target,
@@ -257,6 +257,35 @@ ordinary failures/errors. Canonical aware-datetime public scope remains
 a positive control. This hypothetical guard is *not* production code.
 Actual denial behavior, safe exception handling and owner-integrated
 source validation are still to be implemented and reviewed.
+
+## W14 — source-owner-compatible test clock injection
+
+The original historical date-stability tests mocked
+`lightup.models.datetime` to fake `datetime.now()`. That would cause a
+**false CI failure** after a legitimate future #301 source fix: a
+`type(valid_from) is datetime` comparison would see a mocked module
+symbol instead of the actual builtin `datetime` class.
+
+W14 now changes only the **test-owned temporal injection harness**.
+Rather than replace `datetime`, it wraps `Authorization.is_current`
+for one fictional scope evaluation and delegates to **the actual
+installed implementation** with an explicit timezone-aware
+evaluation instant. Source code, runtime clock class identity, and
+canonical datetime comparisons remain untouched.
+
+Every ordinary decision must evaluate the **exact same authorization
+record once**. Unanticipated explicit times supplied by the scope layer
+are rejected; an explicitly opted-in malformed-bound early DENY is
+allowed to skip the call. The five exact microsecond boundaries, 642
+shuffled synthetic clock instants and all other time tests use the
+common helper. A new normal PASS regression directly asserts
+`lightup.models.datetime is datetime` inside an actual `is_current`
+execution, and asserts exact builtin datetime bounds on the fictional
+canonical authorization.
+
+These changes make the tests resilient to the eventual correctly
+narrowed production datetime type contract. They grant no runtime
+permission, edit no production file, and perform no network I/O.
 
 ## Ownership and proof gates
 
