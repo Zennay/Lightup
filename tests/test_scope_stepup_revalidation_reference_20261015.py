@@ -1139,5 +1139,94 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
                 self.assertEqual(fence.review_count, 0)
 
 
+    def test_field_deleted_during_approval_copy_raises_generic_value_error(self):
+        _, request, approval, tool = fixture()
+        candidate = OfflineRevalidationFence()
+        getter = ReviewRequest.__getattribute__
+        reads = []
+        def remove_mid_copy(value, name):
+            if value is request and name == "run":
+                reads.append(1)
+                if len(reads) == 3:
+                    object.__delattr__(request, "asset")
+            return getter(value, name)
+        with patch.object(ReviewRequest, "__getattribute__", remove_mid_copy):
+            with self.assertRaisesRegex(ValueError, "^synthetic reference changed during intake$"):
+                candidate.replace_synthetic_reference(approval, tool)
+        self.assertGreaterEqual(len(reads), 3)
+        self.assertIsNone(candidate._approval)
+        self.assertIsNone(candidate._tool)
+        self.assertEqual(candidate._epoch, 0)
+
+    def test_field_deleted_during_review_copy_is_generic_hold_without_probe(self):
+        fence, request, _, _ = fixture()
+        getter = ReviewRequest.__getattribute__
+        reads, callbacks = [], []
+        def remove_mid_copy(value, name):
+            if value is request and name == "run":
+                reads.append(1)
+                if len(reads) == 2:
+                    object.__delattr__(request, "asset")
+            return getter(value, name)
+        with patch.object(ReviewRequest, "__getattribute__", remove_mid_copy):
+            self.assert_non_authorizing(
+                fence.review(
+                    request, NOW,
+                    isolation_probe=lambda: callbacks.append("probe") or True,
+                ), "HOLD"
+            )
+        self.assertGreaterEqual(len(reads), 2)
+        self.assertEqual(callbacks, [])
+        self.assertEqual(fence.review_count, 0)
+
+    def test_field_deleted_during_standalone_tool_copy_is_generic_value_error(self):
+        fence, request, _, _ = fixture()
+        original_epoch = fence._epoch
+        replacement = ToolSnapshot("lab-tool", "lab-capability", 5)
+        getter = ToolSnapshot.__getattribute__
+        reads = []
+        def remove_mid_copy(value, name):
+            if value is replacement and name == "tool":
+                reads.append(1)
+                if len(reads) == 3:
+                    object.__delattr__(replacement, "capability")
+            return getter(value, name)
+        with patch.object(ToolSnapshot, "__getattribute__", remove_mid_copy):
+            with self.assertRaisesRegex(ValueError, "^synthetic tool changed during registry intake$"):
+                fence.replace_synthetic_tool(replacement)
+        self.assertGreaterEqual(len(reads), 3)
+        self.assertEqual(fence._epoch, original_epoch)
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=lambda: True),
+            "REVIEW_ONLY",
+        )
+
+    def test_stored_approval_deleted_after_precheck_is_denied_in_final_phase(self):
+        fence, request, _, _ = fixture()
+        events = []
+        def probe():
+            events.append("isolation")
+            object.__delattr__(fence._approval, "expires_at")
+            return True
+        self.assert_non_authorizing(
+            fence.review(
+                request, NOW, isolation_probe=probe,
+                fresh_clock_probe=lambda: events.append("clock") or NOW,
+            ), "HOLD"
+        )
+        self.assertEqual(events, ["isolation", "clock"])
+        self.assertEqual(fence.review_count, 0)
+
+    def test_stored_registry_deleted_after_precheck_is_denied_in_final_phase(self):
+        fence, request, _, _ = fixture()
+        def probe():
+            object.__delattr__(fence._tool, "capability")
+            return True
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=probe), "HOLD"
+        )
+        self.assertEqual(fence.review_count, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
