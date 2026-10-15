@@ -144,6 +144,7 @@ def _load_review(
     request_mode = _enum(AssessmentMode, r["requested_mode"])
     request_status = _enum(RequestStatus, r["status"])
     engagement_status = _enum(EngagementStatus, e["status"])
+    engagement_created_at = _decision_time(e["created_at"])
     if (
         request_risk is None
         or grant_risk is None
@@ -154,6 +155,11 @@ def _load_review(
         or request_mode is None
         or request_status is None
         or engagement_status is None
+        or engagement_created_at is None
+        # A persisted grant may not claim validity before it was recorded,
+        # and may not predate the engagement to which it claims to belong.
+        # These are snapshot coherence checks, NOT authenticated approval.
+        or not (engagement_created_at <= persisted_at <= valid_from)
     ):
         return _HOLD
 
