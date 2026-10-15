@@ -47,6 +47,18 @@ class GitHubRestReportTests(unittest.TestCase):
         self.assertIn("PR #202: claim niet aangeleverd", text)
         self.assertIn("geen conclusie over beschikbaarheid", text)
 
+    def test_git_hub_issues_api_pr_pseudorow_is_safely_reported(self):
+        doc = fixture()
+        doc["issue_pages"][0]["records"].append({
+            "number": 820099, "state": "open",
+            "pull_request": {"url": "synthetic://not-a-real-pr"}
+        })
+        result = show(doc)
+        self.assertIn("GitHub-PR-rijen uitgefilterd uit issues", result)
+        self.assertIn("1 PR-rij(en)", result)
+        self.assertIn("niet als scope-issues geteld", result)
+        self.assertIn("HOLD", result)
+
     def test_fork_is_review_only(self):
         doc = fixture()
         doc["pr_pages"][0]["records"][0]["head"]["repo"]["full_name"] = "Another/Repo"
