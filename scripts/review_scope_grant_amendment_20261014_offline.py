@@ -111,6 +111,13 @@ def _instant(value: object) -> datetime:
     # Require explicit UTC rather than normalizing an operator's time.
     if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", value):
         raise Rejected("instant_format")
+    # Python 3.14 accepts ISO 8601 24:00:00 and silently normalizes it to
+    # the *next day*, whereas 3.11 rejects it. Grant review must interpret
+    # identical operator metadata identically across runtimes.
+    if (int(value[11:13]) > 23
+            or int(value[14:16]) > 59
+            or int(value[17:19]) > 59):
+        raise Rejected("instant_invalid")
     try:
         return datetime.fromisoformat(value[:-1] + "+00:00").astimezone(timezone.utc)
     except ValueError as exc:
