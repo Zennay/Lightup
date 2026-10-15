@@ -51,7 +51,7 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
 
     @unittest.expectedFailure
     def test_292_raw_bytes_must_not_create_ipv4_host_authority(self):
-        self._assert_rejected(b"\\x08\\x08\\x08\\x08", "8.8.8.8")
+        self._assert_rejected(b"\x08\x08\x08\x08", "8.8.8.8")
 
     @unittest.expectedFailure
     def test_292_boolean_must_not_create_ipv4_host_authority(self):
@@ -70,7 +70,7 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
         self._assert_rejected("2001:4860:4860::8888/64", "2001:4860:4860::8844")
 
     def test_292_bytearray_is_never_permission(self):
-        self._assert_rejected(bytearray(b"\\x08\\x08\\x08\\x08"), "8.8.8.8")
+        self._assert_rejected(bytearray(b"\x08\x08\x08\x08"), "8.8.8.8")
 
     def test_292_none_is_never_permission(self):
         self._assert_rejected(None, "8.8.8.8")
