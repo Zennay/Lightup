@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import closing
 from pathlib import Path, PosixPath, WindowsPath
 
 from .domain import AssessmentRequestRecord, EngagementRecord, RequestStatus
@@ -211,7 +212,7 @@ def review_persisted_request_grant(
             return _HOLD
         # Path.as_uri() escapes query-string characters in the filename.
         uri = path.as_uri() + "?mode=ro"
-        with sqlite3.connect(uri, uri=True, timeout=1, isolation_level=None) as con:
+        with closing(sqlite3.connect(uri, uri=True, timeout=1, isolation_level=None)) as con:
             con.row_factory = sqlite3.Row
             con.execute("PRAGMA query_only=ON")
             con.execute("PRAGMA foreign_keys=ON")
