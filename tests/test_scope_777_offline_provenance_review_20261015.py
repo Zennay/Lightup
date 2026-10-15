@@ -416,5 +416,34 @@ class SyntheticProvenanceReviewTests(unittest.TestCase):
                                   "reference": "ROE-FICTIONAL"}).encode("utf-8")
             self.assert_receipt(payload, expected)
 
+
+    def test_real_cli_malformed_secret_claims_share_identical_hold_receipt(self):
+        secret = "PRIVATE-DO-NOT-ECHO-customer-secret-123"
+        malformed = (
+            b"{}", b"[]", b"null", b"", b"\xff", b"not-json",
+            b"{" + (b"x" * 5000) + b"}",
+            json.dumps({"approved_by": secret, "reference": ""}).encode(),
+            json.dumps({"approved_by": "", "reference": secret}).encode(),
+            json.dumps({"approved_by": secret, "reference": secret,
+                        "release_approved": True}).encode(),
+            json.dumps({"approved_by": secret, "reference": secret,
+                        "grant_id": "G-" + secret}).encode(),
+            b'{"approved_by":"a","approved_by":"b","reference":"r"}',
+            b'{"approved_by":"a","reference":"r","\\u0072eference":"s"}',
+            json.dumps({"approved_by": "X\u200b" + secret,
+                        "reference": "ROE-FICTIONAL"}).encode(),
+        )
+        receipts = set()
+        for data in malformed:
+            with self.subTest(first_bytes=repr(data[:30])):
+                proc = subprocess.run([sys.executable, str(SCRIPT)], input=data,
+                                      capture_output=True, timeout=4)
+                self.assertEqual(proc.returncode, 2)
+                self.assertEqual(proc.stderr, b"")
+                self.assertNotIn(secret.encode(), proc.stdout)
+                self.assertEqual(json.loads(proc.stdout), {"status": "HOLD", **FALSE_FLAGS})
+                receipts.add(proc.stdout)
+        self.assertEqual(len(receipts), 1, "all failed intakes must be byte-identical")
+
 if __name__ == "__main__":
     unittest.main()
