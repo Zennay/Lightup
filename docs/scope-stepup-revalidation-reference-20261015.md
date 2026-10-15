@@ -28,7 +28,7 @@ Run from repository root:
 python -m unittest discover -s tests -p 'test_scope_stepup_revalidation_reference_20261015.py' -v
 ```
 
-The thirty-one tests cover matching synthetic snapshot (review-only), revoked/missing grant, both temporal boundaries, seven mismatched identities, tool swaps, bad probe outcomes, same-thread revoke/swap/reissue, two synchronized cross-thread races, four-round concurrent four-reader revocation fanout, tool-registry ABA, revoke/restore ABA, and two frozen-request mutation/laundering canaries, caller-object mutation, wrong datetime values, string subclass/boolean/polymorphic shapes and redacted output.
+The thirty-four tests cover matching synthetic snapshot (review-only), revoked/missing grant, both temporal boundaries, seven mismatched identities, tool swaps, bad probe outcomes, same-thread revoke/swap/reissue, two synchronized cross-thread races, four-round concurrent four-reader revocation fanout, tool-registry ABA, revoke/restore ABA, and two frozen-request mutation/laundering canaries, caller-object mutation, wrong datetime values, string subclass/boolean/polymorphic shapes and redacted output.
 
 The normal full project suite may run on GitHub-hosted CI. **Never conflate hosted tests with registered permanent VPS proof** or green unit tests with production safety.
 
@@ -60,6 +60,12 @@ A reviewer can no longer emit even `REVIEW_ONLY` without an explicitly callable 
 
 A caller may additionally pass `fresh_clock_probe` to obtain a second synthetic datetime observation **after** the isolation callback. It must return an exact built-in aware datetime with an exact fixed-offset `timezone` and cannot move backward relative to `now`. If the new instant is at or beyond the exclusive expiry, the whole review yields `HOLD`; the clock callback runs outside the ledger lock, and revocation while it runs invalidates the epoch. Missing optional freshness callback intentionally means the initial **synthetic fixed instant** is used; thus `REVIEW_ONLY` must *never* be interpreted as current live consent or proof of freshness. A source owner must provide a trusted time source and verify immediately before real dispatch. The offline race oracle itself does not do so.
 
-Ten new methods cover missing/noncallable isolation probes, approval expiry/registry in-place tampering, unchanged callers, only-once valid probe, expired/valid post-callback time, malformed/non-monotone times, revocation during clock read and invalid/erroring callback. Own suite now **31** tests, pending exact latest-head hosted verification. All previous run receipts are superseded.
+Ten new methods cover missing/noncallable isolation probes, approval expiry/registry in-place tampering, unchanged callers, only-once valid probe, expired/valid post-callback time, malformed/non-monotone times, revocation during clock read and invalid/erroring callback. Own suite now **34** tests, pending exact latest-head hosted verification. All previous run receipts are superseded.
 
 **Release fence remains DRAFT/HOLD.** No customer identities, network endpoints, production wiring, grants, permissions, real I/O or scanning.
+
+## W7 receipt integrity: no forged success labels
+
+The standalone `ReviewReceipt.as_dict()` now emits only one of two strict and non-authorizing states. It validates exact built-in status/reason pairs and six literal `False` fields; if a caller constructs, subclasses or mutates a receipt to claim `APPROVED`, `RELEASE`, an inconsistent `REVIEW_ONLY` reason, a sensitive value or a truthy permission field, output collapses to generic `HOLD` with no sensitive identifier. **This constrains this reference's own output only; it cannot establish authenticity or defend against arbitrary hostile Python with direct class/code access.** Three synthetic tests cover forged status/reason, all six mutated flags and subclass confusion. Own suite: **34 isolated tests**. Older hosted receipts are not exact-current-HEAD proof.
+
+The independent permanently registered VPS runner, integrated producer canaries, actual operator approval and execution gating remain required. No activation/merge/deployment.
