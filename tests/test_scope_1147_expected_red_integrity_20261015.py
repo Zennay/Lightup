@@ -27,6 +27,34 @@ EXPECTED_SOURCE_RED = frozenset({
     "test_required_order_beta_then_alpha_is_denied_before_any_effect",
     "test_required_rejected_duplicate_preserves_prior_committed_evidence",
 })
+EXPECTED_ORDINARY_CONTROL_NAMES = frozenset({
+    "test_socket_and_dns_tripwires_remain_uninvoked_in_positive_control",
+    "test_unique_names_permit_exact_once_with_durable_evidence",
+    "test_unknown_name_is_rejected_before_handler_and_evidence",
+    "test_wrong_type_is_rejected_before_handler_and_evidence",
+    "test_current_source_duplicate_string_uses_last_value_not_first",
+    "test_current_source_invalid_first_value_evades_schema_via_last_value",
+    "test_current_source_duplicate_optional_parameter_is_silently_collapsed",
+    "test_current_source_equal_duplicate_values_still_invoke_handler",
+    "test_current_source_interleaved_triple_duplicate_uses_last",
+    "test_unique_names_reach_schema_and_policy_exactly_once",
+    "test_current_source_duplicate_enters_schema_and_policy_before_handler",
+    "test_invalid_last_duplicate_is_denied_by_schema_without_policy_or_evidence",
+    "test_duplicated_unknown_field_is_rejected_without_dispatch",
+    "test_current_source_duplicate_after_success_creates_extra_durable_evidence",
+    "test_current_source_duplicate_order_changes_effective_handler_arguments",
+    "test_target_active_without_grant_stays_denied_even_with_duplicate_keys",
+})
+
+
+def verify_source_test_roster(actual_names) -> None:
+    """Reject swapped/missing positive controls even when totals stay 25."""
+    names = list(actual_names)
+    expected = EXPECTED_ORDINARY_CONTROL_NAMES | EXPECTED_SOURCE_RED
+    if len(names) != len(expected) or set(names) != expected:
+        raise AssertionError("scope-1147 installed source control roster changed")
+
+
 EXPECTED_TOTAL = 25
 EXPECTED_ORDINARY = 16
 EXACT_RED_SIGNATURE = "AssertionError: OrchestrationError not raised"
@@ -82,6 +110,11 @@ class Scope1147ExpectedRedIntegrityTests(unittest.TestCase):
         from test_scope_1147_duplicate_key_installed_matrix_20261015 import (
             DuplicateArgumentKeysInstalledSource1147,
         )
+        verify_source_test_roster(
+            unittest.defaultTestLoader.getTestCaseNames(
+                DuplicateArgumentKeysInstalledSource1147
+            )
+        )
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(
             DuplicateArgumentKeysInstalledSource1147
         )
@@ -105,10 +138,33 @@ class Scope1147ExpectedRedIntegrityTests(unittest.TestCase):
                     yield item
 
         cases = list(flatten(discovered))
-        self.assertEqual(len(cases), 8)
+        self.assertEqual(len(cases), 10)
         self.assertTrue(
             all(type(case) is Scope1147ExpectedRedIntegrityTests for case in cases)
         )
+
+    def test_oracle_pins_every_installed_safe_and_unsafe_test_name(self):
+        from test_scope_1147_duplicate_key_installed_matrix_20261015 import (
+            DuplicateArgumentKeysInstalledSource1147,
+        )
+        actual = unittest.defaultTestLoader.getTestCaseNames(
+            DuplicateArgumentKeysInstalledSource1147
+        )
+        verify_source_test_roster(actual)
+        self.assertEqual(len(actual), 25)
+        self.assertEqual(
+            set(actual), EXPECTED_ORDINARY_CONTROL_NAMES | EXPECTED_SOURCE_RED
+        )
+
+    def test_oracle_rejects_swapped_positive_control_with_same_test_count(self):
+        replacement = (
+            EXPECTED_ORDINARY_CONTROL_NAMES
+            - {"test_wrong_type_is_rejected_before_handler_and_evidence"}
+        ) | {"test_fake_positive_control_looks_like_a_pass"}
+        self.assertEqual(len(replacement), 16)
+        self.assertEqual(len(replacement | EXPECTED_SOURCE_RED), 25)
+        with self.assertRaisesRegex(AssertionError, "control roster changed"):
+            verify_source_test_roster(replacement | EXPECTED_SOURCE_RED)
 
     def test_validator_rejects_fake_expected_failure_from_crash(self):
         class BrokenReference(unittest.TestCase):
