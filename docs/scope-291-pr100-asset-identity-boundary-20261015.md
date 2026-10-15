@@ -37,7 +37,7 @@ Only one new test module and this documentation:
 - Four **real expected-RED** cases on unmerged #100 source: wrong
   explicit-host+asset acceptance, synthetic ActivationGate permit for the
   wrong address, and 128 distinct RFC3849 wrong-asset admissions.
-- Nine regular green comparators and integrity guards: an asset
+- Ten regular green comparators and integrity guards: an asset
   containing the **correct** full IPv6 does **not** satisfy the
   unrelated DNS alias, empty assets grant nothing, bracketed IPv6
   `/128` with matching exact asset retains target/authorization
@@ -92,6 +92,23 @@ This distinguishes a lexical alias from the correct independent asset
 gate. All paths are in-memory, without sockets, real permissions or
 adapter execution.
 
-Total own module: **4 expected-RED and 9 normal PASS/witness methods**.
+Total own module: **4 expected-RED and 10 normal PASS/witness methods**.
 Separate current-main PR #1448 remains unchanged. The original #100
 source branch is *not* modified.
+
+## W3: synthetic source-fix negative control
+
+An independent passing acceptance method temporarily patches only the
+**in-memory test process** to reject bare IPv6 literals as invalid
+**before scope membership**. It then reruns each of the four real
+`@unittest.expectedFailure` source tests and insists that each becomes
+an **unexpected success**, not an ignored failure or a runtime crash.
+This proves a safe source fix actually retires the RED signals and
+cannot leave deceptive "expected failure" green dashboards behind.
+The same temporary denial keeps an exact bracketed IPv6 `/128`
+positive permit green, so the simulation does not erase all legitimate
+scope membership. The original `ScopePolicy` is restored after
+the test; no deployed source is modified.
+
+The in-memory denial is **only a test of the test**, not a candidate
+production parser replacement or real authorization.
