@@ -4,7 +4,7 @@ Not a grant source, permission evaluator, or target scanner.
 """
 from __future__ import annotations
 
-from ipaddress import ip_network
+from ipaddress import IPv4Interface, IPv6Interface, ip_network
 import json
 from io import BytesIO, StringIO
 import os
@@ -76,6 +76,20 @@ class OfflineExactNetworks292296(unittest.TestCase):
         ):
             with self.subTest(value=value):
                 self.assertEqual(guard.review(self._payload([value])), "HOLD")
+
+    def test_public_interface_objects_and_hostbits_are_never_policy_syntax(self):
+        # ip_network(obj, strict=False) normalizes these, but the standalone
+        # review must reject the Python object type before parsing.
+        samples = (
+            IPv4Interface("8.8.8.8/24"),
+            IPv4Interface("8.8.8.8/0"),
+            IPv6Interface("2001:4860:4860::8888/64"),
+            IPv6Interface("2001:4860:4860::8888/0"),
+        )
+        for obj in samples:
+            with self.subTest(kind=type(obj).__name__, value=str(obj)):
+                self.assertIs(guard._canonical(obj), False)
+                self.assertNotEqual(str(ip_network(obj, strict=False)), str(obj))
 
     def test_nonstring_coercions_fail_closed(self):
         for value in (134744072, True, False, None, 8.8, {}, ["8.8.8.0/24"]):
