@@ -7,6 +7,7 @@ Unlike @expectedFailure tests, an observed direct-grant bypass returns exit 2.
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
@@ -52,13 +53,16 @@ def _scan_pure_local() -> dict[str, object]:
         # A green verdict must not hide a mutated request or grant. Type exactness
         # prevents bool-like or PolicyDecision-subclass return spoofing.
         original_request = dict(request.__dict__)
+        # A shallow dict misses in-place mutation of nested ScopeDefinition:
+        # both snapshots are needed to reject a policy that rewrites scope.
+        immutable_snapshot = deepcopy(request)
         original_grant = (dict(request.authorization.__dict__)
                           if request.authorization is not None else None)
         result = policy.decide(request)
         if type(result) is not PolicyDecision or type(result.allowed) is not bool:
             raise ValueError("invalid policy decision contract")
-        if request.__dict__ != original_request:
-            raise ValueError("request mutated during policy decision")
+        if request.__dict__ != original_request or request != immutable_snapshot:
+            raise ValueError("request or nested scope mutated during policy decision")
         if original_grant is not None and request.authorization.__dict__ != original_grant:
             raise ValueError("grant mutated during policy decision")
         return result.allowed
