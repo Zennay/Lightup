@@ -72,13 +72,33 @@ def review(raw):
     mismatched_r = sum(wanted[key]["outcome"] != right[key] for key in shared_r)
     matched_red = sum(wanted[key]["outcome"] == left[key] == right[key] == "expected_failure"
                       for key in wanted.keys() & left.keys() & right.keys())
+    # Never mistake two matching failed suites for a clean/security-ready
+    # chain. A claimed complete debt roster can omit observed REDs/failures.
+    # Count all such untracked findings as review debt without trusting logs.
+    bad_statuses = frozenset(("failed", "error", "unexpected_success"))
+    def untracked_counts(found, footer):
+        watched = wanted.keys() & found.keys()
+        tracked_red = sum(found[key] == "expected_failure" for key in watched)
+        tracked_bad = sum(found[key] in bad_statuses for key in watched)
+        footer_bad = (footer["failures"] + footer["errors"]
+                      + footer["unexpected_successes"])
+        return (max(0, footer["expected_failures"] - tracked_red),
+                max(0, footer_bad - tracked_bad))
+    untracked_red_311, untracked_failures_311 = untracked_counts(left, lsum)
+    untracked_red_314, untracked_failures_314 = untracked_counts(right, rsum)
+    failed_suites = any(x["failures"] or x["errors"] or x["unexpected_successes"]
+                        for x in (lsum, rsum))
+    open_source_reds = (debt["expected_red"] or lsum["expected_failures"]
+                        or rsum["expected_failures"])
     # Actual method sets can be disjoint although summary counters match.
     different_method_set = len(left.keys() ^ right.keys())
     footer_diff = sum(lsum[k] != rsum[k] for k in (
         "reported_tests", "reported_result", "failures", "errors", "skipped",
         "expected_failures", "unexpected_successes"))
     risk = (len(missing_l) + len(missing_r) + diverged + mismatched_l + mismatched_r
-            + different_method_set + footer_diff + debt["unowned_issues"])
+            + different_method_set + footer_diff + debt["unowned_issues"]
+            + untracked_red_311 + untracked_red_314
+            + untracked_failures_311 + untracked_failures_314)
     return {
         "watched_tests": len(wanted),
         "watched_issues": debt["issues"],
@@ -92,6 +112,18 @@ def review(raw):
         "watched_cross_python_disagreements": diverged,
         "total_different_named_methods": different_method_set,
         "different_suite_footer_fields": footer_diff,
+        "untracked_expected_red_311": untracked_red_311,
+        "untracked_expected_red_314": untracked_red_314,
+        "untracked_unexpected_failure_311": untracked_failures_311,
+        "untracked_unexpected_failure_314": untracked_failures_314,
+        "reported_suite_failures_present": bool(failed_suites),
+        "release_blocking_signal": (
+            "UNEXPECTED_SUITE_FAILURES" if failed_suites
+            else "UNFIXED_EXPECTED_SOURCE_REDS" if open_source_reds
+            else "INCOMPLETE_OR_DIVERGED_EVIDENCE" if risk or (
+                len(left) != lsum["reported_tests"]
+                or len(right) != rsum["reported_tests"])
+            else "NO_FAILURE_REPORTED_STILL_NOT_AUTHORITY"),
         "unittest_tests_311": lsum["reported_tests"],
         "unittest_tests_314": rsum["reported_tests"],
         "unittest_result_311": lsum["reported_result"],
