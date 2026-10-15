@@ -54,6 +54,71 @@ permanent self-hosted runner, installed ingress or production release.
 No workflows or PR were triggered; issue #777's branch-only HOLD ownership
 is preserved.
 
+## W7: reproduced visual spoof bypasses and tested source-owner handoff (2026-10-15)
+
+On the isolated, uninstalled reviewer, the previous NFKC-only rule returned
+`REVIEW_ONLY` for **U+FE0F variation selector, U+180B Mongolian selector,
+U+20E3 enclosing keycap, and U+0338 combining overlay** inserted into a
+fictional operator name. These were directly reproduced before repair. Their
+NFKC spelling does not change, yet the printed string can be visually
+misleading. W7 now denies these and related default-ignorable selector ranges
+while continuing to review ordinary precomposed and script-required combining
+marks, including Greek and Devanagari names.
+
+A separate spoof class survives NFKC: mixing Latin letters with Cyrillic,
+Greek or Armenian lookalikes. W7 conservatively rejects **mixed-script
+letters among those four families within one field** while allowing
+single-script international names. This is only a narrow lexical
+anti-impersonation heuristic, **not** a general Unicode confusable algorithm,
+proof of identity, or authenticated customer consent. Some legitimate
+multilingual combined-script fields will receive HOLD; such reviews need a
+separate human route, never a bypass.
+
+**Executed local proof:** Python 3.13, 41/41 standard-library methods PASS,
+including real subprocesses; exact source/test files were matched against
+GitHub using code-point length and deterministic hashes.
+The distinct SQLite-dependent 18-method producer/direct tests remain unrun
+in this isolated sandbox and retain 14 expected-RED acceptance cases.
+
+### Exact ownership-preserving production fix proposal for issue #777
+
+The current `main` source `src/lightup/execution_policy.py` reaches
+`grant.is_current()` after only checking `grant is None`. On the owner's
+integrated PR #100 head, insert a **pure, fail-closed** check between those two
+steps, before risk/scope/capability gates:
+
+```python
+if (type(grant.approved_by) is not str
+        or not grant.approved_by.strip()
+        or grant.approved_by != grant.approved_by.strip()
+        or type(grant.reference) is not str
+        or not grant.reference.strip()
+        or grant.reference != grant.reference.strip()):
+    return PolicyDecision(False, "authorization provenance is not canonical")
+```
+
+This is a **review proposal, not applied production code**. The source owner
+must determine the integration point and verify ordering with PR #100,
+persisted resolution, authentic consent, revocation and the activation gate.
+Tests to certify *on the integrated exact head* are:
+
+1. Every existing #777 direct policy RED case becomes an ordinary PASS
+   asserting DENY: blank/whitespace/padded, Unicode-padded, `str`
+   subclass, bytes/int/None for both provenance fields.
+2. Canonical grant control remains ALLOW, *without* authorizing a real
+   target; SQLite producer trims at issuance and persists the same canonical
+   values.
+3. Rejecting a malformed in-memory grant leaves both the grant snapshot
+   and the durable store byte-for-byte unchanged; no handlers or target calls.
+4. All pre-existing passive/analysis/lab-only tests retain behavior; no
+   approval is implied by reviewer `REVIEW_ONLY` receipts.
+5. Hosted exact-SHA Python 3.11/3.14 tests **and** independent, canonical
+   registered permanent VPS proofs are required before any release review.
+
+Do not modify this source-owner's file from the parallel reviewer lane.
+Issue #777 stays open until real source integration and all mandatory
+customer/operator-consent and destination/revoke gates pass.
+
 ## Independent offline reviewer (non-authorizing)
 
 The uninstalled `scripts/scope_777_review_provenance_offline.py` is an executable,
