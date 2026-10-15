@@ -58,7 +58,9 @@ Use fictional windows only. Tests include real CLI invocation, 16 KiB bound, str
 
 The follow-on acceptance suite exercises **126 synthetic, in-memory `AuthorizationGrant.is_current(now=...)` comparisons** against the CLI's four mutually exclusive categories. It checks current/noncurrent parity, future and expired boundaries for 6 start offsets × 3 durations × 7 evaluation instants. These are fictional model instances, not stored grants or operator approvals. A complete 32-window cohort has an actual positive-count subprocess control and a corrupted final member must cause atomic HOLD with **no partial counts**. A UTC value at 9999-12-31 23:59:58 with a 720-hour horizon explicitly guards against `datetime + timedelta` overflow: the reviewer instead computes the duration `end - as_of`.
 
-A further adversarial real-subprocess test passes a 3,001-byte deeply nested JSON array that would otherwise raise Python's recursion guard. It must return exactly one generic HOLD JSON receipt (exit 2) and no stderr or traceback. A distinct invalid UTF-8 byte fixture proves the same privacy-preserving denial for decode failures. Neither can leak raw input or grant execution.\n\nAll these checks test *classification only*. The producer model's inclusive end semantics are preserved solely for this anonymous report; nothing is wired into the real authorization path. Every output remains non-authorizing.
+A further adversarial real-subprocess test passes a 3,001-byte deeply nested JSON array that would otherwise raise Python's recursion guard. It must return exactly one generic HOLD JSON receipt (exit 2) and no stderr or traceback. A distinct invalid UTF-8 byte fixture proves the same privacy-preserving denial for decode failures. Neither can leak raw input or grant execution.
+
+All these checks test *classification only*. The producer model's inclusive end semantics are preserved solely for this anonymous report; nothing is wired into the real authorization path. Every output remains non-authorizing.
 
 ## Required independent source-owner handoff
 
