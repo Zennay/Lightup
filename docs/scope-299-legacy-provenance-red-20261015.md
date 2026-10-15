@@ -8,7 +8,7 @@ The canonical `Authorization(owner, reference)` is immutable in shape, but the c
 
 ## Isolated test matrix
 
-New `tests/test_scope_299_legacy_provenance_red_20261015.py` runs real installed `lightup.models.Authorization`, `lightup.scope.ScopePolicy`, and `lightup.activation.ActivationGate` against fictional `review.example.test` and documentation IP `203.0.113.27` without socket/DNS/handler actions. The suite contains **6 ordinary green controls** (canonical host, canonical network, missing grant, expired grant, PLAN_ONLY and LAB_ONLY) and **6 deliberately expected source REDs**:
+New `tests/test_scope_299_legacy_provenance_red_20261015.py` runs real installed `lightup.models.Authorization`, `lightup.scope.ScopePolicy`, and `lightup.activation.ActivationGate` against fictional `review.example.test` and documentation IP `203.0.113.27` with an explicit no-socket/no-DNS monkeypatch on every installed-source case, and without any handler actions. The suite contains **7 ordinary green controls** (canonical host, canonical network, canonical inert AUTHORIZED permit, missing grant, expired grant, PLAN_ONLY and LAB_ONLY) and **6 deliberately expected source REDs**:
 
 1. blank client owner with an explicit public host;
 2. blank reference with an explicit public network;
@@ -17,7 +17,7 @@ New `tests/test_scope_299_legacy_provenance_red_20261015.py` runs real installed
 5. `str`-subclass owner, which cannot count as producer-canonical provenance;
 6. `AUTHORIZED` activation with a valid operator marker but blank distinct client provenance.
 
-One **strict RED oracle** replays the twelve cases separately and requires exactly the named six expected failures, six real normal PASS, no skipped/error/unexpected-success cases, and the concrete AssertionError cause. This distinguishes current-source missing rejection from a crashed or silently missing test. The suite counts thirteen *top-level* unittest methods; its private replay is diagnostic, not thirteen additional cases.
+One **strict RED oracle** replays the thirteen cases separately and requires exactly the named six expected failures, seven real normal PASS, no skipped/error/unexpected-success cases, and the concrete AssertionError cause. This distinguishes current-source missing rejection from a crashed or silently missing test. The suite counts fourteen *top-level* unittest methods; its private replay is diagnostic, not fourteen additional cases.
 
 ## Owner handoff and exact repair conditions
 
