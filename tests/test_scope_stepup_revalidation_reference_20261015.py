@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 from threading import Event, Thread
 import unittest
 
@@ -310,6 +310,23 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
             fence.review(request, NOW, isolation_probe=launder_input), "HOLD"
         )
         self.assertEqual(fence.review_count, 0)
+
+
+    def test_custom_timezone_callback_is_rejected_without_invocation(self):
+        class HostileZone(tzinfo):
+            calls = 0
+            def utcoffset(self, value):
+                self.calls += 1
+                raise AssertionError("custom timezone callback executed")
+        bad_zone = HostileZone()
+        hostile_time = datetime(2026, 10, 15, tzinfo=bad_zone)
+        fence, request, approval, tool = fixture()
+        self.assert_non_authorizing(fence.review(request, hostile_time), "HOLD")
+        with self.assertRaises(ValueError):
+            fence.replace_synthetic_reference(
+                replace(approval, issued_at=hostile_time), tool
+            )
+        self.assertEqual(bad_zone.calls, 0)
 
 
 if __name__ == "__main__":
