@@ -4,7 +4,6 @@ from __future__ import annotations
 import os
 import sys
 import unittest
-from dataclasses import FrozenInstanceError
 from datetime import datetime, timezone
 from enum import IntEnum
 
@@ -16,6 +15,7 @@ from lightup.engagements import AuthorizationGrant, RiskLevel, ScopeDefinition
 from lightup.execution_policy import ExecutionPolicy, ExecutionRequest, InteractionKind
 from review_scope_direct_risk_claim_773 import (
     ReviewStatus,
+    RiskReviewReceipt,
     inspect_direct_scope_risk,
 )
 
@@ -130,8 +130,48 @@ class DirectRiskReviewTests(unittest.TestCase):
         self.assertNotIn(secret, repr(receipt))
         self.assertNotIn("fictional.invalid", repr(receipt))
         self.assert_non_authorizing(receipt)
-        with self.assertRaises(FrozenInstanceError):
+        with self.assertRaises(AttributeError):
             receipt.authorized = True
+
+    def test_receipt_constructor_cannot_set_release_flags(self):
+        with self.assertRaises(TypeError):
+            RiskReviewReceipt(
+                ReviewStatus.REVIEW_ONLY, "risk_shape_only", authorized=True
+            )
+        valid = inspect_direct_scope_risk(
+            self.scope(RiskLevel.ELEVATED), RiskLevel.PASSIVE
+        )
+        denied = inspect_direct_scope_risk(self.scope(99), RiskLevel.PASSIVE)
+        for receipt in (valid, denied):
+            serialized = receipt.to_dict()
+            self.assertEqual(
+                set(serialized), {
+                    "status", "reason_code", "authorized", "may_scan",
+                    "may_dispatch", "may_issue_grant", "release_ready",
+                    "may_deploy",
+                }
+            )
+            for key in (
+                "authorized", "may_scan", "may_dispatch",
+                "may_issue_grant", "release_ready", "may_deploy",
+            ):
+                self.assertIs(serialized[key], False)
+            with self.assertRaises(AttributeError):
+                receipt.authorized = True
+            with self.assertRaises(AttributeError):
+                object.__setattr__(receipt, "may_scan", True)
+            serialized["may_scan"] = True
+            self.assertIs(receipt.may_scan, False)
+            self.assertIs(receipt.to_dict()["may_scan"], False)
+
+    def test_review_receipt_is_exact_immutable_tuple(self):
+        receipt = inspect_direct_scope_risk(
+            self.scope(RiskLevel.STANDARD), RiskLevel.LOW_IMPACT
+        )
+        self.assertIs(type(receipt), RiskReviewReceipt)
+        self.assertIs(receipt.status, ReviewStatus.REVIEW_ONLY)
+        self.assertEqual(len(receipt), 2)
+        self.assertEqual(receipt._fields, ("status", "reason_code"))
 
     def test_canonical_risk_request_order_only_narrows(self):
         levels = [RiskLevel.ANALYSIS_ONLY, RiskLevel.PASSIVE,
