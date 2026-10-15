@@ -9,6 +9,7 @@ import http.client
 import json
 import os
 import re
+import secrets
 import stat
 import shutil
 import socket
@@ -197,6 +198,7 @@ def _echo_wsgi(environ, start_response):
         "method": environ.get("REQUEST_METHOD"),
         "path": environ.get("PATH_INFO"),
         "body": payload.decode("ascii") if payload in (b"", b"x") else "INVALID",
+        "nonce": environ.get("HTTP_X_LIGHTUP_SCOPE_FIXTURE_NONCE"),
         "override_headers": {
             name: environ.get("HTTP_" + name.upper().replace("-", "_"))
             for name in OVERRIDE_NAMES
@@ -252,28 +254,30 @@ def _request(port: int, method: str, overrides) -> dict:
     # Use HTTPConnection's low-level header API: a dict would coalesce
     # duplicate names, masking case variants before reaching real Nginx.
     pairs = tuple(overrides.items()) if isinstance(overrides, dict) else tuple(overrides)
+    nonce = secrets.token_hex(16)
     conn = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
     try:
         conn.putrequest(method, "/__scope_method_fixture__", skip_host=True)
         conn.putheader("Host", "localhost")
         conn.putheader("Content-Type", "text/plain")
+        conn.putheader("X-Lightup-Scope-Fixture-Nonce", nonce)
         if method == "POST":
             conn.putheader("Content-Length", "1")
         for name, value in pairs:
             conn.putheader(name, value)
         conn.endheaders(b"x" if method == "POST" else None)
         response = conn.getresponse()
-        return _decode_lab_response(response)
+        return _decode_lab_response(response), nonce
     finally:
         conn.close()
 
 
-def _receipt_is_exact(receipt, method: str) -> bool:
+def _receipt_is_exact(receipt, method: str, nonce: str) -> bool:
     # Even a local upstream can fail unexpectedly or return a malformed JSON
     # shape. No duck-typed list/number, extra fields or fake boolean values
     # may be misclassified as trustworthy WSGI evidence.
     if type(receipt) is not dict or set(receipt) != {
-        "method", "path", "body", "override_headers",
+        "method", "path", "body", "nonce", "override_headers",
     }:
         return False
     return (
@@ -283,6 +287,8 @@ def _receipt_is_exact(receipt, method: str) -> bool:
         and receipt["path"] == "/__scope_method_fixture__"
         and type(receipt["body"]) is str
         and receipt["body"] == ("x" if method == "POST" else "")
+        and type(receipt["nonce"]) is str
+        and receipt["nonce"] == nonce
         and type(receipt["override_headers"]) is dict
         and not receipt["override_headers"]
     )
@@ -383,8 +389,8 @@ def run_probe(template: str, *, force_rewrite: bool = False,
                     ("POST", {name: "HEAD"}),
                 ))
             for method, overrides in cases:
-                receipt = _request(port, method, overrides)
-                if not _receipt_is_exact(receipt, method):
+                receipt, nonce = _request(port, method, overrides)
+                if not _receipt_is_exact(receipt, method, nonce):
                     return False
             return True
         finally:
