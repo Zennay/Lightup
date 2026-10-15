@@ -145,6 +145,69 @@ class EvidenceBeforeHandlerAcceptance(unittest.TestCase):
         self.assertEqual(self.handler_calls, [self.run_id])
         self.assertEqual(self._evidence_count(), 0)
 
+    def test_inert_handler_exception_has_no_durable_attempt(self) -> None:
+        """Handler-side exceptions also occur after an unlogged invocation."""
+        def failing_handler(context: RunContext, arguments: dict) -> ToolOutput:
+            self.handler_calls.append(context.run_id)
+            raise RuntimeError("fixture_only_handler_exception")
+
+        self.executor.registry.register(
+            ToolDefinition(
+                "fixture-raising-handler", "web-baseline",
+                InteractionKind.TARGET_ACTIVE, RiskLevel.LOW_IMPACT,
+                "inert exception witness",
+            ),
+            failing_handler,
+        )
+        with self.assertRaisesRegex(RuntimeError,
+                                    "^fixture_only_handler_exception$"):
+            self.executor.execute(
+                self.context, ToolCall("fixture-raising-handler", _ASSET))
+        self.assertEqual(self.handler_calls, [self.run_id])
+        self.assertEqual(self._evidence_count(), 0)
+
+    def test_malformed_output_is_detected_after_inert_handler(self) -> None:
+        """A handler return-type failure cannot create a durable attempt."""
+        from lightup.ai.orchestration import OrchestrationError
+
+        def invalid_handler(context: RunContext, arguments: dict):
+            self.handler_calls.append(context.run_id)
+            return {"not": "a ToolOutput"}
+
+        self.executor.registry.register(
+            ToolDefinition(
+                "fixture-invalid-output", "web-baseline",
+                InteractionKind.TARGET_ACTIVE, RiskLevel.LOW_IMPACT,
+                "inert invalid-return witness",
+            ),
+            invalid_handler,
+        )
+        with self.assertRaisesRegex(OrchestrationError,
+                                    "violated the evidence contract"):
+            self.executor.execute(
+                self.context, ToolCall("fixture-invalid-output", _ASSET))
+        self.assertEqual(self.handler_calls, [self.run_id])
+        self.assertEqual(self._evidence_count(), 0)
+
+    def test_evidence_failure_is_not_missing_run_provenance(self) -> None:
+        """The rejected insert has an actual persisted matching run parent."""
+        with self.state.connect() as con:
+            row = con.execute(
+                "SELECT run_id, authorization_ref, activation_mode FROM runs "
+                "WHERE run_id=?", (self.run_id,)
+            ).fetchone()
+        self.assertIsNotNone(row)
+        self.assertEqual(row["run_id"], self.run_id)
+        self.assertEqual(
+            row["authorization_ref"], "fixture-consent-not-a-real-grant")
+        self.assertEqual(row["activation_mode"], "authorized_assessment")
+        self._make_ledger_unwritable()
+        with self.assertRaisesRegex(sqlite3.IntegrityError,
+                                    "^fixture_evidence_unavailable$"):
+            self.executor.execute(self.context, self.call)
+        self.assertEqual(self.handler_calls, [self.run_id])
+        self.assertEqual(self._evidence_count(), 0)
+
     def test_retries_repeat_inert_handler_without_evidence(self) -> None:
         """Characterize replay exposure; no external effects or target I/O."""
         self._make_ledger_unwritable()
