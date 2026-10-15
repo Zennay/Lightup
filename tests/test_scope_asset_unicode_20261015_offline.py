@@ -684,12 +684,16 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
 
     def test_af_unix_socket_input_is_rejected_before_any_read(self):
         data = json.dumps(synthetic_claim()).encode("utf-8")
-        with socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM) as (left, right):
+        left, right = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
             left.sendall(data)
             child = subprocess.run(
                 [sys.executable, str(SCRIPT), "--stdin-json"],
                 stdin=right, capture_output=True, timeout=5, check=False,
             )
+        finally:
+            left.close()
+            right.close()
         self.assertEqual(child.returncode, 2)
         self.assert_hold(json.loads(child.stdout))
         self.assertEqual(child.stderr, b"")
