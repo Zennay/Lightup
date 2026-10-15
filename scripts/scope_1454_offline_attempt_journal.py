@@ -424,7 +424,14 @@ class OfflineAttemptJournal:
         fingerprint = _operation_fingerprint(attempt)
         if binding is None or fingerprint is None:
             return "unknown", _hold()
+        owned_snapshot = False
         try:
+            # Never reuse a caller-owned transaction or assert a review verdict
+            # across two independently drifting SQLite database snapshots.
+            if self._con.in_transaction:
+                return "unknown", _hold()
+            self._con.execute("BEGIN")
+            owned_snapshot = True
             if not self._schema_valid():
                 return "unknown", _hold()
             row = self._con.execute(
@@ -434,6 +441,9 @@ class OfflineAttemptJournal:
             ).fetchone()
         except sqlite3.Error:
             return "unknown", _hold()
+        finally:
+            if owned_snapshot:
+                self._rollback_quietly()
         if row is None or row[0] != binding or row[1] != fingerprint:
             return "unknown", _hold()
         phase, digest = row[2], row[3]
@@ -457,8 +467,15 @@ class OfflineAttemptJournal:
         Neither REVIEW_ONLY nor a low backlog grants execution authority.
         """
         hold = OfflineBacklogReview(_hold(), 0, 0, 0)
+        owned_snapshot = False
         try:
-            if self._con.in_transaction or not self._schema_valid():
+            # Exact schema and phase counts come from ONE read transaction.
+            # A caller's pre-existing transaction is never adopted/rolled back.
+            if self._con.in_transaction:
+                return hold
+            self._con.execute("BEGIN")
+            owned_snapshot = True
+            if not self._schema_valid():
                 return hold
             rows = self._con.execute(
                 "SELECT sealed_binding,operation_fingerprint,phase,evidence_digest "
@@ -485,3 +502,6 @@ class OfflineAttemptJournal:
             )
         except sqlite3.Error:
             return hold
+        finally:
+            if owned_snapshot:
+                self._rollback_quietly()
