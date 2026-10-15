@@ -50,7 +50,9 @@ def _canonical_claim(value: object) -> bool:
         return False
     # Require one Unicode spelling rather than accepting visually equivalent
     # but byte-distinct provenance claims. This is lexical review, not consent.
-    if unicodedata.normalize("NFC", value) != value:
+    # Compatibility equivalents (e.g. fullwidth letters, ligatures and
+    # circled characters) must not silently impersonate ordinary identities.
+    if unicodedata.normalize("NFKC", value) != value:
         return False
     for ch in value:
         category = unicodedata.category(ch)
