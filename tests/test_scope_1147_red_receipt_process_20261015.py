@@ -105,6 +105,49 @@ class Scope1147ReceiptProcessTests(unittest.TestCase):
         for flag in EXPECTED_FLAGS:
             self.assertIs(report[flag], False)
 
+    def test_successful_hold_does_not_change_caller_python_process_settings(self):
+        # main([]) is also imported by tests: no sys.path or bytecode leakage.
+        original_path = sys.path[:]
+        with patch.object(sys, "dont_write_bytecode", False):
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                status = receipt_cli.main([])
+            self.assertEqual(status, 2)
+            self.assertFalse(sys.dont_write_bytecode)
+        self.assertEqual(sys.path, original_path)
+        self.assertEqual(json.loads(output.getvalue())["status"], "HOLD")
+
+    def test_diagnostic_crash_restores_caller_python_process_settings(self):
+        original_path = sys.path[:]
+        with (
+            patch.object(sys, "dont_write_bytecode", False),
+            patch.object(
+                unittest.defaultTestLoader,
+                "loadTestsFromTestCase",
+                side_effect=RuntimeError("synthetic error must be suppressed"),
+            ),
+            contextlib.redirect_stdout(io.StringIO()) as output,
+        ):
+            status = receipt_cli.main([])
+            self.assertFalse(sys.dont_write_bytecode)
+        self.assertEqual(sys.path, original_path)
+        self.assertEqual(status, 3)
+        report = json.loads(output.getvalue())
+        self.assertEqual(report["status"], "HOLD")
+        self.assertEqual(report["reason"], "UNVERIFIED")
+        for flag in EXPECTED_FLAGS:
+            self.assertIs(report[flag], False)
+
+    def test_invalid_invocation_never_changes_caller_python_process_settings(self):
+        original_path = sys.path[:]
+        original_bytecode = sys.dont_write_bytecode
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            status = receipt_cli.main(["--unknown-fake-argument"])
+        self.assertEqual(status, 3)
+        self.assertEqual(sys.path, original_path)
+        self.assertIs(sys.dont_write_bytecode, original_bytecode)
+        self.assertEqual(json.loads(output.getvalue())["reason"], "INVALID_INVOCATION")
+
     def test_refuses_extra_arguments_without_echoing_them(self):
         sensitive_marker = "secret-fixture--not-a-real-customer.invalid"
         proc, report = self.run_receipt("--target", sensitive_marker)
