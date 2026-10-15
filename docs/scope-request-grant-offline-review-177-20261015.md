@@ -109,9 +109,19 @@ approved_request_id TEXT REFERENCES assessment_requests(request_id)`.
 The synthetic acceptance suite creates real `DomainStore` customers,
 approved requests, engagements and grants with SQLite, then independently
 mutates submitted status/mode, tenant, grant scope/capabilities, timestamp,
-retake flag and linkage to prove denial and row immutability. A perfect
+retest flag and linkage to prove denial and row immutability. A perfect
 synthetic FK + self-consistent triple is **still REVIEW_ONLY** with all six
 authority fields exactly `False`.
+
+Two additional chronology/independence invariants are pinned by genuine
+SQLite negative tests: the requester must not be the same identity as the
+operator who recorded the approval (self-approval is not an independent
+decision), and the stored grant `created_at` must be a canonical UTC instant
+on or after the persisted request `decided_at` and no later than the explicit
+read-only review instant. A later `valid_from` window can no longer hide
+a grant record inserted before approval. Malformed/offset grant-creation
+timestamps also HOLD. Neither safeguard proves the human's real identity
+without external authenticated provenance.
 
 **Important boundaries:** A declared FK and a read-only DB snapshot are
 *not* independent proof of customer consent, signer's identity, immutable
