@@ -395,5 +395,26 @@ class SyntheticProvenanceReviewTests(unittest.TestCase):
                 self.assertEqual(proc.stderr, b"")
                 self.assertEqual(json.loads(proc.stdout), {"status": "HOLD", **FALSE_FLAGS})
 
+
+    def test_compatibility_unicode_identity_spoofs_are_hold(self):
+        candidates = ("\uff26\uff49\uff43\uff54\uff49\uff4f\uff4e\uff41\uff4c",  # FULLWIDTH
+                      "\ufb01ctional",  # ligature fi
+                      "\u24d0pprover",  # circled a
+                      "\u212aey-owner",  # Kelvin sign
+                      "\u2163-operator",  # Roman numeral four
+                      "grant-\u2460")  # circled digit
+        for field in ("approved_by", "reference"):
+            for value in candidates:
+                with self.subTest(field=field, value=repr(value)):
+                    claims = {"approved_by": "fictional-operator", "reference": "ROE-FICTIONAL"}
+                    claims[field] = value
+                    self.assert_receipt(json.dumps(claims).encode("utf-8"), "HOLD")
+
+    def test_multibyte_utf8_exact_boundary(self):
+        for n, expected in ((64, "REVIEW_ONLY"), (65, "HOLD")):
+            payload = json.dumps({"approved_by": "\u00e9" * n,
+                                  "reference": "ROE-FICTIONAL"}).encode("utf-8")
+            self.assert_receipt(payload, expected)
+
 if __name__ == "__main__":
     unittest.main()
