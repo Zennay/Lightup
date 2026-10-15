@@ -144,6 +144,16 @@ def _load_review(
     request_id = grant_row["approved_request_id"]
     if not _identifier(request_id):
         return _HOLD
+    # The shipped schema has no amendment/version provenance or reapproval
+    # lifecycle. Multiple persisted grants tied to the same approved request
+    # are ambiguous, even when reviewing only ONE of them. A batch-only
+    # duplicate check would miss a second grant excluded from its input IDs.
+    if connection.execute(
+        "SELECT 1 FROM authorization_grants "
+        "WHERE approved_request_id=? AND grant_id<>? LIMIT 1",
+        (request_id, grant_id),
+    ).fetchone() is not None:
+        return _HOLD
     requests = connection.execute(
         "SELECT * FROM assessment_requests WHERE request_id=? LIMIT 2",
         (request_id,),
