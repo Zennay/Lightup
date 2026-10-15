@@ -792,6 +792,97 @@ class OfflineAttemptJournalTests(unittest.TestCase):
             self.assertEqual(again.review_phase(self.attempt)[0], "uncertain")
             self.assert_non_authorizing(again.reserve(self.attempt), "HOLD")
 
+    def test_concurrent_distinct_ids_cannot_replay_same_run_action(self):
+        contenders = [
+            fixture(attempt_id="fixture-attempt-a"),
+            fixture(attempt_id="fixture-attempt-b"),
+        ]
+        barrier = threading.Barrier(2)
+        verdicts: list[str] = []
+        failures: list[str] = []
+        def racer(attempt: SyntheticAttempt) -> None:
+            try:
+                with closing(sqlite3.connect(self.path, timeout=5)) as con:
+                    journal = OfflineAttemptJournal(con)
+                    barrier.wait(timeout=5)
+                    verdicts.append(journal.reserve(attempt).status)
+            except (sqlite3.Error, RuntimeError, threading.BrokenBarrierError):
+                failures.append("synthetic_race_error")
+        workers = [threading.Thread(target=racer, args=(v,)) for v in contenders]
+        for worker in workers:
+            worker.start()
+        for worker in workers:
+            worker.join(timeout=8)
+        self.assertFalse(any(w.is_alive() for w in workers))
+        self.assertEqual(failures, [])
+        self.assertEqual(sorted(verdicts), ["HOLD", "REVIEW_ONLY"])
+        self.assertEqual(self.count(), 1)
+        # Caller-generated distinct attempt identifiers never confer a second
+        # authorizing or review reservation for the same run/action.
+        self.assertIs(self.journal.review_backlog().as_dict()["dispatch_allowed"], False)
+
+    def test_concurrent_distinct_runs_can_both_book_synthetic_review(self):
+        contenders = [
+            fixture(attempt_id="fixture-attempt-a", run_id="fixture-run-a"),
+            fixture(attempt_id="fixture-attempt-b", run_id="fixture-run-b"),
+        ]
+        barrier = threading.Barrier(2)
+        verdicts: list[str] = []
+        failures: list[str] = []
+        def racer(attempt: SyntheticAttempt) -> None:
+            try:
+                with closing(sqlite3.connect(self.path, timeout=5)) as con:
+                    journal = OfflineAttemptJournal(con)
+                    barrier.wait(timeout=5)
+                    verdicts.append(journal.reserve(attempt).status)
+            except (sqlite3.Error, RuntimeError, threading.BrokenBarrierError):
+                failures.append("synthetic_race_error")
+        workers = [threading.Thread(target=racer, args=(v,)) for v in contenders]
+        for worker in workers:
+            worker.start()
+        for worker in workers:
+            worker.join(timeout=8)
+        self.assertFalse(any(w.is_alive() for w in workers))
+        self.assertEqual(failures, [])
+        self.assertEqual(sorted(verdicts), ["REVIEW_ONLY", "REVIEW_ONLY"])
+        self.assertEqual(self.count(), 2)
+        self.assertEqual(self.journal.review_backlog().as_dict()["reserved_count"], 2)
+
+    def test_concurrent_terminal_status_race_allows_only_one_winner(self):
+        self.assert_non_authorizing(self.journal.reserve(self.attempt), "REVIEW_ONLY")
+        barrier = threading.Barrier(2)
+        verdicts: list[str] = []
+        failures: list[str] = []
+        def contender(outcome: str) -> None:
+            try:
+                with closing(sqlite3.connect(self.path, timeout=5)) as con:
+                    journal = OfflineAttemptJournal(con)
+                    barrier.wait(timeout=5)
+                    result = (
+                        journal.mark_uncertain(self.attempt)
+                        if outcome == "uncertain" else
+                        journal.mark_recorded(self.attempt, "c" * 64)
+                    )
+                    verdicts.append(result.status)
+            except (sqlite3.Error, RuntimeError, threading.BrokenBarrierError):
+                failures.append("synthetic_phase_race_error")
+        workers = [
+            threading.Thread(target=contender, args=("uncertain",)),
+            threading.Thread(target=contender, args=("recorded",)),
+        ]
+        for worker in workers:
+            worker.start()
+        for worker in workers:
+            worker.join(timeout=8)
+        self.assertFalse(any(w.is_alive() for w in workers))
+        self.assertEqual(failures, [])
+        self.assertEqual(sorted(verdicts), ["HOLD", "REVIEW_ONLY"])
+        row = self.con.execute(
+            "SELECT phase,evidence_digest FROM offline_scope_1454_attempts"
+        ).fetchone()
+        self.assertIn(tuple(row), (("uncertain", None), ("recorded", "c" * 64)))
+        self.assertEqual(self.count(), 1)
+
     def test_concurrent_racers_cannot_reserve_same_attempt_twice(self):
         barrier = threading.Barrier(2)
         results: list[str] = []
