@@ -25,6 +25,9 @@ from .request_grant_offline_review_177 import (
     _decision_time,
     _identifier,
     _utc_instant,
+    _asset,
+    _assets,
+    _capabilities,
     review_request_grant_engagement,
 )
 
@@ -140,22 +143,38 @@ def _no_ambiguous_concurrent_targets(
     """
     selected = set(grant.scope.assets) - set(grant.scope.excluded_assets)
     rows = connection.execute(
-        "SELECT assets_json, excluded_assets_json, valid_from, valid_until "
+        "SELECT assets_json, excluded_assets_json, allowed_capabilities_json, "
+        "max_risk, recurring_retest_allowed, valid_from, valid_until "
         "FROM authorization_grants WHERE client_id=? AND grant_id<>?",
         (grant.client_id, grant.grant_id),
     )
     for other in rows:
         other_assets = _json_array(other["assets_json"])
         other_excluded = _json_array(other["excluded_assets_json"])
+        other_caps = _json_array(other["allowed_capabilities_json"])
+        other_risk = _risk(other["max_risk"])
         other_from = _decision_time(other["valid_from"])
         other_until = _decision_time(other["valid_until"])
         if (
             other_assets is None
             or other_excluded is None
+            or other_caps is None
+            or not _assets(other_assets)
+            or len(other_excluded) > 64
+            or not all(_asset(value) for value in other_excluded)
+            or len(set(other_excluded)) != len(other_excluded)
+            or not set(other_excluded).issubset(other_assets)
+            or not _capabilities(other_caps)
+            or other_risk is None
+            or other_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY
+            or type(other["recurring_retest_allowed"]) is not int
+            or other["recurring_retest_allowed"] != 0
             or other_from is None
             or other_until is None
             or not (other_from < other_until)
         ):
+            # Another same-tenant grant must not hide an overlapping target
+            # through fabricated exclusions or malformed grant metadata.
             return False
         other_effective = set(other_assets) - set(other_excluded)
         if (
