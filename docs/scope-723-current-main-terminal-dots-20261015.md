@@ -32,6 +32,18 @@ Three further green controls verify untrusted missing authorization never acts a
 
 **No production-policy update or live I/O**. None of these synthetic URLs is resolved or contacted. The production source owner #100 must make these negative cases ordinary passing assertions after a separately reviewed repair. Raw Python3.11/3.14 hosted integration evidence is valid **only for the immutable HEAD tested**, not for prior commits; registered permanent VPS approval is a separate gate.
 
+
+## W3: current-main explicit-host identity composition (#724 / #286 / #367 / #368)
+
+Five additional ordinary passing source tests compose previously isolated legacy contracts **without modifying their original branches**:
+
+- **#367 configuration identity:** all seven synthetic URL-like *configured* entries (scheme, userinfo, port, path, query, fragment, network-path) must not grant the embedded host.
+- **#368 configuration whitespace:** six leading/trailing whitespace policy spellings (including tab, newline, CR and nonbreaking space) must remain inert; only the target-value parsing path may use its existing surrounding-whitespace normalization.
+- **#286 exact scope:** wildcard, leading-dot, parent-domain, suffix/lookalike policy entries do not authorize the concrete child host.
+- **Positive compatibility:** conventional decorated *target URLs* and surrounding target whitespace still normalize to the exact explicitly declared canonical host, and the configured host's **single** terminal root dot remains valid across ordinary case differences.
+
+This current-main composition is an independent regression **check**, not a replacement for issue #724's earlier composition branch or any closed standalone acceptance issue. Its nine original terminal-dot source REDs are still unfixed. All positive tests are pure in-memory; no real DNS, sockets, domains, claims, scans or grants. Frozen CI evidence from previous W2 heads cannot validate the expanded W3 suite.
+
 ## To validate
 
 ```sh
