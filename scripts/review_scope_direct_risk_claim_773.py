@@ -6,8 +6,8 @@ Issue #773: direct ScopeDefinition.max_risk must have canonical enum identity.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 from enum import Enum
+from typing import NamedTuple
 
 from lightup.engagements import RiskLevel, ScopeDefinition
 
@@ -17,17 +17,52 @@ class ReviewStatus(str, Enum):
     REVIEW_ONLY = "REVIEW_ONLY"
 
 
-@dataclass(frozen=True)
-class RiskReviewReceipt:
+class RiskReviewReceipt(NamedTuple):
+    """Immutable risk-only classification with non-overridable false flags.
+
+    No constructor accepts an authorization or release flag. Consumers must not
+    treat a serialized or manually constructed receipt as a source of authority.
+    """
+
     status: ReviewStatus
     reason_code: str
-    authorized: bool = False
-    may_scan: bool = False
-    may_dispatch: bool = False
-    may_issue_grant: bool = False
-    release_ready: bool = False
-    may_deploy: bool = False
 
+    @property
+    def authorized(self) -> bool:
+        return False
+
+    @property
+    def may_scan(self) -> bool:
+        return False
+
+    @property
+    def may_dispatch(self) -> bool:
+        return False
+
+    @property
+    def may_issue_grant(self) -> bool:
+        return False
+
+    @property
+    def release_ready(self) -> bool:
+        return False
+
+    @property
+    def may_deploy(self) -> bool:
+        return False
+
+    def to_dict(self) -> dict[str, str | bool]:
+        """Create a fresh, bounded, literal-false, non-authorizing snapshot."""
+        return {
+            "status": self.status.value,
+            "reason_code": self.reason_code,
+            "authorized": False,
+            "may_scan": False,
+            "may_dispatch": False,
+            "may_issue_grant": False,
+            "release_ready": False,
+            "may_deploy": False,
+        }
 
 def inspect_direct_scope_risk(
     scope: object, requested_risk: object
