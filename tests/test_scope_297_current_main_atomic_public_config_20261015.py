@@ -135,6 +135,29 @@ class AtomicPublicConfigurationSourceContract(unittest.TestCase):
         self.assertEqual(before, (policy.explicit_hosts, policy.explicit_networks))
         self.assertEqual(networks, policy.explicit_networks)
 
+    def test_all_six_source_reds_have_actual_unsafe_allow_witnesses(self):
+        # expectedFailure alone would mask a TypeError, ValueError, or mock tripwire.
+        # This separate ordinary control proves the installed policy REALLY
+        # returns the unsafe allow decision for every expected-RED vector.
+        variants = (
+            ("non_cidr", ("not-a-cidr",), HOST, True, FAKE_AUTH),
+            ("bad_ipv4_prefix", ("198.51.100.0/129",), HOST, True, FAKE_AUTH),
+            ("mixed_valid_invalid", ("203.0.113.0/24", "invalid-cidr"), HOST, True, FAKE_AUTH),
+            ("bad_ipv6_prefix", ("2001:db8::/999",), HOST, True, FAKE_AUTH),
+            ("auth_disabled", ("not-a-network",), HOST, False, None),
+            ("https_host", ("broken-network",), "https://security.example.test/path", True, FAKE_AUTH),
+        )
+        for label, networks, target, requires_auth, auth in variants:
+            with self.subTest(label=label):
+                decision = policy_with_bad_networks(
+                    networks, require_auth=requires_auth
+                ).decide(Target(target, authorization=auth))
+                self.assertEqual(
+                    (decision.allowed, decision.reason),
+                    (True, ScopeReason.EXPLICIT_HOST),
+                    "RED must be a genuine unsafe allow, not a hidden crash",
+                )
+
     def test_expected_red_is_missing_denial_not_unrelated_exception(self):
         # A RED that crashes with TypeError/ValueError is NOT a valid security finding.
         # This deliberate incorrect expectation proves a normal assertion is needed.
