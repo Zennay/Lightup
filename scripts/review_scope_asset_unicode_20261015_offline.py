@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from ipaddress import IPv4Address
 import os
 import re
 import select
@@ -61,6 +62,13 @@ def _is_asset_name(value: Any) -> bool:
     # Whitelist only; never a DNS/IDNA resolver, grant or target parser.
     if not value.isascii() or value != value.lower():
         return False
+    # Numeric host aliases such as 127.1 and 0177.0.0.1 can be ambiguous.
+    # Only canonical dotted-decimal IPv4 may receive structural REVIEW_ONLY.
+    if all(char in "0123456789." for char in value):
+        try:
+            return str(IPv4Address(value)) == value
+        except ValueError:
+            return False
     labels = value.split(".")
     return all(LABEL.fullmatch(label) and not label.startswith("xn--") for label in labels)
 

@@ -101,6 +101,17 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
             with self.subTest(case=bad[:40]):
                 self.assert_hold(mod.review_bytes(bad))
 
+    def test_numeric_ipv4_aliases_fail_closed(self):
+        for text in ("127.1", "2130706433", "0177.0.0.1", "127.000.0.1",
+                     "1.2.3.999", "1.2.3", "0", "000", "1.2.3.4.5"):
+            with self.subTest(text=text):
+                sample = synthetic_claim()
+                sample["assets"][0] = text
+                self.assert_hold(receipt(sample))
+        sample = synthetic_claim()
+        sample["assets"][0] = "127.0.0.1"
+        self.assertEqual(receipt(sample)["status"], "REVIEW_ONLY")
+
     def test_exact_types_do_not_accept_polymorphic_or_bools(self):
         class ForgedStr(str):
             pass
