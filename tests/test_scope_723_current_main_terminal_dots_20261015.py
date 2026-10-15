@@ -79,6 +79,18 @@ _RED_NAMES = (
 )
 
 
+class _AssertionWitnessResult(unittest.TestResult):
+    """Record actual exception types, not TestResult's formatted tracebacks."""
+
+    def __init__(self):
+        super().__init__()
+        self.real_expected_types = []
+
+    def addExpectedFailure(self, test, err):
+        self.real_expected_types.append(err[0])
+        super().addExpectedFailure(test, err)
+
+
 class TerminalDotCurrentMainControls(unittest.TestCase):
     """Independent green controls + witness integrity (no false RED masking)."""
 
@@ -114,15 +126,14 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
         # failures, not silently accept an unrelated crash or unexpected green.
         for name in _RED_NAMES:
             with self.subTest(case=name):
-                result = unittest.TestResult()
+                result = _AssertionWitnessResult()
                 TerminalDotCurrentMainSourceRed(name).run(result)
                 self.assertEqual(result.testsRun, 1)
                 self.assertFalse(result.errors)
                 self.assertFalse(result.failures)
                 self.assertFalse(result.unexpectedSuccesses)
                 self.assertEqual(len(result.expectedFailures), 1)
-                error_type, _, _ = result.expectedFailures[0][1]
-                self.assertIs(error_type, AssertionError)
+                self.assertEqual(result.real_expected_types, [AssertionError])
 
     def test_entire_source_contract_avoids_network_and_dns(self):
         with (
@@ -131,9 +142,10 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
             patch.object(socket, "create_connection", side_effect=AssertionError("connect attempted")),
         ):
             for name in _RED_NAMES:
-                result = unittest.TestResult()
+                result = _AssertionWitnessResult()
                 TerminalDotCurrentMainSourceRed(name).run(result)
                 self.assertEqual(len(result.expectedFailures), 1, name)
+                self.assertEqual(result.real_expected_types, [AssertionError])
             self.assertTrue(_decision(_HOST).allowed)
             self.assertFalse(_decision("unlisted.example.test").allowed)
 
