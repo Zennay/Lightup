@@ -103,7 +103,10 @@ def _instant(value: object) -> datetime:
         raise Rejected("instant_invalid") from exc
 
 
-def _grant(data: object, *, allow_empty_assets: bool = False) -> dict[str, object]:
+def _grant(
+    data: object, *, allow_empty_assets: bool = False,
+    allow_unrestricted_before: bool = False,
+) -> dict[str, object]:
     if type(data) is not dict or set(data) != GRANT_KEYS:
         raise Rejected("grant_shape")
     result: dict[str, object] = {}
@@ -113,9 +116,12 @@ def _grant(data: object, *, allow_empty_assets: bool = False) -> dict[str, objec
     # this reviewer compares an existing nonempty grant with a new proposal.
     result["assets"] = _members(data["assets"], allow_empty=allow_empty_assets)
     result["excluded_assets"] = _members(data["excluded_assets"], allow_empty=True)
-    # Empty capabilities mean *unrestricted* in the live ScopeDefinition:
-    # never accept them as a narrowing proof.
-    result["capabilities"] = _members(data["capabilities"])
+    # In the real ScopeDefinition, empty capabilities mean *unrestricted*.
+    # Only an original before-state may be unrestricted; a nonempty after
+    # list then demonstrably narrows it. Never accept empty new capabilities.
+    result["capabilities"] = _members(
+        data["capabilities"], allow_empty=allow_unrestricted_before,
+    )
     risk = data["max_risk"]
     if type(risk) is not int or risk not in range(0, 5):
         raise Rejected("risk")
@@ -138,7 +144,7 @@ def review(raw: bytes) -> tuple[dict[str, object], int]:
     widened: list[str] = []
     try:
         data = _parse(raw)
-        before = _grant(data["before"])
+        before = _grant(data["before"], allow_unrestricted_before=True)
         after = _grant(data["after"], allow_empty_assets=True)
         identity = ("grant_id", "client_id", "engagement_id", "approved_by", "reference")
         if any(before[k] != after[k] for k in identity):
@@ -147,7 +153,9 @@ def review(raw: bytes) -> tuple[dict[str, object], int]:
             widened.append("assets")
         if not after["excluded_assets"].issuperset(before["excluded_assets"]):
             widened.append("exclusions")
-        if not after["capabilities"].issubset(before["capabilities"]):
+        # Empty baseline means every capability was already allowed in the
+        # real model; an explicit nonempty after-list cannot widen it.
+        if before["capabilities"] and not after["capabilities"].issubset(before["capabilities"]):
             widened.append("capabilities")
         if after["max_risk"] > before["max_risk"]:
             widened.append("risk")
