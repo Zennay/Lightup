@@ -181,6 +181,79 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
         self.assertEqual(repr(grant), original)
         self.assertFalse(decision.allowed, "expired end must deny scope")
 
+    def test_installed_source_really_allows_falsey_boundaries_without_errors(self):
+        # Ordinary PASS evidence of the actual installed security fault.
+        # An unexpected TypeError/ValueError is NOT an acceptable substitute
+        # for observing unauthorized True results in the expected-RED tests.
+        future = NOW + timedelta(days=1)
+        expired = NOW - timedelta(days=1)
+        deceptive_future = _FalseyDatetimeSubclass(
+            future.year, future.month, future.day,
+            future.hour, future.minute, future.second,
+            future.microsecond, tzinfo=timezone.utc,
+        )
+        deceptive_expired = _FalseyDatetimeSubclass(
+            expired.year, expired.month, expired.day,
+            expired.hour, expired.minute, expired.second,
+            expired.microsecond, tzinfo=timezone.utc,
+        )
+        values = (0, False, "", (), deceptive_future, deceptive_expired)
+        for position in ("start", "end"):
+            for value in values:
+                if isinstance(value, _FalseyDatetimeSubclass):
+                    # A future start and a past end are the only deliberately
+                    # invalid subclass scenarios (the opposite would be valid).
+                    if position == "start" and value is deceptive_expired:
+                        continue
+                    if position == "end" and value is deceptive_future:
+                        continue
+                with self.subTest(position=position, value=repr(value)):
+                    grant = _authorization(
+                        start=value if position == "start" else None,
+                        end=value if position == "end" else None,
+                    )
+                    before = repr(grant)
+                    self.assertIs(
+                        grant.is_current(NOW), True,
+                        "installed source must exhibit the known bypass",
+                    )
+                    self.assertEqual(repr(grant), before)
+
+    def test_installed_public_scope_really_allows_falsey_boundaries(self):
+        # Prove the actual public gate is incorrectly OPEN on four distinct
+        # values rather than treating an unrelated exception as a source RED.
+        expired = NOW - timedelta(days=1)
+        deceptive_expired = _FalseyDatetimeSubclass(
+            expired.year, expired.month, expired.day,
+            expired.hour, expired.minute, expired.second,
+            expired.microsecond, tzinfo=timezone.utc,
+        )
+        future = NOW + timedelta(days=1)
+        deceptive_future = _FalseyDatetimeSubclass(
+            future.year, future.month, future.day,
+            future.hour, future.minute, future.second,
+            future.microsecond, tzinfo=timezone.utc,
+        )
+        candidates = (
+            ("end_false", _authorization(end=False)),
+            ("end_zero", _authorization(end=0)),
+            ("start_falsey_subclass", _authorization(start=deceptive_future)),
+            ("end_falsey_subclass", _authorization(end=deceptive_expired)),
+        )
+        for name, grant in candidates:
+            with self.subTest(candidate=name):
+                before = repr(grant)
+                decision = _pure_scope_decision_at(grant, NOW)
+                self.assertIs(
+                    decision.allowed, True,
+                    "actual source gate must expose the known bypass",
+                )
+                self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+                self.assertEqual(
+                    decision.normalized_host, "scope.fixture.example.test"
+                )
+                self.assertEqual(repr(grant), before)
+
     def test_reference_type_repair_flips_all_fourteen_legacy_boundary_reds(self):
         # A test-only patch demonstrates that the installed-source RED tests
         # detect a missing exact-type guard, not merely a bad test fixture.
