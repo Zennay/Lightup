@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from lightup.models import Authorization
 from lightup.legacy_temporal_shape_review_301 import (
-    LegacyTemporalReview, review_legacy_authorization_window,
+    LegacyTemporalReceipt, LegacyTemporalReview, review_legacy_authorization_window,
     review_legacy_authorization_batch
 )
 
@@ -51,6 +51,8 @@ def assert_non_authorizing(testcase, result, status, reason):
     testcase.assertIs(bool(result), False)
     testcase.assertEqual((result.status, result.reason), (status, reason))
     receipt = result.as_receipt()
+    testcase.assertIs(type(receipt), LegacyTemporalReceipt)
+    testcase.assertIs(bool(receipt), False)
     testcase.assertEqual((receipt["status"], receipt["reason"]), (status, reason))
     testcase.assertEqual(set(receipt), {
         "status", "reason", "authorization_verified", "permit_issued",
@@ -101,16 +103,16 @@ def _source_has_only_offline_effects(source):
     except SyntaxError:
         return False
     approved_imports = {
-        "__future__", "datetime", "typing", "lightup.models"
+        "__future__", "datetime", "typing", "lightup.models", "collections.abc"
     }
     permitted_calls = {
         "type", "len", "range", "tuple", "list", "_stored_fields",
-        "LegacyTemporalReview", "_canonical_datetime",
+        "LegacyTemporalReceipt", "LegacyTemporalReview", "iter", "_canonical_datetime",
         "review_legacy_authorization_window"
     }
     # Bounded append mutates only the local, synthetic in-memory snapshot list.
     # It does not touch a client record, target, filesystem, or process.
-    permitted_methods = {"astimezone", "append", "__getattribute__", "__getitem__"}
+    permitted_methods = {"astimezone", "append", "__getattribute__", "__getitem__", "__new__"}
     for node in ast.walk(tree):
         # An attribute access on the untrusted Authorization instance itself
         # can dispatch a monkeypatched getter; use only _stored_fields().
@@ -154,6 +156,14 @@ def _source_has_only_offline_effects(source):
                     and isinstance(node.args[1], ast.Constant)
                     and type(node.args[1].value) is int
                     and node.args[1].value in (0, 1)
+                ):
+                    return False
+                if node.func.attr == "__new__" and not (
+                    isinstance(node.func.value, ast.Name)
+                    and node.func.value.id == "tuple"
+                    and len(node.args) == 2
+                    and isinstance(node.args[0], ast.Name)
+                    and node.args[0].id == "cls"
                 ):
                     return False
             else:
@@ -371,6 +381,8 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
             "tuple.__getitem__(verdict, 2)",
             "tuple.__getitem__(verdict, True)",
             "tuple.__getitem__(other, 0)",
+            "tuple.__new__(object, ('REVIEW_ONLY', 'x'))",
+            "other.__new__(cls, ())",
             "vars(authorization)",
             "object.__getattribute__(authorization, 'reference')",
             "object.__getattribute__(other, '__dict__')",
@@ -790,8 +802,66 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
     def test_receipt_snapshot_is_fresh_and_non_authorizing(self):
         verdict = review()
         first = verdict.as_receipt()
-        first["permit_issued"] = True
+        self.assertIs(type(first), LegacyTemporalReceipt)
+        self.assertIs(bool(first), False)
+        with self.assertRaises(TypeError):
+            first["permit_issued"] = True
+        with self.assertRaises(AttributeError):
+            first.permit_issued = True
+        with self.assertRaises(AttributeError):
+            object.__setattr__(first, "_status", "APPROVED")
+        with self.assertRaises(TypeError):
+            del first["permit_issued"]
         self.assertIs(verdict.as_receipt()["permit_issued"], False)
+        self.assertEqual(first, verdict.as_receipt())
+        self.assertIsNot(first, verdict.as_receipt())
+
+    def test_forged_receipt_constructor_is_always_opaque_and_falsy(self):
+        from collections.abc import Mapping
+
+        for status, reason in (
+            ("HOLD", "invalid_shape"),
+            ("REVIEW_ONLY", "temporal_shape_only"),
+            ("APPROVED", "fake_grant"),
+            (False, object()),
+            ("REVIEW_ONLY", object()),
+        ):
+            with self.subTest(kind=type(reason).__name__, status=status):
+                receipt = LegacyTemporalReceipt(status, reason)
+                self.assertIsInstance(receipt, Mapping)
+                self.assertIs(type(receipt), LegacyTemporalReceipt)
+                self.assertIs(bool(receipt), False)
+                self.assertEqual(len(receipt), 8)
+                self.assertEqual(
+                    set(receipt),
+                    {"status", "reason", "authorization_verified",
+                     "permit_issued", "execution_enabled",
+                     "target_dispatch_allowed", "merge_approved",
+                     "release_approved"}
+                )
+                for key in set(receipt) - {"status", "reason"}:
+                    self.assertIs(receipt[key], False)
+                self.assertEqual(dict(receipt)["permit_issued"], False)
+                self.assertNotIn("fake_grant", repr(receipt))
+        self.assertEqual(
+            LegacyTemporalReceipt("APPROVED", "fake_grant")["status"], "HOLD"
+        )
+
+    def test_receipt_never_executes_untrusted_key_comparators(self):
+        class _HostileKey:
+            def __eq__(self, other):
+                raise AssertionError("key comparator executed")
+            def __hash__(self):
+                raise AssertionError("key hash executed")
+        receipt = review().as_receipt()
+        with self.assertRaises(KeyError):
+            receipt[_HostileKey()]
+        with self.assertRaises(KeyError):
+            receipt[False]
+        with self.assertRaises(KeyError):
+            receipt["unknown"]
+        self.assertIs(bool(receipt), False)
+
 
 
 if __name__ == "__main__":
