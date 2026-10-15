@@ -73,12 +73,15 @@ def _replace_one(text: str, old: str, new: str) -> str:
 
 
 def render_loopback_config(template: str, frontend: int, backend: int, root: Path,
-                           *, force_rewrite: bool = False) -> str:
+                           *, force_rewrite: bool = False,
+                           force_rewrite_post: bool = False) -> str:
     """Only relocate the checked example to disposable *loopback* ports.
 
     Never accept an arbitrary upstream or preserve TLS certificate paths from the
     real service. The production example is not rewritten on disk.
     """
+    if force_rewrite and force_rewrite_post:
+        raise ValueError("conflicting negative test mutations")
     if not (0 < frontend < 65536 and 0 < backend < 65536):
         raise ValueError("invalid port")
     if type(template) is not str or len(template) > 65536:
@@ -156,10 +159,11 @@ def render_loopback_config(template: str, frontend: int, backend: int, root: Pat
         line for line in server.splitlines()
         if not re.match(r"\s*(?:ssl_certificate|ssl_certificate_key|ssl_protocols)\s", line)
     )
-    if force_rewrite:
+    if force_rewrite or force_rewrite_post:
+        method = "POST" if force_rewrite_post else "GET"
         server = _replace_one(
             server, f"    proxy_pass http://127.0.0.1:{backend};",
-            f"    proxy_method GET;\n    proxy_pass http://127.0.0.1:{backend};",
+            f"    proxy_method {method};\n    proxy_pass http://127.0.0.1:{backend};",
         )
     return (
         f'pid "{root / "nginx.pid"}";\n'
@@ -261,7 +265,8 @@ def _fixture_env(root: Path) -> dict[str, str]:
 
 
 def run_probe(template: str, *, force_rewrite: bool = False,
-              nginx_bin: str | None = None, wsgi_app=None, oracle=None) -> bool:
+              force_rewrite_post: bool = False, nginx_bin: str | None = None,
+              wsgi_app=None, oracle=None) -> bool:
     """Run a disposable proxy against echo or a separately owned WSGI oracle.
 
     The optional in-process oracle is for synthetic tests only; it cannot be
@@ -287,7 +292,8 @@ def run_probe(template: str, *, force_rewrite: bool = False,
             port = _available_port()
             conf = root / "nginx.conf"
             conf.write_text(render_loopback_config(
-                template, port, upstream.server_port, root, force_rewrite=force_rewrite
+                template, port, upstream.server_port, root,
+                force_rewrite=force_rewrite, force_rewrite_post=force_rewrite_post
             ), encoding="utf-8")
             # nginx -t checks the *generated disposable* config, never the installed one.
             tested = subprocess.run([binary, "-p", str(root) + "/", "-c", str(conf), "-t"],
@@ -412,6 +418,8 @@ def main(argv=()) -> int:
         elif not run_probe(template):
             reason = "ingress_boundary_failed"
         elif run_probe(template, force_rewrite=True):
+            reason = "negative_control_undetected"
+        elif run_probe(template, force_rewrite_post=True):
             reason = "negative_control_undetected"
         else:
             verdict = "REVIEW_ONLY"
