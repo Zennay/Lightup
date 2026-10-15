@@ -56,6 +56,30 @@ The dedicated suite verifies strict type/offset admission, spoofing refusal,
 inclusive window boundaries, opaque no-authority receipts, no-I/O tripwires,
 and denial of forged receipt statuses.
 
+## W2: optional bounded atomic batch review
+
+`review_legacy_authorization_batch((authorization_a, ...), observed_at=now)`
+accepts **only an exact tuple of 1–32 exact legacy Authorization objects** and
+an explicit exact built-in timestamp. Every member must satisfy the same
+strict timestamp invariants as the single-item reviewer.
+
+- Any malformed input, invalid member, expiry/not-before failure or incomplete
+  object produces a **single generic HOLD/invalid_batch** receipt; no per-item
+  verdicts, partial-success count, owner, approval text or target is returned.
+- Only a completely canonical synthetic batch returns
+  **REVIEW_ONLY/temporal_shape_only**. Both paths carry six literal False
+  authority/release flags; they never approve an engagement or capability.
+- The reviewer takes a temporal reference snapshot for each member and checks
+  all snapshots again before returning. Observable mutation of an earlier
+  claim while later claims are inspected results in opaque HOLD.
+- This is not a transaction, lock, concurrency guarantee or proof that windows
+  remain stable after returning. It deliberately has no target, network,
+  database, filesystem, clock, grant or execution integration.
+- Test matrix: 1/2/16/32 exact-positive sizes, size 0/33 and forged tuple
+  rejection, every invalid-member position across 1/2/8/32 inputs, 150
+  deterministically shuffled bad-member permutations, in-call rebindings
+  and real file/network/process tripwire controls.
+
 ## Hard gate: not a production fix
 
 This does **not** repair `Authorization.is_current()`. Release requires the
