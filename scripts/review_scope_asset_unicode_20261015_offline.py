@@ -102,7 +102,11 @@ def _members(value: Any, *, minimum: int, validator: Any) -> frozenset[str]:
 
 def inspect_synthetic_claim(claim: Any) -> dict[str, Any]:
     """Review shape only. REVIEW_ONLY never means authorized."""
-    if type(claim) is not dict or set(claim) != FIELDS:
+    if (
+        type(claim) is not dict
+        or any(type(key) is not str for key in claim)
+        or set(claim) != FIELDS
+    ):
         raise ReviewInputError("invalid claim structure")
     assets = _members(claim["assets"], minimum=1, validator=_is_asset_name)
     exclusions = _members(claim["excluded_assets"], minimum=0, validator=_is_asset_name)
@@ -197,7 +201,7 @@ def _read_local_stdin() -> bytes:
 
 
 def _is_deny_only_receipt(receipt: Any) -> bool:
-    if type(receipt) is not dict:
+    if type(receipt) is not dict or any(type(key) is not str for key in receipt):
         return False
     if not all(receipt.get(key) is False for key in FALSE_FLAGS):
         return False

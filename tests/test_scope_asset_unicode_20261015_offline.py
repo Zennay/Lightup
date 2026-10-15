@@ -159,6 +159,10 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
         with self.assertRaises(mod.ReviewInputError):
             mod.inspect_synthetic_claim(sample)
         sample = synthetic_claim()
+        sample[ForgedStr("assets")] = sample.pop("assets")
+        with self.assertRaises(mod.ReviewInputError):
+            mod.inspect_synthetic_claim(sample)
+        sample = synthetic_claim()
         sample["allowed_capabilities"] = [True]
         self.assert_hold(receipt(sample))
 
@@ -390,6 +394,7 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
         forged = [
             {"status": "APPROVED", **mod.FALSE_FLAGS},
             {"status": "PASS", **mod.FALSE_FLAGS},
+            {**mod.FALSE_FLAGS, "status": "HOLD", "asset_count": 1},
             {"status": ForgedStatus("REVIEW_ONLY"), **mod.FALSE_FLAGS},
             {"status": "HOLD", **mod.FALSE_FLAGS, "asset_count": 0},
             {"status": "REVIEW_ONLY", **mod.FALSE_FLAGS},
@@ -405,6 +410,9 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
         for item in forged:
             with self.subTest(receipt=item):
                 self.assertFalse(mod._is_deny_only_receipt(item))
+        forged_key_receipt = {"status": "HOLD", **mod.FALSE_FLAGS}
+        forged_key_receipt[ForgedStatus("status")] = forged_key_receipt.pop("status")
+        self.assertFalse(mod._is_deny_only_receipt(forged_key_receipt))
 
     def test_static_offline_import_and_effect_boundary_with_negative_controls(self):
         """Fixture gate: no socket/http/process launch/target data facilities."""
