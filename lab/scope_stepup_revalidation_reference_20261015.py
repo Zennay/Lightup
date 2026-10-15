@@ -226,28 +226,35 @@ class OfflineRevalidationFence:
         # Snapshot exact caller fields on both sides of the copy. A caller
         # can mutate even frozen dataclasses in-process via object.__setattr__;
         # never store a mixed-time, split-identity or malformed reference.
-        before_approval = self._approval_fields(approval)
-        before_tool = self._tool_fields(tool)
-        request = ReviewRequest(**{
-            name: getattr(approval.request, name)
-            for name in ReviewRequest.__dataclass_fields__
-        })
-        frozen = ReferenceApproval(request, approval.issued_at, approval.expires_at)
-        snapshot = ToolSnapshot(tool.tool, tool.capability, tool.risk)
+        try:
+            before_approval = self._approval_fields(approval)
+            before_tool = self._tool_fields(tool)
+            request = ReviewRequest(**{
+                name: getattr(approval.request, name)
+                for name in ReviewRequest.__dataclass_fields__
+            })
+            frozen = ReferenceApproval(request, approval.issued_at, approval.expires_at)
+            snapshot = ToolSnapshot(tool.tool, tool.capability, tool.risk)
+        except (AttributeError, TypeError, ValueError):
+            raise ValueError("synthetic reference changed during intake") from None
         with self._lock:
             if self._closed:
                 raise ValueError("revoked review instance cannot be reopened")
             if (self._bound_approval is not None
                     and before_approval != self._bound_approval):
                 raise ValueError("synthetic approval lifetime is immutable")
-            if (
-                not frozen.is_well_formed()
-                or not snapshot.is_well_formed()
-                or self._approval_fields(frozen) != before_approval
-                or self._tool_fields(snapshot) != before_tool
-                or self._approval_fields(approval) != before_approval
-                or self._tool_fields(tool) != before_tool
-            ):
+            try:
+                unchanged = (
+                    frozen.is_well_formed()
+                    and snapshot.is_well_formed()
+                    and self._approval_fields(frozen) == before_approval
+                    and self._tool_fields(snapshot) == before_tool
+                    and self._approval_fields(approval) == before_approval
+                    and self._tool_fields(tool) == before_tool
+                )
+            except (AttributeError, TypeError, ValueError):
+                unchanged = False
+            if not unchanged:
                 raise ValueError("synthetic approval/registry changed during intake")
             self._approval = frozen
             self._tool = snapshot
@@ -274,16 +281,23 @@ class OfflineRevalidationFence:
     def replace_synthetic_tool(self, tool: ToolSnapshot) -> None:
         if type(tool) is not ToolSnapshot or not tool.is_well_formed():
             raise ValueError("invalid synthetic tool")
-        original = self._tool_fields(tool)
+        try:
+            original = self._tool_fields(tool)
+        except (AttributeError, TypeError, ValueError):
+            raise ValueError("synthetic tool changed during registry intake") from None
         with self._lock:
             if self._closed:
                 raise ValueError("revoked review instance cannot replace tools")
-            snapshot = ToolSnapshot(tool.tool, tool.capability, tool.risk)
-            if (
-                not snapshot.is_well_formed()
-                or self._tool_fields(snapshot) != original
-                or self._tool_fields(tool) != original
-            ):
+            try:
+                snapshot = ToolSnapshot(tool.tool, tool.capability, tool.risk)
+                unchanged = (
+                    snapshot.is_well_formed()
+                    and self._tool_fields(snapshot) == original
+                    and self._tool_fields(tool) == original
+                )
+            except (AttributeError, TypeError, ValueError):
+                unchanged = False
+            if not unchanged:
                 raise ValueError("synthetic tool changed during registry intake")
             # Every tool-registry replacement could hide a new handler
             # behind identical public metadata. Invalidate the old approval
@@ -340,12 +354,15 @@ class OfflineRevalidationFence:
         # Hold a private immutable copy of every caller-controlled field.
         # A callback that rewrites a frozen dataclass with object.__setattr__
         # must not silently replace the reviewed identity after validation.
-        initial_request = ReviewRequest(**{
-            name: getattr(request, name)
-            for name in ReviewRequest.__dataclass_fields__
-        })
-        original_fields = self._request_fields(initial_request)
-        if self._request_fields(request) != original_fields:
+        try:
+            initial_request = ReviewRequest(**{
+                name: getattr(request, name)
+                for name in ReviewRequest.__dataclass_fields__
+            })
+            original_fields = self._request_fields(initial_request)
+            if self._request_fields(request) != original_fields:
+                return _hold()
+        except (AttributeError, TypeError, ValueError):
             return _hold()
 
         # The expensive, untrusted verifier deliberately executes OUTSIDE the
@@ -370,8 +387,13 @@ class OfflineRevalidationFence:
             return _hold()
 
         with self._lock:
-            if (epoch != self._epoch
-                    or self._request_fields(request) != original_fields
+            if epoch != self._epoch or not request.is_synthetic():
+                return _hold()
+            try:
+                unchanged = self._request_fields(request) == original_fields
+            except (AttributeError, TypeError, ValueError):
+                return _hold()
+            if (not unchanged
                     or not self._valid_snapshot_locked(original_fields, fresh_now)):
                 return _hold()
             self._review_count += 1
