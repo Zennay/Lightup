@@ -4,6 +4,7 @@ No production changes, active targets, network, database, or dispatch. The
 source owners of legacy Authorization in PR #100/#104 keep all production edits.
 """
 import os
+import random
 import sys
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -149,6 +150,34 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
                                  "scope.fixture.example.test")
                 model_datetime.now.assert_called_once_with(timezone.utc)
                 self.assertEqual(repr(grant), original)
+
+    def test_randomized_out_of_order_scope_decisions_never_cache_authority(self):
+        # Reusing one in-memory Authorization across hundreds of clock changes
+        # must not let a previous allowed decision override an expired one.
+        # All instants and shuffles are deterministic; no actual time is read.
+        grant = _authorization(
+            start=NOW - timedelta(seconds=60),
+            end=NOW + timedelta(seconds=60),
+        )
+        initial = repr(grant)
+        offsets = list(range(-150, 151)) * 2
+        offsets.extend((-61, -60, 0, 60, 61) * 8)
+        random.Random(301).shuffle(offsets)
+        with patch("lightup.models.datetime") as model_datetime:
+            for delta in offsets:
+                model_datetime.now.return_value = NOW + timedelta(seconds=delta)
+                decision = _pure_scope_decision(grant)
+                expected = -60 <= delta <= 60
+                self.assertIs(decision.allowed, expected)
+                self.assertEqual(
+                    decision.reason,
+                    ScopeReason.EXPLICIT_HOST if expected
+                    else ScopeReason.AUTHORIZATION_EXPIRED,
+                )
+                self.assertEqual(decision.normalized_host,
+                                 "scope.fixture.example.test")
+            self.assertEqual(model_datetime.now.call_count, len(offsets))
+            self.assertEqual(repr(grant), initial)
 
     def test_expired_scope_decision_does_not_mutate_authorization(self):
         current_utc = datetime.now(timezone.utc)
