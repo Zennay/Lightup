@@ -54,6 +54,12 @@ python -m unittest discover -s tests -p 'test_scope_expiry_cohort_20261015_offli
 
 Use fictional windows only. Tests include real CLI invocation, 16 KiB bound, strict JSON shape, duplicate keys, wrong types, 24:00 rollover, Unicode decimal disguises, inclusive temporal boundaries and no authority flags. They do not initiate target traffic.
 
+## Real model semantic parity and extreme-time controls
+
+The follow-on acceptance suite exercises **126 synthetic, in-memory `AuthorizationGrant.is_current(now=...)` comparisons** against the CLI's four mutually exclusive categories. It checks current/noncurrent parity, future and expired boundaries for 6 start offsets × 3 durations × 7 evaluation instants. These are fictional model instances, not stored grants or operator approvals. A complete 32-window cohort has an actual positive-count subprocess control and a corrupted final member must cause atomic HOLD with **no partial counts**. A UTC value at 9999-12-31 23:59:58 with a 720-hour horizon explicitly guards against `datetime + timedelta` overflow: the reviewer instead computes the duration `end - as_of`.
+
+All these checks test *classification only*. The producer model's inclusive end semantics are preserved solely for this anonymous report; nothing is wired into the real authorization path. Every output remains non-authorizing.
+
 ## Required independent source-owner handoff
 
 Real-world authorization still requires: independently authenticated customer/operator consent; original request–grant FK and exact tenant/scope matching; revocation and time validity checked from trusted storage immediately before **each** dispatch; canonical DNS/network destination binding; separate destructive-lab human step-up; branch/run/runner attestation; independent security and privacy review and explicit human release. This reviewer is neither a substitute nor a prerequisite for those gates.
