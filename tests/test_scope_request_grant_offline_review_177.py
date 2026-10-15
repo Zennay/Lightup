@@ -221,6 +221,23 @@ class RequestGrantOfflineReviewTests(unittest.TestCase):
             with self.subTest(instant=instant):
                 self.assert_hold(at=instant)
 
+    def test_empty_validity_window_is_never_structurally_reviewable(self):
+        for empty_at in (VALID_FROM, NOW, VALID_UNTIL):
+            with self.subTest(empty_at=empty_at):
+                grant_with_zero_window = replace(
+                    grant(), valid_from=empty_at, valid_until=empty_at,
+                )
+                self.assert_hold(auth=grant_with_zero_window, at=empty_at)
+
+    def test_recurring_retest_claim_requires_separate_customer_consent(self):
+        # An approved AssessmentRequestRecord contains no opt-in approval
+        # of repeated retests. Never promote a grant-level self-assertion.
+        self.assert_hold(auth=replace(grant(), recurring_retest_allowed=True))
+        self.assertIs(
+            review(auth=replace(grant(), recurring_retest_allowed=False)).status,
+            ReviewStatus.REVIEW_ONLY,
+        )
+
     def test_window_is_inclusive_only_in_non_authorizing_review(self):
         for at in (VALID_FROM, VALID_UNTIL):
             with self.subTest(at=at):
