@@ -200,6 +200,20 @@ reclassification of expiry windows. This tests deterministic presentation
 only: a caller's supplied `as_of_utc` is **not** a trusted clock or
 evidence of live customer consent.
 
+## Installed runtime import isolation (W14)
+
+The new acceptance test scans only installed Python source under
+`src/lightup/**/*.py` to ensure no literal reference to this
+`review_scope_expiry_cohort_20261015_offline` prototype appears in
+production. This is a narrow, fail-closed source-import tripwire: it
+prevents accidental ordinary wiring of the synthetic classifier into
+live authorization while producer-owned grant and destination gates
+are unresolved. It cannot prove absence of computed/dynamic imports,
+plugin metadata or external callers; independent source-owner security
+review remains necessary. An intentional future product integration
+must independently justify and revise this test after full human
+authorization, rather than silently promoting `REVIEW_ONLY`.
+
 ## Required independent source-owner handoff
 
 Real-world authorization still requires: independently authenticated customer/operator consent; original request–grant FK and exact tenant/scope matching; revocation and time validity checked from trusted storage immediately before **each** dispatch; canonical DNS/network destination binding; separate destructive-lab human step-up; branch/run/runner attestation; independent security and privacy review and explicit human release. This reviewer is neither a substitute nor a prerequisite for those gates.
