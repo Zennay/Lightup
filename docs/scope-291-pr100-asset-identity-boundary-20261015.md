@@ -37,7 +37,7 @@ Only one new test module and this documentation:
 - Three **real expected-RED** cases on unmerged #100 source: wrong
   explicit-host+asset acceptance, synthetic ActivationGate permit for the
   wrong address, and 128 distinct RFC3849 wrong-asset admissions.
-- Seven regular green comparators and integrity guards: an asset
+- Eight regular green comparators and integrity guards: an asset
   containing the **correct** full IPv6 does **not** satisfy the
   unrelated DNS alias, empty assets grant nothing, bracketed IPv6
   `/128` with matching exact asset retains target/authorization
