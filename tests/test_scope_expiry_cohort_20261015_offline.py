@@ -723,7 +723,7 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
                                   st_dev=8, st_ino=11)
         with mock.patch.object(reviewer.sys, "stdout") as stdout, \
                 mock.patch.object(reviewer.os, "fstat",
-                                  side_effect=[original, original, original, swapped]), \
+                                  side_effect=[original, original, swapped]), \
                 mock.patch.object(reviewer.os, "dup", return_value=71) as dup, \
                 mock.patch.object(reviewer.os, "close") as close, \
                 mock.patch.object(reviewer.os, "get_blocking", return_value=True), \
@@ -737,6 +737,39 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
             self.assertEqual(blocking.call_args_list, [
                 mock.call(71, False), mock.call(71, True),
             ])
+
+    def test_stdout_mode_check_cannot_authorize_second_fstat_socket(self):
+        """Mode checked as FIFO must not carry over to replacement socket."""
+        safe = SimpleNamespace(st_mode=stat.S_IFIFO | 0o600,
+                               st_dev=8, st_ino=10)
+        unsafe = SimpleNamespace(st_mode=stat.S_IFSOCK | 0o600,
+                                 st_dev=8, st_ino=11)
+        with mock.patch.object(reviewer.sys, "stdout") as stdout, \
+                mock.patch.object(reviewer.os, "fstat",
+                                  side_effect=[safe, unsafe]), \
+                mock.patch.object(reviewer.os, "dup", return_value=71) as dup, \
+                mock.patch.object(reviewer.os, "close") as close, \
+                mock.patch.object(reviewer.os, "write") as write:
+            stdout.fileno.return_value = 1
+            self.assertFalse(reviewer._emit_receipt(reviewer._receipt("HOLD")))
+            dup.assert_called_once_with(1)
+            write.assert_not_called()
+            close.assert_called_once_with(71)
+
+    def test_stdout_first_snapshot_socket_rejected_without_dup(self):
+        """No later good-looking fstat can repair an unsafe source object."""
+        unsafe = SimpleNamespace(st_mode=stat.S_IFSOCK | 0o600,
+                                 st_dev=8, st_ino=11)
+        with mock.patch.object(reviewer.sys, "stdout") as stdout, \
+                mock.patch.object(reviewer.os, "fstat",
+                                  return_value=unsafe) as fstat, \
+                mock.patch.object(reviewer.os, "dup") as dup, \
+                mock.patch.object(reviewer.os, "write") as write:
+            stdout.fileno.return_value = 1
+            self.assertFalse(reviewer._emit_receipt(reviewer._receipt("HOLD")))
+            fstat.assert_called_once_with(1)
+            dup.assert_not_called()
+            write.assert_not_called()
 
     def test_stdout_receipt_always_writes_pinned_descriptor_not_fd1(self):
         original = SimpleNamespace(st_mode=stat.S_IFIFO | 0o600,
