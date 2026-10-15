@@ -178,6 +178,47 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
         self.assertEqual(repr(grant), original)
         self.assertFalse(decision.allowed, "expired end must deny scope")
 
+    def test_reference_type_repair_flips_all_four_datetime_subclass_reds(self):
+        # A test-only patch demonstrates that the installed-source RED tests
+        # detect a missing exact-type guard, not merely a bad test fixture.
+        # This reference repair does not modify LightUp's installed code.
+        original = Authorization.is_current
+
+        def reference_narrowing(authorization, now=None):
+            for boundary in (
+                authorization.valid_from, authorization.valid_until
+            ):
+                if boundary is not None and (
+                    type(boundary) is not datetime or boundary.tzinfo is None
+                ):
+                    return False
+            return original(authorization, now)
+
+        red_methods = (
+            "test_red_falsey_datetime_subclass_must_not_disable_future_start",
+            "test_red_falsey_datetime_subclass_must_not_disable_expired_end",
+            "test_red_falsey_datetime_subclass_cannot_open_public_scope_early",
+            "test_red_falsey_datetime_subclass_cannot_open_public_scope_expired",
+        )
+        with patch.object(Authorization, "is_current", reference_narrowing):
+            for name in red_methods:
+                with self.subTest(method=name):
+                    test_case = type(self)(name)
+                    result = unittest.TestResult()
+                    test_case.run(result)
+                    self.assertEqual(len(result.unexpectedSuccesses), 1)
+                    self.assertEqual(result.expectedFailures, [])
+                    self.assertEqual(result.failures, [])
+                    self.assertEqual(result.errors, [])
+            canonical = _authorization(
+                start=NOW - timedelta(seconds=1),
+                end=NOW + timedelta(seconds=1),
+            )
+            self.assertTrue(canonical.is_current(NOW))
+            decision = _pure_scope_decision_at(canonical, NOW)
+            self.assertTrue(decision.allowed)
+            self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+
     def test_all_inputs_remain_unchanged_after_pure_scope_decision(self):
         # No CI calendar dependence: inject NOW through the real
         # ScopePolicy -> Authorization.is_current() wall-clock boundary.
