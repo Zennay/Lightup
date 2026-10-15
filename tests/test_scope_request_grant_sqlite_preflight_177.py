@@ -106,7 +106,8 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
         assert field in (
             "approved_request_id", "client_id", "engagement_id", "status",
             "requested_mode", "requested_risk", "requested_assets_json", "max_risk",
-            "assets_json", "allowed_capabilities_json", "decided_by", "decided_at",
+            "assets_json", "excluded_assets_json", "allowed_capabilities_json",
+            "approved_by", "decided_by", "decided_at",
             "valid_from", "valid_until", "created_at", "recurring_retest_allowed",
         )
         assert key in ("grant_id", "request_id", "engagement_id")
@@ -1021,6 +1022,11 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
                     value = self.engagement
                 if value == "self-approver":
                     value = self.operator.user_id
+                if value == "unrelated-client":
+                    # Keep the ordinary clients FK intact; show that a
+                    # perfectly valid, *different* client FK can still be
+                    # unauthorized for this approved request lineage.
+                    value = self.client
                 with sqlite3.connect(self.path) as con:
                     changed = con.execute(
                         f"UPDATE {table} SET {field}=? WHERE {key}=?",
