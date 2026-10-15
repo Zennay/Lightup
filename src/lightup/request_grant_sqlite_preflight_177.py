@@ -148,7 +148,11 @@ def _all_grant_lineage_consistent(connection: sqlite3.Connection) -> bool:
         "r.request_id AS request_id, r.client_id AS request_client, "
         "r.requested_by AS requester, r.decided_by AS decider, "
         "r.status AS request_status, r.requested_mode AS request_mode, "
-        "e.engagement_id AS engagement_id, e.client_id AS engagement_client "
+        "r.created_at AS request_created_at, r.decided_at AS request_decided_at, "
+        "g.created_at AS grant_created_at, g.valid_from AS grant_valid_from, "
+        "g.valid_until AS grant_valid_until, "
+        "e.engagement_id AS engagement_id, e.client_id AS engagement_client, "
+        "e.created_at AS engagement_created_at, e.status AS engagement_status "
         "FROM authorization_grants AS g "
         "LEFT JOIN assessment_requests AS r "
         "ON r.request_id=g.approved_request_id "
@@ -156,6 +160,24 @@ def _all_grant_lineage_consistent(connection: sqlite3.Connection) -> bool:
         "ON e.engagement_id=g.engagement_id"
     )
     for row in rows:
+        request_created = _decision_time(row["request_created_at"])
+        request_decided = _decision_time(row["request_decided_at"])
+        grant_created = _decision_time(row["grant_created_at"])
+        grant_from = _decision_time(row["grant_valid_from"])
+        grant_until = _decision_time(row["grant_valid_until"])
+        engagement_created = _decision_time(row["engagement_created_at"])
+        if (
+            any(value is None for value in (
+                request_created, request_decided, grant_created,
+                grant_from, grant_until, engagement_created,
+            ))
+            or not (
+                request_created <= request_decided <= grant_created
+                <= grant_from < grant_until
+                and engagement_created <= grant_created
+            )
+        ):
+            return False
         if (
             not all(_identifier(row[column]) for column in (
                 "approved_request_id", "grant_client", "grant_engagement",
@@ -171,6 +193,7 @@ def _all_grant_lineage_consistent(connection: sqlite3.Connection) -> bool:
             or row["requester"] == row["decider"]
             or row["request_status"] != RequestStatus.APPROVED.value
             or row["request_mode"] != AssessmentMode.AUTHORIZED_ASSESSMENT.value
+            or row["engagement_status"] != EngagementStatus.AUTHORIZED.value
         ):
             return False
     return True
