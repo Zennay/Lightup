@@ -39,13 +39,16 @@ class ReviewRequest:
     started_at: datetime
 
     def is_synthetic(self) -> bool:
-        return (
-            type(self) is ReviewRequest
-            and all(_synthetic(getattr(self, k)) for k in
-                    ("run", "client", "engagement", "asset", "tool", "capability"))
-            and type(self.risk) is int and self.risk == 5
-            and _aware(self.started_at)
-        )
+        try:
+            return (
+                type(self) is ReviewRequest
+                and all(_synthetic(getattr(self, k)) for k in
+                        ("run", "client", "engagement", "asset", "tool", "capability"))
+                and type(self.risk) is int and self.risk == 5
+                and _aware(self.started_at)
+            )
+        except (AttributeError, TypeError, ValueError):
+            return False
 
 
 @dataclass(frozen=True)
@@ -55,16 +58,19 @@ class ReferenceApproval:
     expires_at: datetime
 
     def is_well_formed(self) -> bool:
-        return (
-            type(self) is ReferenceApproval
-            and type(self.request) is ReviewRequest
-            and self.request.is_synthetic()
-            and _aware(self.issued_at) and _aware(self.expires_at)
-            and self.issued_at < self.request.started_at < self.expires_at
-            # Independent per-target destructive opt-in must expire within
-            # 24 hours, never be minted after the fictional run began.
-            and self.expires_at - self.issued_at <= timedelta(hours=24)
-        )
+        try:
+            return (
+                type(self) is ReferenceApproval
+                and type(self.request) is ReviewRequest
+                and self.request.is_synthetic()
+                and _aware(self.issued_at) and _aware(self.expires_at)
+                and self.issued_at < self.request.started_at < self.expires_at
+                # Independent per-target destructive opt-in must expire within
+                # 24 hours, never be minted after the fictional run began.
+                and self.expires_at - self.issued_at <= timedelta(hours=24)
+            )
+        except (AttributeError, TypeError, ValueError):
+            return False
 
 
 @dataclass(frozen=True)
@@ -74,11 +80,14 @@ class ToolSnapshot:
     risk: int
 
     def is_well_formed(self) -> bool:
-        return (
-            type(self) is ToolSnapshot
-            and _synthetic(self.tool) and _synthetic(self.capability)
-            and type(self.risk) is int and self.risk == 5
-        )
+        try:
+            return (
+                type(self) is ToolSnapshot
+                and _synthetic(self.tool) and _synthetic(self.capability)
+                and type(self.risk) is int and self.risk == 5
+            )
+        except (AttributeError, TypeError, ValueError):
+            return False
 
 
 @dataclass(frozen=True)
@@ -292,23 +301,26 @@ class OfflineRevalidationFence:
 
         The review never grants authority, and this lock never wraps a handler.
         """
-        approval, tool = self._approval, self._tool
-        if self._closed or approval is None or tool is None:
+        try:
+            approval, tool = self._approval, self._tool
+            if self._closed or approval is None or tool is None:
+                return False
+            if not approval.is_well_formed() or not tool.is_well_formed():
+                return False
+            if (self._approval_fields(approval) != self._approval_seal
+                    or self._tool_fields(tool) != self._tool_seal):
+                return False
+            if self._request_fields(approval.request) != request_fields:
+                return False
+            if (tool.tool, tool.capability, tool.risk) != request_fields[4:7]:
+                return False
+            return (
+                observed_at >= approval.request.started_at
+                and observed_at >= approval.issued_at
+                and observed_at < approval.expires_at
+            )
+        except (AttributeError, TypeError, ValueError):
             return False
-        if not approval.is_well_formed() or not tool.is_well_formed():
-            return False
-        if (self._approval_fields(approval) != self._approval_seal
-                or self._tool_fields(tool) != self._tool_seal):
-            return False
-        if self._request_fields(approval.request) != request_fields:
-            return False
-        if (tool.tool, tool.capability, tool.risk) != request_fields[4:7]:
-            return False
-        return (
-            observed_at >= approval.request.started_at
-            and observed_at >= approval.issued_at
-            and observed_at < approval.expires_at
-        )
 
     def review(
         self,
