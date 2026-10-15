@@ -101,13 +101,13 @@ def _source_has_only_offline_effects(source):
         "__future__", "datetime", "typing", "lightup.models"
     }
     permitted_calls = {
-        "type", "vars", "len", "range", "tuple", "list",
+        "type", "len", "range", "tuple", "list", "_stored_fields",
         "LegacyTemporalReview", "_canonical_datetime",
         "review_legacy_authorization_window"
     }
     # Bounded append mutates only the local, synthetic in-memory snapshot list.
     # It does not touch a client record, target, filesystem, or process.
-    permitted_methods = {"astimezone", "append"}
+    permitted_methods = {"astimezone", "append", "__getattribute__"}
     for node in ast.walk(tree):
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             if not isinstance(node, ast.ImportFrom) or node.module not in approved_imports:
@@ -122,6 +122,16 @@ def _source_has_only_offline_effects(source):
                 if node.func.attr == "append" and not (
                     isinstance(node.func.value, ast.Name)
                     and node.func.value.id == "snapshots"
+                ):
+                    return False
+                if node.func.attr == "__getattribute__" and not (
+                    isinstance(node.func.value, ast.Name)
+                    and node.func.value.id == "object"
+                    and len(node.args) == 2
+                    and isinstance(node.args[0], ast.Name)
+                    and node.args[0].id == "authorization"
+                    and isinstance(node.args[1], ast.Constant)
+                    and node.args[1].value == "__dict__"
                 ):
                     return False
             else:
@@ -258,6 +268,8 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
             "os.system('echo forbidden')",
             "obj.astimezone().open()",
             "external.append(authorization)",
+            "object.__getattribute__(authorization, 'reference')",
+            "object.__getattribute__(other, '__dict__')",
             "getattr(obj, 'scope')",
         ):
             with self.subTest(mutant=mutant):
@@ -314,6 +326,48 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
                         (claim,), observed_at=instant.astimezone(zone)
                     ), "HOLD", "invalid_batch"
                 )
+
+    def test_deceptive_dual_getter_cannot_spoof_raw_storage_and_expiry(self):
+        auth = fixture(end=False)
+        original = Authorization.__getattribute__
+        forged_fields = dict(vars(auth), valid_until=END)
+
+        def deceptive_getter(instance, name):
+            if instance is auth and name == "__dict__":
+                return forged_fields
+            if instance is auth and name == "valid_until":
+                return END
+            return original(instance, name)
+
+        with patch.object(Authorization, "__getattribute__", deceptive_getter):
+            assert_non_authorizing(
+                self, review(auth), "HOLD", "invalid_shape"
+            )
+            assert_non_authorizing(
+                self,
+                review_legacy_authorization_batch((auth,), observed_at=MID),
+                "HOLD", "invalid_batch"
+            )
+
+    def test_spoofed_dict_does_not_override_genuine_valid_storage(self):
+        auth = fixture()
+        original = Authorization.__getattribute__
+        bogus = {"valid_from": False, "valid_until": False}
+
+        def lying_storage(instance, name):
+            if instance is auth and name == "__dict__":
+                return bogus
+            return original(instance, name)
+
+        with patch.object(Authorization, "__getattribute__", lying_storage):
+            assert_non_authorizing(
+                self, review(auth), "REVIEW_ONLY", "temporal_shape_only"
+            )
+            assert_non_authorizing(
+                self,
+                review_legacy_authorization_batch((auth,), observed_at=MID),
+                "REVIEW_ONLY", "temporal_shape_only"
+            )
 
     def test_single_hidden_stored_falsy_window_cannot_appear_reviewable(self):
         auth = fixture(end=False)
