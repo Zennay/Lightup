@@ -44,6 +44,11 @@ def main(argv: list[str] | None = None) -> int:
     if arguments:
         result["reason"] = "INVALID_INVOCATION"
     else:
+        # This offline diagnostic can also be called inside a unit-test runner.
+        # Never leave import paths or bytecode settings changed in the caller,
+        # whether the receipt is confirmed or an internal error is suppressed.
+        original_path = list(sys.path)
+        original_bytecode = sys.dont_write_bytecode
         try:
             root = Path(__file__).resolve().parents[1]
             sys.dont_write_bytecode = True
@@ -81,6 +86,9 @@ def main(argv: list[str] | None = None) -> int:
             # never convert unknown crashes into successful proof.
             result = _receipt("UNVERIFIED")
             exit_code = 3
+        finally:
+            sys.path[:] = original_path
+            sys.dont_write_bytecode = original_bytecode
     sys.stdout.write(json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n")
     return exit_code
 
