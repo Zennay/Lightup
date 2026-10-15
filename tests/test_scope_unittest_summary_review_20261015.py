@@ -69,7 +69,7 @@ class SummaryReviewTests(unittest.TestCase):
         self.assertNotIn("summary", r)
 
     def test_duplicate_zero_counter_is_rejected(self):
-        _, r = run(b"Ran 3 tests in 0.2s\\nFAILED (failures=0, failures=1)\\n")
+        _, r = run(b"Ran 3 tests in 0.2s\nFAILED (failures=0, failures=1)\n")
         self.assertNotIn("summary", r)
 
     def test_unknown_counter_opaque(self):
