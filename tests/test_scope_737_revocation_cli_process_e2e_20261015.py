@@ -102,6 +102,15 @@ class RevocationRealCliSubprocessTests(unittest.TestCase):
         self.assertEqual(data["reason_codes"], ["invalid_record_count"])
         self.assertEqual(data["class_counts"], [])
 
+    def test_real_process_denies_hidden_unicode_control_without_leak(self):
+        private = "fictional\\u202esecret"
+        proc = run_cli(envelope([
+            fixture("2026-10-15T10:00:00Z", private, "fixture")
+        ]))
+        data = assert_hold(self, proc, 0)
+        self.assertEqual(data["class_counts"][0]["count"], 1)
+        self.assertNotIn(private.encode("utf-8"), proc.stdout)
+
     def test_actual_process_noncanonical_time_never_mints_authority(self):
         data = assert_hold(self, run_cli(envelope([
             fixture("2026-10-15T10:00:00+00:00", "fictional", "fixture")
