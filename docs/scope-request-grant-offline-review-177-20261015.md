@@ -164,7 +164,33 @@ Run real disposable SQLite acceptance with:
 python -m unittest discover -s tests -p 'test_scope_request_grant_sqlite_preflight_177.py' -v
 ```
 
-### Atomic persisted batch, same read snapshot
+### W12: never reuse one approved request across stored grant records
+
+A valid SQLite foreign key only shows that a target *exists*; it does not
+prove that the same approval was not spent on another grant. The opt-in
+single-grant reader now checks **all persisted authorization_grants** for
+any *second grant ID* with the **same approved_request_id**, whether or
+not that other grant was included in the reviewed batch. It returns
+generic `HOLD` even when the additional grant is expired or otherwise
+unrelated, because the current schema lacks authenticated amendment,
+replacement, revocation, or reusable-consent provenance. The batch reader
+inherits the same restriction for every member. This check intentionally
+treats a normal SQLite FK relationship as **necessary but insufficient**;
+the separate global `foreign_key_check` cannot spot duplicate approval
+reuse because both dependent rows may legitimately reference the same
+existing parent.
+
+Real isolated `DomainStore` SQLite regressions prove two distinct,
+valid approved requests are only `REVIEW_ONLY`, then replace the second
+grant's request link with the first approved request and prove a solo
+review of either grant and a one-grant batch switch to `HOLD` without
+the FK-check detecting any orphan. This is deliberately uninstalled
+and never a grant, consent record, or production database migration.
+Source-owner follow-up: enforce stable request→grant cardinality or
+design signed, immutable explicit amendment/retest approvals with a
+proper migration and atomic uniqueness constraints.
+
+## Atomic persisted batch, same read snapshot
 
 The second optional API `review_persisted_grant_batch(local_database_path,
 grant_ids_tuple, reviewed_at=...)` evaluates **1–32 distinct exact grant IDs**
