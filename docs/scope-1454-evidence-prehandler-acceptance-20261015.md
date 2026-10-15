@@ -6,7 +6,7 @@
 
 On `main` at `e73b7445c87ad239bdb03c50a99078ef93163b02`, `ToolExecutor.execute` checks `ExecutionPolicy`, then executes a registered handler, then calls `StateStore.add_evidence`. The latter inserts into SQLite. A SQLite insertion failure can therefore occur **after** the handler was called, leaving **no recorded evidence and no successful ToolResult**. This is an accountability gap in simulated local sequencing; it does **not** demonstrate any actual customer target call, scan, leaked secret or exploitable network attack.
 
-## Five real installed-source acceptance tests
+## Eight real installed-source acceptance tests
 
 `python -m unittest discover -s tests -p 'test_scope_1454_evidence_prehandler_acceptance_20261015.py' -v`
 
@@ -19,8 +19,11 @@ The dedicated fixture constructs a **fabricated** low-impact TARGET_ACTIVE autho
 | Required pre-handler durable attempt gate | **expectedFailure** while the ledger refuses insertion | **Open source RED; NOT FIXED** |
 | SQLite failure witness | Exact `IntegrityError` from explicit `BEFORE INSERT` trigger; handler once, no evidence | Ordinary PASS corroborates failure ordering |
 | Synthetic retry of same failing call | Handler twice; zero evidence rows | Ordinary PASS exposes replay/accountability concern |
+| Exception after inert handler mutation | Exact controlled handler exception, handler ran, no evidence | Ordinary PASS proves a non-SQLite unlogged-attempt path |
+| Malformed ToolOutput returned by inert handler | Existing `OrchestrationError` after handler, no evidence | Ordinary PASS confirms output validation occurs after callback |
+| Persisted-run parent check before failed insert | Valid `runs` parent and authorization reference exist, yet post-handler SQLite evidence insert aborts | Ordinary PASS isolates issue from #170 unknown-run FK anomaly |
 
-The intentionally expected-failing requirement must be converted to a **normal passing denial test** once the source owner introduces a durable pre-handler admission/reconciliation protocol. If source repair changes the exception to `ToolDenied` and avoids executing the handler, the expectedFailure will become an unexpectedSuccess until promoted. An exception **alone** never proves denial; the independent witness pins the actual SQLite failure, invocation count, and absent evidence.
+The two extra post-handler fault witnesses and explicit registered-run provenance control do **not** grant a lab or target authority; they isolate the failure ordering from authorization policy rejection and missing-run foreign-key bugs. The intentionally expected-failing requirement must be converted to a **normal passing denial test** once the source owner introduces a durable pre-handler admission/reconciliation protocol. If source repair changes the exception to `ToolDenied` and avoids executing the handler, the expectedFailure will become an unexpectedSuccess until promoted. An exception **alone** never proves denial; the independent witness pins the actual SQLite failure, invocation count, and absent evidence.
 
 ## Owner-controlled source repair and stronger acceptance
 
