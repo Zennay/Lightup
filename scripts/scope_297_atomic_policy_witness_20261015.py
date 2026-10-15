@@ -79,13 +79,15 @@ def evaluate() -> dict:
     observations = []
     with disconnected():
         for case in CASES:
-            policy = ScopePolicy(
-                allow_private_lab=False,
-                explicit_hosts=case.hosts,
-                explicit_networks=case.networks,
-                require_authorization_for_public=case.require_authorization,
-            )
             try:
+                # A future strict constructor may reject malformed policy
+                # before decide(): that is REVIEW, not a CLI crash or a GO.
+                policy = ScopePolicy(
+                    allow_private_lab=False,
+                    explicit_hosts=case.hosts,
+                    explicit_networks=case.networks,
+                    require_authorization_for_public=case.require_authorization,
+                )
                 decision = policy.decide(Target(
                     case.target,
                     authorization=FAKE_GRANT if case.needs_synthetic_grant else None,
