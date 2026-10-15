@@ -81,6 +81,28 @@ class PairTest(unittest.TestCase):
         self.assertEqual(result["summary"]["classification"], "UNAUTHENTICATED_EQUALITY")
         self.assertFalse(result["release_approved"])
 
+    def test_method_row_after_ok_footer_is_rejected(self):
+        post = ("Ran 1 test in 0.1s\nOK\n"
+                "test_alpha (test_scope_pair.Pair.test_alpha) ... ok\n")
+        _, r = run(data(post, post))
+        self.assertNotIn("summary", r)
+
+    def test_method_row_between_total_and_footer_rejected(self):
+        post = ("Ran 1 test in 0.1s\n"
+                "test_alpha (test_scope_pair.Pair.test_alpha) ... ok\nOK\n")
+        _, r = run(data(post, post))
+        self.assertNotIn("summary", r)
+
+    def test_ok_before_ran_total_rejected(self):
+        post = ("OK\nRan 1 test in 0.1s\n")
+        _, r = run(data(post, post))
+        self.assertNotIn("summary", r)
+
+    def test_failed_footer_before_total_rejected(self):
+        post = ("FAILED (failures=1)\nRan 1 test in 0.1s\n")
+        _, r = run(data(post, post))
+        self.assertNotIn("summary", r)
+
     def test_duplicate_verbosed_method_opaque_hold(self):
         row = "test_alpha (test_scope_pair.Pair.test_alpha) ... ok\n"
         text = row+row+"Ran 2 tests in 0.1s\nOK\n"
