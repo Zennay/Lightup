@@ -15,13 +15,12 @@ from lightup.activation import ActivationGate, ActivationMode, ActivationPolicy
 from lightup.models import Authorization, Target
 from lightup.scope import ScopePolicy, ScopeReason
 
-# These public synthetics have different literal identities from their leading
-# hextet: the dangerous collision is when urlparse treats that hextet as a DNS
-# hostname and a configured host allowlist permits the *other* identity.
-PUBLIC_IPV6 = (
-    "2606:4700:4700::1111",
-    "2001:4860:4860::8888",
-    "2a00:1450:4001::200e",
+# RFC 3849 documentation-only IPv6 literals: never real target identities.
+# All three collapse to an unrelated bare DNS hostname "2001" on current main.
+DOC_IPV6 = (
+    "2001:db8:1::1111",
+    "2001:db8:2::2222",
+    "2001:db8:3::3333",
 )
 SYNTHETIC_AUTH = Authorization(
     owner="offline-fixture-only",
@@ -41,20 +40,20 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
     def test_current_main_bare_literal_never_normalizes_to_short_hostname_red(self):
         """#291: expected RED until the actual source parser is corrected."""
         with self.no_network():
-            for literal in PUBLIC_IPV6:
+            for literal in DOC_IPV6:
                 result = ScopePolicy.normalize_host(literal)
                 self.assertIn(result, (None, literal), (literal, result))
 
     @unittest.expectedFailure
     def test_current_main_truncated_explicit_hostname_must_not_admit_ipv6_red(self):
-        """#291: a DNS allowlist for '2606' MUST NOT grant '2606:...::1111'."""
+        """#291: an unrelated DNS label '2001' cannot admit synthetic bare IPv6."""
         policy = ScopePolicy(
             allow_private_lab=False,
-            explicit_hosts=frozenset({"2606", "2001", "2a00"}),
+            explicit_hosts=frozenset({"2001"}),
             require_authorization_for_public=False,
         )
         with self.no_network():
-            for literal in PUBLIC_IPV6:
+            for literal in DOC_IPV6:
                 decision = policy.decide(Target(literal))
                 self.assertFalse(decision.allowed, (literal, decision))
                 self.assertNotEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
@@ -64,11 +63,11 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
         """#291: attaching a fictional approval must not invent host membership."""
         policy = ScopePolicy(
             allow_private_lab=False,
-            explicit_hosts=frozenset({"2606"}),
+            explicit_hosts=frozenset({"2001"}),
             require_authorization_for_public=True,
         )
         with self.no_network():
-            decision = policy.decide(Target(PUBLIC_IPV6[0], authorization=SYNTHETIC_AUTH))
+            decision = policy.decide(Target(DOC_IPV6[0], authorization=SYNTHETIC_AUTH))
         self.assertFalse(decision.allowed)
         self.assertNotEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
 
@@ -78,7 +77,7 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
         gate = ActivationGate(
             ScopePolicy(
                 allow_private_lab=False,
-                explicit_hosts=frozenset({"2606"}),
+                explicit_hosts=frozenset({"2001"}),
                 require_authorization_for_public=True,
             ),
             ActivationPolicy(
@@ -89,14 +88,14 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
         with self.no_network():
             with self.assertRaises(PermissionError):
                 gate.issue(
-                    Target(PUBLIC_IPV6[0], authorization=SYNTHETIC_AUTH),
+                    Target(DOC_IPV6[0], authorization=SYNTHETIC_AUTH),
                     "fixture-only-no-adapter",
                 )
 
     def test_plan_and_lab_modes_reject_synthetic_host_collision(self):
         scope = ScopePolicy(
             allow_private_lab=False,
-            explicit_hosts=frozenset({"2606"}),
+            explicit_hosts=frozenset({"2001"}),
             require_authorization_for_public=True,
         )
         for mode in (ActivationMode.PLAN_ONLY, ActivationMode.LAB_ONLY):
@@ -107,18 +106,18 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
                 )
                 with self.no_network(), self.assertRaises(PermissionError):
                     gate.issue(
-                        Target(PUBLIC_IPV6[0], authorization=SYNTHETIC_AUTH),
+                        Target(DOC_IPV6[0], authorization=SYNTHETIC_AUTH),
                         "fixture-only-no-adapter",
                     )
 
     def test_valid_bracketed_authority_remains_full_canonical_identity(self):
         with self.no_network():
-            for literal in PUBLIC_IPV6:
+            for literal in DOC_IPV6:
                 self.assertEqual(ScopePolicy.normalize_host("[" + literal + "]"), literal)
                 self.assertEqual(ScopePolicy.normalize_host("https://[" + literal + "]"), literal)
 
-    def test_explicit_ipv6_network_matching_needs_matching_public_scope_and_claim(self):
-        for literal in PUBLIC_IPV6:
+    def test_explicit_ipv6_network_matching_requires_current_claim(self):
+        for literal in DOC_IPV6:
             network = str(ipaddress.ip_network(literal + "/128"))
             policy = ScopePolicy(
                 allow_private_lab=False,
@@ -174,12 +173,12 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
         """A positive comparator prevents confusing host and CIDR authorization."""
         policy = ScopePolicy(
             allow_private_lab=False,
-            explicit_hosts=frozenset({"2606"}),
-            explicit_networks=("2001:4860:4860::8888/128",),
+            explicit_hosts=frozenset({"2001"}),
+            explicit_networks=("2001:db8:2::2222/128",),
             require_authorization_for_public=False,
         )
         with self.no_network():
-            result = policy.decide(Target("[2606:4700:4700::1111]"))
+            result = policy.decide(Target("[2001:db8:1::1111]"))
         self.assertFalse(result.allowed)
         self.assertEqual(result.reason, ScopeReason.OUT_OF_SCOPE)
 
