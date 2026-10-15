@@ -19,18 +19,18 @@ permission to test the displayed addresses.
 
 New file `tests/test_scope_291_bare_ipv6_truncation_current_main_20261015.py`:
 
-- Six **real expected-RED** cases prove bare IPv6 must never turn into
+- Seven **real expected-RED** cases prove bare IPv6 must never turn into
   a shortened name, that a synthetic explicit-host allowlist cannot
   admit the mismatched IPv6 literal, a fabricated authorization
   claim on the wrong identity, and the **real ActivationGate** handing out a
   synthetic in-memory execution permit for that falsely matched identity.
-- Nine **normal green/witness controls** prove bracketed IPv6 remains intact,
+- Ten **normal green/witness controls** prove bracketed IPv6 remains intact,
   explicit `/128` network membership still requires an authorization
   object under the existing canonical flow, and the same literal in
   bracketed form cannot accidentally match an unrelated host or network. A
   PLAN_ONLY/LAB_ONLY comparators still reject the fake active request; a
   standalone network-tripwire self-test proves DNS/socket monkeypatches really
-  reject calls. A RED-integrity witness reruns the six intentional failures
+  reject calls. A RED-integrity witness reruns the seven intentional failures
   and rejects masked crashes, accidental success and network-trigger errors.
 - All tests are pure in-process: actual DNS lookups, sockets and outbound
   connections are patched to raise immediately. No real network
@@ -48,7 +48,7 @@ PYTHONPATH=src python -m unittest -v \
 ```
 
 **Important:** `unittest.expectedFailure` is a red-signal quarantine,
-not a successful security fix. The six source-negative cases must
+not a successful security fix. The seven source-negative cases must
 report exactly as **expected failures**, not ordinary passing tests or
 unexpected successes. The owner must repair the installed source and
 convert these cases to normal green tests before considering this
@@ -152,3 +152,24 @@ and it must not turn a single /128 grant into a whole IPv6 prefix,
 generic host or sibling-network grant. All 128 interactions are
 pure in-memory, with DNS/socket tripwires; no network target,
 durable grant or adapter has been contacted.
+
+## W6: spelling-independent source identity and non-authority
+
+The next **1,024 distinct bare IPv6 string spellings** cross 256
+independent RFC3849 documentation IPv6 identities with four ordinary
+lexical spellings: compact lowercase, compact uppercase, fully expanded
+lowercase and fully expanded uppercase. Every form is explicitly
+evaluated against the same unrelated synthetic DNS host allowlist
+`{"2001"}`. The seventh installed-source expected-RED aggregates all
+1,024 wrong-host matches rather than terminating at the first.
+The existing RED-integrity witness now rejects masking or accidentally
+green outcomes for this new case.
+
+A tenth normal comparator probes the same **1,024 bracketed forms**:
+all must remain out of scope for the unrelated DNS hostname, and the
+normalized identity must parse as the *same exact IPv6 address*
+regardless of cosmetic case/compression. These 2,048 decisions prevent
+a repair that merely handles one textual form yet continues to grant a
+different identity for uppercase or expanded input. Inputs stay
+documentation-only; no network, real authorization, adapter, permit
+issuance or deployment.
