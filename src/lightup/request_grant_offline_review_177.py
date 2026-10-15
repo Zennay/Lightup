@@ -150,6 +150,7 @@ def review_request_grant(
         or not _identifier(request.client_id)
         or not _identifier(request.requested_by)
         or not _identifier(request.decided_by)
+        or request.decided_by == request.requested_by
         or request.status is not RequestStatus.APPROVED
         or request.requested_mode is not AssessmentMode.AUTHORIZED_ASSESSMENT
         or type(request.requested_risk) is not RiskLevel
