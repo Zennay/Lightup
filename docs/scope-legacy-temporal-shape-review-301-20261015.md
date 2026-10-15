@@ -219,6 +219,33 @@ to infer authorization**. Examine its six immutable false-valued
 authorization and release fields, and enforce actual permission
 in the independent installed source-owned control-plane.
 
+## W11: immutable, falsy no-authority receipt mapping
+
+The opt-in `LegacyTemporalReview.as_receipt()` now returns an
+**immutable `LegacyTemporalReceipt`** instead of a mutable truthy Python
+dictionary. The receipt is a built-in tuple subclass and read-only
+`collections.abc.Mapping`; it has no writable instance dictionary or
+slots, with two intrinsic canonical status/reason fields and **six literal
+False** authority/release fields. Both `bool(review)` and
+`bool(review.as_receipt())` are always False, including REVIEW_ONLY.
+Membership, key iteration, length and `dict(receipt)` mapping-copy
+behaviour are well-defined; no ID, target or grant metadata is present.
+
+The constructor sanitizes foreign/unexpected status/reason pairs to
+`HOLD/invalid_shape`. Even if hostile code bypasses that constructor
+with `tuple.__new__(LegacyTemporalReceipt, arbitrary_items)`, lookup,
+iteration and human-readable representation resolve to the same opaque
+HOLD; malicious comparator/string hooks are not invoked. Tests attempt
+item/attribute/object-level mutations, hostile mapping keys, raw tuple
+forgeries, and permission-laundering via a naïve truthiness check.
+
+**Compatibility note:** `as_receipt()` now returns a read-only mapping,
+not a `dict`. Convert with `dict(receipt)` only for presentation
+or serialization; such copies are ordinary mutable/truthy dictionaries
+and therefore **never** provide authority. No actual installed
+authorization, source-owner files, real grants or execution paths use
+this experimental module.
+
 ## Hard gate: not a production fix
 
 This does **not** repair `Authorization.is_current()`. Release requires the
