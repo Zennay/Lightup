@@ -644,5 +644,45 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
                 self.assertEqual(result.as_dict()["status"], "HOLD")
 
 
+    def test_equivalent_instant_different_timezone_offset_is_detected(self):
+        fence, request, _, _ = fixture()
+        preserved = fence._approval.expires_at
+        shifted = preserved.astimezone(timezone(timedelta(hours=1)))
+        self.assertEqual(preserved, shifted)
+        self.assertNotEqual(preserved.utcoffset(), shifted.utcoffset())
+        object.__setattr__(fence._approval, "expires_at", shifted)
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=lambda: True),
+            "HOLD",
+        )
+        self.assertEqual(fence.review_count, 0)
+
+    def test_caller_run_start_equivalent_offset_mutation_denied(self):
+        fence, request, _, _ = fixture()
+        def shift_timezone_without_changing_instant():
+            shifted = request.started_at.astimezone(timezone(timedelta(hours=2)))
+            self.assertEqual(shifted, request.started_at)
+            object.__setattr__(request, "started_at", shifted)
+            return True
+        self.assert_non_authorizing(
+            fence.review(
+                request, NOW, isolation_probe=shift_timezone_without_changing_instant
+            ), "HOLD"
+        )
+        self.assertEqual(fence.review_count, 0)
+
+    def test_frozen_run_start_fold_bit_mutation_denied(self):
+        fence, request, _, _ = fixture()
+        original = fence._approval.request.started_at
+        folded = original.replace(fold=1)
+        self.assertEqual(original, folded)
+        object.__setattr__(fence._approval.request, "started_at", folded)
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=lambda: True),
+            "HOLD",
+        )
+        self.assertEqual(fence.review_count, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
