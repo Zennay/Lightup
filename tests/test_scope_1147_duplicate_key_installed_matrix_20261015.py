@@ -3,7 +3,7 @@
 Deliberately isolated, fictional ANALYSIS-only records; NO live scope, target,
 networking, actual handlers, grants, production fixes, or release authority.
 
-Two expected failures are REQUIREMENTS, not remediations. Ordinary PASS
+Expected source failures are REQUIREMENTS, not remediations. Ordinary PASS
 witnesses must verify the *specific* unsafe last-value-wins behavior; this
 prevents an unrelated crash from silently masquerading as a meaningful RED.
 When source owners fix #1147, invert/remove unsafe witnesses and replace
@@ -15,6 +15,7 @@ import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 from lightup.ai.orchestration import (
     OrchestrationError,
@@ -28,7 +29,7 @@ from lightup.ai.orchestration import (
     ToolRegistry,
 )
 from lightup.engagements import AssessmentMode, RiskLevel
-from lightup.execution_policy import InteractionKind
+from lightup.execution_policy import ExecutionPolicy, InteractionKind
 from lightup.state import StateStore
 
 
@@ -159,6 +160,125 @@ class DuplicateArgumentKeysInstalledSource1147(unittest.TestCase):
         self.assertEqual(self.calls, [{"selector": "last", "note": "distinct"}])
         self.assertEqual(self.evidence_count(), 1)
         self.assertEqual(self.state.get_evidence(result.evidence_id).run_id, self.run_id)
+
+    def test_unique_names_reach_schema_and_policy_exactly_once(self):
+        validate_original = ToolDefinition.validate_arguments
+        decide_original = ExecutionPolicy.decide
+        with patch.object(
+            ToolDefinition, "validate_arguments", autospec=True,
+            side_effect=validate_original,
+        ) as validator, patch.object(
+            ExecutionPolicy, "decide", autospec=True, side_effect=decide_original,
+        ) as policy:
+            result = self.executor.execute(
+                self.context, self.call(("selector", "genuine-unique"))
+            )
+        self.assertEqual(validator.call_count, 1)
+        self.assertEqual(policy.call_count, 1)
+        self.assertEqual(self.calls, [{"selector": "genuine-unique"}])
+        self.assertEqual(self.evidence_count(), 1)
+        self.assertEqual(self.state.get_evidence(result.evidence_id).run_id, self.run_id)
+
+    def test_current_source_duplicate_enters_schema_and_policy_before_handler(self):
+        # Exact diagnostic of installed call ordering, not an authorization repair.
+        validate_original = ToolDefinition.validate_arguments
+        decide_original = ExecutionPolicy.decide
+        with patch.object(
+            ToolDefinition, "validate_arguments", autospec=True,
+            side_effect=validate_original,
+        ) as validator, patch.object(
+            ExecutionPolicy, "decide", autospec=True, side_effect=decide_original,
+        ) as policy:
+            result = self.executor.execute(
+                self.context, self.call(("selector", "first"), ("selector", "last"))
+            )
+        self.assertEqual(validator.call_count, 1)
+        self.assertEqual(policy.call_count, 1)
+        self.assertEqual(self.calls, [{"selector": "last"}])
+        self.assertEqual(self.evidence_count(), 1)
+        self.assertEqual(self.state.get_evidence(result.evidence_id).run_id, self.run_id)
+
+    def test_invalid_last_duplicate_is_denied_by_schema_without_policy_or_evidence(self):
+        # A wrong last value gets rejected by the existing schema: important
+        # negative control against the incorrect claim all duplicates bypass it.
+        decide_original = ExecutionPolicy.decide
+        with patch.object(
+            ExecutionPolicy, "decide", autospec=True, side_effect=decide_original,
+        ) as policy:
+            with self.assertRaises(OrchestrationError):
+                self.executor.execute(
+                    self.context,
+                    self.call(("selector", "valid-first"), ("selector", 27)),
+                )
+        self.assertEqual(policy.call_count, 0)
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), 0)
+
+    def test_duplicated_unknown_field_is_rejected_without_dispatch(self):
+        with self.assertRaises(OrchestrationError):
+            self.executor.execute(
+                self.context,
+                self.call(
+                    ("selector", "valid"), ("unsupported", "a"), ("unsupported", "b")
+                ),
+            )
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), 0)
+
+    def test_current_source_duplicate_after_success_creates_extra_durable_evidence(self):
+        good = self.executor.execute(
+            self.context, self.call(("selector", "initial"))
+        )
+        ambiguous = self.executor.execute(
+            self.context,
+            self.call(("selector", "first"), ("selector", "unapproved-last")),
+        )
+        self.assertNotEqual(good.evidence_id, ambiguous.evidence_id)
+        self.assertEqual(
+            self.calls, [{"selector": "initial"}, {"selector": "unapproved-last"}]
+        )
+        self.assertEqual(self.evidence_count(), 2)
+        self.assertEqual(self.state.get_evidence(good.evidence_id).run_id, self.run_id)
+        self.assertEqual(
+            self.state.get_evidence(ambiguous.evidence_id).run_id, self.run_id
+        )
+
+    @unittest.expectedFailure
+    def test_required_duplicate_rejects_before_schema_validation_or_policy(self):
+        validate_original = ToolDefinition.validate_arguments
+        decide_original = ExecutionPolicy.decide
+        with patch.object(
+            ToolDefinition, "validate_arguments", autospec=True,
+            side_effect=validate_original,
+        ) as validator, patch.object(
+            ExecutionPolicy, "decide", autospec=True, side_effect=decide_original,
+        ) as policy:
+            with self.assertRaises(OrchestrationError):
+                self.executor.execute(
+                    self.context, self.call(("selector", "first"), ("selector", "last"))
+                )
+        self.assertEqual(validator.call_count, 0)
+        self.assertEqual(policy.call_count, 0)
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.evidence_count(), 0)
+
+    @unittest.expectedFailure
+    def test_required_rejected_duplicate_preserves_prior_committed_evidence(self):
+        initial = self.executor.execute(
+            self.context, self.call(("selector", "initial"))
+        )
+        initial_evidence_id = initial.evidence_id
+        self.assertEqual(self.evidence_count(), 1)
+        with self.assertRaises(OrchestrationError):
+            self.executor.execute(
+                self.context,
+                self.call(("selector", "original"), ("selector", "replacement")),
+            )
+        self.assertEqual(self.calls, [{"selector": "initial"}])
+        self.assertEqual(self.evidence_count(), 1)
+        self.assertEqual(
+            self.state.get_evidence(initial_evidence_id).run_id, self.run_id
+        )
 
     @unittest.expectedFailure
     def test_required_denial_of_identical_duplicate_keys_before_any_effect(self):
