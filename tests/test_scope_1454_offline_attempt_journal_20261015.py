@@ -310,11 +310,42 @@ class OfflineAttemptJournalTests(unittest.TestCase):
         self.con.rollback()
         self.assertEqual(self.journal.review_phase(self.attempt)[0], "reserved")
 
+    def test_same_action_new_attempt_id_is_replay_not_new_authority(self):
+        self.assert_non_authorizing(
+            self.journal.reserve(self.attempt), "REVIEW_ONLY")
+        renamed = dataclasses.replace(
+            self.attempt, attempt_id="fixture-same-action-different-id")
+        self.assert_non_authorizing(self.journal.reserve(renamed), "HOLD")
+        self.assertEqual(self.count(), 1)
+        self.assertEqual(self.journal.review_phase(renamed)[0], "unknown")
+
+    def test_new_run_id_creates_independent_synthetic_attempt(self):
+        self.journal.reserve(self.attempt)
+        next_run = dataclasses.replace(
+            self.attempt, attempt_id="fixture-second-attempt", run_id="fixture-run-b")
+        self.assert_non_authorizing(self.journal.reserve(next_run), "REVIEW_ONLY")
+        self.assertEqual(self.count(), 2)
+        self.assertIs(self.journal.review_backlog().as_dict()["dispatch_allowed"], False)
+
+    def test_action_binding_corruption_cannot_finish_or_claim_review(self):
+        self.journal.reserve(self.attempt)
+        self.con.execute(
+            "UPDATE offline_scope_1454_attempts SET operation_fingerprint=?",
+            ("f" * 64,),
+        )
+        self.con.commit()
+        self.assert_non_authorizing(
+            self.journal.mark_uncertain(self.attempt), "HOLD")
+        self.assertEqual(self.journal.review_phase(self.attempt)[0], "unknown")
+        self.assertEqual(self.con.execute(
+            "SELECT phase FROM offline_scope_1454_attempts"
+        ).fetchone()[0], "reserved")
+
     def test_backlog_reports_only_capped_phase_counts_without_identities(self):
         from scope_1454_offline_attempt_journal import OfflineBacklogReview
         a = self.attempt
-        b = fixture(attempt_id="fixture-attempt-b")
-        c = fixture(attempt_id="fixture-attempt-c")
+        b = fixture(attempt_id="fixture-attempt-b", run_id="fixture-run-b")
+        c = fixture(attempt_id="fixture-attempt-c", run_id="fixture-run-c")
         self.journal.reserve(a)
         self.journal.reserve(b)
         self.journal.reserve(c)
@@ -387,9 +418,9 @@ class OfflineAttemptJournalTests(unittest.TestCase):
         for index in range(257):
             self.con.execute(
                 "INSERT INTO offline_scope_1454_attempts "
-                "(attempt_id,sealed_binding,phase,evidence_digest) "
-                "VALUES(?,?,'reserved',NULL)",
-                (f"fixture-batch-{index}", binding)
+                "(attempt_id,sealed_binding,operation_fingerprint,phase,evidence_digest) "
+                "VALUES(?,?,?,'reserved',NULL)",
+                (f"fixture-batch-{index}", binding, f"{index:064x}")
             )
         self.con.commit()
         projection = self.journal.review_backlog().as_dict()
