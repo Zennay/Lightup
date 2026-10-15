@@ -73,3 +73,17 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_294_exact_net
 ```
 
 **Release still requires original source-owner fixes, installed expected-RED -> plain-PASS conversion, real #177 consent, #347 revocation, independent registered VPS runner evidence and human/security/privacy sign-off.**
+
+## W5: duplicate host declarations cannot disappear silently in the optional review
+
+The detached metadata snapshot formerly accepted `["host.example.test", "host.example.test"]` and silently deduplicated it into one `frozenset` item. The stricter **uninstalled** reviewer now holds list/tuple inputs whose exact lexical host identity occurs more than once. Since host membership is a set-like concept, a caller must explicitly supply unique entries instead of relying on implicit normalization.
+
+The behavior remains conservative and non-authorizing: original `set` / `frozenset` hosts already have unique entries and remain REVIEW_ONLY (not permits). Distinct *textual spellings* such as `HOST.EXAMPLE.TEST` and `host.example.test` are not unexpectedly collapsed by this metadata layer; IDNA, case and Unicode semantic alias interpretation remain separate source-owner #285/#1437 concerns and cannot confer grants here.
+
+New dedicated `tests/test_scope_294_duplicate_host_identity_review_20261015.py` executes nine tests: list/tuple duplicate rejection, all-or-nothing behavior with valid networks, retaining exact lexical aliases without normalization, stable post-snapshot caller mutation, no installed-policy mutation, an **actual local CLI subprocess** with private HOLD response/exit 2, and no DNS/socket/executor I/O.
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_294_duplicate_host_identity_review_20261015.py' -v
+```
+
+A shape REVIEW_ONLY after this additional narrowing remains explicitly **not authorization, consent, grant, approval, scan permission or release readiness**, and does not fix installed #294/#292/#296 policy code. DRAFT/HOLD.
