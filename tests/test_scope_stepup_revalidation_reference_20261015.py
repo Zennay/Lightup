@@ -233,5 +233,62 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
         self.assertEqual(fence.review_count, 1)
 
 
+    def test_registry_aba_swap_back_still_invalidates_precheck(self):
+        fence, request, _, tool = fixture()
+        def mutate_twice():
+            fence.replace_synthetic_tool(ToolSnapshot("lab-other", "lab-capability", 5))
+            fence.replace_synthetic_tool(tool)
+            return True
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=mutate_twice), "HOLD"
+        )
+        self.assertEqual(fence.review_count, 0)
+
+    def test_revoke_then_restore_identical_snapshot_still_holds(self):
+        fence, request, approval, tool = fixture()
+        def restore_after_revoke():
+            fence.revoke()
+            fence.replace_synthetic_reference(approval, tool)
+            return True
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=restore_after_revoke),
+            "HOLD",
+        )
+        self.assertEqual(fence.review_count, 0)
+
+    def test_four_waiting_reviewers_all_hold_after_one_revoke(self):
+        for _ in range(4):
+            fence, request, _, _ = fixture()
+            entered = [Event() for i in range(4)]
+            release = Event()
+            outcomes, errors = [], []
+            def worker(i):
+                try:
+                    def probe():
+                        entered[i].set()
+                        if not release.wait(3):
+                            raise TimeoutError("unreleased synthetic probe")
+                        return True
+                    outcomes.append(fence.review(request, NOW, isolation_probe=probe))
+                except Exception as exc:
+                    errors.append(exc)
+            threads = [Thread(target=worker, args=(i,), daemon=True) for i in range(4)]
+            for thread in threads:
+                thread.start()
+            try:
+                self.assertTrue(all(event.wait(3) for event in entered))
+                fence.revoke()
+            finally:
+                release.set()
+                for thread in threads:
+                    thread.join(timeout=3)
+            self.assertFalse(errors)
+            self.assertTrue(all(not thread.is_alive() for thread in threads))
+            self.assertEqual(len(outcomes), 4)
+            for receipt in outcomes:
+                self.assert_non_authorizing(receipt, "HOLD")
+            self.assertEqual(fence.review_count, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
