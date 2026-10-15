@@ -408,6 +408,14 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                     )
                     if code != 403 or len(store.list_clients(operator)) != baseline:
                         return False
+                    # A header must not turn an unauthenticated logout into
+                    # a CSRF-free GET or revoke the existing operator session.
+                    code, _, _ = send(
+                        port, "POST", "/logout", token=op_token,
+                        form={"csrf": "forged"}, headers={name: "GET"},
+                    )
+                    if code != 403 or store.session_context(op_token) is None:
+                        return False
                 # A *legitimate* operator POST is still a POST even with
                 # forged GET metadata, and needs the actual session CSRF.
                 code, _, _ = send(
@@ -415,8 +423,19 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                     form={"name": "Synthetic Valid", "csrf": op_csrf},
                     headers={check.OVERRIDE_NAMES[0]: "GET"},
                 )
-                return (code == 303 and
-                        len(store.list_clients(operator)) == baseline + 1)
+                if code != 303 or len(store.list_clients(operator)) != baseline + 1:
+                    return False
+                # Valid logout is not disabled by a forged GET header: the
+                # POST+CSRF must still revoke precisely this operator token.
+                code, _, _ = send(
+                    port, "POST", "/logout", token=op_token,
+                    form={"csrf": op_csrf},
+                    headers={check.OVERRIDE_NAMES[0]: "GET"},
+                )
+                if code != 303 or store.session_context(op_token) is not None:
+                    return False
+                code, h, _ = send(port, "GET", "/", token=op_token)
+                return code == 303 and h.get("Location") == "/login"
             # The same real app must expose the deliberate upstream method
             # substitution through a failed CSRF/write-negative control.
             self.assertFalse(check.run_probe(
