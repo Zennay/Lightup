@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import socket
+import tempfile
 from pathlib import Path
 import subprocess
 import sys
@@ -124,6 +126,32 @@ class SyntheticProvenanceReviewTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(original, OK)
         self.assertEqual(first, {"status": "REVIEW_ONLY", **FALSE_FLAGS})
+
+
+    def test_rejects_socket_stdin_without_consuming_or_reporting(self):
+        left, right = socket.socketpair()
+        try:
+            with subprocess.Popen([sys.executable, str(SCRIPT)], stdin=left,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE) as proc:
+                left.close()
+                right.sendall(OK)
+                right.shutdown(socket.SHUT_WR)
+                out, err = proc.communicate(timeout=3)
+                self.assertEqual(proc.returncode, 2)
+                self.assertEqual(out, b"")
+                self.assertEqual(err, b"")
+        finally:
+            left.close()
+            right.close()
+
+    def test_rejects_file_stdout_without_writing_receipt(self):
+        with tempfile.TemporaryFile() as destination:
+            p = subprocess.run([sys.executable, str(SCRIPT)], input=OK,
+                               stdout=destination, stderr=subprocess.PIPE, timeout=3)
+            self.assertEqual(p.returncode, 2)
+            self.assertEqual(p.stderr, b"")
+            destination.seek(0)
+            self.assertEqual(destination.read(), b"")
 
 
 if __name__ == "__main__":
