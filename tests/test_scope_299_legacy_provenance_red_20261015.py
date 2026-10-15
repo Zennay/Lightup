@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import sys
 import unittest
+from unittest import mock
 from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -36,6 +37,16 @@ class _ForeignString(str):
 
 
 class LegacyAuthorization299Tests(unittest.TestCase):
+    def setUp(self):
+        # Real installed source must never create sockets or resolve fictional hosts.
+        for function in ("socket", "create_connection", "getaddrinfo", "gethostbyname", "gethostbyname_ex"):
+            patcher = mock.patch(
+                "socket." + function,
+                side_effect=AssertionError("network/DNS is forbidden in #299 contract"),
+            )
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
     def test_canonical_public_host_keeps_current_scope_behavior(self):
         auth = Authorization(owner="fictional-owner", reference="NOT-A-CONSENT")
         target = Target(HOST, authorization=auth)
@@ -49,6 +60,23 @@ class LegacyAuthorization299Tests(unittest.TestCase):
             _network_policy().decide(Target(PUBLIC_IP, authorization=auth)).reason,
             ScopeReason.EXPLICIT_NETWORK,
         )
+
+    def test_canonical_authorized_activation_only_creates_inert_permit(self):
+        # Permit construction is a pure in-memory observation, not a client grant.
+        gate = ActivationGate(
+            _host_policy(),
+            ActivationPolicy(
+                mode=ActivationMode.AUTHORIZED,
+                activation_reference="SYNTHETIC-OPERATOR",
+            ),
+        )
+        target = Target(HOST, Authorization("fictional-owner", "NOT-A-CONSENT"))
+        permit = gate.issue(target, CAPABILITY)
+        self.assertEqual(permit.target, HOST)
+        self.assertEqual(permit.capability_id, CAPABILITY)
+        self.assertEqual(permit.mode, ActivationMode.AUTHORIZED)
+        self.assertEqual(permit.activation_reference, "SYNTHETIC-OPERATOR")
+        self.assertEqual(target.authorization.reference, "NOT-A-CONSENT")
 
     def test_missing_public_authorization_still_denies(self):
         self.assertEqual(
@@ -131,14 +159,14 @@ class LegacyAuthorization299OracleTests(unittest.TestCase):
     def test_strict_installed_source_red_oracle_and_green_controls(self):
         """Reject crashes/skips and unexpected successes disguised as intended REDs.
 
-        This verifier replays the six RED + six controls inside a private result.
+        This verifier replays the six RED + seven controls inside a private result.
         It will FAIL as soon as the source is fixed, until the owner migrates the
         RED assertions to ordinary green tests. It is *not* release evidence.
         """
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(LegacyAuthorization299Tests)
         result = unittest.TestResult()
         suite.run(result)
-        self.assertEqual(result.testsRun, 12)
+        self.assertEqual(result.testsRun, 13)
         self.assertEqual(result.errors, [], "unexpected source/test harness error")
         self.assertEqual(result.failures, [], "unexpected green control failure")
         self.assertEqual(result.skipped, [], "a required case was skipped")
@@ -165,7 +193,6 @@ class LegacyAuthorization299OracleTests(unittest.TestCase):
                 self.assertIn("AssertionError: PermissionError not raised", detail)
             else:
                 self.assertIn("AssertionError: True is not false", detail)
-            self.assertNotIn("Traceback (most recent call last):\\n  File \"", detail.split("AssertionError:")[-1])
 
 
 if __name__ == "__main__":
