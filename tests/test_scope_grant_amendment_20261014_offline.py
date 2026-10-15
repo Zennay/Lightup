@@ -776,13 +776,12 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
             self.assertEqual(reviewer._bounded_stdin(), b"")
         reader.assert_not_called()
 
-    def test_512_real_grant_runtime_permission_differential_matrix(self):
+    def test_2048_real_grant_runtime_permission_differential_matrix(self):
         # Test only: evaluate actual source-model predicates on synthetic grants
         # across a finite request lattice. No issuance, storage, executor or I/O.
         from datetime import datetime, timezone
         from lightup.engagements import AuthorizationGrant, RiskLevel, ScopeDefinition
 
-        original = fixture()
         candidates = ("lab-a.example", "lab-b.example", "lab-c.example", "unknown.example")
         capabilities = ("http_headers", "tls_baseline", "new_tool")
         moments = (
@@ -814,7 +813,6 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
                 recurring_retest_allowed=d["recurring_retest_allowed"],
             )
 
-        baseline = as_grant(original["before"])
         def permits(grant, asset, capability, risk, moment):
             return (
                 grant.is_current(moment)
@@ -823,49 +821,65 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
                 and int(grant.scope.max_risk) >= risk
             )
 
-        # Six narrowing dimensions, three widening dimensions. Widenings must
-        # HOLD even when an unrelated narrowing masks the effective allowance.
-        for bits in range(512):
-            item = fixture()
-            updated = item["after"]
-            if bits & 1:
-                updated["assets"] = []
-            if bits & 2:
-                updated["excluded_assets"].append("lab-a.example")
-            if bits & 4:
-                updated["capabilities"] = ["tls_baseline"]
-            if bits & 8:
-                updated["max_risk"] = 1
-            if bits & 16:
-                updated["valid_from"] = "2026-10-14T06:00:00Z"
-            if bits & 32:
-                updated["valid_until"] = "2026-10-14T18:00:00Z"
-            if bits & 64:
-                updated["assets"].append("lab-c.example")
-            if bits & 128:
-                updated["excluded_assets"] = [
-                    v for v in updated["excluded_assets"] if v != "lab-b.example"
-                ]
-            if bits & 256:
-                updated["capabilities"].append("new_tool")
+        # Four real-model baseline shapes: explicit/unrestricted original
+        # capabilities crossed with populated/revoked original assets.
+        # Every combination compares *actual* ScopeDefinition allowances.
+        for baseline_flags in range(4):
+            for bits in range(512):
+                item = fixture()
+                if baseline_flags & 1:
+                    item["before"]["capabilities"] = []
+                if baseline_flags & 2:
+                    item["before"]["assets"] = []
+                    item["after"]["assets"] = []
+                updated = item["after"]
+                if bits & 1:
+                    updated["assets"] = []
+                if bits & 2:
+                    updated["excluded_assets"].append("lab-a.example")
+                if bits & 4:
+                    updated["capabilities"] = ["tls_baseline"]
+                if bits & 8:
+                    updated["max_risk"] = 1
+                if bits & 16:
+                    updated["valid_from"] = "2026-10-14T06:00:00Z"
+                if bits & 32:
+                    updated["valid_until"] = "2026-10-14T18:00:00Z"
+                if bits & 64:
+                    updated["assets"].append("lab-c.example")
+                if bits & 128:
+                    updated["excluded_assets"] = [
+                        v for v in updated["excluded_assets"] if v != "lab-b.example"
+                    ]
+                if bits & 256:
+                    updated["capabilities"].append("new_tool")
 
-            receipt, code = reviewer.review(encode(item))
-            amended = as_grant(updated)
-            with self.subTest(bits=bits):
-                self.assert_denied_authority(receipt, code)
-                if bits & (64 | 128 | 256):
-                    self.assertEqual((receipt["status"], code), ("HOLD", 2))
-                else:
-                    self.assertEqual((receipt["status"], code), ("REVIEW_ONLY", 3))
-                    for asset in candidates:
-                        for capability in capabilities:
-                            for risk in (0, 1, 2, 3, 4):
-                                for moment in moments:
-                                    if permits(amended, asset, capability, risk, moment):
-                                        self.assertTrue(
-                                            permits(baseline, asset, capability, risk, moment),
-                                            msg="offline review admitted a newly permitted real-model request",
-                                        )
+                baseline = as_grant(item["before"])
+                amended = as_grant(updated)
+                receipt, code = reviewer.review(encode(item))
+                with self.subTest(baseline=baseline_flags, bits=bits):
+                    self.assert_denied_authority(receipt, code)
+                    # A newly added tool is a widening ONLY when the source
+                    # grant had an explicit capability list. If the source
+                    # was unrestricted, adding a named allowed tool to an
+                    # explicit after-list remains strictly narrower.
+                    widened = bool(
+                        (bits & (64 | 128))
+                        or ((bits & 256) and not (baseline_flags & 1))
+                    )
+                    if widened:
+                        self.assertEqual((receipt["status"], code), ("HOLD", 2))
+                    else:
+                        self.assertEqual((receipt["status"], code), ("REVIEW_ONLY", 3))
+                        for asset in candidates:
+                            for capability in capabilities:
+                                for risk in (0, 1, 2, 3, 4):
+                                    for moment in moments:
+                                        if permits(amended, asset, capability, risk, moment):
+                                            self.assertTrue(
+                                                permits(baseline, asset, capability, risk, moment),
+                                                msg="offline review admitted a new real-model permission",
+                                            )
 
     def test_full_asset_revocation_is_review_only_and_has_no_real_model_targets(self):
         from lightup.engagements import RiskLevel, ScopeDefinition
