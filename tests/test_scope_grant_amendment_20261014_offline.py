@@ -116,7 +116,7 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
             (("after", "recurring_retest_allowed"), 1),
             (("after", "assets"), "lab.example"),
             (("after", "capabilities"), []),
-            (("after", "assets"), []),
+            (("before", "assets"), []),
             (("after", "assets"), ["lab-a.example", "lab-a.example"]),
             (("after", "assets"), ["UPPERCASE.example"]),
             (("after", "grant_id"), ""),
@@ -829,7 +829,7 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
             item = fixture()
             updated = item["after"]
             if bits & 1:
-                updated["assets"] = ["lab-b.example"]
+                updated["assets"] = []
             if bits & 2:
                 updated["excluded_assets"].append("lab-a.example")
             if bits & 4:
@@ -866,6 +866,54 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
                                             permits(baseline, asset, capability, risk, moment),
                                             msg="offline review admitted a newly permitted real-model request",
                                         )
+
+    def test_full_asset_revocation_is_review_only_and_has_no_real_model_targets(self):
+        from lightup.engagements import RiskLevel, ScopeDefinition
+
+        proposal = fixture()
+        proposal["after"]["assets"] = []
+        receipt, code = reviewer.review(encode(proposal))
+        self.assertEqual((receipt["status"], code), ("REVIEW_ONLY", 3))
+        self.assert_denied_authority(receipt, code)
+        self.assertEqual(receipt["widening_dimensions"], [])
+
+        revoked = ScopeDefinition(
+            assets=tuple(proposal["after"]["assets"]),
+            excluded_assets=tuple(proposal["after"]["excluded_assets"]),
+            allowed_capabilities=tuple(proposal["after"]["capabilities"]),
+            max_risk=RiskLevel(proposal["after"]["max_risk"]),
+        )
+        for asset in ("lab-a.example", "lab-b.example", "lab-c.example",
+                      "other.example", ""):
+            self.assertFalse(revoked.allows_asset(asset))
+        self.assertFalse(receipt["authorized"])
+        self.assertFalse(receipt["dispatch_enabled"])
+
+    def test_full_asset_revocation_does_not_launder_a_widened_other_dimension(self):
+        unsafe_updates = (
+            ("capabilities", ["tls_baseline", "http_headers", "new_tool"], "capabilities"),
+            ("max_risk", 4, "risk"),
+            ("valid_until", "2026-10-16T00:00:00Z", "window"),
+            ("recurring_retest_allowed", True, "recurring_retest"),
+            ("approved_by", "different-operator", "identity"),
+        )
+        for field, widened, dimension in unsafe_updates:
+            with self.subTest(field=field):
+                proposal = fixture()
+                proposal["after"]["assets"] = []
+                proposal["after"][field] = widened
+                receipt, code = reviewer.review(encode(proposal))
+                self.assertEqual((receipt["status"], code), ("HOLD", 2))
+                self.assertIn(dimension, receipt["widening_dimensions"])
+                self.assert_denied_authority(receipt, code)
+
+    def test_empty_new_capabilities_remains_unrestricted_and_is_refused(self):
+        proposal = fixture()
+        proposal["after"]["assets"] = []
+        proposal["after"]["capabilities"] = []
+        receipt, code = reviewer.review(encode(proposal))
+        self.assertEqual((receipt["status"], code), ("HOLD", 2))
+        self.assert_denied_authority(receipt, code)
 
     def test_cli_rejects_no_flag(self):
         result = subprocess.run(
