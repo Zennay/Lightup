@@ -362,7 +362,8 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
         """No socket I/O is trusted as an offline packet, even over AF_UNIX."""
         cmd = [sys.executable, str(ROOT / "scripts" /
                                   "review_scope_expiry_cohort_20261015_offline.py")]
-        with socket.socketpair() as (reader, writer):
+        reader, writer = socket.socketpair()
+        with reader, writer:
             writer.sendall(encoded(document()))
             writer.shutdown(socket.SHUT_WR)
             proc = subprocess.run(
@@ -411,7 +412,8 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
     def test_local_unix_socket_output_sink_refused_without_data(self):
         cmd = [sys.executable, str(ROOT / "scripts" /
                                   "review_scope_expiry_cohort_20261015_offline.py")]
-        with socket.socketpair() as (reader, writer):
+        reader, writer = socket.socketpair()
+        with reader, writer:
             proc = subprocess.run(
                 cmd, input=encoded(document()), stdout=writer,
                 stderr=subprocess.PIPE, check=False, timeout=5,
