@@ -195,6 +195,23 @@ class RevocationReviewCliAcceptance(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertNotIn(secret, json.dumps(r, ensure_ascii=False))
 
+    def test_json_encoded_bidi_and_zero_width_provenance_is_not_canonical(self):
+        for value in ("fake\\u202Eactor", "fake\\u200Bactor", "fake\\nactor"):
+            with self.subTest(value=ascii(value)):
+                r, status = review(encoded([row("2026-10-15T10:00:00Z",
+                                                value, "fixture")]))
+                self.assertEqual(status, 0)
+                self.assertEqual(r["class_counts"][0]["count"], 1)
+                self.assertNotIn(value, repr(r))
+
+    def test_json_decomposed_unicode_denied_but_nfc_review_allowed(self):
+        for value, expected_index in (("Cafe\\u0301", 0), ("Caf\\u00e9", 1)):
+            with self.subTest(value=ascii(value)):
+                r, status = review(encoded([row("2026-10-15T10:00:00Z",
+                                                value, "fixture")]))
+                self.assertEqual(status, 0)
+                self.assertEqual(r["class_counts"][expected_index]["count"], 1)
+
     def test_output_is_fixed_schema_and_no_raw_values(self):
         private = "fictional-client-secret-cannot-appear"
         r, status = review(encoded([row(actor=private)]))
