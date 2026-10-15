@@ -110,6 +110,19 @@ def inspect(raw):
             # Repeated test rows could be a retry or appended forged output.
             raise InvalidRoster("ambiguous repeated method")
         observed[fullname] = MAP.get(verdict, "skipped")
+    # Per-method rows may omit subtests; but they cannot outnumber the declared
+    # suite or independently contradict explicit summary counters. This is
+    # consistency only, never proof that the supplied job log is authentic.
+    if len(observed) > unittest_summary["reported_tests"]:
+        raise InvalidRoster("more distinct methods than total tests")
+    observed_counts = {kind: sum(result == kind for result in observed.values())
+                       for kind in VALID}
+    for kind, footer in (("expected_failure", "expected_failures"),
+                         ("unexpected_success", "unexpected_successes"),
+                         ("failed", "failures"), ("error", "errors"),
+                         ("skipped", "skipped")):
+        if observed_counts[kind] > unittest_summary[footer]:
+            raise InvalidRoster("test cases contradict footer")
     # No claim of exhaustive parsing: unittest may have formatted subtest lines.
     matched = set(expected) & set(observed)
     missing = set(expected) - set(observed)
