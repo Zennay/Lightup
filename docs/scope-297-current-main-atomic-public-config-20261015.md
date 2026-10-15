@@ -45,7 +45,7 @@ Keep the issue open and this PR draft until actual source-level enforcement is i
 
 In addition to the 18 real installed-source unit contracts, the draft now includes:
 - `scripts/scope_297_atomic_policy_witness_20261015.py` — one-command, **hardcoded fictional inputs only** diagnostic on the actual installed `ScopePolicy.decide`. Reports eight known host/network cross-path cases without publishing the input targets or fake grant data, includes DNS/socket tripwires, and **always exits code 2 / HOLD**.
-- `tests/test_scope_297_atomic_policy_witness_cli_20261015.py` — 12 separate deterministic offline controls on real source behavior, JSON/Dutch output, immutable hold flags, user-supplied-target refusal, no network/shell/files, privacy-minimal unexpected decision/constructor exception review and future *deny* behavior staying HOLD.
+- `tests/test_scope_297_atomic_policy_witness_cli_20261015.py` — 14 separate deterministic offline controls on real source behavior, JSON/Dutch output, immutable hold flags, user-supplied-target refusal, no network/shell/files, privacy-minimal unexpected decision/constructor exception review and future *deny* behavior staying HOLD.
 
 Invocation from the repo root:
 
@@ -64,3 +64,7 @@ Do not run against a live target, connect to production, merge, or deploy this d
 ### Constructor-hardening compatibility (W5)
 
 A future source-owner fix may fail closed **at `ScopePolicy(...)` construction**, before the decision call. The standalone reporter deliberately records that as generic `ERROR_REVIEW` with `HOLD`, redacted details, and permanently false permission flags rather than crashing or falsely declaring a successful authorization. A new separate regression checks exception privacy and refusal when a strict constructor raises. A source fix is only considered approved through ordinary denial acceptance + integrated owner review, not this diagnostic.
+
+### W6: blocked network attempt gets its own review status
+
+The reporter now distinguishes an attempted source-level socket or DNS operation from an unrelated constructor/decision exception. Any such attempt is blocked **before I/O** and recorded as `NETWORK_BLOCKED_REVIEW` with `network_blocked_review_count`, while status and all permission flags remain strictly HOLD/false. Two dedicated synthetic hostile-source tests demonstrate socket creation and DNS resolution cannot escape the tripwires and cannot be mistaken for an authorization success. Do not interpret zero blocked attempts as proof of complete runtime network isolation; this is only the standalone reporter's own isolated Python context.
