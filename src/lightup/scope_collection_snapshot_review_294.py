@@ -97,6 +97,11 @@ def _bounded_hosts(raw: object) -> frozenset[str] | None:
                and not any(ord(ch) < 32 or ord(ch) == 127 for ch in item)
                for item in copied):
         return None
+    # A list/tuple pretending to represent an identity set must not silently
+    # discard repeated entries. Malformed input is HOLD, not a normalized
+    # REVIEW_ONLY receipt. Actual set/frozenset objects are unique by design.
+    if len(frozenset(copied)) != len(copied):
+        return None
     return frozenset(copied)
 
 
