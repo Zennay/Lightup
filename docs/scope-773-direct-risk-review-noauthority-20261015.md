@@ -52,6 +52,16 @@ not be represented as a passing production fix. Source-owner review is needed.
   and polymorphic string-equality refusal during serialization.
   This remains a reviewer aid, not a
   production authorization or any proof of asset consent.
+- The exact-tuple batch now snapshots the identity of each `RiskLevel`
+  ceiling before evaluating later elements and checks **every** prior ceiling
+  again before returning `REVIEW_ONLY`. A synthetic scope changed through
+  `object.__setattr__` or its normally mutable `__dict__` while another
+  entry is evaluated causes one opaque `HOLD`; a deleted field also returns
+  `HOLD`, not a traceback. Deterministic injected mutations, an in-call
+  self-mutation and unchanged repeated aliases are covered by regressions.
+  This narrows in-call review drift; **it is not an atomic snapshot or lock**
+  against arbitrary concurrent mutations, cannot bind identity after return,
+  and never authorizes dispatch.
 - The API receives only in-memory objects. No command-line entrypoint is
   provided. Never substitute this reviewer for the actual installed
   `ExecutionPolicy`, `ActivationGate` and per-dispatch grant resolver.
