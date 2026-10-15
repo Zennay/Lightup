@@ -235,6 +235,50 @@ class OfflineAttemptJournalTests(unittest.TestCase):
                 "WHERE name='offline_scope_1454_attempts'"
             ).fetchone())
 
+    def test_preexisting_same_name_table_with_no_primary_key_refused(self):
+        path = str(Path(self.temp.name) / "forged_reference_schema.db")
+        with closing(sqlite3.connect(path)) as con:
+            con.execute(
+                "CREATE TABLE offline_scope_1454_attempts ("
+                "attempt_id TEXT, sealed_binding TEXT, phase TEXT, evidence_digest TEXT)"
+            )
+            con.commit()
+            with self.assertRaises(ValueError):
+                OfflineAttemptJournal(con)
+            self.assertEqual(con.execute(
+                "PRAGMA table_info(offline_scope_1454_attempts)"
+            ).fetchall()[0][5], 0)
+
+    def test_preexisting_trigger_must_not_promote_spoofed_reservation(self):
+        path = str(Path(self.temp.name) / "triggered_reference.db")
+        with closing(sqlite3.connect(path)) as con:
+            OfflineAttemptJournal(con)
+            con.execute("""
+                CREATE TRIGGER ignore_attempt BEFORE INSERT ON
+                    offline_scope_1454_attempts
+                BEGIN SELECT RAISE(IGNORE); END
+            """)
+            con.commit()
+            with self.assertRaises(ValueError):
+                OfflineAttemptJournal(con)
+
+    def test_temp_table_shadowing_reference_is_refused(self):
+        with closing(sqlite3.connect(":memory:")) as con:
+            OfflineAttemptJournal(con)
+            con.execute(
+                "CREATE TEMP TABLE offline_scope_1454_attempts ("
+                "attempt_id TEXT, sealed_binding TEXT, phase TEXT, evidence_digest TEXT)"
+            )
+            with self.assertRaises(ValueError):
+                OfflineAttemptJournal(con)
+
+    def test_attached_database_cannot_influence_synthetic_journal(self):
+        with closing(sqlite3.connect(":memory:")) as con:
+            OfflineAttemptJournal(con)
+            con.execute("ATTACH DATABASE ':memory:' AS shadow_fixture")
+            with self.assertRaises(ValueError):
+                OfflineAttemptJournal(con)
+
     def test_real_sqlite_preinsert_failure_atomic_hold(self):
         self.con.execute("""
             CREATE TRIGGER refuse_offline_reservation
