@@ -14,13 +14,17 @@ Acceptance matrix:
 
 1. Unique required + optional fields: one inert callback, exactly one durable matching evidence row.
 2. Unknown argument name or incorrect argument type: `OrchestrationError`, **zero** callbacks, **zero** evidence.
-3. Current-source ordinary **PASS unsafe witnesses**: (a) two valid values for the required name, (b) invalid first / valid last, (c) two optional values all collapse to the last value. For each, prove **one** callback and exactly one durable row; an unrelated crash cannot count as a meaningful RED.
-4. Three separate **intentionally expected source RED** requirements: duplicate required/invalid-first/optional-key values must raise `OrchestrationError` **before** any callback or evidence. Their expected-failure status is a statement of the *unfixed* current source, not a successful security fix.
+3. Current-source ordinary **PASS unsafe witnesses**: (a) two valid values for the required name, (b) invalid first / valid last, (c) two optional values, (d) two identical values and (e) nonadjacent triple duplicates all collapse to the last value. For each, prove **one** callback and exactly one durable row; an unrelated crash cannot count as a meaningful RED.
+4. Five separate **intentionally expected source RED** requirements: duplicate required/invalid-first/optional-key/identical/triple-key values must raise `OrchestrationError` **before** any callback or evidence. Their expected-failure status is a statement of the *unfixed* current source, not a successful security fix.
 
 No network operations, subprocesses, real target metadata, active interaction, customer consent or privileged access are requested in these tests.
 
 ## Handoff / release boundary
 
-Do not merge or deploy this diagnostic draft to claim a production security improvement. Owner must reject duplicate names **before collapse** while retaining unique-key behavior, consider noncanonical argument name types under separate #1094 and existing tool contract, and run ordinary PASS assertions of zero handler/evidence for all formerly expected RED cases. Retire or invert the three original-source unsafe PASS witnesses after owner repair.
+Do not merge or deploy this diagnostic draft to claim a production security improvement. Owner must reject duplicate names **before collapse** while retaining unique-key behavior, consider noncanonical argument name types under separate #1094 and existing tool contract, and run ordinary PASS assertions of zero handler/evidence for all formerly expected RED cases. Retire or invert the five original-source unsafe PASS witnesses after owner repair.
 
 Require immutable exact-head Python 3.11/3.14 hosted tests and **separate genuinely assigned permanent registered VPS runner** logs, plus independent security/privacy approval, current authorization and explicit human release. A workflow badge or queued self-hosted job is insufficient evidence. This independent branch must remain DRAFT/HOLD until owner integration and approval. Source owner #107 and the older isolated #1146 are **not modified**.
+
+## First exact-head CI observation (now superseded by additional tests)
+
+At former immutable `853443d358203c5ad76c552d384d8e1e2677ce29`, original GitHub-hosted [preflight #38808214137](https://github.com/Zennay/Lightup/actions/runs/38808214137) Python 3.11 and 3.14 checkout logs explicitly showed **all nine then-own tests correct (six ordinary PASS and three deliberately expected installed-source RED)**. Each entire unit run executed **1,246 tests, 26 expected failures and exactly one unrelated pre-existing #301 fixed-calendar-window test FAIL** (line 111). This failure is real and not masked. Because units failed, real producer integrations were skipped: do not claim end-to-end green. The separate registered [VPS CI #38808214030](https://github.com/Zennay/Lightup/actions/runs/38808214030) remained queued with no demonstrated runner assignment. Those logs are **NOT** exact-head verification for the later four added duplicate/identical/triple-key tests (13 methods, eight ordinary plus five expected RED). Re-check both versions and registered VPS on the new immutable head.
