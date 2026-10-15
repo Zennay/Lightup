@@ -129,6 +129,23 @@ class Issue297OfflineWitnessTests(unittest.TestCase):
         self.assertEqual(receipt["unsafe_allow_count"], 0)
         self.assertNotIn("PRIVATE-SECRET", json.dumps(receipt) + rendered)
 
+    def test_future_constructor_rejection_is_generic_hold_not_crash(self):
+        class RejectsMalformedAtConstruction:
+            def __init__(self, **_):
+                raise ValueError("PRIVATE-ISSUER-DATA-MUST-NOT-LEAK")
+
+        with patch.object(witness, "ScopePolicy", RejectsMalformedAtConstruction):
+            receipt = witness.evaluate()
+            text_report = witness.render_dutch(receipt)
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(receipt["error_review_count"], 8)
+        self.assertEqual(receipt["unsafe_allow_count"], 0)
+        self.assertFalse(any(receipt["permissions"].values()))
+        self.assertNotIn(
+            "PRIVATE-ISSUER-DATA",
+            json.dumps(receipt) + text_report,
+        )
+
     def test_cli_does_not_write_any_files(self):
         # The implementation is pure reporting with no cwd, os.open or tempfile.
         with (
