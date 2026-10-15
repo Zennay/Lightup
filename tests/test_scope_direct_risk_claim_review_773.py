@@ -173,6 +173,62 @@ class DirectRiskReviewTests(unittest.TestCase):
         self.assertEqual(len(receipt), 2)
         self.assertEqual(receipt._fields, ("status", "reason_code"))
 
+    def test_reviewer_has_no_file_network_or_process_effects(self):
+        """Real deny-tripwires around the pure in-memory inspection call."""
+        import builtins
+        import socket
+        import subprocess
+        from unittest.mock import patch
+
+        allowed = self.scope(RiskLevel.STANDARD)
+        corrupt = self.scope(99)
+
+        def forbidden(*_args, **_kwargs):
+            raise AssertionError("risk reviewer attempted external I/O")
+
+        with (
+            patch.object(builtins, "open", side_effect=forbidden),
+            patch.object(os, "open", side_effect=forbidden),
+            patch.object(os, "system", side_effect=forbidden),
+            patch.object(socket, "socket", side_effect=forbidden),
+            patch.object(socket, "create_connection", side_effect=forbidden),
+            patch.object(subprocess, "Popen", side_effect=forbidden),
+            patch.object(subprocess, "run", side_effect=forbidden),
+        ):
+            valid_receipt = inspect_direct_scope_risk(
+                allowed, RiskLevel.LOW_IMPACT
+            )
+            denied_receipt = inspect_direct_scope_risk(
+                corrupt, RiskLevel.LOW_IMPACT
+            )
+        self.assertIs(valid_receipt.status, ReviewStatus.REVIEW_ONLY)
+        self.assertIs(denied_receipt.status, ReviewStatus.HOLD)
+        self.assert_non_authorizing(valid_receipt)
+        self.assert_non_authorizing(denied_receipt)
+
+    def test_reviewer_module_static_import_boundary(self):
+        """Freeze the opt-in module to enum/typing/model imports, no I/O SDKs."""
+        import ast
+
+        own_module = os.path.join(
+            ROOT, "scripts", "review_scope_direct_risk_claim_773.py"
+        )
+        with open(own_module, encoding="utf-8") as handle:
+            tree = ast.parse(handle.read(), filename=own_module)
+        allowed = {"__future__", "enum", "typing", "lightup.engagements"}
+        imported = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                imported.append(node.module)
+            elif isinstance(node, ast.Import):
+                imported.extend(alias.name for alias in node.names)
+            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                self.assertNotIn(
+                    node.func.id,
+                    {"open", "eval", "exec", "compile", "__import__", "input"},
+                )
+        self.assertEqual(set(imported), allowed)
+
     def test_canonical_risk_request_order_only_narrows(self):
         levels = [RiskLevel.ANALYSIS_ONLY, RiskLevel.PASSIVE,
                   RiskLevel.LOW_IMPACT, RiskLevel.STANDARD, RiskLevel.ELEVATED]
