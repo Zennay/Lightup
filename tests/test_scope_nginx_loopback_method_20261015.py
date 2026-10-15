@@ -114,7 +114,7 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
         # inspection of text alone, must catch every missing strip.
         stripped = self.template.replace(
             "        proxy_request_buffering on;",
-            "".join(f'        proxy_set_header {name} "";\\n'
+            "".join(f'        proxy_set_header {name} "";\n'
                     for name in check.OVERRIDE_NAMES)
             + "        proxy_request_buffering on;",
         )
@@ -122,7 +122,7 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
         for name in check.OVERRIDE_NAMES:
             with self.subTest(header=name):
                 altered = stripped.replace(
-                    f'        proxy_set_header {name} "";\\n', ""
+                    f'        proxy_set_header {name} "";\n', ""
                 )
                 self.assertFalse(check.run_probe(altered))
 
