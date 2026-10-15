@@ -497,6 +497,30 @@ class OfflineExactNetworks292296(unittest.TestCase):
                 self.assertEqual(guard.review(raw), "HOLD")
                 self.assertFalse(json.loads(guard.receipt(guard.review(raw)))["is_grant"])
 
+    def test_each_cidr_byte_escape_alias_fails_closed(self):
+        # These bytes decode to the same network string, but the raw network
+        # declaration contains an escape alias and is not canonical evidence.
+        literals = ("198.51.100.0/24", "2001:db8::/64")
+        count = 0
+        for literal in literals:
+            for position, ch in enumerate(literal):
+                alias = literal[:position] + f"\\u{ord(ch):04x}" + literal[position + 1:]
+                raw = ('{"explicit_networks":["' + alias + '"]}').encode("ascii")
+                with self.subTest(network=literal, position=position):
+                    self.assertEqual(json.loads(raw)["explicit_networks"], [literal])
+                    self.assertEqual(guard.review(raw), "HOLD")
+                count += 1
+        self.assertEqual(count, sum(len(v) for v in literals))
+
+    def test_each_envelope_key_character_escape_alias_fails_closed(self):
+        key = "explicit_networks"
+        for position, ch in enumerate(key):
+            variant = key[:position] + f"\\u{ord(ch):04x}" + key[position + 1:]
+            raw = ('{"' + variant + '":["198.51.100.0/24"]}').encode("ascii")
+            with self.subTest(position=position):
+                self.assertEqual(set(json.loads(raw)), {key})
+                self.assertEqual(guard.review(raw), "HOLD")
+
     def test_structural_json_whitespace_remains_reviewable(self):
         examples = (
             b'{"explicit_networks":["198.51.100.0/24"]}',
