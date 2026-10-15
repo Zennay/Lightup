@@ -212,6 +212,42 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
                             "fixture-only-no-adapter",
                         )
 
+    def test_64_authorized_exact_ipv6_network_permits_preserve_full_target_identity(self):
+        """Correct bracketed /128 controls for source-owner parser repair."""
+        with self.no_network(), patch(
+            "lightup.activation.token_urlsafe",
+            return_value="FAKE-TEST-ONLY-NEVER-DEPLOY",
+        ):
+            for hextet in range(64):
+                literal = str(ipaddress.IPv6Address(f"2001:db8:6:{hextet:x}::1"))
+                other = str(ipaddress.IPv6Address(f"2001:db8:7:{hextet:x}::1"))
+                policy = ScopePolicy(
+                    allow_private_lab=False,
+                    explicit_hosts=frozenset({"2001"}),
+                    explicit_networks=(literal + "/128",),
+                    require_authorization_for_public=True,
+                )
+                gate = ActivationGate(
+                    policy,
+                    ActivationPolicy(
+                        mode=ActivationMode.AUTHORIZED,
+                        activation_reference="FIXTURE-ONLY",
+                    ),
+                )
+                permit = gate.issue(
+                    Target("[" + literal + "]", authorization=SYNTHETIC_AUTH),
+                    "fixture-only-no-adapter",
+                )
+                self.assertEqual(permit.target, literal)
+                self.assertEqual(permit.capability_id, "fixture-only-no-adapter")
+                self.assertEqual(permit.permit_id, "FAKE-TEST-ONLY-NEVER-DEPLOY")
+                self.assertEqual(permit.mode, ActivationMode.AUTHORIZED)
+                with self.assertRaises(PermissionError):
+                    gate.issue(
+                        Target("[" + other + "]", authorization=SYNTHETIC_AUTH),
+                        "fixture-only-no-adapter",
+                    )
+
     def test_valid_bracketed_authority_remains_full_canonical_identity(self):
         with self.no_network():
             for literal in DOC_IPV6:
