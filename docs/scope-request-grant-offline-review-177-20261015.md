@@ -190,6 +190,26 @@ Source-owner follow-up: enforce stable request→grant cardinality or
 design signed, immutable explicit amendment/retest approvals with a
 proper migration and atomic uniqueness constraints.
 
+## W14: require a request FK value on every stored grant
+
+SQLite `REFERENCES` is not the same as `NOT NULL REFERENCES`: a nullable
+`approved_request_id` child is considered **valid** by SQLite's normal
+`PRAGMA foreign_key_check` even when it has **no approved request at all**.
+This was a separate omission in global provenance review because one valid
+selected grant could coexist with an unselected NULL-linked grant. W14
+now scans the complete child table for **exact canonical, nonempty approval
+references** under the same bounded read-only transaction, then performs
+the real SQLite FK consistency scan. Any NULL, malformed or unlinked
+grant yields one global `HOLD`, regardless of which row was requested.
+
+Disposable in-memory and actual temporary `DomainStore` SQLite tests prove
+that SQLite itself reports **zero FK violations for NULL child rows**, yet
+both our single-row review and one-grant batch now **HOLD** when another
+unreviewed grant contains NULL. This does *not* change, migrate or delete
+any production data. Source-owner production migration should use
+`approved_request_id NOT NULL` and an authenticated, immutable,
+transactional binding with suitable uniqueness/revision constraints.
+
 ## W13: detect hidden concurrent same-target grants in single-record review
 
 A caller can omit conflicting grants from a requested batch, and the real
