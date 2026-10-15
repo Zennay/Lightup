@@ -48,8 +48,20 @@ def _canonical_claim(value: object) -> bool:
             return False
     except UnicodeEncodeError:
         return False
-    # A string with invisible or control characters is not reviewable.
-    return all(unicodedata.category(ch) not in ("Cc", "Cf", "Cs") for ch in value)
+    # Require one Unicode spelling rather than accepting visually equivalent
+    # but byte-distinct provenance claims. This is lexical review, not consent.
+    if unicodedata.normalize("NFC", value) != value:
+        return False
+    for ch in value:
+        category = unicodedata.category(ch)
+        # Reject format/control/private/unassigned characters and non-ASCII
+        # separators that can obscure provenance in logs and reviewer UIs.
+        if category[0] == "C" or (category[0] == "Z" and ch != " "):
+            return False
+        # U+034F (COMBINING GRAPHEME JOINER) is invisible despite Mn category.
+        if ch == "\u034f":
+            return False
+    return True
 
 
 def review_bytes(data: bytes) -> dict[str, str | bool]:
