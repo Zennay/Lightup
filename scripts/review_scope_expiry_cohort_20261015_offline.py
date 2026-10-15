@@ -7,11 +7,16 @@ Every exit is nonzero; every authority-related output bit is literally false.
 from __future__ import annotations
 
 import json
+import os
 import re
+import select
+import stat
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 
 MAX_INPUT_BYTES = 16 * 1024
+MAX_INPUT_SECONDS = 2.0
 MAX_CLAIMS = 32
 UTC_PATTERN = re.compile(
     r"([0-9]{4})-([0-9]{2})-([0-9]{2})T"
@@ -106,6 +111,42 @@ def review(payload: bytes) -> dict[str, object]:
     return {"status": "REVIEW_ONLY", **counts, **DENIAL_FLAGS}
 
 
+
+def _read_bounded_stdin() -> bytes:
+    """Read one local regular-file/FIFO packet with a fixed monotonic EOF deadline.
+
+    Byte limits alone cannot protect a CLI when a producer sends a prefix and
+    keeps the pipe open indefinitely. No sockets, TTYs, device nodes, filenames
+    or network endpoints are admitted. Restore fd0's original blocking state.
+    """
+    fd = sys.stdin.fileno()
+    if fd != 0:
+        raise ValueError("stdin descriptor is not canonical")
+    mode = os.fstat(fd).st_mode
+    if not (stat.S_ISFIFO(mode) or stat.S_ISREG(mode)):
+        raise ValueError("stdin must be a local pipe or regular file")
+
+    was_blocking = os.get_blocking(fd)
+    try:
+        os.set_blocking(fd, False)
+        deadline = time.monotonic() + MAX_INPUT_SECONDS
+        chunks = bytearray()
+        while len(chunks) <= MAX_INPUT_BYTES:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise ValueError("stdin EOF deadline")
+            readable, _, _ = select.select([fd], [], [], remaining)
+            if not readable:
+                raise ValueError("stdin EOF deadline")
+            chunk = os.read(fd, min(4096, MAX_INPUT_BYTES + 1 - len(chunks)))
+            if not chunk:
+                return bytes(chunks)
+            chunks.extend(chunk)
+        raise ValueError("stdin byte limit")
+    finally:
+        os.set_blocking(fd, was_blocking)
+
+
 def _receipt(status: str) -> dict[str, object]:
     return {"status": status, **DENIAL_FLAGS}
 
@@ -116,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if argv:
             raise ValueError("unexpected CLI arguments")
-        data = sys.stdin.buffer.read(MAX_INPUT_BYTES + 1)
+        data = _read_bounded_stdin()
         result = review(data)
         code = 3
     except (ValueError, TypeError, UnicodeError, OverflowError, OSError, RecursionError):
