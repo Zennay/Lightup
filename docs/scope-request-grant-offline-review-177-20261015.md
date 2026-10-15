@@ -181,6 +181,23 @@ Do **not** run this opt-in reviewer on a real customer database without
 separate permission to process those local records. It performs no outbound
 traffic, but reading sensitive records still requires authorization.
 
+## Real producer RED contract (source owner outstanding)
+
+Four **intentional** `unittest.expectedFailure` canaries now invoke actual
+`DomainStore.record_authorization_grant` in disposable SQLite databases
+and demand a fail-closed exception when (a) the tenant has **no approved
+assessment request**, (b) the granted asset **exceeds** the only approved
+request, (c) the grant's named approver is **not** the decision operator,
+or (d) the only matching request was explicitly **rejected**. Today all four
+demonstrate the unfixed issuance bypass as **expected RED**, never as a
+passing security invariant. They are not fixtures for real clients.
+
+The independent source owner must implement the genuine persisted request
+FK and denial guards, then convert these intentional expected failures into
+ordinary passing negative tests. A green CI suite containing these expected
+failures **does not mean live issuance is secure**. Runtime authorization
+and revocation/destination controls remain separate release gates.
+
 ## Required production integration (not done here)
 
 An independent source owner must implement durable approved-request linkage
