@@ -2,6 +2,68 @@
 
 **LightUp posture: INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** This is an independent, add-only acceptance artifact; it does not alter `src/lightup/**`, branch `chatgpt/scope-authorization-direct-grant-approval-provenance-red-20261007`, production authority, workflow configuration, or any other worker's PR.
 
+## W10: prove provenance narrowing cannot weaken other authorization gates (2026-10-15)
+
+**New observed risk in the test-only strict gate:** the W9 runner originally
+checked 14 malformed provenance variants and one legitimate grant only.
+A defective "fix" that rejects all 14 bad provenance values but
+simultaneously allows expired or out-of-scope assets would incorrectly
+pass the old gate. W10 closes this **gate integrity** hole without
+touching application source or another worker's PR.
+
+- Extend the actual-source-backed
+  `scripts/scope_777_strict_direct_policy_gate.py` with **11 independent
+  forbidden-decision controls**: missing grant, expired grant, future
+  grant, wrong asset, explicitly excluded asset, unapproved capability,
+  over-risk grant, destructive lab-only risk, lab mode without a lab
+  target, analysis with active risk, and passive with active risk.
+  A valid analysis-only request must also continue to be allowed.
+  All scenarios use synthetic `example.test` and no network/handlers.
+- The test-only receipt now reports `negative_controls_examined` and
+  `negative_controls_allowed`. It can produce `TEST_ONLY_PASS` only
+  if the canonical request is allowed, **all 14 noncanonical grants are
+  denied, all 11 independent negative guards deny, and the legitimate
+  analysis-only control remains allowed**. It never elevates any of
+  six literal false authority/release flags.
+- Reject `ExecutionPolicy` side effects and noncanonical return types.
+  The initial shallow request/grant snapshots missed changes to the
+  nested `ScopeDefinition` object, so W10 adds an independent
+  `deepcopy(request)` invariant. Two real regressions simulate
+  mutation of scope assets and allowed capabilities; both now fail
+  closed. Shallow snapshots remain to detect structural field changes.
+- Extend
+  `tests/test_scope_777_strict_gate_20261015.py` to **14 methods**:
+  all 11 negative boundaries are individually mutation-tested with
+  a test-only policy that correctly denies the 14 provenance faults
+  but falsely grants **one** distinct boundary. Every resulting
+  runner receipt is HOLD, with `invalid_allowed=0` and
+  `negative_controls_allowed=1`. Additional ordinary green
+  controls cover accidentally disabling valid analysis, nested scope
+  mutation on allow and deny, request/grant mutation, and PolicyDecision
+  subclass/non-boolean response spoofing.
+
+**Actual isolated Python 3.13.5 execution:** `PYTHONHASHSEED=random
+PYTHONPATH=src python -m unittest discover -s tests -p
+'test_scope_777_*_20261015.py' -q` completed **80 tests, 0 unexpected
+errors, 14 intentionally expected-RED provenance defects**.
+`python -m compileall -q scripts tests src` succeeded. Running
+`PYTHONPATH=src python scripts/scope_777_strict_direct_policy_gate.py`
+against the original current-main policy still returns **exit 2**:
+`{"status":"HOLD","invalid_examined":14,"invalid_allowed":14,
+"negative_controls_examined":11,"negative_controls_allowed":0,...}`.
+Exact GitHub copies of updated strict script and test file match locally
+executed files by Unicode character count and diagnostic FNV checksum.
+
+**Caveats:** this validates the test-only strict gate against the
+isolated current-main `engagements.py` and `execution_policy.py`, not
+the whole deployed product. The separate real-SQLite DomainStore suite,
+hosted Python 3.11/3.14 CI and permanently registered VPS CI are still
+unrun on this branch. The actual #777 production bypass remains
+**14 expected failures / open** until the PR #100 source owner
+changes `ExecutionPolicy.decide` and validates all gates on the
+integrated immutable SHA. Keep **INCUBATE, BRANCH-ONLY, DRAFT/HOLD**;
+no PR/merge/deploy/real grant/network scan/target contact.
+
 ## W9: strict production-policy RED gate (2026-10-15)
 
 To eliminate ambiguity from `@expectedFailure` turning unresolved security
