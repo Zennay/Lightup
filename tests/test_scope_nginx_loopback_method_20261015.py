@@ -54,6 +54,73 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     check.render_loopback_config(modified, 18001, 18002, Path(folder))
 
+    def test_closed_world_directive_order_count_and_scope(self):
+        # Even whitelisted text can become unsafe after Nginx scoping and
+        # inheritance changes. A set-membership allowlist alone is insufficient.
+        protected = self.template.replace(
+            "        proxy_request_buffering on;",
+            "".join(f'        proxy_set_header {name} "";\\n'
+                    for name in check.OVERRIDE_NAMES)
+            + "        proxy_request_buffering on;",
+        )
+        mutations = {
+            "remove_host_header": protected.replace(
+                "        proxy_set_header Host $http_host;\\n", ""),
+            "duplicate_host_header": protected.replace(
+                "        proxy_set_header Host $http_host;",
+                "        proxy_set_header Host $http_host;\\n"
+                "        proxy_set_header Host $http_host;"),
+            "swap_forwarding_order": protected.replace(
+                "        proxy_set_header X-Forwarded-For $remote_addr;\\n"
+                '        proxy_set_header X-Forwarded-Host "";',
+                '        proxy_set_header X-Forwarded-Host "";\\n'
+                "        proxy_set_header X-Forwarded-For $remote_addr;"),
+            "move_strip_into_server": protected.replace(
+                '        proxy_set_header X-HTTP-Method-Override "";\\n', ""
+            ).replace(
+                "    location / {",
+                '    proxy_set_header X-HTTP-Method-Override "";\\n'
+                "    location / {"),
+            "move_strip_after_location": protected.replace(
+                '        proxy_set_header X-HTTP-Method-Override "";\\n', ""
+            ).replace(
+                "    }\\n}",
+                '    }\\n    proxy_set_header X-HTTP-Method-Override "";\\n}'),
+            "duplicate_strip": protected.replace(
+                '        proxy_set_header X-HTTP-Method-Override "";',
+                '        proxy_set_header X-HTTP-Method-Override "";\\n'
+                '        proxy_set_header X-HTTP-Method-Override "";'),
+            "remove_body_buffering": protected.replace(
+                "        proxy_request_buffering on;\\n", ""),
+            "move_proxy_connect_timeout": protected.replace(
+                "        proxy_connect_timeout 5s;\\n", ""
+            ).replace(
+                "        proxy_pass http://127.0.0.1:8766;",
+                "        proxy_connect_timeout 5s;\\n"
+                "        proxy_pass http://127.0.0.1:8766;"),
+        }
+        with tempfile.TemporaryDirectory() as root:
+            for label, payload in mutations.items():
+                with self.subTest(label=label):
+                    self.assertNotEqual(payload, protected)
+                    with self.assertRaises(ValueError):
+                        check.render_loopback_config(
+                            payload, 18011, 18012, Path(root))
+            # Both the unmodified original and the independent owner-style
+            # candidate (headers inserted before X-Forwarded-Ssl) remain valid.
+            self.assertIn("listen 127.0.0.1:18011;",
+                          check.render_loopback_config(
+                              self.template, 18011, 18012, Path(root)))
+            owner_style = self.template.replace(
+                '        proxy_set_header X-Forwarded-Ssl "";',
+                "".join(f'        proxy_set_header {name} "";\\n'
+                        for name in check.OVERRIDE_NAMES)
+                + '        proxy_set_header X-Forwarded-Ssl "";',
+            )
+            self.assertIn("listen 127.0.0.1:18011;",
+                          check.render_loopback_config(
+                              owner_style, 18011, 18012, Path(root)))
+
     def test_runtime_output_never_confers_permission_on_holds(self):
         with patch.object(check, "TEMPLATE") as fake_template:
             fake_template.read_text.return_value = self.template
