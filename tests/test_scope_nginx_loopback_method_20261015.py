@@ -99,7 +99,7 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
             path = Path(folder) / "synthetic-nginx.conf"
             fixed = self.template.replace(
                 "        proxy_request_buffering on;",
-                "".join(f'        proxy_set_header {name} "";\\n'
+                "".join(f'        proxy_set_header {name} "";\n'
                         for name in check.OVERRIDE_NAMES)
                 + "        proxy_request_buffering on;",
             )
@@ -116,7 +116,7 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
 
             # The same real Nginx probe on one removed filter MUST HOLD.
             removed = fixed.replace(
-                f'        proxy_set_header {check.OVERRIDE_NAMES[0]} "";\\n', ""
+                f'        proxy_set_header {check.OVERRIDE_NAMES[0]} "";\n', ""
             )
             path.write_text(removed, encoding="utf-8")
             output = io.StringIO()
