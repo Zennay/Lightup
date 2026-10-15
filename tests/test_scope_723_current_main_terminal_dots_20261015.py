@@ -69,6 +69,54 @@ class TerminalDotCurrentMainSourceRed(unittest.TestCase):
         self.assertNotEqual(decision.reason, ScopeReason.LOOPBACK)
 
     @unittest.expectedFailure
+    def test_malformed_target_without_auth_and_explicit_policy_optout_must_deny(self):
+        # Synthetic opt-out demonstrates the parser bug independently of
+        # fake Authorization fixtures; never a real consent configuration.
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset((_HOST,)),
+            require_authorization_for_public=False,
+        )
+        values = tuple(
+            value
+            for dots in range(2, 18)
+            for value in (_HOST + "." * dots, "https://" + _HOST + "." * dots + "/lab-only")
+        )
+        decisions = tuple(policy.decide(Target(value)) for value in values)
+        self.assertEqual(len(decisions), 32)
+        self.assertFalse(any(decision.allowed for decision in decisions))
+
+    @unittest.expectedFailure
+    def test_malformed_config_without_auth_and_policy_optout_must_deny(self):
+        pairs = tuple(
+            (value, _HOST + "." * dots)
+            for dots in range(2, 18)
+            for value in (_HOST, _HOST + ".")
+        )
+        decisions = tuple(
+            ScopePolicy(
+                allow_private_lab=False,
+                explicit_hosts=frozenset((entry,)),
+                require_authorization_for_public=False,
+            ).decide(Target(target))
+            for target, entry in pairs
+        )
+        self.assertEqual(len(decisions), 32)
+        self.assertFalse(any(decision.allowed for decision in decisions))
+
+    @unittest.expectedFailure
+    def test_only_dots_and_empty_config_without_auth_optout_must_deny(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset(("",)),
+            require_authorization_for_public=False,
+        )
+        values = ("..", "...", "http://../lab-only", "https://.../lab-only")
+        decisions = tuple(policy.decide(Target(value)) for value in values)
+        self.assertEqual(len(decisions), 4)
+        self.assertFalse(any(decision.allowed for decision in decisions))
+
+    @unittest.expectedFailure
     def test_all_dots_target_must_not_match_empty_declared_hostname(self):
         # Additional #723/#297 interaction: rstrip('.') turns only-dots
         # target text into the empty string and silently matches an invalid
@@ -139,6 +187,9 @@ _RED_NAMES = (
     "test_triple_terminal_dot_policy_must_not_authorize_rooted_target",
     "test_double_terminal_dot_localhost_must_not_inherit_loopback",
     "test_triple_terminal_dot_localhost_must_not_inherit_loopback",
+    "test_malformed_target_without_auth_and_explicit_policy_optout_must_deny",
+    "test_malformed_config_without_auth_and_policy_optout_must_deny",
+    "test_only_dots_and_empty_config_without_auth_optout_must_deny",
     "test_all_dots_target_must_not_match_empty_declared_hostname",
     "test_matrix_32_malformed_target_dot_counts_and_url_forms_must_deny",
     "test_matrix_32_malformed_config_dot_counts_and_targets_must_deny",
@@ -189,7 +240,7 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
 
     def test_original_source_witnesses_are_real_assertions_not_errors(self):
         # @expectedFailure also catches accidental TypeError and ValueError.
-        # An independent TestResult must observe exactly ten AssertionError
+        # An independent TestResult must observe exactly thirteen AssertionError
         # failures, not silently accept an unrelated crash or unexpected green.
         for name in _RED_NAMES:
             with self.subTest(case=name):
@@ -320,6 +371,21 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
             decision = _decision(value)
             self.assertFalse(decision.allowed)
             self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
+    def test_bad_policy_with_default_public_consent_required_does_not_grant_without_auth(self):
+        for target, entry in (
+            (_HOST + "..", _HOST),
+            (_HOST, _HOST + ".."),
+            ("...", ""),
+        ):
+            with self.subTest(value=target, config=entry):
+                decision = ScopePolicy(
+                    allow_private_lab=False,
+                    explicit_hosts=frozenset((entry,)),
+                    require_authorization_for_public=True,
+                ).decide(Target(target))
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
 
     def test_dot_only_targets_cannot_gain_authority_without_empty_policy_entry(self):
         # The original defect requires a corrupt policy declaration too.
