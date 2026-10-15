@@ -65,11 +65,15 @@ FROZEN_FALSE_PERMISSIONS = {
 }
 
 
+class NetworkAttemptBlocked(RuntimeError):
+    """Synthetic network tripwire. No socket or DNS call can escape."""
+
+
 @contextmanager
 def disconnected():
     with (
-        patch.object(socket, "getaddrinfo", side_effect=AssertionError("network forbidden")),
-        patch.object(socket, "socket", side_effect=AssertionError("network forbidden")),
+        patch.object(socket, "getaddrinfo", side_effect=NetworkAttemptBlocked("network forbidden")),
+        patch.object(socket, "socket", side_effect=NetworkAttemptBlocked("network forbidden")),
     ):
         yield
 
@@ -100,6 +104,9 @@ def evaluate() -> dict:
                     )
                 else:
                     classification = "DENIED_REVIEW"
+            except NetworkAttemptBlocked:
+                # Socket/DNS was stopped before I/O; distinct from source errors.
+                classification = "NETWORK_BLOCKED_REVIEW"
             except Exception:
                 # Do not expose exception strings: could contain private config.
                 classification = "ERROR_REVIEW"
@@ -119,6 +126,7 @@ def evaluate() -> dict:
         "other_allow_review_count": classifications.count("OTHER_ALLOW_REVIEW"),
         "denied_review_count": classifications.count("DENIED_REVIEW"),
         "error_review_count": classifications.count("ERROR_REVIEW"),
+        "network_blocked_review_count": classifications.count("NETWORK_BLOCKED_REVIEW"),
         "observations": observations,
     }
 
@@ -132,6 +140,7 @@ def render_dutch(receipt: dict) -> str:
         f"Andere toestemmingen voor review: {receipt['other_allow_review_count']}",
         f"Weigeringen voor review: {receipt['denied_review_count']}",
         f"Fouten voor review: {receipt['error_review_count']}",
+        f"Gestopte netwerkpogingen voor review: {receipt['network_blocked_review_count']}",
         "Details (alleen fictieve casuscodes):",
     ]
     for item in receipt["observations"]:
