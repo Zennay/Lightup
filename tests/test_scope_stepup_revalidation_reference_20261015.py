@@ -18,7 +18,7 @@ NOW = datetime(2026, 10, 15, 15, 0, tzinfo=timezone.utc)
 def fixture():
     request = ReviewRequest(
         "lab-run", "lab-client", "lab-engagement", "lab-asset",
-        "lab-tool", "lab-capability", 5,
+        "lab-tool", "lab-capability", 5, NOW,
     )
     approval = ReferenceApproval(request, NOW - timedelta(minutes=1),
                                  NOW + timedelta(minutes=10))
@@ -190,7 +190,7 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
         object.__setattr__(tool, "capability", "lab-mutated")
         object.__setattr__(request, "asset", "lab-mutated")
         stable = ReviewRequest("lab-run", "lab-client", "lab-engagement",
-                               "lab-asset", "lab-tool", "lab-capability", 5)
+                               "lab-asset", "lab-tool", "lab-capability", 5, NOW)
         self.assert_non_authorizing(fence.review(stable, NOW, isolation_probe=lambda: True), "REVIEW_ONLY")
 
     def test_corrupt_time_shapes_never_get_approved(self):
@@ -552,6 +552,73 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
                     "execution_enabled", "dispatch_allowed",
                     "merge_approved", "release_approved",
                 )))
+
+
+    def test_pre_run_chronology_rejects_post_run_approval(self):
+        fence, request, approval, tool = fixture()
+        with self.assertRaises(ValueError):
+            fence.replace_synthetic_reference(
+                replace(
+                    approval, issued_at=request.started_at,
+                    expires_at=request.started_at + timedelta(hours=1),
+                ), tool
+            )
+        with self.assertRaises(ValueError):
+            fence.replace_synthetic_reference(
+                replace(
+                    approval, issued_at=request.started_at + timedelta(microseconds=1),
+                    expires_at=request.started_at + timedelta(hours=1),
+                ), tool
+            )
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=lambda: True),
+            "REVIEW_ONLY",
+        )
+
+    def test_exact_twenty_four_hour_expiry_boundary(self):
+        fence, request, approval, tool = fixture()
+        within_limit = replace(
+            approval, issued_at=NOW - timedelta(hours=23),
+            expires_at=NOW + timedelta(hours=1),
+        )
+        fence.replace_synthetic_reference(within_limit, tool)
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=lambda: True),
+            "REVIEW_ONLY",
+        )
+        too_long = replace(
+            within_limit, expires_at=within_limit.expires_at + timedelta(microseconds=1)
+        )
+        with self.assertRaises(ValueError):
+            fence.replace_synthetic_reference(too_long, tool)
+
+    def test_noncanonical_run_timestamp_is_rejected(self):
+        fence, request, approval, tool = fixture()
+        for bad in (None, False, 0, "2026-10-15", datetime(2026, 10, 15)):
+            with self.subTest(value=type(bad)):
+                bad_request = replace(request, started_at=bad)
+                self.assert_non_authorizing(
+                    fence.review(
+                        bad_request, NOW, isolation_probe=lambda: True
+                    ), "HOLD"
+                )
+                with self.assertRaises(ValueError):
+                    fence.replace_synthetic_reference(
+                        replace(approval, request=bad_request), tool
+                    )
+
+    def test_mutated_run_start_during_probe_denies_review(self):
+        fence, request, _, _ = fixture()
+        def rewrite_run_start():
+            object.__setattr__(
+                request, "started_at", NOW + timedelta(microseconds=1)
+            )
+            return True
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=rewrite_run_start),
+            "HOLD",
+        )
+        self.assertEqual(fence.review_count, 0)
 
 
 if __name__ == "__main__":
