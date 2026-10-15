@@ -16,6 +16,8 @@ import socket
 
 from lightup.ai.orchestration import (
     RiskElevationRequired,
+    ParamKind,
+    ToolParameter,
     RunContext,
     ToolCall,
     ToolDefinition,
@@ -24,7 +26,7 @@ from lightup.ai.orchestration import (
     ToolOutput,
     ToolRegistry,
 )
-from lightup.engagements import AssessmentMode, RiskLevel
+from lightup.engagements import AssessmentMode, AuthorizationGrant, RiskLevel, ScopeDefinition
 from lightup.execution_policy import ExecutionPolicy, ExecutionRequest, InteractionKind
 from lightup.state import StateStore
 
@@ -203,6 +205,106 @@ class RiskFiveSeparateApprovalContract(TestCase):
         self.handler.assert_not_called()
         self.assertEqual(0, self._evidence_count())
 
+
+    @expectedFailure
+    def test_unrelated_generic_grant_is_not_independent_risk_five_stepup(self):
+        """RED: a generic authorization cannot substitute for operator lab opt-in."""
+        grant = AuthorizationGrant(
+            grant_id="synthetic-generic-grant",
+            client_id="other-tenant",
+            engagement_id="other-engagement",
+            approved_by="placeholder-not-verified",
+            reference="fictional-not-a-real-approval",
+            scope=ScopeDefinition(
+                assets=("127.0.0.1",),
+                max_risk=RiskLevel.DESTRUCTIVE_LAB_ONLY,
+                allowed_capabilities=("web-baseline",),
+            ),
+            valid_from=self.context.created_at - timedelta(minutes=5),
+            valid_until=self.context.created_at + timedelta(minutes=5),
+        )
+        asserted = replace(self.context, authorization=grant)
+        with self.assertRaises(ToolDenied):
+            self._execute_offline(asserted)
+        self.handler.assert_not_called()
+        self.assertEqual(0, self._evidence_count())
+
+    @expectedFailure
+    def test_model_supplied_approval_argument_cannot_mint_risk_five_consent(self):
+        """RED: valid argument shape is never trusted operator provenance."""
+        claimant_handler = Mock(return_value=ToolOutput(
+            summary="no-target",
+            evidence_kind="test-fixture",
+            evidence_payload=b"synthetic-claim-only",
+        ))
+        self.registry.register(
+            ToolDefinition(
+                tool_id="fixture-risk-five-claims",
+                capability_id="web-baseline",
+                interaction=InteractionKind.LAB_ACTIVE,
+                min_risk=RiskLevel.DESTRUCTIVE_LAB_ONLY,
+                description="purely in-memory argument spoofing proof",
+                parameters=(
+                    ToolParameter("operator_approved", ParamKind.BOOLEAN),
+                    ToolParameter("approval_reference", ParamKind.STRING),
+                ),
+            ),
+            claimant_handler,
+        )
+        claimed = ToolCall(
+            "fixture-risk-five-claims",
+            "127.0.0.1",
+            (("operator_approved", True), ("approval_reference", "fictional-claim")),
+        )
+        with self.assertRaises(ToolDenied):
+            self._execute_offline(call=claimed)
+        claimant_handler.assert_not_called()
+        self.handler.assert_not_called()
+        self.assertEqual(0, self._evidence_count())
+
+    @expectedFailure
+    def test_backdated_risk_five_context_is_not_operator_consent(self):
+        """RED: old, user-constructed context is not an approved operator event."""
+        backdated = replace(
+            self.context,
+            created_at=self.context.created_at - timedelta(days=14),
+        )
+        with self.assertRaises(ToolDenied):
+            self._execute_offline(backdated)
+        self.handler.assert_not_called()
+        self.assertEqual(0, self._evidence_count())
+
+    def test_lower_risk_lab_dispatch_retains_inert_evidence_path(self):
+        """GREEN: a risk-five-only step-up must preserve lower-risk lab behavior."""
+        safe_handler = Mock(return_value=ToolOutput(
+            summary="synthetic-low-risk-only",
+            evidence_kind="test-fixture",
+            evidence_payload=b"synthetic-risk-four-proof",
+        ))
+        self.registry.register(
+            ToolDefinition(
+                tool_id="fixture-risk-four-safe",
+                capability_id="web-baseline",
+                interaction=InteractionKind.LAB_ACTIVE,
+                min_risk=RiskLevel.ELEVATED,
+                description="no-op synthetic safe-range witness",
+            ),
+            safe_handler,
+        )
+        safe_run = replace(self.context, approved_risk=RiskLevel.ELEVATED)
+        result = self._execute_offline(
+            context=safe_run, call=ToolCall("fixture-risk-four-safe", "127.0.0.1")
+        )
+        safe_handler.assert_called_once()
+        self.handler.assert_not_called()
+        self.assertEqual(result.tool_id, "fixture-risk-four-safe")
+        self.assertEqual(result.capability_id, "web-baseline")
+        self.assertEqual(1, self._evidence_count())
+        saved = self.state.get_evidence(result.evidence_id)
+        self.assertEqual(saved.run_id, self.run_id)
+        self.assertEqual(saved.capability_id, "web-baseline")
+        self.assertEqual(saved.source, "fixture-risk-four-safe")
+
     def test_intentional_red_methods_fail_only_on_missing_denial(self):
         """GREEN witness: don't mask wrong fixture/setup/runtime as expected RED.
 
@@ -223,6 +325,12 @@ class RiskFiveSeparateApprovalContract(TestCase):
             ("test_unapproved_risk_five_run_cannot_change_tool_capability",
              "ToolDenied not raised"),
             ("test_untrusted_lab_flag_cannot_select_external_risk_five_asset",
+             "ToolDenied not raised"),
+            ("test_unrelated_generic_grant_is_not_independent_risk_five_stepup",
+             "ToolDenied not raised"),
+            ("test_model_supplied_approval_argument_cannot_mint_risk_five_consent",
+             "ToolDenied not raised"),
+            ("test_backdated_risk_five_context_is_not_operator_consent",
              "ToolDenied not raised"),
         )
         for method, witness in cases:
