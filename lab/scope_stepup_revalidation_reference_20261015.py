@@ -157,6 +157,9 @@ class OfflineRevalidationFence:
     def __init__(self) -> None:
         self._lock = Lock()
         self._epoch = 0
+        # Revocation is terminal for this disposable run reviewer. Reissuing
+        # a "new" approval requires a fresh reviewer and a fresh run.
+        self._closed = False
         self._approval: ReferenceApproval | None = None
         self._tool: ToolSnapshot | None = None
         # Exact tuple seals detect changes to frozen dataclass internals via
@@ -216,6 +219,8 @@ class OfflineRevalidationFence:
         frozen = ReferenceApproval(request, approval.issued_at, approval.expires_at)
         snapshot = ToolSnapshot(tool.tool, tool.capability, tool.risk)
         with self._lock:
+            if self._closed:
+                raise ValueError("revoked review instance cannot be reopened")
             self._approval = frozen
             self._tool = snapshot
             self._approval_seal = self._approval_fields(frozen)
@@ -224,6 +229,7 @@ class OfflineRevalidationFence:
 
     def revoke(self) -> None:
         with self._lock:
+            self._closed = True
             self._approval = None
             self._approval_seal = None
             self._epoch += 1
@@ -232,6 +238,8 @@ class OfflineRevalidationFence:
         if type(tool) is not ToolSnapshot or not tool.is_well_formed():
             raise ValueError("invalid synthetic tool")
         with self._lock:
+            if self._closed:
+                raise ValueError("revoked review instance cannot replace tools")
             self._tool = ToolSnapshot(tool.tool, tool.capability, tool.risk)
             self._tool_seal = self._tool_fields(self._tool)
             self._epoch += 1
@@ -280,7 +288,8 @@ class OfflineRevalidationFence:
 
         with self._lock:
             approval, tool = self._approval, self._tool
-            if epoch != self._epoch or approval is None or tool is None:
+            if (self._closed or epoch != self._epoch
+                    or approval is None or tool is None):
                 return _hold()
             if not approval.is_well_formed() or not tool.is_well_formed():
                 return _hold()
