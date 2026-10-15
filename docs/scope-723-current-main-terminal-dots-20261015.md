@@ -12,10 +12,25 @@ The previously owned #723/#724 branch was pinned to 2026-10-07 `main`. This **se
 
 `tests/test_scope_723_current_main_terminal_dots_20261015.py` uses actual installed `Target`, `ScopePolicy`, and `Authorization` objects from source, but all values are **fictional, in-memory fixtures**; their synthetic Authorization is not a grant or evidence of customer/operator consent.
 
-- Six installed-source negative tests intentionally use `@expectedFailure` to keep unfixed deny conditions clearly **RED**: target-side two/three dots, policy-side two/three dots, and `localhost` two/three dots.
+- Nine installed-source negative tests intentionally use `@expectedFailure` to keep unfixed deny conditions clearly **RED**: target-side two/three dots, policy-side two/three dots, and `localhost` two/three dots.
 - Positive controls keep single-dot DNS root spelling, canonical case folding, plain `localhost`, and denied unknown hosts working.
-- Independent unittest result inspection refuses masked exceptions, skipped REDs, and accidentally successful source negatives.
+- Independent unittest result inspection refuses masked exceptions, skipped REDs, and accidentally successful source negatives. A separate negative mutation test deliberately raises a synthetic TypeError to demonstrate that the integrity verifier distinguishes it from the genuine source AssertionError.
 - Pure in-memory tests patch socket/DNS entry points to refuse target interactions and confirm no policy/fixture mutation.
+
+
+## W2: 192-case current-main root-dot / URL regression sweep (2026-10-15)
+
+This same self-owned suite now adds **three** independent genuine installed-source **expected-RED** cases, each materializing **64** actual decisions before asserting an unsafe allow was observed:
+
+1. **Target boundary:** 32 trailing-dot counts (2–33) × two input forms (bare hostname and HTTPS URL with synthetic path). All malformed identities must deny; the current installed `rstrip(".")` source does not.
+2. **Configuration boundary:** 32 malformed declared-host trailing-dot counts × canonical and singly rooted input host. Invalid policy entries must not authorize the valid spelling.
+3. **Loopback boundary:** 32 malformed `localhost` trailing-dot counts × uppercase hostname and HTTP URL forms, with `allow_private_lab=False` and no synthetic grant. Loopback shorthand must not silently mint authority.
+
+The source is still expected RED on every one of these three aggregation tests; green CI means the **tests correctly detected an unfixed bug**, not that 192 denial assertions passed. The isolated witness inspects the exact `AssertionError("True is not false")` rather than treating arbitrary crashes as acceptable expected-RED.
+
+Three further green controls verify untrusted missing authorization never acts as consent, different hostname identities stay disjoint, and a deliberately injected TypeError is detected as a **wrong** RED witness (not silently accepted).
+
+**No production-policy update or live I/O**. None of these synthetic URLs is resolved or contacted. The production source owner #100 must make these negative cases ordinary passing assertions after a separately reviewed repair. Raw Python3.11/3.14 hosted integration evidence is valid **only for the immutable HEAD tested**, not for prior commits; registered permanent VPS approval is a separate gate.
 
 ## To validate
 
