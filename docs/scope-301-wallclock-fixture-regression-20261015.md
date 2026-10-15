@@ -229,6 +229,35 @@ malformed temporal fields. The intended strict behavior remains captured
 by the separately expected-RED tests and the isolated narrowing witness.
 The proof does not issue real consent, target network requests or scans.
 
+## Naive and non-offset-aware boundary failure (W13)
+
+The #301 required invariant also demands **exact timezone-aware** built-in
+datetimes (or None). Simply checking `boundary.tzinfo is not None` is
+insufficient: a `tzinfo` instance can return `None` from
+`datetime.utcoffset()`, making the value effectively offset-naive.
+
+A new **ordinary source characterisation** confirms the actual installed
+code currently **raises TypeError** (instead of returning a fail-closed
+`False` or a proper `ScopeDecision`) for four malformed clock bounds:
+timezone-naive future-start/expired-end and pseudo-naive non-null
+`tzinfo` future-start/expired-end. Each check verifies both direct legacy
+`is_current` and the actual in-memory public-scope route. These exception
+observations are not counted as successful authorisation decisions.
+
+Six additional **intentionally expected-RED** tests require explicit
+denials on these invalid fields (four direct and two public scope). As with
+the original REDs, an exception can otherwise be counted as RED, so the
+ordinary characterisation separately pins the **real exception cause**.
+
+The **test-local hypothetical strict guard** now checks exact built-in
+`datetime`, non-null `tzinfo`, **and non-null `utcoffset()`**. The
+reference mutation witness requires **all twenty** installed #301
+expected-RED methods to become `unexpectedSuccess` with no leftover
+ordinary failures/errors. Canonical aware-datetime public scope remains
+a positive control. This hypothetical guard is *not* production code.
+Actual denial behavior, safe exception handling and owner-integrated
+source validation are still to be implemented and reviewed.
+
 ## Ownership and proof gates
 
 Only this original time-window test module and this standalone explanation
