@@ -16,8 +16,8 @@ A deterministic, entirely synthetic callback can revoke, expire or rescope the a
 
 The independent real-source test `tests/test_scope_1173_revocation_between_checks_20261015.py` runs the actual owner opt-in adapter against a disposable SQLite evidence ledger, with a no-op registered handler and socket-creation tripwire.
 
-- **Seven deliberately expected source REDs** document open fail-closed gaps: four approval changes after trusted resolver read (revoked, expired, rescope and deterministic concurrent revoke), one swapped inert handler after final registry check, one capability-ID reassignment after that check, and one risk-level metadata reassignment after that check. These are **not repaired** by expected-failure annotations.
-- **Seven ordinary PASS controls and direct RED integrity witnesses** verify already-revoked denial before callbacks, false lab isolation denial, genuine inert low-effect positive dispatch, pre-final-check handler swap denial, and three independent exact-error/invocation/SQLite witnesses (approval-change REDs, swapped-handler RED, and capability/risk REDs). None treats a generic exception, socket tripwire failure, timeout or accidental pass as an expected vulnerability result.
+- **Nine deliberately expected source REDs** document open fail-closed gaps: four approval changes after trusted resolver read (revoked, expired, rescope and deterministic concurrent revoke), one swapped inert handler after final registry check, one capability-ID reassignment after that check, one risk-level metadata reassignment after that check, and two postapproval changes to frozen run/client or call/asset objects from an in-process callback. These are **not repaired** by expected-failure annotations.
+- **Eight ordinary PASS controls and direct RED integrity witnesses** verify already-revoked denial before callbacks, false lab isolation denial, genuine inert low-effect positive dispatch, pre-final-check handler swap denial, and four independent exact-error/invocation/SQLite witnesses (approval-change REDs, swapped-handler RED, and capability/risk REDs). None treats a generic exception, socket tripwire failure, timeout or accidental pass as an expected vulnerability result.
 
 No real customer consent, trusted human approval, actual isolation attestation, outgoing network access, scanning, destructive payload, external actor, or deployment is involved. `isolation_verifier=lambda: True` is **strictly a synthetic test fixture** and cannot authorize real use.
 
@@ -74,11 +74,35 @@ the registry before a separately mutable executor read is not sufficient.
 No persistent approval, external target, network, DNS, operator action, or
 live handler is used by these fixtures.
 
+
+## Frozen envelope mutation is not an operator attestation
+
+`RunContext` and `ToolCall` are Python frozen dataclasses, which prevents
+ordinary assignment but does not protect an object from an in-process trusted
+callback using `object.__setattr__`. In the installed opt-in admission, those
+same objects are passed to `isolation_verifier` **after** the approval is
+validated and **before** raw dispatch. No immutable, previously matched
+run/client/engagement/asset snapshot is bound to raw execution.
+
+Two additional independent installed-source expected REDs simulate in-memory
+postapproval mutation of `call.asset` or `context.client_id` using a fixture
+callback and then demand `ToolDenied` **before** an inert handler or evidence.
+The current implementation permits the synthetic handler. One ordinary strict
+witness verifies the expected missing-denial assertion, actual handler call,
+disposable SQLite evidence and changed asset/client metadata, ruling out
+masked setup failures.
+
+This is a trusted in-process callback abuse scenario, **not an externally
+proven attack path**; source owners should snapshot or seal matched envelope
+identities and make them immutable through final dispatch. Neither a frozen
+dataclass annotation nor additional pre-callback checks establishes this.
+No real tenant, target, client, network or grant is accessed.
+
 ## Owner closure and proof
 
 1. #1172 / #107 owners decide and implement atomic operator revocation/approval consumption bound to exact run, tenant, engagement, asset, capability, tool and current clock, while preserving denial-before-handler and evidence.
 2. Persisted operator issuance/revocation, real lab isolation and network egress must be independently verified; callback-only revalidation is not enough for concurrent processes.
-3. Convert the seven expected REDs to ordinary PASS **only on actual repaired source**, update the witness, retain valid synthetic controls; no masking of a red as a generic expected failure.
+3. Convert the nine expected REDs to ordinary PASS **only on actual repaired source**, update the witness, retain valid synthetic controls; no masking of a red as a generic expected failure.
 4. Exact-head Python 3.11/3.14 offline unit and real producer-integrations, registered permanent VPS runner, independent security/privacy review and explicit human release are separate mandatory gates.
 
 Run offline only:
