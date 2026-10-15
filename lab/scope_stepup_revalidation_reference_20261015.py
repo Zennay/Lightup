@@ -183,10 +183,13 @@ class OfflineRevalidationFence:
         now: datetime,
         *,
         isolation_probe: Callable[[], object] | None = None,
+        fresh_clock_probe: Callable[[], object] | None = None,
     ) -> ReviewReceipt:
         if (type(request) is not ReviewRequest or not request.is_synthetic()
                 or not _aware(now)
-                or isolation_probe is None or not callable(isolation_probe)):
+                or isolation_probe is None or not callable(isolation_probe)
+                or (fresh_clock_probe is not None
+                    and not callable(fresh_clock_probe))):
             return _HOLD
 
         # Hold a private immutable copy of every caller-controlled field.
@@ -206,7 +209,13 @@ class OfflineRevalidationFence:
         try:
             if isolation_probe() is not True:
                 return _HOLD
+            # Optional second synthetic clock observation can prove that an
+            # isolation callback did not outlive the original approval window.
+            # Never execute clock callbacks under the ledger lock.
+            fresh_now = now if fresh_clock_probe is None else fresh_clock_probe()
         except Exception:
+            return _HOLD
+        if not _aware(fresh_now) or fresh_now < now:
             return _HOLD
 
         with self._lock:
@@ -222,7 +231,8 @@ class OfflineRevalidationFence:
                     or tool.tool != initial_request.tool
                     or tool.capability != initial_request.capability
                     or tool.risk != initial_request.risk
-                    or now < approval.issued_at or now >= approval.expires_at):
+                    or fresh_now < approval.issued_at
+                    or fresh_now >= approval.expires_at):
                 return _HOLD
             self._review_count += 1
             # Never emit an authorization or execution permit.
