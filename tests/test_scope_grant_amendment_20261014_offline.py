@@ -1159,6 +1159,49 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
                 self.assert_denied_authority(receipt, result.returncode)
                 self.assertNotIn(numeric[:20], result.stdout)
 
+    def test_utc_24_hour_rollover_never_normalized_between_python_versions(self):
+        # Python 3.14 datetime accepts 24:00:00 as next-day midnight while
+        # Python 3.11 rejects it. No grant reviewer may silently shift consent.
+        valid = ("2026-10-14T00:00:00Z", "2026-10-14T23:59:59Z")
+        for timestamp in valid:
+            with self.subTest(valid=timestamp):
+                self.assertEqual(reviewer._instant(timestamp).isoformat(),
+                                 timestamp[:-1] + "+00:00")
+        invalid = (
+            "2026-10-14T24:00:00Z", "2026-10-14T24:00:01Z",
+            "2026-10-14T25:00:00Z", "2026-10-14T23:60:00Z",
+            "2026-10-14T23:59:60Z", "9999-12-31T24:00:00Z",
+        )
+        for timestamp in invalid:
+            with self.subTest(invalid=timestamp):
+                with self.assertRaises(reviewer.Rejected) as ctx:
+                    reviewer._instant(timestamp)
+                self.assertEqual(str(ctx.exception), "instant_invalid")
+                for snapshot, field in (
+                    ("before", "valid_from"),
+                    ("after", "valid_until"),
+                ):
+                    packet = fixture()
+                    packet[snapshot][field] = timestamp
+                    receipt, code = reviewer.review(encode(packet))
+                    self.assertEqual((receipt["status"], code), ("HOLD", 2))
+                    self.assertEqual(receipt["reason"], "invalid_input")
+                    self.assert_denied_authority(receipt, code)
+
+    def test_24_hour_rollover_real_cli_yields_opaque_hold(self):
+        packet = fixture()
+        packet["after"]["valid_until"] = "2026-10-14T24:00:00Z"
+        child = subprocess.run(
+            [sys.executable, "-B", str(SCRIPT), "--stdin-json"],
+            input=encode(packet), capture_output=True, check=False, timeout=8,
+        )
+        self.assertEqual(child.returncode, 2)
+        receipt = json.loads(child.stdout)
+        self.assertEqual(receipt["reason"], "invalid_input")
+        self.assert_denied_authority(receipt, child.returncode)
+        self.assertNotIn(b"2026-10-14T24:00:00Z", child.stdout)
+        self.assertFalse(child.stderr)
+
     def test_cli_rejects_no_flag(self):
         result = subprocess.run(
             [sys.executable, "-B", str(SCRIPT)],
