@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "checks": {
+    "client_consent": "MISSING",
+    "asset_and_capability_scope": "SELF_REPORTED",
+    "live_grant_and_revocation": "BLOCKED",
+    "operator_step_up": "BLOCKED",
+    "durable_prehandler_evidence": "BLOCKED",
+    "installed_ingress_and_egress": "MISSING",
+    "permanent_vps_ci": "BLOCKED",
+    "independent_security_privacy_review": "MISSING",
+    "explicit_human_release": "MISSING"
+  }
+}
