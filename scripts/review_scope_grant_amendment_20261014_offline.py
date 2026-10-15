@@ -112,8 +112,9 @@ def _grant(
     result: dict[str, object] = {}
     for key in ("grant_id", "client_id", "engagement_id", "approved_by", "reference"):
         result[key] = _id(data[key])
-    # After-state may revoke *all* assets. Empty before-state is refused:
-    # this reviewer compares an existing nonempty grant with a new proposal.
+    # Zero assets means no asset permission in the real ScopeDefinition.
+    # Either snapshot may have zero assets: only adding an asset in a later
+    # snapshot can widen that already-revoked state.
     result["assets"] = _members(data["assets"], allow_empty=allow_empty_assets)
     result["excluded_assets"] = _members(data["excluded_assets"], allow_empty=True)
     # In the real ScopeDefinition, empty capabilities mean *unrestricted*.
@@ -144,7 +145,10 @@ def review(raw: bytes) -> tuple[dict[str, object], int]:
     widened: list[str] = []
     try:
         data = _parse(raw)
-        before = _grant(data["before"], allow_unrestricted_before=True)
+        before = _grant(
+            data["before"], allow_empty_assets=True,
+            allow_unrestricted_before=True,
+        )
         after = _grant(data["after"], allow_empty_assets=True)
         identity = ("grant_id", "client_id", "engagement_id", "approved_by", "reference")
         if any(before[k] != after[k] for k in identity):
