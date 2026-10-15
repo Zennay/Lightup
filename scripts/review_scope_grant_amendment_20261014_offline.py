@@ -94,8 +94,10 @@ def _members(value: object, *, allow_empty: bool = False) -> frozenset[str]:
 def _instant(value: object) -> datetime:
     if type(value) is not str or len(value) > 35:
         raise Rejected("instant_type")
-    # Require explicit UTC rather than silently normalizing an operator's time.
-    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", value):
+    # Use ASCII digits only: Python regex \\d also matches Unicode decimal
+    # confusables, which must never pass a canonical grant-review boundary.
+    # Require explicit UTC rather than normalizing an operator's time.
+    if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", value):
         raise Rejected("instant_format")
     try:
         return datetime.fromisoformat(value[:-1] + "+00:00").astimezone(timezone.utc)
