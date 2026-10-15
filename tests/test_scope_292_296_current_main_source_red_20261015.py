@@ -175,6 +175,56 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
         self.assertFalse(result.allowed)
         self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
 
+    def _assert_true_source_red_partition(self, proof, names):
+        """Demand real failing scope assertions, not masked errors or fake green."""
+        self.assertEqual(proof.testsRun, len(names))
+        self.assertEqual(proof.failures, [])
+        self.assertEqual(proof.errors, [])
+        self.assertEqual(proof.unexpectedSuccesses, [])
+        self.assertEqual(len(proof.expectedFailures), len(names))
+        self.assertEqual(
+            {case._testMethodName for case, _ in proof.expectedFailures},
+            set(names),
+        )
+        for case, trace in proof.expectedFailures:
+            self.assertIn(case._testMethodName, names)
+            self.assertIn("AssertionError", trace)
+            self.assertIn("invalid network declaration minted scope authority", trace)
+
+    def _single_red_result(self):
+        name = "test_292_integer_must_not_create_ipv4_host_authority"
+        proof = unittest.TestResult()
+        type(self)(name).run(proof)
+        return proof, (name,)
+
+    def test_witness_detects_masked_parser_type_error(self):
+        with patch.object(type(self), "_assert_rejected", side_effect=TypeError("fake parse")):
+            proof, names = self._single_red_result()
+        self.assertEqual(len(proof.expectedFailures), 1)
+        with self.assertRaises(AssertionError):
+            self._assert_true_source_red_partition(proof, names)
+
+    def test_witness_detects_unexpected_green_after_suppressed_assertion(self):
+        with patch.object(type(self), "_assert_rejected", return_value=None):
+            proof, names = self._single_red_result()
+        self.assertEqual(len(proof.unexpectedSuccesses), 1)
+        with self.assertRaises(AssertionError):
+            self._assert_true_source_red_partition(proof, names)
+
+    def test_witness_detects_forged_unrelated_assertion(self):
+        with patch.object(
+            type(self), "_assert_rejected", side_effect=AssertionError("unrelated assertion")
+        ):
+            proof, names = self._single_red_result()
+        self.assertEqual(len(proof.expectedFailures), 1)
+        with self.assertRaises(AssertionError):
+            self._assert_true_source_red_partition(proof, names)
+
+    def test_witness_detects_incomplete_replay(self):
+        proof, names = self._single_red_result()
+        with self.assertRaises(AssertionError):
+            self._assert_true_source_red_partition(proof, names + ("missing-case",))
+
     def test_eighteen_expected_reds_are_real_assertions_not_masked_errors(self):
         names = (
             "test_292_integer_must_not_create_ipv4_host_authority",
@@ -207,15 +257,7 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
         ):
             for name in names:
                 type(self)(name).run(proof)
-        self.assertEqual(proof.testsRun, len(names))
-        self.assertEqual(proof.failures, [])
-        self.assertEqual(proof.errors, [])
-        self.assertEqual(proof.unexpectedSuccesses, [])
-        self.assertEqual(len(proof.expectedFailures), len(names))
-        for case, trace in proof.expectedFailures:
-            self.assertIn(case._testMethodName, names)
-            self.assertIn("AssertionError", trace)
-            self.assertIn("invalid network declaration minted scope authority", trace)
+        self._assert_true_source_red_partition(proof, names)
 
     def test_offline_decisions_make_no_network_or_process_calls(self):
         with (
