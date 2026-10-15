@@ -150,7 +150,7 @@ def review_legacy_authorization_batch(
 ) -> LegacyTemporalReview:
     """Atomically summarize 1–32 fictional legacy windows without authorizing.
 
-    No partial result or per-claim explanation leaves this function. A shape,
+    The entire bounded tuple is examined; no partial result or per-claim explanation leaves this function. A shape,
     window, or detectable in-call consistency problem in *any* member forces
     one generic HOLD; REVIEW_ONLY means all shapes survived this offline
     inspection, never that any member has an active client grant.
@@ -166,49 +166,61 @@ def review_legacy_authorization_batch(
     ):
         return hold
 
+    # For a canonical bounded tuple, evaluate every member before deciding.
+    # This avoids exposing *which position* first failed through a premature
+    # return. It does not make Python execution constant-time.
+    bad_member = False
     snapshots: list[tuple[Authorization, object, object]] = []
     for authorization in authorizations:
         if type(authorization) is not Authorization:
-            return hold
+            bad_member = True
+            continue
+        fields = _stored_fields(authorization)
+        if fields is None or (
+            "valid_from" not in fields or "valid_until" not in fields
+        ):
+            bad_member = True
+            continue
         try:
-            fields = _stored_fields(authorization)
-            if fields is None or (
-                "valid_from" not in fields or "valid_until" not in fields
-            ):
-                return hold
             start = fields["valid_from"]
             end = fields["valid_until"]
-        except (TypeError, KeyError):
-            return hold
+        except KeyError:
+            # A concurrent rebind can invalidate a dictionary between checks.
+            bad_member = True
+            continue
         verdict = review_legacy_authorization_window(
             authorization, observed_at=observed_at
         )
         if type(verdict) is not LegacyTemporalReview:
-            return hold
-        verdict_status = tuple.__getitem__(verdict, 0)
-        verdict_reason = tuple.__getitem__(verdict, 1)
-        if (
-            type(verdict_status) is not str
-            or type(verdict_reason) is not str
-            or (verdict_status, verdict_reason)
-            != ("REVIEW_ONLY", "temporal_shape_only")
-        ):
-            return hold
+            bad_member = True
+        else:
+            verdict_status = tuple.__getitem__(verdict, 0)
+            verdict_reason = tuple.__getitem__(verdict, 1)
+            if (
+                type(verdict_status) is not str
+                or type(verdict_reason) is not str
+                or (verdict_status, verdict_reason)
+                != ("REVIEW_ONLY", "temporal_shape_only")
+            ):
+                bad_member = True
         snapshots.append((authorization, start, end))
 
-    # Reject earlier claims silently mutated while later claims were reviewed.
-    # Never reveal which member failed, the number of successful claims, or IDs.
+    # Always recheck every previously materialized member, even after an
+    # unrelated HOLD. Never emit a count, position, identifier or partial pass.
     for authorization, start, end in snapshots:
+        fields = _stored_fields(authorization)
+        if (
+            fields is None
+            or "valid_from" not in fields
+            or "valid_until" not in fields
+        ):
+            bad_member = True
+            continue
         try:
-            fields = _stored_fields(authorization)
-            if (
-                fields is None
-                or "valid_from" not in fields
-                or "valid_until" not in fields
-                or fields["valid_from"] is not start
-                or fields["valid_until"] is not end
-            ):
-                return hold
-        except (TypeError, AttributeError, KeyError):
-            return hold
+            if fields["valid_from"] is not start or fields["valid_until"] is not end:
+                bad_member = True
+        except KeyError:
+            bad_member = True
+    if bad_member:
+        return hold
     return LegacyTemporalReview("REVIEW_ONLY", "temporal_shape_only")
