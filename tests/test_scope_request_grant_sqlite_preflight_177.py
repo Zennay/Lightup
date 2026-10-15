@@ -16,7 +16,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from lightup.domain import AccessContext, DomainStore, Role
 from lightup.engagements import AssessmentMode, EngagementStatus, RiskLevel, ScopeDefinition
 from lightup.request_grant_offline_review_177 import ReviewStatus
-from lightup.request_grant_sqlite_preflight_177 import review_persisted_request_grant
+from lightup.request_grant_sqlite_preflight_177 import (
+    review_persisted_request_grant,
+    review_persisted_grant_batch,
+)
 
 
 class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
@@ -260,6 +263,133 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
             result = self.review()
         self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
         self.assertEqual(snapshot(), before)
+
+    def _second_synthetic_grant(self, asset="api.example.test"):
+        req = self.store.submit_assessment_request(
+            self.member,
+            requested_assets=(asset,),
+            requested_mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
+            requested_risk=RiskLevel.STANDARD,
+        )
+        req = self.store.review_assessment_request(self.operator, req.request_id, True)
+        granted = self.store.record_authorization_grant(
+            self.operator,
+            self.engagement,
+            self.operator.user_id,
+            "SECOND-FICTIONAL-REQUEST",
+            ScopeDefinition(
+                assets=(asset,),
+                max_risk=RiskLevel.LOW_IMPACT,
+                allowed_capabilities=("web-baseline",),
+            ),
+            self.valid_from,
+            self.now + timedelta(days=1),
+        )
+        with sqlite3.connect(self.path) as con:
+            con.execute(
+                "UPDATE authorization_grants SET approved_request_id=? WHERE grant_id=?",
+                (req.request_id, granted.grant_id),
+            )
+        return granted.grant_id
+
+    def test_atomic_persisted_batch_two_valid_is_still_review_only(self):
+        self.upgrade_synthetic_only()
+        second_id = self._second_synthetic_grant()
+        result = review_persisted_grant_batch(
+            self.path, (self.grant.grant_id, second_id),
+            reviewed_at=self.reviewed_at,
+        )
+        self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(result)
+
+    def test_atomic_persisted_batch_denies_all_invalid_shapes(self):
+        self.upgrade_synthetic_only()
+        for ids in (
+            (), [], None, ("",), ("wrong",), (self.grant.grant_id,) * 2,
+            (self.grant.grant_id, 7), (self.grant.grant_id,) * 33,
+        ):
+            with self.subTest(ids_type=type(ids).__name__):
+                result = review_persisted_grant_batch(
+                    self.path, ids, reviewed_at=self.reviewed_at
+                )
+                self.assertIs(result.status, ReviewStatus.HOLD)
+                self.assert_no_authority(result)
+
+    def test_atomic_persisted_batch_denies_overlapping_effective_assets(self):
+        self.upgrade_synthetic_only()
+        second_id = self._second_synthetic_grant("app.example.test")
+        for gid in (self.grant.grant_id, second_id):
+            self.assertIs(self.review(grant_id=gid).status, ReviewStatus.REVIEW_ONLY)
+        result = review_persisted_grant_batch(
+            self.path, (self.grant.grant_id, second_id),
+            reviewed_at=self.reviewed_at,
+        )
+        self.assertIs(result.status, ReviewStatus.HOLD)
+        self.assert_no_authority(result)
+
+    def test_atomic_persisted_batch_denies_cross_tenant_despite_two_valid_grants(self):
+        self.upgrade_synthetic_only()
+        other = self.store.create_client(self.operator, "Second fictional client")
+        second_member = AccessContext("second-member", Role.CLIENT_MEMBER, other.client_id)
+        req = self.store.submit_assessment_request(
+            second_member, ("api.example.test",),
+            AssessmentMode.AUTHORIZED_ASSESSMENT, RiskLevel.STANDARD,
+        )
+        req = self.store.review_assessment_request(self.operator, req.request_id, True)
+        eng = self.store.create_engagement(self.operator, other.client_id, "Other isolated engagement")
+        grant2 = self.store.record_authorization_grant(
+            self.operator, eng.engagement_id, self.operator.user_id,
+            "OTHER-FICTIONAL-ONLY",
+            ScopeDefinition(
+                assets=("api.example.test",), max_risk=RiskLevel.LOW_IMPACT,
+                allowed_capabilities=("web-baseline",),
+            ),
+            self.valid_from, self.now + timedelta(days=1),
+        )
+        self.store.set_engagement_status(self.operator, eng.engagement_id, EngagementStatus.AUTHORIZED)
+        with sqlite3.connect(self.path) as con:
+            con.execute(
+                "UPDATE authorization_grants SET approved_request_id=? WHERE grant_id=?",
+                (req.request_id, grant2.grant_id),
+            )
+        self.assertIs(self.review(grant_id=grant2.grant_id).status, ReviewStatus.REVIEW_ONLY)
+        result = review_persisted_grant_batch(
+            self.path, (self.grant.grant_id, grant2.grant_id),
+            reviewed_at=self.reviewed_at,
+        )
+        self.assertIs(result.status, ReviewStatus.HOLD)
+        self.assert_no_authority(result)
+
+    def test_batch_only_existing_domain_schema_hold_and_no_create(self):
+        result = review_persisted_grant_batch(
+            self.path, (self.grant.grant_id,), reviewed_at=self.reviewed_at,
+        )
+        self.assertIs(result.status, ReviewStatus.HOLD)
+        missing = self.path.parent / "missing-batch.sqlite3"
+        result = review_persisted_grant_batch(
+            missing, (self.grant.grant_id,), reviewed_at=self.reviewed_at,
+        )
+        self.assertIs(result.status, ReviewStatus.HOLD)
+        self.assertFalse(missing.exists())
+
+    def test_batch_atomic_snapshot_no_db_mutation_and_no_network(self):
+        self.upgrade_synthetic_only()
+        second_id = self._second_synthetic_grant()
+        def state():
+            with sqlite3.connect(self.path) as con:
+                return tuple(
+                    con.execute(f"SELECT * FROM {table} ORDER BY rowid").fetchall()
+                    for table in ("assessment_requests", "authorization_grants", "engagements")
+                )
+        before = state()
+        with patch("socket.socket", side_effect=AssertionError("no network")):
+            result = review_persisted_grant_batch(
+                self.path, (self.grant.grant_id, second_id),
+                reviewed_at=self.reviewed_at,
+            )
+        self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(result)
+        self.assertEqual(before, state())
 
     def test_bad_review_instant_and_path_fail_without_mutations(self):
         self.upgrade_synthetic_only()
