@@ -53,6 +53,17 @@ def _reject_float(_value: str) -> None:
     raise Rejected("non_integer_number")
 
 
+def _strict_risk_integer(token: str) -> int:
+    """V1 has exactly one numeric field: literal JSON integer risk 0..4.
+
+    Do not silently normalize -0 into 0, or parse huge attacker-controlled
+    integer literals merely to discard them after JSON deserialization.
+    """
+    if token not in ("0", "1", "2", "3", "4"):
+        raise Rejected("noncanonical_risk_number")
+    return int(token)
+
+
 def _parse(raw: bytes) -> dict[str, object]:
     if type(raw) is not bytes or not 0 < len(raw) <= MAX_INPUT:
         raise Rejected("input_size")
@@ -60,6 +71,7 @@ def _parse(raw: bytes) -> dict[str, object]:
         data = json.loads(
             raw.decode("utf-8", errors="strict"),
             object_pairs_hook=_object,
+            parse_int=_strict_risk_integer,
             parse_float=_reject_float,
             parse_constant=_reject_float,
         )
