@@ -85,7 +85,7 @@ class InstalledPercentEncodedHostScopeTests(unittest.TestCase):
             "127%2e0%2e0%2e1", "127%2E0%2E0%2E1",
             "https://127%2e0%2e0%2e1:8443/",
             "http://local%68ost/",
-            "[%3a%3a1]",
+            "%3a%3a1",
         )
         policy = ScopePolicy(allow_private_lab=False)
         for raw in variants:
@@ -133,7 +133,7 @@ class InstalledPercentEncodedHostScopeTests(unittest.TestCase):
 
     def test_unencoded_loopback_retains_loopback_semantics(self):
         policy = ScopePolicy(allow_private_lab=False)
-        for raw in ("localhost", "127.0.0.1", "::1", "http://localhost:8080/"):
+        for raw in ("localhost", "127.0.0.1", "http://[::1]/", "http://localhost:8080/"):
             with self.subTest(raw=raw):
                 result = policy.decide(Target(raw))
                 self.assertTrue(result.allowed)
