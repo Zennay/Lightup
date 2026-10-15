@@ -20,6 +20,7 @@ class LegacyTemporalReview(NamedTuple):
         """Only static classifications; never disclose claims or give authority."""
         allowed = (
             ("HOLD", "invalid_shape"),
+            ("HOLD", "invalid_batch"),
             ("HOLD", "unbounded_window"),
             ("HOLD", "inverted_window"),
             ("HOLD", "outside_window"),
@@ -111,4 +112,75 @@ def review_legacy_authorization_window(
             return hold
     except AttributeError:
         return hold
+    return LegacyTemporalReview("REVIEW_ONLY", "temporal_shape_only")
+
+
+
+def review_legacy_authorization_batch(
+    authorizations: tuple[Authorization, ...],
+    *,
+    observed_at: datetime,
+) -> LegacyTemporalReview:
+    """Atomically summarize 1–32 fictional legacy windows without authorizing.
+
+    No partial result or per-claim explanation leaves this function. A shape,
+    window, or detectable in-call consistency problem in *any* member forces
+    one generic HOLD; REVIEW_ONLY means all shapes survived this offline
+    inspection, never that any member has an active client grant.
+
+    This is best-effort single-thread consistency, not a transactional snapshot
+    or protection from concurrent mutations after return.
+    """
+    hold = LegacyTemporalReview("HOLD", "invalid_batch")
+    if (
+        type(authorizations) is not tuple
+        or not 1 <= len(authorizations) <= 32
+        or not _canonical_datetime(observed_at)
+    ):
+        return hold
+
+    snapshots: list[tuple[Authorization, object, object]] = []
+    for authorization in authorizations:
+        if type(authorization) is not Authorization:
+            return hold
+        try:
+            fields = vars(authorization)
+            if type(fields) is not dict or (
+                "valid_from" not in fields or "valid_until" not in fields
+            ):
+                return hold
+            start = fields["valid_from"]
+            end = fields["valid_until"]
+        except (TypeError, KeyError):
+            return hold
+        verdict = review_legacy_authorization_window(
+            authorization, observed_at=observed_at
+        )
+        if (
+            type(verdict) is not LegacyTemporalReview
+            or type(verdict.status) is not str
+            or type(verdict.reason) is not str
+            or (verdict.status, verdict.reason)
+            != ("REVIEW_ONLY", "temporal_shape_only")
+        ):
+            return hold
+        snapshots.append((authorization, start, end))
+
+    # Reject earlier claims silently mutated while later claims were reviewed.
+    # Never reveal which member failed, the number of successful claims, or IDs.
+    for authorization, start, end in snapshots:
+        try:
+            fields = vars(authorization)
+            if (
+                type(fields) is not dict
+                or "valid_from" not in fields
+                or "valid_until" not in fields
+                or fields["valid_from"] is not start
+                or fields["valid_until"] is not end
+                or authorization.valid_from is not start
+                or authorization.valid_until is not end
+            ):
+                return hold
+        except (TypeError, AttributeError, KeyError):
+            return hold
     return LegacyTemporalReview("REVIEW_ONLY", "temporal_shape_only")
