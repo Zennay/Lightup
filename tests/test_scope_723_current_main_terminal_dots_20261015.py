@@ -204,6 +204,38 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
             self.assertTrue(_decision(_HOST).allowed)
             self.assertFalse(_decision("unlisted.example.test").allowed)
 
+    def test_masked_runtime_error_cannot_masquerade_as_source_red(self):
+        # A plain @expectedFailure would swallow this unrelated exception.
+        # Our independent witness must *recognize* and reject this outcome.
+        with patch(f"{__name__}._decision", side_effect=TypeError("synthetic masking")):
+            result = _AssertionWitnessResult()
+            TerminalDotCurrentMainSourceRed(
+                "test_double_terminal_dot_target_must_not_inherit_explicit_host"
+            ).run(result)
+        self.assertEqual(len(result.expectedFailures), 1)
+        self.assertEqual(result.real_expected_types, [(TypeError, "synthetic masking")])
+        self.assertNotEqual(result.real_expected_types, [(AssertionError, "True is not false")])
+
+    def test_untrusted_fixture_is_not_authenticated_customer_approval(self):
+        # Genuine customer/operator provenance is intentionally unavailable.
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset((_HOST,)),
+        )
+        for value in (_HOST, _HOST + ".", _HOST + ".."):
+            with self.subTest(value=value):
+                decision = policy.decide(Target(value))
+                self.assertFalse(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_exact_positive_controls_stay_disjoint(self):
+        # A malformed other hostname must not gain membership just because
+        # the test fixture's own canonical host was explicitly configured.
+        for value in ("not-" + _HOST, "x." + _HOST, _HOST + ".evil.test"):
+            decision = _decision(value)
+            self.assertFalse(decision.allowed)
+            self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+
     def test_policy_collections_and_synthetic_authorization_unchanged(self):
         policy = ScopePolicy(explicit_hosts=frozenset((_HOST,)))
         original = policy.explicit_hosts
