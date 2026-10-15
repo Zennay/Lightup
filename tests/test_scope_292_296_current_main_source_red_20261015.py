@@ -54,7 +54,7 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
 
     def test_strict_canonical_reference_negative_matrix(self):
         invalid = (
-            134744072, True, None, b"\\x08\\x08\\x08\\x08",
+            134744072, True, None, bytes((8, 8, 8, 8)),
             IPv4Address("8.8.8.8"), IPv4Network("8.8.8.8/32"),
             IPv6Address("2001:4860:4860::8888"),
             IPv6Network("2001:4860:4860::8888/128"),
