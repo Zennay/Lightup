@@ -46,7 +46,7 @@ class AtomicPublicConfigurationSourceContract(unittest.TestCase):
             socket, "getaddrinfo", side_effect=AssertionError("NO_DNS")
         )
         self.connect = patch.object(
-            socket.socket, "connect", side_effect=AssertionError("NO_NETWORK")
+            socket, "socket", side_effect=AssertionError("NO_NETWORK")
         )
         self.resolver.start()
         self.connect.start()
