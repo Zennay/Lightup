@@ -178,6 +178,40 @@ def _receipt(status: str) -> dict[str, object]:
 
 
 
+
+COHORT_FIELDS = (
+    "expired",
+    "not_yet_started",
+    "current_expiring_within_horizon",
+    "current_later",
+)
+
+
+def _receipt_is_safe(receipt: object) -> bool:
+    """Treat even our own output construction as untrusted until shape-checked.
+
+    Only literal-false flags and bounded count totals can leave this process.
+    This prevents an accidental upstream object/status/field change from
+    producing an apparently approval-shaped or client-identifying receipt.
+    """
+    if type(receipt) is not dict:
+        return False
+    if any(receipt.get(key) is not False for key in DENIAL_FLAGS):
+        return False
+    status = receipt.get("status")
+    if type(status) is not str:
+        return False
+    expected = {"status", *DENIAL_FLAGS}
+    if status == "HOLD":
+        return set(receipt) == expected
+    if status != "REVIEW_ONLY" or set(receipt) != expected.union(COHORT_FIELDS):
+        return False
+    counts = [receipt[key] for key in COHORT_FIELDS]
+    return (all(type(number) is int and 0 <= number <= MAX_CLAIMS
+                for number in counts)
+            and 1 <= sum(counts) <= MAX_CLAIMS)
+
+
 def _emit_receipt(receipt: dict[str, object]) -> bool:
     """One bounded nonblocking write to a local pipe or real terminal only.
 
@@ -185,6 +219,8 @@ def _emit_receipt(receipt: dict[str, object]) -> bool:
     metadata somewhere unexpected. Refuse those destinations without emitting
     anything. A filled or broken pipe must not hang or dump a traceback.
     """
+    if not _receipt_is_safe(receipt):
+        return False
     payload = (json.dumps(receipt, separators=(",", ":"), ensure_ascii=True) +
                "\n").encode("ascii")
     if len(payload) > 512:
