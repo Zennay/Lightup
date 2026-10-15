@@ -245,16 +245,28 @@ class OfflineRevalidationFence:
             self._closed = True
             self._approval = None
             self._approval_seal = None
+            # Discard both halves of the obsolete identity; leave no stale
+            # synthetic capability registered on a permanently closed fence.
+            self._tool = None
+            self._tool_seal = None
             self._epoch += 1
 
     def replace_synthetic_tool(self, tool: ToolSnapshot) -> None:
         if type(tool) is not ToolSnapshot or not tool.is_well_formed():
             raise ValueError("invalid synthetic tool")
+        original = self._tool_fields(tool)
         with self._lock:
             if self._closed:
                 raise ValueError("revoked review instance cannot replace tools")
-            self._tool = ToolSnapshot(tool.tool, tool.capability, tool.risk)
-            self._tool_seal = self._tool_fields(self._tool)
+            snapshot = ToolSnapshot(tool.tool, tool.capability, tool.risk)
+            if (
+                not snapshot.is_well_formed()
+                or self._tool_fields(snapshot) != original
+                or self._tool_fields(tool) != original
+            ):
+                raise ValueError("synthetic tool changed during registry intake")
+            self._tool = snapshot
+            self._tool_seal = self._tool_fields(snapshot)
             self._epoch += 1
 
     def review(
