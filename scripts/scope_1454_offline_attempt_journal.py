@@ -168,7 +168,12 @@ class OfflineAttemptJournal:
             # An attacker-controlled same-name table, trigger, view, attached
             # DB or TEMP shadow table must never be counted as a reservation.
             databases = [row[1] for row in connection.execute("PRAGMA database_list")]
-            if databases != ["main"]:
+            # SQLite may instantiate its built-in TEMP schema on a read of
+            # sqlite_temp_master even when that schema contains no objects.
+            # Only foreign ATTACH aliases are forbidden unconditionally.
+            if "main" not in databases or any(
+                name not in {"main", "temp"} for name in databases
+            ):
                 return False
             if connection.execute(
                 "SELECT 1 FROM sqlite_temp_master LIMIT 1"
@@ -197,9 +202,12 @@ class OfflineAttemptJournal:
                 if not _trusted_schema():
                     raise ValueError("synthetic offline connection required")
             else:
-                if [row[1] for row in connection.execute(
+                db_names = [row[1] for row in connection.execute(
                     "PRAGMA database_list"
-                )] != ["main"]:
+                )]
+                if "main" not in db_names or any(
+                    name not in {"main", "temp"} for name in db_names
+                ):
                     raise ValueError("synthetic offline connection required")
                 if connection.execute(
                     "SELECT 1 FROM sqlite_temp_master LIMIT 1"
