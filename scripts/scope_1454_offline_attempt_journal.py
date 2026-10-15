@@ -215,6 +215,25 @@ def _operation_fingerprint(attempt: SyntheticAttempt) -> str | None:
     ).hexdigest()
 
 
+def _same_attempt(
+    attempt: SyntheticAttempt, attempt_id: str,
+    binding: str, fingerprint: str,
+) -> bool:
+    """Recheck the supplied synthetic object after a SQLite phase boundary.
+
+    This is only a best-effort mutation detector on a cooperative local Python
+    process. A malicious in-process mutator can still change the object after
+    this check; a real executor must use trusted immutable owned snapshots.
+    """
+    return (
+        type(attempt) is SyntheticAttempt
+        and type(attempt.attempt_id) is str
+        and attempt.attempt_id == attempt_id
+        and _sealed(attempt) == binding
+        and _operation_fingerprint(attempt) == fingerprint
+    )
+
+
 class OfflineAttemptJournal:
     """Synthetic SQLite reference, deliberately NOT an execution wrapper.
 
@@ -310,6 +329,9 @@ class OfflineAttemptJournal:
         fingerprint = _operation_fingerprint(attempt)
         if binding is None or fingerprint is None:
             return _hold()
+        original_attempt_id = attempt.attempt_id
+        if not _same_attempt(attempt, original_attempt_id, binding, fingerprint):
+            return _hold()
         owned_transaction = False
         try:
             if self._con.in_transaction:
@@ -317,6 +339,11 @@ class OfflineAttemptJournal:
                 return _hold()
             self._con.execute("BEGIN IMMEDIATE")
             owned_transaction = True
+            if not _same_attempt(
+                attempt, original_attempt_id, binding, fingerprint
+            ):
+                self._rollback_quietly()
+                return _hold()
             # Inspect under the same SQLite write transaction as mutation.
             # No REVIEW_ONLY receipt may survive later trigger/table/ATTACH
             # injection or a TEMP-table shadow introduced after init.
@@ -349,6 +376,13 @@ class OfflineAttemptJournal:
             if observed is None or tuple(observed) != (next_phase, evidence_digest):
                 self._rollback_quietly()
                 return _hold()
+            # A SQL statement / local hook might mutate a purportedly
+            # frozen fixture object while the database is being updated.
+            if not _same_attempt(
+                attempt, original_attempt_id, binding, fingerprint
+            ):
+                self._rollback_quietly()
+                return _hold()
             self._con.commit()
             return _review()
         except sqlite3.Error:
@@ -366,6 +400,9 @@ class OfflineAttemptJournal:
         fingerprint = _operation_fingerprint(attempt)
         if binding is None or fingerprint is None:
             return _hold()
+        original_attempt_id = attempt.attempt_id
+        if not _same_attempt(attempt, original_attempt_id, binding, fingerprint):
+            return _hold()
         owned_transaction = False
         try:
             if self._con.in_transaction:
@@ -373,6 +410,11 @@ class OfflineAttemptJournal:
                 return _hold()
             self._con.execute("BEGIN IMMEDIATE")
             owned_transaction = True
+            if not _same_attempt(
+                attempt, original_attempt_id, binding, fingerprint
+            ):
+                self._rollback_quietly()
+                return _hold()
             # Inspect under the same SQLite write transaction as mutation.
             # No REVIEW_ONLY receipt may survive later trigger/table/ATTACH
             # injection or a TEMP-table shadow introduced after init.
@@ -400,6 +442,13 @@ class OfflineAttemptJournal:
             ):
                 self._rollback_quietly()
                 return _hold()
+            # A SQL statement / local hook might mutate a purportedly
+            # frozen fixture object while the database is being updated.
+            if not _same_attempt(
+                attempt, original_attempt_id, binding, fingerprint
+            ):
+                self._rollback_quietly()
+                return _hold()
             self._con.commit()
             return _review()
         except sqlite3.Error:
@@ -424,6 +473,9 @@ class OfflineAttemptJournal:
         fingerprint = _operation_fingerprint(attempt)
         if binding is None or fingerprint is None:
             return "unknown", _hold()
+        original_attempt_id = attempt.attempt_id
+        if not _same_attempt(attempt, original_attempt_id, binding, fingerprint):
+            return "unknown", _hold()
         owned_snapshot = False
         try:
             # Never reuse a caller-owned transaction or assert a review verdict
@@ -444,7 +496,9 @@ class OfflineAttemptJournal:
         finally:
             if owned_snapshot:
                 self._rollback_quietly()
-        if row is None or row[0] != binding or row[1] != fingerprint:
+        if (not _same_attempt(
+            attempt, original_attempt_id, binding, fingerprint
+        ) or row is None or row[0] != binding or row[1] != fingerprint):
             return "unknown", _hold()
         phase, digest = row[2], row[3]
         # A 'recorded' claim without an exact sha256 is not evidence.
