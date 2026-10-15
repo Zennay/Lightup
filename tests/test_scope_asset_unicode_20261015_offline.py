@@ -475,7 +475,8 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             original_read = os.read
-            original_stat = os.fstat(0)
+            real_fstat = os.fstat
+            original_stat = real_fstat(0)
             original_block = os.get_blocking(0)
             changed = [False]
             def rewrite_after_first_read(fd, limit):
@@ -485,7 +486,7 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
                     os.pwrite(fd, OTHER, 0)
                 return value
             def stable_stat(fd):
-                actual = os.fstat(fd)
+                actual = real_fstat(fd)
                 return original_stat if actual.st_ino == original_stat.st_ino else actual
             try:
                 with mock.patch.object(module.os, "read", side_effect=rewrite_after_first_read):
