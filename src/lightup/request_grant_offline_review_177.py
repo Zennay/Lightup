@@ -35,7 +35,7 @@ class RequestGrantReview:
 
 _HOLD = RequestGrantReview(ReviewStatus.HOLD, "invalid_or_unverified_input")
 _REVIEW = RequestGrantReview(ReviewStatus.REVIEW_ONLY, "structurally_coherent_untrusted_snapshot")
-_IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\\Z", re.ASCII)
+_IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z", re.ASCII)
 _DNS_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z", re.ASCII)
 _DECISION_INSTANT = re.compile(
     r"[0-9]{4}-[0-9]{2}-[0-9]{2}T"
