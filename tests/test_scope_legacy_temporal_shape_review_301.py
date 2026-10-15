@@ -4,6 +4,7 @@ Independent of installed Authorization.is_current, which remains a known RED.
 All identities are synthetic and no target I/O is performed.
 """
 import ast
+import json
 import os
 import sys
 import unittest
@@ -916,6 +917,55 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
             def __eq__(self, other):
                 raise AssertionError("key equality hook invoked")
         self.assertNotIn(_Danger(), receipt)
+
+    def test_json_export_preserves_all_six_false_flags_and_opaque_labels(self):
+        for verdict in (
+            review(), review(fixture(end=False)),
+            review_legacy_authorization_batch((fixture(),), observed_at=MID),
+            review_legacy_authorization_batch(
+                (fixture(), fixture(end=False)), observed_at=MID
+            ),
+            LegacyTemporalReview("APPROVED", "pretend_grant")
+        ):
+            receipt = LegacyTemporalReview.as_receipt(verdict)
+            encoded = receipt.to_json()
+            self.assertIs(type(encoded), str)
+            self.assertEqual(json.loads(encoded), dict(receipt))
+            self.assertEqual(encoded.count(":false"), 6)
+            self.assertNotIn("FAKE_APPROVAL_NOT_CONSENT", encoded)
+            self.assertNotIn("FICTIONAL_DO_NOT_AUTHORIZE", encoded)
+            for key in (
+                "authorization_verified", "permit_issued", "execution_enabled",
+                "target_dispatch_allowed", "merge_approved", "release_approved"
+            ):
+                self.assertIs(json.loads(encoded)[key], False)
+            self.assertFalse(bool(receipt))
+        # A tuple-derived mapping encodes as a two-item JSON ARRAY through
+        # generic json.dumps; never use that as a receipt serialization API.
+        sample = review().as_receipt()
+        self.assertIsInstance(json.loads(json.dumps(sample)), list)
+        self.assertIsInstance(json.loads(sample.to_json()), dict)
+
+    def test_json_export_does_not_call_untrusted_payload_or_external_io(self):
+        class _Danger:
+            def __str__(self):
+                raise AssertionError("JSON payload str hook invoked")
+            def __repr__(self):
+                raise AssertionError("JSON payload repr hook invoked")
+            def __eq__(self, other):
+                raise AssertionError("JSON payload comparator invoked")
+
+        forged = tuple.__new__(LegacyTemporalReceipt, (_Danger(), _Danger()))
+        with (
+            patch("builtins.open", side_effect=AssertionError("file access")),
+            patch("socket.socket", side_effect=AssertionError("network access")),
+            patch("subprocess.Popen", side_effect=AssertionError("process access")),
+        ):
+            encoded = LegacyTemporalReceipt.to_json(forged)
+        self.assertEqual(json.loads(encoded)["status"], "HOLD")
+        self.assertEqual(json.loads(encoded)["reason"], "invalid_shape")
+        self.assertEqual(encoded.count(":false"), 6)
+        self.assertNotIn("Danger", encoded)
 
     def test_receipt_never_executes_untrusted_key_comparators(self):
         class _HostileKey:
