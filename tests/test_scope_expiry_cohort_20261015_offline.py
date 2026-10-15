@@ -1026,5 +1026,43 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
 
 
 
+    def test_distinct_untrusted_failures_have_identical_opaque_hold_receipt(self):
+        """Real CLI: neither parser failure kind nor raw secret is observable."""
+        baseline = encoded(document())
+        invalid_packets = [
+            b"",
+            bytes([0xFF]),
+            b"not-json-client-secret.invalid",
+            b"[" * 1500 + b"0" + b"]" * 1500,
+            b" " * (reviewer.MAX_INPUT_BYTES + 1),
+            baseline[:-1],
+            baseline + b"{}",
+            baseline.replace(b'"horizon_hours":24',
+                             b'"horizon_hours":NaN'),
+            baseline.replace(b'"horizon_hours":24',
+                             b'"horizon_hours":1.0'),
+            baseline.replace(b'"horizon_hours":24',
+                             b'"horizon_hours":24,"horizon_hours":24'),
+            baseline.replace(b'"valid_until":"2026-10-14T00:00:00Z"',
+                             b'"valid_until":"tenant-client-secret.invalid"'),
+            baseline.replace(b'"windows":[', b'"approved":true,"windows":['),
+        ]
+        receipts = []
+        for number, raw in enumerate(invalid_packets):
+            with self.subTest(case=number):
+                code, receipt, stderr = subprocess_review(raw)
+                self.assertEqual(code, 2)
+                self.assertEqual(stderr, b"")
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertEqual(set(receipt),
+                                 {"status", *reviewer.DENIAL_FLAGS})
+                self.assertNoAuthority(receipt)
+                self.assertNotIn("secret", json.dumps(receipt))
+                receipts.append(receipt)
+        self.assertEqual(len(receipts), 12)
+        self.assertTrue(all(receipt == receipts[0] for receipt in receipts))
+
+
+
 if __name__ == "__main__":
     unittest.main()
