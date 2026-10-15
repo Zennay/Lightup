@@ -155,6 +155,34 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
             LegacyTemporalReview("REVIEW_ONLY", "temporal_shape_only",
                                  permit_issued=True)
 
+    def test_missing_datetime_field_is_an_opaque_hold(self):
+        incomplete = object.__new__(Authorization)
+        assert_non_authorizing(self, review(incomplete), "HOLD", "invalid_shape")
+        object.__setattr__(incomplete, "valid_from", START)
+        assert_non_authorizing(self, review(incomplete), "HOLD", "invalid_shape")
+
+    def test_mutating_frozen_window_during_review_cannot_yield_review_only(self):
+        auth = fixture()
+        original = Authorization.__getattribute__
+        calls = {"end": 0}
+
+        def injecting_getattribute(instance, name):
+            if instance is auth and name == "valid_until":
+                calls["end"] += 1
+                if calls["end"] == 1:
+                    # Rebinding a frozen instance via object.__setattr__ is
+                    # possible. Without final identity readback, the original
+                    # window could have returned stale REVIEW_ONLY.
+                    object.__setattr__(
+                        instance, "valid_from", END + timedelta(seconds=1)
+                    )
+            return original(instance, name)
+
+        with patch.object(Authorization, "__getattribute__", injecting_getattribute):
+            result = review(auth)
+        self.assertGreaterEqual(calls["end"], 1)
+        assert_non_authorizing(self, result, "HOLD", "invalid_shape")
+
     def test_no_external_effects_or_clock_lookup(self):
         # Imports already complete: actual reviewer must not open files, spawn
         # processes, resolve hosts, or read current time for synthetic review.
