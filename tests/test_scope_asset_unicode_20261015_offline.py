@@ -146,6 +146,48 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
             modified[field].append("hidden\u200b.example.test")
             self.assert_hold(receipt(modified))
 
+    def test_fragmented_local_pipe_and_unclosed_stream_are_fail_closed(self):
+        data = json.dumps(synthetic_claim()).encode("utf-8")
+        original = subprocess.run(
+            [sys.executable, str(SCRIPT), "--stdin-json"], input=data,
+            capture_output=True, timeout=5, check=False)
+        child = subprocess.Popen(
+            [sys.executable, str(SCRIPT), "--stdin-json"],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        assert child.stdin is not None
+        for chunk in (data[:9], data[9:35], data[35:]):
+            child.stdin.write(chunk)
+            child.stdin.flush()
+        child.stdin.close()
+        child.stdin = None
+        out, err = child.communicate(timeout=5)
+        self.assertEqual(child.returncode, 3)
+        self.assertEqual(out, original.stdout)
+        self.assertEqual(err, b"")
+        child = subprocess.Popen(
+            [sys.executable, str(SCRIPT), "--stdin-json"],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        assert child.stdin is not None and child.stdout is not None
+        child.stdin.write(b'{"assets":[')
+        child.stdin.flush()
+        self.assertEqual(child.wait(timeout=5), 2)
+        denied = child.stdout.read()
+        self.assert_hold(json.loads(denied))
+        self.assertEqual(child.stderr.read(), b"")
+        child.stdin.close()
+        child.stdout.close()
+        child.stderr.close()
+
+    def test_real_cli_oversized_input_is_generic_hold(self):
+        data = b"SENSITIVE-ASSET-EXAMPLE" * 700
+        proc = subprocess.run([sys.executable, str(SCRIPT), "--stdin-json"],
+                              input=data, capture_output=True, timeout=5,
+                              check=False)
+        self.assertEqual(proc.returncode, 2)
+        self.assert_hold(json.loads(proc.stdout))
+        self.assertNotIn(b"SENSITIVE-ASSET-EXAMPLE", proc.stdout)
+        self.assertEqual(proc.stderr, b"")
+
     def test_real_cli_never_success_or_leaks_input(self):
         payloads = [
             (json.dumps(synthetic_claim()).encode(), 3, "REVIEW_ONLY"),

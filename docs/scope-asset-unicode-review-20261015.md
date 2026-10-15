@@ -11,6 +11,8 @@ Synthetic JSON must contain **exactly** three arrays: assets (1–32), excluded_
 
 Strict JSON/UTF-8 max 8192 bytes rejects duplicate escaped keys, nonfinite numbers, extra fields, unexpected shapes and duplicate/intersecting asset sets. Input comes from local stdin file/pipe and has a two-second EOF deadline. REVIEW_ONLY exits 3 and contains only aggregate counts; HOLD exits 2 and has no counts. Both include six literal false flags: authorization_verified, permit_issued, dispatch_enabled, merge_approved, deploy_approved, release_approved. Nothing echoes input identifiers or approvals. Aggregate counts are not cryptographic anonymization; **never submit customer data**. Output transport is not cryptographically authenticated or fd-pinned.
 
+Tests additionally assert that fragmented local pipe writes give byte-identical non-authorizing receipts, incomplete never-closed pipes reach a HOLD within the two-second deadline, and oversized real-CLI input is generic HOLD with no echo. These are synthetic local subprocesses; no real customer or target data is used.
+
 Test: python -m unittest discover -s tests -p 'test_scope_asset_unicode_20261015_offline.py' -v
 
 All test cases use fictional data. Host CI evidence applies only to the exact commit; it is NOT an installed ingress, registered self-hosted runner, client consent or production release proof. Before active work, original owners must verify actual approval request-to-grant provenance (#177), time-bound authorization (#347), per-dispatch revocation, exact asset/capability and network egress binding, installed deployment gates, independent privacy/security review and **explicit human authorization**. Do not merge, deploy, issue grants or scan targets on this basis.
