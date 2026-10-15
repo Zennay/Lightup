@@ -6,6 +6,7 @@ from scope_release_stdin_20261015 import read_bounded_stdin
 from scope_release_dependency_inventory_20261015 import (
     GATES, MAX_BYTES, InvalidPacket, assess,
 )
+from scope_release_remediation_catalog_20261015 import remediation
 
 EXPLANATIONS = {
     "client_consent": ("Toestemming van de klant", "Toestemming voor het exacte doel ontbreekt of is niet onafhankelijk getoetst."),
@@ -52,6 +53,11 @@ def summarize(raw: bytes) -> str:
         status = STATUS_NL[result["gate_states"][gate]] if result else STATUS_NL["UNKNOWN"]
         # Every gate is independently unverified, including self-reported ones.
         lines.append(f"- **{label} — {status}:** {cause}")
+        guide = remediation(gate)
+        lines.append(f"  Verantwoordelijke: {guide.owner_role}.")
+        lines.append(f"  Eerst oplossen: {guide.concrete_action}")
+        lines.append(f"  Onafhankelijk bewijs nodig: {guide.acceptance_evidence}")
+        lines.append(f"  Waarom nog niet vrij: {guide.reason_not_lifted}")
     lines.extend([
         "",
         "## Wat wel en niet kan",
