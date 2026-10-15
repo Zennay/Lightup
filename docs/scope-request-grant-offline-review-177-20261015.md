@@ -43,6 +43,22 @@ rules are authoritative; this toy format is only a strict offline reference.
 
 `review_request_grant_batch(pairs, reviewed_at=...)` accepts only an exact Python tuple of 1–32 exact two-tuples of untrusted request/grant snapshots, all on one declared client. Every member must already be structurally REVIEW_ONLY using the single-grant reviewer. Duplicate request IDs, duplicate grant IDs, effective granted-asset overlaps, mixed tenants, malformed entries and input above the limit cause a single **atomic HOLD**. No per-item status, no granted asset/client ID, no partial acceptance. A completely coherent batch remains **REVIEW_ONLY with all six false flags**. Excluded assets are not treated as effective scope membership during overlap checking; overlapping claims without actual granted membership are still not permission. The batch performs no I/O or issuing step and is **not** a release authority.
 
+## Three-way engagement lineage review (opt-in)
+
+`review_request_grant_engagement(request, grant, engagement, reviewed_at=...)`
+additionally inspects an **untrusted snapshot** of the real `EngagementRecord`.
+It requires exact built-in `EngagementRecord`, exact declared
+`EngagementStatus.AUTHORIZED` (DRAFT/RUNNING/CLOSED do not count as approval),
+exact matching grant engagement ID, identical client on all three objects, and
+canonical UTC engagement creation before the declared grant start. Type-confused
+grant windows and malformed engagement timestamps atomically HOLD.
+A coherent engagement snapshot still cannot establish an authenticated link
+from the original assessment request to that engagement: the current domain
+schema has **no such request FK**. The result remains `REVIEW_ONLY`, all
+six authority flags false, with zero persistence or operational side effects.
+Only source-owner implementation of a real durable request→grant→engagement
+chain can resolve issue #177.
+
 ## Results and hard boundary
 
 - `HOLD`: malformed or incoherent untrusted snapshots.
