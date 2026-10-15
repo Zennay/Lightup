@@ -116,12 +116,30 @@ class OfflineRevalidationFence:
         self._epoch = 0
         self._approval: ReferenceApproval | None = None
         self._tool: ToolSnapshot | None = None
+        # Exact tuple seals detect changes to frozen dataclass internals via
+        # object.__setattr__, which does not increment the normal epoch.
+        # These are review-only canaries, not tamper-proof Python secrets.
+        self._approval_seal: tuple[object, ...] | None = None
+        self._tool_seal: tuple[object, ...] | None = None
         self._review_count = 0
 
     @property
     def review_count(self) -> int:
         with self._lock:
             return self._review_count
+
+    @staticmethod
+    def _approval_fields(value: ReferenceApproval) -> tuple[object, ...]:
+        request = value.request
+        return (
+            request.run, request.client, request.engagement, request.asset,
+            request.tool, request.capability, request.risk,
+            value.issued_at, value.expires_at,
+        )
+
+    @staticmethod
+    def _tool_fields(value: ToolSnapshot) -> tuple[object, ...]:
+        return value.tool, value.capability, value.risk
 
     def replace_synthetic_reference(
         self, approval: ReferenceApproval, tool: ToolSnapshot
@@ -141,11 +159,14 @@ class OfflineRevalidationFence:
         with self._lock:
             self._approval = frozen
             self._tool = snapshot
+            self._approval_seal = self._approval_fields(frozen)
+            self._tool_seal = self._tool_fields(snapshot)
             self._epoch += 1
 
     def revoke(self) -> None:
         with self._lock:
             self._approval = None
+            self._approval_seal = None
             self._epoch += 1
 
     def replace_synthetic_tool(self, tool: ToolSnapshot) -> None:
@@ -153,6 +174,7 @@ class OfflineRevalidationFence:
             raise ValueError("invalid synthetic tool")
         with self._lock:
             self._tool = ToolSnapshot(tool.tool, tool.capability, tool.risk)
+            self._tool_seal = self._tool_fields(self._tool)
             self._epoch += 1
 
     def review(
@@ -164,7 +186,7 @@ class OfflineRevalidationFence:
     ) -> ReviewReceipt:
         if (type(request) is not ReviewRequest or not request.is_synthetic()
                 or not _aware(now)
-                or (isolation_probe is not None and not callable(isolation_probe))):
+                or isolation_probe is None or not callable(isolation_probe)):
             return _HOLD
 
         # Hold a private immutable copy of every caller-controlled field.
@@ -182,7 +204,7 @@ class OfflineRevalidationFence:
         with self._lock:
             epoch = self._epoch
         try:
-            if isolation_probe is not None and isolation_probe() is not True:
+            if isolation_probe() is not True:
                 return _HOLD
         except Exception:
             return _HOLD
@@ -192,6 +214,9 @@ class OfflineRevalidationFence:
             if epoch != self._epoch or approval is None or tool is None:
                 return _HOLD
             if not approval.is_well_formed() or not tool.is_well_formed():
+                return _HOLD
+            if (self._approval_fields(approval) != self._approval_seal
+                    or self._tool_fields(tool) != self._tool_seal):
                 return _HOLD
             if (request != initial_request or approval.request != initial_request
                     or tool.tool != initial_request.tool
