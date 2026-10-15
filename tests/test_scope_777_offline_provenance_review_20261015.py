@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import socket
 import tempfile
 from pathlib import Path
@@ -336,6 +337,27 @@ class SyntheticProvenanceReviewTests(unittest.TestCase):
             for fd in (source_read, source_write, other_read, other_write,
                        replaceable, pinned):
                 os.close(fd)
+
+
+    def test_seeded_untrusted_bytes_never_produce_authority(self):
+        rng = random.Random(777)
+        expected_keys = {"status", *FALSE_FLAGS}
+        for index in range(2048):
+            data = rng.randbytes(rng.randrange(0, 4170))
+            receipt = review.review_bytes(data)
+            with self.subTest(case=index):
+                self.assertEqual(set(receipt), expected_keys)
+                self.assertIn(receipt["status"], ("REVIEW_ONLY", "HOLD"))
+                self.assertEqual({key: receipt[key] for key in FALSE_FLAGS}, FALSE_FLAGS)
+
+    def test_seeded_attached_trailing_bytes_always_hold(self):
+        rng = random.Random(1777)
+        alphabet = b"AZ09{}_[],:+x!@#"
+        for size in (1, 2, 17, 31, 257, 1024):
+            for variant in range(32):
+                suffix = bytes(alphabet[rng.randrange(len(alphabet))] for _ in range(size))
+                with self.subTest(size=size, variant=variant):
+                    self.assert_receipt(OK + suffix, "HOLD")
 
 if __name__ == "__main__":
     unittest.main()
