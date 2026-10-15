@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+from scope_release_stdin_20261015 import read_bounded_stdin
 from scope_release_dependency_inventory_20261015 import (
     GATES, MAX_BYTES, InvalidPacket, assess,
 )
@@ -55,7 +56,7 @@ def summarize(raw: bytes) -> str:
 
 def main() -> int:
     try:
-        raw = sys.stdin.buffer.read(MAX_BYTES + 1)
+        raw = read_bounded_stdin(MAX_BYTES)
         report = summarize(raw)
     except OSError:
         report = summarize(b"")
