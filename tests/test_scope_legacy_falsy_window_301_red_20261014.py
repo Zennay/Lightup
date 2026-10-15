@@ -106,9 +106,28 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
 
     def test_all_inputs_remain_unchanged_after_pure_scope_decision(self):
-        a = _authorization(start=NOW - timedelta(days=1), end=NOW + timedelta(days=1))
+        # Unlike is_current(NOW) tests, ScopePolicy.decide() uses the real UTC
+        # clock. The fixed 2026-10-14 fixture expires in real time and must
+        # not make this positive immutability test fail on later CI runs.
+        current_utc = datetime.now(timezone.utc)
+        a = _authorization(
+            start=current_utc - timedelta(days=1),
+            end=current_utc + timedelta(days=1),
+        )
         before = repr(a)
         self.assertTrue(_pure_scope_decision(a).allowed)
+        self.assertEqual(repr(a), before)
+
+    def test_expired_scope_decision_does_not_mutate_authorization(self):
+        current_utc = datetime.now(timezone.utc)
+        a = _authorization(
+            start=current_utc - timedelta(days=2),
+            end=current_utc - timedelta(days=1),
+        )
+        before = repr(a)
+        decision = _pure_scope_decision(a)
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
         self.assertEqual(repr(a), before)
 
 
