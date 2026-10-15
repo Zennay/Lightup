@@ -71,7 +71,9 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
             _authorization().is_current(NOW.replace(tzinfo=None))
 
     def test_canonical_expired_explicit_host_scope_denied(self):
-        decision = _pure_scope_decision(_authorization(end=NOW - timedelta(days=30)))
+        decision = _pure_scope_decision_at(
+            _authorization(end=NOW - timedelta(days=30)), NOW
+        )
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
 
