@@ -279,6 +279,37 @@ class OfflineAttemptJournalTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 OfflineAttemptJournal(con)
 
+    def test_closed_connection_reservation_is_generic_hold(self):
+        self.con.close()
+        self.assert_non_authorizing(self.journal.reserve(self.attempt), "HOLD")
+        self.assertEqual(self.journal.review_phase(self.attempt)[0], "unknown")
+
+    def test_closed_connection_transition_is_generic_hold(self):
+        self.journal.reserve(self.attempt)
+        self.con.close()
+        self.assert_non_authorizing(
+            self.journal.mark_uncertain(self.attempt), "HOLD")
+        with closing(sqlite3.connect(self.path)) as con:
+            recovered = OfflineAttemptJournal(con)
+            self.assertEqual(recovered.review_phase(self.attempt)[0], "reserved")
+            self.assert_non_authorizing(recovered.reserve(self.attempt), "HOLD")
+
+    def test_existing_caller_transaction_survives_denied_reserve(self):
+        self.con.execute("BEGIN IMMEDIATE")
+        self.assert_non_authorizing(self.journal.reserve(self.attempt), "HOLD")
+        self.assertTrue(self.con.in_transaction)
+        self.con.rollback()
+        self.assertEqual(self.count(), 0)
+
+    def test_existing_caller_transaction_survives_denied_transition(self):
+        self.journal.reserve(self.attempt)
+        self.con.execute("BEGIN IMMEDIATE")
+        self.assert_non_authorizing(
+            self.journal.mark_uncertain(self.attempt), "HOLD")
+        self.assertTrue(self.con.in_transaction)
+        self.con.rollback()
+        self.assertEqual(self.journal.review_phase(self.attempt)[0], "reserved")
+
     def test_trigger_added_after_open_cannot_ignore_reservation(self):
         self.con.execute("""
             CREATE TRIGGER late_ignore_insert
