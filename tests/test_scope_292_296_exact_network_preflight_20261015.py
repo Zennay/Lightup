@@ -478,6 +478,66 @@ class OfflineExactNetworks292296(unittest.TestCase):
         self.assertEqual(stdout.getvalue(), guard.receipt("HOLD") + "\n")
         self.assertNotIn("private", stdout.getvalue())
 
+    def test_json_escape_aliases_cannot_mint_canonical_network_review(self):
+        # JSON decoding normalizes these strings to a canonical CIDR.
+        # Literal network declarations are required, even for syntax review.
+        aliases = (
+            b'{"explicit_networks":["\u0038.8.8.0/24"]}',
+            b'{"explicit_networks":["8.8.8.0\/24"]}',
+            b'{"explicit_networks":["2001:db8::\u002f64"]}',
+            b'{"explicit_networks":["\u0032\u0030\u0030\u0031:db8::/64"]}',
+            b'{"explicit_net\u0077orks":["198.51.100.0/24"]}',
+            b'{"\u0065xplicit_networks":["198.51.100.0/24"]}',
+        )
+        for raw in aliases:
+            with self.subTest(raw=repr(raw)):
+                decoded = json.loads(raw)
+                self.assertEqual(set(decoded), {"explicit_networks"})
+                self.assertTrue(all(guard._canonical(x) for x in decoded["explicit_networks"]))
+                self.assertEqual(guard.review(raw), "HOLD")
+                self.assertFalse(json.loads(guard.receipt(guard.review(raw)))["is_grant"])
+
+    def test_structural_json_whitespace_remains_reviewable(self):
+        examples = (
+            b'{"explicit_networks":["198.51.100.0/24"]}',
+            b' \t\r\n {  "explicit_networks" : [ "198.51.100.0/24" ] } \r\n',
+            b'{\n"explicit_networks":\t[ "198.51.100.0/24", "2001:db8::/64" ]\n}\t',
+            b'\n {"explicit_networks": []} \r',
+        )
+        for raw in examples:
+            with self.subTest(raw=repr(raw)):
+                self.assertEqual(guard.review(raw), "REVIEW_ONLY")
+
+    def test_real_cli_rejects_escaped_scope_with_private_nonzero_hold(self):
+        marker = "NEVER-PRINT-PRIVATE-SYNTHETIC"
+        raw = (
+            b'{"explicit_networks":["198.51.100.0\/24"],'
+            b'"untrusted":"NEVER-PRINT-PRIVATE-SYNTHETIC"}'
+        )
+        # Raw malformed envelopes and escaped CIDR aliases both deny.
+        for example in (
+            raw,
+            b'{"explicit_networks":["198.51.100.0\/24"]}',
+            b'{"explicit_net\u0077orks":["198.51.100.0/24"]}',
+        ):
+            with self.subTest(raw=repr(example)):
+                done = self._cli(example)
+                self.assertEqual(done.returncode, 2)
+                self.assertEqual(done.stderr, b"")
+                self.assertEqual(json.loads(done.stdout)["disposition"], "HOLD")
+                self.assertNotIn(marker.encode(), done.stdout)
+
+    def test_minifier_retains_whitespace_inside_json_string(self):
+        raw = b' { "explicit_networks" : [ "198.51.100. 0/24" ] } '
+        self.assertIn(b"100. 0", guard._strip_json_structural_whitespace(raw))
+        self.assertEqual(guard.review(raw), "HOLD")
+
+    def test_minifier_does_not_drop_escaped_quote_or_backslash(self):
+        raw = b'{"explicit_networks":["198.51.100.0\\/24"]}'
+        minified = guard._strip_json_structural_whitespace(raw)
+        self.assertEqual(minified, raw)
+        self.assertEqual(guard.review(raw), "HOLD")
+
     def test_real_cli_valid_returns_nonzero_and_no_grant(self):
         done = self._cli(self._payload(["8.8.8.0/24"]))
         self.assertEqual(done.returncode, 3, done.stderr.decode(errors="replace"))
