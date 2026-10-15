@@ -310,6 +310,52 @@ class OfflineAttemptJournalTests(unittest.TestCase):
         self.con.rollback()
         self.assertEqual(self.journal.review_phase(self.attempt)[0], "reserved")
 
+    def test_late_benign_trigger_cannot_pass_offline_schema_check(self):
+        self.con.execute("""
+            CREATE TRIGGER late_benign_trigger AFTER INSERT
+            ON offline_scope_1454_attempts
+            BEGIN SELECT 1; END
+        """)
+        self.con.commit()
+        self.assert_non_authorizing(self.journal.reserve(self.attempt), "HOLD")
+        self.assertEqual(self.count(), 0)
+
+    def test_late_customer_table_rejects_unrelated_fixture_mutation(self):
+        self.con.execute("CREATE TABLE late_customer_record (private TEXT)")
+        self.con.execute("INSERT INTO late_customer_record VALUES ('fixture-secret')")
+        self.con.commit()
+        self.assert_non_authorizing(self.journal.reserve(self.attempt), "HOLD")
+        self.assertEqual(self.count(), 0)
+        self.assertEqual(self.con.execute(
+            "SELECT private FROM late_customer_record"
+        ).fetchone()[0], "fixture-secret")
+
+    def test_late_attached_db_rejects_reservation(self):
+        self.con.execute("ATTACH DATABASE ':memory:' AS late_connection")
+        self.assert_non_authorizing(self.journal.reserve(self.attempt), "HOLD")
+        self.assertEqual(self.count(), 0)
+
+    def test_late_temp_shadow_rejects_reservation(self):
+        self.con.execute(
+            "CREATE TEMP TABLE offline_scope_1454_attempts "
+            "(attempt_id TEXT, sealed_binding TEXT, phase TEXT)"
+        )
+        self.assert_non_authorizing(self.journal.reserve(self.attempt), "HOLD")
+        self.assertEqual(self.count(), 0)
+
+    def test_late_schema_poisoning_prevents_state_read_receipt(self):
+        self.assert_non_authorizing(self.journal.reserve(self.attempt), "REVIEW_ONLY")
+        self.con.execute("CREATE TABLE late_unrelated_source (value TEXT)")
+        self.con.commit()
+        phase, receipt = self.journal.review_phase(self.attempt)
+        self.assertEqual(phase, "unknown")
+        self.assert_non_authorizing(receipt, "HOLD")
+        self.assert_non_authorizing(self.journal.mark_uncertain(self.attempt), "HOLD")
+        # Raw data remains unchanged; refuse authority even when row survived.
+        self.assertEqual(self.con.execute(
+            "SELECT phase FROM offline_scope_1454_attempts"
+        ).fetchone()[0], "reserved")
+
     def test_trigger_added_after_open_cannot_ignore_reservation(self):
         self.con.execute("""
             CREATE TRIGGER late_ignore_insert
@@ -346,7 +392,10 @@ class OfflineAttemptJournalTests(unittest.TestCase):
         self.con.commit()
         self.assert_non_authorizing(
             self.journal.mark_uncertain(self.attempt), "HOLD")
-        self.assertEqual(self.journal.review_phase(self.attempt)[0], "reserved")
+        self.assertEqual(self.con.execute(
+            "SELECT phase FROM offline_scope_1454_attempts"
+        ).fetchone()[0], "reserved")
+        self.assertEqual(self.journal.review_phase(self.attempt)[0], "unknown")
 
     def test_real_sqlite_preinsert_failure_atomic_hold(self):
         self.con.execute("""
@@ -367,7 +416,10 @@ class OfflineAttemptJournalTests(unittest.TestCase):
         """)
         self.con.commit()
         self.assert_non_authorizing(self.journal.mark_uncertain(self.attempt), "HOLD")
-        self.assertEqual(self.journal.review_phase(self.attempt)[0], "reserved")
+        self.assertEqual(self.con.execute(
+            "SELECT phase FROM offline_scope_1454_attempts"
+        ).fetchone()[0], "reserved")
+        self.assertEqual(self.journal.review_phase(self.attempt)[0], "unknown")
         self.assertEqual(self.count(), 1)
 
     def test_wrong_binding_cannot_finish_or_borrow_state(self):
