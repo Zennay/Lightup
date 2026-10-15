@@ -900,6 +900,98 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
                 self.assertIs(single_batch.status, ReviewStatus.HOLD)
                 self.assert_no_authority(single_batch)
 
+    def _other_tenant_authorized_grant(self):
+        other = self.store.create_client(self.operator, "Independent synthetic tenant")
+        member = AccessContext("other-client-requester", Role.CLIENT_MEMBER, other.client_id)
+        request = self.store.submit_assessment_request(
+            member, ("other.example.test",),
+            AssessmentMode.AUTHORIZED_ASSESSMENT, RiskLevel.STANDARD,
+        )
+        request = self.store.review_assessment_request(
+            self.operator, request.request_id, True,
+        )
+        engagement = self.store.create_engagement(
+            self.operator, other.client_id, "Independent synthetic engagement",
+        )
+        grant = self.store.record_authorization_grant(
+            self.operator, engagement.engagement_id, self.operator.user_id,
+            "FICTIONAL-SECOND-TENANT",
+            ScopeDefinition(
+                assets=("other.example.test",),
+                max_risk=RiskLevel.LOW_IMPACT,
+                allowed_capabilities=("web-baseline",),
+            ),
+            self.valid_from, self.now + timedelta(days=1),
+        )
+        self.store.set_engagement_status(
+            self.operator, engagement.engagement_id, EngagementStatus.AUTHORIZED,
+        )
+        with sqlite3.connect(self.path) as con:
+            changed = con.execute(
+                "UPDATE authorization_grants SET approved_request_id=? "
+                "WHERE grant_id=?",
+                (request.request_id, grant.grant_id),
+            ).rowcount
+            self.assertEqual(changed, 1)
+        return request.request_id, engagement.engagement_id, grant.grant_id
+
+    def test_unrelated_valid_tenant_does_not_block_single_grant(self):
+        self.upgrade_synthetic_only()
+        self._other_tenant_authorized_grant()
+        reviewed = self.review()
+        self.assertIs(reviewed.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(reviewed)
+
+    def test_unreviewed_other_tenant_lineage_corruption_blocks_snapshot(self):
+        # A clean FK proves the request exists, NOT that it approved this
+        # tenant, this engagement, or the claimed human decision-maker.
+        cases = (
+            ("authorization_grants", "client_id", "unrelated-client", "grant_id"),
+            ("authorization_grants", "approved_by", "unrelated-operator", "grant_id"),
+            ("authorization_grants", "engagement_id", "self-engagement", "grant_id"),
+            ("assessment_requests", "client_id", "unrelated-client", "request_id"),
+            ("assessment_requests", "requested_by", "self-approver", "request_id"),
+            ("assessment_requests", "status", "rejected", "request_id"),
+            ("assessment_requests", "requested_mode", "passive_discovery", "request_id"),
+            ("engagements", "client_id", "unrelated-client", "engagement_id"),
+        )
+        for index, (table, field, value, key) in enumerate(cases):
+            with self.subTest(other_tenant_field=field, value=value):
+                if index:
+                    self._reset_fixture()
+                self.upgrade_synthetic_only()
+                req_id, eng_id, grant_id = self._other_tenant_authorized_grant()
+                self.assertIs(self.review().status, ReviewStatus.REVIEW_ONLY)
+                target = {
+                    "request_id": req_id, "engagement_id": eng_id,
+                    "grant_id": grant_id,
+                }[key]
+                if value == "self-engagement":
+                    value = self.engagement
+                if value == "self-approver":
+                    value = self.operator.user_id
+                with sqlite3.connect(self.path) as con:
+                    changed = con.execute(
+                        f"UPDATE {table} SET {field}=? WHERE {key}=?",
+                        (value, target),
+                    ).rowcount
+                    self.assertEqual(changed, 1)
+                # No orphan FK: foreign_key_check still passes even with
+                # invalid cross-table tenant or review-decision lineage.
+                with sqlite3.connect(self.path) as con:
+                    self.assertEqual(
+                        con.execute("PRAGMA foreign_key_check").fetchall(), []
+                    )
+                result = self.review()
+                self.assertIs(result.status, ReviewStatus.HOLD)
+                self.assert_no_authority(result)
+                batched = review_persisted_grant_batch(
+                    self.path, (self.grant.grant_id,),
+                    reviewed_at=self.reviewed_at,
+                )
+                self.assertIs(batched.status, ReviewStatus.HOLD)
+                self.assert_no_authority(batched)
+
     def test_other_same_tenant_grant_can_only_exclude_its_own_asset(self):
         self.upgrade_synthetic_only()
         other = self._second_synthetic_grant("api.example.test")
