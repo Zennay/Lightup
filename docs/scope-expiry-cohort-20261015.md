@@ -70,7 +70,11 @@ This deliberate restriction means `> out.json` redirection is not supported
 for the opt-in preview; use a local pipe consumer if a receipt is needed. These
 are userland fail-closed precautions, not an OS-level isolation guarantee.
 The dedicated real subprocess tests exercise discarded file/socket sinks,
-closed readers and an actually filled local pipe. No scan, real grant or
+closed readers and an actually filled local pipe. A further real inherited-FD
+control keeps the parent ends open and checks that **both fd0 and fd1 original
+blocking modes are restored** after an accepted review and after malformed
+JSON HOLD. Descriptor-mode restoration is a correctness property, not trusted
+provenance or a substitute for OS isolation. No scan, real grant or
 outbound network call is performed.
 
 ## Result contract
