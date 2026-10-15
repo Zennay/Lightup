@@ -29,6 +29,22 @@ so the normal immutability test fails for a correct authorization denial.
   as they were. In particular, falsey temporal bounds remain an open
   **production source defect**; this change does *not* solve it.
 
+## Hermetic clock-edge regression (W2)
+
+The installed production `ScopePolicy.decide(Target(...))` is called under a
+test-local patch of the `lightup.models.datetime.now(timezone.utc)` provider.
+The test checks **five exact instants** against one immutable fictional
+authorization: one microsecond before `valid_from`, exactly at `valid_from`,
+inside the validity interval, exactly at `valid_until`, and one microsecond
+after `valid_until`. This ensures both inclusive edges and strict outside
+denials. Each case requires the correct `ScopeReason`, exact normalized host,
+exact timezone-aware clock invocation, and an unmodified authorization object.
+
+Unlike an ordinary wall-clock snapshot, this regression executes deterministically
+on every calendar date, including beyond October 2026. It exercises the real
+scope-to-legacy-authorization path without modifying production clock injection
+or relaxing any of the existing expected-RED source security canaries.
+
 ## Ownership and proof gates
 
 Only this original time-window test module and this standalone explanation
