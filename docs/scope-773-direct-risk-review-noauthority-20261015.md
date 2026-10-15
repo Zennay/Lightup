@@ -104,6 +104,15 @@ installed mainline source; the expected-RED markers **do not** fix it.
 The risk-only reviewer independently rejects NaN, infinity and hostile
 numeric comparators before invoking equality, numeric conversion or hooks.
 
+The installed-source acceptance pack also calls the *real*
+`ExecutionPolicy.decide` in three safe fictional cases: a canonical accepted
+risk, a canonical over-ceiling denial, and a malformed raw-99 grant ceiling.
+It asserts request/grant/scope dictionaries and object identities are unchanged
+and places live file, network and subprocess denial tripwires around the call.
+The last case asserts **purity only**; its unsafe authority decision is an
+explicit, separate expected-RED. Thus "pure" never means "authorized" or
+"secure", and the test does not contact real targets or permit a scan.
+
 An expected failure on the installed policy is a documented **RED**,
 not a fix, a green authorization decision, or authorization to touch targets.
 If the installed owner closes #773, remove the test's expected-failure
