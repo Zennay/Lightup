@@ -482,12 +482,12 @@ class OfflineExactNetworks292296(unittest.TestCase):
         # JSON decoding normalizes these strings to a canonical CIDR.
         # Literal network declarations are required, even for syntax review.
         aliases = (
-            b'{"explicit_networks":["\u0038.8.8.0/24"]}',
-            b'{"explicit_networks":["8.8.8.0\/24"]}',
-            b'{"explicit_networks":["2001:db8::\u002f64"]}',
-            b'{"explicit_networks":["\u0032\u0030\u0030\u0031:db8::/64"]}',
-            b'{"explicit_net\u0077orks":["198.51.100.0/24"]}',
-            b'{"\u0065xplicit_networks":["198.51.100.0/24"]}',
+            rb'{"explicit_networks":["\u0038.8.8.0/24"]}',
+            rb'{"explicit_networks":["8.8.8.0\/24"]}',
+            rb'{"explicit_networks":["2001:db8::\u002f64"]}',
+            rb'{"explicit_networks":["\u0032\u0030\u0030\u0031:db8::/64"]}',
+            rb'{"explicit_net\u0077orks":["198.51.100.0/24"]}',
+            rb'{"\u0065xplicit_networks":["198.51.100.0/24"]}',
         )
         for raw in aliases:
             with self.subTest(raw=repr(raw)):
@@ -511,14 +511,14 @@ class OfflineExactNetworks292296(unittest.TestCase):
     def test_real_cli_rejects_escaped_scope_with_private_nonzero_hold(self):
         marker = "NEVER-PRINT-PRIVATE-SYNTHETIC"
         raw = (
-            b'{"explicit_networks":["198.51.100.0\/24"],'
-            b'"untrusted":"NEVER-PRINT-PRIVATE-SYNTHETIC"}'
+            rb'{"explicit_networks":["198.51.100.0\/24"],'
+            rb'"untrusted":"NEVER-PRINT-PRIVATE-SYNTHETIC"}'
         )
         # Raw malformed envelopes and escaped CIDR aliases both deny.
         for example in (
             raw,
-            b'{"explicit_networks":["198.51.100.0\/24"]}',
-            b'{"explicit_net\u0077orks":["198.51.100.0/24"]}',
+            rb'{"explicit_networks":["198.51.100.0\/24"]}',
+            rb'{"explicit_net\u0077orks":["198.51.100.0/24"]}',
         ):
             with self.subTest(raw=repr(example)):
                 done = self._cli(example)
