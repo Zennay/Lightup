@@ -255,8 +255,14 @@ def _receipt_is_exact(receipt, method: str) -> bool:
 
 
 def run_probe(template: str, *, force_rewrite: bool = False,
-              nginx_bin: str | None = None) -> bool:
-    """Return true ONLY for a full synthetic Nginx method+header boundary pass."""
+              nginx_bin: str | None = None, wsgi_app=None, oracle=None) -> bool:
+    """Run a disposable proxy against echo or a separately owned WSGI oracle.
+
+    The optional in-process oracle is for synthetic tests only; it cannot be
+    selected from CLI input and cannot produce execution authorization.
+    """
+    if (wsgi_app is None) != (oracle is None):
+        raise ValueError("an app fixture requires its matching offline oracle")
     binary = nginx_bin or shutil.which("nginx")
     if not binary:
         raise RuntimeError("nginx executable not available")
@@ -264,7 +270,8 @@ def run_probe(template: str, *, force_rewrite: bool = False,
         root = Path(tmp)
         (root / "body").mkdir()
         (root / "proxy").mkdir()
-        upstream = make_server("127.0.0.1", 0, _echo_wsgi,
+        upstream = make_server("127.0.0.1", 0,
+                               _echo_wsgi if wsgi_app is None else wsgi_app,
                                server_class=_LoopbackServer,
                                handler_class=_QuietHandler)
         thread = threading.Thread(target=upstream.serve_forever, daemon=True)
@@ -296,6 +303,10 @@ def run_probe(template: str, *, force_rewrite: bool = False,
                     time.sleep(0.025)
             else:
                 raise RuntimeError("disposable nginx never listened")
+            if oracle is not None:
+                # A real application contract can require stronger conditions
+                # than the echo; the same disposable proxy lifecycle is reused.
+                return oracle(port)
             # Both directions: a client must not upgrade GET to a write method
             # or downgrade POST to a CSRF-exempt GET.
             cases = [
