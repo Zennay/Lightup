@@ -25,6 +25,27 @@ The dedicated fixture constructs a **fabricated** low-impact TARGET_ACTIVE autho
 
 The two extra post-handler fault witnesses and explicit registered-run provenance control do **not** grant a lab or target authority; they isolate the failure ordering from authorization policy rejection and missing-run foreign-key bugs. The intentionally expected-failing requirement must be converted to a **normal passing denial test** once the source owner introduces a durable pre-handler admission/reconciliation protocol. If source repair changes the exception to `ToolDenied` and avoids executing the handler, the expectedFailure will become an unexpectedSuccess until promoted. An exception **alone** never proves denial; the independent witness pins the actual SQLite failure, invocation count, and absent evidence.
 
+## W3 — isolated durable attempt reservation reference (never production authority)
+
+Two **additional and entirely self-owned** new files accompany the eight installed-source red/witness cases:
+
+- `scripts/scope_1454_offline_attempt_journal.py`: an independent SQLite **fixture-only** journal. It rejects all identities except lowercase `fixture-...` identifiers and `fixture-....invalid` fictional assets, refuses risk 5, and refuses preexisting customer-schema tables. `reserve` commits an identity-sealed synthetic attempt before a mock callback can be *manually* invoked by tests. There is deliberately no tool/handler/callback API or executor hook. A successfully recorded reservation is `REVIEW_ONLY`, **never a dispatch permit**. Failed SQLite insert is generic HOLD.
+- `tests/test_scope_1454_offline_attempt_journal_20261015.py`: **15 normal Python unit tests** exercise durable-before-mock ordering, rejected duplicate/cross-identity replay, persisted run/tenant/tool/capability/asset/risk binding, crash/reopen HOLD, terminal uncertain/recorded phases, invalid fixture IDs and type confusion, strict SHA-256 evidence digest, dirty customer-schema refusal, real SQLite write-trigger failures, and two real concurrent SQLite connections competing for one attempt.
+
+Every result always carries **six literal false release/authorization/permit/dispatch/merge/deploy flags**; even `REVIEW_ONLY` is evidence of only local synthetic bookkeeping. `bool(receipt)` raises `TypeError`. Output never echoes a source identifier, SHA, target, customer details or exception. This is an *offline reference*, not wired into `ToolExecutor` or `StateStore`; existing source RED #1454 remains open. Manual reviewers must separately establish real operator consent, immutable live grant/run/call/tool identity, revocation, network containment, and auditable run/evidence chronology before any production adoption.
+
+On a handler failure, `mark_uncertain` preserves the existing attempt durably and prohibits automatic replay. On synthetic successful evidence recording, `mark_recorded` stores an exact SHA-256 digest; neither state grants execution. A failed update or crashed process leaves a durable reserved/uncertain record requiring human reconciliation. This conservative reference **cannot guarantee exactly-once external effects** and must not be offered as such.
+
+### W3 validation
+
+`python -m unittest discover -s tests -p 'test_scope_1454_offline_attempt_journal_20261015.py' -v`
+
+Separately run original installed-source regression:
+
+`python -m unittest discover -s tests -p 'test_scope_1454_evidence_prehandler_acceptance_20261015.py' -v`
+
+Hosted preflight may still fail on the unrelated already-owned #301 fixed-date fixture; examine exact immutable SHA and each real test log instead of claiming all-green. Permanent registered VPS self-hosted jobs are distinct from GitHub-hosted jobs and require their own completed logs.
+
 ## Owner-controlled source repair and stronger acceptance
 
 - Owners of [executor #107](https://github.com/Zennay/Lightup/pull/107), [StateStore #167](https://github.com/Zennay/Lightup/pull/167) and related [FK #170](https://github.com/Zennay/Lightup/issues/170) must agree on a **durable pre-handler attempt record**, failure reconciliation, idempotency/retry contract, and what counts as auditable completion.
@@ -35,4 +56,4 @@ The two extra post-handler fault witnesses and explicit registered-run provenanc
 
 ## Isolation / no authority
 
-Only this previously absent test file and this document are owned; **zero edits** to `src/`, original tests, workflow YAML, runner, target, SQLite customer database, grant issuer or other worker PRs. No merge, deploy, target interaction, license to scan or customer notification is implied. Review and source fixes belong to the owner PRs.
+Only the four new files first introduced by this worker are owned; **zero edits** to `src/`, original tests, workflow YAML, runner, target, SQLite customer database, grant issuer or other worker PRs. No merge, deploy, target interaction, license to scan or customer notification is implied. Review and source fixes belong to the owner PRs.
