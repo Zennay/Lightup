@@ -202,6 +202,64 @@ class SourceOwnerAssetIPv6Boundary(unittest.TestCase):
         self.assertFalse(result.allowed)
         self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_ASSET_MISMATCH)
 
+    def test_correct_documentation_dns_hostname_preserves_exact_asset_permit(self):
+        """A repair of IPv6 parsing must not break a properly authorized DNS host."""
+        hostname = "scope-fixture.example.test"
+        scope = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset((hostname,)),
+            require_authorization_for_public=True,
+        )
+        target = Target(hostname, authorization=_authorization(asset=hostname))
+        with self.no_network(), patch(
+            "lightup.activation.token_urlsafe",
+            return_value="FAKE-NEVER-LIVE",
+        ):
+            decision = scope.decide(target)
+            permit = _gate(scope).issue(target, CAPABILITY)
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.normalized_host, hostname)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+        self.assertEqual(permit.target, hostname)
+        self.assertEqual(permit.authorization_reference, "NO-REAL-CONSENT")
+        self.assertEqual(permit.permit_id, "FAKE-NEVER-LIVE")
+
+    def test_documentation_dns_near_misses_cannot_reuse_host_asset(self):
+        """Exact host and exact asset are independent boundaries on #100."""
+        hostname = "scope-fixture.example.test"
+        scope = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset((hostname,)),
+            require_authorization_for_public=True,
+        )
+        wrong_dns = (
+            "sub.scope-fixture.example.test",
+            "scope-fixture.example.test.invalid",
+            "scope-fixture-other.example.test",
+        )
+        with self.no_network(), patch(
+            "lightup.activation.token_urlsafe",
+            side_effect=AssertionError("fake token must not be generated"),
+        ):
+            for literal in wrong_dns:
+                with self.subTest(literal=literal):
+                    target = Target(
+                        literal, authorization=_authorization(asset=hostname)
+                    )
+                    decision = scope.decide(target)
+                    self.assertFalse(decision.allowed)
+                    self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+                    with self.assertRaises(PermissionError):
+                        _gate(scope).issue(target, CAPABILITY)
+            wrong_asset_target = Target(
+                hostname, authorization=_authorization(asset="other.example.test")
+            )
+            wrong_asset = scope.decide(wrong_asset_target)
+            self.assertFalse(wrong_asset.allowed)
+            self.assertEqual(wrong_asset.reason, ScopeReason.AUTHORIZATION_ASSET_MISMATCH)
+            with self.assertRaises(PermissionError):
+                _gate(scope).issue(wrong_asset_target, CAPABILITY)
+
     def test_bracketed_exact_ipv6_cidr_asset_retains_whole_identity(self):
         target = Target("[" + LITERAL + "]", authorization=_authorization(asset=LITERAL))
         with self.no_network(), patch(
