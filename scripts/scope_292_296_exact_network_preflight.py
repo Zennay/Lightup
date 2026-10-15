@@ -72,13 +72,14 @@ def review(raw: bytes) -> str:
 
 def receipt(disposition: str) -> str:
     """Avoid echoing targets, raw values, parser exceptions or host counts."""
-    if disposition not in ("HOLD", "REVIEW_ONLY"):
+    if type(disposition) is not str or disposition not in ("HOLD", "REVIEW_ONLY"):
         disposition = "HOLD"
     return json.dumps(
         {
             "disposition": disposition,
             "is_grant": False,
             "authorizes_scan": False,
+            "authorizes_target_io": False,
             "authorizes_execution": False,
             "authorizes_release": False,
         },
