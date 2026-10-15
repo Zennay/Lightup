@@ -399,6 +399,71 @@ class OfflineExactNetworks292296(unittest.TestCase):
             self.assertEqual(guard.main(), 2)
         self.assertEqual(stdout.getvalue(), guard.receipt("HOLD") + "\n")
 
+    def test_fragmentation_invariance_over_bounded_input_matrix(self):
+        # Short reads must never change disposition or create grant authority.
+        valid = self._payload(["198.51.100.0/24", "2001:db8::/64"])
+        cases = (
+            valid,
+            self._payload([]),
+            self._payload(["198.51.100.42/24"]),
+            valid + b'{"forged_grant":true}',
+            b'{"explicit_networks":["198.51.100.0/24"],"explicit_networks":[]}',
+            b'{"explicit_networks":[true]}',
+            b'not-json',
+            b' ' * (guard.MAX_JSON_BYTES - len(valid)) + valid,
+            b' ' * (guard.MAX_JSON_BYTES - len(valid)) + valid + b'X',
+        )
+
+        class SmallChunks:
+            def __init__(self, payload, chunk_size):
+                self.payload = payload
+                self.pos = 0
+                self.chunk_size = chunk_size
+            def read(self, limit):
+                requested = min(limit, self.chunk_size)
+                chunk = self.payload[self.pos:self.pos + requested]
+                self.pos += len(chunk)
+                return chunk
+
+        for index, raw in enumerate(cases):
+            expected = guard.review(raw)
+            for chunk_size in (1, 2, 3, 7, 17, 64, 257, 2048):
+                with self.subTest(case=index, chunk_size=chunk_size):
+                    stdout = StringIO()
+                    reader = SmallChunks(raw, chunk_size)
+                    with (
+                        patch.object(guard.sys, "stdin", SimpleNamespace(buffer=reader)),
+                        patch.object(guard.sys, "stdout", stdout),
+                    ):
+                        status = guard.main()
+                    self.assertEqual(reader.pos, len(raw))
+                    self.assertEqual(status, 3 if expected == "REVIEW_ONLY" else 2)
+                    self.assertEqual(stdout.getvalue(), guard.receipt(expected) + "\\n")
+                    packet = json.loads(stdout.getvalue())
+                    self.assertFalse(packet["authorizes_target_io"])
+                    self.assertFalse(packet["is_grant"])
+
+    def test_partial_valid_stream_then_io_failure_remains_private_hold(self):
+        prefix = self._payload(["198.51.100.0/24"])
+
+        class FailingAfterPrefix:
+            def __init__(self):
+                self.calls = 0
+            def read(self, _size):
+                self.calls += 1
+                if self.calls == 1:
+                    return prefix
+                raise OSError("private synthetic stream corruption")
+
+        stdout = StringIO()
+        with (
+            patch.object(guard.sys, "stdin", SimpleNamespace(buffer=FailingAfterPrefix())),
+            patch.object(guard.sys, "stdout", stdout),
+        ):
+            self.assertEqual(guard.main(), 2)
+        self.assertEqual(stdout.getvalue(), guard.receipt("HOLD") + "\\n")
+        self.assertNotIn("private", stdout.getvalue())
+
     def test_real_cli_valid_returns_nonzero_and_no_grant(self):
         done = self._cli(self._payload(["8.8.8.0/24"]))
         self.assertEqual(done.returncode, 3, done.stderr.decode(errors="replace"))
