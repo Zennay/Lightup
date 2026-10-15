@@ -638,6 +638,68 @@ class DirectRiskReviewTests(unittest.TestCase):
             authorization=grant,
         ))
 
+    def test_installed_direct_risk_decision_is_in_memory_and_does_not_mutate(self):
+        """#773 source-owner invariant: real decisions must be pure for fixtures."""
+        import builtins
+        import socket
+        import subprocess
+        from unittest.mock import patch
+
+        def forbidden(*_args, **_kwargs):
+            raise AssertionError("real synthetic ExecutionPolicy attempted I/O")
+
+        cases = (
+            ("canonical_allowed", RiskLevel.STANDARD,
+             RiskLevel.LOW_IMPACT, True),
+            ("canonical_above_ceiling", RiskLevel.PASSIVE,
+             RiskLevel.STANDARD, False),
+            # RED type confusion is asserted separately; here prove purity only.
+            ("noncanonical_raw_ceiling", 99,
+             RiskLevel.STANDARD, None),
+        )
+        for name, ceiling, requested, should_allow in cases:
+            with self.subTest(case=name):
+                scope = self.scope(ceiling)
+                grant = AuthorizationGrant(
+                    grant_id="fictional-grant",
+                    client_id="fictional-tenant",
+                    engagement_id="fictional-engagement",
+                    approved_by="fictional-operator",
+                    reference="fictional-paper-ref",
+                    scope=scope,
+                    valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
+                    valid_until=datetime(2099, 1, 1, tzinfo=timezone.utc),
+                )
+                request = ExecutionRequest(
+                    interaction=InteractionKind.TARGET_ACTIVE,
+                    asset="fictional.invalid",
+                    capability_id="fictional-capability",
+                    requested_risk=requested,
+                    authorization=grant,
+                )
+                before = (
+                    dict(vars(scope)), dict(vars(grant)), dict(vars(request)),
+                )
+                with (
+                    patch.object(builtins, "open", side_effect=forbidden),
+                    patch.object(os, "open", side_effect=forbidden),
+                    patch.object(os, "system", side_effect=forbidden),
+                    patch.object(socket, "socket", side_effect=forbidden),
+                    patch.object(socket, "create_connection", side_effect=forbidden),
+                    patch.object(subprocess, "Popen", side_effect=forbidden),
+                    patch.object(subprocess, "run", side_effect=forbidden),
+                ):
+                    result = ExecutionPolicy().decide(request)
+                after = (
+                    dict(vars(scope)), dict(vars(grant)), dict(vars(request)),
+                )
+                self.assertEqual(after, before)
+                self.assertIs(request.authorization, grant)
+                self.assertIs(grant.scope, scope)
+                self.assertIs(type(result.allowed), bool)
+                if should_allow is not None:
+                    self.assertIs(result.allowed, should_allow)
+
     def test_installed_policy_exact_canonical_risk_ceiling_matrix_control(self):
         """25 source-backed positive/negative controls: avoid vacuous REDs."""
         levels = (
