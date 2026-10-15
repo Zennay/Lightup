@@ -13,7 +13,9 @@ This supplements [open #1173](https://github.com/Zennay/Lightup/issues/1173), wh
 Five **intentional installed-source expected-RED** acceptance tests require:
 1. Risk-5 lab dispatch to be denied without distinct trusted operator approval, before handler or evidence;
 2. The policy boundary not to treat caller-supplied `is_lab=True` as risk-5 approval;
-3. A forged `dataclasses.replace` run context not to mint independent approval provenance.
+3. A forged `dataclasses.replace` run context not to mint independent approval provenance;
+4. A switch to a different synthetic target asset under the same unapproved risk-5 run to remain denied;
+5. A switch to a different registered risk-5 tool and capability under that run to remain denied.
 
 Six **ordinary positive controls** verify the already-existing risk-4 ceiling, lab-mode separation, immutable denial inputs, missing step-up/attestation fields, temporal metadata non-escalation, **and a direct source-RED witness** that rejects masked import/runtime/fixture failures. The witness calls each expected-RED body outside unittest's expected-failure harness and requires the precise expected missing-denial assertion. If RED cases report `expectedFailure`, that proves **the production gap is still open**. A green workflow running expected RED is never proof that the gap is fixed.
 
