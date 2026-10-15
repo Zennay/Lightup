@@ -72,6 +72,43 @@ class OfflineAttemptJournalTests(unittest.TestCase):
             "SELECT count(*) FROM offline_scope_1454_attempts"
         ).fetchone()[0]
 
+    def test_constructor_rejects_forged_authorization_receipts(self):
+        for status, reason, flags in (
+            ("APPROVED", "not_an_execution_authorization", {}),
+            ("REVIEW_ONLY", "approved", {}),
+            ("HOLD", "manual_review_required", {"dispatch_allowed": True}),
+            ("REVIEW_ONLY", "not_an_execution_authorization",
+             {"release_allowed": 1}),
+        ):
+            with self.subTest(status=status, flags=flags):
+                with self.assertRaises(ValueError):
+                    ReviewReceipt(status, reason, **flags)
+
+    def test_mutated_or_extra_receipt_fields_redact_to_hold(self):
+        receipt = self.journal.reserve(self.attempt)
+        self.assert_non_authorizing(receipt, "REVIEW_ONLY")
+        object.__setattr__(receipt, "status", "APPROVED")
+        self.assertEqual(receipt.as_dict()["status"], "HOLD")
+        object.__setattr__(receipt, "status", "REVIEW_ONLY")
+        object.__setattr__(receipt, "dispatch_allowed", True)
+        self.assertEqual(receipt.as_dict()["status"], "HOLD")
+        object.__setattr__(receipt, "dispatch_allowed", False)
+        object.__setattr__(receipt, "private_claim", "fixture-client-secret")
+        rendered = str(receipt.as_dict())
+        self.assertNotIn("fixture-client", rendered)
+        self.assertEqual(receipt.as_dict()["status"], "HOLD")
+
+    def test_missing_receipt_field_and_subclass_are_hold_only(self):
+        receipt = self.journal.reserve(self.attempt)
+        object.__delattr__(receipt, "reason")
+        self.assert_non_authorizing(
+            ReviewReceipt("HOLD", "manual_review_required"), "HOLD")
+        self.assertEqual(receipt.as_dict()["status"], "HOLD")
+        class ForgedReceipt(ReviewReceipt):
+            pass
+        with self.assertRaises(ValueError):
+            ForgedReceipt("REVIEW_ONLY", "not_an_execution_authorization")
+
     def test_initially_empty_and_no_authority(self):
         self.assertEqual(self.count(), 0)
         phase, receipt = self.journal.review_phase(self.attempt)
