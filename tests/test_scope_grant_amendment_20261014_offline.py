@@ -776,6 +776,97 @@ class GrantAmendmentOfflineTests(unittest.TestCase):
             self.assertEqual(reviewer._bounded_stdin(), b"")
         reader.assert_not_called()
 
+    def test_512_real_grant_runtime_permission_differential_matrix(self):
+        # Test only: evaluate actual source-model predicates on synthetic grants
+        # across a finite request lattice. No issuance, storage, executor or I/O.
+        from datetime import datetime, timezone
+        from lightup.engagements import AuthorizationGrant, RiskLevel, ScopeDefinition
+
+        original = fixture()
+        candidates = ("lab-a.example", "lab-b.example", "lab-c.example", "unknown.example")
+        capabilities = ("http_headers", "tls_baseline", "new_tool")
+        moments = (
+            datetime(2026, 10, 14, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 10, 14, 6, 0, tzinfo=timezone.utc),
+            datetime(2026, 10, 14, 12, 0, tzinfo=timezone.utc),
+            datetime(2026, 10, 14, 23, 0, tzinfo=timezone.utc),
+            datetime(2026, 10, 15, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 10, 15, 6, 0, tzinfo=timezone.utc),
+        )
+
+        def as_grant(d):
+            return AuthorizationGrant(
+                grant_id=d["grant_id"], client_id=d["client_id"],
+                engagement_id=d["engagement_id"], approved_by=d["approved_by"],
+                reference=d["reference"],
+                scope=ScopeDefinition(
+                    assets=tuple(d["assets"]),
+                    excluded_assets=tuple(d["excluded_assets"]),
+                    allowed_capabilities=tuple(d["capabilities"]),
+                    max_risk=RiskLevel(d["max_risk"]),
+                ),
+                valid_from=datetime.fromisoformat(
+                    d["valid_from"].replace("Z", "+00:00")
+                ),
+                valid_until=datetime.fromisoformat(
+                    d["valid_until"].replace("Z", "+00:00")
+                ),
+                recurring_retest_allowed=d["recurring_retest_allowed"],
+            )
+
+        baseline = as_grant(original["before"])
+        def permits(grant, asset, capability, risk, moment):
+            return (
+                grant.is_current(moment)
+                and grant.scope.allows_asset(asset)
+                and grant.scope.allows_capability(capability)
+                and int(grant.scope.max_risk) >= risk
+            )
+
+        # Six narrowing dimensions, three widening dimensions. Widenings must
+        # HOLD even when an unrelated narrowing masks the effective allowance.
+        for bits in range(512):
+            item = fixture()
+            updated = item["after"]
+            if bits & 1:
+                updated["assets"] = ["lab-b.example"]
+            if bits & 2:
+                updated["excluded_assets"].append("lab-a.example")
+            if bits & 4:
+                updated["capabilities"] = ["tls_baseline"]
+            if bits & 8:
+                updated["max_risk"] = 1
+            if bits & 16:
+                updated["valid_from"] = "2026-10-14T12:00:00Z"
+            if bits & 32:
+                updated["valid_until"] = "2026-10-14T12:00:00Z"
+            if bits & 64:
+                updated["assets"].append("lab-c.example")
+            if bits & 128:
+                updated["excluded_assets"] = [
+                    v for v in updated["excluded_assets"] if v != "lab-b.example"
+                ]
+            if bits & 256:
+                updated["capabilities"].append("new_tool")
+
+            receipt, code = reviewer.review(encode(item))
+            amended = as_grant(updated)
+            with self.subTest(bits=bits):
+                self.assert_denied_authority(receipt, code)
+                if bits & (64 | 128 | 256):
+                    self.assertEqual((receipt["status"], code), ("HOLD", 2))
+                else:
+                    self.assertEqual((receipt["status"], code), ("REVIEW_ONLY", 3))
+                    for asset in candidates:
+                        for capability in capabilities:
+                            for risk in (0, 1, 2, 3, 4):
+                                for moment in moments:
+                                    if permits(amended, asset, capability, risk, moment):
+                                        self.assertTrue(
+                                            permits(baseline, asset, capability, risk, moment),
+                                            msg="offline review admitted a newly permitted real-model request",
+                                        )
+
     def test_cli_rejects_no_flag(self):
         result = subprocess.run(
             [sys.executable, "-B", str(SCRIPT)],
