@@ -108,6 +108,20 @@ class LegacyTemporalReceipt(tuple, Mapping[str, str | bool]):
         status, reason = _canonical_receipt_pair(self)
         return "LegacyTemporalReceipt(" + status + ", " + reason + "; no_authority)"
 
+    def to_json(self) -> str:
+        """Serialize all eight fields, never tuple-as-array or inferred grants.
+
+        Only canonical fixed status/reason words are interpolated. No JSON
+        parser, serializer callbacks, system clock, network or file I/O.
+        """
+        status, reason = _canonical_receipt_pair(self)
+        return (
+            '{"status":"' + status + '","reason":"' + reason + '",'
+            '"authorization_verified":false,"permit_issued":false,'
+            '"execution_enabled":false,"target_dispatch_allowed":false,'
+            '"merge_approved":false,"release_approved":false}'
+        )
+
 
 class LegacyTemporalReview(NamedTuple):
     status: str
