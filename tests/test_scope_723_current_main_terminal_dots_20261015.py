@@ -136,6 +136,36 @@ class TerminalDotCurrentMainSourceRed(unittest.TestCase):
         self.assertFalse(any(decision.allowed for decision in decisions))
 
     @unittest.expectedFailure
+    def test_port_qualified_multi_root_dot_authorities_must_deny_every_path(self):
+        # Explicit ports are entirely lexical here. No TCP/IP connection is
+        # made; the trailing dots are inside the host, before ':port'.
+        identities = (
+            (_HOST, ScopePolicy(
+                allow_private_lab=False,
+                explicit_hosts=frozenset((_HOST,)),
+            ), _SYNTHETIC_ONLY),
+            ("localhost", ScopePolicy(allow_private_lab=False), None),
+            ("127.0.0.1", ScopePolicy(allow_private_lab=False), None),
+            ("10.42.43.44", ScopePolicy(allow_private_lab=True), None),
+            ("198.51.100.23", ScopePolicy(
+                allow_private_lab=False,
+                explicit_networks=("198.51.100.0/24",),
+            ), _SYNTHETIC_ONLY),
+        )
+        cases = tuple(
+            (f"https://{host}{'.' * dots}:{port}/synthetic-only", policy, auth)
+            for host, policy, auth in identities
+            for dots in (2, 3, 7, 17)
+            for port in (80, 8443)
+        )
+        decisions = tuple(
+            policy.decide(Target(value, authorization=auth))
+            for value, policy, auth in cases
+        )
+        self.assertEqual(len(decisions), 40)
+        self.assertFalse(any(decision.allowed for decision in decisions))
+
+    @unittest.expectedFailure
     def test_parser_itself_must_reject_multi_root_dot_identities(self):
         # Failing safely at the *normalizer* is stronger than relying on a
         # later caller to remember an independent deny condition.
@@ -276,6 +306,7 @@ _RED_NAMES = (
     "test_malformed_config_without_auth_and_policy_optout_must_deny",
     "test_only_dots_and_empty_config_without_auth_optout_must_deny",
     "test_all_dots_target_must_not_match_empty_declared_hostname",
+    "test_port_qualified_multi_root_dot_authorities_must_deny_every_path",
     "test_parser_itself_must_reject_multi_root_dot_identities",
     "test_parser_itself_must_reject_dot_only_and_empty_normalized_host",
     "test_ipv4_loopback_multi_root_dots_must_not_gain_loopback_trust",
@@ -330,7 +361,7 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
 
     def test_original_source_witnesses_are_real_assertions_not_errors(self):
         # @expectedFailure also catches accidental TypeError and ValueError.
-        # An independent TestResult must observe exactly eighteen AssertionError
+        # An independent TestResult must observe exactly nineteen AssertionError
         # failures, not silently accept an unrelated crash or unexpected green.
         for name in _RED_NAMES:
             with self.subTest(case=name):
@@ -362,6 +393,63 @@ class TerminalDotCurrentMainControls(unittest.TestCase):
                 )
             self.assertTrue(_decision(_HOST).allowed)
             self.assertFalse(_decision("unlisted.example.test").allowed)
+
+    def test_canonical_port_qualified_urls_preserve_expected_membership(self):
+        # URL ports do not create authority, but valid hosts keep their
+        # already-established offline membership/authorization semantics.
+        for host in (_HOST, _HOST + "."):
+            with self.subTest(host=host):
+                decision = _decision(f"https://{host}:8443/synthetic-only")
+                self.assertTrue(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
+        for host in ("localhost", "127.0.0.1", "localhost.", "127.0.0.1."):
+            with self.subTest(host=host):
+                decision = ScopePolicy(allow_private_lab=False).decide(
+                    Target(f"http://{host}:8080/synthetic-only")
+                )
+                self.assertTrue(decision.allowed)
+                self.assertEqual(decision.reason, ScopeReason.LOOPBACK)
+        network = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=("198.51.100.0/24",),
+        )
+        decision = network.decide(Target("https://198.51.100.23:443/synthetic-only"))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_MISSING)
+
+    def test_all_40_malformed_port_qualified_decisions_remain_offline(self):
+        # A second sweep covers the same actual installed source with
+        # network and process tripwires, without asserting unsafe outcomes.
+        cases = (
+            (_HOST, frozenset((_HOST,)), (), False, _SYNTHETIC_ONLY),
+            ("localhost", frozenset(), (), False, None),
+            ("127.0.0.1", frozenset(), (), False, None),
+            ("10.42.43.44", frozenset(), (), True, None),
+            ("198.51.100.23", frozenset(), ("198.51.100.0/24",), False, _SYNTHETIC_ONLY),
+        )
+        with (
+            patch.object(socket, "socket", side_effect=AssertionError("network attempted")),
+            patch.object(socket, "getaddrinfo", side_effect=AssertionError("DNS attempted")),
+            patch.object(socket, "create_connection", side_effect=AssertionError("connect attempted")),
+            patch.object(urllib.request, "urlopen", side_effect=AssertionError("HTTP attempted")),
+            patch.object(subprocess, "Popen", side_effect=AssertionError("process attempted")),
+            patch.object(os, "system", side_effect=AssertionError("shell attempted")),
+        ):
+            count = 0
+            for host, hosts, networks, lab, auth in cases:
+                policy = ScopePolicy(
+                    allow_private_lab=lab,
+                    explicit_hosts=hosts,
+                    explicit_networks=networks,
+                )
+                for dots in (2, 3, 7, 17):
+                    for port in (80, 8443):
+                        value = f"https://{host}{'.' * dots}:{port}/synthetic-only"
+                        result = policy.decide(Target(value, authorization=auth))
+                        self.assertIs(type(result), ScopeDecision)
+                        self.assertIs(type(result.allowed), bool)
+                        count += 1
+            self.assertEqual(count, 40)
 
     def test_parser_positive_control_normalizes_exact_and_single_root_dot(self):
         identities = (_HOST, "localhost", "127.0.0.1", "10.42.43.44", "198.51.100.23")
