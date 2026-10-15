@@ -23,10 +23,17 @@ The review takes only `revoked_at`, `revoked_by`, and `revocation_reason`, with 
 
 This is only a **review preview**, not a complete source grant coherence or current grant check. It is intentionally stricter about completeness of revocation metadata than the current installed source. This cannot substitute for real source-owner repair, live persisted source of truth, or operator/customer authorization.
 
+## W4 — bounded atomic batch triage
+
+The separately added `scripts/scope_737_revocation_batch_triage.py` reviews **one to 64** exact built-in dictionaries inside an exact built-in tuple, each containing exactly the three known exact-string revocation field names. If any record is missing a field, has an extra field, a forged key/subclass or invalid outer type, the **entire batch** is rejected with empty classifications (never a partial misleading report). Accepted rows are independently inspected with the HOLD-only metadata reviewer. It emits only classification strings and fixed counts for `inconsistent`, `revocation_recorded`, `no_revocation_claim`, never original values or personal identities. Output `HOLD` and all three action flags `False` on every path.
+
+This batch preview is not sourced from tenant storage, never contacts actual systems, and cannot prove current authorization, consent, operator revocation or complete evidence. `tests/test_scope_737_revocation_batch_triage_20261015.py` adds **18 methods** covering 64-item boundary, malformed atomic rejection, spoofing, privacy, all-status HOLD, immutability and mixed-cohort summaries.
+
 ## Real proof plan
 
 ```sh
 python -m unittest discover -s tests -p 'test_scope_737_offline_revocation_metadata_review_20261015.py' -v
+python -m unittest discover -s tests -p 'test_scope_737_revocation_batch_triage_20261015.py' -v
 ```
 
 The 23 additional tests include explicit authorizing-flag tripwires, unchanged input, spoofing and type confusion, 80+ adversarial combinations, privacy-safe result rendering, and source/current independent acceptance. Use original exact-SHA GitHub logs and both Python 3.11/3.14 plus producer integrations; verify permanent registered VPS separately, not by queued labels.
