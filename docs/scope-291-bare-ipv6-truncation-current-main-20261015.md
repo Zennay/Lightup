@@ -23,10 +23,13 @@ New file `tests/test_scope_291_bare_ipv6_truncation_current_main_20261015.py`:
   a shortened name, that a synthetic explicit-host allowlist cannot
   admit the mismatched IPv6 literal, and that a fabricated authorization
   claim cannot make this truncated-host membership safe.
-- Three **normal green controls** prove bracketed IPv6 remains intact,
+- Five **normal green/witness controls** prove bracketed IPv6 remains intact,
   explicit `/128` network membership still requires an authorization
   object under the existing canonical flow, and the same literal in
-  bracketed form cannot accidentally match an unrelated host or network.
+  bracketed form cannot accidentally match an unrelated host or network. A
+  standalone network-tripwire self-test proves DNS/socket monkeypatches really
+  reject calls. A RED-integrity witness reruns the three intentional failures
+  and rejects masked crashes, accidental success and network-trigger errors.
 - All tests are pure in-process: actual DNS lookups, sockets and outbound
   connections are patched to raise immediately. No real network
   assessment or other active operation is performed.
@@ -61,3 +64,12 @@ specific issue resolved.
 - Hosted checks at exact immutable SHA, registered self-hosted VPS
   execution, independent security/privacy review and explicit human
   release are distinct gates. None is conferred by these tests.
+
+## Current HEAD validation discipline
+
+A passing general unittest suite with three intentional expected failures is
+**not** a repaired parser. Inspect the exact branch commit's CI jobs; hosted
+GitHub Actions jobs are distinct from a job actually executed on the registered
+permanent VPS runner. Never reuse an earlier SHA's green jobs as proof after a
+new test/documentation commit. The local negative cases are expected to remain
+RED until the production source owner repairs the identity boundary.
