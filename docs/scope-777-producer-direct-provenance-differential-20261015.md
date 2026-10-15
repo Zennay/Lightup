@@ -2,6 +2,66 @@
 
 **LightUp posture: INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** This is an independent, add-only acceptance artifact; it does not alter `src/lightup/**`, branch `chatgpt/scope-authorization-direct-grant-approval-provenance-red-20261007`, production authority, workflow configuration, or any other worker's PR.
 
+## W8: actual unpatched main policy RED witness and pure fix proof (2026-10-15)
+
+**This is now an observed runtime defect, not only a static hypothesis.**
+
+The exact contents of two current GitHub `main` files were independently
+retrieved and locally reconstituted with matching character count and
+deterministic FNV32 codepoint checksum:
+
+| Actual source | GitHub blob SHA | Characters | FNV32 |
+| --- | --- | ---: | --- |
+| `src/lightup/engagements.py` | `2271582fe4013be23041416d5cedd35105004ccd` | 2,418 | `b54cbb04` |
+| `src/lightup/execution_policy.py` | `6fd14b09242ea5ffcf4c581f216679fbd02c00be` | 2,673 | `54244a85` |
+
+A disposable local package consisting of these **unaltered actual mainline
+modules** (not a mocked policy) ran two newly committed add-only acceptance
+files. All identifiers and the sole target string `example.test` are
+fictional; `ExecutionPolicy.decide` has no executor, network, SQLite
+backend, handler, or scan contact in this test.
+
+- [`test_scope_777_exact_main_policy_direct_20261015.py`](https://github.com/Zennay/Lightup/blob/chatgpt/scope-777-producer-direct-differential-20261015-0356/tests/test_scope_777_exact_main_policy_direct_20261015.py):
+  19 `unittest` methods. **5 ordinary controls PASS** (canonical allowed,
+  missing grant/expired/outside scope denied, typed no-write behavior).
+  **14 expected failures reproduced** because the real unpatched
+  `ExecutionPolicy` incorrectly ALLOWS all 14 noncanonical
+  `approved_by/reference` variants (blank, whitespace, padded, subclass,
+  bytes/int/None and Unicode padded). These 14 xfails are **open security
+  debt, not successful security assertions**.
+- [`test_scope_777_pure_fix_preview_20261015.py`](https://github.com/Zennay/Lightup/blob/chatgpt/scope-777-producer-direct-differential-20261015-0356/tests/test_scope_777_pure_fix_preview_20261015.py):
+  6 actual green tests for a local `_preview_narrowed_decide` wrapper. It
+  rejects **14/14** invalid direct grants, never widens legitimate
+  active authorization, still rejects expired/out-of-scope/missing grants,
+  leaves passive decisions unchanged and does not mutate inputs. The
+  helper is **defined within a test**, not installed or hooked into
+  product/production.
+
+A separate explicit baseline-vs-preview Python run counted
+`{"tested_invalid_cases": 14, "unpatched_policy_incorrect_allows": 14,
+"test_only_preview_incorrect_allows": 0, "valid_canonical_allowed": true}`.
+
+**Combined executed proof:** local Python 3.13.5
+`PYTHONPATH=src python -m unittest discover -s tests -p
+'test_scope_777_*_20261015.py' -q` returned **66 methods, zero unexpected
+errors, 14 expected failures** (41 standalone reviewer controls + 19 real
+policy baseline controls + 6 pure fix-preview controls). Python `compileall`
+passed. The previously isolated 18-test **DomainStore SQLite** differential
+was **not** executed: the full repository and its database dependencies
+were not available in this local checkout. No GitHub-hosted or permanent
+self-hosted/VPS CI has been run for this branch.
+
+**Source-owner action:** preserve the existing production ownership in PR
+#100. Move the proven pure exact-string canonicality condition into the real
+`ExecutionPolicy` TARGET_ACTIVE path ahead of `grant.is_current()`,
+conduct canonical `str` and trimmed nonempty checks for both fields, then
+remove all fourteen `expectedFailure` decorators **only after** those
+regressions pass normally on the integrated exact SHA. Re-run actual
+SQLite producer roundtrip, external/persisted grant lineage, consent,
+revocation and destination proofs. Neither this reference wrapper nor an
+offline `REVIEW_ONLY` receipt constitutes real customer authorization.
+**Keep branch-only, DRAFT/HOLD; no PR, merge, deployment, real grants or scans.**
+
 ## Why this adds a distinct acceptance signal
 
 Issue [#777](https://github.com/Zennay/Lightup/issues/777) already has a branch-only direct-policy RED acceptance against frozen PR #100. This follow-on tests a *different observable contract* on the current mainline: a disposable real SQLite `DomainStore.record_authorization_grant` producer accepts legitimate padded input and persists its canonical trimmed provenance; the *same* approval values are then evaluated as a canonical direct `AuthorizationGrant`, while modified caller-owned direct objects are asserted not to authorize. It demonstrates the producer/direct mismatch without borrowing or modifying the first RED branch.
