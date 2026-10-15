@@ -583,6 +583,26 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
             )
         return granted.grant_id
 
+    def test_malformed_link_can_refer_to_real_parent_and_still_hold(self):
+        # The SQL foreign key validates *equality*, not the canonical ID
+        # grammar of the referenced approval. Both rows can be internally
+        # consistent but unsupported as proof of a real approved request.
+        with sqlite3.connect(":memory:") as con:
+            con.executescript("""
+                PRAGMA foreign_keys=ON;
+                CREATE TABLE assessment_requests(request_id TEXT PRIMARY KEY);
+                CREATE TABLE authorization_grants(
+                    approved_request_id TEXT
+                    REFERENCES assessment_requests(request_id)
+                );
+                INSERT INTO assessment_requests VALUES('bad/approval/key');
+                INSERT INTO authorization_grants VALUES('bad/approval/key');
+            """)
+            self.assertEqual(con.execute(
+                "PRAGMA foreign_key_check(authorization_grants)"
+            ).fetchall(), [])
+            self.assertFalse(_has_provenance_fk(con))
+
     def test_other_null_request_reference_holds_despite_clean_sqlite_fk_check(self):
         self.upgrade_synthetic_only()
         other = self._second_synthetic_grant("api.example.test")
