@@ -157,3 +157,30 @@ class RiskFiveSeparateApprovalContract(TestCase):
             self._execute_offline(old)
         self.handler.assert_not_called()
         self.assertEqual(0, self._evidence_count())
+
+    def test_intentional_red_methods_fail_only_on_missing_denial(self):
+        """GREEN witness: don't mask wrong fixture/setup/runtime as expected RED.
+
+        Call each method directly, outside unittest's expectedFailure runner,
+        so an unrelated AttributeError, TypeError or socket exception is fatal.
+        Re-check each case against its own disposable SQLite and inert handler.
+        After a source fix this fails and the RED declarations must be promoted.
+        """
+        cases = (
+            ("test_risk_five_cannot_dispatch_on_for_lab_flag_without_step_up",
+             "ToolDenied not raised"),
+            ("test_risk_five_policy_cannot_treat_is_lab_as_operator_approval",
+             "True is not false"),
+            ("test_forged_risk_five_context_cannot_supply_missing_approval",
+             "ToolDenied not raised"),
+        )
+        for method, witness in cases:
+            with self.subTest(red_method=method):
+                probe = type(self)(method)
+                probe.setUp()
+                try:
+                    with self.assertRaises(AssertionError) as actual:
+                        getattr(probe, method)()
+                    self.assertIn(witness, str(actual.exception))
+                finally:
+                    probe.doCleanups()
