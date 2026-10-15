@@ -28,7 +28,7 @@ token, scan, or action on any customer system.
 | Time | decision in future, missing/invalid UTC decision, malformed, non-UTC-offset or naive grant times, hostile custom timezone object, grant precedes decision, grant not current at explicit review instant |
 | Metadata | invalid excluded target/capability item collection; malformed recurring retest flag |
 
-All identity fields also use a bounded (max 128 characters) ASCII identifier grammar with no whitespace or control characters. Empty allowed capability tuples are refused because the real ScopeDefinition interprets an empty allowlist as **unlimited tools**. The reviewer also requires a canonical request-created timestamp to precede the decision, strict built-in UTC timezone identity for supplied datetime objects, and a real high-level PLANNING-only capability ID from the currently installed catalogue. The catalogue check does not authenticate the caller or any authorization.
+All identity fields also use a bounded (max 128 characters) ASCII identifier grammar with no whitespace or control characters. Empty allowed capability tuples are refused because the real ScopeDefinition interprets an empty allowlist as **unlimited tools**. The reviewer also requires a canonical request-created timestamp to precede the decision, strict built-in UTC timezone identity for supplied datetime objects, and a real high-level PLANNING-only capability ID from the currently installed catalogue. An approved assessment request has no independent recurring-retest approval flag, so `recurring_retest_allowed=True` is always HOLD. `valid_from == valid_until` is also HOLD: the real DomainStore disallows empty validity windows, and the offline reviewer must not contradict that invariant. The catalogue check does not authenticate the caller or any authorization.
 
 The conservative **exact-string** comparison deliberately refuses aliases
 instead of equating non-canonical host/IP representations. DNS names must be
@@ -190,7 +190,7 @@ traffic, but reading sensitive records still requires authorization.
 
 ## Real producer RED contract (source owner outstanding)
 
-Five **intentional** `unittest.expectedFailure` canaries now invoke actual
+Six **intentional** `unittest.expectedFailure` canaries now invoke actual
 `DomainStore.record_authorization_grant` in disposable SQLite databases
 and demand a fail-closed exception when (a) the tenant has **no approved
 assessment request**, (b) the granted asset **exceeds** the only approved
