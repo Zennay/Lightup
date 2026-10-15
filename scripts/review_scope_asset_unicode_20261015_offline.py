@@ -29,6 +29,9 @@ FALSE_FLAGS = {
 }
 LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z", re.ASCII)
 CAPABILITY = re.compile(r"[a-z][a-z0-9]*(?:[-_.][a-z0-9]+)*\Z", re.ASCII)
+# Some legacy IPv4 parsers treat 0x7f.0.0.1 or 0x7f000001 as 127.0.0.1.
+# This reviewer accepts none of those aliases, even as review-only names.
+NUMERIC_ALIAS_PART = re.compile(r"(?:0x[0-9a-f]+|[0-9]+)\Z", re.ASCII)
 
 
 class ReviewInputError(ValueError):
@@ -77,6 +80,10 @@ def _is_asset_name(value: Any) -> bool:
         except ValueError:
             return False
     labels = value.split(".")
+    # Numeric hexadecimal address components look DNS-shaped but are parsed
+    # as IPv4 literals by legacy inet_aton()/getaddrinfo implementations.
+    if len(labels) <= 4 and all(NUMERIC_ALIAS_PART.fullmatch(label) for label in labels):
+        return False
     return all(LABEL.fullmatch(label) and not label.startswith("xn--") for label in labels)
 
 

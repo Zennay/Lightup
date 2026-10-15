@@ -129,6 +129,45 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
             with self.subTest(case=bad[:40]):
                 self.assert_hold(mod.review_bytes(bad))
 
+    def test_hex_numeric_ipv4_aliases_are_atomic_hold(self):
+        # inet_aton is only an in-process numeric parser; no lookup/network call.
+        aliases = ("0x7f.0.0.1", "0x7f000001", "0x7f.1",
+                   "0x7f.0.1", "0x7f.00.01", "0x7f000001")
+        canonical = socket.inet_aton("127.0.0.1")
+        for value in aliases:
+            with self.subTest(value=value):
+                self.assertEqual(socket.inet_aton(value), canonical)
+                sample = synthetic_claim()
+                sample["assets"][0] = value
+                self.assert_hold(receipt(sample))
+                sample = synthetic_claim()
+                sample["excluded_assets"] = [value]
+                self.assert_hold(receipt(sample))
+                raw = json.dumps(sample, separators=(",", ":")).encode()
+                proc = subprocess.run(
+                    [sys.executable, str(SCRIPT), "--stdin-json"],
+                    input=raw, capture_output=True, timeout=5, check=False,
+                )
+                self.assertEqual(proc.returncode, 2)
+                self.assert_hold(json.loads(proc.stdout))
+                self.assertEqual(proc.stderr, b"")
+        valid = synthetic_claim()
+        valid["assets"] = ["app.0x7f.example.test"]
+        self.assertEqual(receipt(valid)["status"], "REVIEW_ONLY")
+        self.assertEqual(receipt(synthetic_claim())["status"], "REVIEW_ONLY")
+
+    def test_seeded_numeric_hex_alias_variations_never_gain_review(self):
+        rng = random.Random(1437_21)
+        for _ in range(200):
+            count = rng.randint(1, 4)
+            parts = [str(rng.randrange(0, 128)) for _ in range(count)]
+            parts[rng.randrange(count)] = "0x" + format(rng.randrange(0, 256), "x")
+            alias = ".".join(parts)
+            sample = synthetic_claim()
+            sample["assets"][0] = alias
+            with self.subTest(alias=alias):
+                self.assert_hold(receipt(sample))
+
     def test_numeric_ipv4_aliases_fail_closed(self):
         for text in ("127.1", "2130706433", "0177.0.0.1", "127.000.0.1",
                      "1.2.3.999", "1.2.3", "0", "000", "1.2.3.4.5"):
