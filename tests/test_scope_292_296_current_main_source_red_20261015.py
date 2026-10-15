@@ -229,6 +229,8 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
 
     def _assert_true_source_red_partition(self, proof, names):
         """Demand real failing scope assertions, not masked errors or fake green."""
+        # Refuse replay aliases: a duplicate can mask a missing installed RED.
+        self.assertEqual(len(names), len(set(names)))
         self.assertEqual(proof.testsRun, len(names))
         self.assertEqual(proof.failures, [])
         self.assertEqual(proof.errors, [])
@@ -242,6 +244,10 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
             self.assertIn(case._testMethodName, names)
             self.assertIn("AssertionError", trace)
             self.assertIn("invalid network declaration minted scope authority", trace)
+            # The source must have reached the real admission assertion.
+            # A synthetic exception containing the expected words is no proof.
+            self.assertIn("in _assert_rejected", trace)
+            self.assertIn("self.assertFalse(result.allowed", trace)
 
     def _single_red_result(self):
         name = "test_292_integer_must_not_create_ipv4_host_authority"
@@ -272,6 +278,24 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
         with self.assertRaises(AssertionError):
             self._assert_true_source_red_partition(proof, names)
 
+    def test_witness_detects_forged_matching_message_without_source_assert(self):
+        message = "invalid network declaration minted scope authority"
+        with patch.object(type(self), "_assert_rejected", side_effect=AssertionError(message)):
+            proof, names = self._single_red_result()
+        self.assertEqual(len(proof.expectedFailures), 1)
+        # Matching the exact message cannot fake a real ScopeDecision assertion.
+        with self.assertRaises(AssertionError):
+            self._assert_true_source_red_partition(proof, names)
+
+    def test_witness_detects_duplicate_replayed_case(self):
+        proof = unittest.TestResult()
+        name = "test_292_integer_must_not_create_ipv4_host_authority"
+        type(self)(name).run(proof)
+        type(self)(name).run(proof)
+        self.assertEqual(len(proof.expectedFailures), 2)
+        with self.assertRaises(AssertionError):
+            self._assert_true_source_red_partition(proof, (name, name))
+
     def test_witness_detects_incomplete_replay(self):
         proof, names = self._single_red_result()
         with self.assertRaises(AssertionError):
@@ -298,6 +322,7 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
             "test_296_ipv4_host_bits_zero_prefix_must_not_widen_to_all_public",
             "test_296_ipv6_host_bits_zero_prefix_must_not_widen_to_all_public",
         )
+        self.assertEqual(len(names), 18, "source-owner RED count changed; revise the review gate")
         proof = unittest.TestResult()
         # A red witness that performs target I/O is not valid evidence:
         # prohibit networking and new subprocesses throughout all 18 replays.
