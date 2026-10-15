@@ -2,7 +2,7 @@
 
 Test inputs are synthetic and evaluated only in memory. A fixture Authorization
 is not real customer consent. Do not use these tests as a grant/scan permit.
-The installed source currently violates the eighteen expected-failure cases; an
+The installed source currently violates the twenty-one expected-failure cases; an
 unexpectedSuccess means the source changed and this suite must be promoted to
 ordinary passing tests by the production owner before release.
 """
@@ -82,19 +82,20 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
                     self.assertFalse(self._strict_canonical_declaration(text.split("/")[0]))
         # Accepted syntax is NOT itself a customer grant or runtime permit.
 
-    def _review(self, declaration: object, target: str):
+    def _review(self, declaration: object, target: str, *, require_auth: bool = True):
         policy = ScopePolicy(
             allow_private_lab=False,
             explicit_networks=(declaration,),
-            require_authorization_for_public=True,
+            require_authorization_for_public=require_auth,
         )
         try:
-            return policy.decide(Target(target, authorization=_SYNTHETIC_AUTH))
+            fixture = _SYNTHETIC_AUTH if require_auth else None
+            return policy.decide(Target(target, authorization=fixture))
         except (TypeError, ValueError):
             return None  # Rejected configuration; never a grant.
 
-    def _assert_rejected(self, declaration: object, target: str):
-        result = self._review(declaration, target)
+    def _assert_rejected(self, declaration: object, target: str, *, require_auth: bool = True):
+        result = self._review(declaration, target, require_auth=require_auth)
         if result is not None:
             self.assertFalse(result.allowed, "invalid network declaration minted scope authority")
 
@@ -174,6 +175,19 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
     def test_296_ipv6_host_bits_zero_prefix_must_not_widen_to_all_public(self):
         # Parsing this with strict=False silently becomes ::/0.
         self._assert_rejected("2001:4860:4860::8888/0", "[2606:4700:4700::1111]")
+
+    @unittest.expectedFailure
+    def test_292_integer_without_public_auth_gate_still_mints_invalid_scope(self):
+        # The optional public-auth flag is not permission to trust malformed declarations.
+        self._assert_rejected(134744072, "8.8.8.8", require_auth=False)
+
+    @unittest.expectedFailure
+    def test_296_ipv4_hostbit_zero_prefix_without_public_auth_gate_mints_scope(self):
+        self._assert_rejected("8.8.8.8/0", "1.1.1.1", require_auth=False)
+
+    @unittest.expectedFailure
+    def test_296_ipv6_hostbit_zero_prefix_without_public_auth_gate_mints_scope(self):
+        self._assert_rejected("2001:4860:4860::8888/0", "[2606:4700:4700::1111]", require_auth=False)
 
     def test_292_bytearray_is_never_permission(self):
         self._assert_rejected(bytearray(b"\x08\x08\x08\x08"), "8.8.8.8")
@@ -301,7 +315,7 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
         with self.assertRaises(AssertionError):
             self._assert_true_source_red_partition(proof, names + ("missing-case",))
 
-    def test_eighteen_expected_reds_are_real_assertions_not_masked_errors(self):
+    def test_twenty_one_expected_reds_are_real_assertions_not_masked_errors(self):
         names = (
             "test_292_integer_must_not_create_ipv4_host_authority",
             "test_292_raw_bytes_must_not_create_ipv4_host_authority",
@@ -321,11 +335,14 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
             "test_296_noncanonical_dotted_host_mask_must_require_32",
             "test_296_ipv4_host_bits_zero_prefix_must_not_widen_to_all_public",
             "test_296_ipv6_host_bits_zero_prefix_must_not_widen_to_all_public",
+            "test_292_integer_without_public_auth_gate_still_mints_invalid_scope",
+            "test_296_ipv4_hostbit_zero_prefix_without_public_auth_gate_mints_scope",
+            "test_296_ipv6_hostbit_zero_prefix_without_public_auth_gate_mints_scope",
         )
-        self.assertEqual(len(names), 18, "source-owner RED count changed; revise the review gate")
+        self.assertEqual(len(names), 21, "source-owner RED count changed; revise the review gate")
         proof = unittest.TestResult()
         # A red witness that performs target I/O is not valid evidence:
-        # prohibit networking and new subprocesses throughout all 18 replays.
+        # prohibit networking and new subprocesses throughout all 21 replays.
         with (
             patch("socket.socket", side_effect=AssertionError("network forbidden")),
             patch("socket.getaddrinfo", side_effect=AssertionError("DNS forbidden")),
