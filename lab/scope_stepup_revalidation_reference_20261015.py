@@ -172,12 +172,28 @@ class OfflineRevalidationFence:
             return self._review_count
 
     @staticmethod
-    def _approval_fields(value: ReferenceApproval) -> tuple[object, ...]:
-        request = value.request
+    def _time_fields(value: datetime) -> tuple[object, ...]:
+        # datetime equality normalizes aware instants and ignores fold in
+        # some same-tz cases. Review seals pin original representation too.
         return (
-            request.run, request.client, request.engagement, request.asset,
-            request.tool, request.capability, request.risk,
-            request.started_at, value.issued_at, value.expires_at,
+            value.year, value.month, value.day, value.hour, value.minute,
+            value.second, value.microsecond, value.fold, value.utcoffset(),
+        )
+
+    @classmethod
+    def _request_fields(cls, value: ReviewRequest) -> tuple[object, ...]:
+        return (
+            value.run, value.client, value.engagement, value.asset,
+            value.tool, value.capability, value.risk,
+            cls._time_fields(value.started_at),
+        )
+
+    @classmethod
+    def _approval_fields(cls, value: ReferenceApproval) -> tuple[object, ...]:
+        return (
+            *cls._request_fields(value.request),
+            cls._time_fields(value.issued_at),
+            cls._time_fields(value.expires_at),
         )
 
     @staticmethod
@@ -242,7 +258,8 @@ class OfflineRevalidationFence:
             name: getattr(request, name)
             for name in ReviewRequest.__dataclass_fields__
         })
-        if request != initial_request:
+        original_fields = self._request_fields(initial_request)
+        if self._request_fields(request) != original_fields:
             return _hold()
 
         # The expensive, untrusted verifier deliberately executes OUTSIDE the
@@ -270,7 +287,8 @@ class OfflineRevalidationFence:
             if (self._approval_fields(approval) != self._approval_seal
                     or self._tool_fields(tool) != self._tool_seal):
                 return _hold()
-            if (request != initial_request or approval.request != initial_request
+            if (self._request_fields(request) != original_fields
+                    or self._request_fields(approval.request) != original_fields
                     or tool.tool != initial_request.tool
                     or tool.capability != initial_request.capability
                     or tool.risk != initial_request.risk
