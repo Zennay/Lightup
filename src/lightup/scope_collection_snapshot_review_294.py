@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from ipaddress import ip_network
+from unicodedata import category
 
 from .scope import ScopePolicy
 
@@ -84,6 +85,27 @@ def _deny(reason: str) -> ScopeCollectionReview:
     return ScopeCollectionReview("HOLD", reason)
 
 
+def _lexical_host_metadata_identity(value: object) -> bool:
+    """A deliberately narrow host *shape*, not DNS or IDNA authorization.
+
+    Do not parse URLs, normalize aliases, resolve names, issue grants or
+    silently turn userinfo/ports/paths/Unicode control marks into hosts.
+    Exact IDN spellings survive unchanged for source-owner review.
+    """
+    if type(value) is not str or not 0 < len(value) <= _MAX_HOST_LENGTH:
+        return False
+    labels = value.split(".")
+    for label in labels:
+        if not label or len(label) > 63:
+            return False
+        if not label[0].isalnum() or not label[-1].isalnum():
+            return False
+        for char in label:
+            if not (char.isalnum() or char == "-" or category(char).startswith("M")):
+                return False
+    return True
+
+
 def _bounded_hosts(raw: object) -> frozenset[str] | None:
     if type(raw) not in (set, frozenset, tuple, list):
         return None
@@ -93,9 +115,7 @@ def _bounded_hosts(raw: object) -> frozenset[str] | None:
         copied = tuple(raw)
     except RuntimeError:
         return None
-    if not all(type(item) is str and 0 < len(item) <= _MAX_HOST_LENGTH
-               and not any(ord(ch) < 32 or ord(ch) == 127 for ch in item)
-               for item in copied):
+    if not all(_lexical_host_metadata_identity(item) for item in copied):
         return None
     # A list/tuple pretending to represent an identity set must not silently
     # discard repeated entries. Malformed input is HOLD, not a normalized
