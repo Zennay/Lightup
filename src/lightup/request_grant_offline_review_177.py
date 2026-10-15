@@ -22,7 +22,7 @@ class ReviewStatus(str, Enum):
     REVIEW_ONLY = "REVIEW_ONLY"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RequestGrantReview:
     status: ReviewStatus
     reason: str
@@ -32,6 +32,29 @@ class RequestGrantReview:
     scan_allowed: bool = False
     merge_allowed: bool = False
     deploy_allowed: bool = False
+
+    def __post_init__(self) -> None:
+        # A plain caller cannot manufacture an apparently approved review
+        # receipt through this constructor. This is NOT a security boundary
+        # against in-process hostile Python/reflection or a signed authority.
+        if type(self.status) is not ReviewStatus or type(self.reason) is not str:
+            raise ValueError("invalid non-authorizing review receipt")
+        expected_reason = (
+            "invalid_or_unverified_input" if self.status is ReviewStatus.HOLD
+            else "structurally_coherent_untrusted_snapshot"
+        )
+        if self.reason != expected_reason or any(
+            value is not False
+            for value in (
+                self.authorized,
+                self.grant_allowed,
+                self.dispatch_allowed,
+                self.scan_allowed,
+                self.merge_allowed,
+                self.deploy_allowed,
+            )
+        ):
+            raise ValueError("invalid non-authorizing review receipt")
 
 
 _HOLD = RequestGrantReview(ReviewStatus.HOLD, "invalid_or_unverified_input")
