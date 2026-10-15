@@ -359,5 +359,41 @@ class SyntheticProvenanceReviewTests(unittest.TestCase):
                 with self.subTest(size=size, variant=variant):
                     self.assert_receipt(OK + suffix, "HOLD")
 
+
+    def test_noncanonical_unicode_aliases_are_hold_without_authority(self):
+        cases = ("Jose\u0301",  # decomposed precomposable accent
+                 "fictional\u00a0operator",  # non-breaking space
+                 "fictional\u2028operator",  # line separator
+                 "fictional\u2029operator",  # paragraph separator
+                 "fictional\u2007operator",  # figure space
+                 "fictional\u034foperator",  # invisible grapheme joiner
+                 "fictional\ue000operator",  # private-use character
+                 "fictional\ufdd0operator",  # Unicode noncharacter
+                 "fictional\ufffeoperator")  # Unicode noncharacter
+        for field in ("approved_by", "reference"):
+            for value in cases:
+                with self.subTest(field=field, candidate=repr(value)):
+                    payload = {"approved_by": "fictional-operator", "reference": "ROE-FICTIONAL"}
+                    payload[field] = value
+                    self.assert_receipt(json.dumps(payload).encode("utf-8"), "HOLD")
+
+    def test_precomposed_unicode_and_ascii_internal_spaces_review_only(self):
+        cases = ("Jos\u00e9", "Fictional Lab Operator", "caf\u00e9-ROE-7")
+        for value in cases:
+            with self.subTest(value=value):
+                payload = {"approved_by": value, "reference": "ROE-FICTIONAL"}
+                self.assert_receipt(json.dumps(payload).encode("utf-8"), "REVIEW_ONLY")
+
+    def test_unicode_noncanonical_real_cli_uniform_hold(self):
+        payloads = ("fictional\u034foperator", "fictional\u00a0operator", "Jose\u0301")
+        for name in payloads:
+            with self.subTest(name=repr(name)):
+                payload = json.dumps({"approved_by": name, "reference": "ROE-FICTIONAL"}).encode()
+                proc = subprocess.run([sys.executable, str(SCRIPT)], input=payload,
+                                      capture_output=True, timeout=3)
+                self.assertEqual(proc.returncode, 2)
+                self.assertEqual(proc.stderr, b"")
+                self.assertEqual(json.loads(proc.stdout), {"status": "HOLD", **FALSE_FLAGS})
+
 if __name__ == "__main__":
     unittest.main()
