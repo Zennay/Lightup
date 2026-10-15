@@ -606,6 +606,98 @@ class DirectRiskReviewTests(unittest.TestCase):
             authorization=grant,
         ))
 
+    def test_installed_policy_exact_canonical_risk_ceiling_matrix_control(self):
+        """25 source-backed positive/negative controls: avoid vacuous REDs."""
+        levels = (
+            RiskLevel.ANALYSIS_ONLY, RiskLevel.PASSIVE,
+            RiskLevel.LOW_IMPACT, RiskLevel.STANDARD, RiskLevel.ELEVATED,
+        )
+        for ceiling in levels:
+            for requested in levels:
+                with self.subTest(ceiling=ceiling, requested=requested):
+                    actual = self.installed_direct_decision(ceiling, requested)
+                    expected = requested.value <= ceiling.value
+                    self.assertIs(
+                        actual.allowed, expected,
+                        "canonical installed policy semantics must not change",
+                    )
+
+    @unittest.expectedFailure
+    def test_known_installed_raw_integer_alias_matrix_expected_red(self):
+        """Production direct scope must reject *all* raw int risk ceilings."""
+        noncanonical = (-1, 0, 1, 2, 3, 4, 5, 6, 99)
+        admitted = tuple(
+            value for value in noncanonical
+            if self.installed_direct_decision(
+                value, RiskLevel.ANALYSIS_ONLY
+            ).allowed
+        )
+        self.assertEqual(
+            admitted, (),
+            "raw integer risk ceilings remain accepted by installed source",
+        )
+
+    @unittest.expectedFailure
+    def test_known_installed_false_bool_alias_expected_red(self):
+        """False is int zero and can incorrectly mean analysis-only scope."""
+        decision = self.installed_direct_decision(
+            False, RiskLevel.ANALYSIS_ONLY
+        )
+        self.assertIs(
+            decision.allowed, False,
+            "False is not a canonical RiskLevel ceiling",
+        )
+
+    @unittest.expectedFailure
+    def test_known_installed_foreign_intenum_alias_matrix_expected_red(self):
+        """Even equal foreign IntEnum members cannot stand in for RiskLevel."""
+        admitted = tuple(
+            member.name for member in ForeignRisk
+            if self.installed_direct_decision(
+                member, RiskLevel.ANALYSIS_ONLY
+            ).allowed
+        )
+        self.assertEqual(
+            admitted, (),
+            "foreign IntEnum equivalents still widen installed active scope",
+        )
+
+    @unittest.expectedFailure
+    def test_known_installed_float_and_nan_alias_matrix_expected_red(self):
+        """Float and NaN comparisons must never become direct risk authority."""
+        cases = (
+            ("zero", 0.0), ("fraction", 2.5),
+            ("infinity", float("inf")), ("nan", float("nan")),
+        )
+        admitted = tuple(
+            name for name, ceiling in cases
+            if self.installed_direct_decision(
+                ceiling, RiskLevel.ANALYSIS_ONLY
+            ).allowed
+        )
+        self.assertEqual(
+            admitted, (),
+            "unordered NaN and float risk ceilings are not canonical grants",
+        )
+
+    @unittest.expectedFailure
+    def test_known_installed_custom_comparator_alias_expected_red(self):
+        """An untrusted object can lie about risk comparison on direct grant."""
+        class ForgedComparator:
+            def __lt__(self, other):
+                return False
+
+            def __repr__(self):
+                raise AssertionError("untrusted comparator was reflected")
+
+        decision = self.installed_direct_decision(
+            ForgedComparator(), RiskLevel.STANDARD
+        )
+        self.assertIs(
+            decision.allowed, False,
+            "untrusted right-hand comparison must never permit target-active",
+        )
+
     @unittest.expectedFailure
     def test_known_installed_policy_bool_true_active_risk_expected_red(self):
         """bool is int-like; truthiness must not mint a risk ceiling."""
