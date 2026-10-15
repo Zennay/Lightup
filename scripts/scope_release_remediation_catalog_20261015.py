@@ -6,6 +6,7 @@ authority. Issue references are hand-off hints, never live issue status.
 from __future__ import annotations
 
 from typing import NamedTuple
+from types import MappingProxyType
 
 from scope_release_dependency_inventory_20261015 import GATES
 
@@ -18,7 +19,7 @@ class Remediation(NamedTuple):
     owner_boundary: str
 
 
-CATALOG: dict[str, Remediation] = {
+CATALOG = MappingProxyType({
     "client_consent": Remediation(
         "Klant of schriftelijk gemachtigde opdrachtgever",
         "Vraag afzonderlijke, actuele en doelgebonden toestemming aan de bevoegde partij.",
@@ -73,7 +74,7 @@ CATALOG: dict[str, Remediation] = {
         "Afzonderlijk gedateerd menselijk GO met definitieve scope en bewezen controles.",
         "Een test, script of PR-status verleent nooit de vereiste menselijke GO.",
         "EXTERNAL_HUMAN"),
-}
+})
 
 
 def remediation(gate: str) -> Remediation:
@@ -83,4 +84,5 @@ def remediation(gate: str) -> Remediation:
     return CATALOG[gate]
 
 
-assert tuple(CATALOG) == GATES, "remediation map must match all nine scope gates"
+if tuple(CATALOG) != GATES:
+    raise RuntimeError("remediation map must match all nine scope gates")
