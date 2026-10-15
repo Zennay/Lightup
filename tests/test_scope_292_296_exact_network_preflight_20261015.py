@@ -308,6 +308,97 @@ class OfflineExactNetworks292296(unittest.TestCase):
         ):
             self.assertEqual(guard.main(), 2)
 
+    def test_fragmented_valid_stream_requires_eof_then_review_only(self):
+        class Fragmented:
+            def __init__(self, data):
+                self.parts = [data[:4], data[4:17], data[17:], b""]
+            def read(self, size):
+                value = self.parts.pop(0)
+                self_limit = len(value) <= size
+                if not self_limit:
+                    raise AssertionError("unbounded read request")
+                return value
+
+        raw = self._payload(["198.51.100.0/24"])
+        reader = Fragmented(raw)
+        self.assertEqual(guard._read_bounded_stream(reader), raw)
+        self.assertEqual(reader.parts, [])
+        stdout = StringIO()
+        with (
+            patch.object(guard.sys, "stdin", SimpleNamespace(buffer=Fragmented(raw))),
+            patch.object(guard.sys, "stdout", stdout),
+        ):
+            self.assertEqual(guard.main(), 3)
+        self.assertEqual(stdout.getvalue(), guard.receipt("REVIEW_ONLY") + "\n")
+
+    def test_fragmented_valid_prefix_followed_by_untrusted_suffix_is_hold(self):
+        valid = self._payload(["198.51.100.0/24"])
+        marker = b'{"authorizes_scan":true,"secret":"SYNTHETIC-PRIVATE"}'
+
+        class Fragmented:
+            def __init__(self):
+                self.parts = [valid, marker, b""]
+            def read(self, size):
+                value = self.parts.pop(0)
+                self_size = len(value) <= size
+                if not self_size:
+                    raise AssertionError("stream requested too few bytes")
+                return value
+
+        stdout = StringIO()
+        with (
+            patch.object(guard.sys, "stdin", SimpleNamespace(buffer=Fragmented())),
+            patch.object(guard.sys, "stdout", stdout),
+        ):
+            self.assertEqual(guard.main(), 2)
+        self.assertEqual(stdout.getvalue(), guard.receipt("HOLD") + "\n")
+        self.assertNotIn("SYNTHETIC-PRIVATE", stdout.getvalue())
+
+    def test_fragmented_16384_plus_one_byte_is_hold(self):
+        valid = self._payload(["198.51.100.0/24"])
+        exact = b" " * (guard.MAX_JSON_BYTES - len(valid)) + valid
+
+        class Fragmented:
+            def __init__(self):
+                self.parts = [exact[:8000], exact[8000:], b"x"]
+                self.calls = 0
+            def read(self, size):
+                self.calls += 1
+                self.assert_size = size
+                return self.parts.pop(0)
+
+        reader = Fragmented()
+        with self.assertRaises(ValueError):
+            guard._read_bounded_stream(reader)
+        self.assertEqual(reader.calls, 3)
+
+    def test_stream_wrong_type_or_none_is_hold_not_eof(self):
+        for wrong in (None, "text", bytearray(b"x"), True):
+            class Malformed:
+                def read(self, _size):
+                    return wrong
+
+            stdout = StringIO()
+            with (
+                patch.object(guard.sys, "stdin", SimpleNamespace(buffer=Malformed())),
+                patch.object(guard.sys, "stdout", stdout),
+            ):
+                self.assertEqual(guard.main(), 2)
+            self.assertEqual(stdout.getvalue(), guard.receipt("HOLD") + "\n")
+
+    def test_stream_overreturning_size_is_hold(self):
+        class Overreturn:
+            def read(self, size):
+                return b"x" * (size + 1)
+
+        stdout = StringIO()
+        with (
+            patch.object(guard.sys, "stdin", SimpleNamespace(buffer=Overreturn())),
+            patch.object(guard.sys, "stdout", stdout),
+        ):
+            self.assertEqual(guard.main(), 2)
+        self.assertEqual(stdout.getvalue(), guard.receipt("HOLD") + "\n")
+
     def test_real_cli_valid_returns_nonzero_and_no_grant(self):
         done = self._cli(self._payload(["8.8.8.0/24"]))
         self.assertEqual(done.returncode, 3, done.stderr.decode(errors="replace"))
