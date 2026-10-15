@@ -41,6 +41,14 @@ def render(blob: bytes) -> str:
             "De aanleveraar verklaart de pagina's compleet, maar de bron is niet bevestigd.",
             "",
         ])
+    excluded = result["excluded_pr_pseudorows_from_issue_pages"]
+    if excluded:
+        out.extend(["## GitHub-PR-rijen uitgefilterd uit issues", ""])
+        out.append(
+            f"- {len(excluded)} PR-rij(en) uit de algemene issues-API zijn niet als scope-issues geteld."
+        )
+        out.append("- Dit zegt niets over beschikbaarheid; verifieer alle werkelijke PR's apart.")
+        out.append("")
     if result["open_fork_prs_require_review"]:
         out.extend(["## Fork-PR's vereisen aparte eigenaarscontrole", ""])
         out.extend(f"- PR #{pr}: externe source-branch; niet automatisch overnemen."
