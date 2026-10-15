@@ -166,7 +166,7 @@ never a release grant.
 4. Keep scope/authorization decisions deny-by-default on bad configuration and preserve the caller's explicit canonical CIDRs. Coordinate with #294's snapshot owner so validation is never bypassed by later caller mutation; maintain the independent #177/#347 live gates.
 5. Replace each `expectedFailure` with normal passing tests **only after** the source fix. The companion witness deliberately asserts the current failures and must be switched to strict green semantics in the same owner-controlled integration, preventing intentional REDs being mistaken for release proof.
 
-**Isolation assurance:** The replay witness forbids sockets, DNS, subprocesses and shell calls for all eighteen synthetic RED fixtures. No customer asset or runtime code is involved.
+**Isolation assurance:** The replay witness forbids sockets, DNS, subprocesses and shell calls for all twenty-one synthetic RED fixtures. No customer asset or runtime code is involved.
 
 ## Conditions before owner integration or closing issues
 
