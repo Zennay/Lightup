@@ -4,6 +4,8 @@ from __future__ import annotations
 import json
 import os
 import socket
+import stat
+from types import SimpleNamespace
 import subprocess
 import sys
 import tempfile
@@ -511,6 +513,109 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
                     for fd in (input_read, input_write, output_read, output_write):
                         if fd >= 0:
                             os.close(fd)
+
+
+    def test_regular_file_nonzero_offset_denied_atomically(self):
+        """A valid suffix is not a complete immutable review packet."""
+        cmd = [sys.executable, str(ROOT / "scripts" /
+                                  "review_scope_expiry_cohort_20261015_offline.py")]
+        with tempfile.TemporaryFile(mode="w+b") as fixture:
+            fixture.write(encoded(document()))
+            fixture.seek(1)
+            proc = subprocess.run(
+                cmd, stdin=fixture, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                timeout=5, check=False,
+            )
+        self.assertEqual(proc.returncode, 2)
+        self.assertEqual(proc.stderr, b"")
+        receipt = json.loads(proc.stdout.decode("ascii"))
+        self.assertEqual(set(receipt), {"status", *reviewer.DENIAL_FLAGS})
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertNoAuthority(receipt)
+
+    def test_regular_file_zero_length_and_oversized_preflight(self):
+        """Reject bad declared file sizes before reading a suffix or huge file."""
+        cmd = [sys.executable, str(ROOT / "scripts" /
+                                  "review_scope_expiry_cohort_20261015_offline.py")]
+        for payload in (b"", b" " * (reviewer.MAX_INPUT_BYTES + 1)):
+            with self.subTest(size=len(payload)):
+                with tempfile.TemporaryFile(mode="w+b") as fixture:
+                    fixture.write(payload)
+                    fixture.seek(0)
+                    proc = subprocess.run(
+                        cmd, stdin=fixture, stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE, timeout=5, check=False,
+                    )
+                self.assertEqual(proc.returncode, 2)
+                self.assertEqual(proc.stderr, b"")
+                receipt = json.loads(proc.stdout.decode("ascii"))
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertNoAuthority(receipt)
+
+    def test_regular_file_mutation_during_read_is_hold(self):
+        """Deterministic simulated post-read mtime drift, no actual target I/O."""
+        initial = SimpleNamespace(
+            st_mode=stat.S_IFREG | 0o600,
+            st_dev=8, st_ino=10, st_size=2, st_mtime_ns=10, st_ctime_ns=11,
+        )
+        changed = SimpleNamespace(
+            st_mode=initial.st_mode,
+            st_dev=initial.st_dev, st_ino=initial.st_ino,
+            st_size=2, st_mtime_ns=12, st_ctime_ns=11,
+        )
+        with mock.patch.object(reviewer.sys, "stdin") as stdin, \\
+                mock.patch.object(reviewer.os, "fstat", side_effect=[
+                    initial, initial, initial, changed,
+                ]), \\
+                mock.patch.object(reviewer.os, "lseek", side_effect=[0, 2]), \\
+                mock.patch.object(reviewer.os, "get_blocking", return_value=True), \\
+                mock.patch.object(reviewer.os, "set_blocking") as blocking, \\
+                mock.patch.object(reviewer.select, "select", return_value=([0], [], [])), \\
+                mock.patch.object(reviewer.os, "read", side_effect=[b"{}", b""]):
+            stdin.fileno.return_value = 0
+            with self.assertRaises(ValueError):
+                reviewer._read_bounded_stdin()
+            self.assertEqual(blocking.call_args_list, [
+                mock.call(0, False), mock.call(0, True),
+            ])
+
+    def test_stdin_descriptor_identity_swap_is_hold_before_read(self):
+        original = SimpleNamespace(st_mode=stat.S_IFIFO | 0o600,
+                                   st_dev=8, st_ino=10)
+        swapped = SimpleNamespace(st_mode=original.st_mode,
+                                  st_dev=8, st_ino=11)
+        with mock.patch.object(reviewer.sys, "stdin") as stdin, \\
+                mock.patch.object(reviewer.os, "fstat",
+                                  side_effect=[original, swapped]), \\
+                mock.patch.object(reviewer.os, "get_blocking", return_value=True), \\
+                mock.patch.object(reviewer.os, "set_blocking") as blocking, \\
+                mock.patch.object(reviewer.select, "select", return_value=([0], [], [])), \\
+                mock.patch.object(reviewer.os, "read") as read:
+            stdin.fileno.return_value = 0
+            with self.assertRaises(ValueError):
+                reviewer._read_bounded_stdin()
+            read.assert_not_called()
+            self.assertEqual(blocking.call_args_list, [
+                mock.call(0, False), mock.call(0, True),
+            ])
+
+    def test_stdout_descriptor_identity_swap_never_writes(self):
+        original = SimpleNamespace(st_mode=stat.S_IFIFO | 0o600,
+                                   st_dev=8, st_ino=10)
+        swapped = SimpleNamespace(st_mode=original.st_mode,
+                                  st_dev=8, st_ino=11)
+        with mock.patch.object(reviewer.sys, "stdout") as stdout, \\
+                mock.patch.object(reviewer.os, "fstat",
+                                  side_effect=[original, original, swapped]), \\
+                mock.patch.object(reviewer.os, "get_blocking", return_value=True), \\
+                mock.patch.object(reviewer.os, "set_blocking") as blocking, \\
+                mock.patch.object(reviewer.os, "write") as write:
+            stdout.fileno.return_value = 1
+            self.assertFalse(reviewer._emit_receipt(reviewer._receipt("HOLD")))
+            write.assert_not_called()
+            self.assertEqual(blocking.call_args_list, [
+                mock.call(1, False), mock.call(1, True),
+            ])
 
 
 if __name__ == "__main__":
