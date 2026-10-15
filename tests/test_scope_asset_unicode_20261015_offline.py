@@ -220,6 +220,27 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
         self.assert_hold(json.loads(proc.stdout))
         self.assertEqual(proc.stderr, b"")
 
+    def test_receipt_gate_refuses_caller_forged_success_or_leaky_shape(self):
+        self.assertTrue(mod._is_deny_only_receipt({"status": "HOLD", **mod.FALSE_FLAGS}))
+        self.assertTrue(mod._is_deny_only_receipt(receipt(synthetic_claim())))
+        forged = [
+            {"status": "APPROVED", **mod.FALSE_FLAGS},
+            {"status": "PASS", **mod.FALSE_FLAGS},
+            {"status": "HOLD", **mod.FALSE_FLAGS, "asset_count": 0},
+            {"status": "REVIEW_ONLY", **mod.FALSE_FLAGS},
+            {**receipt(synthetic_claim()), "asset": "PRIVATE-ASSET"},
+            {**receipt(synthetic_claim()), "authorization_verified": True},
+            {**receipt(synthetic_claim()), "release_approved": 0},
+            {**receipt(synthetic_claim()), "asset_count": True},
+            {**receipt(synthetic_claim()), "capability_count": -1},
+            {**receipt(synthetic_claim()), "excluded_count": 33},
+            {**receipt(synthetic_claim()), "status": "HOLD"},
+            ["HOLD"],
+        ]
+        for item in forged:
+            with self.subTest(receipt=item):
+                self.assertFalse(mod._is_deny_only_receipt(item))
+
     def test_output_is_local_pipe_only_not_regular_file_or_socket(self):
         data = json.dumps(synthetic_claim()).encode("utf-8")
         with tempfile.TemporaryFile(mode="w+b") as sink:

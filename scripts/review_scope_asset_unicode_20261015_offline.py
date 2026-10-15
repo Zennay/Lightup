@@ -178,8 +178,34 @@ def _read_local_stdin() -> bytes:
         os.close(pinned)
 
 
+def _is_deny_only_receipt(receipt: Any) -> bool:
+    if type(receipt) is not dict:
+        return False
+    if not all(receipt.get(key) is False for key in FALSE_FLAGS):
+        return False
+    status = receipt.get("status")
+    if status == "HOLD":
+        return set(receipt) == {"status", *FALSE_FLAGS}
+    if status != "REVIEW_ONLY":
+        return False
+    keys = {"status", *FALSE_FLAGS, "asset_count", "excluded_count", "capability_count"}
+    if set(receipt) != keys:
+        return False
+    counts = (
+        receipt["asset_count"], receipt["excluded_count"], receipt["capability_count"]
+    )
+    return (
+        all(type(value) is int for value in counts)
+        and 1 <= counts[0] <= MAX_MEMBERS
+        and 0 <= counts[1] <= MAX_MEMBERS
+        and 1 <= counts[2] <= MAX_MEMBERS
+    )
+
+
 def _emit_local_receipt(receipt: dict[str, Any]) -> bool:
     """One bounded, non-blocking local FIFO/TTY receipt; no files or sockets."""
+    if not _is_deny_only_receipt(receipt):
+        return False
     data = (json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")
     if not 0 < len(data) <= MAX_OUTPUT_BYTES:
         return False
