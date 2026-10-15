@@ -129,10 +129,25 @@ def inspect_direct_scope_risk_batch(claims: object) -> RiskReviewReceipt:
         return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
     if not 1 <= len(claims) <= MAX_SYNTHETIC_REVIEW_ITEMS:
         return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
+    # A frozen dataclass can still be changed through object.__setattr__
+    # or its instance __dict__. Retain exact enum identities before visiting
+    # subsequent entries, then re-check every observed ceiling. This rejects
+    # in-call drift in earlier entries, without claiming an atomic lock or
+    # authorization over caller-owned objects after the review returns.
+    snapshots = []
     for claim in claims:
         if type(claim) is not tuple or len(claim) != 2:
             return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
         scope, requested_risk = claim
+        if type(scope) is not ScopeDefinition or type(requested_risk) is not RiskLevel:
+            return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
+        ceiling = scope.max_risk
+        if type(ceiling) is not RiskLevel:
+            return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
         if inspect_direct_scope_risk(scope, requested_risk).status is not ReviewStatus.REVIEW_ONLY:
+            return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
+        snapshots.append((scope, ceiling))
+    for scope, ceiling in snapshots:
+        if scope.max_risk is not ceiling:
             return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
     return RiskReviewReceipt(ReviewStatus.REVIEW_ONLY, "batch_risk_shape_only")
