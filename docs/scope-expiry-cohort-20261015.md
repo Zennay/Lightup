@@ -36,6 +36,25 @@ Send UTF-8 JSON (maximum **16 KiB**) on stdin, without CLI flags. The only accep
 - `as_of_utc` is a **user-supplied preview instant**, not evidence of an authenticated system clock.
 - Any malformed member causes **atomic HOLD**; never show a partial healthy count.
 
+## Bounded local-stream admission (W4)
+
+The command reads **fd0 only**, never an input path or network address. It admits
+an ordinary local regular file or anonymous/named pipe, not a Unix/TCP socket,
+TTY, device node, or directory. It sets **nonblocking fd0**, reads at most
+16 KiB plus one sentinel byte, and waits for **complete EOF within two seconds**
+of its local monotonic clock. The prior implementation could wait indefinitely
+for EOF even after receiving otherwise perfectly valid JSON; that is now an
+atomic, generic `HOLD` exit 2. After both success and failure it restores fd0's
+original blocking mode.
+
+The input clock is a resource bound, not evidence that the supplied
+`as_of_utc` is authentic. Do not pipe untrusted network connections or live
+customer data into this preview. A real process-level watchdog/OS sandbox and
+independently trusted consent remain out of scope. Actual subprocess
+regressions cover a writer that keeps the pipe open, rejected Unix socket
+stdin, and an accepted local temporary-file fd0 control. No external
+connections or scans occur.
+
 ## Result contract
 
 A structurally valid packet prints exactly one opaque JSON line and exits **3**, `REVIEW_ONLY`. Counts are mutually exclusive: `expired` (after inclusive end), `not_yet_started` (before start), `current_expiring_within_horizon`, and `current_later`. A malformed packet prints generic `HOLD`, exits **2** and reports **no counts**. Both results carry *six literal false bits*:
