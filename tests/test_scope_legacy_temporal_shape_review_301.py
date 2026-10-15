@@ -109,6 +109,14 @@ def _source_has_only_offline_effects(source):
     # It does not touch a client record, target, filesystem, or process.
     permitted_methods = {"astimezone", "append", "__getattribute__"}
     for node in ast.walk(tree):
+        # An attribute access on the untrusted Authorization instance itself
+        # can dispatch a monkeypatched getter; use only _stored_fields().
+        if (
+            isinstance(node, ast.Attribute)
+            and isinstance(node.value, ast.Name)
+            and node.value.id == "authorization"
+        ):
+            return False
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             if not isinstance(node, ast.ImportFrom) or node.module not in approved_imports:
                 return False
@@ -267,6 +275,11 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
             "os.system('echo forbidden')",
             "obj.astimezone().open()",
             "external.append(authorization)",
+            "authorization.valid_from",
+            "authorization.valid_until",
+            "authorization.__dict__",
+            "authorization.reference",
+            "vars(authorization)",
             "object.__getattribute__(authorization, 'reference')",
             "object.__getattribute__(other, '__dict__')",
             "getattr(obj, 'scope')",
