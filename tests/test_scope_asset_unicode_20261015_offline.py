@@ -260,6 +260,39 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
             os.close(reader)
             os.close(writer)
 
+    def test_real_same_pipe_stdin_stdout_cannot_emit_receipt(self):
+        reader, writer = os.pipe()
+        try:
+            child = subprocess.Popen([sys.executable, str(SCRIPT), "--stdin-json"],
+                                     stdin=reader, stdout=writer,
+                                     stderr=subprocess.PIPE)
+            self.assertEqual(child.wait(timeout=5), 2)
+            self.assertEqual(child.stderr.read(), b"")
+            child.stderr.close()
+            os.close(writer)
+            writer = -1
+            self.assertEqual(os.read(reader, 1024), b"")
+        finally:
+            if writer != -1:
+                os.close(writer)
+            os.close(reader)
+
+    def test_input_exact_byte_ceiling_and_overrun(self):
+        payload = json.dumps(synthetic_claim(), separators=(",", ":")).encode()
+        self.assertLess(len(payload), mod.MAX_INPUT_BYTES)
+        exact = payload + b" " * (mod.MAX_INPUT_BYTES - len(payload))
+        for data, code in ((exact, 3), (exact + b" ", 2)):
+            with self.subTest(length=len(data)):
+                proc = subprocess.run([sys.executable, str(SCRIPT), "--stdin-json"],
+                                      input=data, capture_output=True,
+                                      timeout=5, check=False)
+                self.assertEqual(proc.returncode, code)
+                self.assertEqual(proc.stderr, b"")
+                verdict = json.loads(proc.stdout)
+                self.assertEqual(verdict["status"],
+                                 "REVIEW_ONLY" if code == 3 else "HOLD")
+                self.assertTrue(all(verdict[key] is False for key in mod.FALSE_FLAGS))
+
     def test_output_is_local_pipe_only_not_regular_file_or_socket(self):
         data = json.dumps(synthetic_claim()).encode("utf-8")
         with tempfile.TemporaryFile(mode="w+b") as sink:
