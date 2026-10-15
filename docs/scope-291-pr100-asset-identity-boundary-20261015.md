@@ -37,7 +37,7 @@ Only one new test module and this documentation:
 - Four **real expected-RED** cases on unmerged #100 source: wrong
   explicit-host+asset acceptance, synthetic ActivationGate permit for the
   wrong address, and 128 distinct RFC3849 wrong-asset admissions.
-- Ten regular green comparators and integrity guards: an asset
+- Eleven regular green comparators and integrity guards: an asset
   containing the **correct** full IPv6 does **not** satisfy the
   unrelated DNS alias, empty assets grant nothing, bracketed IPv6
   `/128` with matching exact asset retains target/authorization
@@ -92,7 +92,7 @@ This distinguishes a lexical alias from the correct independent asset
 gate. All paths are in-memory, without sockets, real permissions or
 adapter execution.
 
-Total own module: **4 expected-RED and 10 normal PASS/witness methods**.
+Total own module: **4 expected-RED and 11 normal PASS/witness methods**.
 Separate current-main PR #1448 remains unchanged. The original #100
 source branch is *not* modified.
 
@@ -112,3 +112,23 @@ the test; no deployed source is modified.
 
 The in-memory denial is **only a test of the test**, not a candidate
 production parser replacement or real authorization.
+
+## W4: source-owner choice of full-literal normalization is independently tested
+
+There are **two safe ways** to repair #291: explicitly reject a bare
+IPv6 authority as INVALID_TARGET (W3 tests this), or normalize the
+complete IPv6 literal without silently substituting its first hextet.
+W4 adds a separate in-process metamorphic test of the **second** strategy.
+
+A temporary test-only replacement of `ScopePolicy.normalize_host`
+retains the full bare IPv6 address. All **four installed-source RED
+tests** must immediately register as `unexpectedSuccess`, proving the
+test suite will recognize this alternative repaired behavior. With
+a fictional exact `/128` network, the original DNS-only asset claim
+`("2001",)` must then fail with `AUTHORIZATION_ASSET_MISMATCH`,
+while an exact address-bound fictional asset `(full IPv6 literal,)`
+must preserve the full identity as `EXPLICIT_NETWORK`.
+
+This is a normal-green isolated test of test sensitivity and
+membership order, not an installed fix, live grant or authorization
+recommendation. Neither PR #100 nor current main is modified.
