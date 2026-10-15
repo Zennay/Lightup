@@ -19,6 +19,41 @@ The fourth regular (non-xfail) regression probes all 14 malformed direct-object 
 - Per [#777](https://github.com/Zennay/Lightup/issues/777), retain **branch-only** while the canonical self-hosted runner queue is saturated; this branch has no new PR or manually dispatched runner job.
 
 
+## W6: canonical Unicode and uniform CLI privacy (2026-10-15)
+
+The offline-only *review* CLI now refuses noncanonical Unicode approval
+provenance even when JSON syntax is otherwise valid. In particular:
+
+- Both provenance fields must already be Unicode **NFKC**: decomposed
+  accented forms, fullwidth characters, ligatures, circled letters/numerals
+  and compatibility substitutions cannot silently receive REVIEW_ONLY.
+- All Unicode control/format/private-use/unassigned categories are refused;
+  Unicode separators except ordinary ASCII space and the otherwise invisible
+  combining grapheme joiner U+034F are refused as well.
+- Canonical precomposed human names (for example José), ASCII internal
+  spaces, and exactly 128 UTF-8 byte provenance fields still receive
+  REVIEW_ONLY; a 129-byte field receives HOLD.
+
+These are **lexical presentation safeguards only**; even REVIEW_ONLY has
+six literal false authority flags and exit 3, not consent.
+
+**Real local proof**: Python 3.13.5, `python -m compileall -q scripts tests`,
+and `python -m unittest discover -s tests -p
+'test_scope_777_offline_provenance_review_20261015.py' -q` completed with
+**35/35 tests OK**, including positive canonical Unicode, compatibility and
+invisible-character controls and fourteen independent real subprocess
+malformed/secret-bearing payloads. All fourteen produced an exactly identical
+HOLD output, empty stderr, exit 2 and no echoed confidential-looking values.
+The current GitHub script/test files were independently fetched and compared
+byte-for-byte at the Unicode character/codepoint level with the tested local
+sources using length and a deterministic diagnostic checksum.
+
+**Scope of evidence:** only this standalone Python 3.13 reference was
+executed; not the full product SQLite integration, hosted Python 3.11/3.14,
+permanent self-hosted runner, installed ingress or production release.
+No workflows or PR were triggered; issue #777's branch-only HOLD ownership
+is preserved.
+
 ## Independent offline reviewer (non-authorizing)
 
 The uninstalled `scripts/scope_777_review_provenance_offline.py` is an executable,
