@@ -90,6 +90,29 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
                 sample[field] = value
                 self.assert_hold(receipt(sample))
 
+    def test_json_escaped_aliases_are_hold_even_when_decoded_identity_is_canonical(self):
+        data = json.dumps(synthetic_claim(), separators=(",", ":")).encode()
+        alternate_wires = (
+            data.replace(b"app.example.test", b"\\u0061pp.example.test"),
+            data.replace(b"api.example.test", b"\\u0061pi.example.test"),
+            data.replace(b"tls.v1", b"tls\\u002ev1"),
+            data.replace(b"web-baseline", b"web\\u002dbaseline"),
+            data.replace(b"example.test", b"example\\u002etest"),
+            data.replace(b"app.example.test", b"app\\/example.test"),
+        )
+        for raw in alternate_wires:
+            with self.subTest(wire=raw[:96]):
+                self.assert_hold(mod.review_bytes(raw))
+                cli = subprocess.run(
+                    [sys.executable, str(SCRIPT), "--stdin-json"],
+                    input=raw, capture_output=True, timeout=5, check=False,
+                )
+                self.assertEqual(cli.returncode, 2)
+                self.assertEqual(cli.stderr, b"")
+                self.assert_hold(json.loads(cli.stdout))
+                self.assertNotIn(b"app.example.test", cli.stdout)
+        self.assertEqual(mod.review_bytes(data)["status"], "REVIEW_ONLY")
+
     def test_json_duplicate_escaped_keys_nonfinite_and_extras(self):
         bad_bytes = [
             b'{"assets":[],"assets":[],"excluded_assets":[],"allowed_capabilities":[]}',

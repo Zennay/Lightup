@@ -51,6 +51,11 @@ def _object_no_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 def _parse(data: bytes) -> Any:
     if type(data) is not bytes or not 0 < len(data) <= MAX_INPUT_BYTES:
         raise ReviewInputError("invalid input size or type")
+    # JSON escapes lose the caller's original spelling. Even ASCII-equivalent
+    # escapes can conceal alias identities: this conservative review requires
+    # literal ASCII wire spelling, not a normalized post-parse lookalike.
+    if b"\\" in data:
+        raise ReviewInputError("escaped JSON string is not canonical metadata")
     return json.loads(
         data.decode("utf-8", errors="strict"),
         object_pairs_hook=_object_no_duplicate_keys,
