@@ -79,7 +79,11 @@ def review_legacy_authorization_window(
     try:
         start = authorization.valid_from
         end = authorization.valid_until
-    except AttributeError:
+        # The actual instance dictionary, not an overridden attribute getter,
+        # is the reference identity. Deny contradictory stored/read fields.
+        if fields["valid_from"] is not start or fields["valid_until"] is not end:
+            return hold
+    except (AttributeError, KeyError):
         return hold
     if (start is not None and not _canonical_datetime(start)) or (
         end is not None and not _canonical_datetime(end)
@@ -108,9 +112,18 @@ def review_legacy_authorization_window(
     # A supposedly frozen dataclass can still be mutated with object.__setattr__.
     # Refuse obvious in-call field drift; this is not a cross-thread lock.
     try:
-        if authorization.valid_from is not start or authorization.valid_until is not end:
+        final_fields = vars(authorization)
+        if (
+            type(final_fields) is not dict
+            or "valid_from" not in final_fields
+            or "valid_until" not in final_fields
+            or final_fields["valid_from"] is not start
+            or final_fields["valid_until"] is not end
+            or authorization.valid_from is not start
+            or authorization.valid_until is not end
+        ):
             return hold
-    except AttributeError:
+    except (AttributeError, TypeError, KeyError):
         return hold
     return LegacyTemporalReview("REVIEW_ONLY", "temporal_shape_only")
 
