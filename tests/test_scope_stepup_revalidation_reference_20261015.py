@@ -249,7 +249,8 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
         fence, request, approval, tool = fixture()
         def restore_after_revoke():
             fence.revoke()
-            fence.replace_synthetic_reference(approval, tool)
+            with self.assertRaises(ValueError):
+                fence.replace_synthetic_reference(approval, tool)
             return True
         self.assert_non_authorizing(
             fence.review(request, NOW, isolation_probe=restore_after_revoke),
@@ -682,6 +683,80 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
             "HOLD",
         )
         self.assertEqual(fence.review_count, 0)
+
+
+    def test_terminal_revoke_cannot_reinstall_previous_approval(self):
+        fence, request, approval, tool = fixture()
+        fence.revoke()
+        with self.assertRaises(ValueError):
+            fence.replace_synthetic_reference(approval, tool)
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=lambda: True), "HOLD"
+        )
+        self.assertEqual(fence.review_count, 0)
+
+    def test_terminal_revoke_cannot_reopen_for_different_run(self):
+        fence, request, _, tool = fixture()
+        fence.revoke()
+        different_request = replace(
+            request, run="lab-new-run", started_at=NOW + timedelta(minutes=5)
+        )
+        different_approval = ReferenceApproval(
+            different_request, NOW + timedelta(minutes=4),
+            NOW + timedelta(minutes=15)
+        )
+        with self.assertRaises(ValueError):
+            fence.replace_synthetic_reference(different_approval, tool)
+        new_fence = OfflineRevalidationFence()
+        new_fence.replace_synthetic_reference(different_approval, tool)
+        self.assert_non_authorizing(
+            new_fence.review(
+                different_request, NOW + timedelta(minutes=6),
+                isolation_probe=lambda: True
+            ), "REVIEW_ONLY"
+        )
+        self.assert_non_authorizing(fence.review(request, NOW), "HOLD")
+
+    def test_terminal_revoke_never_invokes_probes_or_changes_tool(self):
+        fence, request, _, tool = fixture()
+        fence.revoke()
+        with self.assertRaises(ValueError):
+            fence.replace_synthetic_tool(tool)
+        events = []
+        result = fence.review(
+            request, NOW,
+            isolation_probe=lambda: events.append("isolation") or True,
+            fresh_clock_probe=lambda: events.append("clock") or NOW,
+        )
+        self.assert_non_authorizing(result, "HOLD")
+        self.assertEqual(events, [])
+        self.assertEqual(fence.review_count, 0)
+
+    def test_revocation_inside_probe_prevents_reinstall(self):
+        fence, request, approval, tool = fixture()
+        observed = []
+        def poison_probe():
+            fence.revoke()
+            try:
+                fence.replace_synthetic_reference(approval, tool)
+            except ValueError:
+                observed.append("denied")
+            return True
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=poison_probe), "HOLD"
+        )
+        self.assertEqual(observed, ["denied"])
+        self.assertEqual(fence.review_count, 0)
+
+    def test_repeated_terminal_revoke_remains_deny_only(self):
+        fence, request, approval, tool = fixture()
+        fence.revoke()
+        fence.revoke()
+        with self.assertRaises(ValueError):
+            fence.replace_synthetic_reference(approval, tool)
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=lambda: True), "HOLD"
+        )
 
 
 if __name__ == "__main__":
