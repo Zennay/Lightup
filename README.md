@@ -25,7 +25,13 @@ The platform can already:
 - define and validate target scope;
 - model authorization, clients, engagements and risk approvals;
 - build typed AI assessment plans from a capability registry;
-- execute HTTP-header, service-inventory and TLS baselines against lab targets;
+- execute HTTP-header, service-inventory, TLS and **web configuration-hygiene**
+  baselines against lab targets (the last with soft-404 calibration so
+  catch-all servers produce no false positives);
+- match dependency manifests against an **offline OSV advisory database**
+  (computed CVSS, CISA KEV flagging) — analysis-only, no target contact;
+- **prioritize** findings and correlate them into **attack chains**;
+- **benchmark** detection precision/recall/F1 against planted ground truth;
 - normalize findings, evidence, remediation and retest state;
 - run provider-neutral AI review/orchestration;
 - expose a multi-client authenticated web shell;
@@ -87,7 +93,17 @@ PYTHONPATH=src python -m lightup.cli lab-baseline --expect-fixture
 python lab/vuln_fixture.py --profile exposed --port 18081 &
 PYTHONPATH=src python -m lightup.cli lab-assess http://127.0.0.1:18081/ \
   --profile exposed
+
+# Detection benchmark across every planted fixture (precision/recall/F1)
+PYTHONPATH=src python -m lightup.cli lab-benchmark --fail-under 1.0
+
+# Offline supply-chain advisory scan (OSV db + optional CISA KEV catalog)
+PYTHONPATH=src python -m lightup.cli supply-chain requirements.txt \
+  --advisories osv-export/ --kev known_exploited.json
 ```
+
+See `docs/detection-capabilities.md` for the detection workers, the
+supply-chain advisory engine, prioritization/attack-chains and the benchmark.
 
 The `plan` command is intentionally non-invasive: it only emits a structured plan.
 
