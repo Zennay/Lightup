@@ -44,6 +44,18 @@ Five additional ordinary passing source tests compose previously isolated legacy
 
 This current-main composition is an independent regression **check**, not a replacement for issue #724's earlier composition branch or any closed standalone acceptance issue. Its nine original terminal-dot source REDs are still unfixed. All positive tests are pure in-memory; no real DNS, sockets, domains, claims, scans or grants. Frozen CI evidence from previous W2 heads cannot validate the expanded W3 suite.
 
+
+## W4: all-dot target + empty explicit-host declaration can become false authority (#723 / #297)
+
+There is a further installed-source interaction between unrestricted `rstrip(".")` and absent **atomic policy validation**: a syntactically malformed target consisting solely of dots is normalized to the empty string. If an equally invalid `explicit_hosts` entry contains an empty string, this can be treated as a matching authorized host by unchanged `ScopePolicy.decide`. The test includes only fictional values and a synthetic never-usable `Authorization`.
+
+- One additional **genuine source expected-RED** test checks four dot-only bare/URL targets against an intentionally corrupt, empty policy host entry, pre-materializing all four installed-source decisions; a bypass causes the test to fail as intended and the witness requires a genuine AssertionError.
+- A separate ordinary **green control** checks that without the corrupt empty allowlist entry, those syntactic target values do not acquire scope.
+- This interaction is a characterization, **not a request to take over** the #297 production configuration validator or #100 source ownership. Original code and other workers' test branches are untouched.
+- The correct source-owner fix must reject malformed host identities **and malformed policy entries before any public grant**; replacing `rstrip` without validating the empty target or configuration may be insufficient.
+
+With this W4 addition, the self-owned module has **10 documented source expected-RED tests** and **16 ordinary passing control/witness tests**, including 196 separately materialized in-memory malformed target/policy probes in the three W2 matrices plus W4's four. No network or real customers. Previous W3 hosted evidence does not validate W4 until run logs show this exact commit.
+
 ## To validate
 
 ```sh
