@@ -80,6 +80,19 @@ prefix lengths**, and real CLI success/failure responses with every authority
 bit false. These are **syntactic** controls only, never a customer consent or
 scope grant.
 
+The executable also guards its **output channel**. In addition to refusing
+malformed or oversized input, its one-line privacy-safe receipt must be written
+completely and flushed; a short write, broken pipe, write/flush `OSError` or
+reader `OSError` leads to a **nonzero HOLD exit code 2** (or, for an input
+read failure, a generic HOLD receipt when output remains available).
+Five extra independently run tests cover exact 16,384-byte valid input versus
+16,385-byte rejection with actual subprocess status, broken stdin, broken
+stdout pipe, short output write and failed stdout flush. No exception detail or
+raw input is deliberately logged and no network interface is touched. A
+partially written external stream can never be treated as proof of authorization
+regardless of exit status; all consumers must also check complete receipt and
+the explicit false authority fields.
+
 The CLI/test module is a dry-run acceptance artifact pending source-owner
 coordination, **not** a production admission replacement or an automatic
 configuration migration. In particular its standalone list review cannot
