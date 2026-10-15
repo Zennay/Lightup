@@ -217,6 +217,20 @@ def _available_port() -> int:
         return int(sock.getsockname()[1])
 
 
+def _unique_json_pairs(pairs):
+    """Reject duplicate keys, including escaped aliases, at every depth."""
+    obj = {}
+    for name, value in pairs:
+        if name in obj:
+            raise ValueError("ambiguous synthetic JSON receipt")
+        obj[name] = value
+    return obj
+
+
+def _reject_json_constant(value):
+    raise ValueError("nonfinite synthetic JSON receipt")
+
+
 def _decode_lab_response(response) -> dict:
     """Demand an exact, bounded HTTP framing receipt, not just parseable JSON.
 
@@ -247,7 +261,8 @@ def _decode_lab_response(response) -> dict:
     body = response.read(size + 1)
     if type(body) is not bytes or len(body) != size:
         raise RuntimeError("incomplete or extra synthetic upstream bytes")
-    return json.loads(body)
+    return json.loads(body, object_pairs_hook=_unique_json_pairs,
+                      parse_constant=_reject_json_constant)
 
 
 def _request(port: int, method: str, overrides) -> dict:
