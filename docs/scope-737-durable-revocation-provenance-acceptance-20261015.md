@@ -5,7 +5,7 @@
 ## Owner / collision
 
 - [Open #737](https://github.com/Zennay/Lightup/issues/737), unclaimed by an issue-specific PR or branch when selected. Existing source-owner [draft #100](https://github.com/Zennay/Lightup/pull/100) exact frozen SHA: `ef553b6e0aa0c99855e9907f4b2dee9edc5aac0f`. Base this PR **directly on #100's branch, not main**.
-- Changed paths are **new** `tests/test_scope_737_stale_durable_revocation_provenance_20261015.py`, `tests/test_scope_737_revocation_reference_preview_20261015.py`, and this document. Owner source `src/lightup/engagements.py`, `src/lightup/execution_policy.py`, SQLite production persistence, other worker branches, CI and VPS config remain unchanged.
+- Changed paths are **new** `tests/test_scope_737_stale_durable_revocation_provenance_20261015.py`, `tests/test_scope_737_revocation_reference_preview_20261015.py`, `tests/test_scope_737_offline_revocation_metadata_review_20261015.py`, `scripts/scope_737_revocation_metadata_review.py`, and two handoff documents (this and `docs/scope-737-offline-revocation-review-20261015.md`). Owner source `src/lightup/engagements.py`, `src/lightup/execution_policy.py`, SQLite production persistence, other worker branches, CI and VPS config remain unchanged.
 - Distinct work: #722 legacy revocation; #560/#562 persisted coherence, #347/#734/#735 durable time parsing; #475/#554 live persisted dispatch revalidation.
 
 ## Real installed-source acceptance
@@ -13,6 +13,10 @@
 `test_scope_737_stale_durable_revocation_provenance_20261015.py` invokes **real installed** `AuthorizationGrant.is_current` and `ExecutionPolicy.decide(TARGET_ACTIVE)` with fictitious valid target/capability/client/engagement. Controls cover correct unrevoked behavior, explicit revoked denial, fixed canonical future/expired instants, mismatched tenant/asset/risk denial and immutable data. **Eight deliberately expected original-source RED** cases require denial when revocation actor, reason, both, or even present-but-empty provenance exists without `revoked_at`. The source currently treats such objects as current. These are *not* successful security fixes.
 
 `test_scope_737_revocation_reference_preview_20261015.py` includes test-only `reference_current`, wrapping original installed method with strictly **narrowing** semantics when `revoked_at is None` but `revoked_by is not None` or `revocation_reason is not None`. The reference is installed **only inside scoped `unittest.mock.patch.object`**, never persists, and does not modify source or grant issuance. Original method identity is checked after every reference test. Synthetic positive/negative controls verify that direct policy decisions deny stale provenance under the reference while legitimate grants, time boundaries and explicit revocations behave as before. A diagnostic witness separately proves the actual original source allows inconsistent in-memory grants. This witness must be retired when source owner implements a genuine repair; it must **never** be promoted as a release criterion.
+
+## W2 — opt-in offline review delivered (separate from actual source fix)
+
+A new additive script `scripts/scope_737_revocation_metadata_review.py` offers a **pure, never-authorizing, in-memory structural preview** for the three revocation fields. It reports consistent/ambiguous/inconsistent structure via bounded reason codes without echoing private actor/reason inputs, and returns `HOLD` plus three unconditional `False` action flags. The 22 new `tests/test_scope_737_offline_revocation_metadata_review_20261015.py` regression methods include synthetic spoofing types, missing/blank/oversized metadata, boundary datetimes, immutable outputs, and privacy/authority invariants. This is **not** called by installed product code and cannot replace source-owner validation. See [standalone review contract](scope-737-offline-revocation-review-20261015.md).
 
 ## Required owner repair
 
