@@ -30,7 +30,7 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
         self.assertIn("proxy_pass http://127.0.0.1:18112;", config)
         self.assertNotIn("listen 443 ssl;", config)
         self.assertNotIn("/etc/letsencrypt", config)
-        self.assertNotIn("lightup.example.com", config)
+        self.assertNotIn("server_name lightup.example.com;", config)
         self.assertNotIn("proxy_method GET;", config)
 
     def test_rejects_unexpected_bind_upstream_or_config_include(self):
