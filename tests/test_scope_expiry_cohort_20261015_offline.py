@@ -639,6 +639,64 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
                 mock.call(73, False), mock.call(73, True),
             ])
 
+    def test_stdin_live_identity_swap_after_first_chunk_refuses_partial_packet(self):
+        """Late fd0 rebinding cannot convert a first chunk into REVIEW_ONLY."""
+        original = SimpleNamespace(st_mode=stat.S_IFIFO | 0o600,
+                                   st_dev=8, st_ino=10)
+        swapped = SimpleNamespace(st_mode=original.st_mode,
+                                  st_dev=8, st_ino=42)
+        with mock.patch.object(reviewer.sys, "stdin") as stdin, \
+                mock.patch.object(reviewer.os, "fstat",
+                                  side_effect=[original, original,
+                                               original, original,
+                                               swapped, original]), \
+                mock.patch.object(reviewer.os, "dup", return_value=73), \
+                mock.patch.object(reviewer.os, "close") as close, \
+                mock.patch.object(reviewer.os, "get_blocking", return_value=True), \
+                mock.patch.object(reviewer.os, "set_blocking") as blocking, \
+                mock.patch.object(reviewer.select, "select",
+                                  return_value=([73], [], [])), \
+                mock.patch.object(reviewer.os, "read", return_value=b"partial") as read:
+            stdin.fileno.return_value = 0
+            with self.assertRaisesRegex(ValueError, "identity drift"):
+                reviewer._read_bounded_stdin()
+            read.assert_called_once()
+            self.assertEqual(read.call_args.args[0], 73)
+            close.assert_called_once_with(73)
+            self.assertEqual(blocking.call_args_list, [
+                mock.call(73, False), mock.call(73, True),
+            ])
+
+    def test_stdin_live_identity_swap_at_eof_refuses_even_valid_packet(self):
+        """No seemingly valid prefix may be accepted if fd0 changed at EOF."""
+        original = SimpleNamespace(st_mode=stat.S_IFIFO | 0o600,
+                                   st_dev=8, st_ino=10)
+        swapped = SimpleNamespace(st_mode=original.st_mode,
+                                  st_dev=8, st_ino=42)
+        with mock.patch.object(reviewer.sys, "stdin") as stdin, \
+                mock.patch.object(reviewer.os, "fstat",
+                                  side_effect=[original, original,
+                                               original, original,
+                                               original, original,
+                                               swapped, original]), \
+                mock.patch.object(reviewer.os, "dup", return_value=73), \
+                mock.patch.object(reviewer.os, "close") as close, \
+                mock.patch.object(reviewer.os, "get_blocking", return_value=True), \
+                mock.patch.object(reviewer.os, "set_blocking") as blocking, \
+                mock.patch.object(reviewer.select, "select",
+                                  return_value=([73], [], [])), \
+                mock.patch.object(reviewer.os, "read",
+                                  side_effect=[b"{}", b""]) as read:
+            stdin.fileno.return_value = 0
+            with self.assertRaisesRegex(ValueError, "EOF identity drift"):
+                reviewer._read_bounded_stdin()
+            self.assertEqual([call.args[0] for call in read.call_args_list],
+                             [73, 73])
+            close.assert_called_once_with(73)
+            self.assertEqual(blocking.call_args_list, [
+                mock.call(73, False), mock.call(73, True),
+            ])
+
     def test_stdin_pin_mismatch_closes_without_read_or_mode_change(self):
         original = SimpleNamespace(st_mode=stat.S_IFIFO | 0o600,
                                    st_dev=8, st_ino=10)
