@@ -4,7 +4,6 @@ from __future__ import annotations
 import dataclasses
 from contextlib import closing
 import hashlib
-import os
 from pathlib import Path
 import sqlite3
 import sys
@@ -188,6 +187,7 @@ class OfflineAttemptJournalTests(unittest.TestCase):
         with closing(sqlite3.connect(str(Path(self.temp.name) / "not_a_fixture.db"))) as con:
             con.execute("CREATE TABLE customer_records (sensitive TEXT)")
             con.execute("INSERT INTO customer_records VALUES ('do-not-touch')")
+            con.commit()  # check schema rejection, not merely active-transaction rejection
             with self.assertRaises(ValueError):
                 OfflineAttemptJournal(con)
             self.assertEqual(con.execute(
