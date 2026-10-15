@@ -221,6 +221,14 @@ class OfflineAttemptJournal:
             raise ValueError("synthetic offline connection required") from None
         self._con = connection
 
+    def _rollback_quietly(self) -> None:
+        try:
+            self._con.rollback()
+        except sqlite3.Error:
+            # A dead connection must not turn a denied synthetic attempt
+            # into a traceback or mask the original database failure.
+            pass
+
     def _transition(
         self, attempt: SyntheticAttempt, expected: str, next_phase: str,
         evidence_digest: str | None = None,
@@ -228,14 +236,19 @@ class OfflineAttemptJournal:
         binding = _sealed(attempt)
         if binding is None:
             return _hold()
+        owned_transaction = False
         try:
+            if self._con.in_transaction:
+                # Never roll back a transaction owned by a different caller.
+                return _hold()
             self._con.execute("BEGIN IMMEDIATE")
+            owned_transaction = True
             row = self._con.execute(
                 "SELECT sealed_binding,phase FROM offline_scope_1454_attempts "
                 "WHERE attempt_id=?", (attempt.attempt_id,)
             ).fetchone()
             if row is None or row[0] != binding or row[1] != expected:
-                self._con.rollback()
+                self._rollback_quietly()
                 return _hold()
             self._con.execute(
                 "UPDATE offline_scope_1454_attempts SET phase=?,evidence_digest=? "
@@ -243,7 +256,7 @@ class OfflineAttemptJournal:
                 (next_phase, evidence_digest, attempt.attempt_id, binding, expected)
             )
             if self._con.execute("SELECT changes()").fetchone()[0] != 1:
-                self._con.rollback()
+                self._rollback_quietly()
                 return _hold()
             observed = self._con.execute(
                 "SELECT phase,evidence_digest FROM offline_scope_1454_attempts "
@@ -251,12 +264,13 @@ class OfflineAttemptJournal:
                 (attempt.attempt_id, binding),
             ).fetchone()
             if observed is None or tuple(observed) != (next_phase, evidence_digest):
-                self._con.rollback()
+                self._rollback_quietly()
                 return _hold()
             self._con.commit()
             return _review()
         except sqlite3.Error:
-            self._con.rollback()
+            if owned_transaction:
+                self._rollback_quietly()
             return _hold()
 
     def reserve(self, attempt: SyntheticAttempt) -> ReviewReceipt:
@@ -268,8 +282,13 @@ class OfflineAttemptJournal:
         binding = _sealed(attempt)
         if binding is None:
             return _hold()
+        owned_transaction = False
         try:
+            if self._con.in_transaction:
+                # Never roll back a transaction owned by a different caller.
+                return _hold()
             self._con.execute("BEGIN IMMEDIATE")
+            owned_transaction = True
             self._con.execute(
                 "INSERT INTO offline_scope_1454_attempts "
                 "(attempt_id,sealed_binding,phase,evidence_digest) "
@@ -279,7 +298,7 @@ class OfflineAttemptJournal:
             # A trigger installed *after* journal construction must never make
             # an ignored or altered INSERT look like a successful reservation.
             if self._con.execute("SELECT changes()").fetchone()[0] != 1:
-                self._con.rollback()
+                self._rollback_quietly()
                 return _hold()
             stored = self._con.execute(
                 "SELECT sealed_binding,phase,evidence_digest "
@@ -287,12 +306,13 @@ class OfflineAttemptJournal:
                 (attempt.attempt_id,),
             ).fetchone()
             if stored is None or tuple(stored) != (binding, "reserved", None):
-                self._con.rollback()
+                self._rollback_quietly()
                 return _hold()
             self._con.commit()
             return _review()
         except sqlite3.Error:
-            self._con.rollback()
+            if owned_transaction:
+                self._rollback_quietly()
             return _hold()
 
     def mark_uncertain(self, attempt: SyntheticAttempt) -> ReviewReceipt:
