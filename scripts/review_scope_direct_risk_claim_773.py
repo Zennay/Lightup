@@ -117,6 +117,16 @@ def inspect_direct_scope_risk(
     if requested_risk.value > max_risk.value:
         return RiskReviewReceipt(ReviewStatus.HOLD, "above_ceiling")
 
+    # The nominally frozen ScopeDefinition still exposes a mutable __dict__.
+    # Re-read before issuing a review-only shape receipt. This bounds one
+    # in-call mutation window but is NOT a lock or post-return grant proof.
+    try:
+        current_ceiling = scope.max_risk
+    except (AttributeError, TypeError):
+        return RiskReviewReceipt(ReviewStatus.HOLD, "noncanonical_risk")
+    if current_ceiling is not max_risk:
+        return RiskReviewReceipt(ReviewStatus.HOLD, "noncanonical_risk")
+
     return RiskReviewReceipt(ReviewStatus.REVIEW_ONLY, "risk_shape_only")
 
 
