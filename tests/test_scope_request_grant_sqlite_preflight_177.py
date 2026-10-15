@@ -583,6 +583,50 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
             )
         return granted.grant_id
 
+    def test_other_null_request_reference_holds_despite_clean_sqlite_fk_check(self):
+        self.upgrade_synthetic_only()
+        other = self._second_synthetic_grant("api.example.test")
+        self.assertIs(self.review().status, ReviewStatus.REVIEW_ONLY)
+        with sqlite3.connect(self.path) as con:
+            changed = con.execute(
+                "UPDATE authorization_grants SET approved_request_id=NULL "
+                "WHERE grant_id=?",
+                (other,),
+            ).rowcount
+            self.assertEqual(changed, 1)
+            # SQLite explicitly permits NULL child FKs. Ordinary integrity
+            # checks cannot prove that ALL grants have verified approval.
+            self.assertEqual(
+                con.execute("PRAGMA foreign_key_check(authorization_grants)").fetchall(),
+                [],
+            )
+        chosen = self.review()
+        self.assertIs(chosen.status, ReviewStatus.HOLD)
+        self.assert_no_authority(chosen)
+        batch = review_persisted_grant_batch(
+            self.path, (self.grant.grant_id,), reviewed_at=self.reviewed_at
+        )
+        self.assertIs(batch.status, ReviewStatus.HOLD)
+        self.assert_no_authority(batch)
+
+    def test_null_request_reference_is_not_a_valid_offline_schema_proof(self):
+        with sqlite3.connect(":memory:") as con:
+            con.executescript("""
+                PRAGMA foreign_keys=ON;
+                CREATE TABLE assessment_requests(request_id TEXT PRIMARY KEY);
+                CREATE TABLE authorization_grants(
+                    grant_id TEXT PRIMARY KEY,
+                    approved_request_id TEXT
+                        REFERENCES assessment_requests(request_id)
+                );
+                INSERT INTO authorization_grants VALUES('grant-without-consent', NULL);
+            """)
+            self.assertEqual(
+                con.execute("PRAGMA foreign_key_check(authorization_grants)").fetchall(),
+                [],
+            )
+            self.assertFalse(_has_provenance_fk(con))
+
     def test_other_orphan_grant_fk_corruption_holds_entire_sqlite_snapshot(self):
         self.upgrade_synthetic_only()
         unrelated = self._second_synthetic_grant("api.example.test")
