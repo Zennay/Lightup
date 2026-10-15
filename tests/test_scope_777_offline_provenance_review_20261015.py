@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import socket
 import tempfile
 from pathlib import Path
@@ -177,6 +178,36 @@ class SyntheticProvenanceReviewTests(unittest.TestCase):
             self.assertEqual(p.returncode, 3)
             self.assertEqual(p.stderr, b"")
             self.assertEqual(json.loads(p.stdout), {"status": "REVIEW_ONLY", **FALSE_FLAGS})
+
+    def test_open_pipe_times_out_to_generic_hold(self):
+        with subprocess.Popen([sys.executable, str(SCRIPT)], stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE) as proc:
+            assert proc.stdin is not None
+            proc.stdin.write(OK)
+            proc.stdin.flush()  # deliberately do not close: no EOF
+            self.assertEqual(proc.wait(timeout=5), 2)
+            assert proc.stdout is not None and proc.stderr is not None
+            self.assertEqual(json.loads(proc.stdout.read()), {"status": "HOLD", **FALSE_FLAGS})
+            self.assertEqual(proc.stderr.read(), b"")
+            proc.stdin.close()
+
+    def test_full_stdout_pipe_cannot_stall_process(self):
+        read_fd, write_fd = os.pipe()
+        try:
+            os.set_blocking(write_fd, False)
+            try:
+                while True:
+                    os.write(write_fd, b"Z" * 4096)
+            except BlockingIOError:
+                pass
+            with subprocess.Popen([sys.executable, str(SCRIPT)], stdin=subprocess.PIPE,
+                                  stdout=write_fd, stderr=subprocess.PIPE) as proc:
+                self.assertEqual(proc.communicate(input=OK, timeout=3)[1], b"")
+                self.assertEqual(proc.returncode, 2)
+        finally:
+            os.close(read_fd)
+            os.close(write_fd)
+
 
 if __name__ == "__main__":
     unittest.main()
