@@ -2,7 +2,7 @@
 
 Test inputs are synthetic and evaluated only in memory. A fixture Authorization
 is not real customer consent. Do not use these tests as a grant/scan permit.
-The installed source currently violates the six expected-failure cases; an
+The installed source currently violates the ten expected-failure cases; an
 unexpectedSuccess means the source changed and this suite must be promoted to
 ordinary passing tests by the production owner before release.
 """
@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import sys
 import unittest
+from ipaddress import IPv4Address, IPv4Network, IPv6Address
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -69,6 +70,22 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
     def test_296_ipv6_host_bits_must_not_widen_scope(self):
         self._assert_rejected("2001:4860:4860::8888/64", "2001:4860:4860::8844")
 
+    @unittest.expectedFailure
+    def test_292_ipv4_address_object_must_not_mint_explicit_scope(self):
+        self._assert_rejected(IPv4Address("8.8.8.8"), "8.8.8.8")
+
+    @unittest.expectedFailure
+    def test_292_ipv4_network_object_must_not_mint_explicit_scope(self):
+        self._assert_rejected(IPv4Network("8.8.8.8/32"), "8.8.8.8")
+
+    @unittest.expectedFailure
+    def test_292_ipv6_address_object_must_not_mint_explicit_scope(self):
+        self._assert_rejected(IPv6Address("2001:4860:4860::8888"), "2001:4860:4860::8888")
+
+    @unittest.expectedFailure
+    def test_296_dotted_netmask_host_bits_must_not_widen_scope(self):
+        self._assert_rejected("8.8.8.9/255.255.255.0", "8.8.8.10")
+
     def test_292_bytearray_is_never_permission(self):
         self._assert_rejected(bytearray(b"\x08\x08\x08\x08"), "8.8.8.8")
 
@@ -108,7 +125,7 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
         self.assertFalse(result.allowed)
         self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
 
-    def test_six_expected_reds_are_real_assertions_not_masked_errors(self):
+    def test_ten_expected_reds_are_real_assertions_not_masked_errors(self):
         names = (
             "test_292_integer_must_not_create_ipv4_host_authority",
             "test_292_raw_bytes_must_not_create_ipv4_host_authority",
@@ -116,6 +133,10 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
             "test_292_string_subclass_must_not_create_network_authority",
             "test_296_ipv4_host_bits_must_not_widen_scope",
             "test_296_ipv6_host_bits_must_not_widen_scope",
+            "test_292_ipv4_address_object_must_not_mint_explicit_scope",
+            "test_292_ipv4_network_object_must_not_mint_explicit_scope",
+            "test_292_ipv6_address_object_must_not_mint_explicit_scope",
+            "test_296_dotted_netmask_host_bits_must_not_widen_scope",
         )
         proof = unittest.TestResult()
         for name in names:
