@@ -165,6 +165,22 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
             )
 
     @unittest.expectedFailure
+    def test_red_operator_cannot_approve_own_client_request(self):
+        other = self.store.create_client(self.operator, "Operator-created fixture")
+        submitted = self.store.submit_assessment_request(
+            self.operator,
+            requested_assets=("operator-created.example.test",),
+            requested_mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
+            requested_risk=RiskLevel.STANDARD,
+            client_id=other.client_id,
+        )
+        self.assertEqual(submitted.requested_by, self.operator.user_id)
+        with self.assertRaises(ValueError):
+            self.store.review_assessment_request(
+                self.operator, submitted.request_id, True
+            )
+
+    @unittest.expectedFailure
     def test_red_domain_rejected_request_must_never_authorize_grant(self):
         other = self.store.create_client(self.operator, "Rejected synthetic client")
         member = AccessContext(
