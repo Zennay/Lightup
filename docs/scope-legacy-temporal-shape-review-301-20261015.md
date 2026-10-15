@@ -263,6 +263,24 @@ The mapping remains advisory, offline and entirely separate from real
 Authorization and execution; it is not a security boundary against an
 attacker able to monkeypatch Python builtins or modify this module.
 
+## W13: explicit JSON serialization keeps denial fields
+
+An immutable `LegacyTemporalReceipt` inherits tuple storage. Python's
+generic `json.dumps(receipt)` therefore encodes a JSON **array** of
+two stored labels, omitting the mapping view's six explicit false flags.
+To prevent accidental loss of that evidence, call **`receipt.to_json()`**
+instead. It returns a deterministic eight-field JSON **object** with
+canonical, fixed status/reason words and six literal JSON `false`
+values, with no serializer hooks, IO, timestamps, identities or asset data.
+A forged raw tuple still normalizes to `HOLD/invalid_shape`.
+
+Ordinary tests independently parse the JSON with the standard library,
+compare all eight keys with `dict(receipt)`, count six false literal
+fields, check malformed/forged values, and enforce actual file/network/
+process tripwires during the export. Output strings and converted dicts
+are inherently truthy/mutable; **neither is authorization**, and they
+must never be submitted to any installed permit or execution path.
+
 ## Hard gate: not a production fix
 
 This does **not** repair `Authorization.is_current()`. Release requires the
