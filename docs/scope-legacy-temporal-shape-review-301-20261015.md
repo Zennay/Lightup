@@ -175,6 +175,30 @@ noncanonical tuple slot access. Caller code must invoke the canonical
 avoid an already externally monkeypatched instance method lookup.
 This is not a Python sandbox or a production grant implementation.
 
+## W9: exhaustive bounded batch review, opaque single verdict
+
+A previously malformed synthetic member caused an early return, which
+could reveal the *position of the first failure* from execution duration
+even though the return object omitted all member details. The batch now
+visits **every position in an exact 1–32-item tuple**, applies canonical
+shape checks only to exact legacy Authorization objects, and rechecks
+every materialized member's timestamp identity even after a different
+member failed. It accumulates one internal denial bit and returns a
+single `HOLD/invalid_batch` or `REVIEW_ONLY/temporal_shape_only`.
+Neither carries a permit, target identity or partial counts.
+
+The test suite proves that an invalid first, middle or final item still
+traverses every ordinary synthetic member (including all 32 in a
+canonical-shape batch). Even a wrong-type object with a getter that
+would throw is never touched; the other 31 items are still reviewed.
+A final-read witness checks a valid later member gets its second-pass
+consistency inspection when the first member is malformed.
+
+**This is not constant-time code or side-channel elimination**: malformed
+items and internal comparison paths still have different costs. It only
+removes the obvious early-exit-by-position distinction while preserving
+strict bounds, no external I/O and no authority.
+
 ## Hard gate: not a production fix
 
 This does **not** repair `Authorization.is_current()`. Release requires the
