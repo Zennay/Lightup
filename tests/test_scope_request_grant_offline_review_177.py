@@ -612,6 +612,8 @@ class RequestGrantOfflineReviewTests(unittest.TestCase):
             candidate = RequestGrantReview(status, reason)
             self.assert_no_authority(candidate)
             with self.assertRaises((FrozenInstanceError, AttributeError)):
+                candidate.authorized = True
+            with self.assertRaises((FrozenInstanceError, AttributeError, TypeError)):
                 candidate.extra_permit = True
 
     def test_no_raw_input_echo_on_denial(self):
