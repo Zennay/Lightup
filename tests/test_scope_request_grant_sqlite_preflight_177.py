@@ -1,0 +1,269 @@
+"""Real disposable-SQLite safety acceptance for issue #177; no customer data."""
+from __future__ import annotations
+
+import os
+import sqlite3
+import sys
+import tempfile
+import unittest
+from dataclasses import FrozenInstanceError
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from unittest.mock import patch
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
+from lightup.domain import AccessContext, DomainStore, Role
+from lightup.engagements import AssessmentMode, EngagementStatus, RiskLevel, ScopeDefinition
+from lightup.request_grant_offline_review_177 import ReviewStatus
+from lightup.request_grant_sqlite_preflight_177 import review_persisted_request_grant
+
+
+class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
+    """All SQL fixtures are isolated temporary DBs; no network or active target."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix="lightup-177-synthetic-")
+        self.addCleanup(self.tmp.cleanup)
+        self.path = Path(self.tmp.name) / "scope-fixture.sqlite3"
+        self.store = DomainStore(self.path)
+        self.operator = AccessContext("synthetic-operator", Role.OPERATOR)
+        client = self.store.create_client(self.operator, "Synthetic client")
+        self.client = client.client_id
+        self.member = AccessContext("synthetic-client-member", Role.CLIENT_MEMBER, client.client_id)
+        self.request = self.store.submit_assessment_request(
+            self.member,
+            requested_assets=("app.example.test", "api.example.test"),
+            requested_mode=AssessmentMode.AUTHORIZED_ASSESSMENT,
+            requested_risk=RiskLevel.STANDARD,
+        )
+        self.request = self.store.review_assessment_request(
+            self.operator, self.request.request_id, True
+        )
+        engagement = self.store.create_engagement(self.operator, client.client_id, "Synthetic plan")
+        self.engagement = engagement.engagement_id
+        self.now = datetime.now(timezone.utc)
+        self.valid_from = self.now + timedelta(minutes=1)
+        self.reviewed_at = self.now + timedelta(minutes=2)
+        self.grant = self.store.record_authorization_grant(
+            self.operator,
+            engagement.engagement_id,
+            self.operator.user_id,
+            "FICTIONAL-REQUEST-ONLY",
+            ScopeDefinition(
+                assets=("app.example.test",),
+                max_risk=RiskLevel.LOW_IMPACT,
+                allowed_capabilities=("web-baseline",),
+            ),
+            self.valid_from,
+            self.now + timedelta(days=1),
+        )
+        self.store.set_engagement_status(
+            self.operator, engagement.engagement_id, EngagementStatus.AUTHORIZED
+        )
+
+    def review(self, db=None, grant_id=None, instant=None):
+        return review_persisted_request_grant(
+            self.path if db is None else db,
+            self.grant.grant_id if grant_id is None else grant_id,
+            reviewed_at=self.reviewed_at if instant is None else instant,
+        )
+
+    def assert_hold(self):
+        self.assertIs(self.review().status, ReviewStatus.HOLD)
+
+    def assert_no_authority(self, result):
+        for item in (
+            "authorized", "grant_allowed", "dispatch_allowed",
+            "scan_allowed", "merge_allowed", "deploy_allowed",
+        ):
+            self.assertIs(getattr(result, item), False)
+        self.assertNotIn(self.client, str(result))
+        self.assertNotIn("app.example.test", str(result))
+
+    def upgrade_synthetic_only(self):
+        # TEST-ONLY migration, never executed on an actual production database.
+        with sqlite3.connect(self.path) as con:
+            con.execute("PRAGMA foreign_keys=ON")
+            con.execute(
+                "ALTER TABLE authorization_grants "
+                "ADD COLUMN approved_request_id TEXT REFERENCES assessment_requests(request_id)"
+            )
+            con.execute(
+                "UPDATE authorization_grants SET approved_request_id=? WHERE grant_id=?",
+                (self.request.request_id, self.grant.grant_id),
+            )
+
+    def update(self, table, field, value, key, key_value):
+        # Mutations are permitted only in this isolated real SQLite test fixture.
+        assert table in ("authorization_grants", "assessment_requests", "engagements")
+        assert field in (
+            "approved_request_id", "client_id", "engagement_id", "status",
+            "requested_mode", "requested_risk", "requested_assets_json", "max_risk",
+            "assets_json", "allowed_capabilities_json", "decided_by", "decided_at",
+            "valid_from", "valid_until", "created_at", "recurring_retest_allowed",
+        )
+        assert key in ("grant_id", "request_id", "engagement_id")
+        with sqlite3.connect(self.path) as con:
+            con.execute(
+                f"UPDATE {table} SET {field}=? WHERE {key}=?",
+                (value, key_value),
+            )
+
+    def test_shipped_domain_schema_without_request_fk_is_always_hold(self):
+        self.assert_hold()
+        # Regression: even existing matching APPROVED request cannot imply
+        # authority when the grant has NO persisted request_id FK.
+        r = self.review()
+        self.assert_no_authority(r)
+        self.assertEqual(r.reason, "invalid_or_unverified_input")
+
+    def test_unknown_db_never_gets_created_by_read_only_review(self):
+        absent = self.path.parent / "does-not-exist.sqlite3"
+        r = self.review(db=absent)
+        self.assertIs(r.status, ReviewStatus.HOLD)
+        self.assertFalse(absent.exists())
+        self.assert_no_authority(r)
+
+    def test_explicit_synthetic_fk_can_only_be_review_only(self):
+        self.upgrade_synthetic_only()
+        r = self.review()
+        self.assertIs(r.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(r)
+        with self.assertRaises((FrozenInstanceError, AttributeError)):
+            r.authorized = True
+
+    def test_unlinked_nullable_fk_and_invalid_grant_id_hold(self):
+        self.upgrade_synthetic_only()
+        self.update(
+            "authorization_grants", "approved_request_id", None,
+            "grant_id", self.grant.grant_id,
+        )
+        self.assert_hold()
+        self.assertIs(self.review(grant_id="no-such-grant").status, ReviewStatus.HOLD)
+        self.assertIs(self.review(grant_id=" ").status, ReviewStatus.HOLD)
+
+    def test_invalid_request_state_mode_and_risk_hold(self):
+        for table, field, val, key, keyval in (
+            ("assessment_requests", "status", "rejected", "request_id", self.request.request_id),
+            ("assessment_requests", "status", "approve", "request_id", self.request.request_id),
+            ("assessment_requests", "requested_mode", "passive_discovery", "request_id", self.request.request_id),
+            ("assessment_requests", "requested_risk", "3", "request_id", self.request.request_id),
+            ("assessment_requests", "requested_risk", 0, "request_id", self.request.request_id),
+            ("authorization_grants", "max_risk", 4, "grant_id", self.grant.grant_id),
+        ):
+            with self.subTest(field=field, value=val):
+                self.upgrade_synthetic_only()
+                self.update(table, field, val, key, keyval)
+                self.assert_hold()
+                self._reset_fixture()
+
+    def _reset_fixture(self):
+        # Re-initialize a fresh disposable DB between independent corruptions.
+        self.tmp.cleanup()
+        self.setUp()
+
+    def test_real_tenant_and_decider_lineage_mismatches_hold(self):
+        for table, field, val, key, keyval in (
+            ("authorization_grants", "client_id", "foreign", "grant_id", self.grant.grant_id),
+            ("engagements", "client_id", "foreign", "engagement_id", self.engagement),
+            ("assessment_requests", "client_id", "foreign", "request_id", self.request.request_id),
+            ("authorization_grants", "decided_by", "fake", "grant_id", self.grant.grant_id),
+        ):
+            with self.subTest(field=field, value=val):
+                # grant table does not have decided_by, use actual approved_by below
+                if table == "authorization_grants" and field == "decided_by":
+                    continue
+                self.upgrade_synthetic_only()
+                self.update(table, field, val, key, keyval)
+                self.assert_hold()
+                self._reset_fixture()
+        self.upgrade_synthetic_only()
+        with sqlite3.connect(self.path) as con:
+            con.execute(
+                "UPDATE authorization_grants SET approved_by=? WHERE grant_id=?",
+                ("different-operator", self.grant.grant_id),
+            )
+        self.assert_hold()
+
+    def test_corrupt_json_and_unknown_capability_hold(self):
+        for table, column, payload, key in (
+            ("assessment_requests", "requested_assets_json", '{"asset": "app.example.test"}', "request_id"),
+            ("assessment_requests", "requested_assets_json", '["app.example.test",7]', "request_id"),
+            ("authorization_grants", "assets_json", '["outsider.example.test"]', "grant_id"),
+            ("authorization_grants", "allowed_capabilities_json", '[]', "grant_id"),
+            ("authorization_grants", "allowed_capabilities_json", '["wireless-lab"]', "grant_id"),
+            ("authorization_grants", "allowed_capabilities_json", '["not-a-tool"]', "grant_id"),
+        ):
+            with self.subTest(field=column, payload=payload):
+                self.upgrade_synthetic_only()
+                self.update(
+                    table, column, payload, key,
+                    self.request.request_id if key == "request_id" else self.grant.grant_id,
+                )
+                self.assert_hold()
+                self._reset_fixture()
+
+    def test_corrupt_grant_dates_and_retest_flag_hold(self):
+        for field, value in (
+            ("valid_from", "2030-01-31T24:00:00+00:00"),
+            ("valid_from", "2030-01-31T10:00:00+01:00"),
+            ("valid_until", "garbage"),
+            ("recurring_retest_allowed", 2),
+            ("recurring_retest_allowed", "true"),
+        ):
+            with self.subTest(field=field, value=value):
+                self.upgrade_synthetic_only()
+                self.update("authorization_grants", field, value, "grant_id", self.grant.grant_id)
+                self.assert_hold()
+                self._reset_fixture()
+
+    def test_wrong_engagement_status_or_approved_request_hold(self):
+        self.upgrade_synthetic_only()
+        self.update("engagements", "status", "running", "engagement_id", self.engagement)
+        self.assert_hold()
+
+    def test_missing_fk_constraint_does_not_create_provenance(self):
+        self.upgrade_synthetic_only()
+        with sqlite3.connect(self.path) as con:
+            # In an independent file a similarly named column without declared
+            # reference is merely a self-asserted string: never sufficient.
+            rows = con.execute("PRAGMA foreign_key_list(authorization_grants)").fetchall()
+            self.assertTrue(any(row[3] == "approved_request_id" for row in rows))
+        self.assertIs(self.review().status, ReviewStatus.REVIEW_ONLY)
+
+    def test_no_changes_after_review_of_real_sqlite_snapshot(self):
+        self.upgrade_synthetic_only()
+        def snapshot():
+            with sqlite3.connect(self.path) as con:
+                return (
+                    con.execute("SELECT * FROM assessment_requests").fetchall(),
+                    con.execute("SELECT * FROM authorization_grants").fetchall(),
+                    con.execute("SELECT * FROM engagements").fetchall(),
+                )
+        before = snapshot()
+        with patch("socket.socket", side_effect=AssertionError("network forbidden")):
+            result = self.review()
+        self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
+        self.assertEqual(snapshot(), before)
+
+    def test_bad_review_instant_and_path_fail_without_mutations(self):
+        self.upgrade_synthetic_only()
+        for instant in (None, 0, False, datetime.now(), datetime.now(timezone(timedelta(hours=1)))):
+            with self.subTest(instant=instant):
+                result = self.review(instant=instant)
+                # helper intentionally uses None as default, test direct call:
+                if instant is None:
+                    result = review_persisted_request_grant(
+                        self.path, self.grant.grant_id, reviewed_at=None
+                    )
+                self.assertIs(result.status, ReviewStatus.HOLD)
+                self.assert_no_authority(result)
+        self.assertIs(
+            review_persisted_request_grant({}, self.grant.grant_id, reviewed_at=self.reviewed_at).status,
+            ReviewStatus.HOLD,
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()
