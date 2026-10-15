@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import socket
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -133,6 +135,34 @@ class RevocationBetweenApprovalAndIsolationTests(unittest.TestCase):
             return True
         self._assert_denied_without_effect(rescope)
 
+
+    @unittest.expectedFailure
+    def test_concurrent_revocation_while_isolation_waits_must_deny(self):
+        """RED: a second thread may revoke after first read, before handler.
+
+        Both threads only touch in-memory fictional approval objects; no real
+        target, operator, external networking, or destructive code exists.
+        Events make the schedule deterministic rather than timing-based.
+        """
+        entered = Event()
+        resume = Event()
+
+        def controlled_isolation(_context, _call):
+            self.events.append("isolation-concurrent-revocation")
+            entered.set()
+            if not resume.wait(5):
+                raise AssertionError("interleaving witness timeout")
+            return True
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            pending = pool.submit(self._assert_denied_without_effect, controlled_isolation)
+            try:
+                self.assertTrue(entered.wait(5), "isolation callback did not start")
+                self.live_approval = replace(self.approval, revoked=True)
+            finally:
+                resume.set()
+            pending.result(timeout=10)
+
     def test_already_revoked_approval_denies_before_isolation_or_handler(self):
         self.live_approval = replace(self.approval, revoked=True)
         isolation = Mock(return_value=True)
@@ -166,6 +196,7 @@ class RevocationBetweenApprovalAndIsolationTests(unittest.TestCase):
             "test_revocation_during_isolation_callback_denies_before_handler",
             "test_expiration_during_isolation_callback_denies_before_handler",
             "test_scope_reassignment_during_isolation_callback_denies_before_handler",
+            "test_concurrent_revocation_while_isolation_waits_must_deny",
         )
         for method in matrix:
             with self.subTest(method=method):
