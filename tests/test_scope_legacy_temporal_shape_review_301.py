@@ -643,6 +643,83 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
         self.assertEqual(seen["count"], 2)
         assert_non_authorizing(self, result, "HOLD", "invalid_batch")
 
+    def test_batch_scans_every_materialized_member_before_generic_hold(self):
+        import lightup.legacy_temporal_shape_review_301 as review_module
+
+        original_review = review_module.review_legacy_authorization_window
+        for bad_pos in (0, 15, 31):
+            claims = [fixture() for _ in range(32)]
+            claims[bad_pos] = fixture(end=False)
+            seen = []
+
+            def witness(auth, *, observed_at):
+                seen.append(auth)
+                return original_review(auth, observed_at=observed_at)
+
+            with patch.object(
+                review_module, "review_legacy_authorization_window",
+                side_effect=witness
+            ):
+                verdict = review_legacy_authorization_batch(
+                    tuple(claims), observed_at=MID
+                )
+            with self.subTest(bad_position=bad_pos):
+                self.assertEqual(len(seen), 32)
+                self.assertEqual([id(x) for x in seen],
+                                 [id(x) for x in claims])
+                assert_non_authorizing(self, verdict, "HOLD", "invalid_batch")
+
+    def test_batch_invalid_noncanonical_object_does_not_hide_later_claims(self):
+        import lightup.legacy_temporal_shape_review_301 as review_module
+
+        original_review = review_module.review_legacy_authorization_window
+
+        class _GetterTrap:
+            def __getattribute__(self, name):
+                raise AssertionError("wrong-type member touched")
+
+        forged = _GetterTrap()
+        for bad_pos in (0, 1, 31):
+            claims = [fixture() for _ in range(32)]
+            claims[bad_pos] = forged
+            seen = []
+
+            def witness(auth, *, observed_at):
+                seen.append(auth)
+                return original_review(auth, observed_at=observed_at)
+
+            with patch.object(
+                review_module, "review_legacy_authorization_window",
+                side_effect=witness
+            ):
+                verdict = review_legacy_authorization_batch(
+                    tuple(claims), observed_at=MID
+                )
+            self.assertEqual(len(seen), 31)
+            assert_non_authorizing(self, verdict, "HOLD", "invalid_batch")
+
+    def test_batch_rechecks_each_stored_member_even_when_prior_item_holds(self):
+        import lightup.legacy_temporal_shape_review_301 as review_module
+
+        first = fixture(end=False)
+        second = fixture()
+        original_fields = review_module._stored_fields
+        calls = {id(first): 0, id(second): 0}
+
+        def witnessing_storage(auth):
+            calls[id(auth)] += 1
+            return original_fields(auth)
+
+        with patch.object(review_module, "_stored_fields",
+                          side_effect=witnessing_storage):
+            result = review_legacy_authorization_batch(
+                (first, second), observed_at=MID
+            )
+        assert_non_authorizing(self, result, "HOLD", "invalid_batch")
+        # The second item is reviewed twice (initial + internal) and once
+        # again for the batch-wide consistency check.
+        self.assertGreaterEqual(calls[id(second)], 4)
+
     def test_batch_preserves_external_effect_denial(self):
         with (
             patch("builtins.open", side_effect=AssertionError("file access")),
