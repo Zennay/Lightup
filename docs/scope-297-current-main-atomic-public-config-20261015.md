@@ -45,7 +45,7 @@ Keep the issue open and this PR draft until actual source-level enforcement is i
 
 In addition to the 18 real installed-source unit contracts, the draft now includes:
 - `scripts/scope_297_atomic_policy_witness_20261015.py` — one-command, **hardcoded fictional inputs only** diagnostic on the actual installed `ScopePolicy.decide`. Reports eight known host/network cross-path cases without publishing the input targets or fake grant data, includes DNS/socket tripwires, and **always exits code 2 / HOLD**.
-- `tests/test_scope_297_atomic_policy_witness_cli_20261015.py` — 20 separate deterministic offline controls on real source behavior, JSON/Dutch output, immutable hold flags, user-supplied-target refusal, no network/shell/files, privacy-minimal unexpected decision/constructor exception review and future *deny* behavior staying HOLD.
+- `tests/test_scope_297_atomic_policy_witness_cli_20261015.py` — 23 separate deterministic offline controls on real source behavior, JSON/Dutch output, immutable hold flags, user-supplied-target refusal, no network/shell/files, privacy-minimal unexpected decision/constructor exception review and future *deny* behavior staying HOLD.
 
 Invocation from the repo root:
 
@@ -73,6 +73,12 @@ The reporter now distinguishes an attempted source-level socket or DNS operation
 
 The standalone synthetic-only CLI now tracks blocked operations **per case** rather than inferring that no network attempt happened merely because `ScopePolicy.decide` returned a normal decision. A source callback can catch its own `NetworkAttemptBlocked` exception; its attempted access is still recorded as `NETWORK_BLOCKED_REVIEW` ahead of any `UNSAFE_ALLOW` or `DENIED_REVIEW` classification. The network tripwire uses a scoped `ExitStack` and restores every patched module-level API after exit. This is a best-effort Python API tripwire only, **not process/container/VPS-level egress isolation**.
 
-The tripwire covers common Python socket and resolver entry points: `socket`, `socketpair`, `create_connection`, `create_server`, `getaddrinfo`, `gethostbyname`, `gethostbyname_ex`, `gethostbyaddr`, `getnameinfo` and `getfqdn`. Six new offline unittest methods prove that swallowed socket/DNS exceptions still count, cases do not taint each other, helper entry points are intercepted, and patched APIs are restored. **20 CLI tests** total; the original 18 installed-source controls are unchanged.
+The tripwire covers common Python socket and resolver entry points: `socket`, `socketpair`, `create_connection`, `create_server`, `getaddrinfo`, `gethostbyname`, `gethostbyname_ex`, `gethostbyaddr`, `getnameinfo` and `getfqdn`. Six new offline unittest methods prove that swallowed socket/DNS exceptions still count, cases do not taint each other, helper entry points are intercepted, and patched APIs are restored. **23 CLI tests** total; the original 18 installed-source controls are unchanged.
 
 Even a report of zero intercepted attempts cannot establish network isolation. The whole review remains non-authorizing with status HOLD, exit code 2 and all `can_*` flags false. Current commit CI evidence must be pinned separately from earlier runs and cannot be inferred from the prior 14-test branch.
+
+### W8: owner-readable cross-path failure totals and non-mutable permissions
+
+The same offline report now explains *why* the synthetic installed-source permissions are unsafe in Dutch, with separate fixed-family summaries: six invalid-network-policy-to-hostname bypasses and two invalid-host-policy-to-network bypasses. It also gives the product source owner's required remediation direction: validate both public host and network policy together before any public grant or permit. No extra target details or grant values are printed.
+
+The six always-false authority flags are wrapped in a `MappingProxyType` before every report copies them, so callers cannot mutate the global defaults to true. Three deterministic offline tests require both family counts, no automatic success after an imagined source repair, and attempted authority-flag mutation to raise `TypeError`. Total reporter tests: **23**, independent of the original 18 installed-source acceptance tests. Reporting remains **exit 2 / HOLD** and does not implement or grant production authorization.
