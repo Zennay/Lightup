@@ -12,6 +12,30 @@
 
 `tests/test_scope_292_296_current_main_source_red_20261015.py` asserts that malformed declarations either fail to construct/evaluate or return `allowed=False`. Eighteen deliberately `@expectedFailure` canaries demonstrate eighteen real fail-open cases on installed `main`, including stdlib IPv4Address/IPv4Network/IPv6Address/IPv6Network instances, host-bit CIDR widening, bare public IPv4/IPv6 addresses accepted as implicit /32 or /128, dotted IPv4 masks and non-canonical expanded IPv6 notation; a separate witness executes all eighteen and requires **eighteen real AssertionError failures**, not a masked parser exception or unexpected success. Positive controls preserve canonical IPv4 `/24`, IPv4 `/32`, IPv6 `/64` and IPv6 `/128` semantics, and confirm missing synthetic authorization denies public network membership. Negative controls test bytearray, None, nonsense strings and no-network/no-process tripwires.
 
+## Current-main review additions — strict canonical oracle + falsification
+
+The new **test-only** `_strict_canonical_declaration` predicate is a reproducible
+syntax oracle, *not* an installed grant decision. It rejects non-exact Python
+`str` objects, missing prefix slashes, space-padded values, host bits,
+dotted-netmask aliases, expanded IPv6 spellings and other non-canonical text.
+It uses `ip_network(..., strict=True)` and exact round-trip equality to the
+canonical string. Canonical `0.0.0.0/0` or `::/0` are syntactically
+valid **but do not imply permission**: asset ownership, customer/operator
+provenance, target binding, revocation and human review remain independent.
+
+The oracle has a negative/positive matrix and **256 deterministic synthetic
+single-host round trips** (128 IPv4 + 128 IPv6). It also rejects their
+slash-free spellings so an implicit host-sized prefix cannot silently enter
+scope. This does not authorize the example network addresses or query DNS.
+
+Four additional *mutation controls* deliberately simulate an incorrect
+producer: a masked parser `TypeError`, an unexpected all-green
+`@expectedFailure`, a forged unrelated `AssertionError` and a missing
+replay case. The witness must reject each false proof. Original 18 installed
+source RED cases still require exactly 18 genuine `AssertionError` results
+and no network/process I/O. All mutation controls use disposable in-memory
+`unittest.TestResult` objects and alter no production file.
+
 ## Owner implementation checklist (not applied to installed source)
 
 1. Validate the **whole** explicit-network configuration before any permission decision, rather than filtering invalid values and keeping the others; issue #297 independently owns broader policy atomicity.
