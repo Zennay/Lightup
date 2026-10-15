@@ -72,3 +72,10 @@ Beide standalone reviewers gebruiken nu één gedeelde, **uitsluitend lokale** s
 
 Deze grens verbetert de betrouwbaarheid van **niet-geïnstalleerde** reviewers, maar maakt geen claim over echte runtime-mandaten, operatorconsent, daadwerkelijke runnerregistratie of vrijgave. Geen actief scanverkeer, merge, dispatch, grant of deployment.
 
+
+## W5 — direct leesbare toestand per onafhankelijke vrijgavevoorwaarde
+
+De originele offline JSON-review publiceert nu per vaste voorwaarde alleen één van de drie letterlijk toegelaten, ongeauthenticeerde waarden `MISSING`, `BLOCKED` en `SELF_REPORTED`. Een ongeldig, onvolledig of niet vertrouwd packet wordt nooit gedeeltelijk geaccepteerd: alle negen categorieën worden `UNKNOWN` en de rest van de generieke HOLD blijft onveranderd. Statussleutels en volgorde komen uitsluitend uit de eigen vaste gatecatalogus; vrije gebruikerstring, referentie, geheim of klantidentiteit wordt nooit teruggekopieerd.
+
+De Nederlandstalige review toont elke toestand expliciet als **Ontbreekt**, **Geblokkeerd**, **Alleen zelf gemeld** of **Niet controleerbaar**, steeds met de oorspronkelijke vaste uitleg en **Vrijgave: NEE**. Ook wanneer alle negen zelfgemeld zijn, blijft de uitkomst onzeker. De nieuwe afzonderlijke `tests/test_scope_release_gate_state_views_20261015.py` omvat negen tests voor statustoewijzing, volgorde, type-/opmaak-injecties en twee echte CLI's. De volledige bestaande testomgeving en onafhankelijke CI- en permanente-runnerbronnen blijven doorslaggevend; deze rapportage is nooit een bron van toestemming.
+
