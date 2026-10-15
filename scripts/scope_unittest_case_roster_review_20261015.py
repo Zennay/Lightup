@@ -61,7 +61,14 @@ def decode(raw):
             or type(obj["complete"]) is not bool):
         raise InvalidRoster("schema")
     log, entries = obj["raw_log"], obj["watch"]
-    if (type(log) is not str or not 0 < len(log.encode("utf-8")) <= MAX_LOG_BYTES
+    if type(log) is not str:
+        raise InvalidRoster("body")
+    try:
+        log_size = len(log.encode("utf-8"))
+    except UnicodeError as exc:
+        # JSON accepts escaped lone surrogates: never leak a traceback/raw input.
+        raise InvalidRoster("invalid UTF-8 log") from exc
+    if (not 0 < log_size <= MAX_LOG_BYTES
             or type(entries) is not list or not 1 <= len(entries) <= MAX_WATCH):
         raise InvalidRoster("body")
     expected = {}
