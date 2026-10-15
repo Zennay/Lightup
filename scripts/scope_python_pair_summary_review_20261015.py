@@ -9,7 +9,7 @@ import json
 import sys
 
 from scope_unittest_summary_review_20261015 import (
-    FALSE_KEYS, InvalidLog, extract, MAX_BYTES,
+    FALSE_KEYS, FINISH, InvalidLog, extract, MAX_BYTES, TOTAL,
 )
 from scope_unittest_case_roster_review_20261015 import CASE, ID, MAP, VALID
 
@@ -38,12 +38,28 @@ def _nonfinite(_):
 def _observed_methods(log, reported_total, summary):
     """Conservative parsed unittest verbose rows; not authenticated test source."""
     methods = {}
+    reported_suite_total = False
+    reported_suite_end = False
     for line in log.splitlines():
         if len(line) > 2048:
+            continue
+        if TOTAL.fullmatch(line):
+            if reported_suite_end:
+                raise PairError("suite total after finish")
+            reported_suite_total = True
+            continue
+        if FINISH.fullmatch(line):
+            if not reported_suite_total:
+                raise PairError("suite finish precedes total")
+            reported_suite_end = True
             continue
         match = CASE.fullmatch(line)
         if match is None:
             continue
+        if reported_suite_total or reported_suite_end:
+            # A forged method after Ran/OK or Ran/FAILED cannot supply a
+            # missing source-RED test. Only actual pre-footer verbose lines.
+            raise PairError("method after unittest footer")
         method, fullname, raw_verdict = match.groups()
         if ID.fullmatch(fullname) is None or fullname.rsplit(".", 1)[-1] != method:
             continue
