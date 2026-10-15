@@ -315,7 +315,7 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
         self.assertEqual(stderr, b"")
 
     def test_non_utf8_input_has_opaque_hold_without_traceback(self):
-        payload = b"\\xff".replace(b"\\\\xff", b"\\xff")
+        payload = bytes([0xFF])
         code, result, stderr = subprocess_review(payload)
         self.assertEqual(code, 2)
         self.assertEqual(result["status"], "HOLD")
