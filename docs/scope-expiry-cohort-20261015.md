@@ -106,6 +106,26 @@ A structurally valid packet prints exactly one opaque JSON line and exits **3**,
 
 No zero exit is possible for a normal input. No input values, timestamps, paths, client identifiers, or raw JSON snippets are echoed; even REVIEW_ONLY cannot show which anonymous row contributed to a count. A REVIEW_ONLY aggregation is not evidence of persisted, authentic, approved, current or non-revoked authorization.
 
+## Pinned stdout object — descriptor replacement safety (W11)
+
+A call to `fstat(1)` does **not** reserve file descriptor 1: another
+thread can replace it with `dup2()` between verification and
+`os.write(1, ...)`. The offline CLI now obtains a duplicate of the
+previously inspected stdout pipe/TTY descriptor, verifies that the duplicate
+and live fd1 refer to the expected device/inode/type, and sends **one
+nonblocking bounded receipt through the duplicate, never raw fd1**.
+Blocking-mode restoration and closing of the pinned duplicate happen in
+nested `finally` handlers, even on a broken pipe. A changed live fd1
+before the write causes no receipt.
+
+Synthetic negative/positive tests pin the exact descriptor used to
+write, refuse an identity mismatch before dispatch, and ensure a broken
+pipe still restores blocking mode and closes the duplicate. Actual
+subprocess pipe tests from W5–W7 remain in force. This narrows an
+output-descriptor rebind race **without authenticating a receiver**:
+a valid pipe may still have an untrusted reader, so real client metadata,
+consent and permits remain outside this preview.
+
 ## Fixed-schema, deny-only receipt gate (W9)
 
 Before **any** output descriptor can be written, the reviewer independently
