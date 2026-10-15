@@ -155,6 +155,21 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
             LegacyTemporalReview("REVIEW_ONLY", "temporal_shape_only",
                                  permit_issued=True)
 
+    def test_extreme_builtin_offsets_cannot_escape_as_overflow_exception(self):
+        eastern = timezone(timedelta(hours=23))
+        western = timezone(timedelta(hours=-23))
+        near_floor = datetime.min.replace(tzinfo=eastern)
+        near_ceiling = datetime.max.replace(tzinfo=western)
+        for invalid in (near_floor, near_ceiling):
+            with self.subTest(kind="observed", year=invalid.year):
+                assert_non_authorizing(self, review(now=invalid),
+                                       "HOLD", "invalid_shape")
+            for field in ("valid_from", "valid_until"):
+                with self.subTest(field=field, year=invalid.year):
+                    auth = replace(fixture(), **{field: invalid})
+                    assert_non_authorizing(self, review(auth),
+                                           "HOLD", "invalid_shape")
+
     def test_missing_datetime_field_is_an_opaque_hold(self):
         incomplete = object.__new__(Authorization)
         assert_non_authorizing(self, review(incomplete), "HOLD", "invalid_shape")
