@@ -138,6 +138,17 @@ A further adversarial real-subprocess test passes a 3,001-byte deeply nested JSO
 
 All these checks test *classification only*. The producer model's inclusive end semantics are preserved solely for this anonymous report; nothing is wired into the real authorization path. Every output remains non-authorizing.
 
+## Timezone-independent UTC boundaries (W10)
+
+A real subprocess acceptance matrix runs fixed fictional grants at the 2026
+UK spring and autumn daylight-saving changes across four different host
+`TZ` settings (`UTC`, `Europe/London`, `Pacific/Kiritimati` and
+`America/New_York`). Identical UTC input bytes must produce **byte-for-byte
+identical**, strictly false-authority receipts with no traceback and no
+reclassification of expiry windows. This tests deterministic presentation
+only: a caller's supplied `as_of_utc` is **not** a trusted clock or
+evidence of live customer consent.
+
 ## Required independent source-owner handoff
 
 Real-world authorization still requires: independently authenticated customer/operator consent; original request–grant FK and exact tenant/scope matching; revocation and time validity checked from trusted storage immediately before **each** dispatch; canonical DNS/network destination binding; separate destructive-lab human step-up; branch/run/runner attestation; independent security and privacy review and explicit human release. This reviewer is neither a substitute nor a prerequisite for those gates.
