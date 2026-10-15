@@ -94,7 +94,15 @@ def main() -> int:
         result = review(raw)
     except (OSError, ValueError, TypeError, RecursionError):
         result = "HOLD"
-    sys.stdout.write(receipt(result) + "\n")
+    # An incomplete or failed receipt cannot be interpreted as a safe review.
+    # All exit codes remain nonzero, including stdout/pipe failures.
+    response = receipt(result) + "\n"
+    try:
+        if sys.stdout.write(response) != len(response):
+            return 2
+        sys.stdout.flush()
+    except (OSError, ValueError):
+        return 2
     return 3 if result == "REVIEW_ONLY" else 2
 
 
