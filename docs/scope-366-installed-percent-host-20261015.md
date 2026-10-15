@@ -33,3 +33,13 @@ python -m unittest discover -s tests -p 'test_scope_366_installed_percent_host_2
 - **No merge, no deploy, no live grant, no real scan, no GO.** An explicit human release decision and independent privacy/security review remain necessary.
 
 Branch origin: main `e73b7445c87ad239bdb03c50a99078ef93163b02` (2026-10-15 observation). Only new paths are allowed.
+
+
+## W2 hardening and exact-head evidence chronology
+
+The initial **W1** exact SHA `cfb71b373e01187e7d72a51d8e2507ece84999c6` was actually exercised in [hosted preflight #38825697946](https://github.com/Zennay/Lightup/actions/runs/38825697946):
+- Original Python **3.11** job `116732528493`: **all 11/11 new installed-source tests passed**; full 1,248-test suite **FAILED**, with precisely one unrelated old #301 expired fixture and 23 deliberately expected existing REDs.
+- Original Python **3.14** job `116732528375`: **all 11/11 new tests passed**; same full 1,248-test suite **FAILED** on exactly the same unrelated #301 fixture (23 expected REDs). Producer integration **SKIPPED**, so no integrated green claim.
+- Registered VPS CI [#38825697949](https://github.com/Zennay/Lightup/actions/runs/38825697949) was **QUEUED without assignment**, not proof of permanent runner execution.
+
+**W2** broadens the installed-source coverage to **13 unittest methods** with all **256 byte percent-escapes** in upper/lower-case per host, IPv4 and loopback case plus malformed-escape denial controls (1,500+ case evaluations). This is a more comprehensive parser regression, still no production mitigation. W1 success does **not** validate the newer W2 immutable head. Check fresh hosted and permanent VPS run logs before claiming any W2 acceptance. No production permission is granted.
