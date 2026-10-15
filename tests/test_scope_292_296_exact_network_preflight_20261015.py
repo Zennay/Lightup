@@ -438,7 +438,7 @@ class OfflineExactNetworks292296(unittest.TestCase):
                         status = guard.main()
                     self.assertEqual(reader.pos, len(raw))
                     self.assertEqual(status, 3 if expected == "REVIEW_ONLY" else 2)
-                    self.assertEqual(stdout.getvalue(), guard.receipt(expected) + "\\n")
+                    self.assertEqual(stdout.getvalue(), guard.receipt(expected) + "\n")
                     packet = json.loads(stdout.getvalue())
                     self.assertFalse(packet["authorizes_target_io"])
                     self.assertFalse(packet["is_grant"])
@@ -461,7 +461,7 @@ class OfflineExactNetworks292296(unittest.TestCase):
             patch.object(guard.sys, "stdout", stdout),
         ):
             self.assertEqual(guard.main(), 2)
-        self.assertEqual(stdout.getvalue(), guard.receipt("HOLD") + "\\n")
+        self.assertEqual(stdout.getvalue(), guard.receipt("HOLD") + "\n")
         self.assertNotIn("private", stdout.getvalue())
 
     def test_real_cli_valid_returns_nonzero_and_no_grant(self):
