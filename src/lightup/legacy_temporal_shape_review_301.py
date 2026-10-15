@@ -16,6 +16,15 @@ class LegacyTemporalReview(NamedTuple):
     status: str
     reason: str
 
+    def __bool__(self) -> bool:
+        """A review verdict is NEVER a truthy grant, even REVIEW_ONLY.
+
+        An ordinary two-slot NamedTuple is truthy by default, which could be
+        mistakenly treated by a caller as authorization when checking only
+        'if review(...)'. Keep every result explicitly false in that context.
+        """
+        return False
+
     def as_receipt(self) -> dict[str, str | bool]:
         """Only static classifications; never disclose claims or give authority."""
         allowed = (
