@@ -68,6 +68,13 @@ Three additional expected-RED **actual installed** `ScopePolicy.decide` methods 
 
 These **68 additional** source calls are fully materialized before one aggregate denial assertion per RED test; independent existing witness gates require exact genuine AssertionErrors and reject masked exceptions. This makes **13 expected source REDs, 17 ordinary in-memory green tests, and 264 explicitly materialized malformed target/config decisions** for this self-owned module. Earlier hosted success does not validate the W5 commit. Never merge, issue consent, dispatch or scan based on this offline characterization.
 
+
+## W6: full 264-case *actual* source no-external-I/O safety gate
+
+A new independent **ordinary green** method replays **all 264** malformed synthetic Target/policy decisions from the W2/W4/W5 categories through the actual installed `ScopePolicy.decide` (no mock policy) while patching Python socket constructors, DNS, connection, subprocess execution, shell execution and `urllib.request.urlopen` to immediately fail any attempted network/process activity. It verifies exactly 264 decisions actually ran and their returned decision/Boolean primitive types. It does **not** assert that currently unsafe decisions are allowed, and therefore remains valid when the original source owner fixes the RED admission bug. The 264 original explicit denial requirements remain separately documented as intentionally failing source tests.
+
+This is **not** a test against real customer infrastructure, a live network or a grant engine. Inputs are entirely fictional; neither DNS nor HTTP calls are made. The new check may detect unintended target I/O introduced by future code changes while remaining independent of the source-owner PR #100. CI must run on the new exact HEAD to validate this W6 implementation.
+
 ## To validate
 
 ```sh
