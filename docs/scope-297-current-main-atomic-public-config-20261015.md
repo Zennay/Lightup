@@ -45,7 +45,7 @@ Keep the issue open and this PR draft until actual source-level enforcement is i
 
 In addition to the 18 real installed-source unit contracts, the draft now includes:
 - `scripts/scope_297_atomic_policy_witness_20261015.py` — one-command, **hardcoded fictional inputs only** diagnostic on the actual installed `ScopePolicy.decide`. Reports eight known host/network cross-path cases without publishing the input targets or fake grant data, includes DNS/socket tripwires, and **always exits code 2 / HOLD**.
-- `tests/test_scope_297_atomic_policy_witness_cli_20261015.py` — 14 separate deterministic offline controls on real source behavior, JSON/Dutch output, immutable hold flags, user-supplied-target refusal, no network/shell/files, privacy-minimal unexpected decision/constructor exception review and future *deny* behavior staying HOLD.
+- `tests/test_scope_297_atomic_policy_witness_cli_20261015.py` — 20 separate deterministic offline controls on real source behavior, JSON/Dutch output, immutable hold flags, user-supplied-target refusal, no network/shell/files, privacy-minimal unexpected decision/constructor exception review and future *deny* behavior staying HOLD.
 
 Invocation from the repo root:
 
@@ -68,3 +68,11 @@ A future source-owner fix may fail closed **at `ScopePolicy(...)` construction**
 ### W6: blocked network attempt gets its own review status
 
 The reporter now distinguishes an attempted source-level socket or DNS operation from an unrelated constructor/decision exception. Any such attempt is blocked **before I/O** and recorded as `NETWORK_BLOCKED_REVIEW` with `network_blocked_review_count`, while status and all permission flags remain strictly HOLD/false. Two dedicated synthetic hostile-source tests demonstrate socket creation and DNS resolution cannot escape the tripwires and cannot be mistaken for an authorization success. Do not interpret zero blocked attempts as proof of complete runtime network isolation; this is only the standalone reporter's own isolated Python context.
+
+### W7: swallowed DNS/socket exceptions cannot hide attempted network I/O
+
+The standalone synthetic-only CLI now tracks blocked operations **per case** rather than inferring that no network attempt happened merely because `ScopePolicy.decide` returned a normal decision. A source callback can catch its own `NetworkAttemptBlocked` exception; its attempted access is still recorded as `NETWORK_BLOCKED_REVIEW` ahead of any `UNSAFE_ALLOW` or `DENIED_REVIEW` classification. The network tripwire uses a scoped `ExitStack` and restores every patched module-level API after exit. This is a best-effort Python API tripwire only, **not process/container/VPS-level egress isolation**.
+
+The tripwire covers common Python socket and resolver entry points: `socket`, `socketpair`, `create_connection`, `create_server`, `getaddrinfo`, `gethostbyname`, `gethostbyname_ex`, `gethostbyaddr`, `getnameinfo` and `getfqdn`. Six new offline unittest methods prove that swallowed socket/DNS exceptions still count, cases do not taint each other, helper entry points are intercepted, and patched APIs are restored. **20 CLI tests** total; the original 18 installed-source controls are unchanged.
+
+Even a report of zero intercepted attempts cannot establish network isolation. The whole review remains non-authorizing with status HOLD, exit code 2 and all `can_*` flags false. Current commit CI evidence must be pinned separately from earlier runs and cannot be inferred from the prior 14-test branch.
