@@ -583,9 +583,10 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
             approval, issued_at=NOW - timedelta(hours=23),
             expires_at=NOW + timedelta(hours=1),
         )
-        fence.replace_synthetic_reference(within_limit, tool)
+        fresh_fence = OfflineRevalidationFence()
+        fresh_fence.replace_synthetic_reference(within_limit, tool)
         self.assert_non_authorizing(
-            fence.review(request, NOW, isolation_probe=lambda: True),
+            fresh_fence.review(request, NOW, isolation_probe=lambda: True),
             "REVIEW_ONLY",
         )
         too_long = replace(
@@ -966,6 +967,98 @@ class SyntheticRevalidationFenceTests(unittest.TestCase):
         ), "HOLD")
         self.assertEqual(observed, ["isolation", "clock"])
         self.assertEqual(fence.review_count, 0)
+
+
+    def test_rebinding_existing_reviewer_to_different_run_is_rejected(self):
+        fence, request, approval, tool = fixture()
+        new_request = replace(request, run="lab-different-run")
+        new_approval = replace(approval, request=new_request)
+        start_epoch = fence._epoch
+        with self.assertRaises(ValueError):
+            fence.replace_synthetic_reference(new_approval, tool)
+        self.assertEqual(fence._epoch, start_epoch)
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=lambda: True),
+            "REVIEW_ONLY",
+        )
+        self.assert_non_authorizing(
+            fence.review(new_request, NOW, isolation_probe=lambda: True),
+            "HOLD",
+        )
+
+    def test_rebinding_cannot_swap_tenant_target_or_expand_expiry(self):
+        for label, proposed in (
+            ("client", "lab-another-client"),
+            ("engagement", "lab-another-engagement"),
+            ("asset", "lab-another-asset"),
+            ("capability", "lab-another-capability"),
+        ):
+            with self.subTest(label=label):
+                fence, request, approval, tool = fixture()
+                altered = replace(approval, request=replace(request, **{label: proposed}))
+                with self.assertRaises(ValueError):
+                    fence.replace_synthetic_reference(altered, tool)
+                self.assert_non_authorizing(
+                    fence.review(request, NOW, isolation_probe=lambda: True),
+                    "REVIEW_ONLY",
+                )
+        fence, request, approval, tool = fixture()
+        widened = replace(approval, expires_at=approval.expires_at + timedelta(minutes=1))
+        self.assertTrue(widened.is_well_formed())
+        with self.assertRaises(ValueError):
+            fence.replace_synthetic_reference(widened, tool)
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=lambda: True),
+            "REVIEW_ONLY",
+        )
+
+    def test_identical_registry_refresh_invalidates_old_approval(self):
+        fence, request, _, tool = fixture()
+        fence.replace_synthetic_tool(tool)
+        self.assertIsNone(fence._approval)
+        self.assertIsNone(fence._approval_seal)
+        callbacks = []
+        self.assert_non_authorizing(fence.review(
+            request, NOW,
+            isolation_probe=lambda: callbacks.append("unexpected") or True,
+        ), "HOLD")
+        self.assertEqual(callbacks, [])
+        self.assertEqual(fence.review_count, 0)
+
+    def test_reviewed_snapshot_does_not_survive_identical_registry_refresh(self):
+        fence, request, _, tool = fixture()
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=lambda: True), "REVIEW_ONLY"
+        )
+        fence.replace_synthetic_tool(tool)
+        callbacks = []
+        self.assert_non_authorizing(fence.review(
+            request, NOW,
+            isolation_probe=lambda: callbacks.append(1) or True
+        ), "HOLD")
+        self.assertEqual(callbacks, [])
+        self.assertEqual(fence.review_count, 1)
+
+    def test_explicit_identical_grant_reintake_after_registry_change_is_review_only(self):
+        fence, request, approval, tool = fixture()
+        fence.replace_synthetic_tool(tool)
+        fence.replace_synthetic_reference(approval, tool)
+        self.assert_non_authorizing(
+            fence.review(request, NOW, isolation_probe=lambda: True),
+            "REVIEW_ONLY",
+        )
+        self.assertEqual(fence.review_count, 1)
+
+    def test_revoke_clears_original_synthetic_lifetime_binding(self):
+        fence, request, _, _ = fixture()
+        self.assertIsNotNone(fence._bound_approval)
+        fence.revoke()
+        self.assertIsNone(fence._bound_approval)
+        self.assertIsNone(fence._approval)
+        self.assertIsNone(fence._tool)
+        self.assert_non_authorizing(fence.review(
+            request, NOW, isolation_probe=lambda: True
+        ), "HOLD")
 
 
 if __name__ == "__main__":
