@@ -181,7 +181,7 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
         self.assertEqual(repr(grant), original)
         self.assertFalse(decision.allowed, "expired end must deny scope")
 
-    def test_reference_type_repair_flips_all_four_datetime_subclass_reds(self):
+    def test_reference_type_repair_flips_all_fourteen_legacy_boundary_reds(self):
         # A test-only patch demonstrates that the installed-source RED tests
         # detect a missing exact-type guard, not merely a bad test fixture.
         # This reference repair does not modify LightUp's installed code.
@@ -198,6 +198,16 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
             return original(authorization, now)
 
         red_methods = (
+            "test_red_zero_expiry_is_not_unbounded",
+            "test_red_false_expiry_is_not_unbounded",
+            "test_red_empty_text_expiry_is_not_unbounded",
+            "test_red_empty_tuple_expiry_is_not_unbounded",
+            "test_red_zero_start_is_not_unbounded",
+            "test_red_false_start_is_not_unbounded",
+            "test_red_empty_text_start_is_not_unbounded",
+            "test_red_empty_tuple_start_is_not_unbounded",
+            "test_red_false_expiry_must_not_authorize_scope",
+            "test_red_zero_expiry_must_not_authorize_scope",
             "test_red_falsey_datetime_subclass_must_not_disable_future_start",
             "test_red_falsey_datetime_subclass_must_not_disable_expired_end",
             "test_red_falsey_datetime_subclass_cannot_open_public_scope_early",
