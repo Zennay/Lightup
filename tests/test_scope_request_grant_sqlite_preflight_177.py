@@ -759,14 +759,62 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
     def test_atomic_persisted_batch_denies_overlapping_effective_assets(self):
         self.upgrade_synthetic_only()
         second_id = self._second_synthetic_grant("app.example.test")
+        # W12: even ONE selected grant can no longer hide an independently
+        # approved overlapping grant for the same client and live target.
         for gid in (self.grant.grant_id, second_id):
-            self.assertIs(self.review(grant_id=gid).status, ReviewStatus.REVIEW_ONLY)
+            with self.subTest(grant_id=gid):
+                solo = self.review(grant_id=gid)
+                self.assertIs(solo.status, ReviewStatus.HOLD)
+                self.assert_no_authority(solo)
         result = review_persisted_grant_batch(
             self.path, (self.grant.grant_id, second_id),
             reviewed_at=self.reviewed_at,
         )
         self.assertIs(result.status, ReviewStatus.HOLD)
         self.assert_no_authority(result)
+
+    def test_single_ignores_same_asset_if_other_window_is_disjoint(self):
+        self.upgrade_synthetic_only()
+        second_id = self._second_synthetic_grant("app.example.test")
+        future_start = self.now + timedelta(days=2)
+        future_end = future_start + timedelta(days=1)
+        with sqlite3.connect(self.path) as con:
+            affected = con.execute(
+                "UPDATE authorization_grants SET valid_from=?, valid_until=? "
+                "WHERE grant_id=?",
+                (future_start.isoformat(), future_end.isoformat(), second_id),
+            ).rowcount
+            self.assertEqual(affected, 1)
+        review = self.review()
+        self.assertIs(review.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(review)
+
+    def test_single_ignores_other_grant_asset_only_if_fully_excluded(self):
+        self.upgrade_synthetic_only()
+        second_id = self._second_synthetic_grant("app.example.test")
+        with sqlite3.connect(self.path) as con:
+            affected = con.execute(
+                "UPDATE authorization_grants SET excluded_assets_json=? "
+                "WHERE grant_id=?",
+                ('["app.example.test"]', second_id),
+            ).rowcount
+            self.assertEqual(affected, 1)
+        review = self.review()
+        self.assertIs(review.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(review)
+
+    def test_other_same_client_corrupt_window_holds_solo_snapshot(self):
+        self.upgrade_synthetic_only()
+        second_id = self._second_synthetic_grant("api.example.test")
+        with sqlite3.connect(self.path) as con:
+            affected = con.execute(
+                "UPDATE authorization_grants SET valid_until=? WHERE grant_id=?",
+                ("not-a-canonical-utc-instant", second_id),
+            ).rowcount
+            self.assertEqual(affected, 1)
+        decision = self.review()
+        self.assertIs(decision.status, ReviewStatus.HOLD)
+        self.assert_no_authority(decision)
 
     def test_atomic_persisted_batch_denies_cross_tenant_despite_two_valid_grants(self):
         self.upgrade_synthetic_only()
