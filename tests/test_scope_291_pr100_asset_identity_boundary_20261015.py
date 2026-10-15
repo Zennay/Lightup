@@ -162,6 +162,45 @@ class SourceOwnerAssetIPv6Boundary(unittest.TestCase):
             f"{len(wrong_permits)} IPv6 targets became short-host permits",
         )
 
+    @unittest.expectedFailure
+    def test_red_1024_bare_spellings_cannot_inherit_claimed_dns_asset(self):
+        """Owner asset-bound parser must not collapse case or IPv6 compression."""
+        mismatches = []
+        policy = _scope()
+        claim = _authorization(asset=ALIAS)
+        with self.no_network():
+            for suffix in range(256):
+                addr = ipaddress.IPv6Address(f"2001:db8:55:{suffix:x}::beef")
+                for kind, literal in enumerate((
+                    str(addr), str(addr).upper(),
+                    addr.exploded, addr.exploded.upper()
+                )):
+                    decision = policy.decide(Target(literal, authorization=claim))
+                    if decision.allowed:
+                        mismatches.append((suffix, kind))
+        self.assertEqual(
+            mismatches, [],
+            f"{len(mismatches)} owner-bound IPv6 spelling aliases admitted",
+        )
+
+    def test_1024_bracketed_spellings_reject_wrong_dns_asset(self):
+        """The same materialized addresses remain separate from DNS identity."""
+        policy = _scope()
+        claim = _authorization(asset=ALIAS)
+        with self.no_network():
+            for suffix in range(256):
+                addr = ipaddress.IPv6Address(f"2001:db8:55:{suffix:x}::beef")
+                for literal in (
+                    str(addr), str(addr).upper(),
+                    addr.exploded, addr.exploded.upper(),
+                ):
+                    decision = policy.decide(
+                        Target("[" + literal + "]", authorization=claim)
+                    )
+                    self.assertFalse(decision.allowed)
+                    self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+                    self.assertEqual(ipaddress.IPv6Address(decision.normalized_host), addr)
+
     def test_128_bracketed_wrong_asset_does_not_generate_any_token(self):
         """A matched CIDR cannot silently replace exact client asset membership."""
         scope = ScopePolicy(
@@ -334,6 +373,7 @@ class SourceOwnerAssetIPv6Boundary(unittest.TestCase):
             "test_red_128_wrong_asset_gate_tokens_must_never_be_created",
             "test_red_ipv6_alias_is_never_public_scope_even_without_claim_requirement",
             "test_red_128_wrong_ipv6_permits_cannot_share_short_dns_identity",
+            "test_red_1024_bare_spellings_cannot_inherit_claimed_dns_asset",
         )
         with self.no_network(), patch.object(
             ScopePolicy, "normalize_host", new=staticmethod(reject_bare_ipv6)
@@ -377,6 +417,7 @@ class SourceOwnerAssetIPv6Boundary(unittest.TestCase):
             "test_red_128_wrong_asset_gate_tokens_must_never_be_created",
             "test_red_ipv6_alias_is_never_public_scope_even_without_claim_requirement",
             "test_red_128_wrong_ipv6_permits_cannot_share_short_dns_identity",
+            "test_red_1024_bare_spellings_cannot_inherit_claimed_dns_asset",
         )
         with self.no_network(), patch.object(
             ScopePolicy, "normalize_host", new=staticmethod(preserve_bare_ipv6)
@@ -410,6 +451,7 @@ class SourceOwnerAssetIPv6Boundary(unittest.TestCase):
             "test_red_128_wrong_asset_gate_tokens_must_never_be_created": "128 wrong-asset fake permit tokens created",
             "test_red_ipv6_alias_is_never_public_scope_even_without_claim_requirement": "True is not false",
             "test_red_128_wrong_ipv6_permits_cannot_share_short_dns_identity": "128 IPv6 targets became short-host permits",
+            "test_red_1024_bare_spellings_cannot_inherit_claimed_dns_asset": "1024 owner-bound IPv6 spelling aliases admitted",
         }
         for method, message in expected_messages.items():
             with self.subTest(method=method):
