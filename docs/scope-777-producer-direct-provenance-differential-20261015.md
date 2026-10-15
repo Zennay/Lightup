@@ -2,6 +2,62 @@
 
 **LightUp posture: INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** This is an independent, add-only acceptance artifact; it does not alter `src/lightup/**`, branch `chatgpt/scope-authorization-direct-grant-approval-provenance-red-20261007`, production authority, workflow configuration, or any other worker's PR.
 
+## W9: strict production-policy RED gate (2026-10-15)
+
+To eliminate ambiguity from `@expectedFailure` turning unresolved security
+defects into an overall successful test command, this isolated branch now
+contains a **separately runnable strict exit-code gate**:
+
+- [`scripts/scope_777_strict_direct_policy_gate.py`](https://github.com/Zennay/Lightup/blob/chatgpt/scope-777-producer-direct-differential-20261015-0356/scripts/scope_777_strict_direct_policy_gate.py)
+  imports the **real installed `lightup.execution_policy` and
+  `lightup.engagements` models** from the current checkout, creates a
+  fictional, non-network `example.test` grant, verifies the canonical
+  control is allowed, then checks exactly fourteen invalid direct-provenance
+  variants. The test-only runner **returns process exit 2** with
+  `"status":"HOLD"` when any invalid grant is incorrectly allowed, when a
+  policy decision is malformed or mutates its input, or when an error occurs.
+  A fully repaired source instead gives `"status":"TEST_ONLY_PASS"`
+  and exit 0. **Both receipts always include six literal false
+  authorization/permit/dispatch/merge/deploy/release flags.** A gate success
+  is *only a unit-test outcome*, never a real release/target authorization.
+- [`tests/test_scope_777_strict_gate_20261015.py`](https://github.com/Zennay/Lightup/blob/chatgpt/scope-777-producer-direct-differential-20261015-0356/tests/test_scope_777_strict_gate_20261015.py)
+  adds three ordinary passing tests: real subprocess exit/receipt privacy;
+  temporary in-test-only `ExecutionPolicy.decide` narrowing making all 14
+  invalid cases denied; and no-authority receipt integrity. No production
+  policy patch or workflow configuration has been changed.
+
+**Actual current-main observation** with exact copied `main` source SHA/blob
+evidence listed in W8:
+
+```bash
+PYTHONPATH=src python scripts/scope_777_strict_direct_policy_gate.py
+# {"...","invalid_allowed":14,"invalid_examined":14,"status":"HOLD"}
+# Process exit 2. This is an expected security problem, not a green gate.
+```
+
+In the locally executed test-only narrowed policy preview, the strict gate
+instead counted `invalid_allowed=0` and `TEST_ONLY_PASS` with six false
+authority flags.
+
+**Final W9 local verification**: `PYTHONPATH=src python -m unittest
+discover -s tests -p 'test_scope_777_*_20261015.py' -q` ran **69 tests,
+zero unexpected errors, fourteen expected failures**. `compileall`
+completed. Breakdown: 41 offline-reviewer tests, 19 unpatched main policy
+tests (5 normal passing controls + 14 expected security failures), 6
+test-only preview tests and 3 strict-gate tests. The separate SQLite/real
+`DomainStore` differential remains unexecuted locally due to missing full
+repo dependency tree. Python 3.13 local isolated proof is **not** hosted
+Python 3.11/3.14 or registered permanent VPS CI on this branch.
+
+**Source-owner closure action:** make the strict gate exit **0 with
+`invalid_allowed=0`** against the real integrated `ExecutionPolicy`, and
+convert all 14 expected-RED acceptance controls into ordinary passing
+denials. Preserve canonical ALLOW and missing/expired/out-of-scope DENY.
+Then perform exact-head hosted+permanent VPS, durable consent/request lineage,
+revocation, verified destination, independent security/privacy and human
+release review. Until then **BRANCH-ONLY DRAFT/HOLD**; no PR, merge, deploy,
+real grant, scan, handler or target contact.
+
 ## W8: actual unpatched main policy RED witness and pure fix proof (2026-10-15)
 
 **This is now an observed runtime defect, not only a static hypothesis.**
