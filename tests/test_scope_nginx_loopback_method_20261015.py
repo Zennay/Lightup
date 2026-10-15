@@ -27,6 +27,26 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
     def setUp(self):
         self.template = check.TEMPLATE.read_text(encoding="utf-8")
 
+    def test_disposable_nginx_environment_excludes_runner_secrets(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.dict(os.environ, {
+                "GITHUB_TOKEN": "synthetic-never-inherit",
+                "LIGHTUP_DB": "/synthetic/production.db",
+                "AWS_ACCESS_KEY_ID": "synthetic-example",
+                "HTTP_PROXY": "http://synthetic.invalid:3128",
+            }):
+                config = check._fixture_env(Path(folder))
+            self.assertEqual(
+                config,
+                {"HOME": str(folder), "TMPDIR": str(folder),
+                 "LANG": "C", "LC_ALL": "C"}
+            )
+            for secret in (
+                "GITHUB_TOKEN", "LIGHTUP_DB", "AWS_ACCESS_KEY_ID",
+                "HTTP_PROXY",
+            ):
+                self.assertNotIn(secret, config)
+
     def test_ephemeral_render_preserves_only_loopback_network(self):
         with tempfile.TemporaryDirectory() as folder:
             config = check.render_loopback_config(
