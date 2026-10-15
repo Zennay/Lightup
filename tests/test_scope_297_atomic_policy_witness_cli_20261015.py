@@ -183,6 +183,112 @@ class Issue297OfflineWitnessTests(unittest.TestCase):
         self.assertEqual(receipt["unsafe_allow_count"], 0)
         self.assertFalse(any(receipt["permissions"].values()))
 
+    def test_suppressed_socket_exception_still_counts_as_network_attempt(self):
+        class SwallowsSocketFailure:
+            def __init__(self, **_):
+                pass
+
+            def decide(self, _target):
+                try:
+                    socket.socket()
+                except witness.NetworkAttemptBlocked:
+                    pass
+                return witness.ScopeDecision(
+                    True, None, witness.ScopeReason.EXPLICIT_HOST
+                )
+
+        with patch.object(witness, "ScopePolicy", SwallowsSocketFailure):
+            receipt = witness.evaluate()
+        self.assertEqual(receipt["network_blocked_review_count"], 8)
+        self.assertEqual(receipt["unsafe_allow_count"], 0)
+        self.assertEqual(receipt["other_allow_review_count"], 0)
+        self.assertFalse(any(receipt["permissions"].values()))
+
+    def test_suppressed_dns_exception_still_counts_as_network_attempt(self):
+        class SwallowsResolverFailure:
+            def __init__(self, **_):
+                pass
+
+            def decide(self, _target):
+                try:
+                    socket.getaddrinfo("example.test", 443)
+                except witness.NetworkAttemptBlocked:
+                    pass
+                return witness.ScopeDecision(
+                    False, None, witness.ScopeReason.OUT_OF_SCOPE
+                )
+
+        with patch.object(witness, "ScopePolicy", SwallowsResolverFailure):
+            receipt = witness.evaluate()
+        self.assertEqual(receipt["network_blocked_review_count"], 8)
+        self.assertEqual(receipt["denied_review_count"], 0)
+        self.assertFalse(any(receipt["permissions"].values()))
+
+    def test_independent_attempt_counters_do_not_mark_later_cases(self):
+        class OneBadCase:
+            calls = 0
+
+            def __init__(self, **_):
+                pass
+
+            def decide(self, _target):
+                type(self).calls += 1
+                if type(self).calls == 1:
+                    try:
+                        socket.socket()
+                    except witness.NetworkAttemptBlocked:
+                        pass
+                return witness.ScopeDecision(
+                    False, None, witness.ScopeReason.OUT_OF_SCOPE
+                )
+
+        with patch.object(witness, "ScopePolicy", OneBadCase):
+            receipt = witness.evaluate()
+        self.assertEqual(receipt["network_blocked_review_count"], 1)
+        self.assertEqual(receipt["denied_review_count"], 7)
+        self.assertEqual(receipt["case_count"], 8)
+        self.assertEqual(receipt["status"], "HOLD")
+
+    def test_bypass_resolver_helpers_are_independently_tripped(self):
+        attempts = (
+            ("gethostbyname", ("example.test",)),
+            ("gethostbyname_ex", ("example.test",)),
+            ("gethostbyaddr", ("198.51.100.42",)),
+            ("getnameinfo", (("198.51.100.42", 443), 0)),
+            ("getfqdn", ("example.test",)),
+        )
+        for api, args in attempts:
+            with self.subTest(api=api):
+                with witness.disconnected() as guard:
+                    with self.assertRaises(witness.NetworkAttemptBlocked):
+                        getattr(socket, api)(*args)
+                    self.assertEqual(guard.attempts, 1)
+        self.assertEqual(witness.evaluate()["network_blocked_review_count"], 0)
+
+    def test_socket_helper_functions_and_pair_are_tripped(self):
+        attempts = (
+            ("create_connection", (("198.51.100.42", 443),)),
+            ("create_server", (("127.0.0.1", 0),)),
+            ("socketpair", ()),
+        )
+        for api, args in attempts:
+            with self.subTest(api=api):
+                with witness.disconnected() as guard:
+                    with self.assertRaises(witness.NetworkAttemptBlocked):
+                        getattr(socket, api)(*args)
+                    self.assertEqual(guard.attempts, 1)
+
+    def test_tripwire_restores_original_socket_apis(self):
+        names = ("socket", "create_connection", "getaddrinfo", "gethostbyname")
+        original = {name: getattr(socket, name) for name in names}
+        with witness.disconnected() as guard:
+            for name in names:
+                with self.assertRaises(witness.NetworkAttemptBlocked):
+                    getattr(socket, name)()
+            self.assertEqual(guard.attempts, len(names))
+        for name in names:
+            self.assertIs(getattr(socket, name), original[name])
+
     def test_cli_does_not_write_any_files(self):
         # The implementation is pure reporting with no cwd, os.open or tempfile.
         with (
