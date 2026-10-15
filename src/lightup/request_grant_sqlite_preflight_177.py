@@ -76,11 +76,18 @@ def _has_provenance_fk(connection: sqlite3.Connection) -> bool:
     ).fetchall()
     # (id, seq, table, from, to, on_update, on_delete, match)
     bound = [row for row in fk_rows if row[3] == "approved_request_id"]
+    if len(bound) != 1:
+        return False
+    target = bound[0]
+    # A "seq=0" row may be the *first* member of a composite FK.
+    # Require an independent, single-column FK instead of accepting a
+    # lookalike fragment of a different database constraint.
+    members_of_fk = [row for row in fk_rows if row[0] == target[0]]
     return (
-        len(bound) == 1
-        and bound[0][1] == 0
-        and bound[0][2] == "assessment_requests"
-        and bound[0][4] == "request_id"
+        len(members_of_fk) == 1
+        and target[1] == 0
+        and target[2] == "assessment_requests"
+        and target[4] == "request_id"
     )
 
 
