@@ -88,6 +88,26 @@ class CaseRosterTests(unittest.TestCase):
         _, result = run(payload(log=LOG + "Ran 3 tests in 1.0s\nOK\n"))
         self.assertNotIn("summary", result)
 
+    def test_log_expected_red_cannot_exceed_footer(self):
+        inconsistent = LOG.replace("OK (expected failures=1)", "OK")
+        _, result = run(payload(log=inconsistent))
+        self.assertNotIn("summary", result)
+
+    def test_log_unexpected_success_cannot_exceed_footer(self):
+        inconsistent = LOG.replace("... expected failure", "... unexpected success")
+        _, result = run(payload(log=inconsistent))
+        self.assertNotIn("summary", result)
+
+    def test_log_failures_cannot_exceed_footer(self):
+        inconsistent = LOG.replace("... expected failure", "... FAIL")
+        _, result = run(payload(log=inconsistent))
+        self.assertNotIn("summary", result)
+
+    def test_log_distinct_method_total_cannot_exceed_footer(self):
+        inconsistent = LOG.replace("Ran 2 tests", "Ran 1 test")
+        _, result = run(payload(log=inconsistent))
+        self.assertNotIn("summary", result)
+
     def test_false_issue_rejected(self):
         _, result = run(payload([row(issue=True)]))
         self.assertNotIn("summary", result)
