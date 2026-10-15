@@ -148,6 +148,28 @@ class Scope1147ReceiptProcessTests(unittest.TestCase):
         self.assertIs(sys.dont_write_bytecode, original_bytecode)
         self.assertEqual(json.loads(output.getvalue())["reason"], "INVALID_INVOCATION")
 
+    def test_inert_fixture_intercepts_attempted_process_and_shell_without_evidence(self):
+        # Deliberately attempt calls ONLY under active mocks. Nothing is
+        # executed: the assertion is raised before OS-level process creation.
+        from test_scope_1147_duplicate_key_installed_matrix_20261015 import (
+            DuplicateArgumentKeysInstalledSource1147,
+        )
+        fixture = DuplicateArgumentKeysInstalledSource1147(
+            "test_unique_names_permit_exact_once_with_durable_evidence"
+        )
+        fixture.setUp()
+        try:
+            with self.assertRaisesRegex(AssertionError, "never use"):
+                subprocess.Popen(["fictional-command-that-does-not-exist"])
+            with self.assertRaisesRegex(AssertionError, "never use"):
+                os.system("fictional-command-that-does-not-exist")
+            fixture.effect_guards[3].assert_called_once()
+            fixture.effect_guards[4].assert_called_once()
+            self.assertEqual(fixture.calls, [])
+            self.assertEqual(fixture.evidence_count(), 0)
+        finally:
+            fixture.doCleanups()
+
     def test_refuses_extra_arguments_without_echoing_them(self):
         sensitive_marker = "secret-fixture--not-a-real-customer.invalid"
         proc, report = self.run_receipt("--target", sensitive_marker)
