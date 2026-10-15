@@ -52,6 +52,12 @@ not be represented as a passing production fix. Source-owner review is needed.
   and polymorphic string-equality refusal during serialization.
   This remains a reviewer aid, not a
   production authorization or any proof of asset consent.
+- **Single-item** inspection also re-reads the exact enum ceiling after
+  comparing the requested risk. Deterministic in-call `RiskLevel.value`
+  instrumentation confirms that silently replacing the frozen scope's field
+  via `object.__setattr__`, its `__dict__`, or deleting the field returns
+  generic non-authorizing HOLD instead of a stale REVIEW_ONLY. This reduces
+  one in-call review race but is **not** a lock or lifetime proof.
 - The exact-tuple batch now snapshots the identity of each `RiskLevel`
   ceiling before evaluating later elements and checks **every** prior ceiling
   again before returning `REVIEW_ONLY`. Partially constructed exact `ScopeDefinition`
