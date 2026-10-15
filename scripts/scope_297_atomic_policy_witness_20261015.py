@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from lightup.models import Authorization, Target
-from lightup.scope import ScopePolicy, ScopeReason
+from lightup.scope import ScopePolicy, ScopeReason, ScopeDecision
 
 
 @dataclass(frozen=True)
