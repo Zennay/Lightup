@@ -324,7 +324,7 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                 Role.CLIENT_ADMIN, client.client_id
             )
             op_token, op_csrf = store.create_session(op_user.user_id)
-            client_token, _ = store.create_session(client_user.user_id)
+            client_token, client_csrf = store.create_session(client_user.user_id)
             app = create_app(store)
             template = self.template.replace(
                 "        proxy_request_buffering on;",
@@ -379,6 +379,15 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                     )
                     if code != 403 or len(store.list_clients(operator)) != baseline:
                         return False
+                    # A real client session with its own valid CSRF does not
+                    # gain operator write access from a spoofed GET.
+                    code, _, _ = send(
+                        port, "POST", "/clients", token=client_token,
+                        form={"name": "Cross Tenant", "csrf": client_csrf},
+                        headers={name: "GET"}
+                    )
+                    if code != 403 or len(store.list_clients(operator)) != baseline:
+                        return False
                 # A *legitimate* operator POST is still a POST even with
                 # forged GET metadata, and needs the actual session CSRF.
                 code, _, _ = send(
@@ -388,6 +397,12 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
                 )
                 return (code == 303 and
                         len(store.list_clients(operator)) == baseline + 1)
+            # The same real app must expose the deliberate upstream method
+            # substitution through a failed CSRF/write-negative control.
+            self.assertFalse(check.run_probe(
+                template, force_rewrite=True, wsgi_app=app,
+                oracle=verify_real_app
+            ))
             self.assertTrue(check.run_probe(
                 template, wsgi_app=app, oracle=verify_real_app
             ))
