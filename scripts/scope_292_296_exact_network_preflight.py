@@ -53,7 +53,7 @@ def review(raw: bytes) -> str:
             object_pairs_hook=_unique_object,
             parse_constant=_reject_constant,
         )
-    except (UnicodeDecodeError, ValueError, TypeError):
+    except (UnicodeDecodeError, ValueError, TypeError, RecursionError):
         return "HOLD"
     if type(payload) is not dict or set(payload) != {"explicit_networks"}:
         return "HOLD"
@@ -91,7 +91,7 @@ def main() -> int:
     try:
         raw = sys.stdin.buffer.read(MAX_JSON_BYTES + 1)
         result = review(raw)
-    except (OSError, ValueError, TypeError):
+    except (OSError, ValueError, TypeError, RecursionError):
         result = "HOLD"
     sys.stdout.write(receipt(result) + "\n")
     return 3 if result == "REVIEW_ONLY" else 2
