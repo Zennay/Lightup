@@ -32,6 +32,26 @@ from .request_grant_offline_review_177 import (
 _HOLD = RequestGrantReview(ReviewStatus.HOLD, "invalid_or_unverified_input")
 
 
+# Offline preview must terminate even when a caller supplies a huge or
+# deliberately pathological local SQLite file. This limit is NOT a
+# production database performance guarantee; exhausted review => HOLD.
+_SQLITE_PROGRESS_INTERVAL = 1_000
+_SQLITE_MAX_PROGRESS_TICKS = 2_000
+
+
+def _bound_sqlite_work(connection: sqlite3.Connection) -> None:
+    """Abort over-budget SQLite VM work with a safe generic HOLD upstream."""
+    remaining = [_SQLITE_MAX_PROGRESS_TICKS]
+
+    def _interrupt_when_over_budget() -> int:
+        remaining[0] -= 1
+        return 1 if remaining[0] <= 0 else 0
+
+    connection.set_progress_handler(
+        _interrupt_when_over_budget, _SQLITE_PROGRESS_INTERVAL
+    )
+
+
 def _json_array(value: object) -> tuple[str, ...] | None:
     if type(value) is not str or len(value) > 32_768:
         return None
@@ -249,6 +269,7 @@ def review_persisted_request_grant(
         uri = path.as_uri() + "?mode=ro"
         with closing(sqlite3.connect(uri, uri=True, timeout=1, isolation_level=None)) as con:
             con.row_factory = sqlite3.Row
+            _bound_sqlite_work(con)
             con.execute("PRAGMA query_only=ON")
             con.execute("PRAGMA foreign_keys=ON")
             con.execute("PRAGMA trusted_schema=OFF")
@@ -291,6 +312,7 @@ def review_persisted_grant_batch(
         uri = path.as_uri() + "?mode=ro"
         with closing(sqlite3.connect(uri, uri=True, timeout=1, isolation_level=None)) as con:
             con.row_factory = sqlite3.Row
+            _bound_sqlite_work(con)
             con.execute("PRAGMA query_only=ON")
             con.execute("PRAGMA foreign_keys=ON")
             con.execute("PRAGMA trusted_schema=OFF")
