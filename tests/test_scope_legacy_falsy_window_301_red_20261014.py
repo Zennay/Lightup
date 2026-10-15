@@ -35,6 +35,16 @@ def _pure_scope_decision(auth):
     ).decide(Target(value="scope.fixture.example.test", authorization=auth))
 
 
+def _pure_scope_decision_at(auth, instant):
+    # Run installed scope and authorization code, replacing only the clock.
+    # The test's frozen instant is not evidence of real customer consent.
+    with patch("lightup.models.datetime") as model_datetime:
+        model_datetime.now.return_value = instant
+        decision = _pure_scope_decision(auth)
+        model_datetime.now.assert_called_once_with(timezone.utc)
+        return decision
+
+
 class LegacyFalsyBoundaryRedTests(unittest.TestCase):
     def test_builtin_aware_valid_window(self):
         self.assertTrue(_authorization(start=NOW - timedelta(hours=1),
@@ -108,16 +118,16 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
 
     def test_all_inputs_remain_unchanged_after_pure_scope_decision(self):
-        # Unlike is_current(NOW) tests, ScopePolicy.decide() uses the real UTC
-        # clock. The fixed 2026-10-14 fixture expires in real time and must
-        # not make this positive immutability test fail on later CI runs.
-        current_utc = datetime.now(timezone.utc)
+        # No CI calendar dependence: inject NOW through the real
+        # ScopePolicy -> Authorization.is_current() wall-clock boundary.
         a = _authorization(
-            start=current_utc - timedelta(days=1),
-            end=current_utc + timedelta(days=1),
+            start=NOW - timedelta(days=1),
+            end=NOW + timedelta(days=1),
         )
         before = repr(a)
-        self.assertTrue(_pure_scope_decision(a).allowed)
+        decision = _pure_scope_decision_at(a, NOW)
+        self.assertTrue(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
         self.assertEqual(repr(a), before)
 
     def test_scope_decision_stays_pure_across_exact_expiry_transition(self):
@@ -180,13 +190,12 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
             self.assertEqual(repr(grant), initial)
 
     def test_expired_scope_decision_does_not_mutate_authorization(self):
-        current_utc = datetime.now(timezone.utc)
         a = _authorization(
-            start=current_utc - timedelta(days=2),
-            end=current_utc - timedelta(days=1),
+            start=NOW - timedelta(days=2),
+            end=NOW - timedelta(days=1),
         )
         before = repr(a)
-        decision = _pure_scope_decision(a)
+        decision = _pure_scope_decision_at(a, NOW)
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_EXPIRED)
         self.assertEqual(repr(a), before)
