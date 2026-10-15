@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from .domain import AccessContext, DomainStore, EngagementRecord, FindingRecord
 from .models import RetestStatus, Severity
-from .workers import http_baseline
+from .workers import http_baseline, web_exposure
 
 LAB_CLIENT_NAME = "Internal Lab"
 
@@ -27,6 +27,8 @@ _CHECK_ID_BY_TITLE = {
     for check_id, _header, title, _severity, _impact, _remediation
     in http_baseline.BASELINE_CHECKS
 }
+_CHECK_ID_BY_TITLE.update({title: check_id for check_id, (title, *_rest)
+                           in web_exposure.WEB_EXPOSURE_CHECKS.items()})
 
 
 def ensure_lab_engagement(
@@ -106,8 +108,11 @@ def retest_finding(
             f"finding {finding.finding_id!r} is not a known baseline check; "
             "automated retest is not available for it"
         )
-    observation = http_baseline.observe(finding.asset)
-    still_present = check_id in {issue.check_id for issue in observation.issues}
+    if check_id in web_exposure.WEB_EXPOSURE_CHECKS:
+        present = set(web_exposure.observe(finding.asset).issues)
+    else:
+        present = {issue.check_id for issue in http_baseline.observe(finding.asset).issues}
+    still_present = check_id in present
     if not still_present:
         status = RetestStatus.FIXED
     elif finding.retest_status is RetestStatus.FIXED:

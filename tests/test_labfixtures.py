@@ -29,7 +29,7 @@ def _serve(profile: FixtureProfile):
 
 class ProfileDefinitionTest(unittest.TestCase):
     def test_profiles_are_well_formed(self):
-        self.assertEqual(set(PROFILES), {"exposed", "partially-hardened", "hardened"})
+        self.assertEqual(set(PROFILES), {"exposed", "partially-hardened", "hardened", "vulnerable-app"})
         for name, profile in PROFILES.items():
             self.assertEqual(name, profile.profile_id)
             self.assertTrue(profile.description)
@@ -55,10 +55,26 @@ class PlantedGroundTruthTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_each_profile_scores_perfectly_against_its_own_truth(self):
+        # The header-baseline lane alone only sees header-level plantings.
+        for name, profile in PROFILES.items():
+            header_ids = set(profile.expected_check_ids) - profile.app_weaknesses
+            expected = tuple(e for e in expected_findings(profile) if e.identifier in header_ids)
+            with self.subTest(profile=name), _serve(profile) as url:
+                result = run_lab_baseline(url, self.base / f"{name}.db", expected=expected)
+                metrics = result["evaluation"]["metrics"]
+                self.assertEqual(metrics["valid_findings"], len(header_ids))
+                self.assertEqual(metrics["invalid_findings"], 0)
+                self.assertEqual(metrics["missed_findings"], 0)
+                self.assertEqual({f["check_id"] for f in result["findings"]}, header_ids)
+
+    def test_planned_assessment_scores_every_profile_perfectly(self):
+        """Full planner path (headers + web exposure) vs hand-maintained truth."""
         for name, profile in PROFILES.items():
             with self.subTest(profile=name), _serve(profile) as url:
-                result = run_lab_baseline(url, self.base / f"{name}.db",
-                                          expected=expected_findings(profile))
+                scenario = LabScenario(name, name, targets=(url,),
+                                       expected_findings=expected_findings(profile))
+                result = run_planned_assessment(scripted_demo_gateway((url,)), scenario,
+                                                self.base / f"plan-{name}.db")
                 metrics = result["evaluation"]["metrics"]
                 self.assertEqual(metrics["valid_findings"], len(profile.expected_check_ids))
                 self.assertEqual(metrics["invalid_findings"], 0)
@@ -117,7 +133,7 @@ class ScriptedDemoGatewayTest(unittest.TestCase):
             gateway = scripted_demo_gateway((url,))
             result = run_planned_assessment(gateway, scenario, self.base / "s.db")
             self.assertEqual([c["tool_id"] for c in result["plan"]],
-                             ["lab-http-baseline", "lab-service-inventory"])
+                             ["lab-http-baseline", "lab-web-exposure", "lab-service-inventory"])
             metrics = result["evaluation"]["metrics"]
             self.assertEqual(metrics["valid_findings"], 5)
             self.assertEqual(metrics["missed_findings"], 0)

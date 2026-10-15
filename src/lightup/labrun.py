@@ -37,7 +37,7 @@ from .labeval import (
 from .models import Finding, RetestStatus
 from .reporting import render_markdown
 from .state import StateStore
-from .workers import http_baseline, service_inventory, tls_baseline
+from .workers import http_baseline, service_inventory, tls_baseline, web_exposure
 
 # Unified check catalog across workers: check_id -> (title, severity, impact,
 # remediation). Workers report found check ids in their result metadata.
@@ -47,6 +47,7 @@ CHECK_CATALOG = {
     in http_baseline.BASELINE_CHECKS
 }
 CHECK_CATALOG.update(tls_baseline.TLS_CHECKS)
+CHECK_CATALOG.update(web_exposure.WEB_EXPOSURE_CHECKS)
 
 
 def full_lab_registry() -> ToolRegistry:
@@ -55,6 +56,7 @@ def full_lab_registry() -> ToolRegistry:
     http_baseline.register(registry)
     service_inventory.register(registry)
     tls_baseline.register(registry)
+    web_exposure.register(registry)
     return registry
 
 # Ground truth for the stock lab fixture (lab/http_fixture.py): it discloses a
@@ -187,6 +189,8 @@ def scripted_demo_gateway(endpoints: tuple[str, ...]) -> ModelGateway:
         port = parsed.port or (443 if parsed.scheme == "https" else 80)
         if parsed.scheme == "http":
             calls.append({"tool_id": http_baseline.TOOL_ID, "asset": asset,
+                          "arguments": {"url": endpoint}})
+            calls.append({"tool_id": web_exposure.TOOL_ID, "asset": asset,
                           "arguments": {"url": endpoint}})
         calls.append({"tool_id": service_inventory.TOOL_ID, "asset": asset,
                       "arguments": {"host": asset, "ports": str(port)}})

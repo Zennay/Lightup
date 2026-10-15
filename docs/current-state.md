@@ -34,6 +34,13 @@ The repository contains:
 - further lab-only capability workers: **TCP service inventory**
   (`lightup.workers.service_inventory`) and **TLS baseline**
   (`lightup.workers.tls_baseline`: protocol, cipher, chain trust);
+- a **web exposure worker** (`lightup.workers.web_exposure`, capability
+  `web-baseline`): fixed non-destructive GET/OPTIONS probes for cookie flags,
+  CORS misconfiguration, exposed `/.git` and `/.env` (content signature
+  required), directory listing, risky HTTP methods, unencoded reflection
+  (inert canary), open-redirect candidates and verbose error disclosure; lab-only,
+  scored against the `vulnerable-app` fixture profile and covered by the
+  automated retest loop;
 - a **planner role** (`lightup.ai.planner`): the model proposes a typed
   multi-lane plan that is strictly parsed and then executed call-by-call
   behind the policy gate, with denials recorded as policy-violation metrics
