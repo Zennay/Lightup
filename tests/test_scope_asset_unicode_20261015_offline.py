@@ -498,25 +498,34 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
 
     def test_static_offline_import_and_effect_boundary_with_negative_controls(self):
         """Fixture gate: no socket/http/process launch/target data facilities."""
-        allowed = {
-            "__future__", "json", "ipaddress", "os", "re", "select",
-            "stat", "sys", "time", "typing",
+        allowed_direct_imports = {"json", "os", "re", "select", "stat", "sys", "time"}
+        allowed_from_imports = {
+            "__future__": {"annotations"},
+            "ipaddress": {"IPv4Address"},
+            "typing": {"Any"},
         }
         allowed_os_attrs = {
             "stat_result", "SEEK_CUR", "fstat", "dup", "lseek", "read", "close",
             "get_blocking", "set_blocking", "isatty", "write",
         }
-        deny_dynamic_calls = {"__import__", "eval", "exec", "compile", "open"}
+        deny_dynamic_calls = {
+            "__import__", "eval", "exec", "compile", "open",
+            "getattr", "setattr", "delattr", "globals", "locals", "vars",
+        }
 
         def offenses(source):
             findings = []
             for node in ast.walk(ast.parse(source)):
                 if isinstance(node, ast.Import):
                     for alias in node.names:
-                        if alias.name.partition(".")[0] not in allowed:
+                        if alias.name not in allowed_direct_imports or alias.asname is not None:
                             findings.append(("import", alias.name))
                 if isinstance(node, ast.ImportFrom):
-                    if (node.module or "").partition(".")[0] not in allowed:
+                    allowed_names = allowed_from_imports.get(node.module or "", set())
+                    if node.level or not allowed_names or any(
+                        alias.name not in allowed_names or alias.asname is not None
+                        for alias in node.names
+                    ):
                         findings.append(("import-from", node.module))
                 if (
                     isinstance(node, ast.Attribute)
@@ -543,6 +552,13 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
             "import os\nos.ftruncate(4, 0)",
             "import os\nos.unlink('/tmp/fake')",
             "import os\nos.environ.get('TOKEN')",
+            "import os as safe\nsafe.system('echo fake')",
+            "from os import system\nsystem('echo fake')",
+            "from sys import modules\nmodules['os']",
+            "import os.path\nos.path.exists('/tmp/fake')",
+            "getattr(os, 'system')('echo fake')",
+            "globals()['__builtins__']",
+            "setattr(os, 'system', lambda x: None)",
             "__import__('socket')",
             "open('secrets.txt')",
         )
