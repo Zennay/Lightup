@@ -43,6 +43,33 @@ def _canonical(value: object) -> bool:
     return value == str(network)
 
 
+def _strip_json_structural_whitespace(raw: bytes) -> bytes:
+    """Strip only legal whitespace *outside* JSON strings, preserving escapes.
+
+    A parsed CIDR/key that only looks canonical *after* JSON unescaping must
+    not be silently admitted as a canonical declaration. The original
+    on-wire JSON bytes remain private and are never logged or returned.
+    """
+    output = bytearray()
+    in_string = False
+    escaped = False
+    for byte in raw:
+        if in_string:
+            output.append(byte)
+            if escaped:
+                escaped = False
+            elif byte == 0x5C:  # backslash
+                escaped = True
+            elif byte == 0x22:  # double quote
+                in_string = False
+        elif byte == 0x22:
+            output.append(byte)
+            in_string = True
+        elif byte not in (0x20, 0x09, 0x0A, 0x0D):  # JSON whitespace
+            output.append(byte)
+    return bytes(output)
+
+
 def review(raw: bytes) -> str:
     """Return HOLD or REVIEW_ONLY; never a permission or a live decision."""
     if type(raw) is not bytes or len(raw) > MAX_JSON_BYTES:
@@ -65,6 +92,15 @@ def review(raw: bytes) -> str:
     if len(snapshot) > MAX_NETWORKS:
         return "HOLD"
     if not all(_canonical(item) for item in snapshot):
+        return "HOLD"
+    # JSON escape aliases can convert noncanonical raw tokens into apparently
+    # canonical CIDRs or even disguise the sole trusted envelope key.
+    # Compare to the exact ASCII canonical JSON envelope after removing only
+    # legal structural whitespace. This is only an offline syntax review.
+    canonical_wire = json.dumps(
+        {"explicit_networks": snapshot}, separators=(",", ":"), ensure_ascii=True
+    ).encode("ascii")
+    if _strip_json_structural_whitespace(raw) != canonical_wire:
         return "HOLD"
     # Canonical syntax remains review metadata, NOT authorization.
     return "REVIEW_ONLY"
