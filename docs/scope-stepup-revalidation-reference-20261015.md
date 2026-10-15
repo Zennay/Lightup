@@ -28,7 +28,7 @@ Run from repository root:
 python -m unittest discover -s tests -p 'test_scope_stepup_revalidation_reference_20261015.py' -v
 ```
 
-The eighteen tests cover matching synthetic snapshot (review-only), revoked/missing grant, both temporal boundaries, seven mismatched identities, tool swaps, bad probe outcomes, same-thread revoke/swap/reissue, two synchronized cross-thread races, four-round concurrent four-reader revocation fanout, tool-registry ABA and revoke/restore ABA, caller-object mutation, wrong datetime values, string subclass/boolean/polymorphic shapes and redacted output.
+The twenty tests cover matching synthetic snapshot (review-only), revoked/missing grant, both temporal boundaries, seven mismatched identities, tool swaps, bad probe outcomes, same-thread revoke/swap/reissue, two synchronized cross-thread races, four-round concurrent four-reader revocation fanout, tool-registry ABA, revoke/restore ABA, and two frozen-request mutation/laundering canaries, caller-object mutation, wrong datetime values, string subclass/boolean/polymorphic shapes and redacted output.
 
 The normal full project suite may run on GitHub-hosted CI. **Never conflate hosted tests with registered permanent VPS proof** or green unit tests with production safety.
 
@@ -45,3 +45,7 @@ The normal full project suite may run on GitHub-hosted CI. **Never conflate host
 ## Observed first hosted preflight (superseded before W2)
 
 The first exact SHA `5c40664050fb6458d1553b167d303ce4b4aa8176` hosted preflight [#38760164774](https://github.com/Zennay/Lightup/actions/runs/38760164774) executed all 15 original new test methods **OK** on both Python 3.11 and 3.14. The full suite ran 1,252 tests and failed one **unrelated pre-existing** `test_scope_legacy_falsy_window_301_red_20261014.test_all_inputs_remain_unchanged_after_pure_scope_decision` because its fixed expiry time had elapsed; the owning [#301/#1452](https://github.com/Zennay/Lightup/pull/1452) fixture fix has not been imported. Producer jobs were skipped; overall check was FAILED, not green. W2 adds three own race methods (18 total) on a new immutable head: do not apply the older CI receipt to W2. Do not edit the fixture owned by another PR.
+
+## W3 hardened caller identity (20 own tests)
+
+The mutable caller-owned ReviewRequest is now copied to a fresh exact ReviewRequest **before** invoking any isolation probe. After the callback the reference rejects even a matching-looking mutated request, including a formerly out-of-scope request rewritten to match the trusted snapshot. This protects the in-memory **review-only** verdict against in-process data mutation; it does not authorize I/O or close real executor check/use races. New tests specifically corrupt the original frozen dataclass using `object.__setattr__` on both originally valid and originally invalid claims. All current hosted receipts from earlier immutable heads are superseded until this exact latest SHA is verified.
