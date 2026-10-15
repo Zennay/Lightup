@@ -42,3 +42,20 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_collection_sn
 ```
 
 Passing W2 cannot cancel or convert the six original *installed* `expectedFailure` canaries; it is an opt-in helper for security review and future source-owner handoff, not an authorization bypass fix. Source owner must independently integrate/validate an actual fail-closed production configuration boundary; independent current-head hosted and permanently registered VPS proof, customer consent, pre-I/O revocation, security/privacy review and explicit human approval remain separate blockers.
+
+## W3: usable private offline JSON manifest review CLI
+
+The **new-only** `scripts/scope_294_collection_review_cli.py` is a bounded operator command, not an executor, target scanner, policy source modification or grant issuer. It parses **at most 16 KiB** of stdin as strict UTF-8 JSON with duplicate-key rejection even inside nested objects; JSON nonfinite constants, unknown fields, malformed shapes, invalid CIDRs and noncanonical containers all yield a redacted generic HOLD. Only the exact two keys `hosts` and `networks` with JSON arrays are recognized.
+
+```bash
+printf '%s' '{"hosts":["fixture.example.test"],"networks":["8.8.8.0/24"]}' | python scripts/scope_294_collection_review_cli.py
+# JSON status REVIEW_ONLY, all six authority/release fields false, exit 3 (NONZERO)
+```
+
+The CLI **never returns exit 0** (HOLD=2, REVIEW_ONLY=3), reads no customer files, connects to no network or target, and outputs no provided host/network strings or private data. It must not be used as an auth/grant/release gate because `REVIEW_ONLY` is non-authorizing. `tests/test_scope_294_offline_manifest_cli_20261015.py` exercises actual child-process execution, over-budget input, duplicates, nonfinite/invalid Unicode, malformed shapes, 128/129-boundary sizes, deterministic no-data receipts and six hard-false fields.
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_294_offline_manifest_cli_20261015.py' -v
+```
+
+**Release remains blocked by installed source-owner #294 and original six expected-RED tests, live customer consent #177, revocation #347, independent permanently registered VPS CI, security/privacy and explicit human approval.**
