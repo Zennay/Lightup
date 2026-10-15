@@ -193,6 +193,56 @@ class AtomicPublicConfigurationSourceContract(unittest.TestCase):
                     "RED must be a genuine unsafe allow, not a hidden crash",
                 )
 
+    def test_golden_canonical_ipv4_ipv6_network_permits_remain_with_valid_grant(self):
+        # A future whole-config fail-closed fix must not break valid explicit
+        # host/network policy. All targets are fictional documentation ranges.
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset({HOST}),
+            explicit_networks=("198.51.100.0/24", "2001:db8::/32"),
+        )
+        for value in ("198.51.100.42", "https://[2001:db8::42]/test"):
+            with self.subTest(target_kind="ipv6" if "[" in value else "ipv4"):
+                decision = policy.decide(Target(value, FAKE_AUTH))
+                self.assertEqual(
+                    (decision.allowed, decision.reason),
+                    (True, ScopeReason.EXPLICIT_NETWORK),
+                )
+
+    def test_golden_canonical_public_ip_outside_networks_stays_denied(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset({HOST}),
+            explicit_networks=("198.51.100.0/24", "2001:db8::/32"),
+        )
+        for value in ("198.51.101.42", "https://[2001:db9::42]/outside"):
+            with self.subTest(target_kind="ipv6" if "[" in value else "ipv4"):
+                decision = policy.decide(Target(value, FAKE_AUTH))
+                self.assertEqual(
+                    (decision.allowed, decision.reason),
+                    (False, ScopeReason.OUT_OF_SCOPE),
+                )
+
+    def test_golden_canonical_expired_grant_denies_host_and_ip(self):
+        expired = Authorization(
+            owner="fictional-expired-test-owner",
+            reference="SYNTHETIC-EXPIRED-NOT-CONSENT",
+            valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
+            valid_until=datetime(2021, 1, 1, tzinfo=timezone.utc),
+        )
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset({HOST}),
+            explicit_networks=("198.51.100.0/24", "2001:db8::/32"),
+        )
+        for value in (HOST, "198.51.100.42", "https://[2001:db8::42]/"):
+            with self.subTest(target_kind=value):
+                decision = policy.decide(Target(value, expired))
+                self.assertEqual(
+                    (decision.allowed, decision.reason),
+                    (False, ScopeReason.AUTHORIZATION_EXPIRED),
+                )
+
     @staticmethod
     def _matrix_network_to_host_decisions():
         # Ten distinct malformed CIDRs x four canonical forms of one fictional
