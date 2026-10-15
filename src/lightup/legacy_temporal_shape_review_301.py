@@ -50,6 +50,20 @@ def _canonical_datetime(value: object) -> bool:
     return type(value) is datetime and type(value.tzinfo) is timezone
 
 
+
+def _stored_fields(authorization: Authorization) -> dict | None:
+    """Read actual instance storage, bypassing a patched __getattribute__.
+
+    Never treat a synthetic subclass, intercepted __dict__ getter, or a
+    non-builtin mapping as trustworthy stored validity metadata.
+    """
+    try:
+        fields = object.__getattribute__(authorization, "__dict__")
+    except (AttributeError, TypeError):
+        return None
+    return fields if type(fields) is dict else None
+
+
 def review_legacy_authorization_window(
     authorization: Authorization,
     *,
@@ -68,11 +82,8 @@ def review_legacy_authorization_window(
     # Dataclass fields with class-level None defaults may appear present on
     # object.__new__ instances even when the instance never set those fields.
     # Require explicitly materialized validity fields, not inherited defaults.
-    try:
-        fields = vars(authorization)
-    except TypeError:
-        return hold
-    if type(fields) is not dict or (
+    fields = _stored_fields(authorization)
+    if fields is None or (
         "valid_from" not in fields or "valid_until" not in fields
     ):
         return hold
@@ -117,9 +128,9 @@ def review_legacy_authorization_window(
         # behind the earlier, valid-looking object identity.
         actual_start = authorization.valid_from
         actual_end = authorization.valid_until
-        final_fields = vars(authorization)
+        final_fields = _stored_fields(authorization)
         if (
-            type(final_fields) is not dict
+            final_fields is None
             or "valid_from" not in final_fields
             or "valid_until" not in final_fields
             or final_fields["valid_from"] is not start
@@ -162,8 +173,8 @@ def review_legacy_authorization_batch(
         if type(authorization) is not Authorization:
             return hold
         try:
-            fields = vars(authorization)
-            if type(fields) is not dict or (
+            fields = _stored_fields(authorization)
+            if fields is None or (
                 "valid_from" not in fields or "valid_until" not in fields
             ):
                 return hold
@@ -188,9 +199,9 @@ def review_legacy_authorization_batch(
     # Never reveal which member failed, the number of successful claims, or IDs.
     for authorization, start, end in snapshots:
         try:
-            fields = vars(authorization)
+            fields = _stored_fields(authorization)
             if (
-                type(fields) is not dict
+                fields is None
                 or "valid_from" not in fields
                 or "valid_until" not in fields
                 or fields["valid_from"] is not start
