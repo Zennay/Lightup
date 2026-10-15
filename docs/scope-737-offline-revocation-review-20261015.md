@@ -43,7 +43,7 @@ To run with *fabricated lab data only*:
 printf '%s\\n' '{"schema_version":1,"records":[{"revoked_at":null,"revoked_by":"fictional-operator","revocation_reason":"fictional-withdrawal"}]}' | python -m scripts.scope_737_revocation_review_cli
 ```
 
-The `tests/test_scope_737_revocation_review_cli_20261015.py` suite adds 28 independent method-level cases for invalid schema, JSON duplicate keys, encoded key aliases, UTC time parsing, malformed time, privacy, 64 KiB and 64-entry limits, atomic rejection, literal CLI stdin/stdout, and permanently non-authorizing outputs. Keep synthetic only. **Success means review behavior works, NOT real authorization or source-owner repair.**
+The `tests/test_scope_737_revocation_review_cli_20261015.py` suite adds 28 independent method-level cases for invalid schema, JSON duplicate keys, encoded key aliases, UTC time parsing, malformed time, privacy, 64 KiB and 64-entry limits, atomic rejection, literal CLI stdin/stdout, and permanently non-authorizing outputs. A separate **10-method real OS-process end-to-end acceptance** suite `tests/test_scope_737_revocation_cli_process_e2e_20261015.py` launches the documented `python -m scripts.scope_737_revocation_review_cli` in a child Python process, passing fictional JSON through stdin and inspecting actual exit status, stderr, stdout, privacy non-echo, all HOLD action flags, 64/65 cohort boundary, duplicate JSON keys and malformed/error handling. This is distinct from direct unit invocation; only local synthetic input is used. **Success means review behavior works, NOT real authorization or source-owner repair.**
 
 ## Real proof plan
 
