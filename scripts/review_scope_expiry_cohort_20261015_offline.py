@@ -234,17 +234,28 @@ def _emit_receipt(receipt: dict[str, object]) -> bool:
                 (stat.S_ISCHR(mode) and os.isatty(fd))):
             return False
         original = os.fstat(fd)
-        was_blocking = os.get_blocking(fd)
+        # Pin the checked object. A late dup2(1) must never redirect this
+        # receipt to an attacker-supplied socket/file after our fstat check.
+        pinned_fd = os.dup(fd)
         try:
-            os.set_blocking(fd, False)
-            current = os.fstat(fd)
-            if (current.st_dev, current.st_ino, current.st_mode) != (
+            pinned = os.fstat(pinned_fd)
+            if (pinned.st_dev, pinned.st_ino, pinned.st_mode) != (
                 original.st_dev, original.st_ino, original.st_mode
             ):
                 return False
-            return os.write(fd, payload) == len(payload)
+            was_blocking = os.get_blocking(pinned_fd)
+            try:
+                os.set_blocking(pinned_fd, False)
+                current = os.fstat(fd)
+                if (current.st_dev, current.st_ino, current.st_mode) != (
+                    original.st_dev, original.st_ino, original.st_mode
+                ):
+                    return False
+                return os.write(pinned_fd, payload) == len(payload)
+            finally:
+                os.set_blocking(pinned_fd, was_blocking)
         finally:
-            os.set_blocking(fd, was_blocking)
+            os.close(pinned_fd)
     except (OSError, ValueError, TypeError):
         return False
 
