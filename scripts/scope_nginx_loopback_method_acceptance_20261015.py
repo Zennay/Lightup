@@ -84,12 +84,12 @@ def render_loopback_config(template: str, frontend: int, backend: int, root: Pat
             f"    proxy_method GET;\n    proxy_pass http://127.0.0.1:{backend};",
         )
     return (
-        f'pid "{root / "nginx.pid"}";\\n'
-        f'error_log "{root / "nginx-error.log"}" warn;\\n'
-        "worker_processes 1;\\nevents { worker_connections 32; }\\n"
-        f'http {{\\n    client_body_temp_path "{root / "body"}";\\n'
-        f'    proxy_temp_path "{root / "proxy"}";\\n'
-        + server + "\\n}\\n"
+        f'pid "{root / "nginx.pid"}";\n'
+        f'error_log "{root / "nginx-error.log"}" warn;\n'
+        "worker_processes 1;\nevents { worker_connections 32; }\n"
+        f'http {{\n    client_body_temp_path "{root / "body"}";\n'
+        f'    proxy_temp_path "{root / "proxy"}";\n'
+        + server + "\n}\n"
     )
 
 
