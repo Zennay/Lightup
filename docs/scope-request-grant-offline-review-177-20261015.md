@@ -28,7 +28,9 @@ token, scan, or action on any customer system.
 | Time | decision in future, missing/invalid UTC decision, malformed or naive grant times, hostile custom timezone object, grant precedes decision, grant not current at explicit review instant |
 | Metadata | invalid excluded target/capability item collection; malformed recurring retest flag |
 
-All identity fields also use a bounded (max 128 characters) ASCII identifier grammar with no whitespace or control characters. Empty allowed capability tuples are refused because the real ScopeDefinition interprets an empty allowlist as **unlimited tools**. The reviewer also requires a canonical request-created timestamp to precede the decision.\n\nThe conservative **exact-string** comparison deliberately refuses aliases
+All identity fields also use a bounded (max 128 characters) ASCII identifier grammar with no whitespace or control characters. Empty allowed capability tuples are refused because the real ScopeDefinition interprets an empty allowlist as **unlimited tools**. The reviewer also requires a canonical request-created timestamp to precede the decision.
+
+The conservative **exact-string** comparison deliberately refuses aliases
 instead of equating non-canonical host/IP representations. DNS names must be
 lowercase ASCII labels with no trailing dot. IPv4 and IPv6 literals are
 syntactically reviewed via standard-library `ipaddress`; no lookup occurs.
