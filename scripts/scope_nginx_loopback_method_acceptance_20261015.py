@@ -27,6 +27,35 @@ OVERRIDE_NAMES = (
     "X-Original-Method",
     "X-HTTP-Method",
 )
+_BASE_DIRECTIVES = (
+    "server {",
+    "listen 443 ssl;",
+    "server_name lightup.example.com;",
+    "ssl_certificate /etc/letsencrypt/live/lightup.example.com/fullchain.pem;",
+    "ssl_certificate_key /etc/letsencrypt/live/lightup.example.com/privkey.pem;",
+    "ssl_protocols TLSv1.2 TLSv1.3;",
+    "client_max_body_size 64k;",
+    "client_header_timeout 10s;",
+    "client_body_timeout 10s;",
+    "send_timeout 30s;",
+    "access_log off;",
+    "location / {",
+    "proxy_pass http://127.0.0.1:8766;",
+    "proxy_set_header Host $http_host;",
+    "proxy_set_header X-Forwarded-Proto https;",
+    "proxy_set_header X-Forwarded-For $remote_addr;",
+    "proxy_set_header X-Forwarded-Host \"\";",
+    "proxy_set_header Forwarded \"\";",
+    "proxy_set_header X-Forwarded-Ssl \"\";",
+    "proxy_set_header X-Forwarded-Protocol \"\";",
+    "proxy_request_buffering on;",
+    "proxy_connect_timeout 5s;",
+    "proxy_send_timeout 30s;",
+    "proxy_read_timeout 35s;",
+    "}",
+    "}",
+)
+
 FALSE_FLAGS = {
     "authorizes_targets": False,
     "authorizes_grants": False,
@@ -100,6 +129,22 @@ def render_loopback_config(template: str, frontend: int, backend: int, root: Pat
             or directives.count("location / {") != 1
             or directives.count("}") != 2):
         raise ValueError("invalid server/location layout")
+    # The original directive order and counts are immutable. Subset strips
+    # are admitted only inside the method/forwarding header block to support
+    # real negative-control tests (one missing rule) without granting authority.
+    strip_lines = {f'proxy_set_header {name} "";' for name in OVERRIDE_NAMES}
+    base_only = tuple(line for line in directives if line not in strip_lines)
+    if base_only != _BASE_DIRECTIVES:
+        raise ValueError("reordered, omitted or duplicated Nginx directive")
+    header_start = directives.index('proxy_set_header Forwarded "";')
+    header_end = directives.index("proxy_request_buffering on;")
+    for directive in strip_lines:
+        positions = [n for n, line in enumerate(directives) if line == directive]
+        if len(positions) > 1 or any(
+            not header_start < n < header_end for n in positions
+        ):
+            raise ValueError("misplaced or duplicated override stripping")
+
     if any(char in str(root) for char in ('\n', '\r', '"')):
         raise ValueError("unsafe temp path")
 
