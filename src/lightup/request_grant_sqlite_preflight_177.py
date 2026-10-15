@@ -120,6 +120,46 @@ def _has_provenance_fk(connection: sqlite3.Connection) -> bool:
     ).fetchone() is None
 
 
+
+def _no_ambiguous_concurrent_targets(
+    connection: sqlite3.Connection,
+    grant: AuthorizationGrant,
+) -> bool:
+    """Reject another same-client grant for the same live-window target.
+
+    The persisted schema has no trusted replacement/revocation/priority chain.
+    A *single* review must not silently ignore conflicting grants outside a
+    caller-supplied batch. This is conservative structural evidence only.
+    """
+    selected = set(grant.scope.assets) - set(grant.scope.excluded_assets)
+    rows = connection.execute(
+        "SELECT assets_json, excluded_assets_json, valid_from, valid_until "
+        "FROM authorization_grants WHERE client_id=? AND grant_id<>?",
+        (grant.client_id, grant.grant_id),
+    )
+    for other in rows:
+        other_assets = _json_array(other["assets_json"])
+        other_excluded = _json_array(other["excluded_assets_json"])
+        other_from = _decision_time(other["valid_from"])
+        other_until = _decision_time(other["valid_until"])
+        if (
+            other_assets is None
+            or other_excluded is None
+            or other_from is None
+            or other_until is None
+            or not (other_from < other_until)
+        ):
+            return False
+        other_effective = set(other_assets) - set(other_excluded)
+        if (
+            selected.intersection(other_effective)
+            and grant.valid_from < other_until
+            and other_from < grant.valid_until
+        ):
+            return False
+    return True
+
+
 def _load_review(
     connection: sqlite3.Connection,
     grant_id: str,
@@ -248,9 +288,14 @@ def _load_review(
         created_at=e["created_at"],
     )
     # Extra structural checks only; remains REVIEW_ONLY even with real FK.
-    return review_request_grant_engagement(
+    decision = review_request_grant_engagement(
         request, grant, engagement, reviewed_at=reviewed_at
     )
+    if decision.status is not ReviewStatus.REVIEW_ONLY:
+        return _HOLD
+    if not _no_ambiguous_concurrent_targets(connection, grant):
+        return _HOLD
+    return decision
 
 
 def review_persisted_request_grant(
