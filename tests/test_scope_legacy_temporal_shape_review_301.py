@@ -884,6 +884,28 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
                     self.assertIs(forged[name], False)
                 self.assertIs(bool(forged), False)
 
+    def test_raw_tuple_forgery_cannot_execute_equality_or_hash_hooks(self):
+        class _Danger:
+            def __eq__(self, other):
+                raise AssertionError("forged tuple equality callback")
+            def __ne__(self, other):
+                raise AssertionError("forged tuple inequality callback")
+            def __hash__(self):
+                raise AssertionError("forged tuple hash callback")
+
+        forged = tuple.__new__(LegacyTemporalReceipt, (_Danger(), _Danger()))
+        canonical_hold = LegacyTemporalReceipt("HOLD", "invalid_shape")
+        valid = review().as_receipt()
+        self.assertEqual(forged, canonical_hold)
+        self.assertFalse(forged != canonical_hold)
+        self.assertNotEqual(forged, valid)
+        self.assertTrue(forged != valid)
+        self.assertFalse(forged == ("HOLD", "invalid_shape"))
+        for receipt in (forged, canonical_hold, valid):
+            with self.assertRaises(TypeError):
+                hash(receipt)
+            self.assertIs(bool(receipt), False)
+
     def test_immutable_receipt_mapping_membership_and_no_key_callbacks(self):
         receipt = review().as_receipt()
         self.assertIn("status", receipt)
