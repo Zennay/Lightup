@@ -1,0 +1,67 @@
+"""Actual source-backed fail-closed runner acceptance; no real grant/target."""
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import unittest
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import scope_777_strict_direct_policy_gate as gate
+from lightup.execution_policy import ExecutionPolicy, InteractionKind, PolicyDecision
+
+SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "scope_777_strict_direct_policy_gate.py"
+FALSE = ("authorization_verified", "permit_issued", "dispatch_enabled",
+         "merge_approved", "deploy_approved", "release_approved")
+
+
+class StrictProductionPolicyGateTests(unittest.TestCase):
+    def _verify_result(self, verdict):
+        self.assertEqual(verdict["invalid_examined"], 14 if verdict["invalid_allowed"] is not None else 0)
+        for flag in FALSE:
+            self.assertIs(verdict[flag], False)
+        self.assertIn(verdict["status"], ("HOLD", "TEST_ONLY_PASS"))
+        if verdict["status"] == "TEST_ONLY_PASS":
+            self.assertEqual(verdict["invalid_allowed"], 0)
+
+    def test_real_process_is_fail_closed_for_unpatched_or_repaired_policy(self):
+        env = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parents[1] / "src"))
+        proc = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True,
+                              text=True, env=env, timeout=4)
+        self.assertIn(proc.returncode, (0, 2))
+        self.assertEqual(proc.stderr, "")
+        self.assertEqual(len(proc.stdout.splitlines()), 1)
+        self.assertNotIn("fictional-operator", proc.stdout)
+        self.assertNotIn("ROE-FICTIONAL", proc.stdout)
+        verdict = json.loads(proc.stdout)
+        self._verify_result(verdict)
+        self.assertEqual(proc.returncode, 0 if verdict["status"] == "TEST_ONLY_PASS" else 2)
+
+    def test_test_only_narrowing_reaches_strict_zero_bypass(self):
+        original = ExecutionPolicy.decide
+
+        def narrowed(self, request):
+            if request.interaction is InteractionKind.TARGET_ACTIVE and request.authorization:
+                grant = request.authorization
+                for value in (grant.approved_by, grant.reference):
+                    if type(value) is not str or not value.strip() or value != value.strip():
+                        return PolicyDecision(False, "noncanonical provenance")
+            return original(self, request)
+
+        with patch.object(ExecutionPolicy, "decide", narrowed):
+            outcome = gate._scan_pure_local()
+        self._verify_result(outcome)
+        self.assertEqual(outcome["status"], "TEST_ONLY_PASS")
+        self.assertEqual(outcome["invalid_allowed"], 0)
+
+    def test_invalid_uses_no_approval_flags_even_when_bypassed(self):
+        result = gate._scan_pure_local()
+        self._verify_result(result)
+        self.assertTrue(result["invalid_allowed"] is None or result["invalid_allowed"] >= 0)
+
+
+if __name__ == "__main__":
+    unittest.main()
