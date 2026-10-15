@@ -273,6 +273,9 @@ class OfflineRevalidationFence:
         # The expensive, untrusted verifier deliberately executes OUTSIDE the
         # lock; changes while it runs must invalidate the captured epoch.
         with self._lock:
+            # A revoked reviewer cannot call any untrusted verifier again.
+            if self._closed:
+                return _hold()
             epoch = self._epoch
         try:
             if isolation_probe() is not True:
