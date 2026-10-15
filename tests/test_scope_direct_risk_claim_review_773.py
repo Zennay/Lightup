@@ -73,6 +73,35 @@ class DirectRiskReviewTests(unittest.TestCase):
                     self.assertIs(receipt.status, expected)
                     self.assert_non_authorizing(receipt)
 
+    def test_single_review_detects_risk_mutation_during_enum_comparison(self):
+        """A deterministic side effect during numeric comparison must HOLD."""
+        from unittest.mock import patch
+
+        original_getattribute = RiskLevel.__getattribute__
+        for variant in ("different_enum", "raw_integer", "removed_field"):
+            with self.subTest(variant=variant):
+                scope = self.scope(RiskLevel.STANDARD)
+                changes = []
+
+                def mutate_during_value(member, name):
+                    if name == "value" and member is RiskLevel.LOW_IMPACT and not changes:
+                        changes.append(True)
+                        if variant == "different_enum":
+                            object.__setattr__(scope, "max_risk", RiskLevel.ELEVATED)
+                        elif variant == "raw_integer":
+                            scope.__dict__["max_risk"] = 99
+                        else:
+                            scope.__dict__.pop("max_risk", None)
+                    return original_getattribute(member, name)
+
+                with patch.object(RiskLevel, "__getattribute__", mutate_during_value):
+                    receipt = inspect_direct_scope_risk(scope, RiskLevel.LOW_IMPACT)
+                self.assertEqual(len(changes), 1)
+                self.assertIs(receipt.status, ReviewStatus.HOLD)
+                self.assertEqual(receipt.reason_code, "noncanonical_risk")
+                self.assert_non_authorizing(receipt)
+                self.assertIs(receipt.to_dict()["may_dispatch"], False)
+
     def test_missing_exact_scope_risk_ceiling_is_opaque_hold(self):
         """Partially built and field-deleted exact frozen scopes must not crash."""
         partial = object.__new__(ScopeDefinition)
