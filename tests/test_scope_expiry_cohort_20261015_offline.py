@@ -633,7 +633,7 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
             self.assertEqual([call.args[0] for call in read.call_args_list],
                              [73, 73])
             self.assertEqual([call.args[0][0] for call in
-                              selected.call_args_list], [[73], [73]])
+                              selected.call_args_list], [73, 73])
             close.assert_called_once_with(73)
             self.assertEqual(blocking.call_args_list, [
                 mock.call(73, False), mock.call(73, True),
