@@ -243,6 +243,64 @@ class RequestGrantOfflineReviewTests(unittest.TestCase):
             self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
             self.assert_no_authority(result)
 
+    def test_invalid_request_creation_cannot_be_rewritten_as_approval(self):
+        for stamp in (
+            None, "", 0, False, "2030-02-30T00:00:00+00:00",
+            "2030-01-01T24:00:00+00:00",
+            "2030-01-01T00:00:00Z",
+            (DECIDED + timedelta(seconds=1)).isoformat(),
+            (NOW + timedelta(days=1)).isoformat(),
+        ):
+            with self.subTest(created_at=stamp):
+                self.assert_hold(req=replace(request(), created_at=stamp))
+
+    def test_capability_wildcard_never_becomes_structurally_reviewable(self):
+        self.assert_hold(auth=replace(grant(), scope=replace(
+            grant().scope, allowed_capabilities=()
+        )))
+        self.assert_hold(auth=replace(grant(), scope=replace(
+            grant().scope, allowed_capabilities=("analysis", "analysis")
+        )))
+
+    def test_exclusions_must_belong_to_granted_asset_set(self):
+        self.assert_hold(auth=replace(grant(), scope=replace(
+            grant().scope, excluded_assets=("unknown.example.test",)
+        )))
+        narrowed = replace(grant(), scope=replace(
+            grant().scope, excluded_assets=("10.1.2.3",)
+        ))
+        result = review(auth=narrowed)
+        self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(result)
+
+    def test_identifier_controls_and_boundaries(self):
+        for bad in (
+            "bad name", "bad\\nname", "bad/name", "-bad",
+            "_bad", "bad\\tname", "bad!name", "x" * 129,
+        ):
+            with self.subTest(bad=bad):
+                self.assert_hold(auth=replace(grant(), approved_by=bad))
+        self.assert_hold(req=replace(request(), request_id="x" * 129))
+        self.assert_hold(auth=replace(grant(), reference="secret\\nnewline"))
+        self.assert_hold(auth=replace(grant(), engagement_id=""))
+
+    def test_untrusted_timezone_classes_are_denied_without_callback(self):
+        from datetime import tzinfo
+
+        class PoisonTimezone(tzinfo):
+            def utcoffset(self, value):
+                raise AssertionError("untrusted timezone callback must not execute")
+
+            def dst(self, value):
+                raise AssertionError("unexpected DST callback")
+
+            def tzname(self, value):
+                raise AssertionError("unexpected zone callback")
+
+        poisoned = VALID_FROM.replace(tzinfo=PoisonTimezone())
+        self.assert_hold(auth=replace(grant(), valid_from=poisoned))
+        self.assert_hold(at=poisoned)
+
     def test_no_raw_input_echo_on_denial(self):
         poisoned = replace(request(), requested_assets=("secret-password.example.test",))
         result = review(req=poisoned)
