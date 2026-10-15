@@ -18,11 +18,16 @@ class SpoofedText(str):
     pass
 
 
-def _receipt(ok: bool, invalid_allowed: int | None) -> dict[str, object]:
+def _receipt(
+    ok: bool, invalid_allowed: int | None,
+    negative_allowed: int | None = None, negative_examined: int = 0,
+) -> dict[str, object]:
     return {
         "status": "TEST_ONLY_PASS" if ok else "HOLD",
         "invalid_examined": 14 if invalid_allowed is not None else 0,
         "invalid_allowed": invalid_allowed,
+        "negative_controls_examined": negative_examined,
+        "negative_controls_allowed": negative_allowed,
         "authorization_verified": False,
         "permit_issued": False,
         "dispatch_enabled": False,
@@ -43,12 +48,29 @@ def _scan_pure_local() -> dict[str, object]:
     )
     policy = ExecutionPolicy()
 
-    def decide(g: AuthorizationGrant) -> PolicyDecision:
-        return policy.decide(ExecutionRequest(
-            interaction=InteractionKind.TARGET_ACTIVE, asset="example.test",
-            capability_id="fictional-check", requested_risk=RiskLevel.LOW_IMPACT,
+    def check(request: ExecutionRequest) -> bool:
+        # A green verdict must not hide a mutated request or grant. Type exactness
+        # prevents bool-like or PolicyDecision-subclass return spoofing.
+        original_request = dict(request.__dict__)
+        original_grant = (dict(request.authorization.__dict__)
+                          if request.authorization is not None else None)
+        result = policy.decide(request)
+        if type(result) is not PolicyDecision or type(result.allowed) is not bool:
+            raise ValueError("invalid policy decision contract")
+        if request.__dict__ != original_request:
+            raise ValueError("request mutated during policy decision")
+        if original_grant is not None and request.authorization.__dict__ != original_grant:
+            raise ValueError("grant mutated during policy decision")
+        return result.allowed
+
+    def target(g: AuthorizationGrant | None, *, asset: str = "example.test",
+               capability: str = "fictional-check",
+               risk: RiskLevel = RiskLevel.LOW_IMPACT) -> ExecutionRequest:
+        return ExecutionRequest(
+            interaction=InteractionKind.TARGET_ACTIVE, asset=asset,
+            capability_id=capability, requested_risk=risk,
             authorization=g,
-        ))
+        )
 
     variants = (
         {"approved_by": ""}, {"approved_by": " \t "},
@@ -62,20 +84,48 @@ def _scan_pure_local() -> dict[str, object]:
         {"reference": 123}, {"reference": None},
         {"reference": "ROE-FICTIONAL\u00a0"},
     )
-    canonical = decide(grant)
-    if type(canonical) is not PolicyDecision or canonical.allowed is not True:
+    if check(target(grant)) is not True:
         return _receipt(False, None)
     allowed = 0
     for patch in variants:
         candidate = replace(grant, **patch)
-        before = candidate.__dict__.copy()
-        decision = decide(candidate)
-        if type(decision) is not PolicyDecision or type(decision.allowed) is not bool:
-            return _receipt(False, None)
-        if candidate.__dict__ != before:
-            return _receipt(False, None)
-        allowed += int(decision.allowed)
-    return _receipt(allowed == 0, allowed)
+        allowed += int(check(target(candidate)))
+
+    # A production patch that denies bad provenance but widens other authority
+    # boundaries must also FAIL. These cases are independent of #777's 14
+    # direct-provenance failures and deliberately use valid approval fields.
+    denied_requests = (
+        target(None),
+        target(replace(grant, valid_from=now-timedelta(days=3),
+                       valid_until=now-timedelta(days=1))),
+        target(replace(grant, valid_from=now+timedelta(hours=2),
+                       valid_until=now+timedelta(hours=3))),
+        target(grant, asset="other.example.test"),
+        target(replace(grant, scope=replace(grant.scope,
+                           excluded_assets=("example.test",)))),
+        target(grant, capability="unapproved-check"),
+        target(grant, risk=RiskLevel.ELEVATED),
+        target(grant, risk=RiskLevel.DESTRUCTIVE_LAB_ONLY),
+        ExecutionRequest(interaction=InteractionKind.LAB_ACTIVE,
+                         asset="example.test", capability_id="fictional-check",
+                         requested_risk=RiskLevel.LOW_IMPACT, is_lab=False),
+        ExecutionRequest(interaction=InteractionKind.ANALYSIS,
+                         asset="example.test", capability_id="fictional-check",
+                         requested_risk=RiskLevel.LOW_IMPACT),
+        ExecutionRequest(interaction=InteractionKind.PASSIVE_PUBLIC,
+                         asset="example.test", capability_id="fictional-check",
+                         requested_risk=RiskLevel.LOW_IMPACT),
+    )
+    negative_allowed = sum(int(check(request)) for request in denied_requests)
+    # An analysis-only request is explicitly permitted and must remain so.
+    analysis_control = ExecutionRequest(
+        interaction=InteractionKind.ANALYSIS, asset="example.test",
+        capability_id="fictional-check", requested_risk=RiskLevel.ANALYSIS_ONLY,
+    )
+    if check(analysis_control) is not True:
+        return _receipt(False, allowed, negative_allowed, len(denied_requests))
+    return _receipt(allowed == 0 and negative_allowed == 0, allowed,
+                    negative_allowed, len(denied_requests))
 
 
 def main() -> int:
