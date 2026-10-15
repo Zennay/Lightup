@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 import sys
 import unittest
-from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
+from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network, ip_network
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -29,6 +29,58 @@ class _NetworkStr(str):
 
 class ExplicitNetworkSourceRed292296(unittest.TestCase):
     """A deny result OR a rejected invalid configuration is fail closed."""
+
+    @staticmethod
+    def _strict_canonical_declaration(declaration: object) -> bool:
+        """Pure reference predicate, never an installed grant or dispatch."""
+        if type(declaration) is not str or "/" not in declaration:
+            return False
+        if not declaration or declaration != declaration.strip():
+            return False
+        try:
+            network = ip_network(declaration, strict=True)
+        except (ValueError, TypeError):
+            return False
+        return declaration == str(network)
+
+    def test_strict_canonical_reference_positive_matrix(self):
+        for value in (
+            "8.8.8.0/24", "8.8.8.8/32",
+            "2001:4860:4860::/64", "2001:4860:4860::8888/128",
+            "0.0.0.0/0", "::/0",
+        ):
+            with self.subTest(value=value):
+                self.assertTrue(self._strict_canonical_declaration(value))
+
+    def test_strict_canonical_reference_negative_matrix(self):
+        invalid = (
+            134744072, True, None, b"\\x08\\x08\\x08\\x08",
+            IPv4Address("8.8.8.8"), IPv4Network("8.8.8.8/32"),
+            IPv6Address("2001:4860:4860::8888"),
+            IPv6Network("2001:4860:4860::8888/128"),
+            _NetworkStr("8.8.8.0/24"),
+            "", " ", "8.8.8.8", "2001:4860:4860::8888",
+            "8.8.8.8/24", "2001:4860:4860::8888/64",
+            "8.8.8.8/0", "2001:4860:4860::8888/0",
+            "8.8.8.0/255.255.255.0", "8.8.8.8/255.255.255.255",
+            "2001:4860:4860:0000::/64",
+            "8.8.8.0/24 ", " 8.8.8.0/24", "8.8.8.0/33",
+            "not-a-network", "8.8.8.0//24", "8.8.8.0/-1",
+        )
+        for value in invalid:
+            with self.subTest(kind=type(value).__name__, value=repr(value)):
+                self.assertFalse(self._strict_canonical_declaration(value))
+
+    def test_strict_canonical_reference_deterministic_single_host_roundtrip(self):
+        for offset in range(128):
+            ipv4 = IPv4Network((int(IPv4Address("198.51.100.0")) + offset, 32))
+            ipv6 = IPv6Network((int(IPv6Address("2001:db8::")) + offset, 128))
+            for network in (ipv4, ipv6):
+                text = str(network)
+                with self.subTest(text=text):
+                    self.assertTrue(self._strict_canonical_declaration(text))
+                    self.assertFalse(self._strict_canonical_declaration(text.split("/")[0]))
+        # Accepted syntax is NOT itself a customer grant or runtime permit.
 
     def _review(self, declaration: object, target: str):
         policy = ScopePolicy(
