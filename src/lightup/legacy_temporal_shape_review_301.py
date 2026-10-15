@@ -26,12 +26,20 @@ class LegacyTemporalReview(NamedTuple):
             ("HOLD", "outside_window"),
             ("REVIEW_ONLY", "temporal_shape_only"),
         )
-        if type(self) is not LegacyTemporalReview or (
-            type(self.status) is not str or type(self.reason) is not str
-        ) or (self.status, self.reason) not in allowed:
+        # Even a NamedTuple class can have __getattribute__ monkeypatched.
+        # Avoid both its untrusted attribute getters and hostile equality
+        # methods on forged status/reason objects.
+        if type(self) is not LegacyTemporalReview:
             status, reason = "HOLD", "invalid_shape"
         else:
-            status, reason = self.status, self.reason
+            status = tuple.__getitem__(self, 0)
+            reason = tuple.__getitem__(self, 1)
+            if (
+                type(status) is not str
+                or type(reason) is not str
+                or (status, reason) not in allowed
+            ):
+                status, reason = "HOLD", "invalid_shape"
         return {
             "status": status,
             "reason": reason,
@@ -175,11 +183,14 @@ def review_legacy_authorization_batch(
         verdict = review_legacy_authorization_window(
             authorization, observed_at=observed_at
         )
+        if type(verdict) is not LegacyTemporalReview:
+            return hold
+        verdict_status = tuple.__getitem__(verdict, 0)
+        verdict_reason = tuple.__getitem__(verdict, 1)
         if (
-            type(verdict) is not LegacyTemporalReview
-            or type(verdict.status) is not str
-            or type(verdict.reason) is not str
-            or (verdict.status, verdict.reason)
+            type(verdict_status) is not str
+            or type(verdict_reason) is not str
+            or (verdict_status, verdict_reason)
             != ("REVIEW_ONLY", "temporal_shape_only")
         ):
             return hold
