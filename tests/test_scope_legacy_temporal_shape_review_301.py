@@ -6,6 +6,7 @@ All identities are synthetic and no target I/O is performed.
 import os
 import sys
 import unittest
+import random
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone, tzinfo
 from unittest.mock import patch
@@ -14,7 +15,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from lightup.models import Authorization
 from lightup.legacy_temporal_shape_review_301 import (
-    LegacyTemporalReview, review_legacy_authorization_window
+    LegacyTemporalReview, review_legacy_authorization_window,
+    review_legacy_authorization_batch
 )
 
 START = datetime(2026, 10, 15, 12, tzinfo=timezone.utc)
@@ -79,6 +81,10 @@ class _MaliciousTZ(tzinfo):
 
 
 class _FakeAuthorization(Authorization):
+    pass
+
+
+class _TupleSubclass(tuple):
     pass
 
 
@@ -197,6 +203,113 @@ class LegacyTemporalShapeReviewTests(unittest.TestCase):
             result = review(auth)
         self.assertGreaterEqual(calls["end"], 1)
         assert_non_authorizing(self, result, "HOLD", "invalid_shape")
+
+    def test_batch_exact_tuple_size_bounds_and_no_authority(self):
+        for size in (1, 2, 16, 32):
+            claim = tuple(fixture() for _ in range(size))
+            with self.subTest(size=size):
+                assert_non_authorizing(
+                    self,
+                    review_legacy_authorization_batch(claim, observed_at=MID),
+                    "REVIEW_ONLY", "temporal_shape_only"
+                )
+        for bad in ((), (fixture(),) * 33, [fixture()],
+                    _TupleSubclass((fixture(),)), object(), None):
+            with self.subTest(bad_type=type(bad).__name__):
+                assert_non_authorizing(
+                    self,
+                    review_legacy_authorization_batch(bad, observed_at=MID),
+                    "HOLD", "invalid_batch"
+                )
+
+    def test_batch_refuses_any_invalid_member_independent_of_position(self):
+        for size in (1, 2, 8, 32):
+            for invalid_index in range(size):
+                claims = [fixture() for _ in range(size)]
+                claims[invalid_index] = fixture(end=False)
+                with self.subTest(size=size, invalid_index=invalid_index):
+                    assert_non_authorizing(
+                        self,
+                        review_legacy_authorization_batch(
+                            tuple(claims), observed_at=MID
+                        ), "HOLD", "invalid_batch"
+                    )
+
+    def test_batch_denies_invalid_member_types_and_evaluation_time(self):
+        for invalid in (None, object(), {}, _FakeAuthorization(**vars(fixture())),
+                        fixture(start=END, end=START), fixture(start=None, end=None),
+                        fixture(start=END + timedelta(seconds=1)),
+                        fixture(end=START - timedelta(seconds=1))):
+            with self.subTest(kind=type(invalid).__name__):
+                assert_non_authorizing(
+                    self,
+                    review_legacy_authorization_batch(
+                        (fixture(), invalid, fixture()), observed_at=MID
+                    ), "HOLD", "invalid_batch"
+                )
+        for bad_now in (None, False, "", MID.replace(tzinfo=None),
+                        _DatetimeSpoof(2026, 10, 15, 12, 30, tzinfo=timezone.utc)):
+            assert_non_authorizing(
+                self,
+                review_legacy_authorization_batch(
+                    (fixture(),), observed_at=bad_now
+                ), "HOLD", "invalid_batch"
+            )
+
+    def test_batch_is_permutation_invariant_and_no_partial_leaks(self):
+        rng = random.Random(301)
+        claims = [fixture() for _ in range(9)] + [fixture(end=0)]
+        for _ in range(150):
+            rng.shuffle(claims)
+            verdict = review_legacy_authorization_batch(
+                tuple(claims), observed_at=MID
+            )
+            assert_non_authorizing(self, verdict, "HOLD", "invalid_batch")
+            self.assertNotIn("10", str(verdict.as_receipt()))
+            self.assertEqual(
+                verdict.as_receipt(),
+                review_legacy_authorization_batch(
+                    (fixture(end=False),), observed_at=MID
+                ).as_receipt()
+            )
+
+    def test_batch_detects_earlier_claim_rebinding_during_later_review(self):
+        import lightup.legacy_temporal_shape_review_301 as review_module
+
+        first = fixture()
+        second = fixture()
+        original = review_module.review_legacy_authorization_window
+        seen = {"count": 0}
+
+        def mutating_review(auth, *, observed_at):
+            result = original(auth, observed_at=observed_at)
+            seen["count"] += 1
+            if seen["count"] == 2:
+                object.__setattr__(first, "valid_until", START)
+            return result
+
+        with patch.object(
+            review_module, "review_legacy_authorization_window",
+            side_effect=mutating_review
+        ):
+            result = review_legacy_authorization_batch(
+                (first, second), observed_at=MID
+            )
+        self.assertEqual(seen["count"], 2)
+        assert_non_authorizing(self, result, "HOLD", "invalid_batch")
+
+    def test_batch_preserves_external_effect_denial(self):
+        with (
+            patch("builtins.open", side_effect=AssertionError("file access")),
+            patch("socket.socket", side_effect=AssertionError("network access")),
+            patch("subprocess.Popen", side_effect=AssertionError("process access")),
+        ):
+            assert_non_authorizing(
+                self,
+                review_legacy_authorization_batch(
+                    (fixture(), fixture()), observed_at=MID
+                ), "REVIEW_ONLY", "temporal_shape_only"
+            )
 
     def test_no_external_effects_or_clock_lookup(self):
         # Imports already complete: actual reviewer must not open files, spawn
