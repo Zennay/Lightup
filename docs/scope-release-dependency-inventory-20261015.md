@@ -41,3 +41,13 @@ Run:
 Twelve local test groups exercise invalid, oversized, polymorphic, duplicate and nonfinite JSON, stable ordering, all nine gates, real subprocesses and no secret reflection. Synthetic green is not integrated production proof. This helper cannot attest GitHub, Notion, runner registration, consent, source-repair or installed ingress; self-reported claims remain unverified. In particular #301's expired test fixture and missing permanent runner proof may independently keep the repository's full release gate red.
 
 **Do not merge, deploy, grant real authority or scan targets based on this packet.** Owner fixes, exact-head hosted plus permanently registered VPS evidence, privacy/security review and human approval stay outside this work.
+
+## W2 — Nederlandstalig overzicht
+
+De tweede, zelfstandige CLI `scripts/scope_release_dependency_nl_20261015.py` accepteert hetzelfde strikte fictieve JSON-formaat via stdin. De tekst noemt alle negen voorwaarden expliciet in gewone Nederlandse taal, inclusief oorzaak en noodzakelijke externe controle. Ook bij negen zelfgerapporteerde voorwaarden ontbreken geverifieerde releasebronnen en blijft het document expliciet **NIET TOEGESTAAN / HOLD / exit 2**. Er worden geen invoerdetails zoals geheime referenties, hostnames of vrije tekst in het rapport overgenomen.
+
+Gebruik:
+
+    python scripts/scope_release_dependency_nl_20261015.py < fictional.json
+
+De acht extra eigen tests in `tests/test_scope_release_dependency_nl_20261015.py` controleren normale, volledig zelfgerapporteerde, misvormde, te grote en potentieel gevoelige fictieve packets in echte lokale subprocessen, consistente uitkomst ongeacht JSON-volgorde en de onveranderlijke negen veiligheidsvoorbehouden. **Totaal lokaal geverifieerd: 20/20 tests**, Python 3.13. De volledige GitHub-hosted Python 3.11/3.14 en permanent geregistreerde VPS-run voor de laatste exacte commit moeten onafhankelijk worden beoordeeld; CI-wachtrij is geen succes.
