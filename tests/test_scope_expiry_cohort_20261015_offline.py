@@ -618,5 +618,58 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
             ])
 
 
+    def test_output_receipt_only_accepts_literal_false_flags(self):
+        valid = reviewer.review(encoded(document()))
+        self.assertTrue(reviewer._receipt_is_safe(valid))
+        for key in reviewer.DENIAL_FLAGS:
+            for spoof in (True, 0, 1, "false", "no", None):
+                with self.subTest(key=key, spoof=spoof):
+                    forged = {**valid, key: spoof}
+                    self.assertFalse(reviewer._receipt_is_safe(forged))
+                    self.assertFalse(reviewer._emit_receipt(forged))
+
+    def test_output_receipt_rejects_claimed_approvals_and_sensitive_fields(self):
+        valid = reviewer.review(encoded(document()))
+        self.assertTrue(reviewer._receipt_is_safe(reviewer._receipt("HOLD")))
+        cases = [
+            {**valid, "status": "APPROVED"},
+            {**valid, "status": True},
+            {**valid, "status": "PASS"},
+            {**valid, "client": "fixture.client.invalid"},
+            {**valid, "target": "fixture.invalid"},
+            {**valid, "authorization_verified": True},
+            {**reviewer._receipt("HOLD"), "expired": 1},
+            {"status": "HOLD"},
+            {**valid, "expired": -1},
+            {**valid, "expired": 33},
+            {**valid, "expired": True},
+            {**valid, "expired": 1.0},
+            {**valid, "expired": "1"},
+            {**valid, "expired": 0, "not_yet_started": 0,
+             "current_expiring_within_horizon": 0, "current_later": 0},
+            {**valid, "expired": 32},
+            [],
+            None,
+        ]
+        for i, forged in enumerate(cases):
+            with self.subTest(i=i):
+                self.assertFalse(reviewer._receipt_is_safe(forged))
+                self.assertFalse(reviewer._emit_receipt(forged))
+
+    def test_output_receipt_accepts_full_cohort_without_creating_authority(self):
+        result = reviewer.review(encoded({
+            "as_of_utc": "2026-10-15T12:00:00Z",
+            "horizon_hours": 1,
+            "windows": [
+                {"valid_from": "2026-10-15T11:00:00Z",
+                 "valid_until": "2026-10-15T12:01:00Z"}
+                for _ in range(32)
+            ],
+        }))
+        self.assertEqual(result["current_expiring_within_horizon"], 32)
+        self.assertTrue(reviewer._receipt_is_safe(result))
+        self.assertNoAuthority(result)
+
+
 if __name__ == "__main__":
     unittest.main()
