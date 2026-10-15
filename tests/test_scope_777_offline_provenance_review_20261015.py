@@ -82,5 +82,49 @@ class SyntheticProvenanceReviewTests(unittest.TestCase):
         self.assertEqual(p.stderr, b"")
 
 
+    def test_field_order_and_json_whitespace_cannot_grant_authority(self):
+        for actor, ref in (("fictional-operator", "ROE-FICTIONAL"),
+                           ("operator-é", "fictional-reference")):
+            variants = (
+                json.dumps({"approved_by": actor, "reference": ref}),
+                json.dumps({"reference": ref, "approved_by": actor}, ensure_ascii=False),
+                json.dumps({"approved_by": actor, "reference": ref}, ensure_ascii=True,
+                           indent=2, sort_keys=True),
+            )
+            for encoded in variants:
+                with self.subTest(case=encoded[:42]):
+                    self.assert_receipt(encoded.encode("utf-8"), "REVIEW_ONLY")
+
+    def test_spoofed_permit_fields_are_always_hold(self):
+        for forbidden in ("authorization_verified", "permit_issued", "dispatch_enabled",
+                          "merge_approved", "deploy_approved", "release_approved", "status",
+                          "proof", "grant_id", "scope", "client_id", "target"):
+            with self.subTest(field=forbidden):
+                payload = {"approved_by": "fictional-operator", "reference": "ROE-FICTIONAL",
+                           forbidden: True}
+                self.assert_receipt(json.dumps(payload).encode(), "HOLD")
+
+    def test_subprocess_rejects_oversize_and_duplicate_escaped_key(self):
+        payloads = (
+            OK + b" " * (review.MAX_INPUT_BYTES + 1),
+            b'{"approved_by":"x","reference":"y","\\u0072eference":"z"}',
+        )
+        for payload in payloads:
+            with self.subTest(size=len(payload)):
+                p = subprocess.run([sys.executable, str(SCRIPT)], input=payload,
+                                   capture_output=True, timeout=3)
+                self.assertEqual(p.returncode, 2)
+                self.assertEqual(p.stderr, b"")
+                self.assertEqual(json.loads(p.stdout), {"status": "HOLD", **FALSE_FLAGS})
+
+    def test_parse_never_mutates_input_buffer(self):
+        original = OK
+        first = review.review_bytes(original)
+        second = review.review_bytes(original)
+        self.assertEqual(first, second)
+        self.assertEqual(original, OK)
+        self.assertEqual(first, {"status": "REVIEW_ONLY", **FALSE_FLAGS})
+
+
 if __name__ == "__main__":
     unittest.main()
