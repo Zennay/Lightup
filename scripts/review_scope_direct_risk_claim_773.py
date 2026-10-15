@@ -92,3 +92,27 @@ def inspect_direct_scope_risk(
         return RiskReviewReceipt(ReviewStatus.HOLD, "above_ceiling")
 
     return RiskReviewReceipt(ReviewStatus.REVIEW_ONLY, "risk_shape_only")
+
+
+MAX_SYNTHETIC_REVIEW_ITEMS = 32
+
+
+def inspect_direct_scope_risk_batch(claims: object) -> RiskReviewReceipt:
+    """All-or-nothing, bounded synthetic-only risk-shape inspection.
+
+    Claims must be an *exact* tuple of 1..32 exact 2-tuples
+    (ScopeDefinition, RiskLevel). A single malformed, over-ceiling or
+    lab-only claim makes the entire review HOLD; nothing is disclosed about
+    which entry failed. The result never permits execution.
+    """
+    if type(claims) is not tuple:
+        return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
+    if not 1 <= len(claims) <= MAX_SYNTHETIC_REVIEW_ITEMS:
+        return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
+    for claim in claims:
+        if type(claim) is not tuple or len(claim) != 2:
+            return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
+        scope, requested_risk = claim
+        if inspect_direct_scope_risk(scope, requested_risk).status is not ReviewStatus.REVIEW_ONLY:
+            return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
+    return RiskReviewReceipt(ReviewStatus.REVIEW_ONLY, "batch_risk_shape_only")
