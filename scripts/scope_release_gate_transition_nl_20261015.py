@@ -6,6 +6,7 @@ import sys
 from scope_release_dependency_inventory_20261015 import GATES, MAX_BYTES, InvalidPacket
 from scope_release_dependency_nl_20261015 import EXPLANATIONS, STATUS_NL
 from scope_release_gate_transition_20261015 import compare
+from scope_release_remediation_catalog_20261015 import remediation
 from scope_release_stdin_20261015 import read_bounded_stdin
 
 LABELS = {
@@ -43,6 +44,11 @@ def summarize(raw: bytes) -> str:
         for gate in GATES:
             lines.append(f"- **{EXPLANATIONS[gate][0]} — Niet controleerbaar:** "
                          "Geen betrouwbare status beschikbaar.")
+            guide = remediation(gate)
+            lines.append(f"  Verantwoordelijke: {guide.owner_role}.")
+            lines.append(f"  Eerst oplossen: {guide.concrete_action}")
+            lines.append(f"  Bewijs nodig: {guide.acceptance_evidence}")
+            lines.append(f"  Waarom niet vanuit deze review: {guide.reason_not_lifted}")
     else:
         lines.extend([
             f"Vorige zelfgerapporteerde voorwaarden: {data['previous_self_reported']} van {len(GATES)}.",
@@ -64,6 +70,11 @@ def summarize(raw: bytes) -> str:
             else:
                 lines.append(f"- **{label}:** {LABELS['UNCHANGED']}; "
                              "afzonderlijk bewijs blijft vereist.")
+            guide = remediation(gate)
+            lines.append(f"  Verantwoordelijke: {guide.owner_role}.")
+            lines.append(f"  Eerst oplossen: {guide.concrete_action}")
+            lines.append(f"  Bewijs nodig: {guide.acceptance_evidence}")
+            lines.append(f"  Waarom niet vanuit deze review: {guide.reason_not_lifted}")
     lines.extend([
         "",
         "## Besluit",
