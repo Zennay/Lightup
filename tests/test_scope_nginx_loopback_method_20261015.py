@@ -294,7 +294,7 @@ class ScopeIngressMethodE2ETest(unittest.TestCase):
         # A duplicate nonce/method with last-wins JSON semantics would make a
         # replay or rewritten upstream's evidence misleading. Parse all object
         # depths without silently normalizing duplicates.
-        encoded_alias = b'{"method":"POST","' + b"\\\\u006dethod" + b'":"GET"}'
+        encoded_alias = b'{"method":"POST","' + bytes((92,)) + b'u006dethod":"GET"}'
         malformed = (
             b'{"method":"POST","method":"GET"}',
             encoded_alias,
