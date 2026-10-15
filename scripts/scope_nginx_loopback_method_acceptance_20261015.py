@@ -254,6 +254,12 @@ def _receipt_is_exact(receipt, method: str) -> bool:
     )
 
 
+def _fixture_env(root: Path) -> dict[str, str]:
+    """Do not give a disposable Nginx process runner credentials or tokens."""
+    return {"HOME": str(root), "TMPDIR": str(root),
+            "LANG": "C", "LC_ALL": "C"}
+
+
 def run_probe(template: str, *, force_rewrite: bool = False,
               nginx_bin: str | None = None, wsgi_app=None, oracle=None) -> bool:
     """Run a disposable proxy against echo or a separately owned WSGI oracle.
@@ -285,12 +291,14 @@ def run_probe(template: str, *, force_rewrite: bool = False,
             ), encoding="utf-8")
             # nginx -t checks the *generated disposable* config, never the installed one.
             tested = subprocess.run([binary, "-p", str(root) + "/", "-c", str(conf), "-t"],
-                                    capture_output=True, timeout=4, check=False)
+                                    capture_output=True, timeout=4, check=False,
+                                    env=_fixture_env(root))
             if tested.returncode:
                 raise RuntimeError("disposable nginx config was rejected")
             process = subprocess.Popen(
                 [binary, "-p", str(root) + "/", "-c", str(conf), "-g", "daemon off;"],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                env=_fixture_env(root),
             )
             deadline = time.monotonic() + 3
             while time.monotonic() < deadline:
