@@ -53,7 +53,9 @@ class CaseRosterTests(unittest.TestCase):
         self.assertEqual(result["summary"]["changed_outcome"], 1)
 
     def test_unexpected_success_visible(self):
-        log = LOG.replace("... expected failure", "... unexpected success")
+        log = (LOG.replace("... expected failure", "... unexpected success")
+               .replace("OK (expected failures=1)",
+                        "FAILED (unexpected successes=1)"))
         _, result = run(payload(log=log))
         self.assertEqual(result["summary"]["unexpected_success_observed"], 1)
 
