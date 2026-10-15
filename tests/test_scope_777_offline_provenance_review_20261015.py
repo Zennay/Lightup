@@ -445,5 +445,37 @@ class SyntheticProvenanceReviewTests(unittest.TestCase):
                 receipts.add(proc.stdout)
         self.assertEqual(len(receipts), 1, "all failed intakes must be byte-identical")
 
+
+    def test_nfkc_stable_invisible_marks_are_hold(self):
+        # These previously reached REVIEW_ONLY despite being visually hidden
+        # or altering presentation. All remain NFKC-stable.
+        import unicodedata
+        cases = ("\ufe0f", "\ufe0e", "\u180b", "\u180d", "\u180f",
+                 "\U000e0100", "\u20e3", "\u0338", "\u034f")
+        for value in cases:
+            with self.subTest(mark=hex(ord(value))):
+                self.assertEqual(unicodedata.normalize("NFKC", "Operator" + value),
+                                 "Operator" + value)
+                claim = {"approved_by": "Operator" + value, "reference": "ROE-FICTIONAL"}
+                self.assert_receipt(json.dumps(claim).encode("utf-8"), "HOLD")
+
+    def test_real_world_canonical_combining_names_remain_review_only(self):
+        # Avoid blanket Mn rejection: these include Mn and Mc marks.
+        for value in ("राहुल", "शंकर", "Αλέξανδρος"):
+            with self.subTest(name=value):
+                claim = {"approved_by": value, "reference": "ROE-FICTIONAL"}
+                self.assert_receipt(json.dumps(claim).encode("utf-8"), "REVIEW_ONLY")
+
+    def test_hidden_variation_mark_is_hold_in_actual_cli(self):
+        for ch in ("\ufe0f", "\u180b", "\U000e0100", "\u20e3"):
+            with self.subTest(codepoint=hex(ord(ch))):
+                claim = {"approved_by": "Operator" + ch, "reference": "ROE-FICTIONAL"}
+                p = subprocess.run([sys.executable, str(SCRIPT)],
+                                   input=json.dumps(claim).encode("utf-8"),
+                                   capture_output=True, timeout=4)
+                self.assertEqual(p.returncode, 2)
+                self.assertEqual(p.stderr, b"")
+                self.assertEqual(json.loads(p.stdout), {"status": "HOLD", **FALSE_FLAGS})
+
 if __name__ == "__main__":
     unittest.main()
