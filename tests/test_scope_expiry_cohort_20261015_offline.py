@@ -228,5 +228,81 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
                 self.assertEqual(stderr, b"")
 
 
+    def test_real_authorization_grant_window_semantics_match_126_synthetic_cases(self):
+        """Cross-check expiry claims against the actual immutable grant model."""
+        from datetime import datetime, timedelta, timezone
+        from lightup.engagements import AuthorizationGrant, RiskLevel, ScopeDefinition
+
+        anchor = datetime(2026, 10, 15, 12, 0, 0, tzinfo=timezone.utc)
+
+        def utc(value):
+            return value.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        case_count = 0
+        for start_hours in (-48, -2, -1, 0, 1, 48):
+            for duration_hours in (1, 2, 72):
+                start = anchor + timedelta(hours=start_hours)
+                end = start + timedelta(hours=duration_hours)
+                grant = AuthorizationGrant(
+                    grant_id="synthetic-only",
+                    client_id="synthetic-only",
+                    engagement_id="synthetic-only",
+                    approved_by="fictional-operator",
+                    reference="offline-fixture",
+                    scope=ScopeDefinition(assets=(), max_risk=RiskLevel.ANALYSIS_ONLY),
+                    valid_from=start,
+                    valid_until=end,
+                )
+                for as_of_hours in (-72, -2, -1, 0, 1, 2, 72):
+                    as_of = anchor + timedelta(hours=as_of_hours)
+                    packet = {
+                        "as_of_utc": utc(as_of),
+                        "horizon_hours": 24,
+                        "windows": [{"valid_from": utc(start),
+                                     "valid_until": utc(end)}],
+                    }
+                    receipt = reviewer.review(encoded(packet))
+                    self.assertNoAuthority(receipt)
+                    self.assertEqual(receipt["status"], "REVIEW_ONLY")
+                    current = grant.is_current(now=as_of)
+                    self.assertEqual(
+                        current,
+                        (receipt["current_expiring_within_horizon"] == 1 or
+                         receipt["current_later"] == 1),
+                    )
+                    self.assertEqual(receipt["not_yet_started"], int(as_of < start))
+                    self.assertEqual(receipt["expired"], int(as_of > end))
+                    case_count += 1
+        self.assertEqual(case_count, 126)
+
+    def test_full_32_window_cohort_and_atomic_last_member_rejection(self):
+        packet = document()
+        packet["windows"] = [packet["windows"][2].copy() for _ in range(32)]
+        receipt = reviewer.review(encoded(packet))
+        self.assertEqual(receipt["current_expiring_within_horizon"], 32)
+        self.assertEqual(receipt["expired"], 0)
+        self.assertNoAuthority(receipt)
+        packet["windows"][-1]["valid_until"] = "2026-10-14T00:00:00Z"
+        status, hold, stderr = subprocess_review(encoded(packet))
+        self.assertEqual(status, 2)
+        self.assertEqual(hold["status"], "HOLD")
+        self.assertEqual(set(hold), {"status", *reviewer.DENIAL_FLAGS})
+        self.assertNoAuthority(hold)
+        self.assertEqual(stderr, b"")
+
+    def test_max_calendar_timestamp_does_not_overflow_expiry_horizon(self):
+        packet = {
+            "as_of_utc": "9999-12-31T23:59:58Z",
+            "horizon_hours": 720,
+            "windows": [{
+                "valid_from": "9999-12-30T00:00:00Z",
+                "valid_until": "9999-12-31T23:59:59Z",
+            }],
+        }
+        result = reviewer.review(encoded(packet))
+        self.assertEqual(result["current_expiring_within_horizon"], 1)
+        self.assertNoAuthority(result)
+
+
 if __name__ == "__main__":
     unittest.main()
