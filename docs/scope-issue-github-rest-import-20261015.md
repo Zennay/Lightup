@@ -55,3 +55,14 @@ De twee relevante API-recordtypen zijn GitHub **issue** (`number`, `state`; geen
 - De import is een **zelf opgegeven offline extractie, geen geauthenticeerde GitHub-attestatie**. Hij controleert geen live PR-headversie vóór en na het ophalen; de [headconsistentie-audit](scope-issue-pr-head-consistency-20261015.md) en [repository-identity-audit](scope-issue-repo-identity-20261015.md) zijn aparte controles. De afwezigheid van waargenomen conflicten zegt niets over beschikbaarheid van werk.
 
 Het onderdeel dient uitsluitend ter voorbereiding van een menselijke review. Geen productiemacht en geen formele security/privacy- of VPS-CI-goedkeuring.
+## Direct uitvoerbaar voorbeeld zonder klantgegevens
+
+Er staat nu een volledig inert, **SYNTHETIC** voorbeeld in [`lab/scope_github_rest_export_synthetic_20261015.json`](../lab/scope_github_rest_export_synthetic_20261015.json). Het bevat twee fictieve PR's, één hernoeming en een botsing op het **oude** pad, maar geen echte targets, tokens of autorisaties. Draai de import én het menselijke rapport rechtstreeks vanuit de repository-root:
+
+```sh
+python scripts/scope_issue_github_rest_import_20261015.py < lab/scope_github_rest_export_synthetic_20261015.json
+python scripts/scope_issue_github_rest_report_20261015.py < lab/scope_github_rest_export_synthetic_20261015.json
+python -m unittest discover -s tests -p 'test_scope_issue_github_rest_smoke_20261015.py' -v
+```
+
+**Let op:** beide CLI's geven ook op correcte input bewust exitstatus **2/HOLD**, geen normale success-exitstatus 0. Als een shellcommando automatisch stopt bij exit 2, is dat hier de verwachte veiligheidsuitkomst. De volledig synthetische PR- en issue-nummers zijn geen verwijzing naar echte GitHub-items.
