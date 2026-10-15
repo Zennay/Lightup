@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import unittest
 from dataclasses import FrozenInstanceError
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 
 from scripts.scope_737_revocation_metadata_review import (
     RevocationReview,
@@ -28,6 +28,17 @@ class BadTruthy:
 class SubclassedDatetime(datetime):
     def utcoffset(self):
         raise AssertionError("polymorphic time conversion called")
+
+
+class HostileTimezone(tzinfo):
+    def utcoffset(self, dt):
+        raise AssertionError("untrusted timezone executed")
+
+    def dst(self, dt):
+        raise AssertionError("untrusted timezone executed")
+
+    def tzname(self, dt):
+        raise AssertionError("untrusted timezone executed")
 
 
 class SubclassedStr(str):
@@ -111,6 +122,19 @@ class ReviewRevocationMetadataTests(unittest.TestCase):
                 self.assertHold(r)
                 self.assertIn("noncanonical_revoked_at", r.reason_codes)
                 self.assertEqual(r.classification, "inconsistent")
+
+    def test_foreign_timezone_callbacks_are_never_executed(self):
+        # The exact datetime stores an untrusted tzinfo; *reading* its
+        # offset would call attacker-supplied Python. Reject by type first.
+        dt = datetime(2026, 10, 15, tzinfo=HostileTimezone())
+        r = review_revocation_metadata(
+            revoked_at=dt,
+            revoked_by="fictional-reviewer",
+            revocation_reason="fixture revocation",
+        )
+        self.assertHold(r)
+        self.assertEqual(r.classification, "inconsistent")
+        self.assertIn("noncanonical_revocation_timezone", r.reason_codes)
 
     def test_naive_timestamp_is_inconsistent(self):
         r = review_revocation_metadata(
