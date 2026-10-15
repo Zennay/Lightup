@@ -952,6 +952,7 @@ class PersistedRequestGrantSqlitePreflightTests(unittest.TestCase):
             ("authorization_grants", "created_at", "before-request", "grant_id"),
             ("authorization_grants", "valid_from", "before-persistence", "grant_id"),
             ("authorization_grants", "valid_until", "empty-window", "grant_id"),
+            ("authorization_grants", "max_risk", 4, "grant_id"),
             ("engagements", "created_at", "after-grant", "engagement_id"),
             ("engagements", "status", "draft", "engagement_id"),
         )
