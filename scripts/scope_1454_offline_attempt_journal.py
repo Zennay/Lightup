@@ -137,7 +137,23 @@ class OfflineBacklogReview:
         raise TypeError("an offline backlog can never act as permission")
 
     def as_dict(self) -> dict[str, object]:
-        safe = self.receipt.as_dict()
+        # Frozen instances are not a security boundary against in-process
+        # object.__setattr__. Never echo mutated counts or forged metadata.
+        state = vars(self) if type(self) is OfflineBacklogReview else {}
+        valid = (
+            type(state) is dict
+            and set(state) == {
+                "receipt", "reserved_count", "uncertain_count", "recorded_count"
+            }
+            and type(state["receipt"]) is ReviewReceipt
+            and all(type(state[k]) is int and 0 <= state[k] <= 256 for k in (
+                "reserved_count", "uncertain_count", "recorded_count"
+            ))
+            and sum(state[k] for k in (
+                "reserved_count", "uncertain_count", "recorded_count"
+            )) <= 256
+        )
+        safe = state["receipt"].as_dict() if valid else _hold().as_dict()
         trustworthy = safe["status"] == "REVIEW_ONLY"
         return {
             **safe,
