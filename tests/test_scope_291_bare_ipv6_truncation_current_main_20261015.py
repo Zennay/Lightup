@@ -28,6 +28,18 @@ SYNTHETIC_AUTH = Authorization(
     reference="not-a-real-customer-approval",
 )
 
+def _fictional_auth_for_asset(asset: str) -> Authorization:
+    """Build a synthetic claimed asset matching either main or #100's owner model.
+
+    Runtime field probing is deliberately read-only, not a grant-verification
+    heuristic: owner-bound source adds an `assets` field; current main does not.
+    """
+    kwargs = {"owner": "offline-fixture-only", "reference": "never-a-real-consent"}
+    if "assets" in Authorization.__dataclass_fields__:
+        kwargs["assets"] = (asset,)
+    return Authorization(**kwargs)
+
+
 
 class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
     def no_network(self):
@@ -68,7 +80,7 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
             require_authorization_for_public=True,
         )
         with self.no_network():
-            decision = policy.decide(Target(DOC_IPV6[0], authorization=SYNTHETIC_AUTH))
+            decision = policy.decide(Target(DOC_IPV6[0], authorization=_fictional_auth_for_asset("2001")))
         self.assertFalse(decision.allowed)
         self.assertNotEqual(decision.reason, ScopeReason.EXPLICIT_HOST)
 
@@ -89,7 +101,42 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
         with self.no_network():
             with self.assertRaises(PermissionError):
                 gate.issue(
-                    Target(DOC_IPV6[0], authorization=SYNTHETIC_AUTH),
+                    Target(DOC_IPV6[0], authorization=_fictional_auth_for_asset("2001")),
+                    "fixture-only-no-adapter",
+                )
+
+    @unittest.expectedFailure
+    def test_asset_binding_owner_preview_must_not_admit_wrong_ipv6_identity_red(self):
+        """A declared '2001' asset never proves ownership of '2001:db8::'."""
+        fixture = _fictional_auth_for_asset("2001")
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset({"2001"}),
+            require_authorization_for_public=True,
+        )
+        with self.no_network():
+            decision = policy.decide(Target(DOC_IPV6[0], authorization=fixture))
+        self.assertFalse(decision.allowed)
+
+    @unittest.expectedFailure
+    def test_asset_bound_owner_preview_must_not_issue_wrong_target_permit_red(self):
+        """#100's extra asset check must not inherit the parser's mistaken host."""
+        fixture = _fictional_auth_for_asset("2001")
+        gate = ActivationGate(
+            ScopePolicy(
+                allow_private_lab=False,
+                explicit_hosts=frozenset({"2001"}),
+                require_authorization_for_public=True,
+            ),
+            ActivationPolicy(
+                mode=ActivationMode.AUTHORIZED,
+                activation_reference="FIXTURE-ONLY",
+            ),
+        )
+        with self.no_network():
+            with self.assertRaises(PermissionError):
+                gate.issue(
+                    Target(DOC_IPV6[0], authorization=fixture),
                     "fixture-only-no-adapter",
                 )
 
@@ -107,7 +154,7 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
                 )
                 with self.no_network(), self.assertRaises(PermissionError):
                     gate.issue(
-                        Target(DOC_IPV6[0], authorization=SYNTHETIC_AUTH),
+                        Target(DOC_IPV6[0], authorization=_fictional_auth_for_asset("2001")),
                         "fixture-only-no-adapter",
                     )
 
@@ -123,7 +170,7 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
         with self.no_network():
             for hextet in range(256):
                 literal = str(ipaddress.IPv6Address(f"2001:db8:{hextet:x}::1"))
-                decision = policy.decide(Target(literal, authorization=SYNTHETIC_AUTH))
+                decision = policy.decide(Target(literal, authorization=_fictional_auth_for_asset("2001")))
                 if (decision.allowed or
                         decision.normalized_host not in (None, literal)):
                     violations.append(hextet)
@@ -141,7 +188,7 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
         with self.no_network():
             for hextet in range(256):
                 literal = str(ipaddress.IPv6Address(f"2001:db8:{hextet:x}::1"))
-                decision = policy.decide(Target("[" + literal + "]", authorization=SYNTHETIC_AUTH))
+                decision = policy.decide(Target("[" + literal + "]", authorization=_fictional_auth_for_asset(literal)))
                 self.assertFalse(decision.allowed, (hextet, decision))
                 self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
                 self.assertEqual(decision.normalized_host, literal)
@@ -169,7 +216,7 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
                 literal = str(ipaddress.IPv6Address(f"2001:db8:{hextet:x}::beef"))
                 try:
                     gate.issue(
-                        Target(literal, authorization=SYNTHETIC_AUTH),
+                        Target(literal, authorization=_fictional_auth_for_asset("2001")),
                         "fixture-only-no-adapter",
                     )
                 except PermissionError:
@@ -235,7 +282,7 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
                     ),
                 )
                 permit = gate.issue(
-                    Target("[" + literal + "]", authorization=SYNTHETIC_AUTH),
+                    Target("[" + literal + "]", authorization=_fictional_auth_for_asset(literal)),
                     "fixture-only-no-adapter",
                 )
                 self.assertEqual(permit.target, literal)
@@ -263,7 +310,7 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
                 for kind, literal in enumerate(
                     (str(ip), str(ip).upper(), ip.exploded, ip.exploded.upper())
                 ):
-                    decision = policy.decide(Target(literal, authorization=SYNTHETIC_AUTH))
+                    decision = policy.decide(Target(literal, authorization=_fictional_auth_for_asset("2001")))
                     exact = decision.normalized_host
                     try:
                         matched = exact is not None and ipaddress.IPv6Address(exact) == ip
@@ -287,7 +334,7 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
                 ip = ipaddress.IPv6Address(f"2001:db8:5:{suffix:x}::4")
                 for literal in (str(ip), str(ip).upper(), ip.exploded, ip.exploded.upper()):
                     decision = policy.decide(
-                        Target("[" + literal + "]", authorization=SYNTHETIC_AUTH)
+                        Target("[" + literal + "]", authorization=_fictional_auth_for_asset(literal))
                     )
                     self.assertFalse(decision.allowed, (literal, decision))
                     self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
@@ -309,7 +356,7 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
             )
             with self.no_network():
                 missing = policy.decide(Target("[" + literal + "]"))
-                present = policy.decide(Target("[" + literal + "]", authorization=SYNTHETIC_AUTH))
+                present = policy.decide(Target("[" + literal + "]", authorization=_fictional_auth_for_asset(literal)))
             self.assertFalse(missing.allowed)
             self.assertEqual(missing.reason, ScopeReason.AUTHORIZATION_MISSING)
             self.assertTrue(present.allowed)
@@ -333,6 +380,10 @@ class ScopeIpv6NoTruncationAcceptance(unittest.TestCase):
                 "128 synthetic wrong-host tokens minted",
             "test_1024_bare_ipv6_lexical_variants_never_alias_dns_label_red":
                 "1024 synthetic bare IPv6 lexical forms misbound",
+            "test_asset_binding_owner_preview_must_not_admit_wrong_ipv6_identity_red":
+                "True is not false",
+            "test_asset_bound_owner_preview_must_not_issue_wrong_target_permit_red":
+                "PermissionError not raised",
         }
         for name, expected_message in red_cases.items():
             with self.subTest(name=name):
