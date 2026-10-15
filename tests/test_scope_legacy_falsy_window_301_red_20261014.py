@@ -35,13 +35,16 @@ def _pure_scope_decision(auth):
     ).decide(Target(value="scope.fixture.example.test", authorization=auth))
 
 
-def _pure_scope_decision_at(auth, instant):
+def _pure_scope_decision_at(auth, instant, *, allow_preclock_denial=False):
     # Run installed scope and authorization code, replacing only the clock.
-    # The test's frozen instant is not evidence of real customer consent.
+    # A strict source fix may reject malformed temporal fields BEFORE reading
+    # the clock; valid-window tests still require exactly one aware UTC read.
     with patch("lightup.models.datetime") as model_datetime:
         model_datetime.now.return_value = instant
         decision = _pure_scope_decision(auth)
-        model_datetime.now.assert_called_once_with(timezone.utc)
+        if not (allow_preclock_denial and decision.allowed is False
+                and model_datetime.now.call_count == 0):
+            model_datetime.now.assert_called_once_with(timezone.utc)
         return decision
 
 
@@ -156,7 +159,7 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
         )
         grant = _authorization(start=deceptive)
         original = repr(grant)
-        decision = _pure_scope_decision_at(grant, NOW)
+        decision = _pure_scope_decision_at(grant, NOW, allow_preclock_denial=True)
         self.assertEqual(decision.normalized_host,
                          "scope.fixture.example.test")
         self.assertEqual(repr(grant), original)
@@ -172,7 +175,7 @@ class LegacyFalsyBoundaryRedTests(unittest.TestCase):
         )
         grant = _authorization(end=deceptive)
         original = repr(grant)
-        decision = _pure_scope_decision_at(grant, NOW)
+        decision = _pure_scope_decision_at(grant, NOW, allow_preclock_denial=True)
         self.assertEqual(decision.normalized_host,
                          "scope.fixture.example.test")
         self.assertEqual(repr(grant), original)
