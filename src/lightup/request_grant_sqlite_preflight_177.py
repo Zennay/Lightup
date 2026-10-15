@@ -118,6 +118,17 @@ def _load_review(
         return _HOLD
 
     r, e = requests[0], engagements[0]
+    # Created-at is a separate durable chronology from the declared
+    # not-before window; a grant inserted before operator approval or after
+    # the review instant is not structurally admissible even as REVIEW_ONLY.
+    decided_at = _decision_time(r["decided_at"])
+    persisted_at = _decision_time(grant_row["created_at"])
+    if (
+        decided_at is None
+        or persisted_at is None
+        or not (decided_at <= persisted_at <= reviewed_at)
+    ):
+        return _HOLD
     requested_assets = _json_array(r["requested_assets_json"])
     granted_assets = _json_array(grant_row["assets_json"])
     excluded = _json_array(grant_row["excluded_assets_json"])
