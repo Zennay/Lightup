@@ -410,8 +410,11 @@ class ScopeAssetUnicodeReviewTests(unittest.TestCase):
         for item in forged:
             with self.subTest(receipt=item):
                 self.assertFalse(mod._is_deny_only_receipt(item))
+        class ForgedKey(str):
+            pass
+
         forged_key_receipt = {"status": "HOLD", **mod.FALSE_FLAGS}
-        forged_key_receipt[ForgedStatus("status")] = forged_key_receipt.pop("status")
+        forged_key_receipt[ForgedKey("status")] = forged_key_receipt.pop("status")
         self.assertFalse(mod._is_deny_only_receipt(forged_key_receipt))
 
     def test_static_offline_import_and_effect_boundary_with_negative_controls(self):
