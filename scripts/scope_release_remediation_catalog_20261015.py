@@ -22,7 +22,7 @@ CATALOG: dict[str, Remediation] = {
     "client_consent": Remediation(
         "Klant of schriftelijk gemachtigde opdrachtgever",
         "Vraag afzonderlijke, actuele en doelgebonden toestemming aan de bevoegde partij.",
-        "Gedateerde toestemming met exacte klant, doelen, looptijd en toegestane handelingen.",
+        "Onafhankelijk geverifieerde, gedateerde toestemming met exacte klant, doelen, looptijd en handelingen.",
         "Een zelf aangevinkte checklist is geen werkelijke toestemming.",
         "EXTERNAL_HUMAN"),
     "asset_and_capability_scope": Remediation(
