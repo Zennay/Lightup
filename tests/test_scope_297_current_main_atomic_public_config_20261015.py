@@ -14,13 +14,15 @@ from datetime import datetime, timezone
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+sys.path.insert(0, os.path.dirname(__file__))
 
 from lightup.models import Authorization, Target
 from lightup.scope import ScopePolicy, ScopeReason
+from scope_297_synthetic_authorization_20261015 import fake_authorization
 
 
 HOST = "security.example.test"
-FAKE_AUTH = Authorization(
+FAKE_AUTH = fake_authorization(
     owner="fictional-test-owner",
     reference="SYNTHETIC-NOT-CONSENT",
     valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
@@ -99,18 +101,18 @@ class AtomicPublicConfigurationSourceContract(unittest.TestCase):
         policy = ScopePolicy(
             allow_private_lab=False,
             explicit_hosts=frozenset({42}),
-            explicit_networks=("8.8.8.0/24",),
+            explicit_networks=("198.51.100.0/24",),
         )
-        self.assertFalse(policy.decide(Target("8.8.8.8", FAKE_AUTH)).allowed)
+        self.assertFalse(policy.decide(Target("198.51.100.42", FAKE_AUTH)).allowed)
 
     @unittest.expectedFailure
     def test_red_bytes_host_entry_cannot_be_bypassed_by_public_ip_network(self):
         policy = ScopePolicy(
             allow_private_lab=False,
             explicit_hosts=frozenset({b"security.example.test"}),
-            explicit_networks=("8.8.8.0/24",),
+            explicit_networks=("198.51.100.0/24",),
         )
-        self.assertFalse(policy.decide(Target("8.8.8.8", FAKE_AUTH)).allowed)
+        self.assertFalse(policy.decide(Target("198.51.100.42", FAKE_AUTH)).allowed)
 
     def test_both_host_shape_reds_are_actual_unsafe_network_allows(self):
         # Ordinary witness: a runtime exception must not pass as RED evidence.
@@ -119,9 +121,9 @@ class AtomicPublicConfigurationSourceContract(unittest.TestCase):
                 policy = ScopePolicy(
                     allow_private_lab=False,
                     explicit_hosts=frozenset({invalid_host}),
-                    explicit_networks=("8.8.8.0/24",),
+                    explicit_networks=("198.51.100.0/24",),
                 )
-                decision = policy.decide(Target("8.8.8.8", FAKE_AUTH))
+                decision = policy.decide(Target("198.51.100.42", FAKE_AUTH))
                 self.assertEqual(
                     (decision.allowed, decision.reason),
                     (True, ScopeReason.EXPLICIT_NETWORK),
@@ -160,7 +162,7 @@ class AtomicPublicConfigurationSourceContract(unittest.TestCase):
     def test_original_public_network_parse_failure_is_not_a_permit(self):
         policy = policy_with_bad_networks(("invalid",), require_auth=False)
         with self.assertRaises(ValueError):
-            policy.decide(Target("8.8.8.8", FAKE_AUTH))
+            policy.decide(Target("198.51.100.42", FAKE_AUTH))
 
     def test_policy_and_network_inputs_not_mutated(self):
         networks = ("203.0.113.0/24", "2001:db8::/32")
@@ -224,7 +226,7 @@ class AtomicPublicConfigurationSourceContract(unittest.TestCase):
                 )
 
     def test_golden_canonical_expired_grant_denies_host_and_ip(self):
-        expired = Authorization(
+        expired = fake_authorization(
             owner="fictional-expired-test-owner",
             reference="SYNTHETIC-EXPIRED-NOT-CONSENT",
             valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
