@@ -36,9 +36,13 @@ permission, web ingress, scanner, ToolExecutor, ScopePolicy or ActivationGate.
   includes six literal `False` fields: authorization_verified, permit_issued,
   execution_enabled, target_dispatch_allowed, merge_approved, release_approved.
   No owner, reference, asset, identity or raw timestamp is reflected.
+- The reviewer detects missing validity attributes and observable in-call
+  rebinding of either validity field, including rebinding of a nominally
+  frozen dataclass through `object.__setattr__`. This is only best-effort
+  drift detection, **not** an atomic snapshot or a concurrency lock.
 - The reviewer does not read system time, files, persistent data or network and
-  has no real target contact. It is an **advisory snapshot only**, not a
-  concurrency lock and not an authorization assertion after return.
+  has no real target contact. It is an **advisory snapshot only**, not an
+  authorization assertion after return.
 
 ## Run locally
 
