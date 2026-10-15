@@ -919,5 +919,112 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
 
 
 
+    def test_32_window_temporal_and_horizon_monotonicity_matrix(self):
+        """Fixed synthetic cohort; moving time and widening horizon obey invariants."""
+        from datetime import datetime, timedelta, timezone
+
+        anchor = datetime(2026, 10, 15, 12, 0, 0, tzinfo=timezone.utc)
+
+        def utc(instant):
+            return instant.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        windows = [
+            (anchor + timedelta(hours=(i - 12) * 5),
+             anchor + timedelta(hours=(i - 12) * 5 + 1 + (i % 7) * 10))
+            for i in range(32)
+        ]
+        claims = [{"valid_from": utc(start), "valid_until": utc(end)}
+                  for start, end in windows]
+        previous_by_horizon = {}
+        examples = 0
+        for hour_offset in range(-73, 135, 7):
+            instant = anchor + timedelta(hours=hour_offset)
+            current = {}
+            for horizon in (1, 6, 24, 72, 720):
+                receipt = reviewer.review(encoded({
+                    "as_of_utc": utc(instant),
+                    "horizon_hours": horizon,
+                    "windows": claims,
+                }))
+                self.assertEqual(receipt["status"], "REVIEW_ONLY")
+                self.assertNoAuthority(receipt)
+                self.assertTrue(reviewer._receipt_is_safe(receipt))
+                self.assertEqual(sum(receipt[key]
+                                     for key in reviewer.COHORT_FIELDS), 32)
+                # Independent datetime oracle, no production grant or scan.
+                oracle = [0, 0, 0, 0]
+                for start, end in windows:
+                    if instant > end:
+                        oracle[0] += 1
+                    elif instant < start:
+                        oracle[1] += 1
+                    elif end - instant <= timedelta(hours=horizon):
+                        oracle[2] += 1
+                    else:
+                        oracle[3] += 1
+                self.assertEqual(
+                    [receipt[key] for key in reviewer.COHORT_FIELDS], oracle,
+                )
+                previous = previous_by_horizon.get(horizon)
+                if previous is not None:
+                    self.assertGreaterEqual(receipt["expired"],
+                                            previous["expired"])
+                    self.assertLessEqual(receipt["not_yet_started"],
+                                         previous["not_yet_started"])
+                previous_by_horizon[horizon] = receipt
+                current[horizon] = receipt
+                examples += 1
+            for short, long in zip((1, 6, 24, 72), (6, 24, 72, 720)):
+                self.assertEqual(current[short]["expired"],
+                                 current[long]["expired"])
+                self.assertEqual(current[short]["not_yet_started"],
+                                 current[long]["not_yet_started"])
+                self.assertLessEqual(
+                    current[short]["current_expiring_within_horizon"],
+                    current[long]["current_expiring_within_horizon"],
+                )
+                self.assertGreaterEqual(current[short]["current_later"],
+                                        current[long]["current_later"])
+        self.assertEqual(examples, 150)
+        # Identity of anonymous rows must never be leaked by reordering.
+        for offset in (-24, 0, 48):
+            for horizon in (1, 24, 720):
+                packet = {"as_of_utc": utc(anchor + timedelta(hours=offset)),
+                          "horizon_hours": horizon, "windows": claims}
+                original = reviewer.review(encoded(packet))
+                packet["windows"] = list(reversed(claims))
+                self.assertEqual(reviewer.review(encoded(packet)), original)
+
+    def test_calendar_extremes_and_gregorian_leap_year_denials(self):
+        """Keep rare calendar edges UTC and fail closed across Python versions."""
+        cases = (
+            ("0001-01-01T00:00:00Z", "0001-01-01T00:00:01Z"),
+            ("2000-02-29T00:00:00Z", "2000-03-01T00:00:00Z"),
+            ("2024-02-29T23:59:58Z", "2024-03-01T00:00:00Z"),
+            ("9999-12-31T23:59:58Z", "9999-12-31T23:59:59Z"),
+        )
+        for start, end in cases:
+            with self.subTest(start=start):
+                receipt = reviewer.review(encoded({
+                    "as_of_utc": start,
+                    "horizon_hours": 720,
+                    "windows": [{"valid_from": start, "valid_until": end}],
+                }))
+                self.assertEqual(receipt["current_expiring_within_horizon"], 1)
+                self.assertNoAuthority(receipt)
+        for invalid in (
+            "1900-02-29T00:00:00Z", "2100-02-29T00:00:00Z",
+            "9999-12-31T24:00:00Z", "0000-12-31T23:59:59Z",
+        ):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                reviewer.review(encoded({
+                    "as_of_utc": invalid,
+                    "horizon_hours": 720,
+                    "windows": [{"valid_from": "2026-10-15T11:00:00Z",
+                                 "valid_until": "2026-10-15T13:00:00Z"}],
+                }))
+
+
+
 if __name__ == "__main__":
     unittest.main()
