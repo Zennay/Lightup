@@ -4,6 +4,7 @@ Not a grant source, permission evaluator, or target scanner.
 """
 from __future__ import annotations
 
+from ipaddress import ip_network
 import json
 import os
 import subprocess
@@ -41,7 +42,7 @@ class OfflineExactNetworks292296(unittest.TestCase):
         self.assertEqual(guard.review(self._payload([])), "REVIEW_ONLY")
         response = json.loads(guard.receipt("REVIEW_ONLY"))
         self.assertEqual(response["disposition"], "REVIEW_ONLY")
-        for key in ("is_grant", "authorizes_scan", "authorizes_execution", "authorizes_release"):
+        for key in ("is_grant", "authorizes_scan", "authorizes_target_io", "authorizes_execution", "authorizes_release"):
             self.assertIs(response[key], False)
 
     def test_canonical_v4_v6_and_syntactic_zero_prefix_review_only(self):
@@ -126,7 +127,7 @@ class OfflineExactNetworks292296(unittest.TestCase):
             value = json.loads(guard.receipt(disposition))
             self.assertEqual(set(value), {
                 "disposition", "is_grant", "authorizes_scan",
-                "authorizes_execution", "authorizes_release",
+                "authorizes_target_io", "authorizes_execution", "authorizes_release",
             })
             self.assertFalse(any(x for k, x in value.items() if k != "disposition"))
 
@@ -168,6 +169,69 @@ class OfflineExactNetworks292296(unittest.TestCase):
     def test_max_exact_bytes_does_not_bypass_parser_rejection(self):
         raw = b" " * guard.MAX_JSON_BYTES
         self.assertEqual(guard.review(raw), "HOLD")
+
+    def test_receipt_subclass_identity_spoofing_always_hold(self):
+        # Caller-originated subclass is never a trusted REVIEW_ONLY disposition.
+        self.assertEqual(guard.receipt(_TrickStr("REVIEW_ONLY")), guard.receipt("HOLD"))
+        self.assertEqual(guard.receipt(None), guard.receipt("HOLD"))
+        self.assertEqual(guard.receipt(["REVIEW_ONLY"]), guard.receipt("HOLD"))
+
+    def test_receipt_is_constant_across_distinct_network_inputs(self):
+        examples = (
+            ["198.51.100.0/24"],
+            ["203.0.113.0/24"],
+            ["2001:db8::/64"],
+            ["::/0"],
+            [],
+        )
+        receipts = {
+            guard.receipt(guard.review(self._payload(sample))) for sample in examples
+        }
+        self.assertEqual(receipts, {guard.receipt("REVIEW_ONLY")})
+        self.assertFalse(json.loads(next(iter(receipts)))["authorizes_target_io"])
+
+    def test_exhaustive_documentation_range_host_bit_widening_is_hold(self):
+        # 4 x 127 deterministic, synthetic host-bit samples, no network I/O.
+        for offset in range(1, 128):
+            for text in (
+                f"198.51.100.{offset}/24",
+                f"198.51.100.{offset}/0",
+                f"2001:db8::{offset:x}/64",
+                f"2001:db8::{offset:x}/0",
+            ):
+                with self.subTest(text=text):
+                    widened = ip_network(text, strict=False)
+                    self.assertNotEqual(text, str(widened))
+                    self.assertEqual(guard.review(self._payload([text])), "HOLD")
+
+    def test_all_canonical_ipv4_ipv6_prefix_lengths_remain_review_only(self):
+        for prefix in range(33):
+            canonical = str(ip_network(f"198.51.100.42/{prefix}", strict=False))
+            with self.subTest(family=4, prefix=prefix):
+                self.assertEqual(guard.review(self._payload([canonical])), "REVIEW_ONLY")
+        for prefix in range(129):
+            canonical = str(ip_network(f"2001:db8::1234/{prefix}", strict=False))
+            with self.subTest(family=6, prefix=prefix):
+                self.assertEqual(guard.review(self._payload([canonical])), "REVIEW_ONLY")
+
+    def test_cli_never_conveys_grant_or_target_io_for_valid_and_invalid(self):
+        for networks, expected_status in (
+            (["198.51.100.0/24"], 3),
+            (["2001:db8::/64"], 3),
+            (["198.51.100.42/24"], 2),
+            ([134744072], 2),
+        ):
+            with self.subTest(networks=networks):
+                done = self._cli(self._payload(networks))
+                self.assertEqual(done.returncode, expected_status)
+                self.assertEqual(done.stderr, b"")
+                packet = json.loads(done.stdout)
+                self.assertEqual(set(packet), {
+                    "disposition", "is_grant", "authorizes_scan",
+                    "authorizes_target_io", "authorizes_execution",
+                    "authorizes_release",
+                })
+                self.assertFalse(any(v for k, v in packet.items() if k != "disposition"))
 
     def test_real_cli_valid_returns_nonzero_and_no_grant(self):
         done = self._cli(self._payload(["8.8.8.0/24"]))
