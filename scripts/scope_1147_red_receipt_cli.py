@@ -15,8 +15,10 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 from pathlib import Path
 import socket
+import subprocess
 import sys
 import unittest
 from unittest.mock import patch
@@ -56,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
             sys.path.insert(0, str(root / "tests"))
 
             def block_network(*_args, **_kwargs):
-                raise AssertionError("offline diagnostics prohibit socket/DNS access")
+                raise AssertionError("offline diagnostics prohibit socket/DNS/process access")
 
             # Guard imports and entire reference execution. The individual
             # tests also separately fail-hard on these three entrypoints.
@@ -64,6 +66,8 @@ def main(argv: list[str] | None = None) -> int:
                 patch.object(socket, "socket", side_effect=block_network),
                 patch.object(socket, "create_connection", side_effect=block_network),
                 patch.object(socket, "getaddrinfo", side_effect=block_network),
+                patch.object(subprocess, "Popen", side_effect=block_network),
+                patch.object(os, "system", side_effect=block_network),
                 contextlib.redirect_stdout(io.StringIO()),
                 contextlib.redirect_stderr(io.StringIO()),
             ):
