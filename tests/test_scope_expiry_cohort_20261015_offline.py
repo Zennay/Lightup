@@ -553,30 +553,39 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
                 self.assertNoAuthority(receipt)
 
     def test_regular_file_mutation_during_read_is_hold(self):
-        """Deterministic simulated post-read mtime drift, no actual target I/O."""
+        """Pinned regular file must detect changed mtime after EOF."""
         initial = SimpleNamespace(
-            st_mode=stat.S_IFREG | 0o600,
-            st_dev=8, st_ino=10, st_size=2, st_mtime_ns=10, st_ctime_ns=11,
+            st_mode=stat.S_IFREG | 0o600, st_dev=8, st_ino=10,
+            st_size=2, st_mtime_ns=10, st_ctime_ns=11,
         )
         changed = SimpleNamespace(
-            st_mode=initial.st_mode,
-            st_dev=initial.st_dev, st_ino=initial.st_ino,
-            st_size=2, st_mtime_ns=12, st_ctime_ns=11,
+            st_mode=initial.st_mode, st_dev=initial.st_dev,
+            st_ino=initial.st_ino, st_size=2,
+            st_mtime_ns=12, st_ctime_ns=11,
         )
         with mock.patch.object(reviewer.sys, "stdin") as stdin, \
                 mock.patch.object(reviewer.os, "fstat", side_effect=[
+                    initial, initial, initial, initial,
                     initial, initial, initial, changed,
                 ]), \
-                mock.patch.object(reviewer.os, "lseek", side_effect=[0, 2]), \
+                mock.patch.object(reviewer.os, "dup", return_value=73) as dup, \
+                mock.patch.object(reviewer.os, "close") as close, \
+                mock.patch.object(reviewer.os, "lseek", return_value=0), \
                 mock.patch.object(reviewer.os, "get_blocking", return_value=True), \
                 mock.patch.object(reviewer.os, "set_blocking") as blocking, \
-                mock.patch.object(reviewer.select, "select", return_value=([0], [], [])), \
-                mock.patch.object(reviewer.os, "read", side_effect=[b"{}", b""]):
+                mock.patch.object(reviewer.select, "select",
+                                  return_value=([73], [], [])), \
+                mock.patch.object(reviewer.os, "read",
+                                  side_effect=[b"{}", b""]) as read:
             stdin.fileno.return_value = 0
             with self.assertRaises(ValueError):
                 reviewer._read_bounded_stdin()
+            dup.assert_called_once_with(0)
+            self.assertEqual([call.args[0] for call in read.call_args_list],
+                             [73, 73])
+            close.assert_called_once_with(73)
             self.assertEqual(blocking.call_args_list, [
-                mock.call(0, False), mock.call(0, True),
+                mock.call(73, False), mock.call(73, True),
             ])
 
     def test_stdin_descriptor_identity_swap_is_hold_before_read(self):
@@ -586,18 +595,68 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
                                   st_dev=8, st_ino=11)
         with mock.patch.object(reviewer.sys, "stdin") as stdin, \
                 mock.patch.object(reviewer.os, "fstat",
-                                  side_effect=[original, swapped]), \
+                                  side_effect=[original, original,
+                                               swapped, original]), \
+                mock.patch.object(reviewer.os, "dup", return_value=73) as dup, \
+                mock.patch.object(reviewer.os, "close") as close, \
                 mock.patch.object(reviewer.os, "get_blocking", return_value=True), \
                 mock.patch.object(reviewer.os, "set_blocking") as blocking, \
-                mock.patch.object(reviewer.select, "select", return_value=([0], [], [])), \
+                mock.patch.object(reviewer.select, "select",
+                                  return_value=([73], [], [])), \
+                mock.patch.object(reviewer.os, "read") as read:
+            stdin.fileno.return_value = 0
+            with self.assertRaises(ValueError):
+                reviewer._read_bounded_stdin()
+            dup.assert_called_once_with(0)
+            read.assert_not_called()
+            close.assert_called_once_with(73)
+            self.assertEqual(blocking.call_args_list, [
+                mock.call(73, False), mock.call(73, True),
+            ])
+
+    def test_stdin_pin_prevents_unsafe_original_fd0_read(self):
+        original = SimpleNamespace(st_mode=stat.S_IFIFO | 0o600,
+                                   st_dev=8, st_ino=10)
+        with mock.patch.object(reviewer.sys, "stdin") as stdin, \
+                mock.patch.object(reviewer.os, "fstat", return_value=original), \
+                mock.patch.object(reviewer.os, "dup", return_value=73) as dup, \
+                mock.patch.object(reviewer.os, "close") as close, \
+                mock.patch.object(reviewer.os, "get_blocking", return_value=True), \
+                mock.patch.object(reviewer.os, "set_blocking") as blocking, \
+                mock.patch.object(reviewer.select, "select",
+                                  return_value=([73], [], [])) as selected, \
+                mock.patch.object(reviewer.os, "read",
+                                  side_effect=[b"{}", b""]) as read:
+            stdin.fileno.return_value = 0
+            self.assertEqual(reviewer._read_bounded_stdin(), b"{}")
+            dup.assert_called_once_with(0)
+            self.assertEqual([call.args[0] for call in read.call_args_list],
+                             [73, 73])
+            self.assertEqual([call.args[0][0] for call in
+                              selected.call_args_list], [[73], [73]])
+            close.assert_called_once_with(73)
+            self.assertEqual(blocking.call_args_list, [
+                mock.call(73, False), mock.call(73, True),
+            ])
+
+    def test_stdin_pin_mismatch_closes_without_read_or_mode_change(self):
+        original = SimpleNamespace(st_mode=stat.S_IFIFO | 0o600,
+                                   st_dev=8, st_ino=10)
+        wrong = SimpleNamespace(st_mode=original.st_mode,
+                                st_dev=8, st_ino=12)
+        with mock.patch.object(reviewer.sys, "stdin") as stdin, \
+                mock.patch.object(reviewer.os, "fstat",
+                                  side_effect=[original, wrong]), \
+                mock.patch.object(reviewer.os, "dup", return_value=73), \
+                mock.patch.object(reviewer.os, "close") as close, \
+                mock.patch.object(reviewer.os, "set_blocking") as blocking, \
                 mock.patch.object(reviewer.os, "read") as read:
             stdin.fileno.return_value = 0
             with self.assertRaises(ValueError):
                 reviewer._read_bounded_stdin()
             read.assert_not_called()
-            self.assertEqual(blocking.call_args_list, [
-                mock.call(0, False), mock.call(0, True),
-            ])
+            blocking.assert_not_called()
+            close.assert_called_once_with(73)
 
     def test_stdout_descriptor_identity_swap_never_writes(self):
         original = SimpleNamespace(st_mode=stat.S_IFIFO | 0o600,
