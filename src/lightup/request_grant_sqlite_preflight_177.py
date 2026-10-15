@@ -83,12 +83,21 @@ def _has_provenance_fk(connection: sqlite3.Connection) -> bool:
     # Require an independent, single-column FK instead of accepting a
     # lookalike fragment of a different database constraint.
     members_of_fk = [row for row in fk_rows if row[0] == target[0]]
-    return (
+    if not (
         len(members_of_fk) == 1
         and target[1] == 0
         and target[2] == "assessment_requests"
         and target[4] == "request_id"
-    )
+    ):
+        return False
+    # A declared FK can be bypassed if a different writer has disabled
+    # PRAGMA foreign_keys. Verify the existing grant table, not just the
+    # currently selected row; fail closed on any broken dependent grant.
+    # This read-only, potentially costly consistency scan is deliberately
+    # limited to the optional offline reviewer (never a live dispatch gate).
+    return connection.execute(
+        "PRAGMA foreign_key_check(authorization_grants)"
+    ).fetchone() is None
 
 
 def _load_review(
