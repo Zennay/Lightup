@@ -79,3 +79,24 @@ De originele offline JSON-review publiceert nu per vaste voorwaarde alleen één
 
 De Nederlandstalige review toont elke toestand expliciet als **Ontbreekt**, **Geblokkeerd**, **Alleen zelf gemeld** of **Niet controleerbaar**, steeds met de oorspronkelijke vaste uitleg en **Vrijgave: NEE**. Ook wanneer alle negen zelfgemeld zijn, blijft de uitkomst onzeker. De nieuwe afzonderlijke `tests/test_scope_release_gate_state_views_20261015.py` omvat negen tests voor statustoewijzing, volgorde, type-/opmaak-injecties en twee echte CLI's. De volledige bestaande testomgeving en onafhankelijke CI- en permanente-runnerbronnen blijven doorslaggevend; deze rapportage is nooit een bron van toestemming.
 
+
+## W7 — uitvoerbare eigenaarshandoff bij iedere onafhankelijke releasegate
+
+De Nederlandstalige inventarisatie toont nu niet alleen de negen
+statusmeldingen, maar per voorwaarde ook de **verantwoordelijke rol**,
+**wat technisch of menselijk moet gebeuren**, **het onafhankelijk te
+accepteren bewijs** en **waarom de huidige review niets kan vrijgeven**.
+De verklaringen komen uit één nieuwe onveranderbare codecatalogus:
+`scripts/scope_release_remediation_catalog_20261015.py`. Deze catalogus
+bevat uitsluitend vast geprogrammeerde publieke issueverwijzingen en
+geen opgehaalde GitHub-status, privéklantgegevens of daadwerkelijke
+goedkeuringen. Ook bij ongeldig bestand worden alle negen herstelroutes
+weergegeven, met Status HOLD / Vrijgave NEE. Voor de volledige matrix zie
+[remediation-owner-map](scope-release-remediation-owner-map-20261015.md).
+
+Nieuwe contracttests:
+`tests/test_scope_release_remediation_catalog_20261015.py` controleren
+onder meer de exacte negen gates, afgedwongen onveranderbaarheid,
+bronhoudereigenaarschap, geen privilegepromotie, geen echo van een
+fictieve geheime toelichting, beide Nederlandse CLI's en gelijke
+HOLD-semantiek met machine-uitvoer. De runnerworkflow is niet aangepast.
