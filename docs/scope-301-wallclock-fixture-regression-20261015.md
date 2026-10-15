@@ -90,6 +90,37 @@ ordinary PASS test in this #301 module that implicitly depended on a
 machine calendar. The existing intentionally expected-RED malformed-bound
 tests are unchanged, and source owner #100/#104 still owns actual repair.
 
+## Cross-century and cross-grant acceptance (W6)
+
+Two additional real installed-source ordinary regressions close remaining temporal
+reference risks without modifying application code:
+
+- **45 fixed synthetic time observations across 2024, 2026, 2030, 2050 and
+  2099:** 25 true-instant-equivalent observations in UTC or canonical fixed
+  offsets from UTC-11 through UTC+14, plus 20 inclusive/start-end/outside
+  window boundaries. The evaluator must preserve the same positive/negative
+  membership regardless of calendar year, timezone offset and local date.
+- **360 seeded, shuffled synthetic decisions across five distinct Authorization
+  instances and nine evaluation dates** prove that an earlier authorization's
+  in-window result does not confer implicit authority to a different expired
+  or future-dated authorization. Every record's contents remain unchanged.
+  No cached grant, live consent, target I/O or dispatcher is involved.
+
+## Polymorphic falsy date-source acceptance (W7)
+
+The legacy `Authorization.is_current()` performs truthiness tests on the
+optional start/end fields before comparing against `now`. An adversarial
+`datetime` subclass can override `__bool__` to return `False` while
+carrying an actually future start or expired end; current production source
+incorrectly treats both as unbounded and returns current. Two new **genuine
+intentional expected-RED** tests demonstrate this on the installed source.
+
+This is a *known unresolved security invariant*, **not** a successful
+hardening of runtime authorization. The #100/#104 source owner must require
+canonical exact built-in aware datetimes or None, and then convert these
+expected-RED tests to ordinary PASS after production repair. The two RED
+regressions must never be interpreted as consent or release evidence.
+
 ## Ownership and proof gates
 
 Only this original time-window test module and this standalone explanation
