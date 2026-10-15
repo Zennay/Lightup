@@ -241,3 +241,30 @@ def review_request_grant_engagement(
     if not (created_at <= grant.valid_from <= reviewed_at):
         return _HOLD
     return review_request_grant(request, grant, reviewed_at=reviewed_at)
+
+
+def review_request_grant_engagement_batch(
+    entries: object, *, reviewed_at: object
+) -> RequestGrantReview:
+    """Atomic same-tenant review of 1..32 untrusted request/grant/engagements.
+
+    Each row first has to satisfy the independent three-way relationship
+    review; then the exact same request/grant pairs must satisfy the existing
+    atomic duplicate-ID, tenant, risk, and effective-asset overlap gate.
+    Neither step authenticates stored provenance or permits an action.
+    """
+    if type(entries) is not tuple or not (1 <= len(entries) <= 32):
+        return _HOLD
+    if not _utc_instant(reviewed_at):
+        return _HOLD
+    pairs = []
+    for entry in entries:
+        if type(entry) is not tuple or len(entry) != 3:
+            return _HOLD
+        request, grant, engagement = entry
+        if review_request_grant_engagement(
+            request, grant, engagement, reviewed_at=reviewed_at
+        ) is not _REVIEW:
+            return _HOLD
+        pairs.append((request, grant))
+    return review_request_grant_batch(tuple(pairs), reviewed_at=reviewed_at)
