@@ -129,3 +129,22 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_294_numeric_h
 ```
 
 **Remain INCUBATE / PLAN-LAB ONLY / DRAFT-HOLD.** The original six installed #294 expected REDs and all real authorization, grant provenance, revocation, permanent VPS and human approval blockers are unchanged.
+
+## W8 — IP-number and hexadecimal host aliases cannot masquerade as DNS metadata
+
+The opt-in offline reviewer previously treated numeric host-like strings such as `127.1`, `2130706433`, `0x7f000001`, `0177.0.0.1`, and even literal `127.0.0.1` as structurally reviewed DNS host metadata. Some browser/URL parsers reinterpret them as IPv4 targets. The conservative new lexical review **HOLDs** 1–4 fully numeric/hexadecimal labels. It never resolves those spellings, rewrites scope or grants authority. Digit-bearing genuine DNS names, e.g. `127.example.test` and `ip4-127.example.test`, remain exact **REVIEW_ONLY** strings.
+
+`tests/test_scope_294_numeric_host_alias_hold_20261015.py` adds ten real tests: literal/shorthand/octal/hex and invalid numeric aliases, canonical CIDR metadata (never grant), genuine DNS controls, mixed-input atomic rejection, immutable policy inspection without mutation, actual offline CLI privacy/exit 2, and no DNS/socket/subprocess.
+
+## W9 — reject repeated exact CIDR declarations, retain ordered distinct networks
+
+The reviewer formerly allowed a list or tuple of repeated exact network strings, e.g. `["8.8.8.0/24", "8.8.8.0/24"]`, and called the metadata canonical. This now **HOLDs** instead of treating redundant declarations as clean inputs. The change deliberately makes **no claim of installed policy union semantics** or authority, and does not change whether distinct overlapping networks in the *uninstalled review* are authorized: they remain separate `REVIEW_ONLY` metadata, preserving declared order.
+
+`tests/test_scope_294_duplicate_cidr_review_20261015.py` adds ten real tests across IPv4/IPv6 repetition, all-or-nothing refusal when hosts are otherwise valid, literal distinct ordering and overlap, immutable caller detachment, exact 128 distinct entries, unchanged installed `ScopePolicy`, actual CLI exit 2 and privacy-minimal JSON, and socket/DNS/process tripwires. The original 128-entry baseline in `tests/test_scope_collection_snapshot_review_294_20261015.py` was updated from 128 identical networks to **128 distinct /32 declarations** so that its limit assertion remains meaningful after duplicate validation.
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_294_numeric_host_alias_hold_20261015.py' -v
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_294_duplicate_cidr_review_20261015.py' -v
+```
+
+**Both improvements are strictly isolated metadata hardening.** No code in real `src/lightup/scope.py`, authorization grants, active executor, target transport, worker-owned branches or deploy pipeline was changed. Real #294 mutable policy snapshots, #292/#296 network admission, #177 customer consent and #347 pre-I/O revocation remain source-owner and review blockers; hold until exact-head hosted + registered VPS, security/privacy and explicit human release. **Never merge, deploy, issue grants or scan from a REVIEW_ONLY result.**
