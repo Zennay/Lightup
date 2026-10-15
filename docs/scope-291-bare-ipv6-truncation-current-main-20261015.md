@@ -19,18 +19,18 @@ permission to test the displayed addresses.
 
 New file `tests/test_scope_291_bare_ipv6_truncation_current_main_20261015.py`:
 
-- Four **real expected-RED** cases prove bare IPv6 must never turn into
+- Five **real expected-RED** cases prove bare IPv6 must never turn into
   a shortened name, that a synthetic explicit-host allowlist cannot
   admit the mismatched IPv6 literal, a fabricated authorization
   claim on the wrong identity, and the **real ActivationGate** handing out a
   synthetic in-memory execution permit for that falsely matched identity.
-- Six **normal green/witness controls** prove bracketed IPv6 remains intact,
+- Seven **normal green/witness controls** prove bracketed IPv6 remains intact,
   explicit `/128` network membership still requires an authorization
   object under the existing canonical flow, and the same literal in
   bracketed form cannot accidentally match an unrelated host or network. A
   PLAN_ONLY/LAB_ONLY comparators still reject the fake active request; a
   standalone network-tripwire self-test proves DNS/socket monkeypatches really
-  reject calls. A RED-integrity witness reruns the four intentional failures
+  reject calls. A RED-integrity witness reruns the five intentional failures
   and rejects masked crashes, accidental success and network-trigger errors.
 - All tests are pure in-process: actual DNS lookups, sockets and outbound
   connections are patched to raise immediately. No real network
@@ -48,7 +48,7 @@ PYTHONPATH=src python -m unittest -v \
 ```
 
 **Important:** `unittest.expectedFailure` is a red-signal quarantine,
-not a successful security fix. The four source-negative cases must
+not a successful security fix. The five source-negative cases must
 report exactly as **expected failures**, not ordinary passing tests or
 unexpected successes. The owner must repair the installed source and
 convert these cases to normal green tests before considering this
@@ -98,3 +98,19 @@ first-hextet truncation without involving a real endpoint. For explicit
 /128 controls, `allow_private_lab=False` guarantees documentation address
 classification cannot hide the explicit scope decision. DNS and socket
 operations remain blocked by the actual test guard.
+
+## W3: independently enumerated identity-collision matrix
+
+A fifth installed-source expected-RED test evaluates **all 256** distinct
+canonical RFC 3849 test addresses `2001:db8:<0000..00ff>::1` with a
+fictional `explicit_hosts={"2001"}` and synthetic in-memory Authorization.
+It **materializes all 256 decisions before asserting**, rather than stopping
+on the first counterexample. Current main falsely maps all 256 to a
+host-allowlist admission; the assertion message includes the exact count.
+The independent witness requires that count in the expected RED traceback,
+rejecting masked TypeError or early failures. The seventh ordinary comparator
+re-evaluates all 256 corresponding bracketed forms and proves **256 denials**
+against the unrelated DNS label, with exact preserved IPv6 identity.
+Neither path uses sockets, DNS, real assets, imports any live worker or
+issues an active permit. This matrix is still a source-owner acceptance
+contract, **not** an implemented production fix or authorization grant.
