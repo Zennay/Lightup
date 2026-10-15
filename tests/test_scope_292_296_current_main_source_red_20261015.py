@@ -2,7 +2,7 @@
 
 Test inputs are synthetic and evaluated only in memory. A fixture Authorization
 is not real customer consent. Do not use these tests as a grant/scan permit.
-The installed source currently violates the sixteen expected-failure cases; an
+The installed source currently violates the eighteen expected-failure cases; an
 unexpectedSuccess means the source changed and this suite must be promoted to
 ordinary passing tests by the production owner before release.
 """
@@ -113,6 +113,16 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
     def test_296_noncanonical_dotted_host_mask_must_require_32(self):
         self._assert_rejected("8.8.8.8/255.255.255.255", "8.8.8.8")
 
+    @unittest.expectedFailure
+    def test_296_ipv4_host_bits_zero_prefix_must_not_widen_to_all_public(self):
+        # Parsing this with strict=False silently becomes 0.0.0.0/0.
+        self._assert_rejected("8.8.8.8/0", "1.1.1.1")
+
+    @unittest.expectedFailure
+    def test_296_ipv6_host_bits_zero_prefix_must_not_widen_to_all_public(self):
+        # Parsing this with strict=False silently becomes ::/0.
+        self._assert_rejected("2001:4860:4860::8888/0", "[2606:4700:4700::1111]")
+
     def test_292_bytearray_is_never_permission(self):
         self._assert_rejected(bytearray(b"\x08\x08\x08\x08"), "8.8.8.8")
 
@@ -165,7 +175,7 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
         self.assertFalse(result.allowed)
         self.assertEqual(result.reason, ScopeReason.AUTHORIZATION_MISSING)
 
-    def test_sixteen_expected_reds_are_real_assertions_not_masked_errors(self):
+    def test_eighteen_expected_reds_are_real_assertions_not_masked_errors(self):
         names = (
             "test_292_integer_must_not_create_ipv4_host_authority",
             "test_292_raw_bytes_must_not_create_ipv4_host_authority",
@@ -183,10 +193,12 @@ class ExplicitNetworkSourceRed292296(unittest.TestCase):
             "test_296_dotted_prefix_mask_is_not_canonical_cidr",
             "test_296_noncanonical_ipv6_network_text_is_not_canonical_cidr",
             "test_296_noncanonical_dotted_host_mask_must_require_32",
+            "test_296_ipv4_host_bits_zero_prefix_must_not_widen_to_all_public",
+            "test_296_ipv6_host_bits_zero_prefix_must_not_widen_to_all_public",
         )
         proof = unittest.TestResult()
         # A red witness that performs target I/O is not valid evidence:
-        # prohibit networking and new subprocesses throughout all 16 replays.
+        # prohibit networking and new subprocesses throughout all 18 replays.
         with (
             patch("socket.socket", side_effect=AssertionError("network forbidden")),
             patch("socket.getaddrinfo", side_effect=AssertionError("DNS forbidden")),
