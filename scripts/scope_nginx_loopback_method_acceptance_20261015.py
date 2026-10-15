@@ -336,6 +336,16 @@ def run_probe(template: str, *, force_rewrite: bool = False,
                     ("GET", [(name, "DELETE"), (name.lower(), "POST")]),
                     ("POST", [(name.lower(), "GET"), (name, "DELETE")]),
                 ))
+            # Do not let malformed, comma-joined or alternate-case values
+            # accidentally reach an upstream framework's method parser.
+            # The proxy must strip the header regardless of its *value*.
+            for name in OVERRIDE_NAMES:
+                cases.extend((
+                    ("GET", {name: "POST, DELETE"}),
+                    ("POST", {name: "GET, POST"}),
+                    ("GET", {name: "pOsT"}),
+                    ("POST", {name: "HEAD"}),
+                ))
             for method, overrides in cases:
                 receipt = _request(port, method, overrides)
                 if not _receipt_is_exact(receipt, method):
