@@ -17,6 +17,7 @@ from lightup.request_grant_offline_review_177 import (
     review_request_grant,
     review_request_grant_batch,
     review_request_grant_engagement,
+    review_request_grant_engagement_batch,
 )
 
 
@@ -501,6 +502,73 @@ class RequestGrantOfflineReviewTests(unittest.TestCase):
         )
         self.assertIs(outcome.status, ReviewStatus.HOLD)
         self.assert_no_authority(outcome)
+
+    def test_assembled_three_way_batch_is_always_non_authorizing(self):
+        first, second = self._batch_pairs()
+        packet = (
+            (first[0], first[1], self._engagement()),
+            (second[0], second[1], self._engagement()),
+        )
+        result = review_request_grant_engagement_batch(packet, reviewed_at=NOW)
+        self.assertIs(result.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(result)
+
+    def test_assembled_three_way_batch_denies_any_bad_engagement_atomically(self):
+        first, second = self._batch_pairs()
+        good = (first[0], first[1], self._engagement())
+        for bad in (
+            replace(self._engagement(), client_id="client-other"),
+            replace(self._engagement(), engagement_id="engagement-other"),
+            replace(self._engagement(), status=EngagementStatus.DRAFT),
+            replace(self._engagement(), created_at="2030-02-02T00:00:00+00:00"),
+            object(),
+        ):
+            with self.subTest(bad_type=type(bad).__name__):
+                outcome = review_request_grant_engagement_batch(
+                    (good, (second[0], second[1], bad)), reviewed_at=NOW
+                )
+                self.assertIs(outcome.status, ReviewStatus.HOLD)
+                self.assert_no_authority(outcome)
+
+    def test_assembled_three_way_batch_denies_all_duplicates_and_wrong_shape(self):
+        first, second = self._batch_pairs()
+        good1 = (first[0], first[1], self._engagement())
+        good2 = (second[0], second[1], self._engagement())
+        overlap_grant = replace(second[1], scope=replace(
+            second[1].scope, assets=first[1].scope.assets
+        ))
+        packets = (
+            (), [], None, ((first[0], first[1]),),
+            ((first[0], first[1], self._engagement(), 0),),
+            ((first[0], first[1], self._engagement()),) * 33,
+            (good1, good1),
+            (good1, (second[0], overlap_grant, self._engagement())),
+            (good1, (second[0], replace(second[1], grant_id=first[1].grant_id), self._engagement())),
+            (good1, (replace(second[0], request_id=first[0].request_id), second[1], self._engagement())),
+            (good1, list(good2)),
+        )
+        for packet in packets:
+            with self.subTest(shape=str(type(packet)), size=len(packet) if hasattr(packet, "__len__") else -1):
+                result = review_request_grant_engagement_batch(packet, reviewed_at=NOW)
+                self.assertIs(result.status, ReviewStatus.HOLD)
+                self.assert_no_authority(result)
+
+    def test_three_way_batch_boundary_accepts_32_separate_synthetic_rows_only(self):
+        pairs = []
+        for idx in range(32):
+            asset = f"fixture{idx}.example.test"
+            req = replace(request(), request_id=f"r{idx}", requested_assets=(asset,))
+            gr = replace(
+                grant(), grant_id=f"g{idx}",
+                scope=replace(grant().scope, assets=(asset,))
+            )
+            pairs.append((req, gr, self._engagement()))
+        allowed = review_request_grant_engagement_batch(tuple(pairs), reviewed_at=NOW)
+        self.assertIs(allowed.status, ReviewStatus.REVIEW_ONLY)
+        self.assert_no_authority(allowed)
+        over = review_request_grant_engagement_batch(tuple(pairs) + (pairs[0],), reviewed_at=NOW)
+        self.assertIs(over.status, ReviewStatus.HOLD)
+        self.assert_no_authority(over)
 
     def test_no_raw_input_echo_on_denial(self):
         poisoned = replace(request(), requested_assets=("secret-password.example.test",))
