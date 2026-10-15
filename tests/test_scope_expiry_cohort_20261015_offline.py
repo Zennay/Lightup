@@ -606,17 +606,63 @@ class ExpiryCohortOfflineTests(unittest.TestCase):
                                   st_dev=8, st_ino=11)
         with mock.patch.object(reviewer.sys, "stdout") as stdout, \
                 mock.patch.object(reviewer.os, "fstat",
-                                  side_effect=[original, original, swapped]), \
+                                  side_effect=[original, original, original, swapped]), \
+                mock.patch.object(reviewer.os, "dup", return_value=71) as dup, \
+                mock.patch.object(reviewer.os, "close") as close, \
                 mock.patch.object(reviewer.os, "get_blocking", return_value=True), \
                 mock.patch.object(reviewer.os, "set_blocking") as blocking, \
                 mock.patch.object(reviewer.os, "write") as write:
             stdout.fileno.return_value = 1
             self.assertFalse(reviewer._emit_receipt(reviewer._receipt("HOLD")))
+            dup.assert_called_once_with(1)
             write.assert_not_called()
+            close.assert_called_once_with(71)
             self.assertEqual(blocking.call_args_list, [
-                mock.call(1, False), mock.call(1, True),
+                mock.call(71, False), mock.call(71, True),
             ])
 
+    def test_stdout_receipt_always_writes_pinned_descriptor_not_fd1(self):
+        original = SimpleNamespace(st_mode=stat.S_IFIFO | 0o600,
+                                   st_dev=8, st_ino=10)
+        receipt = reviewer._receipt("HOLD")
+        with mock.patch.object(reviewer.sys, "stdout") as stdout, \
+                mock.patch.object(reviewer.os, "fstat", return_value=original), \
+                mock.patch.object(reviewer.os, "dup", return_value=71) as dup, \
+                mock.patch.object(reviewer.os, "close") as close, \
+                mock.patch.object(reviewer.os, "get_blocking", return_value=True), \
+                mock.patch.object(reviewer.os, "set_blocking") as blocking, \
+                mock.patch.object(reviewer.os, "write") as write:
+            stdout.fileno.return_value = 1
+            write.side_effect = lambda fd, payload: len(payload)
+            self.assertTrue(reviewer._emit_receipt(receipt))
+            dup.assert_called_once_with(1)
+            self.assertEqual(write.call_count, 1)
+            self.assertEqual(write.call_args.args[0], 71)
+            self.assertNotEqual(write.call_args.args[0], 1)
+            close.assert_called_once_with(71)
+            self.assertEqual(blocking.call_args_list, [
+                mock.call(71, False), mock.call(71, True),
+            ])
+
+    def test_stdout_write_error_does_not_leak_or_keep_pinned_fd_open(self):
+        original = SimpleNamespace(st_mode=stat.S_IFIFO | 0o600,
+                                   st_dev=8, st_ino=10)
+        with mock.patch.object(reviewer.sys, "stdout") as stdout, \
+                mock.patch.object(reviewer.os, "fstat", return_value=original), \
+                mock.patch.object(reviewer.os, "dup", return_value=71), \
+                mock.patch.object(reviewer.os, "close") as close, \
+                mock.patch.object(reviewer.os, "get_blocking", return_value=True), \
+                mock.patch.object(reviewer.os, "set_blocking") as blocking, \
+                mock.patch.object(reviewer.os, "write",
+                                  side_effect=BrokenPipeError("synthetic pipe")) as write:
+            stdout.fileno.return_value = 1
+            self.assertFalse(reviewer._emit_receipt(reviewer._receipt("HOLD")))
+            write.assert_called_once()
+            self.assertEqual(write.call_args.args[0], 71)
+            close.assert_called_once_with(71)
+            self.assertEqual(blocking.call_args_list, [
+                mock.call(71, False), mock.call(71, True),
+            ])
 
     def test_output_receipt_only_accepts_literal_false_flags(self):
         valid = reviewer.review(encoded(document()))
