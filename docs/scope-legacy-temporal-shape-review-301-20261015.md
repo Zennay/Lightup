@@ -95,6 +95,23 @@ This is a defensive, opt-in review contract. It is not proof of cross-thread
 atomicity or safety after return, and it cannot authorize a scan or customer
 engagement.
 
+## W5: bypass user-patched storage accessors
+
+Both single and 1–32-member synthetic review now read materialized instance
+storage through the built-in `object.__getattribute__(auth, "__dict__")`
+primitive. This bypasses a potentially monkeypatched `Authorization.
+__getattribute__` that could return **both** a forged dictionary and a
+forged expiry datetime. A new negative control supplies precisely that
+dual-spoofing case and expects opaque HOLD for single and batch review;
+a second positive control confirms that a fake `__dict__` getter cannot
+overwrite a genuinely unchanged valid stored window. The offline static
+source-effect canary permits only that exact built-in storage read, not
+arbitrary private field reads or user-defined getters.
+
+This diagnostic still does not establish trustworthy source provenance,
+operator/client consent, a concurrency lock or installed authorization.
+The original source owner must independently repair the installed method.
+
 ## Hard gate: not a production fix
 
 This does **not** repair `Authorization.is_current()`. Release requires the
