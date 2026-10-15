@@ -119,6 +119,33 @@ def _write_nonblocking_receipt(payload: bytes) -> None:
         os.set_blocking(1, was_blocking)
 
 
+
+def _regular_input_snapshot(fd: int) -> tuple[int, ...] | None:
+    """Accept a complete, bounded, non-seeked regular-file snapshot only."""
+    st = os.fstat(fd)
+    if not stat.S_ISREG(st.st_mode):
+        return None
+    if st.st_size < 1 or st.st_size > MAX_INPUT_BYTES:
+        raise ValueError("regular input is empty or oversized")
+    if os.lseek(fd, 0, os.SEEK_CUR) != 0:
+        raise ValueError("regular input was partially consumed")
+    return (st.st_dev, st.st_ino, st.st_mode, st.st_size,
+            st.st_mtime_ns, st.st_ctime_ns)
+
+
+def _verify_regular_input(fd: int, original: tuple[int, ...] | None,
+                          received_length: int) -> None:
+    if original is None:
+        return
+    st = os.fstat(fd)
+    current = (st.st_dev, st.st_ino, st.st_mode, st.st_size,
+               st.st_mtime_ns, st.st_ctime_ns)
+    if current != original or received_length != st.st_size:
+        raise ValueError("regular input changed during review")
+    if os.lseek(fd, 0, os.SEEK_CUR) != st.st_size:
+        raise ValueError("regular input was not completely consumed")
+
+
 def main() -> int:
     if len(sys.argv) != 1:
         return 2
@@ -133,11 +160,12 @@ def main() -> int:
                 (stat.S_ISCHR(stdout_mode) and os.isatty(1))):
             return 2
         try:
+            snapshot = _regular_input_snapshot(0)
             data = _read_bounded_local()
-        except TimeoutError:
-            receipt = _receipt("HOLD")
-        else:
+            _verify_regular_input(0, snapshot, len(data))
             receipt = review_bytes(data)
+        except (TimeoutError, ValueError):
+            receipt = _receipt("HOLD")
         encoded = (json.dumps(receipt, separators=(",", ":"), sort_keys=True) + "\n").encode("ascii")
         _write_nonblocking_receipt(encoded)
     except (OSError, TimeoutError, ValueError):
