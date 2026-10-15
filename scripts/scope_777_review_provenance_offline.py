@@ -77,22 +77,22 @@ def review_bytes(data: bytes) -> dict[str, str | bool]:
     return _receipt("REVIEW_ONLY")
 
 
-def _read_bounded_local() -> bytes:
+def _read_bounded_local(fd: int) -> bytes:
     """Read to EOF with a monotonic deadline, never waiting forever on a FIFO."""
     chunks: list[bytes] = []
     total = 0
     deadline = time.monotonic() + MAX_INPUT_WAIT_SECONDS
-    was_blocking = os.get_blocking(0)
+    was_blocking = os.get_blocking(fd)
     try:
-        os.set_blocking(0, False)
+        os.set_blocking(fd, False)
         while True:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise TimeoutError("untrusted input held open")
-            if not select.select([0], [], [], remaining)[0]:
+            if not select.select([fd], [], [], remaining)[0]:
                 raise TimeoutError("untrusted input timed out")
             try:
-                part = os.read(0, MAX_INPUT_BYTES + 1 - total)
+                part = os.read(fd, MAX_INPUT_BYTES + 1 - total)
             except BlockingIOError:
                 continue
             if not part:
@@ -102,21 +102,21 @@ def _read_bounded_local() -> bytes:
             if total > MAX_INPUT_BYTES:
                 break
     finally:
-        os.set_blocking(0, was_blocking)
+        os.set_blocking(fd, was_blocking)
     return b"".join(chunks)
 
 
-def _write_nonblocking_receipt(payload: bytes) -> None:
+def _write_nonblocking_receipt(payload: bytes, fd: int) -> None:
     """One bounded nonblocking write; never wait on an unconsumed output."""
     if len(payload) > 512:
         raise ValueError("oversized receipt")
-    was_blocking = os.get_blocking(1)
+    was_blocking = os.get_blocking(fd)
     try:
-        os.set_blocking(1, False)
-        if os.write(1, payload) != len(payload):
+        os.set_blocking(fd, False)
+        if os.write(fd, payload) != len(payload):
             raise OSError("partial receipt")
     finally:
-        os.set_blocking(1, was_blocking)
+        os.set_blocking(fd, was_blocking)
 
 
 
@@ -146,28 +146,64 @@ def _verify_regular_input(fd: int, original: tuple[int, ...] | None,
         raise ValueError("regular input was not completely consumed")
 
 
+
+def _fd_identity(fd: int) -> tuple[int, int, int]:
+    """Keep source/destination identity separate from the caller's fd number."""
+    st = os.fstat(fd)
+    return st.st_dev, st.st_ino, st.st_mode
+
+
+def _assert_original_fd_is_pinned(original: int, pinned: int) -> None:
+    if _fd_identity(original) != _fd_identity(pinned):
+        raise ValueError("descriptor rebinding is not permitted")
+
+
+def _pin_checked_fds() -> tuple[int, int]:
+    """Bind both admitted local endpoints before any untrusted I/O."""
+    stdin_before, stdout_before = _fd_identity(0), _fd_identity(1)
+    if not (stat.S_ISFIFO(stdin_before[2]) or stat.S_ISREG(stdin_before[2])):
+        raise ValueError("input must be local FIFO/regular")
+    if not (stat.S_ISFIFO(stdout_before[2]) or
+            (stat.S_ISCHR(stdout_before[2]) and os.isatty(1))):
+        raise ValueError("output must be local FIFO/terminal")
+    stdin_fd = os.dup(0)
+    try:
+        stdout_fd = os.dup(1)
+        try:
+            if (_fd_identity(stdin_fd) != stdin_before or
+                    _fd_identity(stdout_fd) != stdout_before):
+                raise ValueError("descriptor changed during pinning")
+            _assert_original_fd_is_pinned(0, stdin_fd)
+            _assert_original_fd_is_pinned(1, stdout_fd)
+            return stdin_fd, stdout_fd
+        except BaseException:
+            os.close(stdout_fd)
+            raise
+    except BaseException:
+        os.close(stdin_fd)
+        raise
+
+
 def main() -> int:
     if len(sys.argv) != 1:
         return 2
     try:
-        stdin_mode = os.fstat(0).st_mode
-        stdout_mode = os.fstat(1).st_mode
-        # Never use inherited network sockets, device input or redirected files.
-        # A pipe or complete regular-file stdin is an offline caller-controlled input.
-        if not (stat.S_ISFIFO(stdin_mode) or stat.S_ISREG(stdin_mode)):
-            return 2
-        if not (stat.S_ISFIFO(stdout_mode) or
-                (stat.S_ISCHR(stdout_mode) and os.isatty(1))):
-            return 2
+        stdin_fd, stdout_fd = _pin_checked_fds()
         try:
-            snapshot = _regular_input_snapshot(0)
-            data = _read_bounded_local()
-            _verify_regular_input(0, snapshot, len(data))
-            receipt = review_bytes(data)
-        except (TimeoutError, ValueError):
-            receipt = _receipt("HOLD")
-        encoded = (json.dumps(receipt, separators=(",", ":"), sort_keys=True) + "\n").encode("ascii")
-        _write_nonblocking_receipt(encoded)
+            try:
+                snapshot = _regular_input_snapshot(stdin_fd)
+                data = _read_bounded_local(stdin_fd)
+                _verify_regular_input(stdin_fd, snapshot, len(data))
+                _assert_original_fd_is_pinned(0, stdin_fd)
+                receipt = review_bytes(data)
+            except (TimeoutError, ValueError):
+                receipt = _receipt("HOLD")
+            _assert_original_fd_is_pinned(1, stdout_fd)
+            encoded = (json.dumps(receipt, separators=(",", ":"), sort_keys=True) + "\n").encode("ascii")
+            _write_nonblocking_receipt(encoded, stdout_fd)
+        finally:
+            os.close(stdout_fd)
+            os.close(stdin_fd)
     except (OSError, TimeoutError, ValueError):
         return 2
     return 3 if receipt["status"] == "REVIEW_ONLY" else 2
