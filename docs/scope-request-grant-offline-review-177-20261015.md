@@ -205,7 +205,10 @@ grant yields one global `HOLD`, regardless of which row was requested.
 Disposable in-memory and actual temporary `DomainStore` SQLite tests prove
 that SQLite itself reports **zero FK violations for NULL child rows**, yet
 both our single-row review and one-grant batch now **HOLD** when another
-unreviewed grant contains NULL. This does *not* change, migrate or delete
+unreviewed grant contains NULL. Additional in-memory tests prove that even
+a **non-NULL, syntactically invalid reference** (such as one containing a
+slash) may point to an existing parent row and pass SQLite's native FK
+check; our strict canonical request-ID grammar still requires HOLD. This does *not* change, migrate or delete
 any production data. Source-owner production migration should use
 `approved_request_id NOT NULL` and an authenticated, immutable,
 transactional binding with suitable uniqueness/revision constraints.
