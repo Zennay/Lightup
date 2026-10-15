@@ -93,6 +93,19 @@ partially written external stream can never be treated as proof of authorization
 regardless of exit status; all consumers must also check complete receipt and
 the explicit false authority fields.
 
+**Fragmented stream hardening:** even when a file-like stdin stream returns
+short reads, the CLI continues consuming bounded bytes until genuine EOF
+before parsing the JSON envelope. It never treats a valid JSON *prefix* as a
+complete REVIEW_ONLY packet while unread suffix bytes remain. The reader
+accepts exact `bytes` only, rejects a `None` result, text, bytearray or an
+over-returning stream, and stops after at most 16,385 bytes. Malformed
+fragments, suffix injection, input truncation, or oversized content receive
+a private generic HOLD with a nonzero exit, never a success code.
+Five new in-memory stream tests cover partial valid reads, a valid prefix
+plus attacker-supplied suffix, byte-budget crossing split across three
+chunks, nonbyte streams and streams that exceed their requested length.
+This is a review-only intake, not installed production authorization.
+
 The CLI/test module is a dry-run acceptance artifact pending source-owner
 coordination, **not** a production admission replacement or an automatic
 configuration migration. In particular its standalone list review cannot
