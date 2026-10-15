@@ -141,13 +141,20 @@ def inspect_direct_scope_risk_batch(claims: object) -> RiskReviewReceipt:
         scope, requested_risk = claim
         if type(scope) is not ScopeDefinition or type(requested_risk) is not RiskLevel:
             return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
-        ceiling = scope.max_risk
+        try:
+            ceiling = scope.max_risk
+        except (AttributeError, TypeError):
+            return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
         if type(ceiling) is not RiskLevel:
             return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
         if inspect_direct_scope_risk(scope, requested_risk).status is not ReviewStatus.REVIEW_ONLY:
             return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
         snapshots.append((scope, ceiling))
     for scope, ceiling in snapshots:
-        if scope.max_risk is not ceiling:
+        try:
+            current_ceiling = scope.max_risk
+        except (AttributeError, TypeError):
+            return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
+        if current_ceiling is not ceiling:
             return RiskReviewReceipt(ReviewStatus.HOLD, "batch_hold")
     return RiskReviewReceipt(ReviewStatus.REVIEW_ONLY, "batch_risk_shape_only")
