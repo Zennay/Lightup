@@ -183,6 +183,24 @@ contract: rejecting malformed authorization *before* time evaluation is a
 legitimate safe implementation. It does not authorize any real target,
 issue a durable grant, or fix installed production source.
 
+## Full fourteen-RED repair witness (W11)
+
+The synthetic-only reference type guard is now checked against **all 14
+original or newly added #301 malformed temporal boundary RED methods**:
+eight scalar falsey start/end cases (`0`, `False`, empty string and empty
+tuple), two actual public-scope falsy-value admissions, two deceptive
+`datetime`-subclass direct currency-window admissions, and two additional
+real `ScopePolicy.decide()` subclass-scope admissions.
+
+Every underlying method must turn from an installed-source
+`expectedFailure` into an explicit `unexpectedSuccess` under the same
+in-memory exact-aware-datetime-or-None reference narrowing, with **no**
+unexpected errors, ordinary failures or lingering expected failures.
+A canonical aware built-in datetime window still admits the explicitly
+declared fictional host through real installed scope code. This tightens
+the source owner's eventual repair acceptance without claiming the
+temporary test-local patch has been integrated or provides real consent.
+
 ## Ownership and proof gates
 
 Only this original time-window test module and this standalone explanation
