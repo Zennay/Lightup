@@ -28,7 +28,7 @@ Run from repository root:
 python -m unittest discover -s tests -p 'test_scope_stepup_revalidation_reference_20261015.py' -v
 ```
 
-The twenty tests cover matching synthetic snapshot (review-only), revoked/missing grant, both temporal boundaries, seven mismatched identities, tool swaps, bad probe outcomes, same-thread revoke/swap/reissue, two synchronized cross-thread races, four-round concurrent four-reader revocation fanout, tool-registry ABA, revoke/restore ABA, and two frozen-request mutation/laundering canaries, caller-object mutation, wrong datetime values, string subclass/boolean/polymorphic shapes and redacted output.
+The twenty-one tests cover matching synthetic snapshot (review-only), revoked/missing grant, both temporal boundaries, seven mismatched identities, tool swaps, bad probe outcomes, same-thread revoke/swap/reissue, two synchronized cross-thread races, four-round concurrent four-reader revocation fanout, tool-registry ABA, revoke/restore ABA, and two frozen-request mutation/laundering canaries, caller-object mutation, wrong datetime values, string subclass/boolean/polymorphic shapes and redacted output.
 
 The normal full project suite may run on GitHub-hosted CI. **Never conflate hosted tests with registered permanent VPS proof** or green unit tests with production safety.
 
@@ -49,3 +49,7 @@ The first exact SHA `5c40664050fb6458d1553b167d303ce4b4aa8176` hosted preflight 
 ## W3 hardened caller identity (20 own tests)
 
 The mutable caller-owned ReviewRequest is now copied to a fresh exact ReviewRequest **before** invoking any isolation probe. After the callback the reference rejects even a matching-looking mutated request, including a formerly out-of-scope request rewritten to match the trusted snapshot. This protects the in-memory **review-only** verdict against in-process data mutation; it does not authorize I/O or close real executor check/use races. New tests specifically corrupt the original frozen dataclass using `object.__setattr__` on both originally valid and originally invalid claims. All current hosted receipts from earlier immutable heads are superseded until this exact latest SHA is verified.
+
+## W4 timezone callback safety
+
+Only exact built-in fixed-offset `datetime.timezone` objects are accepted on review-window and evaluation timestamps. Custom `tzinfo` subclasses (including those capable of triggering arbitrary callbacks, errors or resource access) are rejected before invoking `utcoffset`, including while the ledger lock is held. An additional synthetic test uses a custom timezone that raises on invocation and proves **zero calls**. This conservative offline shape rule can reject otherwise sensible IANA `ZoneInfo` times; it does not replace the source owner's production time-policy design. A new exact-SHA run is required; the previous W3 checks cannot validate W4.
