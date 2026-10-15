@@ -205,6 +205,19 @@ class DirectRiskReviewTests(unittest.TestCase):
                 ):
                     self.assertIs(receipt.to_dict()[flag], False)
 
+    def test_polymorphic_reason_equality_is_never_called(self):
+        class PoisonStr(str):
+            def __eq__(self, other):
+                raise AssertionError("untrusted equality hook evaluated")
+            def __hash__(self):
+                raise AssertionError("untrusted hash hook evaluated")
+        bad = RiskReviewReceipt(ReviewStatus.REVIEW_ONLY, PoisonStr("risk_shape_only"))
+        self.assertEqual(
+            bad.to_dict()["reason_code"], "invalid_receipt",
+        )
+        self.assertEqual(bad.to_dict()["status"], "HOLD")
+        self.assertIs(bad.to_dict()["may_dispatch"], False)
+
     def test_subclass_receipt_serialization_does_not_use_overrides(self):
         class HostileReceipt(RiskReviewReceipt):
             def __getattribute__(self, name):
@@ -358,6 +371,40 @@ class DirectRiskReviewTests(unittest.TestCase):
                 receipts[0].to_dict(),
                 "all malformed batch claim shapes must receive the same opaque HOLD",
             )
+
+    def test_batch_reference_risk_grid_all_sizes(self):
+        """Independent numeric oracle for 5x5 canonical ceilings and bounded N."""
+        levels = (
+            RiskLevel.ANALYSIS_ONLY, RiskLevel.PASSIVE,
+            RiskLevel.LOW_IMPACT, RiskLevel.STANDARD, RiskLevel.ELEVATED,
+        )
+        for n in (1, 2, 4, 16, MAX_SYNTHETIC_REVIEW_ITEMS):
+            for ceiling in levels:
+                for requested in levels:
+                    with self.subTest(n=n, ceiling=ceiling, requested=requested):
+                        claims = tuple(
+                            (self.scope(ceiling), requested) for _ in range(n)
+                        )
+                        result = inspect_direct_scope_risk_batch(claims)
+                        oracle = (
+                            ReviewStatus.REVIEW_ONLY if requested.value <= ceiling.value
+                            else ReviewStatus.HOLD
+                        )
+                        self.assertIs(result.status, oracle)
+                        self.assert_non_authorizing(result)
+                        self.assertIs(result.to_dict()["may_scan"], False)
+
+    def test_batch_invalid_member_at_every_position_holds(self):
+        """No prefix of good entries can turn later bad metadata into approval."""
+        good = (self.scope(RiskLevel.STANDARD), RiskLevel.LOW_IMPACT)
+        bad = (self.scope(RiskLevel.PASSIVE), RiskLevel.ELEVATED)
+        for n in (1, 2, 7, MAX_SYNTHETIC_REVIEW_ITEMS):
+            for pos in range(n):
+                claims = tuple(bad if i == pos else good for i in range(n))
+                receipt = inspect_direct_scope_risk_batch(claims)
+                self.assertIs(receipt.status, ReviewStatus.HOLD)
+                self.assertEqual(receipt.reason_code, "batch_hold")
+                self.assert_non_authorizing(receipt)
 
     def test_batch_permutations_never_hide_a_single_bad_risk(self):
         import random
