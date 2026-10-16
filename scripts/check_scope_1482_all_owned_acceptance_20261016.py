@@ -177,6 +177,19 @@ EXPECTED_OPEN_REDS = frozenset({
     "test_scope_decision_shape_activation_1482_20261016.OriginalSourceAcceptance.test_source_red_rejects_target_to_decision_host_substitution",
 })
 MAX_BYTES = 131072
+MODULE_FILE_PINS = {
+    "lightup.activation": "src/lightup/activation.py",
+    "lightup.scope": "src/lightup/scope.py",
+    "lightup.models": "src/lightup/models.py",
+    "lightup.activation_decision_shape_review_1482":
+        "src/lightup/activation_decision_shape_review_1482.py",
+    "lightup.activation_decision_cohort_review_1482":
+        "src/lightup/activation_decision_cohort_review_1482.py",
+    "lightup.activation_fictional_source_differential_1482":
+        "src/lightup/activation_fictional_source_differential_1482.py",
+    "lightup.activation_lab_binding_reference_1482":
+        "src/lightup/activation_lab_binding_reference_1482.py",
+}
 
 
 def _read_pinned_regular_file(root: Path, components: tuple[str, ...]) -> bytes:
@@ -262,6 +275,39 @@ def pinned_tree_valid(root: Path = ROOT) -> bool:
     return True
 
 
+def module_origins_valid(root: Path = ROOT, *, require_all: bool = False) -> bool:
+    """Reject mismatched code origins; never treat this as signed import proof.
+
+    Check both module.__file__ and its import spec. In the preflight absence
+    of an import is fine; after loading all seven are expected to be present.
+    """
+    if (
+        len(MODULE_FILE_PINS) != 7
+        or set(MODULE_FILE_PINS.values()) !=
+        {path for path in PINNED_GIT_BLOBS if path.startswith("src/")}
+    ):
+        return False
+    try:
+        for name, relative in MODULE_FILE_PINS.items():
+            module = sys.modules.get(name)
+            if module is None:
+                if require_all:
+                    return False
+                continue
+            expected = str(root / relative)
+            reported = getattr(module, "__file__", None)
+            spec = getattr(module, "__spec__", None)
+            origin = getattr(spec, "origin", None)
+            if (
+                type(reported) is not str or type(origin) is not str
+                or reported != expected or origin != expected
+            ):
+                return False
+    except (AttributeError, TypeError, ValueError):
+        return False
+    return True
+
+
 def flatten(suite):
     for item in suite:
         if isinstance(item, unittest.TestSuite):
@@ -303,6 +349,9 @@ def run(root: Path = ROOT) -> int:
     if sys.version_info < (3, 11) or not pinned_tree_valid(root):
         print("HOLD: source_bytes")
         return 2
+    if not module_origins_valid(root):
+        print("HOLD: module_origin")
+        return 2
     try:
         sys.path.insert(0, str(root / "src"))
         suite = unittest.TestSuite()
@@ -316,6 +365,9 @@ def run(root: Path = ROOT) -> int:
         result = unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(suite)
         if not test_result_valid(result):
             print("HOLD: test_outcomes")
+            return 2
+        if not module_origins_valid(root, require_all=True):
+            print("HOLD: module_origin")
             return 2
         # Source re-check after test execution narrows accidental mid-run drift.
         # It still cannot prove interpreter import/cache lineage or prevent a
