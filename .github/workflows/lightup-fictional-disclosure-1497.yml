@@ -1,6 +1,14 @@
 name: LightUp fictional handoff quarantine #1497
 
 on:
+  push:
+    branches:
+      - chatgpt/scope-review-disclosure-quarantine-1497-20261016
+    paths:
+      - 'src/lightup/synthetic_review_disclosure_1497.py'
+      - 'src/lightup/synthetic_review_disclosure_cli_1497.py'
+      - 'tests/test_synthetic_review_disclosure_1497.py'
+      - '.github/workflows/lightup-fictional-disclosure-1497.yml'
   pull_request:
     paths:
       - 'src/lightup/synthetic_review_disclosure_1497.py'
