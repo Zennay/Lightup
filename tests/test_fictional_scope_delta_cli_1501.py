@@ -7,6 +7,8 @@ from pathlib import Path
 import subprocess
 import sys
 from unittest import TestCase
+from unittest.mock import patch
+from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT = "FICTIONAL-SCOPE-HISTORY-1501-V1"
@@ -152,3 +154,27 @@ class SyntheticScopeDeltaCLITests(TestCase):
         self.assertEqual(a.stdout, b.stdout)
         self.assert_wire(a, status="REVIEW_ONLY", code=2)
         self.assert_wire(b, status="REVIEW_ONLY", code=2)
+
+    def test_utc_parser_never_uses_locale_or_strptime_cache(self):
+        from lightup.fictional_scope_delta_cli_1501 import _utc
+        import locale
+
+        with patch.object(locale, "getlocale", side_effect=AssertionError("locale lookup")):
+            parsed = _utc("2028-02-29T23:59:59Z")
+        self.assertEqual(parsed, datetime(2028, 2, 29, 23, 59, 59, tzinfo=timezone.utc))
+        self.assertIs(parsed.tzinfo, timezone.utc)
+
+    def test_utc_parser_rejects_invalid_calendar_and_clock_values(self):
+        from lightup.fictional_scope_delta_cli_1501 import _utc
+
+        invalid = (
+            "2027-02-29T10:00:00Z", "2100-02-29T10:00:00Z",
+            "2026-00-01T10:00:00Z", "2026-13-01T10:00:00Z",
+            "2026-11-00T10:00:00Z", "2026-11-31T10:00:00Z",
+            "2026-11-01T24:00:00Z", "2026-11-01T10:60:00Z",
+            "2026-11-01T10:00:60Z", "2026-11-01T10:00:00z",
+            "2026-11-01t10:00:00Z", "2026-11-01T10:00:00+00:00",
+        )
+        for value in invalid:
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                _utc(value)
