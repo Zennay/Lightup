@@ -29,6 +29,10 @@ def canonical_definition(tool_id="offline-canonical"):
     )
 
 
+class PlainSubclassDefinition(ToolDefinition):
+    pass
+
+
 class OverrideValidatorDefinition(ToolDefinition):
     def validate_arguments(self, arguments):
         # Dangerous if admitted by ToolRegistry: the required query vanishes.
@@ -123,7 +127,7 @@ class ToolDefinitionOwner156OuterBoundary(unittest.TestCase):
     @unittest.expectedFailure
     def test_red_plain_subclass_must_be_denied(self):
         original = canonical_definition()
-        candidate = OverrideValidatorDefinition(**vars(original))
+        candidate = PlainSubclassDefinition(**vars(original))
         self.assert_rejected_without_registration(candidate)
 
     @unittest.expectedFailure
@@ -146,7 +150,7 @@ class ToolDefinitionOwner156OuterBoundary(unittest.TestCase):
     def test_red_empty_nondefinition_returns_typed_rejection(self):
         self.assert_rejected_without_registration(object())
 
-    def test_red_oracle_eightless_requires_all_five_real_failures(self):
+    def test_red_oracle_requires_all_five_real_failures(self):
         names = sorted(name for name in dir(type(self))
                        if name.startswith("test_red_")
                        and name != "test_red_oracle_eightless_requires_all_five_real_failures")
