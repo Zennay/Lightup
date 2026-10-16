@@ -1,0 +1,70 @@
+name: LightUp fictional IPv6 zone #1489 offline-only
+on:
+  pull_request:
+    paths:
+      - 'src/lightup/ipv6_zone_review_1489.py'
+      - 'src/lightup/ipv6_zone_batch_cli_1489.py'
+      - 'tests/test_scope_ipv6_zone_1489_20261016.py'
+      - 'tests/test_scope_ipv6_zone_batch_cli_1489_20261016.py'
+      - '.github/workflows/lightup-ipv6-zone-1489.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-offline:
+    name: Strict offline-only Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile owned isolated source and regression files
+        run: |
+          python -m py_compile \
+            src/lightup/ipv6_zone_review_1489.py \
+            src/lightup/ipv6_zone_batch_cli_1489.py \
+            tests/test_scope_ipv6_zone_1489_20261016.py \
+            tests/test_scope_ipv6_zone_batch_cli_1489_20261016.py
+      - name: Run exact own inventory, 4 intentionally open source REDs
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          import unittest
+          loader = unittest.TestLoader()
+          suite = loader.discover('tests', pattern='test_scope_ipv6_zone*1489_20261016.py')
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          summary = dict(
+              tests=result.testsRun,
+              own_pass=result.testsRun-len(result.expectedFailures)-len(result.failures)-len(result.errors)-len(result.skipped)-len(result.unexpectedSuccesses),
+              open_source_expected_red=len(result.expectedFailures),
+              failures=len(result.failures),
+              errors=len(result.errors),
+              unexpected_successes=len(result.unexpectedSuccesses),
+              skipped=len(result.skipped),
+          )
+          print('ISOLATED_IPV6_ZONE_1489', summary, flush=True)
+          if summary != {
+              'tests': 47,
+              'own_pass': 43,
+              'open_source_expected_red': 4,
+              'failures': 0,
+              'errors': 0,
+              'unexpected_successes': 0,
+              'skipped': 0,
+          }:
+              raise SystemExit(1)
+          PY
+      - name: No authority or release is implied
+        run: echo 'FICTIONAL OFFLINE DIAGNOSTIC ONLY; SOURCE REDS OPEN; NOT VPS EVIDENCE; NO MERGE OR RELEASE AUTHORITY'
