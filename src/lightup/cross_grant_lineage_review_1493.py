@@ -165,6 +165,7 @@ def review_cross_grant_batch(
         return CrossGrantBatchReview("HOLD", "noncanonical tenant cohort")
     seen: set[tuple[str, str, str]] = set()
     grant_snapshots: dict[str, tuple[object, ...]] = {}
+    legacy_snapshots: dict[str, tuple[object, ...]] = {}
     for item in candidates:
         if not _identifier(item.client_id) or not _identifier(item.engagement_id):
             return CrossGrantBatchReview("HOLD", "noncanonical tenant cohort")
@@ -206,6 +207,17 @@ def review_cross_grant_batch(
         previous = grant_snapshots.setdefault(grant.grant_id, snapshot)
         if previous != snapshot:
             return CrossGrantBatchReview("HOLD", "conflicting durable grant snapshot")
+        # The legacy side must also remain stable for the same claimed grant.
+        # Otherwise two individually coherent records can silently switch
+        # which Authorization timestamp interval backs the shared grant ID.
+        # This is only synthetic shape consistency, never trusted provenance.
+        legacy_snapshot = (
+            item.legacy.owner, item.legacy.reference,
+            item.legacy.valid_from, item.legacy.valid_until,
+        )
+        prior_legacy = legacy_snapshots.setdefault(grant.grant_id, legacy_snapshot)
+        if prior_legacy != legacy_snapshot:
+            return CrossGrantBatchReview("HOLD", "conflicting legacy authorization snapshot")
     return CrossGrantBatchReview(
         "REVIEW_ONLY", "coherent synthetic batch without trusted authority", len(candidates)
     )
