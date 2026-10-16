@@ -263,3 +263,30 @@ test may automatically promote new permissions. Current real
 `ActivationGate.issue()` still needs an independently owned fix,
 and full exact-HEAD hosted + registered permanent VPS evidence, privacy/
 security review and explicit human GO remain release blockers.
+
+## W9 — one shared canonical JSON boundary, rejecting Python JSON extensions
+
+Both opt-in fictional stdin CLIs now share only
+`scripts/fictional_lab_capability_json_1511.py`, an independently
+no-I/O, bounded (4096-byte), ASCII-only strict RFC JSON envelope parser.
+The single CLI requires `requested` to be an exact `str` and the batch
+CLI requires an exact `list`; both require an exact `list` for fake
+allowlist and exact schema/field order. No duplicate or Unicode-escaped
+alias keys, unknown fields, extra/trailing bytes, whitespace rewrites
+or noncanonical serialization. **NaN, +Infinity, −Infinity** now fail
+at JSON parse time via `parse_constant` instead of depending on later
+identity rejection. The canonical serializer explicitly disables
+Python's non-RFC non-finite numeric extensions.
+
+The new standalone test file checks real single-versus-batch schema
+confusion, poisoned metadata type objects without invoking hostile
+equality, complete/corrupt fixture bytes, non-finite numeric syntax,
+no file/network I/O and generic fail-closed behavior. Reusing one
+decoder removes drift between the two CLI admission paths; neither
+successfully parsed JSON nor a local `REVIEW_ONLY` status authenticates
+registry provenance, client/operator consent or active execution.
+
+No original product admission/grant/handler code or existing original
+CI/VPS workflows were edited. Only the own isolated dual-Python hosted
+workflow includes the new checks. **DRAFT/HOLD; no merge/deploy/real
+targets/grants/scans or handler dispatch.**
