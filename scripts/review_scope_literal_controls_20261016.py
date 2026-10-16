@@ -29,11 +29,29 @@ def _only_schema(pairs: list[tuple[str, object]]) -> object:
     return {"authorities": pairs[0][1]}
 
 
+def _read_bounded(stream: object) -> bytes:
+    """Read to EOF, not to the first short read; never retain >8192 bytes."""
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        requested = min(1024, _MAX_BYTES - total + 1)
+        chunk = stream.read(requested)
+        if type(chunk) is not bytes or len(chunk) > requested:
+            raise ValueError("invalid bounded input fragment")
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > _MAX_BYTES:
+            raise ValueError("bounded input required")
+        chunks.append(chunk)
+    if not total:
+        raise ValueError("input required")
+    return b"".join(chunks)
+
+
 def main() -> int:
     try:
-        raw = sys.stdin.buffer.read(_MAX_BYTES + 1)
-        if not raw or len(raw) > _MAX_BYTES:
-            raise ValueError("bounded input required")
+        raw = _read_bounded(sys.stdin.buffer)
         value = json.loads(
             raw.decode("ascii"), object_pairs_hook=_only_schema,
             parse_constant=_reject_constant,

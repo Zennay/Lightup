@@ -34,8 +34,7 @@ class FailClosedWireTests(unittest.TestCase):
         for error in (OSError("private fictional stream path"), InterruptedError("interrupt")):
             class BrokenStream:
                 def read(self, n):
-                    self_size = self_outer.mod["_MAX_BYTES"] + 1
-                    assert n == self_size
+                    assert 1 <= n <= self_outer.mod["_MAX_BYTES"] + 1
                     raise error
 
             self_outer = self
@@ -49,14 +48,16 @@ class FailClosedWireTests(unittest.TestCase):
         expected = b'{"authorities":["fictional.test"]}'
 
         class BoundedStream:
+            def __init__(self):
+                self.buffer = io.BytesIO(expected)
             def read(self, n):
                 observed.append(n)
-                if n != 8193:
+                if not 1 <= n <= 1024:
                     raise AssertionError("unbounded input read")
-                return expected
+                return self.buffer.read(n)
 
         code, output = self.invoke(BoundedStream())
-        self.assertEqual(observed, [8193])
+        self.assertEqual(len(observed), 2)
         self.assertEqual(code, 2)
         self.assertEqual(output, self.mod["_REVIEW"])
 
@@ -68,7 +69,8 @@ class FailClosedWireTests(unittest.TestCase):
 
         self_seen = []
         code, output = self.invoke(TruncatedStream())
-        self.assertEqual(self_seen, [8193])
+        self.assertTrue(self_seen)
+        self.assertTrue(all(1 <= n <= 1024 for n in self_seen))
         self.assertEqual(code, 3)
         self.assertEqual(output, self.mod["_HOLD"])
 
