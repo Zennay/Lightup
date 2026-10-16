@@ -69,6 +69,57 @@ class Scope1480RunnerTests(unittest.TestCase):
         self.assertFalse(verdict["may_issue_grants"])
         self.assertFalse(verdict["release_authorized"])
 
+    def test_original_scope_and_grant_dependencies_are_byte_pinned(self):
+        reviewer = _runner()
+        self.assertEqual(set(reviewer.ORIGINAL_DEPENDENCY_BLOBS), {
+            "src/lightup/models.py",
+            "src/lightup/scope.py",
+        })
+        self.assertTrue(reviewer._original_dependency_sources_are_pinned())
+        self.assertTrue(reviewer._review_blobs_match(
+            reviewer.ORIGINAL_DEPENDENCY_BLOBS
+        ))
+
+    def test_drifted_original_dependency_forces_early_hold_without_running_tests(self):
+        for source in ("src/lightup/models.py", "src/lightup/scope.py"):
+            with self.subTest(source=source):
+                reviewer = _runner()
+                changed = dict(reviewer.ORIGINAL_DEPENDENCY_BLOBS)
+                changed[source] = "0" * 40
+                out = io.StringIO()
+                with patch.object(reviewer, "ORIGINAL_DEPENDENCY_BLOBS", changed), patch.object(
+                    reviewer.unittest.TextTestRunner, "run",
+                    side_effect=AssertionError("drifted original dependencies must not run"),
+                ):
+                    with contextlib.redirect_stdout(out):
+                        code = reviewer.main()
+                verdict = json.loads(out.getvalue())
+                self.assertEqual(code, 1)
+                self.assertEqual(verdict["status"], "HOLD")
+                self.assertEqual(verdict["reason"], "original_authorization_dependency_blob_mismatch")
+                self.assertEqual(verdict["tests_run"], 0)
+                self.assertFalse(verdict["consent_verified"])
+                self.assertFalse(verdict["release_authorized"])
+
+    def test_missing_original_dependency_path_holds_before_test_execution(self):
+        reviewer = _runner()
+        changed = dict(reviewer.ORIGINAL_DEPENDENCY_BLOBS)
+        changed["src/lightup/models.py"] = "0" * 40
+        missing = ROOT / "src" / "lightup" / "does_not_exist_1480.py"
+        changed[str(missing.relative_to(ROOT))] = changed.pop("src/lightup/models.py")
+        out = io.StringIO()
+        with patch.object(reviewer, "ORIGINAL_DEPENDENCY_BLOBS", changed), patch.object(
+            reviewer.unittest.TextTestRunner, "run",
+            side_effect=AssertionError("missing source must not run"),
+        ):
+            with contextlib.redirect_stdout(out):
+                code = reviewer.main()
+        verdict = json.loads(out.getvalue())
+        self.assertEqual(code, 1)
+        self.assertEqual(verdict["reason"], "original_authorization_dependency_blob_mismatch")
+        self.assertEqual(verdict["tests_run"], 0)
+        self.assertFalse(verdict["may_dispatch_tools"])
+
     def test_loaded_method_ids_match_exact_source_inventory(self):
         reviewer = _runner()
         suite = unittest.TestSuite()
