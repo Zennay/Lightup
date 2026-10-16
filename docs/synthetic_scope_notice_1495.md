@@ -136,3 +136,22 @@ Nieuwe originele 25 pure-/CLI-regressiemethoden in `tests/test_synthetic_scope_n
 **UI-vervolg:** Ook de HTML-uitvoer van de aparte JSON-viewer toont nu standaard **vier zichtbare `PENDING`-punten** bij een exact geverifieerd `REVIEW_ONLY`: afzonderlijke verificatie van klant/operator, exacte scope en tijdvenster door eigenaar, duurzame intrekking bij gebruik en onafhankelijke security-/privacyreview plus expliciete menselijke GO. Dit is uitsluitend vaste informatie, nooit een checkbox, bevestigingsknop, status uit onbetrouwbare JSON of vrijgaveactie. Ongeldige of HOLD-input toont geen fictieve scope- of checklistdetails. Twaalf nieuwe echte CLI-/viewer-regressiemethoden staan in `tests/test_synthetic_scope_notice_display_gates_1495.py`; ook hiervan geldt dat pas na een originele exacte-head CI-run resultaat als groen mag worden beschreven.
 
 **Status blijft DRAFT/HOLD:** Geen eigendomsovername van #301 (PR #1452), #1144, andere parallelle scope-workers, echte authorization-grants, toolhandlers, echte klanten of VPS. Géén merge, deployment of actieve scan.
+
+## W14: Eigen JSON → HTML commandline-export, uitsluitend fictief en offline
+
+De nieuwste offline UI-keten is nu zonder importscripts aan te roepen. Dit is een **extra, aparte** read-only opdracht naast de bestaande synthetische voorstelgenerator. De eerste opdracht maakt een verifieerbare fictieve JSON-preview, de tweede verwerkt uitsluitend zulke JSON tot een zelfstandige HTML-pagina:
+
+```bash
+# Iedere opdracht geeft bewust 2 terug bij REVIEW_ONLY, NIET exitcode 0.
+PYTHONPATH=src python -m lightup.synthetic_scope_notice_cli_1495 \
+  --synthetic-only --lang nl --format json \
+  < examples/fictional_scope_notice_1495.json > fictional-notice.json
+
+PYTHONPATH=src python -m lightup.synthetic_scope_notice_display_cli_1495 \
+  --synthetic-json-to-html \
+  < fictional-notice.json > fictional-notice.html
+```
+
+De nieuwe `synthetic_scope_notice_display_cli_1495` accepteert **uitsluitend** de exacte `--synthetic-json-to-html`-vlag en leest hoogstens 65.537 bytes van standaardinvoer. De decoder weigert meer dan 65.536 bytes; ongeldige JSON of extra CLI-vlaggen geven een vaste, generieke **HOLD-HTML-pagina met exitcode 3**, zonder brongegevens, targets, wachtwoorden of CLI-vlaggen te echoën. Alleen canonieke `REVIEW_ONLY`-JSON geeft een fictieve HTML-pagina met **exitcode 2**. **Exitcode 0, daadwerkelijke toestemming of een uitvoeractie zijn onmogelijk.** De HTML bevat een vaste no-authority-waarschuwing en vier altijd nog open `PENDING`-voorwaarden. Er zijn geen scripts, webcalls, formulieren of uitvoerknoppen. Let op: bij `set -e` of `pipefail` moet de operator zelf rekening houden met de expliciet niet-nul exitcodes.
+
+Dit is werkvoorbereiding; gebruik nooit echte klanten/targetdomeinen en beschouw syntactisch geldige JSON **niet** als een geauthenticeerde handtekening of controle op bestaande grants. Zeventien echte Python-subprocess-methoden in `tests/test_synthetic_scope_notice_display_cli_1495.py` testen beide uitvoerende programma's achter elkaar, EN/NL, corruptie/te grote payloads, vervalste `authorized`-velden, opgenomen klantgegevens, extra vlaggen, dubbel JSON en geen valse exit0. Zoals steeds moet exacte-head CI eerst worden gecontroleerd voor een PASS-claim.
