@@ -245,6 +245,43 @@ class FictionalDisclosureReviewTests(unittest.TestCase):
                 bad = f"Asset {label}.example.test; capability tls_review; proposed risk 5."
                 self.assertEqual(review((bad,)).status, "HOLD")
 
+    def test_direct_verdict_cannot_spoof_authorization_state(self):
+        from lightup.synthetic_review_disclosure_1497 import DisclosureVerdict
+        for state, notice, count in (
+            ("AUTHORIZED", "APPROVED", 1),
+            ("APPROVED", "HOLD", 1),
+            ("REVIEW_ONLY", "APPROVED", 1),
+            ("HOLD", "APPROVED", 0),
+            ("HOLD", "HOLD — offline handoff quarantined; no input echoed. NOT AUTHORIZED.", 1),
+            ("REVIEW_ONLY", "REVIEW_ONLY — fictional notes still require independent human privacy and scope review. NOT AUTHORIZED.", 0),
+            ("REVIEW_ONLY", "REVIEW_ONLY — fictional notes still require independent human privacy and scope review. NOT AUTHORIZED.", 17),
+        ):
+            with self.subTest(state=state, count=count):
+                with self.assertRaisesRegex(ValueError, "invalid fictional review verdict"):
+                    DisclosureVerdict(state, notice, count)
+
+    def test_direct_verdict_rejects_type_confused_status_and_count(self):
+        from lightup.synthetic_review_disclosure_1497 import DisclosureVerdict
+        class Spoof(str):
+            pass
+        for status, count in ((Spoof("HOLD"), 0), ("HOLD", False), ("HOLD", "0"), ("HOLD", 0.0)):
+            with self.subTest(status=type(status), count=type(count)):
+                with self.assertRaises(ValueError):
+                    DisclosureVerdict(status, "HOLD — offline handoff quarantined; no input echoed. NOT AUTHORIZED.", count)
+
+    def test_punycode_fictional_hostname_still_holds(self):
+        for label in ("xn--", "xn--admin", "xn--paypa1"):
+            with self.subTest(label=label):
+                note = f"Asset {label}.example.test; capability header_read; proposed risk 2."
+                self.assertEqual(review((note,)).status, "HOLD")
+
+    def test_direct_verdict_cannot_inject_noncanonical_hold_detail(self):
+        from lightup.synthetic_review_disclosure_1497 import DisclosureVerdict
+        canonical = review((None,))
+        self.assertEqual(DisclosureVerdict("HOLD", canonical.notice, 0), canonical)
+        with self.assertRaises(ValueError):
+            DisclosureVerdict("HOLD", canonical.notice + " Alpha.example.test", 0)
+
     def test_forged_flags_cannot_be_injected_via_constructor(self):
         from lightup.synthetic_review_disclosure_1497 import DisclosureVerdict
         with self.assertRaises(TypeError):
