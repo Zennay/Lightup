@@ -62,7 +62,7 @@ def _review_raw(raw: bytes) -> str:
         return review_protocol_floor(
             tuple(frames), obj["expected_version"], obj["minimum_version"]
         ).status
-    except (ValueError, UnicodeError, TypeError, OverflowError, KeyError):
+    except (ValueError, UnicodeError, TypeError, OverflowError, KeyError, RecursionError):
         return "HOLD"
 
 
