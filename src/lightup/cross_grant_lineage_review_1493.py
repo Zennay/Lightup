@@ -164,6 +164,7 @@ def review_cross_grant_batch(
     if not _identifier(first.client_id) or not _identifier(first.engagement_id):
         return CrossGrantBatchReview("HOLD", "noncanonical tenant cohort")
     seen: set[tuple[str, str, str]] = set()
+    grant_snapshots: dict[str, tuple[object, ...]] = {}
     for item in candidates:
         if not _identifier(item.client_id) or not _identifier(item.engagement_id):
             return CrossGrantBatchReview("HOLD", "noncanonical tenant cohort")
@@ -189,6 +190,22 @@ def review_cross_grant_batch(
         )
         if result.status != "REVIEW_ONLY":
             return CrossGrantBatchReview("HOLD", "at least one claim failed review")
+        # A durable grant ID must denote one exact, immutable grant snapshot
+        # throughout the batch. Multiple distinct assets under the *same*
+        # explicit grant are fine; changing its scope, time, approval or risk
+        # mid-batch is NOT lineage proof. Only compare validated primitives,
+        # never arbitrary objects with attacker-supplied equality methods.
+        grant = item.durable
+        scope = grant.scope
+        snapshot = (
+            grant.client_id, grant.engagement_id, grant.approved_by,
+            grant.reference, grant.valid_from, grant.valid_until,
+            grant.recurring_retest_allowed, scope.assets,
+            scope.excluded_assets, scope.allowed_capabilities, scope.max_risk,
+        )
+        previous = grant_snapshots.setdefault(grant.grant_id, snapshot)
+        if previous != snapshot:
+            return CrossGrantBatchReview("HOLD", "conflicting durable grant snapshot")
     return CrossGrantBatchReview(
         "REVIEW_ONLY", "coherent synthetic batch without trusted authority", len(candidates)
     )
