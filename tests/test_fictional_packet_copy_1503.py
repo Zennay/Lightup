@@ -375,5 +375,31 @@ class FictionalPacketCopyTests(unittest.TestCase):
             self.assertEqual(compare_fictional_packet_fanout(made, (made, b"bad")).status,
                              "HOLD")
 
+
+    def test_checked_in_fictional_byte_fixtures_are_exact_and_bounded(self):
+        examples = pathlib.Path(__file__).resolve().parents[1] / "docs" / "examples"
+        original = (examples / "fictional-copy-1503.json").read_bytes()
+        changed = (examples / "fictional-copy-changed-1503.json").read_bytes()
+        self.assertEqual(original, CANONICAL)
+        self.assertEqual(original, build_fictional_copy_packet(
+            "alpha.example.test", "REVIEW_REQUIRED",
+            ("metadata_read", "report_preview"),
+        ))
+        self.assertEqual(changed, build_fictional_copy_packet(
+            "beta.example.test", "REVIEW_REQUIRED",
+            ("metadata_read", "report_preview"),
+        ))
+        self.assertEqual(compare_fictional_packet_copies(original, original).status,
+                         "REVIEW_ONLY")
+        verdict = compare_fictional_packet_fanout(
+            original, (original,) * 15 + (changed,)
+        )
+        self.assertEqual((verdict.status, verdict.sha256), ("HOLD", None))
+        self.assertIs(verdict.authorized, False)
+        self.assertIs(verdict.release_allowed, False)
+        self.assertLessEqual(len(original), 2048)
+        self.assertLessEqual(len(changed), 2048)
+
+
 if __name__ == "__main__":
     unittest.main()

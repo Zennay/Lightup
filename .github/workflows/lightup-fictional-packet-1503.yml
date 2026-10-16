@@ -6,6 +6,8 @@ on:
       - 'src/lightup/fictional_packet_copy_1503.py'
       - 'tests/test_fictional_packet_copy_1503.py'
       - 'docs/fictional_packet_copy_1503.md'
+      - 'docs/examples/fictional-copy-1503.json'
+      - 'docs/examples/fictional-copy-changed-1503.json'
       - '.github/workflows/lightup-fictional-packet-1503.yml'
   workflow_dispatch:
 

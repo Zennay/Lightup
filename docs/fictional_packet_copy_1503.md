@@ -47,6 +47,12 @@ Fanout accepts **1–16 exact built-in byte strings in an exact built-in tuple**
 - The immutable result always has `authorized=False`, `consent_verified=False`, `dispatch_allowed=False`, `release_allowed=False`.
 - No production module imports or calls this helper. No paths, storage, network, DNS, SQLite, handlers or scans. No actual client assets should be supplied. No CLI that writes or emits review data.
 
+## Reproducible checked-in fictional examples
+
+- `docs/examples/fictional-copy-1503.json` is an **exact canonical no-newline** packet whose bytes the builder reproduces.
+- `docs/examples/fictional-copy-changed-1503.json` is a different but still canonical **fictional** packet; comparing it to the first returns atomic generic `HOLD`. Both contain only reserved `.example.test` labels and four literal false authority flags.
+- The dedicated hosted test suite reads both committed files as bytes and asserts identical encoding, expected builder equality and fail-closed end-to-end fanout behavior; edits to either example trigger that workflow. Neither file is a real consent record or scope grant.
+
 ## Tests and ownership
 
 Run opt-in isolated tests (including exhaustive byte edits, builder invariants, 16-copy fanout, no-I/O tripwires) with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_fictional_packet_copy_1503.py' -v`. Dedicated **hosted** Python 3.11/3.14 workflow `.github/workflows/lightup-fictional-packet-1503.yml` runs only this new test file when the new file set changes. This does not substitute for original full hosted preflight or the genuinely registered permanent VPS runner (#1144). All files exclusively added under #1503; do not cherry-pick as production authorization.
