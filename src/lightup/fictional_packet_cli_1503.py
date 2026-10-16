@@ -175,6 +175,28 @@ def _render(review: CopyReview) -> bytes:
     )
 
 
+
+def _read_bounded_stdin(stream: object) -> bytes | None:
+    """Collect the *entire* finite byte stream, never silently accept a prefix.
+
+    Binary readers can legally return fewer bytes than requested. Read until
+    genuine bytes EOF, refusing non-bytes chunks, oversized input and any
+    trailing data (including content delivered after a valid JSON prefix).
+    The maximum retained size is 8192 bytes, and every read asks at most
+    remaining capacity + 1 bytes. The method has no filesystem/network APIs.
+    """
+    collected = bytearray()
+    while True:
+        part = stream.read(_INPUT_LIMIT - len(collected) + 1)
+        if type(part) is not bytes:
+            return None
+        if part == b"":
+            return bytes(collected)
+        if len(part) > _INPUT_LIMIT - len(collected):
+            return None
+        collected.extend(part)
+
+
 def _run_cli(*, pinned_only: bool) -> int:
     """One bounded stdin transaction; never return success exit 0."""
     if type(pinned_only) is not bool:
@@ -183,8 +205,10 @@ def _run_cli(*, pinned_only: bool) -> int:
         if len(sys.argv) != 1:
             rendered = _HOLD
         else:
-            payload = sys.stdin.buffer.read(_INPUT_LIMIT + 1)
-            rendered = _render(_parse_request(payload, pinned_only=pinned_only))
+            payload = _read_bounded_stdin(sys.stdin.buffer)
+            rendered = _render(
+                _parse_request(payload, pinned_only=pinned_only)
+            )
     except (OSError, ValueError, TypeError, AttributeError, UnicodeError, RecursionError):
         rendered = _HOLD
     try:
