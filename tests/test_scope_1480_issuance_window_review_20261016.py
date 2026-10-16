@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import sys
 import unittest
-from dataclasses import FrozenInstanceError
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
@@ -102,10 +101,13 @@ class IssuanceWindowReview1480Tests(unittest.TestCase):
         self.assertEqual(result.reason, "noncanonical_authorization")
         self._check_no_authority(result)
 
-    def test_result_is_immutable(self):
+    def test_result_is_slotless_and_even_object_setattr_cannot_forge_release(self):
         result = review_issuance_window(authorization=_auth(), issued_at=END)
-        with self.assertRaises(FrozenInstanceError):
+        self.assertFalse(hasattr(result, "__dict__"))
+        with self.assertRaises(AttributeError):
             result.release_authorized = True
+        with self.assertRaises(AttributeError):
+            object.__setattr__(result, "release_authorized", True)
         self._check_no_authority(result)
 
     def test_review_requires_no_network(self):
