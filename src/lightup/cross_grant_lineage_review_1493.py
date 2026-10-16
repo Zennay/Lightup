@@ -158,8 +158,15 @@ def review_cross_grant_batch(
     if not all(type(candidate) is CrossGrantCandidate for candidate in candidates):
         return CrossGrantBatchReview("HOLD", "noncanonical batch claim")
     first = candidates[0]
+    # Dataclass field annotations do not validate runtime identity. Check
+    # exact built-in strings BEFORE any == / !=, so attacker-supplied objects
+    # cannot run their custom equality code in a purported pure review.
+    if not _identifier(first.client_id) or not _identifier(first.engagement_id):
+        return CrossGrantBatchReview("HOLD", "noncanonical tenant cohort")
     seen: set[tuple[str, str, str]] = set()
     for item in candidates:
+        if not _identifier(item.client_id) or not _identifier(item.engagement_id):
+            return CrossGrantBatchReview("HOLD", "noncanonical tenant cohort")
         if item.client_id != first.client_id or item.engagement_id != first.engagement_id:
             return CrossGrantBatchReview("HOLD", "mixed tenant or engagement")
         if type(item.durable) is not AuthorizationGrant or not _identifier(item.durable.grant_id):
