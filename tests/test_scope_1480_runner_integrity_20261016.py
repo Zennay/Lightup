@@ -43,7 +43,7 @@ class Scope1480RunnerTests(unittest.TestCase):
         self.assertEqual(verdict["tests_run"], 0)
         self.assertFalse(verdict["release_authorized"])
 
-    def test_source_pinned_real_eight_method_oracle_never_authorizes(self):
+    def test_source_pinned_full_32_method_oracle_never_authorizes(self):
         reviewer = _runner()
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
@@ -51,7 +51,7 @@ class Scope1480RunnerTests(unittest.TestCase):
         verdict = json.loads(out.getvalue())
         self.assertEqual(code, 0)
         self.assertEqual(verdict["status"], "REVIEW_ONLY")
-        self.assertEqual(verdict["tests_run"], 8)
+        self.assertEqual(verdict["tests_run"], 32)
         self.assertEqual(verdict["expected_source_reds"], 1)
         for key in (
             "source_fixed",
