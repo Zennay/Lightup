@@ -15,6 +15,9 @@ from lightup.scope import ScopePolicy
 from lightup.activation_gate_lifetime_review_1476 import LifetimeStatus
 from lightup.activation_gate_review_journal_1476 import (
     OfflineCohortJournal,
+    OfflineReviewSession,
+    open_offline_review_session,
+    advance_offline_review_session,
     advance_offline_cohort_journal,
     begin_offline_cohort_journal,
 )
@@ -163,6 +166,143 @@ class CohortJournalTests(unittest.TestCase):
             step = advance_offline_cohort_journal((g,), journal)
         self.assertIs(step.receipt.status, LifetimeStatus.REVIEW_ONLY)
         self.assert_never_authorizes(step.receipt)
+
+    def test_session_cursor_stable_two_steps(self):
+        g = gate()
+        session = open_offline_review_session((g,))
+        first = session.current
+        one = advance_offline_review_session((g,), session, first)
+        self.assertIs(one.receipt.status, LifetimeStatus.REVIEW_ONLY)
+        self.assertIs(session.current, one.next_journal)
+        two = advance_offline_review_session((g,), session, one.next_journal)
+        self.assertIs(two.receipt.status, LifetimeStatus.REVIEW_ONLY)
+        self.assertEqual(session.current.observation_count, 2)
+        self.assert_never_authorizes(one.receipt)
+        self.assert_never_authorizes(two.receipt)
+
+    def test_session_rejects_stale_success_cursor_permanently(self):
+        g = gate()
+        session = open_offline_review_session((g,))
+        stale = session.current
+        one = advance_offline_review_session((g,), session, stale)
+        self.assertIs(one.receipt.status, LifetimeStatus.REVIEW_ONLY)
+        replay = advance_offline_review_session((g,), session, stale)
+        self.assertIs(replay.receipt.status, LifetimeStatus.HOLD)
+        self.assert_never_authorizes(replay.receipt)
+        again = advance_offline_review_session((g,), session, one.next_journal)
+        self.assertIs(again.receipt.status, LifetimeStatus.HOLD)
+
+    def test_session_rejects_equal_value_new_cursor(self):
+        g = gate()
+        session = open_offline_review_session((g,))
+        equivalent = OfflineCohortJournal(
+            session.current.cohort, held=False, observation_count=0
+        )
+        self.assertIsNot(equivalent, session.current)
+        step = advance_offline_review_session((g,), session, equivalent)
+        self.assertIs(step.receipt.status, LifetimeStatus.HOLD)
+        self.assert_never_authorizes(step.receipt)
+
+    def test_session_detects_policy_swap_then_keeps_hold_after_repair(self):
+        g = gate()
+        original = g.activation_policy
+        session = open_offline_review_session((g,))
+        g.activation_policy = ActivationPolicy(ActivationMode.LAB_ONLY)
+        bad = advance_offline_review_session((g,), session, session.current)
+        self.assertIs(bad.receipt.status, LifetimeStatus.HOLD)
+        g.activation_policy = original
+        later = advance_offline_review_session((g,), session, session.current)
+        self.assertIs(later.receipt.status, LifetimeStatus.HOLD)
+        self.assert_never_authorizes(later.receipt)
+
+    def test_session_works_for_multiple_gates_and_rejects_one_drift(self):
+        a, b = gate(), gate()
+        session = open_offline_review_session((a, b))
+        good = advance_offline_review_session((a, b), session, session.current)
+        self.assertIs(good.receipt.status, LifetimeStatus.REVIEW_ONLY)
+        b.scope_policy = ScopePolicy(explicit_hosts=frozenset({"offline.example.test"}))
+        fail = advance_offline_review_session((a, b), session, session.current)
+        self.assertIs(fail.receipt.status, LifetimeStatus.HOLD)
+        self.assert_never_authorizes(fail.receipt)
+
+    def test_session_invalid_cohorts_not_constructed(self):
+        g = gate()
+        self.assertIsNone(open_offline_review_session(()))
+        self.assertIsNone(open_offline_review_session((g, g)))
+        self.assertIsNone(open_offline_review_session([g]))
+        self.assertIsNone(open_offline_review_session(tuple(gate() for _ in range(65))))
+
+    def test_session_wrong_type_returns_generic_hold(self):
+        g = gate()
+        for bad in (object(), OfflineCohortJournal, None, 123):
+            step = advance_offline_review_session((g,), bad, object())
+            self.assertIs(step.receipt.status, LifetimeStatus.HOLD)
+            self.assertIsNone(step.next_journal)
+            self.assert_never_authorizes(step.receipt)
+
+    def test_session_rejects_missing_or_invalid_private_fields(self):
+        g = gate()
+        session = open_offline_review_session((g,))
+        original = session.current
+        session._terminal = "false"
+        invalid = advance_offline_review_session((g,), session, original)
+        self.assertIs(invalid.receipt.status, LifetimeStatus.HOLD)
+        self.assert_never_authorizes(invalid.receipt)
+        broken = object.__new__(OfflineReviewSession)
+        missing = advance_offline_review_session((g,), broken, original)
+        self.assertIs(missing.receipt.status, LifetimeStatus.HOLD)
+
+    def test_session_limit_latches_hold(self):
+        g = gate()
+        session = open_offline_review_session((g,))
+        session._current = OfflineCohortJournal(
+            session.current.cohort, held=False, observation_count=1024
+        )
+        maxed = advance_offline_review_session((g,), session, session.current)
+        self.assertIs(maxed.receipt.status, LifetimeStatus.HOLD)
+        self.assertIs(session.current.held, True)
+        later = advance_offline_review_session((g,), session, session.current)
+        self.assertIs(later.receipt.status, LifetimeStatus.HOLD)
+        self.assert_never_authorizes(later.receipt)
+
+    def test_session_no_policy_metadata_in_repr(self):
+        ref = "FICTIONAL-CONFIDENTIAL-" + "X" * 45
+        g = ActivationGate(
+            ScopePolicy(explicit_hosts=frozenset({"offline.example.test"})),
+            ActivationPolicy(ActivationMode.AUTHORIZED, ref),
+        )
+        session = open_offline_review_session((g,))
+        step = advance_offline_review_session((g,), session, session.current)
+        self.assertNotIn(ref, repr(session))
+        self.assertNotIn(ref, repr(step))
+        self.assertNotIn("offline.example.test", repr(session))
+        self.assert_never_authorizes(step.receipt)
+
+    def test_session_never_calls_real_issue_or_io(self):
+        g = gate()
+        with patch.object(ActivationGate, "issue", side_effect=AssertionError("permit forbidden")), \\
+             patch.object(socket, "socket", side_effect=AssertionError("socket forbidden")), \\
+             patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns forbidden")), \\
+             patch.object(subprocess, "Popen", side_effect=AssertionError("process forbidden")):
+            session = open_offline_review_session((g,))
+            step = advance_offline_review_session((g,), session, session.current)
+        self.assertIs(step.receipt.status, LifetimeStatus.REVIEW_ONLY)
+        self.assert_never_authorizes(step.receipt)
+
+    def test_new_session_is_not_durable_revocation_guarantee(self):
+        g = gate()
+        original = g.activation_policy
+        session = open_offline_review_session((g,))
+        g.activation_policy = ActivationPolicy(ActivationMode.LAB_ONLY)
+        held = advance_offline_review_session((g,), session, session.current)
+        self.assertIs(held.receipt.status, LifetimeStatus.HOLD)
+        g.activation_policy = original
+        # This intentional LIMITATION means no new session is a trusted
+        # permit, durable revocation marker, or security audit log.
+        brand_new = open_offline_review_session((g,))
+        new_step = advance_offline_review_session((g,), brand_new, brand_new.current)
+        self.assertIs(new_step.receipt.status, LifetimeStatus.REVIEW_ONLY)
+        self.assert_never_authorizes(new_step.receipt)
 
     def test_old_journal_is_not_a_trustworthy_replay_protection(self):
         g = gate()
