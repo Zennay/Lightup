@@ -1,0 +1,177 @@
+name: LightUp scope cross-grant review 1493 (offline only)
+on:
+  pull_request:
+    paths:
+      - 'src/lightup/cross_grant_lineage_review_1493.py'
+      - 'src/lightup/cross_grant_lineage_cli_1493.py'
+      - 'tests/test_cross_grant*_1493.py'
+      - '.github/workflows/lightup-cross-grant-lineage-1493.yml'
+      - 'examples/fictional_cross_grant_1493.json'
+      - 'examples/fictional_cross_grant_collision_1493.json'
+      - 'examples/fictional_cross_grant_forged_authority_1493.json'
+      - 'examples/fictional_cross_grant_bad_dns_label_1493.json'
+      - 'examples/fictional_cross_grant_scope_overlap_1493.json'
+      - 'examples/fictional_cross_grant_disjoint_1493.json'
+      - 'examples/fictional_cross_grant_bad_actor_1493.json'
+      - 'examples/fictional_cross_grant_bad_capability_1493.json'
+      - 'examples/fictional_cross_grant_bad_tenant_1493.json'
+      - 'examples/fictional_cross_grant_actor_collision_1493.json'
+      - 'examples/fictional_cross_grant_destructive_max_1493.json'
+      - 'docs/scope-cross-grant-lineage-1493-handoff.md'
+      - 'docs/cross-grant-runtime-integration-contract-1493.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  strict-offline-review:
+    name: Offline 250-method review / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile strictly owned additive modules
+        run: python -m py_compile src/lightup/cross_grant_lineage_review_1493.py src/lightup/cross_grant_lineage_cli_1493.py tests/test_cross_grant_lineage_review_1493.py tests/test_cross_grant_lineage_cli_1493.py tests/test_cross_grant_asset_dns_1493.py tests/test_cross_grant_scope_overlap_1493.py tests/test_cross_grant_fictional_provenance_1493.py tests/test_cross_grant_capability_identity_1493.py tests/test_cross_grant_cohort_identity_1493.py tests/test_cross_grant_reference_actor_1493.py tests/test_cross_grant_destructive_scope_1493.py
+      - name: Execute exact isolated unittest inventory, no external targets
+        env:
+          PYTHONPATH: src
+          PYTHONDONTWRITEBYTECODE: '1'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import unittest
+          suite = unittest.defaultTestLoader.discover(
+              start_dir='tests',
+              pattern='test_cross_grant*_1493.py',
+          )
+          count = suite.countTestCases()
+          if count != 250:
+              raise SystemExit(f'ISOLATED_1493 wrong test inventory: {count}, expected 250')
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          print('ISOLATED_1493', {
+              'tests': result.testsRun,
+              'failures': len(result.failures),
+              'errors': len(result.errors),
+              'skips': len(result.skipped),
+              'expected_failures': len(result.expectedFailures),
+              'unexpected_successes': len(result.unexpectedSuccesses),
+          })
+          if not result.wasSuccessful() or result.testsRun != 250 or result.skipped or result.expectedFailures:
+              raise SystemExit('ISOLATED_1493: HOLD (non-success or masked tests)')
+          PY
+      - name: Attest actual fictional sample CLI on stdin (always nonzero)
+        shell: bash
+        run: |
+          set +e
+          output="$(PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m lightup.cross_grant_lineage_cli_1493 --synthetic-only < examples/fictional_cross_grant_1493.json)"
+          code=$?
+          set -e
+          test "$code" -eq 2
+          OUTPUT="$output" python - <<'PY'
+          import json
+          import os
+          actual = json.loads(os.environ['OUTPUT'])
+          expected = {
+              'authorized': False,
+              'consent_verified': False,
+              'dispatch_allowed': False,
+              'reason': 'UNTRUSTED_COHERENCE',
+              'release_allowed': False,
+              'reviewed': 1,
+              'status': 'REVIEW_ONLY',
+          }
+          if actual != expected:
+              raise SystemExit('FICTIONAL_1493 unexpected or authorizing receipt')
+          print('FICTIONAL_1493 stdin sample: HOLD-ONLY, exit=2, no authority')
+          PY
+      - name: Attest real fictional CLI collision and forged-authority fail-closed
+        shell: bash
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          import sys
+          cases = (
+              ("cross-grant-collision",
+               "examples/fictional_cross_grant_collision_1493.json",
+               2, "COHERENCE_DENIED"),
+              ("forged-authority-key",
+               "examples/fictional_cross_grant_forged_authority_1493.json",
+               3, "INVALID_INPUT"),
+              ("noncanonical-dns-label",
+               "examples/fictional_cross_grant_bad_dns_label_1493.json",
+               3, "INVALID_INPUT"),
+              ("latent-scope-overlap",
+               "examples/fictional_cross_grant_scope_overlap_1493.json",
+               2, "COHERENCE_DENIED"),
+              ("nonfictional-operator",
+               "examples/fictional_cross_grant_bad_actor_1493.json",
+               3, "INVALID_INPUT"),
+              ("unsafe-capability-slug",
+               "examples/fictional_cross_grant_bad_capability_1493.json",
+               3, "INVALID_INPUT"),
+              ("noncanonical-tenant-path",
+               "examples/fictional_cross_grant_bad_tenant_1493.json",
+               3, "INVALID_INPUT"),
+              ("reference-actor-collision",
+               "examples/fictional_cross_grant_actor_collision_1493.json",
+               2, "COHERENCE_DENIED"),
+              ("destructive-grant-envelope",
+               "examples/fictional_cross_grant_destructive_max_1493.json",
+               2, "COHERENCE_DENIED"),
+          )
+          for label, filename, expected_exit, expected_reason in cases:
+              with open(filename, "rb") as inp:
+                  data = inp.read()
+              process = subprocess.run(
+                  [sys.executable, "-B", "-m",
+                   "lightup.cross_grant_lineage_cli_1493", "--synthetic-only"],
+                  input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                  timeout=10, check=False,
+              )
+              if process.returncode != expected_exit or process.stderr:
+                  raise SystemExit(f"FICTIONAL_1493 {label}: wrong process outcome")
+              actual = json.loads(process.stdout)
+              expected = {
+                  "authorized": False,
+                  "consent_verified": False,
+                  "dispatch_allowed": False,
+                  "reason": expected_reason,
+                  "release_allowed": False,
+                  "reviewed": 0,
+                  "status": "HOLD",
+              }
+              if actual != expected:
+                  raise SystemExit(f"FICTIONAL_1493 {label}: noncanonical HOLD")
+              print(f"FICTIONAL_1493 {label}: HOLD exit={expected_exit} no authority")
+          # Independent positive control: TWO fully fictional grants, different
+          # target identities, no overlapping effective asset/capability pair.
+          with open("examples/fictional_cross_grant_disjoint_1493.json", "rb") as inp:
+              data = inp.read()
+          process = subprocess.run(
+              [sys.executable, "-B", "-m",
+               "lightup.cross_grant_lineage_cli_1493", "--synthetic-only"],
+              input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+              timeout=10, check=False,
+          )
+          expected = {
+              "authorized": False,
+              "consent_verified": False,
+              "dispatch_allowed": False,
+              "reason": "UNTRUSTED_COHERENCE",
+              "release_allowed": False,
+              "reviewed": 2,
+              "status": "REVIEW_ONLY",
+          }
+          if process.returncode != 2 or process.stderr or json.loads(process.stdout) != expected:
+              raise SystemExit("FICTIONAL_1493 disjoint-grants: wrong/misleading review")
+          print("FICTIONAL_1493 disjoint-grants: REVIEW_ONLY 2 claims exit=2 no authority")
+          PY
