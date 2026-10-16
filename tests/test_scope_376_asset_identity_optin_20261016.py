@@ -572,6 +572,46 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
         self.assertEqual(len(self._persisted_snapshot()), 1)
         self.assertIs(DomainStore.record_authorization_grant, original)
 
+    def test_snapshot_candidate_still_requires_separate_owner_permission(self):
+        original = DomainStore.record_authorization_grant
+        owner_calls = []
+        def deny_without_consent(*args, **kwargs):
+            owner_calls.append(True)
+            raise PermissionError("fictional original authorization still mandatory")
+        with patch.object(DomainStore, "record_authorization_grant",
+                          self._snapshot_owner_candidate(deny_without_consent)):
+            with self.assertRaisesRegex(
+                PermissionError, "fictional original authorization still mandatory"
+            ):
+                self._record(_scope())
+        self.assertEqual(owner_calls, [True])
+        self.assertIs(DomainStore.record_authorization_grant, original)
+        self.assertEqual(self._persisted_snapshot(), ())
+
+    def test_snapshot_candidate_rejects_corrupt_risk_capability_shapes_pre_io(self):
+        original = DomainStore.record_authorization_grant
+        attempts = []
+        for field, changed in (
+                ("max_risk", True), ("max_risk", 1),
+                ("allowed_capabilities", ["fixture"]),
+                ("allowed_capabilities", (42,))):
+            with self.subTest(field=field, value_type=type(changed).__name__):
+                untrusted = _scope()
+                object.__setattr__(untrusted, field, changed)
+                with patch.object(DomainStore, "record_authorization_grant",
+                                  self._snapshot_owner_candidate(
+                                      lambda *args, **kwargs: attempts.append(True)
+                                  )), \
+                     patch.object(DomainStore, "_connect",
+                                  side_effect=AssertionError("database opened")):
+                    with self.assertRaisesRegex(
+                        ValueError, "^scope metadata unavailable for source owner$"
+                    ):
+                        self._record(untrusted)
+        self.assertFalse(attempts)
+        self.assertIs(DomainStore.record_authorization_grant, original)
+        self.assertEqual(self._persisted_snapshot(), ())
+
     def test_snapshot_candidate_cannot_override_original_source_temporal_gate(self):
         original = DomainStore.record_authorization_grant
         with patch.object(DomainStore, "record_authorization_grant",
