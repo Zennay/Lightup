@@ -28,12 +28,12 @@ class LifetimeStatus(str, Enum):
 class LifetimeReceipt:
     status: LifetimeStatus
     reason: Literal["invalid_input", "changed", "unchanged"]
-    may_issue_permit: bool = False
-    may_issue_grant: bool = False
-    may_dispatch: bool = False
-    may_scan: bool = False
-    may_deploy: bool = False
-    may_release: bool = False
+    may_issue_permit: bool = field(default=False, init=False)
+    may_issue_grant: bool = field(default=False, init=False)
+    may_dispatch: bool = field(default=False, init=False)
+    may_scan: bool = field(default=False, init=False)
+    may_deploy: bool = field(default=False, init=False)
+    may_release: bool = field(default=False, init=False)
 
 
 @dataclass(frozen=True, slots=True, repr=False)
