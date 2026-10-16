@@ -54,3 +54,12 @@ python scripts/check_scope_1480_source_acceptance_20261016.py
 ```
 
 **Do not use the strict harness to bypass the full hosted suite failure under #301 or replace permanent VPS evidence.** Any eventual real owner source fix intentionally invalidates the old pinned blob and must be separately reviewed, then all expected RED markers formally promoted to ordinary PASS before independent full CI and human approval.
+
+
+## W3 — actual reusable but entirely UNWIRED production-adjacent reviewer
+
+New **separate**, pure module `src/lightup/activation_issuance_window_review_1480.py` provides `review_issuance_window(authorization, issued_at)`: exact built-in `Authorization` and `datetime` identity, explicitly finite original UTC bounds, inclusive chronology and no temporal widening. Missing, non-UTC, polymorphic, inverted, early and late instants all yield immutable **`HOLD`**; canonical within-window returns only **`REVIEW_ONLY`**, *never* `allowed`, execution permits, a grant, dispatch, consent or deployment. It reads only caller-provided values; no `datetime.now`, files, SQLite, sockets or subprocess. It is **not called by the real ActivationGate** and does not fix #1480 until the original source owner integrates a consistently sampled issuance boundary.
+
+New `tests/test_scope_1480_issuance_window_review_20261016.py` has **10 ordinary standalone tests** of finite bounds, exact inclusive edge, expiry/early/inverted/missing/naive/poly types, subclassed auth, immutable nonauthorizing results and mocked socket exclusion. These do not replace the installed original source RED or attest actual consent. No existing runtime or another worker's paths were changed.
+
+A source owner may reuse the pure metadata reviewer only after independently deciding whether strict exact UTC/finiteness constraints match product requirements and adding real installed grant/revocation/tenant/capability tests. Promoting old source RED demands runtime changes and independent human security review, not simply a REVIEW_ONLY output.
