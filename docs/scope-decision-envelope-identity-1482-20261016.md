@@ -100,3 +100,15 @@ PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_scope_fictional_so
 ```
 
 Na W6 **75 eigen tests**, plus W7 **20 nieuwe** = **95 tests (92 gewone + drie bekende originele source-RED)**. Alleen exacte huidige HEAD hosted Python 3.11/3.14 en permanente VPS CI kunnen nieuwe conclusies dragen. **Niet geïntegreerd, geen merge/deploy, geen echte klanten/targets/grants/scans.**
+
+## W8 — onafhankelijke, niet-uitvoerende LAB_ONLY binding-referentie
+
+Nieuw volledig eigen `src/lightup/activation_lab_binding_reference_1482.py`: `review_lab_binding(scope_policy, activation_policy, target, claimed_decision)` vergelijkt een **door caller verstrekte** `ScopeDecision` met de *verwachte* LAB_ONLY-betekenis binnen een bewust extreem kleine fictieve sandbox. De functie roept **noch** `ScopePolicy.decide` **noch** `ActivationGate.issue` aan en produceert nooit een `ExecutionPermit`. Zij werkt alleen met exact originele dataclass-vormen met vaste veldkeys en niet-polymorfe primitives. Toegelaten fixtures uitsluitend `localhost`, `127.0.0.1` en streng gevalideerde ASCII-`*.example.test`-domeinen zonder echte toestemming, labels, CIDR's of private-lab-automachtiging. Een exact LAB_ONLY-activatieobject moet een begrensde fictieve auditverwijzing bevatten. Alleen loopback heeft in die onafhankelijke lexical *review reference* het verwacht-allow-veld; fictieve publieke hosts zijn altijd verwacht-deny (expliciet zonder toestemming of buiten scope). Elke afwijking geeft atomaire `HOLD`, geldig ontwerp slechts `REVIEW_ONLY`; **alle retourwaarden `authorizes_execution=false` en `authorizes_release=false`**.
+
+**31 nieuwe regressies** in `tests/test_scope_lab_binding_reference_1482_20261016.py` controleren beide goede loopbacks, expliciet en impliciet afgewezen publieke fictieve hosts, vervalste loopback-host, boolean/int/string-reason-verwarring, hostaliases, ongeldige URL-vormen, echte klantmetadata, labels met kwaadaardige vergelijkingsoperator, verkeerde activatiemodus, malformeerde auditreferenties, ontbrekende of extra frozen-dataclassvelden, dataclass-subklassen, geen `ScopePolicy.decide`, expliciete netwerk-/SQLite-/subprocess-blokkade en onwijzigbare false-authority return. De bronhouder kan referentiegedrag gebruiken voor een echte onafhankelijke constructor/source-fixreview, maar **moet** zelf werkelijke integratie, trust, actuele scope, echte toestemming, revocation, rollen en retries bewijzen.
+
+```bash
+PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_scope_lab_binding_reference_1482_20261016.py' -v
+```
+
+Na vorige exact gehost geverifieerde **95 tests** zijn er nu **126 eigen methoden op nieuwe SHA** (123 gewone, drie originele bewust open source-REDs), *nog niet bewezen op de nieuwe HEAD*. Geen original source/andere-worker aanpassingen, merge of deployment. **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.**
