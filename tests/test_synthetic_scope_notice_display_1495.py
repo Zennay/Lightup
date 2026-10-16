@@ -119,21 +119,24 @@ class OfflineFictionalEnvelopeDisplay1495(unittest.TestCase):
         self.assertNotIn("desk.example.test", html)
         self.assert_inert(html)
 
-    def test_valid_but_embedded_markup_is_escaped(self):
+    def test_corrupted_markup_turns_entire_notice_to_generic_hold(self):
         value = json.loads(generated().stdout)
         value["notice"] += "\n<script>alert(1)</script><img src=//evil.example/>"
         html = render_fictional_envelope_html(json.dumps(value).encode())
-        self.assertIn("&lt;script&gt;", html)
-        self.assertIn("&lt;img src=", html)
+        self.assertIn("HOLD", html)
+        self.assertNotIn("desk.example.test", html)
+        self.assertNotIn("&lt;script&gt;", html)
         self.assertNotIn("<script>", html)
         self.assertNotIn("<img src=", html)
         self.assert_inert(html)
 
-    def test_javascript_url_text_is_not_an_actionable_link(self):
+    def test_appended_javascript_url_causes_generic_hold(self):
         value = json.loads(generated().stdout)
         value["notice"] += "\njavascript:alert(1)"
         html = render_fictional_envelope_html(json.dumps(value).encode())
-        self.assertIn("javascript:alert(1)", html)
+        self.assertIn("HOLD", html)
+        self.assertNotIn("javascript:alert(1)", html)
+        self.assertNotIn("desk.example.test", html)
         self.assertNotIn("href=", html)
         self.assert_inert(html)
 
