@@ -74,3 +74,15 @@ PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_scope_decision_pol
 ```
 
 Zelfs een `REVIEW_ONLY`-cohortstatus stelt geen echte beleidsprovenance, grant, cliënt-/operatorconsent, revocation, security review of release vast. **INCUBATE M3/M7 · DRAFT/HOLD · geen merge/deploy/grants/targets/scan/handlers.**
+
+## W6 — deterministische grensmatrix zonder uitvoerrechten
+
+Nieuwe geheel geïsoleerde `tests/test_scope_decision_hostile_matrix_1482_20261016.py`: **7 unittest-methoden**, waaronder uitputtende fictieve host×8 reden×6 allow-typematrix, **2.048 seeded synthetische gemengde records**, 256 gevallen met blokkades voor socket/DNS/process, geen iteratie van kwaadwillende tuple-subclasses, geen `__str__`-callback bij policy-objecten, geen herhaling van klantachtige input in uitkomsten en één 64-rijen-atomaire terugval naar HOLD. Elke gegenereerde uitvoer moet `HOLD` of `REVIEW_ONLY` zijn en beide authority-vlaggen letterlijk false; geen externe input, adapters of netwerkaanroep.
+
+Deze zeven tests stellen **geen echte scanveiligheid, consent of operatorvalidatie** vast. Met eerdere W5 zijn nu **75 eigen unittests** (72 gewoon + drie originele bron-expected REDs). Ze zijn uitsluitend geldig als ze ook op de actuele immutabele CI-HEAD worden uitgevoerd; oudere hosted bewijzen mogen niet worden doorgeschoven.
+
+```bash
+PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_scope_decision_hostile_matrix_1482_20261016.py' -v
+```
+
+**Blijft INCUBATE M3/M7, DRAFT/HOLD.** Geen edits aan andere workers of originele uitvoering, geen merge/deploy/grants/target/scan.
