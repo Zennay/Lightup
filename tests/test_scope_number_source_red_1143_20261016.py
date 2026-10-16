@@ -172,6 +172,58 @@ class NumberOriginalPolicyRed1143Tests(unittest.TestCase):
     def test_real_policy_executor_must_deny_negative_inf_pre_handler(self):
         self._assert_denial_before_handler(-math.inf)
 
+
+    def _multifield_request(self, third):
+        # This second fixture uses three actual NUMBER parameters to catch a
+        # late invalid value after two already-validated, harmless arguments.
+        self.executor.registry.register(ToolDefinition(
+            "fixture.real-policy-multi-number.1143", "web-baseline",
+            InteractionKind.ANALYSIS, RiskLevel.ANALYSIS_ONLY,
+            "atomic offline NUMBER batch",
+            (ToolParameter("first", ParamKind.NUMBER),
+             ToolParameter("second", ParamKind.NUMBER),
+             ToolParameter("third", ParamKind.NUMBER)),
+        ), self.handler)
+        return ToolCall(
+            "fixture.real-policy-multi-number.1143", "fixture.example.test",
+            (("first", 1), ("second", -0.125), ("third", third)),
+        )
+
+    def _assert_late_denial_no_partial_effects(self, value):
+        call = self._multifield_request(value)
+        with patch.object(socket, "socket", side_effect=AssertionError("no socket")), \
+             patch.object(subprocess, "Popen", side_effect=AssertionError("no process")):
+            with self.assertRaises(OrchestrationError):
+                self.executor.execute(self.context, call)
+        self.handler.assert_not_called()
+        self.state.add_evidence.assert_not_called()
+
+    @unittest.expectedFailure
+    def test_real_policy_late_nan_requires_atomic_rejection(self):
+        self._assert_late_denial_no_partial_effects(math.nan)
+
+    @unittest.expectedFailure
+    def test_real_policy_late_positive_inf_requires_atomic_rejection(self):
+        self._assert_late_denial_no_partial_effects(math.inf)
+
+    @unittest.expectedFailure
+    def test_real_policy_late_negative_inf_requires_atomic_rejection(self):
+        self._assert_late_denial_no_partial_effects(-math.inf)
+
+    @unittest.expectedFailure
+    def test_real_policy_late_giant_integer_requires_atomic_rejection(self):
+        self._assert_late_denial_no_partial_effects(1 << 4096)
+
+    def test_real_policy_atomic_multifield_finite_control(self):
+        call = self._multifield_request((1 << 4096) - 1)
+        with patch.object(socket, "socket", side_effect=AssertionError("no socket")), \
+             patch.object(subprocess, "Popen", side_effect=AssertionError("no process")):
+            result = self.executor.execute(self.context, call)
+        self.assertEqual(result.policy_reason, "analysis-only")
+        self.handler.assert_called_once()
+        self.state.add_evidence.assert_called_once()
+
+
     def test_real_policy_finite_control_stays_synthetic_and_mocked(self):
         with patch.object(socket, "socket", side_effect=AssertionError("no socket")), \
              patch.object(subprocess, "Popen", side_effect=AssertionError("no process")):
