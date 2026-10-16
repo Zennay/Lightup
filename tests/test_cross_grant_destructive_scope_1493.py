@@ -23,6 +23,9 @@ from lightup.cross_grant_lineage_cli_1493 import evaluate_bytes
 from lightup.cross_grant_lineage_review_1493 import (
     CrossGrantCandidate, review_cross_grant_batch, review_cross_grant_lineage,
 )
+from lightup.execution_policy import ExecutionPolicy, ExecutionRequest, InteractionKind
+from lightup.scope import ScopePolicy
+from lightup.models import Target
 from lightup.engagements import AuthorizationGrant, RiskLevel, ScopeDefinition
 from lightup.models import Authorization
 
@@ -133,6 +136,51 @@ class DestructiveScopeReviewTests(unittest.TestCase):
             (receipt["status"], receipt["reviewed"], code),
             ("REVIEW_ONLY", 1, 2))
         assert_no_authority(self, receipt)
+
+    def test_real_execution_policy_low_request_still_allows_high_max_but_review_holds(self):
+        # Real, unmodified policy source in memory, fabricated .example.test only.
+        # A positive scope decision NEVER proves approval for the wider grant.
+        now = datetime.now(timezone.utc)
+        old = Authorization("operator@example.test", "SYNTH-RISK-1493",
+                            now - timedelta(minutes=5), now + timedelta(minutes=5))
+        grant = AuthorizationGrant(
+            "G-1", "CLIENT-1", "ENG-1", "operator@example.test", "SYNTH-RISK-1493",
+            ScopeDefinition(("app.example.test",), RiskLevel.DESTRUCTIVE_LAB_ONLY,
+                            ("web-baseline",), ()),
+            now - timedelta(minutes=10), now + timedelta(minutes=10),
+        )
+        original = ExecutionPolicy().decide(ExecutionRequest(
+            InteractionKind.TARGET_ACTIVE, "app.example.test", "web-baseline",
+            RiskLevel.LOW_IMPACT, authorization=grant,
+        ))
+        self.assertTrue(original.allowed)
+        review_result = review_cross_grant_lineage(
+            old, grant, asset="app.example.test", capability_id="web-baseline",
+            client_id="CLIENT-1", engagement_id="ENG-1",
+            requested_risk=RiskLevel.LOW_IMPACT, evaluated_at=now,
+        )
+        self.assertEqual(review_result.status, "HOLD")
+        assert_no_authority(self, review_result)
+
+    def test_original_scope_policy_does_not_certify_destructive_grant_envelope(self):
+        now = datetime.now(timezone.utc)
+        old = Authorization("operator@example.test", "SYNTH-RISK-1493",
+                            now - timedelta(minutes=5), now + timedelta(minutes=5))
+        grant = AuthorizationGrant(
+            "G-1", "CLIENT-1", "ENG-1", "operator@example.test", "SYNTH-RISK-1493",
+            ScopeDefinition(("app.example.test",), RiskLevel.DESTRUCTIVE_LAB_ONLY,
+                            ("web-baseline",), ()),
+            now - timedelta(minutes=10), now + timedelta(minutes=10),
+        )
+        self.assertTrue(ScopePolicy(
+            explicit_hosts=frozenset({"app.example.test"})).decide(
+                Target("app.example.test", authorization=old)).allowed)
+        result = review_cross_grant_lineage(
+            old, grant, asset="app.example.test", capability_id="web-baseline",
+            client_id="CLIENT-1", engagement_id="ENG-1",
+            requested_risk=RiskLevel.LOW_IMPACT, evaluated_at=now)
+        self.assertEqual(result.status, "HOLD")
+        assert_no_authority(self, result)
 
     def test_destructive_max_review_invokes_no_external_io(self):
         c = claim(max_risk=RiskLevel.DESTRUCTIVE_LAB_ONLY)
