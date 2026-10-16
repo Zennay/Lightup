@@ -188,8 +188,13 @@ class CurrentMainTransportIdentityTest(unittest.TestCase):
             "LIGHTUP_TRUSTED_PROXY_IP": CallerEqualityProxy("127.0.0.1"),
             "LIGHTUP_DB": "/tmp/lightup-920-fixture-only.db",
         }
-        with patch("lightup.webapp.production.DomainStore", return_value=Mock()):
-            app = create_production_app(env)
+        with patch("lightup.webapp.production.DomainStore", return_value=Mock()) as store:
+            try:
+                app = create_production_app(env)
+            except ValueError:
+                # Best outcome: reject malformed configuration before store use.
+                store.assert_not_called()
+                return
             receipt, _ = invoke(app, request(REMOTE_ADDR=UNTRUSTED))
         self.assertEqual(receipt["status"], "403 Forbidden")
 
@@ -206,7 +211,11 @@ class CurrentMainTransportIdentityTest(unittest.TestCase):
 
     @unittest.expectedFailure
     def test_red_missing_peer_cannot_pass_caller_controlled_proxy_equality(self):
-        gate = WebSecurity(ORIGIN, AllPeersProxy("127.0.0.1"))
+        try:
+            gate = WebSecurity(ORIGIN, AllPeersProxy("127.0.0.1"))
+        except ValueError:
+            # Rejecting at configuration admission is preferable.
+            return
         request_without_peer = request()
         request_without_peer.pop("REMOTE_ADDR")
         with self.assertRaises(RequestRejected):
@@ -221,8 +230,12 @@ class CurrentMainTransportIdentityTest(unittest.TestCase):
         }
         request_without_peer = request()
         request_without_peer.pop("REMOTE_ADDR")
-        with patch("lightup.webapp.production.DomainStore", return_value=Mock()):
-            app = create_production_app(env)
+        with patch("lightup.webapp.production.DomainStore", return_value=Mock()) as store:
+            try:
+                app = create_production_app(env)
+            except ValueError:
+                store.assert_not_called()
+                return
             response, _ = invoke(app, request_without_peer)
         self.assertEqual(response["status"], "403 Forbidden")
 
@@ -238,13 +251,19 @@ class CurrentMainTransportIdentityTest(unittest.TestCase):
 
     @unittest.expectedFailure
     def test_red_untrusted_peer_cannot_pass_polymorphic_config_equality(self):
-        gate = WebSecurity(ORIGIN, CallerEqualityProxy("127.0.0.1"))
+        try:
+            gate = WebSecurity(ORIGIN, CallerEqualityProxy("127.0.0.1"))
+        except ValueError:
+            return
         with self.assertRaises(RequestRejected):
             gate.validate(request(REMOTE_ADDR=UNTRUSTED))
 
     @unittest.expectedFailure
     def test_red_actual_wsgi_rejects_polymorphic_proxy_peer_before_dispatch(self):
-        gate = WebSecurity(ORIGIN, CallerEqualityProxy("127.0.0.1"))
+        try:
+            gate = WebSecurity(ORIGIN, CallerEqualityProxy("127.0.0.1"))
+        except ValueError:
+            return
         result, _ = invoke(create_app(Mock(), gate), request(REMOTE_ADDR=UNTRUSTED))
         self.assertEqual(result["status"], "403 Forbidden")
 
