@@ -372,6 +372,35 @@ class SyntheticIdentityIntakeCliTest(unittest.TestCase):
             os.close(master)
             os.close(slave)
 
+    @unittest.skipUnless(sys.platform.startswith("linux"), "Linux pipe identity contract")
+    def test_procfs_pipe_name_requires_exact_real_kernel_inode(self):
+        import importlib.util
+        from unittest import mock
+        spec = importlib.util.spec_from_file_location("synthetic_review_inode", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        read_fd, write_fd = os.pipe()
+        try:
+            actual = os.fstat(read_fd).st_ino
+            for forged in (
+                "pipe:[" + str(actual + 1) + "]",
+                "pipe:[" + str(actual) + "]-extra",
+                "pipe:[" + str(actual).zfill(len(str(actual)) + 1) + "]extra",
+                "/tmp/pipe:[" + str(actual) + "]",
+                "socket:[" + str(actual) + "]",
+                "pipe:[+0]",
+            ):
+                with self.subTest(forged=forged):
+                    with mock.patch.object(module.os, "readlink", return_value=forged):
+                        self.assertFalse(module._anonymous_pipe(read_fd))
+            with mock.patch.object(
+                module.os, "readlink", return_value="pipe:[" + str(actual) + "]"
+            ):
+                self.assertTrue(module._anonymous_pipe(read_fd))
+        finally:
+            os.close(read_fd)
+            os.close(write_fd)
+
     def test_procfs_identity_unavailable_is_hold_not_review(self):
         import importlib.util
         from unittest import mock
