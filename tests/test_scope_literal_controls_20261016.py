@@ -1,4 +1,5 @@
 """Inert control-character scope witness and offline reviewer contract."""
+import ast
 import json
 import os
 from pathlib import Path
@@ -8,6 +9,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+from lightup.activation import ActivationGate, ActivationMode, ActivationPolicy
 from lightup.models import Target
 from lightup.scope import ScopePolicy
 from lightup.scope_literal_control_review_20261016 import LiteralReview, review_literals
@@ -79,6 +81,20 @@ class LiteralReviewTests(unittest.TestCase):
     def test_never_echo_candidate_in_result(self):
         result = review_literals(("fictional-private-secret-not-an-asset",))
         self.assertNotIn("fictional-private-secret", repr(result))
+
+    def test_review_module_stays_unwired_from_real_runtime(self):
+        reviewer = "scope_literal_control_review_20261016"
+        for file in sorted((ROOT / "src" / "lightup").rglob("*.py")):
+            if file.stem == reviewer:
+                continue
+            with self.subTest(module=str(file.relative_to(ROOT))):
+                tree = ast.parse(file.read_text(encoding="utf-8"), filename=str(file))
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.ImportFrom):
+                        self.assertNotIn(reviewer, node.module or "")
+                    elif isinstance(node, ast.Import):
+                        for alias in node.names:
+                            self.assertNotIn(reviewer, alias.name)
 
     def test_strictly_offline_no_sockets(self):
         from unittest.mock import patch
@@ -159,6 +175,14 @@ class InstalledSourceRedWitness(unittest.TestCase):
     @unittest.expectedFailure
     def test_original_scope_must_not_convert_tab_to_loopback(self):
         self.assertFalse(ScopePolicy().decide(Target("127.0.0.\t1")).allowed)
+
+    @unittest.expectedFailure
+    def test_original_lab_activation_must_deny_control_char_authority(self):
+        gate = ActivationGate(
+            ScopePolicy(), ActivationPolicy(mode=ActivationMode.LAB_ONLY),
+        )
+        with self.assertRaises(PermissionError):
+            gate.issue(Target("local\nhost"), "fictional.test-only")
 
     @unittest.expectedFailure
     def test_original_scope_must_not_convert_newline_in_url(self):

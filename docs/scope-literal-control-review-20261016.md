@@ -24,3 +24,7 @@ The distinct unit suite includes intentionally still-open `expectedFailure` cont
 ## Promotion barrier and ownership
 
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** No merge/deploy, grants, real scans, real assets, handler dispatch or release. Requires the original source owner to close issues, canonical exact-head hosted plus permanently registered named VPS CI, authenticated independent client+operator consent and at-use revocation, privacy/security review and explicit human GO. Keep review CLI unwired and **never treat its success-like REVIEW_ONLY status as an authorization fact**.
+
+## Additional original-source composition witness
+
+A fourth deliberately open `expectedFailure` proves that the current original `ActivationGate.issue()` may mint an in-memory synthetic LAB_ONLY permit after the lossy scope decision for `local\nhost`. This is an offline object-creation witness only: no executor, network request, real target, activation grant, or handler is involved. The independent AST guard prevents production imports of this unwired reviewer. The existing source owner #1289 owns the actual remediation.
