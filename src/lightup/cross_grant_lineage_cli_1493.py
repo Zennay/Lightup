@@ -21,6 +21,8 @@ from .models import Authorization
 SCHEMA = "FICTIONAL-CROSS-GRANT-V1"
 MAX_INPUT_BYTES = 65536
 _UTC_TEXT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\Z", re.ASCII)
+_ID_TEXT = re.compile(r"[A-Za-z0-9][A-Za-z0-9@._:/-]{0,127}\Z", re.ASCII)
+_HOST_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z", re.ASCII)
 _BATCH_KEYS = frozenset(("schema", "evaluated_at", "candidates"))
 _CLAIM_KEYS = frozenset((
     "legacy", "durable", "asset", "capability_id", "client_id",
@@ -56,23 +58,27 @@ def _object(value: Any, keys: frozenset[str]) -> dict[str, Any]:
 
 
 def _text(value: Any) -> str:
-    if type(value) is not str or not (1 <= len(value) <= 128) or not value.isascii():
+    if type(value) is not str or _ID_TEXT.fullmatch(value) is None:
         raise ValueError("noncanonical fictional identifier")
     return value
 
 
 def _fictional_asset(value: Any) -> str:
     value = _text(value)
-    if not value.endswith(".example.test"):
-        raise ValueError("nonfictional asset")
+    if (not value.endswith(".example.test")
+            or any(_HOST_LABEL.fullmatch(label) is None for label in value.split("."))):
+        raise ValueError("nonfictional or noncanonical asset")
     return value
 
 
 def _utc(value: Any) -> datetime:
     if type(value) is not str or _UTC_TEXT.fullmatch(value) is None:
         raise ValueError("noncanonical UTC timestamp")
-    dt = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-    if dt.strftime("%Y-%m-%dT%H:%M:%SZ") != value:
+    # fromisoformat is a direct datetime parser. Unlike strptime it does not
+    # lazily import _strptime/locale during a supposedly hermetic review.
+    dt = datetime.fromisoformat(value[:-1] + "+00:00")
+    if (dt.tzinfo is not timezone.utc
+            or dt.isoformat(timespec="seconds") != value[:-1] + "+00:00"):
         raise ValueError("noncanonical UTC timestamp")
     return dt
 
