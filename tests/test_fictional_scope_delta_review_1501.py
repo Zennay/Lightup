@@ -361,10 +361,10 @@ class FictionalScopeDeltaTests(TestCase):
         old = proposal()
         history = (old, proposal(risk=2), old)
         before = repr(history)
-        with patch("builtins.open", side_effect=AssertionError("file")), \\
-             patch("os.open", side_effect=AssertionError("os")), \\
-             patch("socket.socket", side_effect=AssertionError("network")), \\
-             patch("sqlite3.connect", side_effect=AssertionError("database")), \\
+        with patch("builtins.open", side_effect=AssertionError("file")), \
+             patch("os.open", side_effect=AssertionError("os")), \
+             patch("socket.socket", side_effect=AssertionError("network")), \
+             patch("sqlite3.connect", side_effect=AssertionError("database")), \
              patch("subprocess.Popen", side_effect=AssertionError("process")):
             result = review_fictional_scope_history(history)
         self.assertEqual(repr(history), before)
