@@ -79,6 +79,42 @@ class TransportIdentityCompositionTests(unittest.TestCase):
                     request.update(override)
                     self.gate.validate(request)
 
+
+    def test_exhaustive_offline_joint_transport_truth_table(self):
+        # 5 x 3 x 3 = 45 independent synthetic input envelopes.
+        # A good Host must not cure a bad peer or scheme, and vice versa.
+        for peer in ("127.0.0.1", "127.0.0.2", "203.0.113.77", "", None):
+            for host in ("lightup.example.test", "untrusted.example.test",
+                         "lightup.example.test.."):
+                for scheme in ("https", "http", None):
+                    with self.subTest(peer=peer, host=host, scheme=scheme):
+                        request = self.request(
+                            REMOTE_ADDR=peer, HTTP_HOST=host,
+                            HTTP_X_FORWARDED_PROTO=scheme,
+                        )
+                        accepted = (peer == "127.0.0.1" and
+                                    host == "lightup.example.test" and
+                                    scheme == "https")
+                        if accepted:
+                            self.gate.validate(request)
+                        else:
+                            with self.assertRaises(RequestRejected):
+                                self.gate.validate(request)
+
+    def test_transport_validation_does_not_mutate_caller_metadata(self):
+        for request in (
+            self.request(),
+            self.request(REMOTE_ADDR="203.0.113.77"),
+            self.request(HTTP_HOST="untrusted.example.test"),
+        ):
+            with self.subTest(request=request):
+                before = request.copy()
+                try:
+                    self.gate.validate(request)
+                except RequestRejected:
+                    pass
+                self.assertEqual(request, before)
+
     def test_invalid_production_settings_refuse_at_constructor(self):
         for kwargs in (
             {"public_origin": "http://lightup.example.test"},
