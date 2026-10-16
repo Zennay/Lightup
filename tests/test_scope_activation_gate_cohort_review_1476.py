@@ -14,6 +14,7 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from lightup.activation import ActivationGate, ActivationMode, ActivationPolicy
+import lightup.activation_gate_cohort_review_1476 as cohort
 from lightup.scope import ScopePolicy
 from lightup.activation_gate_cohort_review_1476 import (
     PinnedGateCohort,
@@ -181,6 +182,51 @@ class CohortReviewTests(unittest.TestCase):
             pin = pin_gate_cohort_for_offline_review((a, b))
             receipt = review_gate_cohort_offline((a, b), pin)
         self.assertIs(receipt.status, LifetimeStatus.REVIEW_ONLY)
+        self.assert_denies_everything(receipt)
+
+    def test_pin_rechecks_earlier_gate_when_later_gate_changes_it(self):
+        a, b = gate(), gate()
+        original = cohort.pin_gate_for_offline_review
+
+        def pin_with_mutation(g):
+            result = original(g)
+            if g is b:
+                a.activation_policy = ActivationPolicy(ActivationMode.LAB_ONLY)
+            return result
+
+        with patch.object(cohort, "pin_gate_for_offline_review", side_effect=pin_with_mutation):
+            self.assertIsNone(pin_gate_cohort_for_offline_review((a, b)))
+
+    def test_review_rechecks_earlier_gate_after_later_gate_mutation(self):
+        a, b = gate(), gate()
+        pinned = pin_gate_cohort_for_offline_review((a, b))
+        original = cohort.review_gate_lifetime
+        calls = []
+
+        def review_with_mutation(g, pin):
+            result = original(g, pin)
+            calls.append(g)
+            if g is b and len(calls) == 2:
+                a.scope_policy = ScopePolicy(
+                    explicit_hosts=frozenset({"fictional.example.test"})
+                )
+            return result
+
+        with patch.object(cohort, "review_gate_lifetime", side_effect=review_with_mutation):
+            receipt = review_gate_cohort_offline((a, b), pinned)
+        self.assertIs(receipt.status, LifetimeStatus.HOLD)
+        self.assertEqual(receipt.reason, "changed")
+        self.assertIn(a, calls[2:])
+        self.assert_denies_everything(receipt)
+
+    def test_stable_cohort_gets_second_complete_review_pass(self):
+        a, b, c = gate(), gate(), gate()
+        pinned = pin_gate_cohort_for_offline_review((a, b, c))
+        original = cohort.review_gate_lifetime
+        with patch.object(cohort, "review_gate_lifetime", wraps=original) as spy:
+            receipt = review_gate_cohort_offline((a, b, c), pinned)
+        self.assertIs(receipt.status, LifetimeStatus.REVIEW_ONLY)
+        self.assertEqual(spy.call_count, 6)
         self.assert_denies_everything(receipt)
 
     def test_receipt_and_pin_repr_do_not_echo_metadata(self):
