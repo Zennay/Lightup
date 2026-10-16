@@ -5,6 +5,7 @@ Fabricated fixtures only. No authorization or active handler is issued.
 from __future__ import annotations
 
 from dataclasses import fields
+from concurrent.futures import ThreadPoolExecutor
 from itertools import product
 from random import Random
 
@@ -642,6 +643,75 @@ class ScopeReplayMatrix344Tests(unittest.TestCase):
         self.assertEqual(calls, 1)
         self.assertIs(type(ScopePolicy().decide(Target("localhost"))),
                       ScopeDecision)
+
+    def test_concurrent_96_scenario_replay_preserves_exact_inputs(self):
+        # Real ScopePolicy.decide, 8 in-process threads, immutable synthetic
+        # fixtures; explicit per-index results avoid relying on completion order.
+        cases = scenarios()
+        originals = tuple(original_values(p, t) for p, t in cases)
+        baseline = tuple(p.decide(t) for p, t in cases)
+        sequence = list(range(96)) * 8
+        Random(344).shuffle(sequence)
+
+        def evaluate(index):
+            policy, target = cases[index]
+            return index, policy.decide(target)
+
+        with ThreadPoolExecutor(max_workers=8) as workers:
+            evaluated = tuple(workers.map(evaluate, sequence))
+        self.assertEqual(len(evaluated), 768)
+        for index, result in evaluated:
+            self.assertIs(type(result), ScopeDecision)
+            self.assertEqual(result, baseline[index])
+        self.assertEqual(
+            tuple(original_values(p, t) for p, t in cases),
+            originals,
+        )
+        self.assertTrue(any(item.allowed for item in baseline))
+        self.assertTrue(any(not item.allowed for item in baseline))
+
+    def test_concurrent_shared_policy_cannot_reuse_prior_grant_decision(self):
+        # One policy shared by every worker: a valid synthetic grant must
+        # never be reused for a denied or expired neighbouring request.
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset(("review.example.test",)),
+            explicit_networks=("8.8.8.0/24",),
+            require_authorization_for_public=True,
+        )
+        cases = (
+            Target("review.example.test", grant("current")),
+            Target("review.example.test", grant("expired")),
+            Target("review.example.test"),
+            Target("8.8.8.8", grant("current")),
+            Target("8.8.8.8"),
+            Target("elsewhere.example.test", grant("current")),
+        )
+        expected = (
+            ScopeDecision(True, "review.example.test", ScopeReason.EXPLICIT_HOST),
+            ScopeDecision(False, "review.example.test", ScopeReason.AUTHORIZATION_EXPIRED),
+            ScopeDecision(False, "review.example.test", ScopeReason.AUTHORIZATION_MISSING),
+            ScopeDecision(True, "8.8.8.8", ScopeReason.EXPLICIT_NETWORK),
+            ScopeDecision(False, "8.8.8.8", ScopeReason.AUTHORIZATION_MISSING),
+            ScopeDecision(False, "elsewhere.example.test", ScopeReason.OUT_OF_SCOPE),
+        )
+        before = tuple(original_values(policy, target) for target in cases)
+        sequence = list(range(6)) * 64
+        Random(3441).shuffle(sequence)
+
+        def classify(index):
+            return index, policy.decide(cases[index])
+
+        with ThreadPoolExecutor(max_workers=8) as workers:
+            results = tuple(workers.map(classify, sequence))
+        self.assertEqual(len(results), 384)
+        for index, result in results:
+            self.assertEqual(result, expected[index])
+            self.assertIs(type(result.allowed), bool)
+        self.assertEqual(
+            tuple(original_values(policy, target) for target in cases),
+            before,
+        )
 
     def test_canonical_fixture_does_not_ever_create_permit_or_grant(self):
         for policy, target in scenarios():
