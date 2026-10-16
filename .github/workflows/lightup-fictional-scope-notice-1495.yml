@@ -8,15 +8,7 @@ on:
       - 'src/lightup/synthetic_scope_notice*_1495.py'
       - 'tests/test_synthetic_scope_notice*_1495.py'
       - 'examples/fictional_scope_notice_1495.json'
-      - 'docs/synthetic_scope_notice_1495.md'
-      - '.github/workflows/lightup-fictional-scope-notice-1495.yml'
-  push:
-    branches:
-      - 'chatgpt/scope-operator-notice-synthetic-20261016'
-    paths:
-      - 'src/lightup/synthetic_scope_notice*_1495.py'
-      - 'tests/test_synthetic_scope_notice*_1495.py'
-      - 'examples/fictional_scope_notice_1495.json'
+      - 'schemas/fictional_scope_notice_1495.schema.json'
       - 'docs/synthetic_scope_notice_1495.md'
       - '.github/workflows/lightup-fictional-scope-notice-1495.yml'
 
