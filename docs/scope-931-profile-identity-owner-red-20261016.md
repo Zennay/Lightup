@@ -230,3 +230,36 @@ receipt privacy. Source-owner #175 requirements remain **exact built-in str +
 nonblank**; this stricter optional offline check is NOT promoted into the
 real `ProspectProfile` constructor or deployed scope policy.
 Expected owner-source REDs remain open.
+
+## W10 — exact kernel pipe spellings and VPS dependency handoff
+
+The W8 helper compared the digits inside `pipe:[inode]` as an integer,
+which also accepted forged leading-zero spellings. It now demands the
+**entire** kernel descriptor string equal
+`f"pipe:[{os.fstat(fd).st_ino}]"`; no numeric coercion, path prefix,
+padding, stray suffix, or trailing whitespace is allowed. The real local
+pipe regression now rejects leading zeroes, spaces and newline suffixes in
+addition to mismatching inode values. This remains a **Linux-only heuristic**,
+not a secure filesystem or independent authorization boundary.
+
+### What the permanently registered VPS owner must verify
+
+- The unchanged LightUp CI workflow
+  `.github/workflows/lightup-ci.yml` expressly requests the three runner
+  labels `[self-hosted, zcloud, vps]` and guards `hostname ==
+  vps-bb300bba` **before** checkout/tests.
+- The current self-hosted jobs are `queued`, with `runner_name` empty:
+  their logs do **not** prove the job was ever accepted by the intended VPS.
+- The repository runner inventory GitHub API was unavailable to this
+  scoped connector (rejected request), so **runner registration, health,
+  online/offline status, backlog, label mismatch, and owner access are
+  all UNVERIFIED**. Do not assert a cause.
+- An authorized runner/operator owner should inspect the GitHub runner
+  inventory, exact label set, health, queued competitors and service logs
+  via the established route referenced by [#1144](https://github.com/Zennay/Lightup/issues/1144),
+  without bypassing runner ownership or canceling unrelated work. Confirm
+  both Python 3.11 and 3.14 jobs reach the real `vps-bb300bba` hostname,
+  complete on the **latest immutable commit** and link runner/job proof.
+- Even a future registered-VPS SUCCESS would **not** repair the 16 open
+  installed-source identity REDs or substitute for consent, client asset
+  ownership, real revocation, independent security/privacy or human GO.
