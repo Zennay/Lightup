@@ -44,6 +44,46 @@ class Scope920RunnerProvenanceTest(unittest.TestCase):
             with patch.object(acceptance, "ROOT", Path(temp)):
                 self.assertFalse(acceptance.source_is_pinned())
 
+    def test_owned_acceptance_tests_match_immutable_blob(self):
+        # A fake suite with twenty doctored tests must not get REVIEW_ONLY.
+        self.assertEqual(
+            acceptance.PINNED_TEST_BLOB,
+            "ae63a85546e970a19a9f44489732b45a70448811",
+        )
+        self.assertTrue(acceptance.acceptance_tests_are_pinned())
+
+    def test_edited_acceptance_tests_are_hold_before_test_discovery(self):
+        with tempfile.TemporaryDirectory(prefix="scope-920-own-fixture-") as temp:
+            test_dir = Path(temp) / "tests"
+            test_dir.mkdir()
+            (test_dir / acceptance.PATTERN).write_text(
+                "def test_fake_green(): pass\n", encoding="utf-8",
+            )
+            with patch.object(acceptance, "ROOT", Path(temp)):
+                with patch.object(acceptance, "source_is_pinned", return_value=True):
+                    self.assertFalse(acceptance.acceptance_tests_are_pinned())
+                    with patch.object(acceptance.unittest, "TestLoader") as loader:
+                        output = io.StringIO()
+                        with patch("sys.stdout", output):
+                            self.assertEqual(acceptance.main(), 2)
+                        loader.assert_not_called()
+            result = json.loads(output.getvalue())
+            self.assertEqual(result["status"], "HOLD")
+            self.assertEqual(result["tests_run"], 0)
+            self.assertIs(result["release_authorized"], False)
+
+    def test_missing_or_symlinked_acceptance_tests_fail_closed(self):
+        with tempfile.TemporaryDirectory(prefix="scope-920-own-fixture-") as temp:
+            root = Path(temp)
+            test_dir = root / "tests"
+            test_dir.mkdir()
+            with patch.object(acceptance, "ROOT", root):
+                self.assertFalse(acceptance.acceptance_tests_are_pinned())
+                target = test_dir / "target.txt"
+                target.write_text("not a real source file", encoding="utf-8")
+                (test_dir / acceptance.PATTERN).symlink_to(target)
+                self.assertFalse(acceptance.acceptance_tests_are_pinned())
+
     def test_missing_source_file_fail_closed(self):
         with tempfile.TemporaryDirectory(prefix="scope-920-only-") as temp:
             with patch.object(acceptance, "ROOT", Path(temp)):
