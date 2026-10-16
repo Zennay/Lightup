@@ -23,3 +23,11 @@ This tool owns only the eight new #1505 paths. Existing #1501 semantic proposal 
 
 ## Two-capture comparison — independently copied synthetic history
 `review_matching_fictional_captures(capture_a, capture_b)` in the **new independent** `fictional_review_sequence_compare_1505.py` compares two independently supplied, internally valid, 2–16 step fictional capture histories. It returns only non-authorizing `REVIEW_ONLY` when both canonical case IDs, sequences, per-event copy digest *hints*, and timestamps match exactly and remain stable across observed repeated reads. Any mismatch/duplicate/missing step/invalid input returns generic no-echo `HOLD`. Matching copies can be fabricated or jointly manipulated, and this comparison **cannot prove historical completeness, authenticated provenance, cryptographic signatures, client/operator consent or release eligibility**. This is distinct from #1503 single-packet byte copy-integrity and #1501 proposal-content widening. Test using `PYTHONPATH=src python -m unittest discover -s tests -p 'test_fictional_review_sequence*_1505.py' -v`.
+
+## Opt-in two-capture stdin CLI (synthetic only)
+A distinct, non-authorizing CLI `python -m lightup.fictional_review_sequence_pair_cli_1505` reads **one** canonical ASCII JSON payload, 1..8192 bytes, with exact ordered keys `schema,capture_a,capture_b` where schema is `fictional_handoff_pair_v1`. Both captures must be individually canonical `fictional_handoff_sequence_v1` envelopes and match in every record. Duplicate keys, unknown fields, Unicode, copied history modifications, missing/extra steps and trailing bytes give generic `HOLD` exit **3** with zero data echoed. Identical, locally consistent wholly synthetic copies give `REVIEW_ONLY` exit **2** with all permission flags false—never approval or exit 0. The two inputs are caller-supplied and **may be jointly forged**. No authenticity, approval, real packet proof or provenance is established.
+
+```bash
+PYTHONPATH=src python -m lightup.fictional_review_sequence_pair_cli_1505 < docs/examples/fictional-pair-1505-matching.json
+PYTHONPATH=src python -m lightup.fictional_review_sequence_pair_cli_1505 < docs/examples/fictional-pair-1505-divergent.json
+```
