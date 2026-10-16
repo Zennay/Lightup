@@ -30,6 +30,10 @@ table{border-collapse:collapse;width:100%;font-size:.92rem}
 th,td{border-bottom:1px solid var(--line);padding:13px 10px;text-align:left}
 th{color:var(--muted)}td{overflow-wrap:anywhere}
 .wrap{overflow-x:auto}code{font:inherit;color:#d9e8ff}
+.metrics{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}.metric{flex:1 1 155px;
+background:var(--bg);padding:12px;border:1px solid var(--line);border-radius:9px}
+.metric strong{display:block;font-size:1.1rem}.gates{padding-left:25px}
+.gates li{margin:7px 0}.pending{color:var(--warn);font-weight:750}
 footer{color:var(--muted)}.sr-only{position:absolute;width:1px;height:1px;
 padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 @media(max-width:640px){table{min-width:650px}main{padding:16px}}
@@ -128,6 +132,45 @@ def render_synthetic_scope_html(
         if dutch else
         "Every proposed scope requires independent human review."
     )
+    unique_assets = len({p.asset for p in proposals})
+    elevated_count = sum(1 for p in proposals if p.risk >= 4)
+    earliest_expiry = min(p.valid_until for p in proposals).isoformat().replace("+00:00", "Z")
+    metric_labels = (
+        ("Fictieve systemen", "Hoog risico", "Eerste verloopmoment (UTC)")
+        if dutch else ("Fictional assets", "Elevated risks", "Earliest expiry (UTC)")
+    )
+    metrics_html = (
+        "<div class=\"metrics\" aria-label=\""
+        + ("Overzicht fictieve scope" if dutch else "Fictional scope summary") + "\">"
+        + "".join(
+            "<div class=\"metric\"><span class=\"meta\">" + escape(label)
+            + "</span><strong>" + escape(str(value)) + "</strong></div>"
+            for label, value in zip(
+                metric_labels, (unique_assets, elevated_count, earliest_expiry)
+            )
+        ) + "</div>"
+    )
+    gates = (
+        ("Klanten- en operatoridentiteit onafhankelijk geverifieerd",
+         "Exacte scope, tijdvenster en referentie door bronhouder gevalideerd",
+         "Duurzame intrekking bij daadwerkelijke uitvoering getoetst",
+         "Security/privacy-review en expliciete menselijke GO verkregen")
+        if dutch else
+        ("Client and operator identity independently authenticated",
+         "Exact scope, time window and reference verified by source owner",
+         "Durable revocation checked at time of actual use",
+         "Security/privacy review and explicit human GO obtained")
+    )
+    gate_heading = "Open vrijgavevoorwaarden" if dutch else "Outstanding release requirements"
+    gates_html = (
+        "<section aria-labelledby=\"gates-title\"><h2 id=\"gates-title\">"
+        + escape(gate_heading) + "</h2>"
+        + "<ol class=\"gates\">"
+        + "".join(
+            "<li><span class=\"pending\">PENDING — </span>"
+            + escape(gate) + "</li>" for gate in gates
+        ) + "</ol></section>"
+    )
     body = (
         "<header class=\"warning\" role=\"alert\">"
         "<span class=\"tag stop\">REVIEW_ONLY</span><h1>" + escape(banner) + "</h1>"
@@ -137,6 +180,7 @@ def render_synthetic_scope_html(
         + escape(labels[1]) + ": " + str(notice.reviewed)
         + " · " + escape(labels[2]) + ": "
         + escape(review_at.isoformat().replace("+00:00", "Z")) + "</p>"
+        + metrics_html +
         "<div class=\"wrap\"><table><thead><tr>"
         + "".join("<th scope=\"col\">" + escape(label) + "</th>"
                   for label in labels[3:])
@@ -144,6 +188,7 @@ def render_synthetic_scope_html(
         "<section aria-labelledby=\"risk-title\"><h2 id=\"risk-title\">"
         + ("Risicocontrole" if dutch else "Risk review") + "</h2>"
         "<p class=\"risk\">" + escape(risk_text) + "</p></section>"
+        + gates_html +
         "<footer>NOT AUTHORIZED · authorized=false · consent_verified=false · "
         "dispatch_allowed=false · release_allowed=false"
         "<p>" + (
