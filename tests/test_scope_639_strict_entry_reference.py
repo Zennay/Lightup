@@ -226,11 +226,17 @@ class StrictEntryReferenceTest(unittest.TestCase):
         from lightup.persisted_scope_entries_639 import MAX_SCOPE_JSON_CHARS
 
         payload = " " * (MAX_SCOPE_JSON_CHARS + 1)
+        original_loads = json.loads
+
+        def refuse_oversized_decode(value):
+            self.assertNotEqual(value, payload, "oversized JSON was parsed")
+            return original_loads(value)
+
         for field in ("assets", "exclusions", "capabilities"):
             with self.subTest(field=field):
                 with patch(
                     "lightup.persisted_scope_entries_639.json.loads",
-                    side_effect=AssertionError("oversized JSON was parsed"),
+                    side_effect=refuse_oversized_decode,
                 ):
                     self.assertIsNone(self.review(**{field: payload}))
 
