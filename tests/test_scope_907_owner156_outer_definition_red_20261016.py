@@ -1,0 +1,324 @@
+"""#907: exact outer ToolDefinition registry admission on frozen #156 owner source.
+
+Only synthetic in-process objects; no registry handler is ever called.
+Expected failures are real OPEN owner-source boundaries, NOT fixed authorizations.
+"""
+import os
+import sys
+import unittest
+from unittest.mock import patch
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
+from lightup.ai.orchestration import (
+    OrchestrationError, ParamKind, ToolDefinition, ToolParameter, ToolRegistry,
+)
+from lightup.engagements import RiskLevel
+from lightup.execution_policy import InteractionKind
+
+
+def NEVER_INVOKE_HANDLER(*_args, **_kwargs):
+    raise AssertionError("a registry admission test must never invoke a handler")
+
+
+def canonical_definition(tool_id="offline-canonical"):
+    return ToolDefinition(
+        tool_id=tool_id, capability_id="external-attack-surface",
+        interaction=InteractionKind.PASSIVE_PUBLIC, min_risk=RiskLevel.PASSIVE,
+        description="synthetic offline registry contract",
+        parameters=(ToolParameter("query", ParamKind.STRING),),
+    )
+
+
+class PlainSubclassDefinition(ToolDefinition):
+    pass
+
+
+class OverrideValidatorDefinition(ToolDefinition):
+    def validate_arguments(self, arguments):
+        # Dangerous if admitted by ToolRegistry: the required query vanishes.
+        return None
+
+
+class DuckDefinition:
+    """Forged registry metadata with a bypass method, never a ToolDefinition."""
+    tool_id = "offline-duck"
+    capability_id = "external-attack-surface"
+    interaction = InteractionKind.PASSIVE_PUBLIC
+    min_risk = RiskLevel.PASSIVE
+    description = "fictional duck"
+    parameters = (ToolParameter("query", ParamKind.STRING),)
+
+    def validate_arguments(self, arguments):
+        return None
+
+
+class ForgedClassDefinition(DuckDefinition):
+    """Not a ToolDefinition, but lies to Python isinstance via __class__."""
+    tool_id = "offline-forged-passive"
+
+    @property
+    def __class__(self):
+        return ToolDefinition
+
+
+class ForgedClassLabDefinition(ForgedClassDefinition):
+    tool_id = "offline-forged-lab"
+    capability_id = "wireless-lab"
+    interaction = InteractionKind.LAB_ACTIVE
+    min_risk = RiskLevel.DESTRUCTIVE_LAB_ONLY
+
+
+class PropertySpyDefinition:
+    """Getters must never be read before exact outer-shape validation."""
+    def __init__(self):
+        self.reads = 0
+
+    @property
+    def tool_id(self):
+        self.reads += 1
+        return "offline-spy"
+
+    @property
+    def capability_id(self):
+        self.reads += 1
+        return "external-attack-surface"
+
+    @property
+    def interaction(self):
+        self.reads += 1
+        return InteractionKind.PASSIVE_PUBLIC
+
+    @property
+    def min_risk(self):
+        self.reads += 1
+        return RiskLevel.PASSIVE
+
+
+class ToolDefinitionOwner156OuterBoundary(unittest.TestCase):
+    def setUp(self):
+        self.registry = ToolRegistry()
+
+    def assert_rejected_without_registration(self, candidate):
+        # A controlled OrchestrationError denial is required (not AttributeError).
+        with self.assertRaises(OrchestrationError):
+            self.registry.register(candidate, NEVER_INVOKE_HANDLER)
+        self.assertEqual(self.registry.definitions(), ())
+
+    def test_exact_definition_registers_and_stays_same_identity(self):
+        definition = canonical_definition()
+        self.registry.register(definition, NEVER_INVOKE_HANDLER)
+        found, handler = self.registry.get(definition.tool_id)
+        self.assertIs(found, definition)
+        self.assertIs(handler, NEVER_INVOKE_HANDLER)
+        self.assertEqual(self.registry.definitions(), (definition,))
+
+    def test_exact_definition_preserves_required_argument_validator(self):
+        definition = canonical_definition()
+        self.registry.register(definition, NEVER_INVOKE_HANDLER)
+        with self.assertRaises(OrchestrationError):
+            self.registry.get(definition.tool_id)[0].validate_arguments({})
+        self.registry.get(definition.tool_id)[0].validate_arguments({"query": "offline"})
+
+    def test_exact_duplicate_tool_id_remains_denied(self):
+        definition = canonical_definition()
+        self.registry.register(definition, NEVER_INVOKE_HANDLER)
+        with self.assertRaises(OrchestrationError):
+            self.registry.register(definition, NEVER_INVOKE_HANDLER)
+        self.assertEqual(self.registry.definitions(), (definition,))
+
+    def test_existing_lab_only_coherence_denies_passive_wireless(self):
+        definition = ToolDefinition(
+            "offline-wireless", "wireless-lab", InteractionKind.PASSIVE_PUBLIC,
+            RiskLevel.PASSIVE, "fictional lab capability",
+        )
+        self.assert_rejected_without_registration(definition)
+
+    def test_existing_malformed_inner_interaction_rejected(self):
+        definition = ToolDefinition(
+            "offline-bad-kind", "external-attack-surface", "passive_public",
+            RiskLevel.PASSIVE, "fictional invalid interaction",
+        )
+        self.assert_rejected_without_registration(definition)
+
+    def test_exact_definition_rejects_unknown_and_type_confused_arguments(self):
+        definition = canonical_definition("offline-type-controls")
+        self.registry.register(definition, NEVER_INVOKE_HANDLER)
+        for bad in ({"query": 42}, {"query": None},
+                    {"query": "fictional", "unknown": True}, {}):
+            with self.subTest(arguments=bad):
+                with self.assertRaises(OrchestrationError):
+                    self.registry.get(definition.tool_id)[0].validate_arguments(bad)
+                self.assertIs(self.registry.get(definition.tool_id)[0], definition)
+        self.assertEqual(self.registry.definitions(), (definition,))
+
+    def test_exact_lab_only_capability_retains_lab_registration(self):
+        definition = ToolDefinition(
+            "offline-lab", "wireless-lab", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "inert synthetic lab metadata",
+        )
+        self.registry.register(definition, NEVER_INVOKE_HANDLER)
+        self.assertIs(self.registry.get("offline-lab")[0], definition)
+        self.assertIs(self.registry.get("offline-lab")[1], NEVER_INVOKE_HANDLER)
+
+    def test_exact_registry_unknown_capability_rejected_atomically(self):
+        self.assert_rejected_without_registration(ToolDefinition(
+            "offline-unknown", "nonexistent-fictional-capability",
+            InteractionKind.PASSIVE_PUBLIC, RiskLevel.PASSIVE,
+            "inert synthetic capability",
+        ))
+
+    def test_oracle_rejects_unrelated_registry_runtime_crash(self):
+        # Negative mutation: an arbitrary TypeError/RuntimeError may be marked
+        # expected by @expectedFailure, but must never satisfy witness proof.
+        with patch.object(ToolRegistry, "register",
+                          side_effect=RuntimeError("synthetic-unrelated-registry-crash")):
+            with self.assertRaisesRegex(AssertionError, "a generic crash or unrelated failure"):
+                self.test_expected_red_replay_oracle()
+
+    def test_oracle_detects_complete_owner_type_rejection_fix(self):
+        with patch.object(ToolRegistry, "register",
+                          side_effect=OrchestrationError("synthetic-exact-denial")):
+            with self.assertRaisesRegex(AssertionError, "owner code changed"):
+                self.test_expected_red_replay_oracle()
+
+    def test_python_isinstance_can_accept_forged_class_on_tool_metadata(self):
+        forged = ForgedClassDefinition()
+        self.assertIsNot(type(forged), ToolDefinition)
+        self.assertIsInstance(forged, ToolDefinition)
+        self.assertEqual(type(forged).__name__, "ForgedClassDefinition")
+
+    @unittest.expectedFailure
+    def test_red_forged_class_passive_definition_must_be_rejected(self):
+        candidate = ForgedClassDefinition()
+        self.assertIsNot(type(candidate), ToolDefinition)
+        try:
+            self.registry.register(candidate, NEVER_INVOKE_HANDLER)
+        except OrchestrationError:
+            self.assertEqual(self.registry.definitions(), ())
+            return
+        definition, handler = self.registry.get(candidate.tool_id)
+        self.assertIs(definition, candidate)
+        self.assertIs(handler, NEVER_INVOKE_HANDLER)
+        self.assertIsNone(definition.validate_arguments({}))
+        self.fail("SOURCE_RED_FORGED_CLASS_PASSIVE_DEFINITION_STORED")
+
+    @unittest.expectedFailure
+    def test_red_forged_class_lab_definition_must_be_rejected(self):
+        candidate = ForgedClassLabDefinition()
+        self.assertIsNot(type(candidate), ToolDefinition)
+        try:
+            self.registry.register(candidate, NEVER_INVOKE_HANDLER)
+        except OrchestrationError:
+            self.assertEqual(self.registry.definitions(), ())
+            return
+        definition, handler = self.registry.get(candidate.tool_id)
+        self.assertIs(definition, candidate)
+        self.assertIs(handler, NEVER_INVOKE_HANDLER)
+        self.assertIsNone(definition.validate_arguments({}))
+        self.fail("SOURCE_RED_FORGED_CLASS_LAB_DEFINITION_STORED")
+
+    @unittest.expectedFailure
+    def test_red_plain_subclass_must_be_denied(self):
+        candidate = PlainSubclassDefinition(**vars(canonical_definition()))
+        try:
+            self.registry.register(candidate, NEVER_INVOKE_HANDLER)
+        except OrchestrationError:
+            self.assertEqual(self.registry.definitions(), ())
+            return
+        self.assertIs(self.registry.get(candidate.tool_id)[0], candidate)
+        self.fail("SOURCE_RED_PLAIN_SUBCLASS_STORED")
+
+    @unittest.expectedFailure
+    def test_red_subclass_argument_override_must_not_enter_registry(self):
+        candidate = OverrideValidatorDefinition(**vars(canonical_definition("offline-override")))
+        try:
+            self.registry.register(candidate, NEVER_INVOKE_HANDLER)
+        except OrchestrationError:
+            self.assertEqual(self.registry.definitions(), ())
+            return
+        stored, handler = self.registry.get(candidate.tool_id)
+        self.assertIs(stored, candidate)
+        self.assertIs(handler, NEVER_INVOKE_HANDLER)
+        # Execute ONLY the in-memory validation method (never a tool handler).
+        # Owner currently stores the override which ignores mandatory "query".
+        self.assertIsNone(stored.validate_arguments({}))
+        self.fail("SOURCE_RED_SUBCLASS_ARGUMENT_VALIDATOR_BYPASS")
+
+    @unittest.expectedFailure
+    def test_red_duck_definition_must_not_be_registered(self):
+        candidate = DuckDefinition()
+        try:
+            self.registry.register(candidate, NEVER_INVOKE_HANDLER)
+        except OrchestrationError:
+            self.assertEqual(self.registry.definitions(), ())
+            return
+        stored, handler = self.registry.get(candidate.tool_id)
+        self.assertIs(stored, candidate)
+        self.assertIs(handler, NEVER_INVOKE_HANDLER)
+        self.assertIsNone(stored.validate_arguments({}))
+        self.fail("SOURCE_RED_DUCK_ARGUMENT_VALIDATOR_BYPASS")
+
+    @unittest.expectedFailure
+    def test_red_no_getter_reads_before_type_check(self):
+        candidate = PropertySpyDefinition()
+        try:
+            self.registry.register(candidate, NEVER_INVOKE_HANDLER)
+        except OrchestrationError:
+            self.assertEqual(candidate.reads, 0, "rejected but untrusted getter executed")
+            self.assertEqual(self.registry.definitions(), ())
+            return
+        self.assertGreater(candidate.reads, 0)
+        self.assertIs(self.registry.get("offline-spy")[0], candidate)
+        self.fail("SOURCE_RED_GETTER_INVOKED_BEFORE_OUTER_ADMISSION")
+
+    @unittest.expectedFailure
+    def test_red_empty_nondefinition_returns_typed_rejection(self):
+        try:
+            self.registry.register(object(), NEVER_INVOKE_HANDLER)
+        except OrchestrationError:
+            self.assertEqual(self.registry.definitions(), ())
+            return
+        except AttributeError:
+            self.assertEqual(self.registry.definitions(), ())
+            self.fail("SOURCE_RED_UNCONTROLLED_ATTRIBUTE_ERROR")
+        self.fail("SOURCE_RED_NONDEFINITION_REGISTERED")
+
+    def test_expected_red_replay_oracle(self):
+        names = sorted(name for name in dir(type(self))
+                       if name.startswith("test_red_"))
+        self.assertEqual(len(names), 7)
+        result = unittest.TestResult()
+        unittest.TestSuite(type(self)(name) for name in names).run(result)
+        self.assertEqual(result.testsRun, 7)
+        self.assertEqual(result.failures, [])
+        self.assertEqual(result.errors, [])
+        self.assertEqual(result.skipped, [])
+        self.assertEqual(result.unexpectedSuccesses, [],
+                         "owner code changed: deliberately promote fixed RED assertions")
+        self.assertEqual(len(result.expectedFailures), 7,
+                         "all seven installed owner-source RED witnesses must be reproduced")
+        markers = {
+            "test_red_forged_class_passive_definition_must_be_rejected":
+                "SOURCE_RED_FORGED_CLASS_PASSIVE_DEFINITION_STORED",
+            "test_red_forged_class_lab_definition_must_be_rejected":
+                "SOURCE_RED_FORGED_CLASS_LAB_DEFINITION_STORED",
+            "test_red_plain_subclass_must_be_denied": "SOURCE_RED_PLAIN_SUBCLASS_STORED",
+            "test_red_subclass_argument_override_must_not_enter_registry":
+                "SOURCE_RED_SUBCLASS_ARGUMENT_VALIDATOR_BYPASS",
+            "test_red_duck_definition_must_not_be_registered":
+                "SOURCE_RED_DUCK_ARGUMENT_VALIDATOR_BYPASS",
+            "test_red_no_getter_reads_before_type_check":
+                "SOURCE_RED_GETTER_INVOKED_BEFORE_OUTER_ADMISSION",
+            "test_red_empty_nondefinition_returns_typed_rejection":
+                "SOURCE_RED_UNCONTROLLED_ATTRIBUTE_ERROR",
+        }
+        self.assertEqual(set(names), set(markers))
+        for case, traceback_text in result.expectedFailures:
+            self.assertIn("AssertionError: " + markers[case._testMethodName],
+                          traceback_text,
+                          "a generic crash or unrelated failure cannot count as source RED")
+
+
+if __name__ == "__main__":
+    unittest.main()
