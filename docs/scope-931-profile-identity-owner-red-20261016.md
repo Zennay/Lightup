@@ -112,3 +112,24 @@ Two independent real subprocess regressions cover both cases. This is
 Linux/Unix-local offline tooling; it does not guarantee a hostile OS can't
 suspend the process, is not a network isolation sandbox, and is never permission
 or a release signal. Exact latest SHA CI must be checked separately.
+
+## W5 — local file-descriptor containment (still not an OS sandbox)
+
+The offline checker now insists that **stdin is a local anonymous-pipe-shaped
+FIFO** and **stdout is a distinct local pipe or a genuine TTY**. It refuses
+regular files, Unix sockets, character devices and an input/output pipe with
+the same device/inode *before reading any input*. When no safe output sink
+exists, the command exits `2` with **no receipt bytes**; a forged
+REVIEW_ONLY verdict cannot be written into a regular file or a socket.
+A full output pipe is checked for nonblocking writability, returning exit `2`
+rather than hanging when no output space is available. Normal dedicated
+stdout pipes still emit the fixed generic receipt and six `false` flags.
+
+The new real subprocess cases use disposable local temporary files, AF_UNIX
+socketpairs, and anonymous pipes only. They establish that no source file is
+read, no file/socket output is written, an aliased input/output pipe is refused,
+and a full destination does not hang. No external network, customer files,
+target, authorization grant or scanner is involved. These are **best-effort
+local Unix diagnostics**, not a portable security boundary, immutable file
+descriptor guarantee, secure sandbox or permission to scan. Full CI must be
+reconfirmed on this exact W5 head; prior hosted checks are older-SHA evidence.
