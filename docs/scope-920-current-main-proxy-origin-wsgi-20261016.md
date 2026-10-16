@@ -27,8 +27,8 @@ production `trusted_proxy_ip` and non-null `public_origin` before parsing
 or storing; a proxy `str` subclass's overridden equality must not make a
 different socket peer trusted.
 
-**Nineteen genuine installed-source synthetic unit tests**:
-- ten ordinary controls covering exact built-in IPv4/IPv6 identity,
+**Twenty genuine installed-source synthetic unit tests**:
+- eleven ordinary controls covering exact built-in IPv4/IPv6 identity,
   forwarded-header non-authority, independent host/HTTPS and POST Origin,
   actual WSGI anonymous login, and genuine builtin untrusted peer producing
   403/no-store *before* store use or POST body read, plus actual production
@@ -66,11 +66,11 @@ The opt-in, **independent targeted** diagnostic runner is:
 python scripts/check_scope_920_current_main_acceptance_20261016.py
 ```
 
-It runs **exactly 19 owned tests**, insists on **exactly nine intentionally
+It runs **exactly 20 owned tests**, insists on **exactly nine intentionally
 open source REDs**, no other skip/error/unexpectedSuccess, and prints a
 minimal JSON receipt with explicit literal `false` for source-fix,
 release, merge, scan, dispatch, registered VPS, full-suite and consent
-authority. Exit 0 means **only these 19 tests ran as designed**, not
+authority. Exit 0 means **only these 20 tests ran as designed**, not
 "all LightUp tests green" and never release authorization. If any case
 changes it fails with a HOLD receipt. The tool cannot replace exact-head
 GitHub job logs or the queued permanent VPS CI; only run it on trusted
@@ -139,4 +139,38 @@ The latest W4 head is separate from W3 and previous hosted jobs. Re-run
 immutable-current-head jobs for this change and require **10 ordinary PASS +
 9 deliberate source expectedFailures**. Current-main baseline #301 remains
 independently red; do not suppress that or claim full suite green. The
-standalone 19-case tool is a **narrow diagnostic**, not current VPS authority.
+standalone 20-case tool is a **narrow diagnostic**, not current VPS authority.
+
+## W5: repair-ready source REDs and strict isolated reference mutation (2026-10-16)
+
+Five downstream `expectedFailure` regression methods previously demanded
+WSGI/request denial *only after* a malicious proxy configuration was
+constructed. That was an invalid repair oracle: implementing the superior
+**constructor-time ValueError** would cause those old test methods to error
+rather than pass. Those five methods now accept **either** fail-closed
+constructor admission (preferred, including before mocked DomainStore) **or**
+an actual `RequestRejected`/403 during in-process request verification.
+Both denial paths are required to be explicit and cannot be replaced with an
+unexamined exception, a skip, or a suppressed assertion. On the unchanged
+current-main source, they remain deliberately failing regressions.
+
+Added **one ordinary non-authorizing acceptance mutation witness**:
+`test_test_local_constructor_reference_clears_all_nine_source_reds`.
+Inside a `unittest.mock.patch.object(WebSecurity, "__post_init__", ...)`
+context **only**, it adds two exact built-in string type checks *before* the
+original constructor logic, then directly runs all nine original RED method
+bodies; each must become ordinary PASS. Canonical IPv4/IPv6 production
+constructors/requests must remain accepted. The patch is guaranteed to be
+removed by the context manager and does not change any production source,
+app state, other worker branch, runner, permissions or real requests.
+This is a **local reference/acceptance proof**, not an integrated fix,
+release permission or demonstration of real network exploitability.
+
+The bounded opt-in runner now checks **20 methods: 11 ordinary controls +
+9 intentionally OPEN source REDs**, rejects skips/errors/unexpected success,
+and emits `REVIEW_ONLY` at best; all release/scan/grant/VPS/full-suite
+flags remain explicitly false. The prior W4 [hosted run #38871511511](https://github.com/Zennay/Lightup/actions/runs/38871511511)
+was FAILED due the separate #301 expired fixture (19 owned cases behaved
+10 ordinary OK/9 expected RED). **It predates this change**; do not claim
+exact-head green until new job logs have been verified. Current-main full
+suite remains pending owner #1452's already drafted clock correction.
