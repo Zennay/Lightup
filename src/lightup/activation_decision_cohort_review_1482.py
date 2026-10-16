@@ -28,13 +28,19 @@ def _hold(reason: str) -> CohortReview:
 
 
 def _exact_policy_configuration(policy: ScopePolicy) -> bool:
-    """Reject mutable/polymorphic policy metadata, without interpreting grants."""
+    """Read exact original dataclass field keys ONCE; never authorize grants."""
     try:
-        hosts = policy.explicit_hosts
-        networks = policy.explicit_networks
+        snapshot = vars(policy).copy()
+        if type(snapshot) is not dict or set(snapshot) != {
+            "allow_private_lab", "require_authorization_for_public",
+            "explicit_hosts", "explicit_networks",
+        }:
+            return False
+        hosts = snapshot["explicit_hosts"]
+        networks = snapshot["explicit_networks"]
         if (
-            type(policy.allow_private_lab) is not bool
-            or type(policy.require_authorization_for_public) is not bool
+            type(snapshot["allow_private_lab"]) is not bool
+            or type(snapshot["require_authorization_for_public"]) is not bool
             or type(hosts) is not frozenset
             or type(networks) is not tuple
             or len(hosts) > 64
@@ -47,7 +53,7 @@ def _exact_policy_configuration(policy: ScopePolicy) -> bool:
             type(network) is str and 0 < len(network) <= 128
             for network in networks
         )
-    except (AttributeError, TypeError, ValueError):
+    except (AttributeError, TypeError, ValueError, KeyError):
         return False
 
 
