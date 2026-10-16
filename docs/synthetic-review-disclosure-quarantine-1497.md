@@ -27,3 +27,23 @@ The CLI result now uses an **exact versioned standalone format**: `contract=FICT
 ## Active negative acceptance
 
 `examples/fictional_review_handoff_hold_1497.json` deliberately contains a fictional approval claim and must produce only generic HOLD with exit `3`, `reviewed_notes=0`, four false authority flags, and **no original input echo**. The dedicated hosted workflow executes both positive (exit `2`) and negative (exit `3`) cases under Python 3.11 and 3.14, alongside full isolated ordinary unittest coverage. CI outcome on one commit does not guarantee main, canonical VPS, live consent or production safety.
+
+## W9: Offline fictional-report re-import (format check, not provenance)
+
+A second opt-in stdin CLI mode checks the **canonical V1 wire format only**, when reports are passed between offline review workers. No source notes, authorization, client identities, ownership, or credentials are reconstructed or verified.
+
+```bash
+set +e
+PYTHONPATH=src python -m lightup.synthetic_review_disclosure_cli_1497 --synthetic-only < examples/fictional_review_handoff_1497.json > /tmp/fictional-report.json
+producer_status=$?
+PYTHONPATH=src python -m lightup.synthetic_review_disclosure_cli_1497 --verify-report-only < /tmp/fictional-report.json > /tmp/fictional-imported.json
+import_status=$?
+set -e
+test "$producer_status" -eq 2
+test "$import_status" -eq 2
+# A generic HOLD report yields exit 3 in both steps, never 0.
+```
+
+Pure `review_fictional_report_bytes(raw)` accepts **exact builtin bytes of 1–4096 bytes**, and checks all eight V1 fields: immutable `contract`, exact `status` and `notice`, correct integer `reviewed_notes` count, and four literal `false` authority/consent/dispatch/release flags. Canonical, sorted, compact ASCII JSON, optionally with **exactly one final LF**, is required. Duplicate keys, non-finite numbers, unknown/omitted keys, alternative Unicode, unexpected whitespace, repeated newlines, or type confusion atomically return generic HOLD with no input echo. Valid REVIEW_ONLY reports retain only their count; valid HOLD remains HOLD.
+
+**Format-only is NOT provenance, evidence of consent or authentication.** An attacker can forge a syntactically correct report, which remains **NOT AUTHORIZED**. This is not a signed artifact, a transport security check, a full DLP guarantee, revocation proof, or permission to publish, execute tools, scan customers, issue grants, merge, deploy, or release. It is not connected to any real LightUp runtime/approval/permission boundary. Security/privacy owner and actual client/operator consent, live revocation, complete trusted hosted/VPS CI and human GO remain outstanding.
