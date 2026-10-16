@@ -105,6 +105,30 @@ def _load(raw: bytes) -> ScopeHistoryReview:
     return review_fictional_scope_history(tuple(result))
 
 
+
+def _validated_review(value: object) -> ScopeHistoryReview:
+    """Rebuild an outcome from allowlisted inert fields before JSON emission.
+
+    Even a frozen Python dataclass can be rewritten with object.__setattr__ in
+    the same process. Never serialize a caller-poisoned status/dimension or
+    tainted authority flag without independently checking the entire shape.
+    """
+    generic = ScopeHistoryReview("HOLD", 0, None, (), ())
+    if type(value) is not ScopeHistoryReview:
+        return generic
+    try:
+        for flag in ("authorized", "consent_verified", "dispatch_allowed", "release_allowed"):
+            if getattr(value, flag) is not False:
+                return generic
+        return ScopeHistoryReview(
+            value.status, value.transition_count, value.first_held_step,
+            value.expanded_dimensions, value.narrowed_dimensions,
+            value.held_steps, value.held_step_dimensions,
+        )
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return generic
+
+
 def main() -> int:
     review = ScopeHistoryReview("HOLD", 0, None, (), ())
     if sys.argv[1:] == ["--offline-review-only"]:
@@ -115,6 +139,7 @@ def main() -> int:
             # Stdin read/parse failure is a generic HOLD, not a traceback
             # that could expose source input or accidentally exit with 0.
             pass
+    review = _validated_review(review)
     report = {
         "contract": _CONTRACT,
         "status": review.status,
