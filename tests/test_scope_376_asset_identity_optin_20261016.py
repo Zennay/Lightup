@@ -413,7 +413,6 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
                         self._record(scope)
                     self.assertNotIn("private-marker", str(caught.exception))
         self.assertFalse(called)
-        self.assertFalse(called)
 
     def test_shape_only_success_never_short_circuits_original_grant_gate(self):
         # A positive review can only reach the separate, original owner method.
