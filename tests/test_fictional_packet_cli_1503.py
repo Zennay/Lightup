@@ -282,5 +282,32 @@ class FictionalCliTests(unittest.TestCase):
 
 
 
+    def test_missing_binary_stdin_or_stdout_is_generic_nonzero_hold(self):
+        class Out:
+            def __init__(self):
+                self.buffer = io.BytesIO()
+        output = Out()
+        with patch.object(cli.sys, "argv", ["fictional_packet_cli_1503.py"]), \
+             patch.object(cli.sys, "stdin", io.StringIO("no-binary-input")), \
+             patch.object(cli.sys, "stdout", output):
+            self.assertEqual(cli.main(), 3)
+        self.assertEqual(output.buffer.getvalue(), cli._HOLD)
+        class Input:
+            def __init__(self):
+                self.buffer = io.BytesIO(request())
+        with patch.object(cli.sys, "argv", ["fictional_packet_cli_1503.py"]), \
+             patch.object(cli.sys, "stdin", Input()), \
+             patch.object(cli.sys, "stdout", io.StringIO()):
+            self.assertEqual(cli.main(), 3)
+
+    def test_poisoned_review_status_type_is_generic_hold_without_callback(self):
+        class Alien(str):
+            def __ne__(self, other):
+                raise AssertionError("should never call attacker comparison")
+        good = cli._parse_request(request())
+        object.__setattr__(good, "status", Alien("REVIEW_ONLY"))
+        self.assertEqual(cli._render(good), cli._HOLD)
+
+
 if __name__ == "__main__":
     unittest.main()
