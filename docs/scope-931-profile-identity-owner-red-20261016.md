@@ -133,3 +133,29 @@ target, authorization grant or scanner is involved. These are **best-effort
 local Unix diagnostics**, not a portable security boundary, immutable file
 descriptor guarantee, secure sandbox or permission to scan. Full CI must be
 reconfirmed on this exact W5 head; prior hosted checks are older-SHA evidence.
+
+## W6 — Unicode scalar/alias-safe offline review, no owner-source changes
+
+The standalone opt-in synthetic-only reviewer now accepts exact built-in
+`str` identities for shape review **only if NFC is already satisfied**.
+It deliberately **does not normalize** non-NFC text or claim an equivalent
+string denotes the same client/asset/prospect. Characters in Unicode
+categories `Cc/Cf/Cs/Zl/Zp` and all designated noncharacters (U+FDD0..FDEF
+and every plane's terminal U+FFFE/U+FFFF) are `HOLD`.
+A valid precomposed accented name remains `REVIEW_ONLY` (never a grant).
+This stricter synthetic-only preflight is conservative: legitimate names with
+decomposed characters may be sent for manual review rather than rewritten.
+
+Five additional real subprocess tests compare NFC vs NFD, noncharacters in
+both fields including supplementary planes encoded as JSON surrogates,
+line/paragraph separators, nested duplicate or concatenated JSON objects,
+and exactly the 4096-byte body boundary. These are privacy-preserving
+negative acceptance checks; not an authoritative organization verification,
+not a fix to installed `ProspectProfile` owner source, and not new permission.
+
+**Trust boundary:** `REVIEW_ONLY` means purely parsed local synthetic
+text. It cannot establish that an organization exists, belongs to the caller,
+or has authorized a security assessment. No content from this CLI should be
+fed into an execution permit, automation or client record. Existing 16
+expected owner-source RED cases remain unremediated. Hosted and permanent
+VPS evidence must use the immutable newest HEAD separately.
