@@ -32,13 +32,13 @@ this is **not** proof of active scanning or actual target execution.
 
 ```sh
 PYTHONPATH=src python -m unittest discover -s tests \
-  -p 'test_scope_profile_admission_bypass_925.py' -v
+  -p 'test_scope_profile*_925.py' -v
 ```
 
-Five ordinary PASS controls demonstrate the existing validated path and
-atomic rejection. Six intentional `expectedFailure` methods document the
-unfixed constructor/public-collection/alias bypasses. Source-owner must
-make all six ordinary PASS after repair, not delete or swallow them.
+Seven ordinary PASS controls demonstrate the existing validated path and
+atomic rejection. Twelve intentional `expectedFailure` methods document the
+unfixed constructor/public-collection/alias bypasses. Additional `tests/test_scope_profile_mutation_paths_925.py` tests `extend`, `insert`, `clear`, `pop`, slice replacement and augmented assignment, plus the original append/rebinding cases. Source-owner must
+make all twelve ordinary PASS after repair, not delete or swallow them.
 The isolated hosted Python 3.11/3.14 matrix is merely diagnostic,
 not a release gate or registered permanent VPS proof.
 
