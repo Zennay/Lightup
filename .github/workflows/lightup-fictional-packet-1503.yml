@@ -1,0 +1,40 @@
+name: LightUp fictional packet copy review (non-authorizing #1503)
+
+on:
+  pull_request:
+    paths:
+      - 'src/lightup/fictional_packet_copy_1503.py'
+      - 'tests/test_fictional_packet_copy_1503.py'
+      - 'docs/fictional_packet_copy_1503.md'
+      - '.github/workflows/lightup-fictional-packet-1503.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fictional-packet-1503-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-fictional-packet-only:
+    name: Fictional-only Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.14']
+    steps:
+      - name: Checkout isolated held head
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Run only synthetic byte-copy tests (no scans)
+        env:
+          PYTHONPATH: src
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python -m unittest discover -s tests -p 'test_fictional_packet_copy_1503.py' -v
