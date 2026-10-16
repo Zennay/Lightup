@@ -21,3 +21,9 @@ The exact branch is independent, retains the original parent, touches **only** t
 The new cases have been **committed but not executed in Python or on CI** as part of this iteration; GitHub SHA/diff is not equivalent to tests passing. Review code, then execute targeted hermetic tests on the authorized self-hosted runner once #1144 permits reliable capacity; review exact SHA, original stdout and runner assignment. Do not trigger or cancel unrelated queued canonical CI. This branch has no network/target/scan/handler/grant/release behavior, and no PR/merge/deploy is authorized.
 
 **Owner action**: absorb/validate input-key guard only if desired; actual WebSecurity exact proxy/origin object admission stays with source-owner #202 and requires independent proof plus customer/operator consent and human GO.
+
+## Additional CLI opt-in boundary on the same isolated child
+
+The standalone `main(argv)` previously compared an unverified caller-owned object with `["--offline-synthetic-only"]`, potentially invoking its overridden `__eq__` and reading stdin on a forged match. This child now admits only `type(args) is list`, length exactly one and `type(args[0]) is str` before comparing the trusted flag. Two additional regression methods assert that a list-spoofing object or string-subclass option cannot trigger caller equality or a stdin read; both must return HOLD/exit 2 with six literal false authority flags.
+
+**All newly added tests remain authored-only, not executed in this run**. No runtime wiring, external I/O, customer details, new CLI permission, hosted/VPS proof or source-RED remediation is claimed.
