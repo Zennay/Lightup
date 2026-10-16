@@ -14,6 +14,7 @@ from .fictional_packet_copy_1503 import (
     CopyReview,
     _reject_constant,
     _reject_duplicates,
+    _is_canonical_fictional_packet,
     compare_fictional_packet_fanout,
 )
 
@@ -21,6 +22,38 @@ _INPUT_LIMIT = 8192
 _KEYS = ("schema", "original", "copies")
 _SCHEMA = "lightup-fictional-cli-v1"
 _HOLD = b'{"status":"HOLD","authorized":false,"consent_verified":false,"dispatch_allowed":false,"release_allowed":false}\n'
+
+
+
+def build_fictional_cli_envelope(
+    original: bytes, copies: tuple[bytes, ...],
+) -> bytes | None:
+    """Produce exact canonical *fictional* CLI stdin bytes, never permission.
+
+    All recipients must be independently canonical reserved-fictional packets.
+    Different but valid copies are allowed so the verifier can surface HOLD.
+    Invalid caller types or values yield None, with no file/network effects.
+    """
+    if (
+        type(copies) is not tuple
+        or not 1 <= len(copies) <= 16
+        or not _is_canonical_fictional_packet(original)
+        or any(not _is_canonical_fictional_packet(part) for part in copies)
+    ):
+        return None
+    try:
+        payload = json.dumps(
+            {
+                "schema": _SCHEMA,
+                "original": original.decode("ascii"),
+                "copies": [part.decode("ascii") for part in copies],
+            },
+            ensure_ascii=True, separators=(",", ":"), sort_keys=False,
+            allow_nan=False,
+        ).encode("ascii")
+    except (TypeError, ValueError, UnicodeError, OverflowError, RecursionError):
+        return None
+    return payload if len(payload) <= _INPUT_LIMIT else None
 
 
 def _parse_request(payload: bytes) -> CopyReview:
