@@ -100,6 +100,20 @@ class AssetShapeReview376(unittest.TestCase):
             with self.assertRaises(Exception):
                 receipt.decision = "APPROVED"
 
+    def test_decision_receipts_cannot_be_forged_as_approval(self):
+        class ForgedStatus(str):
+            def __eq__(self, other):
+                raise AssertionError("untrusted status comparator ran")
+        for status in ("APPROVED", "PASS", "RELEASED", True, False,
+                       None, ForgedStatus("REVIEW_ONLY")):
+            with self.subTest(status_type=type(status).__name__):
+                with self.assertRaises(ValueError):
+                    AssetIdentityShapeReceipt(status)
+        for status in ("HOLD", "REVIEW_ONLY"):
+            receipt = AssetIdentityShapeReceipt(status)
+            self.assertFalse(receipt)
+            self.assertEqual(receipt.as_public_dict()["decision"], status)
+
     def test_review_never_opens_file_socket_database_or_process(self):
         scope = _scope()
         with patch("builtins.open", side_effect=AssertionError("file")), \
