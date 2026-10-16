@@ -53,3 +53,13 @@ De CLI eist een exact JSON-object met alleen `review_at` en `proposals`, en per 
 
 **Exit 2:** een volledig fictieve, geldige `REVIEW_ONLY` kaart met de zichtbare woorden `NOT AUTHORIZED`. **Exit 3:** `HOLD`. **Exit 0 is nooit beschikbaar**; normale output is dus nadrukkelijk geen autorisatie voor een shellscript, CI of tool. 14 extra echte subprocess-methoden testen de CLI inclusief malformed bytes, duplicate keys, fake high risk en exitgedrag. De CLI leest uitsluitend stdin en schrijft een niet-autorisatiepreview naar stdout; geen DNS, netwerk, klantbestanden, database of subprocess binnen de CLI zelf.
 
+
+## Nederlandstalige operatorweergave (expliciet, behoud niet-autorisatie)
+
+```bash
+python -m lightup.synthetic_scope_notice_cli_1495 --synthetic-only --lang nl \
+  < examples/fictional_scope_notice_1495.json
+```
+
+Pure Python: `render_scope_notice((example,), review_at=now, language="nl")`. Zonder de expliciete keuze blijft Engels de standaard; met `--lang en` is de Engelstalige uitvoer identiek. Ook in het Nederlands blijven **NOT AUTHORIZED** én **NIET GEAUTORISEERD** letterlijk zichtbaar en zijn alle vier authority-vlaggen onvoorwaardelijk `False`. Bevestiging bij een risico van 4–5 is een waarschuwing, **geen** opname in een werkelijk toestemmingssysteem. Andere locale-tags, verdachte extensies of normalisatie worden altijd `HOLD`, niet teruggevallen op een mogelijk verkeerd geïnterpreteerde taal. Tien afzonderlijke Nederlandse/Engelse gewone directe + echte CLI regressietests in `tests/test_synthetic_scope_notice_locale_1495.py`.
+
