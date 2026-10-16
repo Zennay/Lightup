@@ -99,3 +99,10 @@ Daaronder staat een zichtbare **altijd-open checklist met vier 'PENDING'-voorwaa
 
 De twaalf nieuwe echte brongerichte en subprocess-testmethoden in `tests/test_synthetic_scope_notice_release_gates_1495.py` toetsen NL/EN, aggregatie bij gedeelde assets, correcte risicogroepen, vroegste UTC-verval, 32 voorbeelden, stabiele sortering, afwijzing zonder echo, onveranderlijk PENDING en afwezigheid van uitvoerelementen. Eerst exact-head CI controleren voordat deze tests als geslaagd worden geclaimd.
 
+
+## Extra veiligheid: geen wijziging van invoer ná de controle
+
+Hoewel `ScopeProposal` een immutable/frozen dataclass is, kan een onbetrouwbare Python-caller via `object.__setattr__` toch de oorspronkelijke velden wijzigen terwijl een kaart opgebouwd wordt. De HTML-module maakt daarom **vóór de vorm-/scopevalidatie één eigen exacte snapshot** van maximaal 32 geldige bronobjecten. Uitsluitend die snapshot wordt beoordeeld én gerenderd; nooit later opnieuw de originele caller-invoer. Ontbrekende slots, onjuiste container/klassen of corruptie leveren volledige HOLD op zonder klantgegevens te echoën.
+
+Tien nieuwe originele tests in `tests/test_synthetic_scope_notice_snapshot_1495.py` muteren daadwerkelijk de originele asset, risicoscore en vervaldatum **tijdens** de validatiefunctie; de kaart blijft uitsluitend de gevalideerde fictieve snapshot tonen. Daarnaast worden ontbrekende dataclassvelden, kwaadaardige objecten die velduitlezing afstraffen, veranderlijke containers, batchprivacy, deterministische volgorde en locale-isolatie gecontroleerd. De tests doen geen echte scans, filewrites, externe calls of grant-mutaties. Deze snapshot-bescherming is uitsluitend tegen onbetrouwbare **previewdata** en claimt geen authentieke toestemming of productionele time-of-check/use-afdekking.
+
