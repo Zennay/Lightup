@@ -164,6 +164,8 @@ def review_cross_grant_batch(
             return CrossGrantBatchReview("HOLD", "mixed tenant or engagement")
         if type(item.durable) is not AuthorizationGrant or not _identifier(item.durable.grant_id):
             return CrossGrantBatchReview("HOLD", "invalid durable grant identity")
+        if not _asset(item.asset) or not _identifier(item.capability_id):
+            return CrossGrantBatchReview("HOLD", "noncanonical claim identity")
         key = (item.durable.grant_id, item.asset, item.capability_id)
         # Keep the same exact identity on every replay; do not allow duplicates
         # to inflate a report's apparent proof count.
