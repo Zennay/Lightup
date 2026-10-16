@@ -84,7 +84,7 @@ for the source-owner fix at `ToolRegistry.register` itself.
 
 A further independent file
 `tests/test_scope_907_registry_admission_optin_20261016.py` checks
-**24 ordinary tests** across exact canonical registration, allowed synthetic
+**26 ordinary tests** across exact canonical registration, allowed synthetic
 lab registration, malformed risk/interaction/capability rejection, parameter
 type enforcement, duplicate IDs, forged ToolDefinition subclasses, duck
 metadata with getter spies, forged ToolRegistry objects, and two new denial-atomicity cases where an already-registered valid tool stays untouched after malformed subsequent input. All handlers
@@ -153,7 +153,19 @@ first metadata field read; **\u0060isinstance\u0060 is insufficient**. The new i
 source packet has **19 tests**: **11 ordinary controls** (including the
 Python spoof demonstrator and mutation guards), **7 original source-RED
 witnesses**, **1 strict replay oracle**. The separate functional but UNWIRED
-opt-in adapter remains at **24 ordinary tests**, for **43 own tests total**.
+opt-in adapter now has **26 ordinary tests**, for **45 own tests total**.
 These are seven observable variants of a still-open boundary, not seven
 fixed vulnerabilities. The original production registry and other worker
 branches remain untouched; no scan, grant, handler invocation or release.
+
+### Opt-in spoof rejection — verified before untrusted reads
+
+Two additional standalone normal tests construct forged \u0060__class__\u0060 properties
+on a duck metadata object and a duck registry. Both pass a naive Python
+\u0060isinstance\u0060 check, yet the actual opt-in \u0060type(...) is ...\u0060 check
+must reject them with typed \u0060OrchestrationError\u0060. The metadata's
+poisonous \u0060tool_id\u0060 property and registry's forged \u0060register\u0060 method are
+never invoked. This is explicit defense-in-depth on the already-isolated
+opt-in wrapper, not the source-owner correction. New totals: **19 real
+owner-source methods (7 deliberately open REDs) + 26 independent opt-in
+normal controls = 45**. Original source #156 and other worker files intact.
