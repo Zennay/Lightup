@@ -174,6 +174,36 @@ class SourcePathProvenanceAdversarialTests(unittest.TestCase):
         result.unexpectedSuccesses = [unittest.FunctionTestCase(lambda: None)]
         self.assertFalse(verify.test_result_valid(result))
 
+    def test_dot_segment_alias_denied_before_path_normalization(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            pins = make_fixture(root)
+            key = next(iter(pins))
+            sha = pins.pop(key)
+            alias = key.replace("/", "/./", 1)
+            pins[alias] = sha
+            with patch.object(verify, "PINNED_GIT_BLOBS", pins):
+                self.assertFalse(verify.pinned_tree_valid(root))
+
+    def test_backslash_path_alias_denied(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            pins = make_fixture(root)
+            key = next(iter(pins))
+            sha = pins.pop(key)
+            pins[key.replace("/", chr(92), 1)] = sha
+            with patch.object(verify, "PINNED_GIT_BLOBS", pins):
+                self.assertFalse(verify.pinned_tree_valid(root))
+
+    def test_forty_character_non_hex_hash_denied(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            pins = make_fixture(root)
+            pins[next(iter(pins))] = "g" * 40
+            with patch.object(verify, "PINNED_GIT_BLOBS", pins):
+                self.assertFalse(verify.pinned_tree_valid(root))
+
+
 
 if __name__ == "__main__":
     unittest.main()
