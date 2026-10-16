@@ -5,6 +5,7 @@ import ast
 import json
 import os
 import pathlib
+import pty
 import random
 import socket
 import subprocess
@@ -66,7 +67,7 @@ class SyntheticIdentityIntakeCliTest(unittest.TestCase):
             "eval", "exec", "compile", "__import__", "open", "input",
             "breakpoint",
         }
-        allowed_os = {"fstat", "isatty", "read", "write"}
+        allowed_os = {"fstat", "read", "write", "readlink"}
         allowed_sys = {"stdin", "stdout", "argv"}
         for node in ast.walk(source):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
@@ -313,6 +314,80 @@ class SyntheticIdentityIntakeCliTest(unittest.TestCase):
                     proc.stdin.close()
                     proc.stdout.close()
                     proc.stderr.close()
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "requires Linux procfs")
+    def test_named_fifo_input_is_rejected_before_any_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            named = pathlib.Path(tmp) / "private-named-input"
+            os.mkfifo(named, 0o600)
+            fd = os.open(named, os.O_RDWR | os.O_NONBLOCK)
+            try:
+                # Even a complete document in a named FIFO is not an anonymous pipe.
+                raw = b'{"prospect_id":"private","organization_name":"Fiction"}'
+                os.write(fd, raw)
+                proc = subprocess.run(
+                    [sys.executable, str(SCRIPT), "--offline-synthetic-only"],
+                    stdin=fd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    timeout=6, check=False,
+                )
+                self.assertEqual(
+                    (proc.returncode, proc.stdout, proc.stderr), (2, b"", b"")
+                )
+                self.assertEqual(os.read(fd, len(raw)), raw)
+            finally:
+                os.close(fd)
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "requires Linux procfs")
+    def test_named_fifo_output_is_rejected_without_receipt(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            named = pathlib.Path(tmp) / "private-named-output"
+            os.mkfifo(named, 0o600)
+            fd = os.open(named, os.O_RDWR | os.O_NONBLOCK)
+            try:
+                proc = subprocess.run(
+                    [sys.executable, str(SCRIPT), "--offline-synthetic-only"],
+                    input=b'{"prospect_id":"x","organization_name":"y"}',
+                    stdout=fd, stderr=subprocess.PIPE, timeout=6, check=False,
+                )
+                self.assertEqual((proc.returncode, proc.stderr), (2, b""))
+                with self.assertRaises(BlockingIOError):
+                    os.read(fd, 256)
+            finally:
+                os.close(fd)
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "requires Linux procfs")
+    def test_pseudoterminal_output_is_rejected_without_receipt(self):
+        master, slave = pty.openpty()
+        try:
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPT), "--offline-synthetic-only"],
+                input=b'{"prospect_id":"x","organization_name":"y"}',
+                stdout=slave, stderr=subprocess.PIPE, timeout=6, check=False,
+            )
+            self.assertEqual((proc.returncode, proc.stderr), (2, b""))
+            os.set_blocking(master, False)
+            with self.assertRaises(BlockingIOError):
+                os.read(master, 256)
+        finally:
+            os.close(master)
+            os.close(slave)
+
+    def test_procfs_identity_unavailable_is_hold_not_review(self):
+        import importlib.util
+        from unittest import mock
+        spec = importlib.util.spec_from_file_location("synthetic_review", SCRIPT)
+        self.assertIsNotNone(spec)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with mock.patch.object(module.os, "readlink", side_effect=OSError("procfs unavailable")):
+            self.assertFalse(module._safe_streams())
+        # Do not print details of the local procfs failure.
+        _, status, receipt = self.run_cli(
+            b'{"prospect_id":"x","organization_name":"y"}',
+            "--offline-synthetic-only",
+        )
+        self.assertEqual(status, "REVIEW_ONLY")
+        self.assertNotIn(b"procfs unavailable", receipt)
 
     def test_regular_file_stdin_is_rejected_before_read(self):
         with tempfile.TemporaryFile(mode="w+b") as source:
