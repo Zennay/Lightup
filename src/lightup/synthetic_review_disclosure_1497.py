@@ -84,13 +84,17 @@ def review_fictional_handoff_notes(notes: object) -> DisclosureVerdict:
     for note in notes:
         if type(note) is not str or not note:
             return _hold()
+        # Bound input *before* encoding so an attacker cannot force a large
+        # temporary allocation by directly passing an enormous Python str.
+        # Every ASCII character is one byte; non-ASCII is then rejected.
+        length = len(note)
+        if length > _MAX_NOTE_BYTES or total_bytes + length > _MAX_TOTAL_BYTES:
+            return _hold()
         try:
-            size = len(note.encode("ascii", "strict"))
+            note.encode("ascii", "strict")
         except UnicodeError:
             return _hold()
-        total_bytes += size
-        if size > _MAX_NOTE_BYTES or total_bytes > _MAX_TOTAL_BYTES:
-            return _hold()
+        total_bytes += length
 
         parsed = _CANONICAL_NOTE.fullmatch(note)
         if parsed is None:
