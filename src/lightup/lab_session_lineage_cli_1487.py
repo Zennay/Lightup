@@ -18,7 +18,7 @@ from .lab_session_lineage_1487 import (
 
 _MAX_INPUT_BYTES = 16_384
 _UTC_TEXT = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", re.ASCII)
-_ENVELOPE_FIELDS = frozenset({"assessment_time", "claims"})
+_SCHEMA_NAME = "FICTIONAL-LAB-LINEAGE-V1"\n_ENVELOPE_FIELDS = frozenset({"schema", "assessment_time", "claims"})
 _CLAIM_FIELDS = frozenset({
     "lab_reference", "operator_id", "session_id", "engagement_id",
     "asset_id", "capability_id", "starts_at", "expires_at", "revoked",
@@ -66,6 +66,10 @@ def review_synthetic_json(payload: bytes) -> str:
             parse_constant=_reject_nonjson_constant,
         )
         if type(doc) is not dict or frozenset(doc) != _ENVELOPE_FIELDS:
+            return "HOLD"
+        # Explicitly opt into this exact fictional protocol revision. Never
+        # silently accept unversioned or production-looking consent packets.
+        if type(doc["schema"]) is not str or doc["schema"] != _SCHEMA_NAME:
             return "HOLD"
         records = doc["claims"]
         if type(records) is not list or not (1 <= len(records) <= 64):
