@@ -196,6 +196,37 @@ class Scope299OfflineReviewerTests(unittest.TestCase):
             reason="invalid_packet",
         )
 
+    def test_json_brackets_and_escaped_quotes_inside_strings_are_not_nesting(self):
+        text = ("[" * 55) + 'a\\\\"b' + ("}" * 55)
+        packet = json.dumps(
+            {"owner": text, "reference": "FICTIONAL-NOT-CONSENT"}
+        ).encode("utf-8")
+        self.assert_hold(
+            _run_packet(packet, "--offline-synthetic-only"),
+            code=2,
+            reason="canonical_shape_only",
+        )
+
+    def test_nesting_depth_cap_is_exact_and_interpreter_invariant(self):
+        # Root object consumes level 1; up to 31 nested arrays are within
+        # the lexical limit but noncanonical owner shape. 32 arrays exceed it.
+        def packet(levels: int) -> bytes:
+            return (
+                b'{"owner":' + b"[" * levels + b'"fictional"' +
+                b"]" * levels + b',"reference":"synthetic"}'
+            )
+
+        self.assert_hold(
+            _run_packet(packet(31), "--offline-synthetic-only"),
+            code=2,
+            reason="noncanonical_shape",
+        )
+        self.assert_hold(
+            _run_packet(packet(32), "--offline-synthetic-only"),
+            code=3,
+            reason="invalid_packet",
+        )
+
     def test_text_subclass_with_hostile_methods_is_not_canonical(self):
         sys.path.insert(0, str(_ROOT))
         try:
