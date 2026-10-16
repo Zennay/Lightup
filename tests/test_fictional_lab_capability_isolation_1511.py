@@ -22,6 +22,7 @@ OWNED = {
     Path("tests/test_fictional_lab_capability_batch_1511.py"),
     Path("tests/test_fictional_lab_capability_batch_cli_1511.py"),
     Path("tests/test_fictional_lab_capability_cli_process_boundary_1511.py"),
+    Path("tests/test_fictional_lab_capability_registry_compat_1511.py"),
     Path("tests/test_fictional_lab_capability_sealing_1511.py"),
     Path("tests/test_fictional_lab_capability_transition_1511.py"),
     Path("tests/test_fictional_lab_capability_streaming_1511.py"),
