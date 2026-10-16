@@ -159,3 +159,19 @@ or has authorized a security assessment. No content from this CLI should be
 fed into an execution permit, automation or client record. Existing 16
 expected owner-source RED cases remain unremediated. Hosted and permanent
 VPS evidence must use the immutable newest HEAD separately.
+
+## W7 — static regressions blocking accidental privilege/capability drift
+
+Two additional independent `unittest` cases inspect the *actual owned offline
+CLI source* using Python's `ast` parser, without running real targets. They
+pin an exact safe standard-library import allowlist and fail the test suite if
+future edits add a new import, wildcard, production `lightup` coupling,
+network/command libraries, dynamic `open/exec/eval/__import__` calls, or
+unexpected `os` and `sys` attributes. This makes a dangerous widening of the
+standalone tool an explicit review event before CI can be called green.
+
+These source-level tripwires are deliberately narrow and conservative: they
+**do not** prove impossibility of file/network activity in Python, make the OS
+a secure sandbox, verify a client, or authorize a scan. They are paired with
+real subprocess behavior tests and isolated owner-source expected REDs. The
+production `src/lightup` owner and runner/CI workflows are unchanged.
