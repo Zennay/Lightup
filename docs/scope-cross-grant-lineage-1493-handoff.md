@@ -69,6 +69,9 @@ Two more wholly fictional checked-in JSON inputs are now covered by an **actual 
 
 The isolated matrix also checks the original internally coherent fictional sample (only REVIEW_ONLY, never authority, exit 2); all three samples use `.example.test` and `SYNTH-` identities. No targets, credential reads, scans, handlers, revocation processing or production release occur.
 
+## W13 — Runtime source-owner handoff contract (proposal, no authority)
+A separate complete [runtime contract](cross-grant-runtime-integration-contract-1493.md) explains why the unwired caller-supplied matches **must never** be promoted to live authority. It specifies real server-derived operator/tenant identity, a same-version durable grant/consent/revocation join, canonical requested-operation binding, atomic use-time revalidation, 12 proposed source-integrated acceptance scenarios, release gates, and an explicitly **unchecked** owner checklist. No source owner code, active target, handler, runner or production integration is modified. All approval flags remain literal false.
+
 ## Still RED / human-controlled release gates
 - Genuine linkage to the authenticated operator, canonical client and engagement, approved asset/capability, signed decision and durable trusted row, *not* equality of two caller-supplied strings.
 - Proof of current revocation and revalidation at use time, including atomic proof that approval cannot be replayed against another run or tool. Coordinate with original source owners #99/#100, #1491/#1492 and executor chain without editing their files/branches.
