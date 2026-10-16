@@ -58,10 +58,12 @@ registered permanent VPS runner and human security/privacy review.
 After an exact-head checkout in a controlled runner:
 
 ```sh
-PYTHONPATH=src python -m unittest -v \
-  tests.test_scope_918_canonical_proxy_identity_20261012 \
-  tests.test_scope_919_public_origin_identity_20261012 \
-  tests.test_scope_920_transport_identity_composition_20261016
+for file in \
+  test_scope_918_canonical_proxy_identity_20261012.py \
+  test_scope_919_public_origin_identity_20261012.py \
+  test_scope_920_transport_identity_composition_20261016.py; do
+  PYTHONPATH=src python -m unittest discover -s tests -p "$file" -v || exit 1
+done
 ```
 
 Capture the precise commit SHA, Python 3.11/3.14 results and each
