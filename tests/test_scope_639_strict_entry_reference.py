@@ -320,6 +320,22 @@ class StrictEntryReferenceTest(unittest.TestCase):
             self.assertEqual(stored(), corrupt)
             self.assertNotEqual(corrupt, original)
 
+            # Repeat through actual sqlite3.Row, but isolate overlarge raw
+            # capability JSON while restoring the otherwise valid asset row.
+            from lightup.persisted_scope_entries_639 import MAX_SCOPE_JSON_CHARS
+            too_long = " " * (MAX_SCOPE_JSON_CHARS + 1)
+            with store._connect() as con:
+                con.execute(
+                    "UPDATE authorization_grants SET assets_json=?,"
+                    "allowed_capabilities_json=? WHERE grant_id=?",
+                    (original[0], too_long, grant.grant_id),
+                )
+            oversized = stored()
+            self.assertEqual(oversized[0], original[0])
+            self.assertEqual(oversized[2], too_long)
+            self.assertIsNone(self.review(*oversized))
+            self.assertEqual(stored(), oversized, "review must not rewrite raw bytes")
+
 
 if __name__ == "__main__":
     unittest.main()
