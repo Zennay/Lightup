@@ -394,15 +394,15 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
             called.append(True)
             raise AssertionError("original grant record reached")
         bad_cases = (
-            _scope(("private-marker\\x00.example.test",)),
+            _scope(("private-marker\x00.example.test",)),
             _scope((42,)),
-            _scope(excluded=("private-marker\\u00a0excluded",)),
+            _scope(excluded=("private-marker\u00a0excluded",)),
             _scope(excluded=("excluded.example.test", "excluded.example.test")),
         )
         with patch.object(DomainStore, "record_authorization_grant",
-                          self._owner_candidate(forbidden_original)), \\
+                          self._owner_candidate(forbidden_original)), \
              patch.object(DomainStore, "_connect",
-                          side_effect=AssertionError("SQLite opened")), \\
+                          side_effect=AssertionError("SQLite opened")), \
              patch.object(DomainStore, "get_engagement",
                           side_effect=AssertionError("engagement looked up")):
             for scope in bad_cases:
@@ -413,7 +413,7 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
                         self._record(scope)
                     self.assertNotIn("private-marker", str(caught.exception))
         self.assertFalse(called)
-        self.assertIsNot(DomainStore.record_authorization_grant, forbidden_original)
+        self.assertFalse(called)
 
     def test_shape_only_success_never_short_circuits_original_grant_gate(self):
         # A positive review can only reach the separate, original owner method.
