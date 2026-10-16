@@ -80,7 +80,7 @@ def review_synthetic_json(payload: bytes) -> str:
             data["expires_at"] = _parse_exact_utc(data["expires_at"])
             claims.append(FictionalLabLineageClaim(**data))
         return review_fictional_lab_lineage(tuple(claims), assessment).status
-    except (UnicodeError, ValueError, TypeError, OverflowError, AttributeError):
+    except (UnicodeError, ValueError, TypeError, OverflowError, AttributeError, RecursionError):
         return "HOLD"
 
 
