@@ -106,6 +106,20 @@ class OfflineCliTests(unittest.TestCase):
             self.assertEqual(p.returncode, 3)
             self.assertFalse(json.loads(p.stdout)["release_allowed"])
 
+    def test_nested_json_and_lying_derived_rate_cannot_crash_or_leak(self):
+        suspicious = json.loads(json.dumps(self.candidate))
+        suspicious["record"]["metrics"]["false_positive_rate"] = 0.75
+        raw_inputs = (
+            b"[" * 1500 + b"0" + b"]" * 1500,
+            json.dumps(suspicious).encode(),
+        )
+        for raw in raw_inputs:
+            p = self.run_cases(raw_candidate=raw)
+            self.assertEqual(p.returncode, 3)
+            self.assertEqual(json.loads(p.stdout)["status"], "HOLD")
+            self.assertEqual(p.stderr, "")
+            self.assertFalse(json.loads(p.stdout)["authorized"])
+
     def test_no_args_never_exit_zero(self):
         p = subprocess.run([sys.executable, str(SCRIPT)],
                            text=True, capture_output=True,
