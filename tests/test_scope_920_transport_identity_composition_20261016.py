@@ -159,6 +159,40 @@ class TransportIdentityCompositionTests(unittest.TestCase):
         self.assertEqual(response["status"], "403 Forbidden")
         self.assertIn(b"Request rejected", body)
 
+    def test_canonical_proxy_real_wsgi_login_is_reachable_without_session(self):
+        # Positive control ensures the same WSGI route is genuinely exercised.
+        app = create_app(Mock(), self.gate)
+        response = {}
+        body = b"".join(app(
+            self.request(PATH_INFO="/login"),
+            lambda status, headers: response.update(
+                status=status, headers=dict(headers)),
+        ))
+        self.assertEqual(response["status"], "200 OK")
+        self.assertIsInstance(body, bytes)
+
+    def test_untrusted_peer_real_wsgi_denied_before_body_or_store(self):
+        # Negative control proves the WSGI source-RED does not merely fail
+        # because of an invalid app fixture or a missing response callback.
+        store, stream = Mock(), Mock()
+        app = create_app(store, self.gate)
+        response = {}
+        body = b"".join(app(
+            self.request(
+                PATH_INFO="/login", REQUEST_METHOD="POST",
+                REMOTE_ADDR="203.0.113.19",
+                HTTP_ORIGIN="https://lightup.example.test",
+                CONTENT_LENGTH="0", **{"wsgi.input": stream},
+            ),
+            lambda status, headers: response.update(
+                status=status, headers=dict(headers)),
+        ))
+        self.assertEqual(response["status"], "403 Forbidden")
+        self.assertEqual(response["headers"]["Cache-Control"], "no-store")
+        stream.read.assert_not_called()
+        store.assert_not_called()
+        self.assertIsInstance(body, bytes)
+
     def test_invalid_production_settings_refuse_at_constructor(self):
         for kwargs in (
             {"public_origin": "http://lightup.example.test"},
