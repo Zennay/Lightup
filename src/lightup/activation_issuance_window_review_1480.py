@@ -42,8 +42,16 @@ def review_issuance_window(
         return hold("noncanonical_authorization")
     if type(issued_at) is not datetime or issued_at.tzinfo is not timezone.utc:
         return hold("noncanonical_issuance_instant")
-    first = authorization.valid_from
-    last = authorization.valid_until
+    # Authorization is a frozen dataclass, not a sealed record. A caller can
+    # delete/rewrite its __dict__ fields through object.__delattr__/setattr__.
+    # Copy the field dictionary once before inspecting either time bound so
+    # incomplete or concurrent caller mutations never throw or split reads.
+    try:
+        fields = vars(authorization).copy()
+        first = fields["valid_from"]
+        last = fields["valid_until"]
+    except (TypeError, KeyError):
+        return hold("noncanonical_finite_utc_window")
     if (
         type(first) is not datetime
         or type(last) is not datetime
@@ -77,12 +85,18 @@ def review_issuance_transition(
     # snapshot conveys no consent, revocation or authority.
     if type(authorization) is not Authorization:
         return IssuanceWindowReview("HOLD", "check_noncanonical_authorization")
-    snapshot = Authorization(
-        owner=authorization.owner,
-        reference=authorization.reference,
-        valid_from=authorization.valid_from,
-        valid_until=authorization.valid_until,
-    )
+    try:
+        # Snapshot all constructor data from one original __dict__ copy.
+        # The two time reviews may then safely share identical bounds.
+        fields = vars(authorization).copy()
+        snapshot = Authorization(
+            owner=fields["owner"],
+            reference=fields["reference"],
+            valid_from=fields["valid_from"],
+            valid_until=fields["valid_until"],
+        )
+    except (TypeError, KeyError):
+        return IssuanceWindowReview("HOLD", "check_noncanonical_authorization_fields")
     checked = review_issuance_window(authorization=snapshot, issued_at=checked_at)
     if checked.status != "REVIEW_ONLY":
         return IssuanceWindowReview("HOLD", "check_" + checked.reason)
