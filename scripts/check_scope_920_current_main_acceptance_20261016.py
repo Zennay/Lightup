@@ -22,7 +22,10 @@ EXPECTED_SOURCE_REDS = 9
 # Git blob ID of the precise current-main WebSecurity source under acceptance.
 # This is a local drift guard, NOT a signature, attestation, or release proof.
 PINNED_SOURCE_BLOB = "ca657372e43a15f212b3b7c92605f9f29e055531"
+# Independently pinned #920 acceptance method bodies; count alone is not proof.
+PINNED_TEST_BLOB = "ae63a85546e970a19a9f44489732b45a70448811"
 MAX_SOURCE_BYTES = 65536
+MAX_TEST_BYTES = 65536
 
 
 def git_blob_id(content: bytes) -> str:
@@ -30,16 +33,30 @@ def git_blob_id(content: bytes) -> str:
     return hashlib.sha1(header + content).hexdigest()
 
 
-def source_is_pinned() -> bool:
-    path = ROOT / "src" / "lightup" / "webapp" / "security.py"
+def file_matches_blob(path: Path, expected: str, max_bytes: int) -> bool:
+    """Fail closed on symlink, unreadable, oversized or modified local bytes."""
     try:
         if path.is_symlink() or not path.is_file():
             return False
-        if path.stat().st_size > MAX_SOURCE_BYTES:
+        if path.stat().st_size > max_bytes:
             return False
-        return git_blob_id(path.read_bytes()) == PINNED_SOURCE_BLOB
+        return git_blob_id(path.read_bytes()) == expected
     except OSError:
         return False
+
+
+def source_is_pinned() -> bool:
+    return file_matches_blob(
+        ROOT / "src" / "lightup" / "webapp" / "security.py",
+        PINNED_SOURCE_BLOB, MAX_SOURCE_BYTES,
+    )
+
+
+def acceptance_tests_are_pinned() -> bool:
+    return file_matches_blob(
+        ROOT / "tests" / PATTERN,
+        PINNED_TEST_BLOB, MAX_TEST_BYTES,
+    )
 
 
 
@@ -66,7 +83,7 @@ def receipt(*, status: str, methods: int, source_reds: int) -> str:
 def main() -> int:
     # Before running tests, reject any source drift from the pinned main blob.
     # This never reads customer files and makes no network/subprocess calls.
-    if not source_is_pinned():
+    if not source_is_pinned() or not acceptance_tests_are_pinned():
         print(receipt(status="HOLD", methods=0, source_reds=0))
         return 2
     sys.path.insert(0, str(ROOT / "src"))
