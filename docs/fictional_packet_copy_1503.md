@@ -2,7 +2,7 @@
 
 **LightUp posture: INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. This is not an approval system.**
 
-`src/lightup/fictional_packet_copy_1503.py` is an **unwired**, opt-in, pure Python-stdlib reviewer. Two caller-supplied copies of an already-fictional review packet must be **identical canonical bytes** before a manual operator can mark the *copy* as unchanged. This is not the proposal widening/narrowing checker (#1501), operator notice generator (#1495), free-text privacy quarantine (#1497), or production policy evaluator.
+`src/lightup/fictional_packet_copy_1503.py` is an **unwired**, opt-in, pure Python-stdlib reviewer. Caller-supplied copies of an already-fictional review packet must be **identical canonical bytes** before a manual operator can mark the *copy* as unchanged. This is not the proposal widening/narrowing checker (#1501), operator notice generator (#1495), free-text privacy quarantine (#1497), or production policy evaluator.
 
 ## Exact schema and example
 
@@ -14,14 +14,33 @@ Canonical serialization is ASCII JSON, exact key order, no extraneous whitespace
 
 The `asset` must be a 1–32 character lowercase ASCII single label followed by literal `.example.test` (reserved fictional namespace); pseudo-IDNA prefixes `xn--`, doubled hyphens and trailing hyphens are disallowed. `capabilities` must contain 1–3 unique, lexicographically sorted values from `metadata_read`, `report_preview`, `scope_review`. `message` is only `REVIEW_REQUIRED` or `REVIEW_ON_HOLD`. All four authority flags must literally be JSON `false`.
 
-## Offline use
+## Offline use — canonical fictional packet creation and safe fanout
 
 ```python
-from lightup.fictional_packet_copy_1503 import compare_fictional_packet_copies
-review = compare_fictional_packet_copies(copy_before, copy_after)  # exact built-in bytes
-assert review.authorized is False and review.dispatch_allowed is False
-# review.status is always either HOLD or REVIEW_ONLY
+from lightup.fictional_packet_copy_1503 import (
+    build_fictional_copy_packet,
+    compare_fictional_packet_copies,
+    compare_fictional_packet_fanout,
+)
+
+source = build_fictional_copy_packet(
+    "alpha.example.test",
+    "REVIEW_REQUIRED",
+    ("metadata_read", "report_preview"),
+)
+assert type(source) is bytes  # Fictional, not a customer record
+
+pair = compare_fictional_packet_copies(source, source)
+recipients = compare_fictional_packet_fanout(source, (source,) * 3)
+assert pair.status == recipients.status == "REVIEW_ONLY"
+assert recipients.authorized is False and recipients.dispatch_allowed is False
+# Corruption of ANY recipient, even the last one, produces only generic HOLD.
+assert compare_fictional_packet_fanout(source, (source, source, b"changed")).status == "HOLD"
 ```
+
+The builder accepts **exact built-in str asset, exact built-in str message and exact built-in tuple of 1–3 sorted allowed str capability identifiers**, and returns `None` on any malformed/caller-subclass input. It hard-codes all four authority flags to JSON false and cannot accept identity, targets, proof, signing credentials or runtime mode. It is not intended for sensitive data.
+
+Fanout accepts **1–16 exact built-in byte strings in an exact built-in tuple** and checks every copy against the same original strictly canonical bytes. There is no per-recipient status, content echo, metadata or partial digest on failure. This is *copy equality*, **not** sequential authorization proposal evolution (#1501). All copies are caller-controlled and neither pair nor fanout authenticates who authored or delivered the packet.
 
 - Invalid or different copies: **HOLD**; digest is `None`; no caller text or partial metadata returned.
 - Both exactly canonical and byte-identical: **REVIEW_ONLY** with a lowercase SHA256 fingerprint of the *fictional* bytes. A SHA256 digest alone is **not** signed provenance, tamper resistance against someone who controls both copies, client/operator consent, revocation, or release evidence.
@@ -30,6 +49,6 @@ assert review.authorized is False and review.dispatch_allowed is False
 
 ## Tests and ownership
 
-Run opt-in isolated tests with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_fictional_packet_copy_1503.py' -v`. Dedicated **hosted** Python 3.11/3.14 workflow `.github/workflows/lightup-fictional-packet-1503.yml` runs only this new test file when the new file set changes. This does not substitute for original full hosted preflight or the genuinely registered permanent VPS runner (#1144). All files exclusively added under #1503; do not cherry-pick as production authorization.
+Run opt-in isolated tests (including exhaustive byte edits, builder invariants, 16-copy fanout, no-I/O tripwires) with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_fictional_packet_copy_1503.py' -v`. Dedicated **hosted** Python 3.11/3.14 workflow `.github/workflows/lightup-fictional-packet-1503.yml` runs only this new test file when the new file set changes. This does not substitute for original full hosted preflight or the genuinely registered permanent VPS runner (#1144). All files exclusively added under #1503; do not cherry-pick as production authorization.
 
 **Release STOP:** Original source owner fixes incl. #301, authentic both-client-and-operator informed consent, runtime revocation-at-use, full exact-head hosted + registered VPS proof, independent security/privacy review and explicit human GO remain open. Do **not** merge, deploy, scan, issue grants, wire any handler or assert approval based on this packet.
