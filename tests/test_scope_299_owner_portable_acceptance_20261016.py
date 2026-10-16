@@ -179,6 +179,30 @@ class SourceOwnerPortable299Tests(unittest.TestCase):
         self.assertFalse(revoked.is_current())
 
     @unittest.expectedFailure
+    def test_red_public_host_permit_refuses_blank_owner_despite_operator_activation(self):
+        # Scope #299 cannot let an operator activation marker stand in for
+        # absent client owner provenance; no handler is dispatched.
+        gate = ActivationGate(
+            _policy(HOST),
+            ActivationPolicy(mode=ActivationMode.AUTHORIZED,
+                             activation_reference=_OPERATOR),
+        )
+        with self.assertRaises(PermissionError):
+            gate.issue(Target(HOST, authorization=_grant(HOST, owner="")), CAPABILITY)
+
+    @unittest.expectedFailure
+    def test_red_public_network_permit_refuses_blank_client_reference(self):
+        # Even when operator lineage and exact asset are present, the
+        # client's separate authorization reference must be required.
+        gate = ActivationGate(
+            _policy(IP),
+            ActivationPolicy(mode=ActivationMode.AUTHORIZED,
+                             activation_reference=_OPERATOR),
+        )
+        with self.assertRaises(PermissionError):
+            gate.issue(Target(IP, authorization=_grant(IP, reference="")), CAPABILITY)
+
+    @unittest.expectedFailure
     def test_red_blank_client_owner_must_not_admit_bound_public_host(self):
         self.assertFalse(
             _policy(HOST).decide(Target(HOST, _grant(HOST, owner=""))).allowed
@@ -224,16 +248,16 @@ class SourceOwnerPortable299Tests(unittest.TestCase):
 
 
 class SourceOwnerPortable299Oracle(unittest.TestCase):
-    def test_portable_source_debt_oracle_identifies_eight_real_open_gaps(self):
+    def test_portable_source_debt_oracle_identifies_ten_real_open_gaps(self):
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(SourceOwnerPortable299Tests)
         result = unittest.TestResult()
         suite.run(result)
-        self.assertEqual(result.testsRun, 17)
+        self.assertEqual(result.testsRun, 19)
         self.assertEqual(result.errors, [])
         self.assertEqual(result.failures, [])
         self.assertEqual(result.skipped, [])
         self.assertEqual(result.unexpectedSuccesses, [])
-        self.assertEqual(len(result.expectedFailures), 8)
+        self.assertEqual(len(result.expectedFailures), 10)
         got = {case._testMethodName: detail for case, detail in result.expectedFailures}
         wanted = {
             "test_red_blank_client_owner_must_not_admit_bound_public_host",
@@ -244,10 +268,15 @@ class SourceOwnerPortable299Oracle(unittest.TestCase):
             "test_red_bool_reference_must_not_admit_bound_public_network",
             "test_red_current_legacy_grant_must_require_canonical_owner",
             "test_red_current_legacy_grant_must_require_canonical_reference",
+            "test_red_public_host_permit_refuses_blank_owner_despite_operator_activation",
+            "test_red_public_network_permit_refuses_blank_client_reference",
         }
         self.assertEqual(set(got), wanted)
-        for detail in got.values():
-            self.assertIn("AssertionError: True is not false", detail)
+        for name, detail in got.items():
+            if "permit_refuses" in name:
+                self.assertIn("AssertionError: PermissionError not raised", detail)
+            else:
+                self.assertIn("AssertionError: True is not false", detail)
 
 
 if __name__ == "__main__":
