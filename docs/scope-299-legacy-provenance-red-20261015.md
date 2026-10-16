@@ -107,3 +107,23 @@ Read-only inspection compared the current `main` installed source to active [sou
 - The acceptance tests on this branch intentionally import **current `main` source**, not unmerged #100, so the `authorization_reference` RED represents **main's integration debt**, whereas the legacy provenance REDs additionally identify #100's unfinished source hardening. Owner should re-run/convert appropriate tests on their exact integrated SHA without rebasing or writing from this worker.
 
 **Owner-only correction checklist:** require exact built-in trimmed, nonempty `owner` and `reference` before any public allow/permit; retain trusted asset/tenant/grant binding, valid-time/revocation and independent operator approval; populate distinct permit references for `AUTHORIZED` and none for lab-only; turn expected REDs into normal PASS only after source fix and log the actual exact-head CI/VPS proof. No real target, consent, grant, deployment, merge or active test is authorized by this document.
+
+## W7 — independent offline installed-source acceptance runner (non-authorizing)
+
+Our current-main safety acceptance now has a **separate opt-in local test launcher**. Its purpose is to help the original source owners distinguish the #299 current-source RED debt from the unrelated, date-expired #301 whole-project CI failure **without falsely claiming the producer/whole CI is green**.
+
+```sh
+python -B scripts/scope_299_local_acceptance_receipt_20261016.py --offline-local-suite-only
+```
+
+The launcher uses exactly these three **preexisting own modules**, with `unittest.TestResult` but without invoking the entire repository test discovery:
+
+- `test_scope_299_legacy_provenance_red_20261015` — **28** installed-source unit methods (11 ordinary controls PASS, 16 intentional source RED expected failures, one strict independent replay oracle PASS).
+- `test_scope_299_legacy_provenance_review_20261016` — **17** hermetic single-record CLI test methods.
+- `test_scope_299_legacy_pair_review_20261016` — **18** hermetic before/after CLI test methods.
+
+That is **63 separately discovered methods**. The launcher itself **does not load the new launcher acceptance module**; its own `tests/test_scope_299_local_acceptance_receipt_20261016.py` contains **8 additional independent top-level tests** covering opt-in CLI, fixed HOLD-only and six false authorization flags, exact runner module whitelist and count, privacy non-echo, invalid target/scan/grant/path options and static import boundaries. After W7 the owned repo contains **71 top-level test methods total**, while the launcher verifies precisely the 63 pre-existing source/CLI methods to avoid self-recursive test execution.
+
+All 63 cases run locally without real target interaction. The parent process blocks socket construction and DNS lookups during import/execution; the synthetic subprocess diagnostics themselves have fixed no-network import whitelists. The tool accepts **no source URL, network/target, policy, customer record, grant, input-file, runner, PR or release flag**. It returns exactly one bounded synthetic JSON receipt with `status=HOLD`, `evidence_class=local_untrusted`, and all six `can_*` fields `false`. Expected open source defects produce reason `open_source_reds_observed` and **nonzero exit 2**; missing/skipped/failing/unexpected-success tests or changed RED counts produce `contract_changed` and **nonzero exit 3**; absent or unexpected CLI arguments produce `invalid_command`, exit 3. No filenames, stack traces, identities or exception content are emitted in the receipt. Even an exact match means **16 SOURCE VULNERABILITY EXPECTATIONS REMAIN UNFIXED**, never remediation or permission.
+
+This script performs **no GitHub/VPS/CI attestation**, checks no exact trusted Git SHA, cannot guarantee sandbox isolation against malicious code in local files, and cannot independently establish that a branch was reviewed or approved. It is a local self-review convenience, not cryptographic or durable evidence and not a real scope/approval control. The GitHub-hosted and permanently assigned VPS jobs must be separately checked on the exact new HEAD. The original source owners #100/#105/#107 still own real source repairs and final review.
