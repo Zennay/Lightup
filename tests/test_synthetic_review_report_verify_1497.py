@@ -235,6 +235,61 @@ class FictionalReviewImportCliTests(unittest.TestCase):
                 self.assertEqual(p.returncode, 3)
                 self.assertEqual(json.loads(p.stdout)["reviewed_notes"], 0)
 
+
+    def test_real_cli_duplicate_wire_keys_are_atomic_hold(self):
+        original = canonical(review_fictional_handoff_notes((VALID,)))
+        tampered = original.replace(
+            b'"consent_verified":false', b'"consent_verified":false,"consent_verified":false'
+        )
+        actual = self.invoke(tampered, "--verify-report-only")
+        self.assertEqual(actual.returncode, 3, actual.stderr)
+        self.assertEqual(json.loads(actual.stdout)["status"], "HOLD")
+        self.assertNotIn(b"alpha.example.test", actual.stdout)
+
+    def test_real_cli_cannot_promote_forged_release_or_dispatch(self):
+        original = asdict(review_fictional_handoff_notes((VALID,)))
+        for key in ("authorized", "consent_verified", "dispatch_allowed", "release_allowed"):
+            forged = dict(original)
+            forged[key] = True
+            with self.subTest(key=key):
+                actual = self.invoke(
+                    json.dumps(forged, sort_keys=True, separators=(",", ":")).encode(),
+                    "--verify-report-only",
+                )
+                self.assertEqual(actual.returncode, 3)
+                result = json.loads(actual.stdout)
+                self.assertEqual(result["status"], "HOLD")
+                self.assertTrue(all(result[x] is False for x in (
+                    "authorized", "consent_verified", "dispatch_allowed", "release_allowed"
+                )))
+
+    def test_real_cli_noncanonical_whitespace_cannot_pass_import(self):
+        original = canonical(review_fictional_handoff_notes((VALID,)))
+        for raw in (b" " + original, original + b"\n\n",
+                    original.replace(b":", b": ", 1)):
+            with self.subTest(raw=raw[:10]):
+                actual = self.invoke(raw, "--verify-report-only")
+                self.assertEqual(actual.returncode, 3)
+                self.assertEqual(json.loads(actual.stdout)["reviewed_notes"], 0)
+
+    def test_real_cli_bounded_report_bytes_then_hold(self):
+        for raw in (b"[]" * 2200, b"x" * 4097, b"[]" * 2_000_000):
+            with self.subTest(size=len(raw)):
+                actual = self.invoke(raw, "--verify-report-only")
+                self.assertEqual(actual.returncode, 3)
+                self.assertLess(len(actual.stdout), 400)
+                self.assertEqual(json.loads(actual.stdout)["status"], "HOLD")
+                self.assertNotIn(b"Traceback", actual.stderr)
+
+    def test_real_cli_rejects_wrong_scope_source_even_when_valid_json(self):
+        original = json.loads(canonical(review_fictional_handoff_notes((VALID,))))
+        for extra in ("signed_by", "grant_id", "target", "tenant_id", "approved"):
+            with self.subTest(extra=extra):
+                raw = json.dumps({**original, extra: "not-authorized"}).encode()
+                actual = self.invoke(raw, "--verify-report-only")
+                self.assertEqual(actual.returncode, 3)
+                self.assertEqual(json.loads(actual.stdout)["status"], "HOLD")
+
     def test_actual_cli_invalid_switch_denied(self):
         data = canonical(review_fictional_handoff_notes((VALID,)))
         for args in ((), ("--verify-report-only", "--synthetic-only"), ("--verify-report-only", "now")):
