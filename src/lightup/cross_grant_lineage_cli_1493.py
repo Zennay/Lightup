@@ -24,6 +24,7 @@ _UTC_TEXT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\Z", re.ASCII)
 _ID_TEXT = re.compile(r"[A-Za-z0-9][A-Za-z0-9@._:/-]{0,127}\Z", re.ASCII)
 _HOST_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z", re.ASCII)
 _ACTOR = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9._-]{0,62}[A-Za-z0-9])?@example\.test\Z", re.ASCII)
+_CAPABILITY = re.compile(r"[a-z][a-z0-9_-]{0,63}\Z", re.ASCII)
 _BATCH_KEYS = frozenset(("schema", "evaluated_at", "candidates"))
 _CLAIM_KEYS = frozenset((
     "legacy", "durable", "asset", "capability_id", "client_id",
@@ -64,6 +65,12 @@ def _text(value: Any) -> str:
     return value
 
 
+def _capability(value: Any) -> str:
+    if type(value) is not str or _CAPABILITY.fullmatch(value) is None:
+        raise ValueError("noncanonical fictional capability")
+    return value
+
+
 def _fictional_asset(value: Any) -> str:
     value = _text(value)
     if (not value.endswith(".example.test")
@@ -93,7 +100,7 @@ def _risk(value: Any) -> RiskLevel:
 def _array(value: Any, *, assets: bool, allow_empty: bool = False) -> tuple[str, ...]:
     if type(value) is not list or len(value) > 256 or (not allow_empty and not value):
         raise ValueError("noncanonical list")
-    convert = _fictional_asset if assets else _text
+    convert = _fictional_asset if assets else _capability
     return tuple(convert(item) for item in value)
 
 
@@ -140,7 +147,7 @@ def _claim(value: Any) -> CrossGrantCandidate:
     )
     return CrossGrantCandidate(
         legacy, durable, _fictional_asset(record["asset"]),
-        _text(record["capability_id"]), _text(record["client_id"]),
+        _capability(record["capability_id"]), _text(record["client_id"]),
         _text(record["engagement_id"]), _risk(record["requested_risk"]),
     )
 
