@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 from uuid import uuid4
 
-from scope_896_offline_grant_identity_guard import review_identity, review_json
+from scope_896_offline_grant_identity_guard import review_identity, review_json, main
 
 _SCRIPT = Path(__file__).with_name("scope_896_offline_grant_identity_guard.py")
 _SAMPLE = "aabbccdd-eeff-4abc-8def-aabbccddeeff"
@@ -135,6 +135,69 @@ class GrantIdentityReviewTests(unittest.TestCase):
         self.assertEqual(receipt["decision"], "REVIEW_ONLY")
         self.assertNoAuthority(receipt)
 
+
+
+    def test_direct_cli_rejects_spoofed_argument_container_before_stdin(self) -> None:
+        import io
+        from contextlib import redirect_stdout
+        from unittest.mock import patch
+
+        class _GuardedInput:
+            @property
+            def buffer(self):
+                raise AssertionError("must not read stdin on forged argv")
+
+        class _ForgedArgv:
+            def __init__(self):
+                self.comparisons = 0
+
+            def __eq__(self, other):
+                self.comparisons += 1
+                return True
+
+            @property
+            def __class__(self):
+                return list
+
+        forged = _ForgedArgv()
+        out = io.StringIO()
+        with patch.object(sys, "stdin", _GuardedInput()), redirect_stdout(out):
+            result = main(forged)  # type: ignore[arg-type]
+        self.assertEqual(result, 2)
+        self.assertEqual(forged.comparisons, 0)
+        receipt = json.loads(out.getvalue())
+        self.assertEqual(receipt["decision"], "HOLD")
+        self.assertNoAuthority(receipt)
+
+    def test_direct_cli_rejects_equality_spoofed_string_option(self) -> None:
+        import io
+        from contextlib import redirect_stdout
+        from unittest.mock import patch
+
+        class _GuardedInput:
+            @property
+            def buffer(self):
+                raise AssertionError("must not read stdin on forged option")
+
+        class _StringOption(str):
+            def __new__(cls, text):
+                item = str.__new__(cls, text)
+                item.comparisons = 0
+                return item
+
+            def __eq__(self, other):
+                self.comparisons += 1
+                return True
+
+        token = _StringOption("--offline-synthetic-only")
+        out = io.StringIO()
+        with patch.object(sys, "stdin", _GuardedInput()), redirect_stdout(out):
+            result = main([token])
+        self.assertEqual(result, 2)
+        self.assertEqual(token.comparisons, 0)
+        receipt = json.loads(out.getvalue())
+        self.assertEqual(receipt["decision"], "HOLD")
+        self.assertNoAuthority(receipt)
 
 if __name__ == "__main__":
     unittest.main()
