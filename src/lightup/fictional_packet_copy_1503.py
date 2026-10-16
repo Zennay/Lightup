@@ -17,7 +17,7 @@ _KEYS = (
     "schema", "asset", "message", "capabilities",
     "authorized", "consent_verified", "dispatch_allowed", "release_allowed",
 )
-_ASSET = re.compile(r"[a-z][a-z0-9-]{0,31}\\.example\\.test", re.ASCII)
+_ASSET = re.compile(r"[a-z][a-z0-9-]{0,31}\.example\.test", re.ASCII)
 _CAPABILITIES = frozenset(("metadata_read", "report_preview", "scope_review"))
 _MESSAGES = frozenset(("REVIEW_REQUIRED", "REVIEW_ON_HOLD"))
 _MAX_PACKET_BYTES = 2048
