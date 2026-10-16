@@ -87,12 +87,17 @@ def _render(review: CopyReview) -> bytes:
 def main() -> int:
     """Read stdin exactly once, never output untrusted text or success exit 0."""
     try:
-        payload = sys.stdin.buffer.read(_INPUT_LIMIT + 1)
-        rendered = _render(_parse_request(payload))
+        if len(sys.argv) != 1:
+            rendered = _HOLD
+        else:
+            payload = sys.stdin.buffer.read(_INPUT_LIMIT + 1)
+            rendered = _render(_parse_request(payload))
     except (OSError, ValueError, TypeError, UnicodeError, RecursionError):
         rendered = _HOLD
     try:
-        sys.stdout.buffer.write(rendered)
+        written = sys.stdout.buffer.write(rendered)
+        if type(written) is not int or written != len(rendered):
+            return 3
         sys.stdout.buffer.flush()
     except (BrokenPipeError, OSError, ValueError):
         return 3
