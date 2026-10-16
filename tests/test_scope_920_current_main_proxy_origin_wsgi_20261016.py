@@ -4,9 +4,10 @@ Distinct from pinned owner #202 acceptance PR #1478. Never confers authority.
 All request data fictional, no network listener or target interaction.
 """
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from lightup.webapp import create_app
+from lightup.webapp.production import create_production_app
 from lightup.webapp.security import RequestRejected, WebSecurity
 
 
@@ -115,6 +116,72 @@ class CurrentMainTransportIdentityTest(unittest.TestCase):
         stream.read.assert_not_called()
         store.assert_not_called()
         self.assertIsInstance(body, bytes)
+
+    def test_actual_production_factory_canonical_config_wires_exact_web_security(self):
+        # A mock domain store keeps this real production factory fully offline.
+        with patch("lightup.webapp.production.DomainStore") as store:
+            app = create_production_app({
+                "LIGHTUP_PUBLIC_ORIGIN": ORIGIN,
+                "LIGHTUP_TRUSTED_PROXY_IP": "127.0.0.1",
+                "LIGHTUP_DB": "/tmp/lightup-920-fixture-only.db",
+            })
+            store.assert_called_once_with("/tmp/lightup-920-fixture-only.db")
+        self.assertIs(type(app.security.public_origin), str)
+        self.assertIs(type(app.security.trusted_proxy_ip), str)
+        app.security.validate(request())
+
+    def test_actual_production_factory_bad_builtin_config_stops_before_store(self):
+        for values in (
+            {"LIGHTUP_PUBLIC_ORIGIN": "http://lightup.example.test"},
+            {"LIGHTUP_TRUSTED_PROXY_IP": UNTRUSTED},
+        ):
+            with self.subTest(values=values):
+                env = {
+                    "LIGHTUP_PUBLIC_ORIGIN": ORIGIN,
+                    "LIGHTUP_TRUSTED_PROXY_IP": "127.0.0.1",
+                    "LIGHTUP_DB": "/tmp/lightup-920-fixture-only.db",
+                }
+                env.update(values)
+                with patch("lightup.webapp.production.DomainStore") as store:
+                    with self.assertRaises(ValueError):
+                        create_production_app(env)
+                    store.assert_not_called()
+
+    @unittest.expectedFailure
+    def test_red_production_factory_rejects_subclass_proxy_before_store(self):
+        env = {
+            "LIGHTUP_PUBLIC_ORIGIN": ORIGIN,
+            "LIGHTUP_TRUSTED_PROXY_IP": CallerEqualityProxy("127.0.0.1"),
+            "LIGHTUP_DB": "/tmp/lightup-920-fixture-only.db",
+        }
+        with patch("lightup.webapp.production.DomainStore") as store:
+            with self.assertRaises(ValueError):
+                create_production_app(env)
+            store.assert_not_called()
+
+    @unittest.expectedFailure
+    def test_red_production_factory_rejects_subclass_origin_before_store(self):
+        env = {
+            "LIGHTUP_PUBLIC_ORIGIN": SameTextOrigin(ORIGIN),
+            "LIGHTUP_TRUSTED_PROXY_IP": "127.0.0.1",
+            "LIGHTUP_DB": "/tmp/lightup-920-fixture-only.db",
+        }
+        with patch("lightup.webapp.production.DomainStore") as store:
+            with self.assertRaises(ValueError):
+                create_production_app(env)
+            store.assert_not_called()
+
+    @unittest.expectedFailure
+    def test_red_real_production_factory_wsgi_blocks_polymorphic_proxy_peer(self):
+        env = {
+            "LIGHTUP_PUBLIC_ORIGIN": ORIGIN,
+            "LIGHTUP_TRUSTED_PROXY_IP": CallerEqualityProxy("127.0.0.1"),
+            "LIGHTUP_DB": "/tmp/lightup-920-fixture-only.db",
+        }
+        with patch("lightup.webapp.production.DomainStore", return_value=Mock()):
+            app = create_production_app(env)
+            receipt, _ = invoke(app, request(REMOTE_ADDR=UNTRUSTED))
+        self.assertEqual(receipt["status"], "403 Forbidden")
 
     @unittest.expectedFailure
     def test_red_nonbuiltin_trusted_proxy_rejected_at_constructor(self):
