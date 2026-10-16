@@ -22,11 +22,11 @@ Existing correct `ProspectSignal.public_source` and
 - Four ordinary installed-source PASS checks: exact string identity preserved,
   passive canonical signal admitted, nonpublic/interactive/type-confused signal
   rejected without append, and profile identity creates no target permit.
-- Twelve deliberately `@expectedFailure` **OPEN SOURCE RED** checks:
-  null, numeric, subclass, blank, whitespace identities for the prospect;
+- Sixteen deliberately `@expectedFailure` **OPEN SOURCE RED** checks:
+  null, numeric, bool, bytes, subclass, blank, whitespace identities for the prospect;
   corresponding organization cases; object with coercion hooks; and
   malformed profile rejected *before* constructor signal admission.
-- One strict independent replay oracle asserts **all 12 real expected failures**,
+- One strict independent replay oracle asserts **all 16 real expected failures**,
   no skips/errors/unexpected successes. When the source owner fixes the bug, it
   intentionally fails rather than silently treating an unexpected pass as safety.
 - This test does not assert a production fix, release permission, approval, or
