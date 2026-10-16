@@ -175,3 +175,25 @@ These source-level tripwires are deliberately narrow and conservative: they
 a secure sandbox, verify a client, or authorize a scan. They are paired with
 real subprocess behavior tests and isolated owner-source expected REDs. The
 production `src/lightup` owner and runner/CI workflows are unchanged.
+
+## W8 — Linux procfs pipe provenance; named FIFO is not anonymous
+
+W5 previously checked `stat.S_ISFIFO` and described it as an anonymous
+pipe; this was **too strong**, since a filesystem-named FIFO has the same
+POSIX mode. The latest standalone tool now separately reads
+`/proc/self/fd/0` and `/proc/self/fd/1` (Linux-only) and requires the
+kernel's exact `pipe:[inode]` descriptor identity to match `fstat` on
+**each** end. Both ends must be distinct verified anonymous pipes.
+Named FIFOs, pseudo-terminals and any environment without readable procfs
+are fail-closed, with no input read and no output receipt; no fallback to
+just `S_ISFIFO`. A valid review still has nonzero exit and six literal
+false authorization flags.
+
+Four additional tests use real disposable local FIFOs, a pseudoterminal
+and a simulated unavailable procfs lookup. These are non-network,
+non-target, non-production OS boundary cases, and do not create grants.
+The source changes remain wholly in this child: no shared admission/
+CI/workflows/VPS/other-worker edits. This is a local Linux tool policy,
+not proof that procfs is tamper-proof, a container sandbox, or that an
+identity is real or authorized. The production source gap #931 and
+identity-rebinding #929 need source-owner remediation.
