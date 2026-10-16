@@ -13,8 +13,10 @@ and `target.authorization.is_current()` before stamping the synthetic
 `ExecutionPermit`. This sequence does not bind the _same_ target
 authorization identity across the two operations. Python frozen dataclasses
 do **not** prevent trusted in-process code using `object.__setattr__`
-to replace fields. Our tests use such a replacement only inside a temporary
-`unittest.mock.patch` wrapper, no real targets, callbacks, traffic or tools.
+to replace fields. One source reproducer uses a temporary `unittest.mock.patch`
+wrapper; a second exercises both original installed source methods using a
+fictional in-process `Authorization` subclass. Neither uses real targets,
+external callbacks, traffic or active tools.
 
 This is a reproducible *synthetic in-process state-integrity regression*, **not
 a demonstrated externally reachable exploit**.
@@ -28,8 +30,8 @@ a demonstrated externally reachable exploit**.
   `HOLD`; exact matching fictional values yield `REVIEW_ONLY` **only**.
 - `review_target_binding_batch_1517` — strict 1–64-item exact built-in tuple cohort, every pair canonical and equal, rejects repeated fictional asset/grant IDs and any individual mismatch **atomically** with HOLD, never partial permissions.
 - `tests/test_scope_target_binding_review_1517.py` — source reproduction and
-  deterministic isolated reviewer tests. The original-source rejection contract
-  uses `@unittest.expectedFailure` while original activation lacks the binding
+  deterministic isolated reviewer tests. The two original-source rejection contracts
+  use `@unittest.expectedFailure` while original activation lacks the binding
   guard. A clean expected failure **is not** a repaired source.
 - `.github/workflows/scope-target-binding-review-1517.yml` — separate,
   opt-in/no-secrets hosted test lane; never uses the permanent named VPS runner.
@@ -45,8 +47,8 @@ PYTHONPATH=src python -W error::ResourceWarning -m unittest discover \
   -s tests -p 'test_scope_target_binding_review_1517.py' -v
 ```
 
-The only successful result acceptable is ordinary tests PASS with the *one*
-deliberately original-source expected failure. The optional diagnostic
+The only successful result acceptable is ordinary tests PASS with *two*
+deliberately original-source expected failures. The optional diagnostic
 `REVIEW_ONLY` result never grants source provenance, identity attestation,
 actual consent, execution, runtime safety, a scan or release authority.
 Every receipt returns literal False for `authorized`, `consent_verified`,
@@ -60,7 +62,7 @@ and authorization snapshot prior to scope decision, compare the same identity
 and version after that decision, ensure all at-use revocation checks, and
 issue a permit only if the current decision and authorization are still bound
 to that snapshot. Any mismatch must abort atomically. Only then should the
-existing expectedFailure be converted into a normal passing regression by
+existing expectedFailures be converted into normal passing regressions by
 the owner of original source. Avoid interpreting any source-only test wrapper
 as deployed protection.
 
