@@ -110,6 +110,23 @@ class IssuanceWindowReview1480Tests(unittest.TestCase):
             object.__setattr__(result, "release_authorized", True)
         self._check_no_authority(result)
 
+    def test_closed_interval_boundary_matrix_never_widens(self):
+        # 16 finite windows x 22 observed instants; pure metadata only.
+        for duration in range(0, 16):
+            end = START + timedelta(seconds=duration)
+            auth = _auth(valid_until=end)
+            for offset in range(-3, 19):
+                issued_at = START + timedelta(seconds=offset)
+                decision = review_issuance_window(
+                    authorization=auth, issued_at=issued_at,
+                )
+                expected = 0 <= offset <= duration
+                with self.subTest(duration=duration, offset=offset):
+                    self.assertEqual(
+                        decision.status == "REVIEW_ONLY", expected
+                    )
+                    self._check_no_authority(decision)
+
     def test_review_requires_no_network(self):
         with patch("socket.socket", side_effect=AssertionError("unexpected socket")):
             result = review_issuance_window(authorization=_auth(), issued_at=END)
