@@ -201,7 +201,7 @@ def pinned_tree_valid(root: Path = ROOT) -> bool:
             # Inspect the RAW POSIX manifest text. Path.parts normalizes
             # `./`, which would otherwise permit aliased evidence entries.
             if (
-                "\\\\" in relpath or relpath.startswith("/")
+                "\\" in relpath or relpath.startswith("/")
                 or any(part in ("", ".", "..") for part in relpath.split("/"))
             ):
                 return False
