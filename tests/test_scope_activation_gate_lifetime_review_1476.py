@@ -11,9 +11,11 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from lightup.activation import ActivationGate, ActivationMode, ActivationPolicy
+import lightup.activation_gate_lifetime_review_1476 as review_module
 from lightup.scope import ScopePolicy
 from lightup.activation_gate_lifetime_review_1476 import (
     LifetimeStatus,
+    PinnedGateReview,
     pin_gate_for_offline_review,
     review_gate_lifetime,
 )
@@ -262,6 +264,86 @@ class LifetimeReviewTests(unittest.TestCase):
         self.assertIs(result.status, LifetimeStatus.HOLD)
         self.check_no_authority(result)
         self.assertIsNone(pin_gate_for_offline_review(g))
+
+    def test_uninitialized_snapshot_returns_generic_hold_instead_of_exception(self):
+        g = gate()
+        incomplete = object.__new__(PinnedGateReview)
+        receipt = review_gate_lifetime(g, incomplete)
+        self.assertIs(receipt.status, LifetimeStatus.HOLD)
+        self.assertEqual(receipt.reason, "changed")
+        self.check_no_authority(receipt)
+
+    def test_partial_snapshot_fields_do_not_leak_attribute_error(self):
+        g = gate()
+        incomplete = object.__new__(PinnedGateReview)
+        object.__setattr__(incomplete, "gate", g)
+        receipt = review_gate_lifetime(g, incomplete)
+        self.assertIs(receipt.status, LifetimeStatus.HOLD)
+        self.check_no_authority(receipt)
+
+    def test_pin_rechecks_scope_mutated_during_activation_snapshot(self):
+        g = gate()
+        original = review_module._activation_fields
+        calls = [0]
+
+        def mutate_during_activation_check(policy):
+            fields = original(policy)
+            calls[0] += 1
+            if calls[0] == 1:
+                object.__setattr__(
+                    g.scope_policy, "explicit_hosts",
+                    frozenset({"fictional.example.test"}),
+                )
+            return fields
+
+        with patch.object(review_module, "_activation_fields",
+                          side_effect=mutate_during_activation_check):
+            # First snapshot has the OLD scope, then activation evaluation
+            # changes the real original scope. Old pin() accepted a stale pin.
+            pin = pin_gate_for_offline_review(g)
+        self.assertIsNone(pin)
+        self.assertGreaterEqual(calls[0], 2)
+
+    def test_pin_detects_gate_rebinding_during_field_snapshot(self):
+        g = gate()
+        original = review_module._activation_fields
+        calls = [0]
+
+        def rebind_during_snapshot(policy):
+            fields = original(policy)
+            calls[0] += 1
+            if calls[0] == 1:
+                g.activation_policy = ActivationPolicy()
+            return fields
+
+        with patch.object(review_module, "_activation_fields",
+                          side_effect=rebind_during_snapshot):
+            self.assertIsNone(pin_gate_for_offline_review(g))
+        self.assertGreaterEqual(calls[0], 1)
+
+    def test_review_second_pass_detects_scope_change_inside_activation_read(self):
+        g = gate()
+        pin = pin_gate_for_offline_review(g)
+        original = review_module._activation_fields
+        calls = [0]
+
+        def mutate_during_review(policy):
+            fields = original(policy)
+            calls[0] += 1
+            if calls[0] == 1:
+                object.__setattr__(
+                    g.scope_policy, "explicit_hosts",
+                    frozenset({"fictional.example.test"}),
+                )
+            return fields
+
+        with patch.object(review_module, "_activation_fields",
+                          side_effect=mutate_during_review):
+            receipt = review_gate_lifetime(g, pin)
+        self.assertIs(receipt.status, LifetimeStatus.HOLD)
+        self.assertEqual(receipt.reason, "changed")
+        self.assertGreaterEqual(calls[0], 1)
+        self.check_no_authority(receipt)
 
     def test_receipt_and_snapshot_repr_never_repeat_raw_policy_data(self):
         secret = "FAKE-CONFIDENTIAL-" + "X" * 70
