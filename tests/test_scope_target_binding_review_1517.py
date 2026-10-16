@@ -111,9 +111,9 @@ class TargetBindingReview1517Tests(unittest.TestCase):
 
     def test_input_immutability_no_io(self):
         original = (A, B)
-        with patch("builtins.open", side_effect=AssertionError("file I/O")), \\
-             patch.object(socket, "socket", side_effect=AssertionError("network")), \\
-             patch.object(subprocess, "Popen", side_effect=AssertionError("process")), \\
+        with patch("builtins.open", side_effect=AssertionError("file I/O")), \
+             patch.object(socket, "socket", side_effect=AssertionError("network")), \
+             patch.object(subprocess, "Popen", side_effect=AssertionError("process")), \
              patch.object(pathlib.Path, "open", side_effect=AssertionError("path I/O")):
             self.assertEqual(review_target_binding_1517(*original).status, "HOLD")
             self.assertEqual(review_target_binding_1517(A, A).status, "REVIEW_ONLY")
@@ -147,7 +147,7 @@ class TargetBindingReview1517Tests(unittest.TestCase):
             object.__setattr__(supplied, "authorization", Authorization("owner-beta", "grant-beta"))
             return decision
 
-        with patch.object(ScopePolicy, "decide", rebind_after_decide), \\
+        with patch.object(ScopePolicy, "decide", rebind_after_decide), \
              patch("lightup.activation.token_urlsafe", return_value="offline-fixture"):
             with self.assertRaises(PermissionError):
                 gate.issue(target, "synthetic-capability")
