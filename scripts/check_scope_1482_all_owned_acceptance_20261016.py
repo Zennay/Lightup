@@ -7,6 +7,9 @@ No active adapters, real targets, DNS, scan or handler are executed here.
 from __future__ import annotations
 
 import hashlib
+import os
+import stat
+from contextlib import ExitStack
 import io
 from pathlib import Path
 import sys
@@ -176,6 +179,41 @@ EXPECTED_OPEN_REDS = frozenset({
 MAX_BYTES = 131072
 
 
+def _read_pinned_regular_file(root: Path, components: tuple[str, ...]) -> bytes:
+    """Read from descriptor-anchored, NOFOLLOW directories and regular leaf.
+
+    On unsupported platforms the review fails closed. No path is re-resolved
+    after opening: each child uses the descriptor of its already opened parent.
+    This prevents symlink substitution at the *open* boundary, but does not
+    attest later Python import behavior or independently sign the checkout.
+    """
+    if not all(
+        isinstance(getattr(os, flag, None), int)
+        for flag in ("O_NOFOLLOW", "O_DIRECTORY", "O_NONBLOCK")
+    ):
+        raise OSError("strict descriptor flags unavailable")
+    dirflags = os.O_RDONLY | os.O_NOFOLLOW | os.O_DIRECTORY
+    fileflags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
+    with ExitStack() as stack:
+        directory_fd = os.open(root, dirflags)
+        stack.callback(os.close, directory_fd)
+        if not stat.S_ISDIR(os.fstat(directory_fd).st_mode):
+            raise OSError("pinned root is not a directory")
+        for part in components[:-1]:
+            directory_fd = os.open(part, dirflags, dir_fd=directory_fd)
+            stack.callback(os.close, directory_fd)
+            if not stat.S_ISDIR(os.fstat(directory_fd).st_mode):
+                raise OSError("pinned parent is not a directory")
+        file_fd = os.open(components[-1], fileflags, dir_fd=directory_fd)
+        stack.callback(os.close, file_fd)
+        info = os.fstat(file_fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_BYTES:
+            raise OSError("pinned leaf is not a bounded regular file")
+        # Read the opened object, not a new pathname lookup.
+        with os.fdopen(os.dup(file_fd), "rb") as stream:
+            return stream.read(MAX_BYTES + 1)
+
+
 def git_blob_sha(data: bytes) -> str:
     return hashlib.sha1(b"blob " + str(len(data)).encode("ascii") + b"\0" + data).hexdigest()
 
@@ -183,8 +221,8 @@ def git_blob_sha(data: bytes) -> str:
 def pinned_tree_valid(root: Path = ROOT) -> bool:
     """Reject indirection at EVERY owned path component before imports.
 
-    This is a local review-only guard, not a signed-source or race-safe
-    provenance attestation. Never resolve a symlink into a different tree.
+    This is a local review-only guard, not a signed-source or later-import
+    provenance attestation. Open each component relative to its parent fd.
     """
     try:
         if not isinstance(root, Path) or root.is_symlink() or not root.is_dir():
@@ -216,8 +254,7 @@ def pinned_tree_valid(root: Path = ROOT) -> bool:
             path = parent / components[-1]
             if path.is_symlink() or not path.is_file():
                 return False
-            with path.open("rb") as stream:
-                data = stream.read(MAX_BYTES + 1)
+            data = _read_pinned_regular_file(root, components)
             if len(data) > MAX_BYTES or git_blob_sha(data) != expected_sha:
                 return False
     except (OSError, ValueError, TypeError):
