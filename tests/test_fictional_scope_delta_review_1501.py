@@ -284,7 +284,24 @@ class FictionalScopeDeltaTests(TestCase):
 
     def test_unbounded_capability_strings_reject_before_set_hash(self):
         oversized = "headers_view" + "x" * 100_000
-        with patch("builtins.sorted", side_effect=AssertionError("must reject first")):
+        real_set = set
+        real_sorted = sorted
+
+        def bounded_set(items=()):
+            # Valid asset collections are intentionally still canonical-sorted;
+            # prohibit only a long untrusted element from reaching set().
+            if any(type(x) is str and len(x) > 48 for x in items):
+                raise AssertionError("unbounded hash")
+            return real_set(items)
+
+        def bounded_sorted(items, *args, **kwargs):
+            collected = tuple(items)
+            if any(type(x) is str and len(x) > 48 for x in collected):
+                raise AssertionError("unbounded sort")
+            return real_sorted(collected, *args, **kwargs)
+
+        with patch("builtins.set", side_effect=bounded_set), \
+             patch("builtins.sorted", side_effect=bounded_sorted):
             bad = proposal(capabilities=(oversized,))
             outcome = review_fictional_scope_delta(bad, proposal())
         self.assertEqual(outcome.status, "HOLD")
