@@ -226,8 +226,7 @@ class FictionalPairComparison1495(unittest.TestCase):
     def test_bad_input_types_fail_closed(self):
         for raw in (None, {}, [], bytearray(b"{}"), "{}", True):
             with self.subTest(kind=type(raw)):
-                self.assert_hold(compare(raw=raw if isinstance(raw, bytes) else None) if raw is None
-                                 else compare_fictional_scope_envelopes(raw))
+                self.assert_hold(compare_fictional_scope_envelopes(raw))
 
     def test_oversize_envelope_denied_before_parse(self):
         self.assert_hold(compare(raw=b"X"*131073))
