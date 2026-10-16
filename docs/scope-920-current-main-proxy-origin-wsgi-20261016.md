@@ -226,3 +226,37 @@ standalone command was executed on a registered permanent VPS or that the
 full suite's unrelated #301 failure is resolved.
 
 Verify the latest exact-head hosted job logs before calling this `ok`.
+
+## W8: acceptance-test integrity and explicit failure-state oracle (2026-10-16)
+
+The offline, **non-authorizing** `scripts/check_scope_920_current_main_acceptance_20261016.py`
+now checks **two separate fixed Git blob identities BEFORE test discovery**:
+(1) original current-main installed `src/lightup/webapp/security.py`
+`ca657372e43a15f212b3b7c92605f9f29e055531`, and (2) **this branch's
+owned 20-method acceptance test module** `tests/test_scope_920_current_main_proxy_origin_wsgi_20261016.py`
+`ae63a85546e970a19a9f44489732b45a70448811`.
+Both must be regular readable files, within bounded size, not symlinks and
+exact-byte Git blobs. A changed test suite that artificially returns 20
+success-looking tests and nine expected failures can no longer silently
+inherit the old REVIEW_ONLY result without a deliberate reviewed blob-pin
+update. This is a local integrity guard, **not signed provenance** or a
+substitute for immutable GitHub Action commit identity, permanent registered
+VPS, consent or independent release approval.
+
+The independent `tests/test_scope_920_runner_provenance_20261016.py` suite
+includes standalone actual-source pin, actual-test pin, changed-test bytes,
+missing/symlinked-test source, incorrect test count (proves no runner call),
+and **eight synthetic result permutations**: unexpected success, skip,
+ordinary failure, runtime exception, missing/extra expected source RED,
+incorrect testsRun, or self-reported unsuccessful status. All must yield
+`HOLD`/exit 2 with authority flags false; no network or real target is
+involved. The narrow runner checks `failures` and `errors` explicitly,
+in addition to the genuine `unittest` `wasSuccessful()` result, to avoid
+accepting an internally inconsistent synthetic result.
+
+**Ownership:** only the preexisting four NEW paths of our isolated draft
+#1479 are modified, with no source/runner/workflow changes. These acceptance
+and result tests do not touch #202 original source, #1452 frozen-date fixture,
+#1144 permanent VPS operator or other #920 sibling branches. Current-main
+full-suite remains blocked by the separate #301 fixed-clock baseline issue;
+a targeted REVIEW_ONLY receipt must never be represented as full-suite green.
