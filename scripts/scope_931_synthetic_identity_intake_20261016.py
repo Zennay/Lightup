@@ -86,28 +86,36 @@ def receipt(status: str) -> str:
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
+def _anonymous_pipe(fd: int) -> bool:
+    """Linux /proc distinguishes pipe:[inode] from a filesystem-named FIFO.
+
+    If procfs is unavailable or the descriptor cannot be identified exactly,
+    we return HOLD rather than accepting an unverified FIFO as anonymous.
+    """
+    metadata = os.fstat(fd)
+    if not stat.S_ISFIFO(metadata.st_mode):
+        return False
+    link = os.readlink("/proc/self/fd/" + str(fd))
+    return (
+        link.startswith("pipe:[")
+        and link.endswith("]")
+        and link[6:-1].isascii()
+        and link[6:-1].isdecimal()
+        and int(link[6:-1]) == metadata.st_ino
+    )
+
+
 def _safe_streams() -> bool:
-    """Use a distinct anonymous local pipe for input and a safe receipt sink."""
+    """Require distinct procfs-confirmed anonymous Linux pipes on fds 0/1."""
     try:
         input_fd, output_fd = sys.stdin.fileno(), sys.stdout.fileno()
         if (input_fd, output_fd) != (0, 1):
             return False
+        if not _anonymous_pipe(input_fd) or not _anonymous_pipe(output_fd):
+            return False  # Never read named FIFOs or emit receipts to a TTY.
         source, destination = os.fstat(input_fd), os.fstat(output_fd)
-        if not stat.S_ISFIFO(source.st_mode):
-            return False  # Never implicitly read local files, devices or sockets.
-        if not (
-            stat.S_ISFIFO(destination.st_mode)
-            or (stat.S_ISCHR(destination.st_mode) and os.isatty(output_fd))
-        ):
-            return False  # Never create a file or send a receipt to a socket.
-        if (
-            stat.S_ISFIFO(destination.st_mode)
-            and (source.st_dev, source.st_ino)
-            == (destination.st_dev, destination.st_ino)
-        ):
-            return False  # A receipt cannot become data on its own stdin pipe.
-        return True
-    except (OSError, ValueError, TypeError):
+        return (source.st_dev, source.st_ino) != (destination.st_dev, destination.st_ino)
+    except (OSError, ValueError, TypeError, OverflowError):
         return False
 
 
