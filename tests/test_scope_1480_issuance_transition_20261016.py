@@ -140,8 +140,8 @@ class Transition1480Tests(unittest.TestCase):
         # 2,500 deterministic fictional transitions, no wall clock or targets.
         rng = Random(1480)
         for index in range(2500):
-            check_offset = rng.randrange(-10, 115)
-            stamp_offset = rng.randrange(-10, 115)
+            check_offset = rng.randrange(-10, 311)
+            stamp_offset = rng.randrange(-10, 311)
             check = A + timedelta(seconds=check_offset)
             stamp = A + timedelta(seconds=stamp_offset)
             decision = review_issuance_transition(
