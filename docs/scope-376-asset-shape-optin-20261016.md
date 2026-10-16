@@ -12,6 +12,11 @@ This isolated child work addresses [issue #376](https://github.com/Zennay/Lightu
 - `tests/test_scope_376_asset_identity_optin_20261016.py`: ordinary fixture-only checks, boundary limits, polymorphic string and scope rejection, mutation guards, no-I/O checks, a positive real SQLite legacy roundtrip, and three **deliberately OPEN original-source expected failures** against actual `DomainStore.record_authorization_grant`. A separate RED oracle requires all three source failures to remain real, not hidden successes or runtime exceptions.
 - The reviewer does **not** establish DNS/IP identity, CIDR validity, Unicode equivalence, ownership, consent, client/engagement binding, revocation, allowed capabilities, expiry, temporal validity, exact self-hosted GitHub runner proof or human approval. It MUST NOT be used as a permit or wired to active execution.
 
+## W2 receipt authenticity boundary
+An additional hardening commit now refuses every status other than an **exact built-in** `HOLD` or `REVIEW_ONLY` when constructing an `AssetIdentityShapeReceipt`. Forged `APPROVED`/`PASS`/`RELEASED` strings, boolean statuses and `str` subclasses never become a receipt, and the new ordinary unit regression asserts no subclass comparison methods can be called. The serializer provides a **new ordinary dictionary**, which is a display artifact and can be modified by its recipient; neither it nor any client-submitted claim is an authenticated release decision. Six source-defined authority flags always serialize to literal false.
+
+Do not reuse the older exact-SHA hosted results from W1 as proof of this W2 head. Verification must match the latest immutable commit.
+
 ## Owner decision needed
 The existing domain/grant source owner should decide whether this narrow text-shape preflight, or an equivalent source-side guard, belongs directly before any persisted grant row. The reviewer ceilings are **illustrative** and may reject legitimate large scopes; do not treat them as approved product policy. If integrated, the original source must enforce the same reject-before-write semantics and preserve valid grant roundtrips. Convert the three original-source expectedFailure methods to ordinary PASS only after the actual production source is fixed and revalidated. Do not claim the opt-in helper fixes persistent authorization.
 
