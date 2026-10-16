@@ -27,9 +27,16 @@ class AssetIdentityShapeReceipt:
         return False
 
     def as_public_dict(self) -> dict[str, object]:
-        """Do not disclose submitted identities or allow release/dispatch."""
+        """Fail closed even if a frozen receipt was modified by object.__setattr__.
+
+        Python frozen/slots are not a security boundary. Serialized data is
+        still NEVER an authenticated grant or an authorization to dispatch.
+        """
+        status = object.__getattribute__(self, "decision")
+        safe_status = (status if type(status) is str
+                       and status in ("HOLD", "REVIEW_ONLY") else "HOLD")
         return {
-            "decision": self.decision,
+            "decision": safe_status,
             "authorization_verified": False,
             "consent_verified": False,
             "grant_permitted": False,
@@ -75,13 +82,17 @@ def review_asset_identity_shape(scope: object) -> AssetIdentityShapeReceipt:
         return AssetIdentityShapeReceipt("HOLD")
     if type(fields) is not dict or len(fields) != 4:
         return AssetIdentityShapeReceipt("HOLD")
-    if any(type(key) is not str for key in fields):
+    # Take a bounded snapshot of the exact built-in dict before validating.
+    # A caller can bypass frozen dataclass assignment and change its __dict__.
+    # Never interleave key checks on one version with value reads from another.
+    snapshot = fields.copy()
+    if len(snapshot) != 4 or any(type(key) is not str for key in snapshot):
         return AssetIdentityShapeReceipt("HOLD")
-    if set(fields) != {"assets", "excluded_assets", "max_risk",
-                       "allowed_capabilities"}:
+    if set(snapshot) != {"assets", "excluded_assets", "max_risk",
+                         "allowed_capabilities"}:
         return AssetIdentityShapeReceipt("HOLD")
-    assets = fields["assets"]
-    exclusions = fields["excluded_assets"]
+    assets = snapshot["assets"]
+    exclusions = snapshot["excluded_assets"]
     if not _canonical_tuple(assets, allow_empty=False):
         return AssetIdentityShapeReceipt("HOLD")
     if not _canonical_tuple(exclusions, allow_empty=True):
