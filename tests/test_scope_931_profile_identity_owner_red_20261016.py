@@ -144,13 +144,33 @@ class ProspectProfileIdentityOwnerContract(unittest.TestCase):
         with self.assertRaises((ValueError, TypeError)):
             ProspectProfile("", "Fictional Organisation", signals=[signal])
 
+    @unittest.expectedFailure
+    def test_red_bool_prospect_id_must_not_act_as_text(self):
+        with self.assertRaises((ValueError, TypeError)):
+            ProspectProfile(True, "Fictional Organisation")
+
+    @unittest.expectedFailure
+    def test_red_bytes_prospect_id_must_not_act_as_text(self):
+        with self.assertRaises((ValueError, TypeError)):
+            ProspectProfile(b"fictional-id", "Fictional Organisation")
+
+    @unittest.expectedFailure
+    def test_red_bool_organization_name_must_not_act_as_text(self):
+        with self.assertRaises((ValueError, TypeError)):
+            ProspectProfile("fictional-id", False)
+
+    @unittest.expectedFailure
+    def test_red_bytes_organization_name_must_not_act_as_text(self):
+        with self.assertRaises((ValueError, TypeError)):
+            ProspectProfile("fictional-id", b"Fictional Organisation")
+
     def test_strict_oracle_detects_stale_expected_failure_labels(self):
         """Do not silently greenwash a fixed or unexpectedly skipped RED."""
         names = sorted(
             name for name in dir(type(self))
             if name.startswith("test_red_") and callable(getattr(type(self), name))
         )
-        self.assertEqual(len(names), 12, "RED contract changed; owner must review")
+        self.assertEqual(len(names), 16, "RED contract changed; owner must review")
         suite = unittest.TestSuite(type(self)(name) for name in names)
         result = unittest.TestResult()
         suite.run(result)
