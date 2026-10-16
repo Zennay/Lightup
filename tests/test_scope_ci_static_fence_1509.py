@@ -83,6 +83,13 @@ class StaticFenceTests(unittest.TestCase):
             with self.subTest(kind=type(value).__name__):
                 self.assert_no_authority(MOD.review_workflow(value), "HOLD")
 
+    def test_review_flags_cannot_be_forged_at_construction(self):
+        for flag in ("authorized", "consent_verified", "dispatch_allowed", "release_allowed"):
+            with self.subTest(flag=flag):
+                with self.assertRaises(TypeError):
+                    MOD.Review("REVIEW_ONLY", **{flag: True})
+        self.assert_no_authority(MOD.Review("REVIEW_ONLY"), "REVIEW_ONLY")
+
     def test_pure_function_has_no_operational_side_effects(self):
         import builtins
         import socket
