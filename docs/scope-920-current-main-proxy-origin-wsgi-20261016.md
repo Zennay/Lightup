@@ -260,3 +260,29 @@ and result tests do not touch #202 original source, #1452 frozen-date fixture,
 #1144 permanent VPS operator or other #920 sibling branches. Current-main
 full-suite remains blocked by the separate #301 fixed-clock baseline issue;
 a targeted REVIEW_ONLY receipt must never be represented as full-suite green.
+
+## W9: loaded Python WebSecurity module origin cannot drift (2026-10-16)
+
+The CLI validates not only the immutable SHA-1 Git blobs of the **installed
+WebSecurity source** and **owned #920 test module**, but also the *runtime
+module origin after test discovery and before test execution*:
+`sys.modules["lightup.webapp.security"].__file__` must resolve to the
+expected `ROOT/src/lightup/webapp/security.py` in the current checkout.
+An unimported module, a non-string `__file__`, a missing path, or a path
+pointing to another repository checkout is `HOLD`/exit 2. This prevents a
+previously imported local copy from silently passing the narrowly pinned
+test runner; it does **not** cryptographically attest runtime memory or the
+host and cannot replace registered VPS CI/release gates.
+
+Three new ordinary test-only controls in
+`tests/test_scope_920_runner_provenance_20261016.py` exercise the real
+module-origin positive, a synthetic swapped/absent `sys.modules` entry,
+and a run with matching synthetic test count but mismatched module origin
+that must reject **before calling TextTestRunner.run()**. The existing
+synthetic outcome matrix explicitly patches *only* the module-origin guard
+to retain an isolated failure-result oracle. A real in-process CLI run on
+the pinned checkout must still yield at most `REVIEW_ONLY` and all authority
+flags false. New exact-head hosted jobs are required before claiming these
+new tests PASS. The full LightUp suite still has the unrelated #301 clock
+fixture failure owned by draft #1452, and permanent runner evidence remains
+separately required under #1144. No original runtime/other-worker edits.
