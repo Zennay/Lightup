@@ -83,6 +83,43 @@ class WebSecuritySourcePreservationW20(unittest.TestCase):
     def test_same_origin_post_referer_still_passes(self) -> None:
         self.production.validate(_production(REQUEST_METHOD="POST", HTTP_REFERER="https://lightup.example/account"))
 
+    def test_forwarded_for_does_not_turn_remote_peer_into_proxy(self) -> None:
+        self.assertDenied(_production(
+            REMOTE_ADDR="203.0.113.17",
+            HTTP_X_FORWARDED_FOR="127.0.0.1",
+        ))
+
+    def test_forwarded_host_does_not_override_real_host(self) -> None:
+        self.assertDenied(_production(
+            HTTP_HOST="evil.example",
+            HTTP_X_FORWARDED_HOST="lightup.example",
+        ))
+
+    def test_missing_socket_peer_is_denied_in_production(self) -> None:
+        request = _production()
+        request.pop("REMOTE_ADDR")
+        self.assertDenied(request)
+
+    def test_missing_host_is_denied_in_production(self) -> None:
+        request = _production()
+        request.pop("HTTP_HOST")
+        self.assertDenied(request)
+
+    def test_cross_origin_referer_does_not_replace_post_origin(self) -> None:
+        self.assertDenied(_production(
+            REQUEST_METHOD="POST", HTTP_REFERER="https://evil.example/landing",
+        ))
+
+    def test_lowercase_post_cannot_skip_origin_guard(self) -> None:
+        self.assertDenied(_production(
+            REQUEST_METHOD="post", HTTP_ORIGIN="https://evil.example",
+        ))
+
+    def test_request_denial_uses_opaque_error_text(self) -> None:
+        with self.assertRaises(RequestRejected) as result:
+            self.production.validate(_production(REMOTE_ADDR="203.0.113.17"))
+        self.assertEqual(str(result.exception), "request origin or transport rejected")
+
     def test_development_wsgi_no_socket_peer_still_passes(self) -> None:
         WebSecurity().validate({"REQUEST_METHOD": "GET", "HTTP_HOST": "localhost"})
 
