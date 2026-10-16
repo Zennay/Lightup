@@ -11,9 +11,9 @@ from datetime import datetime, timedelta, timezone
 import re
 
 
-_CASE = re.compile(r"case-[a-z0-9]{1,16}\\Z")
-_ACTOR = re.compile(r"fictional-(client|operator)-[a-z0-9]{1,16}\\Z")
-_ASSET = re.compile(r"[a-z][a-z0-9-]{0,25}\\.example\\.test\\Z")
+_CASE = re.compile(r"case-[a-z0-9]{1,16}\Z")
+_ACTOR = re.compile(r"fictional-(client|operator)-[a-z0-9]{1,16}\Z")
+_ASSET = re.compile(r"[a-z][a-z0-9-]{0,25}\.example\.test\Z")
 _CAPABILITIES = frozenset(("inventory", "observe", "report"))
 _MAX_WINDOW = timedelta(hours=24)
 
