@@ -148,6 +148,9 @@ def compare_lab_evaluations(
         not _valid_record(baseline, baseline_context)
         or not _valid_record(candidate, candidate_context)
         or baseline.scenario_id != candidate.scenario_id
+        # A baseline replayed as its own candidate is not new evidence.
+        or baseline.run_id == candidate.run_id
+        or baseline.record_id == candidate.record_id
         or baseline_context.client_id != candidate_context.client_id
     ):
         return LabComparison("HOLD")

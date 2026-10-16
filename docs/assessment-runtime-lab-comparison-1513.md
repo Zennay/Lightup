@@ -96,3 +96,13 @@ public/nonlab, forged, duplicate, inconsistent or oversized packets cause
 packet is only an unauthenticated `REVIEW_ONLY` and exits **2**; regression or
 invalid input exits **3**; exit zero is impossible. Four authority fields are
 always false. Do not use with genuine client secrets or as release evidence.
+
+## Baseline replay is not an independent candidate
+
+The offline evaluator now rejects the *same* record ID or run ID on both
+sides, even when metrics are perfectly valid. Reusing the original baseline
+as the proposed candidate silently manufactures a non-regression result;
+now it returns generic HOLD without per-metric output. This exact identity
+check is a narrow diagnostic integrity check and is NOT cryptographic run
+provenance, authorization, client consent, or release approval. The JSON
+CLI, scored-scenario comparisons and cohorts inherit the same rejection.

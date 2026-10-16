@@ -167,6 +167,19 @@ class AssessmentRuntimeDiffTests(unittest.TestCase):
                 result = compare_lab_evaluations(a, replace(b, created_at=bad), ca, cb)
                 self.assertEqual((result.status, result.changes), ("HOLD", ()))
 
+    def test_replayed_run_or_record_identity_is_not_a_new_comparison(self):
+        a, b, ca, cb = pair()
+        for same_id in (
+            (a, a, ca, ca),
+            (a, replace(b, record_id=a.record_id), ca, cb),
+            (a, replace(b, run_id=a.run_id), ca, replace(cb, run_id=a.run_id)),
+        ):
+            with self.subTest(candidate=same_id[1].record_id):
+                result = compare_lab_evaluations(*same_id)
+                self.assertEqual((result.status, result.changes, result.regressions),
+                                 ('HOLD', (), ()))
+                self.assertIs(result.release_allowed, False)
+
     def test_inputs_are_unchanged_and_no_external_execution(self):
         original = pair()
         snapshot = deepcopy(original)

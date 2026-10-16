@@ -121,6 +121,19 @@ class OfflineCliTests(unittest.TestCase):
             self.assertEqual(p.stderr, "")
             self.assertFalse(json.loads(p.stdout)["authorized"])
 
+    def test_replayed_original_lab_run_is_generic_hold(self):
+        for candidate in (
+            json.loads(json.dumps(self.baseline)),
+            {**self.candidate, 'record': {
+                **self.candidate['record'],
+                'record_id': self.baseline['record']['record_id'],
+            }},
+        ):
+            response = self.run_cases(candidate=candidate)
+            self.assertEqual(response.returncode, 3, response.stderr)
+            data = json.loads(response.stdout)
+            self.assertEqual((data['status'], data['changes']), ('HOLD', []))
+
     def test_no_args_never_exit_zero(self):
         p = subprocess.run([sys.executable, str(SCRIPT)],
                            text=True, capture_output=True,
