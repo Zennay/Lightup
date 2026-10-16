@@ -17,12 +17,14 @@ OWNED = {
     Path("src/lightup/fictional_lab_capability_batch_1511.py"),
     Path("scripts/fictional_lab_capability_cli_1511.py"),
     Path("scripts/fictional_lab_capability_batch_cli_1511.py"),
+    Path("scripts/fictional_lab_capability_json_1511.py"),
     Path("tests/test_fictional_lab_capability_review_1511.py"),
     Path("tests/test_fictional_lab_capability_cli_1511.py"),
     Path("tests/test_fictional_lab_capability_batch_1511.py"),
     Path("tests/test_fictional_lab_capability_batch_cli_1511.py"),
     Path("tests/test_fictional_lab_capability_cli_process_boundary_1511.py"),
     Path("tests/test_fictional_lab_capability_registry_compat_1511.py"),
+    Path("tests/test_fictional_lab_capability_json_1511.py"),
     Path("tests/test_fictional_lab_capability_sealing_1511.py"),
     Path("tests/test_fictional_lab_capability_transition_1511.py"),
     Path("tests/test_fictional_lab_capability_streaming_1511.py"),
@@ -109,6 +111,15 @@ class FictionalLabCapabilityIsolation1511Tests(unittest.TestCase):
         names = [a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names]
         for forbidden in ("socket", "requests", "subprocess", "http.client", "urllib.request"):
             self.assertNotIn(forbidden, names)
+
+    def test_shared_json_parser_is_offline_and_never_product_wired(self):
+        tree = _parsed(Path("scripts/fictional_lab_capability_json_1511.py"))
+        names = [a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names]
+        for forbidden in ("socket", "os", "subprocess", "requests", "http.client", "urllib.request"):
+            self.assertNotIn(forbidden, names)
+        lightup_imports = [n.module or "" for n in ast.walk(tree)
+                           if isinstance(n, ast.ImportFrom) and (n.module or "").startswith("lightup.")]
+        self.assertFalse(lightup_imports)
 
     def test_fictional_helper_has_no_network_or_file_io_imports(self):
         tree = _parsed(Path("src/lightup/fictional_lab_capability_review_1511.py"))
