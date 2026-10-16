@@ -132,7 +132,6 @@ class TransportReviewTests(unittest.TestCase):
         self.assertFalse(proc.stderr)
 
 
-
     def test_exact_byte_boundary_never_widens_authority(self) -> None:
         canonical = json.dumps(_SAMPLE).encode()
         padded = canonical + b" " * (4096 - len(canonical))
