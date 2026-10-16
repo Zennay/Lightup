@@ -187,7 +187,7 @@ def pinned_tree_valid(root: Path = ROOT) -> bool:
     provenance attestation. Never resolve a symlink into a different tree.
     """
     try:
-        if type(root) is not Path or root.is_symlink() or not root.is_dir():
+        if not isinstance(root, Path) or root.is_symlink() or not root.is_dir():
             return False
         if len(PINNED_GIT_BLOBS) != 15:
             return False
