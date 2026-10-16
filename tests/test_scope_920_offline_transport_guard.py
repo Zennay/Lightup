@@ -288,5 +288,23 @@ class TransportReviewTests(unittest.TestCase):
         self.assertEqual(receipt["decision"], "HOLD")
         self.assertNoAuthority(receipt)
 
+
+    def test_host_parser_fail_closed_on_invalid_brackets_and_canonical_form(self) -> None:
+        # The reviewer never resolves a hostname and never accepts raw URL
+        # syntax that urlsplit might normalize into a different identity.
+        bad_origins = (
+            "https://[not-an-ip].example",
+            "https://broken-.example",
+            "https://-broken.example",
+            "https://LIGHTUP.example",
+            "https://lightup..example",
+            "https://lightup.example:bad",
+        )
+        for origin in bad_origins:
+            with self.subTest(origin=origin):
+                receipt = review_metadata({**_SAMPLE, "public_origin": origin})
+                self.assertEqual(receipt["decision"], "HOLD")
+                self.assertNoAuthority(receipt)
+
 if __name__ == "__main__":
     unittest.main()
