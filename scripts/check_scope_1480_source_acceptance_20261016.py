@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Strict *non-authorizing* opt-in harness for #1480 original-source RED.
 
-Run only in an isolated review branch. Exit 0 attests 41 ordinary controls +
+Run only in an isolated review branch. Exit 0 attests 43 ordinary controls +
 1 original-source expected RED, never a fixed source or release.
 No network, subprocess, active adapters, real grant issuance, or target IO.
 """
@@ -27,7 +27,7 @@ ORIGINAL_SOURCE_BLOB = "156e94c18d5221b3d55e2c9fff4e393369e0f38e"
 EXPECTED_RED = ("test_scope_1480_activation_issuance_instant_20261016."
                 "ActivationIssuanceInstant1480Tests."
                 "test_expected_red_authorized_permit_cannot_be_stamped_after_expiry")
-EXPECTED_METHODS = 42
+EXPECTED_METHODS = 44
 
 # Byte-identical reviewed proof material. Git object IDs prevent accidental
 # test/helper drift; they are NOT a signature or an authorization token.
@@ -35,7 +35,7 @@ PINNED_REVIEW_BLOBS = {
     "tests/test_scope_1480_activation_issuance_instant_20261016.py": "a559811861a2b3d932ec10fbc5f058ca16e394bf",
     "tests/test_scope_1480_issuance_window_review_20261016.py": "a7aa1dce66098a6a2587c7744d955481993a2f73",
     "tests/test_scope_1480_issuance_transition_20261016.py": "5cc15798ff5a46fd65d06a4e9cd426824d1c9d67",
-    "tests/test_scope_1480_local_source_reference_20261016.py": "7bf8d3b3bdcd85c0bc7bb9448b6236a8f3236fb8",
+    "tests/test_scope_1480_local_source_reference_20261016.py": "a030a4f7179e47ee147ad1e989ce0debd4952e9a",
     "src/lightup/activation_issuance_window_review_1480.py": "3340190bbe981a30a2fef030f4090051d1f0c7a0",
 }
 
@@ -82,6 +82,8 @@ EXPECTED_TEST_IDS = frozenset({
     "test_scope_1480_local_source_reference_20261016.IssuanceReference1480Tests.test_unpatched_source_still_produces_expired_synthetic_permit",
     "test_scope_1480_local_source_reference_20261016.IssuanceReference1480Tests.test_reference_wrapper_turns_original_red_body_into_plain_pass",
     "test_scope_1480_local_source_reference_20261016.IssuanceReference1480Tests.test_reference_preserves_legitimate_in_window_exact_host",
+    "test_scope_1480_local_source_reference_20261016.IssuanceReference1480Tests.test_real_gate_source_retains_permit_after_second_check_grant_shrink",
+    "test_scope_1480_local_source_reference_20261016.IssuanceReference1480Tests.test_test_only_wrapper_denies_post_check_grant_shrink",
     "test_scope_1480_local_source_reference_20261016.IssuanceReference1480Tests.test_reference_preserves_expired_scope_and_plan_only_denials",
 })
 
