@@ -97,7 +97,7 @@ class Scope299LocalSuiteReceiptAcceptance(unittest.TestCase):
         sys.path.insert(0, str(ROOT))
         try:
             from scripts import scope_299_local_acceptance_receipt_20261016 as script
-            self.assertEqual(script.EXPECTED_TESTS, 79)
+            self.assertEqual(script.EXPECTED_TESTS, 81)
             self.assertEqual(script.EXPECTED_SOURCE_REDS, 24)
             self.assertEqual(
                 script.TEST_MODULES,
