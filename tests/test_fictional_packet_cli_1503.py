@@ -49,8 +49,13 @@ def request_pinned(original=GOOD, copies=(GOOD,), expected_sha256=None):
     ).encode("ascii")
 
 
-def process(payload, args=(), module="lightup.fictional_packet_cli_1503"):
+def process(payload, args=(), module="lightup.fictional_packet_cli_1503", env_overrides=None):
     env = {**os.environ, "PYTHONPATH": str(PACKAGE), "PYTHONDONTWRITEBYTECODE": "1"}
+    for key, value in (env_overrides or {}).items():
+        if value is None:
+            env.pop(key, None)
+        else:
+            env[key] = value
     return subprocess.run(
         [sys.executable, "-m", module, *args],
         input=payload, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -213,6 +218,7 @@ class FictionalCliTests(unittest.TestCase):
         for path in (PACKAGE / "lightup").rglob("*.py"):
             if path.name in ("fictional_packet_cli_1503.py",
                              "fictional_packet_cli_pinned_1503.py",
+                             "fictional_packet_cli_anchored_1503.py",
                              "fictional_packet_copy_1503.py"):
                 continue
             self.assertNotIn("fictional_packet_cli_1503",
@@ -959,6 +965,174 @@ class FictionalCliTests(unittest.TestCase):
                 )
                 self.assertNotIn(b".example.test", output)
 
+
+
+    def test_anchored_cli_rejects_missing_environment_digest(self):
+        module = "lightup.fictional_packet_cli_anchored_1503"
+        for data in (
+            request_pinned(), request_pinned(copies=(GOOD,) * 16), request(),
+        ):
+            with self.subTest(length=len(data)):
+                p = process(
+                    data, module=module,
+                    env_overrides={"LIGHTUP_FICTIONAL_EXPECTED_SHA256_1503": None},
+                )
+                self.assertEqual((p.returncode, p.stdout, p.stderr),
+                                 (3, cli._HOLD, b""))
+
+    def test_anchored_cli_accepts_only_matching_separate_env_reference(self):
+        module = "lightup.fictional_packet_cli_anchored_1503"
+        pin = hashlib.sha256(GOOD).hexdigest()
+        for copies in ((GOOD,), (GOOD, GOOD), (GOOD,) * 16):
+            with self.subTest(count=len(copies)):
+                result = process(
+                    request_pinned(copies=copies), module=module,
+                    env_overrides={"LIGHTUP_FICTIONAL_EXPECTED_SHA256_1503": pin},
+                )
+                self.assertEqual((result.returncode, result.stderr), (2, b""))
+                data = json.loads(result.stdout)
+                self.assertEqual((data["status"], data["sha256"]), ("REVIEW_ONLY", pin))
+                for flag in ("authorized", "consent_verified",
+                             "dispatch_allowed", "release_allowed"):
+                    self.assertIs(data[flag], False)
+
+    def test_anchored_cli_denies_joint_packet_and_embedded_pin_replacement(self):
+        module = "lightup.fictional_packet_cli_anchored_1503"
+        old_pin = hashlib.sha256(GOOD).hexdigest()
+        forged_new_pin = hashlib.sha256(BAD_COPY).hexdigest()
+        forged = request_pinned(
+            original=BAD_COPY, copies=(BAD_COPY, BAD_COPY),
+            expected_sha256=forged_new_pin,
+        )
+        # Pinned v2 with no independent channel can accept a joint forgery.
+        self.assertEqual(
+            cli._parse_request(forged, pinned_only=True).status, "REVIEW_ONLY",
+        )
+        p = process(
+            forged, module=module,
+            env_overrides={"LIGHTUP_FICTIONAL_EXPECTED_SHA256_1503": old_pin},
+        )
+        self.assertEqual((p.returncode, p.stdout, p.stderr), (3, cli._HOLD, b""))
+        self.assertNotIn(b".example.test", p.stdout)
+        # If caller ALSO controls environment, equality is not provenance.
+        p = process(
+            forged, module=module,
+            env_overrides={"LIGHTUP_FICTIONAL_EXPECTED_SHA256_1503": forged_new_pin},
+        )
+        self.assertEqual(p.returncode, 2)
+        self.assertIs(json.loads(p.stdout)["authorized"], False)
+
+    def test_anchored_cli_denies_unpinned_v1_even_with_good_env_pin(self):
+        module = "lightup.fictional_packet_cli_anchored_1503"
+        pin = hashlib.sha256(GOOD).hexdigest()
+        for copies in ((GOOD,), (GOOD,) * 16):
+            p = process(
+                request(copies=copies), module=module,
+                env_overrides={"LIGHTUP_FICTIONAL_EXPECTED_SHA256_1503": pin},
+            )
+            self.assertEqual((p.returncode, p.stdout, p.stderr), (3, cli._HOLD, b""))
+
+    def test_anchored_cli_invalid_environment_values_fail_closed(self):
+        module = "lightup.fictional_packet_cli_anchored_1503"
+        valid = request_pinned()
+        true_pin = hashlib.sha256(GOOD).hexdigest()
+        for wrong in (
+            "", "0" * 64, true_pin.upper(), true_pin[:-1], true_pin + "0",
+            "G" * 64, " " + true_pin, true_pin + "\n", "not-an-authorization",
+        ):
+            with self.subTest(wrong=wrong[:8], length=len(wrong)):
+                p = process(
+                    valid, module=module,
+                    env_overrides={"LIGHTUP_FICTIONAL_EXPECTED_SHA256_1503": wrong},
+                )
+                self.assertEqual((p.returncode, p.stdout, p.stderr),
+                                 (3, cli._HOLD, b""))
+
+    def test_anchored_cli_requires_consistent_all_three_channels(self):
+        module = "lightup.fictional_packet_cli_anchored_1503"
+        alpha = hashlib.sha256(GOOD).hexdigest()
+        beta = hashlib.sha256(BAD_COPY).hexdigest()
+        inputs = (
+            (request_pinned(), alpha, 2),
+            (request_pinned(), beta, 3),
+            (request_pinned(expected_sha256=beta), alpha, 3),
+            (request_pinned(expected_sha256=beta), beta, 3),
+            (request_pinned(original=BAD_COPY, copies=(BAD_COPY,),
+                            expected_sha256=beta), alpha, 3),
+            (request_pinned(original=BAD_COPY, copies=(BAD_COPY,),
+                            expected_sha256=beta), beta, 2),
+            (request_pinned(copies=(GOOD, BAD_COPY)), alpha, 3),
+        )
+        for data, pinned_env, code in inputs:
+            with self.subTest(pinned_env=pinned_env[:8], size=len(data), code=code):
+                p = process(
+                    data, module=module,
+                    env_overrides={
+                        "LIGHTUP_FICTIONAL_EXPECTED_SHA256_1503": pinned_env,
+                    },
+                )
+                self.assertEqual(p.returncode, code)
+                self.assertEqual(p.stderr, b"")
+                self.assertIn(
+                    b'"status":"REVIEW_ONLY"' if code == 2 else b'"status":"HOLD"',
+                    p.stdout,
+                )
+                self.assertNotIn(b".example.test", p.stdout)
+
+    def test_anchored_cli_no_flags_and_no_path_payload(self):
+        module = "lightup.fictional_packet_cli_anchored_1503"
+        pin = hashlib.sha256(GOOD).hexdigest()
+        for args in (("--help",), ("--approve",), ("--ignore-env",),
+                     ("any-file.json",)):
+            result = process(
+                request_pinned(), args=args, module=module,
+                env_overrides={"LIGHTUP_FICTIONAL_EXPECTED_SHA256_1503": pin},
+            )
+            self.assertEqual((result.returncode, result.stdout, result.stderr),
+                             (3, cli._HOLD, b""))
+
+    def test_anchored_parser_rejects_alien_independent_pins(self):
+        class Alien(str):
+            def __eq__(self, _other):
+                raise AssertionError("don't compare attacker subclasses")
+        pin = hashlib.sha256(GOOD).hexdigest()
+        valid = request_pinned()
+        for bad in (
+            "", None, 1, True, b"a" * 64, pin.upper(),
+            Alien(pin), " " + pin, pin + "0",
+        ):
+            # None is a *legacy unanchored* API option; never claim it is
+            # an independent pin. Enforced rejection happens in main_anchored.
+            if bad is None:
+                continue
+            with self.subTest(typ=type(bad).__name__):
+                v = cli._parse_request(
+                    valid, pinned_only=True, independent_sha256=bad,
+                )
+                self.assertEqual((v.status, v.sha256), ("HOLD", None))
+        good = cli._parse_request(
+            valid, pinned_only=True, independent_sha256=pin,
+        )
+        self.assertEqual(good.status, "REVIEW_ONLY")
+        self.assertIs(good.consent_verified, False)
+
+    def test_anchored_reader_preserves_no_io_and_rejects_mismatch(self):
+        pin = hashlib.sha256(GOOD).hexdigest()
+        bad = hashlib.sha256(BAD_COPY).hexdigest()
+        with patch("builtins.open", side_effect=AssertionError("file")), \
+             patch("socket.socket", side_effect=AssertionError("network")), \
+             patch("sqlite3.connect", side_effect=AssertionError("database")), \
+             patch("subprocess.Popen", side_effect=AssertionError("process")):
+            for raw, expected in (
+                (request_pinned(), "REVIEW_ONLY"),
+                (request_pinned(expected_sha256=bad), "HOLD"),
+                (request(), "HOLD"),
+            ):
+                result = cli._parse_request(
+                    raw, pinned_only=True, independent_sha256=pin,
+                )
+                self.assertEqual(result.status, expected)
+                self.assertIs(result.dispatch_allowed, False)
 
 if __name__ == "__main__":
     unittest.main()
