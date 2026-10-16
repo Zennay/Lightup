@@ -90,3 +90,12 @@ De zuivere bronfunctie `render_synthetic_scope_html(proposals, review_at=now, la
 Nieuwe strikt offline source- en echte CLI-testklasse `tests/test_synthetic_scope_notice_html_1495.py` dekt onder meer tweetalige output, mobiel-uitklapbare tabel, 32/33-recordgrenzen, invalide/verdubbelde input (atomische HOLD zonder echo), uitsluitend lokale HTML-inhoud, output zonder externe actieve elementen, nonzero exitcodes, determinisme, print-styles en geen file/DNS/socket/SQLite/process in de renderfunctie.
 
 Dezelfde eigenaar-/releasescheiding geldt: **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD**, geen merge, deploy, actieve tooling of clientsystemen zonder onafhankelijke security/privacy/eigenaarreview, werkelijk geauthenticeerde toestemming, intrekking op gebruik en menselijke GO.
+
+## Een direct bruikbaar operatoroverzicht (nog steeds geen toestemming)
+
+De offline HTML-kaart toont nu ook drie **afgeleide fictieve cijfers**: aantal verschillende assets, aantal handelingen met risicoscore 4–5 en de vroegste UTC-vervaldatum. Dit helpt een operator om risico en urgentie op een leesbaar scherm te beoordelen zonder met ruwe JSON te hoeven werken. Meerdere capabilities op één voorbeeldasset tellen als één asset maar als afzonderlijke voorgestelde handelingen. Alle tellingen worden pas getoond na dezelfde strikte atomische scopevalidatie; ongeldig bewijs laat **geen** gedetailleerde cijfers, assetnamen of regels zien.
+
+Daaronder staat een zichtbare **altijd-open checklist met vier 'PENDING'-voorwaarden**: (1) onafhankelijke cliënt- én operatoridentiteit, (2) bronhoudervalidatie van exacte scope, tijdvenster en referentie, (3) duurzame intrekking gecontroleerd bij werkelijk gebruik en (4) onafhankelijke security-/privacyreview en expliciete menselijke GO. De kaart kent geen mogelijkheid om deze vinkjes te zetten en geen werkelijke autorisatiestatus; het is een niet-uitvoerende werkvoorbereiding, geen gate voor productie.
+
+De twaalf nieuwe echte brongerichte en subprocess-testmethoden in `tests/test_synthetic_scope_notice_release_gates_1495.py` toetsen NL/EN, aggregatie bij gedeelde assets, correcte risicogroepen, vroegste UTC-verval, 32 voorbeelden, stabiele sortering, afwijzing zonder echo, onveranderlijk PENDING en afwezigheid van uitvoerelementen. Eerst exact-head CI controleren voordat deze tests als geslaagd worden geclaimd.
+
