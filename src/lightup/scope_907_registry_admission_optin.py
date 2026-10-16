@@ -32,4 +32,9 @@ def register_exact_tool_definition(
     # the registry, then dispatch through the trusted owner class method.
     if "register" in object.__getattribute__(registry, "__dict__"):
         raise OrchestrationError("registry admission binding was shadowed")
+    # A frozen ToolDefinition still allows object.__setattr__, including an
+    # instance-level override of its argument validator. Deny rather than
+    # store a callable that skips required schema checks after registration.
+    if "validate_arguments" in object.__getattribute__(definition, "__dict__"):
+        raise OrchestrationError("definition argument validator was shadowed")
     ToolRegistry.register(registry, definition, handler)
