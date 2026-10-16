@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-import math
+from copy import deepcopy
 import subprocess
 import socket
 import unittest
@@ -139,11 +139,12 @@ class AssessmentRuntimeDiffTests(unittest.TestCase):
 
     def test_inputs_are_unchanged_and_no_external_execution(self):
         original = pair()
+        snapshot = deepcopy(original)
         with patch.object(socket, "socket", side_effect=AssertionError("network attempted")), \
              patch.object(subprocess, "Popen", side_effect=AssertionError("process attempted")):
             result = compare_lab_evaluations(*original)
         self.assertEqual(result.status, "REVIEW_ONLY")
-        self.assertEqual(original, pair())
+        self.assertEqual(original, snapshot)
 
 
 if __name__ == "__main__":
