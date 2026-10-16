@@ -132,5 +132,49 @@ class TransportReviewTests(unittest.TestCase):
         self.assertFalse(proc.stderr)
 
 
+
+    def test_exact_byte_boundary_never_widens_authority(self) -> None:
+        canonical = json.dumps(_SAMPLE).encode()
+        padded = canonical + b" " * (4096 - len(canonical))
+        self.assertEqual(len(padded), 4096)
+        self.assertEqual(review_json(padded)["decision"], "REVIEW_ONLY")
+        receipt = review_json(padded + b" ")
+        self.assertEqual(receipt["decision"], "HOLD")
+        self.assertNoAuthority(receipt)
+
+    def test_escaped_unicode_controls_and_duplicate_nested_keys_hold(self) -> None:
+        payloads = (
+            b'{"trusted_proxy_ip":"127.0.0.1","public_origin":"https://lightup.\\u0065xample"}',
+            b'{"trusted_proxy_ip":"127.0.0.1","public_origin":"https://lightup.example\\u202e"}',
+            b'{"trusted_proxy_ip":"127.0.0.1","public_origin":"https://lightup.example","nested":{"x":1,"x":2}}',
+        )
+        for raw in payloads:
+            with self.subTest(raw=raw[:60]):
+                receipt = review_json(raw)
+                self.assertNoAuthority(receipt)
+                if b"nested" in raw or b"202e" in raw:
+                    self.assertEqual(receipt["decision"], "HOLD")
+
+    def test_mapping_subclass_and_nested_spoofers_cannot_gain_authority(self) -> None:
+        class UntrustedMapping(dict):
+            def __eq__(self, other):
+                return True
+        for obj in (UntrustedMapping(_SAMPLE), {**_SAMPLE, "trusted_proxy_ip": _ClassSpoof()}):
+            receipt = review_metadata(obj)
+            self.assertEqual(receipt["decision"], "HOLD")
+            self.assertNoAuthority(receipt)
+
+    def test_cli_rejects_unknown_arguments_without_reading_grant_like_data(self) -> None:
+        proc = subprocess.run(
+            [sys.executable, str(_SCRIPT), "--offline-synthetic-only", "--grant"],
+            input=json.dumps(_SAMPLE).encode(), capture_output=True, timeout=5,
+        )
+        self.assertEqual(proc.returncode, 2)
+        self.assertFalse(proc.stderr)
+        receipt = json.loads(proc.stdout)
+        self.assertEqual(receipt["decision"], "HOLD")
+        self.assertNoAuthority(receipt)
+
+
 if __name__ == "__main__":
     unittest.main()
