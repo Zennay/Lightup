@@ -56,6 +56,30 @@ class AssetShapeReview376(unittest.TestCase):
             with self.subTest(excluded=type(excluded[0]).__name__):
                 self.assertEqual(review_asset_identity_shape(_scope(excluded=excluded)).decision, "HOLD")
 
+    def test_unicode_invisible_and_surrogate_codepoints_are_hold_only(self):
+        # Format, bidi and zero-width controls can be invisible to reviewers.
+        # This tests codepoint shape, not Unicode/IDNA alias authority (#1437).
+        values = ("fixture\u200b.example.test", "fixture\u200e.example.test",
+                  "fixture\u202e.example.test", "fixture\ufeff.example.test",
+                  "fixture\ud800.example.test", "fixture\ue000.example.test",
+                  "fixture\u0378.example.test")
+        for value in values:
+            with self.subTest(repr=repr(value)):
+                self.assertEqual(review_asset_identity_shape(
+                    _scope((value,))).decision, "HOLD")
+                self.assertEqual(review_asset_identity_shape(
+                    _scope(excluded=(value,))).decision, "HOLD")
+                self.assertIsNone(_canonical_asset_snapshot(_scope((value,))))
+
+    def test_readable_nonascii_text_is_still_review_only_not_alias_authority(self):
+        # These are shape-only; Unicode hostname identity and ownership are
+        # deliberately NOT inferred by this helper.
+        scope = _scope(("caf\u00e9.example.test",))
+        receipt = review_asset_identity_shape(scope)
+        self.assertEqual(receipt.decision, "REVIEW_ONLY")
+        self.assertFalse(receipt)
+        self.assertIs(receipt.as_public_dict()["authorization_verified"], False)
+
     def test_polymorphic_elements_are_denied_before_str_methods(self):
         count = {"strip": 0}
         class DeceptiveText(str):
@@ -370,6 +394,13 @@ class ExistingDomainSourceRed376(unittest.TestCase):
             self._record(_scope(excluded=["blocked.example.test"]))
         self.assertEqual(self._row_count(), before)
 
+    @unittest.expectedFailure
+    def test_original_source_rejects_zero_width_format_asset_before_sqlite(self):
+        before = self._row_count()
+        with self.assertRaises(ValueError):
+            self._record(_scope(("fixture\u200b.example.test",)))
+        self.assertEqual(self._row_count(), before)
+
     def test_canonical_legacy_grant_roundtrip_still_works(self):
         grant = self._record(_scope())
         self.assertEqual(grant.scope.assets, ("fixture.example.test",))
@@ -570,7 +601,7 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
 
 
 class ExactRedOracle376(unittest.TestCase):
-    def test_nine_real_source_red_cases_are_not_hidden_as_green(self):
+    def test_ten_real_source_red_cases_are_not_hidden_as_green(self):
         names = ("test_original_source_rejects_blank_allowlisted_identity_before_sqlite",
                  "test_original_source_rejects_blank_exclusion_before_sqlite",
                  "test_original_source_rejects_nontext_exclusion_before_sqlite",
@@ -579,14 +610,15 @@ class ExactRedOracle376(unittest.TestCase):
                  "test_original_source_rejects_missing_exclusions_before_sqlite",
                  "test_original_source_rejects_internal_whitespace_before_sqlite",
                  "test_original_source_rejects_list_allowed_assets_before_sqlite",
-                 "test_original_source_rejects_list_excluded_assets_before_sqlite")
+                 "test_original_source_rejects_list_excluded_assets_before_sqlite",
+                 "test_original_source_rejects_zero_width_format_asset_before_sqlite")
         result = unittest.TestResult()
         suite = unittest.TestSuite(ExistingDomainSourceRed376(name) for name in names)
         suite.run(result)
-        self.assertEqual(result.testsRun, 9)
+        self.assertEqual(result.testsRun, 10)
         self.assertFalse(result.errors)
         self.assertFalse(result.failures)
-        self.assertEqual(len(result.expectedFailures), 9)
+        self.assertEqual(len(result.expectedFailures), 10)
         self.assertFalse(result.unexpectedSuccesses)
 
 
