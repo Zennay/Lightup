@@ -43,6 +43,32 @@ class Scope1480RunnerTests(unittest.TestCase):
         self.assertEqual(verdict["tests_run"], 0)
         self.assertFalse(verdict["release_authorized"])
 
+    def test_review_test_and_pure_source_blobs_are_pinned(self):
+        reviewer = _runner()
+        self.assertTrue(reviewer._original_source_is_pinned())
+        self.assertTrue(reviewer._review_material_is_pinned())
+        self.assertEqual(len(reviewer.PINNED_REVIEW_BLOBS), 5)
+
+    def test_substituted_test_blob_holds_before_running_any_test(self):
+        reviewer = _runner()
+        swapped = dict(reviewer.PINNED_REVIEW_BLOBS)
+        victim = sorted(swapped)[0]
+        swapped[victim] = "0" * 40
+        out = io.StringIO()
+        with patch.object(reviewer, "PINNED_REVIEW_BLOBS", swapped), patch.object(
+            reviewer.unittest.TextTestRunner, "run",
+            side_effect=AssertionError("tampered evidence must not execute"),
+        ):
+            with contextlib.redirect_stdout(out):
+                code = reviewer.main()
+        verdict = json.loads(out.getvalue())
+        self.assertEqual(code, 1)
+        self.assertEqual(verdict["reason"], "review_material_blob_mismatch")
+        self.assertEqual(verdict["tests_run"], 0)
+        self.assertEqual(verdict["status"], "HOLD")
+        self.assertFalse(verdict["may_issue_grants"])
+        self.assertFalse(verdict["release_authorized"])
+
     def test_loaded_method_ids_match_exact_source_inventory(self):
         reviewer = _runner()
         suite = unittest.TestSuite()
