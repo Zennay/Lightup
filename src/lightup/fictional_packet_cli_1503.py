@@ -220,6 +220,13 @@ def _run_cli(
     try:
         if len(sys.argv) != 1:
             rendered = _HOLD
+        elif independent_sha256 is not None and (
+            type(independent_sha256) is not str
+            or re.fullmatch(r"[0-9a-f]{64}", independent_sha256, re.ASCII) is None
+        ):
+            # Refuse missing/malformed external anchor without consuming any
+            # potentially blocking untrusted stdin stream.
+            rendered = _HOLD
         else:
             payload = _read_bounded_stdin(sys.stdin.buffer)
             rendered = _render(
