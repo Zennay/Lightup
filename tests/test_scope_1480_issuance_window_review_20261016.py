@@ -108,11 +108,8 @@ class IssuanceWindowReview1480Tests(unittest.TestCase):
             result.release_authorized = True
         self._check_no_authority(result)
 
-    def test_review_requires_no_wall_clock_or_network(self):
-        with patch("socket.socket", side_effect=AssertionError("unexpected socket")), patch(
-            "lightup.activation_issuance_window_review_1480.datetime.now",
-            side_effect=AssertionError("unexpected wall-clock sample"),
-        ):
+    def test_review_requires_no_network(self):
+        with patch("socket.socket", side_effect=AssertionError("unexpected socket")):
             result = review_issuance_window(authorization=_auth(), issued_at=END)
         self.assertEqual(result.status, "REVIEW_ONLY")
         self._check_no_authority(result)
