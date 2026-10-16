@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Strict *non-authorizing* opt-in harness for #1480 original-source RED.
 
-Run only in an isolated review branch. Exit 0 attests 32 ordinary controls +
+Run only in an isolated review branch. Exit 0 attests 35 ordinary controls +
 1 original-source expected RED, never a fixed source or release.
 No network, subprocess, active adapters, real grant issuance, or target IO.
 """
@@ -27,7 +27,7 @@ ORIGINAL_SOURCE_BLOB = "156e94c18d5221b3d55e2c9fff4e393369e0f38e"
 EXPECTED_RED = ("test_scope_1480_activation_issuance_instant_20261016."
                 "ActivationIssuanceInstant1480Tests."
                 "test_expected_red_authorized_permit_cannot_be_stamped_after_expiry")
-EXPECTED_METHODS = 33
+EXPECTED_METHODS = 36
 
 EXPECTED_TEST_IDS = frozenset({
     "test_scope_1480_activation_issuance_instant_20261016.ActivationIssuanceInstant1480Tests.test_fixture_has_distinct_utc_instants",
@@ -47,6 +47,7 @@ EXPECTED_TEST_IDS = frozenset({
     "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_polymorphic_time_never_inherits_authority",
     "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_authorization_subclass_refused",
     "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_result_is_slotless_and_even_object_setattr_cannot_forge_release",
+    "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_closed_interval_boundary_matrix_never_widens",
     "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_review_requires_no_network",
     "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_increasing_inside_window_is_structural_review_only",
     "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_same_instant_is_structural_review_only",
@@ -58,6 +59,8 @@ EXPECTED_TEST_IDS = frozenset({
     "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_polymorphic_issuance_clock_holds",
     "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_missing_authorization_is_hold_not_crash",
     "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_live_input_widening_between_two_reviews_cannot_change_original_snapshot",
+    "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_seeded_clock_matrix_preserves_coherent_interval",
+    "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_non_utc_clock_offsets_never_create_review_authority",
     "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_no_caller_values_mutated",
     "test_scope_1480_local_source_reference_20261016.IssuanceReference1480Tests.test_unpatched_source_still_produces_expired_synthetic_permit",
     "test_scope_1480_local_source_reference_20261016.IssuanceReference1480Tests.test_reference_wrapper_turns_original_red_body_into_plain_pass",
