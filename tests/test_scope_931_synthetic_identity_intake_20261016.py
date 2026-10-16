@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import random
+import socket
 import subprocess
 import sys
+import tempfile
 import unittest
 
 
@@ -216,6 +219,98 @@ class SyntheticIdentityIntakeCliTest(unittest.TestCase):
                     proc.stdin.close()
                     proc.stdout.close()
                     proc.stderr.close()
+
+    def test_regular_file_stdin_is_rejected_before_read(self):
+        with tempfile.TemporaryFile(mode="w+b") as source:
+            source.write(
+                b'{"prospect_id":"private-file","organization_name":"Fiction"}'
+            )
+            source.flush()
+            source.seek(0)
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPT), "--offline-synthetic-only"],
+                stdin=source, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                timeout=6, check=False,
+            )
+            self.assertEqual((proc.returncode, proc.stdout, proc.stderr),
+                             (2, b"", b""))
+            self.assertEqual(source.tell(), 0)
+
+    def test_socket_stdin_is_rejected_without_read(self):
+        with socket.socketpair() as (source, peer):
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPT), "--offline-synthetic-only"],
+                stdin=source, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                timeout=6, check=False,
+            )
+            self.assertEqual((proc.returncode, proc.stdout, proc.stderr),
+                             (2, b"", b""))
+
+    def test_regular_file_stdout_is_never_written(self):
+        raw = b'{"prospect_id":"fiction","organization_name":"Fiction"}'
+        with tempfile.TemporaryFile(mode="w+b") as dest:
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPT), "--offline-synthetic-only"],
+                input=raw, stdout=dest, stderr=subprocess.PIPE,
+                timeout=6, check=False,
+            )
+            self.assertEqual((proc.returncode, proc.stderr), (2, b""))
+            dest.seek(0)
+            self.assertEqual(dest.read(), b"")
+
+    def test_socket_stdout_is_rejected_without_receipt(self):
+        raw = b'{"prospect_id":"fiction","organization_name":"Fiction"}'
+        with socket.socketpair() as (dest, peer):
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPT), "--offline-synthetic-only"],
+                input=raw, stdout=dest, stderr=subprocess.PIPE,
+                timeout=6, check=False,
+            )
+            self.assertEqual((proc.returncode, proc.stderr), (2, b""))
+            dest.close()
+            peer.settimeout(2)
+            self.assertEqual(peer.recv(1024), b"")
+
+    @unittest.skipUnless(hasattr(os, "pipe"), "requires local pipes")
+    def test_same_pipe_input_output_alias_never_echoes_to_stdin(self):
+        read_fd, write_fd = os.pipe()
+        try:
+            proc = subprocess.Popen(
+                [sys.executable, str(SCRIPT), "--offline-synthetic-only"],
+                stdin=read_fd, stdout=write_fd, stderr=subprocess.PIPE,
+            )
+            try:
+                self.assertEqual(proc.wait(timeout=6), 2)
+                self.assertEqual(proc.stderr.read(), b"")
+            finally:
+                if proc.poll() is None:
+                    proc.kill()
+                    proc.wait(timeout=3)
+                proc.stderr.close()
+        finally:
+            os.close(read_fd)
+            os.close(write_fd)
+
+    @unittest.skipUnless(hasattr(os, "set_blocking"), "requires nonblocking pipes")
+    def test_full_stdout_pipe_does_not_block_or_emit_partial_receipt(self):
+        read_fd, write_fd = os.pipe()
+        try:
+            os.set_blocking(write_fd, False)
+            while True:
+                try:
+                    os.write(write_fd, b"x" * 4096)
+                except BlockingIOError:
+                    break
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPT), "--offline-synthetic-only"],
+                input=b'{"prospect_id":"x","organization_name":"y"}',
+                stdout=write_fd, stderr=subprocess.PIPE, timeout=6,
+                check=False,
+            )
+            self.assertEqual((proc.returncode, proc.stderr), (2, b""))
+        finally:
+            os.close(read_fd)
+            os.close(write_fd)
 
     def test_classifying_payload_cannot_promote_to_release_receipt(self):
         raw = b'{"prospect_id":"fake","organization_name":"Fiction"}'
