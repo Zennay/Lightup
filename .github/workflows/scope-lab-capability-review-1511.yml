@@ -4,9 +4,13 @@ on:
   pull_request:
     paths:
       - 'src/lightup/fictional_lab_capability_review_1511.py'
+      - 'src/lightup/fictional_lab_capability_batch_1511.py'
       - 'scripts/fictional_lab_capability_cli_1511.py'
+      - 'scripts/fictional_lab_capability_batch_cli_1511.py'
       - 'tests/test_fictional_lab_capability_review_1511.py'
       - 'tests/test_fictional_lab_capability_cli_1511.py'
+      - 'tests/test_fictional_lab_capability_batch_1511.py'
+      - 'tests/test_fictional_lab_capability_batch_cli_1511.py'
       - 'tests/test_fictional_lab_capability_sealing_1511.py'
       - 'tests/test_fictional_lab_capability_transition_1511.py'
       - 'tests/test_fictional_lab_capability_streaming_1511.py'
