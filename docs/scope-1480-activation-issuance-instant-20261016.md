@@ -38,3 +38,19 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_1480_activati
 An overall process exit of 0 while one test is an **expected failure** demonstrates only the test harness and an **unrepaired source gap**; it is never authorization, approval, or production repair evidence. Check original complete logs for exact head, both Python 3.11 and 3.14 and permanent VPS runner proof independently. Unrelated #301 wallclock fixture can currently fail full hosted suite; its owner #1452 owns that repair. Never silence that failure or claim the full suite passes based on this focused acceptance.
 
 **Release blockers:** original source-owner review and true source fix, all REDs promoted after repair, original client/operator consent, durable live revocation, independent privacy/security review, exact-head full hosted and registered permanent-VPS proof with real hostname/runner, and explicit human GO. **Do not merge, deploy, activate grants/handlers, run scans or access real targets** on this branch.
+
+
+## W2 — strict opt-in source provenance and non-authorizing result (2026-10-16)
+
+Three additional **self-owned, new** proof paths/runner tests protect this acceptance from accidental false green:
+
+- `scripts/check_scope_1480_source_acceptance_20261016.py` first verifies the installed `src/lightup/activation.py` bytes against original Git **blob SHA `156e94c18d5221b3d55e2c9fff4e393369e0f38e`** without trusting branch metadata or spawning Git. A missing, replaced, symlinked, oversized or unreadable original source -> `HOLD` before any tests. This check is not a signature and cannot attest VPS/consent.
+- It then executes **only** the eight original-source acceptance methods and requires exactly seven ordinary successes plus **one explicit original-source expected RED with assertion text** `PermissionError not raised`. Any ordinary failure, error, skipped test, unexpected source repair, or different RED traceback -> `HOLD` and nonzero. JSON `REVIEW_ONLY` is narrow harness validity, **never** production source repair or release authority. All eleven permission/release/scan/CI/consent boolean fields remain false.
+- `tests/test_scope_1480_runner_integrity_20261016.py` verifies exact original installed source fingerprint, rejects a deliberately altered fingerprint with zero test execution, and exercises the real strict harness, checking that no flag can grant production authority.
+
+Opt-in targeted reproduction from exact branch:
+```bash
+python scripts/check_scope_1480_source_acceptance_20261016.py
+```
+
+**Do not use the strict harness to bypass the full hosted suite failure under #301 or replace permanent VPS evidence.** Any eventual real owner source fix intentionally invalidates the old pinned blob and must be separately reviewed, then all expected RED markers formally promoted to ordinary PASS before independent full CI and human approval.
