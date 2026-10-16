@@ -76,7 +76,7 @@ printf '%s' '{"prospect_id":"fictional-id","organization_name":"Fiction Corp"}' 
   python scripts/scope_931_synthetic_identity_intake_20261016.py --offline-synthetic-only
 ```
 
-The diagnostic consumes at most 4,097 bytes (4,096 byte accepted ceiling),
+The diagnostic consumes at most 4,097 bytes (4,096 byte accepted ceiling),\nand now requires a complete EOF within a monotonic two-second deadline\nfor local Linux stdin pipes; an unclosed full/partial stream yields HOLD,
 strict JSON and exactly two keys, rejecting duplicate keys, non-UTF-8,
 nonfinite JSON constants, malformed types, blank text, decoded control,
 zero-width/bidi format characters, and overlong identity fields (128/256
@@ -95,9 +95,20 @@ argument is emitted. There is no success/GO result. The ordinary current
 
 Companion real subprocess tests exercise correct and corrupted JSON, duplicate
 decoded keys, raw invalid UTF-8, types, whitespace, Unicode control/bidi,
-bounded payloads, flag rejection, fixed confidentiality-preserving receipt,
+bounded payloads, a real fragmented input stream and an intentionally\nnever-closed pipe, flag rejection, fixed confidentiality-preserving receipt,
 canonical/noncanonical objects and deterministic key-order metamorphic cases.
 These are **additional green tests**, not source remediation; do not
 promote an offline review-only status into product release evidence.
 
 **W3 exact-HEAD CI is required separately from the W2 520+86 logs.**
+
+## W4 input completion contract
+
+The opt-in diagnostic now uses a **monotonic 2-second EOF deadline** with
+`select.select` and `os.read` rather than waiting forever for stdin to close.
+A complete document on a pipe with no EOF also returns only HOLD; fragmented
+valid JSON gets REVIEW_ONLY only **after** the last byte and actual EOF.
+Two independent real subprocess regressions cover both cases. This is
+Linux/Unix-local offline tooling; it does not guarantee a hostile OS can't
+suspend the process, is not a network isolation sandbox, and is never permission
+or a release signal. Exact latest SHA CI must be checked separately.
