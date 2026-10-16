@@ -68,8 +68,8 @@ class Scope299OfflineReviewerTests(unittest.TestCase):
         packets = (
             b'{"owner":"","reference":"synthetic"}',
             b'{"owner":"fictional","reference":""}',
-            b'{"owner":" \t ","reference":"synthetic"}',
-            b'{"owner":"fictional","reference":"\n"}',
+            json.dumps({"owner": " \t ", "reference": "synthetic"}).encode("utf-8"),
+            json.dumps({"owner": "fictional", "reference": "\n"}).encode("utf-8"),
         )
         for packet in packets:
             with self.subTest(packet=packet):
