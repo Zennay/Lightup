@@ -136,9 +136,23 @@ def _review_blobs_match(expected_blobs: dict[str, str]) -> bool:
     return True
 
 
+def _expected_case_manifest_sha256() -> str:
+    """Stable self-reported method-manifest digest (not signed CI evidence)."""
+    records = "\\n".join(sorted(EXPECTED_TEST_IDS)).encode("utf-8")
+    return hashlib.sha256(records).hexdigest()
+
+
 def _verdict(status: str, reason: str, tests: int = 0, expected_source_reds: int = 0) -> dict:
     return {
         "issue": 1480,
+        "evidence_manifest_version": 1,
+        "evidence_self_reported": True,
+        "independent_ci_attestation": False,
+        "original_activation_git_blob": ORIGINAL_SOURCE_BLOB,
+        "original_dependency_git_blobs": dict(sorted(ORIGINAL_DEPENDENCY_BLOBS.items())),
+        "reviewed_local_git_blobs": dict(sorted(PINNED_REVIEW_BLOBS.items())),
+        "expected_case_manifest_sha256": _expected_case_manifest_sha256(),
+        "expected_case_count": EXPECTED_METHODS,
         "status": status,
         "reason": reason,
         "tests_run": tests,
