@@ -104,7 +104,8 @@ class Scope920RunnerProvenanceTest(unittest.TestCase):
         self.assertEqual(data["tests_run"], 19)
         self.assertIs(data["release_authorized"], False)
 
-    def test_bad_unit_outcomes_never_yield_review_only(self):
+    @patch.object(acceptance, "loaded_security_is_from_checkout", return_value=True)
+    def test_bad_unit_outcomes_never_yield_review_only(self, _origin_proof):
         # Exercise the actual CLI decision function, but replace ONLY the
         # local synthetic TestLoader/runner result; no executor is invoked.
         cases = (
@@ -142,6 +143,40 @@ class Scope920RunnerProvenanceTest(unittest.TestCase):
                 self.assertEqual(receipt["status"], "HOLD")
                 self.assertIs(receipt["merge_authorized"], False)
                 self.assertIs(receipt["release_authorized"], False)
+
+    def test_imported_installed_security_module_matches_actual_checkout(self):
+        # This is a path identity control, NOT a signature or host attestation.
+        import importlib
+        importlib.import_module("lightup.webapp.security")
+        self.assertTrue(acceptance.loaded_security_is_from_checkout())
+
+    def test_different_loaded_security_module_is_not_authority(self):
+        import importlib
+        from types import SimpleNamespace
+        importlib.import_module("lightup.webapp.security")
+        wrong = SimpleNamespace(__file__=str(Path(__file__).resolve()))
+        with patch.dict("sys.modules", {"lightup.webapp.security": wrong}):
+            self.assertFalse(acceptance.loaded_security_is_from_checkout())
+        with patch.dict("sys.modules", {"lightup.webapp.security": None}):
+            self.assertFalse(acceptance.loaded_security_is_from_checkout())
+
+    def test_correct_count_with_wrong_import_origin_stops_before_runner(self):
+        # Count and Git file blob can both match while sys.modules was
+        # imported from a different checkout. Enforce the loaded path too.
+        output = io.StringIO()
+        with patch.object(acceptance, "source_is_pinned", return_value=True):
+            with patch.object(acceptance, "acceptance_tests_are_pinned", return_value=True):
+                with patch.object(acceptance, "loaded_security_is_from_checkout", return_value=False):
+                    with patch.object(acceptance.unittest, "TestLoader") as loader:
+                        loader.return_value.discover.return_value.countTestCases.return_value = 20
+                        with patch.object(acceptance.unittest, "TextTestRunner") as runner:
+                            with patch("sys.stdout", output):
+                                self.assertEqual(acceptance.main(), 2)
+                            runner.assert_not_called()
+        data = json.loads(output.getvalue())
+        self.assertEqual(data["status"], "HOLD")
+        self.assertIs(data["registered_vps_verified"], False)
+        self.assertIs(data["release_authorized"], False)
 
     def test_real_offline_runner_executes_all_twenty_but_never_releases(self):
         # Drive the *real* opt-in runner in process on the pinned current-main
