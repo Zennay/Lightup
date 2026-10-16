@@ -170,14 +170,14 @@ class StaticAuthoritySourceInventoryTests(unittest.TestCase):
 
     def test_call_order_cannot_be_reversed_in_scope_source(self):
         original = self.baseline["src/lightup/scope.py"].decode()
-        # A new up-front synthetic call changes the expected lexical
-        # occurrence order. This does not invoke/resolve the call.
+        # Inserting the real ip_address call ahead of normalize_host must
+        # change the lexical first occurrence. Source is only AST-parsed.
         modified = original.replace(
             "        host = self.normalize_host(target.value)",
-            "        self.ip_address_fake()\n        host = self.normalize_host(target.value)",
+            "        ip_address('127.0.0.1')\n        host = self.normalize_host(target.value)",
         )
-        self.assertTrue(inventory.inspect_static_shape("src/lightup/scope.py", modified))
-        # Its non-canonical source checksum still enforces HOLD.
+        self.assertNotEqual(modified, original)
+        self.assertFalse(inventory.inspect_static_shape("src/lightup/scope.py", modified))
         self.assertEqual(
             inventory.review_source_bytes({
                 **self.baseline, "src/lightup/scope.py": modified.encode(),
