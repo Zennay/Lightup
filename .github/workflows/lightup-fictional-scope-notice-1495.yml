@@ -1,0 +1,53 @@
+name: LightUp fictional scope notice isolated tests
+
+# Isolated safety proof for PR #1496 only. This does NOT replace normal
+# LightUp CI, runner validation, consent verification or release approval.
+on:
+  pull_request:
+    paths:
+      - 'src/lightup/synthetic_scope_notice*_1495.py'
+      - 'tests/test_synthetic_scope_notice*_1495.py'
+      - 'examples/fictional_scope*1495.json'
+      - 'schemas/fictional_scope_notice_1495.schema.json'
+      - 'docs/synthetic_scope_notice_1495.md'
+      - '.github/workflows/lightup-fictional-scope-notice-1495.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scope-notice-1495-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fictional-offline-notice:
+    name: Offline synthetic-only Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.14']
+    env:
+      PYTHONPATH: src
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+    steps:
+      - name: Checkout exact repository revision (read-only)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Python for offline fictional notice tests
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run only source-owned non-authorizing notice checks
+        run: |
+          python -m unittest discover -s tests -p 'test_synthetic_scope_notice*_1495.py' -v
+      - name: Explicit reminder that success is NOT a LightUp release approval
+        if: always()
+        run: |
+          echo 'This check covers fictional scope notice tests ONLY.'
+          echo 'It never proves live consent, runtime authorization, VPS health or release readiness.'
