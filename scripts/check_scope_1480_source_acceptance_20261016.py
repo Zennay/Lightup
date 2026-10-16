@@ -29,6 +29,17 @@ EXPECTED_RED = ("test_scope_1480_activation_issuance_instant_20261016."
                 "test_expected_red_authorized_permit_cannot_be_stamped_after_expiry")
 EXPECTED_METHODS = 36
 
+# Byte-identical reviewed proof material. Git object IDs prevent accidental
+# test/helper drift; they are NOT a signature or an authorization token.
+PINNED_REVIEW_BLOBS = {
+    "tests/test_scope_1480_activation_issuance_instant_20261016.py": "a559811861a2b3d932ec10fbc5f058ca16e394bf",
+    "tests/test_scope_1480_issuance_window_review_20261016.py": "6a81acf8c0161c527a4bc9b8016131a5b1ca8d0e",
+    "tests/test_scope_1480_issuance_transition_20261016.py": "8af5c9e3c2c200aad4131f152edbfb64e1b5ca8f",
+    "tests/test_scope_1480_local_source_reference_20261016.py": "7bf8d3b3bdcd85c0bc7bb9448b6236a8f3236fb8",
+    "src/lightup/activation_issuance_window_review_1480.py": "0421d5d440c813e7b75baf3cc242b73b56a838cc",
+}
+
+
 EXPECTED_TEST_IDS = frozenset({
     "test_scope_1480_activation_issuance_instant_20261016.ActivationIssuanceInstant1480Tests.test_fixture_has_distinct_utc_instants",
     "test_scope_1480_activation_issuance_instant_20261016.ActivationIssuanceInstant1480Tests.test_authorized_exact_public_asset_inside_entire_window",
@@ -80,6 +91,24 @@ def _original_source_is_pinned() -> bool:
         return hashlib.sha1(framed).hexdigest() == ORIGINAL_SOURCE_BLOB
     except (OSError, ValueError):
         return False
+
+
+def _review_material_is_pinned() -> bool:
+    """No execution if any expected test/helper source blob has drifted."""
+    for relative_name, expected_sha in PINNED_REVIEW_BLOBS.items():
+        path = ROOT / relative_name
+        try:
+            if path.is_symlink() or not path.is_file():
+                return False
+            if path.stat().st_size > 100_000:
+                return False
+            source = path.read_bytes()
+            framed = b"blob " + str(len(source)).encode("ascii") + b"\\0" + source
+            if hashlib.sha1(framed).hexdigest() != expected_sha:
+                return False
+        except (OSError, ValueError):
+            return False
+    return True
 
 
 def _verdict(status: str, reason: str, tests: int = 0, expected_source_reds: int = 0) -> dict:
@@ -134,6 +163,10 @@ def main() -> int:
     if not _original_source_is_pinned():
         print(json.dumps(_verdict("HOLD", "original_activation_source_blob_mismatch"), sort_keys=True))
         return 1
+    if not _review_material_is_pinned():
+        print(json.dumps(_verdict("HOLD", "review_material_blob_mismatch"), sort_keys=True))
+        return 1
+
     for filename in OWN_TEST_FILES:
         test_path = ROOT / "tests" / filename
         if test_path.is_symlink() or not test_path.is_file():
