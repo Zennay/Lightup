@@ -14,7 +14,8 @@ from unittest.mock import patch
 from lightup.domain import AccessContext, DomainStore, Role
 from lightup.engagements import RiskLevel, ScopeDefinition
 from lightup.scope_376_asset_identity_review import (
-    AssetIdentityShapeReceipt, review_asset_identity_shape,
+    AssetIdentityShapeReceipt, _canonical_asset_snapshot,
+    review_asset_identity_shape,
 )
 
 
@@ -225,6 +226,34 @@ class AssetShapeReview376(unittest.TestCase):
                     _scope(excluded=(bad,))
                 ).decision, "HOLD")
 
+    def test_private_snapshot_is_immutable_across_original_scope_mutation(self):
+        scope = _scope(("fixture.example.test",),
+                       ("excluded.example.test",))
+        values = _canonical_asset_snapshot(scope)
+        self.assertEqual(values, (("fixture.example.test",),
+                                  ("excluded.example.test",)))
+        self.assertIs(type(values[0]), tuple)
+        self.assertIs(type(values[1]), tuple)
+        # Malicious in-process actor bypasses dataclass frozen assignment.
+        object.__setattr__(scope, "assets", (" ",))
+        object.__setattr__(scope, "excluded_assets", (123,))
+        self.assertEqual(values, (("fixture.example.test",),
+                                  ("excluded.example.test",)))
+        self.assertEqual(review_asset_identity_shape(scope).decision, "HOLD")
+        self.assertIsNone(_canonical_asset_snapshot(scope))
+
+    def test_snapshot_never_uses_client_overrides_or_leaks_to_status_receipt(self):
+        class HostileScope(ScopeDefinition):
+            def __getattribute__(self, name):
+                raise AssertionError("hostile scope attribute access")
+        hostile = HostileScope(("fixture.example.test",), RiskLevel.PASSIVE)
+        self.assertIsNone(_canonical_asset_snapshot(hostile))
+        self.assertEqual(review_asset_identity_shape(hostile).decision, "HOLD")
+        marker = "sensitive-offline-only"
+        scope = _scope((marker,))
+        self.assertEqual(_canonical_asset_snapshot(scope)[0], (marker,))
+        self.assertNotIn(marker, repr(review_asset_identity_shape(scope).as_public_dict()))
+
     def test_review_never_opens_file_socket_database_or_process(self):
         scope = _scope()
         with patch("builtins.open", side_effect=AssertionError("file")), \
@@ -295,6 +324,22 @@ class ExistingDomainSourceRed376(unittest.TestCase):
         before = self._row_count()
         with self.assertRaises(ValueError):
             self._record(_scope(("fixture\x00.example.test",)))
+        self.assertEqual(self._row_count(), before)
+
+    @unittest.expectedFailure
+    def test_original_source_rejects_missing_exclusions_before_sqlite(self):
+        scope = _scope(excluded=("excluded.example.test",))
+        object.__delattr__(scope, "excluded_assets")
+        before = self._row_count()
+        with self.assertRaises(ValueError):
+            self._record(scope)
+        self.assertEqual(self._row_count(), before)
+
+    @unittest.expectedFailure
+    def test_original_source_rejects_internal_whitespace_before_sqlite(self):
+        before = self._row_count()
+        with self.assertRaises(ValueError):
+            self._record(_scope(("fixture.example.test with space",)))
         self.assertEqual(self._row_count(), before)
 
     def test_canonical_legacy_grant_roundtrip_still_works(self):
@@ -430,6 +475,25 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
         self.assertIs(DomainStore.record_authorization_grant, original)
         self.assertEqual(self._persisted_snapshot(), ())
 
+    def test_snapshot_value_contract_can_preserve_exclusions_after_input_mutation(self):
+        # Owner handoff only: a fresh fictional scope made from the snapshot
+        # is stable even when the original dataclass is modified afterward.
+        original = _scope(("fixture.example.test",), ("blocked.example.test",))
+        values = _canonical_asset_snapshot(original)
+        self.assertIsNotNone(values)
+        object.__setattr__(original, "assets", (" ",))
+        object.__setattr__(original, "excluded_assets", (123,))
+        frozen_fixture = _scope(assets=values[0], excluded=values[1])
+        before = self._persisted_snapshot()
+        self.assertEqual(before, ())
+        with patch.object(DomainStore, "record_authorization_grant",
+                          self._owner_candidate(DomainStore.record_authorization_grant)):
+            recorded = self._record(frozen_fixture)
+        self.assertEqual(recorded.scope.assets, ("fixture.example.test",))
+        self.assertEqual(recorded.scope.excluded_assets, ("blocked.example.test",))
+        self.assertEqual(len(self._persisted_snapshot()), 1)
+        self.assertEqual(review_asset_identity_shape(original).decision, "HOLD")
+
     def test_ordinary_grant_passes_only_through_temporary_review_wrapper(self):
         original = DomainStore.record_authorization_grant
         scope = _scope(("fixture.example.test",), ("blocked.example.test",))
@@ -478,19 +542,21 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
 
 
 class ExactRedOracle376(unittest.TestCase):
-    def test_five_real_source_red_cases_are_not_hidden_as_green(self):
+    def test_seven_real_source_red_cases_are_not_hidden_as_green(self):
         names = ("test_original_source_rejects_blank_allowlisted_identity_before_sqlite",
                  "test_original_source_rejects_blank_exclusion_before_sqlite",
                  "test_original_source_rejects_nontext_exclusion_before_sqlite",
                  "test_original_source_rejects_nontext_allowed_asset_before_sqlite",
-                 "test_original_source_rejects_control_char_allowed_asset_before_sqlite")
+                 "test_original_source_rejects_control_char_allowed_asset_before_sqlite",
+                 "test_original_source_rejects_missing_exclusions_before_sqlite",
+                 "test_original_source_rejects_internal_whitespace_before_sqlite")
         result = unittest.TestResult()
         suite = unittest.TestSuite(ExistingDomainSourceRed376(name) for name in names)
         suite.run(result)
-        self.assertEqual(result.testsRun, 5)
+        self.assertEqual(result.testsRun, 7)
         self.assertFalse(result.errors)
         self.assertFalse(result.failures)
-        self.assertEqual(len(result.expectedFailures), 5)
+        self.assertEqual(len(result.expectedFailures), 7)
         self.assertFalse(result.unexpectedSuccesses)
 
 
