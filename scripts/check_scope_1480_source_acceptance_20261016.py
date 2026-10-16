@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Strict *non-authorizing* opt-in harness for #1480 original-source RED.
 
-Run only in an isolated review branch. Exit 0 attests 35 ordinary controls +
+Run only in an isolated review branch. Exit 0 attests 41 ordinary controls +
 1 original-source expected RED, never a fixed source or release.
 No network, subprocess, active adapters, real grant issuance, or target IO.
 """
@@ -27,16 +27,16 @@ ORIGINAL_SOURCE_BLOB = "156e94c18d5221b3d55e2c9fff4e393369e0f38e"
 EXPECTED_RED = ("test_scope_1480_activation_issuance_instant_20261016."
                 "ActivationIssuanceInstant1480Tests."
                 "test_expected_red_authorized_permit_cannot_be_stamped_after_expiry")
-EXPECTED_METHODS = 36
+EXPECTED_METHODS = 42
 
 # Byte-identical reviewed proof material. Git object IDs prevent accidental
 # test/helper drift; they are NOT a signature or an authorization token.
 PINNED_REVIEW_BLOBS = {
     "tests/test_scope_1480_activation_issuance_instant_20261016.py": "a559811861a2b3d932ec10fbc5f058ca16e394bf",
-    "tests/test_scope_1480_issuance_window_review_20261016.py": "6a81acf8c0161c527a4bc9b8016131a5b1ca8d0e",
-    "tests/test_scope_1480_issuance_transition_20261016.py": "8af5c9e3c2c200aad4131f152edbfb64e1b5ca8f",
+    "tests/test_scope_1480_issuance_window_review_20261016.py": "a7aa1dce66098a6a2587c7744d955481993a2f73",
+    "tests/test_scope_1480_issuance_transition_20261016.py": "5cc15798ff5a46fd65d06a4e9cd426824d1c9d67",
     "tests/test_scope_1480_local_source_reference_20261016.py": "7bf8d3b3bdcd85c0bc7bb9448b6236a8f3236fb8",
-    "src/lightup/activation_issuance_window_review_1480.py": "0421d5d440c813e7b75baf3cc242b73b56a838cc",
+    "src/lightup/activation_issuance_window_review_1480.py": "3340190bbe981a30a2fef030f4090051d1f0c7a0",
 }
 
 
@@ -59,6 +59,9 @@ EXPECTED_TEST_IDS = frozenset({
     "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_authorization_subclass_refused",
     "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_result_is_slotless_and_even_object_setattr_cannot_forge_release",
     "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_closed_interval_boundary_matrix_never_widens",
+    "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_incomplete_forged_dataclass_is_hold_not_attribute_error",
+    "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_erased_bound_on_frozen_authorization_holds",
+    "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_review_uses_one_field_snapshot_not_live_bound_getattr",
     "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_review_requires_no_network",
     "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_increasing_inside_window_is_structural_review_only",
     "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_same_instant_is_structural_review_only",
@@ -70,6 +73,9 @@ EXPECTED_TEST_IDS = frozenset({
     "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_polymorphic_issuance_clock_holds",
     "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_missing_authorization_is_hold_not_crash",
     "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_live_input_widening_between_two_reviews_cannot_change_original_snapshot",
+    "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_incomplete_exact_authorization_holds_without_crashing",
+    "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_object_new_without_constructor_holds",
+    "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_live_time_bound_getters_are_not_read_between_reviews",
     "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_seeded_clock_matrix_preserves_coherent_interval",
     "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_non_utc_clock_offsets_never_create_review_authority",
     "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_no_caller_values_mutated",
