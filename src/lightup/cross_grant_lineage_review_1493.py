@@ -166,6 +166,12 @@ def review_cross_grant_lineage(
         return _hold("asset not explicitly permitted")
     if capability_id not in scope.allowed_capabilities:
         return _hold("capability not explicitly permitted")
+    # This fictional-only preview must never appear to bless a grant whose
+    # *maximum* risk includes destructive activity, even when this individual
+    # selected request happens to be low impact. Real destructive-lab scope
+    # needs a separate authenticated human approval boundary.
+    if scope.max_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
+        return _hold("destructive grant scope outside fictional review")
     if requested_risk > scope.max_risk or requested_risk is RiskLevel.DESTRUCTIVE_LAB_ONLY:
         return _hold("risk not explicitly permitted")
     # Even agreement can be forged with two perfectly coherent caller-owned
