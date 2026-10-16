@@ -1,0 +1,1 @@
+{"schema":"lightup-fictional-copy-v1","asset":"beta.example.test","message":"REVIEW_REQUIRED","capabilities":["metadata_read","report_preview"],"authorized":false,"consent_verified":false,"dispatch_allowed":false,"release_allowed":false}
