@@ -18,7 +18,7 @@ Never merge/deploy or infer an execution grant, customer consent, trusted operat
 ```bash
 PYTHONPATH=src python -m unittest discover -s tests -p 'test_cross_grant_lineage_review_1493.py' -v
 ```
-The 106 tests include fixed 2020 UTC input fixtures and real original policy source smoke showing historical approvals remain rejected at present without any external targets/handlers. All names use imaginary `.example.test` documentation values, and review uses no DB, socket, file, subprocess, HTTP or DNS operations.
+The 109 tests include fixed 2020 UTC input fixtures and real original policy source smoke showing historical approvals remain rejected at present without any external targets/handlers. All names use imaginary `.example.test` documentation values, and review uses no DB, socket, file, subprocess, HTTP or DNS operations.
 
 ## W2 atomic batch review
 \`review_cross_grant_batch\` checks 1–32 exact fictional candidate records in one all-or-nothing operation: same caller-supplied client and engagement, no repeated grant/asset/capability tuple, exact canonical hashable identity, common explicit UTC evaluation instant, and individually REVIEW_ONLY source shapes. A single invalid or mixed-tenant record returns batch HOLD with zero reported reviewed records. No intermediate authorizing results or private values are returned. These 20 additional tests (including hostile field-equality protection) preserve the source boundaries and compare pure synthetic input only.
@@ -39,6 +39,9 @@ Explicit sample output for internally coherent *fabricated* records:
 {"authorized":false,"consent_verified":false,"dispatch_allowed":false,"reason":"UNTRUSTED_COHERENCE","release_allowed":false,"reviewed":1,"status":"REVIEW_ONLY"}
 ```
 **Exit 2, never 0.** This is not evidence of customer authorization, tenant identity, a current runtime clock, revocation, a permitted scan or release. An invalid or mixed synthetic batch emits privacy-minimal HOLD with zero reviewed count; responses never echo actor, host, tenant, grant or capability. The exact-depth, duplicate-key, invalid UTF-8, false consent field, unbounded input, subprocess and no-I/O tests run in the isolated matrix. CLI subprocess testing is the only subprocess work; the reviewer itself has no process calls.
+
+## W6 — Direct installed-source regression witnesses (all in memory)
+Three additional tests call the **unmodified installed original** `ScopePolicy.decide()` and `ExecutionPolicy.decide()` on fixed fictional `.example.test` host/capability data, with current in-process ±10/15-minute authorization intervals, no adapters. They demonstrate that two independent original allow decisions can coexist with **distinct actor/reference** or a separately claimed incorrect client, while this unwired review returns HOLD; coherent original source decisions still only produce REVIEW_ONLY and four literal false authority flags. This is an assertion-level governance/lineage gap, NOT evidence of a reachable vulnerable production consumer.
 
 ## Still RED / human-controlled release gates
 - Genuine linkage to the authenticated operator, canonical client and engagement, approved asset/capability, signed decision and durable trusted row, *not* equality of two caller-supplied strings.
