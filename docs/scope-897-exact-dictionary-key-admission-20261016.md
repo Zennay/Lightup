@@ -20,3 +20,9 @@ The branch changes only the own opt-in test helper and its unit test file and ad
 **Tests are newly authored, not yet executed on the actual GitHub child HEAD or trusted self-hosted runner.** GitHub diff/commit checks alone are not test PASS. Original #146 owner must still fix canonical approval SQL identity, persisted requester provenance and stale PENDING audit before mutation. Self-hosted runner #1144 remains a separate queue/registration investigation; do not create duplicate canonical jobs. Release needs owner review, exact-HEAD hosted + registered VPS, independent security/privacy, verified customer/operator consent and explicit human GO.
 
 This helper neither writes live SQLite nor issues grants, makes decisions, opens sockets, dispatches target-capable handlers, scans, deploys or changes release state.
+
+## Additional CLI opt-in boundary on the same child
+
+The isolated `main(argv)` compared any programmatic caller object with the opt-in flag list before exact argv typing, which could invoke attacker-defined equality and read stdin on a forged match. It now requires an exact built-in list with exactly one exact built-in string matching the literal flag before reading stdin. Two additional tests pass a `__class__`-spoofed argv and a string-subclass option with forged comparison and a stdin object that explodes on access; the required result is HOLD/exit2, zero comparison calls and six false authority flags.
+
+**These new test methods have NOT been executed on the new HEAD**. Original #146 production source remains unchanged and its risk-approval REDs are unresolved. All work remains branch-only, no CI dispatch while the shared runner queue is held.
