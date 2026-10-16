@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from lightup.models import Target
 from lightup.scope import ScopePolicy
-from lightup.scope_literal_control_review_20261016 import review_literals
+from lightup.scope_literal_control_review_20261016 import LiteralReview, review_literals
 
 CLI = ROOT / "scripts" / "review_scope_literal_controls_20261016.py"
 
@@ -60,6 +60,21 @@ class LiteralReviewTests(unittest.TestCase):
         with self.assertRaises((AttributeError, TypeError)):
             value.authorized = True
         self.assertFalse(review_literals(("localhost",)).authorized)
+
+    def test_constructor_cannot_claim_authority(self):
+        for flag in ("authorized", "consent_verified", "dispatch_allowed", "release_allowed"):
+            with self.subTest(flag=flag):
+                with self.assertRaises(TypeError):
+                    LiteralReview("REVIEW_ONLY", **{flag: True})
+
+    def test_object_bypass_cannot_poison_later_reviews(self):
+        first = review_literals(("localhost",))
+        object.__setattr__(first, "authorized", True)
+        self.assertTrue(first.authorized)  # Frozen is not a cryptographic boundary.
+        second = review_literals(("localhost",))
+        self.assertIsNot(first, second)
+        self.assertFalse(second.authorized)
+        self.assertFalse(review_literals(("local\nhost",)).authorized)
 
     def test_never_echo_candidate_in_result(self):
         result = review_literals(("fictional-private-secret-not-an-asset",))
