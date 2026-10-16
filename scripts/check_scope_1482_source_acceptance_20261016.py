@@ -46,7 +46,7 @@ ALL_IDS = ORDINARY_IDS | EXPECTED_SOURCE_REDS
 
 
 def git_blob_hash(payload: bytes) -> str:
-    return hashlib.sha1(b"blob " + str(len(payload)).encode("ascii") + b"\\0" + payload).hexdigest()
+    return hashlib.sha1(b"blob " + str(len(payload)).encode("ascii") + b"\0" + payload).hexdigest()
 
 
 def source_tree_ok(root: Path = ROOT, pins: dict[str, str] = PINNED_BLOBS) -> bool:
