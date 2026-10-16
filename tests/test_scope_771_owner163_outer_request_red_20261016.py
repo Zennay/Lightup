@@ -6,10 +6,12 @@ authorization defects; they are not evidence of a fixed or safe production gate.
 import os
 import sys
 import unittest
+from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from lightup.engagements import RiskLevel
+from lightup.engagements import AuthorizationGrant, ScopeDefinition, RiskLevel
 from lightup.execution_policy import (
     ExecutionPolicy, ExecutionRequest, InteractionKind, PolicyDecision,
 )
@@ -52,6 +54,25 @@ class AttributeSpyRequest:
 class CanonicalExecutionRequestOwner163Contract(unittest.TestCase):
     def setUp(self):
         self.policy = ExecutionPolicy()
+        now = datetime.now(timezone.utc)
+        self.grant = AuthorizationGrant(
+            grant_id="fictional-grant", client_id="fictional-client",
+            engagement_id="fictional-engagement", approved_by="offline@example.test",
+            reference="fictional-reviewed-authority",
+            scope=ScopeDefinition(assets=("fictional.example.test",),
+                                  max_risk=RiskLevel.STANDARD,
+                                  allowed_capabilities=("offline-only",)),
+            valid_from=now - timedelta(minutes=1),
+            valid_until=now + timedelta(minutes=30),
+        )
+
+    def target_kwargs(self, grant=None):
+        return dict(interaction=InteractionKind.TARGET_ACTIVE,
+                    asset="fictional.example.test", capability_id="offline-only",
+                    requested_risk=RiskLevel.LOW_IMPACT,
+                    authorization=self.grant if grant is None else grant,
+                    client_id="fictional-client",
+                    engagement_id="fictional-engagement")
 
     def assert_denied(self, candidate):
         # A returned denial is required; raising is not a compliant fail-closed
@@ -89,6 +110,36 @@ class CanonicalExecutionRequestOwner163Contract(unittest.TestCase):
                                "offline-only", RiskLevel.LOW_IMPACT)
         self.assert_denied(req)
 
+    def test_exact_target_active_valid_fictional_grant_preserved(self):
+        req = ExecutionRequest(**self.target_kwargs())
+        self.assertTrue(self.policy.decide(req).allowed)
+
+    def test_exact_target_active_revoked_grant_denied(self):
+        revoked = replace(self.grant, revoked_at=datetime.now(timezone.utc),
+                          revoked_by="fictional-operator")
+        req = ExecutionRequest(**self.target_kwargs(revoked))
+        self.assert_denied(req)
+
+    def test_exact_target_active_wrong_client_denied(self):
+        req = ExecutionRequest(**{**self.target_kwargs(),
+                                  "client_id": "other-fictional-client"})
+        self.assert_denied(req)
+
+    @unittest.expectedFailure
+    def test_red_duck_target_active_with_grant_must_be_denied(self):
+        duck = DuckRequest(InteractionKind.TARGET_ACTIVE, RiskLevel.LOW_IMPACT)
+        for key, value in self.target_kwargs().items():
+            setattr(duck, key, value)
+        self.assert_denied(duck)
+
+    @unittest.expectedFailure
+    def test_red_subclass_target_active_with_grant_must_be_denied(self):
+        self.assert_denied(SubclassRequest(**self.target_kwargs()))
+
+    @unittest.expectedFailure
+    def test_red_object_without_members_returns_denial_not_exception(self):
+        self.assert_denied(object())
+
     @unittest.expectedFailure
     def test_red_duck_analysis_must_be_denied(self):
         self.assert_denied(DuckRequest())
@@ -116,18 +167,18 @@ class CanonicalExecutionRequestOwner163Contract(unittest.TestCase):
     def test_red_count_oracle_requires_all_real_source_failures(self):
         names = sorted(n for n in dir(type(self)) if n.startswith("test_red_")
                        and n != "test_red_count_oracle_requires_all_real_source_failures")
-        self.assertEqual(len(names), 5)
+        self.assertEqual(len(names), 8)
         runner = unittest.TestSuite(type(self)(name) for name in names)
         result = unittest.TestResult()
         runner.run(result)
-        self.assertEqual(result.testsRun, 5)
+        self.assertEqual(result.testsRun, 8)
         self.assertEqual(result.failures, [])
         self.assertEqual(result.errors, [])
         self.assertEqual(result.skipped, [])
         self.assertEqual(result.unexpectedSuccesses, [],
                          "source changed: promote fixed cases to ordinary assertions")
-        self.assertEqual(len(result.expectedFailures), 5,
-                         "each of five owner-source defects must be genuinely reproduced")
+        self.assertEqual(len(result.expectedFailures), 8,
+                         "each of eight owner-source defects must be genuinely reproduced")
 
 
 if __name__ == "__main__":
