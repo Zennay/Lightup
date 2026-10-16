@@ -164,6 +164,52 @@ can still block while waiting for data (no deadline/watchdog is provided),
 so the CLI is intended for **finite offline input** and must never be a
 network-facing handler or authorization service.
 
+## Opt-in second-channel digest check (synthetic, offline only)
+
+The pinned-only v2 envelope protects against silently accepting old unpinned
+v1 input, but the `expected_sha256` inside that very envelope can itself
+be changed alongside all fake packet copies. A new **separate opt-in**
+command additionally requires a pre-selected SHA-256 from a **different
+input channel**, the local environment variable
+`LIGHTUP_FICTIONAL_EXPECTED_SHA256_1503`. This is useful for human-review
+checklists where a reviewer independently holds an immutable reference, and
+rejects accidental self-pinning when the envelope has changed.
+
+```sh
+# This is *not* a signed release, customer grant or production permission.
+# Obtain the expected digest through a separately reviewed source.
+# Example: use the known fictional fixture's SHA-256, not the incoming
+# untrusted envelope's own expected_sha256 key.
+LIGHTUP_FICTIONAL_EXPECTED_SHA256_1503="$(sha256sum docs/examples/fictional-copy-1503.json | cut -d' ' -f1)" \
+  PYTHONPATH=src python -m lightup.fictional_packet_cli_anchored_1503 \
+    < docs/examples/fictional-copy-cli-pinned-1503.json
+# REVIEW_ONLY / exit 2, four authority flags false.
+
+LIGHTUP_FICTIONAL_EXPECTED_SHA256_1503="$(sha256sum docs/examples/fictional-copy-1503.json | cut -d' ' -f1)" \
+  PYTHONPATH=src python -m lightup.fictional_packet_cli_anchored_1503 \
+    < docs/examples/fictional-copy-cli-pinned-held-1503.json
+# generic HOLD / exit 3
+```
+
+The command requires three facts to match: strictly canonical **fictional**
+packet bytes, the pinned hash **inside** the canonical v2 envelope and the
+independently supplied **environment** SHA-256. It also denies legacy v1
+schema, a missing/malformed/uppercase/mismatching environment digest,
+unrecognized arguments, oversized input and delayed extra bytes after a
+valid JSON prefix. A withheld independent reference means **HOLD**, never
+fallback to envelope-only validation. This new CLI uses exactly the same
+bounded stdin reader and non-authorizing stdout/exit policy as the other
+two commands; there are no filesystem/network/database/scanner handlers.
+
+**Security boundary:** The environment is *not authenticated*, securely
+stored or protected against a malicious user who controls the process.
+Someone who can rewrite **both the envelope and the environment value**
+can still forge matching copies. This is an accidental-mismatch control,
+**NOT** a cryptographic signature, real-client asset permission, operator
+consent, at-use revocation, human GO or release evidence. Do not inject
+real customer data/credentials, wire this to an execution path or claim
+that the environment proves external provenance. Keep DRAFT/HOLD.
+
 ## Tests and ownership
 
 Run both opt-in isolated suites with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_fictional_packet*_1503.py' -v`; this pattern executes the copy checker and CLI test modules (including pinned-only real-subprocess cases, byte edits, fanout, and no-I/O tripwires). Dedicated **hosted** Python 3.11/3.14 workflow `.github/workflows/lightup-fictional-packet-1503.yml` runs both new offline test files when the new file set changes. This does not substitute for original full hosted preflight or the genuinely registered permanent VPS runner (#1144). All files exclusively added under #1503; do not cherry-pick as production authorization.
