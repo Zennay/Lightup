@@ -24,18 +24,18 @@ This issue concerns **stored window values**, not a polymorphic evaluation
   Current canonical windows and exact inclusive endpoints preserve behavior.
 - Revoked grants still deny; no caller-owned grant/boundary mutation or
   coercion, no target-capable execution.
-- Convert four `expectedFailure` stored-subclass tests to ordinary passing
-  negatives after source-owner repair. The six positive controls must
+- Convert seven `expectedFailure` stored-subclass tests to ordinary passing
+  negatives after source-owner repair. The eight positive controls must
   remain ordinary PASS.
 
 ## Offline acceptance
 
 ```sh
 PYTHONPATH=src python -m unittest discover -s tests \
-  -p 'test_scope_grant_validity_subclass_738.py' -v
+  -p 'test_scope_grant*_738.py' -v
 ```
 
-The synthetic untrusted subclasses deliberately override separate comparison
+The additional `tests/test_scope_grant_precomparison_738.py` enforces rejection **before invoking any foreign `__le__`/`__ge__`** method, including a throwing override. The synthetic untrusted subclasses deliberately override separate comparison
 directions. There is no network, durable SQLite, grant issuance, secrets,
 consent material, scanner, handler, or target action. The isolated hosted
 3.11/3.14 workflow is diagnostic only; `expectedFailure` means **still
