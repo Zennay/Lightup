@@ -112,3 +112,16 @@ PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_scope_lab_binding_
 ```
 
 Na vorige exact gehost geverifieerde **95 tests** zijn er nu **126 eigen methoden op nieuwe SHA** (123 gewone, drie originele bewust open source-REDs), *nog niet bewezen op de nieuwe HEAD*. Geen original source/andere-worker aanpassingen, merge of deployment. **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.**
+
+## W9 — een werkelijk uitvoerbare strikte **137-methoden-eigendomssuite** zonder globale CI-GO
+
+Nieuw *opt-in*, niet op production of workflows aangesloten script `scripts/check_scope_1482_all_owned_acceptance_20261016.py` bewaakt **15 vastgepinde originele Git blobs**: originele `activation.py`/`scope.py`/`models.py`, vier eigen pure bronmodules en acht oorspronkelijke eigen acceptatietestbestanden. Alle verwachte **126 exacte unittest-identiteiten** worden gecontroleerd vóór testuitvoering; volledig onverwachte test, duplicaat, ontbrekende module of source-byte drift → `HOLD`. Na uitvoering mogen uitsluitend **123 gewone PASS en de drie exact bekende en bewust niet gerepareerde originele bron-`expectedFailure`** overblijven: geen errors, ordinary failures, skipped, unexpected successes of andersoortige expectedFailure-tracebacks. Zelfs bij volledig correcte uitkomst meldt de standalone CLI uitsluitend **`REVIEW_ONLY`**, geen echte consent, grant of release.
+
+Nieuwe `tests/test_scope_all_owned_acceptance_1482_20261016.py`: **11 aparte gewone integriteits-/subprocess-tests**, waaronder hashconsistentie (Git lege blob), exacte bronpaden, geen testdiscovery bij ontbrekende of veranderde bron, exacte 126 identifiers, niet-autoriserende echte geneste suite-uitvoering, en echte CLI-uitvoering met beknopte output. **Deze elf controles zitten bewust NIET binnen de eigen 126-methoden pinned acceptance**, maar wel binnen GitHub's volledige `unittest discover`, om geen recursieve eigen-CLI-test te creëren. Nieuw totaal op W9: **137 eigen methoden (134 gewone + drie oorspronkelijke source-RED)**; pas na nieuwste exact-head CI kan dit als bewezen worden gerapporteerd.
+
+```bash
+PYTHONPATH=src python3 scripts/check_scope_1482_all_owned_acceptance_20261016.py
+PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_scope_all_owned_acceptance_1482_20261016.py' -v
+```
+
+**Beperkingen:** lokaal gepinde Git object bytes zijn *geen* handtekening, codeprovenance of review van geïnstalleerde ingress en runner; script zelf en GitHub-run moeten onafhankelijk vertrouwd en gecontroleerd worden. De standalone CLI is geen CI-releasebewijs, geen bewijs van gerepareerde originele Gate, en houdt source-fixes expliciet tegen totdat oorspronkelijke eigenaren de pin/RED verwachtingen bewust aanpassen na echte reparatie. De bekende aparte `#301` datumfixture en permanente VPS-CI worden **niet** gemaskeerd of als groen opgegeven. Geen productie-/runner-/workflow-/andere-worker edits, merge, deploy, grants of echte scans. **DRAFT/HOLD.**
