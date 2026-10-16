@@ -202,6 +202,10 @@ class ScopeHistoryReview:
             or self.held_steps != tuple(sorted(set(self.held_steps)))
         ):
             raise ValueError("held transitions must be unique sorted bounded indices")
+        # Reject untrusted object types before comparing/iterating dimensions.
+        # An alien __eq__/__bool__ must never participate in constructor checks.
+        if type(self.expanded_dimensions) is not tuple or type(self.narrowed_dimensions) is not tuple:
+            raise ValueError("invalid dimension type")
         if (
             type(self.held_step_dimensions) is not tuple
             or len(self.held_step_dimensions) != len(self.held_steps)
@@ -218,8 +222,6 @@ class ScopeHistoryReview:
             union = set(item for group in self.held_step_dimensions for item in group)
             if self.expanded_dimensions != tuple(name for name in _DIMENSIONS if name in union):
                 raise ValueError("hold dimension summary must equal per-step union")
-        if type(self.expanded_dimensions) is not tuple or type(self.narrowed_dimensions) is not tuple:
-            raise ValueError("invalid dimension type")
         for group in (self.expanded_dimensions, self.narrowed_dimensions):
             if any(type(x) is not str for x in group):
                 raise ValueError("invalid dimension type")
