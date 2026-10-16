@@ -104,6 +104,8 @@ def main() -> int:
         and outcome.testsRun == EXPECTED_METHODS
         and len(outcome.expectedFailures) == EXPECTED_SOURCE_REDS
         and not outcome.skipped
+        and not outcome.failures
+        and not outcome.errors
         and not outcome.unexpectedSuccesses
     )
     print(receipt(
