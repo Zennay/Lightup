@@ -22,6 +22,8 @@ Every note must match this exact punctuation/spacing and one lower-case single-l
 
 The tool is deliberately absent from any live intake, scanner, grant, release or runtime paths. Issue [#1497](https://github.com/Zennay/Lightup/issues/1497) and draft PR own this independent test-only/offline utility; existing worker branches/PRs and production source stay unchanged. Full original hosted suite and verified registered permanent VPS checks, source-owner/privacy review, authentic client/operator consent, durable revocation-at-use and explicit human GO remain required before any wider change. No merge, deploy, live customers or real scans.
 
+The CLI result now uses an **exact versioned standalone format**: `contract=FICTIONAL-SCOPE-HANDOFF-1497-V1`, `status`, `notice`, `reviewed_notes`, and the four constant false authority fields. Consumers must not confuse this with any other LightUp permit/grant/consent or synthetic review format. It is deliberately not a signed artifact or independently verifiable attestation.
+
 ## Active negative acceptance
 
 `examples/fictional_review_handoff_hold_1497.json` deliberately contains a fictional approval claim and must produce only generic HOLD with exit `3`, `reviewed_notes=0`, four false authority flags, and **no original input echo**. The dedicated hosted workflow executes both positive (exit `2`) and negative (exit `3`) cases under Python 3.11 and 3.14, alongside full isolated ordinary unittest coverage. CI outcome on one commit does not guarantee main, canonical VPS, live consent or production safety.
