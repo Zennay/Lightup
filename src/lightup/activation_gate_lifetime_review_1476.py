@@ -58,6 +58,14 @@ def _bounded_text(value: object) -> bool:
 def _scope_fields(scope: object) -> tuple[object, ...] | None:
     if type(scope) is not ScopePolicy:
         return None
+    # Frozen dataclasses expose class defaults after an instance attribute
+    # is deleted. Reject missing (or injected) instance fields explicitly
+    # before reading their values; getattr alone would silently mask drift.
+    if set(vars(scope)) != {
+        "allow_private_lab", "explicit_hosts", "explicit_networks",
+        "require_authorization_for_public",
+    }:
+        return None
     if type(scope.allow_private_lab) is not bool:
         return None
     if type(scope.require_authorization_for_public) is not bool:
@@ -85,6 +93,8 @@ def _scope_fields(scope: object) -> tuple[object, ...] | None:
 def _activation_fields(policy: object) -> tuple[object, ...] | None:
     if type(policy) is not ActivationPolicy:
         return None
+    if set(vars(policy)) != {"mode", "activation_reference"}:
+        return None
     if type(policy.mode) is not ActivationMode:
         return None
     ref = policy.activation_reference
@@ -106,6 +116,8 @@ def pin_gate_for_offline_review(gate: object) -> PinnedGateReview | None:
     grant. Mutable/swappable configuration is not repaired by this helper.
     """
     if type(gate) is not ActivationGate:
+        return None
+    if set(vars(gate)) != {"scope_policy", "activation_policy"}:
         return None
     try:
         scope = object.__getattribute__(gate, "scope_policy")
@@ -136,6 +148,8 @@ def review_gate_lifetime(
     """
     if type(gate) is not ActivationGate or type(pin) is not PinnedGateReview:
         return _hold("invalid_input")
+    if set(vars(gate)) != {"scope_policy", "activation_policy"}:
+        return _hold("changed")
     if gate is not pin.gate:
         return _hold("changed")
     try:
