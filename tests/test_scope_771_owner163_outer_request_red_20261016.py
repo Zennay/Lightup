@@ -26,6 +26,13 @@ class DuckRequest:
         self.is_lab = False
 
 
+class ForgedClassDuckRequest(DuckRequest):
+    """A duck whose __class__ lies to isinstance despite its real type."""
+    @property
+    def __class__(self):
+        return ExecutionRequest
+
+
 class SubclassRequest(ExecutionRequest):
     """Frozen dataclass subclass is not the trusted exact envelope."""
     pass
@@ -189,6 +196,37 @@ class CanonicalExecutionRequestOwner163Contract(unittest.TestCase):
             with self.assertRaisesRegex(AssertionError, "source changed"):
                 self.test_expected_red_replay_oracle()
 
+    def test_isinstance_can_be_fooled_by_duck_class_impersonation(self):
+        candidate = ForgedClassDuckRequest()
+        self.assertIsNot(type(candidate), ExecutionRequest)
+        self.assertIsInstance(candidate, ExecutionRequest)
+        self.assertEqual(type(candidate).__name__, "ForgedClassDuckRequest")
+
+    @unittest.expectedFailure
+    def test_red_forged_class_duck_analysis_must_be_denied(self):
+        candidate = ForgedClassDuckRequest()
+        self.assertIsNot(type(candidate), ExecutionRequest)
+        self.assert_untrusted_envelope_denied(
+            candidate, "SOURCE_RED_FORGED_CLASS_ANALYSIS_ADMITTED")
+
+    @unittest.expectedFailure
+    def test_red_forged_class_duck_passive_must_be_denied(self):
+        candidate = ForgedClassDuckRequest(
+            InteractionKind.PASSIVE_PUBLIC, RiskLevel.PASSIVE)
+        self.assertIsNot(type(candidate), ExecutionRequest)
+        self.assert_untrusted_envelope_denied(
+            candidate, "SOURCE_RED_FORGED_CLASS_PASSIVE_ADMITTED")
+
+    @unittest.expectedFailure
+    def test_red_forged_class_duck_target_with_grant_must_be_denied(self):
+        candidate = ForgedClassDuckRequest(
+            InteractionKind.TARGET_ACTIVE, RiskLevel.LOW_IMPACT)
+        for field, value in self.target_kwargs().items():
+            setattr(candidate, field, value)
+        self.assertIsNot(type(candidate), ExecutionRequest)
+        self.assert_untrusted_envelope_denied(
+            candidate, "SOURCE_RED_FORGED_CLASS_VALID_GRANT_TARGET_ADMITTED")
+
     @unittest.expectedFailure
     def test_red_duck_target_active_with_grant_must_be_denied(self):
         duck = DuckRequest(InteractionKind.TARGET_ACTIVE, RiskLevel.LOW_IMPACT)
@@ -248,19 +286,25 @@ class CanonicalExecutionRequestOwner163Contract(unittest.TestCase):
 
     def test_expected_red_replay_oracle(self):
         names = sorted(n for n in dir(type(self)) if n.startswith("test_red_"))
-        self.assertEqual(len(names), 8)
+        self.assertEqual(len(names), 11)
         runner = unittest.TestSuite(type(self)(name) for name in names)
         result = unittest.TestResult()
         runner.run(result)
-        self.assertEqual(result.testsRun, 8)
+        self.assertEqual(result.testsRun, 11)
         self.assertEqual(result.failures, [])
         self.assertEqual(result.errors, [])
         self.assertEqual(result.skipped, [])
         self.assertEqual(result.unexpectedSuccesses, [],
                          "source changed: promote fixed cases to ordinary assertions")
-        self.assertEqual(len(result.expectedFailures), 8,
-                         "each of eight owner-source defects must be genuinely reproduced")
+        self.assertEqual(len(result.expectedFailures), 11,
+                         "all eleven original owner-source admission witnesses must be reproduced")
         markers = {
+            "test_red_forged_class_duck_analysis_must_be_denied":
+                "SOURCE_RED_FORGED_CLASS_ANALYSIS_ADMITTED",
+            "test_red_forged_class_duck_passive_must_be_denied":
+                "SOURCE_RED_FORGED_CLASS_PASSIVE_ADMITTED",
+            "test_red_forged_class_duck_target_with_grant_must_be_denied":
+                "SOURCE_RED_FORGED_CLASS_VALID_GRANT_TARGET_ADMITTED",
             "test_red_duck_target_active_with_grant_must_be_denied":
                 "SOURCE_RED_DUCK_VALID_GRANT_TARGET_ADMITTED",
             "test_red_subclass_target_active_with_grant_must_be_denied":
