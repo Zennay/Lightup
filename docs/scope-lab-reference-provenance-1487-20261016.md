@@ -60,3 +60,16 @@ The new additive `tests/test_lab_reference_history_1487_20261016.py` has **14 te
 Run `PYTHONPATH=src python -m unittest tests.test_lab_reference_history_1487_20261016 tests.test_lab_reference_review_1487_20261016 tests.test_scope_lab_reference_provenance_1487_20261016 -v`. W3 totals **40 own tests** (14 history + 14 batch + 12 source), with **4 deliberately still OPEN production source expected-REDs** in the 12 source methods. These totals are code counts, not proof that W3 completed CI on its latest immutable SHA. Use the exact new hosted/vps run logs and do not promote W2 evidence.
 
 Source owner must additionally assess authoritative session lineage (operator/client consent, asset/capability scopes, durability, revocation, exact issuer, time/window), and whether references are globally unique/replay-proof. Untrusted `prior_references` are never sufficient to prove consent. **DRAFT/HOLD; do not wire it into a permit gate, merge, deploy or scan.**
+
+## W4 — real legacy gate versus non-authorizing receipt boundary
+
+The *installed current source* in `lightup.activation.ActivationGate` is now exercised with actual `LabReferenceReview` objects, but only for fictional in-memory loopback permits in `tests/test_lab_reference_non_authority_1487_20261016.py`. These **10 extra owned tests** distinguish six important concepts:
+
+- `REVIEW_ONLY` and `HOLD` are explicitly NOT authorization and all receipt authority fields are false.
+- Ordinary current-source witness: the original `ActivationGate` accepts an arbitrary non-string receipt passed as LAB_ONLY `activation_reference` and embeds it unchanged in an inert permit. This is a source input-contract problem, not evidence a downstream adapter ever dispatched.
+- **Two NEW deliberately OPEN `expectedFailure` source requirements:** an actual LAB_ONLY gate constructor should fail closed when given `REVIEW_ONLY` or `HOLD` objects as provenance. These are separate explicit interface canaries in addition to W1's four lower-level reference-shape REDs.
+- PLAN_ONLY still refuses an inert loopback request and LAB_ONLY never treats a public fictional hostname as private-lab scope merely because a caller supplies `REVIEW_ONLY`.
+- Two independent LAB_ONLY gates can stamp the same fallback generic `LAB` (and even identical caller-asserted references) on different random permit IDs. Unique `permit_id` is not unique operator/session provenance.
+- In-test sockets, DNS, shell and process entry points are patched to error; no actual network, grant persistence, tools or scans. This does not alter activation, scope or other owner files.
+
+**W4 owned total is 50 methods, 44 ordinary expected PASS + 6 intentionally OPEN production expectedFailure.** This is a logical expected count, not a claim until original exact W4 SHA hosted Python 3.11/3.14 job logs are inspected. The inherited `#301` unrelated date-expired full-suite error and unassigned permanent VPS runner remain separate; do not claim CI green or activation source repaired. Do not wire a `LabReferenceReview` into the gate! Original source-owner only, review first.
