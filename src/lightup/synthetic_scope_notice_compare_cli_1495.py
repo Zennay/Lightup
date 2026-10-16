@@ -15,16 +15,24 @@ _EXACT_ARGS = ("--synthetic-pair-to-html",)
 
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
-    if type(args) is not list or tuple(args) != _EXACT_ARGS:
-        # Never echo untrusted CLI parameters.
+    valid_flags = {
+        _EXACT_ARGS: "en",
+        ("--synthetic-pair-to-html", "--lang", "en"): "en",
+        ("--synthetic-pair-to-html", "--lang", "nl"): "nl",
+    }
+    language = valid_flags.get(tuple(args)) if type(args) is list and all(
+        type(arg) is str for arg in args
+    ) else None
+    if language is None:
+        # Never echo untrusted CLI parameters or parse stdin for bad flags.
         result = compare_fictional_scope_envelopes(b"")
         sys.stdout.buffer.write(result.html.encode("utf-8"))
         return 3
     try:
         raw = sys.stdin.buffer.read(_MAX_PAIR_BYTES + 1)
-        result = compare_fictional_scope_envelopes(raw)
+        result = compare_fictional_scope_envelopes(raw, language=language)
     except (OSError, ValueError, TypeError, UnicodeError, OverflowError, RecursionError):
-        result = compare_fictional_scope_envelopes(b"")
+        result = compare_fictional_scope_envelopes(b"", language=language)
     sys.stdout.buffer.write(result.html.encode("utf-8"))
     return 2 if result.status == "REVIEW_ONLY" else 3
 
