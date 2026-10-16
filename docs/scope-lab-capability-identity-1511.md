@@ -62,3 +62,30 @@ green cannot substitute for these gates.
   dispatch until separate genuine client AND operator consent, at-use
   revocation, full source owner/security/privacy review, original full hosted
   suite and registered permanent VPS GREEN, and explicit human GO.
+
+
+## W2 — optional fictional CLI (not a production interface)
+
+New `scripts/fictional_lab_capability_cli_1511.py` reads up to 4096 bytes
+from stdin and accepts only canonical ASCII JSON shaped exactly as
+`{"schema":"fictional_lab_capability_v1","requested":"web-baseline","allowlist":["web-baseline"]}`.
+It rejects duplicate keys, aliases, Unicode escapes, other encoding choices,
+unknown fields, trailing data, poisoned types, ambiguous or duplicate
+fictional IDs, and missing/overlong input. It never prints input and
+never exits with code 0: **2 = REVIEW_ONLY**, **3 = HOLD**, both non-authorizing.
+No target/network interaction or runtime wiring is introduced.
+
+```bash
+printf '%s' '{"schema":"fictional_lab_capability_v1","requested":"web-baseline","allowlist":["web-baseline"]}' \
+  | PYTHONDONTWRITEBYTECODE=1 python scripts/fictional_lab_capability_cli_1511.py
+# REVIEW_ONLY and exit 2. Never use this as permission to do anything.
+PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests \
+  -p 'test_fictional_lab_capability*_1511.py' -v
+```
+
+New separate tests cover genuine CLI subprocess return codes, no input echo,
+corrupt/duplicate-key/binary/oversize/Unicode and canonical fixture admission,
+as well as every single-byte NUL corruption of the positive fixture. The
+isolated pinned workflow now runs **both** #1511 test files. Exact W2 head
+and hosted logs must be checked anew: a prior SHA's green CI cannot be
+substituted for the new SHA.
