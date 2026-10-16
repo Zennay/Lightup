@@ -41,7 +41,7 @@ class AssetShapeReview376(unittest.TestCase):
 
     def test_empty_blank_spaced_control_and_nontext_allowed_assets_hold(self):
         bad = [(), ("",), (" ",), (" fixture.example.test",),
-               ("fixture.example.test ",), ("\n",), (True,), (42,),
+               ("fixture.example.test ",), ("fixture.example.test other",), ("fixture.example.test\tother",), ("fixture.example.test\u00a0other",), ("fixture.example.test\u2028other",), ("\n",), (True,), (42,),
                (None,), (object(),), ("fixture\x00.example.test",)]
         for assets in bad:
             with self.subTest(assets=type(assets[0]).__name__ if assets else "empty"):
@@ -49,7 +49,7 @@ class AssetShapeReview376(unittest.TestCase):
 
     def test_blank_spaced_control_and_nontext_exclusions_hold(self):
         bad = [("",), (" ",), (" blocked.example.test",),
-               ("blocked.example.test ",), ("\x7f",), (False,),
+               ("blocked.example.test ",), ("blocked.example.test other",), ("blocked.example.test\u00a0other",), ("\x7f",), (False,),
                (0,), (None,), (object(),)]
         for excluded in bad:
             with self.subTest(excluded=type(excluded[0]).__name__):
@@ -233,10 +233,12 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
             _scope((" ",)),
             _scope(("fixture.example.test", "")),
             _scope(("fixture.example.test ",)),
+            _scope(("fixture.example.test other",)),
             _scope((123,)),
             _scope(excluded=(" ",)),
             _scope(excluded=(False,)),
             _scope(excluded=("fixture.example.test\n",)),
+            _scope(excluded=("fixture.example.test\u00a0other",)),
             _scope(excluded=("fixture.example.test", None)),
             _scope(excluded=("secret.invalid",) * 257),
         )
