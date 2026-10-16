@@ -277,6 +277,73 @@ class SyntheticScopeDeltaCLITests(TestCase):
             status = cli.main()
         self.assertEqual(status, 3)
 
+    def test_valid_review_outcome_is_reconstructed_without_authority(self):
+        from lightup import fictional_scope_delta_cli_1501 as cli
+        from lightup.fictional_scope_delta_review_1501 import ScopeHistoryReview
+
+        original = ScopeHistoryReview(
+            "REVIEW_ONLY", 1, None, (), ("risk",)
+        )
+        rebuilt = cli._validated_review(original)
+        self.assertIsNot(original, rebuilt)
+        self.assertEqual(rebuilt.status, "REVIEW_ONLY")
+        self.assertEqual(rebuilt.narrowed_dimensions, ("risk",))
+        self.assertIs(rebuilt.authorized, False)
+        self.assertIs(rebuilt.consent_verified, False)
+        self.assertIs(rebuilt.dispatch_allowed, False)
+        self.assertIs(rebuilt.release_allowed, False)
+
+    def test_short_poisoned_status_and_bad_flags_never_echo_through_cli(self):
+        from lightup import fictional_scope_delta_cli_1501 as cli
+        from lightup.fictional_scope_delta_review_1501 import ScopeHistoryReview
+
+        class Reader:
+            def read(self, size):
+                return b"{}"
+
+        class Stream:
+            buffer = Reader()
+
+        def run(value):
+            output = io.StringIO()
+            with patch.object(cli, "_load", return_value=value), \
+                 patch("sys.argv", ["fictional_cli", "--offline-review-only"]), \
+                 patch("sys.stdin", Stream()), \
+                 patch("sys.stdout", output):
+                exit_code = cli.main()
+            return exit_code, output.getvalue()
+
+        poison_cases = (
+            ("status", "SECRET_FROM_SOURCE"),
+            ("authorized", True),
+            ("consent_verified", "REAL_CLIENT_SECRET"),
+            ("dispatch_allowed", True),
+            ("release_allowed", True),
+            ("expanded_dimensions", ("SECRET_FROM_SOURCE",)),
+            ("held_steps", (True,)),
+            ("held_step_dimensions", (("SECRET_FROM_SOURCE",),)),
+        )
+        for field, value in poison_cases:
+            with self.subTest(field=field):
+                record = ScopeHistoryReview(
+                    "REVIEW_ONLY", 1, None, (), ("risk",)
+                )
+                object.__setattr__(record, field, value)
+                status, output = run(record)
+                self.assertEqual(status, 3)
+                message = json.loads(output)
+                self.assertEqual(message["status"], "HOLD")
+                self.assertEqual(message["transition_count"], 0)
+                self.assertEqual(message["expanded_dimensions"], [])
+                for flag in ("authorized", "consent_verified",
+                             "dispatch_allowed", "release_allowed"):
+                    self.assertIs(message[flag], False)
+                self.assertNotIn("SECRET_FROM_SOURCE", output)
+                self.assertNotIn("REAL_CLIENT_SECRET", output)
+        code, output = run({"status": "REVIEW_ONLY"})
+        self.assertEqual(code, 3)
+        self.assertEqual(json.loads(output)["status"], "HOLD")
+
     def test_in_process_oversized_witness_is_suppressed_to_generic_hold(self):
         from lightup import fictional_scope_delta_cli_1501 as cli
         from lightup.fictional_scope_delta_review_1501 import ScopeHistoryReview
