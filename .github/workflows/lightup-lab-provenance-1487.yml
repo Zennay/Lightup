@@ -1,0 +1,82 @@
+name: LightUp LAB provenance isolated proof (NOT release)
+
+on:
+  pull_request:
+    paths:
+      - "src/lightup/lab_reference_review_1487.py"
+      - "src/lightup/lab_session_lineage_1487.py"
+      - "tests/*_1487_20261016.py"
+      - "docs/scope-lab-reference-provenance-1487-20261016.md"
+      - ".github/workflows/lightup-lab-provenance-1487.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lightup-lab-provenance-1487-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-receipt-tests:
+    name: Isolated synthetic LAB Python ${{ matrix.python }} (not VPS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile isolated LAB reference and lineage modules
+        run: |
+          python -m compileall -q \
+            src/lightup/lab_reference_review_1487.py \
+            src/lightup/lab_session_lineage_1487.py \
+            tests/test_lab_reference_history_1487_20261016.py \
+            tests/test_lab_reference_non_authority_1487_20261016.py \
+            tests/test_lab_reference_review_1487_20261016.py \
+            tests/test_lab_session_lineage_1487_20261016.py \
+            tests/test_lab_lineage_gate_red_1487_20261016.py \
+            tests/test_scope_lab_reference_provenance_1487_20261016.py
+      - name: Verify exact isolated test inventory, expected RED debt, and no unexpected failures
+        env:
+          PYTHONPATH: src
+          PYTHONNOUSERSITE: "1"
+        run: |
+          python - <<'PY'
+          import sys
+          import unittest
+
+          suite = unittest.defaultTestLoader.discover(
+              "tests", pattern="*_1487_20261016.py"
+          )
+          count = suite.countTestCases()
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          expected_open_red = 10
+          expected_count = 80
+          print(
+              f"ISOLATED_RESULT tests={count} ordinary_pass="
+              f"{count - len(result.expectedFailures) - len(result.failures) - len(result.errors) - len(result.unexpectedSuccesses) - len(result.skipped)} "
+              f"open_source_expected_red={len(result.expectedFailures)} "
+              f"failures={len(result.failures)} errors={len(result.errors)} "
+              f"unexpected_successes={len(result.unexpectedSuccesses)}"
+          )
+          if (
+              not result.wasSuccessful()
+              or count != expected_count
+              or len(result.expectedFailures) != expected_open_red
+              or result.skipped
+          ):
+              sys.exit("W6 offline inventory / open-RED accounting mismatch")
+          PY
+      - name: Explicit non-release boundary
+        run: |
+          echo "Synthetic lab checks only; never grants consent/permits."
+          echo "Not registered VPS evidence or authority to merge, deploy or scan."
