@@ -166,3 +166,50 @@ not an installed ingress/network or actual client consent test.
 The tests are included in the own pinned least-privilege workflow and
 the static owner-path inventory. Original source, existing CI/VPS runners,
 other workers, external targets and active handlers remain unchanged.
+
+## W6 — atomic fictional LAB capability cohort, not real authority
+
+New independent, strictly **unwired** source
+`src/lightup/fictional_lab_capability_batch_1511.py` adds
+`review_fictional_lab_capability_cohort_1511`. It reviews a bounded
+exact-built-in `tuple` of 1–64 unique ASCII capability IDs against a
+bounded **caller-provided, untrusted, fictional** tuple. Every ID and
+both containers must be canonical exact builtins; duplicate IDs,
+missing membership, subtype spoofing, unknown shapes or too many
+entries result in a **single atomic HOLD**, with no per-ID result to
+misconstrue as partial approval. A fully internally consistent fictional
+record returns only `REVIEW_ONLY`. All results have all four false
+consent/authority/dispatch/release fields. The helper does **not**
+issue permits, sign evidence, prove a registry or call a handler.
+
+New opt-in strict batch CLI
+`scripts/fictional_lab_capability_batch_cli_1511.py` accepts only
+ASCII exact canonical JSON of the shape:
+```json
+{"schema":"fictional_lab_capability_batch_v1","requested":["web-baseline","tls-baseline"],"allowlist":["tls-baseline","web-baseline"]}
+```
+Max 4096 bytes total, schema/field order fixed, no extra/duplicate/
+aliased or escaped keys, no whitespace or trailing bytes, strictly bounded
+in-memory review. Fixed responses: `REVIEW_ONLY\n` exit **2**, or
+generic `HOLD\n` exit **3**, **never success 0**, no source or submitted
+private content echoed. For example (expect nonzero exit **2**, NOT
+permission to use any security tool):
+```bash
+printf '%s' '{"schema":"fictional_lab_capability_batch_v1","requested":["web-baseline"],"allowlist":["web-baseline"]}' |
+  PYTHONDONTWRITEBYTECODE=1 python scripts/fictional_lab_capability_batch_cli_1511.py
+```
+
+New tests check every candidate mutation position through 64 entries,
+full-batch HOLD on one mismatch or duplicated member, poison equality/
+hash and tuple subclass objects without calling hostile methods, no
+network/file opens, caller purity, singleton poisoning protection,
+canonical JSON, all fixture prefixes/byte corruption, real subprocess
+exit codes and no private input echo. The pinned read-only own CI
+includes the new files and static import-isolation checks.
+
+This is **not product source remediation** for `ActivationGate.issue`
+or an independently attested registry. Separate genuine client and
+operator consent, revocation at use, privacy/security review, owner
+source fixes, full hosted AND actual registered permanent VPS green,
+and explicit human GO remain mandatory. **DRAFT/HOLD; no merge,
+deployment, scans, targets, grants or handler execution.**
