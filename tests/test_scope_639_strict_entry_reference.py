@@ -161,6 +161,33 @@ class StrictEntryReferenceTest(unittest.TestCase):
                         "one invalid nested item cannot be dropped or coerced",
                     )
 
+
+    def test_review_never_opens_files_sockets_sqlite_or_processes(self):
+        """The non-authorizing reviewer has zero IO capabilities."""
+        import builtins
+        import os
+        import socket
+        import sqlite3
+        import subprocess
+        from unittest.mock import patch
+
+        def reject_io(*args, **kwargs):
+            raise AssertionError("scope entry review attempted forbidden IO")
+
+        with (
+            patch.object(builtins, "open", side_effect=reject_io),
+            patch.object(os, "open", side_effect=reject_io),
+            patch.object(socket, "socket", side_effect=reject_io),
+            patch.object(sqlite3, "connect", side_effect=reject_io),
+            patch.object(subprocess, "Popen", side_effect=reject_io),
+        ):
+            self.assertEqual(
+                self.review().assets, ("app.example.invalid",)
+            )
+            self.assertIsNone(
+                self.review(assets='["app.example.invalid",null]')
+            )
+
     def test_real_sqlite_snapshot_corruption_review_has_no_write(self):
         with tempfile.TemporaryDirectory() as tmp:
             store = DomainStore(Path(tmp) / "scope639-review.db")
