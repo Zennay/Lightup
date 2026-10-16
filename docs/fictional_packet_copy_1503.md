@@ -45,7 +45,7 @@ Fanout accepts **1–16 exact built-in byte strings in an exact built-in tuple**
 - Invalid or different copies: **HOLD**; digest is `None`; no caller text or partial metadata returned.
 - Both exactly canonical and byte-identical: **REVIEW_ONLY** with a lowercase SHA256 fingerprint of the *fictional* bytes. A SHA256 digest alone is **not** signed provenance, tamper resistance against someone who controls both copies, client/operator consent, revocation, or release evidence.
 - The immutable result always has `authorized=False`, `consent_verified=False`, `dispatch_allowed=False`, `release_allowed=False`.
-- No production module imports or calls this helper. No paths, storage, network, DNS, SQLite, handlers or scans. No actual client assets should be supplied. No CLI that writes or emits review data.
+- No production module imports or calls this helper. No paths, storage, network, DNS, SQLite, handlers or scans. No actual client assets should be supplied. The separate CLI emits only bounded non-authorizing HOLD/REVIEW_ONLY results.
 
 ## Reproducible checked-in fictional examples
 
@@ -85,6 +85,33 @@ assert type(stdin_payload) is bytes  # Already-validated canonical fictional byt
 ```
 
 The two committed CLI fixtures must byte-match envelopes produced by this function; ordinary tests check this and run each one in a real subprocess. The builder performs no disk, network, database or process access and does not authenticate packet authors.
+
+
+## Independently pinned fictional digest — opt-in second schema
+
+The legacy `lightup-fictional-cli-v1` protocol checks copies against one
+another; a party able to alter both baseline and recipients could make those
+copies match. **The optional pinned protocol adds a separate digest check**
+to detect that joint replacement *provided the digest was separately checked
+and fixed before the copies were exchanged*.
+
+- Direct pure function: `compare_fictional_packet_fanout_pinned(original, copies, expected_sha256)`.
+- CLI schema: **`lightup-fictional-cli-pinned-v1`**, four exact fields in order: `schema`, `original`, `copies`, `expected_sha256`. All pre-existing requirements remain: bounded ASCII canonical JSON, solely fictional `.example.test` packets, 1–16 copies, four literal false permission flags and no extra fields. Pins are exact builtin lowercase ASCII `[0-9a-f]{64}` SHA-256 strings. Missing, upper-case, wrong-length and mismatched pins → generic `HOLD` with no digest or packet echo.
+- `build_fictional_pinned_cli_envelope(original, copies, expected_sha256)` generates strict canonical stdin bytes but **does not verify the provenance of the pin**. The caller must obtain its value through a separately reviewed and independently controlled channel (for example, a human-reviewed immutable Git commit). Never derive the pin from just-arrived copies and call that a security check.
+- Two versioned **fictional-only** end-to-end fixtures: `docs/examples/fictional-copy-cli-pinned-1503.json` has an original and two matching copies; `docs/examples/fictional-copy-cli-pinned-held-1503.json` replaces BOTH original and recipients with another syntactically valid fictional asset, while keeping the independently pinned old SHA-256. The latter must yield generic `HOLD` despite internal copy equality.
+
+```sh
+PYTHONPATH=src python -m lightup.fictional_packet_cli_1503 < docs/examples/fictional-copy-cli-pinned-1503.json
+# REVIEW_ONLY with nonzero shell exit 2 (NOT authorization)
+PYTHONPATH=src python -m lightup.fictional_packet_cli_1503 < docs/examples/fictional-copy-cli-pinned-held-1503.json
+# HOLD, exit 3
+```
+
+Even with a correct independent pin, this is **not** a signature, authentication,
+authorization, consent, revocation, asset ownership evidence, scanner permit,
+or a release gate. If a malicious caller replaces both the bytes **and the pin**,
+a matching result is possible. Both protocol versions remain unwired and
+cannot grant runtime authority.
 
 ## Tests and ownership
 

@@ -533,5 +533,42 @@ class FictionalCliTests(unittest.TestCase):
             ).status, "HOLD")
 
 
+
+    def test_pinned_checked_in_exact_envelopes_exercise_real_cli(self):
+        folder = ROOT / "docs" / "examples"
+        valid = (folder / "fictional-copy-cli-pinned-1503.json").read_bytes()
+        held = (folder / "fictional-copy-cli-pinned-held-1503.json").read_bytes()
+        expected_pin = hashlib.sha256(GOOD).hexdigest()
+        self.assertEqual(
+            valid, request_pinned(copies=(GOOD, GOOD), expected_sha256=expected_pin),
+        )
+        self.assertEqual(
+            held, request_pinned(original=BAD_COPY, copies=(BAD_COPY, BAD_COPY),
+                                expected_sha256=expected_pin),
+        )
+        self.assertEqual(
+            valid,
+            cli.build_fictional_pinned_cli_envelope(
+                GOOD, (GOOD, GOOD), expected_pin,
+            ),
+        )
+        self.assertEqual(
+            held,
+            cli.build_fictional_pinned_cli_envelope(
+                BAD_COPY, (BAD_COPY, BAD_COPY), expected_pin,
+            ),
+        )
+        for payload, exit_status, expected_output in (
+            (valid, 2, b'"status":"REVIEW_ONLY"'),
+            (held, 3, b'"status":"HOLD"'),
+        ):
+            with self.subTest(status=exit_status):
+                result = process(payload)
+                self.assertEqual((result.returncode, result.stderr), (exit_status, b""))
+                self.assertIn(expected_output, result.stdout)
+                self.assertNotIn(b".example.test", result.stdout)
+                self.assertLessEqual(len(result.stdout), 200)
+
+
 if __name__ == "__main__":
     unittest.main()
