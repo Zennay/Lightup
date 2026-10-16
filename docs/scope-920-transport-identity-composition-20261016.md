@@ -23,9 +23,9 @@ ownership of `src/lightup/webapp/security.py`.
   - `docs/scope-919-canonical-public-origin-identity-20261012.md`
     from PR #1255, blob `4ecfd473b2a22e1413bead968b420b13b58bf80a`.
 - Fifth new file: `tests/test_scope_920_transport_identity_composition_20261016.py`,
-  seven additional **ordinary fail-closed controls** exercising BOTH exact
+  nine additional **ordinary fail-closed controls** exercising BOTH exact
   production-mode ingress predicates against fictional `.example.test` host
-  and documentation-only `203.0.113.77` peer. No sockets or outbound calls.
+  and documentation-only `203.0.113.77` peer. Includes a 45-envelope joint truth table and a non-mutation check. No sockets or outbound calls.
 - Sixth new file: this manifest. All paths are new on PR #202 base. No
   existing production, worker-owned test, workflow, CI, deployment or runner
   file is modified.
