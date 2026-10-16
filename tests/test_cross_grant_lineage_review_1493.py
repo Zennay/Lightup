@@ -443,6 +443,70 @@ class CrossGrantBatchTests(unittest.TestCase):
         self.assertEqual(self.review((second,)).status, "REVIEW_ONLY")
         self.assertEqual(self.review((first, second)).status, "HOLD")
 
+    def test_same_grant_id_legacy_start_rebinding_atomic_hold(self):
+        first = batch_candidate()
+        second = dataclasses.replace(
+            first, asset="app.example.test", capability_id="tls-baseline",
+            legacy=dataclasses.replace(
+                first.legacy, valid_from=first.legacy.valid_from + timedelta(minutes=1)),
+        )
+        scope = dataclasses.replace(
+            first.durable.scope, allowed_capabilities=("web-baseline", "tls-baseline"))
+        first = dataclasses.replace(first, durable=dataclasses.replace(first.durable, scope=scope))
+        second = dataclasses.replace(second, durable=first.durable)
+        self.assertEqual(self.review((first,)).status, "REVIEW_ONLY")
+        self.assertEqual(self.review((second,)).status, "REVIEW_ONLY")
+        result = self.review((first, second))
+        self.assertEqual((result.status, result.reason, result.reviewed),
+                         ("HOLD", "conflicting legacy authorization snapshot", 0))
+        self.assertFalse(result.authorized)
+
+    def test_same_grant_id_legacy_expiry_rebinding_atomic_hold(self):
+        first = batch_candidate()
+        scope = dataclasses.replace(
+            first.durable.scope, allowed_capabilities=("web-baseline", "tls-baseline"))
+        first = dataclasses.replace(first, durable=dataclasses.replace(first.durable, scope=scope))
+        second = dataclasses.replace(
+            first, capability_id="tls-baseline",
+            legacy=dataclasses.replace(
+                first.legacy, valid_until=first.legacy.valid_until + timedelta(minutes=1)))
+        self.assertEqual(self.review((first,)).status, "REVIEW_ONLY")
+        self.assertEqual(self.review((second,)).status, "REVIEW_ONLY")
+        self.assertEqual(self.review((first, second)).status, "HOLD")
+
+    def test_same_grant_id_legacy_window_rebinding_reverse_order_denied(self):
+        first = batch_candidate()
+        scope = dataclasses.replace(
+            first.durable.scope, allowed_capabilities=("web-baseline", "tls-baseline"))
+        first = dataclasses.replace(first, durable=dataclasses.replace(first.durable, scope=scope))
+        second = dataclasses.replace(
+            first, capability_id="tls-baseline",
+            legacy=dataclasses.replace(
+                first.legacy, valid_until=first.legacy.valid_until - timedelta(minutes=1)))
+        self.assertEqual(self.review((second, first)).status, "HOLD")
+        self.assertEqual(self.review((first, second)).status, "HOLD")
+
+    def test_different_grant_ids_can_have_independent_legacy_windows(self):
+        first = batch_candidate()
+        second = batch_candidate(asset="other.example.test", grant_id="G-2")
+        second = dataclasses.replace(
+            second, legacy=dataclasses.replace(
+                second.legacy, valid_from=second.legacy.valid_from + timedelta(minutes=2),
+                valid_until=second.legacy.valid_until - timedelta(minutes=2)))
+        result = self.review((first, second))
+        self.assertEqual((result.status, result.reviewed), ("REVIEW_ONLY", 2))
+
+    def test_matching_legacy_snapshot_with_two_assets_remains_review_only(self):
+        first = batch_candidate()
+        scope = dataclasses.replace(
+            first.durable.scope,
+            assets=("app.example.test", "other.example.test"),
+            allowed_capabilities=("web-baseline", "tls-baseline"))
+        first = dataclasses.replace(first, durable=dataclasses.replace(first.durable, scope=scope))
+        second = dataclasses.replace(first, asset="other.example.test", capability_id="tls-baseline")
+        self.assertEqual((self.review((first, second)).status,
+                          self.review((first, second)).reviewed), ("REVIEW_ONLY", 2))
+
     def test_different_grant_ids_may_have_independent_validated_snapshots(self):
         first = batch_candidate()
         second = batch_candidate(asset="other.example.test", grant_id="G-2")
