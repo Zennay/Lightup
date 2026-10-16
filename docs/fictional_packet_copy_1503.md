@@ -53,8 +53,23 @@ Fanout accepts **1–16 exact built-in byte strings in an exact built-in tuple**
 - `docs/examples/fictional-copy-changed-1503.json` is a different but still canonical **fictional** packet; comparing it to the first returns atomic generic `HOLD`. Both contain only reserved `.example.test` labels and four literal false authority flags.
 - The dedicated hosted test suite reads both committed files as bytes and asserts identical encoding, expected builder equality and fail-closed end-to-end fanout behavior; edits to either example trigger that workflow. Neither file is a real consent record or scope grant.
 
+## Offline CLI — safe terminal handoff, no release authority
+
+`python -m lightup.fictional_packet_cli_1503` is an **explicit opt-in, stdin-only** wrapper over the same fictional-only parser and verifier. It does not open input paths, call networks, run tools, ask for credentials, or emit untrusted data. It reads **one ASCII JSON envelope, max 8,192 bytes**, with exactly these keys in exactly this order: `schema`, `original`, `copies`. `schema` must literally be `lightup-fictional-cli-v1`. `original` and `copies` are *JSON strings containing the original canonical fictional packet JSON bytes*, and `copies` must have 1–16 elements. The envelope itself must also be exact compact canonical ASCII JSON (no trailing newline, spaces, duplicate fields, escaped aliases, or byte-order mark).
+
+To execute the **version-controlled fictional fixtures**:
+
+```sh
+PYTHONPATH=src python -m lightup.fictional_packet_cli_1503 < docs/examples/fictional-copy-cli-1503.json
+# prints REVIEW_ONLY; shell exit 2, deliberately NOT successful authorization
+PYTHONPATH=src python -m lightup.fictional_packet_cli_1503 < docs/examples/fictional-copy-cli-held-1503.json
+# prints HOLD; shell exit 3
+```
+
+The **only** stdout is canonical, small ASCII JSON: `{"status":"HOLD","authorized":false,"consent_verified":false,"dispatch_allowed":false,"release_allowed":false}` (plus final newline) or `{"status":"REVIEW_ONLY","sha256":"...","authorized":false,"consent_verified":false,"dispatch_allowed":false,"release_allowed":false}` (plus newline). A SHA256 is generated only for identical, canonical, explicitly fictional bytes and is never provenance or consent. Exit code is **always nonzero**: 2 for REVIEW_ONLY and 3 for HOLD/input/pipe failures; never 0. CLI success labels must **never** be treated as execution permission. No real customer/target data should be fed to the CLI. Both input copies can be forged simultaneously, so equality alone proves no external fact.
+
 ## Tests and ownership
 
-Run opt-in isolated tests (including exhaustive byte edits, builder invariants, 16-copy fanout, no-I/O tripwires) with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_fictional_packet_copy_1503.py' -v`. Dedicated **hosted** Python 3.11/3.14 workflow `.github/workflows/lightup-fictional-packet-1503.yml` runs only this new test file when the new file set changes. This does not substitute for original full hosted preflight or the genuinely registered permanent VPS runner (#1144). All files exclusively added under #1503; do not cherry-pick as production authorization.
+Run opt-in isolated tests (including exhaustive byte edits, builder invariants, 16-copy fanout, no-I/O tripwires) with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_fictional_packet_copy_1503.py' -v`. Dedicated **hosted** Python 3.11/3.14 workflow `.github/workflows/lightup-fictional-packet-1503.yml` runs both new offline test files when the new file set changes. This does not substitute for original full hosted preflight or the genuinely registered permanent VPS runner (#1144). All files exclusively added under #1503; do not cherry-pick as production authorization.
 
 **Release STOP:** Original source owner fixes incl. #301, authentic both-client-and-operator informed consent, runtime revocation-at-use, full exact-head hosted + registered VPS proof, independent security/privacy review and explicit human GO remain open. Do **not** merge, deploy, scan, issue grants, wire any handler or assert approval based on this packet.
