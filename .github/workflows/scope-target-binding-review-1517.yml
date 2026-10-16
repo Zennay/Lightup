@@ -1,0 +1,50 @@
+name: Scope target binding offline review 1517
+on:
+  push:
+    branches:
+      - chatgpt/scope-target-binding-drift-1517-20261016
+    paths:
+      - src/lightup/scope_target_binding_review_1517.py
+      - tests/test_scope_target_binding_review_1517.py
+      - tests/test_scope_target_binding_cli_1517.py
+      - scripts/scope_target_binding_review_cli_1517.py
+      - docs/scope-target-binding-drift-1517.md
+      - .github/workflows/scope-target-binding-review-1517.yml
+  pull_request:
+    paths:
+      - src/lightup/scope_target_binding_review_1517.py
+      - tests/test_scope_target_binding_review_1517.py
+      - tests/test_scope_target_binding_cli_1517.py
+      - scripts/scope_target_binding_review_cli_1517.py
+      - docs/scope-target-binding-drift-1517.md
+      - .github/workflows/scope-target-binding-review-1517.yml
+
+permissions:
+  contents: read
+
+jobs:
+  offline-source-red:
+    name: Offline review / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.14"]
+    steps:
+      - name: Checkout with no persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install Python from pinned action
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: ''
+      - name: Isolated source + synthetic review acceptance
+        env:
+          PYTHONPATH: src
+          PYTHONDONTWRITEBYTECODE: '1'
+          PYTHONNOUSERSITE: '1'
+        run: |
+          python -W error::ResourceWarning -m unittest discover -s tests -p 'test_scope_target_binding_*_1517.py' -v
