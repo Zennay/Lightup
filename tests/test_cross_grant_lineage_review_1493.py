@@ -1,5 +1,6 @@
 """Offline, fictional cross-grant comparison regression suite — no authority. #1493."""
 import dataclasses
+import itertools
 import os
 import socket
 import sqlite3
@@ -505,6 +506,45 @@ class CrossGrantBatchTests(unittest.TestCase):
         result = self.review(batch)
         self.assertEqual((result.status, result.reviewed), ("HOLD", 0))
         self.assertFalse(result.consent_verified)
+
+    def test_ambiguous_provenance_denied_under_every_permutation(self):
+        first = batch_candidate(grant_id="G-1")
+        second = batch_candidate(grant_id="G-2")
+        third = batch_candidate(grant_id="G-3", asset="third.example.test")
+        fourth = batch_candidate(grant_id="G-4", capability="tls-baseline")
+        for cohort in itertools.permutations((first, second, third, fourth)):
+            result = self.review(cohort)
+            self.assertEqual((result.status, result.reviewed), ("HOLD", 0))
+            self.assertFalse(result.authorized)
+            self.assertFalse(result.release_allowed)
+
+    def test_distinct_provenance_accepted_under_every_permutation(self):
+        cohort = (
+            batch_candidate(grant_id="G-1"),
+            batch_candidate(grant_id="G-2", asset="other.example.test"),
+            batch_candidate(grant_id="G-3", capability="tls-baseline"),
+            batch_candidate(grant_id="G-4", asset="third.example.test",
+                            capability="tls-baseline"),
+        )
+        for ordered in itertools.permutations(cohort):
+            review = self.review(ordered)
+            self.assertEqual((review.status, review.reviewed), ("REVIEW_ONLY", 4))
+            self.assertFalse(review.consent_verified)
+            self.assertFalse(review.dispatch_allowed)
+
+    def test_cross_grant_provenance_review_leaves_input_claims_unchanged(self):
+        candidates = (
+            batch_candidate(grant_id="G-1"),
+            batch_candidate(grant_id="G-2"),
+        )
+        before = dataclasses.asdict(candidates[0]), dataclasses.asdict(candidates[1])
+        for _ in range(5):
+            receipt = self.review(candidates)
+            self.assertEqual((receipt.status, receipt.reviewed), ("HOLD", 0))
+            self.assertEqual(
+                (dataclasses.asdict(candidates[0]), dataclasses.asdict(candidates[1])),
+                before,
+            )
 
     def test_same_grant_id_same_snapshot_can_cover_multiple_explicit_assets(self):
         first = batch_candidate()
