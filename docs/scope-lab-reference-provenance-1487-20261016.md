@@ -118,6 +118,7 @@ For a totally fictional manual local example (the input has no link to a real op
 ```sh
 PYTHONPATH=src python -m lightup.lab_session_lineage_cli_1487 --synthetic-only <<'JSON'
 {
+  "schema": "FICTIONAL-LAB-LINEAGE-V1",
   "assessment_time": "2030-01-01T12:00:00Z",
   "claims": [{
     "lab_reference": "LAB-SYNTH-001",
@@ -143,3 +144,11 @@ W9 isolated workflow's exact inventory increases from 100 to **115** own tests: 
 3. Bind each issued permit to current tenant, asset, capability, risk limits, expiration **at issuance**, and durable immediate revocation; do not rely on caller-supplied `assessment_time` or `revoked=False`.
 4. Fail closed on malformed or polymorphic `activation_reference` and any non-authorizing receipt/lineage object; promote the 10 open original source expected failures to ordinary PASS only after trusted-source changes actually pass.
 5. Independently review exact-head hosted + registered `vps-bb300bba` `self-hosted,zcloud,vps` evidence, security/privacy, client/operator approval and human GO. Until then **INCUBATE M3/M7 DRAFT/HOLD**.
+
+## W10 — explicit fictional-only JSON protocol tag
+
+The synthetic stdin JSON preview now requires a **literal, exact string** top-level `"schema": "FICTIONAL-LAB-LINEAGE-V1"`. Unknown versions, missing schema, case/Unicode/spacing lookalikes, Boolean/number/container values, duplicate literal or Unicode-escaped keys, extra `authorized`/`consent`/`permit` flags all atomically return `HOLD`. No coercion, auto-upgrade or silent backwards compatibility. This stops accidental reuse of generic or production-looking JSON as input to this **fictional** review tool. It does *not* authenticate the source: anyone can still write that string and receive only a non-authorizing REVIEW_ONLY *shape* result.
+
+The earlier manual CLI sample above has been updated to include the marker. Direct Python subprocess tests and baseline examples have been updated. The adversarial CLI test suite now adds seven independent protocol-admission checks, including an actual process invocation with `schema="PRODUCTION-CONSENT-V1"` that must return nonzero 2, a generic HOLD response, and empty stderr without echoing actor or asset identifiers. Total **122 own methods** expected: **112 normal successes plus 10 original-source intentionally OPEN `expectedFailure`**. This is test inventory, not a new immutable-head CI verdict until exact original hosted run logs are reviewed.
+
+The original `ActivationGate` code remains unchanged and intentionally untrusted source REDs remain OPEN. This marker is **not** a license/permission token and must never be connected to actual grants or lab dispatch. The canonical VPS CI and owner-controlled source/privacy/security/human-GO conditions are unchanged; LightUp remains INCUBATE M3/M7 DRAFT/HOLD.
