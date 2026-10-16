@@ -10,6 +10,7 @@ on:
       - 'examples/fictional_cross_grant_collision_1493.json'
       - 'examples/fictional_cross_grant_forged_authority_1493.json'
       - 'docs/scope-cross-grant-lineage-1493-handoff.md'
+      - 'docs/cross-grant-runtime-integration-contract-1493.md'
   workflow_dispatch:
 permissions:
   contents: read
