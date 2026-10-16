@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -119,6 +120,51 @@ class Scope1480RunnerTests(unittest.TestCase):
         self.assertEqual(verdict["reason"], "original_authorization_dependency_blob_mismatch")
         self.assertEqual(verdict["tests_run"], 0)
         self.assertFalse(verdict["may_dispatch_tools"])
+
+    def test_machine_readable_case_digest_is_deterministic_sorted_lf(self):
+        reviewer = _runner()
+        expected = hashlib.sha256(
+            "\n".join(sorted(reviewer.EXPECTED_TEST_IDS)).encode("utf-8")
+        ).hexdigest()
+        self.assertEqual(reviewer._expected_case_manifest_sha256(), expected)
+        self.assertEqual(len(expected), 64)
+
+    def test_self_reported_evidence_explicitly_denies_ci_and_release_status(self):
+        reviewer = _runner()
+        payload = reviewer._verdict(
+            "REVIEW_ONLY", "original_source_gap_reproduced", 44, 1
+        )
+        self.assertEqual(payload["evidence_manifest_version"], 1)
+        self.assertIs(payload["evidence_self_reported"], True)
+        self.assertIs(payload["independent_ci_attestation"], False)
+        self.assertEqual(payload["original_activation_git_blob"], reviewer.ORIGINAL_SOURCE_BLOB)
+        self.assertEqual(payload["original_dependency_git_blobs"], reviewer.ORIGINAL_DEPENDENCY_BLOBS)
+        self.assertEqual(payload["reviewed_local_git_blobs"], reviewer.PINNED_REVIEW_BLOBS)
+        self.assertEqual(payload["expected_case_count"], 44)
+        self.assertEqual(payload["expected_case_manifest_sha256"], reviewer._expected_case_manifest_sha256())
+        for field in (
+            "source_fixed", "full_suite_green", "permanent_vps_proven",
+            "consent_verified", "revocation_verified", "may_issue_grants",
+            "may_dispatch_tools", "may_scan_targets", "may_merge",
+            "may_deploy", "release_authorized",
+        ):
+            with self.subTest(field=field):
+                self.assertIs(payload[field], False)
+
+    def test_failed_source_pin_keeps_its_read_only_audit_manifest(self):
+        reviewer = _runner()
+        with patch.object(reviewer, "ORIGINAL_SOURCE_BLOB", "0" * 40):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                code = reviewer.main()
+        payload = json.loads(out.getvalue())
+        self.assertEqual(code, 1)
+        self.assertEqual(payload["status"], "HOLD")
+        self.assertEqual(payload["tests_run"], 0)
+        self.assertIs(payload["independent_ci_attestation"], False)
+        self.assertEqual(payload["original_activation_git_blob"], "0" * 40)
+        self.assertEqual(len(payload["expected_case_manifest_sha256"]), 64)
+        self.assertFalse(payload["release_authorized"])
 
     def test_loaded_method_ids_match_exact_source_inventory(self):
         reviewer = _runner()
