@@ -110,6 +110,31 @@ def _valid(proposal: object) -> bool:
     )
 
 
+
+def _snapshot(proposal: object) -> FictionalScopeProposal | None:
+    """Copy exact immutable built-in values once before validation and review.
+
+    A frozen dataclass can be changed by a hostile in-process caller using
+    object.__setattr__. Never validate an untrusted record and then read its
+    fields a second time for a verdict. The fresh copy is owned only by this
+    module and cannot be changed by the caller after capture.
+    """
+    if type(proposal) is not FictionalScopeProposal:
+        return None
+    try:
+        captured = FictionalScopeProposal(
+            assets=proposal.assets,
+            capabilities=proposal.capabilities,
+            exclusions=proposal.exclusions,
+            risk=proposal.risk,
+            valid_from=proposal.valid_from,
+            valid_until=proposal.valid_until,
+        )
+        return captured if _valid(captured) else None
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return None
+
+
 def review_fictional_scope_delta(
     previous: object, proposed: object
 ) -> ScopeDeltaReview:
@@ -119,15 +144,10 @@ def review_fictional_scope_delta(
     Earlier starts or later ends are widening, even for valid UTC windows.
     Completely invalid proposals return a generic, zero-echo HOLD.
     """
-    try:
-        safe = _valid(previous) and _valid(proposed)
-    except (AttributeError, TypeError, ValueError, OverflowError):
-        # A forged exact-type instance with unset slots must not escape as an
-        # exception or be misread as a successful reviewer decision.
-        safe = False
-    if not safe:
+    old = _snapshot(previous)
+    new = _snapshot(proposed)
+    if old is None or new is None:
         return _hold()
-    old, new = previous, proposed
     widened = {
         "assets": not set(new.assets).issubset(old.assets),
         "capabilities": not set(new.capabilities).issubset(old.capabilities),
@@ -215,13 +235,16 @@ def review_fictional_scope_history(history: object) -> ScopeHistoryReview:
     try:
         # Atomic validation: even if an early step widens, a malformed later
         # snapshot takes precedence and suppresses all partial review details.
-        if not all(_valid(snapshot) for snapshot in history):
+        # Capture each record only once; all later comparisons use solely
+        # reviewer-owned snapshots, never caller-mutable original instances.
+        snapshots = tuple(_snapshot(record) for record in history)
+        if any(record is None for record in snapshots):
             return generic_hold()
         expanded = set()
         narrowed = set()
         first_held = None
-        for step in range(1, len(history)):
-            result = review_fictional_scope_delta(history[step - 1], history[step])
+        for step in range(1, len(snapshots)):
+            result = review_fictional_scope_delta(snapshots[step - 1], snapshots[step])
             if result.status == "HOLD":
                 if first_held is None:
                     first_held = step
