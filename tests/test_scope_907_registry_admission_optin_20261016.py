@@ -205,6 +205,42 @@ class CanonicalOptinRegistryAdmission(unittest.TestCase):
         self.assertEqual(self.registry.definitions(), previous)
         self.assertIs(self.registry.get("safe-existing")[1], never_handler)
 
+    def test_exact_frozen_definition_validator_shadow_is_rejected(self):
+        definition = valid("shadowed-validator")
+        bypass_called = []
+        def forged_validator(_arguments):
+            bypass_called.append(True)
+        object.__setattr__(definition, "validate_arguments", forged_validator)
+        with self.assertRaisesRegex(OrchestrationError, "validator was shadowed"):
+            register_exact_tool_definition(self.registry, definition, never_handler)
+        self.assertEqual(bypass_called, [])
+        self.assertEqual(self.registry.definitions(), ())
+
+    def test_validator_shadow_denial_preserves_preexisting_registry(self):
+        original = valid("safe-existing")
+        register_exact_tool_definition(self.registry, original, never_handler)
+        before = self.registry.definitions()
+        corrupted = valid("forged-next")
+        object.__setattr__(corrupted, "validate_arguments", lambda _: None)
+        with self.assertRaisesRegex(OrchestrationError, "validator was shadowed"):
+            register_exact_tool_definition(self.registry, corrupted, never_handler)
+        self.assertEqual(self.registry.definitions(), before)
+        self.assertIs(self.registry.get("safe-existing")[0], original)
+
+    def test_deleting_synthetic_validator_shadow_restores_original_validation(self):
+        definition = valid("restored-validator")
+        object.__setattr__(definition, "validate_arguments", lambda _: None)
+        with self.assertRaisesRegex(OrchestrationError, "validator was shadowed"):
+            register_exact_tool_definition(self.registry, definition, never_handler)
+        object.__delattr__(definition, "validate_arguments")
+        register_exact_tool_definition(self.registry, definition, never_handler)
+        stored, handler = self.registry.get("restored-validator")
+        self.assertIs(stored, definition)
+        self.assertIs(handler, never_handler)
+        with self.assertRaises(OrchestrationError):
+            stored.validate_arguments({})
+        stored.validate_arguments({"query": "fictional-only"})
+
     def test_registry_subclass_cannot_intercept_registration(self):
         spy = MaliciousRegistry()
         with self.assertRaises(OrchestrationError):
