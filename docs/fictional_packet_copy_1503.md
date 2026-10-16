@@ -147,6 +147,23 @@ separate SHA-256 reference, or altering a consumer that mistakes `REVIEW_ONLY`
 for permission. It is solely an opt-in, offline guard against *accidental*
 legacy fallback. No runtime or ingress module imports or invokes either CLI.
 
+### Complete bounded stdin consumption (no prefix acceptance)
+
+The review executables cannot interpret one early short read as the entire
+request. An input stream is gathered **until byte EOF**, with a strict
+**8,192-byte total cap** (reads request at most remaining capacity + 1 bytes).
+If the stream delivers the exact valid JSON followed later by even one extra
+whitespace character, line break, apparent approval object or other trailing
+payload, the entire request becomes a generic `HOLD`. This rule applies to
+both backwards-compatible and pinned-only commands; it does not permit
+chunked records or sequential requests. Exact built-in `bytes` chunks are
+required; non-binary streams, bytes subclasses and oversized/unending input
+are rejected without calling user-defined coercions. The reader itself uses
+no file, network, database or process API. A stream that does not yield EOF
+can still block while waiting for data (no deadline/watchdog is provided),
+so the CLI is intended for **finite offline input** and must never be a
+network-facing handler or authorization service.
+
 ## Tests and ownership
 
 Run both opt-in isolated suites with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_fictional_packet*_1503.py' -v`; this pattern executes the copy checker and CLI test modules (including pinned-only real-subprocess cases, byte edits, fanout, and no-I/O tripwires). Dedicated **hosted** Python 3.11/3.14 workflow `.github/workflows/lightup-fictional-packet-1503.yml` runs both new offline test files when the new file set changes. This does not substitute for original full hosted preflight or the genuinely registered permanent VPS runner (#1144). All files exclusively added under #1503; do not cherry-pick as production authorization.
