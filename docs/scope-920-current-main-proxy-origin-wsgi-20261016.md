@@ -15,8 +15,9 @@ tests/docs-only acceptance child of the CURRENT shared `main`, not the historic
   tests the exact historical #202 code (not current main). Its test paths,
   original sidecar branches #1255/#1256, #202 source and all other workers
   remain completely untouched.
-- This branch adds only two *unique, new* paths:
-  `tests/test_scope_920_current_main_proxy_origin_wsgi_20261016.py` and
+- This branch adds only three *unique, new* paths:
+  `tests/test_scope_920_current_main_proxy_origin_wsgi_20261016.py`,
+  `scripts/check_scope_920_current_main_acceptance_20261016.py`, and
   this document. No existing source, tests, CI, runners or workflows edited.
 
 ## Source-owner acceptance and non-authority
@@ -55,6 +56,23 @@ PYTHONPATH=src python -m unittest discover -s tests \
   -p 'test_scope_920_current_main_proxy_origin_wsgi_20261016.py' -v
 ```
 
+The opt-in, **independent targeted** diagnostic runner is:
+
+```sh
+python scripts/check_scope_920_current_main_acceptance_20261016.py
+```
+
+It runs **exactly 16 owned tests**, insists on **exactly seven intentionally
+open source REDs**, no other skip/error/unexpectedSuccess, and prints a
+minimal JSON receipt with explicit literal `false` for source-fix,
+release, merge, scan, dispatch, registered VPS, full-suite and consent
+authority. Exit 0 means **only these 16 tests ran as designed**, not
+"all LightUp tests green" and never release authorization. If any case
+changes it fails with a HOLD receipt. The tool cannot replace exact-head
+GitHub job logs or the queued permanent VPS CI; only run it on trusted
+exact checked-out code and do not accept self-declared receipts as
+cryptographic provenance.
+
 ExpectedFailures are **unresolved source defects**, not passing security
 properties. Hosted CI green is not the authorization/release decision.
 The original source owner #202 must independently implement the source fix,
@@ -85,3 +103,17 @@ skipped by GitHub Actions. This is **not a green hosted run** and cannot be
 used as release evidence. The latest source SHA and fresh CI must be
 verified separately. Do not copy #1452 edits into this branch or hide that
 baseline failure.
+
+## W2 exact-head hosted result, unrelated original baseline failure
+
+[Hosted #38870507591](https://github.com/Zennay/Lightup/actions/runs/38870507591)
+completed **FAILURE on both Python 3.11 and 3.14**, immutable head
+`195c153ac5ecf4f57134a85bb40e7638de237bbc`. All **16 own methods**
+logged as designed (9 `ok`, 7 `expected failure`). Both unit jobs:
+**1,253 tests, 30 intentional expected failures, one unrelated existing #301
+frozen-date test FAIL**. Producer integrations **SKIPPED**. The full suite
+remains red until the distinct #301 owner safely integrates [PR #1452](https://github.com/Zennay/Lightup/pull/1452).
+Permanent VPS [#38870507522](https://github.com/Zennay/Lightup/actions/runs/38870507522)
+was queued with two jobs unassigned, not proof of real runner execution.
+The opt-in standalone 16-case command above is a narrow diagnostic **not a
+workaround for full-suite certification or permission to release**.
