@@ -82,10 +82,10 @@ for the source-owner fix at `ToolRegistry.register` itself.
 
 A further independent file
 `tests/test_scope_907_registry_admission_optin_20261016.py` checks
-**15 ordinary tests** across exact canonical registration, allowed synthetic
+**17 ordinary tests** across exact canonical registration, allowed synthetic
 lab registration, malformed risk/interaction/capability rejection, parameter
 type enforcement, duplicate IDs, forged ToolDefinition subclasses, duck
-metadata with getter spies, and forged ToolRegistry objects. All handlers
+metadata with getter spies, forged ToolRegistry objects, and two new denial-atomicity cases where an already-registered valid tool stays untouched after malformed subsequent input. All handlers
 are explicit never-call sentinels; tests exercise **registration only**.
 
 The separate original owner-source 16-method packet continues to carry
