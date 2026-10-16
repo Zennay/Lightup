@@ -7,14 +7,18 @@ A REVIEW_ONLY verdict means only canonical finite UTC instants were coherent.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from typing import NamedTuple
 from datetime import datetime, timezone
 
 from .models import Authorization
 
 
-@dataclass(frozen=True)
-class IssuanceWindowReview:
+class IssuanceWindowReview(NamedTuple):
+    """Value-only review record; has no instance dict to rebind after return.
+
+    Despite this structural immutability, the record is NEVER a permission,
+    trusted signature, consent proof or executable authorization.
+    """
     status: str
     reason: str
     may_issue_permits: bool = False
