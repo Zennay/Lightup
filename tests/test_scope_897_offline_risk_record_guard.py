@@ -8,7 +8,7 @@ import sys
 import unittest
 from pathlib import Path
 
-from scope_897_offline_risk_record_guard import review_json, review_record
+from scope_897_offline_risk_record_guard import review_json, review_record, main
 
 _SCRIPT = Path(__file__).with_name("scope_897_offline_risk_record_guard.py")
 _APPROVAL = "aabbccdd-eeff-4abc-8def-aabbccddeeff"
@@ -217,6 +217,69 @@ class RiskRecordGuardTests(unittest.TestCase):
         receipt = review_record(payload)
         self.assertEqual(receipt["decision"], "HOLD")
         self.assertEqual(trap.calls, 0, "untrusted key methods must not run")
+        self.assertNoAuthority(receipt)
+
+
+    def test_programmatic_cli_rejects_equality_spoofed_argv_without_stdin_read(self) -> None:
+        import io
+        from contextlib import redirect_stdout
+        from unittest.mock import patch
+
+        class _NoStdin:
+            @property
+            def buffer(self):
+                raise AssertionError("untrusted argv must never trigger a stdin read")
+
+        class _ForgedArgs:
+            def __init__(self):
+                self.calls = 0
+
+            def __eq__(self, other):
+                self.calls += 1
+                return True
+
+            @property
+            def __class__(self):
+                return list
+
+        forged = _ForgedArgs()
+        output = io.StringIO()
+        with patch.object(sys, "stdin", _NoStdin()), redirect_stdout(output):
+            rc = main(forged)  # type: ignore[arg-type]
+        self.assertEqual(rc, 2)
+        self.assertEqual(forged.calls, 0)
+        receipt = json.loads(output.getvalue())
+        self.assertEqual(receipt["decision"], "HOLD")
+        self.assertNoAuthority(receipt)
+
+    def test_programmatic_cli_rejects_str_subclass_optin_without_comparison(self) -> None:
+        import io
+        from contextlib import redirect_stdout
+        from unittest.mock import patch
+
+        class _NoStdin:
+            @property
+            def buffer(self):
+                raise AssertionError("subclass argv must never trigger stdin")
+
+        class _SpoofArg(str):
+            def __new__(cls, value):
+                obj = str.__new__(cls, value)
+                obj.calls = 0
+                return obj
+
+            def __eq__(self, other):
+                self.calls += 1
+                return True
+
+        forged = _SpoofArg("--offline-synthetic-only")
+        output = io.StringIO()
+        with patch.object(sys, "stdin", _NoStdin()), redirect_stdout(output):
+            rc = main([forged])
+        self.assertEqual(rc, 2)
+        self.assertEqual(forged.calls, 0)
+        receipt = json.loads(output.getvalue())
+        self.assertEqual(receipt["decision"], "HOLD")
         self.assertNoAuthority(receipt)
 
 if __name__ == "__main__":
