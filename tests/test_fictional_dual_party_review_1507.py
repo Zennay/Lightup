@@ -38,12 +38,9 @@ def client(**changes):
 
 
 def operator(**changes):
-    return replace(
-        client(),
-        role="operator",
-        actor_id="fictional-operator-demo2",
-        **changes,
-    )
+    fields = {"role": "operator", "actor_id": "fictional-operator-demo2"}
+    fields.update(changes)
+    return replace(client(), **fields)
 
 
 def verdict(c= None, o=None, at=NOW):
@@ -233,9 +230,9 @@ class FictionalDualPartyReviewTests(unittest.TestCase):
             self.assert_no_authority(res)
 
     def test_no_io_or_process_is_needed_by_review(self):
-        with patch("builtins.open", side_effect=AssertionError("file")), \\
-             patch("socket.socket", side_effect=AssertionError("socket")), \\
-             patch("sqlite3.connect", side_effect=AssertionError("db")), \\
+        with patch("builtins.open", side_effect=AssertionError("file")), \
+             patch("socket.socket", side_effect=AssertionError("socket")), \
+             patch("sqlite3.connect", side_effect=AssertionError("db")), \
              patch("subprocess.Popen", side_effect=AssertionError("process")):
             self.assertEqual(verdict().status, "REVIEW_ONLY")
             self.assert_hold(c=client(asset="private.host"))
