@@ -56,7 +56,7 @@ EXPECTED_ORDERED_CALLS = {
         "normalize_host", "ip_address", "is_current",
     ),
     ("src/lightup/activation.py", "ActivationGate", "issue"): (
-        "decide", "token_urlsafe", "ExecutionPermit",
+        "decide", "ExecutionPermit", "token_urlsafe",
     ),
     ("src/lightup/execution_policy.py", "ExecutionPolicy", "decide"): (
         "is_current", "allows_asset", "allows_capability",
@@ -168,8 +168,7 @@ def inspect_static_shape(path: str, source: str) -> bool:
             expected_calls = EXPECTED_ORDERED_CALLS.get((path, cname, method))
             if expected_calls is not None:
                 calls = _static_call_names(fn)
-                indices = [i for i, name in enumerate(calls) if name in expected_calls]
-                observed = tuple(calls[i] for i in indices)
+                # Names are listed in original AST lexical call-site order.
                 # Exact expected call names may be repeated in real code
                 # (ScopePolicy checks both explicit host & network). Require
                 # canonical first-occurrence order without banning repeats.
