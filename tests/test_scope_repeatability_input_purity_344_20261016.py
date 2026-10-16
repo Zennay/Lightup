@@ -44,6 +44,7 @@ def originals(target: Target, policy: ScopePolicy) -> tuple[object, ...]:
         None if grant is None else grant.valid_until,
         policy, policy.allow_private_lab, policy.explicit_hosts,
         policy.explicit_networks, policy.require_authorization_for_public,
+        id(target.labels), id(policy.explicit_hosts), id(policy.explicit_networks),
     )
 
 
@@ -67,6 +68,183 @@ class ScopeRepeatabilityAndPurity344Tests(unittest.TestCase):
         self.assertIs(policy, before[8])
         self.assertIs(target.authorization, before[3])
         return prior
+
+    # Deliberate *test-local* simulated source regressions (not runtime patches).
+    # Each control proves that the oracle fails when input is mutated or
+    # repeated responses drift. Original ScopePolicy.decide is restored by
+    # unittest.mock.patch on every path.
+    def test_canary_result_drift_is_detected(self):
+        real = ScopePolicy.decide
+        calls = 0
+
+        def drift(policy, target):
+            nonlocal calls
+            calls += 1
+            decision = real(policy, target)
+            if calls == 2:
+                return ScopeDecision(
+                    False, decision.normalized_host, ScopeReason.OUT_OF_SCOPE
+                )
+            return decision
+
+        with patch.object(ScopePolicy, "decide", drift):
+            with self.assertRaises(AssertionError):
+                self.assertPureReplay(
+                    ScopePolicy(allow_private_lab=False), Target("localhost"),
+                    True, ScopeReason.LOOPBACK, "localhost"
+                )
+        self.assertEqual(calls, 2)
+
+    def test_canary_non_boolean_allow_is_detected(self):
+        real = ScopePolicy.decide
+        calls = 0
+
+        def truthy(policy, target):
+            nonlocal calls
+            calls += 1
+            decision = real(policy, target)
+            return ScopeDecision("yes", decision.normalized_host, decision.reason)
+
+        with patch.object(ScopePolicy, "decide", truthy):
+            with self.assertRaises(AssertionError):
+                self.assertPureReplay(
+                    ScopePolicy(allow_private_lab=False), Target("localhost"),
+                    True, ScopeReason.LOOPBACK, "localhost"
+                )
+        self.assertEqual(calls, 1)
+
+    def test_canary_target_text_mutation_is_detected(self):
+        real = ScopePolicy.decide
+        calls = 0
+        policy = ScopePolicy()
+        target = Target("localhost", labels=("synthetic",))
+
+        def tamper(bound_policy, bound_target):
+            nonlocal calls
+            calls += 1
+            decision = real(bound_policy, bound_target)
+            object.__setattr__(bound_target, "value", "LOCALHOST")
+            return decision
+
+        with patch.object(ScopePolicy, "decide", tamper):
+            with self.assertRaises(AssertionError):
+                self.assertPureReplay(
+                    policy, target, True, ScopeReason.LOOPBACK, "localhost"
+                )
+        self.assertGreaterEqual(calls, 2)
+        self.assertEqual(target.value, "LOCALHOST")
+
+    def test_canary_equal_value_target_labels_rebinding_is_detected(self):
+        real = ScopePolicy.decide
+        policy = ScopePolicy()
+        target = Target("localhost", labels=("synthetic", "fixed"))
+        old_labels_id = id(target.labels)
+        calls = 0
+
+        def rebind(bound_policy, bound_target):
+            nonlocal calls
+            calls += 1
+            decision = real(bound_policy, bound_target)
+            object.__setattr__(
+                bound_target, "labels", tuple(list(bound_target.labels))
+            )
+            return decision
+
+        with patch.object(ScopePolicy, "decide", rebind):
+            with self.assertRaises(AssertionError):
+                self.assertPureReplay(
+                    policy, target, True, ScopeReason.LOOPBACK, "localhost"
+                )
+        self.assertGreaterEqual(calls, 2)
+        self.assertEqual(target.labels, ("synthetic", "fixed"))
+        self.assertNotEqual(id(target.labels), old_labels_id)
+
+    def test_canary_grant_provenance_mutation_is_detected(self):
+        real = ScopePolicy.decide
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset(("review.example.test",)),
+        )
+        target = Target("review.example.test", canonical_auth())
+        calls = 0
+
+        def tamper(bound_policy, bound_target):
+            nonlocal calls
+            calls += 1
+            decision = real(bound_policy, bound_target)
+            object.__setattr__(
+                bound_target.authorization, "reference", "FORGED-344"
+            )
+            return decision
+
+        with patch.object(ScopePolicy, "decide", tamper):
+            with self.assertRaises(AssertionError):
+                self.assertPureReplay(
+                    policy, target, True, ScopeReason.EXPLICIT_HOST,
+                    "review.example.test"
+                )
+        self.assertGreaterEqual(calls, 2)
+        self.assertEqual(target.authorization.reference, "FORGED-344")
+
+    def test_canary_equal_value_explicit_hosts_rebinding_is_detected(self):
+        real = ScopePolicy.decide
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset(("review.example.test",)),
+        )
+        before_id = id(policy.explicit_hosts)
+        calls = 0
+
+        def rebind(bound_policy, bound_target):
+            nonlocal calls
+            calls += 1
+            decision = real(bound_policy, bound_target)
+            object.__setattr__(
+                bound_policy, "explicit_hosts",
+                frozenset(list(bound_policy.explicit_hosts)),
+            )
+            return decision
+
+        with patch.object(ScopePolicy, "decide", rebind):
+            with self.assertRaises(AssertionError):
+                self.assertPureReplay(
+                    policy, Target("localhost"), True, ScopeReason.LOOPBACK,
+                    "localhost"
+                )
+        self.assertGreaterEqual(calls, 2)
+        self.assertEqual(policy.explicit_hosts, frozenset(("review.example.test",)))
+        self.assertNotEqual(id(policy.explicit_hosts), before_id)
+
+    def test_canary_equal_value_explicit_networks_rebinding_is_detected(self):
+        real = ScopePolicy.decide
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_networks=("8.8.8.0/24", "9.9.9.0/24"),
+        )
+        before_id = id(policy.explicit_networks)
+        calls = 0
+
+        def rebind(bound_policy, bound_target):
+            nonlocal calls
+            calls += 1
+            decision = real(bound_policy, bound_target)
+            object.__setattr__(
+                bound_policy, "explicit_networks",
+                tuple(list(bound_policy.explicit_networks)),
+            )
+            return decision
+
+        with patch.object(ScopePolicy, "decide", rebind):
+            with self.assertRaises(AssertionError):
+                self.assertPureReplay(
+                    policy, Target("localhost"), True, ScopeReason.LOOPBACK,
+                    "localhost"
+                )
+        self.assertGreaterEqual(calls, 2)
+        self.assertEqual(
+            policy.explicit_networks, ("8.8.8.0/24", "9.9.9.0/24")
+        )
+        self.assertNotEqual(id(policy.explicit_networks), before_id)
 
     def test_loopback_repeatable_and_input_pure(self):
         self.assertPureReplay(
