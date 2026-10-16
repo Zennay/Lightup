@@ -167,12 +167,12 @@ De opzettelijk beperkte commandline-interface is: `PYTHONPATH=src python -m ligh
 Maak een invoerbestand pair.json met vóór- en ná-gegevens die door de bestaande fictieve JSON-scopegenerator zijn geproduceerd:
 
 ```bash
-PYTHONPATH=src python -m lightup.synthetic_scope_notice_cli_1495 --synthetic-only --format json < fictional-input-before.json > before.json
-PYTHONPATH=src python -m lightup.synthetic_scope_notice_cli_1495 --synthetic-only --format json < fictional-input-after.json > after.json
+PYTHONPATH=src python -m lightup.synthetic_scope_notice_cli_1495 --synthetic-only --format json < examples/fictional_scope_compare_before_1495.json > before.json
+PYTHONPATH=src python -m lightup.synthetic_scope_notice_cli_1495 --synthetic-only --format json < examples/fictional_scope_compare_after_1495.json > after.json
 python -c 'import json; print(json.dumps({"before":json.load(open("before.json")), "after":json.load(open("after.json"))}))' > pair.json
 PYTHONPATH=src python -m lightup.synthetic_scope_notice_compare_cli_1495 --synthetic-pair-to-html < pair.json > comparison.html
 ```
 
-Deze opdrachten geven bij een synthetisch geldig voorbeeld bewust niet-nul exitcode 2 terug; bij shells met `set -e` is een expliciete afhandeling nodig. Voor beide voorbeeldinvoerbestanden kan het bestaande uitsluitend fictieve voorbeeldbestand worden gekopieerd, met een andere capability of risicoscore om een verschil te laten zien.
+Deze opdrachten geven bij een synthetisch geldig voorbeeld bewust niet-nul exitcode 2 terug; bij shells met `set -e` is een expliciete afhandeling nodig. Beide JSON-invoerbestanden zijn nu daadwerkelijk in `examples/` aanwezig. Ze tonen exact één gewijzigd fictief risicovenster en één toegevoegde fictieve handeling; een originele CLI→CLI→HTML-proef test beide gecommitte bestanden automatisch. De uitvoer krijgt twee voorgestelde veranderingen maar blijft nadrukkelijk **NOT AUTHORIZED**.
 
 De 26 Python-origineelbron- en 14 echte end-to-endcommandlinetests in `tests/test_synthetic_scope_notice_compare_1495.py` en `tests/test_synthetic_scope_notice_compare_cli_1495.py` toetsen risicowijzigingen, tijdvensters, toegevoegd/verwijderd, internationaal bronmateriaal, strict fail-closed, geen actieve UI en niet-nul status. Exact-head-gehoste CI-bewijs op commit `4544a2cd8dac4b1a4b57a7dfc3cc1958aa849c27`: eigen workflow #38933371968; oorspronkelijke Python 3.11 job `117082656826`, Python 3.14 job `117082657275`; elk **238 tests OK**. Dit is geen volledige LightUp-CI, geen VPS-validatie en geen toestemming. DRAFT/HOLD.
