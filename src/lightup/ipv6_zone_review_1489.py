@@ -69,6 +69,10 @@ def review_ipv6_authority_zone(value: object) -> ZoneReview:
         ip = IPv6Address(host)
     except (ValueError, AddressValueError):
         return _HOLD_FORMAT
+    # Mapped IPv4 can have a different routing/scope interpretation from IPv6.
+    # This review is IPv6-shape-only and must HOLD such aliases.
+    if ip.ipv4_mapped is not None:
+        return _HOLD_FORMAT
     if ip.scope_id is not None or str(ip) != host:
         return _HOLD_FORMAT
     return _REVIEW
