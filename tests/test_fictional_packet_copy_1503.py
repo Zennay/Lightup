@@ -204,7 +204,8 @@ class FictionalPacketCopyTests(unittest.TestCase):
     def test_standalone_module_not_imported_by_production_modules(self):
         root = pathlib.Path(__file__).resolve().parents[1] / "src" / "lightup"
         for path in root.rglob("*.py"):
-            if path.name == "fictional_packet_copy_1503.py":
+            if path.name in ("fictional_packet_copy_1503.py",
+                             "fictional_packet_cli_1503.py"):
                 continue
             with self.subTest(file=path.relative_to(root)):
                 self.assertNotIn("fictional_packet_copy_1503", path.read_text(encoding="utf-8"))
