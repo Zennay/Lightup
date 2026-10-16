@@ -68,10 +68,21 @@ def review_issuance_transition(
     revocation check. These caller-provided times are NOT authoritative.
     No time sampling, permit issuance, network or handler is performed here.
     """
-    checked = review_issuance_window(authorization=authorization, issued_at=checked_at)
+    # Freeze both original bounds exactly once: a caller holding the input
+    # must not widen them between the check review and stamp review. This
+    # snapshot conveys no consent, revocation or authority.
+    if type(authorization) is not Authorization:
+        return IssuanceWindowReview("HOLD", "check_noncanonical_authorization")
+    snapshot = Authorization(
+        owner=authorization.owner,
+        reference=authorization.reference,
+        valid_from=authorization.valid_from,
+        valid_until=authorization.valid_until,
+    )
+    checked = review_issuance_window(authorization=snapshot, issued_at=checked_at)
     if checked.status != "REVIEW_ONLY":
         return IssuanceWindowReview("HOLD", "check_" + checked.reason)
-    issued = review_issuance_window(authorization=authorization, issued_at=issued_at)
+    issued = review_issuance_window(authorization=snapshot, issued_at=issued_at)
     if issued.status != "REVIEW_ONLY":
         return IssuanceWindowReview("HOLD", "issuance_" + issued.reason)
     if issued_at < checked_at:
