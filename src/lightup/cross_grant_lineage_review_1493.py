@@ -16,6 +16,7 @@ from .models import Authorization
 
 _ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9@._:/-]{0,127}\Z", re.ASCII)
 _ASSET = re.compile(r"[a-z0-9][a-z0-9.-]{0,252}\Z", re.ASCII)
+_HOST_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z", re.ASCII)
 
 
 @dataclass(frozen=True)
@@ -44,7 +45,17 @@ def _identifier(value: object) -> bool:
 
 
 def _asset(value: object) -> bool:
-    return type(value) is str and _ASSET.fullmatch(value) is not None and ".." not in value and not value.endswith(".")
+    """Require canonical DNS labels in *every* in-memory asserted asset.
+
+    The fictional stdin CLI already enforces label boundaries. In-memory
+    callers must not get a weaker REVIEW_ONLY result for the same malformed
+    name just by skipping the CLI. This is shape-only, never authorization.
+    """
+    return (
+        type(value) is str
+        and _ASSET.fullmatch(value) is not None
+        and all(_HOST_LABEL.fullmatch(label) is not None for label in value.split("."))
+    )
 
 
 def _utc(value: object) -> bool:
