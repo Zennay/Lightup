@@ -7,14 +7,18 @@ on:
     paths:
       - 'src/lightup/synthetic_review_disclosure_1497.py'
       - 'src/lightup/synthetic_review_disclosure_cli_1497.py'
+      - 'src/lightup/synthetic_review_report_verify_1497.py'
       - 'tests/test_synthetic_review_disclosure_1497.py'
+      - 'tests/test_synthetic_review_report_verify_1497.py'
       - 'examples/fictional_review_handoff_hold_1497.json'
       - '.github/workflows/lightup-fictional-disclosure-1497.yml'
   pull_request:
     paths:
       - 'src/lightup/synthetic_review_disclosure_1497.py'
       - 'src/lightup/synthetic_review_disclosure_cli_1497.py'
+      - 'src/lightup/synthetic_review_report_verify_1497.py'
       - 'tests/test_synthetic_review_disclosure_1497.py'
+      - 'tests/test_synthetic_review_report_verify_1497.py'
       - 'examples/fictional_review_handoff_hold_1497.json'
       - 'examples/fictional_review_handoff_1497.json'
       - '.github/workflows/lightup-fictional-disclosure-1497.yml'
@@ -40,7 +44,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Ordinary isolated source and actual subprocess tests
-        run: PYTHONPATH=src python -m unittest discover -s tests -p 'test_synthetic_review_disclosure_1497.py' -v
+        run: PYTHONPATH=src python -m unittest discover -s tests -p 'test_synthetic_review*1497.py' -v
       - name: Real fictional CLI must exit review-only 2, never 0
         shell: bash
         run: |
@@ -59,3 +63,17 @@ jobs:
           set -e
           test "$actual" -eq 3
           python -c 'import json; text=open("/tmp/lightup-1497-denied.json").read(); x=json.loads(text); assert x["contract"]=="FICTIONAL-SCOPE-HANDOFF-1497-V1" and x["status"]=="HOLD" and x["reviewed_notes"]==0 and x["authorized"] is False and x["consent_verified"] is False and x["dispatch_allowed"] is False and x["release_allowed"] is False and "approved" not in text and "alpha.example.test" not in text'
+      - name: Inert report import round-trip cannot promote authority
+        shell: bash
+        run: |
+          set +e
+          PYTHONPATH=src python -m lightup.synthetic_review_disclosure_cli_1497 --verify-report-only < /tmp/lightup-1497-offline.json > /tmp/lightup-1497-reimport.json
+          good=$?
+          PYTHONPATH=src python -m lightup.synthetic_review_disclosure_cli_1497 --verify-report-only < /tmp/lightup-1497-denied.json > /tmp/lightup-1497-reimport-denied.json
+          rejected=$?
+          set -e
+          test "$good" -eq 2
+          test "$rejected" -eq 3
+          cmp /tmp/lightup-1497-offline.json /tmp/lightup-1497-reimport.json
+          cmp /tmp/lightup-1497-denied.json /tmp/lightup-1497-reimport-denied.json
+          python -c 'import json; a=json.load(open("/tmp/lightup-1497-reimport.json")); b=json.load(open("/tmp/lightup-1497-reimport-denied.json")); assert a["contract"]==b["contract"]=="FICTIONAL-SCOPE-HANDOFF-1497-V1"; assert a["status"]=="REVIEW_ONLY" and b["status"]=="HOLD"; assert all(a[k] is False and b[k] is False for k in ("authorized","consent_verified","dispatch_allowed","release_allowed"))'
