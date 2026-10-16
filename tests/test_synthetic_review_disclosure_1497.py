@@ -136,6 +136,32 @@ class FictionalDisclosureReviewTests(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertEqual(review((VALID + " " + value,)).status, "HOLD")
 
+    def test_dotted_suffix_partial_match_never_promotes_review(self):
+        for ending in (".x", ".3", ".999", ".", "..", "-other", "_other"):
+            with self.subTest(ending=ending):
+                self.assertEqual(review(("Asset alpha.example.test" + ending,)).status, "HOLD")
+
+    def test_dotted_numeric_and_internal_aliased_values_denied(self):
+        for value in ("version 3.14", "host internal.net", "mixed 8.8.8.8a",
+                      "asset a.b.example.test", "asset alpha.example.test.alpha"):
+            with self.subTest(value=value):
+                self.assertEqual(review((VALID + " " + value,)).status, "HOLD")
+
+    def test_common_secret_shapes_denied_without_echo(self):
+        for value in ("token=xyz", "cookie=xyz", "client_secret=xyz",
+                      "ghp_example123", "github_pat_abc123",
+                      "AKIA1234567890ABCDEF"):
+            with self.subTest(value=value):
+                verdict = review((VALID + " " + value,))
+                self.assertEqual(verdict.status, "HOLD")
+                self.assertNotIn(value, repr(verdict))
+
+    def test_fake_operator_approval_claim_quarantined(self):
+        for value in ("APPROVED", "authorized", "consent granted",
+                      "approval granted", "GO LIVE", "signed off"):
+            with self.subTest(value=value):
+                self.assertEqual(review((VALID + " " + value,)).status, "HOLD")
+
     def test_atomic_quarantine_of_mixed_batch(self):
         verdict = review((VALID, "customer.example.com", VALID))
         self.assertEqual(verdict.reviewed_notes, 0)
