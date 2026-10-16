@@ -30,6 +30,15 @@ It is not a safe hotfix by itself.
   elements. Invalid *one* element rejects the entire scope.
 - Assets and allowed-capability arrays must each be **nonempty**; the exclusion
   array can be empty. This matches issue #639 required invariants.
+- **Bounded parser work (provisional, for owner approval):** at most **65,536
+  Python string characters per serialized JSON column**, checked *before*
+  `json.loads`; at most **256 entries per array**, and **2,048 characters
+  per nested entry**, checked before whitespace scanning and tuple creation.
+  This is resource exhaustion defense, not proof of a canonical hostname or
+  permission. These deliberately conservative thresholds may reject historically
+  valid but oversized scopes; **source owner #554 must review actual data and
+  policy before connecting them to live authorization**. Never silently
+  truncate, split, normalize or rewrite an oversized row; deny until reviewed.
 - A valid result is a `PersistedScopeEntries` **immutable named tuple**, never
   a grant, permission or risk decision. It deliberately performs **no**
   cap-registry lookup, revocation, clock or client validation.
@@ -49,7 +58,11 @@ shape contains NO client, tenant, issuer, consent, grant, revocation or time,
 deep nesting, an explicit **no filesystem/socket/SQLite/subprocess I/O**
 canary for the pure reviewer, and one separate real temporary SQLite mutation
 + nonwrite proof.
-No target socket, command execution, credentials or real grants.
+Four new boundary tests exercise exact inclusive list/item ceilings, a
+parser spy proving oversized raw values never reach JSON decoding (including
+when the overlimit value is the second or third field), and atomic refusal of
+oversized mixed grants. No target socket, command execution, credentials or
+real grants.
 
 Run through the hosted offline preflight Python 3.11/3.14 and original
 producer integration jobs at the exact immutable HEAD; record both positive
