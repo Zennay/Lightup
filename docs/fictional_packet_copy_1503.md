@@ -68,6 +68,24 @@ PYTHONPATH=src python -m lightup.fictional_packet_cli_1503 < docs/examples/ficti
 
 The **only** stdout is canonical, small ASCII JSON: `{"status":"HOLD","authorized":false,"consent_verified":false,"dispatch_allowed":false,"release_allowed":false}` (plus final newline) or `{"status":"REVIEW_ONLY","sha256":"...","authorized":false,"consent_verified":false,"dispatch_allowed":false,"release_allowed":false}` (plus newline). A SHA256 is generated only for identical, canonical, explicitly fictional bytes and is never provenance or consent. Exit code is **always nonzero**: 2 for REVIEW_ONLY and 3 for HOLD/input/pipe failures; never 0. The CLI accepts **no command-line arguments or mode flags** (including `--help`, `--approve` or file paths): any unexpected argument yields a generic HOLD. Missing binary streams, failed flushes, broken pipes and incomplete output writes fail closed with exit 3 rather than exposing partial review as success. CLI success labels must **never** be treated as execution permission. No real customer/target data should be fed to the CLI. Both input copies can be forged simultaneously, so equality alone proves no external fact.
 
+### Canonical envelope generation (no handwritten nested JSON)
+
+The CLI also exports a pure, strict builder for the stdin envelope. All supplied packet bytes must already be canonical and **strictly fictional**; it allows different but valid copies specifically so the verifier can return HOLD. It rejects real/noncanonical bytes, subclassed objects and more than sixteen copies by returning `None`.
+
+```python
+from lightup.fictional_packet_copy_1503 import build_fictional_copy_packet
+from lightup.fictional_packet_cli_1503 import build_fictional_cli_envelope
+
+original = build_fictional_copy_packet(
+    "alpha.example.test", "REVIEW_REQUIRED", ("metadata_read",),
+)
+stdin_payload = build_fictional_cli_envelope(original, (original,) * 2)
+assert type(stdin_payload) is bytes  # Already-validated canonical fictional bytes
+# Feed stdin_payload to the opt-in CLI; do NOT treat REVIEW_ONLY as permission.
+```
+
+The two committed CLI fixtures must byte-match envelopes produced by this function; ordinary tests check this and run each one in a real subprocess. The builder performs no disk, network, database or process access and does not authenticate packet authors.
+
 ## Tests and ownership
 
 Run opt-in isolated tests (including exhaustive byte edits, builder invariants, 16-copy fanout, no-I/O tripwires) with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_fictional_packet_copy_1503.py' -v`. Dedicated **hosted** Python 3.11/3.14 workflow `.github/workflows/lightup-fictional-packet-1503.yml` runs both new offline test files when the new file set changes. This does not substitute for original full hosted preflight or the genuinely registered permanent VPS runner (#1144). All files exclusively added under #1503; do not cherry-pick as production authorization.
