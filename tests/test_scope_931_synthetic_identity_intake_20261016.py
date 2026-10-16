@@ -1,6 +1,7 @@
 """Hermetic subprocess regression for a non-authorizing #931 review utility."""
 from __future__ import annotations
 
+import ast
 import json
 import os
 import pathlib
@@ -41,6 +42,42 @@ class SyntheticIdentityIntakeCliTest(unittest.TestCase):
         exit_code, found, _ = self.run_cli(raw, "--offline-synthetic-only")
         self.assertEqual((exit_code, found), (3, "REVIEW_ONLY") if
                          status == "REVIEW_ONLY" else (2, "HOLD"))
+
+    def test_offline_reviewer_imports_remain_allowlisted(self):
+        """Make future network, LightUp, reflection, or CLI framework imports loud."""
+        source = ast.parse(SCRIPT.read_text(encoding="utf-8"))
+        allowed = {"__future__", "json", "os", "select", "stat",
+                   "sys", "time", "unicodedata"}
+        discovered = []
+        for node in ast.walk(source):
+            if isinstance(node, ast.Import):
+                discovered.extend(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                self.assertTrue(node.module)
+                self.assertTrue(all(alias.name != "*" for alias in node.names))
+                discovered.append(node.module)
+        self.assertEqual(set(discovered), allowed)
+        self.assertEqual(len(discovered), len(allowed))
+
+    def test_offline_reviewer_does_not_gain_dynamic_execution_or_os_capabilities(self):
+        """Static tripwire only, not a runtime security sandbox."""
+        source = ast.parse(SCRIPT.read_text(encoding="utf-8"))
+        forbidden_calls = {
+            "eval", "exec", "compile", "__import__", "open", "input",
+            "breakpoint",
+        }
+        allowed_os = {"fstat", "isatty", "read", "write"}
+        allowed_sys = {"stdin", "stdout", "argv"}
+        for node in ast.walk(source):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                self.assertNotIn(node.func.id, forbidden_calls)
+            if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
+                if node.value.id == "os":
+                    self.assertIn(node.attr, allowed_os)
+                elif node.value.id == "sys":
+                    self.assertIn(node.attr, allowed_sys)
+        self.assertNotIn("http://", SCRIPT.read_text(encoding="utf-8"))
+        self.assertNotIn("https://", SCRIPT.read_text(encoding="utf-8"))
 
     def test_valid_exact_shape_never_grants_authority(self):
         self.assert_receipt(
