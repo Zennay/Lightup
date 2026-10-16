@@ -183,6 +183,7 @@ class ScopeHistoryReview:
     expanded_dimensions: tuple[str, ...]
     narrowed_dimensions: tuple[str, ...]
     held_steps: tuple[int, ...] = ()
+    held_step_dimensions: tuple[tuple[str, ...], ...] = ()
     authorized: bool = field(default=False, init=False)
     consent_verified: bool = field(default=False, init=False)
     dispatch_allowed: bool = field(default=False, init=False)
@@ -201,6 +202,22 @@ class ScopeHistoryReview:
             or self.held_steps != tuple(sorted(set(self.held_steps)))
         ):
             raise ValueError("held transitions must be unique sorted bounded indices")
+        if (
+            type(self.held_step_dimensions) is not tuple
+            or len(self.held_step_dimensions) != len(self.held_steps)
+        ):
+            raise ValueError("held step categories must match step indices")
+        for categories in self.held_step_dimensions:
+            if (
+                type(categories) is not tuple or not categories
+                or any(type(item) is not str for item in categories)
+                or categories != tuple(name for name in _DIMENSIONS if name in categories)
+            ):
+                raise ValueError("held categories must be nonempty canonical dimensions")
+        if self.held_step_dimensions:
+            union = set(item for group in self.held_step_dimensions for item in group)
+            if self.expanded_dimensions != tuple(name for name in _DIMENSIONS if name in union):
+                raise ValueError("hold dimension summary must equal per-step union")
         if type(self.expanded_dimensions) is not tuple or type(self.narrowed_dimensions) is not tuple:
             raise ValueError("invalid dimension type")
         for group in (self.expanded_dimensions, self.narrowed_dimensions):
@@ -237,7 +254,7 @@ def review_fictional_scope_history(history: object) -> ScopeHistoryReview:
     Never compare only endpoints: A->B->A can hide an intermediate expansion.
     2..16 exact tuple snapshots, all checked before any result; invalid input
     returns generic zero-echo HOLD. Valid expanding history reports only fixed
-    dimension names and ALL widened transition indices, never asset names or grants.
+    per-step fixed dimension names and ALL widened transition indices, never asset names or grants.
     """
     def generic_hold() -> ScopeHistoryReview:
         return ScopeHistoryReview("HOLD", 0, None, (), ())
@@ -256,12 +273,14 @@ def review_fictional_scope_history(history: object) -> ScopeHistoryReview:
         narrowed = set()
         first_held = None
         held_steps = []
+        held_step_dimensions = []
         for step in range(1, len(snapshots)):
             result = review_fictional_scope_delta(snapshots[step - 1], snapshots[step])
             if result.status == "HOLD":
                 if first_held is None:
                     first_held = step
                 held_steps.append(step)
+                held_step_dimensions.append(result.expanded_dimensions)
                 expanded.update(result.expanded_dimensions)
             else:
                 narrowed.update(result.narrowed_dimensions)
@@ -272,7 +291,7 @@ def review_fictional_scope_history(history: object) -> ScopeHistoryReview:
         return ScopeHistoryReview(
             "HOLD", count, first_held,
             tuple(name for name in _DIMENSIONS if name in expanded), (),
-            tuple(held_steps),
+            tuple(held_steps), tuple(held_step_dimensions),
         )
     return ScopeHistoryReview(
         "REVIEW_ONLY", count, None, (),
