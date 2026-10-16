@@ -270,6 +270,56 @@ class GateRebindingTests(unittest.TestCase):
             with self.assertRaises(PermissionError):
                 gate.issue(PUBLIC, CAPABILITY)
 
+    def test_witness_final_permit_mode_can_disagree_with_checked_authorized_mode(self):
+        gate = ActivationGate(
+            ScopePolicy(explicit_hosts=frozenset({"review.example.test"})),
+            ActivationPolicy(ActivationMode.AUTHORIZED, "FICTIONAL-SETUP"),
+        )
+        original_check = Authorization.is_current
+        invocations = []
+
+        def switch_on_second_authorization_check(auth, now=None):
+            result = original_check(auth, now)
+            invocations.append(result)
+            if len(invocations) == 2:
+                gate.activation_policy = ActivationPolicy(ActivationMode.PLAN_ONLY)
+            return result
+
+        with patch.object(Authorization, "is_current", autospec=True,
+                          side_effect=switch_on_second_authorization_check), \
+             patch.object(socket, "socket", side_effect=AssertionError("network forbidden")), \
+             patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns forbidden")), \
+             patch.object(subprocess, "Popen", side_effect=AssertionError("process forbidden")):
+            permit = gate.issue(PUBLIC, CAPABILITY)
+        self.assertEqual(invocations, [True, True])
+        # Original gate checked AUTHORIZED, but subsequently read changed
+        # PLAN_ONLY policy while creating the returned in-memory permit.
+        self.assertIs(permit.mode, ActivationMode.PLAN_ONLY)
+        self.assertEqual(permit.activation_reference, PUBLIC.authorization.reference)
+
+    @unittest.expectedFailure
+    def test_RED_inflight_authorization_check_must_not_return_plan_only_permit(self):
+        gate = ActivationGate(
+            ScopePolicy(explicit_hosts=frozenset({"review.example.test"})),
+            ActivationPolicy(ActivationMode.AUTHORIZED, "FICTIONAL-SETUP"),
+        )
+        original_check = Authorization.is_current
+        invocations = []
+
+        def switch_on_second_authorization_check(auth, now=None):
+            result = original_check(auth, now)
+            invocations.append(result)
+            if len(invocations) == 2:
+                gate.activation_policy = ActivationPolicy(ActivationMode.PLAN_ONLY)
+            return result
+
+        with patch.object(Authorization, "is_current", autospec=True,
+                          side_effect=switch_on_second_authorization_check):
+            # EXPECTED SOURCE RED: policy identity/mode needs to stay bound
+            # across current-authorization checks and permit construction.
+            with self.assertRaises(PermissionError):
+                gate.issue(PUBLIC, CAPABILITY)
+
     def test_unchanged_explicit_public_gate_is_an_independent_control(self):
         gate = explicit_public_gate()
         permit = gate.issue(PUBLIC, CAPABILITY)
