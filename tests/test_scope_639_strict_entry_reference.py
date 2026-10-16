@@ -188,6 +188,37 @@ class StrictEntryReferenceTest(unittest.TestCase):
                 self.review(assets='["app.example.invalid",null]')
             )
 
+    def test_test_shim_exercises_real_src_helper(self):
+        """Require direct identity; CI must not pass on an orphan mock copy."""
+        from lightup.persisted_scope_entries_639 import (
+            PersistedScopeEntries,
+            review_persisted_scope_entries,
+        )
+
+        self.assertIs(review_scope_entries, review_persisted_scope_entries)
+        self.assertIs(ReviewedScopeEntries, PersistedScopeEntries)
+        self.assertIs(
+            type(self.review()),
+            PersistedScopeEntries,
+        )
+        self.assertFalse(hasattr(review_persisted_scope_entries, "authorize"))
+
+    def test_scope_shape_never_implies_tenant_or_consent(self):
+        """A valid shape is a literal snapshot, not an authorization record."""
+        for asset in (
+            "app.example.invalid",
+            "other.example.invalid",
+            "third.example.invalid",
+        ):
+            with self.subTest(asset=asset):
+                result = self.review(assets=json.dumps([asset]))
+                self.assertEqual(result.assets, (asset,))
+                for attribute in (
+                    "tenant_id", "client_id", "engagement_id", "grant_id",
+                    "approved_by", "reference", "revoked_at", "is_current",
+                ):
+                    self.assertFalse(hasattr(result, attribute))
+
     def test_real_sqlite_snapshot_corruption_review_has_no_write(self):
         with tempfile.TemporaryDirectory() as tmp:
             store = DomainStore(Path(tmp) / "scope639-review.db")
