@@ -1,0 +1,52 @@
+name: LightUp offline authority source inventory #1499
+
+on:
+  push:
+    branches:
+      - chatgpt/scope-static-authority-surface-review-20261016
+    paths:
+      - 'tools/scope_authority_source_inventory_1499.py'
+      - 'tests/test_scope_static_authority_1499.py'
+      - 'docs/scope-authority-static-inventory-1499.md'
+      - '.github/workflows/lightup-scope-static-authority-1499.yml'
+  pull_request:
+    paths:
+      - 'tools/scope_authority_source_inventory_1499.py'
+      - 'tests/test_scope_static_authority_1499.py'
+      - 'docs/scope-authority-static-inventory-1499.md'
+      - '.github/workflows/lightup-scope-static-authority-1499.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-source-inventory:
+    name: static source review Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.14']
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Normal adversarial tests on original fixed local source
+        run: python -m unittest discover -s tests -p 'test_scope_static_authority_1499.py' -v
+      - name: Real explicit reviewer-only CLI must NEVER exit zero
+        shell: bash
+        run: |
+          set +e
+          python tools/scope_authority_source_inventory_1499.py --offline-review-only > /tmp/lightup-scope-review-1499.json
+          got=$?
+          python tools/scope_authority_source_inventory_1499.py --root=/etc > /tmp/lightup-scope-hold-1499.json
+          refused=$?
+          set -e
+          test "$got" -eq 2
+          test "$refused" -eq 3
+          python -c 'import json; a=json.load(open("/tmp/lightup-scope-review-1499.json")); b=json.load(open("/tmp/lightup-scope-hold-1499.json")); assert a["contract"]==b["contract"]=="LIGHTUP-SOURCE-AUTHORITY-INVENTORY-1499-V1"; assert a["status"]=="REVIEW_ONLY" and a["source_count"]==5; assert b["status"]=="HOLD" and b["source_count"]==0; assert all(a[k] is False and b[k] is False for k in ("authorized","consent_verified","dispatch_allowed","release_allowed"))'
