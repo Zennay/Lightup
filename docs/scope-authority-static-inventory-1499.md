@@ -27,3 +27,9 @@ Original issue owners stay responsible for production and test fixes. In particu
 ### CI isolation
 
 The separate read-only workflow runs only own tests on hosted Python 3.11/3.14 and tests both real CLI outcomes; no credentials are persisted by checkout, no secrets, no target scans or production adapters, no existing canonical VPS job/workflow modified. The test suite mutates **in-memory copies only**, including source drift, duplicated symbols, forged argument defaults, dynamic interpreter calls, missing/extra/wrong files, and symlink redirects. Tests do not execute the mutated text. Changing the baseline requires a deliberate independent human-owner review of changes; never automatically bless new hashes.
+
+## W2: Static gate call topology proof (limited, non-executable)
+
+The independent reviewer now also checks that the original `ScopePolicy.decide` source still calls `normalize_host`, `ip_address` and `is_current` in their original lexical order; `ExecutionPolicy.decide` still names `is_current`, `allows_asset` and `allows_capability` in order; and `ActivationGate.issue` still contains the `scope_policy.decide` call, an explicit `if not decision.allowed: raise` branch, and a later `ExecutionPermit` constructor. Tests deliberately delete each check from in-memory copies of the original source and show static HOLD without ever evaluating the changed source or calling any permit method.
+
+This proves **only that named static code patterns and the exact pinned source snapshot are present**. AST presence is not proof of a correct runtime guard, functional policy ordering, fresh revocation, legitimate client approval or absence of bypasses. In particular #301 and other real original source REDs remain open, so even REVIEW_ONLY is NEVER a security GO. The present static pin hashes should be updated only after a reviewed, source-owner-approved original source change and a separate human evaluation of the complete runtime authority boundary.
