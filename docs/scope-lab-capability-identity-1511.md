@@ -89,3 +89,36 @@ as well as every single-byte NUL corruption of the positive fixture. The
 isolated pinned workflow now runs **both** #1511 test files. Exact W2 head
 and hosted logs must be checked anew: a prior SHA's green CI cannot be
 substituted for the new SHA.
+
+## W3 — result-object safety and production isolation
+
+The earlier internal advisory reused `_HOLD` and `_REVIEW_ONLY` instance
+singletons and had a public dataclass constructor accepting
+`authorized=True` and similar authority-shaped keyword arguments. This is
+an in-process *advisory object integrity* problem, **not a product-runtime
+authorization bypass**. All regular review outputs were false, but Python
+`object.__setattr__` can bypass ordinary dataclass `frozen=True` and
+contaminate shared singleton results.
+
+The rewritten pure module now:
+- allocates a **fresh result** for each HOLD/REVIEW_ONLY call; deliberately
+  tampering with one caller-owned object cannot poison subsequent results;
+- accepts exactly `HOLD` and `REVIEW_ONLY` built-in string statuses,
+  and prevents public callers from specifying any four authority flags
+  in the normal constructor;
+- retains `frozen=True, slots=True` but explicitly does **not** claim
+  cryptographic object authenticity: malicious Python code may forge even
+  these individual values. Do not treat these statuses as real permissions.
+
+Two new owned test files verify constructor restrictions, forced per-object
+mutation isolation, exact-type spoof rejection, parallel review independence,
+no socket/file-open inside pure review, and static AST proof that unmodified
+production source contains no direct import or literal dynamic import
+of the optional fictional helper. The static check is deliberately limited:
+it does not prove every reflective or future dynamic import route.
+
+The own SHA-pinned, hosted-only read-only CI has been expanded to discover
+the new tests. This remains **separate from the original producer, execution
+handlers and live authorization**. Full original CI, a genuinely registered
+permanent named VPS, independent security/privacy and actual client+operator
+consent/revocation remain release prerequisites.
