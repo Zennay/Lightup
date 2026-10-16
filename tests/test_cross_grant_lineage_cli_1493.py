@@ -1,5 +1,6 @@
 """Strict offline CLI behavioral and adversarial regressions for #1493."""
 import copy
+import itertools
 import json
 import os
 import random
@@ -150,6 +151,37 @@ class FictionalCliTests(unittest.TestCase):
         result, code = self.check(inflated)
         self.assertEqual((result["status"], result["reviewed"], code), ("HOLD", 0, 2))
         self.assertFalse(result["release_allowed"])
+
+    def test_cli_ambiguous_provenance_denied_under_all_input_orders(self):
+        source = valid_document()
+        claims = (
+            valid_record("app.example.test", "G-1"),
+            valid_record("app.example.test", "G-2"),
+            valid_record("other.example.test", "G-3"),
+        )
+        outputs = set()
+        for ordered in itertools.permutations(claims):
+            source["candidates"] = list(ordered)
+            r, code = evaluate_bytes(encoded(source))
+            outputs.add((r["status"], r["reason"], r["reviewed"], code))
+            self.assertFalse(r["authorized"])
+            self.assertFalse(r["dispatch_allowed"])
+        self.assertEqual(outputs, {("HOLD", "COHERENCE_DENIED", 0, 2)})
+
+    def test_cli_disjoint_provenance_remains_review_only_in_any_order(self):
+        source = valid_document()
+        claims = (
+            valid_record("app.example.test", "G-1"),
+            valid_record("other.example.test", "G-2"),
+            valid_record("third.example.test", "G-3"),
+        )
+        outputs = set()
+        for ordered in itertools.permutations(claims):
+            source["candidates"] = list(ordered)
+            r, code = evaluate_bytes(encoded(source))
+            outputs.add((r["status"], r["reason"], r["reviewed"], code))
+            self.assertFalse(r["release_allowed"])
+        self.assertEqual(outputs, {("REVIEW_ONLY", "UNTRUSTED_COHERENCE", 3, 2)})
 
     def test_same_grant_id_identical_two_asset_legacy_stays_review_only(self):
         def coherent(document):
