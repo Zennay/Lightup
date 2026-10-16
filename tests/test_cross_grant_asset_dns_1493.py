@@ -119,9 +119,9 @@ class CanonicalAssetReviewTests(unittest.TestCase):
         self.assertFalse(result.release_allowed)
 
     def test_bad_labels_review_is_file_network_and_process_free(self):
-        with patch.object(socket, "socket", side_effect=AssertionError("network")), \\
-             patch.object(sqlite3, "connect", side_effect=AssertionError("database")), \\
-             patch.object(subprocess, "Popen", side_effect=AssertionError("process")), \\
+        with patch.object(socket, "socket", side_effect=AssertionError("network")), \
+             patch.object(sqlite3, "connect", side_effect=AssertionError("database")), \
+             patch.object(subprocess, "Popen", side_effect=AssertionError("process")), \
              patch("builtins.open", side_effect=AssertionError("file")):
             self.assertEqual(_review(_candidate("bad-.example.test")).status, "HOLD")
 
