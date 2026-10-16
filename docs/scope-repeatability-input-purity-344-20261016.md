@@ -85,3 +85,9 @@ Concurrency is deliberately bounded to 8 threads and deterministic shuffled inpu
 **New owner total: 36 offline tests.** This additional acceptance cannot establish a right to scan an asset or release LightUp; maintain INCUBATE / DRAFT-HOLD and independent original source/security/privacy review.
 
 The W5 **37th regression**, an intentionally faulty policy-identity-wide cached `ScopeDecision` inserted only inside `unittest.mock.patch.object`, checks that the real 384-call concurrent oracle rejects a previously allowed grant being reused for denied/expired/new requests. It asserts the injected faulty method ran and that original unmodified source behavior is restored outside the mock. No active dispatch or external target is touched.
+
+### W6 — Parallel source I/O prohibition
+
+A further single source-integrated test replays **384 bounded calls over the same 96 synthetic canonical scenarios through an eight-worker thread pool** while blocking socket/DNS, urllib HTTP, subprocess/system shell, file/Path.open, SQLite, and os.getenv. Every result is compared to its exact previously captured decision and each original target, grant, and policy field/object identity is rechecked after the thread pool returns. Both allowed and denied real-source decisions must appear. This test does not contact any network or filesystem or create any active adapter; it only enforces the pure authorization-decision contract under parallel loads.
+
+**38 offline owner tests** in one standalone test module; identical source-owner, human-go and draft hold restrictions apply.
