@@ -130,6 +130,16 @@ class FictionalDisclosureReviewTests(unittest.TestCase):
             with self.subTest(value=repr(value)):
                 self.assertEqual(review((value,)).status, "HOLD")
 
+    def test_multi_megabyte_direct_string_denied_without_copying(self):
+        # Direct Python callers (unlike the bounded CLI) can supply huge strs.
+        # Source checks len() before ASCII encoding: no linear input copy.
+        for payload in ("a" * 4_000_000, "\u202e" * 4_000_000,
+                        VALID + "x" * 4_000_000):
+            with self.subTest(first=repr(payload[:8])):
+                result = review((payload,))
+                self.assertEqual(result.status, "HOLD")
+                self.assertEqual(result.reviewed_notes, 0)
+
     def test_single_note_budget_denied(self):
         self.assertEqual(review(("alpha.example.test " + "a" * 4097,)).status, "HOLD")
 
