@@ -6,6 +6,7 @@ Expected failures are real OPEN owner-source boundaries, NOT fixed authorization
 import os
 import sys
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -150,6 +151,20 @@ class ToolDefinitionOwner156OuterBoundary(unittest.TestCase):
             InteractionKind.PASSIVE_PUBLIC, RiskLevel.PASSIVE,
             "inert synthetic capability",
         ))
+
+    def test_oracle_rejects_unrelated_registry_runtime_crash(self):
+        # Negative mutation: an arbitrary TypeError/RuntimeError may be marked
+        # expected by @expectedFailure, but must never satisfy witness proof.
+        with patch.object(ToolRegistry, "register",
+                          side_effect=RuntimeError("synthetic-unrelated-registry-crash")):
+            with self.assertRaisesRegex(AssertionError, "a generic crash or unrelated failure"):
+                self.test_expected_red_replay_oracle()
+
+    def test_oracle_detects_complete_owner_type_rejection_fix(self):
+        with patch.object(ToolRegistry, "register",
+                          side_effect=OrchestrationError("synthetic-exact-denial")):
+            with self.assertRaisesRegex(AssertionError, "owner code changed"):
+                self.test_expected_red_replay_oracle()
 
     @unittest.expectedFailure
     def test_red_plain_subclass_must_be_denied(self):
