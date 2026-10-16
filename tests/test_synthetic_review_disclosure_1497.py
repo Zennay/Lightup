@@ -271,6 +271,19 @@ class FictionalDisclosureReviewTests(unittest.TestCase):
                 bad = f"Asset {label}.example.test; capability tls_review; proposed risk 5."
                 self.assertEqual(review((bad,)).status, "HOLD")
 
+    def test_version_tag_is_fixed_for_both_outcomes(self):
+        for notes in ((VALID,), (VALID, VALID), (None,)):
+            with self.subTest(notes=repr(notes[:1])):
+                self.assertEqual(
+                    review(notes).contract,
+                    "FICTIONAL-SCOPE-HANDOFF-1497-V1",
+                )
+
+    def test_contract_cannot_be_supplied_to_verdict_constructor(self):
+        from lightup.synthetic_review_disclosure_1497 import DisclosureVerdict
+        with self.assertRaises(TypeError):
+            DisclosureVerdict("HOLD", review((None,)).notice, 0, contract="LIVE-AUTHORITY")
+
     def test_direct_verdict_cannot_spoof_authorization_state(self):
         from lightup.synthetic_review_disclosure_1497 import DisclosureVerdict
         for state, notice, count in (
@@ -389,6 +402,25 @@ class FictionalDisclosureCliTests(unittest.TestCase):
         self.assertEqual(x.returncode, 3, x.stderr)
         self.assertEqual(json.loads(x.stdout)["status"], "HOLD")
         self.assertNotIn(b"Traceback", x.stderr)
+
+    def test_cli_returns_exact_bounded_versioned_fields(self):
+        wanted = {
+            "contract", "status", "notice", "reviewed_notes", "authorized",
+            "consent_verified", "dispatch_allowed", "release_allowed",
+        }
+        for payload, expected in (
+            (json.dumps([VALID]).encode(), "REVIEW_ONLY"),
+            (json.dumps([VALID + " approved"]).encode(), "HOLD"),
+        ):
+            with self.subTest(expected=expected):
+                result = self.invoke(payload, "--synthetic-only")
+                body = json.loads(result.stdout)
+                self.assertEqual(set(body), wanted)
+                self.assertEqual(body["contract"], "FICTIONAL-SCOPE-HANDOFF-1497-V1")
+                self.assertEqual(body["status"], expected)
+                self.assertEqual(result.returncode, 2 if expected == "REVIEW_ONLY" else 3)
+                for flag in ("authorized", "consent_verified", "dispatch_allowed", "release_allowed"):
+                    self.assertIs(body[flag], False)
 
     def test_cli_rejects_duplicate_records_without_input_echo(self):
         payload = json.dumps([VALID, VALID]).encode("utf-8")
