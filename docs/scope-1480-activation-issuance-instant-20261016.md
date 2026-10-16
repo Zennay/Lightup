@@ -1,0 +1,40 @@
+# #1480 — ActivationGate issuance instant vs authorization expiry (source acceptance)
+
+**Status: INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** This independent source-facing test is not a patch to runtime authorization and does not enable any network action. Original policy owners retain `src/lightup/activation.py`, `models.py`, `scope.py`, plus #1476 policy-lifetime acceptance and #301 time-shape acceptance.
+
+## Verified source contract and why it matters
+
+On immutable `main` commit `e73b7445c87ad239bdb03c50a99078ef93163b02`:
+
+1. `ActivationGate.issue` calls `ScopePolicy.decide(target)`, which can call `Authorization.is_current()`.
+2. For `AUTHORIZED`, `ActivationGate.issue` calls `Authorization.is_current()` again.
+3. **Only after both checks**, the returned `ExecutionPermit.issued_at` is stamped using another `datetime.now(timezone.utc)`.
+
+A fabricated finite `.example.test` authorization can be valid at step 1 and 2, but already expired at step 3. The permit then records an issuance instant later than the authorization's `valid_until`. This is **not** a claim of a remotely exposed exploit, runtime tool invocation, real customer consent, durable grant existence, or asset interaction. The existing application has other authorization checks; no conclusion is made about external exploitability.
+
+## Independent tests
+
+`tests/test_scope_1480_activation_issuance_instant_20261016.py` uses only stdlib `unittest` and temporary `unittest.mock.patch` of the module-imported `datetime` names, not the system clock, file system, network or running services. `INSIDE` is one second before `valid_until` and `OUTSIDE` one second after.
+
+- Ordinary controls: distinct UTC clock canary; allowed exact authorized public asset within the whole window; inclusivity at exact expiry; expired-at-check denied; PLAN_ONLY denied; LAB_ONLY cannot issue for fictional public target; unknown public asset denied.
+- **One deliberately OPEN `expectedFailure`** requires the installed `ActivationGate` to refuse an authorized permit when its eventual `issued_at` is beyond the original grant window. The original implementation currently permits the two-clock case. A source repair should turn this into an ordinary positive test, not leave the known RED disguised as a green release.
+
+The owner should establish a consistent authorization decision/issuance instant, ensure no time-window widening across policy, tenant, engagement, asset, risk and capability gates, and preserve revocation checks when integrating. Simply changing the expected test value, deleting an authorization check, or modifying system time does not satisfy the invariant. Document how issuance and subsequent actual tool dispatch are separately revalidated. The policy-lifetime rebinding issue #1476 and polymorphic/falsy datetime issue #301 are independent.
+
+## Reproduction and promotion
+
+From the exact checkout of this branch, only run:
+
+```bash
+PYTHONPATH=src python -m unittest -v tests/test_scope_1480_activation_issuance_instant_20261016.py
+```
+
+If unittest package discovery dislikes direct module-path notation, use:
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_1480_activation_issuance_instant_20261016.py' -v
+```
+
+An overall process exit of 0 while one test is an **expected failure** demonstrates only the test harness and an **unrepaired source gap**; it is never authorization, approval, or production repair evidence. Check original complete logs for exact head, both Python 3.11 and 3.14 and permanent VPS runner proof independently. Unrelated #301 wallclock fixture can currently fail full hosted suite; its owner #1452 owns that repair. Never silence that failure or claim the full suite passes based on this focused acceptance.
+
+**Release blockers:** original source-owner review and true source fix, all REDs promoted after repair, original client/operator consent, durable live revocation, independent privacy/security review, exact-head full hosted and registered permanent-VPS proof with real hostname/runner, and explicit human GO. **Do not merge, deploy, activate grants/handlers, run scans or access real targets** on this branch.
