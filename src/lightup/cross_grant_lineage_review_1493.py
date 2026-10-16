@@ -53,6 +53,10 @@ def _asset(value: object) -> bool:
     """
     return (
         type(value) is str
+        # This is a synthetic-only review helper, NOT a generic production
+        # approval path. Match the CLI's reserved fictional asset suffix so
+        # accidentally submitted customer/live hostnames cannot look reviewed.
+        and value.endswith(".example.test")
         and _ASSET.fullmatch(value) is not None
         and all(_HOST_LABEL.fullmatch(label) is not None for label in value.split("."))
     )
