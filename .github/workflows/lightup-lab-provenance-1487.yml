@@ -45,6 +45,7 @@ jobs:
             tests/test_lab_reference_review_1487_20261016.py \
             tests/test_lab_session_lineage_1487_20261016.py \
             tests/test_lab_session_lineage_cli_1487_20261016.py \
+            tests/test_lab_lineage_cli_adversarial_1487_20261016.py \
             tests/test_lab_lineage_gate_red_1487_20261016.py \
             tests/test_scope_lab_reference_provenance_1487_20261016.py
       - name: Verify exact isolated test inventory, expected RED debt, and no unexpected failures
@@ -62,7 +63,7 @@ jobs:
           count = suite.countTestCases()
           result = unittest.TextTestRunner(verbosity=2).run(suite)
           expected_open_red = 10
-          expected_count = 100
+          expected_count = 115
           print(
               f"ISOLATED_RESULT tests={count} ordinary_pass="
               f"{count - len(result.expectedFailures) - len(result.failures) - len(result.errors) - len(result.unexpectedSuccesses) - len(result.skipped)} "
@@ -76,7 +77,7 @@ jobs:
               or len(result.expectedFailures) != expected_open_red
               or result.skipped
           ):
-              sys.exit("W8 offline inventory / open-RED accounting mismatch")
+              sys.exit("W9 offline inventory / open-RED accounting mismatch")
           PY
       - name: Explicit non-release boundary
         run: |
