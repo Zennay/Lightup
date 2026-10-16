@@ -103,7 +103,7 @@ def _review_material_is_pinned() -> bool:
             if path.stat().st_size > 100_000:
                 return False
             source = path.read_bytes()
-            framed = b"blob " + str(len(source)).encode("ascii") + b"\\0" + source
+            framed = b"blob " + str(len(source)).encode("ascii") + b"\0" + source
             if hashlib.sha1(framed).hexdigest() != expected_sha:
                 return False
         except (OSError, ValueError):
