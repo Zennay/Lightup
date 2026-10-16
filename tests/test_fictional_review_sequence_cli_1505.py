@@ -5,11 +5,14 @@ import json
 import os
 import pathlib
 import subprocess
+import io
+from types import SimpleNamespace
+from unittest.mock import patch
 import sys
 import unittest
 
 from lightup.fictional_review_sequence_cli_1505 import (
-    emit_review, parse_fictional_stdin,
+    emit_review, parse_fictional_stdin, main, _read_bounded_to_eof,
 )
 from lightup.fictional_review_sequence_1505 import ReviewOutcome
 
@@ -111,6 +114,111 @@ class TestFictionalCLI(unittest.TestCase):
             self.assertEqual(proc.returncode, exitcode, (filename, proc.stderr))
             self.assertEqual(json.loads(proc.stdout)["status"], expected)
 
+
+
+    def test_fragmented_bounded_reader_reassembles_canonical_payload(self):
+        payload = encode(sample())
+
+        class FragmentReader:
+            def __init__(self, raw):
+                self.raw = raw
+                self.pos = 0
+                self.calls = 0
+
+            def read(self, maximum):
+                self.calls += 1
+                self.asserted_maximum = maximum
+                data = self.raw[self.pos:self.pos + min(maximum, (self.calls % 7) + 1)]
+                self.pos += len(data)
+                return data
+
+        reader = FragmentReader(payload)
+        self.assertEqual(_read_bounded_to_eof(reader), payload)
+        self.assertGreater(reader.calls, 20)
+        self.assertLessEqual(reader.asserted_maximum, 8193)
+
+        output = io.StringIO()
+        with patch("sys.argv", ["review_cli"]), \
+             patch("sys.stdin", SimpleNamespace(buffer=FragmentReader(payload))), \
+             patch("sys.stdout", output):
+            self.assertEqual(main(), 2)
+        self.assertEqual(json.loads(output.getvalue())["status"], "REVIEW_ONLY")
+
+    def test_over_limit_is_generic_hold_before_second_poison_read(self):
+        class OversizedReader:
+            calls = 0
+            def read(self, limit):
+                self.calls += 1
+                if self.calls > 1:
+                    raise AssertionError("oversized stdin must not be read again")
+                self.asserted_limit = limit
+                return b"x" * limit
+
+        reader = OversizedReader()
+        output = io.StringIO()
+        with patch("sys.argv", ["review_cli"]), \
+             patch("sys.stdin", SimpleNamespace(buffer=reader)), \
+             patch("sys.stdout", output):
+            self.assertEqual(main(), 3)
+        self.assertEqual(reader.calls, 1)
+        self.assertEqual(reader.asserted_limit, 8193)
+        self.assertEqual(json.loads(output.getvalue())["status"], "HOLD")
+        self.assertNotIn("x", output.getvalue().split('"status":')[1])
+
+    def test_nonbytes_and_bad_stream_are_hold_no_trace_or_echo(self):
+        for chunk in (None, "secret-token", bytearray(b"secret-token"), 1234):
+            class WeirdReader:
+                def read(self, _n):
+                    return chunk
+            output = io.StringIO()
+            with patch("sys.argv", ["review_cli"]), \
+                 patch("sys.stdin", SimpleNamespace(buffer=WeirdReader())), \
+                 patch("sys.stdout", output):
+                self.assertEqual(main(), 3)
+            result = json.loads(output.getvalue())
+            self.assertEqual(result["status"], "HOLD")
+            self.assertNotIn("secret", output.getvalue())
+
+    def test_stdin_failure_and_broken_stdout_never_return_success(self):
+        class FailedReader:
+            def read(self, _n):
+                raise OSError("confidential unreadable review data")
+
+        output = io.StringIO()
+        with patch("sys.argv", ["review_cli"]), \
+             patch("sys.stdin", SimpleNamespace(buffer=FailedReader())), \
+             patch("sys.stdout", output):
+            self.assertEqual(main(), 3)
+        self.assertNotIn("confidential", output.getvalue())
+
+        class BrokenWriter:
+            def write(self, _):
+                raise BrokenPipeError("closed stdout")
+        with patch("sys.argv", ["review_cli"]), \
+             patch("sys.stdin", SimpleNamespace(buffer=io.BytesIO(encode(sample())))), \
+             patch("sys.stdout", BrokenWriter()):
+            self.assertEqual(main(), 3)
+
+    def test_real_subprocess_fragmented_pipe_and_trailing_data(self):
+        env = dict(os.environ, PYTHONPATH="src")
+        payload = encode(sample())
+        for suffix, expected in ((b"", "REVIEW_ONLY"), (b"x", "HOLD")):
+            process = subprocess.Popen(
+                [sys.executable, "-m", CLI], stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env,
+            )
+            try:
+                process.stdin.write(payload[:8])
+                process.stdin.flush()
+                process.stdin.write(payload[8:111])
+                process.stdin.flush()
+                stdout, stderr = process.communicate(payload[111:] + suffix, timeout=15)
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    process.wait()
+            self.assertEqual(process.returncode, 2 if not suffix else 3, stderr)
+            self.assertEqual(json.loads(stdout)["status"], expected)
 
 if __name__ == "__main__":
     unittest.main()
