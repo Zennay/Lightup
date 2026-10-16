@@ -64,7 +64,13 @@ def _canonical_synthetic_origin(origin: str) -> bool:
 
 def _strict_preview(metadata: object) -> bool:
     # The exact type check is before every call to user-overridable methods.
-    if type(metadata) is not dict or metadata.keys() != _KEYS:
+    # Never hash/compare caller-supplied key objects before exact key typing.
+    # dict_keys equality would otherwise invoke a spoofed str subclass __eq__.
+    if type(metadata) is not dict or len(metadata) != len(_KEYS):
+        return False
+    if any(type(key) is not str for key in metadata):
+        return False
+    if metadata.keys() != _KEYS:
         return False
     proxy = metadata["trusted_proxy_ip"]
     origin = metadata["public_origin"]
