@@ -312,6 +312,17 @@ class NestedPersistedScopeAdmissionTest(unittest.TestCase):
             self.assertEqual(len(seen), len(cases) + 1)
             self.assertTrue(all(value == self.grant.grant_id for value in seen))
 
+        # The preceding final case corrupted capabilities_json. Restore all
+        # columns so the post-patch old-source observation is unambiguous.
+        with self.store._connect() as con:
+            con.execute(
+                "UPDATE authorization_grants SET "
+                "assets_json=?,excluded_assets_json=?,allowed_capabilities_json=? "
+                "WHERE grant_id=?",
+                (*self.original, self.grant.grant_id),
+            )
+        self.assertEqual(self._snapshot(), self.original)
+
         # The original source is NOT repaired by the temporary test patch.
         before = self._mutate("assets_json", '["app.example.invalid",null]')
         self.assertIsNotNone(self.store.resolve_authorization_for_execution(self.grant))
