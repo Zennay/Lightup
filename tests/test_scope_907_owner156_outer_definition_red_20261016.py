@@ -53,6 +53,22 @@ class DuckDefinition:
         return None
 
 
+class ForgedClassDefinition(DuckDefinition):
+    """Not a ToolDefinition, but lies to Python isinstance via __class__."""
+    tool_id = "offline-forged-passive"
+
+    @property
+    def __class__(self):
+        return ToolDefinition
+
+
+class ForgedClassLabDefinition(ForgedClassDefinition):
+    tool_id = "offline-forged-lab"
+    capability_id = "wireless-lab"
+    interaction = InteractionKind.LAB_ACTIVE
+    min_risk = RiskLevel.DESTRUCTIVE_LAB_ONLY
+
+
 class PropertySpyDefinition:
     """Getters must never be read before exact outer-shape validation."""
     def __init__(self):
@@ -166,6 +182,42 @@ class ToolDefinitionOwner156OuterBoundary(unittest.TestCase):
             with self.assertRaisesRegex(AssertionError, "owner code changed"):
                 self.test_expected_red_replay_oracle()
 
+    def test_python_isinstance_can_accept_forged_class_on_tool_metadata(self):
+        forged = ForgedClassDefinition()
+        self.assertIsNot(type(forged), ToolDefinition)
+        self.assertIsInstance(forged, ToolDefinition)
+        self.assertEqual(type(forged).__name__, "ForgedClassDefinition")
+
+    @unittest.expectedFailure
+    def test_red_forged_class_passive_definition_must_be_rejected(self):
+        candidate = ForgedClassDefinition()
+        self.assertIsNot(type(candidate), ToolDefinition)
+        try:
+            self.registry.register(candidate, NEVER_INVOKE_HANDLER)
+        except OrchestrationError:
+            self.assertEqual(self.registry.definitions(), ())
+            return
+        definition, handler = self.registry.get(candidate.tool_id)
+        self.assertIs(definition, candidate)
+        self.assertIs(handler, NEVER_INVOKE_HANDLER)
+        self.assertIsNone(definition.validate_arguments({}))
+        self.fail("SOURCE_RED_FORGED_CLASS_PASSIVE_DEFINITION_STORED")
+
+    @unittest.expectedFailure
+    def test_red_forged_class_lab_definition_must_be_rejected(self):
+        candidate = ForgedClassLabDefinition()
+        self.assertIsNot(type(candidate), ToolDefinition)
+        try:
+            self.registry.register(candidate, NEVER_INVOKE_HANDLER)
+        except OrchestrationError:
+            self.assertEqual(self.registry.definitions(), ())
+            return
+        definition, handler = self.registry.get(candidate.tool_id)
+        self.assertIs(definition, candidate)
+        self.assertIs(handler, NEVER_INVOKE_HANDLER)
+        self.assertIsNone(definition.validate_arguments({}))
+        self.fail("SOURCE_RED_FORGED_CLASS_LAB_DEFINITION_STORED")
+
     @unittest.expectedFailure
     def test_red_plain_subclass_must_be_denied(self):
         candidate = PlainSubclassDefinition(**vars(canonical_definition()))
@@ -235,18 +287,22 @@ class ToolDefinitionOwner156OuterBoundary(unittest.TestCase):
     def test_expected_red_replay_oracle(self):
         names = sorted(name for name in dir(type(self))
                        if name.startswith("test_red_"))
-        self.assertEqual(len(names), 5)
+        self.assertEqual(len(names), 7)
         result = unittest.TestResult()
         unittest.TestSuite(type(self)(name) for name in names).run(result)
-        self.assertEqual(result.testsRun, 5)
+        self.assertEqual(result.testsRun, 7)
         self.assertEqual(result.failures, [])
         self.assertEqual(result.errors, [])
         self.assertEqual(result.skipped, [])
         self.assertEqual(result.unexpectedSuccesses, [],
                          "owner code changed: deliberately promote fixed RED assertions")
-        self.assertEqual(len(result.expectedFailures), 5,
-                         "all five installed owner-source RED cases must remain reproduced")
+        self.assertEqual(len(result.expectedFailures), 7,
+                         "all seven installed owner-source RED witnesses must be reproduced")
         markers = {
+            "test_red_forged_class_passive_definition_must_be_rejected":
+                "SOURCE_RED_FORGED_CLASS_PASSIVE_DEFINITION_STORED",
+            "test_red_forged_class_lab_definition_must_be_rejected":
+                "SOURCE_RED_FORGED_CLASS_LAB_DEFINITION_STORED",
             "test_red_plain_subclass_must_be_denied": "SOURCE_RED_PLAIN_SUBCLASS_STORED",
             "test_red_subclass_argument_override_must_not_enter_registry":
                 "SOURCE_RED_SUBCLASS_ARGUMENT_VALIDATOR_BYPASS",
