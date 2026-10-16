@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import ExitStack
 
 
 SCRIPT = (
@@ -237,7 +238,10 @@ class SyntheticIdentityIntakeCliTest(unittest.TestCase):
             self.assertEqual(source.tell(), 0)
 
     def test_socket_stdin_is_rejected_without_read(self):
-        with socket.socketpair() as (source, peer):
+        with ExitStack() as stack:
+            source, peer = socket.socketpair()
+            stack.enter_context(source)
+            stack.enter_context(peer)
             proc = subprocess.run(
                 [sys.executable, str(SCRIPT), "--offline-synthetic-only"],
                 stdin=source, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -260,7 +264,10 @@ class SyntheticIdentityIntakeCliTest(unittest.TestCase):
 
     def test_socket_stdout_is_rejected_without_receipt(self):
         raw = b'{"prospect_id":"fiction","organization_name":"Fiction"}'
-        with socket.socketpair() as (dest, peer):
+        with ExitStack() as stack:
+            dest, peer = socket.socketpair()
+            stack.enter_context(dest)
+            stack.enter_context(peer)
             proc = subprocess.run(
                 [sys.executable, str(SCRIPT), "--offline-synthetic-only"],
                 input=raw, stdout=dest, stderr=subprocess.PIPE,
