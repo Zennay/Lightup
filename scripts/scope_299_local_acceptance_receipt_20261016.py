@@ -22,8 +22,8 @@ TEST_MODULES = (
     "test_scope_299_legacy_pair_review_20261016",
     "test_scope_299_owner_portable_acceptance_20261016",
 )
-EXPECTED_TESTS = 83
-EXPECTED_SOURCE_REDS = 26
+EXPECTED_TESTS = 88
+EXPECTED_SOURCE_REDS = 30
 FALSE_AUTHORITIES = {
     "can_authorize": False,
     "can_dispatch": False,
@@ -72,7 +72,7 @@ def run_local_tests() -> bool:
                 and not result.failures
                 and not result.skipped
                 and not result.unexpectedSuccesses
-                # Exactly 26 intentional installed-source REDs, including the 8
+                # Exactly 30 intentional installed-source REDs, including the 8
                 # owner-portable source REDs; synthetic CLI suites stay green.
                 and all(
                     case.__class__.__name__ in {"LegacyAuthorization299Tests", "SourceOwnerPortable299Tests"}
