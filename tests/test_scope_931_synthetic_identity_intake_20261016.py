@@ -167,6 +167,56 @@ class SyntheticIdentityIntakeCliTest(unittest.TestCase):
                 expected = stdout
             self.assertEqual(stdout, expected)
 
+    def test_real_fragmented_stdin_is_equivalent_to_single_complete_document(self):
+        raw = b'{"prospect_id":"synthetic","organization_name":"Fiction"}'
+        proc = subprocess.Popen(
+            [sys.executable, str(SCRIPT), "--offline-synthetic-only"],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        try:
+            for chunk in (raw[:8], raw[8:27], raw[27:]):
+                proc.stdin.write(chunk)
+                proc.stdin.flush()
+            proc.stdin.close()
+            proc.stdin = None
+            stdout, stderr = proc.communicate(timeout=8)
+            self.assertEqual((proc.returncode, stderr), (3, b""))
+            self.assertEqual(json.loads(stdout)["status"], "REVIEW_ONLY")
+            single_code, single_status, single_stdout = self.run_cli(
+                raw, "--offline-synthetic-only"
+            )
+            self.assertEqual((single_code, single_status), (3, "REVIEW_ONLY"))
+            self.assertEqual(stdout, single_stdout)
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.communicate(timeout=3)
+
+    def test_unclosed_partial_or_complete_pipe_fails_closed_on_deadline(self):
+        for chunk in (b'{"prospect_id":"synthetic"', b'{"prospect_id":"x","organization_name":"Fiction"}'):
+            with self.subTest(chunk=chunk[:18]):
+                proc = subprocess.Popen(
+                    [sys.executable, str(SCRIPT), "--offline-synthetic-only"],
+                    stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                try:
+                    proc.stdin.write(chunk)
+                    proc.stdin.flush()
+                    proc.wait(timeout=6)  # stdin remains OPEN on purpose.
+                    stdout, stderr = proc.stdout.read(), proc.stderr.read()
+                    self.assertEqual((proc.returncode, stderr), (2, b""))
+                    verdict = json.loads(stdout)
+                    self.assertEqual(verdict["status"], "HOLD")
+                    self.assertTrue(all(verdict[f] is False for f in FALSE_FLAGS))
+                    self.assertNotIn(b"synthetic", stdout)
+                finally:
+                    if proc.poll() is None:
+                        proc.kill()
+                    proc.stdin.close()
+                    proc.stdout.close()
+                    proc.stderr.close()
+
     def test_classifying_payload_cannot_promote_to_release_receipt(self):
         raw = b'{"prospect_id":"fake","organization_name":"Fiction"}'
         for content in (
