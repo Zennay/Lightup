@@ -349,7 +349,8 @@ class CrossGrantBatchTests(unittest.TestCase):
         self.assertEqual((out["authorized"], out["consent_verified"],
                           out["dispatch_allowed"], out["release_allowed"]),
                          (False, False, False, False))
-        with self.assertRaises(ValueError):
+        # CPython 3.14 uses TypeError where 3.11 uses ValueError.
+        with self.assertRaises((TypeError, ValueError)):
             dataclasses.replace(review, authorized=True)
 
     def test_coherent_single_record_never_authorizes(self):
