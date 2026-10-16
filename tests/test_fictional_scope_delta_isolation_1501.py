@@ -27,6 +27,26 @@ FORBIDDEN = frozenset({
 })
 
 
+def _imports_owned_module(tree: ast.AST) -> bool:
+    """Inspect both module path AND bound symbols (relative import aliases)."""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            if any(
+                any(owned in alias.name for owned in MODULES)
+                for alias in node.names
+            ):
+                return True
+        elif isinstance(node, ast.ImportFrom):
+            if any(owned in (node.module or "") for owned in MODULES):
+                return True
+            if any(
+                any(owned in alias.name for owned in MODULES)
+                for alias in node.names
+            ):
+                return True
+    return False
+
+
 class FictionalScopeIsolationTests(TestCase):
     def test_existing_production_sources_do_not_statically_import_new_review_code(self):
         self.assertEqual(len(OWNED), 2)
@@ -37,17 +57,26 @@ class FictionalScopeIsolationTests(TestCase):
                 continue
             with self.subTest(file=path.name):
                 tree = ast.parse(path.read_text(encoding="utf-8"), filename=path.name)
-                for node in ast.walk(tree):
-                    if isinstance(node, ast.ImportFrom):
-                        self.assertFalse(
-                            any(name in (node.module or "") for name in MODULES),
-                            "Original source unexpectedly imports synthetic reviewer",
-                        )
-                    elif isinstance(node, ast.Import):
-                        self.assertFalse(
-                            any(any(name in alias.name for name in MODULES) for alias in node.names),
-                            "Original source unexpectedly imports synthetic reviewer",
-                        )
+                self.assertFalse(
+                    _imports_owned_module(tree),
+                    "Original source unexpectedly imports synthetic reviewer",
+                )
+
+    def test_direct_import_detection_guards_relative_alias_syntax(self):
+        should_detect = (
+            "from . import fictional_scope_delta_review_1501",
+            "from . import fictional_scope_delta_cli_1501 as synthetic",
+            "from lightup import fictional_scope_delta_review_1501",
+            "from .fictional_scope_delta_review_1501 import review_fictional_scope_delta",
+            "import lightup.fictional_scope_delta_review_1501",
+            "import lightup.fictional_scope_delta_cli_1501 as harmless_alias",
+        )
+        for source in should_detect:
+            with self.subTest(source=source):
+                self.assertTrue(_imports_owned_module(ast.parse(source)))
+        for source in ("from . import scope", "import json", "from .models import Target"):
+            with self.subTest(source=source):
+                self.assertFalse(_imports_owned_module(ast.parse(source)))
 
     def test_review_modules_have_no_active_source_or_external_io_imports(self):
         for name in OWNED:
