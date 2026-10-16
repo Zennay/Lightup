@@ -280,9 +280,9 @@ class CohortJournalTests(unittest.TestCase):
 
     def test_session_never_calls_real_issue_or_io(self):
         g = gate()
-        with patch.object(ActivationGate, "issue", side_effect=AssertionError("permit forbidden")), \\
-             patch.object(socket, "socket", side_effect=AssertionError("socket forbidden")), \\
-             patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns forbidden")), \\
+        with patch.object(ActivationGate, "issue", side_effect=AssertionError("permit forbidden")), \
+             patch.object(socket, "socket", side_effect=AssertionError("socket forbidden")), \
+             patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns forbidden")), \
              patch.object(subprocess, "Popen", side_effect=AssertionError("process forbidden")):
             session = open_offline_review_session((g,))
             step = advance_offline_review_session((g,), session, session.current)
