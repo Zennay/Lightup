@@ -171,5 +171,69 @@ class DeepJsonCliBoundaries1487(unittest.TestCase):
         # Repeated REVIEW_ONLY therefore CANNOT be interpreted as consent.
 
 
+    def test_unversioned_payload_fails_closed(self):
+        value = json.loads(sample())
+        del value["schema"]
+        self.assert_private_holding(
+            review_synthetic_json(json.dumps(value).encode("utf-8"))
+        )
+
+    def test_version_key_must_have_exact_builtin_text_value(self):
+        for bogus in (None, True, False, 0, 1, [], {}, ["FICTIONAL-LAB-LINEAGE-V1"]):
+            with self.subTest(value=bogus):
+                value = json.loads(sample())
+                value["schema"] = bogus
+                self.assert_private_holding(
+                    review_synthetic_json(json.dumps(value).encode("utf-8"))
+                )
+
+    def test_wrong_version_case_alias_spacing_and_other_protocols_hold(self):
+        for bogus in (
+            "FICTIONAL-LAB-LINEAGE-V2",
+            "FICTIONAL-LAB-LINEAGE-V1 ",
+            "fictional-lab-lineage-v1",
+            "FICTIONAL_LAB_LINEAGE_V1",
+            "PRODUCTION-CONSENT-V1",
+            "FICTIONAL-LAB-LINEAGE-V1\u200b",
+            "",
+        ):
+            with self.subTest(value=bogus):
+                value = json.loads(sample())
+                value["schema"] = bogus
+                self.assert_private_holding(
+                    review_synthetic_json(json.dumps(value).encode("utf-8"))
+                )
+
+    def test_escape_encoded_duplicate_version_key_fails_closed(self):
+        raw = sample().decode("utf-8")
+        raw = raw[:-1] + ',"sche\\u006da":"FICTIONAL-LAB-LINEAGE-V1"}'
+        self.assert_private_holding(review_synthetic_json(raw.encode("utf-8")))
+
+    def test_literal_duplicate_version_key_fails_closed(self):
+        raw = sample().decode("utf-8")
+        raw = raw[:-1] + ',"schema":"FICTIONAL-LAB-LINEAGE-V1"}'
+        self.assert_private_holding(review_synthetic_json(raw.encode("utf-8")))
+
+    def test_claimed_release_fields_cannot_override_explicit_synthetic_schema(self):
+        for extra in ("authorized", "consent", "permit", "can_dispatch"):
+            value = json.loads(sample())
+            value[extra] = True
+            self.assert_private_holding(
+                review_synthetic_json(json.dumps(value).encode("utf-8"))
+            )
+
+    def test_real_python_process_version_failure_has_no_success_or_leak(self):
+        packet = json.loads(sample())
+        packet["schema"] = "PRODUCTION-CONSENT-V1"
+        result = self.subprocess_preview(
+            json.dumps(packet).encode("utf-8"), "--synthetic-only"
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertFalse(result.stderr)
+        self.assertEqual(json.loads(result.stdout)["status"], "HOLD")
+        self.assertNotIn(b"ACTOR-", result.stdout)
+        self.assertNotIn(b"ASSET-", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
