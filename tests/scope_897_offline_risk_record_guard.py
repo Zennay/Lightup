@@ -77,7 +77,12 @@ def review_json(data: bytes) -> dict[str, object]:
 
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
-    receipt = review_record(None) if args != ["--offline-synthetic-only"] else review_json(sys.stdin.buffer.read(MAX_INPUT_BYTES + 1))
+    # Block truthy/equality-spoofed caller argv before reading even one byte.
+    opt_in = (
+        type(args) is list and len(args) == 1
+        and type(args[0]) is str and args[0] == "--offline-synthetic-only"
+    )
+    receipt = review_json(sys.stdin.buffer.read(MAX_INPUT_BYTES + 1)) if opt_in else review_record(None)
     sys.stdout.write(json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n")
     return 3 if receipt["decision"] == "REVIEW_ONLY" else 2
 
