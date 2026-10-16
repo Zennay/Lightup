@@ -26,6 +26,7 @@ a demonstrated externally reachable exploit**.
   asset `*.example.test`, owner, grant reference, integer revision. All changed,
   malformed, polymorphic, non-fictional or aliased identities return generic
   `HOLD`; exact matching fictional values yield `REVIEW_ONLY` **only**.
+- `review_target_binding_batch_1517` — strict 1–64-item exact built-in tuple cohort, every pair canonical and equal, rejects repeated fictional asset/grant IDs and any individual mismatch **atomically** with HOLD, never partial permissions.
 - `tests/test_scope_target_binding_review_1517.py` — source reproduction and
   deterministic isolated reviewer tests. The original-source rejection contract
   uses `@unittest.expectedFailure` while original activation lacks the binding
