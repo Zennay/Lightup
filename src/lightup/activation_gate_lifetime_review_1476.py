@@ -129,13 +129,19 @@ def pin_gate_for_offline_review(gate: object) -> PinnedGateReview | None:
         return None
     if scope_fields is None or activation_fields is None:
         return None
-    return PinnedGateReview(
+    pin = PinnedGateReview(
         gate=gate,
         scope=scope,
         activation=activation,
         scope_fields=scope_fields,
         activation_fields=activation_fields,
     )
+    # Both field snapshots were read separately. A later field read may
+    # have changed an earlier policy before this pin was even returned.
+    # Verify the completed snapshot against the original objects.
+    if review_gate_lifetime(gate, pin).status is not LifetimeStatus.REVIEW_ONLY:
+        return None
+    return pin
 
 
 def review_gate_lifetime(
@@ -150,9 +156,10 @@ def review_gate_lifetime(
         return _hold("invalid_input")
     if set(vars(gate)) != {"scope_policy", "activation_policy"}:
         return _hold("changed")
-    if gate is not pin.gate:
-        return _hold("changed")
     try:
+        # A same-class but uninitialized PinnedGateReview has no .gate.
+        if gate is not pin.gate:
+            return _hold("changed")
         scope = object.__getattribute__(gate, "scope_policy")
         activation = object.__getattribute__(gate, "activation_policy")
         if scope is not pin.scope or activation is not pin.activation:
@@ -160,7 +167,13 @@ def review_gate_lifetime(
         if (_scope_fields(scope) != pin.scope_fields or
                 _activation_fields(activation) != pin.activation_fields):
             return _hold("changed")
+        # The activation check itself can modify scope fields in-process.
+        # One extra pass catches this bounded ordering gap; this still
+        # cannot provide a concurrent transaction or live authorization.
+        if (_scope_fields(scope) != pin.scope_fields or
+                _activation_fields(activation) != pin.activation_fields):
+            return _hold("changed")
     except (AttributeError, TypeError, ValueError):
-        # A removed source field is a generic HOLD, never an exception leak.
+        # Missing/malformed snapshots and corrupted source fields deny.
         return _hold("changed")
     return LifetimeReceipt(status=LifetimeStatus.REVIEW_ONLY, reason="unchanged")
