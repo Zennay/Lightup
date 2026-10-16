@@ -197,7 +197,7 @@ class Scope299OfflineReviewerTests(unittest.TestCase):
         )
 
     def test_json_brackets_and_escaped_quotes_inside_strings_are_not_nesting(self):
-        text = ("[" * 55) + 'a\\\\"b' + ("}" * 55)
+        text = ("[" * 55) + "a" + chr(92) + chr(34) + "b" + ("}" * 55)
         packet = json.dumps(
             {"owner": text, "reference": "FICTIONAL-NOT-CONSENT"}
         ).encode("utf-8")
