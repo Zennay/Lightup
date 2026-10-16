@@ -6,6 +6,7 @@ target/handler/permit is invoked. The importer checks *shape* not provenance.
 from __future__ import annotations
 
 from dataclasses import asdict
+import ast
 import json
 import os
 from pathlib import Path
@@ -241,6 +242,84 @@ class FictionalReviewImportCliTests(unittest.TestCase):
                 p = self.invoke(data, *args)
                 self.assertEqual(p.returncode, 3)
                 self.assertEqual(json.loads(p.stdout)["status"], "HOLD")
+
+
+
+class FictionalReviewNonAuthorityArchitectureTests(unittest.TestCase):
+    """The own inert report must stay isolated from original real authority."""
+
+    def test_no_original_module_imports_synthetic_review_components(self):
+        root = ROOT / "src" / "lightup"
+        owned = {
+            "synthetic_review_disclosure_1497.py",
+            "synthetic_review_disclosure_cli_1497.py",
+            "synthetic_review_report_verify_1497.py",
+        }
+        reviewed = 0
+        offenders = []
+        for path in sorted(root.rglob("*.py")):
+            if path.name in owned:
+                continue
+            reviewed += 1
+            syntax = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(syntax):
+                names = []
+                if isinstance(node, ast.Import):
+                    names.extend(alias.name for alias in node.names)
+                elif isinstance(node, ast.ImportFrom):
+                    names.extend(((node.module or ""),))
+                    names.extend(alias.name for alias in node.names)
+                for name in names:
+                    if name.split(".")[-1] in {
+                        "synthetic_review_disclosure_1497",
+                        "synthetic_review_disclosure_cli_1497",
+                        "synthetic_review_report_verify_1497",
+                    }:
+                        offenders.append(path.relative_to(ROOT).as_posix())
+        self.assertGreater(reviewed, 4)
+        self.assertEqual(offenders, [], "Original authority source must not import synthetic review code")
+
+    def test_pure_components_do_not_import_network_storage_or_process_libraries(self):
+        root = ROOT / "src" / "lightup"
+        prohibited = {
+            "socket", "sqlite3", "subprocess", "requests", "httpx",
+            "urllib", "http", "ftplib", "telnetlib", "ctypes",
+            "multiprocessing", "asyncio", "os", "pathlib", "shutil",
+        }
+        for name in ("synthetic_review_disclosure_1497.py",
+                     "synthetic_review_report_verify_1497.py"):
+            with self.subTest(file=name):
+                tree = ast.parse((root / name).read_text(encoding="utf-8"))
+                imports = []
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.Import):
+                        imports.extend(alias.name.split(".")[0] for alias in node.names)
+                    elif isinstance(node, ast.ImportFrom) and node.level == 0:
+                        imports.append((node.module or "").split(".")[0])
+                self.assertEqual(prohibited.intersection(imports), set())
+
+    def test_raw_scope_notes_never_appear_in_canonical_wire_report(self):
+        for private in ("alpha.example.test", "beta.example.test",
+                        "client@private.example.com", "sk-fake-token"):
+            with self.subTest(marker=private[:10]):
+                for result in (review_fictional_handoff_notes((VALID, VALID2)), _hold()):
+                    self.assertNotIn(private.encode("utf-8"), canonical(result))
+
+    def test_offline_report_is_never_callable_as_an_execution_permit(self):
+        # A strict structural tripwire: no real target, capability, actor,
+        # grant, consent, approval, signature, or execution permit fields.
+        for result in (review_fictional_handoff_notes((VALID,)), _hold()):
+            wire = json.loads(canonical(result))
+            self.assertEqual(set(wire), {
+                "contract", "status", "notice", "reviewed_notes",
+                "authorized", "consent_verified", "dispatch_allowed",
+                "release_allowed",
+            })
+            self.assertNotIn("grant_id", wire)
+            self.assertNotIn("tenant_id", wire)
+            self.assertNotIn("target", wire)
+            self.assertNotIn("owner", wire)
+            self.assertNotIn("permit_id", wire)
 
 
 if __name__ == "__main__":
