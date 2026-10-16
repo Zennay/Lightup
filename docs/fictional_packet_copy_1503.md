@@ -113,6 +113,35 @@ or a release gate. If a malicious caller replaces both the bytes **and the pin**
 a matching result is possible. Both protocol versions remain unwired and
 cannot grant runtime authority.
 
+## Pinned-only CLI — reject legacy schema fallback (not runtime authority)
+
+The original opt-in `python -m lightup.fictional_packet_cli_1503`
+remains **backwards-compatible** and accepts both synthetic v1 (unpinned) and
+v2 (pinned) envelopes. To avoid accidentally processing old, unpinned v1
+envelopes in a workflow that requires a separately checked digest, use the
+**different opt-in executable**:
+
+```sh
+PYTHONPATH=src python -m lightup.fictional_packet_cli_pinned_1503 < docs/examples/fictional-copy-cli-pinned-1503.json
+# REVIEW_ONLY, exit 2, four authority flags false.
+PYTHONPATH=src python -m lightup.fictional_packet_cli_pinned_1503 < docs/examples/fictional-copy-cli-pinned-held-1503.json
+# HOLD, exit 3.
+PYTHONPATH=src python -m lightup.fictional_packet_cli_pinned_1503 < docs/examples/fictional-copy-cli-1503.json
+# HOLD, exit 3: legacy v1 denied even when all fictional copies match.
+```
+
+The pinned-only module is a tiny wrapper around the **same strictly bounded
+stdin** and **same generic HOLD/REVIEW_ONLY result writer**. It passes a
+non-user-controlled boolean to a private parser that **rejects v1 at schema
+selection**, before computing or returning a digest. Both modes continue to
+reject command-line flags, data outside the exact ASCII canonical JSON
+envelope, excess input, real assets and malformed pins. **Both modes always
+exit nonzero and never authorize execution**. The pinned-only command does not
+prevent an attacker from invoking a different executable, replacing the
+separate SHA-256 reference, or altering a consumer that mistakes `REVIEW_ONLY`
+for permission. It is solely an opt-in, offline guard against *accidental*
+legacy fallback. No runtime or ingress module imports or invokes either CLI.
+
 ## Tests and ownership
 
 Run opt-in isolated tests (including exhaustive byte edits, builder invariants, 16-copy fanout, no-I/O tripwires) with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_fictional_packet_copy_1503.py' -v`. Dedicated **hosted** Python 3.11/3.14 workflow `.github/workflows/lightup-fictional-packet-1503.yml` runs both new offline test files when the new file set changes. This does not substitute for original full hosted preflight or the genuinely registered permanent VPS runner (#1144). All files exclusively added under #1503; do not cherry-pick as production authorization.
