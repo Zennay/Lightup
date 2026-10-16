@@ -30,7 +30,7 @@ def _original_source_is_pinned() -> bool:
         if ACTIVATION.stat().st_size > 100_000:
             return False
         contents = ACTIVATION.read_bytes()
-        framed = b"blob " + str(len(contents)).encode("ascii") + b"\\0" + contents
+        framed = b"blob " + str(len(contents)).encode("ascii") + b"\0" + contents
         return hashlib.sha1(framed).hexdigest() == ORIGINAL_SOURCE_BLOB
     except (OSError, ValueError):
         return False
