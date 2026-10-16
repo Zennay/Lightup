@@ -133,3 +133,16 @@ The original `ActivationGate.issue` doesn't implement all checks alone: `ScopePo
 Three extra independent ordinary tests prove the two dependency pins, altered `models.py` or `scope.py` manifest digests produce HOLD with zero test execution, and a missing original dependency path also fails closed. The optional verifier's source/test compatibility result remains **REVIEW_ONLY**, never a trusted signature, permission, consent record or CI success indicator. Registered permanent runner, exact-head hosted source logs, real client+operator approval, live revocation and the original source owner's runtime fix are still mandatory.
 
 **Ownership:** source changes in original `models.py`, `scope.py` or `activation.py` must come through their separate owners; this verifier must hold on any such change until its baseline and source-specific tests are independently revised. The original source expected RED remains deliberately open. Current acceptance suite remains 44 exact source methods (43 ordinary + 1 original unresolved expected source RED), with **11 separate strict harness tests** (was 8): **55 own total**.
+
+
+## W12 — reproducible, machine-readable local source evidence (non-authorizing)
+
+`python scripts/check_scope_1480_source_acceptance_20261016.py` now emits one deterministic JSON record for operator review whether the run is `HOLD` (nonzero) or narrow `REVIEW_ONLY` (exit 0). Its additional self-reported fields include:
+- `original_activation_git_blob`, `original_dependency_git_blobs` (original `models.py` and `scope.py`) and `reviewed_local_git_blobs` (four review tests and the pure reviewer): exact expected original Git blob hashes, **not signatures** and **not independent observed repo attestations**;
+- `expected_case_count=44` and `expected_case_manifest_sha256`: a stable SHA-256 digest of the *lexicographically sorted, LF-joined 44 fully qualified test IDs*;
+- `evidence_manifest_version=1`, `evidence_self_reported=true`, and **`independent_ci_attestation=false` under EVERY status**;
+- unchanged always-false `source_fixed`, `full_suite_green`, `permanent_vps_proven`, `consent_verified`, `revocation_verified`, `may_issue_grants`, `may_dispatch_tools`, `may_scan_targets`, `may_merge`, `may_deploy`, `release_authorized`.
+
+Three additional ordinary tests verify canonical LF digest, source/review manifest content, all non-authorizing flags in REVIEW_ONLY, and HOLD carrying diagnostic provenance without becoming an attestation. This is machine-readable evidence for a human reviewer, not permission for production. The strict source acceptance still executes **44 pinned exact methods**, 43 regular and one intentionally open original runtime expected RED. **14 independent harness integrity tests** (11 existing after W11 plus three here) bring this branch to **58 OWN unittest methods: 57 ordinary controls + one deliberately OPEN source expected RED**. No runtime source or other worker branch changed.
+
+Original source owner must still fix the actual issuance race. Full original hosted CI and permanent registered runner proof must be independently inspected at the **exact final head**; unrelated #301 test-fixture owner and #1144 VPS operator remain distinct. **DRAFT/HOLD.**
