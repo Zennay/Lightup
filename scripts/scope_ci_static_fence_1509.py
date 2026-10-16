@@ -5,7 +5,7 @@ No filesystem, network, subprocess or LightUp runtime access.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from hashlib import sha256
 
 # Pinned developer-selected original main e73b7445c87ad239bdb03c50a99078ef93163b02.
@@ -41,10 +41,10 @@ REQUIRED_LINES = (
 @dataclass(frozen=True, slots=True)
 class Review:
     state: str
-    authorized: bool = False
-    consent_verified: bool = False
-    dispatch_allowed: bool = False
-    release_allowed: bool = False
+    authorized: bool = field(default=False, init=False)
+    consent_verified: bool = field(default=False, init=False)
+    dispatch_allowed: bool = field(default=False, init=False)
+    release_allowed: bool = field(default=False, init=False)
 
 
 _HOLD = Review("HOLD")
