@@ -345,6 +345,55 @@ class LifetimeReviewTests(unittest.TestCase):
         self.assertGreaterEqual(calls[0], 1)
         self.check_no_authority(receipt)
 
+    def test_scope_four_fields_mutated_in_place_all_deny(self):
+        scope_changes = (
+            ("allow_private_lab", False),
+            ("explicit_hosts", frozenset({"fictional.example.test"})),
+            ("explicit_networks", ("192.0.2.0/24",)),
+            ("require_authorization_for_public", False),
+        )
+        for field_name, changed_value in scope_changes:
+            with self.subTest(field=field_name):
+                g = gate()
+                pin = pin_gate_for_offline_review(g)
+                object.__setattr__(g.scope_policy, field_name, changed_value)
+                receipt = review_gate_lifetime(g, pin)
+                self.assertIs(receipt.status, LifetimeStatus.HOLD)
+                self.check_no_authority(receipt)
+
+    def test_activation_two_fields_mutated_in_place_all_deny(self):
+        for field_name, changed_value in (
+            ("mode", ActivationMode.LAB_ONLY),
+            ("activation_reference", "FICTIONAL-LAB"),
+        ):
+            with self.subTest(field=field_name):
+                g = gate()
+                pin = pin_gate_for_offline_review(g)
+                object.__setattr__(g.activation_policy, field_name, changed_value)
+                receipt = review_gate_lifetime(g, pin)
+                self.assertIs(receipt.status, LifetimeStatus.HOLD)
+                self.check_no_authority(receipt)
+
+    def test_unchanged_review_preserves_every_source_policy_field(self):
+        g = gate(
+            scope=ScopePolicy(
+                allow_private_lab=False,
+                explicit_hosts=frozenset({"fictional.example.test"}),
+                explicit_networks=("192.0.2.0/24",),
+                require_authorization_for_public=True,
+            ),
+            activation=ActivationPolicy(ActivationMode.AUTHORIZED, "FAKE-AUTH"),
+        )
+        original_scope = dict(vars(g.scope_policy))
+        original_activation = dict(vars(g.activation_policy))
+        pin = pin_gate_for_offline_review(g)
+        for _ in range(10):
+            receipt = review_gate_lifetime(g, pin)
+            self.assertIs(receipt.status, LifetimeStatus.REVIEW_ONLY)
+            self.check_no_authority(receipt)
+        self.assertEqual(vars(g.scope_policy), original_scope)
+        self.assertEqual(vars(g.activation_policy), original_activation)
+
     def test_receipt_and_snapshot_repr_never_repeat_raw_policy_data(self):
         secret = "FAKE-CONFIDENTIAL-" + "X" * 70
         g = gate(
