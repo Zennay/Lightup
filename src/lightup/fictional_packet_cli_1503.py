@@ -8,6 +8,7 @@ Exit 2: REVIEW_ONLY (requires human review); 3: HOLD/errors. Never exit 0.
 from __future__ import annotations
 
 import json
+import re
 import sys
 
 from .fictional_packet_copy_1503 import (
@@ -16,11 +17,14 @@ from .fictional_packet_copy_1503 import (
     _reject_duplicates,
     _is_canonical_fictional_packet,
     compare_fictional_packet_fanout,
+    compare_fictional_packet_fanout_pinned,
 )
 
 _INPUT_LIMIT = 8192
 _KEYS = ("schema", "original", "copies")
 _SCHEMA = "lightup-fictional-cli-v1"
+_PINNED_SCHEMA = "lightup-fictional-cli-pinned-v1"
+_PINNED_KEYS = ("schema", "original", "copies", "expected_sha256")
 _HOLD = b'{"status":"HOLD","authorized":false,"consent_verified":false,"dispatch_allowed":false,"release_allowed":false}\n'
 
 
@@ -56,6 +60,37 @@ def build_fictional_cli_envelope(
     return payload if len(payload) <= _INPUT_LIMIT else None
 
 
+
+def build_fictional_pinned_cli_envelope(
+    original: bytes, copies: tuple[bytes, ...], expected_sha256: str,
+) -> bytes | None:
+    """Produce a strictly canonical synthetic stdin envelope with a digest pin.
+
+    The pin must come from a separately verified source outside this function.
+    Merely generating a digest here or passing a caller-controlled digest does
+    not establish provenance, authenticity, consent or permission.
+    """
+    if (
+        type(expected_sha256) is not str
+        or re.fullmatch(r"[0-9a-f]{64}", expected_sha256, re.ASCII) is None
+    ):
+        return None
+    raw = build_fictional_cli_envelope(original, copies)
+    if raw is None:
+        return None
+    try:
+        record = json.loads(raw.decode("ascii"))
+        record["schema"] = _PINNED_SCHEMA
+        record["expected_sha256"] = expected_sha256
+        encoded = json.dumps(
+            record, ensure_ascii=True, separators=(",", ":"), sort_keys=False,
+            allow_nan=False,
+        ).encode("ascii")
+    except (ValueError, TypeError, UnicodeError, OverflowError, RecursionError):
+        return None
+    return encoded if len(encoded) <= _INPUT_LIMIT else None
+
+
 def _parse_request(payload: bytes) -> CopyReview:
     if type(payload) is not bytes or not 1 <= len(payload) <= _INPUT_LIMIT:
         return CopyReview("HOLD")
@@ -65,9 +100,21 @@ def _parse_request(payload: bytes) -> CopyReview:
             decoded, object_pairs_hook=_reject_duplicates,
             parse_constant=_reject_constant,
         )
-        if type(request) is not dict or tuple(request) != _KEYS:
+        if type(request) is not dict:
             return CopyReview("HOLD")
-        if type(request["schema"]) is not str or request["schema"] != _SCHEMA:
+        schema = request.get("schema")
+        if type(schema) is not str:
+            return CopyReview("HOLD")
+        if schema == _SCHEMA:
+            if tuple(request) != _KEYS:
+                return CopyReview("HOLD")
+        elif schema == _PINNED_SCHEMA:
+            if (
+                tuple(request) != _PINNED_KEYS
+                or type(request["expected_sha256"]) is not str
+            ):
+                return CopyReview("HOLD")
+        else:
             return CopyReview("HOLD")
         if type(request["original"]) is not str:
             return CopyReview("HOLD")
@@ -86,6 +133,10 @@ def _parse_request(payload: bytes) -> CopyReview:
             return CopyReview("HOLD")
         original = request["original"].encode("ascii")
         received = tuple(part.encode("ascii") for part in copies)
+        if schema == _PINNED_SCHEMA:
+            return compare_fictional_packet_fanout_pinned(
+                original, received, request["expected_sha256"],
+            )
         return compare_fictional_packet_fanout(original, received)
     except (ValueError, TypeError, UnicodeError, OverflowError, RecursionError):
         return CopyReview("HOLD")
