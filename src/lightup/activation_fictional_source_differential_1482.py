@@ -12,7 +12,7 @@ from typing import NamedTuple
 
 from .activation_decision_cohort_review_1482 import _exact_policy_configuration
 from .models import Target
-from .scope import ScopeDecision, ScopePolicy
+from .scope import ScopeDecision, ScopePolicy, ScopeReason
 
 
 class SourceDifferentialReview(NamedTuple):
@@ -59,7 +59,7 @@ def review_fictional_installed_scope_decision(
         host = target.value
         if type(host) is not str or not _fictional_host(host):
             return _hold("nonfictional_target")
-        if target.authorization is not None or target.labels != ():
+        if target.authorization is not None or type(target.labels) is not tuple or target.labels != ():
             return _hold("untrusted_target_metadata")
         if (
             policy.allow_private_lab is not False
@@ -76,7 +76,8 @@ def review_fictional_installed_scope_decision(
         if (
             type(actual.allowed) is not bool
             or type(claimed.allowed) is not bool
-            or type(actual.reason) is not type(claimed.reason)
+            or type(actual.reason) is not ScopeReason
+            or type(claimed.reason) is not ScopeReason
             or type(actual.normalized_host) is not str
             or type(claimed.normalized_host) is not str
             or actual.allowed is not claimed.allowed
