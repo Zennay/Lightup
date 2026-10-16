@@ -18,7 +18,7 @@ Never merge/deploy or infer an execution grant, customer consent, trusted operat
 ```bash
 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m unittest discover -s tests -p 'test_cross_grant*_1493.py' -v
 ```
-The 131 tests include fixed 2020 UTC input fixtures and real original policy source smoke showing historical approvals remain rejected at present without any external targets/handlers. All names use imaginary `.example.test` documentation values, and review uses no DB, socket, file, subprocess, HTTP or DNS operations.
+The 135 tests include fixed 2020 UTC input fixtures and real original policy source smoke showing historical approvals remain rejected at present without any external targets/handlers. All names use imaginary `.example.test` documentation values, and review uses no DB, socket, file, subprocess, HTTP or DNS operations.
 
 ## W2 atomic batch review
 \`review_cross_grant_batch\` checks 1–32 exact fictional candidate records in one all-or-nothing operation: same caller-supplied client and engagement, no repeated grant/asset/capability tuple, exact canonical hashable identity, common explicit UTC evaluation instant, and individually REVIEW_ONLY source shapes. A single invalid or mixed-tenant record returns batch HOLD with zero reported reviewed records. No intermediate authorizing results or private values are returned. These 20 additional tests (including hostile field-equality protection) preserve the source boundaries and compare pure synthetic input only.
@@ -51,6 +51,9 @@ The same synthetic durable grant ID must now preserve the **legacy Authorization
 Both frozen review receipt dataclasses now declare their four authority flags with `init=False` and validate exact HOLD/REVIEW_ONLY status and bounded reason. Batch HOLD cannot be constructed with a nonzero reviewed count; boolean or out-of-range counts are invalid. Seven tests prove direct constructor flag spoofing and `dataclasses.replace` escalation are rejected on Python 3.11/3.14 (exception types differ), while `dataclasses.asdict` still includes four false flags. This is **a safer preview API, not cryptographic authorization**.
 
 The fictional CLI now validates identifiers using strict ASCII syntax before shape review, and only admits well-formed DNS labels ending in `.example.test`. It denies newline/tab JSON escapes, repeated dots, leading/trailing hyphens, overlong DNS labels and case aliases at intake. The exact UTC `Z` parser uses `datetime.fromisoformat` instead of lazily importing Python's `_strptime`/locale module. Eight additional negative CLI tests cover malformed identities and target aliases. None of these restrictions establish trusted provenance.
+
+## W8 — Adversarial malformed input safety (strictly fictional and offline)
+Three new regular acceptance methods run **1,024 seeded malformed byte mutations** of the supplied fictional reference payload, a deep-but-bounded nested JSON document and an actual `python -B` subprocess with 65,537 input bytes. All responses must remain one sanitized HOLD or REVIEW_ONLY JSON object, have a nonzero (2/3) exit code, and keep the four authority flags literally false. The mutation seed is a fixed `1493`; no random network, credentials, real targets, files or tool handlers are used by the review. The subprocess test intentionally launches the CLI locally to prove real stdin resource gating, without scanning targets.
 
 ## Still RED / human-controlled release gates
 - Genuine linkage to the authenticated operator, canonical client and engagement, approved asset/capability, signed decision and durable trusted row, *not* equality of two caller-supplied strings.
