@@ -117,6 +117,71 @@ class LegacyAuthorization299Tests(unittest.TestCase):
                 CAPABILITY,
             )
 
+    def test_canonical_explicit_network_authorized_permit_is_only_inert_data(self):
+        target = Target(PUBLIC_IP, Authorization("fictional-owner", "NOT-A-CONSENT"))
+        gate = ActivationGate(
+            _network_policy(),
+            ActivationPolicy(
+                mode=ActivationMode.AUTHORIZED,
+                activation_reference="SYNTHETIC-OPERATOR",
+            ),
+        )
+        permit = gate.issue(target, CAPABILITY)
+        self.assertEqual(permit.target, PUBLIC_IP)
+        self.assertEqual(permit.activation_reference, "SYNTHETIC-OPERATOR")
+        self.assertIs(permit.mode, ActivationMode.AUTHORIZED)
+        self.assertIs(target.authorization.owner.__class__, str)
+
+    def test_invalid_direct_input_is_not_mutated_by_scope_review(self):
+        invalid = Authorization(owner=None, reference=27)
+        target = Target(HOST, invalid)
+        policy = _host_policy()
+        owner_before = invalid.owner
+        reference_before = invalid.reference
+        target_before = target.value
+        _ = policy.decide(target)
+        self.assertIs(invalid.owner, owner_before)
+        self.assertIs(invalid.reference, reference_before)
+        self.assertEqual(target.value, target_before)
+        self.assertIs(target.authorization, invalid)
+        self.assertEqual(policy.explicit_hosts, frozenset({HOST}))
+
+    @unittest.expectedFailure
+    def test_red_none_owner_cannot_allow_explicit_public_host(self):
+        self.assertFalse(
+            _host_policy().decide(Target(HOST, Authorization(None, "NOT-A-CONSENT"))).allowed
+        )
+
+    @unittest.expectedFailure
+    def test_red_boolean_reference_cannot_allow_explicit_public_network(self):
+        self.assertFalse(
+            _network_policy().decide(Target(PUBLIC_IP, Authorization("fictional-owner", True))).allowed
+        )
+
+    @unittest.expectedFailure
+    def test_red_numeric_owner_cannot_allow_explicit_public_network(self):
+        self.assertFalse(
+            _network_policy().decide(Target(PUBLIC_IP, Authorization(0, "NOT-A-CONSENT"))).allowed
+        )
+
+    @unittest.expectedFailure
+    def test_red_bytes_reference_cannot_allow_explicit_public_host(self):
+        self.assertFalse(
+            _host_policy().decide(Target(HOST, Authorization("fictional-owner", b"fake"))).allowed
+        )
+
+    @unittest.expectedFailure
+    def test_red_polymorphic_reference_cannot_allow_explicit_public_host(self):
+        self.assertFalse(
+            _host_policy().decide(Target(HOST, Authorization("fictional-owner", _ForeignString("NOT-A-CONSENT")))).allowed
+        )
+
+    @unittest.expectedFailure
+    def test_red_list_reference_cannot_allow_explicit_public_network(self):
+        self.assertFalse(
+            _network_policy().decide(Target(PUBLIC_IP, Authorization("fictional-owner", ["NOT-A-CONSENT"]))).allowed
+        )
+
     @unittest.expectedFailure
     def test_red_blank_owner_cannot_allow_explicit_public_host(self):
         auth = Authorization(owner="", reference="NOT-A-CONSENT")
@@ -159,19 +224,19 @@ class LegacyAuthorization299OracleTests(unittest.TestCase):
     def test_strict_installed_source_red_oracle_and_green_controls(self):
         """Reject crashes/skips and unexpected successes disguised as intended REDs.
 
-        This verifier replays the six RED + seven controls inside a private result.
+        This verifier replays the twelve RED + nine controls inside a private result.
         It will FAIL as soon as the source is fixed, until the owner migrates the
         RED assertions to ordinary green tests. It is *not* release evidence.
         """
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(LegacyAuthorization299Tests)
         result = unittest.TestResult()
         suite.run(result)
-        self.assertEqual(result.testsRun, 13)
+        self.assertEqual(result.testsRun, 21)
         self.assertEqual(result.errors, [], "unexpected source/test harness error")
         self.assertEqual(result.failures, [], "unexpected green control failure")
         self.assertEqual(result.skipped, [], "a required case was skipped")
         self.assertEqual(
-            len(result.expectedFailures), 6,
+            len(result.expectedFailures), 12,
             "source RED contract changed: investigate; never auto-promote",
         )
         self.assertEqual(result.unexpectedSuccesses, [])
@@ -186,6 +251,12 @@ class LegacyAuthorization299OracleTests(unittest.TestCase):
             "test_red_padded_provenance_cannot_allow_public_network",
             "test_red_noncanonical_subclass_provenance_cannot_allow_public_host",
             "test_red_authorized_mode_cannot_sanitize_blank_client_provenance",
+            "test_red_none_owner_cannot_allow_explicit_public_host",
+            "test_red_boolean_reference_cannot_allow_explicit_public_network",
+            "test_red_numeric_owner_cannot_allow_explicit_public_network",
+            "test_red_bytes_reference_cannot_allow_explicit_public_host",
+            "test_red_polymorphic_reference_cannot_allow_explicit_public_host",
+            "test_red_list_reference_cannot_allow_explicit_public_network",
         }
         self.assertEqual(set(failures), expected)
         for name, detail in failures.items():
