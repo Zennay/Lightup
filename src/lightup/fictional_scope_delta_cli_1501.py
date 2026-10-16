@@ -41,8 +41,18 @@ def _object(pairs: list[tuple[str, object]]) -> dict[str, object]:
 def _utc(value: object) -> datetime:
     if type(value) is not str or len(value) != 20 or _INSTANT.fullmatch(value) is None:
         raise ValueError("invalid UTC instant")
-    stamp = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-    if stamp.strftime("%Y-%m-%dT%H:%M:%SZ") != value:
+    # Explicit ASCII field decoding avoids strptime's implicit locale and
+    # format-cache initialization. All ranges and leap days are checked by
+    # the built-in datetime constructor; no timezone conversion is attempted.
+    stamp = datetime(
+        int(value[0:4]), int(value[5:7]), int(value[8:10]),
+        int(value[11:13]), int(value[14:16]), int(value[17:19]),
+        tzinfo=timezone.utc,
+    )
+    if (
+        f"{stamp.year:04d}-{stamp.month:02d}-{stamp.day:02d}"
+        f"T{stamp.hour:02d}:{stamp.minute:02d}:{stamp.second:02d}Z"
+    ) != value:
         raise ValueError("noncanonical instant")
     return stamp
 
