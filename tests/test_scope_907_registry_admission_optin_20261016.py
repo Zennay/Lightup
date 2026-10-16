@@ -141,6 +141,28 @@ class CanonicalOptinRegistryAdmission(unittest.TestCase):
             register_exact_tool_definition(self.registry, valid(), never_handler)
         self.assertEqual(self.registry.definitions(), (d,))
 
+    def test_rejected_forged_definition_cannot_modify_existing_registry(self):
+        original = valid("safe-existing")
+        register_exact_tool_definition(self.registry, original, never_handler)
+        before = self.registry.definitions()
+        with self.assertRaises(OrchestrationError):
+            register_exact_tool_definition(self.registry, SpyDuck(), never_handler)
+        self.assertEqual(self.registry.definitions(), before)
+        self.assertIs(self.registry.get("safe-existing")[0], original)
+
+    def test_invalid_canonical_metadata_preserves_existing_registry(self):
+        original = valid("safe-existing")
+        register_exact_tool_definition(self.registry, original, never_handler)
+        before = self.registry.definitions()
+        invalid = ToolDefinition(
+            "invalid-followup", "no-such-capability",
+            InteractionKind.PASSIVE_PUBLIC, RiskLevel.PASSIVE, "synthetic",
+        )
+        with self.assertRaises(OrchestrationError):
+            register_exact_tool_definition(self.registry, invalid, never_handler)
+        self.assertEqual(self.registry.definitions(), before)
+        self.assertIs(self.registry.get("safe-existing")[1], never_handler)
+
     def test_registry_subclass_cannot_intercept_registration(self):
         spy = MaliciousRegistry()
         with self.assertRaises(OrchestrationError):
