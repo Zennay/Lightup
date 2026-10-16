@@ -124,3 +124,29 @@ A further pair of methods is attached **only** to our existing synthetic install
 This is deterministic **in-process test-only mutation**, not actual exploit execution, real client consent or a reliable multithreaded exploit proof. It is distinct from the two prior source check/use witnesses: the returned permit's own **mode disagrees with the mode used to admit issuance**. The source owners must evaluate a single invariant captured activation policy snapshot *and* live durable scope/grant authorization, including tenant/capability/risk and cancellation of revoked claims.
 
 **W10 original-source acceptance: 12 ordinary source witnesses + SEVEN original-source expected failures.** Combined own test methods: **97 = 90 ordinary + 7 intentionally still OPEN original-source REDs** (all additional 78 standalone reviewer methods unchanged). This contract remains DRAFT/HOLD, and neither permit nor scanner was put into a real execution path.
+
+## W11: independent review hardening, not more runtime permission
+
+The previous W10 head `8946dd6c7ffbdf6473a7880ff8934b514f1f2a16` demonstrated **90/90 ordinary own tests PASS + seven deliberately OPEN original-source expected REDs** in genuine Python 3.11/3.14 hosted logs. It did not prove the W11 changes below.
+
+### Real fixed defects in our OWN standalone code
+
+1. **Malformed snapshot exception leak:** a deliberately incomplete exact `PinnedGateReview` (e.g. `object.__new__`) previously raised an `AttributeError` at `pin.gate` before the review's exception guard; now the identity read is protected and returns a generic deny-only **HOLD**.
+2. **Stale initial snapshot:** `pin_gate_for_offline_review` originally collected scope fields, then activation fields, and returned an apparently valid pin without checking whether either had changed in between. It now checks its *completed* reference snapshot against the actual source objects and refuses pinning if stale.
+3. **Mid-review field read drift:** `review_gate_lifetime` originally collected scope and activation in one pass. A deterministic in-process mutation of scope while inspecting activation could have returned `REVIEW_ONLY` on already-changed scope. It now runs a second bounded pass to detect that drift, returning **HOLD** rather than stale review success. This still does NOT guarantee thread-atomicity, post-review safety, live consent, authentic authorization or revocation.
+4. **Misleading receipt construction:** six `LifetimeReceipt` authority flags had literal `False` defaults, but callers could build an arbitrary misleading `LifetimeReceipt(..., may_scan=True)` via the ordinary dataclass constructor. They now use `field(default=False, init=False)` in this own source, disallowing these keyword arguments while retaining frozen object behavior. An adversary controlling Python memory can still mutate objects with `object.__setattr__`, so this is **not a cryptographic or trust boundary**, only a safer API.
+
+### New test evidence surface
+
+**Ten new ordinary real installed-source test methods** in the OWN `tests/test_scope_activation_gate_lifetime_review_1476.py`:
+- incomplete/partially initialized snapshots deny without exception;
+- scope mutation during activation snapshot rejects pin;
+- policy object replacement during snapshot rejects pin;
+- mutation during field review triggers HOLD on the second pass;
+- all four original ScopePolicy fields are independently tested for post-pin mutation;
+- both original ActivationPolicy fields are tested for post-pin mutation;
+- 10 repeated unchanged checks leave original real source policy fields untouched;
+- all six receipt authority flags reject attempts to supply constructor `True`;
+- frozen receipt rejects normal status/permission assignment.
+
+The original `ActivationGate.issue` owns all SEVEN intentionally open source REDs. The new offline sidecars remain **UNWIRED**, never produce actual execution permits, grants or scans. Cumulative owned test surface is **107 methods = 100 ordinary intended-PASS + seven OPEN actual-original-source expected REDs**. Exact W11 CI proof must come from W11 immutable head original logs, never earlier W10 jobs. Remain **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD**.
