@@ -214,10 +214,10 @@ class AssetShapeReview376(unittest.TestCase):
         for i in range(512):
             seed = "fixture-%03d.example.test" % i
             bad = (
-                seed + "\\u00a0extra" if i % 4 == 0 else
-                seed + "\\tinvalid" if i % 4 == 1 else
+                seed + "\u00a0extra" if i % 4 == 0 else
+                seed + "\tinvalid" if i % 4 == 1 else
                 seed + " another" if i % 4 == 2 else
-                seed + "\\x00invalid"
+                seed + "\x00invalid"
             )
             with self.subTest(index=i):
                 self.assertEqual(review_asset_identity_shape(_scope((bad,))).decision, "HOLD")
@@ -294,7 +294,7 @@ class ExistingDomainSourceRed376(unittest.TestCase):
     def test_original_source_rejects_control_char_allowed_asset_before_sqlite(self):
         before = self._row_count()
         with self.assertRaises(ValueError):
-            self._record(_scope(("fixture\\x00.example.test",)))
+            self._record(_scope(("fixture\x00.example.test",)))
         self.assertEqual(self._row_count(), before)
 
     def test_canonical_legacy_grant_roundtrip_still_works(self):
