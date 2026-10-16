@@ -583,6 +583,35 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
         self.assertEqual(len(self._persisted_snapshot()), 1)
         self.assertEqual(review_asset_identity_shape(original).decision, "HOLD")
 
+    def test_syntactic_review_does_not_bypass_original_time_and_reference_gates(self):
+        original = DomainStore.record_authorization_grant
+        scope = _scope()
+        self.assertEqual(review_asset_identity_shape(scope).decision, "REVIEW_ONLY")
+        cases = (
+            ("naive start", "fixture", "NOT-CONSENT",
+             datetime(2026, 1, 1), self.end),
+            ("naive end", "fixture", "NOT-CONSENT",
+             self.start, datetime(2027, 1, 1)),
+            ("reverse dates", "fixture", "NOT-CONSENT",
+             self.end, self.start),
+            ("blank approver", " ", "NOT-CONSENT",
+             self.start, self.end),
+            ("blank reference", "fixture", " ",
+             self.start, self.end),
+        )
+        with patch.object(DomainStore, "record_authorization_grant",
+                          self._owner_candidate(original)):
+            for label, approver, reference, start, end in cases:
+                with self.subTest(case=label):
+                    before = self._persisted_snapshot()
+                    with self.assertRaises(ValueError):
+                        self.store.record_authorization_grant(
+                            self.operator, self.engagement.engagement_id,
+                            approver, reference, scope, start, end
+                        )
+                    self.assertEqual(self._persisted_snapshot(), before)
+        self.assertIs(DomainStore.record_authorization_grant, original)
+
     def test_ordinary_grant_passes_only_through_temporary_review_wrapper(self):
         original = DomainStore.record_authorization_grant
         scope = _scope(("fixture.example.test",), ("blocked.example.test",))
