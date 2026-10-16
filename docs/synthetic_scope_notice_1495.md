@@ -176,3 +176,15 @@ PYTHONPATH=src python -m lightup.synthetic_scope_notice_compare_cli_1495 --synth
 Deze opdrachten geven bij een synthetisch geldig voorbeeld bewust niet-nul exitcode 2 terug; bij shells met `set -e` is een expliciete afhandeling nodig. Beide JSON-invoerbestanden zijn nu daadwerkelijk in `examples/` aanwezig. Ze tonen exact één gewijzigd fictief risicovenster en één toegevoegde fictieve handeling; een originele CLI→CLI→HTML-proef test beide gecommitte bestanden automatisch. De uitvoer krijgt twee voorgestelde veranderingen maar blijft nadrukkelijk **NOT AUTHORIZED**.
 
 De 26 Python-origineelbron- en 14 echte end-to-endcommandlinetests in `tests/test_synthetic_scope_notice_compare_1495.py` en `tests/test_synthetic_scope_notice_compare_cli_1495.py` toetsen risicowijzigingen, tijdvensters, toegevoegd/verwijderd, internationaal bronmateriaal, strict fail-closed, geen actieve UI en niet-nul status. Exact-head-gehoste CI-bewijs op commit `4544a2cd8dac4b1a4b57a7dfc3cc1958aa849c27`: eigen workflow #38933371968; oorspronkelijke Python 3.11 job `117082656826`, Python 3.14 job `117082657275`; elk **238 tests OK**. Dit is geen volledige LightUp-CI, geen VPS-validatie en geen toestemming. DRAFT/HOLD.
+
+### W16: Directe Nederlandstalige scopevergelijking
+
+De offline vergelijking is nu ook **volledig Nederlandstalig** via expliciet `--lang nl`. Dit verandert uitsluitend de leesbare labels in de fictieve HTML-pagina; de bronrapporten `before` en `after` mogen ieder onafhankelijk EN of NL zijn. Een lokale vergelijking kan zo worden aangemaakt:
+
+```bash
+PYTHONPATH=src python -m lightup.synthetic_scope_notice_compare_cli_1495 --synthetic-pair-to-html --lang nl < pair.json > scopeverschillen-nl.html
+```
+
+De tabel maakt in duidelijke Nederlandse taal onderscheid tussen `VOORGESTELDE DETAILS VERANDERD`, `ALLEEN IN NA — NIET TOEGEKEND`, `ALLEEN IN VOOR — NIET INGETROKKEN` en `IDENTIEK FICTIEF VOORSTEL`. Ook de vier *PENDING*-voorwaarden noemen in het Nederlands de nog benodigde verificatie van operator/klant, echte eigenaar en scope, revocation-at-use en onafhankelijke security/privacy met menselijke GO. In de titel staat altijd `NOT AUTHORIZED — NIET GEAUTORISEERD`. Een afwijzing blijft een privacyveilige `HOLD` in de geselecteerde taal zonder scoperegels.
+
+De normale Engelse output blijft zonder `--lang` byte-voor-byte behouden; `--lang en` is equivalent. Onbekende, veranderde of herschikte opties falen atomisch en de originele stdin wordt niet getoond. Geen grants, toestemming of uitvoerbevoegdheid, en voor de CLI blijft REVIEW_ONLY exitcode 2 / HOLD exitcode 3 / nooit exitcode 0. In een nieuwe reeks oorspronkelijke pure én echte CLI-tests `tests/test_synthetic_scope_notice_compare_locale_1495.py` worden 13 lokale en meertalige scenario's gecontroleerd; een groen resultaat geldt pas nadat de originele exacte-head GitHub-logs zijn onderzocht.
