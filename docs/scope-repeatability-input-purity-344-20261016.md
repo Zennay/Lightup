@@ -57,3 +57,15 @@ PYTHONPATH=src python -m unittest tests.test_scope_repeatability_input_purity_34
 ### Limitations and ownership
 
 This is restricted to stable canonical **immutable** objects, controlled fictional labels and fixed grant windows (2020–2099 current; 2020–2021 expired). It does not establish deterministic behaviour at a moving grant-expiry boundary (time can legitimately change a decision), defend mutable external policy buffers (#294), replace source-owner repairs, validate actual customer grants or stop malformed target parsing (#1289). No original runtime, tests owned by other workers, existing workflows, or runner configurations changed. PR and project remain DRAFT/HOLD until independent owner/security review, genuine client/operator consent, durable revocation, permanent registered VPS CI and explicit human GO.
+
+### W3 — Seven synthetic mutation-kill canaries
+
+The main acceptance had proved that canonical production-source decisions were repeatable and value-equal. The dedicated **seven extra negative controls** now deliberately instrument only a `unittest.mock.patch.object(ScopePolicy, "decide", ...)` context to verify that the acceptance oracle actually refuses accidental regressions. Patching is immediately undone; original source files are never edited or deployed.
+
+- An injected second-call changed decision must trigger an assertion, and a truthy non-Boolean `allowed="yes"` must not pass exact Boolean checks.
+- An injected rewrite of the original target value, or replacement of a tuple of unchanged label **values with a new tuple object**, must be detected.
+- A forged replacement of an attached fictional authorization reference must be detected even where the normalized scope decision would otherwise still be equal.
+- Replacement of exact policy host-frozenset or network-tuple objects with **equal-content new objects** must be detected by newly pinned container identities. This checks *input purity*, not merely equal returned decisions.
+- Every negative canary also asserts that the local mock ran, so a vacuous expectation of `AssertionError` cannot disguise unused patches. The tests never invoke adapters, scans, network, handlers, real customer assets or real grants.
+
+Current exact own acceptance: **31 methods** (24 genuine installed-source checks + seven test-harness mutation canaries) in the same single test module. This is a local review/test contract; it does not protect against concurrent mutable callers, malicious test runners, trusted source tampering or consent forgery.
