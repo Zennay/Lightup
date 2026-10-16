@@ -124,6 +124,33 @@ class ToolDefinitionOwner156OuterBoundary(unittest.TestCase):
         )
         self.assert_rejected_without_registration(definition)
 
+    def test_exact_definition_rejects_unknown_and_type_confused_arguments(self):
+        definition = canonical_definition("offline-type-controls")
+        self.registry.register(definition, NEVER_INVOKE_HANDLER)
+        for bad in ({"query": 42}, {"query": None},
+                    {"query": "fictional", "unknown": True}, {}):
+            with self.subTest(arguments=bad):
+                with self.assertRaises(OrchestrationError):
+                    self.registry.get(definition.tool_id)[0].validate_arguments(bad)
+                self.assertIs(self.registry.get(definition.tool_id)[0], definition)
+        self.assertEqual(self.registry.definitions(), (definition,))
+
+    def test_exact_lab_only_capability_retains_lab_registration(self):
+        definition = ToolDefinition(
+            "offline-lab", "wireless-lab", InteractionKind.LAB_ACTIVE,
+            RiskLevel.DESTRUCTIVE_LAB_ONLY, "inert synthetic lab metadata",
+        )
+        self.registry.register(definition, NEVER_INVOKE_HANDLER)
+        self.assertIs(self.registry.get("offline-lab")[0], definition)
+        self.assertIs(self.registry.get("offline-lab")[1], NEVER_INVOKE_HANDLER)
+
+    def test_exact_registry_unknown_capability_rejected_atomically(self):
+        self.assert_rejected_without_registration(ToolDefinition(
+            "offline-unknown", "nonexistent-fictional-capability",
+            InteractionKind.PASSIVE_PUBLIC, RiskLevel.PASSIVE,
+            "inert synthetic capability",
+        ))
+
     @unittest.expectedFailure
     def test_red_plain_subclass_must_be_denied(self):
         candidate = PlainSubclassDefinition(**vars(canonical_definition()))
