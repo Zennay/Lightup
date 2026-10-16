@@ -136,6 +136,50 @@ class Transition1480Tests(unittest.TestCase):
         self.assertEqual(verdict.reason, "issuance_after_approved_window")
         self.assert_no_authority(verdict)
 
+    def test_incomplete_exact_authorization_holds_without_crashing(self):
+        for missing in ("owner", "reference", "valid_from", "valid_until"):
+            with self.subTest(missing=missing):
+                original = Authorization(
+                    owner="fictional", reference="fictional",
+                    valid_from=A, valid_until=B,
+                )
+                object.__delattr__(original, missing)
+                result = review_issuance_transition(
+                    authorization=original, checked_at=A, issued_at=B
+                )
+                self.assertEqual(result.status, "HOLD")
+                self.assertEqual(
+                    result.reason, "check_noncanonical_authorization_fields"
+                )
+                self.assert_no_authority(result)
+
+    def test_object_new_without_constructor_holds(self):
+        forged = object.__new__(Authorization)
+        result = review_issuance_transition(
+            authorization=forged, checked_at=A, issued_at=A
+        )
+        self.assertEqual(result.reason, "check_noncanonical_authorization_fields")
+        self.assert_no_authority(result)
+
+    def test_live_time_bound_getters_are_not_read_between_reviews(self):
+        original = Authorization(
+            owner="fictional", reference="fictional",
+            valid_from=A, valid_until=B,
+        )
+        normal = Authorization.__getattribute__
+
+        def block_independent_bounds(instance, name):
+            if name in ("valid_from", "valid_until"):
+                raise AssertionError("must use one copied set of original bounds")
+            return normal(instance, name)
+
+        with patch.object(Authorization, "__getattribute__", block_independent_bounds):
+            result = review_issuance_transition(
+                authorization=original, checked_at=A, issued_at=B
+            )
+        self.assertEqual(result.status, "REVIEW_ONLY")
+        self.assert_no_authority(result)
+
     def test_seeded_clock_matrix_preserves_coherent_interval(self):
         # 2,500 deterministic fictional transitions, no wall clock or targets.
         rng = Random(1480)
