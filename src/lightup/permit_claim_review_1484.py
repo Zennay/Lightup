@@ -50,23 +50,33 @@ def review_fictional_permit_claim_batch(
     for claim in claims:
         if type(claim) is not ExecutionPermit:
             return _hold("invalid_claim")
-        if not _canonical(claim.permit_id, ID):
+        # The dataclass constructor is not an attestation: exact instances can
+        # also be built without __init__, have missing fields or extra claims.
+        # Read one exact built-in field dictionary; never invoke getters or
+        # object conversion while inspecting a malformed review envelope.
+        values = object.__getattribute__(claim, "__dict__")
+        if type(values) is not dict or values.keys() != {
+            "permit_id", "target", "capability_id", "mode",
+            "activation_reference", "issued_at",
+        }:
             return _hold("invalid_claim")
-        if not _fake_target(claim.target):
+        if not _canonical(values["permit_id"], ID):
             return _hold("invalid_claim")
-        if not _canonical(claim.capability_id, CAP):
+        if not _fake_target(values["target"]):
             return _hold("invalid_claim")
-        if type(claim.mode) is not ActivationMode:
+        if not _canonical(values["capability_id"], CAP):
             return _hold("invalid_claim")
-        if claim.mode not in (ActivationMode.LAB_ONLY, ActivationMode.AUTHORIZED):
+        if type(values["mode"]) is not ActivationMode:
             return _hold("invalid_claim")
-        if not _canonical(claim.activation_reference, REF):
+        if values["mode"] not in (ActivationMode.LAB_ONLY, ActivationMode.AUTHORIZED):
             return _hold("invalid_claim")
-        if type(claim.issued_at) is not datetime or claim.issued_at.tzinfo is not timezone.utc:
+        if not _canonical(values["activation_reference"], REF):
             return _hold("invalid_claim")
-        if claim.issued_at > review_cutoff:
+        if type(values["issued_at"]) is not datetime or values["issued_at"].tzinfo is not timezone.utc:
+            return _hold("invalid_claim")
+        if values["issued_at"] > review_cutoff:
             return _hold("future_claim")
-        if claim.permit_id in seen:
+        if values["permit_id"] in seen:
             return _hold("duplicate_in_batch")
-        seen.add(claim.permit_id)
+        seen.add(values["permit_id"])
     return PermitClaimReview("REVIEW_ONLY", "fictional_shape_only", len(claims))
