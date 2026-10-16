@@ -9,6 +9,7 @@ on:
       - "tests/test_fictional_scope_delta_review_1501.py"
       - "tests/test_fictional_scope_delta_cli_1501.py"
       - "docs/scope-fictional-proposal-delta-review-1501.md"
+      - "docs/examples/scope-fictional-*-1501.json"
       - ".github/workflows/scope-fictional-delta-1501.yml"
   pull_request:
     paths:
@@ -17,6 +18,7 @@ on:
       - "tests/test_fictional_scope_delta_review_1501.py"
       - "tests/test_fictional_scope_delta_cli_1501.py"
       - "docs/scope-fictional-proposal-delta-review-1501.md"
+      - "docs/examples/scope-fictional-*-1501.json"
       - ".github/workflows/scope-fictional-delta-1501.yml"
   workflow_dispatch:
 
