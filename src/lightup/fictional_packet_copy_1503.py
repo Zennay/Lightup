@@ -163,6 +163,32 @@ def compare_fictional_packet_fanout(
     return CopyReview("REVIEW_ONLY", hashlib.sha256(original).hexdigest())
 
 
+
+def compare_fictional_packet_fanout_pinned(
+    original: bytes,
+    received_copies: tuple[bytes, ...],
+    expected_sha256: str,
+) -> CopyReview:
+    """Fail closed unless copies AND a separately supplied digest match.
+
+    The 64-character lowercase digest must be independently reviewed/pinned
+    outside this process. This function cannot establish where it came from,
+    prevent a malicious caller from swapping *both* data and digest, or grant
+    consent, release, execution, provenance, or signing authority.
+    """
+    if (
+        type(expected_sha256) is not str
+        or re.fullmatch(r"[0-9a-f]{64}", expected_sha256, re.ASCII) is None
+    ):
+        return CopyReview("HOLD")
+    result = compare_fictional_packet_fanout(original, received_copies)
+    if result.status != "REVIEW_ONLY" or result.sha256 is None:
+        return CopyReview("HOLD")
+    if not hmac.compare_digest(result.sha256, expected_sha256):
+        return CopyReview("HOLD")
+    return result
+
+
 def compare_fictional_packet_copies(original: bytes, received: bytes) -> CopyReview:
     """Only identical strictly canonical fictional ASCII bytes get REVIEW_ONLY.
 
