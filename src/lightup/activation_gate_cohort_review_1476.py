@@ -53,6 +53,12 @@ def pin_gate_cohort_for_offline_review(gates: object) -> PinnedGateCohort | None
         if pinned is None:
             return None
         pins.append(pinned)
+    # A later gate may have changed an earlier one while we were pinning.
+    # Second bounded pass refuses such mid-pinning drift. This is still
+    # observational, not an atomic inter-thread lock or authorization.
+    for gate, pinned in zip(gates, pins):
+        if review_gate_lifetime(gate, pinned).status is not LifetimeStatus.REVIEW_ONLY:
+            return None
     return PinnedGateCohort(pins=tuple(pins))
 
 
@@ -79,6 +85,12 @@ def review_gate_cohort_offline(
             if id(gate) in seen:
                 return _hold("changed")
             seen.add(id(gate))
+            if review_gate_lifetime(gate, pin).status is not LifetimeStatus.REVIEW_ONLY:
+                return _hold("changed")
+        # A second complete pass catches earlier objects altered while the
+        # later objects were inspected. This is NOT a transaction; any
+        # change after this observation remains outside our authority.
+        for gate, pin in zip(gates, pins):
             if review_gate_lifetime(gate, pin).status is not LifetimeStatus.REVIEW_ONLY:
                 return _hold("changed")
     except (AttributeError, TypeError, ValueError):
