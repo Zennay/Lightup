@@ -23,7 +23,7 @@ ownership of `src/lightup/webapp/security.py`.
   - `docs/scope-919-canonical-public-origin-identity-20261012.md`
     from PR #1255, blob `4ecfd473b2a22e1413bead968b420b13b58bf80a`.
 - Fifth new file: `tests/test_scope_920_transport_identity_composition_20261016.py`,
-  nine **ordinary fail-closed controls**, plus two **deliberate source-REDs**, exercising BOTH exact
+  eleven **ordinary fail-closed controls**, plus two **deliberate source-REDs**, exercising BOTH exact
   production-mode ingress predicates against fictional `.example.test` host
   and documentation-only `203.0.113.77` peer. Includes a 45-envelope joint truth table and a non-mutation check. No sockets or outbound calls.
 - Sixth new file: this manifest. All paths are new on PR #202 base. No
@@ -48,8 +48,9 @@ peer and a caller-owned equality-spoofing `str` subclass as trusted proxy,
 under the same forged transport metadata. Both require denial; the currently
 unmodified source permits the mismatched peer and can serve the anonymous
 login page instead of rejecting transport. This is an **in-memory config/admission proof**, never evidence of a
-real external exploit. The nine remaining composition controls are green
-contracts and **cannot fix or certify** the source flaws. An unexpectedSuccess, ordinary FAIL or ERROR is not a
+real external exploit. The eleven remaining composition controls include **real installed WSGI**
+positive anonymous-login and negative 403-before-body/store controls, so
+the expected-RED cannot hide a broken WSGI fixture. They are green contracts and **cannot fix or certify** the source flaws. An unexpectedSuccess, ordinary FAIL or ERROR is not a
 release success and must be investigated; do not silently suppress it.
 
 For a valid future release, #202's owner must implement constructor-time exact
@@ -72,11 +73,11 @@ for file in \
 done
 ```
 
-**Previous exact head** `42b06faac7cd826ea9e999983649cb1a5a0d02f8`
-passed [hosted #38868785447](https://github.com/Zennay/Lightup/actions/runs/38868785447)
-with all four jobs successful (each interpreter: 529 units, five expected
-source failures, and 86 real producer integrations). That **predates the new
-WSGI source-RED** and is not exact-head proof for this update.
+**Previous exact head** `1793ffc14a7acebbb0a837443465d49eee9e3d8d`
+passed [hosted #38869050998](https://github.com/Zennay/Lightup/actions/runs/38869050998)
+with all four jobs successful (each interpreter: 530 units, six expected
+source failures, and 86 real producer integrations). That **predates the two
+additional WSGI controls** and is not exact-head proof for this update.
 Capture the latest commit SHA, Python 3.11/3.14 result and *six* expected
 source failures, plus separate genuine registered permanent VPS provenance
 before claiming updated tests. Hosted green is not release authority.
