@@ -6,6 +6,7 @@ import socket
 import subprocess
 import sys
 import unittest
+from dataclasses import FrozenInstanceError
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -15,6 +16,7 @@ import lightup.activation_gate_lifetime_review_1476 as review_module
 from lightup.scope import ScopePolicy
 from lightup.activation_gate_lifetime_review_1476 import (
     LifetimeStatus,
+    LifetimeReceipt,
     PinnedGateReview,
     pin_gate_for_offline_review,
     review_gate_lifetime,
@@ -393,6 +395,30 @@ class LifetimeReviewTests(unittest.TestCase):
             self.check_no_authority(receipt)
         self.assertEqual(vars(g.scope_policy), original_scope)
         self.assertEqual(vars(g.activation_policy), original_activation)
+
+    def test_receipt_constructor_cannot_enable_any_authority_flag(self):
+        flags = (
+            "may_issue_permit", "may_issue_grant", "may_dispatch",
+            "may_scan", "may_deploy", "may_release",
+        )
+        for flag in flags:
+            with self.subTest(flag=flag):
+                with self.assertRaises(TypeError):
+                    LifetimeReceipt(
+                        status=LifetimeStatus.REVIEW_ONLY,
+                        reason="unchanged",
+                        **{flag: True},
+                    )
+        control = LifetimeReceipt(LifetimeStatus.REVIEW_ONLY, "unchanged")
+        self.check_no_authority(control)
+
+    def test_receipt_normal_field_assignment_is_forbidden(self):
+        result = LifetimeReceipt(LifetimeStatus.REVIEW_ONLY, "unchanged")
+        with self.assertRaises(FrozenInstanceError):
+            result.may_scan = True
+        with self.assertRaises(FrozenInstanceError):
+            result.status = LifetimeStatus.HOLD
+        self.check_no_authority(result)
 
     def test_receipt_and_snapshot_repr_never_repeat_raw_policy_data(self):
         secret = "FAKE-CONFIDENTIAL-" + "X" * 70
