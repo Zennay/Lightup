@@ -71,6 +71,25 @@ The independent, still-open installed-source RED tests remain in
 `tests/test_scope_639_nested_sqlite_red_20261016.py`. The reference test
 being green DOES NOT repair those REDs.
 
+## Same-row installed-source RED handoff
+
+The separate real temporary-SQLite acceptance module now compares **the very
+same fetched raw `assets_json`, `excluded_assets_json`, and
+`allowed_capabilities_json` bytes** in two strictly distinct operations:
+first the new pure helper returns `None` for corrupt nested elements; then
+the original unmodified #554 resolver is observed returning an executable
+grant or leaking a `TypeError`. New ordinary tests exercise these contrasting
+outcomes without network, handler or external target I/O, verify unchanged
+SQLite rows, and confirm canonical entries map exactly to the existing
+grant's scope while the helper response contains **no** grant authority.
+The two additional expected-failure requirements cover a whitespace-only
+excluded asset and a nested object inside the allowed asset list. This raises
+the still-unfixed original-source RED set from **seven to nine**, not because
+the helper is unsafe, but because owner #554 still permits corrupted durable
+scope to leave the actual execution resolver. After owner repair, these must
+become true PASS and the old-source replay oracle must be retired.
+
+
 ## Deployment and conflict ownership
 
 Original source owner #554 owns the actual
