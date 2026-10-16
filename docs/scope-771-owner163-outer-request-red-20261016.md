@@ -85,12 +85,13 @@ by the helper itself. A returned allow is **only an in-memory policy decision**
 and never permission to start a scanner or real capability.
 
 A completely separate new
-`tests/test_scope_771_request_admission_optin_20261016.py` uses 26
+`tests/test_scope_771_request_admission_optin_20261016.py` uses 29
 ordinary in-memory tests: exact fictional analysis/passive/lab modes and valid
 approved synthetic target; missing, expired, revoked or mismatched fictional
 grants, risk, target and capability narrowing; malformed canonical fields;
 duck getters that throw on use; subclass getters and policy overrides that
-must never run; null/opaque input denial; and request/grant non-mutation.
+must never run; three forged `__class__` identity probes for request, grant-envelope,
+and policy impostors; null/opaque input denial; and request/grant non-mutation.
 No network, real grant, registry, authorization write, target handler,
 tool execution or deployment.
 
