@@ -8,7 +8,7 @@ The canonical `Authorization(owner, reference)` is immutable in shape, but the c
 
 ## Isolated test matrix
 
-New `tests/test_scope_299_legacy_provenance_red_20261015.py` runs real installed `lightup.models.Authorization`, `lightup.scope.ScopePolicy`, and `lightup.activation.ActivationGate` against fictional `review.example.test` and documentation IP `203.0.113.27` with an explicit no-socket/no-DNS monkeypatch on every installed-source case, and without any handler actions. The suite contains **7 ordinary green controls** (canonical host, canonical network, canonical inert AUTHORIZED permit, missing grant, expired grant, PLAN_ONLY and LAB_ONLY) and **12 deliberately expected source REDs**:
+New `tests/test_scope_299_legacy_provenance_red_20261015.py` runs real installed `lightup.models.Authorization`, `lightup.scope.ScopePolicy`, and `lightup.activation.ActivationGate` against fictional `review.example.test` and documentation IP `203.0.113.27` with an explicit no-socket/no-DNS monkeypatch on every installed-source case, and without any handler actions. The suite contains **9 ordinary green controls** (canonical host, canonical network, canonical inert AUTHORIZED host permit, canonical network permit, missing grant, expired grant, PLAN_ONLY, LAB_ONLY, and immutable invalid-input review) and **12 deliberately expected source REDs**:
 
 1. blank client owner with an explicit public host;
 2. blank reference with an explicit public network;
