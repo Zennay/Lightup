@@ -5,7 +5,6 @@ except bounded CLI stdin and a generic, privacy-minimal stdout receipt.
 """
 from __future__ import annotations
 
-import ipaddress
 import json
 import re
 import sys
@@ -77,11 +76,6 @@ def _strict_preview(metadata: object) -> bool:
     if type(proxy) is not str or type(origin) is not str:
         return False
     if proxy not in ("127.0.0.1", "::1"):
-        return False
-    try:
-        if not ipaddress.ip_address(proxy).is_loopback:
-            return False
-    except ValueError:
         return False
     return _canonical_synthetic_origin(origin)
 
