@@ -7,6 +7,8 @@ on:
       - 'scripts/fictional_lab_capability_cli_1511.py'
       - 'tests/test_fictional_lab_capability_review_1511.py'
       - 'tests/test_fictional_lab_capability_cli_1511.py'
+      - 'tests/test_fictional_lab_capability_sealing_1511.py'
+      - 'tests/test_fictional_lab_capability_isolation_1511.py'
       - 'docs/scope-lab-capability-identity-1511.md'
       - '.github/workflows/scope-lab-capability-review-1511.yml'
   workflow_dispatch:
@@ -33,5 +35,5 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6 immutable
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Unwired synthetic CLI and source historical RED acceptance
+      - name: Fictional offline review, sealing, isolation and historical source RED
         run: python -m unittest discover -s tests -p 'test_fictional_lab_capability*_1511.py' -v
