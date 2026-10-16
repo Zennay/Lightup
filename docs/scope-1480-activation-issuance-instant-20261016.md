@@ -81,3 +81,8 @@ The pure `review_issuance_transition` now captures **one** in-memory immutable `
 A dedicated **race-canary ordinary PASS** mutates the caller-held input after the first helper call, proves the deliberate widening happened only to that object, proves both reviews used the **same independent snapshot**, and still requires `HOLD: issuance_after_approved_window`. This is purely in-process; nothing reads external clocks, customer records, authorization sources or handlers.
 
 New strict opt-in checker now runs **33 own source/reference methods**: 32 ordinary controls + exactly **one original installed-source expected RED**; separate 3 runner integrity tests verify the checker. The checker returns never-authorizing REVIEW_ONLY/HOLD, not a full-suite/CI bypass. **Original ActivationGate remains unchanged and unsafe at the observed narrow issuance race until source owner fixes it.**
+
+
+## W6 — review verdict structure hardened against frozen-dataclass bypass
+
+The standalone `IssuanceWindowReview` result is now a slotless `NamedTuple` rather than a frozen dataclass: Python's `object.__setattr__` can otherwise forcibly change a frozen-dataclass Boolean despite a normal assignment throwing `FrozenInstanceError`. The owned regression now verifies **both** ordinary assignment and direct `object.__setattr__` reject release-flag rebinding and the review record has no instance `__dict__`. This is just a structural safeguard: any caller may fabricate a new value object, so **even a REVIEW_ONLY result must NEVER be treated as grant/consent/permit/dispatch/release authority**. All owner-consent/revocation and runtime dispatch decisions remain independent; no live handlers/permissions/source owner edits.
