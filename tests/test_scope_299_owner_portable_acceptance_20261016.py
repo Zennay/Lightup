@@ -178,6 +178,48 @@ class SourceOwnerPortable299Tests(unittest.TestCase):
         self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_REVOKED)
         self.assertFalse(revoked.is_current())
 
+    def test_lab_only_never_copies_supplied_client_reference_to_permit(self):
+        # Even if callers attach an irrelevant synthetic Authorization to a
+        # loopback Target, LAB_ONLY must never promote that field as client
+        # authorization provenance. No real adapters/handlers are invoked.
+        fake = _grant(HOST, owner="NOT-A-CLIENT", reference="UNTRUSTED-LAB-MARKER")
+        gate = ActivationGate(
+            _policy(HOST), ActivationPolicy(mode=ActivationMode.LAB_ONLY,
+                                             activation_reference="FICTIONAL-LAB"),
+        )
+        original_ref = fake.reference
+        permit = gate.issue(Target("localhost", authorization=fake), CAPABILITY)
+        self.assertIs(permit.mode, ActivationMode.LAB_ONLY)
+        self.assertEqual(permit.target, "localhost")
+        self.assertEqual(permit.activation_reference, "FICTIONAL-LAB")
+        self.assertIsNone(getattr(permit, "authorization_reference", None))
+        self.assertEqual(fake.reference, original_ref)
+
+    @unittest.expectedFailure
+    def test_red_string_subclass_owner_cannot_admit_exact_public_asset(self):
+        class UntrustedOwner(str):
+            pass
+        grant = _grant(HOST, owner=UntrustedOwner("fictional-owner"))
+        self.assertFalse(_policy(HOST).decide(Target(HOST, grant)).allowed)
+
+    @unittest.expectedFailure
+    def test_red_bytes_client_reference_cannot_admit_exact_network_asset(self):
+        # Runtime typing is not enforced by the dataclass constructor.
+        grant = _grant(IP, reference=b"FICTIONAL-BINARY-NOT-A-GRANT")
+        self.assertFalse(_policy(IP).decide(Target(IP, grant)).allowed)
+
+    @unittest.expectedFailure
+    def test_red_embedded_newline_owner_cannot_admit_exact_public_asset(self):
+        # Embedded control characters are not canonical, even when text
+        # is nonempty and has no leading or trailing whitespace.
+        grant = _grant(HOST, owner="fictional\\nspoofed-owner")
+        self.assertFalse(_policy(HOST).decide(Target(HOST, grant)).allowed)
+
+    @unittest.expectedFailure
+    def test_red_nul_reference_cannot_admit_exact_network_asset(self):
+        grant = _grant(IP, reference="FICTIONAL\\u0000REFERENCE")
+        self.assertFalse(_policy(IP).decide(Target(IP, grant)).allowed)
+
     @unittest.expectedFailure
     def test_red_public_host_permit_refuses_blank_owner_despite_operator_activation(self):
         # Scope #299 cannot let an operator activation marker stand in for
@@ -248,16 +290,16 @@ class SourceOwnerPortable299Tests(unittest.TestCase):
 
 
 class SourceOwnerPortable299Oracle(unittest.TestCase):
-    def test_portable_source_debt_oracle_identifies_ten_real_open_gaps(self):
+    def test_portable_source_debt_oracle_identifies_fourteen_real_open_gaps(self):
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(SourceOwnerPortable299Tests)
         result = unittest.TestResult()
         suite.run(result)
-        self.assertEqual(result.testsRun, 19)
+        self.assertEqual(result.testsRun, 24)
         self.assertEqual(result.errors, [])
         self.assertEqual(result.failures, [])
         self.assertEqual(result.skipped, [])
         self.assertEqual(result.unexpectedSuccesses, [])
-        self.assertEqual(len(result.expectedFailures), 10)
+        self.assertEqual(len(result.expectedFailures), 14)
         got = {case._testMethodName: detail for case, detail in result.expectedFailures}
         wanted = {
             "test_red_blank_client_owner_must_not_admit_bound_public_host",
@@ -270,6 +312,10 @@ class SourceOwnerPortable299Oracle(unittest.TestCase):
             "test_red_current_legacy_grant_must_require_canonical_reference",
             "test_red_public_host_permit_refuses_blank_owner_despite_operator_activation",
             "test_red_public_network_permit_refuses_blank_client_reference",
+            "test_red_string_subclass_owner_cannot_admit_exact_public_asset",
+            "test_red_bytes_client_reference_cannot_admit_exact_network_asset",
+            "test_red_embedded_newline_owner_cannot_admit_exact_public_asset",
+            "test_red_nul_reference_cannot_admit_exact_network_asset",
         }
         self.assertEqual(set(got), wanted)
         for name, detail in got.items():
