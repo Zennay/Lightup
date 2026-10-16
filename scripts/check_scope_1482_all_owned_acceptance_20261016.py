@@ -181,9 +181,34 @@ def git_blob_sha(data: bytes) -> str:
 
 
 def pinned_tree_valid(root: Path = ROOT) -> bool:
+    """Reject indirection at EVERY owned path component before imports.
+
+    This is a local review-only guard, not a signed-source or race-safe
+    provenance attestation. Never resolve a symlink into a different tree.
+    """
     try:
+        if type(root) is not Path or root.is_symlink() or not root.is_dir():
+            return False
+        if len(PINNED_GIT_BLOBS) != 15:
+            return False
         for relpath, expected_sha in PINNED_GIT_BLOBS.items():
-            path = root / relpath
+            if (
+                type(relpath) is not str or type(expected_sha) is not str
+                or len(expected_sha) != 40
+            ):
+                return False
+            components = Path(relpath).parts
+            if (
+                not components or any(c in (".", "..") for c in components)
+                or Path(relpath).is_absolute()
+            ):
+                return False
+            parent = root
+            for component in components[:-1]:
+                parent = parent / component
+                if parent.is_symlink() or not parent.is_dir():
+                    return False
+            path = parent / components[-1]
             if path.is_symlink() or not path.is_file():
                 return False
             with path.open("rb") as stream:
