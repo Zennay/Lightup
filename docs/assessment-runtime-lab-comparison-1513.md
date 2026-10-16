@@ -71,3 +71,12 @@ HOLD without any partial comparisons or sensitive input echo. The wrapper
 performs no I/O and never produces authority: all four consent, authorization,
 dispatch and release flags are false even for REVIEW_ONLY. Source provenance,
 consent, registered permanent VPS CI and human GO remain entirely unproven.
+
+## Exact source-head hosted regression gate
+
+The dedicated assessment-runtime hosted Python matrix checks out the explicit
+PR-head commit instead of GitHub's temporary pull-request merge ref. The
+assertion compares `git rev-parse HEAD` with the immutable event head SHA
+before any offline test runs. This test verifies *only* the isolated local
+assessment-runtime suite, not full project hosted or registered VPS release
+gates; the permanent operator-owned VPS job is tracked independently.
