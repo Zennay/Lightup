@@ -138,7 +138,7 @@ def _review_blobs_match(expected_blobs: dict[str, str]) -> bool:
 
 def _expected_case_manifest_sha256() -> str:
     """Stable self-reported method-manifest digest (not signed CI evidence)."""
-    records = "\\n".join(sorted(EXPECTED_TEST_IDS)).encode("utf-8")
+    records = "\n".join(sorted(EXPECTED_TEST_IDS)).encode("utf-8")
     return hashlib.sha256(records).hexdigest()
 
 
