@@ -192,18 +192,37 @@ runner identity or cryptographic build provenance. On eventual source-owner
 repair the old exact-blob guard will deliberately require review/update.
 
 A new separate test-only module
-`tests/test_scope_920_runner_provenance_20261016.py` adds **five ordinary
+`tests/test_scope_920_runner_provenance_20261016.py` adds **six ordinary
 controls** for exact known Git blob encoding (`hello` and `hello\\n`),
-current source pin, altered fictitious local source, missing fictitious local
+current source pin, a full real in-process invocation of the narrow
+20/9 script requiring `REVIEW_ONLY` with every authority flag false,
+altered fictitious local source, missing fictitious local
 source, and early `HOLD` without running tests or granting release/merge/
 scan/dispatch/VPS/full-suite/consent flags. The altered-source fixtures use
 `tempfile.TemporaryDirectory` and contain only synthetic bytes, no real
 assets or client data.
 
-These five checks are part of regular GitHub hosted unit tests, **not** the
+These six checks are part of regular GitHub hosted unit tests, **not** the
 standalone command's exactly 20 scope-source regression methods; the narrow
 command deliberately cannot mark the rest of LightUp's full suite green.
 Do not claim these W6 changes are tested on a specific head until its actual
 hosted original job logs have been reviewed. The unrelated #301 frozen-clock
 fixture remains an independent ordinary full-suite FAIL owned by draft #1452;
 permanent VPS #1144 still requires real runner execution. **DRAFT/HOLD**.
+
+## W7: exercise the actual narrow runner inside hosted unit CI
+
+`test_real_offline_runner_executes_all_twenty_but_never_releases` calls the
+actual `acceptance.main()` in-process while capturing stdout/stderr. It
+requires exit code 0, `status=REVIEW_ONLY`, **exactly 20 actual installed-source
+method runs and 9 still OPEN expected source REDs**, and literal false for
+`source_fixed`, `release_authorized`, `merge_authorized`, `scan_authorized`,
+`dispatch_authorized`, `registered_vps_verified`, `full_suite_verified`,
+and `client_operator_consent_verified`. It does not start a child process,
+network client, real engagement, or tool handler. The test is a **normal
+ordinary CI method** separate from the narrowly discovered 20. This is a
+real hosted execution of the runner function, **not** evidence that the
+standalone command was executed on a registered permanent VPS or that the
+full suite's unrelated #301 failure is resolved.
+
+Verify the latest exact-head hosted job logs before calling this `ok`.
