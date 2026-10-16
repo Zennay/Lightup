@@ -146,6 +146,77 @@ class LegacyAuthorization299Tests(unittest.TestCase):
         self.assertIs(target.authorization, invalid)
         self.assertEqual(policy.explicit_hosts, frozenset({HOST}))
 
+    def test_lab_only_loopback_without_client_authorization_remains_inert(self):
+        # A local-only permit is not a public client-authorization grant.
+        gate = ActivationGate(
+            _host_policy(),
+            ActivationPolicy(mode=ActivationMode.LAB_ONLY),
+        )
+        target = Target("localhost")
+        permit = gate.issue(target, CAPABILITY)
+        self.assertEqual(permit.target, "localhost")
+        self.assertEqual(permit.capability_id, CAPABILITY)
+        self.assertIs(permit.mode, ActivationMode.LAB_ONLY)
+        self.assertEqual(permit.activation_reference, "LAB")
+        self.assertIsNone(getattr(permit, "authorization_reference", None))
+        self.assertIsNone(target.authorization)
+
+    def test_canonical_legacy_authorization_current_guard_preserves_fields(self):
+        grant = Authorization("fictional-owner", "NOT-A-CONSENT")
+        before = (grant.owner, grant.reference, grant.valid_from, grant.valid_until)
+        self.assertTrue(grant.is_current())
+        self.assertEqual(
+            (grant.owner, grant.reference, grant.valid_from, grant.valid_until),
+            before,
+        )
+
+    @unittest.expectedFailure
+    def test_red_legacy_is_current_must_reject_empty_client_owner(self):
+        grant = Authorization(owner="", reference="NOT-A-CONSENT")
+        self.assertFalse(grant.is_current())
+
+    @unittest.expectedFailure
+    def test_red_legacy_is_current_must_reject_nonstring_client_reference(self):
+        grant = Authorization(owner="fictional-owner", reference={"value": "NOT-A-CONSENT"})
+        self.assertFalse(grant.is_current())
+
+    @unittest.expectedFailure
+    def test_red_authorized_host_permit_must_carry_distinct_client_reference(self):
+        gate = ActivationGate(
+            _host_policy(),
+            ActivationPolicy(
+                mode=ActivationMode.AUTHORIZED,
+                activation_reference="FICTIONAL-OPERATOR-NOT-A-GRANT",
+            ),
+        )
+        target = Target(HOST, Authorization("fictional-owner", "FICTIONAL-CLIENT-NOT-A-GRANT"))
+        permit = gate.issue(target, CAPABILITY)
+        self.assertEqual(permit.activation_reference, "FICTIONAL-OPERATOR-NOT-A-GRANT")
+        self.assertEqual(
+            getattr(permit, "authorization_reference", None),
+            "FICTIONAL-CLIENT-NOT-A-GRANT",
+        )
+
+    @unittest.expectedFailure
+    def test_red_authorized_network_permit_must_carry_client_reference(self):
+        gate = ActivationGate(
+            _network_policy(),
+            ActivationPolicy(
+                mode=ActivationMode.AUTHORIZED,
+                activation_reference="FICTIONAL-OPERATOR-NOT-A-GRANT",
+            ),
+        )
+        target = Target(
+            PUBLIC_IP,
+            Authorization("fictional-owner", "FICTIONAL-CLIENT-NOT-A-GRANT"),
+        )
+        permit = gate.issue(target, CAPABILITY)
+        self.assertEqual(permit.activation_reference, "FICTIONAL-OPERATOR-NOT-A-GRANT")
+        self.assertEqual(
+            getattr(permit, "authorization_reference", None),
+            "FICTIONAL-CLIENT-NOT-A-GRANT",
+        )
+
     @unittest.expectedFailure
     def test_red_none_owner_cannot_allow_explicit_public_host(self):
         self.assertFalse(
@@ -224,19 +295,19 @@ class LegacyAuthorization299OracleTests(unittest.TestCase):
     def test_strict_installed_source_red_oracle_and_green_controls(self):
         """Reject crashes/skips and unexpected successes disguised as intended REDs.
 
-        This verifier replays the twelve RED + nine controls inside a private result.
+        This verifier replays the sixteen RED + eleven controls inside a private result.
         It will FAIL as soon as the source is fixed, until the owner migrates the
         RED assertions to ordinary green tests. It is *not* release evidence.
         """
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(LegacyAuthorization299Tests)
         result = unittest.TestResult()
         suite.run(result)
-        self.assertEqual(result.testsRun, 21)
+        self.assertEqual(result.testsRun, 27)
         self.assertEqual(result.errors, [], "unexpected source/test harness error")
         self.assertEqual(result.failures, [], "unexpected green control failure")
         self.assertEqual(result.skipped, [], "a required case was skipped")
         self.assertEqual(
-            len(result.expectedFailures), 12,
+            len(result.expectedFailures), 16,
             "source RED contract changed: investigate; never auto-promote",
         )
         self.assertEqual(result.unexpectedSuccesses, [])
@@ -257,11 +328,17 @@ class LegacyAuthorization299OracleTests(unittest.TestCase):
             "test_red_bytes_reference_cannot_allow_explicit_public_host",
             "test_red_polymorphic_reference_cannot_allow_explicit_public_host",
             "test_red_list_reference_cannot_allow_explicit_public_network",
+            "test_red_legacy_is_current_must_reject_empty_client_owner",
+            "test_red_legacy_is_current_must_reject_nonstring_client_reference",
+            "test_red_authorized_host_permit_must_carry_distinct_client_reference",
+            "test_red_authorized_network_permit_must_carry_client_reference",
         }
         self.assertEqual(set(failures), expected)
         for name, detail in failures.items():
             if "authorized_mode" in name:
                 self.assertIn("AssertionError: PermissionError not raised", detail)
+            elif "permit_must_carry" in name:
+                self.assertIn("AssertionError: None != 'FICTIONAL-CLIENT-NOT-A-GRANT'", detail)
             else:
                 self.assertIn("AssertionError: True is not false", detail)
 
