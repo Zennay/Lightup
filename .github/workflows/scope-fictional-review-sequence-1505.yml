@@ -23,6 +23,7 @@ on:
       - 'tests/test_fictional_review_sequence_anchor_1505.py'
       - 'tests/test_fictional_review_sequence_anchor_cli_1505.py'
       - 'tests/test_fictional_review_sequence_anchor_matrix_1505.py'
+      - 'tests/test_fictional_review_sequence_anchor_mutations_1505.py'
       - 'docs/scope-fictional-review-sequence-1505.md'
       - 'docs/examples/fictional-sequence-1505-*.json'
       - 'docs/examples/fictional-pair-1505-*.json'
