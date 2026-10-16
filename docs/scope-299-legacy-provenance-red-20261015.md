@@ -49,14 +49,19 @@ printf '%s' '{"owner":"fictional-reviewer","reference":"NOT-CONSENT"}' |
 ```
 
 - Reads a maximum of **4,097 stdin bytes** to enforce **4,096-byte input ceiling**, with no pathname argument, file write, DNS, HTTP or socket use. Invalid command-line arguments never parse stdin.
+- Enforces an **interpreter-independent JSON lexical nesting limit of 32**, counting brackets outside quoted strings only. This prevents Python 3.11/3.14 parser recursion differences (a 1,500-level array was accepted by one version), while literal brackets/escaped quotes within string values do not count. Full JSON decoding still validates all syntax and bracket types.
 - Parses exactly one strict UTF-8 JSON object with exactly the lowercase keys `owner` and `reference`; **duplicate keys at any nesting depth**, extra/missing keys, trailing JSON, NaN/Infinity, bad encoding and oversized packets fail closed as malformed.
 - Evaluates only exact built-in, already-trimmed, nonempty printable strings as a **canonical presentation shape**. That is deliberately more conservative than `str.strip()` and does **not** establish the issuer's identity, source-of-truth, tenant, engagement, asset, time, revocation or any other trusted approval.
 - On syntactically valid input (canonical OR noncanonical), the CLI emits a bounded one-line `{"status":"HOLD", "reason":...}` receipt and **exit code 2**. Invalid packets/options get fixed reason `invalid_packet` and **exit 3**. It cannot exit zero through its public interface.
 - Every receipt has **six permanent boolean false** flags: `can_authorize`, `can_dispatch`, `can_merge`, `can_deploy`, `can_scan`, `can_release`. No caller-owned raw owner, reference, exception or secret is echoed. Even `canonical_shape_only` is **HOLD**, not a result that may be promoted to execution.
-- The new test module exercises real synthetic subprocess execution, strict JSON and UTF-8 boundaries, secret non-echo, controls and aliases, subclass traps, fixed false-flag output and an AST-import whitelist. The only accepted imports in the diagnostic are `__future__`, `json` and `sys`.
+- The new test module includes **17 independent top-level test methods**, exercises real synthetic subprocess execution, strict JSON and UTF-8 boundaries, secret non-echo, controls and aliases, subclass traps, fixed false-flag output and an AST-import whitelist. The only accepted imports in the diagnostic are `__future__`, `json` and `sys`.
 
 ### Integration / ownership
 
 This diagnostic must **not** be wired into `ScopePolicy`, `ActivationGate`, `ToolExecutor`, the admin UI or customer authorization APIs by this worker. Real issuance and runtime check/use verification belong to source owners #100/#105/#107 and persistently authenticated customer/operator decisions. No synthetic client record or diagnostic claim may create real authority. Dedicated source RED acceptance must become ordinary green source PASS after an independently reviewed fail-closed repair; independent operator/consent, scope/risk/revocation, evidence-before-handler, VPS and security/privacy release gates remain outstanding.
 
 Both new paths are self-owned on this PR. Keep in **INCUBATE M3/M7 / DRAFT/HOLD, no merge/deploy/scanning/grants**.
+
+### Cross-interpreter preflight repair (W4)
+
+Initial exact-head [hosted offline preflight #38827421796](https://github.com/Zennay/Lightup/actions/runs/38827421796) exposed one **own** cross-Python difference: the 1,500-array nesting fixture was rejected by Python 3.11, but Python 3.14's JSON parser accepted it, returning `noncanonical_shape/exit 2` rather than `invalid_packet/exit 3`. This was a **diagnostic input-hardening defect**, not external scan/authorization evidence. All other 36 own cases followed their expected results on 3.11, while 3.14 had this one distinct failure. Entire old hosted suites additionally still failed on unchanged owner #301 elapsed fixture; producer SKIPPED. The diagnostic now rejects depth above 32 **before parsing**, with explicit boundary and escaped-string tests; these fixes require a *new exact-head CI run* before PASS claims. No changes to source owners, existing tests or runners.
