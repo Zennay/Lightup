@@ -104,7 +104,7 @@ def _valid_record(record: object, context: object) -> bool:
         "record_id", "scenario_id", "run_id", "engine_version",
     )):
         return False
-    if type(record.notes) is not str or not _valid_utc_instant(record.created_at):
+    if type(record.notes) is not str or type(record.created_at) is not str or not _valid_utc_instant(record.created_at):
         return False
     if type(record.model_bindings) is not tuple or len(record.model_bindings) > 64:
         return False
@@ -122,6 +122,7 @@ def _valid_record(record: object, context: object) -> bool:
         or not _valid_label(context.run_id)
         or not _valid_label(context.engagement_id)
         or not _valid_label(context.client_id)
+        or type(context.created_at) is not datetime
         or not _valid_utc_instant(context.created_at)
         or context.run_id != record.run_id
         or context.engagement_id != record.scenario_id
