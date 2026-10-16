@@ -11,6 +11,7 @@ import re
 import sys
 
 from .synthetic_scope_notice_1495 import ScopeProposal, render_scope_notice
+from .synthetic_scope_notice_html_1495 import render_synthetic_scope_html
 
 _MAX_JSON_BYTES = 65536
 _UTC_STAMP = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\Z", re.ASCII)
@@ -83,8 +84,10 @@ def _print_notice(notice, *, fmt: str) -> None:
         print(notice.text)
 
 
-def _print_invalid(*, fmt: str) -> None:
-    if fmt == "json":
+def _print_invalid(*, fmt: str, language: str = "en") -> None:
+    if fmt == "html":
+        print(render_synthetic_scope_html((), review_at=None, language=language))
+    elif fmt == "json":
         print(json.dumps({
             "status": "HOLD",
             "notice": _INVALID_MESSAGE,
@@ -113,6 +116,9 @@ def main(argv: list[str] | None = None) -> int:
         ("--synthetic-only", "--format", "json"): ("en", "json"),
         ("--synthetic-only", "--lang", "en", "--format", "json"): ("en", "json"),
         ("--synthetic-only", "--lang", "nl", "--format", "json"): ("nl", "json"),
+        ("--synthetic-only", "--format", "html"): ("en", "html"),
+        ("--synthetic-only", "--lang", "en", "--format", "html"): ("en", "html"),
+        ("--synthetic-only", "--lang", "nl", "--format", "html"): ("nl", "html"),
     }
     settings = valid.get(tuple(args))
     if settings is None:
@@ -124,9 +130,12 @@ def main(argv: list[str] | None = None) -> int:
         props, at = _parse(raw)
         notice = render_scope_notice(props, review_at=at, language=language)
     except (ValueError, TypeError, UnicodeError, RecursionError, OverflowError):
-        _print_invalid(fmt=fmt)
+        _print_invalid(fmt=fmt, language=language)
         return 3
-    _print_notice(notice, fmt=fmt)
+    if fmt == "html":
+        print(render_synthetic_scope_html(props, review_at=at, language=language))
+    else:
+        _print_notice(notice, fmt=fmt)
     return 2 if notice.status == "REVIEW_ONLY" else 3
 
 
