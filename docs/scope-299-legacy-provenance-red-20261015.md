@@ -65,3 +65,21 @@ Both new paths are self-owned on this PR. Keep in **INCUBATE M3/M7 / DRAFT/HOLD,
 ### Cross-interpreter preflight repair (W4)
 
 Initial exact-head [hosted offline preflight #38827421796](https://github.com/Zennay/Lightup/actions/runs/38827421796) exposed one **own** cross-Python difference: the 1,500-array nesting fixture was rejected by Python 3.11, but Python 3.14's JSON parser accepted it, returning `noncanonical_shape/exit 2` rather than `invalid_packet/exit 3`. This was a **diagnostic input-hardening defect**, not external scan/authorization evidence. All other 36 own cases followed their expected results on 3.11, while 3.14 had this one distinct failure. Entire old hosted suites additionally still failed on unchanged owner #301 elapsed fixture; producer SKIPPED. The diagnostic now rejects depth above 32 **before parsing**, with explicit boundary and escaped-string tests; these fixes require a *new exact-head CI run* before PASS claims. No changes to source owners, existing tests or runners.
+
+
+## W5 — atomic, non-authorizing fictional provenance-pair review
+
+The single-record diagnostic cannot show whether **legacy client approval provenance has changed between two caller-supplied snapshots**, e.g. an owner/reviewer field or reference is silently replaced. New opt-in `--offline-synthetic-pair-only` adds a strict **before/after identity-drift witness**, still entirely non-installed and not a grant.
+
+Usage with only fictional values:
+
+```sh
+printf '%s' '{"before":{"owner":"fictional-owner","reference":"NOT-A-GRANT"},"after":{"owner":"other-fictional-owner","reference":"NOT-A-GRANT"}}' |
+  python -B scripts/scope_299_legacy_provenance_review.py --offline-synthetic-pair-only
+```
+
+The independent `tests/test_scope_299_legacy_pair_review_20261016.py` adds **18 real top-level subprocess tests**. The original single-record mode remains unchanged and remains separately covered. The pairing accepts *exactly* `before` and `after` dicts, each with *exactly* `owner` and `reference` of canonical syntactic shape. Mixed/missing/extra schema, duplicate JSON keys at any depth, invalid encoding, input exceeding 4,096 bytes and JSON nesting beyond 32 return `invalid_packet` and **exit 3**. Blank, control/whitespace, padded or polymorphic values in **either** snapshot make the entire pair `noncanonical_shape` and **exit 2**; the other half is not approved.
+
+When both purely synthetic shapes are canonical, exact byte-for-byte *decoded string* equality gives `unchanged_shape_only` (exit 2); a different owner or reference gives `provenance_changed` (exit 2). Both results are bounded, deterministic and **always HOLD** with six `false` authority flags; neither is trusted customer consent, authenticated issuer provenance, revocation/current-grant evidence, scope permission, operator step-up or authorization. No raw values, tokens, targets, exception text or file paths are echoed. A matching user-controlled pair cannot prove immutability in the persistent issuer's records.
+
+This W5 scope deliberately does **not** change source-owned `ActivationGate`/`ScopePolicy`/`ToolExecutor`, issue #1433's grant-amendment owner, other workers, CI workflows or runtime deployment. It creates an independent privacy-minimal *legacy owner/reference field* differential diagnostic only. All real authorization closure still belongs to #100/#105/#107 and the independent gate owners. DRAFT/HOLD, no merge, deploy, grant, scan or target interaction.
