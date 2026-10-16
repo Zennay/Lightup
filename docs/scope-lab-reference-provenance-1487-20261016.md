@@ -73,3 +73,25 @@ The *installed current source* in `lightup.activation.ActivationGate` is now exe
 - In-test sockets, DNS, shell and process entry points are patched to error; no actual network, grant persistence, tools or scans. This does not alter activation, scope or other owner files.
 
 **W4 owned total is 50 methods, 44 ordinary expected PASS + 6 intentionally OPEN production expectedFailure.** This is a logical expected count, not a claim until original exact W4 SHA hosted Python 3.11/3.14 job logs are inspected. The inherited `#301` unrelated date-expired full-suite error and unassigned permanent VPS runner remain separate; do not claim CI green or activation source repaired. Do not wire a `LabReferenceReview` into the gate! Original source-owner only, review first.
+
+## W5 — fictional session-lineage relationship preflight (still non-authorizing)
+
+This branch adds **one independent, optional, non-authorizing source helper**:
+`src/lightup/lab_session_lineage_1487.py` with frozen `FictionalLabLineageClaim` and pure `review_fictional_lab_lineage(claims, assessment_time)`.
+
+The caller must explicitly supply all values: a LAB reference, synthetic operator, session, engagement, asset, capability IDs, a UTC start/end window, a Boolean revocation claim, and an evaluation instant. **Every value, including the clock and any `revoked=False` flag, is entirely *untrusted*, not retrieved from durable LightUp storage or an authenticated identity provider. This function cannot distinguish a fabricated claim from authentic consent and MUST NEVER become an actual permit gate.**
+
+The helper checks only internal shape/relationship consistency:
+- Exact built-in tuple of 1..64 **exact** `FictionalLabLineageClaim` values; exact shape and conservative uppercase ASCII synthetic ID markers, with no polymorphic string comparisons/coercion.
+- Reuses the owned exact LAB reference format checker. Rejects duplicates of claimed reference or session ID within the same supplied batch; this does not prove global historical uniqueness.
+- Requires exact UTC aware built-in datetime instants with `fold=0`, no timezone conversion; inclusive observed start/end, strictly positive duration up to eight hours; strict `bool False` revocation *claim*. These are **review-contract limits**, not any production policy, and may need owner-approved adaptation.
+- A malformed/contradictory or oversize mixed batch returns one constant `HOLD`; an internally self-consistent batch returns only `REVIEW_ONLY` with four literal false authority flags. Neither grants release, verifies permission, authenticates actor, proves storage, provides up-to-the-second revocation nor accesses network, filesystem, OS, database, process or a tool handler.
+- Input and output are immutable by normal dataclass APIs, without serializing even fictional actor IDs into a receipt. A malicious caller can construct or alter user-supplied facts; this is a *format preflight*, not trusted evidence.
+
+The additive `tests/test_lab_session_lineage_1487_20261016.py` contains **18 independent** test methods (exact dataclass/type checking, junk/Unicode aliases, 0/1/64/65 boundaries, precise UTC time inclusive edges and 8h window, stale caller-controlled clock counterexample, polymorphic timestamps, duplicate sessions/references, revocation type confusion, 200 deterministic permutation/revocation rounds, mixed-claim atomicity, immutability and patch-guarded no-I/O proof). Run solely for review:
+
+```sh
+PYTHONPATH=src python -m unittest tests.test_lab_session_lineage_1487_20261016 -v
+```
+
+W5 now has **68 owned test methods in six new tests files**: original 50 (44 ordinary + 6 intentional OPEN source expected-RED) plus 18 new self-contained ordinary methods. **This is a planned code count, not evidence of CI success**; rely only on latest immutable-head hosted Python 3.11/3.14 raw logs, distinguish the existing #301 unrelated expired fixture and the canonical self-hosted VPS lane. Do not merge, wire to ActivationGate, deploy, or claim customer/operator consent.
