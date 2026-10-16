@@ -144,6 +144,56 @@ class SyntheticIdentityIntakeCliTest(unittest.TestCase):
             os.close(write_fd)
 
     @unittest.skipUnless(sys.platform.startswith("linux"), "Linux anonymous pipe receipt")
+    def test_real_subprocess_stdout_pipe_restores_inherited_blocking_flag(self):
+        raw = b'{"prospect_id":"fiction","organization_name":"Fiction"}'
+        for inherited_blocking in (True, False):
+            read_fd, write_fd = os.pipe()
+            try:
+                os.set_blocking(write_fd, inherited_blocking)
+                proc = subprocess.run(
+                    [sys.executable, str(SCRIPT), "--offline-synthetic-only"],
+                    input=raw, stdout=write_fd, stderr=subprocess.PIPE,
+                    timeout=8, check=False,
+                )
+                self.assertEqual((proc.returncode, proc.stderr), (3, b""))
+                self.assertEqual(os.get_blocking(write_fd), inherited_blocking)
+                verdict = json.loads(os.read(read_fd, 4096))
+                self.assertEqual(verdict["status"], "REVIEW_ONLY")
+                self.assertTrue(all(verdict[name] is False for name in FALSE_FLAGS))
+            finally:
+                os.close(read_fd)
+                os.close(write_fd)
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "Linux anonymous pipe receipt")
+    def test_closed_receipt_pipe_fails_without_traceback_or_hang(self):
+        """A downstream reviewer closing the pipe cannot cause process hang."""
+        read_fd, write_fd = os.pipe()
+        proc = subprocess.Popen(
+            [sys.executable, str(SCRIPT), "--offline-synthetic-only"],
+            stdin=subprocess.PIPE, stdout=write_fd, stderr=subprocess.PIPE,
+        )
+        try:
+            os.close(read_fd)  # No reader remains when the child replies.
+            read_fd = -1
+            os.close(write_fd)
+            write_fd = -1
+            stdout, stderr = proc.communicate(
+                input=b'{"prospect_id":"synthetic","organization_name":"Fiction"}',
+                timeout=8,
+            )
+            self.assertIsNone(stdout)
+            self.assertEqual(proc.returncode, 2)
+            self.assertEqual(stderr, b"")
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.communicate(timeout=3)
+            if read_fd >= 0:
+                os.close(read_fd)
+            if write_fd >= 0:
+                os.close(write_fd)
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "Linux anonymous pipe receipt")
     def test_competing_pipe_writer_failure_does_not_leak_or_hang(self):
         import importlib.util
         from unittest import mock
