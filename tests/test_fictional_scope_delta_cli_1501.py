@@ -46,13 +46,13 @@ class SyntheticScopeDeltaCLITests(TestCase):
     def assert_wire(self, result, *, status, code):
         self.assertEqual(result.returncode, code, result.stderr[:300])
         self.assertEqual(result.stderr, b"")
-        self.assertTrue(result.stdout.endswith(b"\\n"))
+        self.assertTrue(result.stdout.endswith(b"\n"))
         report = json.loads(result.stdout)
         self.assertEqual(report["status"], status)
         self.assertEqual(report["contract"], CONTRACT)
         self.assertEqual(
             result.stdout,
-            json.dumps(report, sort_keys=True, separators=(",", ":")).encode("ascii") + b"\\n"
+            json.dumps(report, sort_keys=True, separators=(",", ":")).encode("ascii") + b"\n"
         )
         self.assertEqual(set(report), {
             "contract", "status", "transition_count", "first_held_step",
@@ -111,7 +111,7 @@ class SyntheticScopeDeltaCLITests(TestCase):
             valid.replace(b'"risk":3', b'"risk":NaN', 1),
             valid.replace(b'"risk":3', b'"risk":true', 1),
             valid.replace(b'"alpha.example.test"', b'"\\u0061lpha.example.test"', 1),
-            valid + b"\\n\\n",
+            valid + b"\n\n",
             b"", b"[", b"null", b"{}",
         )
         for data in variations:
@@ -120,8 +120,8 @@ class SyntheticScopeDeltaCLITests(TestCase):
 
     def test_allow_only_one_final_lf(self):
         valid = wire([snapshot(), snapshot()])
-        self.assert_wire(launch(valid + b"\\n", "--offline-review-only"), status="REVIEW_ONLY", code=2)
-        self.assert_wire(launch(b"\\n" + valid, "--offline-review-only"), status="HOLD", code=3)
+        self.assert_wire(launch(valid + b"\n", "--offline-review-only"), status="REVIEW_ONLY", code=2)
+        self.assert_wire(launch(b"\n" + valid, "--offline-review-only"), status="HOLD", code=3)
 
     def test_invalid_utc_strings_never_normalize_into_permission(self):
         for date in (
