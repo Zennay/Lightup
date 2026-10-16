@@ -82,7 +82,7 @@ for the source-owner fix at `ToolRegistry.register` itself.
 
 A further independent file
 `tests/test_scope_907_registry_admission_optin_20261016.py` checks
-**17 ordinary tests** across exact canonical registration, allowed synthetic
+**21 ordinary tests** across exact canonical registration, allowed synthetic
 lab registration, malformed risk/interaction/capability rejection, parameter
 type enforcement, duplicate IDs, forged ToolDefinition subclasses, duck
 metadata with getter spies, forged ToolRegistry objects, and two new denial-atomicity cases where an already-registered valid tool stays untouched after malformed subsequent input. All handlers
@@ -91,3 +91,23 @@ are explicit never-call sentinels; tests exercise **registration only**.
 The separate original owner-source 16-method packet continues to carry
 five deliberately **OPEN** real source REDs. Passing the new opt-in tests
 does not convert these into source PASS or remove DRAFT/HOLD gates.
+
+## W11: exact registry instance method-shadow closure (opt-in only)
+
+Exact `type(registry) is ToolRegistry` checks the outer type but cannot
+prevent an instance from acquiring `registry.register = forged_registrar`
+because owner registry instances are writable. The **unwired** opt-in helper
+now rejects any shadowed `register` instance binding with controlled
+`OrchestrationError` before calling any user-supplied method; only canonical
+instances without the shadow invoke `ToolRegistry.register(registry,
+definition, handler)` directly. Four new synthetic tests prove (1) no forged
+registrar invoked for valid metadata, (2) no forged bypass for unknown
+capability, (3) owner registration restored after deleting the synthetic
+shadow, and (4) pre-existing valid registry entries remain unmodified after
+rejection. No handler is ever executed.
+
+Source owner `src/lightup/ai/orchestration.py` is unchanged, and this does
+not fix production lifetime-binding issues #940 or owner-source #907 REDs;
+caller-controlled nested `ToolParameter` contents and mutable internal
+registry state remain distinct source-owner review topics. Do not wire to
+production without owner review/security and permanent VPS evidence.
