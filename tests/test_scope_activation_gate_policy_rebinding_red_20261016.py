@@ -152,6 +152,38 @@ class GateRebindingTests(unittest.TestCase):
         with self.assertRaises(PermissionError):
             gate.issue(PUBLIC, CAPABILITY)
 
+    def test_valid_public_policy_cannot_be_reached_until_plan_gate_rebound(self):
+        g = ActivationGate(
+            ScopePolicy(explicit_hosts=frozenset({"review.example.test"})),
+            ActivationPolicy(),
+        )
+        with self.assertRaisesRegex(PermissionError, "plan-only"):
+            g.issue(PUBLIC, CAPABILITY)
+        g.activation_policy = ActivationPolicy(
+            ActivationMode.AUTHORIZED, "FICTIONAL-SETUP"
+        )
+        with patch.object(socket, "socket", side_effect=AssertionError("network forbidden")), \
+             patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns forbidden")), \
+             patch.object(subprocess, "Popen", side_effect=AssertionError("process forbidden")):
+            permit = g.issue(PUBLIC, CAPABILITY)
+        self.assertIs(permit.mode, ActivationMode.AUTHORIZED)
+        self.assertEqual(permit.activation_reference, "FICTIONAL-SETUP")
+        self.assertEqual(permit.target, "review.example.test")
+
+    @unittest.expectedFailure
+    def test_RED_plan_only_public_target_must_not_gain_authorized_permit_via_rebinding(self):
+        g = ActivationGate(
+            ScopePolicy(explicit_hosts=frozenset({"review.example.test"})),
+            ActivationPolicy(),
+        )
+        g.activation_policy = ActivationPolicy(
+            ActivationMode.AUTHORIZED, "FICTIONAL-SETUP"
+        )
+        # EXPECTED SOURCE RED: a policy-valid AUTHORIZED object can currently
+        # replace the gate's original PLAN_ONLY mode and issue a permit.
+        with self.assertRaises(PermissionError):
+            g.issue(PUBLIC, CAPABILITY)
+
     def test_unchanged_explicit_public_gate_is_an_independent_control(self):
         gate = explicit_public_gate()
         permit = gate.issue(PUBLIC, CAPABILITY)
