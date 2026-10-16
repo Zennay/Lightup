@@ -39,3 +39,17 @@ print(notice.text)
 Voor een echte UI-functie is een **afzonderlijke source owner** vereist die authenticatie, klanten-/operatorscope, echte goedkeuring met ondertekende herkomst, intrekking bij gebruik, tenant-isolatie, security/privacy, het echte gedrag van runtime en een geregistreerde VPS-runner vastlegt. Deze fictieve renderfunctie **mag nooit** als consent-verificatie, issuance of dispatch gate worden aangesloten zonder onafhankelijke review.
 
 **Geen merge, deployment, echte grants, clientsystemen, live scans, handlers of release zonder expliciete menselijke GO.**
+
+## Echte opt-in CLI (uitsluitend fictieve stdin)
+
+Naast de pure Python-functie is nu een **apart uitvoerbare** gebruikerspreview toegevoegd (niet aangesloten op productiemodules of toolhandlers):
+
+```bash
+python -m lightup.synthetic_scope_notice_cli_1495 --synthetic-only \
+  < examples/fictional_scope_notice_1495.json
+```
+
+De CLI eist een exact JSON-object met alleen `review_at` en `proposals`, en per fictieve regel `asset`, `capability`, `risk`, `valid_from`, `valid_until`. Alle tijdstippen zijn strikt `YYYY-MM-DDTHH:MM:SSZ`. Dubbele JSON-sleutels, onverwachte velden, verkeerde types, NaN, Unicodefouten, niet-canonieke UTC, >32 regels of >65.536 stdin-bytes veroorzaken volledige HOLD zonder echo van invoer. Er is geen stilzwijgende coercion, parser fallback of gedeeltelijk geaccepteerde batch.
+
+**Exit 2:** een volledig fictieve, geldige `REVIEW_ONLY` kaart met de zichtbare woorden `NOT AUTHORIZED`. **Exit 3:** `HOLD`. **Exit 0 is nooit beschikbaar**; normale output is dus nadrukkelijk geen autorisatie voor een shellscript, CI of tool. 14 extra echte subprocess-methoden testen de CLI inclusief malformed bytes, duplicate keys, fake high risk en exitgedrag. De CLI leest uitsluitend stdin en schrijft een niet-autorisatiepreview naar stdout; geen DNS, netwerk, klantbestanden, database of subprocess binnen de CLI zelf.
+
