@@ -497,6 +497,96 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
             )
         return review_and_pin
 
+    def test_legacy_preview_then_original_object_can_store_postcheck_mutation(self):
+        """Document an actual TEST-ONLY unsafe handoff, not an installed exploit."""
+        scope = _scope(("fixture.example.test",), ("blocked.example.test",))
+        actual_original = DomainStore.record_authorization_grant
+        real_review = review_asset_identity_shape
+        def mutate_after_review(untrusted):
+            result = real_review(untrusted)
+            self.assertEqual(result.decision, "REVIEW_ONLY")
+            object.__setattr__(untrusted, "assets", (" ",))
+            object.__setattr__(untrusted, "excluded_assets", (" ",))
+            return result
+        with patch("test_scope_376_asset_identity_optin_20261016.review_asset_identity_shape",
+                   side_effect=mutate_after_review), \
+             patch.object(DomainStore, "record_authorization_grant",
+                          self._owner_candidate(actual_original)):
+            grant = self._record(scope)
+        # This proves a review-then-forward-the-same-object adapter is unsafe.
+        self.assertEqual(grant.scope.assets, (" ",))
+        self.assertEqual(grant.scope.excluded_assets, (" ",))
+        self.assertEqual(len(self._persisted_snapshot()), 1)
+        self.assertIs(DomainStore.record_authorization_grant, actual_original)
+
+    def test_snapshot_candidate_denies_mutation_between_review_and_forward(self):
+        original = DomainStore.record_authorization_grant
+        scope = _scope(("fixture.example.test",), ("blocked.example.test",))
+        actual_snapshot = _canonical_asset_snapshot
+        original_called = []
+        def snapshot_and_mutate(untrusted):
+            values = actual_snapshot(untrusted)
+            self.assertIsNotNone(values)
+            object.__setattr__(untrusted, "assets", (" ",))
+            object.__setattr__(untrusted, "excluded_assets", (" ",))
+            return values
+        def forbidden_original(*args, **kwargs):
+            original_called.append(True)
+            raise AssertionError("original source reached after scope mutation")
+        with patch("test_scope_376_asset_identity_optin_20261016._canonical_asset_snapshot",
+                   side_effect=snapshot_and_mutate), \
+             patch.object(DomainStore, "record_authorization_grant",
+                          self._snapshot_owner_candidate(forbidden_original)), \
+             patch.object(DomainStore, "_connect",
+                          side_effect=AssertionError("database opened after mutation")):
+            with self.assertRaisesRegex(ValueError, "scope changed after asset review"):
+                self._record(scope)
+        self.assertEqual(original_called, [])
+        self.assertIs(DomainStore.record_authorization_grant, original)
+        self.assertEqual(self._persisted_snapshot(), ())
+
+    def test_snapshot_candidate_passes_original_immutable_values_after_mutation(self):
+        original = DomainStore.record_authorization_grant
+        scope = _scope(("fixture.example.test",), ("blocked.example.test",))
+        observed = []
+        def owner_gate(store, ctx, engagement_id, approved_by, reference,
+                       pinned, valid_from, valid_until, recurring=False):
+            self.assertIsNot(pinned, scope)
+            self.assertEqual(pinned.assets, ("fixture.example.test",))
+            self.assertEqual(pinned.excluded_assets, ("blocked.example.test",))
+            observed.append(pinned)
+            # Simulate post-review malicious mutation of caller's original.
+            object.__setattr__(scope, "assets", (" ",))
+            object.__setattr__(scope, "excluded_assets", (" ",))
+            return original(store, ctx, engagement_id, approved_by, reference,
+                            pinned, valid_from, valid_until, recurring)
+        with patch.object(DomainStore, "record_authorization_grant",
+                          self._snapshot_owner_candidate(owner_gate)):
+            recorded = self._record(scope)
+        self.assertEqual(len(observed), 1)
+        self.assertEqual(recorded.scope.assets, ("fixture.example.test",))
+        self.assertEqual(recorded.scope.excluded_assets, ("blocked.example.test",))
+        self.assertEqual(self.store.list_authorization_grants(
+            self.operator, self.engagement.engagement_id
+        )[0].scope.excluded_assets, ("blocked.example.test",))
+        self.assertEqual(len(self._persisted_snapshot()), 1)
+        self.assertIs(DomainStore.record_authorization_grant, original)
+
+    def test_snapshot_candidate_cannot_override_original_source_temporal_gate(self):
+        original = DomainStore.record_authorization_grant
+        with patch.object(DomainStore, "record_authorization_grant",
+                          self._snapshot_owner_candidate(original)):
+            for start, end in ((datetime(2026, 1, 1), self.end),
+                               (self.end, self.start)):
+                with self.subTest(case=(str(start), str(end))):
+                    with self.assertRaises(ValueError):
+                        self.store.record_authorization_grant(
+                            self.operator, self.engagement.engagement_id,
+                            "fixture-reviewer", "NOT-CONSENT", _scope(), start, end
+                        )
+                    self.assertEqual(self._persisted_snapshot(), ())
+        self.assertIs(DomainStore.record_authorization_grant, original)
+
     def test_all_bad_assets_deny_before_original_record_with_no_sqlite_mutation(self):
         original = DomainStore.record_authorization_grant
         lost_exclusion = _scope(excluded=("blocked.example.test",))
