@@ -58,7 +58,8 @@ class SyntheticScopeDeltaCLITests(TestCase):
         )
         self.assertEqual(set(report), {
             "contract", "status", "transition_count", "first_held_step",
-            "held_steps", "expanded_dimensions", "narrowed_dimensions",
+            "held_steps", "held_step_dimensions",
+            "expanded_dimensions", "narrowed_dimensions",
             "authorized", "consent_verified", "dispatch_allowed", "release_allowed",
         })
         for flag in ("authorized", "consent_verified", "dispatch_allowed", "release_allowed"):
@@ -86,6 +87,7 @@ class SyntheticScopeDeltaCLITests(TestCase):
         )
         self.assertEqual(report["first_held_step"], 1)
         self.assertEqual(report["held_steps"], [1])
+        self.assertEqual(report["held_step_dimensions"], [["risk"]])
         self.assertEqual(report["expanded_dimensions"], ["risk"])
         self.assertEqual(report["narrowed_dimensions"], [])
 
@@ -102,6 +104,7 @@ class SyntheticScopeDeltaCLITests(TestCase):
             launch(wire(records), "--offline-review-only"), status="HOLD", code=3,
         )
         self.assertEqual(report["held_steps"], [1, 3, 4])
+        self.assertEqual(report["held_step_dimensions"], [["risk"], ["assets"], ["risk"]])
         self.assertEqual(report["first_held_step"], 1)
         self.assertEqual(report["expanded_dimensions"], ["assets", "risk"])
         self.assertNotIn("gamma.example.test", json.dumps(report))
@@ -114,6 +117,7 @@ class SyntheticScopeDeltaCLITests(TestCase):
         result = launch(wire(records), "--offline-review-only")
         report = self.assert_wire(result, status="HOLD", code=3)
         self.assertEqual(report["held_steps"], [])
+        self.assertEqual(report["held_step_dimensions"], [])
         self.assertEqual(report["expanded_dimensions"], [])
         self.assertIsNone(report["first_held_step"])
         self.assertEqual(report["transition_count"], 0)
@@ -126,6 +130,25 @@ class SyntheticScopeDeltaCLITests(TestCase):
         )
         self.assertEqual(report["transition_count"], 15)
         self.assertEqual(report["held_steps"], list(range(1, 16, 2)))
+        self.assertEqual(report["held_step_dimensions"], [["risk"]] * 8)
+
+    def test_cli_categories_map_to_each_widening_step_without_values(self):
+        start = snapshot()
+        added = snapshot(assets=[
+            "alpha.example.test", "beta.example.test", "gamma.example.test",
+        ])
+        higher = snapshot(assets=added["assets"], risk=4)
+        earlier = snapshot(assets=added["assets"], risk=4,
+                           valid_from="2026-11-01T09:59:59Z")
+        result = launch(wire([start, added, higher, earlier]),
+                        "--offline-review-only")
+        report = self.assert_wire(result, status="HOLD", code=3)
+        self.assertEqual(report["held_steps"], [1, 2, 3])
+        self.assertEqual(
+            report["held_step_dimensions"],
+            [["assets"], ["risk"], ["valid_from"]],
+        )
+        self.assertNotIn(b"gamma.example.test", result.stdout)
 
     def test_real_host_and_sensitive_fields_are_zero_echo_hold(self):
         bad = snapshot(assets=["real.corp.example", "beta.example.test"])
