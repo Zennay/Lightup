@@ -63,7 +63,7 @@ jobs:
           count = suite.countTestCases()
           result = unittest.TextTestRunner(verbosity=2).run(suite)
           expected_open_red = 10
-          expected_count = 115
+          expected_count = 122
           print(
               f"ISOLATED_RESULT tests={count} ordinary_pass="
               f"{count - len(result.expectedFailures) - len(result.failures) - len(result.errors) - len(result.unexpectedSuccesses) - len(result.skipped)} "
@@ -77,7 +77,7 @@ jobs:
               or len(result.expectedFailures) != expected_open_red
               or result.skipped
           ):
-              sys.exit("W9 offline inventory / open-RED accounting mismatch")
+              sys.exit("W10 offline inventory / open-RED accounting mismatch")
           PY
       - name: Explicit non-release boundary
         run: |
