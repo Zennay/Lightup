@@ -148,3 +148,21 @@ and immutable audit evidence.
 
 W4 acceptance is included in the dedicated own read-only hosted Python3.11
 and Python3.14 CI; only results from the **new exact HEAD** may be cited.
+
+## W5 — actual fragmented stdin, bounded early HOLD and malformed JSON
+
+New dedicated `test_fictional_lab_capability_streaming_1511.py` tests
+the **real opt-in CLI subprocess** over multiple manually fragmented
+stdin writes, partial/missing EOF completion, exact 4,096-byte and
+4,097-byte payloads, Unicode-escaped duplicate schema aliases,
+JSON `NaN`, Infinity, extreme exponent, malformed/corrupt payloads,
+and deeply nested lists. Every proper prefix of the known synthetic
+valid fixture is HOLD; only the entire canonical fake record can yield
+REVIEW_ONLY, still exit 2 and not authorization. Truncated/oversize
+real subprocess outputs are generic HOLD and exit 3, with private markers
+never echoed. This is process-behavior evidence on the **own CLI only**,
+not an installed ingress/network or actual client consent test.
+
+The tests are included in the own pinned least-privilege workflow and
+the static owner-path inventory. Original source, existing CI/VPS runners,
+other workers, external targets and active handlers remain unchanged.
