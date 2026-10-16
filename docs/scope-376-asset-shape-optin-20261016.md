@@ -126,6 +126,12 @@ Four synthetic ordinary integration tests were added: (1) prove the old **test-o
 
 **W14 original-hosted Python 3.11 + 3.14 CI and permanent registered VPS must be verified at the newest immutable SHA.** Earlier W13 hosted suite had 32 own ordinary PASS + 10 intentionally OPEN original-main source REDs but the whole suite failed from independent #301 expired fixture, producer integration was skipped and canonical VPS #1144 had no runner assignment. Do not use that older result as W14 evidence.
 
+## W15 — full independent source-gate preservation for test-only asset snapshot
+
+The isolated `_snapshot_owner_candidate` preview now has two more ordinary synthetic regression tests. One uses a separate **original-source deny function** for a canonical, shape-correct fictional asset and verifies that an independent `PermissionError` propagates and zero grant rows are written. The other uses strict no-database-call canaries and changes `max_risk` to a native bool/int or `allowed_capabilities` to a list/non-string tuple after dataclass construction: the **test-only candidate** refuses those malformed native metadata types before calling the original issuer. This is input-type preservation **only**; knowing a `RiskLevel` enum and tuple of strings is absolutely **NOT** proof that the requested risk or capability is authorized.
+
+The true issuing source owner remains responsible for *all* approvals, client/operator provenance, risk caps, exact known capability allowlists, closed engagement lifecycle, temporal validity and grant revocation. Nothing in this branch is installed as a production gate; no workflow/runner or competing owner branch was altered. Original-main TEN expected REDs are unaffected and are not assumed to apply to independent source-owner heads. Any W15 test evidence must be matched to the exact latest SHA, not W14.
+
 ## Owner decision needed
 The existing domain/grant source owner should decide whether this narrow text-shape preflight, or an equivalent source-side guard, belongs directly before any persisted grant row. The reviewer ceilings are **illustrative** and may reject legitimate large scopes; do not treat them as approved product policy. If integrated, the original source must enforce the same reject-before-write semantics and preserve valid grant roundtrips. Convert the three original-source expectedFailure methods to ordinary PASS only after the actual production source is fixed and revalidated. Do not claim the opt-in helper fixes persistent authorization.
 
