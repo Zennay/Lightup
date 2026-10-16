@@ -80,6 +80,14 @@ All tests remain synthetic with temporary local SQLite, no customer permission o
 
 **W9 exact immutable HEAD CI must be checked separately.** The previously verified W8 run had 24 own ordinary tests passing on both Python versions, but one unrelated #301 calendar-fixture failure in the full suite and skipped producer integration; canonical registered VPS remained unexecuted (#1144). No new work in #639 persisted resolver, #1437 Unicode/alias metadata, #301 fixtures or #554 original owner branches was taken over. DRAFT/HOLD, no merge, deployment, live grants, targets, scans or handlers.
 
+## W10 — non-tuple asset fields: two more genuine original SQLite REDs
+
+An additional **two genuine original-source admission deficiencies** are covered by their own `@unittest.expectedFailure` acceptance methods: `DomainStore.record_authorization_grant` accepts and persists a Python **list** where `ScopeDefinition.assets` requires an exact tuple and likewise accepts a list in `excluded_assets`. Dataclass type annotations do not enforce types at runtime, and the persistence method serializes either value. The strict source defect oracle now demands **NINE** genuine, still-unresolved original-source REDs; a future source fix should turn each into an ordinary passing test only when the original method truly rejects malformed fields **before any SQLite write**.
+
+A new ordinary regression confirms the internal `_canonical_asset_snapshot` has **no** syntactically valid snapshot for list/set allowed or excluded inputs, and review receipts stay HOLD with six literal false authority markers. The regular legitimate tuple scope remains REVIEW_ONLY shape-only. None of this touches installed domain source, other worker branches, users, target assets or execution handlers. It adds clear same-owner source acceptance targets without assuming authority.
+
+W10 exact-HEAD hosted Python 3.11/3.14 and registered VPS must be independently verified; W9/W8 jobs are not proof for the new commit. The original #301 time-expired suite fixture and #1144 no-runner queue remain separate blockers and stay with their owners.
+
 ## Owner decision needed
 The existing domain/grant source owner should decide whether this narrow text-shape preflight, or an equivalent source-side guard, belongs directly before any persisted grant row. The reviewer ceilings are **illustrative** and may reject legitimate large scopes; do not treat them as approved product policy. If integrated, the original source must enforce the same reject-before-write semantics and preserve valid grant roundtrips. Convert the three original-source expectedFailure methods to ordinary PASS only after the actual production source is fixed and revalidated. Do not claim the opt-in helper fixes persistent authorization.
 
