@@ -48,7 +48,13 @@ def _copy(records: tuple[FictionalHandoff, ...]) -> tuple[tuple[object, ...], ..
     for record in records:
         if type(record) is not FictionalHandoff:
             return None
-        rows.append((record.case_id, record.sequence, record.packet_sha256, record.observed_at))
+        fields = (record.case_id, record.sequence, record.packet_sha256, record.observed_at)
+        # Validate builtin identity BEFORE tuple snapshot comparisons can invoke an
+        # alien __eq__ callback supplied via a malformed record field.
+        if (type(fields[0]) is not str or type(fields[1]) is not int
+                or type(fields[2]) is not str or type(fields[3]) is not str):
+            return None
+        rows.append(fields)
     return tuple(rows)
 
 
