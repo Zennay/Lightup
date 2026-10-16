@@ -48,6 +48,16 @@ def _forbid_network(*_args: object, **_kwargs: object) -> None:
     raise AssertionError("network and DNS forbidden in #299 local acceptance")
 
 
+class _DiscardOutput:
+    """Sink untrusted unittest stdout/stderr without retaining private content."""
+
+    def write(self, data: str) -> int:
+        return len(data)
+
+    def flush(self) -> None:
+        pass
+
+
 def run_local_tests() -> bool:
     # A test suite may import the repo's current installed source only; no target
     # arguments, remote repositories or production config are accepted.
@@ -61,6 +71,11 @@ def run_local_tests() -> bool:
             mock.patch.object(socket, "getaddrinfo", side_effect=_forbid_network),
             mock.patch.object(socket, "gethostbyname", side_effect=_forbid_network),
             mock.patch.object(socket, "gethostbyname_ex", side_effect=_forbid_network),
+            # The machine-readable HOLD receipt is emitted only after tests
+            # finish. Discard test stdout/stderr even on assertions/exceptions,
+            # so a stray test print can never corrupt or leak into the receipt.
+            mock.patch.object(sys, "stdout", _DiscardOutput()),
+            mock.patch.object(sys, "stderr", _DiscardOutput()),
         ):
             suite = unittest.defaultTestLoader.loadTestsFromNames(TEST_MODULES)
             result = unittest.TestResult()
