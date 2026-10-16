@@ -14,6 +14,7 @@ from lightup.fictional_packet_copy_1503 import (
     CopyReview,
     compare_fictional_packet_copies,
     compare_fictional_packet_fanout,
+    compare_fictional_packet_fanout_pinned,
     build_fictional_copy_packet,
 )
 
@@ -401,6 +402,80 @@ class FictionalPacketCopyTests(unittest.TestCase):
         self.assertLessEqual(len(original), 2048)
         self.assertLessEqual(len(changed), 2048)
 
+
+
+    def test_pinned_reference_matches_valid_original_without_authority(self):
+        expected = hashlib.sha256(CANONICAL).hexdigest()
+        result = compare_fictional_packet_fanout_pinned(
+            CANONICAL, (CANONICAL,) * 16, expected,
+        )
+        self.assertEqual((result.status, result.sha256), ("REVIEW_ONLY", expected))
+        for flag in ("authorized", "consent_verified", "dispatch_allowed",
+                     "release_allowed"):
+            self.assertIs(getattr(result, flag), False)
+
+    def test_pin_blocks_joint_copy_substitution_when_independently_held(self):
+        pin = hashlib.sha256(CANONICAL).hexdigest()
+        altered = build_fictional_copy_packet(
+            "beta.example.test", "REVIEW_REQUIRED",
+            ("metadata_read", "report_preview"),
+        )
+        self.assertIs(type(altered), bytes)
+        self.assertEqual(
+            compare_fictional_packet_fanout(altered, (altered,)).status,
+            "REVIEW_ONLY",  # Unpinned pair can be replaced together.
+        )
+        result = compare_fictional_packet_fanout_pinned(
+            altered, (altered,) * 16, pin,
+        )
+        self.assertEqual((result.status, result.sha256), ("HOLD", None))
+        self.assertIs(result.dispatch_allowed, False)
+
+    def test_mismatched_pins_or_corrupt_copies_are_atomic_hold(self):
+        correct = hashlib.sha256(CANONICAL).hexdigest()
+        for pin, copies in (
+            ("0" * 64, (CANONICAL,)),
+            (correct, (CANONICAL, b"invalid")),
+            (correct, (CANONICAL,) * 15 + (CANONICAL + b" ",)),
+            ("f" * 64, (CANONICAL,) * 16),
+        ):
+            with self.subTest(pin=pin[:6], count=len(copies)):
+                result = compare_fictional_packet_fanout_pinned(
+                    CANONICAL, copies, pin,
+                )
+                self.assertEqual((result.status, result.sha256), ("HOLD", None))
+
+    def test_invalid_pins_deny_without_polymorphic_callbacks(self):
+        class AlienPin(str):
+            def __eq__(self, _):
+                raise AssertionError("not allowed to compare polymorphic pin")
+        for pin in (
+            None, "", b"0" * 64, True, 0, "0" * 63, "0" * 65,
+            "G" * 64, "A" * 64, "0" * 63 + "\n", " 0" * 32,
+            AlienPin(hashlib.sha256(CANONICAL).hexdigest()),
+        ):
+            with self.subTest(type=type(pin).__name__):
+                result = compare_fictional_packet_fanout_pinned(
+                    CANONICAL, (CANONICAL,), pin,
+                )
+                self.assertEqual((result.status, result.sha256), ("HOLD", None))
+
+    def test_pinned_checks_have_no_file_network_database_or_process_calls(self):
+        with patch("builtins.open", side_effect=AssertionError("file")), \
+             patch("socket.socket", side_effect=AssertionError("network")), \
+             patch("sqlite3.connect", side_effect=AssertionError("db")), \
+             patch("subprocess.Popen", side_effect=AssertionError("process")):
+            expected = hashlib.sha256(CANONICAL).hexdigest()
+            self.assertEqual(
+                compare_fictional_packet_fanout_pinned(
+                    CANONICAL, (CANONICAL,), expected
+                ).status, "REVIEW_ONLY",
+            )
+            self.assertEqual(
+                compare_fictional_packet_fanout_pinned(
+                    CANONICAL, (CANONICAL,), "0" * 64
+                ).status, "HOLD",
+            )
 
 if __name__ == "__main__":
     unittest.main()
