@@ -25,6 +25,12 @@ The temporary wrapper preserves the original role check: no client role is promo
 
 The **W3 immutable HEAD** and its newly triggered hosted/registered VPS jobs must be verified separately; W2's 11 ordinary green cases, three expected source-RED cases and unrelated #301 wallclock failure are earlier SHA evidence only.
 
+## W4 — conservative hidden-whitespace rejection
+
+The own optional pure shape checker now rejects **internal ASCII or Unicode whitespace** in allowlisted and excluded identities, including Unicode nonbreaking separators, tabs and line separators, rather than only trimming ends. These are **HOLD-only** syntactic counterexamples; no Unicode normalization, DNS resolution, alias comparison, registries or installed source owner paths were touched. Its existing canonical fictional ASCII host/IPv4 fixtures remain allowed for **REVIEW_ONLY** shape review, not execution permission. The own ordinary local unit controls and temporary same-call SQLite denial acceptance were extended to cover these internal-whitespace inputs. This is a deliberately conservative subset requiring owner review for non-ASCII legitimate names; issue #1437's Unicode alias metadata owner remains separate and untouched.
+
+**W4 exact HEAD needs fresh test evidence**, not older W3/W2 logs. The unrelated #301 date-expired base test and permanently queued #1144 runner remain separate dependencies.
+
 ## Owner decision needed
 The existing domain/grant source owner should decide whether this narrow text-shape preflight, or an equivalent source-side guard, belongs directly before any persisted grant row. The reviewer ceilings are **illustrative** and may reject legitimate large scopes; do not treat them as approved product policy. If integrated, the original source must enforce the same reject-before-write semantics and preserve valid grant roundtrips. Convert the three original-source expectedFailure methods to ordinary PASS only after the actual production source is fixed and revalidated. Do not claim the opt-in helper fixes persistent authorization.
 
