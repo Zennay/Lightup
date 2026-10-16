@@ -66,13 +66,16 @@ def _hold() -> ScopeDeltaReview:
 def _items(value: object, *, assets: bool, max_count: int, nonempty: bool) -> bool:
     if type(value) is not tuple or len(value) > max_count or (nonempty and not value):
         return False
-    if any(type(item) is not str for item in value):
-        return False
-    if value != tuple(sorted(set(value))):
-        return False
+    # Reject oversized/invalid elements BEFORE hashing or sorting any caller
+    # supplied string. Otherwise a very long value can make canonicality
+    # checking expensive even though the bounded reviewer should HOLD.
     if assets:
-        return all(len(item) <= 48 and _ASSET.fullmatch(item) is not None for item in value)
-    return all(item in _CAPABILITIES for item in value)
+        if any(type(item) is not str or len(item) > 48 or _ASSET.fullmatch(item) is None
+               for item in value):
+            return False
+    elif any(type(item) is not str or item not in _CAPABILITIES for item in value):
+        return False
+    return value == tuple(sorted(set(value)))
 
 
 def _instant(value: object) -> bool:
