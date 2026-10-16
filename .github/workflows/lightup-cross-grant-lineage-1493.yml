@@ -11,6 +11,7 @@ on:
       - 'examples/fictional_cross_grant_forged_authority_1493.json'
       - 'examples/fictional_cross_grant_bad_dns_label_1493.json'
       - 'examples/fictional_cross_grant_scope_overlap_1493.json'
+      - 'examples/fictional_cross_grant_disjoint_1493.json'
       - 'docs/scope-cross-grant-lineage-1493-handoff.md'
       - 'docs/cross-grant-runtime-integration-contract-1493.md'
   workflow_dispatch:
@@ -131,4 +132,26 @@ jobs:
               if actual != expected:
                   raise SystemExit(f"FICTIONAL_1493 {label}: noncanonical HOLD")
               print(f"FICTIONAL_1493 {label}: HOLD exit={expected_exit} no authority")
+          # Independent positive control: TWO fully fictional grants, different
+          # target identities, no overlapping effective asset/capability pair.
+          with open("examples/fictional_cross_grant_disjoint_1493.json", "rb") as inp:
+              data = inp.read()
+          process = subprocess.run(
+              [sys.executable, "-B", "-m",
+               "lightup.cross_grant_lineage_cli_1493", "--synthetic-only"],
+              input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+              timeout=10, check=False,
+          )
+          expected = {
+              "authorized": False,
+              "consent_verified": False,
+              "dispatch_allowed": False,
+              "reason": "UNTRUSTED_COHERENCE",
+              "release_allowed": False,
+              "reviewed": 2,
+              "status": "REVIEW_ONLY",
+          }
+          if process.returncode != 2 or process.stderr or json.loads(process.stdout) != expected:
+              raise SystemExit("FICTIONAL_1493 disjoint-grants: wrong/misleading review")
+          print("FICTIONAL_1493 disjoint-grants: REVIEW_ONLY 2 claims exit=2 no authority")
           PY
