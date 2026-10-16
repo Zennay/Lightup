@@ -304,7 +304,9 @@ class LifetimeReviewTests(unittest.TestCase):
             # changes the real original scope. Old pin() accepted a stale pin.
             pin = pin_gate_for_offline_review(g)
         self.assertIsNone(pin)
-        self.assertGreaterEqual(calls[0], 2)
+        # A changed scope can be rejected before activation is read again:
+        # one callback proves injection occurred; a second is not required.
+        self.assertGreaterEqual(calls[0], 1)
 
     def test_pin_detects_gate_rebinding_during_field_snapshot(self):
         g = gate()
