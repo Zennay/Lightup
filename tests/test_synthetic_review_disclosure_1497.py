@@ -58,6 +58,18 @@ class FictionalDisclosureReviewTests(unittest.TestCase):
     def test_empty_tuple_denied(self):
         self.assertEqual(review(()).status, "HOLD")
 
+    def test_exact_sixteen_fictional_notes_allowed_but_not_authorized(self):
+        verdict = review((VALID,) * 16)
+        self.assertEqual(verdict.status, "REVIEW_ONLY")
+        self.assertEqual(verdict.reviewed_notes, 16)
+        self.assertIs(verdict.authorized, False)
+
+    def test_input_tuple_and_strings_not_mutated(self):
+        records = (VALID, "Asset beta.example.test; capability header_read.")
+        before = records[:]
+        self.assertEqual(review(records).status, "REVIEW_ONLY")
+        self.assertEqual(records, before)
+
     def test_more_than_sixteen_denied(self):
         self.assertEqual(review((VALID,) * 17).status, "HOLD")
 
@@ -219,6 +231,13 @@ class FictionalDisclosureCliTests(unittest.TestCase):
     def test_real_subprocess_rejects_large_stdin(self):
         x = self.invoke(b'["' + b'a' * 32770 + b'"]', "--synthetic-only")
         self.assertEqual(x.returncode, 3)
+
+    def test_real_subprocess_deep_json_nesting_generic_hold(self):
+        deeply_nested = b"[" * 1500 + b"0" + b"]" * 1500
+        x = self.invoke(deeply_nested, "--synthetic-only")
+        self.assertEqual(x.returncode, 3, x.stderr)
+        self.assertEqual(json.loads(x.stdout)["status"], "HOLD")
+        self.assertNotIn(b"Traceback", x.stderr)
 
     def test_real_subprocess_rejects_nested_dict(self):
         x = self.invoke(b'[{"text":"alpha.example.test"}]', "--synthetic-only")
