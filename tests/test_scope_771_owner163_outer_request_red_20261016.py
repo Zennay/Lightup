@@ -81,6 +81,13 @@ class CanonicalExecutionRequestOwner163Contract(unittest.TestCase):
         self.assertIs(type(decision), PolicyDecision)
         self.assertIs(decision.allowed, False)
 
+    def assert_untrusted_envelope_denied(self, candidate, source_marker):
+        decision = self.policy.decide(candidate)
+        self.assertIs(type(decision), PolicyDecision)
+        if decision.allowed is True:
+            self.fail(source_marker)
+        self.assertIs(decision.allowed, False)
+
     def test_exact_analysis_stays_allowed(self):
         req = ExecutionRequest(InteractionKind.ANALYSIS, "fictional.example.test",
                                "offline-only", RiskLevel.ANALYSIS_ONLY)
@@ -130,43 +137,60 @@ class CanonicalExecutionRequestOwner163Contract(unittest.TestCase):
         duck = DuckRequest(InteractionKind.TARGET_ACTIVE, RiskLevel.LOW_IMPACT)
         for key, value in self.target_kwargs().items():
             setattr(duck, key, value)
-        self.assert_denied(duck)
+        self.assert_untrusted_envelope_denied(
+            duck, "SOURCE_RED_DUCK_VALID_GRANT_TARGET_ADMITTED")
 
     @unittest.expectedFailure
     def test_red_subclass_target_active_with_grant_must_be_denied(self):
-        self.assert_denied(SubclassRequest(**self.target_kwargs()))
+        self.assert_untrusted_envelope_denied(
+            SubclassRequest(**self.target_kwargs()),
+            "SOURCE_RED_SUBCLASS_VALID_GRANT_TARGET_ADMITTED")
 
     @unittest.expectedFailure
     def test_red_object_without_members_returns_denial_not_exception(self):
-        self.assert_denied(object())
+        try:
+            decision = self.policy.decide(object())
+        except AttributeError:
+            self.fail("SOURCE_RED_NONREQUEST_ATTRIBUTE_ERROR")
+        self.assertIs(type(decision), PolicyDecision)
+        self.assertIs(decision.allowed, False)
 
     @unittest.expectedFailure
     def test_red_duck_analysis_must_be_denied(self):
-        self.assert_denied(DuckRequest())
+        self.assert_untrusted_envelope_denied(
+            DuckRequest(), "SOURCE_RED_DUCK_ANALYSIS_ADMITTED")
 
     @unittest.expectedFailure
     def test_red_duck_passive_must_be_denied(self):
-        self.assert_denied(DuckRequest(InteractionKind.PASSIVE_PUBLIC, RiskLevel.PASSIVE))
+        self.assert_untrusted_envelope_denied(
+            DuckRequest(InteractionKind.PASSIVE_PUBLIC, RiskLevel.PASSIVE),
+            "SOURCE_RED_DUCK_PASSIVE_ADMITTED")
 
     @unittest.expectedFailure
     def test_red_subclass_analysis_must_be_denied(self):
-        self.assert_denied(SubclassRequest(InteractionKind.ANALYSIS, "fictional.example.test",
-                                          "offline-only", RiskLevel.ANALYSIS_ONLY))
+        self.assert_untrusted_envelope_denied(
+            SubclassRequest(InteractionKind.ANALYSIS, "fictional.example.test",
+                            "offline-only", RiskLevel.ANALYSIS_ONLY),
+            "SOURCE_RED_SUBCLASS_ANALYSIS_ADMITTED")
 
     @unittest.expectedFailure
     def test_red_subclass_lab_must_be_denied_even_with_true_marker(self):
-        self.assert_denied(SubclassRequest(InteractionKind.LAB_ACTIVE, "lab.invalid",
-                                          "offline-only", RiskLevel.STANDARD, is_lab=True))
+        self.assert_untrusted_envelope_denied(
+            SubclassRequest(InteractionKind.LAB_ACTIVE, "lab.invalid",
+                            "offline-only", RiskLevel.STANDARD, is_lab=True),
+            "SOURCE_RED_SUBCLASS_LAB_ADMITTED")
 
     @unittest.expectedFailure
     def test_red_no_untrusted_property_read_before_outer_validation(self):
         candidate = AttributeSpyRequest()
-        self.assert_denied(candidate)
-        self.assertEqual(candidate.reads, 0, "untrusted getter ran before admission")
+        decision = self.policy.decide(candidate)
+        self.assertIs(type(decision), PolicyDecision)
+        if candidate.reads:
+            self.fail("SOURCE_RED_UNTRUSTED_GETTER_READ")
+        self.assertIs(decision.allowed, False)
 
-    def test_red_count_oracle_requires_all_real_source_failures(self):
-        names = sorted(n for n in dir(type(self)) if n.startswith("test_red_")
-                       and n != "test_red_count_oracle_requires_all_real_source_failures")
+    def test_expected_red_replay_oracle(self):
+        names = sorted(n for n in dir(type(self)) if n.startswith("test_red_"))
         self.assertEqual(len(names), 8)
         runner = unittest.TestSuite(type(self)(name) for name in names)
         result = unittest.TestResult()
@@ -179,6 +203,29 @@ class CanonicalExecutionRequestOwner163Contract(unittest.TestCase):
                          "source changed: promote fixed cases to ordinary assertions")
         self.assertEqual(len(result.expectedFailures), 8,
                          "each of eight owner-source defects must be genuinely reproduced")
+        markers = {
+            "test_red_duck_target_active_with_grant_must_be_denied":
+                "SOURCE_RED_DUCK_VALID_GRANT_TARGET_ADMITTED",
+            "test_red_subclass_target_active_with_grant_must_be_denied":
+                "SOURCE_RED_SUBCLASS_VALID_GRANT_TARGET_ADMITTED",
+            "test_red_object_without_members_returns_denial_not_exception":
+                "SOURCE_RED_NONREQUEST_ATTRIBUTE_ERROR",
+            "test_red_duck_analysis_must_be_denied":
+                "SOURCE_RED_DUCK_ANALYSIS_ADMITTED",
+            "test_red_duck_passive_must_be_denied":
+                "SOURCE_RED_DUCK_PASSIVE_ADMITTED",
+            "test_red_subclass_analysis_must_be_denied":
+                "SOURCE_RED_SUBCLASS_ANALYSIS_ADMITTED",
+            "test_red_subclass_lab_must_be_denied_even_with_true_marker":
+                "SOURCE_RED_SUBCLASS_LAB_ADMITTED",
+            "test_red_no_untrusted_property_read_before_outer_validation":
+                "SOURCE_RED_UNTRUSTED_GETTER_READ",
+        }
+        self.assertEqual(set(names), set(markers))
+        for case, traceback_text in result.expectedFailures:
+            self.assertIn("AssertionError: " + markers[case._testMethodName],
+                          traceback_text,
+                          "unexpected crash cannot count as intentional source RED")
 
 
 if __name__ == "__main__":
