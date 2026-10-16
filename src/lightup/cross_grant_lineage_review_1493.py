@@ -193,6 +193,10 @@ def review_cross_grant_batch(
     # source grant. Re-counting it under a different grant ID is ambiguous
     # provenance, even if both individual source claims are coherent.
     asset_capability_grants: dict[tuple[str, str], str] = {}
+    # Distinct grants must not silently count overlapping *potential* scope
+    # authority as independent evidence, even when this cohort requests two
+    # different assets/capabilities. This remains an untrusted, local preview.
+    grant_footprints: dict[str, tuple[frozenset[str], frozenset[str]]] = {}
     grant_snapshots: dict[str, tuple[object, ...]] = {}
     legacy_snapshots: dict[str, tuple[object, ...]] = {}
     for item in candidates:
@@ -228,6 +232,24 @@ def review_cross_grant_batch(
             return CrossGrantBatchReview(
                 "HOLD", "ambiguous asset-capability grant provenance"
             )
+        # Review the full potential authorization footprint, not just the
+        # selected operation. Two independently asserted grants for this
+        # fictional tenant/engagement may overlap on an asset AND capability
+        # while the observed requests happen to be disjoint. Their apparent
+        # proof count is still ambiguous. Excluded assets are never covered.
+        grant = item.durable
+        if grant.grant_id not in grant_footprints:
+            footprint = (
+                frozenset(grant.scope.assets).difference(grant.scope.excluded_assets),
+                frozenset(grant.scope.allowed_capabilities),
+            )
+            if any(
+                footprint[0].intersection(previous_assets)
+                and footprint[1].intersection(previous_capabilities)
+                for previous_assets, previous_capabilities in grant_footprints.values()
+            ):
+                return CrossGrantBatchReview("HOLD", "overlapping grant scope provenance")
+            grant_footprints[grant.grant_id] = footprint
         # A durable grant ID must denote one exact, immutable grant snapshot
         # throughout the batch. Multiple distinct assets under the *same*
         # explicit grant are fine; changing its scope, time, approval or risk
