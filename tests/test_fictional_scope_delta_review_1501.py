@@ -252,6 +252,44 @@ class FictionalScopeDeltaTests(TestCase):
         object.__setattr__(forged, "assets", ("alpha.example.test",))
         self.assertEqual(review_fictional_scope_delta(proposal(), forged).status, "HOLD")
 
+    def test_unbounded_host_strings_reject_before_set_hash_or_sort(self):
+        # The developer API has no byte parser; still refuse pathological raw
+        # host values BEFORE calling hashing/canonical ordering on them.
+        oversized = "a" * 500_000
+        real_set = set
+        real_sorted = sorted
+
+        def bounded_set(items=()):
+            if any(type(x) is str and len(x) > 48 for x in items):
+                raise AssertionError("oversized element was hashed")
+            return real_set(items)
+
+        def bounded_sorted(items, *args, **kwargs):
+            collected = tuple(items)
+            if any(type(x) is str and len(x) > 48 for x in collected):
+                raise AssertionError("oversized element was sorted")
+            return real_sorted(collected, *args, **kwargs)
+
+        with patch("builtins.set", side_effect=bounded_set), \
+             patch("builtins.sorted", side_effect=bounded_sorted):
+            bad = proposal(assets=(oversized,))
+            result = review_fictional_scope_delta(bad, proposal())
+            self.assertEqual(result.status, "HOLD")
+            self.assertEqual(result.expanded_dimensions, ())
+            self.assert_inert(result)
+            historical = review_fictional_scope_history((bad, proposal()))
+            self.assertEqual(historical.status, "HOLD")
+            self.assertEqual(historical.transition_count, 0)
+            self.assert_history_inert(historical)
+
+    def test_unbounded_capability_strings_reject_before_set_hash(self):
+        oversized = "headers_view" + "x" * 100_000
+        with patch("builtins.sorted", side_effect=AssertionError("must reject first")):
+            bad = proposal(capabilities=(oversized,))
+            outcome = review_fictional_scope_delta(bad, proposal())
+        self.assertEqual(outcome.status, "HOLD")
+        self.assert_inert(outcome)
+
     def test_many_deterministic_widening_cases_do_not_approve(self):
         old = proposal()
         for index in range(256):
