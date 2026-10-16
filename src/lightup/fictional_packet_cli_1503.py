@@ -7,7 +7,9 @@ Exit 2: REVIEW_ONLY (requires human review); 3: HOLD/errors. Never exit 0.
 """
 from __future__ import annotations
 
+import hmac
 import json
+import os
 import re
 import sys
 
@@ -91,13 +93,21 @@ def build_fictional_pinned_cli_envelope(
     return encoded if len(encoded) <= _INPUT_LIMIT else None
 
 
-def _parse_request(payload: bytes, *, pinned_only: bool = False) -> CopyReview:
+def _parse_request(
+    payload: bytes, *, pinned_only: bool = False,
+    independent_sha256: str | None = None,
+) -> CopyReview:
     """Parse strict synthetic schema; pinned-only mode refuses legacy v1.
 
     pinned_only is an internal exact built-in bool, not a user-supplied flag.
     The default preserves v1 tests and backwards compatibility.
     """
     if type(pinned_only) is not bool:
+        return CopyReview("HOLD")
+    if independent_sha256 is not None and (
+        type(independent_sha256) is not str
+        or re.fullmatch(r"[0-9a-f]{64}", independent_sha256, re.ASCII) is None
+    ):
         return CopyReview("HOLD")
     if type(payload) is not bytes or not 1 <= len(payload) <= _INPUT_LIMIT:
         return CopyReview("HOLD")
@@ -113,12 +123,16 @@ def _parse_request(payload: bytes, *, pinned_only: bool = False) -> CopyReview:
         if type(schema) is not str:
             return CopyReview("HOLD")
         if schema == _SCHEMA:
-            if pinned_only or tuple(request) != _KEYS:
+            if independent_sha256 is not None or pinned_only or tuple(request) != _KEYS:
                 return CopyReview("HOLD")
         elif schema == _PINNED_SCHEMA:
             if (
                 tuple(request) != _PINNED_KEYS
                 or type(request["expected_sha256"]) is not str
+            ):
+                return CopyReview("HOLD")
+            if independent_sha256 is not None and not hmac.compare_digest(
+                request["expected_sha256"], independent_sha256,
             ):
                 return CopyReview("HOLD")
         else:
@@ -197,7 +211,9 @@ def _read_bounded_stdin(stream: object) -> bytes | None:
         collected.extend(part)
 
 
-def _run_cli(*, pinned_only: bool) -> int:
+def _run_cli(
+    *, pinned_only: bool, independent_sha256: str | None = None,
+) -> int:
     """One bounded stdin transaction; never return success exit 0."""
     if type(pinned_only) is not bool:
         pinned_only = True
@@ -207,7 +223,10 @@ def _run_cli(*, pinned_only: bool) -> int:
         else:
             payload = _read_bounded_stdin(sys.stdin.buffer)
             rendered = _render(
-                _parse_request(payload, pinned_only=pinned_only)
+                _parse_request(
+                    payload, pinned_only=pinned_only,
+                    independent_sha256=independent_sha256,
+                )
             )
     except (OSError, ValueError, TypeError, AttributeError, UnicodeError, RecursionError):
         rendered = _HOLD
@@ -229,6 +248,17 @@ def main() -> int:
 def main_pinned() -> int:
     """Pinned-only fictional review: explicitly reject schema downgrade to v1."""
     return _run_cli(pinned_only=True)
+
+
+def main_anchored() -> int:
+    """Pinned-only synthetic review with separately passed environment digest.
+
+    An OS environment variable is not a signature or trusted provenance;
+    this detects mismatches between two independent caller input channels.
+    No real permissions, consent, scans, grant, or release are conferred.
+    """
+    expected = os.environ.get("LIGHTUP_FICTIONAL_EXPECTED_SHA256_1503", "")
+    return _run_cli(pinned_only=True, independent_sha256=expected)
 
 
 if __name__ == "__main__":
