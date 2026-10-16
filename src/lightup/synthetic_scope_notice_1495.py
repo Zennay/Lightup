@@ -98,12 +98,15 @@ def render_scope_notice(
     proposals: tuple[ScopeProposal, ...],
     *,
     review_at: datetime,
+    language: str = "en",
 ) -> ScopeNotice:
     """Produce a bounded HUMAN REVIEW preview, never proof of permission.
 
     Invalid/noncanonical/coincident entries reject the entire tuple. This
     function never reads a trusted consent store or evaluates a real target.
     """
+    if type(language) is not str or language not in ("en", "nl"):
+        return _invalid()
     if not _canonical_instant(review_at):
         return _invalid()
     if type(proposals) is not tuple or not (1 <= len(proposals) <= _MAX_PROPOSALS):
@@ -118,27 +121,46 @@ def render_scope_notice(
         return _invalid()
 
     ordered = sorted(proposals, key=lambda p: (p.asset, p.capability))
-    lines = [
-        "NOT AUTHORIZED — SYNTHETIC SCOPE REVIEW ONLY",
-        "No client consent, operator identity, approval or execution authority verified.",
-        f"Fictional proposal count: {len(ordered)}",
-        f"Review timestamp (UTC): {review_at.isoformat().replace('+00:00', 'Z')}",
-        "",
-        "Proposed asset | capability | risk | start UTC | end UTC:",
-    ]
+    if language == "nl":
+        lines = [
+            "NOT AUTHORIZED — NIET GEAUTORISEERD | UITSLUITEND FICTIEVE SCOPE",
+            "Geen klanttoestemming, operatoridentiteit of uitvoeringsrecht geverifieerd.",
+            f"Aantal fictieve voorstellen: {len(ordered)}",
+            f"Beoordelingsmoment (UTC): {review_at.isoformat().replace('+00:00', 'Z')}",
+            "",
+            "Voorgesteld systeem | handeling | risico | vanaf UTC | tot UTC:",
+        ]
+    else:
+        lines = [
+            "NOT AUTHORIZED — SYNTHETIC SCOPE REVIEW ONLY",
+            "No client consent, operator identity, approval or execution authority verified.",
+            f"Fictional proposal count: {len(ordered)}",
+            f"Review timestamp (UTC): {review_at.isoformat().replace('+00:00', 'Z')}",
+            "",
+            "Proposed asset | capability | risk | start UTC | end UTC:",
+        ]
     for entry in ordered:
         start = entry.valid_from.isoformat().replace("+00:00", "Z")
         end = entry.valid_until.isoformat().replace("+00:00", "Z")
         lines.append(f"- {entry.asset} | {entry.capability} | {entry.risk}/5 | {start} | {end}")
 
     high_risk = any(p.risk >= 4 for p in ordered)
-    lines.extend((
-        "",
-        "Risk escalation: independent step-up and human scrutiny required."
-        if high_risk else "Risk escalation: risk scores still need independent human review.",
-        "This is NOT a grant, consent record, dispatch ticket or release approval.",
-        "No real assets, scans, tools, data collection or production changes permitted.",
-    ))
+    if language == "nl":
+        lines.extend((
+            "",
+            "Hoog risico: aparte bevestiging en onafhankelijke menselijke toets nodig."
+            if high_risk else "Risico: altijd een onafhankelijke menselijke toets nodig.",
+            "Dit is GEEN toestemming, grant, uitvoeropdracht of productie-goedkeuring.",
+            "Geen echte systemen, scans, tools, dataverzameling of productie toegestaan.",
+        ))
+    else:
+        lines.extend((
+            "",
+            "Risk escalation: independent step-up and human scrutiny required."
+            if high_risk else "Risk escalation: risk scores still need independent human review.",
+            "This is NOT a grant, consent record, dispatch ticket or release approval.",
+            "No real assets, scans, tools, data collection or production changes permitted.",
+        ))
     report = "\n".join(lines)
     if len(report) > _MAX_NOTICE_CHARS:
         return _invalid()
