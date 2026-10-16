@@ -518,6 +518,36 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
                     self.assertNotIn("private-marker", str(caught.exception))
         self.assertFalse(called)
 
+    def test_unicode_format_control_denies_before_all_grant_side_effects(self):
+        # Only tests the temporary opt-in seam, NOT installed source policy.
+        original = DomainStore.record_authorization_grant
+        original_invocations = []
+        def rejected_original(*args, **kwargs):
+            original_invocations.append(True)
+            raise AssertionError("original grant source reached")
+        variants = ("fixture\u200b.example.test", "fixture\u200e.example.test",
+                    "fixture\u202e.example.test", "fixture\ufeff.example.test",
+                    "fixture\ud800.example.test", "fixture\ue000.example.test",
+                    "fixture\u0378.example.test")
+        with patch.object(DomainStore, "record_authorization_grant",
+                          self._owner_candidate(rejected_original)), \
+             patch.object(DomainStore, "_connect",
+                          side_effect=AssertionError("SQLite accessed")), \
+             patch.object(DomainStore, "get_engagement",
+                          side_effect=AssertionError("engagement accessed")):
+            for value in variants:
+                for scope in (_scope((value,)), _scope(excluded=(value,))):
+                    with self.subTest(input=repr(value)):
+                        with self.assertRaisesRegex(
+                            ValueError,
+                            "^asset identity shape requires independent review$"
+                        ) as caught:
+                            self._record(scope)
+                        self.assertNotIn(value, str(caught.exception))
+        self.assertFalse(original_invocations)
+        self.assertIs(DomainStore.record_authorization_grant, original)
+        self.assertEqual(self._persisted_snapshot(), ())
+
     def test_shape_only_success_never_short_circuits_original_grant_gate(self):
         # A positive review can only reach the separate, original owner method.
         calls = []
