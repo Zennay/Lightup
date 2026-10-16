@@ -147,15 +147,23 @@ def _read_bounded_stdin() -> bytes | None:
 
 
 def _write_receipt(status: str) -> bool:
-    """Do not block forever or partially reveal a receipt into a full pipe."""
+    """Write one small atomic pipe receipt without a select/write TOCTOU race.
+
+    For a kernel pipe, a nonblocking write of <= PIPE_BUF bytes is all-or-
+    nothing. Restore the inherited descriptor's blocking mode after writing.
+    This standalone tool still does not grant any authorization.
+    """
     try:
         fd = sys.stdout.fileno()
+        if not _anonymous_pipe(fd):
+            return False
         message = (receipt(status) + "\n").encode("ascii")
-        if stat.S_ISFIFO(os.fstat(fd).st_mode):
-            _, writable, _ = select.select([], [fd], [], 0)
-            if not writable:
-                return False
-        return os.write(fd, message) == len(message)
+        original_blocking = os.get_blocking(fd)
+        try:
+            os.set_blocking(fd, False)
+            return os.write(fd, message) == len(message)
+        finally:
+            os.set_blocking(fd, original_blocking)
     except (OSError, ValueError, TypeError):
         return False
 
