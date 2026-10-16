@@ -7,6 +7,7 @@ No real target, socket, subprocess, grant, filesystem ledger or handler I/O.
 from __future__ import annotations
 
 import math
+from datetime import datetime, timezone
 import socket
 import subprocess
 import unittest
@@ -17,8 +18,8 @@ from lightup.ai.orchestration import (
     OrchestrationError, ParamKind, RunContext, ToolCall, ToolDefinition,
     ToolExecutor, ToolOutput, ToolParameter, ToolRegistry,
 )
-from lightup.engagements import RiskLevel
-from lightup.execution_policy import InteractionKind
+from lightup.engagements import AssessmentMode, RiskLevel
+from lightup.execution_policy import ExecutionPolicy, InteractionKind
 from lightup.finite_number_offline_review import snapshot_finite_number_arguments
 
 
@@ -115,6 +116,72 @@ class NumberSourceRed1143Tests(unittest.TestCase):
         self.assertTrue(ParamKind.NUMBER.accepts(float("nan")))
         self.assertTrue(ParamKind.NUMBER.accepts(float("inf")))
         self.assertTrue(ParamKind.NUMBER.accepts(float("-inf")))
+
+
+
+class NumberOriginalPolicyRed1143Tests(unittest.TestCase):
+    """Second integration: original unmodified ExecutionPolicy, no mock allow."""
+
+    def setUp(self):
+        self.handler = Mock(return_value=ToolOutput(
+            "mocked-analysis", "synthetic", b"synthetic-only"
+        ))
+        self.state = Mock()
+        self.state.add_evidence.return_value = "mock-evidence"
+        registry = ToolRegistry()
+        registry.register(ToolDefinition(
+            "fixture.real-policy-number.1143", "web-baseline",
+            InteractionKind.ANALYSIS, RiskLevel.ANALYSIS_ONLY,
+            "pure offline analysis fixture",
+            (ToolParameter("measurement", ParamKind.NUMBER),),
+        ), self.handler)
+        # ORIGINAL ExecutionPolicy, unlike synthetic allow in schema tests.
+        self.executor = ToolExecutor(registry, self.state, ExecutionPolicy())
+        self.context = RunContext(
+            run_id="fictional-realpolicy-run", client_id="fictional-client",
+            engagement_id="fictional-engagement",
+            mode=AssessmentMode.ANALYSIS_ONLY,
+            approved_risk=RiskLevel.ANALYSIS_ONLY,
+            authorization=None, is_lab=False,
+            created_at=datetime.now(timezone.utc),
+        )
+
+    def _request(self, measurement):
+        return ToolCall(
+            "fixture.real-policy-number.1143", "fixture.example.test",
+            (("measurement", measurement),),
+        )
+
+    def _assert_denial_before_handler(self, measurement):
+        with patch.object(socket, "socket", side_effect=AssertionError("no socket")), \
+             patch.object(subprocess, "Popen", side_effect=AssertionError("no process")):
+            with self.assertRaises(OrchestrationError):
+                self.executor.execute(self.context, self._request(measurement))
+        self.handler.assert_not_called()
+        self.state.add_evidence.assert_not_called()
+
+    @unittest.expectedFailure
+    def test_real_policy_executor_must_deny_nan_pre_handler(self):
+        self._assert_denial_before_handler(math.nan)
+
+    @unittest.expectedFailure
+    def test_real_policy_executor_must_deny_positive_inf_pre_handler(self):
+        self._assert_denial_before_handler(math.inf)
+
+    @unittest.expectedFailure
+    def test_real_policy_executor_must_deny_negative_inf_pre_handler(self):
+        self._assert_denial_before_handler(-math.inf)
+
+    def test_real_policy_finite_control_stays_synthetic_and_mocked(self):
+        with patch.object(socket, "socket", side_effect=AssertionError("no socket")), \
+             patch.object(subprocess, "Popen", side_effect=AssertionError("no process")):
+            result = self.executor.execute(
+                self.context, self._request(0.25)
+            )
+        self.assertEqual(result.policy_reason, "analysis-only")
+        self.assertEqual(result.evidence_id, "mock-evidence")
+        self.handler.assert_called_once()
+        self.state.add_evidence.assert_called_once()
 
 
 if __name__ == "__main__":
