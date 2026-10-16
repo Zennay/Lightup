@@ -16,6 +16,7 @@ OWN = (
     "fictional_review_sequence_pair_cli_1505.py",
     "fictional_review_sequence_segments_1505.py",
     "fictional_review_sequence_segments_cli_1505.py",
+    "fictional_review_sequence_anchor_1505.py",
 )
 MODULES = tuple("lightup." + filename[:-3] for filename in OWN)
 
