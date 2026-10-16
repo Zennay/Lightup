@@ -143,6 +143,43 @@ class NestedPersistedScopeAdmissionTest(unittest.TestCase):
             "allowed_capabilities_json", '["web-baseline",{}]'
         )
 
+
+    @unittest.expectedFailure  # OPEN: malformed assets cannot leave resolver
+    def test_mixed_numeric_asset_must_never_leave_resolver(self):
+        self._assert_deny_unchanged(
+            "assets_json", '["app.example.invalid",123]'
+        )
+
+    @unittest.expectedFailure  # OPEN: malformed exclusions cannot leave resolver
+    def test_mixed_boolean_exclusion_must_never_leave_resolver(self):
+        self._assert_deny_unchanged(
+            "excluded_assets_json", '["excluded.example.invalid",false]'
+        )
+
+    def test_legacy_numeric_asset_can_throw_in_memory_asset_matcher(self):
+        """Observed source defect: no network/handler, only local ScopeDefinition."""
+        before = self._mutate("assets_json", '["app.example.invalid",123]')
+        leaked = self.store.resolve_authorization_for_execution(self.grant)
+        self.assertIsNotNone(leaked, "strict baseline changed: reassess open REDs")
+        self.assertEqual(leaked.scope.assets, ("app.example.invalid", 123))
+        with self.assertRaisesRegex(AttributeError, "strip"):
+            leaked.scope.allows_asset("app.example.invalid")
+        self.assertEqual(self._snapshot(), before)
+
+    def test_legacy_boolean_exclusion_can_throw_in_memory_asset_matcher(self):
+        """Observed source defect: exclusion check handles non-string as a value."""
+        before = self._mutate(
+            "excluded_assets_json", '["excluded.example.invalid",false]'
+        )
+        leaked = self.store.resolve_authorization_for_execution(self.grant)
+        self.assertIsNotNone(leaked, "strict baseline changed: reassess open REDs")
+        self.assertEqual(
+            leaked.scope.excluded_assets, ("excluded.example.invalid", False)
+        )
+        with self.assertRaisesRegex(AttributeError, "strip"):
+            leaked.scope.allows_asset("app.example.invalid")
+        self.assertEqual(self._snapshot(), before)
+
     def test_exact_original_source_red_replay_witness(self):
         """Ordinary PASS oracle: no unrelated exception can fake a source-RED."""
         cases = (
