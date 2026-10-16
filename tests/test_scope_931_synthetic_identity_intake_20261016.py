@@ -379,9 +379,16 @@ class SyntheticIdentityIntakeCliTest(unittest.TestCase):
         self.assertIsNotNone(spec)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        with mock.patch.object(module.os, "readlink", side_effect=OSError("procfs unavailable")):
-            self.assertFalse(module._safe_streams())
-        # Do not print details of the local procfs failure.
+        read_fd, write_fd = os.pipe()
+        try:
+            with mock.patch.object(
+                module.os, "readlink", side_effect=OSError("procfs unavailable")
+            ):
+                self.assertFalse(module._anonymous_pipe(read_fd))
+        finally:
+            os.close(read_fd)
+            os.close(write_fd)
+        # Do not print details of the simulated local procfs failure.
         _, status, receipt = self.run_cli(
             b'{"prospect_id":"x","organization_name":"y"}',
             "--offline-synthetic-only",
