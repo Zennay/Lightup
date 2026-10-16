@@ -49,6 +49,18 @@ def _read_bounded(stream: object) -> bytes:
     return b"".join(chunks)
 
 
+def _emit(output: bytes, code: int) -> int:
+    """Never report REVIEW_ONLY when the exact bounded output cannot be sent."""
+    try:
+        written = sys.stdout.buffer.write(output)
+        if type(written) is not int or written != len(output):
+            return 3
+        sys.stdout.buffer.flush()
+    except OSError:
+        return 3
+    return code
+
+
 def main() -> int:
     try:
         raw = _read_bounded(sys.stdin.buffer)
@@ -71,10 +83,8 @@ def main() -> int:
         if result.status != "REVIEW_ONLY":
             raise ValueError("literal integrity HOLD")
     except (ValueError, TypeError, UnicodeError, KeyError, RecursionError, OverflowError, OSError):
-        sys.stdout.buffer.write(_HOLD)
-        return 3
-    sys.stdout.buffer.write(_REVIEW)
-    return 2
+        return _emit(_HOLD, 3)
+    return _emit(_REVIEW, 2)
 
 
 if __name__ == "__main__":
