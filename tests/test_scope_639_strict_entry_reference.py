@@ -219,6 +219,59 @@ class StrictEntryReferenceTest(unittest.TestCase):
                 ):
                     self.assertFalse(hasattr(result, attribute))
 
+
+    def test_oversized_json_rejected_before_any_decode_for_every_field(self):
+        """Do not hand attacker-controlled giant rows to json.loads."""
+        from unittest.mock import patch
+        from lightup.persisted_scope_entries_639 import MAX_SCOPE_JSON_CHARS
+
+        payload = " " * (MAX_SCOPE_JSON_CHARS + 1)
+        for field in ("assets", "exclusions", "capabilities"):
+            with self.subTest(field=field):
+                with patch(
+                    "lightup.persisted_scope_entries_639.json.loads",
+                    side_effect=AssertionError("oversized JSON was parsed"),
+                ):
+                    self.assertIsNone(self.review(**{field: payload}))
+
+    def test_maximum_entry_size_is_inclusive_and_one_more_refused(self):
+        from lightup.persisted_scope_entries_639 import MAX_SCOPE_ENTRY_CHARS
+
+        allowed = "a" * MAX_SCOPE_ENTRY_CHARS
+        self.assertEqual(self.review(assets=json.dumps([allowed])).assets, (allowed,))
+        for field in ("assets", "exclusions", "capabilities"):
+            with self.subTest(field=field):
+                payload = json.dumps(["valid", "b" * (MAX_SCOPE_ENTRY_CHARS + 1)])
+                self.assertIsNone(self.review(**{field: payload}))
+
+    def test_list_entry_count_limit_inclusive_for_each_field(self):
+        from lightup.persisted_scope_entries_639 import MAX_SCOPE_ENTRIES
+
+        for field in ("assets", "exclusions", "capabilities"):
+            with self.subTest(field=field):
+                valid = ["valid"] * MAX_SCOPE_ENTRIES
+                review = self.review(**{field: json.dumps(valid)})
+                self.assertIsNotNone(review)
+                attr = {"assets": "assets", "exclusions": "excluded_assets",
+                        "capabilities": "allowed_capabilities"}[field]
+                self.assertEqual(len(getattr(review, attr)), MAX_SCOPE_ENTRIES)
+                denied = valid + ["over"]
+                self.assertIsNone(self.review(**{field: json.dumps(denied)}))
+
+    def test_oversized_mixed_row_does_not_return_partial_authority(self):
+        from lightup.persisted_scope_entries_639 import MAX_SCOPE_ENTRIES
+
+        valid = self.review()
+        self.assertIsNotNone(valid)
+        denied = self.review(
+            assets='["app.example.invalid"]',
+            exclusions='["excluded.example.invalid"]',
+            capabilities=json.dumps(["web-baseline"] * (MAX_SCOPE_ENTRIES + 1)),
+        )
+        self.assertIsNone(denied)
+        self.assertEqual(self.review(), valid)
+
+
     def test_real_sqlite_snapshot_corruption_review_has_no_write(self):
         with tempfile.TemporaryDirectory() as tmp:
             store = DomainStore(Path(tmp) / "scope639-review.db")
