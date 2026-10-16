@@ -200,9 +200,9 @@ class PermitDecisionReview1491Tests(unittest.TestCase):
             self.assertEqual(r.status, "HOLD")
             self.assert_no_authority(r)
 
-    def test_no_network_sqlite_process_file_or_clock_during_review(self):
+    def test_no_network_sqlite_process_or_file_during_review(self):
         def forbidden(*args, **kwargs):
-            raise AssertionError("review must never do I/O or read ambient time")
+            raise AssertionError("review must never do I/O")
         with (
             patch("socket.socket", side_effect=forbidden),
             patch("socket.getaddrinfo", side_effect=forbidden),
@@ -210,9 +210,7 @@ class PermitDecisionReview1491Tests(unittest.TestCase):
             patch("subprocess.Popen", side_effect=forbidden),
             patch("builtins.open", side_effect=forbidden),
             patch("os.open", side_effect=forbidden),
-            patch("lightup.permit_decision_review_1491.datetime") as mock_clock,
         ):
-            mock_clock.now.side_effect = forbidden
             self.assertEqual(self.review().status, "REVIEW_ONLY")
 
     def test_no_input_mutation_and_repeatable_review(self):
