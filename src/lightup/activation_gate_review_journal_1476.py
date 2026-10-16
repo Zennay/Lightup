@@ -92,3 +92,68 @@ def advance_offline_cohort_journal(
     return OfflineCohortStep(next_journal, LifetimeReceipt(
         status=LifetimeStatus.REVIEW_ONLY, reason="unchanged"
     ))
+
+
+
+@dataclass(slots=True, repr=False, eq=False)
+class OfflineReviewSession:
+    """Voluntary in-memory cursor. Never a trusted revocation authority.
+
+    This prevents *accidental* replay of stale journal versions by a caller
+    which retains the same session object. Starting or forging a new session,
+    mutating Python memory, crashing/restarting, or replaying outside this
+    object are explicitly outside this offline helper's guarantees.
+    """
+
+    _current: OfflineCohortJournal = field(repr=False)
+    _terminal: bool = False
+
+    @property
+    def current(self) -> OfflineCohortJournal:
+        """Return the identity that must be submitted on the next step."""
+        return self._current
+
+
+def open_offline_review_session(gates: object) -> OfflineReviewSession | None:
+    """Start a bounded cohort *review*, not an authorization session."""
+    journal = begin_offline_cohort_journal(gates)
+    if journal is None:
+        return None
+    return OfflineReviewSession(journal)
+
+
+def advance_offline_review_session(
+    gates: object,
+    session: object,
+    presented_journal: object,
+) -> OfflineCohortStep:
+    """Reject stale cursors and terminal holds in one session object's life.
+
+    Passing the *same object* returned by previous step is required. This
+    guards benign replay bugs only, NOT attackers controlling Python memory.
+    """
+    if type(session) is not OfflineReviewSession:
+        return OfflineCohortStep(None, _hold())
+    try:
+        current = object.__getattribute__(session, "_current")
+        terminal = object.__getattribute__(session, "_terminal")
+    except (AttributeError, TypeError, ValueError):
+        return OfflineCohortStep(None, _hold())
+    if type(current) is not OfflineCohortJournal or type(terminal) is not bool:
+        return OfflineCohortStep(None, _hold())
+    if terminal:
+        return OfflineCohortStep(current, _hold("changed"))
+    if presented_journal is not current:
+        session._terminal = True
+        return OfflineCohortStep(current, _hold("changed"))
+
+    step = advance_offline_cohort_journal(gates, current)
+    new_journal = step.next_journal
+    if type(new_journal) is not OfflineCohortJournal:
+        session._terminal = True
+        return OfflineCohortStep(current, _hold("changed"))
+    session._current = new_journal
+    if step.receipt.status is not LifetimeStatus.REVIEW_ONLY:
+        session._terminal = True
+        return OfflineCohortStep(new_journal, _hold("changed"))
+    return step
