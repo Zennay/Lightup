@@ -444,9 +444,14 @@ class CrossGrantBatchTests(unittest.TestCase):
             (batch_candidate(),), evaluated_at=NOW.replace(tzinfo=None)).status, "HOLD")
 
     def test_batch_bounds_32_accepted_with_distinct_synthetic_grants(self):
-        batch = tuple(batch_candidate(grant_id=f"G-{i}") for i in range(32))
+        # Unlike a replay of one asset/capability under 32 grant IDs, these
+        # are 32 genuinely distinct fictional asset/capability identities.
+        batch = tuple(batch_candidate(
+            grant_id=f"G-{i}", asset=f"a{i}.example.test") for i in range(32))
         r = self.review(batch)
         self.assertEqual((r.status, r.reviewed), ("REVIEW_ONLY", 32))
+        self.assertFalse(r.authorized)
+        self.assertFalse(r.release_allowed)
 
     def test_different_grants_same_asset_capability_are_atomic_hold(self):
         first = batch_candidate()
