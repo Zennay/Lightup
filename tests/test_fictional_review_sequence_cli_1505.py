@@ -79,7 +79,7 @@ class TestFictionalCLI(unittest.TestCase):
     def test_reject_unicode_trailing_partial_nonbytes_and_massive(self):
         for blob in (b"", None, "text", bytearray(encode(sample())),
                      encode(sample())+b"{}", encode(sample())[:-3],
-                     b"\xff", b'{"schema":"\xc3©"}', b"["+b"["*3000+b"]"*3000,
+                     b"\xff", b'{"schema":"\xc3\xa9"}', b"["+b"["*3000+b"]"*3000,
                      b"x"*8193):
             self.assert_hold(blob)
 
