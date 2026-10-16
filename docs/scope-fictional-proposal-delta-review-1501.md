@@ -30,7 +30,7 @@ The helper validates **exact** built-in immutable proposal dataclasses, sorted/u
 
 No network requests, DNS, subprocesses, filesystem reads/writes, database calls, target dispatch, active security scans or permissions are performed. Outputs have immutable four literal `False` flags. This is *not* a DLP scanner; input source and provenance are untrusted. A successful review does not prove either proposal was ever legitimately approved.
 
-Run all independently-owned tests: `PYTHONPATH=src python -m unittest discover -s tests -p 'test_fictional_scope_delta*_1501.py' -v`. The isolated CI workflow runs these reviewer, CLI subprocess and static isolation tests on Python 3.11 and 3.14. The original full CI and truly registered permanent VPS runner are **separate gates**, not substituted by this workflow.
+Run all independently-owned tests: `PYTHONPATH=src python -m unittest discover -s tests -p 'test_fictional_scope_delta*_1501.py' -v`. The isolated CI workflow runs these reviewer, CLI subprocess and static isolation tests on Python 3.11 and 3.14. The original full CI and truly registered permanent VPS runner are **separate gates**, not substituted by this workflow. The #1501 hosted-only workflow runs on PR updates (or explicit manual dispatch), not duplicate push events. Its unique concurrency group cancels only outdated runs of this synthetic PR; it never cancels another worker's run or any permanent VPS gate.
 
 ## Historical (A → B → A) widening guard
 
