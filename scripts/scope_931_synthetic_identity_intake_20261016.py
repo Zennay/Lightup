@@ -102,13 +102,9 @@ def _anonymous_pipe(fd: int) -> bool:
         if not stat.S_ISFIFO(metadata.st_mode):
             return False
         link = os.readlink("/proc/self/fd/" + str(fd))
-        return (
-            link.startswith("pipe:[")
-            and link.endswith("]")
-            and link[6:-1].isascii()
-            and link[6:-1].isdecimal()
-            and int(link[6:-1]) == metadata.st_ino
-        )
+        # Exact procfs spelling matters. Integer parsing would wrongly accept
+        # forged non-canonical labels such as pipe:[00042] for inode 42.
+        return link == f"pipe:[{metadata.st_ino}]"
     except (OSError, ValueError, TypeError, OverflowError):
         return False  # Procfs unavailable or malformed: no pipe provenance.
 
