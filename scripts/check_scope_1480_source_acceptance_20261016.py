@@ -27,6 +27,42 @@ ORIGINAL_SOURCE_BLOB = "156e94c18d5221b3d55e2c9fff4e393369e0f38e"
 EXPECTED_RED = "test_expected_red_authorized_permit_cannot_be_stamped_after_expiry"
 EXPECTED_METHODS = 33
 
+EXPECTED_TEST_IDS = frozenset({
+    "test_scope_1480_activation_issuance_instant_20261016.ActivationIssuanceInstant1480Tests.test_fixture_has_distinct_utc_instants",
+    "test_scope_1480_activation_issuance_instant_20261016.ActivationIssuanceInstant1480Tests.test_authorized_exact_public_asset_inside_entire_window",
+    "test_scope_1480_activation_issuance_instant_20261016.ActivationIssuanceInstant1480Tests.test_exact_expiry_inclusive_control",
+    "test_scope_1480_activation_issuance_instant_20261016.ActivationIssuanceInstant1480Tests.test_expired_at_scope_check_denies",
+    "test_scope_1480_activation_issuance_instant_20261016.ActivationIssuanceInstant1480Tests.test_plan_only_denies_without_issuing",
+    "test_scope_1480_activation_issuance_instant_20261016.ActivationIssuanceInstant1480Tests.test_lab_only_rejects_fictional_public_host",
+    "test_scope_1480_activation_issuance_instant_20261016.ActivationIssuanceInstant1480Tests.test_denied_unlisted_asset_even_with_valid_authorization",
+    "test_scope_1480_activation_issuance_instant_20261016.ActivationIssuanceInstant1480Tests.test_expected_red_authorized_permit_cannot_be_stamped_after_expiry",
+    "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_inside_window_remains_review_only",
+    "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_both_inclusive_boundaries_are_only_review",
+    "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_expired_issuance_is_hold",
+    "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_not_yet_valid_issuance_is_hold",
+    "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_missing_or_naive_bounds_hold",
+    "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_inverted_window_is_rejected",
+    "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_polymorphic_time_never_inherits_authority",
+    "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_authorization_subclass_refused",
+    "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_result_is_slotless_and_even_object_setattr_cannot_forge_release",
+    "test_scope_1480_issuance_window_review_20261016.IssuanceWindowReview1480Tests.test_review_requires_no_network",
+    "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_increasing_inside_window_is_structural_review_only",
+    "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_same_instant_is_structural_review_only",
+    "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_check_outside_validity_does_not_inherit_later_valid_stamp",
+    "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_expiry_between_check_and_stamp_is_hold",
+    "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_backwards_clock_even_within_window_is_hold",
+    "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_expired_check_holds_even_when_stamp_is_past",
+    "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_polymorphic_checked_clock_holds",
+    "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_polymorphic_issuance_clock_holds",
+    "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_missing_authorization_is_hold_not_crash",
+    "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_live_input_widening_between_two_reviews_cannot_change_original_snapshot",
+    "test_scope_1480_issuance_transition_20261016.Transition1480Tests.test_no_caller_values_mutated",
+    "test_scope_1480_local_source_reference_20261016.IssuanceReference1480Tests.test_unpatched_source_still_produces_expired_synthetic_permit",
+    "test_scope_1480_local_source_reference_20261016.IssuanceReference1480Tests.test_reference_wrapper_turns_original_red_body_into_plain_pass",
+    "test_scope_1480_local_source_reference_20261016.IssuanceReference1480Tests.test_reference_preserves_legitimate_in_window_exact_host",
+    "test_scope_1480_local_source_reference_20261016.IssuanceReference1480Tests.test_reference_preserves_expired_scope_and_plan_only_denials",
+})
+
 
 def _original_source_is_pinned() -> bool:
     try:
@@ -62,6 +98,31 @@ def _verdict(status: str, reason: str, tests: int = 0, expected_source_reds: int
     }
 
 
+
+def _loaded_test_ids(suite: unittest.TestSuite) -> tuple[str, ...]:
+    """Enumerate every loaded case, including failure placeholders."""
+    names: list[str] = []
+
+    def visit(node: unittest.TestSuite | unittest.TestCase) -> None:
+        if isinstance(node, unittest.TestSuite):
+            for child in node:
+                visit(child)
+        else:
+            names.append(node.id())
+
+    visit(suite)
+    return tuple(names)
+
+
+def _has_exact_test_inventory(ids: tuple[str, ...]) -> bool:
+    """Fail CLOSED on substitutions even when the total test count matches."""
+    return (
+        len(ids) == EXPECTED_METHODS
+        and len(set(ids)) == EXPECTED_METHODS
+        and set(ids) == EXPECTED_TEST_IDS
+    )
+
+
 def main() -> int:
     # The only accepted source is the exact installed main source inspected
     # when filing #1480. Do not silently promote a repaired or drifted source.
@@ -80,6 +141,10 @@ def main() -> int:
         suite.addTests(unittest.defaultTestLoader.discover(
             start_dir=str(ROOT / "tests"), pattern=filename,
         ))
+    if not _has_exact_test_inventory(_loaded_test_ids(suite)):
+        print(json.dumps(_verdict("HOLD", "test_inventory_mismatch"), sort_keys=True))
+        return 1
+
     capture = io.StringIO()
     result = unittest.TextTestRunner(stream=capture, verbosity=2).run(suite)
     red_is_exact = (
