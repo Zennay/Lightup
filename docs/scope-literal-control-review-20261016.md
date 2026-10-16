@@ -36,3 +36,7 @@ Even a printable fictional candidate is now HOLD when its literal bytes contain 
 ## W5 — 8192-byte RFC JSON boundary and result-state integrity
 
 Added isolated `tests/test_scope_literal_json_boundary_20261016.py` with deterministic exhaustive single-byte mutation of the canonical fictional JSON wire message (all 128 ASCII possibilities at every byte position), assert both hardcoded status outputs carry zero granted authority and never echo input, including with sockets, process spawn and file open forbidden in-process. Exact 8192-byte canonical input succeeds as REVIEW_ONLY (still NOT authorization); an 8193-byte stream fails CLOSED/HOLD. Malformed UTF-8, surrogate JSON escapes, nested JSON objects and 3,000-deep arrays also HOLD. `LiteralReview.__post_init__` now refuses noncanonical and polymorphic status claims before an object can be created. No runtime, grant, network, source-owner or deployment changes.
+
+## W6 — fail-closed stdin read failure
+
+The opt-in review-only CLI now maps `OSError`/`InterruptedError` while reading stdin to the same hardcoded generic HOLD, never a traceback echo of a caller-supplied stream error. Dedicated tests prove one bounded read of exactly 8193 bytes maximum, no stdout data leak, partial stream HOLD and four authority/release flags false. The no-socket, no-child, no-file-open tripwires cover this error path too. This is only offline reliability, never an authorization or execution upgrade.

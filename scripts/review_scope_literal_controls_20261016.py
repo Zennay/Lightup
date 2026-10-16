@@ -52,7 +52,7 @@ def main() -> int:
         result = review_literals(tuple(values))
         if result.status != "REVIEW_ONLY":
             raise ValueError("literal integrity HOLD")
-    except (ValueError, TypeError, UnicodeError, KeyError, RecursionError, OverflowError):
+    except (ValueError, TypeError, UnicodeError, KeyError, RecursionError, OverflowError, OSError):
         sys.stdout.buffer.write(_HOLD)
         return 3
     sys.stdout.buffer.write(_REVIEW)
