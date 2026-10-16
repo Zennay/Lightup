@@ -4,10 +4,12 @@ from __future__ import annotations
 import os
 import sys
 import unittest
+from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
+from lightup import activation_issuance_window_review_1480 as reviewer
 from lightup.activation_issuance_window_review_1480 import review_issuance_transition
 from lightup.models import Authorization
 
@@ -94,6 +96,44 @@ class Transition1480Tests(unittest.TestCase):
         )
         self.assertEqual(review.reason, "check_noncanonical_authorization")
         self.assert_no_authority(review)
+
+    def test_live_input_widening_between_two_reviews_cannot_change_original_snapshot(self):
+        original = Authorization(
+            owner="fictional",
+            reference="fictional",
+            valid_from=A,
+            valid_until=B,
+        )
+        initial = reviewer.review_issuance_window
+        calls = []
+
+        def mutate_after_initial_check(*, authorization, issued_at):
+            calls.append(authorization)
+            if len(calls) == 1:
+                # Explicit synthetic race witness: caller-held dataclass can
+                # be forcibly mutated despite frozen=True. It must NOT
+                # broaden the internally captured window at stamp review.
+                object.__setattr__(
+                    original, "valid_until", B + timedelta(hours=1)
+                )
+            return initial(authorization=authorization, issued_at=issued_at)
+
+        with patch.object(
+            reviewer, "review_issuance_window",
+            side_effect=mutate_after_initial_check,
+        ):
+            verdict = review_issuance_transition(
+                authorization=original,
+                checked_at=B - timedelta(microseconds=1),
+                issued_at=B + timedelta(microseconds=1),
+            )
+        self.assertEqual(len(calls), 2)
+        self.assertIsNot(calls[0], original)
+        self.assertIs(calls[0], calls[1])
+        self.assertEqual(calls[0].valid_until, B)
+        self.assertGreater(original.valid_until, B)  # race canary fired
+        self.assertEqual(verdict.reason, "issuance_after_approved_window")
+        self.assert_no_authority(verdict)
 
     def test_no_caller_values_mutated(self):
         before = dict(vars(VALID))
