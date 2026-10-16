@@ -266,6 +266,38 @@ class FictionalCliTests(unittest.TestCase):
         r, code = self.check(dup)
         self.assertEqual((r["status"], r["reason"], code), ("HOLD", "COHERENCE_DENIED", 2))
 
+    def test_ascii_control_in_client_identity_rejected_at_json_admission(self):
+        self.assert_invalid(lambda d: d["candidates"][0].update(client_id="CLIENT-1\\nGO"))
+
+    def test_unicode_escaped_tab_in_operator_rejected_at_admission(self):
+        self.assert_invalid(
+            lambda d: d["candidates"][0]["legacy"].update(
+                owner="reviewer\\t@example.test"))
+
+    def test_fictional_host_rejects_double_dot_alias_at_admission(self):
+        self.assert_invalid(
+            lambda d: d["candidates"][0].update(asset="x..example.test"))
+
+    def test_fictional_host_rejects_label_leading_hyphen_at_admission(self):
+        self.assert_invalid(
+            lambda d: d["candidates"][0].update(asset="x.-y.example.test"))
+
+    def test_fictional_host_rejects_label_trailing_hyphen_at_admission(self):
+        self.assert_invalid(
+            lambda d: d["candidates"][0].update(asset="x-.example.test"))
+
+    def test_fictional_host_rejects_uppercase_case_alias_at_admission(self):
+        self.assert_invalid(
+            lambda d: d["candidates"][0].update(asset="App.example.test"))
+
+    def test_fictional_host_rejects_overlong_label_at_admission(self):
+        self.assert_invalid(
+            lambda d: d["candidates"][0].update(asset=("a" * 64) + ".example.test"))
+
+    def test_fictional_reference_never_accepts_newline_escape(self):
+        self.assert_invalid(
+            lambda d: d["candidates"][0]["legacy"].update(reference="SYNTH-REF\\nGO"))
+
     def test_overly_long_text_denied(self):
         self.assert_invalid(lambda d: d["candidates"][0].update(client_id="A" * 129))
 
