@@ -20,18 +20,21 @@ Untrusted duck-typed objects or subclasses can currently pass the policy
 as if they were a canonical request. This is an in-memory boundary
 demonstration, **not** proof that an external target has been reached.
 
-## Acceptance contract (11 tests; 5 deliberately OPEN source RED)
+## Acceptance contract (17 tests; 8 deliberately OPEN source RED)
 
 The new standalone `tests/test_scope_771_owner163_outer_request_red_20261016.py`
-has five ordinary green controls: exact analysis and passive requests,
-canonical lab boolean false/true owner semantics, and target-active without
-grant denial. Five source-RED cases require denial for a synthetic duck
-analysis request, duck passive request, subclass analysis, subclass lab
-true, and a property-spy object before any untrusted getter is read.
+has eight ordinary green controls: exact analysis and passive requests,
+canonical lab boolean false/true owner semantics, target-active without
+grant denial, exact fictional target-active with valid grant allowed, revoked
+grant denied, and wrong-client tenant mismatch denied. Eight source-RED cases
+require denial for a synthetic duck analysis request, duck passive request,
+subclass analysis, subclass lab true, property-spy object before any untrusted
+getter, duck target-active with an otherwise valid fictional grant, subclass
+target-active with that grant, and non-envelope objects without fields.
 All RED cases are marked `@unittest.expectedFailure` to preserve CI
 visibility without claiming the authorization source is fixed. The
 eleventh case is an ordinary strict replay oracle, requiring **exactly
-five actual expected failures**, zero unexpected successes, skips,
+eight actual expected failures**, zero unexpected successes, skips,
 errors or ordinary failures. If the source is fixed, this oracle fails
 until an authorized owner replaces RED markers with normal green
 assertions and verifies the denial semantics.
