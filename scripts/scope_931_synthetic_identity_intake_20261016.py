@@ -6,7 +6,10 @@ production identity/consent gate. A positive shape is always REVIEW_ONLY.
 from __future__ import annotations
 
 import json
+import os
+import select
 import sys
+import time
 import unicodedata
 
 MAX_INPUT_BYTES = 4096
@@ -70,15 +73,36 @@ def receipt(status: str) -> str:
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
+def _read_bounded_stdin() -> bytes | None:
+    """Require EOF within two seconds; never trust a partial pipe as complete."""
+    deadline = time.monotonic() + 2.0
+    data = bytearray()
+    try:
+        fd = sys.stdin.fileno()
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None
+            readable, _, _ = select.select([fd], [], [], remaining)
+            if not readable:
+                return None
+            chunk = os.read(fd, MAX_INPUT_BYTES + 1 - len(data))
+            if not chunk:
+                return bytes(data)
+            data.extend(chunk)
+            if len(data) > MAX_INPUT_BYTES:
+                return None
+    except (OSError, ValueError, TypeError):
+        return None
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     status = "HOLD"
     if argv == ["--offline-synthetic-only"]:
-        try:
-            raw = sys.stdin.buffer.read(MAX_INPUT_BYTES + 1)
+        raw = _read_bounded_stdin()
+        if raw is not None:
             status = review(raw)
-        except (OSError, ValueError):
-            status = "HOLD"
     sys.stdout.write(receipt(status) + "\n")
     return 3 if status == "REVIEW_ONLY" else 2
 
