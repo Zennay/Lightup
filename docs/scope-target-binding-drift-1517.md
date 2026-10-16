@@ -33,6 +33,8 @@ a demonstrated externally reachable exploit**.
   deterministic isolated reviewer tests. The two original-source rejection contracts
   use `@unittest.expectedFailure` while original activation lacks the binding
   guard. A clean expected failure **is not** a repaired source.
+- `scripts/scope_target_binding_review_cli_1517.py` — explicit standalone stdin-only canonical ASCII JSON `{\"pairs\":[[[asset,owner,grant,revision],[asset,owner,grant,revision]],...]}` input (1–64 synthetic entries, <=16384 bytes), duplicate/NaN/Unicode-alias/oversize reject, exact fixed no-input-echo JSON output, exit **2 REVIEW_ONLY** or **3 HOLD**, never exit 0, no real consent or grant.
+- `tests/test_scope_target_binding_cli_1517.py` — real subprocess and fragmented EOF, corrupted-byte and whole-cohort rejection tests (no target/network I/O).
 - `.github/workflows/scope-target-binding-review-1517.yml` — separate,
   opt-in/no-secrets hosted test lane; never uses the permanent named VPS runner.
 
@@ -44,7 +46,7 @@ owners remain independent.
 
 ```bash
 PYTHONPATH=src python -W error::ResourceWarning -m unittest discover \
-  -s tests -p 'test_scope_target_binding_review_1517.py' -v
+  -s tests -p 'test_scope_target_binding_*_1517.py' -v
 ```
 
 The only successful result acceptable is ordinary tests PASS with *two*
