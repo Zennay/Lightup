@@ -226,11 +226,11 @@ class ProtocolCliTests(unittest.TestCase):
             output = process.stdout.read()
             errors = process.stderr.read()
             self.assertEqual(process.wait(timeout=10), 2)
-            self.assertEqual(output, b"REVIEW_ONLY\\n".replace(b"\\n", b"\n"))
+            self.assertEqual(output, b"REVIEW_ONLY\n")
             self.assertEqual(errors, b"")
 
     def test_encoded_combining_mark_and_case_alias_hold(self):
-        for variant in ("case-a\\u0301.example.test", "case-A.example.test",
+        for variant in ("case-a" + chr(0x301) + ".example.test", "case-A.example.test",
                         "case-a.example.test.", "case-a.example.tesT"):
             rows = [{"version": 3, "case_id": variant, "sequence": 1}]
             self.assertEqual(_review_raw(encoded(rows)), "HOLD")
