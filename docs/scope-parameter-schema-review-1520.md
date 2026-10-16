@@ -22,3 +22,16 @@ The real fix belongs in existing `ToolRegistry.register` source-owner PR [#156](
 Other owners retain their existing files, branches and runner/workflow. No existing product source, existing workflow, active handler, grant, activation policy, account, network or release was modified here.
 
 Remaining external gates: authentic separate client and operator consent, revocation at use, source-owner repairs, independent security/privacy review, entire exact-head original hosted and genuinely registered `vps-bb300bba` Python 3.11/3.14 GREEN, and explicit human GO. **Keep PR draft; do not merge or deploy.**
+
+
+## W2: opt-in canonical JSON intake (still zero authority)
+
+New `scripts/scope_parameter_schema_cli_1520.py` reads only a maximum of 8192 bytes from stdin. Input must be exactly compact RFC-style ASCII JSON in the shape:
+
+```json
+{"parameters":[{"name":"asset","kind":"string","required":true}]}
+```
+
+The CLI rejects duplicate JSON keys before mapping, unknown/missing fields, re-encoded or noncanonical JSON, Unicode escape aliases, nonstandard floats, malformed values, 33+ parameters and oversized bytes. It uses the same reviewer as the in-memory checks. All output is a single fixed JSON line with **four false authority fields**, no input echo. Exit `2` is fictional schema `REVIEW_ONLY`; exit `3` is generic `HOLD`; **exit 0 is never possible**. It is never called from ToolRegistry or ToolExecutor.
+
+True child-process `tests/test_scope_parameter_schema_cli_1520.py` verify valid/invalid/byte-boundary/fragmented stdin, no echo and false authority. The uniquely owned hosted workflow executes both isolated source and CLI suites on Python 3.11 and 3.14 without secrets or access to real assets. Even a green workflow does not verify original production admission or grant safety.
