@@ -90,6 +90,29 @@ scope to leave the actual execution resolver. After owner repair, these must
 become true PASS and the old-source replay oracle must be retired.
 
 
+
+### Ephemeral owner-seam integration acceptance (no production patch)
+
+A new real installed-source `unittest` method temporarily wraps ONLY the
+synthetic test instance's `DomainStore._grant_from_row` method. It receives
+the **already joined and fetched sqlite3.Row**, checks the same raw scope
+columns against the pure helper, then signals `ValueError` on corrupt entries
+so the original installed resolver's pre-existing controlled exception handler
+returns `None`. Seven corrupt persisted-row classes are refused, including
+the historically leaking `TypeError` capability object. The normal canonical
+grant still resolves successfully while the test-local seam is present.
+The test checks that the guard sees the **identical raw SQLite columns** and
+the same grant ID, does not rewrite historical rows, and invokes no execution
+handler or network. Once the temporary test patch is removed, the unchanged
+original owner code is *again observed accepting an invalid row*. This is a
+strong opt-in **integration feasibility witness**, not a deployed/installed
+patch, not an authorization GO and not a substitute for owner #554 review.
+
+The source owner may choose a direct same-row guard **before**
+`_grant_from_row` rather than a wrapper; ordinary production RED tests must
+only be promoted after owner-owned real source change plus new immutable-head
+hosted AND registered permanent VPS, independent review and genuine consent.
+
 ## Deployment and conflict ownership
 
 Original source owner #554 owns the actual
