@@ -448,6 +448,59 @@ class CrossGrantBatchTests(unittest.TestCase):
         r = self.review(batch)
         self.assertEqual((r.status, r.reviewed), ("REVIEW_ONLY", 32))
 
+    def test_different_grants_same_asset_capability_are_atomic_hold(self):
+        first = batch_candidate()
+        second = batch_candidate(grant_id="G-2")
+        self.assertEqual(self.review((first,)).status, "REVIEW_ONLY")
+        self.assertEqual(self.review((second,)).status, "REVIEW_ONLY")
+        result = self.review((first, second))
+        self.assertEqual(
+            (result.status, result.reason, result.reviewed),
+            ("HOLD", "ambiguous asset-capability grant provenance", 0))
+        self.assertFalse(result.authorized)
+        self.assertFalse(result.dispatch_allowed)
+        self.assertFalse(result.release_allowed)
+
+    def test_different_grants_same_asset_capability_reverse_order_is_hold(self):
+        first = batch_candidate()
+        second = batch_candidate(grant_id="G-2")
+        self.assertEqual(self.review((second, first)).status, "HOLD")
+        self.assertEqual(self.review((first, second)).status, "HOLD")
+
+    def test_different_grants_same_asset_different_capabilities_review_only(self):
+        first = batch_candidate()
+        second = batch_candidate(grant_id="G-2", capability="tls-baseline")
+        result = self.review((first, second))
+        self.assertEqual((result.status, result.reviewed), ("REVIEW_ONLY", 2))
+        self.assertFalse(result.authorized)
+        self.assertFalse(result.release_allowed)
+
+    def test_different_grants_same_capability_different_assets_review_only(self):
+        first = batch_candidate()
+        second = batch_candidate(grant_id="G-2", asset="other.example.test")
+        result = self.review((first, second))
+        self.assertEqual((result.status, result.reviewed), ("REVIEW_ONLY", 2))
+        self.assertFalse(result.authorized)
+
+    def test_different_grants_same_asset_capability_different_actors_hold(self):
+        first = batch_candidate()
+        second = batch_candidate(grant_id="G-2")
+        second = dataclasses.replace(
+            second,
+            legacy=dataclasses.replace(second.legacy, owner="other@example.test"),
+            durable=dataclasses.replace(
+                second.durable, approved_by="other@example.test"),
+        )
+        self.assertEqual(self.review((first,)).status, "REVIEW_ONLY")
+        self.assertEqual(self.review((second,)).status, "REVIEW_ONLY")
+        self.assertEqual(self.review((first, second)).status, "HOLD")
+
+    def test_32_distinct_grants_same_asset_capability_cannot_inflate_count(self):
+        batch = tuple(batch_candidate(grant_id=f"G-{i}") for i in range(32))
+        result = self.review(batch)
+        self.assertEqual((result.status, result.reviewed), ("HOLD", 0))
+        self.assertFalse(result.consent_verified)
+
     def test_same_grant_id_same_snapshot_can_cover_multiple_explicit_assets(self):
         first = batch_candidate()
         scope = dataclasses.replace(
