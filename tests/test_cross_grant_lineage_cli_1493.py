@@ -324,6 +324,30 @@ class FictionalCliTests(unittest.TestCase):
         self.assertNotIn(b"SYNTH-REF-1", process.stdout)
         self.assertEqual(process.stderr, b"")
 
+    def test_cold_process_utc_parser_does_not_import_strptime_or_locale(self):
+        # Fresh interpreter, guard import AFTER loading only this local module.
+        # No bytecode writes; all assertions remain fake data and no authority.
+        snippet = """
+import builtins, json, sys
+from lightup.cross_grant_lineage_cli_1493 import evaluate_bytes
+original_import = builtins.__import__
+def deny_lazy_parser(name, *args, **kwargs):
+    if name in ('_strptime', 'locale'):
+        raise AssertionError('unexpected late calendar import')
+    return original_import(name, *args, **kwargs)
+builtins.__import__ = deny_lazy_parser
+receipt, code = evaluate_bytes(sys.stdin.buffer.read())
+assert code == 2, (receipt, code)
+assert receipt['status'] == 'REVIEW_ONLY' and receipt['authorized'] is False
+"""
+        process = subprocess.run(
+            [sys.executable, "-B", "-c", snippet],
+            input=encoded(valid_document()), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=15, check=False,
+        )
+        self.assertEqual(process.returncode, 0, process.stderr.decode("utf-8", "replace"))
+        self.assertEqual(process.stdout, b"")
+
     def test_offline_evaluator_no_socket_db_file_or_process(self):
         # Prime standard-library fixed-time parsing before enforcing I/O spies.
         self.check()
