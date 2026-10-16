@@ -32,7 +32,7 @@ def sample(**overrides):
     }
     record.update(overrides)
     return json.dumps(
-        {"assessment_time": NOW, "claims": [record]}, separators=(",", ":")
+        {"schema": "FICTIONAL-LAB-LINEAGE-V1", "assessment_time": NOW, "claims": [record]}, separators=(",", ":")
     ).encode("utf-8")
 
 
