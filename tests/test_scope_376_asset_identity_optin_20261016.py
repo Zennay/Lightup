@@ -458,18 +458,21 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
 
     @staticmethod
     def _snapshot_owner_candidate(original):
-        """TEST-ONLY adoption seam: pin reviewed identities before source call.
+        """TEST-ONLY synthetic owner seam with a single full-value snapshot.
 
-        Never installed in production. This remains a shape adapter, NOT a
-        consent/risk/capability/tenancy/expiry/revocation authorization gate.
+        The snapshot protects *value identity* only. The original issuer owns
+        all real consent, role, risk/capability, tenant, temporal, revocation
+        and closed-engagement authorization. Never install this test wrapper.
         """
         def review_and_pin(store, ctx, engagement_id, approved_by, reference,
                            scope, valid_from, valid_until,
                            recurring_retest_allowed=False):
-            identities = _canonical_asset_snapshot(scope)
-            if identities is None:
-                raise ValueError("asset identity shape requires independent review")
-            fields = object.__getattribute__(scope, "__dict__")
+            if type(scope) is not ScopeDefinition:
+                raise ValueError("scope changed after asset review")
+            try:
+                fields = object.__getattribute__(scope, "__dict__")
+            except (AttributeError, TypeError):
+                raise ValueError("scope changed after asset review") from None
             if type(fields) is not dict or len(fields) != 4:
                 raise ValueError("scope changed after asset review")
             seen = fields.copy()
@@ -477,15 +480,24 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
                     or set(seen) != {"assets", "excluded_assets", "max_risk",
                                     "allowed_capabilities"}):
                 raise ValueError("scope changed after asset review")
-            if seen["assets"] is not identities[0] or seen["excluded_assets"] is not identities[1]:
-                raise ValueError("scope changed after asset review")
             risk = seen["max_risk"]
             capabilities = seen["allowed_capabilities"]
             if (type(risk) is not RiskLevel or type(capabilities) is not tuple
                     or any(type(c) is not str for c in capabilities)):
                 raise ValueError("scope metadata unavailable for source owner")
-            # Fresh object constructed from pinned native immutable values.
-            # All actual grant authorization still belongs to the original.
+            # ALL four value fields are copied from the same dictionary version.
+            # The local envelope is never exposed to an untrusted caller.
+            temporary = ScopeDefinition(
+                assets=seen["assets"], max_risk=risk,
+                allowed_capabilities=capabilities,
+                excluded_assets=seen["excluded_assets"],
+            )
+            identities = _canonical_asset_snapshot(temporary)
+            if identities is None:
+                raise ValueError("asset identity shape requires independent review")
+            # Recreate once more from the immutable reviewed tuple values.
+            # A post-check modification of temporary or caller's scope
+            # cannot replace the original allowed/excluded identifiers.
             pinned = ScopeDefinition(
                 assets=identities[0], max_risk=risk,
                 allowed_capabilities=capabilities,
@@ -496,136 +508,6 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
                 pinned, valid_from, valid_until, recurring_retest_allowed
             )
         return review_and_pin
-
-    def test_legacy_preview_then_original_object_can_store_postcheck_mutation(self):
-        """Document an actual TEST-ONLY unsafe handoff, not an installed exploit."""
-        scope = _scope(("fixture.example.test",), ("blocked.example.test",))
-        actual_original = DomainStore.record_authorization_grant
-        real_review = review_asset_identity_shape
-        def mutate_after_review(untrusted):
-            result = real_review(untrusted)
-            self.assertEqual(result.decision, "REVIEW_ONLY")
-            object.__setattr__(untrusted, "assets", (" ",))
-            object.__setattr__(untrusted, "excluded_assets", (" ",))
-            return result
-        with patch("test_scope_376_asset_identity_optin_20261016.review_asset_identity_shape",
-                   side_effect=mutate_after_review), \
-             patch.object(DomainStore, "record_authorization_grant",
-                          self._owner_candidate(actual_original)):
-            grant = self._record(scope)
-        # This proves a review-then-forward-the-same-object adapter is unsafe.
-        self.assertEqual(grant.scope.assets, (" ",))
-        self.assertEqual(grant.scope.excluded_assets, (" ",))
-        self.assertEqual(len(self._persisted_snapshot()), 1)
-        self.assertIs(DomainStore.record_authorization_grant, actual_original)
-
-    def test_snapshot_candidate_denies_mutation_between_review_and_forward(self):
-        original = DomainStore.record_authorization_grant
-        scope = _scope(("fixture.example.test",), ("blocked.example.test",))
-        actual_snapshot = _canonical_asset_snapshot
-        original_called = []
-        def snapshot_and_mutate(untrusted):
-            values = actual_snapshot(untrusted)
-            self.assertIsNotNone(values)
-            object.__setattr__(untrusted, "assets", (" ",))
-            object.__setattr__(untrusted, "excluded_assets", (" ",))
-            return values
-        def forbidden_original(*args, **kwargs):
-            original_called.append(True)
-            raise AssertionError("original source reached after scope mutation")
-        with patch("test_scope_376_asset_identity_optin_20261016._canonical_asset_snapshot",
-                   side_effect=snapshot_and_mutate), \
-             patch.object(DomainStore, "record_authorization_grant",
-                          self._snapshot_owner_candidate(forbidden_original)), \
-             patch.object(DomainStore, "_connect",
-                          side_effect=AssertionError("database opened after mutation")):
-            with self.assertRaisesRegex(ValueError, "scope changed after asset review"):
-                self._record(scope)
-        self.assertEqual(original_called, [])
-        self.assertIs(DomainStore.record_authorization_grant, original)
-        self.assertEqual(self._persisted_snapshot(), ())
-
-    def test_snapshot_candidate_passes_original_immutable_values_after_mutation(self):
-        original = DomainStore.record_authorization_grant
-        scope = _scope(("fixture.example.test",), ("blocked.example.test",))
-        observed = []
-        def owner_gate(store, ctx, engagement_id, approved_by, reference,
-                       pinned, valid_from, valid_until, recurring=False):
-            self.assertIsNot(pinned, scope)
-            self.assertEqual(pinned.assets, ("fixture.example.test",))
-            self.assertEqual(pinned.excluded_assets, ("blocked.example.test",))
-            observed.append(pinned)
-            # Simulate post-review malicious mutation of caller's original.
-            object.__setattr__(scope, "assets", (" ",))
-            object.__setattr__(scope, "excluded_assets", (" ",))
-            return original(store, ctx, engagement_id, approved_by, reference,
-                            pinned, valid_from, valid_until, recurring)
-        with patch.object(DomainStore, "record_authorization_grant",
-                          self._snapshot_owner_candidate(owner_gate)):
-            recorded = self._record(scope)
-        self.assertEqual(len(observed), 1)
-        self.assertEqual(recorded.scope.assets, ("fixture.example.test",))
-        self.assertEqual(recorded.scope.excluded_assets, ("blocked.example.test",))
-        self.assertEqual(self.store.list_authorization_grants(
-            self.operator, self.engagement.engagement_id
-        )[0].scope.excluded_assets, ("blocked.example.test",))
-        self.assertEqual(len(self._persisted_snapshot()), 1)
-        self.assertIs(DomainStore.record_authorization_grant, original)
-
-    def test_snapshot_candidate_still_requires_separate_owner_permission(self):
-        original = DomainStore.record_authorization_grant
-        owner_calls = []
-        def deny_without_consent(*args, **kwargs):
-            owner_calls.append(True)
-            raise PermissionError("fictional original authorization still mandatory")
-        with patch.object(DomainStore, "record_authorization_grant",
-                          self._snapshot_owner_candidate(deny_without_consent)):
-            with self.assertRaisesRegex(
-                PermissionError, "fictional original authorization still mandatory"
-            ):
-                self._record(_scope())
-        self.assertEqual(owner_calls, [True])
-        self.assertIs(DomainStore.record_authorization_grant, original)
-        self.assertEqual(self._persisted_snapshot(), ())
-
-    def test_snapshot_candidate_rejects_corrupt_risk_capability_shapes_pre_io(self):
-        original = DomainStore.record_authorization_grant
-        attempts = []
-        for field, changed in (
-                ("max_risk", True), ("max_risk", 1),
-                ("allowed_capabilities", ["fixture"]),
-                ("allowed_capabilities", (42,))):
-            with self.subTest(field=field, value_type=type(changed).__name__):
-                untrusted = _scope()
-                object.__setattr__(untrusted, field, changed)
-                with patch.object(DomainStore, "record_authorization_grant",
-                                  self._snapshot_owner_candidate(
-                                      lambda *args, **kwargs: attempts.append(True)
-                                  )), \
-                     patch.object(DomainStore, "_connect",
-                                  side_effect=AssertionError("database opened")):
-                    with self.assertRaisesRegex(
-                        ValueError, "^scope metadata unavailable for source owner$"
-                    ):
-                        self._record(untrusted)
-        self.assertFalse(attempts)
-        self.assertIs(DomainStore.record_authorization_grant, original)
-        self.assertEqual(self._persisted_snapshot(), ())
-
-    def test_snapshot_candidate_cannot_override_original_source_temporal_gate(self):
-        original = DomainStore.record_authorization_grant
-        with patch.object(DomainStore, "record_authorization_grant",
-                          self._snapshot_owner_candidate(original)):
-            for start, end in ((datetime(2026, 1, 1), self.end),
-                               (self.end, self.start)):
-                with self.subTest(case=(str(start), str(end))):
-                    with self.assertRaises(ValueError):
-                        self.store.record_authorization_grant(
-                            self.operator, self.engagement.engagement_id,
-                            "fixture-reviewer", "NOT-CONSENT", _scope(), start, end
-                        )
-                    self.assertEqual(self._persisted_snapshot(), ())
-        self.assertIs(DomainStore.record_authorization_grant, original)
 
     def test_all_bad_assets_deny_before_original_record_with_no_sqlite_mutation(self):
         original = DomainStore.record_authorization_grant
