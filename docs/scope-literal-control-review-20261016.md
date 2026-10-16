@@ -52,3 +52,7 @@ A single `read(8193)` was insufficient for general stream implementations: a sho
 ## W9 — output-delivery fail-closed contract
 
 CLI `_emit` checks exact written-byte count and flush success. A broken pipe, short write, invalid write-result type or failed flush returns non-success exit 3; no exception detail or input is echoed or retried. A partial OS output cannot be retracted, so downstream clients must enforce complete canonical JSON and the explicit exit code; this remains strictly review-only and not an authorization token. The new dedicated offline tests exercise successful exact HOLD/REVIEW_ONLY wire messages and artificial output failures with network, subprocess and local file opens forbidden.
+
+## W10 — atypical stdin/stdout adapter error fail-closed boundary
+
+Synthetic tests reproduced unhandled `AttributeError`, `TypeError`, `ValueError` and `BufferError` when adapter APIs were missing or failed, including closed stdout. The opt-in CLI now uses a strictly enumerated read/write exception fence: stdin adapter failures yield a generic HOLD where an output channel exists, while stdout failures force exit3 without leaking exception details. Six new tests isolate each broken adapter, with in-process socket, process spawning and file-open tripwires. `KeyboardInterrupt` and `SystemExit` remain outside these exception fences and are not reinterpreted as successful review. No runtime authorization, grant, network or original source-owner code changed.

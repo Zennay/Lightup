@@ -56,7 +56,7 @@ def _emit(output: bytes, code: int) -> int:
         if type(written) is not int or written != len(output):
             return 3
         sys.stdout.buffer.flush()
-    except OSError:
+    except (OSError, ValueError, TypeError, AttributeError, BufferError):
         return 3
     return code
 
@@ -82,7 +82,7 @@ def main() -> int:
         result = review_literals(tuple(values))
         if result.status != "REVIEW_ONLY":
             raise ValueError("literal integrity HOLD")
-    except (ValueError, TypeError, UnicodeError, KeyError, RecursionError, OverflowError, OSError):
+    except (ValueError, TypeError, AttributeError, BufferError, UnicodeError, KeyError, RecursionError, OverflowError, OSError):
         return _emit(_HOLD, 3)
     return _emit(_REVIEW, 2)
 
