@@ -6,6 +6,7 @@ on:
       - 'src/lightup/cross_grant_lineage_cli_1493.py'
       - 'tests/test_cross_grant*_1493.py'
       - '.github/workflows/lightup-cross-grant-lineage-1493.yml'
+      - 'examples/fictional_cross_grant_1493.json'
   workflow_dispatch:
 permissions:
   contents: read
@@ -51,4 +52,29 @@ jobs:
           })
           if not result.wasSuccessful() or result.testsRun != 106 or result.skipped or result.expectedFailures:
               raise SystemExit('ISOLATED_1493: HOLD (non-success or masked tests)')
+          PY
+      - name: Attest actual fictional sample CLI on stdin (always nonzero)
+        shell: bash
+        run: |
+          set +e
+          output="$(PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m lightup.cross_grant_lineage_cli_1493 --synthetic-only < examples/fictional_cross_grant_1493.json)"
+          code=$?
+          set -e
+          test "$code" -eq 2
+          OUTPUT="$output" python - <<'PY'
+          import json
+          import os
+          actual = json.loads(os.environ['OUTPUT'])
+          expected = {
+              'authorized': False,
+              'consent_verified': False,
+              'dispatch_allowed': False,
+              'reason': 'UNTRUSTED_COHERENCE',
+              'release_allowed': False,
+              'reviewed': 1,
+              'status': 'REVIEW_ONLY',
+          }
+          if actual != expected:
+              raise SystemExit('FICTIONAL_1493 unexpected or authorizing receipt')
+          print('FICTIONAL_1493 stdin sample: HOLD-ONLY, exit=2, no authority')
           PY
