@@ -88,11 +88,14 @@ class TestFictionalReviewModuleIsolation(unittest.TestCase):
         content = (ROOT / ".github/workflows/scope-fictional-review-sequence-1505.yml").read_text()
         for required in ("pull_request:", "paths:", "permissions:\n  contents: read",
                          "runs-on: ubuntu-latest", "timeout-minutes: 10",
-                         "persist-credentials: false", "3.11", "3.14",
+                         "persist-credentials: false",
+                         "actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09",
+                         "actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1", "3.11", "3.14",
                          "test_fictional_review_sequence*_1505.py"):
             self.assertIn(required, content)
         for forbidden in ("runs-on: self-hosted", "secrets.", "deploy:", "push:",
-                          "pull_request_target:", "id-token: write", "write-all",
+                          "pull_request_target:", "id-token: write",
+                          "actions/checkout@v5", "actions/setup-python@v6", "write-all",
                           "contents: write", "sudo "):
             self.assertNotIn(forbidden, content)
 
