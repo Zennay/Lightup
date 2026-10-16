@@ -17,6 +17,7 @@ from .models import Authorization
 _ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9@._:/-]{0,127}\Z", re.ASCII)
 _ASSET = re.compile(r"[a-z0-9][a-z0-9.-]{0,252}\Z", re.ASCII)
 _HOST_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z", re.ASCII)
+_ACTOR = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9._-]{0,62}[A-Za-z0-9])?@example\.test\Z", re.ASCII)
 
 
 @dataclass(frozen=True)
@@ -100,6 +101,18 @@ def review_cross_grant_lineage(
         return _hold("noncanonical identity")
     if not _asset(asset):
         return _hold("noncanonical asset")
+    # This UNWIRED preview has only caller-owned, invented provenance.
+    # Require obviously fictional actors and reference markers so a real
+    # operator address or consent ticket cannot be mistaken for lab evidence.
+    if not (
+        _ACTOR.fullmatch(legacy.owner)
+        and _ACTOR.fullmatch(durable.approved_by)
+        and legacy.reference.startswith("SYNTH-")
+        and durable.reference.startswith("SYNTH-")
+        and len(legacy.reference) > len("SYNTH-")
+        and len(durable.reference) > len("SYNTH-")
+    ):
+        return _hold("nonfictional asserted provenance")
     if type(durable.recurring_retest_allowed) is not bool:
         return _hold("noncanonical retest flag")
     if type(requested_risk) is not RiskLevel:
