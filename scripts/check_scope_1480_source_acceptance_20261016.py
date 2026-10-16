@@ -227,6 +227,23 @@ def main() -> int:
 
     capture = io.StringIO()
     result = unittest.TextTestRunner(stream=capture, verbosity=2).run(suite)
+
+    # The evidence source set must remain exactly the one reviewed during
+    # test execution; preflight checks alone can miss checkout/worktree churn.
+    # A local recheck isn't a signed CI attestation or concurrency lock.
+    if not (
+        _original_source_is_pinned()
+        and _original_dependency_sources_are_pinned()
+        and _review_material_is_pinned()
+    ):
+        print(json.dumps(
+            _verdict(
+                "HOLD", "source_or_review_drift_during_tests",
+                result.testsRun, len(result.expectedFailures),
+            ), sort_keys=True,
+        ))
+        return 1
+
     red_is_exact = (
         len(result.expectedFailures) == 1
         and EXPECTED_RED == result.expectedFailures[0][0].id()
