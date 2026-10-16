@@ -85,7 +85,7 @@ by the helper itself. A returned allow is **only an in-memory policy decision**
 and never permission to start a scanner or real capability.
 
 A completely separate new
-`tests/test_scope_771_request_admission_optin_20261016.py` uses 29
+`tests/test_scope_771_request_admission_optin_20261016.py` uses 32
 ordinary in-memory tests: exact fictional analysis/passive/lab modes and valid
 approved synthetic target; missing, expired, revoked or mismatched fictional
 grants, risk, target and capability narrowing; malformed canonical fields;
@@ -104,3 +104,21 @@ production substitute for #1174 and does not itself prove grant authenticity,
 live revocation, destination binding, operator step-up or durable consent.
 The original 26-case source-RED test module is still separate: eight known
 owner-source REDs are unresolved even if all opt-in controls pass.
+
+## W11: exact policy instance method-shadow closure (opt-in only)
+
+Security hardening is not satisfied by an exact `type(policy) is ExecutionPolicy`
+check alone: owner `ExecutionPolicy` has a writable instance `__dict__`, so
+`policy.decide = forged_allow` can replace the *method* without changing its
+class. The isolated helper now rejects an instance with a shadowed `decide`
+entry **before any call**, returning typed `PolicyDecision(False, ...)`.
+For a canonical instance with no shadow it calls `ExecutionPolicy.decide(policy,
+request)` directly rather than using polymorphic `policy.decide(request)`.
+Three new ordinary in-memory tests prove the forged allow method is not called,
+that even safe analysis is denied if the policy method binding was changed,
+and that deleting the synthetic shadow restores owner behavior. The source
+`src/lightup/execution_policy.py` is **not changed** and remains independently
+vulnerable; owner issue [#935](https://github.com/Zennay/Lightup/issues/935)
+retains its separate lifetime-binding scope. This is **not** a fix to
+`ToolExecutor`, live resolver or real authorization, and should not be
+used as a GO signal.
