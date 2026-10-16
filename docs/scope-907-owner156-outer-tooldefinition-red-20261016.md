@@ -19,9 +19,9 @@ synthetic in-memory proof, not an actual successful target/tool execution.
 ## Our strictly additive isolated acceptance
 
 New file `tests/test_scope_907_owner156_outer_definition_red_20261016.py`
-contains **14 methods**:
+contains **16 methods**:
 
-- Eight ordinary controls prove exact canonical registration and identity,
+- Ten ordinary controls prove exact canonical registration and identity,
   required parameter validation, duplicate-ID denial, LAB_ONLY capability
   interaction denial, malformed inner interaction denial, rejected unknown or
   ill-typed parameters, allowed canonical LAB_ONLY registration and atomic
@@ -58,3 +58,7 @@ No GO, merge, deploy or active target authorization arises from this test.
 ## Witness integrity and false-green controls
 
 Every expected source RED now requires a distinct **synthetic source-defect marker** in the actual failure traceback, checked by the ordinary replay oracle. A generic exception, unrelated assertion, skipped RED, or newly corrected admission cannot be counted as proof of the original defect. For override and duck objects the witness checks that `ToolRegistry` really stored the object, retained the non-invoked handler sentinel and allowed the object's **in-memory** `validate_arguments({})` despite a mandatory `query` parameter. The getter-spy witness proves an untrusted getter was used before type admission. The handler is never called. Three additional ordinary canonical controls pin typed arguments, lab-only lab registration and unknown capability atomic denial.
+
+## Mutation-tested replay integrity
+
+Two further ordinary offline unit controls run the **actual replay oracle** with a temporary in-memory patch of `ToolRegistry.register`: an unrelated `RuntimeError` must NOT count as one of the five known source REDs, and a simulated correct typed `OrchestrationError` for every noncanonical definition must be recognized as a source-owner change needing deliberate RED-to-PASS migration. The patch never changes production files, grants or invokes a tool handler.
