@@ -116,6 +116,41 @@ class FictionalCliTests(unittest.TestCase):
         r, code = self.check(conflict)
         self.assertEqual((r["status"], r["reviewed"], code), ("HOLD", 0, 2))
 
+    def test_distinct_grants_same_asset_capability_are_coherence_hold(self):
+        def collide(d):
+            d["candidates"].append(valid_record("app.example.test", "G-2"))
+        result, code = self.check(collide)
+        self.assertEqual((result["status"], result["reason"], result["reviewed"], code),
+                         ("HOLD", "COHERENCE_DENIED", 0, 2))
+        for key in ("authorized", "consent_verified",
+                    "dispatch_allowed", "release_allowed"):
+            self.assertIs(result[key], False)
+
+    def test_distinct_grants_same_asset_different_capability_stay_review_only(self):
+        def noncollision(d):
+            other = valid_record("app.example.test", "G-2")
+            other["capability_id"] = "tls-baseline"
+            other["durable"]["scope"]["allowed_capabilities"] = ["tls-baseline"]
+            d["candidates"].append(other)
+        result, code = self.check(noncollision)
+        self.assertEqual((result["status"], result["reviewed"], code),
+                         ("REVIEW_ONLY", 2, 2))
+
+    def test_distinct_grants_same_capability_different_assets_stay_review_only(self):
+        def noncollision(d):
+            d["candidates"].append(valid_record("other.example.test", "G-2"))
+        result, code = self.check(noncollision)
+        self.assertEqual((result["status"], result["reviewed"], code),
+                         ("REVIEW_ONLY", 2, 2))
+
+    def test_max_size_distinct_grant_replay_is_atomic_hold(self):
+        def inflated(d):
+            d["candidates"] = [
+                valid_record("app.example.test", f"G-{i}") for i in range(32)]
+        result, code = self.check(inflated)
+        self.assertEqual((result["status"], result["reviewed"], code), ("HOLD", 0, 2))
+        self.assertFalse(result["release_allowed"])
+
     def test_same_grant_id_identical_two_asset_legacy_stays_review_only(self):
         def coherent(document):
             first = document["candidates"][0]
