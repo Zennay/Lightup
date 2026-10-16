@@ -39,7 +39,14 @@ def _bad_constant(_value: str) -> object:
 def review_record(record: object) -> dict[str, object]:
     """No database, no mutation, no decision authority. Typed synthetic subset."""
     eligible = False
-    if type(record) is dict and record.keys() == _FIELDS:
+    # Exact outer dict is insufficient: str-subclass keys can override
+    # hashing/equality during dict_keys comparisons. Admit keys first.
+    if (
+        type(record) is dict
+        and len(record) == len(_FIELDS)
+        and all(type(key) is str for key in record)
+        and record.keys() == _FIELDS
+    ):
         approval = record["approval_id"]
         requester = record["requested_by"]
         reviewer = record["reviewer_id"]
