@@ -1,0 +1,33 @@
+name: Scope fictional handoff sequence review 1505
+on:
+  pull_request:
+    paths:
+      - 'src/lightup/fictional_review_sequence_1505.py'
+      - 'tests/test_fictional_review_sequence_1505.py'
+      - 'docs/scope-fictional-review-sequence-1505.md'
+      - '.github/workflows/scope-fictional-review-sequence-1505.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fictional-sequence-1505-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-only:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.14']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Stdlib-only ordinary fictional review tests (never permission)
+        env:
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests -p 'test_fictional_review_sequence_1505.py' -v
