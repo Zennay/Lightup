@@ -62,3 +62,32 @@ Every expected source RED now requires a distinct **synthetic source-defect mark
 ## Mutation-tested replay integrity
 
 Two further ordinary offline unit controls run the **actual replay oracle** with a temporary in-memory patch of `ToolRegistry.register`: an unrelated `RuntimeError` must NOT count as one of the five known source REDs, and a simulated correct typed `OrchestrationError` for every noncanonical definition must be recognized as a source-owner change needing deliberate RED-to-PASS migration. The patch never changes production files, grants or invokes a tool handler.
+
+## Additional isolated, working opt-in registration boundary
+
+The strictly **unwired** new module
+`src/lightup/scope_907_registry_admission_optin.py` now exposes
+`register_exact_tool_definition(registry, definition, handler)`. It checks
+the **exact** built-in `type(registry) is ToolRegistry` and
+`type(definition) is ToolDefinition` before reading any caller-controlled
+properties or calling a polymorphic registry method. Noncanonical objects
+receive controlled `OrchestrationError` without touching the registry.
+Canonical inputs delegate to the **original installed source-owner**
+`ToolRegistry.register` unchanged; no handler is called or scope widened.
+
+This is a real opt-in functional implementation, **not production integration**:
+no app/worker/ToolExecutor imports it, and it does not itself authorize tool
+execution or validate all nested fields. It must not be considered a replacement
+for the source-owner fix at `ToolRegistry.register` itself.
+
+A further independent file
+`tests/test_scope_907_registry_admission_optin_20261016.py` checks
+**15 ordinary tests** across exact canonical registration, allowed synthetic
+lab registration, malformed risk/interaction/capability rejection, parameter
+type enforcement, duplicate IDs, forged ToolDefinition subclasses, duck
+metadata with getter spies, and forged ToolRegistry objects. All handlers
+are explicit never-call sentinels; tests exercise **registration only**.
+
+The separate original owner-source 16-method packet continues to carry
+five deliberately **OPEN** real source REDs. Passing the new opt-in tests
+does not convert these into source PASS or remove DRAFT/HOLD gates.
