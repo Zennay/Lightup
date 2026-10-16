@@ -75,3 +75,18 @@ Opt-in machineleesbare output bevat exact `status`, `notice`, `reviewed`, `eleva
 
 Twaalf aparte echte subprocess-regressies in `tests/test_synthetic_scope_notice_json_1495.py` bewijzen determinisme, NL/EN, privacy, dubbele JSON-sleutels, 65.536-byte grens, risicoscores, exact machineveld-schema en altijd blijvende vier valse authority-vlaggen. Dit JSON-formaat is uitsluitend een **preview-gegevensvorm**, geen gecertificeerd toestemmingsbewijs. Het mag pas in een werkelijke operator-UI worden geïntegreerd na onafhankelijke review én uitdrukkelijke menselijke GO.
 
+
+## Echte offline operator-kaart (HTML zonder externe verbindingen)
+
+```bash
+python -m lightup.synthetic_scope_notice_cli_1495 --synthetic-only --lang nl --format html \
+  < examples/fictional_scope_notice_1495.json > fictieve-scopekaart.html
+```
+
+**Let op:** exitcode 2 betekent een synthetische `REVIEW_ONLY`-kaart, **niet** succes of toestemming. Sommige shells beschouwen dat terecht als een niet-nul exitcode. Bij ongeldige invoer wordt een volledig generieke `HOLD`-HTML-kaart (exitcode 3) weergegeven, zonder ongeverifieerde domeinen/andere input te tonen. Open de opgeslagen kaart lokaal als *niet-vertrouwde* preview; er worden geen echte systemen benaderd.
+
+De zuivere bronfunctie `render_synthetic_scope_html(proposals, review_at=now, language="nl")` levert een toegankelijke, responsive Nederlandstalige reviewkaart met prominent bovenaan **NOT AUTHORIZED — NIET GEAUTORISEERD**, gesorteerde fictieve scope-regels, risicobeoordeling (inclusief verplichte onafhankelijke check bij risico 4–5), UTC tijdvensters en vier expliciet onware authority-vlaggen. Er zijn **geen knoppen om iets uit te voeren**, formulieren, links, scripts, webfonts, afbeeldingen of externe CSS; alle weergegeven waarden worden ge-escaped. Een ingebouwde strikte Content-Security-Policy weigert scripts, connecties, afbeeldingen, formulieren en basis-URL's. Dit is géén productiescherm, geverifieerde toestemming of live scaninterface.
+
+Nieuwe strikt offline source- en echte CLI-testklasse `tests/test_synthetic_scope_notice_html_1495.py` dekt onder meer tweetalige output, mobiel-uitklapbare tabel, 32/33-recordgrenzen, invalide/verdubbelde input (atomische HOLD zonder echo), uitsluitend lokale HTML-inhoud, output zonder externe actieve elementen, nonzero exitcodes, determinisme, print-styles en geen file/DNS/socket/SQLite/process in de renderfunctie.
+
+Dezelfde eigenaar-/releasescheiding geldt: **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD**, geen merge, deploy, actieve tooling of clientsystemen zonder onafhankelijke security/privacy/eigenaarreview, werkelijk geauthenticeerde toestemming, intrekking op gebruik en menselijke GO.
