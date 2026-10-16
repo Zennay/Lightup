@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import sys
 import unittest
+from random import Random
 from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 
@@ -134,6 +135,40 @@ class Transition1480Tests(unittest.TestCase):
         self.assertGreater(original.valid_until, B)  # race canary fired
         self.assertEqual(verdict.reason, "issuance_after_approved_window")
         self.assert_no_authority(verdict)
+
+    def test_seeded_clock_matrix_preserves_coherent_interval(self):
+        # 2,500 deterministic fictional transitions, no wall clock or targets.
+        rng = Random(1480)
+        for index in range(2500):
+            check_offset = rng.randrange(-10, 115)
+            stamp_offset = rng.randrange(-10, 115)
+            check = A + timedelta(seconds=check_offset)
+            stamp = A + timedelta(seconds=stamp_offset)
+            decision = review_issuance_transition(
+                authorization=VALID, checked_at=check, issued_at=stamp,
+            )
+            expected = (
+                0 <= check_offset <= 300
+                and 0 <= stamp_offset <= 300
+                and stamp_offset >= check_offset
+            )
+            with self.subTest(index=index):
+                self.assertEqual(decision.status == "REVIEW_ONLY", expected)
+                self.assert_no_authority(decision)
+
+    def test_non_utc_clock_offsets_never_create_review_authority(self):
+        for hours in (-12, -5, -1, 1, 5, 14):
+            zone = timezone(timedelta(hours=hours))
+            with self.subTest(offset=hours):
+                for checked, issued in (
+                    (A.astimezone(zone), B),
+                    (A, B.astimezone(zone)),
+                ):
+                    review = review_issuance_transition(
+                        authorization=VALID, checked_at=checked, issued_at=issued,
+                    )
+                    self.assertEqual(review.status, "HOLD")
+                    self.assert_no_authority(review)
 
     def test_no_caller_values_mutated(self):
         before = dict(vars(VALID))
