@@ -72,7 +72,22 @@ def render_synthetic_scope_html(
     The already existing pure notice policy remains the sole admission shape
     checker. HOLD renders a generic HTML page without any input echo.
     """
-    notice = render_scope_notice(proposals, review_at=review_at, language=language)
+    # Freeze one private copy BEFORE review: a caller can use object.__setattr__
+    # even on a frozen dataclass and mutate a record between the policy check
+    # and HTML rendering. Never re-read the caller-owned objects afterwards.
+    try:
+        if type(proposals) is tuple and 1 <= len(proposals) <= 32 and all(
+            type(p) is ScopeProposal for p in proposals
+        ):
+            snapshot = tuple(
+                ScopeProposal(p.asset, p.capability, p.risk, p.valid_from, p.valid_until)
+                for p in proposals
+            )
+        else:
+            snapshot = ()
+    except (AttributeError, TypeError, ValueError):
+        snapshot = ()
+    notice = render_scope_notice(snapshot, review_at=review_at, language=language)
     locale = language if type(language) is str and language in ("en", "nl") else "en"
     dutch = locale == "nl"
     banner = (
@@ -99,7 +114,7 @@ def render_synthetic_scope_html(
     # Every entry has been type and shape validated by the pure reviewer;
     # still escape absolutely every displayed value.
     rows = []
-    for proposal in sorted(proposals, key=lambda x: (x.asset, x.capability)):
+    for proposal in sorted(snapshot, key=lambda x: (x.asset, x.capability)):
         start = proposal.valid_from.isoformat().replace("+00:00", "Z")
         end = proposal.valid_until.isoformat().replace("+00:00", "Z")
         rows.append(
@@ -132,9 +147,9 @@ def render_synthetic_scope_html(
         if dutch else
         "Every proposed scope requires independent human review."
     )
-    unique_assets = len({p.asset for p in proposals})
-    elevated_count = sum(1 for p in proposals if p.risk >= 4)
-    earliest_expiry = min(p.valid_until for p in proposals).isoformat().replace("+00:00", "Z")
+    unique_assets = len({p.asset for p in snapshot})
+    elevated_count = sum(1 for p in snapshot if p.risk >= 4)
+    earliest_expiry = min(p.valid_until for p in snapshot).isoformat().replace("+00:00", "Z")
     metric_labels = (
         ("Fictieve systemen", "Hoog risico", "Eerste verloopmoment (UTC)")
         if dutch else ("Fictional assets", "Elevated risks", "Earliest expiry (UTC)")
