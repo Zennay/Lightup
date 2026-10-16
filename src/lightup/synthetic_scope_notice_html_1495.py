@@ -151,15 +151,15 @@ def render_synthetic_scope_html(
         ) + "</div>"
     )
     gates = (
-        ("Klanten- en operatoridentiteit onafhankelijk geverifieerd",
-         "Exacte scope, tijdvenster en referentie door bronhouder gevalideerd",
-         "Duurzame intrekking bij daadwerkelijke uitvoering getoetst",
-         "Security/privacy-review en expliciete menselijke GO verkregen")
+        ("Verifieer klant- en operatoridentiteit onafhankelijk",
+         "Laat scope, tijdvenster en referentie door bronhouder valideren",
+         "Toets duurzame intrekking bij daadwerkelijk gebruik",
+         "Verkrijg onafhankelijke security-/privacyreview en expliciete menselijke GO")
         if dutch else
-        ("Client and operator identity independently authenticated",
-         "Exact scope, time window and reference verified by source owner",
-         "Durable revocation checked at time of actual use",
-         "Security/privacy review and explicit human GO obtained")
+        ("Independently authenticate client and operator identities",
+         "Verify exact scope, time window and reference with source owner",
+         "Verify durable revocation at actual time of use",
+         "Obtain independent security/privacy review and explicit human GO")
     )
     gate_heading = "Open vrijgavevoorwaarden" if dutch else "Outstanding release requirements"
     gates_html = (
