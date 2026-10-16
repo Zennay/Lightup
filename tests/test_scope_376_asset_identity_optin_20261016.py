@@ -181,6 +181,126 @@ class ExistingDomainSourceRed376(unittest.TestCase):
         self.assertEqual(stored[0].scope.assets, grant.scope.assets)
 
 
+
+class OwnerAdoptionSameConnection376(unittest.TestCase):
+    """Opt-in review at the ACTUAL record call; original method remains untouched.
+
+    This is a simulation inside disposable SQLite, not installed enforcement.
+    """
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.store = DomainStore(Path(self.temp.name) / "isolated-376.db")
+        self.operator = AccessContext("operator-fixture", Role.OPERATOR)
+        client = self.store.create_client(self.operator, "Isolated Fake Lab")
+        self.engagement = self.store.create_engagement(
+            self.operator, client.client_id, "synthetic approval only")
+        self.start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        self.end = datetime(2027, 1, 1, tzinfo=timezone.utc)
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def _record(self, scope):
+        return self.store.record_authorization_grant(
+            self.operator, self.engagement.engagement_id, "fixture-reviewer",
+            "NOT-CONSENT", scope, self.start, self.end)
+
+    def _persisted_snapshot(self):
+        with self.store._connect() as con:
+            return tuple(tuple(row) for row in con.execute(
+                "SELECT grant_id, client_id, engagement_id, approved_by, reference, "
+                "assets_json, excluded_assets_json, allowed_capabilities_json, "
+                "max_risk, valid_from, valid_until, recurring_retest_allowed, created_at "
+                "FROM authorization_grants ORDER BY rowid"
+            ))
+
+    @staticmethod
+    def _owner_candidate(original):
+        def review_before_record(store, ctx, engagement_id, approved_by, reference,
+                                 scope, valid_from, valid_until,
+                                 recurring_retest_allowed=False):
+            result = review_asset_identity_shape(scope)
+            # Compare only immutable built-in status; never use truthiness as authority.
+            if result.decision != "REVIEW_ONLY":
+                raise ValueError("asset identity shape requires independent review")
+            return original(store, ctx, engagement_id, approved_by, reference,
+                            scope, valid_from, valid_until, recurring_retest_allowed)
+        return review_before_record
+
+    def test_all_bad_assets_deny_before_original_record_with_no_sqlite_mutation(self):
+        original = DomainStore.record_authorization_grant
+        rejected = (
+            _scope((" ",)),
+            _scope(("fixture.example.test", "")),
+            _scope(("fixture.example.test ",)),
+            _scope((123,)),
+            _scope(excluded=(" ",)),
+            _scope(excluded=(False,)),
+            _scope(excluded=("fixture.example.test\n",)),
+            _scope(excluded=("fixture.example.test", None)),
+            _scope(excluded=("secret.invalid",) * 257),
+        )
+        with patch.object(DomainStore, "record_authorization_grant",
+                          self._owner_candidate(original)):
+            for scope in rejected:
+                with self.subTest(allow=repr(scope.assets)[:40],
+                                  exclude=repr(scope.excluded_assets)[:40]):
+                    before = self._persisted_snapshot()
+                    with self.assertRaisesRegex(
+                        ValueError, "^asset identity shape requires independent review$"
+                    ) as error:
+                        self._record(scope)
+                    self.assertNotIn("secret.invalid", str(error.exception))
+                    self.assertEqual(self._persisted_snapshot(), before)
+        self.assertIs(DomainStore.record_authorization_grant, original)
+
+    def test_ordinary_grant_passes_only_through_temporary_review_wrapper(self):
+        original = DomainStore.record_authorization_grant
+        scope = _scope(("fixture.example.test",), ("blocked.example.test",))
+        with patch.object(DomainStore, "record_authorization_grant",
+                          self._owner_candidate(original)):
+            recorded = self._record(scope)
+            persisted = self._persisted_snapshot()
+            self.assertEqual(len(persisted), 1)
+            self.assertEqual(recorded.scope, scope)
+            self.assertEqual(
+                self.store.list_authorization_grants(
+                    self.operator, self.engagement.engagement_id
+                )[0].scope, scope
+            )
+        self.assertIs(DomainStore.record_authorization_grant, original)
+        self.assertEqual(self._persisted_snapshot(), persisted)
+
+    def test_original_source_unmodified_and_bad_exclusion_still_persists(self):
+        original = DomainStore.record_authorization_grant
+        bad_scope = _scope(excluded=(" ",))
+        before = self._persisted_snapshot()
+        with patch.object(DomainStore, "record_authorization_grant",
+                          self._owner_candidate(original)):
+            with self.assertRaises(ValueError):
+                self._record(bad_scope)
+            self.assertEqual(self._persisted_snapshot(), before)
+        self.assertIs(DomainStore.record_authorization_grant, original)
+        # This demonstrates the still-open original-source defect, NOT an allow decision.
+        legacy = self._record(bad_scope)
+        self.assertEqual(legacy.scope.excluded_assets, (" ",))
+        self.assertEqual(len(self._persisted_snapshot()), 1)
+
+    def test_review_does_not_suppress_original_role_isolation(self):
+        original = DomainStore.record_authorization_grant
+        client_context = AccessContext("fake-client", Role.CLIENT_ADMIN,
+                                       self.engagement.client_id)
+        with patch.object(DomainStore, "record_authorization_grant",
+                          self._owner_candidate(original)):
+            before = self._persisted_snapshot()
+            with self.assertRaises(Exception):
+                self.store.record_authorization_grant(
+                    client_context, self.engagement.engagement_id, "fixture-reviewer",
+                    "NOT-CONSENT", _scope(), self.start, self.end)
+            self.assertEqual(self._persisted_snapshot(), before)
+        self.assertIs(DomainStore.record_authorization_grant, original)
+
+
 class ExactRedOracle376(unittest.TestCase):
     def test_three_real_source_red_cases_are_not_hidden_as_green(self):
         names = ("test_original_source_rejects_blank_allowlisted_identity_before_sqlite",
