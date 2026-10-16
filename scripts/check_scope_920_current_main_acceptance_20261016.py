@@ -120,6 +120,11 @@ def main() -> int:
         and not outcome.failures
         and not outcome.errors
         and not outcome.unexpectedSuccesses
+        # Re-check inputs after the in-process suite has finished; a local
+        # file swap during the run can never retain an old REVIEW_ONLY receipt.
+        and source_is_pinned()
+        and acceptance_tests_are_pinned()
+        and loaded_security_is_from_checkout()
     )
     print(receipt(
         status="REVIEW_ONLY" if passed else "HOLD",
