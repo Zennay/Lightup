@@ -6,7 +6,9 @@ composition does not patch or substitute the #202 WebSecurity source owner.
 No listener, network I/O, target interaction, customer data, or credentials.
 """
 import unittest
+from unittest.mock import Mock
 
+from lightup.webapp import create_app
 from lightup.webapp.security import RequestRejected, WebSecurity
 
 
@@ -137,6 +139,25 @@ class TransportIdentityCompositionTests(unittest.TestCase):
         )
         with self.assertRaises(RequestRejected):
             gate.validate(self.request(REMOTE_ADDR="203.0.113.19"))
+
+    @unittest.expectedFailure
+    def test_red_real_wsgi_login_route_rejects_polymorphic_remote_peer(self):
+        # Exercise the installed WSGI request path entirely in process.
+        # A 200 login response would prove transport admission was bypassed,
+        # not an authenticated session, privilege escalation or real exploit.
+        gate = WebSecurity(
+            public_origin="https://lightup.example.test",
+            trusted_proxy_ip=PolymorphicProxyIdentity("127.0.0.1"),
+        )
+        app = create_app(Mock(), gate)
+        response = {}
+        body = b"".join(app(
+            self.request(REMOTE_ADDR="203.0.113.19", PATH_INFO="/login"),
+            lambda status, headers: response.update(
+                status=status, headers=dict(headers)),
+        ))
+        self.assertEqual(response["status"], "403 Forbidden")
+        self.assertIn(b"Request rejected", body)
 
     def test_invalid_production_settings_refuse_at_constructor(self):
         for kwargs in (
