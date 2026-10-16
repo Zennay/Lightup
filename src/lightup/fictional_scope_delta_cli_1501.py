@@ -110,8 +110,10 @@ def main() -> int:
     if sys.argv[1:] == ["--offline-review-only"]:
         try:
             review = _load(sys.stdin.buffer.read(_MAX_BYTES + 1))
-        except (ValueError, UnicodeError, TypeError, OverflowError, RecursionError):
-            # Errors are generic: never print exception text or pasted input.
+        except (ValueError, UnicodeError, TypeError, OverflowError,
+                RecursionError, OSError):
+            # Stdin read/parse failure is a generic HOLD, not a traceback
+            # that could expose source input or accidentally exit with 0.
             pass
     report = {
         "contract": _CONTRACT,
@@ -127,7 +129,23 @@ def main() -> int:
         "dispatch_allowed": False,
         "release_allowed": False,
     }
-    sys.stdout.write(json.dumps(report, sort_keys=True, separators=(",", ":")) + "\n")
+    # A 16-entry maximal held-step witness serializes below 1,500 ASCII
+    # bytes; guard future schema changes from accidentally producing an
+    # unbounded or input-echoing report. A violation itself is generic HOLD.
+    payload = json.dumps(report, sort_keys=True, separators=(",", ":"))
+    if len(payload) > 2048:
+        review = ScopeHistoryReview("HOLD", 0, None, (), ())
+        report.update(
+            status="HOLD", transition_count=0, first_held_step=None,
+            held_steps=(), held_step_dimensions=(),
+            expanded_dimensions=(), narrowed_dimensions=(),
+        )
+        payload = json.dumps(report, sort_keys=True, separators=(",", ":"))
+    try:
+        sys.stdout.write(payload + "\n")
+    except OSError:
+        # A disconnected output pipe must never produce a success exit.
+        return 3
     return 2 if review.status == "REVIEW_ONLY" else 3
 
 
