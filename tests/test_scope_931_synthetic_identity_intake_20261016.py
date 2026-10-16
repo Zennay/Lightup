@@ -97,6 +97,62 @@ class SyntheticIdentityIntakeCliTest(unittest.TestCase):
                     obj[key] = bad
                     self.assert_receipt(json.dumps(obj).encode("utf-8"))
 
+    def test_non_nfc_equivalent_identities_hold_without_rewriting(self):
+        import unicodedata
+        nfc = "Café Fiction"
+        nfd = unicodedata.normalize("NFD", nfc)
+        self.assertNotEqual(nfc, nfd)
+        for key in ("prospect_id", "organization_name"):
+            for raw_identity, expected in ((nfc, "REVIEW_ONLY"), (nfd, "HOLD")):
+                with self.subTest(key=key, identity=repr(raw_identity)):
+                    obj = {"prospect_id": "synthetic", "organization_name": "Fiction"}
+                    obj[key] = raw_identity
+                    raw = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+                    self.assert_receipt(raw, expected)
+
+    def test_invisible_unicode_noncharacters_hold_for_both_fields(self):
+        for scalar in (0xFDD0, 0xFDEF, 0xFFFE, 0xFFFF,
+                       0x1FFFE, 0x2FFFF, 0x10FFFF):
+            for key in ("prospect_id", "organization_name"):
+                with self.subTest(key=key, scalar=hex(scalar)):
+                    obj = {"prospect_id": "x", "organization_name": "y"}
+                    obj[key] = "A" + chr(scalar) + "B"
+                    # Escaped JSON code units may decode to supplementary scalars.
+                    self.assert_receipt(json.dumps(obj).encode("ascii"))
+
+    def test_line_and_paragraph_separators_hold_without_receipt_echo(self):
+        for symbol in ("\u2028", "\u2029"):
+            for key in ("prospect_id", "organization_name"):
+                with self.subTest(symbol=hex(ord(symbol)), key=key):
+                    obj = {"prospect_id": "x", "organization_name": "y"}
+                    obj[key] = "VISIBLE" + symbol + "PRIVATE"
+                    code, status, out = self.run_cli(
+                        json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+                        "--offline-synthetic-only",
+                    )
+                    self.assertEqual((code, status), (2, "HOLD"))
+                    self.assertNotIn(b"PRIVATE", out)
+
+    def test_malformed_nested_duplicate_json_never_gains_authority(self):
+        raw = (
+            b'{"prospect_id":"synthetic","organization_name":"fiction",'
+            b'"nested":{"authorization":true,"authorization":false}}'
+        )
+        self.assert_receipt(raw)
+        for sep in (b' ', b'\n', b'\t'):
+            with self.subTest(sep=sep):
+                self.assert_receipt(
+                    b'{"prospect_id":"synthetic","organization_name":"fiction"}'
+                    + sep + b'{"authorization":true}'
+                )
+
+    def test_raw_input_ceiling_is_exact_even_for_whitespace(self):
+        base = b'{"prospect_id":"x","organization_name":"y"}'
+        valid = base + b" " * (4096 - len(base))
+        self.assertEqual(len(valid), 4096)
+        self.assert_receipt(valid, "REVIEW_ONLY")
+        self.assert_receipt(valid + b" ")
+
     def test_duplicate_keys_even_escaped_aliases_hold(self):
         samples = (
             b'{"prospect_id":"A","prospect_id":"B","organization_name":"y"}',
