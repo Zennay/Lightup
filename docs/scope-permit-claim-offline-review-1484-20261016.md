@@ -26,3 +26,22 @@ The tests are solely in-process, synthetic and offline. No real asset or operato
 Post-issuance review **does not overlap** original ActivationGate producer remediation or pre-issuance scope decision #1482, issued-at linearization #1480, policy binding #1476, legacy capability authority #726, or original gate owners #120/#122/#125/#126. None of those owner paths or CI/runner files were changed.
 
 This tool cannot prove genuine permit origin, signed provenance, customer or operator consent, tenant/asset/capability authorization, one-time use across calls, durable replay tracking, persistent revocation, legal scope or safe runtime source. Its deliberately strict fictional lexical format is **not** the canonical installed production permit contract. Any future integration requires independent source-owner review, human approval, exact-head hosted tests, registered permanent VPS evidence and end-to-end security/privacy validation. Until then: HOLD.
+## Malformed exact-class witness (second acceptance wave)
+
+Even an exact `ExecutionPermit` can be synthesized without running its
+dataclass initializer (`object.__new__`), have a field removed using
+`object.__delattr__`, or carry extra fields (`object.__setattr__`).
+A naïve shape inspection raises `AttributeError` or ignores forged extra
+`authorized`, `approved`, or `execution_allowed` markers. The reviewed
+helper now checks the complete six-field built-in `__dict__` snapshot
+**before** reading any claim values, and fails the entire batch closed.
+Additional `tests/test_scope_permit_malformed_exact_1484_20261016.py`
+contains 11 independent regression methods. No existing gate source changed.
+Run both own modules with:
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_permit*1484_20261016.py' -v
+```
+
+Source metadata is not cryptographic or trusted runtime provenance.
+Neither a pass nor `REVIEW_ONLY` is approval, authorization or a scan permit.
