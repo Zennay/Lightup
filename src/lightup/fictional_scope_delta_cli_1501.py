@@ -119,6 +119,7 @@ def main() -> int:
         "transition_count": review.transition_count,
         "first_held_step": review.first_held_step,
         "held_steps": review.held_steps,
+        "held_step_dimensions": review.held_step_dimensions,
         "expanded_dimensions": review.expanded_dimensions,
         "narrowed_dimensions": review.narrowed_dimensions,
         "authorized": False,
