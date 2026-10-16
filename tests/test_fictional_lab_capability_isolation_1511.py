@@ -14,9 +14,13 @@ MODULE = "fictional_lab_capability_review_1511"
 CLI = "fictional_lab_capability_cli_1511"
 OWNED = {
     Path("src/lightup/fictional_lab_capability_review_1511.py"),
+    Path("src/lightup/fictional_lab_capability_batch_1511.py"),
     Path("scripts/fictional_lab_capability_cli_1511.py"),
+    Path("scripts/fictional_lab_capability_batch_cli_1511.py"),
     Path("tests/test_fictional_lab_capability_review_1511.py"),
     Path("tests/test_fictional_lab_capability_cli_1511.py"),
+    Path("tests/test_fictional_lab_capability_batch_1511.py"),
+    Path("tests/test_fictional_lab_capability_batch_cli_1511.py"),
     Path("tests/test_fictional_lab_capability_sealing_1511.py"),
     Path("tests/test_fictional_lab_capability_transition_1511.py"),
     Path("tests/test_fictional_lab_capability_streaming_1511.py"),
@@ -70,6 +74,36 @@ class FictionalLabCapabilityIsolation1511Tests(unittest.TestCase):
         imports = [n.module or "" for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)]
         self.assertEqual([name for name in imports if name.startswith("lightup.")],
                          ["lightup." + MODULE])
+        names = [a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names]
+        for forbidden in ("socket", "requests", "subprocess", "http.client", "urllib.request"):
+            self.assertNotIn(forbidden, names)
+
+    def test_batch_helper_and_cli_are_unwired_from_original_source(self):
+        targets = ("fictional_lab_capability_batch_1511",
+                   "fictional_lab_capability_batch_cli_1511")
+        for path in sorted((ROOT / "src/lightup").rglob("*.py")):
+            rel = path.relative_to(ROOT)
+            if rel in OWNED:
+                continue
+            tree = _parsed(rel)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        self.assertTrue(all(token not in alias.name.split(".") for token in targets))
+                if isinstance(node, ast.ImportFrom):
+                    self.assertTrue(all(token not in (node.module or "").split(".") for token in targets))
+                if isinstance(node, ast.Call) and isinstance(node.func, (ast.Name, ast.Attribute)):
+                    name = node.func.id if isinstance(node.func, ast.Name) else node.func.attr
+                    if name in ("__import__", "import_module") and node.args:
+                        arg = node.args[0]
+                        if isinstance(arg, ast.Constant) and type(arg.value) is str:
+                            self.assertTrue(all(token not in arg.value for token in targets))
+
+    def test_batch_cli_has_no_target_or_network_imports(self):
+        tree = _parsed(Path("scripts/fictional_lab_capability_batch_cli_1511.py"))
+        imported = [n.module or "" for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)]
+        self.assertEqual([name for name in imported if name.startswith("lightup.")],
+                         ["lightup.fictional_lab_capability_batch_1511"])
         names = [a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names]
         for forbidden in ("socket", "requests", "subprocess", "http.client", "urllib.request"):
             self.assertNotIn(forbidden, names)
