@@ -19,10 +19,10 @@ Untrusted duck-typed objects or subclasses can currently pass the policy
 as if they were a canonical request. This is an in-memory boundary
 demonstration, **not** proof that an external target has been reached.
 
-## Acceptance contract (26 tests; 8 deliberately OPEN source RED)
+## Acceptance contract (30 installed-source tests; 11 deliberately OPEN source RED witnesses)
 
 The new standalone `tests/test_scope_771_owner163_outer_request_red_20261016.py`
-has seventeen ordinary green controls: exact analysis and passive requests,
+has eighteen ordinary green controls: exact analysis and passive requests,
 canonical lab boolean false/true owner semantics, target-active without
 grant denial, exact fictional target-active with valid grant allowed, revoked
 grant denied, wrong-client or wrong-engagement tenant mismatch denied, expired
@@ -32,10 +32,9 @@ require denial for a synthetic duck analysis request, duck passive request,
 subclass analysis, subclass lab true, property-spy object before any untrusted
 getter, duck target-active with an otherwise valid fictional grant, subclass
 target-active with that grant, and non-envelope objects without fields.
-All RED cases are marked `@unittest.expectedFailure` to preserve CI
-visibility without claiming the authorization source is fixed. The
-eleventh case is an ordinary strict replay oracle, requiring **exactly
-eight actual expected failures**, zero unexpected successes, skips,
+Three additional intentionally OPEN source-REDs use a forged `__class__` property to show why an `isinstance`-only source repair is inadequate: Python can treat a noncanonical duck as `ExecutionRequest` while its real `type` remains untrusted. Each forged class case covers analysis, passive and a fictional granted target-active request; an ordinary control independently verifies the `isinstance` pitfall without granting authority. All RED cases are marked `@unittest.expectedFailure` to preserve CI
+visibility without claiming the authorization source is fixed. A separate ordinary strict replay oracle requires **exactly
+eleven actual expected failures**, zero unexpected successes, skips,
 errors or ordinary failures. If the source is fixed, this oracle fails
 until an authorized owner replaces RED markers with normal green
 assertions and verifies the denial semantics.
@@ -102,8 +101,7 @@ that owner's integration. This narrower adapter tests an exact source-owner
 `#163` delegation seam only, for eventual **owner review**. It is not a
 production substitute for #1174 and does not itself prove grant authenticity,
 live revocation, destination binding, operator step-up or durable consent.
-The original 26-case source-RED test module is still separate: eight known
-owner-source REDs are unresolved even if all opt-in controls pass.
+The original 26-case source-RED test module is still separate: eleven owner-source RED witnesses are unresolved even if all opt-in controls pass.
 
 ## W11: exact policy instance method-shadow closure (opt-in only)
 
@@ -122,3 +120,25 @@ vulnerable; owner issue [#935](https://github.com/Zennay/Lightup/issues/935)
 retains its separate lifetime-binding scope. This is **not** a fix to
 `ToolExecutor`, live resolver or real authorization, and should not be
 used as a GO signal.
+
+## W13 — exact outer identity, not Python `isinstance` spoofing
+
+The pinned owner-source class now has **11 deliberately OPEN acceptance RED
+witnesses**, including three new source-observed, distinct marker-verified
+`__class__` impostors. The synthetic duck reports `__class__ = ExecutionRequest`
+while `type(candidate) is not ExecutionRequest` remains true. Python's
+`isinstance(candidate, ExecutionRequest)` is demonstrably TRUE, so an
+owner repair that merely inserts `isinstance` would fail to prevent these
+cases. The owner must require `type(request) is ExecutionRequest` before
+any request member reads, not `isinstance` or the spoofable `__class__`.
+Three expected source REDs reproduce actual analysis/passive/fictional
+active-grant **allow** decisions on the unchanged #163 source, each with a
+unique exact witness marker. An ordinary independent test verifies the
+underlying Python type confusion without claiming an authorization fix.
+The installed-source packet now has **30 methods: 18 normal controls,
+11 intentional source REDs, one strict traceback/replay oracle**. The
+separate currently uninstalled opt-in helper/test module remains unchanged
+at **32 normal tests**. This strengthens proof rather than adding another
+unsafe production codepath: no scans, handlers, target I/O, grant writes or
+release authority. The 11 witnesses represent variants of the same boundary,
+not 11 independently remediated vulnerabilities.
