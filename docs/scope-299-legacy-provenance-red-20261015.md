@@ -32,3 +32,29 @@ The original #299 source owner, coordinated with #100/#105 and activation owners
 - New acceptance tests do **not** claim a source fix or green production authorization. A passing suite with expected REDs is **NOT evidence the source is safe**.
 - Before any promotion: exact-head hosted Python 3.11 + 3.14 with original logs, actual canonical registered VPS-run evidence (not an unassigned queue job), independently reviewed security/privacy, trusted customer and operator approval, explicit authorized lab isolation and human release decision.
 - **NO MERGE, NO DEPLOY, NO GRANT, NO SCAN, NO REAL TARGET.** Owner-controlled source PRs #100/#105/#107 and existing #301 fixture repair remain separate.
+
+## W2 — strict offline provenance-shape review (non-authorizing)
+
+The branch now also owns **only two additional original paths**, `scripts/scope_299_legacy_provenance_review.py` and `tests/test_scope_299_legacy_provenance_review_20261016.py`, which do not install a runtime gate, write a database or touch anyone else's existing code. This deliberately supplements the installed-source REDs with an independent privacy-minimal diagnostic.
+
+### Input / outputs
+
+Run locally with **explicit opt-in** and a **fictional** JSON packet only:
+
+```sh
+printf '%s' '{"owner":"fictional-reviewer","reference":"NOT-CONSENT"}' |
+  python -B scripts/scope_299_legacy_provenance_review.py --offline-synthetic-only
+```
+
+- Reads a maximum of **4,097 stdin bytes** to enforce **4,096-byte input ceiling**, with no pathname argument, file write, DNS, HTTP or socket use. Invalid command-line arguments never parse stdin.
+- Parses exactly one strict UTF-8 JSON object with exactly the lowercase keys `owner` and `reference`; **duplicate keys at any nesting depth**, extra/missing keys, trailing JSON, NaN/Infinity, bad encoding and oversized packets fail closed as malformed.
+- Evaluates only exact built-in, already-trimmed, nonempty printable strings as a **canonical presentation shape**. That is deliberately more conservative than `str.strip()` and does **not** establish the issuer's identity, source-of-truth, tenant, engagement, asset, time, revocation or any other trusted approval.
+- On syntactically valid input (canonical OR noncanonical), the CLI emits a bounded one-line `{"status":"HOLD", "reason":...}` receipt and **exit code 2**. Invalid packets/options get fixed reason `invalid_packet` and **exit 3**. It cannot exit zero through its public interface.
+- Every receipt has **six permanent boolean false** flags: `can_authorize`, `can_dispatch`, `can_merge`, `can_deploy`, `can_scan`, `can_release`. No caller-owned raw owner, reference, exception or secret is echoed. Even `canonical_shape_only` is **HOLD**, not a result that may be promoted to execution.
+- The new test module exercises real synthetic subprocess execution, strict JSON and UTF-8 boundaries, secret non-echo, controls and aliases, subclass traps, fixed false-flag output and an AST-import whitelist. The only accepted imports in the diagnostic are `__future__`, `json` and `sys`.
+
+### Integration / ownership
+
+This diagnostic must **not** be wired into `ScopePolicy`, `ActivationGate`, `ToolExecutor`, the admin UI or customer authorization APIs by this worker. Real issuance and runtime check/use verification belong to source owners #100/#105/#107 and persistently authenticated customer/operator decisions. No synthetic client record or diagnostic claim may create real authority. Dedicated source RED acceptance must become ordinary green source PASS after an independently reviewed fail-closed repair; independent operator/consent, scope/risk/revocation, evidence-before-handler, VPS and security/privacy release gates remain outstanding.
+
+Both new paths are self-owned on this PR. Keep in **INCUBATE M3/M7 / DRAFT/HOLD, no merge/deploy/scanning/grants**.
