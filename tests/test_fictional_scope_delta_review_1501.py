@@ -501,6 +501,28 @@ class FictionalScopeDeltaTests(TestCase):
         self.assertNotIn("secret.private.invalid", repr(outcome))
         self.assert_history_inert(outcome)
 
+    def test_direct_history_constructor_never_invokes_alien_dimension_methods(self):
+        class Hostile:
+            def __eq__(self, other):
+                raise AssertionError("alien equality callback")
+
+            def __bool__(self):
+                raise AssertionError("alien truth callback")
+
+            def __iter__(self):
+                raise AssertionError("alien iterator callback")
+
+        for dimensions in (
+            (Hostile(), ()),
+            (("risk",), Hostile()),
+        ):
+            with self.subTest(side=type(dimensions[0]).__name__):
+                with self.assertRaises(ValueError):
+                    ScopeHistoryReview(
+                        "HOLD", 1, 1, dimensions[0], dimensions[1],
+                        (1,), (("risk",),),
+                    )
+
     def test_history_constructor_rejects_forged_held_step_metadata(self):
         invalid = (
             ("HOLD", 2, 1, ("risk",), (), ()),
