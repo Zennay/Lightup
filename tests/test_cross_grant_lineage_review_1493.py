@@ -18,7 +18,7 @@ from lightup.models import Authorization, Target
 from lightup.scope import ScopePolicy
 from lightup.cross_grant_lineage_review_1493 import review_cross_grant_lineage
 
-NOW = datetime(2026, 10, 16, 12, 0, tzinfo=timezone.utc)
+NOW = datetime(2020, 1, 1, 12, 0, tzinfo=timezone.utc)
 START, END = NOW - timedelta(hours=1), NOW + timedelta(hours=1)
 
 
