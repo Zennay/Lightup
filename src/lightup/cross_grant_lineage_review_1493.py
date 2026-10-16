@@ -178,6 +178,10 @@ def review_cross_grant_batch(
     if not _identifier(first.client_id) or not _identifier(first.engagement_id):
         return CrossGrantBatchReview("HOLD", "noncanonical tenant cohort")
     seen: set[tuple[str, str, str]] = set()
+    # In this fictional cohort, a target/capability has exactly one asserted
+    # source grant. Re-counting it under a different grant ID is ambiguous
+    # provenance, even if both individual source claims are coherent.
+    asset_capability_grants: dict[tuple[str, str], str] = {}
     grant_snapshots: dict[str, tuple[object, ...]] = {}
     legacy_snapshots: dict[str, tuple[object, ...]] = {}
     for item in candidates:
@@ -205,6 +209,14 @@ def review_cross_grant_batch(
         )
         if result.status != "REVIEW_ONLY":
             return CrossGrantBatchReview("HOLD", "at least one claim failed review")
+        asset_capability = (item.asset, item.capability_id)
+        prior_grant = asset_capability_grants.setdefault(
+            asset_capability, item.durable.grant_id
+        )
+        if prior_grant != item.durable.grant_id:
+            return CrossGrantBatchReview(
+                "HOLD", "ambiguous asset-capability grant provenance"
+            )
         # A durable grant ID must denote one exact, immutable grant snapshot
         # throughout the batch. Multiple distinct assets under the *same*
         # explicit grant are fine; changing its scope, time, approval or risk
