@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
-_ASSET = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.example\\.test", re.ASCII)
+_ASSET = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.example\.test", re.ASCII)
 _OWNER = re.compile(r"owner-[a-z0-9]{1,20}", re.ASCII)
 _GRANT = re.compile(r"grant-[a-z0-9]{1,24}", re.ASCII)
 _MAX_REVISION = 2**31 - 1
