@@ -18,7 +18,8 @@ from .lab_session_lineage_1487 import (
 
 _MAX_INPUT_BYTES = 16_384
 _UTC_TEXT = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", re.ASCII)
-_SCHEMA_NAME = "FICTIONAL-LAB-LINEAGE-V1"\n_ENVELOPE_FIELDS = frozenset({"schema", "assessment_time", "claims"})
+_SCHEMA_NAME = "FICTIONAL-LAB-LINEAGE-V1"
+_ENVELOPE_FIELDS = frozenset({"schema", "assessment_time", "claims"})
 _CLAIM_FIELDS = frozenset({
     "lab_reference", "operator_id", "session_id", "engagement_id",
     "asset_id", "capability_id", "starts_at", "expires_at", "revoked",
