@@ -220,5 +220,35 @@ class TestFictionalCLI(unittest.TestCase):
             self.assertEqual(process.returncode, 2 if not suffix else 3, stderr)
             self.assertEqual(json.loads(stdout)["status"], expected)
 
+
+    def test_missing_binary_stdin_and_closed_or_unwritable_stdout_are_hold(self):
+        # A malformed text-only input is a transport error, NOT a traceback.
+        output = io.StringIO()
+        with patch("sys.argv", ["review_cli"]), \
+             patch("sys.stdin", object()), \
+             patch("sys.stdout", output):
+            self.assertEqual(main(), 3)
+        self.assertEqual(json.loads(output.getvalue())["status"], "HOLD")
+
+        class ClosedOutput:
+            def write(self, _text):
+                raise ValueError("confidential closed stdout")
+
+        with patch("sys.argv", ["review_cli"]), \
+             patch("sys.stdin", SimpleNamespace(buffer=io.BytesIO(encode(sample())))), \
+             patch("sys.stdout", ClosedOutput()):
+            self.assertEqual(main(), 3)
+
+        class FailedFlush:
+            def write(self, value):
+                return len(value)
+            def flush(self):
+                raise TypeError("confidential invalid flush")
+
+        with patch("sys.argv", ["review_cli"]), \
+             patch("sys.stdin", SimpleNamespace(buffer=io.BytesIO(encode(sample())))), \
+             patch("sys.stdout", FailedFlush()):
+            self.assertEqual(main(), 3)
+
 if __name__ == "__main__":
     unittest.main()

@@ -143,5 +143,34 @@ class TestFictionalPairCLI(unittest.TestCase):
             self.assertEqual(json.loads(out)["status"], expected_status)
 
 
+
+    def test_invalid_input_handle_and_output_failures_never_return_success(self):
+        output = io.StringIO()
+        with patch("sys.argv", ["pair_cli"]), \
+             patch("sys.stdin", object()), \
+             patch("sys.stdout", output):
+            self.assertEqual(main(), 3)
+        self.assertEqual(json.loads(output.getvalue())["status"], "HOLD")
+
+        class ClosedOutput:
+            def write(self, _value):
+                raise ValueError("confidential closed stdout")
+
+        with patch("sys.argv", ["pair_cli"]), \
+             patch("sys.stdin", SimpleNamespace(buffer=io.BytesIO(encode(sample())))), \
+             patch("sys.stdout", ClosedOutput()):
+            self.assertEqual(main(), 3)
+
+        class BrokenFlush:
+            def write(self, text):
+                return len(text)
+            def flush(self):
+                raise OSError("confidential write failed")
+
+        with patch("sys.argv", ["pair_cli"]), \
+             patch("sys.stdin", SimpleNamespace(buffer=io.BytesIO(encode(sample())))), \
+             patch("sys.stdout", BrokenFlush()):
+            self.assertEqual(main(), 3)
+
 if __name__ == "__main__":
     unittest.main()

@@ -57,12 +57,12 @@ def main() -> int:
     if len(sys.argv) == 1:
         try:
             result = parse_fictional_pair(_read_bounded_to_eof(sys.stdin.buffer))
-        except (OSError, ValueError, TypeError):
+        except (OSError, ValueError, TypeError, AttributeError):
             result = ReviewOutcome("HOLD")
     try:
         sys.stdout.write(emit_review(result) + "\n")
         sys.stdout.flush()
-    except (OSError, UnicodeError):
+    except (OSError, UnicodeError, ValueError, TypeError):
         return 3
     return 2 if result.status == "REVIEW_ONLY" else 3
 
