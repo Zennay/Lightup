@@ -4,6 +4,8 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import itertools
+import pathlib
+import random
 import json
 import unittest
 from unittest.mock import patch
@@ -177,6 +179,33 @@ class FictionalPacketCopyTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 CopyReview(status=status, sha256=digest)
 
+
+    def test_each_byte_substitution_is_atomic_hold_against_original(self):
+        for index in range(len(CANONICAL)):
+            for replacement in (0, 31, 34, 44, 92, 127, 255):
+                if CANONICAL[index] == replacement:
+                    continue
+                altered = CANONICAL[:index] + bytes((replacement,)) + CANONICAL[index + 1:]
+                result = compare_fictional_packet_copies(CANONICAL, altered)
+                self.assertEqual((result.status, result.sha256), ("HOLD", None))
+
+    def test_fixed_seed_mutation_fuzz_never_promotes_changed_copy(self):
+        rng = random.Random(1503)
+        for _ in range(1024):
+            index = rng.randrange(len(CANONICAL))
+            new_byte = (CANONICAL[index] + rng.randrange(1, 256)) % 256
+            altered = CANONICAL[:index] + bytes((new_byte,)) + CANONICAL[index + 1:]
+            result = compare_fictional_packet_copies(CANONICAL, altered)
+            self.assertEqual((result.status, result.sha256), ("HOLD", None))
+            self.assertIs(result.release_allowed, False)
+
+    def test_standalone_module_not_imported_by_production_modules(self):
+        root = pathlib.Path(__file__).resolve().parents[1] / "src" / "lightup"
+        for path in root.rglob("*.py"):
+            if path.name == "fictional_packet_copy_1503.py":
+                continue
+            with self.subTest(file=path.relative_to(root)):
+                self.assertNotIn("fictional_packet_copy_1503", path.read_text(encoding="utf-8"))
 
 if __name__ == "__main__":
     unittest.main()
