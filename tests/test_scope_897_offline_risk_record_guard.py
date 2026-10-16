@@ -6,6 +6,7 @@ import sqlite3
 import subprocess
 import sys
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from scope_897_offline_risk_record_guard import review_json, review_record, main
@@ -114,7 +115,7 @@ class RiskRecordGuardTests(unittest.TestCase):
                 self.assertNoAuthority(receipt)
 
     def test_in_memory_sqlite_corrupt_requester_blob_is_read_only_hold(self) -> None:
-        with sqlite3.connect(":memory:") as con:
+        with closing(sqlite3.connect(":memory:")) as con:
             con.execute("CREATE TABLE risk_approvals (approval_id TEXT, requested_by TEXT, status TEXT, decided_by TEXT, decided_at TEXT)")
             con.execute("INSERT INTO risk_approvals VALUES (?,?,?,?,?)", (
                 _APPROVAL, sqlite3.Binary(b"operator-reviewer"), "pending", None, None,
@@ -129,7 +130,7 @@ class RiskRecordGuardTests(unittest.TestCase):
             self.assertNoAuthority(receipt)
 
     def test_in_memory_sqlite_stale_audit_is_read_only_hold(self) -> None:
-        with sqlite3.connect(":memory:") as con:
+        with closing(sqlite3.connect(":memory:")) as con:
             con.execute("CREATE TABLE risk_approvals (approval_id TEXT, requested_by TEXT, status TEXT, decided_by TEXT, decided_at TEXT)")
             con.execute("INSERT INTO risk_approvals VALUES (?,?,?,?,?)", (_APPROVAL, "client-demo", "pending", "operator-old", "2026-10-12T01:00:00Z"))
             con.row_factory = sqlite3.Row
