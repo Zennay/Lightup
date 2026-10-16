@@ -55,6 +55,34 @@ def render_fictional_envelope_html(raw: bytes) -> str:
         label = "HOLD"
     else:
         label = "REVIEW_ONLY"
+    # These are NOT checkboxes or states loaded from the JSON. They remain
+    # visibly unresolved for every valid review; a JSON producer cannot
+    # forge GO, operator approval or an active "release" button.
+    if view.status == "REVIEW_ONLY":
+        gate_heading = "Nog te verifiëren" if is_dutch else "Unverified release gates"
+        gate_items = (
+            (
+                "Verifieer klant- en operatoridentiteit onafhankelijk",
+                "Laat scope en tijdvenster door de bronhouder valideren",
+                "Controleer duurzame intrekking op het moment van gebruik",
+                "Verkrijg security-/privacyreview en expliciete menselijke GO",
+            ) if is_dutch else (
+                "Independently verify client and operator identities",
+                "Have scope and time window verified by the source owner",
+                "Check durable revocation at the time of actual use",
+                "Obtain security/privacy review and explicit human GO",
+            )
+        )
+        pending_gates = (
+            '<section aria-labelledby="release-gates-title">'
+            '<h2 id="release-gates-title">' + escape(gate_heading) + '</h2>'
+            '<ol class="gates">' + "".join(
+                '<li><strong class="pending">PENDING — </strong>'
+                + escape(item) + '</li>' for item in gate_items
+            ) + '</ol></section>'
+        )
+    else:
+        pending_gates = ""
     # Escape both untrusted display text AND the generated metadata. A
     # producer could emit fake HTML or authority-looking content in notice.
     body = (
@@ -68,6 +96,7 @@ def render_fictional_envelope_html(raw: bytes) -> str:
            f"Proposed entries: {view.reviewed}")
         + '</p><pre class="review-text">' + escape(view.notice)
         + '</pre></section>'
+        + pending_gates +
         '<footer>NOT AUTHORIZED · authorized=false · consent_verified=false · '
         'dispatch_allowed=false · release_allowed=false'
         '<p>' + (
