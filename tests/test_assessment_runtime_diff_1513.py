@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 from copy import deepcopy
 import subprocess
 import socket
@@ -136,6 +137,34 @@ class AssessmentRuntimeDiffTests(unittest.TestCase):
             (a, replace(b, scenario_id=" fixture-1"), ca, cb),
         ):
             self.assertEqual(compare_lab_evaluations(*values).status, "HOLD")
+
+    def test_lab_client_and_utc_provenance_require_exact_types(self):
+        a, b, ca, cb = pair()
+        wrong_contexts = (
+            replace(cb, client_id=""),
+            replace(cb, client_id=" lab"),
+            replace(cb, client_id="lab\nspoof"),
+            replace(cb, client_id=123),
+            replace(cb, created_at="2026-10-16T21:00:00+00:00"),
+            replace(cb, created_at=datetime(2026, 10, 16, 21, 0)),
+            replace(cb, created_at=datetime(2026, 10, 16, 22, 0, tzinfo=timezone(timedelta(hours=1)))),
+            replace(cb, created_at=False),
+        )
+        for fake in wrong_contexts:
+            with self.subTest(fake=repr(fake)[:80]):
+                result = compare_lab_evaluations(a, b, ca, fake)
+                self.assertEqual((result.status, result.changes), ("HOLD", ()))
+                self.assertIs(result.authorized, False)
+
+        wrong_record_times = (
+            "", "2026-10-16T22:00:00+01:00", "2026-10-16T21:00:00",
+            "2026-10-16", "not an instant", True,
+            datetime(2026, 10, 16, tzinfo=timezone.utc),
+        )
+        for bad in wrong_record_times:
+            with self.subTest(record_time=repr(bad)):
+                result = compare_lab_evaluations(a, replace(b, created_at=bad), ca, cb)
+                self.assertEqual((result.status, result.changes), ("HOLD", ()))
 
     def test_inputs_are_unchanged_and_no_external_execution(self):
         original = pair()
