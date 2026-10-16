@@ -25,6 +25,7 @@ _ID_TEXT = re.compile(r"[A-Za-z0-9][A-Za-z0-9@._:/-]{0,127}\Z", re.ASCII)
 _HOST_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z", re.ASCII)
 _ACTOR = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9._-]{0,62}[A-Za-z0-9])?@example\.test\Z", re.ASCII)
 _CAPABILITY = re.compile(r"[a-z][a-z0-9_-]{0,63}\Z", re.ASCII)
+_COHORT_ID = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9_-]{0,62}[A-Za-z0-9])?\Z", re.ASCII)
 _BATCH_KEYS = frozenset(("schema", "evaluated_at", "candidates"))
 _CLAIM_KEYS = frozenset((
     "legacy", "durable", "asset", "capability_id", "client_id",
@@ -62,6 +63,12 @@ def _object(value: Any, keys: frozenset[str]) -> dict[str, Any]:
 def _text(value: Any) -> str:
     if type(value) is not str or _ID_TEXT.fullmatch(value) is None:
         raise ValueError("noncanonical fictional identifier")
+    return value
+
+
+def _cohort_id(value: Any) -> str:
+    if type(value) is not str or _COHORT_ID.fullmatch(value) is None:
+        raise ValueError("noncanonical fictional cohort identity")
     return value
 
 
@@ -135,9 +142,9 @@ def _claim(value: Any) -> CrossGrantCandidate:
         _array(s["excluded_assets"], assets=True, allow_empty=True),
     )
     durable = AuthorizationGrant(
-        _text(next_grant["grant_id"]),
-        _text(next_grant["client_id"]),
-        _text(next_grant["engagement_id"]),
+        _cohort_id(next_grant["grant_id"]),
+        _cohort_id(next_grant["client_id"]),
+        _cohort_id(next_grant["engagement_id"]),
         approved_by,
         durable_reference,
         scope,
@@ -147,8 +154,8 @@ def _claim(value: Any) -> CrossGrantCandidate:
     )
     return CrossGrantCandidate(
         legacy, durable, _fictional_asset(record["asset"]),
-        _capability(record["capability_id"]), _text(record["client_id"]),
-        _text(record["engagement_id"]), _risk(record["requested_risk"]),
+        _capability(record["capability_id"]), _cohort_id(record["client_id"]),
+        _cohort_id(record["engagement_id"]), _risk(record["requested_risk"]),
     )
 
 
