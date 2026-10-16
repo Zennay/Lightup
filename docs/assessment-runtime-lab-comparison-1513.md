@@ -29,3 +29,7 @@ print(diagnostic.status, diagnostic.regressions)
 Issue [#1513](https://github.com/Zennay/Lightup/issues/1513). Dedicated assessment-runtime branch; exclusively new source/test/docs/workflow paths. Do not modify adjacent scope-authorization owners, evaluation-metric source owner [#834](https://github.com/Zennay/Lightup/issues/834) / [#835](https://github.com/Zennay/Lightup/pull/835), finding review [#846](https://github.com/Zennay/Lightup/pull/846) / [#847](https://github.com/Zennay/Lightup/issues/847), other workers, or real executor.
 
 This isolated test job is diagnostic only. Full-project hosted tests, independent security/privacy, permanent named VPS test, separately verified client+operator approval and live revocation, and explicit human GO remain required. **Never merge/deploy based on this comparator.**
+
+## Multi-scenario cohort extension
+
+`compare_lab_cohorts(baselines, candidates)` compares 1–64 independently labelled lab scenarios in one atomic, sorted diagnostic. Inputs are tuples of `(EvaluationRecord, RunContext)` pairs, one pair per unique scenario. Both sets must have **exactly the same scenario IDs**; missing, extra, duplicate, malformed, non-lab, or oversized inputs return generic HOLD with no partial detail. Any single adverse scenario returns HOLD even if other scenarios improved. Results have four false authority flags, and no target access or producer changes are introduced.
