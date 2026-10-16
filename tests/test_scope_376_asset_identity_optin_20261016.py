@@ -456,6 +456,47 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
                             scope, valid_from, valid_until, recurring_retest_allowed)
         return review_before_record
 
+    @staticmethod
+    def _snapshot_owner_candidate(original):
+        """TEST-ONLY adoption seam: pin reviewed identities before source call.
+
+        Never installed in production. This remains a shape adapter, NOT a
+        consent/risk/capability/tenancy/expiry/revocation authorization gate.
+        """
+        def review_and_pin(store, ctx, engagement_id, approved_by, reference,
+                           scope, valid_from, valid_until,
+                           recurring_retest_allowed=False):
+            identities = _canonical_asset_snapshot(scope)
+            if identities is None:
+                raise ValueError("asset identity shape requires independent review")
+            fields = object.__getattribute__(scope, "__dict__")
+            if type(fields) is not dict or len(fields) != 4:
+                raise ValueError("scope changed after asset review")
+            seen = fields.copy()
+            if (len(seen) != 4 or any(type(k) is not str for k in seen)
+                    or set(seen) != {"assets", "excluded_assets", "max_risk",
+                                    "allowed_capabilities"}):
+                raise ValueError("scope changed after asset review")
+            if seen["assets"] is not identities[0] or seen["excluded_assets"] is not identities[1]:
+                raise ValueError("scope changed after asset review")
+            risk = seen["max_risk"]
+            capabilities = seen["allowed_capabilities"]
+            if (type(risk) is not RiskLevel or type(capabilities) is not tuple
+                    or any(type(c) is not str for c in capabilities)):
+                raise ValueError("scope metadata unavailable for source owner")
+            # Fresh object constructed from pinned native immutable values.
+            # All actual grant authorization still belongs to the original.
+            pinned = ScopeDefinition(
+                assets=identities[0], max_risk=risk,
+                allowed_capabilities=capabilities,
+                excluded_assets=identities[1],
+            )
+            return original(
+                store, ctx, engagement_id, approved_by, reference,
+                pinned, valid_from, valid_until, recurring_retest_allowed
+            )
+        return review_and_pin
+
     def test_all_bad_assets_deny_before_original_record_with_no_sqlite_mutation(self):
         original = DomainStore.record_authorization_grant
         lost_exclusion = _scope(excluded=("blocked.example.test",))
