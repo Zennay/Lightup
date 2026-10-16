@@ -32,6 +32,22 @@ No network requests, DNS, subprocesses, filesystem reads/writes, database calls,
 
 Run independent tests: `PYTHONPATH=src python -m unittest tests.test_fictional_scope_delta_review_1501 -v`. The isolated CI workflow runs only these synthetic tests on Python 3.11 and 3.14. The original full CI and truly registered permanent VPS runner are **separate gates**, not substituted by this workflow.
 
+## Historical (A → B → A) widening guard
+
+Use `review_fictional_scope_history((proposal_v1, proposal_v2, ...))` on a **fixed-size exact tuple of 2–16 wholly synthetic snapshots**. Merely comparing two endpoint records is insufficient: an intermediate scope expansion followed by rollback (A → B → A) must remain a HOLD for reviewer reconciliation. The history helper first validates every snapshot before evaluating a single transition, rejecting invalid later entries **atomically** with a generic HOLD and no partial metadata. It then checks *each adjacent step* for new assets/capabilities, removed exclusions, increased risk, earlier start or later end; any expansion leads to HOLD with only bounded fixed dimension names and the first 1-based transition index. No customer identifiers, provenance, raw values or interim approval claims appear in its result.
+
+Even a fully monotonically narrowed chain produces only `REVIEW_ONLY`, NEVER approval; all four authorization, consent, dispatch and release flags remain literal false. History is caller-supplied and untrusted, not an audit log, trusted grant provenance, authenticated version chain or actual execution safety proof. No wall clock, file/DB/network/process activity, mutations or external integrations.
+
+```python
+from lightup.fictional_scope_delta_review_1501 import review_fictional_scope_history
+widened_then_rolled_back = (prior, prior.__class__(
+    assets=prior.assets, capabilities=prior.capabilities,
+    exclusions=prior.exclusions, risk=4,
+    valid_from=prior.valid_from, valid_until=prior.valid_until,
+), prior)
+assert review_fictional_scope_history(widened_then_rolled_back).status == "HOLD"
+```
+
 ## Ownership, limitations, handoff
 
 This separate additive PR neither edits nor overrides source owners: real grant amendment and live monotonicity are already tracked by #951/#1433 and #346/#1240; operator-facing notice #1495 and privacy quarantine #1497 have other owners; source AST inventory #1499 has another owner. Any integration must be independently designed and reviewed by original scope-policy, security and privacy owners and must preserve genuine client **and** operator consent, trusted provenance, durable revocation-at-use, actual asset/capability/risk/time binding and absence of TOCTOU. Known original #301 expired fixture, full current hosted CI and canonical runner issue #1144 remain blockers.
