@@ -23,6 +23,7 @@ MAX_INPUT_BYTES = 65536
 _UTC_TEXT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\Z", re.ASCII)
 _ID_TEXT = re.compile(r"[A-Za-z0-9][A-Za-z0-9@._:/-]{0,127}\Z", re.ASCII)
 _HOST_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z", re.ASCII)
+_ACTOR = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9._-]{0,62}[A-Za-z0-9])?@example\.test\Z", re.ASCII)
 _BATCH_KEYS = frozenset(("schema", "evaluated_at", "candidates"))
 _CLAIM_KEYS = frozenset((
     "legacy", "durable", "asset", "capability_id", "client_id",
@@ -107,9 +108,13 @@ def _claim(value: Any) -> CrossGrantCandidate:
     durable_reference = _text(next_grant["reference"])
     # Deliberately prohibit production-looking identities even in an inert
     # shape preview. Synthetic labels are unauthenticated and not consent.
-    if not (owner.endswith("@example.test") and approved_by.endswith("@example.test")
-            and reference.startswith("SYNTH-") and durable_reference.startswith("SYNTH-")):
-        raise ValueError("not fictional provenance")
+    if not (
+        _ACTOR.fullmatch(owner)
+        and _ACTOR.fullmatch(approved_by)
+        and reference.startswith("SYNTH-") and len(reference) > len("SYNTH-")
+        and durable_reference.startswith("SYNTH-") and len(durable_reference) > len("SYNTH-")
+    ):
+        raise ValueError("not canonical fictional provenance")
     recurring = next_grant["recurring_retest_allowed"]
     if type(recurring) is not bool:
         raise ValueError("noncanonical boolean")
