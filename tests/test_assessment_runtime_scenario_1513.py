@@ -78,11 +78,13 @@ class GroundTruthScenarioTests(unittest.TestCase):
         original = scenario()
         a, ca = records(original)
         b, cb = records(original)
+        tampered = deepcopy(original)
+        object.__setattr__(tampered, "targets", ("127.0.0.1", 123))
         for mutated in (
             (original, original, a, replace(b, scenario_id="different"), ca, cb),
             (original, original, a, b, ca, replace(cb, client_id="foreign-client")),
             (original, object(), a, b, ca, cb),
-            (original, replace(original, targets=("example.com",)), a, b, ca, cb),
+            (original, tampered, a, b, ca, cb),
         ):
             result = compare_ground_truthed_lab_evaluations(*mutated)
             self.assertEqual((result.status, result.changes), ("HOLD", ()))
