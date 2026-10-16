@@ -29,7 +29,7 @@ def _forbid_constant(value):
 
 
 def _evaluate(payload: bytes) -> str:
-    if not payload or len(payload) > _MAX_BYTES or b"\\x00" in payload:
+    if not payload or len(payload) > _MAX_BYTES or b"\x00" in payload:
         return "HOLD"
     try:
         data = json.loads(
