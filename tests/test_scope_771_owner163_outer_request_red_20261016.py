@@ -6,6 +6,7 @@ authorization defects; they are not evidence of a fixed or safe production gate.
 import os
 import sys
 import unittest
+from unittest.mock import patch
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
@@ -173,6 +174,20 @@ class CanonicalExecutionRequestOwner163Contract(unittest.TestCase):
             "analysis_only",
         )
         self.assert_denied(candidate)
+
+    def test_oracle_rejects_unrelated_policy_runtime_crash(self):
+        # Negative mutation: a broken installed policy must not count as an
+        # intentionally reproduced allow-before-outer-envelope failure.
+        with patch.object(ExecutionPolicy, "decide",
+                          side_effect=RuntimeError("synthetic-unrelated-policy-crash")):
+            with self.assertRaisesRegex(AssertionError, "unexpected crash cannot count"):
+                self.test_expected_red_replay_oracle()
+
+    def test_oracle_detects_source_owner_complete_denial_fix(self):
+        with patch.object(ExecutionPolicy, "decide",
+                          return_value=PolicyDecision(False, "synthetic-exact-denial")):
+            with self.assertRaisesRegex(AssertionError, "source changed"):
+                self.test_expected_red_replay_oracle()
 
     @unittest.expectedFailure
     def test_red_duck_target_active_with_grant_must_be_denied(self):
