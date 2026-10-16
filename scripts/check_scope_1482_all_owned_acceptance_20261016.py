@@ -195,13 +195,18 @@ def pinned_tree_valid(root: Path = ROOT) -> bool:
             if (
                 type(relpath) is not str or type(expected_sha) is not str
                 or len(expected_sha) != 40
+                or any(ch not in "0123456789abcdef" for ch in expected_sha)
+            ):
+                return False
+            # Inspect the RAW POSIX manifest text. Path.parts normalizes
+            # `./`, which would otherwise permit aliased evidence entries.
+            if (
+                "\\\\" in relpath or relpath.startswith("/")
+                or any(part in ("", ".", "..") for part in relpath.split("/"))
             ):
                 return False
             components = Path(relpath).parts
-            if (
-                not components or any(c in (".", "..") for c in components)
-                or Path(relpath).is_absolute()
-            ):
+            if not components or Path(relpath).is_absolute():
                 return False
             parent = root
             for component in components[:-1]:
