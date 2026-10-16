@@ -38,14 +38,14 @@ authenticated consent.
 
 ```sh
 PYTHONPATH=src python -m unittest discover -s tests \
-  -p 'test_scope_direct_grant_identity_741.py' -v
+  -p 'test_scope_direct_grant*_741.py' -v
 ```
 
-The suite contains seven ordinary canonical controls and **two deliberate
+The suites contain eight ordinary canonical controls and **five deliberate
 source-owner expected-REDs** (`@unittest.expectedFailure`) exercising
-subclass and duck polymorphism. A green diagnostic CI with two expected
+subclass and duck polymorphism, including an independent pre-invocation fence that forbids even calling a forged `is_current()` method before denial. The pre-invocation file is `tests/test_scope_direct_grant_preinvoke_741.py`. A green diagnostic CI with two expected
 failures is **not** a fixed authority boundary. Source owner must remove
-those decorators after product repair and require all nine tests as
+those decorators after product repair and require all thirteen tests as
 ordinary PASS on Python 3.11 and 3.14, in addition to the normal full
 product and named registered permanent VPS tests.
 
