@@ -107,10 +107,14 @@ def pin_gate_for_offline_review(gate: object) -> PinnedGateReview | None:
     """
     if type(gate) is not ActivationGate:
         return None
-    scope = object.__getattribute__(gate, "scope_policy")
-    activation = object.__getattribute__(gate, "activation_policy")
-    scope_fields = _scope_fields(scope)
-    activation_fields = _activation_fields(activation)
+    try:
+        scope = object.__getattribute__(gate, "scope_policy")
+        activation = object.__getattribute__(gate, "activation_policy")
+        scope_fields = _scope_fields(scope)
+        activation_fields = _activation_fields(activation)
+    except (AttributeError, TypeError, ValueError):
+        # Incomplete/externally corrupted gate objects cannot produce a pin.
+        return None
     if scope_fields is None or activation_fields is None:
         return None
     return PinnedGateReview(
@@ -134,11 +138,15 @@ def review_gate_lifetime(
         return _hold("invalid_input")
     if gate is not pin.gate:
         return _hold("changed")
-    scope = object.__getattribute__(gate, "scope_policy")
-    activation = object.__getattribute__(gate, "activation_policy")
-    if scope is not pin.scope or activation is not pin.activation:
-        return _hold("changed")
-    if (_scope_fields(scope) != pin.scope_fields or
-            _activation_fields(activation) != pin.activation_fields):
+    try:
+        scope = object.__getattribute__(gate, "scope_policy")
+        activation = object.__getattribute__(gate, "activation_policy")
+        if scope is not pin.scope or activation is not pin.activation:
+            return _hold("changed")
+        if (_scope_fields(scope) != pin.scope_fields or
+                _activation_fields(activation) != pin.activation_fields):
+            return _hold("changed")
+    except (AttributeError, TypeError, ValueError):
+        # A removed source field is a generic HOLD, never an exception leak.
         return _hold("changed")
     return LifetimeReceipt(status=LifetimeStatus.REVIEW_ONLY, reason="unchanged")
