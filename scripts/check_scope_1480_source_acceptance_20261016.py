@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Strict *non-authorizing* opt-in harness for #1480 original-source RED.
 
-Run only in an isolated review branch. Exit 0 attests 31 ordinary controls +
+Run only in an isolated review branch. Exit 0 attests 32 ordinary controls +
 1 original-source expected RED, never a fixed source or release.
 No network, subprocess, active adapters, real grant issuance, or target IO.
 """
@@ -25,7 +25,7 @@ OWN_TEST_FILES = (
 ACTIVATION = ROOT / "src" / "lightup" / "activation.py"
 ORIGINAL_SOURCE_BLOB = "156e94c18d5221b3d55e2c9fff4e393369e0f38e"
 EXPECTED_RED = "test_expected_red_authorized_permit_cannot_be_stamped_after_expiry"
-EXPECTED_METHODS = 32
+EXPECTED_METHODS = 33
 
 
 def _original_source_is_pinned() -> bool:
