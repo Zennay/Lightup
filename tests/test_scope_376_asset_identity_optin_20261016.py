@@ -226,6 +226,20 @@ class AssetShapeReview376(unittest.TestCase):
                     _scope(excluded=(bad,))
                 ).decision, "HOLD")
 
+    def test_non_tuple_asset_fields_never_have_validated_snapshots(self):
+        wrong = (_scope(["fixture.example.test"]),
+                 _scope(excluded=["blocked.example.test"]),
+                 _scope(assets={"fixture.example.test"}),
+                 _scope(excluded={"blocked.example.test"}))
+        for scope in wrong:
+            with self.subTest(type=type(scope.assets).__name__,
+                              exclusion_type=type(scope.excluded_assets).__name__):
+                self.assertIsNone(_canonical_asset_snapshot(scope))
+                receipt = review_asset_identity_shape(scope)
+                self.assertEqual(receipt.decision, "HOLD")
+                self.assertFalse(receipt)
+                self.assertIs(receipt.as_public_dict()["grant_permitted"], False)
+
     def test_private_snapshot_is_immutable_across_original_scope_mutation(self):
         scope = _scope(("fixture.example.test",),
                        ("excluded.example.test",))
@@ -340,6 +354,20 @@ class ExistingDomainSourceRed376(unittest.TestCase):
         before = self._row_count()
         with self.assertRaises(ValueError):
             self._record(_scope(("fixture.example.test with space",)))
+        self.assertEqual(self._row_count(), before)
+
+    @unittest.expectedFailure
+    def test_original_source_rejects_list_allowed_assets_before_sqlite(self):
+        before = self._row_count()
+        with self.assertRaises(ValueError):
+            self._record(_scope(["fixture.example.test"]))
+        self.assertEqual(self._row_count(), before)
+
+    @unittest.expectedFailure
+    def test_original_source_rejects_list_excluded_assets_before_sqlite(self):
+        before = self._row_count()
+        with self.assertRaises(ValueError):
+            self._record(_scope(excluded=["blocked.example.test"]))
         self.assertEqual(self._row_count(), before)
 
     def test_canonical_legacy_grant_roundtrip_still_works(self):
@@ -542,21 +570,23 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
 
 
 class ExactRedOracle376(unittest.TestCase):
-    def test_seven_real_source_red_cases_are_not_hidden_as_green(self):
+    def test_nine_real_source_red_cases_are_not_hidden_as_green(self):
         names = ("test_original_source_rejects_blank_allowlisted_identity_before_sqlite",
                  "test_original_source_rejects_blank_exclusion_before_sqlite",
                  "test_original_source_rejects_nontext_exclusion_before_sqlite",
                  "test_original_source_rejects_nontext_allowed_asset_before_sqlite",
                  "test_original_source_rejects_control_char_allowed_asset_before_sqlite",
                  "test_original_source_rejects_missing_exclusions_before_sqlite",
-                 "test_original_source_rejects_internal_whitespace_before_sqlite")
+                 "test_original_source_rejects_internal_whitespace_before_sqlite",
+                 "test_original_source_rejects_list_allowed_assets_before_sqlite",
+                 "test_original_source_rejects_list_excluded_assets_before_sqlite")
         result = unittest.TestResult()
         suite = unittest.TestSuite(ExistingDomainSourceRed376(name) for name in names)
         suite.run(result)
-        self.assertEqual(result.testsRun, 7)
+        self.assertEqual(result.testsRun, 9)
         self.assertFalse(result.errors)
         self.assertFalse(result.failures)
-        self.assertEqual(len(result.expectedFailures), 7)
+        self.assertEqual(len(result.expectedFailures), 9)
         self.assertFalse(result.unexpectedSuccesses)
 
 
