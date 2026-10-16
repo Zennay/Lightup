@@ -184,6 +184,92 @@ class GateRebindingTests(unittest.TestCase):
         with self.assertRaises(PermissionError):
             g.issue(PUBLIC, CAPABILITY)
 
+    def test_witness_plan_only_policy_changes_during_scope_decision(self):
+        gate = ActivationGate(
+            ScopePolicy(explicit_hosts=frozenset({"review.example.test"})),
+            ActivationPolicy(),
+        )
+        original_decide = ScopePolicy.decide
+
+        def flip_policy(scope, target):
+            decision = original_decide(scope, target)
+            self.assertTrue(decision.allowed)
+            gate.activation_policy = ActivationPolicy(
+                ActivationMode.AUTHORIZED, "FICTIONAL-SETUP"
+            )
+            return decision
+
+        with patch.object(ScopePolicy, "decide", autospec=True, side_effect=flip_policy), \
+             patch.object(socket, "socket", side_effect=AssertionError("network forbidden")), \
+             patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns forbidden")), \
+             patch.object(subprocess, "Popen", side_effect=AssertionError("process forbidden")):
+            permit = gate.issue(PUBLIC, CAPABILITY)
+        self.assertIs(permit.mode, ActivationMode.AUTHORIZED)
+        self.assertEqual(permit.activation_reference, "FICTIONAL-SETUP")
+        self.assertIs(gate.activation_policy.mode, ActivationMode.AUTHORIZED)
+
+    @unittest.expectedFailure
+    def test_RED_inflight_plan_only_gate_must_reject_authorized_mode_change(self):
+        gate = ActivationGate(
+            ScopePolicy(explicit_hosts=frozenset({"review.example.test"})),
+            ActivationPolicy(),
+        )
+        original_decide = ScopePolicy.decide
+
+        def flip_policy(scope, target):
+            decision = original_decide(scope, target)
+            gate.activation_policy = ActivationPolicy(
+                ActivationMode.AUTHORIZED, "FICTIONAL-SETUP"
+            )
+            return decision
+
+        with patch.object(ScopePolicy, "decide", autospec=True, side_effect=flip_policy):
+            # EXPECTED SOURCE RED: scope decision completes before source
+            # re-reads the now-replaced activation policy and issues permit.
+            with self.assertRaises(PermissionError):
+                gate.issue(PUBLIC, CAPABILITY)
+
+    def test_witness_scope_revoked_after_initial_decision_still_issues_permit(self):
+        gate = ActivationGate(
+            ScopePolicy(explicit_hosts=frozenset({"review.example.test"})),
+            ActivationPolicy(ActivationMode.AUTHORIZED, "FICTIONAL-SETUP"),
+        )
+        original_decide = ScopePolicy.decide
+
+        def revoke_after_decision(scope, target):
+            decision = original_decide(scope, target)
+            self.assertTrue(decision.allowed)
+            gate.scope_policy = ScopePolicy()
+            return decision
+
+        with patch.object(ScopePolicy, "decide", autospec=True, side_effect=revoke_after_decision), \
+             patch.object(socket, "socket", side_effect=AssertionError("network forbidden")), \
+             patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns forbidden")), \
+             patch.object(subprocess, "Popen", side_effect=AssertionError("process forbidden")):
+            permit = gate.issue(PUBLIC, CAPABILITY)
+        self.assertIs(permit.mode, ActivationMode.AUTHORIZED)
+        self.assertEqual(permit.target, "review.example.test")
+        self.assertFalse(gate.scope_policy.decide(PUBLIC).allowed)
+
+    @unittest.expectedFailure
+    def test_RED_inflight_scope_revocation_must_stop_stale_permit(self):
+        gate = ActivationGate(
+            ScopePolicy(explicit_hosts=frozenset({"review.example.test"})),
+            ActivationPolicy(ActivationMode.AUTHORIZED, "FICTIONAL-SETUP"),
+        )
+        original_decide = ScopePolicy.decide
+
+        def revoke_after_decision(scope, target):
+            decision = original_decide(scope, target)
+            gate.scope_policy = ScopePolicy()
+            return decision
+
+        with patch.object(ScopePolicy, "decide", autospec=True, side_effect=revoke_after_decision):
+            # EXPECTED SOURCE RED: original issue() does not recheck that
+            # the scope policy used for decision is still current at issue.
+            with self.assertRaises(PermissionError):
+                gate.issue(PUBLIC, CAPABILITY)
+
     def test_unchanged_explicit_public_gate_is_an_independent_control(self):
         gate = explicit_public_gate()
         permit = gate.issue(PUBLIC, CAPABILITY)
