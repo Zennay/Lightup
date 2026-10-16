@@ -12,6 +12,7 @@ from pathlib import Path
 
 from lightup.domain import AccessContext, DomainStore, Role
 from lightup.engagements import RiskLevel, ScopeDefinition
+from lightup.persisted_scope_entries_639 import review_persisted_scope_entries
 
 
 class NestedPersistedScopeAdmissionTest(unittest.TestCase):
@@ -180,6 +181,76 @@ class NestedPersistedScopeAdmissionTest(unittest.TestCase):
             leaked.scope.allows_asset("app.example.invalid")
         self.assertEqual(self._snapshot(), before)
 
+    @unittest.expectedFailure  # OPEN: nonblank exact exclusion entry missing
+    def test_blank_exclusion_must_not_resolve(self):
+        self._assert_deny_unchanged(
+            "excluded_assets_json", '["excluded.example.invalid","   "]'
+        )
+
+    @unittest.expectedFailure  # OPEN: nested object asset still reaches grant
+    def test_nested_object_asset_must_not_resolve(self):
+        self._assert_deny_unchanged(
+            "assets_json", '["app.example.invalid",{}]'
+        )
+
+    def test_same_persisted_row_reviewer_blocks_original_source_leaks(self):
+        """Functional handoff: same raw SQLite snapshot, zero grant promotion.
+
+        Ordinary PASS source reproduction must not depend on an XFAIL marker.
+        It proves the pure review rejects original source-authority leaks and
+        the crash case without another read in the pure helper itself.
+        """
+        cases = (
+            ("assets_json", '["app.example.invalid",null]', "granted"),
+            ("assets_json", '["app.example.invalid",{}]', "granted"),
+            ("excluded_assets_json", '["excluded.example.invalid","   "]', "granted"),
+            ("excluded_assets_json", '["excluded.example.invalid",false]', "granted"),
+            ("allowed_capabilities_json", '["web-baseline",{}]', "raised:TypeError"),
+        )
+        for column, payload, original_behavior in cases:
+            with self.subTest(column=column, payload=payload):
+                with self.store._connect() as con:
+                    con.execute(
+                        "UPDATE authorization_grants SET "
+                        "assets_json=?,excluded_assets_json=?,allowed_capabilities_json=? "
+                        "WHERE grant_id=?",
+                        (*self.original, self.grant.grant_id),
+                    )
+                before = self._mutate(column, payload)
+                self.assertIsNone(
+                    review_persisted_scope_entries(
+                        assets_json=before[0],
+                        excluded_assets_json=before[1],
+                        allowed_capabilities_json=before[2],
+                    ),
+                    "malformed original SQLite row must be held before any grant",
+                )
+                # Separate old-source observation: NOT an execution resolver,
+                # no permission assertion and no target-capable handler.
+                try:
+                    current = self.store.resolve_authorization_for_execution(self.grant)
+                except Exception as exc:
+                    behavior = "raised:" + type(exc).__name__
+                else:
+                    behavior = "granted" if current is not None else "denied"
+                self.assertEqual(behavior, original_behavior)
+                self.assertEqual(before, self._snapshot())
+
+    def test_same_persisted_row_reviewer_preserves_canonical_grant_shape(self):
+        before = self._snapshot()
+        preview = review_persisted_scope_entries(
+            assets_json=before[0],
+            excluded_assets_json=before[1],
+            allowed_capabilities_json=before[2],
+        )
+        self.assertIsNotNone(preview)
+        self.assertEqual(preview.assets, self.grant.scope.assets)
+        self.assertEqual(preview.excluded_assets, self.grant.scope.excluded_assets)
+        self.assertEqual(preview.allowed_capabilities, self.grant.scope.allowed_capabilities)
+        self.assertFalse(hasattr(preview, "grant_id"))
+        self.assertFalse(hasattr(preview, "is_current"))
+        self.assertEqual(before, self._snapshot())
+
     def test_exact_original_source_red_replay_witness(self):
         """Ordinary PASS oracle: no unrelated exception can fake a source-RED."""
         cases = (
@@ -187,6 +258,8 @@ class NestedPersistedScopeAdmissionTest(unittest.TestCase):
             ("assets_json", "[]", "granted"),
             ("assets_json", '["app.example.invalid","   "]', "granted"),
             ("excluded_assets_json", '["excluded.example.invalid",false]', "granted"),
+            ("assets_json", '["app.example.invalid",{}]', "granted"),
+            ("excluded_assets_json", '["excluded.example.invalid","   "]', "granted"),
             ("allowed_capabilities_json", '["web-baseline",{}]', "raised:TypeError"),
         )
         for column, payload, expected in cases:
