@@ -35,14 +35,14 @@ Run (read-only, no secrets/network targets):
 
 ```sh
 PYTHONPATH=src python -m unittest discover -s tests \
-  -p 'test_scope_cli_policy_marker_905.py' -v
+  -p 'test_scope_cli*_905.py' -v
 ```
 
-The five ordinary positive tests must PASS on PR #100. The six
+The seven ordinary positive tests must PASS on PR #100. The eight
 `@unittest.expectedFailure` cases prove **unfixed source-owner RED debt**
 on the pinned branch; **expected failure is not a safe implementation**.
-When PR #100's owner makes the production change, remove those decorators
-and require all eleven methods to pass as ordinary tests, in both Python
+Additional `tests/test_scope_cli_precoercion_905.py` shows that even a custom marker's `__bool__` must **never be invoked** before denial (including a throwing hook). When PR #100's owner makes the production change, remove those decorators
+and require all fifteen methods to pass as ordinary tests, in both Python
 3.11 and 3.14, and verify the entire repository and real registered
 `vps-bb300bba` workflows. An unexpected success in CI is a signal to
 reconcile this test migration, not permission to bypass the gate.
