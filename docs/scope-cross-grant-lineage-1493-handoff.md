@@ -18,7 +18,7 @@ Never merge/deploy or infer an execution grant, customer consent, trusted operat
 ```bash
 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m unittest discover -s tests -p 'test_cross_grant*_1493.py' -v
 ```
-The 135 tests include fixed 2020 UTC input fixtures and real original policy source smoke showing historical approvals remain rejected at present without any external targets/handlers. All names use imaginary `.example.test` documentation values, and review uses no DB, socket, file, subprocess, HTTP or DNS operations.
+The 150 tests include fixed 2020 UTC input fixtures and real original policy source smoke showing historical approvals remain rejected at present without any external targets/handlers. All names use imaginary `.example.test` documentation values, and review uses no DB, socket, file, subprocess, HTTP or DNS operations.
 
 ## W2 atomic batch review
 \`review_cross_grant_batch\` checks 1–32 exact fictional candidate records in one all-or-nothing operation: same caller-supplied client and engagement, no repeated grant/asset/capability tuple, exact canonical hashable identity, common explicit UTC evaluation instant, and individually REVIEW_ONLY source shapes. A single invalid or mixed-tenant record returns batch HOLD with zero reported reviewed records. No intermediate authorizing results or private values are returned. These 20 additional tests (including hostile field-equality protection) preserve the source boundaries and compare pure synthetic input only.
@@ -54,6 +54,13 @@ The fictional CLI now validates identifiers using strict ASCII syntax before sha
 
 ## W8 — Adversarial malformed input safety (strictly fictional and offline)
 Three new regular acceptance methods run **1,024 seeded malformed byte mutations** of the supplied fictional reference payload, a deep-but-bounded nested JSON document and an actual `python -B` subprocess with 65,537 input bytes. All responses must remain one sanitized HOLD or REVIEW_ONLY JSON object, have a nonzero (2/3) exit code, and keep the four authority flags literally false. The mutation seed is a fixed `1493`; no random network, credentials, real targets, files or tool handlers are used by the review. The subprocess test intentionally launches the CLI locally to prove real stdin resource gating, without scanning targets.
+
+## W10–W11 — Cross-grant collision and order independence
+When an otherwise individually coherent asset/capability pair is represented again under a **different** durable grant ID inside one fictional cohort, the whole batch now returns **atomic HOLD** with `reviewed=0`. This is deliberately more conservative than the original three-part `(grant_id, asset, capability)` replay check: a new grant ID must never inflate the apparent number of independently reviewed authorizations for the **same target/capability**. Exactly the same asset with a different capability, and different assets under the same capability, remain distinct review-only claims. This is only bounded synthetic cohort consistency; it is not proof of actual issuance, uniqueness or revocation.
+
+Ten new genuine in-memory/serialized CLI regressions cover collision, reversed order, distinct capability/asset positive controls, different actors with independently matching references, and the 32-record replay ceiling. Corrected the existing 32-record *positive* fixture to use 32 actually different fictional assets; the previous all-on-one-asset fixture correctly became a **red test after intentional fail-closed hardening**, not an authorization bug.
+
+Five further ordinary acceptance methods prove **permutation independence**: 24 orders each of four in-memory claims (ambiguous => HOLD, disjoint => REVIEW_ONLY), six orders each of three canonical JSON CLI claims, and preserved original source objects even after repeated denial. Every output still holds the literal four false authority flags; there is no partial count or trusted source implication. The dedicated workflow enforces an exact 150-method inventory on hosted Python 3.11 and 3.14 and executes the real fictional stdin CLI sample with nonzero exit status.
 
 ## Still RED / human-controlled release gates
 - Genuine linkage to the authenticated operator, canonical client and engagement, approved asset/capability, signed decision and durable trusted row, *not* equality of two caller-supplied strings.
