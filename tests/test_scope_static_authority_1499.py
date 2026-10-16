@@ -132,6 +132,59 @@ class StaticAuthoritySourceInventoryTests(unittest.TestCase):
                 )
                 self.assertFalse(inventory.inspect_static_shape("src/lightup/activation.py", modified))
 
+    def test_source_scope_normalization_call_cannot_be_replaced(self):
+        original = self.baseline["src/lightup/scope.py"].decode()
+        modified = original.replace(
+            "host = self.normalize_host(target.value)",
+            "host = target.value",
+        )
+        self.assertNotEqual(modified, original)
+        self.assertFalse(inventory.inspect_static_shape("src/lightup/scope.py", modified))
+
+    def test_source_scope_current_authorization_call_cannot_be_removed(self):
+        original = self.baseline["src/lightup/scope.py"].decode()
+        modified = original.replace("target.authorization.is_current()", "True")
+        self.assertNotEqual(modified, original)
+        self.assertFalse(inventory.inspect_static_shape("src/lightup/scope.py", modified))
+
+    def test_source_activation_early_deny_cannot_be_removed(self):
+        original = self.baseline["src/lightup/activation.py"].decode()
+        modified = original.replace("if not decision.allowed:", "if False:")
+        self.assertNotEqual(modified, original)
+        self.assertFalse(inventory.inspect_static_shape("src/lightup/activation.py", modified))
+
+    def test_source_activation_missing_decision_call_holds(self):
+        original = self.baseline["src/lightup/activation.py"].decode()
+        modified = original.replace("decision = self.scope_policy.decide(target)", "decision = target")
+        self.assertNotEqual(modified, original)
+        self.assertFalse(inventory.inspect_static_shape("src/lightup/activation.py", modified))
+
+    def test_source_execution_policy_grant_checks_cannot_be_removed(self):
+        original = self.baseline["src/lightup/execution_policy.py"].decode()
+        for old in ("grant.is_current()", "grant.scope.allows_asset(request.asset)",
+                    "grant.scope.allows_capability(request.capability_id)"):
+            with self.subTest(check=old):
+                modified = original.replace(old, "True")
+                self.assertNotEqual(modified, original)
+                self.assertFalse(inventory.inspect_static_shape("src/lightup/execution_policy.py", modified))
+
+    def test_call_order_cannot_be_reversed_in_scope_source(self):
+        original = self.baseline["src/lightup/scope.py"].decode()
+        # A new up-front synthetic call changes the expected lexical
+        # occurrence order. This does not invoke/resolve the call.
+        modified = original.replace(
+            "        host = self.normalize_host(target.value)",
+            "        self.ip_address_fake()\n        host = self.normalize_host(target.value)",
+        )
+        self.assertTrue(inventory.inspect_static_shape("src/lightup/scope.py", modified))
+        # Its non-canonical source checksum still enforces HOLD.
+        self.assertEqual(
+            inventory.review_source_bytes({
+                **self.baseline, "src/lightup/scope.py": modified.encode(),
+            }).status,
+            "HOLD",
+        )
+
     def test_import_never_executes_production_authority_source(self):
         # In-memory AST parse cannot execute an injected top-level payload.
         original = self.baseline["src/lightup/scope.py"]
