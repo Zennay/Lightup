@@ -291,6 +291,25 @@ class CrossGrantBatchTests(unittest.TestCase):
         x = dataclasses.replace(x, durable=dataclasses.replace(x.durable, grant_id=[]))
         self.assertEqual(self.review((x,)).status, "HOLD")
 
+    def test_untrusted_first_tenant_equality_is_never_called(self):
+        class HostileEquality:
+            def __eq__(self, other):
+                raise AssertionError("untrusted equality executed")
+            def __ne__(self, other):
+                raise AssertionError("untrusted inequality executed")
+        forged = dataclasses.replace(batch_candidate(), client_id=HostileEquality())
+        self.assertEqual(self.review((forged,)).status, "HOLD")
+
+    def test_untrusted_second_engagement_equality_is_never_called(self):
+        class HostileEquality:
+            def __eq__(self, other):
+                raise AssertionError("untrusted equality executed")
+            def __ne__(self, other):
+                raise AssertionError("untrusted inequality executed")
+        forged = dataclasses.replace(
+            batch_candidate(grant_id="G-2"), engagement_id=HostileEquality())
+        self.assertEqual(self.review((batch_candidate(), forged)).status, "HOLD")
+
     def test_naive_batch_clock_denied(self):
         self.assertEqual(review_cross_grant_batch(
             (batch_candidate(),), evaluated_at=NOW.replace(tzinfo=None)).status, "HOLD")
