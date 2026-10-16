@@ -57,7 +57,10 @@ class ScopeDeltaReview:
             raise ValueError("HOLD must not imply an accepted narrowed scope")
 
 
-_HOLD = ScopeDeltaReview("HOLD", (), ())
+def _hold() -> ScopeDeltaReview:
+    # Fresh record: no shared object can be poisoned by a caller using
+    # object.__setattr__ to bypass the frozen dataclass guard.
+    return ScopeDeltaReview("HOLD", (), ())
 
 
 def _items(value: object, *, assets: bool, max_count: int, nonempty: bool) -> bool:
@@ -112,8 +115,14 @@ def review_fictional_scope_delta(
     Earlier starts or later ends are widening, even for valid UTC windows.
     Completely invalid proposals return a generic, zero-echo HOLD.
     """
-    if not _valid(previous) or not _valid(proposed):
-        return _HOLD
+    try:
+        safe = _valid(previous) and _valid(proposed)
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        # A forged exact-type instance with unset slots must not escape as an
+        # exception or be misread as a successful reviewer decision.
+        safe = False
+    if not safe:
+        return _hold()
     old, new = previous, proposed
     widened = {
         "assets": not set(new.assets).issubset(old.assets),
