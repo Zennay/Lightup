@@ -55,3 +55,27 @@ def review_target_binding_1517(before: object, after: object) -> BindingReview15
     if before != after:
         return BindingReview1517("HOLD")
     return BindingReview1517("REVIEW_ONLY")
+
+
+def review_target_binding_batch_1517(pairs: object) -> BindingReview1517:
+    """Atomic 1..64 fictional (before, after) comparisons; never partial rights.
+
+    Exact built-in immutable containers only. A repeated asset or repeated
+    fictional grant across a cohort is ambiguous and therefore a generic HOLD.
+    This is not a production grant/asset identity registry.
+    """
+    if type(pairs) is not tuple or not 1 <= len(pairs) <= 64:
+        return BindingReview1517("HOLD")
+    assets = set()
+    grants = set()
+    for pair in pairs:
+        if type(pair) is not tuple or len(pair) != 2:
+            return BindingReview1517("HOLD")
+        before, after = pair
+        if not _canonical(before) or not _canonical(after) or before != after:
+            return BindingReview1517("HOLD")
+        if before[0] in assets or before[2] in grants:
+            return BindingReview1517("HOLD")
+        assets.add(before[0])
+        grants.add(before[2])
+    return BindingReview1517("REVIEW_ONLY")
