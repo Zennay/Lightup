@@ -187,6 +187,82 @@ class CrossGrantLineageTests(unittest.TestCase):
              patch("builtins.open", side_effect=AssertionError("file")):
             self.assertEqual(self.check().status, "REVIEW_ONLY")
 
+    def test_original_independent_source_allowances_do_not_bind_references(self):
+        # This reproduces two unrelated original source decisions in memory,
+        # NOT a reachable adapter/handler or real release.
+        now = datetime.now(timezone.utc)
+        legacy = Authorization(
+            "legacy-reviewer@example.test", "SYNTH-LEGACY",
+            now - timedelta(minutes=10), now + timedelta(minutes=10))
+        _, grant, _ = fixture()
+        grant = dataclasses.replace(
+            grant, approved_by="durable-reviewer@example.test",
+            reference="SYNTH-DURABLE",
+            valid_from=now - timedelta(minutes=15),
+            valid_until=now + timedelta(minutes=15))
+        policy = ScopePolicy(explicit_hosts=frozenset({"app.example.test"}))
+        self.assertTrue(policy.decide(
+            Target("app.example.test", authorization=legacy)).allowed)
+        self.assertTrue(ExecutionPolicy().decide(ExecutionRequest(
+            InteractionKind.TARGET_ACTIVE, "app.example.test", "web-baseline",
+            RiskLevel.LOW_IMPACT, authorization=grant)).allowed)
+        review = review_cross_grant_lineage(
+            legacy, grant, asset="app.example.test",
+            capability_id="web-baseline", client_id="CLIENT-1",
+            engagement_id="ENG-1", requested_risk=RiskLevel.LOW_IMPACT,
+            evaluated_at=now)
+        self.assertEqual(review.status, "HOLD")
+        self.assertFalse(review.authorized)
+        self.assertFalse(review.dispatch_allowed)
+
+    def test_original_source_positive_composition_remains_only_review(self):
+        now = datetime.now(timezone.utc)
+        legacy = Authorization("reviewer@example.test", "SYNTH-REF-1",
+                               now - timedelta(minutes=10), now + timedelta(minutes=10))
+        _, original, _ = fixture()
+        grant = dataclasses.replace(
+            original, valid_from=now - timedelta(minutes=15),
+            valid_until=now + timedelta(minutes=15))
+        target = Target("app.example.test", authorization=legacy)
+        self.assertTrue(ScopePolicy(explicit_hosts=frozenset({
+            "app.example.test"})).decide(target).allowed)
+        self.assertTrue(ExecutionPolicy().decide(ExecutionRequest(
+            InteractionKind.TARGET_ACTIVE, "app.example.test", "web-baseline",
+            RiskLevel.LOW_IMPACT, authorization=grant)).allowed)
+        review = review_cross_grant_lineage(
+            legacy, grant, asset="app.example.test",
+            capability_id="web-baseline", client_id="CLIENT-1",
+            engagement_id="ENG-1", requested_risk=RiskLevel.LOW_IMPACT,
+            evaluated_at=now)
+        self.assertEqual(review.status, "REVIEW_ONLY")
+        self.assertEqual((review.authorized, review.consent_verified,
+                          review.dispatch_allowed, review.release_allowed),
+                         (False, False, False, False))
+
+    def test_original_source_does_not_bind_caller_tenant_claim(self):
+        now = datetime.now(timezone.utc)
+        legacy = Authorization("reviewer@example.test", "SYNTH-REF-1",
+                               now - timedelta(minutes=10), now + timedelta(minutes=10))
+        _, original, _ = fixture()
+        grant = dataclasses.replace(
+            original, valid_from=now - timedelta(minutes=15),
+            valid_until=now + timedelta(minutes=15))
+        # Original independent source policy evaluates the durable scope and
+        # request asset only; it has no separately authenticated client arg.
+        self.assertTrue(ScopePolicy(explicit_hosts=frozenset({
+            "app.example.test"})).decide(Target(
+                "app.example.test", authorization=legacy)).allowed)
+        self.assertTrue(ExecutionPolicy().decide(ExecutionRequest(
+            InteractionKind.TARGET_ACTIVE, "app.example.test", "web-baseline",
+            RiskLevel.LOW_IMPACT, authorization=grant)).allowed)
+        review = review_cross_grant_lineage(
+            legacy, grant, asset="app.example.test",
+            capability_id="web-baseline", client_id="OTHER-CLIENT",
+            engagement_id="ENG-1", requested_risk=RiskLevel.LOW_IMPACT,
+            evaluated_at=now)
+        self.assertEqual(review.status, "HOLD")
+        self.assertFalse(review.release_allowed)
+
     def test_real_original_policies_have_separate_untrusted_slots(self):
         # Synthetic one-record decision; no gate issues a permit or dispatches tools.
         a, b, _ = fixture()
