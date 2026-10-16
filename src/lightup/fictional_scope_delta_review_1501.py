@@ -147,3 +147,92 @@ def review_fictional_scope_delta(
     return ScopeDeltaReview(
         "REVIEW_ONLY", (), tuple(name for name in _DIMENSIONS if narrowed[name])
     )
+
+
+@dataclass(frozen=True, slots=True)
+class ScopeHistoryReview:
+    """Inert entire-chain review; caller-owned snapshot history is not trusted."""
+
+    status: str
+    transition_count: int
+    first_held_step: int | None
+    expanded_dimensions: tuple[str, ...]
+    narrowed_dimensions: tuple[str, ...]
+    authorized: bool = field(default=False, init=False)
+    consent_verified: bool = field(default=False, init=False)
+    dispatch_allowed: bool = field(default=False, init=False)
+    release_allowed: bool = field(default=False, init=False)
+
+    def __post_init__(self) -> None:
+        if type(self.status) is not str or self.status not in ("HOLD", "REVIEW_ONLY"):
+            raise ValueError("invalid history review status")
+        if type(self.transition_count) is not int or not 0 <= self.transition_count <= 15:
+            raise ValueError("invalid history length")
+        if type(self.expanded_dimensions) is not tuple or type(self.narrowed_dimensions) is not tuple:
+            raise ValueError("invalid dimension type")
+        for group in (self.expanded_dimensions, self.narrowed_dimensions):
+            if any(type(x) is not str for x in group):
+                raise ValueError("invalid dimension type")
+            if group != tuple(name for name in _DIMENSIONS if name in group):
+                raise ValueError("invalid history dimensions")
+        if self.status == "HOLD":
+            if self.narrowed_dimensions:
+                raise ValueError("HOLD cannot certify narrowing")
+            if self.first_held_step is None:
+                if self.transition_count != 0 or self.expanded_dimensions:
+                    raise ValueError("invalid generic HOLD")
+            elif (
+                type(self.first_held_step) is not int
+                or not 1 <= self.first_held_step <= self.transition_count
+                or not self.expanded_dimensions
+            ):
+                raise ValueError("invalid hold witness")
+        elif (
+            not 1 <= self.transition_count <= 15
+            or self.first_held_step is not None
+            or self.expanded_dimensions
+        ):
+            raise ValueError("history cannot approve an expansion")
+
+
+def review_fictional_scope_history(history: object) -> ScopeHistoryReview:
+    """Atomic offline review of every adjacent fictional proposal transition.
+
+    Never compare only endpoints: A->B->A can hide an intermediate expansion.
+    2..16 exact tuple snapshots, all checked before any result; invalid input
+    returns generic zero-echo HOLD. Valid expanding history reports only fixed
+    dimension names and first transition index, never asset names or grants.
+    """
+    def generic_hold() -> ScopeHistoryReview:
+        return ScopeHistoryReview("HOLD", 0, None, (), ())
+
+    if type(history) is not tuple or not 2 <= len(history) <= 16:
+        return generic_hold()
+    try:
+        # Atomic validation: even if an early step widens, a malformed later
+        # snapshot takes precedence and suppresses all partial review details.
+        if not all(_valid(snapshot) for snapshot in history):
+            return generic_hold()
+        expanded = set()
+        narrowed = set()
+        first_held = None
+        for step in range(1, len(history)):
+            result = review_fictional_scope_delta(history[step - 1], history[step])
+            if result.status == "HOLD":
+                if first_held is None:
+                    first_held = step
+                expanded.update(result.expanded_dimensions)
+            else:
+                narrowed.update(result.narrowed_dimensions)
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return generic_hold()
+    count = len(history) - 1
+    if first_held is not None:
+        return ScopeHistoryReview(
+            "HOLD", count, first_held,
+            tuple(name for name in _DIMENSIONS if name in expanded), ()
+        )
+    return ScopeHistoryReview(
+        "REVIEW_ONLY", count, None, (),
+        tuple(name for name in _DIMENSIONS if name in narrowed),
+    )
