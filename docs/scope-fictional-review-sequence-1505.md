@@ -31,3 +31,6 @@ A distinct, non-authorizing CLI `python -m lightup.fictional_review_sequence_pai
 PYTHONPATH=src python -m lightup.fictional_review_sequence_pair_cli_1505 < docs/examples/fictional-pair-1505-matching.json
 PYTHONPATH=src python -m lightup.fictional_review_sequence_pair_cli_1505 < docs/examples/fictional-pair-1505-divergent.json
 ```
+
+## Prevent accidental runtime wiring
+A separate **static, syntax-only** test scans all current original `src/lightup/**/*.py` modules (excluding #1505's own four review modules) for ordinary and literal dynamic imports of this review-only functionality. It also validates the own modules' restricted import list, the dedicated hosted read-only workflow and the four wholly fictitious examples. Any detected direct integration requires **HOLD and owner/security review**, not automatic deployment or trust. This is a limited AST tripwire: calculated imports, reflective monkey-patching, code generation or external packages cannot be proven absent; it is **NOT a production security certification**. It neither executes the original modules nor makes requests to real targets.
