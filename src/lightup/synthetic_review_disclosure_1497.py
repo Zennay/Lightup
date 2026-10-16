@@ -17,10 +17,10 @@ _RESERVED_HOST = re.compile(r"(?:[a-z]|[a-z][a-z0-9-]{0,61}[a-z0-9])\.example\.t
 _IPV4_SHAPE = re.compile(r"(?<![A-Za-z0-9])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?![A-Za-z0-9])")
 _IPV6_SHAPE = re.compile(r"(?:[0-9A-Fa-f]{0,4}:){2,}[0-9A-Fa-f]{0,4}")
 _SECRET_HINT = re.compile(
-    r"(?i)(?:\\b(?:password|passwd|secret|bearer|token|cookie|api[_-]?key|private[_-]?key|access[_-]?token|client[_-]?secret|session[_-]?id)\\b|\\b(?:sk-[A-Za-z0-9_-]+|gh[pousr]_[A-Za-z0-9]+|github_pat_[A-Za-z0-9_]+|AKIA[0-9A-Z]{16}))"
+    r"(?i)(?:\b(?:password|passwd|secret|bearer|token|cookie|api[_-]?key|private[_-]?key|access[_-]?token|client[_-]?secret|session[_-]?id)\b|\b(?:sk-[A-Za-z0-9_-]+|gh[pousr]_[A-Za-z0-9]+|github_pat_[A-Za-z0-9_]+|AKIA[0-9A-Z]{16}))"
 )
 _AUTHORITY_CLAIM = re.compile(
-    r"(?i)\\b(?:approved|authorized|approval[ ]+granted|consent[ ]+granted|go[ ]+live|signed[ ]+off)\\b"
+    r"(?i)\b(?:approved|authorized|approval[ ]+granted|consent[ ]+granted|go[ ]+live|signed[ ]+off)\b"
 )
 _GENERIC_HOLD = "HOLD — offline handoff quarantined; no input echoed. NOT AUTHORIZED."
 _REVIEW = "REVIEW_ONLY — fictional notes still require independent human privacy and scope review. NOT AUTHORIZED."
