@@ -137,8 +137,9 @@ class StaticAuthoritySourceInventoryTests(unittest.TestCase):
         original = self.baseline["src/lightup/scope.py"]
         attack = original + b"\nraise RuntimeError('WOULD EXECUTE IF IMPORTED')\n"
         modified = {**self.baseline, "src/lightup/scope.py": attack}
+        before_module = sys.modules.get("lightup.scope")
         self.assertEqual(inventory.review_source_bytes(modified).status, "HOLD")
-        self.assertNotIn("lightup.scope", sys.modules)
+        self.assertIs(sys.modules.get("lightup.scope"), before_module)
 
     def test_no_file_db_socket_process_from_pure_in_memory_api(self):
         with patch("builtins.open", side_effect=AssertionError("file")), \
