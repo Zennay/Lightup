@@ -1,0 +1,61 @@
+name: LightUp isolated permit-decision review #1491 (hosted only)
+
+on:
+  pull_request:
+    paths:
+      - 'src/lightup/permit_decision_review_1491.py'
+      - 'tests/test_scope_permit_decision_review_1491_20261016.py'
+      - 'docs/scope-permit-decision-review-1491-20261016.md'
+      - '.github/workflows/lightup-permit-decision-1491.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lightup-permit-decision-1491-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-only:
+    name: Offline #1491 Python ${{ matrix.python }} (never VPS/release proof)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Verify exactly 17 source-integrated synthetic-only tests
+        env:
+          PYTHONPATH: src:tests
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m compileall -q src tests
+          python - <<'PY'
+          import unittest
+          suite = unittest.defaultTestLoader.discover(
+              "tests", pattern="test_scope_permit_decision_review_1491_20261016.py"
+          )
+          total = suite.countTestCases()
+          if total != 17:
+              raise SystemExit(f"INVALID_TEST_INVENTORY: {total} != 17")
+          outcome = unittest.TextTestRunner(verbosity=2).run(suite)
+          if (
+              not outcome.wasSuccessful()
+              or outcome.skipped
+              or outcome.expectedFailures
+              or outcome.unexpectedSuccesses
+          ):
+              raise SystemExit("STRICT_OWN_TEST_FAILURE_OR_UNRESOLVED_DEBT")
+          print("ISOLATED_1491 tests=17 ordinary_pass=17 expected_failures=0 skipped=0")
+          PY
+      - name: Interpret evidence safely
+        run: echo 'Offline review-only tests. This workflow is NOT original full CI, a VPS proof, actual permit provenance, consent, execution authority, or release approval.'
