@@ -150,10 +150,9 @@ class ToolDefinitionOwner156OuterBoundary(unittest.TestCase):
     def test_red_empty_nondefinition_returns_typed_rejection(self):
         self.assert_rejected_without_registration(object())
 
-    def test_red_oracle_requires_all_five_real_failures(self):
+    def test_expected_red_replay_oracle(self):
         names = sorted(name for name in dir(type(self))
-                       if name.startswith("test_red_")
-                       and name != "test_red_oracle_eightless_requires_all_five_real_failures")
+                       if name.startswith("test_red_"))
         self.assertEqual(len(names), 5)
         result = unittest.TestResult()
         unittest.TestSuite(type(self)(name) for name in names).run(result)
