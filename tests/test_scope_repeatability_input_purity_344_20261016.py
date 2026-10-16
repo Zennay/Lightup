@@ -713,6 +713,36 @@ class ScopeReplayMatrix344Tests(unittest.TestCase):
             before,
         )
 
+    def test_concurrent_shared_policy_canary_rejects_cached_scope_authority(self):
+        # Malicious-code simulation ONLY inside this unittest.mock scope.
+        # It caches the *first* ScopeDecision by policy object identity,
+        # a realistic request cross-contamination defect. The real 384-call
+        # concurrency oracle must fail rather than rubber-stamp prior grants.
+        real_decide = ScopePolicy.decide
+        stale_by_policy: dict[int, ScopeDecision] = {}
+        calls = 0
+
+        def faulty(bound_policy, bound_target):
+            nonlocal calls
+            calls += 1
+            result = real_decide(bound_policy, bound_target)
+            return stale_by_policy.setdefault(id(bound_policy), result)
+
+        with patch.object(ScopePolicy, "decide", faulty):
+            with self.assertRaises(AssertionError):
+                self.test_concurrent_shared_policy_cannot_reuse_prior_grant_decision()
+        self.assertGreater(calls, 0)
+        self.assertEqual(
+            ScopePolicy(
+                allow_private_lab=False,
+                explicit_hosts=frozenset(("review.example.test",)),
+            ).decide(Target("review.example.test")),
+            ScopeDecision(
+                False, "review.example.test",
+                ScopeReason.AUTHORIZATION_MISSING,
+            ),
+        )
+
     def test_canonical_fixture_does_not_ever_create_permit_or_grant(self):
         for policy, target in scenarios():
             decision = policy.decide(target)
