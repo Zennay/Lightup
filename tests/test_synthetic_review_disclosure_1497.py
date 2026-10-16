@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from lightup.synthetic_review_disclosure_1497 import review_fictional_handoff_notes as review
 
 
-VALID = "Review asset alpha.example.test; capability header_read; risk 2."
+VALID = "Asset alpha.example.test; capability header_read; proposed risk 2."
 
 
 class FictionalDisclosureReviewTests(unittest.TestCase):
@@ -28,7 +28,7 @@ class FictionalDisclosureReviewTests(unittest.TestCase):
         self.assertEqual(verdict.reviewed_notes, 1)
 
     def test_two_notes_return_only_count(self):
-        x = review((VALID, "Asset beta.example.test; risk 4."))
+        x = review((VALID, "Asset beta.example.test; capability tls_review; proposed risk 4."))
         self.assertEqual(x.status, "REVIEW_ONLY")
         self.assertEqual(x.reviewed_notes, 2)
         self.assertNotIn("alpha", repr(x))
@@ -49,7 +49,7 @@ class FictionalDisclosureReviewTests(unittest.TestCase):
 
     def test_permutation_deterministic(self):
         a = VALID
-        b = "Asset beta.example.test; risk 4."
+        b = "Asset beta.example.test; capability tls_review; proposed risk 4."
         self.assertEqual(review((a, b)), review((b, a)))
 
     def test_list_not_accepted(self):
@@ -59,13 +59,13 @@ class FictionalDisclosureReviewTests(unittest.TestCase):
         self.assertEqual(review(()).status, "HOLD")
 
     def test_exact_sixteen_fictional_notes_allowed_but_not_authorized(self):
-        verdict = review((VALID,) * 16)
+        verdict = review(tuple(f"Asset lab{i}.example.test; capability header_read; proposed risk 2." for i in range(16)))
         self.assertEqual(verdict.status, "REVIEW_ONLY")
         self.assertEqual(verdict.reviewed_notes, 16)
         self.assertIs(verdict.authorized, False)
 
     def test_input_tuple_and_strings_not_mutated(self):
-        records = (VALID, "Asset beta.example.test; capability header_read.")
+        records = (VALID, "Asset beta.example.test; capability header_read; proposed risk 3.")
         before = records[:]
         self.assertEqual(review(records).status, "REVIEW_ONLY")
         self.assertEqual(records, before)
@@ -174,6 +174,94 @@ class FictionalDisclosureReviewTests(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertEqual(review((VALID + " " + value,)).status, "HOLD")
 
+    def test_any_extra_text_never_passes_as_a_scope_record(self):
+        for extra in (" unrelated notes", " scan was approved", " access to customer",
+                      " private payload", "\nasset beta.example.test",
+                      " user john at internal", "; additional field enabled",
+                      " ; more", " #tracked", "\n", "\t"):
+            with self.subTest(extra=repr(extra)):
+                self.assertEqual(review((VALID + extra,)).status, "HOLD")
+
+    def test_missing_required_fields_fail_atomically(self):
+        for note in ("Asset alpha.example.test",
+                     "Asset alpha.example.test; capability header_read.",
+                     "Asset alpha.example.test; proposed risk 2.",
+                     "Asset alpha.example.test; capability header_read; proposed risk.",
+                     "Asset alpha.example.test; capability header_read; proposed risk 2"):
+            with self.subTest(note=note):
+                self.assertEqual(review((note,)).status, "HOLD")
+
+    def test_unknown_capabilities_can_never_be_self_declared(self):
+        for capability in ("scan", "exploit", "ssh", "header-write", "HEADER_READ",
+                           "capability", "tls_review_more", "header_read_",
+                           "a" * 60):
+            with self.subTest(capability=capability):
+                note = f"Asset alpha.example.test; capability {capability}; proposed risk 2."
+                self.assertEqual(review((note,)).status, "HOLD")
+
+    def test_all_documented_fictional_capability_examples_are_review_only(self):
+        for capability in ("header_read", "tls_review", "service_inventory", "passive_discovery"):
+            with self.subTest(capability=capability):
+                note = f"Asset alpha.example.test; capability {capability}; proposed risk 3."
+                self.assertEqual(review((note,)).status, "REVIEW_ONLY")
+
+    def test_risk_is_exact_canonical_one_to_five(self):
+        for risk in range(1, 6):
+            with self.subTest(risk=risk):
+                self.assertEqual(review((f"Asset alpha.example.test; capability header_read; proposed risk {risk}.",)).status, "REVIEW_ONLY")
+        for bad in ("0", "6", "10", "02", "2.0", "+2", "-2", "true", "4 "):
+            with self.subTest(risk=bad):
+                self.assertEqual(review((f"Asset alpha.example.test; capability header_read; proposed risk {bad}.",)).status, "HOLD")
+
+    def test_duplicate_identical_claim_is_atomic_hold(self):
+        self.assertEqual(review((VALID, VALID)).status, "HOLD")
+
+    def test_same_asset_and_capability_cannot_have_conflicting_risks(self):
+        conflicting = "Asset alpha.example.test; capability header_read; proposed risk 5."
+        self.assertEqual(review((VALID, conflicting)).status, "HOLD")
+
+    def test_same_asset_can_have_independent_capabilities_without_approval(self):
+        second = "Asset alpha.example.test; capability tls_review; proposed risk 5."
+        verdict = review((VALID, second))
+        self.assertEqual(verdict.status, "REVIEW_ONLY")
+        self.assertEqual(verdict.reviewed_notes, 2)
+        self.assertFalse(verdict.authorized)
+
+    def test_strict_spacing_case_and_punctuation(self):
+        for bad in (VALID.lower(), VALID.upper(), VALID.replace("; ", ";"),
+                    VALID.replace("Asset ", "Asset  "), VALID.replace("risk 2.", "risk 2. "),
+                    VALID.replace("example.test", "example.test."),
+                    VALID.replace("Asset ", " ASSET ")):
+            with self.subTest(value=repr(bad[:45])):
+                self.assertEqual(review((bad,)).status, "HOLD")
+
+    def test_canonical_host_label_upper_bound_and_shape(self):
+        longest = "a" + "b" * 61 + "c"
+        self.assertEqual(len(longest), 63)
+        note = f"Asset {longest}.example.test; capability tls_review; proposed risk 5."
+        self.assertEqual(review((note,)).status, "REVIEW_ONLY")
+        for label in (longest + "d", "a-", "-a", "a_b", "a.b"):
+            with self.subTest(label=label[:20]):
+                bad = f"Asset {label}.example.test; capability tls_review; proposed risk 5."
+                self.assertEqual(review((bad,)).status, "HOLD")
+
+    def test_forged_flags_cannot_be_injected_via_constructor(self):
+        from lightup.synthetic_review_disclosure_1497 import DisclosureVerdict
+        with self.assertRaises(TypeError):
+            DisclosureVerdict("REVIEW_ONLY", "APPROVED", 1, authorized=True)
+        with self.assertRaises(TypeError):
+            DisclosureVerdict("REVIEW_ONLY", "APPROVED", 1, dispatch_allowed=True)
+
+    def test_invalid_mid_batch_returns_exact_same_generic_hold(self):
+        valid_1 = VALID
+        valid_2 = "Asset beta.example.test; capability tls_review; proposed risk 4."
+        wrong = "Asset gamma.example.test; capability root_shell; proposed risk 4."
+        for notes in ((wrong, valid_1, valid_2),
+                      (valid_1, wrong, valid_2),
+                      (valid_1, valid_2, wrong)):
+            with self.subTest(pos=notes.index(wrong)):
+                self.assertEqual(review(notes), review((None,)))
+
     def test_atomic_quarantine_of_mixed_batch(self):
         verdict = review((VALID, "customer.example.com", VALID))
         self.assertEqual(verdict.reviewed_notes, 0)
@@ -238,6 +326,24 @@ class FictionalDisclosureCliTests(unittest.TestCase):
         self.assertEqual(x.returncode, 3, x.stderr)
         self.assertEqual(json.loads(x.stdout)["status"], "HOLD")
         self.assertNotIn(b"Traceback", x.stderr)
+
+    def test_cli_rejects_duplicate_records_without_input_echo(self):
+        payload = json.dumps([VALID, VALID]).encode("utf-8")
+        result = self.invoke(payload, "--synthetic-only")
+        self.assertEqual(result.returncode, 3)
+        self.assertEqual(json.loads(result.stdout)["status"], "HOLD")
+        self.assertNotIn(b"alpha.example.test", result.stdout)
+
+    def test_cli_rejects_ambiguous_extra_content(self):
+        payload = json.dumps([VALID + " consent granted"]).encode("utf-8")
+        result = self.invoke(payload, "--synthetic-only")
+        self.assertEqual(result.returncode, 3)
+        self.assertNotIn(b"consent granted", result.stdout)
+
+    def test_cli_rejects_partial_scope_on_json_keyed_dict(self):
+        result = self.invoke(json.dumps({"notes": [VALID]}).encode(), "--synthetic-only")
+        self.assertEqual(result.returncode, 3)
+        self.assertEqual(json.loads(result.stdout)["reviewed_notes"], 0)
 
     def test_real_subprocess_rejects_nested_dict(self):
         x = self.invoke(b'[{"text":"alpha.example.test"}]', "--synthetic-only")
