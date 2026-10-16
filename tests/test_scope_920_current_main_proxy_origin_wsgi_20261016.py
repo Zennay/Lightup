@@ -94,9 +94,9 @@ class CurrentMainTransportIdentityTest(unittest.TestCase):
             {"HTTP_SEC_FETCH_SITE": "cross-site"},
         ):
             with self.subTest(data=data), self.assertRaises(RequestRejected):
-                self.gate.validate(request(
-                    REQUEST_METHOD="POST", HTTP_ORIGIN=ORIGIN, **data,
-                ))
+                envelope = request(REQUEST_METHOD="POST", HTTP_ORIGIN=ORIGIN)
+                envelope.update(data)
+                self.gate.validate(envelope)
 
     def test_actual_wsgi_canonical_login_response(self):
         result, body = invoke(create_app(Mock(), self.gate), request())
