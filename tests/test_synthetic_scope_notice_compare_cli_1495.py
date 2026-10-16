@@ -74,6 +74,41 @@ class FictionalPairCli1495(unittest.TestCase):
         self.assertNotIn("customer.example.com", html)
         return html
 
+    def test_committed_comparison_fixtures_run_end_to_end(self):
+        before = (ROOT/"examples"/"fictional_scope_compare_before_1495.json").read_bytes()
+        after = (ROOT/"examples"/"fictional_scope_compare_after_1495.json").read_bytes()
+        left = process(ORIGIN, before)
+        right = process(ORIGIN, after)
+        self.assertEqual(left.returncode, 2, left.stderr)
+        self.assertEqual(right.returncode, 2, right.stderr)
+        combined = json.dumps({
+            "before": json.loads(left.stdout),
+            "after": json.loads(right.stdout),
+        }).encode()
+        page = self.review(process([*COMPARE, "--synthetic-pair-to-html"], combined))
+        self.assertIn("PROPOSED DETAILS CHANGED", page)
+        self.assertIn("ONLY IN AFTER — NOT GRANTED", page)
+        self.assertIn("metadata_read", page)
+        self.assertIn("5/5", page)
+        self.assertIn("2026-10-16T12:45:00Z", page)
+        self.assertIn("Proposed changed pairs: 2", page)
+
+    def test_exact_example_inputs_are_reserved_dns_and_bounded(self):
+        for name in ("fictional_scope_compare_before_1495.json",
+                     "fictional_scope_compare_after_1495.json"):
+            with self.subTest(name=name):
+                document = json.loads((ROOT/"examples"/name).read_text())
+                self.assertIn("review_at", document)
+                self.assertTrue(1 <= len(document["proposals"]) <= 32)
+                for item in document["proposals"]:
+                    self.assertTrue(item["asset"].endswith(".example.test"))
+                    self.assertTrue(1 <= item["risk"] <= 5)
+                    self.assertNotIn("http", item["asset"])
+                    self.assertNotIn("://", item["asset"])
+                p = process(ORIGIN, json.dumps(document).encode())
+                self.assertEqual(p.returncode, 2, p.stderr)
+                self.assertNotIn(b'"authorized":true', p.stdout)
+
     def test_genuine_three_process_full_example_delta(self):
         data = pair()
         page = self.review(process([*COMPARE, "--synthetic-pair-to-html"], data))
