@@ -10,6 +10,7 @@ on:
       - src/lightup/ai/assessment_runtime_cohort_1513.py
       - tests/test_assessment_runtime_diff_1513.py
       - tests/test_assessment_runtime_cohort_1513.py
+      - tests/test_assessment_runtime_integration_1513.py
       - .github/workflows/assessment-runtime-diff-1513.yml
   workflow_dispatch:
 
