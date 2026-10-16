@@ -182,6 +182,7 @@ class ScopeHistoryReview:
     first_held_step: int | None
     expanded_dimensions: tuple[str, ...]
     narrowed_dimensions: tuple[str, ...]
+    held_steps: tuple[int, ...] = ()
     authorized: bool = field(default=False, init=False)
     consent_verified: bool = field(default=False, init=False)
     dispatch_allowed: bool = field(default=False, init=False)
@@ -192,6 +193,14 @@ class ScopeHistoryReview:
             raise ValueError("invalid history review status")
         if type(self.transition_count) is not int or not 0 <= self.transition_count <= 15:
             raise ValueError("invalid history length")
+        if type(self.held_steps) is not tuple or len(self.held_steps) > 15:
+            raise ValueError("invalid held transition indices")
+        if (
+            any(type(step) is not int or not 1 <= step <= self.transition_count
+                for step in self.held_steps)
+            or self.held_steps != tuple(sorted(set(self.held_steps)))
+        ):
+            raise ValueError("held transitions must be unique sorted bounded indices")
         if type(self.expanded_dimensions) is not tuple or type(self.narrowed_dimensions) is not tuple:
             raise ValueError("invalid dimension type")
         for group in (self.expanded_dimensions, self.narrowed_dimensions):
@@ -203,18 +212,21 @@ class ScopeHistoryReview:
             if self.narrowed_dimensions:
                 raise ValueError("HOLD cannot certify narrowing")
             if self.first_held_step is None:
-                if self.transition_count != 0 or self.expanded_dimensions:
+                if self.transition_count != 0 or self.expanded_dimensions or self.held_steps:
                     raise ValueError("invalid generic HOLD")
             elif (
                 type(self.first_held_step) is not int
                 or not 1 <= self.first_held_step <= self.transition_count
                 or not self.expanded_dimensions
+                or not self.held_steps
+                or self.held_steps[0] != self.first_held_step
             ):
                 raise ValueError("invalid hold witness")
         elif (
             not 1 <= self.transition_count <= 15
             or self.first_held_step is not None
             or self.expanded_dimensions
+            or self.held_steps
         ):
             raise ValueError("history cannot approve an expansion")
 
@@ -225,7 +237,7 @@ def review_fictional_scope_history(history: object) -> ScopeHistoryReview:
     Never compare only endpoints: A->B->A can hide an intermediate expansion.
     2..16 exact tuple snapshots, all checked before any result; invalid input
     returns generic zero-echo HOLD. Valid expanding history reports only fixed
-    dimension names and first transition index, never asset names or grants.
+    dimension names and ALL widened transition indices, never asset names or grants.
     """
     def generic_hold() -> ScopeHistoryReview:
         return ScopeHistoryReview("HOLD", 0, None, (), ())
@@ -243,11 +255,13 @@ def review_fictional_scope_history(history: object) -> ScopeHistoryReview:
         expanded = set()
         narrowed = set()
         first_held = None
+        held_steps = []
         for step in range(1, len(snapshots)):
             result = review_fictional_scope_delta(snapshots[step - 1], snapshots[step])
             if result.status == "HOLD":
                 if first_held is None:
                     first_held = step
+                held_steps.append(step)
                 expanded.update(result.expanded_dimensions)
             else:
                 narrowed.update(result.narrowed_dimensions)
@@ -257,7 +271,8 @@ def review_fictional_scope_history(history: object) -> ScopeHistoryReview:
     if first_held is not None:
         return ScopeHistoryReview(
             "HOLD", count, first_held,
-            tuple(name for name in _DIMENSIONS if name in expanded), ()
+            tuple(name for name in _DIMENSIONS if name in expanded), (),
+            tuple(held_steps),
         )
     return ScopeHistoryReview(
         "REVIEW_ONLY", count, None, (),
