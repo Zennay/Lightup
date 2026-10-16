@@ -202,6 +202,39 @@ class ProtocolCliTests(unittest.TestCase):
                 self.assertEqual(result.stdout, b"HOLD\n")
                 self.assertEqual(result.stderr, b"")
 
+    def test_exact_32_record_cohort_and_33_record_hold(self):
+        records = tuple(Frame(3, "case-alpha.example.test", i) for i in range(1, 33))
+        self.assertEqual(review(records, 3, 3).status, "REVIEW_ONLY")
+        self.assertEqual(review(records + (Frame(3, "case-alpha.example.test", 33),), 3, 3).status, "HOLD")
+        rows = [{"version": 3, "case_id": "case-alpha.example.test", "sequence": i}
+                for i in range(1, 33)]
+        self.assertLessEqual(len(encoded(rows)), 4096)
+        self.assertEqual(_review_raw(encoded(rows)), "REVIEW_ONLY")
+        self.assertEqual(_review_raw(encoded(rows + [rows[-1]])), "HOLD")
+
+    def test_actual_fragmented_pipe_and_eof_finalization(self):
+        raw = encoded()
+        # Read-ahead and split writes must not turn an incomplete JSON prefix into a decision.
+        with subprocess.Popen(
+            [sys.executable, str(TOOLS / "fictional_protocol_floor_cli_1514.py")],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        ) as process:
+            for fragment in (raw[:1], raw[1:4], raw[4:19], raw[19:48], raw[48:]):
+                process.stdin.write(fragment)
+                process.stdin.flush()
+            process.stdin.close()
+            output = process.stdout.read()
+            errors = process.stderr.read()
+            self.assertEqual(process.wait(timeout=10), 2)
+            self.assertEqual(output, b"REVIEW_ONLY\\n".replace(b"\\n", b"\n"))
+            self.assertEqual(errors, b"")
+
+    def test_encoded_combining_mark_and_case_alias_hold(self):
+        for variant in ("case-a\\u0301.example.test", "case-A.example.test",
+                        "case-a.example.test.", "case-a.example.tesT"):
+            rows = [{"version": 3, "case_id": variant, "sequence": 1}]
+            self.assertEqual(_review_raw(encoded(rows)), "HOLD")
+
     def test_cli_all_one_byte_corruptions_do_not_authorize(self):
         valid = encoded()
         for i in range(len(valid)):
