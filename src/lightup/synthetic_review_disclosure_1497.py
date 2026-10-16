@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import re
 
+_CONTRACT = "FICTIONAL-SCOPE-HANDOFF-1497-V1"
 _MAX_NOTES = 16
 _MAX_NOTE_BYTES = 4096
 _MAX_TOTAL_BYTES = 32768
@@ -36,6 +37,7 @@ class DisclosureVerdict:
     status: str
     notice: str
     reviewed_notes: int
+    contract: str = field(default=_CONTRACT, init=False)
     # Cannot even pass authority flags to this class's constructor. This is an
     # output-shape guard, not cryptographic integrity or permission enforcement.
     authorized: bool = field(default=False, init=False)
@@ -50,7 +52,7 @@ class DisclosureVerdict:
         just one more shape-invariant against accidental downstream misuse.
         """
         if not (type(self.status) is str and type(self.notice) is str
-                and type(self.reviewed_notes) is int):
+                and type(self.reviewed_notes) is int and self.contract == _CONTRACT):
             raise ValueError("invalid fictional review verdict")
         if self.status == "HOLD":
             valid = self.notice == _HOLD_NOTICE and self.reviewed_notes == 0
