@@ -106,9 +106,11 @@ class FictionalCapabilitySealing1511Tests(unittest.TestCase):
                 self.assert_no_authority(result)
 
     def test_no_file_socket_or_process_creation_in_pure_review(self):
-        with patch.object(builtins, "open", side_effect=AssertionError("open forbidden")), \\
-             patch.object(os, "open", side_effect=AssertionError("os.open forbidden")), \\
-             patch.object(socket, "socket", side_effect=AssertionError("socket forbidden")):
+        with (
+            patch.object(builtins, "open", side_effect=AssertionError("open forbidden")),
+            patch.object(os, "open", side_effect=AssertionError("os.open forbidden")),
+            patch.object(socket, "socket", side_effect=AssertionError("socket forbidden")),
+        ):
             for requested in ("web-baseline", "missing", _EvilEq()):
                 self.assert_no_authority(review(requested, ("web-baseline",)))
 
