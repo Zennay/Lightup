@@ -107,3 +107,39 @@ Another **entirely new self-owned test file**, `tests/test_lab_lineage_gate_red_
 The 12 new methods are **8 ordinary compatibility/witness controls and 4 deliberately still-OPEN production source `expectedFailure`** that the real original gate should reject nonstring/revoked/expired/mismatched lineage authority at the trusted boundary. These are additional evidence for owner resolution of #1487, not a second consent system and not evidence of a real deployed path. There is no wiring from the helper to a production actor or gate: the test caller itself constructs the claim.
 
 W6 expected owned test count is **80 methods: 70 ordinary + 10 deliberately OPEN original-source REDs**; verify only from the exact **last W6** hosted original Python3.11/3.14 logs. Previous W5 CI success on own subtests MUST NOT be reused as proof of W6. Entire suite #301/producer/VPS remain separate. Do not merge/deploy or claim release/permission.
+
+## W9 — hostile JSON denial, real CLI process tests and explicit non-release handoff
+
+The optional *synthetic-only*, stdin-only CLI already bounded input to 16,384 bytes, refused duplicate JSON keys, emitted only fixed non-authorizing HOLD/REVIEW_ONLY output and exited nonzero for either status. W9 fixes a concrete missing fail-closed boundary in this **own** opt-in helper: sufficiently deeply nested (but still under 16 KiB) JSON input can raise Python `RecursionError` from `json.loads` before schema validation. The parser now catches that exception and returns `HOLD` instead of an uncaught Python exception/traceback. This hardening is limited to the opt-in CLI; it never changes the original `ActivationGate` or real application policy.
+
+New `tests/test_lab_lineage_cli_adversarial_1487_20261016.py` contains **15 tests**, including 5 *real child Python interpreter* executions via `python -m lightup.lab_session_lineage_cli_1487 --synthetic-only` or intentionally unsupported arguments, plus deterministic repeatability, overlong stdin, nested arrays/objects, escaped duplicate JSON field names, malformed UTF-8 and counterexamples for authorization. It verifies no stderr tracebacks or client identifier output, **exit 2 = HOLD, exit 3 = REVIEW_ONLY**, and that even repeated positive shape reviews share NO authoritative replay ledger.
+
+For a totally fictional manual local example (the input has no link to a real operator, engagement, asset or target):
+```sh
+PYTHONPATH=src python -m lightup.lab_session_lineage_cli_1487 --synthetic-only <<'JSON'
+{
+  "assessment_time": "2030-01-01T12:00:00Z",
+  "claims": [{
+    "lab_reference": "LAB-SYNTH-001",
+    "operator_id": "ACTOR-FICTIONAL-001",
+    "session_id": "SESSION-FICTIONAL-001",
+    "engagement_id": "ENG-FICTIONAL-001",
+    "asset_id": "ASSET-LOOPBACK-001",
+    "capability_id": "CAP-REVIEW-ONLY",
+    "starts_at": "2030-01-01T11:00:00Z",
+    "expires_at": "2030-01-01T13:00:00Z",
+    "revoked": false
+  }]
+}
+JSON
+```
+Expected result: a fixed response `status=REVIEW_ONLY`, `synthetic_only=true`, four authority/permit/dispatch/release flags literally false, **shell exit code 3 (never success or consent)**. Actual input is untrusted and the assessment instant is caller-controlled. A genuine production request must instead use an authenticated operator and consent/scope/revocation decision from a durable trusted boundary; this CLI MUST NOT be connected to real permits, tools, dispatch or release.
+
+W9 isolated workflow's exact inventory increases from 100 to **115** own tests: **105 expected ordinary PASS, 10 intentionally OPEN inherited original-source expected REDs**; counts are *code expectations* until actual immutable-head original hosted job logs verify them. Full hosted and permanent canonical VPS CI must be reported independently; the old unrelated #301 date-expired fixture and #1144 queued VPS belong to their original owners. No merge, deploy, scans or live grants.
+
+### Original-owner source decision checklist
+1. Identify authenticated lab operator and exact engagement owner (outside this synthetic parser).
+2. Determine a real durable, independently proven LAB session identifier and source of true consent, not an attacker-supplied string or forged REVIEW_ONLY object.
+3. Bind each issued permit to current tenant, asset, capability, risk limits, expiration **at issuance**, and durable immediate revocation; do not rely on caller-supplied `assessment_time` or `revoked=False`.
+4. Fail closed on malformed or polymorphic `activation_reference` and any non-authorizing receipt/lineage object; promote the 10 open original source expected failures to ordinary PASS only after trusted-source changes actually pass.
+5. Independently review exact-head hosted + registered `vps-bb300bba` `self-hosted,zcloud,vps` evidence, security/privacy, client/operator approval and human GO. Until then **INCUBATE M3/M7 DRAFT/HOLD**.
