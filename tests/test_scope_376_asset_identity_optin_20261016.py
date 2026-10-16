@@ -86,6 +86,39 @@ class AssetShapeReview376(unittest.TestCase):
         self.assertEqual(review_asset_identity_shape(_scope(excluded=["x"])).decision,
                          "HOLD")
 
+    def test_missing_dataclass_instance_fields_always_hold(self):
+        # Frozen is not tamper-proof. Exclusions must not fall back to ().
+        for field in ("assets", "excluded_assets", "allowed_capabilities", "max_risk"):
+            with self.subTest(field=field):
+                scope = _scope(excluded=("blocked.example.test",))
+                object.__delattr__(scope, field)
+                self.assertEqual(review_asset_identity_shape(scope).decision, "HOLD")
+        bare = object.__new__(ScopeDefinition)
+        self.assertEqual(review_asset_identity_shape(bare).decision, "HOLD")
+
+    def test_extra_or_polymorphic_instance_attribute_keys_hold_without_methods(self):
+        scope = _scope()
+        object.__setattr__(scope, "untrusted_extra", "fictional")
+        self.assertEqual(review_asset_identity_shape(scope).decision, "HOLD")
+
+        counts = {"hash": 0, "eq": 0}
+        class UntrustedKey:
+            def __hash__(self):
+                counts["hash"] += 1
+                return 987654321
+            def __eq__(self, other):
+                counts["eq"] += 1
+                raise AssertionError("untrusted key comparison")
+        key = UntrustedKey()
+        scope = _scope(excluded=("blocked.example.test",))
+        # Simulate corrupt exact-class __dict__ with 4 keys but not all native.
+        fields = object.__getattribute__(scope, "__dict__")
+        fields.pop("excluded_assets")
+        fields[key] = ("blocked.example.test",)
+        before = counts.copy()
+        self.assertEqual(review_asset_identity_shape(scope).decision, "HOLD")
+        self.assertEqual(counts, before)
+
     def test_exact_duplicates_and_allow_exclude_collisions_are_hold_only(self):
         cases = (
             _scope(("fixture.example.test", "fixture.example.test")),
@@ -257,7 +290,10 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
 
     def test_all_bad_assets_deny_before_original_record_with_no_sqlite_mutation(self):
         original = DomainStore.record_authorization_grant
+        lost_exclusion = _scope(excluded=("blocked.example.test",))
+        object.__delattr__(lost_exclusion, "excluded_assets")
         rejected = (
+            lost_exclusion,
             _scope((" ",)),
             _scope(("fixture.example.test", "")),
             _scope(("fixture.example.test ",)),
