@@ -1,6 +1,7 @@
 """Actual offline subprocess contract for the fictional, NEVER-authorizing CLI."""
 from __future__ import annotations
 
+import io
 import json
 import os
 from pathlib import Path
@@ -235,6 +236,79 @@ class SyntheticScopeDeltaCLITests(TestCase):
                 self.assertEqual(actual["held_step_dimensions"], details)
                 self.assertEqual(actual["narrowed_dimensions"], narrowed)
                 self.assertEqual(actual["transition_count"], len(parsed["history"]) - 1)
+
+    def test_offline_cli_output_is_bounded_at_sixteen_snapshots(self):
+        history = [snapshot(risk=3 if index % 2 == 0 else 5)
+                   for index in range(16)]
+        result = launch(wire(history), "--offline-review-only")
+        report = self.assert_wire(result, status="HOLD", code=3)
+        self.assertEqual(report["transition_count"], 15)
+        self.assertLessEqual(len(result.stdout), 2049)  # 2 KiB + single LF
+        self.assertEqual(len(report["held_steps"]), 8)
+
+    def test_broken_stdin_read_is_generic_nonzero_hold(self):
+        from lightup import fictional_scope_delta_cli_1501 as cli
+
+        class BrokenReader:
+            def read(self, size):
+                raise OSError("READ_SECRET must never appear in output")
+
+        class Stream:
+            buffer = BrokenReader()
+
+        output = io.StringIO()
+        with patch("sys.argv", ["fictional_cli", "--offline-review-only"]), \
+             patch("sys.stdin", Stream()), \
+             patch("sys.stdout", output):
+            status = cli.main()
+        self.assertEqual(status, 3)
+        self.assertEqual(json.loads(output.getvalue())["status"], "HOLD")
+        self.assertNotIn("READ_SECRET", output.getvalue())
+
+    def test_broken_stdout_never_yields_success_or_traceback(self):
+        from lightup import fictional_scope_delta_cli_1501 as cli
+
+        class BrokenOutput:
+            def write(self, message):
+                raise BrokenPipeError("OUTPUT_SECRET")
+
+        with patch("sys.argv", ["fictional_cli"]), \
+             patch("sys.stdout", BrokenOutput()):
+            status = cli.main()
+        self.assertEqual(status, 3)
+
+    def test_in_process_oversized_witness_is_suppressed_to_generic_hold(self):
+        from lightup import fictional_scope_delta_cli_1501 as cli
+        from lightup.fictional_scope_delta_review_1501 import ScopeHistoryReview
+
+        malicious = ScopeHistoryReview(
+            "HOLD", 1, 1, ("risk",), (), (1,), (("risk",),)
+        )
+        object.__setattr__(malicious, "held_step_dimensions",
+                           (("DO_NOT_ECHO_SECRET" * 300,),))
+
+        class Source:
+            def read(self, size):
+                return b"{}"
+
+        class Stream:
+            buffer = Source()
+
+        output = io.StringIO()
+        with patch.object(cli, "_load", return_value=malicious), \
+             patch("sys.argv", ["fictional_cli", "--offline-review-only"]), \
+             patch("sys.stdin", Stream()), \
+             patch("sys.stdout", output):
+            status = cli.main()
+        report = json.loads(output.getvalue())
+        self.assertEqual(status, 3)
+        self.assertEqual(report["status"], "HOLD")
+        self.assertEqual(report["held_steps"], [])
+        self.assertEqual(report["held_step_dimensions"], [])
+        self.assertEqual(report["transition_count"], 0)
+        self.assertIsNone(report["first_held_step"])
+        self.assertNotIn("DO_NOT_ECHO_SECRET", output.getvalue())
+        self.assertLessEqual(len(output.getvalue().encode("ascii")), 2049)
 
     def test_repeated_inert_wire_output_is_identical(self):
         raw = wire([snapshot(), snapshot()])
