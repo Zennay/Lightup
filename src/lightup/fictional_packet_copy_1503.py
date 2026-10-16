@@ -101,6 +101,68 @@ def _is_canonical_fictional_packet(raw: bytes) -> bool:
         return False
 
 
+
+def build_fictional_copy_packet(
+    asset: str, message: str, capabilities: tuple[str, ...],
+) -> bytes | None:
+    """Build an exact canonical *fictional-only* handoff; invalid inputs -> None.
+
+    Caller input is never used as provenance, consent, grant, path or runtime
+    action. No object coercion is performed, including str or tuple subclasses.
+    Four explicit false authority flags cannot be caller-controlled.
+    """
+    if (
+        type(asset) is not str
+        or type(message) is not str
+        or type(capabilities) is not tuple
+        or not 1 <= len(capabilities) <= len(_CAPABILITIES)
+        or any(type(item) is not str for item in capabilities)
+    ):
+        return None
+    record = {
+        "schema": _SCHEMA,
+        "asset": asset,
+        "message": message,
+        "capabilities": list(capabilities),
+        "authorized": False,
+        "consent_verified": False,
+        "dispatch_allowed": False,
+        "release_allowed": False,
+    }
+    try:
+        raw = json.dumps(
+            record, ensure_ascii=True, separators=(",", ":"), sort_keys=False,
+            allow_nan=False,
+        ).encode("ascii")
+    except (ValueError, TypeError, UnicodeError, OverflowError, RecursionError):
+        return None
+    return raw if _is_canonical_fictional_packet(raw) else None
+
+
+def compare_fictional_packet_fanout(
+    original: bytes, received_copies: tuple[bytes, ...],
+) -> CopyReview:
+    """Atomically HOLD if *any* of 1..16 received fictional copies differs.
+
+    This checks byte-exact copies, NOT an evolving proposal history (#1501).
+    All recipients' packets and provenance are untrusted caller input; no
+    recipient information, partial hashes or indices are exposed on HOLD.
+    """
+    if (
+        type(received_copies) is not tuple
+        or not 1 <= len(received_copies) <= 16
+        or not _is_canonical_fictional_packet(original)
+    ):
+        return CopyReview("HOLD")
+    for received in received_copies:
+        if (
+            not _is_canonical_fictional_packet(received)
+            or not hmac.compare_digest(original, received)
+        ):
+            return CopyReview("HOLD")
+    return CopyReview("REVIEW_ONLY", hashlib.sha256(original).hexdigest())
+
+
 def compare_fictional_packet_copies(original: bytes, received: bytes) -> CopyReview:
     """Only identical strictly canonical fictional ASCII bytes get REVIEW_ONLY.
 
@@ -108,10 +170,4 @@ def compare_fictional_packet_copies(original: bytes, received: bytes) -> CopyRev
     HOLD with zero source-value echo and no partial digest. The caller supplies
     BOTH copies: this function cannot authenticate their origin or their author.
     """
-    if not _is_canonical_fictional_packet(original):
-        return CopyReview("HOLD")
-    if not _is_canonical_fictional_packet(received):
-        return CopyReview("HOLD")
-    if not hmac.compare_digest(original, received):
-        return CopyReview("HOLD")
-    return CopyReview("REVIEW_ONLY", hashlib.sha256(original).hexdigest())
+    return compare_fictional_packet_fanout(original, (received,))
