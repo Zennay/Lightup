@@ -7,6 +7,8 @@ on:
       - 'tests/test_cross_grant*_1493.py'
       - '.github/workflows/lightup-cross-grant-lineage-1493.yml'
       - 'examples/fictional_cross_grant_1493.json'
+      - 'examples/fictional_cross_grant_collision_1493.json'
+      - 'examples/fictional_cross_grant_forged_authority_1493.json'
       - 'docs/scope-cross-grant-lineage-1493-handoff.md'
   workflow_dispatch:
 permissions:
@@ -78,4 +80,46 @@ jobs:
           if actual != expected:
               raise SystemExit('FICTIONAL_1493 unexpected or authorizing receipt')
           print('FICTIONAL_1493 stdin sample: HOLD-ONLY, exit=2, no authority')
+          PY
+      - name: Attest real fictional CLI collision and forged-authority fail-closed
+        shell: bash
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          import sys
+          cases = (
+              ("cross-grant-collision",
+               "examples/fictional_cross_grant_collision_1493.json",
+               2, "COHERENCE_DENIED"),
+              ("forged-authority-key",
+               "examples/fictional_cross_grant_forged_authority_1493.json",
+               3, "INVALID_INPUT"),
+          )
+          for label, filename, expected_exit, expected_reason in cases:
+              with open(filename, "rb") as inp:
+                  data = inp.read()
+              process = subprocess.run(
+                  [sys.executable, "-B", "-m",
+                   "lightup.cross_grant_lineage_cli_1493", "--synthetic-only"],
+                  input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                  timeout=10, check=False,
+              )
+              if process.returncode != expected_exit or process.stderr:
+                  raise SystemExit(f"FICTIONAL_1493 {label}: wrong process outcome")
+              actual = json.loads(process.stdout)
+              expected = {
+                  "authorized": False,
+                  "consent_verified": False,
+                  "dispatch_allowed": False,
+                  "reason": expected_reason,
+                  "release_allowed": False,
+                  "reviewed": 0,
+                  "status": "HOLD",
+              }
+              if actual != expected:
+                  raise SystemExit(f"FICTIONAL_1493 {label}: noncanonical HOLD")
+              print(f"FICTIONAL_1493 {label}: HOLD exit={expected_exit} no authority")
           PY
