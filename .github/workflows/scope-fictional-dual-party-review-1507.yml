@@ -7,7 +7,11 @@ on:
   pull_request:
     paths:
       - src/lightup/fictional_dual_party_review_1507.py
+      - src/lightup/fictional_dual_party_cli_1507.py
       - tests/test_fictional_dual_party_review_1507.py
+      - tests/test_fictional_dual_party_cli_1507.py
+      - tests/fixtures/fictional_dual_party_valid_1507.json
+      - tests/fixtures/fictional_dual_party_revoked_1507.json
       - docs/scope-fictional-dual-party-review-1507.md
       - .github/workflows/scope-fictional-dual-party-review-1507.yml
 
@@ -34,5 +38,5 @@ jobs:
         env:
           PYTHONPATH: src
         run: |
-          python -m compileall -q src/lightup/fictional_dual_party_review_1507.py tests/test_fictional_dual_party_review_1507.py
-          python -m unittest discover -s tests -p 'test_fictional_dual_party_review_1507.py' -v
+          python -m compileall -q src/lightup/fictional_dual_party_review_1507.py src/lightup/fictional_dual_party_cli_1507.py tests/test_fictional_dual_party_review_1507.py tests/test_fictional_dual_party_cli_1507.py
+          python -m unittest discover -s tests -p 'test_fictional_dual_party*_1507.py' -v
