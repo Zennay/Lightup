@@ -6,9 +6,12 @@ the entire caller-provided scenario contract differs. It grants no authority.
 """
 from __future__ import annotations
 
+from ipaddress import ip_address
+
 from .assessment_runtime_diff_1513 import LabComparison, compare_lab_evaluations
 from .orchestration import RunContext
 from ..labeval import EvaluationRecord, ExpectedFinding, LabScenario
+from ..scope import ScopePolicy
 
 
 def _valid_text(value: object, limit: int) -> bool:
@@ -19,6 +22,28 @@ def _valid_text(value: object, limit: int) -> bool:
         and all(32 <= ord(ch) <= 126 for ch in value)
     )
 
+
+def _is_original_lab_endpoint(target: str, endpoint: str) -> bool:
+    """Pure post-construction lab boundary: never resolve or contact a host.
+
+    Frozen LabScenario instances can still be changed by in-process callers
+    using object.__setattr__. Equality of two forged snapshots alone cannot
+    prove that the original lab-only constructor admission still holds.
+    """
+    try:
+        host = ScopePolicy.normalize_host(endpoint)
+        if host != target or '%' in target:
+            return False
+        if target == 'localhost':
+            return True
+        address = ip_address(target)
+        return (
+            not address.is_unspecified
+            and not address.is_multicast
+            and (address.is_loopback or address.is_private or address.is_link_local)
+        )
+    except (TypeError, ValueError):
+        return False
 
 def _valid_scenario(value: object) -> bool:
     if type(value) is not LabScenario:
@@ -34,6 +59,11 @@ def _valid_scenario(value: object) -> bool:
     if not all(_valid_text(target, 2_048) for target in value.targets):
         return False
     if not all(_valid_text(endpoint, 2_048) for endpoint in value.endpoints):
+        return False
+    if not all(
+        _is_original_lab_endpoint(target, endpoint)
+        for target, endpoint in zip(value.targets, value.endpoints)
+    ):
         return False
     ground_truth = value.expected_findings
     if type(ground_truth) is not tuple or len(ground_truth) > 1_024:

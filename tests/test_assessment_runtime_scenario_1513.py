@@ -89,6 +89,54 @@ class GroundTruthScenarioTests(unittest.TestCase):
             result = compare_ground_truthed_lab_evaluations(*mutated)
             self.assertEqual((result.status, result.changes), ("HOLD", ()))
 
+    def test_equal_forged_public_lab_assets_never_receive_review_only(self):
+        # Two identically forged frozen snapshots previously passed equality.
+        original = scenario()
+        a, ca = records(original)
+        b, cb = records(original)
+        for address in ('8.8.8.8', '2001:4860:4860::8888',
+                        '0.0.0.0', '224.0.0.1', 'example.test'):
+            with self.subTest(address=address):
+                old, new = deepcopy(original), deepcopy(original)
+                for forged in (old, new):
+                    object.__setattr__(forged, 'targets', (address,))
+                    object.__setattr__(forged, 'endpoints', (address,))
+                with patch.object(socket, 'socket', side_effect=AssertionError('network')):
+                    result = compare_ground_truthed_lab_evaluations(
+                        old, new, a, b, ca, cb,
+                    )
+                self.assertEqual((result.status, result.changes, result.regressions),
+                                 ('HOLD', (), ()))
+                self.assertIs(result.release_allowed, False)
+
+    def test_forged_original_endpoint_binding_is_denied(self):
+        original = scenario()
+        a, ca = records(original)
+        b, cb = records(original)
+        for endpoint in ('8.8.8.8', 'http://8.8.8.8',
+                         'http://127.0.0.1@other.example',
+                         'http://[::1', 'localhost'):
+            with self.subTest(endpoint=endpoint):
+                old, new = deepcopy(original), deepcopy(original)
+                for forged in (old, new):
+                    object.__setattr__(forged, 'endpoints', (endpoint,))
+                result = compare_ground_truthed_lab_evaluations(
+                    old, new, a, b, ca, cb,
+                )
+                self.assertEqual((result.status, result.changes), ('HOLD', ()))
+
+    def test_original_url_loopback_and_private_lab_endpoints_remain_review_only(self):
+        for target in ('http://127.0.0.1:8080/fixture',
+                       'http://localhost:8080/fixture',
+                       '10.1.2.3', '192.168.1.5'):
+            with self.subTest(target=target):
+                old, new = scenario(target=target), scenario(target=target)
+                a, ca = records(old)
+                b, cb = records(new)
+                result = compare_ground_truthed_lab_evaluations(old, new, a, b, ca, cb)
+                self.assertEqual(result.status, 'REVIEW_ONLY')
+                self.assertIs(result.authorized, False)
+
     def test_pure_scenario_comparison_no_io_or_mutation(self):
         old, new = scenario(), scenario()
         a, ca = records(old)

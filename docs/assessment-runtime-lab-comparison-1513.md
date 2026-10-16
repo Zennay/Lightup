@@ -47,3 +47,27 @@ The opt-in `python scripts/assessment_runtime_compare_cohort_cli_1513.py baselin
 Use `compare_ground_truthed_lab_evaluations(baseline_scenario, candidate_scenario, baseline_record, candidate_record, baseline_context, candidate_context)` from `lightup.ai.assessment_runtime_scenario_1513` for trustworthy **like-for-like** interpretations. This purely in-memory wrapper requires canonical exact `LabScenario` types, the **identical** name/description, normalized loopback/private targets and original endpoints, and complete equal expected-finding identifier/title/capability/severity lists. An unscored scenario (`expected_findings=None`), duplicate planted identifier, target drift, unexpected ground truth change, malformed scenario, or mismatched tenant -> generic `HOLD` **without input echo**. `expected_findings=()` explicitly scores a zero-finding lab and is permitted.
 
 This is a caller-supplied scenario identity consistency diagnostic, **not** a cryptographic attestation that fixture bytes or underlying lab environment are unchanged. Even an exact match cannot grant authorization, consent, dispatch or release.
+
+## Post-construction lab asset integrity (opt-in)
+
+The scored-scenario adapter now independently rechecks every exact target/endpoint
+pair *after* `LabScenario` construction: it requires the original normalized
+loopback/private-lab host and a matching original endpoint, using only local
+URL parsing and `ipaddress`, without DNS, sockets, active tools or scans.
+Frozen dataclasses can be forcibly rebound by in-process code; even if two
+forged snapshots match each other, public, multicast, unspecified and
+mismatched lab endpoints produce generic HOLD. This is a defensive
+unauthenticated data-consistency check, **not** the production scope gate.
+
+## Atomic scored-scenario cohorts (opt-in)
+
+`compare_ground_truthed_lab_cohorts(baselines, candidates)` from
+`lightup.ai.assessment_runtime_ground_truth_cohort_1513` compares 1–64
+`(LabScenario, EvaluationRecord, RunContext)` tuples on each side. Both
+complete scenario-ID sets and their explicit full ground truth and lab assets
+must match. Outputs are ordered by scenario ID; one adverse metric => HOLD,
+while an invalid/missing/duplicated, changed or forged scenario => *generic*
+HOLD without any partial comparisons or sensitive input echo. The wrapper
+performs no I/O and never produces authority: all four consent, authorization,
+dispatch and release flags are false even for REVIEW_ONLY. Source provenance,
+consent, registered permanent VPS CI and human GO remain entirely unproven.
