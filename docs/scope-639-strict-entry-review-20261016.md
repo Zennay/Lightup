@@ -41,7 +41,9 @@ immutable outputs, malformed containers, nested JSON `null/bool/number/object`,
 blank Unicode whitespace, hostile subclasses/objects, raw SQLite types,
 **900 deterministic seeded mixed-entry corruption subcases** across every
 persisted array,
-deep nesting and one real temporary SQLite mutation + nonwrite proof.
+deep nesting, an explicit **no filesystem/socket/SQLite/subprocess I/O**
+canary for the pure reviewer, and one separate real temporary SQLite mutation
++ nonwrite proof.
 No target socket, command execution, credentials or real grants.
 
 Run through the hosted offline preflight Python 3.11/3.14 and original
