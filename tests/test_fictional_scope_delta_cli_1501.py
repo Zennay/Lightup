@@ -209,6 +209,33 @@ class SyntheticScopeDeltaCLITests(TestCase):
             with self.subTest(args=args):
                 self.assert_wire(launch(data, *args), status="HOLD", code=3)
 
+    def test_committed_canonical_examples_match_review_contract(self):
+        examples = (
+            ("scope-fictional-narrowed-1501.json", "REVIEW_ONLY", 2, [],
+             [], ["assets", "capabilities", "risk", "valid_from", "valid_until"]),
+            ("scope-fictional-temporary-widening-1501.json", "HOLD", 3, [1],
+             [["risk"]], []),
+        )
+        for name, status, exit_code, steps, details, narrowed in examples:
+            with self.subTest(example=name):
+                data = (ROOT / "docs" / "examples" / name).read_bytes()
+                self.assertLess(len(data), 32768)
+                self.assertTrue(data.endswith(b"\n"))
+                parsed = json.loads(data)
+                self.assertEqual(
+                    data,
+                    json.dumps(parsed, ensure_ascii=True, sort_keys=True,
+                               separators=(",", ":")).encode("ascii") + b"\n",
+                )
+                actual = self.assert_wire(
+                    launch(data, "--offline-review-only"),
+                    status=status, code=exit_code,
+                )
+                self.assertEqual(actual["held_steps"], steps)
+                self.assertEqual(actual["held_step_dimensions"], details)
+                self.assertEqual(actual["narrowed_dimensions"], narrowed)
+                self.assertEqual(actual["transition_count"], len(parsed["history"]) - 1)
+
     def test_repeated_inert_wire_output_is_identical(self):
         raw = wire([snapshot(), snapshot()])
         a = launch(raw, "--offline-review-only")
