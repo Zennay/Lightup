@@ -86,7 +86,7 @@ class FictionalPairResilience1495(unittest.TestCase):
 
     def test_type_confusion_inner_field_is_atomic_hold(self):
         src = fixture()
-        for bad in (True, False, 1, 0, 2.5, None, "1", [], {}):
+        for bad in (True, False, -1, 0, 2.5, None, "1", [], {}):
             with self.subTest(typ=type(bad), repr=str(bad)[:30]):
                 corrupt = dict(src, reviewed=bad)
                 self.assert_hold_without_scope(
