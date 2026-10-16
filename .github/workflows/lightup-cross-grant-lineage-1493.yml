@@ -10,6 +10,7 @@ on:
       - 'examples/fictional_cross_grant_collision_1493.json'
       - 'examples/fictional_cross_grant_forged_authority_1493.json'
       - 'examples/fictional_cross_grant_bad_dns_label_1493.json'
+      - 'examples/fictional_cross_grant_scope_overlap_1493.json'
       - 'docs/scope-cross-grant-lineage-1493-handoff.md'
       - 'docs/cross-grant-runtime-integration-contract-1493.md'
   workflow_dispatch:
@@ -17,7 +18,7 @@ permissions:
   contents: read
 jobs:
   strict-offline-review:
-    name: Offline 162-method review / Python ${{ matrix.python-version }}
+    name: Offline 172-method review / Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
@@ -30,7 +31,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Compile strictly owned additive modules
-        run: python -m py_compile src/lightup/cross_grant_lineage_review_1493.py src/lightup/cross_grant_lineage_cli_1493.py tests/test_cross_grant_lineage_review_1493.py tests/test_cross_grant_lineage_cli_1493.py tests/test_cross_grant_asset_dns_1493.py
+        run: python -m py_compile src/lightup/cross_grant_lineage_review_1493.py src/lightup/cross_grant_lineage_cli_1493.py tests/test_cross_grant_lineage_review_1493.py tests/test_cross_grant_lineage_cli_1493.py tests/test_cross_grant_asset_dns_1493.py tests/test_cross_grant_scope_overlap_1493.py
       - name: Execute exact isolated unittest inventory, no external targets
         env:
           PYTHONPATH: src
@@ -44,8 +45,8 @@ jobs:
               pattern='test_cross_grant*_1493.py',
           )
           count = suite.countTestCases()
-          if count != 162:
-              raise SystemExit(f'ISOLATED_1493 wrong test inventory: {count}, expected 162')
+          if count != 172:
+              raise SystemExit(f'ISOLATED_1493 wrong test inventory: {count}, expected 172')
           result = unittest.TextTestRunner(verbosity=2).run(suite)
           print('ISOLATED_1493', {
               'tests': result.testsRun,
@@ -55,7 +56,7 @@ jobs:
               'expected_failures': len(result.expectedFailures),
               'unexpected_successes': len(result.unexpectedSuccesses),
           })
-          if not result.wasSuccessful() or result.testsRun != 162 or result.skipped or result.expectedFailures:
+          if not result.wasSuccessful() or result.testsRun != 172 or result.skipped or result.expectedFailures:
               raise SystemExit('ISOLATED_1493: HOLD (non-success or masked tests)')
           PY
       - name: Attest actual fictional sample CLI on stdin (always nonzero)
@@ -102,6 +103,9 @@ jobs:
               ("noncanonical-dns-label",
                "examples/fictional_cross_grant_bad_dns_label_1493.json",
                3, "INVALID_INPUT"),
+              ("latent-scope-overlap",
+               "examples/fictional_cross_grant_scope_overlap_1493.json",
+               2, "COHERENCE_DENIED"),
           )
           for label, filename, expected_exit, expected_reason in cases:
               with open(filename, "rb") as inp:
