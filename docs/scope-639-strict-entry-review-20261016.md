@@ -39,6 +39,8 @@ It is not a safe hotfix by itself.
 `unittest` assertions for canonical value preservation, optional exclusions,
 immutable outputs, malformed containers, nested JSON `null/bool/number/object`,
 blank Unicode whitespace, hostile subclasses/objects, raw SQLite types,
+**900 deterministic seeded mixed-entry corruption subcases** across every
+persisted array,
 deep nesting and one real temporary SQLite mutation + nonwrite proof.
 No target socket, command execution, credentials or real grants.
 
