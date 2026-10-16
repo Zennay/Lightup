@@ -10,6 +10,12 @@ from __future__ import annotations
 import json
 from typing import NamedTuple
 
+# Conservative draft ceilings, applied before expensive JSON parsing. The
+# production resolver owner must separately approve these policy limits.
+MAX_SCOPE_JSON_CHARS = 65_536
+MAX_SCOPE_ENTRIES = 256
+MAX_SCOPE_ENTRY_CHARS = 2_048
+
 
 class PersistedScopeEntries(NamedTuple):
     """Immutable literal strings only; **not** an AuthorizationGrant."""
@@ -32,6 +38,7 @@ def review_persisted_scope_entries(
     assets/capabilities are mandatory; empty exclusions are permitted.
     No input normalization, filtering, coercion, writes or capability lookup.
     Raw persisted rows remain for forensic review after denial.
+    Enforce explicit resource limits before parsing and before tuple creation.
     """
     arrays: list[tuple[str, ...]] = []
     for raw, required in (
@@ -41,16 +48,18 @@ def review_persisted_scope_entries(
     ):
         # Reject str subclasses and other spoofed input *before* any method
         # calls on user-supplied objects. Untrusted __str__ is never invoked.
-        if type(raw) is not str:
+        if type(raw) is not str or len(raw) > MAX_SCOPE_JSON_CHARS:
             return None
         try:
             decoded = json.loads(raw)
         except (TypeError, ValueError, RecursionError):
             return None
-        if type(decoded) is not list or (required and not decoded):
+        if (type(decoded) is not list or len(decoded) > MAX_SCOPE_ENTRIES
+                or (required and not decoded)):
             return None
         for entry in decoded:
-            if type(entry) is not str or not entry.strip():
+            if (type(entry) is not str or len(entry) > MAX_SCOPE_ENTRY_CHARS
+                    or not entry.strip()):
                 return None
         arrays.append(tuple(decoded))
     return PersistedScopeEntries(*arrays)
