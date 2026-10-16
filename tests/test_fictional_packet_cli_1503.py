@@ -277,7 +277,7 @@ class FictionalCliTests(unittest.TestCase):
              patch.object(cli.sys, "stdin", Input()), \
              patch.object(cli.sys, "stdout", out):
             self.assertEqual(cli.main(), 2)
-        self.assertTrue(out.buffer.getvalue().endswith(b"\\n"))
+        self.assertTrue(out.buffer.getvalue().endswith(b"\n"))
         self.assertNotIn(b".example.test", out.buffer.getvalue())
 
 
