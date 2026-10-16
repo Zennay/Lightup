@@ -19,11 +19,13 @@ synthetic in-memory proof, not an actual successful target/tool execution.
 ## Our strictly additive isolated acceptance
 
 New file `tests/test_scope_907_owner156_outer_definition_red_20261016.py`
-contains **11 methods**:
+contains **14 methods**:
 
-- Five ordinary controls prove exact canonical registration and identity,
+- Eight ordinary controls prove exact canonical registration and identity,
   required parameter validation, duplicate-ID denial, LAB_ONLY capability
-  interaction denial, and malformed inner interaction denial.
+  interaction denial, malformed inner interaction denial, rejected unknown or
+  ill-typed parameters, allowed canonical LAB_ONLY registration and atomic
+  rejection of an unknown capability.
 - Five **deliberately still open expected source REDs** require denial
   of plain ToolDefinition subclass, overriding-validator subclass,
   duck-typed definition, a property-spy before any getter is invoked,
@@ -52,3 +54,7 @@ grant issuance, scan or real handler execution.
 No source in `src/lightup/ai/orchestration.py` is modified here.
 Uninstalled separate #1174 strict-request handling is not a registry fix.
 No GO, merge, deploy or active target authorization arises from this test.
+
+## Witness integrity and false-green controls
+
+Every expected source RED now requires a distinct **synthetic source-defect marker** in the actual failure traceback, checked by the ordinary replay oracle. A generic exception, unrelated assertion, skipped RED, or newly corrected admission cannot be counted as proof of the original defect. For override and duck objects the witness checks that `ToolRegistry` really stored the object, retained the non-invoked handler sentinel and allowed the object's **in-memory** `validate_arguments({})` despite a mandatory `query` parameter. The getter-spy witness proves an untrusted getter was used before type admission. The handler is never called. Three additional ordinary canonical controls pin typed arguments, lab-only lab registration and unknown capability atomic denial.
