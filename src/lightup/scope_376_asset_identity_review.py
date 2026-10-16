@@ -70,4 +70,13 @@ def review_asset_identity_shape(scope: object) -> AssetIdentityShapeReceipt:
         return AssetIdentityShapeReceipt("HOLD")
     if not _canonical_tuple(scope.excluded_assets, allow_empty=True):
         return AssetIdentityShapeReceipt("HOLD")
+    # Values are now confirmed exact native strings. Repeated identities, or
+    # exact allow/exclude contradictions, need owner review rather than a
+    # guessed precedence. Do NOT casefold/normalize or create authorization.
+    allowed = set(scope.assets)
+    excluded = set(scope.excluded_assets)
+    if (len(allowed) != len(scope.assets)
+            or len(excluded) != len(scope.excluded_assets)
+            or not allowed.isdisjoint(excluded)):
+        return AssetIdentityShapeReceipt("HOLD")
     return AssetIdentityShapeReceipt("REVIEW_ONLY")
