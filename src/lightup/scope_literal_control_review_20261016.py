@@ -38,6 +38,10 @@ def review_literals(candidates: object) -> LiteralReview:
         # Visible ASCII is the *input integrity* bar, NOT target authorization.
         if any(not 0x21 <= ord(ch) <= 0x7E for ch in value):
             return LiteralReview("HOLD")
+        # Conservative byte-exact HOLD for potential later URL/backslash
+        # decoding; this is NOT a hostname validator or grant decision.
+        if "%" in value or "\\" in value:
+            return LiteralReview("HOLD")
         if value in seen:
             return LiteralReview("HOLD")
         seen.add(value)

@@ -28,3 +28,7 @@ The distinct unit suite includes intentionally still-open `expectedFailure` cont
 ## Additional original-source composition witness
 
 A fourth deliberately open `expectedFailure` proves that the current original `ActivationGate.issue()` may mint an in-memory synthetic LAB_ONLY permit after the lossy scope decision for `local\nhost`. This is an offline object-creation witness only: no executor, network request, real target, activation grant, or handler is involved. The independent AST guard prevents production imports of this unwired reviewer. The existing source owner #1289 owns the actual remediation.
+
+## W4 — conservative encoded-alias and adversarial batch fence
+
+Even a printable fictional candidate is now HOLD when its literal bytes contain `%` or a backslash: future URL/JSON/transport decoders could interpret these as control or identity escapes. This intentionally rejects *more* review inputs and cannot expand a scope. It does not decide whether a hostname is valid and does not replace the existing source-owner admission PR #1290. New isolated `tests/test_scope_literal_encoded_review_20261016.py` proves 64-candidate atomicity, 512 ASCII intrusions, real subprocess stdout privacy, opt-in canonical JSON, and an in-process no-network/no-file/no-process tripwire. Outputs never carry authority, operator/client consent, dispatch or release permissions.
