@@ -29,6 +29,16 @@ class CallerEqualityProxy(str):
         return not self.__eq__(other)
 
 
+class AllPeersProxy(str):
+    """Fictional configuration equality object; NO permission authority."""
+
+    def __eq__(self, other):
+        return True
+
+    def __ne__(self, other):
+        return False
+
+
 def request(**kwargs):
     value = {
         "REMOTE_ADDR": "127.0.0.1",
@@ -182,6 +192,39 @@ class CurrentMainTransportIdentityTest(unittest.TestCase):
             app = create_production_app(env)
             receipt, _ = invoke(app, request(REMOTE_ADDR=UNTRUSTED))
         self.assertEqual(receipt["status"], "403 Forbidden")
+
+    def test_missing_real_socket_peer_is_rejected_before_wsgi_store(self):
+        store = Mock()
+        app = create_app(store, self.gate)
+        request_without_peer = request()
+        request_without_peer.pop("REMOTE_ADDR")
+        response, body = invoke(app, request_without_peer)
+        self.assertEqual(response["status"], "403 Forbidden")
+        self.assertEqual(response["headers"]["Cache-Control"], "no-store")
+        store.assert_not_called()
+        self.assertIsInstance(body, bytes)
+
+    @unittest.expectedFailure
+    def test_red_missing_peer_cannot_pass_caller_controlled_proxy_equality(self):
+        gate = WebSecurity(ORIGIN, AllPeersProxy("127.0.0.1"))
+        request_without_peer = request()
+        request_without_peer.pop("REMOTE_ADDR")
+        with self.assertRaises(RequestRejected):
+            gate.validate(request_without_peer)
+
+    @unittest.expectedFailure
+    def test_red_production_factory_wsgi_requires_present_real_peer(self):
+        env = {
+            "LIGHTUP_PUBLIC_ORIGIN": ORIGIN,
+            "LIGHTUP_TRUSTED_PROXY_IP": AllPeersProxy("127.0.0.1"),
+            "LIGHTUP_DB": "/tmp/lightup-920-fixture-only.db",
+        }
+        request_without_peer = request()
+        request_without_peer.pop("REMOTE_ADDR")
+        with patch("lightup.webapp.production.DomainStore", return_value=Mock()):
+            app = create_production_app(env)
+            response, _ = invoke(app, request_without_peer)
+        self.assertEqual(response["status"], "403 Forbidden")
 
     @unittest.expectedFailure
     def test_red_nonbuiltin_trusted_proxy_rejected_at_constructor(self):
