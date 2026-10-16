@@ -172,5 +172,32 @@ class TestFictionalSequence(unittest.TestCase):
         self.assertEqual((result.status, result.checked_records), ("REVIEW_ONLY", 2))
         self.assertIs(result.authorized, False)
 
+
+    def test_snapshot_rejects_fresh_alien_field_before_poison_equality(self):
+        class PoisonStr(str):
+            def __eq__(self, _other):
+                raise AssertionError("untrusted field comparison executed")
+
+        records = sample()
+        original_get = FictionalHandoff.__getattribute__
+
+        def produce_fresh_subtype(record, attribute):
+            if record is records[0] and attribute == "case_id":
+                return PoisonStr("review-demo.example.test")
+            return original_get(record, attribute)
+
+        with patch.object(FictionalHandoff, "__getattribute__", produce_fresh_subtype):
+            self.assert_hold(records)
+
+    def test_literal_builtin_field_types_are_mandatory_for_every_snapshot(self):
+        class DangerousInt(int):
+            def __eq__(self, _other):
+                raise AssertionError("alien integer __eq__ called")
+
+        values = list(sample())
+        values[1] = FictionalHandoff(values[1].case_id, DangerousInt(2),
+                                     values[1].packet_sha256, values[1].observed_at)
+        self.assert_hold(tuple(values))
+
 if __name__ == "__main__":
     unittest.main()
