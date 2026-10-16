@@ -126,5 +126,50 @@ class CanonicalAssetReviewTests(unittest.TestCase):
             self.assertEqual(_review(_candidate("bad-.example.test")).status, "HOLD")
 
 
+    def test_customer_domain_cannot_be_fictional_review_only(self):
+        result = _review(_candidate("www.customer.example.com"))
+        self.assertEqual(result.status, "HOLD")
+        self.assertFalse(result.authorized)
+        self.assertFalse(result.release_allowed)
+
+    def test_localhost_cannot_masquerade_as_fictional_asset(self):
+        self.assertEqual(_review(_candidate("localhost")).status, "HOLD")
+
+    def test_numeric_loopback_cannot_masquerade_as_fictional_asset(self):
+        self.assertEqual(_review(_candidate("127.0.0.1")).status, "HOLD")
+
+    def test_fictional_suffix_with_appended_real_domain_is_hold(self):
+        self.assertEqual(
+            _review(_candidate("app.example.test.attacker.com")).status,
+            "HOLD",
+        )
+
+    def test_base_example_test_without_fictional_subdomain_is_hold(self):
+        self.assertEqual(_review(_candidate("example.test")).status, "HOLD")
+
+    def test_nonfictional_extra_scope_asset_even_if_not_requested_is_hold(self):
+        candidate = _candidate(
+            scope_assets=("app.example.test", "www.customer.example.com")
+        )
+        self.assertEqual(_review(candidate).status, "HOLD")
+
+    def test_nonfictional_exclusion_cannot_pass_as_review(self):
+        candidate = _candidate(exclusions=("www.customer.example.com",))
+        self.assertEqual(_review(candidate).status, "HOLD")
+
+    def test_second_nonfictional_claim_batch_is_atomic_hold(self):
+        one = _candidate("app.example.test")
+        two = _candidate("www.customer.example.com")
+        two = dataclasses.replace(
+            two, durable=dataclasses.replace(two.durable, grant_id="FICTIONAL-GRANT-2")
+        )
+        result = review_cross_grant_batch((one, two), evaluated_at=_NOW)
+        self.assertEqual((result.status, result.reviewed), ("HOLD", 0))
+        self.assertFalse(result.authorized)
+        self.assertFalse(result.consent_verified)
+        self.assertFalse(result.dispatch_allowed)
+        self.assertFalse(result.release_allowed)
+
+
 if __name__ == "__main__":
     unittest.main()
