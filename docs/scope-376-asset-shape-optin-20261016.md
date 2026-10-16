@@ -17,6 +17,14 @@ An additional hardening commit now refuses every status other than an **exact bu
 
 Do not reuse the older exact-SHA hosted results from W1 as proof of this W2 head. Verification must match the latest immutable commit.
 
+## W3 — real disposable SQLite owner-adoption composition
+
+The source owner now has **four new ordinary integrated test cases** in the *own* synthetic test file: the exact original `DomainStore.record_authorization_grant` method is locally wrapped for the duration of one test, and its `scope` argument is checked using the new optional reviewer **before** the same original insert call. Nine malformed allow/exclude scenarios then demonstrably leave the exact SQLite grant-row snapshot unchanged. A canonical fictional grant still round-trips through the genuine method with the temporary wrapper. The wrapper is restored by `unittest.mock.patch.object` in all cases; a final replay proves the **original unmodified source still persists** a whitespace exclusion, so these are compatibility/denial acceptance witnesses, **not** a source fix or actual operational grant.
+
+The temporary wrapper preserves the original role check: no client role is promoted to operator. No public target, DNS, socket, scan, handler, external database, real customer data, real consent, tool call or grant authority is exercised. Tests intentionally create fictional records only in temporary local SQLite. They neither modify nor import the production owner PR branch; future source integration requires its owner's review, same-connection ordering and explicit release gates.
+
+The **W3 immutable HEAD** and its newly triggered hosted/registered VPS jobs must be verified separately; W2's 11 ordinary green cases, three expected source-RED cases and unrelated #301 wallclock failure are earlier SHA evidence only.
+
 ## Owner decision needed
 The existing domain/grant source owner should decide whether this narrow text-shape preflight, or an equivalent source-side guard, belongs directly before any persisted grant row. The reviewer ceilings are **illustrative** and may reject legitimate large scopes; do not treat them as approved product policy. If integrated, the original source must enforce the same reject-before-write semantics and preserve valid grant roundtrips. Convert the three original-source expectedFailure methods to ordinary PASS only after the actual production source is fixed and revalidated. Do not claim the opt-in helper fixes persistent authorization.
 
