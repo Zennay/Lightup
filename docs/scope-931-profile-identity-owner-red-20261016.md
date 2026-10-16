@@ -197,3 +197,17 @@ CI/workflows/VPS/other-worker edits. This is a local Linux tool policy,
 not proof that procfs is tamper-proof, a container sandbox, or that an
 identity is real or authorized. The production source gap #931 and
 identity-rebinding #929 need source-owner remediation.
+
+### W8 exact-source CI finding and correction
+
+On the first W8 GitHub-hosted Python 3.11 run, the genuinely simulated
+missing procfs entry caused `_anonymous_pipe` itself to raise `OSError`
+instead of returning `False`. The surrounding CLI main was already
+fail-closed, but the inspector's direct contract was too brittle, so this
+was a **real test failure** and must not be called green. The private
+inspector now catches OSError/type/overflow/value anomalies and returns
+`False` without logging or echo. An additional real anonymous-pipe
+regression feeds forged `pipe:[inode]` spellings and a mismatched inode
+against `fstat`, requiring denial; only an exact matching synthetic
+kernel-link format is accepted. The latest W8 commit requires complete
+immutable-head hosted 3.11/3.14 and separately permanent VPS evidence.
