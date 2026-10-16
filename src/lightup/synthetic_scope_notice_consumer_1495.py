@@ -8,8 +8,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import json
 
-from .synthetic_scope_notice_1495 import _HOLD
-from .synthetic_scope_notice_cli_1495 import _INVALID_MESSAGE
+from .synthetic_scope_notice_1495 import ScopeProposal, _HOLD, render_scope_notice
+from .synthetic_scope_notice_cli_1495 import _INVALID_MESSAGE, _utc
 
 _MAX_ENVELOPE_BYTES = 65536
 _ALLOWED_KEYS = frozenset((
@@ -48,6 +48,61 @@ def _unique_json_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
 
 def _deny_nonfinite(_: str) -> object:
     raise ValueError("nonfinite")
+
+
+
+def _exact_original_fictional_report(
+    notice: str, reviewed: int, elevated: bool,
+) -> bool:
+    """Check complete output against the original pure fictional producer.
+
+    This is display consistency, NOT authenticated source, grant or consent.
+    """
+    lines = notice.split("\n")
+    if not 1 <= reviewed <= 32 or len(lines) != 10 + reviewed:
+        return False
+    if lines[0] == _PREFIXES[0].rstrip("\n"):
+        language = "en"
+        timestamp_prefix = "Review timestamp (UTC): "
+    elif lines[0] == _PREFIXES[1].rstrip("\n"):
+        language = "nl"
+        timestamp_prefix = "Beoordelingsmoment (UTC): "
+    else:
+        return False
+    if not lines[3].startswith(timestamp_prefix):
+        return False
+    try:
+        at = _utc(lines[3][len(timestamp_prefix):])
+        entries = []
+        for line in lines[6:6 + reviewed]:
+            if not line.startswith("- "):
+                return False
+            parts = line[2:].split(" | ")
+            if len(parts) != 5 or len(parts[2]) != 3:
+                return False
+            if parts[2][0] not in "12345" or parts[2][1:] != "/5":
+                return False
+            asset, capability, risk, start, end = parts
+            entries.append(ScopeProposal(
+                asset, capability, int(risk[0]), _utc(start), _utc(end),
+            ))
+        # Reject nonfictional assets, temporal invalidity, duplicates, risk
+        # mismatch, reordered rows, injected banners, removed warning text.
+        reference = render_scope_notice(
+            tuple(entries), review_at=at, language=language,
+        )
+    except (ValueError, OverflowError, TypeError, UnicodeError):
+        return False
+    return (
+        reference.status == "REVIEW_ONLY"
+        and reference.text == notice
+        and reference.reviewed == reviewed
+        and reference.elevated_risk is elevated
+        and reference.authorized is False
+        and reference.consent_verified is False
+        and reference.dispatch_allowed is False
+        and reference.release_allowed is False
+    )
 
 
 def decode_fictional_notice_for_display(raw: bytes) -> FictionalNoticeView | None:
@@ -97,23 +152,7 @@ def decode_fictional_notice_for_display(raw: bytes) -> FictionalNoticeView | Non
         if reviewed != 0 or elevated or notice not in (_HOLD, _INVALID_MESSAGE):
             return None
     else:
-        if reviewed == 0 or not notice.startswith(_PREFIXES):
-            return None
-        if notice.startswith(_PREFIXES[0]):
-            if f"Fictional proposal count: {reviewed}\n" not in notice:
-                return None
-            if "No client consent, operator identity" not in notice:
-                return None
-            if "This is NOT a grant, consent record" not in notice:
-                return None
-        else:
-            if f"Aantal fictieve voorstellen: {reviewed}\n" not in notice:
-                return None
-            if "Geen klanttoestemming, operatoridentiteit" not in notice:
-                return None
-            if "Dit is GEEN toestemming, grant" not in notice:
-                return None
-        if "NOT AUTHORIZED" not in notice:
+        if not _exact_original_fictional_report(notice, reviewed, elevated):
             return None
 
     return FictionalNoticeView(
