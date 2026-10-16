@@ -34,9 +34,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Compile independent acceptance
-        run: python -m py_compile tests/test_scope_passive_confidence_915.py
+        run: python -m py_compile tests/test_scope_passive_confidence_915.py tests/test_scope_passive_precomparison_915.py
       - name: Offline passive-only acceptance, known source REDs
         env:
           PYTHONPATH: src
           PYTHONDONTWRITEBYTECODE: "1"
-        run: python -m unittest discover -s tests -p 'test_scope_passive_confidence_915.py' -v
+        run: python -m unittest discover -s tests -p 'test_scope_passive*_915.py' -v
