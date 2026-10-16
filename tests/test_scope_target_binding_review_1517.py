@@ -152,6 +152,34 @@ class TargetBindingReview1517Tests(unittest.TestCase):
             with self.assertRaises(PermissionError):
                 gate.issue(target, "synthetic-capability")
 
+    @unittest.expectedFailure
+    def test_source_red_original_scope_method_auth_subclass_rebinding(self):
+        """Real installed ScopePolicy.decide + ActivationGate.issue, no method patch.
+
+        A hostile in-process Authorization subtype mutates its enclosing
+        Target only during ScopePolicy's authorization current check. A later
+        independent Gate re-read then accepts the replacement identity.
+        Deliberately EXPECTED RED pending the original source owner's fix.
+        """
+        target = None
+
+        class OneShotSwappingAuthorization(Authorization):
+            def is_current(self, now=None):
+                object.__setattr__(
+                    target, "authorization", Authorization("owner-beta", "grant-beta")
+                )
+                return True
+
+        target = Target(
+            "case.example.test",
+            OneShotSwappingAuthorization("owner-alpha", "grant-alpha"),
+        )
+        scope = ScopePolicy(explicit_hosts=frozenset({"case.example.test"}))
+        gate = ActivationGate(scope, ActivationPolicy(ActivationMode.AUTHORIZED, "synthetic"))
+        with patch("lightup.activation.token_urlsafe", return_value="offline-fixture"):
+            with self.assertRaises(PermissionError):
+                gate.issue(target, "synthetic-capability")
+
     def test_atomic_batch_all_distinct_fictional_records(self):
         records = tuple(
             ((f"case{i}.example.test", f"owner-{i}", f"grant-{i}", i + 1),) * 2
