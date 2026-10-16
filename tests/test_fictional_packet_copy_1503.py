@@ -361,9 +361,9 @@ class FictionalPacketCopyTests(unittest.TestCase):
                 )
 
     def test_builder_and_fanout_no_io_or_external_callbacks(self):
-        with patch("builtins.open", side_effect=AssertionError("file IO")), \\
-             patch("socket.socket", side_effect=AssertionError("network IO")), \\
-             patch("sqlite3.connect", side_effect=AssertionError("DB IO")), \\
+        with patch("builtins.open", side_effect=AssertionError("file IO")), \
+             patch("socket.socket", side_effect=AssertionError("network IO")), \
+             patch("sqlite3.connect", side_effect=AssertionError("DB IO")), \
              patch("subprocess.Popen", side_effect=AssertionError("process IO")):
             made = build_fictional_copy_packet(
                 "alpha.example.test", "REVIEW_REQUIRED",
