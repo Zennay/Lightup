@@ -32,7 +32,10 @@ class AssetIdentityShapeReceipt:
         Python frozen/slots are not a security boundary. Serialized data is
         still NEVER an authenticated grant or an authorization to dispatch.
         """
-        status = object.__getattribute__(self, "decision")
+        try:
+            status = object.__getattribute__(self, "decision")
+        except AttributeError:
+            status = None
         safe_status = (status if type(status) is str
                        and status in ("HOLD", "REVIEW_ONLY") else "HOLD")
         return {
