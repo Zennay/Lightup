@@ -126,29 +126,69 @@ class ToolDefinitionOwner156OuterBoundary(unittest.TestCase):
 
     @unittest.expectedFailure
     def test_red_plain_subclass_must_be_denied(self):
-        original = canonical_definition()
-        candidate = PlainSubclassDefinition(**vars(original))
-        self.assert_rejected_without_registration(candidate)
+        candidate = PlainSubclassDefinition(**vars(canonical_definition()))
+        try:
+            self.registry.register(candidate, NEVER_INVOKE_HANDLER)
+        except OrchestrationError:
+            self.assertEqual(self.registry.definitions(), ())
+            return
+        self.assertIs(self.registry.get(candidate.tool_id)[0], candidate)
+        self.fail("SOURCE_RED_PLAIN_SUBCLASS_STORED")
 
     @unittest.expectedFailure
     def test_red_subclass_argument_override_must_not_enter_registry(self):
-        original = canonical_definition("offline-override")
-        candidate = OverrideValidatorDefinition(**vars(original))
-        self.assert_rejected_without_registration(candidate)
+        candidate = OverrideValidatorDefinition(**vars(canonical_definition("offline-override")))
+        try:
+            self.registry.register(candidate, NEVER_INVOKE_HANDLER)
+        except OrchestrationError:
+            self.assertEqual(self.registry.definitions(), ())
+            return
+        stored, handler = self.registry.get(candidate.tool_id)
+        self.assertIs(stored, candidate)
+        self.assertIs(handler, NEVER_INVOKE_HANDLER)
+        # Execute ONLY the in-memory validation method (never a tool handler).
+        # Owner currently stores the override which ignores mandatory "query".
+        self.assertIsNone(stored.validate_arguments({}))
+        self.fail("SOURCE_RED_SUBCLASS_ARGUMENT_VALIDATOR_BYPASS")
 
     @unittest.expectedFailure
     def test_red_duck_definition_must_not_be_registered(self):
-        self.assert_rejected_without_registration(DuckDefinition())
+        candidate = DuckDefinition()
+        try:
+            self.registry.register(candidate, NEVER_INVOKE_HANDLER)
+        except OrchestrationError:
+            self.assertEqual(self.registry.definitions(), ())
+            return
+        stored, handler = self.registry.get(candidate.tool_id)
+        self.assertIs(stored, candidate)
+        self.assertIs(handler, NEVER_INVOKE_HANDLER)
+        self.assertIsNone(stored.validate_arguments({}))
+        self.fail("SOURCE_RED_DUCK_ARGUMENT_VALIDATOR_BYPASS")
 
     @unittest.expectedFailure
     def test_red_no_getter_reads_before_type_check(self):
         candidate = PropertySpyDefinition()
-        self.assert_rejected_without_registration(candidate)
-        self.assertEqual(candidate.reads, 0)
+        try:
+            self.registry.register(candidate, NEVER_INVOKE_HANDLER)
+        except OrchestrationError:
+            self.assertEqual(candidate.reads, 0, "rejected but untrusted getter executed")
+            self.assertEqual(self.registry.definitions(), ())
+            return
+        self.assertGreater(candidate.reads, 0)
+        self.assertIs(self.registry.get("offline-spy")[0], candidate)
+        self.fail("SOURCE_RED_GETTER_INVOKED_BEFORE_OUTER_ADMISSION")
 
     @unittest.expectedFailure
     def test_red_empty_nondefinition_returns_typed_rejection(self):
-        self.assert_rejected_without_registration(object())
+        try:
+            self.registry.register(object(), NEVER_INVOKE_HANDLER)
+        except OrchestrationError:
+            self.assertEqual(self.registry.definitions(), ())
+            return
+        except AttributeError:
+            self.assertEqual(self.registry.definitions(), ())
+            self.fail("SOURCE_RED_UNCONTROLLED_ATTRIBUTE_ERROR")
+        self.fail("SOURCE_RED_NONDEFINITION_REGISTERED")
 
     def test_expected_red_replay_oracle(self):
         names = sorted(name for name in dir(type(self))
@@ -164,6 +204,22 @@ class ToolDefinitionOwner156OuterBoundary(unittest.TestCase):
                          "owner code changed: deliberately promote fixed RED assertions")
         self.assertEqual(len(result.expectedFailures), 5,
                          "all five installed owner-source RED cases must remain reproduced")
+        markers = {
+            "test_red_plain_subclass_must_be_denied": "SOURCE_RED_PLAIN_SUBCLASS_STORED",
+            "test_red_subclass_argument_override_must_not_enter_registry":
+                "SOURCE_RED_SUBCLASS_ARGUMENT_VALIDATOR_BYPASS",
+            "test_red_duck_definition_must_not_be_registered":
+                "SOURCE_RED_DUCK_ARGUMENT_VALIDATOR_BYPASS",
+            "test_red_no_getter_reads_before_type_check":
+                "SOURCE_RED_GETTER_INVOKED_BEFORE_OUTER_ADMISSION",
+            "test_red_empty_nondefinition_returns_typed_rejection":
+                "SOURCE_RED_UNCONTROLLED_ATTRIBUTE_ERROR",
+        }
+        self.assertEqual(set(names), set(markers))
+        for case, traceback_text in result.expectedFailures:
+            self.assertIn("AssertionError: " + markers[case._testMethodName],
+                          traceback_text,
+                          "a generic crash or unrelated failure cannot count as source RED")
 
 
 if __name__ == "__main__":
