@@ -49,6 +49,11 @@ def _exact_nonblank(value: object, max_length: int) -> bool:
     # Non-NFC identity is HOLD for manual review, not "corrected" or matched.
     if not unicodedata.is_normalized("NFC", value):
         return False
+    # NFC alone still permits compatibility lookalikes (fullwidth letters,
+    # ligatures, circled digits). HOLD these instead of implicitly treating
+    # an NFKC-equivalent identity as the same organization/prospect.
+    if not unicodedata.is_normalized("NFKC", value):
+        return False
     if any(
         unicodedata.category(char) in {"Cc", "Cf", "Cs", "Zl", "Zp"}
         or _is_unicode_noncharacter(char)
