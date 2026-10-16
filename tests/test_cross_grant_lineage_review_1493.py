@@ -319,6 +319,77 @@ class CrossGrantBatchTests(unittest.TestCase):
         r = self.review(batch)
         self.assertEqual((r.status, r.reviewed), ("REVIEW_ONLY", 32))
 
+    def test_same_grant_id_same_snapshot_can_cover_multiple_explicit_assets(self):
+        first = batch_candidate()
+        scope = dataclasses.replace(
+            first.durable.scope,
+            assets=("app.example.test", "other.example.test"),
+            allowed_capabilities=("web-baseline", "tls-baseline"),
+        )
+        grant = dataclasses.replace(first.durable, scope=scope)
+        first = dataclasses.replace(first, durable=grant)
+        second = dataclasses.replace(first, asset="other.example.test", capability_id="tls-baseline")
+        result = self.review((first, second))
+        self.assertEqual((result.status, result.reviewed), ("REVIEW_ONLY", 2))
+        self.assertFalse(result.authorized)
+        self.assertFalse(result.release_allowed)
+
+    def test_same_grant_id_different_scope_is_atomic_hold(self):
+        first = batch_candidate()
+        second = batch_candidate(asset="other.example.test")
+        self.assertEqual(self.review((first, second)).status, "HOLD")
+
+    def test_same_grant_id_different_validity_is_atomic_hold(self):
+        first = batch_candidate()
+        changed_grant = dataclasses.replace(
+            first.durable, valid_until=first.durable.valid_until + timedelta(seconds=1))
+        second = dataclasses.replace(first, durable=changed_grant, capability_id="tls-baseline")
+        second = dataclasses.replace(
+            second, durable=dataclasses.replace(
+                changed_grant, scope=dataclasses.replace(
+                    changed_grant.scope, allowed_capabilities=("web-baseline", "tls-baseline"))))
+        # Individually coherent. As a cohort, same ID means different snapshots.
+        self.assertEqual(self.review((first, second)).status, "HOLD")
+
+    def test_same_grant_id_different_approval_reference_is_atomic_hold(self):
+        first = batch_candidate()
+        second = dataclasses.replace(
+            first,
+            capability_id="tls-baseline",
+            legacy=dataclasses.replace(first.legacy, reference="SYNTH-REF-2"),
+            durable=dataclasses.replace(
+                first.durable, reference="SYNTH-REF-2",
+                scope=dataclasses.replace(
+                    first.durable.scope, allowed_capabilities=("web-baseline", "tls-baseline"))))
+        self.assertEqual(self.review((first, second)).status, "HOLD")
+
+    def test_different_grant_ids_may_have_independent_validated_snapshots(self):
+        first = batch_candidate()
+        second = batch_candidate(asset="other.example.test", grant_id="G-2")
+        result = self.review((first, second))
+        self.assertEqual((result.status, result.reviewed), ("REVIEW_ONLY", 2))
+
+    def test_same_grant_id_cross_reference_actor_rejected(self):
+        first = batch_candidate()
+        second = dataclasses.replace(first, capability_id="tls-baseline")
+        second = dataclasses.replace(
+            second, legacy=dataclasses.replace(second.legacy, owner="other@example.test"),
+            durable=dataclasses.replace(
+                second.durable, approved_by="other@example.test",
+                scope=dataclasses.replace(
+                    second.durable.scope, allowed_capabilities=("web-baseline", "tls-baseline"))))
+        self.assertEqual(self.review((first, second)).status, "HOLD")
+
+    def test_same_grant_id_different_retest_flag_rejected(self):
+        first = batch_candidate()
+        second = dataclasses.replace(first, capability_id="tls-baseline")
+        second = dataclasses.replace(
+            second, durable=dataclasses.replace(
+                second.durable, recurring_retest_allowed=True,
+                scope=dataclasses.replace(
+                    second.durable.scope, allowed_capabilities=("web-baseline", "tls-baseline"))))
+        self.assertEqual(self.review((first, second)).status, "HOLD")
+
     def test_standalone_batch_never_reads_network_db_file_or_exec(self):
         with patch.object(socket, "socket", side_effect=AssertionError("socket")), \
              patch.object(sqlite3, "connect", side_effect=AssertionError("sqlite")), \
