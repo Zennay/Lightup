@@ -230,6 +230,26 @@ class FictionalScopeDeltaTests(TestCase):
             with self.subTest(field=field), self.assertRaises(TypeError):
                 ScopeDeltaReview("HOLD", (), (), **{field: True})
 
+    def test_shared_hold_result_cannot_be_poisoned(self):
+        first = review_fictional_scope_delta(None, proposal())
+        self.assertEqual(first.status, "HOLD")
+        # Model malicious in-process user bypassing frozen's ordinary setter.
+        object.__setattr__(first, "status", "REVIEW_ONLY")
+        object.__setattr__(first, "authorized", True)
+        second = review_fictional_scope_delta(None, proposal())
+        self.assertIsNot(first, second)
+        self.assertEqual(second.status, "HOLD")
+        self.assert_inert(second)
+
+    def test_exact_type_slot_forgery_is_atomic_hold(self):
+        forged = object.__new__(FictionalScopeProposal)
+        outcome = review_fictional_scope_delta(forged, proposal())
+        self.assertEqual(outcome.status, "HOLD")
+        self.assert_inert(outcome)
+        # A partially initialized exact-type record is also untrusted.
+        object.__setattr__(forged, "assets", ("alpha.example.test",))
+        self.assertEqual(review_fictional_scope_delta(proposal(), forged).status, "HOLD")
+
     def test_many_deterministic_widening_cases_do_not_approve(self):
         old = proposal()
         for index in range(256):
