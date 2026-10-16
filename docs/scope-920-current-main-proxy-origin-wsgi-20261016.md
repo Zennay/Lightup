@@ -286,3 +286,35 @@ flags false. New exact-head hosted jobs are required before claiming these
 new tests PASS. The full LightUp suite still has the unrelated #301 clock
 fixture failure owned by draft #1452, and permanent runner evidence remains
 separately required under #1144. No original runtime/other-worker edits.
+
+## W10: post-execution integrity recheck and real-suite drift witnesses
+
+On a nominally passing **20-method** synthetic in-process acceptance suite,
+`scripts/check_scope_920_current_main_acceptance_20261016.py` now repeats
+**all three acceptance gates AFTER test execution** and before printing
+`REVIEW_ONLY`: source Git blob, owned tests Git blob, and actual imported
+`lightup.webapp.security.__file__` checkout path. The early guards remain.
+A changed file/module identity during the window yields `HOLD`/nonzero even
+if all 20 test methods reported ordinary PASS/intentional source RED as
+expected. This is a bounded in-process integrity check, not signed build
+provenance, permanent VPS attestation, permission to deploy, or a runtime fix.
+
+New independent `test_real_suite_cannot_issue_review_only_after_input_swaps`
+in the runner QA suite runs **all 20 actual installed-source methods three
+times** on genuine pinned source while independently simulating a single
+late change to (a) source blob, (b) test blob, or (c) imported module origin
+via test-only `unittest.mock.patch.object(..., side_effect=[True, False])`.
+Every run must exit 2 with `HOLD`, preserve 20-method/9-RED counts and keep
+all release/full-suite/VPS flags false. No actual file is changed; no socket,
+external target, customer data, authentication or security tool is invoked.
+The test helper monkeypatches disappear upon exit. The exact new-head hosted
+logs must independently verify this test's PASS before citing results.
+
+Previously pinned head `52fda7aa350af24430381890c6b5e6a1e3b346e6`
+[hosted #38874274435](https://github.com/Zennay/Lightup/actions/runs/38874274435)
+**COMPLETED FAILURE**. Both original Python3.11 / 3.14 logs confirm all
+**14** own runner QA ordinary PASS and all **20** source acceptance tests
+run, with **9** deliberate source expectedFailures. Full suite **1,271
+tests per interpreter / 32 intentionally still open source REDs / exactly
+one unrelated baseline #301 frozen-date test ordinary FAIL**. Producer
+integrations skipped. These prior logs predate this post-execution recheck.
