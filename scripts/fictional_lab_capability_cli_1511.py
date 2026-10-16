@@ -43,7 +43,7 @@ def decide_stdin_bytes_1511(data: object) -> str:
         raw = data.decode("ascii")
         parsed = json.loads(raw, object_pairs_hook=_reject_duplicate_keys)
         # Eliminate whitespace, escapes, duplicate encodings and alias fields.
-        if type(parsed) is not dict or set(parsed) != {"schema", "requested", "allowlist"}:
+        if type(parsed) is not dict or tuple(parsed) != ("schema", "requested", "allowlist"):
             return "HOLD"
         if json.dumps(parsed, ensure_ascii=True, separators=(",", ":")) != raw:
             return "HOLD"
