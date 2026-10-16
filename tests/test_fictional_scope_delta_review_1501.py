@@ -318,6 +318,62 @@ class FictionalScopeDeltaTests(TestCase):
         self.assertEqual(frozen_copy.risk, 3)
         self.assertEqual(original.risk, 5)
 
+    def test_consistency_capture_rejects_observed_inflight_risk_flip(self):
+        from lightup.fictional_scope_delta_review_1501 import _snapshot
+
+        # Simulate a hostile in-process producer bypassing a frozen record:
+        # after its first last-field read, the original changes its risk.
+        # The two private snapshots disagree, so no partial REVIEW_ONLY leaks.
+        specimen = proposal(risk=3)
+        original_field = FictionalScopeProposal.valid_until
+        changed = []
+
+        def mutate_after_last_field_read(value):
+            end = original_field.__get__(value, FictionalScopeProposal)
+            if value is specimen and not changed:
+                changed.append(True)
+                object.__setattr__(specimen, "risk", 5)
+            return end
+
+        with patch.object(FictionalScopeProposal, "valid_until",
+                          property(mutate_after_last_field_read)):
+            captured = _snapshot(specimen)
+        self.assertEqual(changed, [True])
+        self.assertIsNone(captured)
+        self.assertEqual(specimen.risk, 5)
+
+    def test_inflight_mutation_fails_closed_in_delta_and_entire_history(self):
+        for history_mode in (False, True):
+            with self.subTest(history=history_mode):
+                original = proposal()
+                source = proposal(risk=3)
+                original_field = FictionalScopeProposal.valid_until
+                changed = []
+
+                def last_field(value):
+                    end = original_field.__get__(value, FictionalScopeProposal)
+                    if value is source and not changed:
+                        changed.append(True)
+                        object.__setattr__(source, "risk", 5)
+                    return end
+
+                with patch.object(FictionalScopeProposal, "valid_until",
+                                  property(last_field)):
+                    if history_mode:
+                        outcome = review_fictional_scope_history(
+                            (original, source, original)
+                        )
+                        self.assert_history_inert(outcome)
+                        self.assertEqual(outcome.transition_count, 0)
+                        self.assertEqual(outcome.held_steps, ())
+                        self.assertEqual(outcome.held_step_dimensions, ())
+                    else:
+                        outcome = review_fictional_scope_delta(original, source)
+                        self.assert_inert(outcome)
+                        self.assertEqual(outcome.expanded_dimensions, ())
+                    self.assertEqual(outcome.status, "HOLD")
+                self.assertEqual(changed, [True])
+
     def test_delta_source_mutation_after_snapshot_cannot_widen_verdict(self):
         from lightup import fictional_scope_delta_review_1501 as module
 
