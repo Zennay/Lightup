@@ -23,7 +23,7 @@ ownership of `src/lightup/webapp/security.py`.
   - `docs/scope-919-canonical-public-origin-identity-20261012.md`
     from PR #1255, blob `4ecfd473b2a22e1413bead968b420b13b58bf80a`.
 - Fifth new file: `tests/test_scope_920_transport_identity_composition_20261016.py`,
-  nine additional **ordinary fail-closed controls** exercising BOTH exact
+  nine **ordinary fail-closed controls**, plus one **deliberate source-RED**, exercising BOTH exact
   production-mode ingress predicates against fictional `.example.test` host
   and documentation-only `203.0.113.77` peer. Includes a 45-envelope joint truth table and a non-mutation check. No sockets or outbound calls.
 - Sixth new file: this manifest. All paths are new on PR #202 base. No
@@ -40,15 +40,19 @@ must never control peer equality.
 a stable immutable canonical origin, and no polymorphic `str` methods affecting
 parsing after constructor validation.
 
-Both sidecar test modules deliberately contain **two `expectedFailure` source
-contracts each**. They are evidence of unresolved source issues, not success.
-The new composition tests are green controls only and **cannot fix or certify**
-the two source flaws. An unexpectedSuccess, ordinary FAIL or ERROR is not a
+Both original sidecar modules deliberately contain **two `expectedFailure` source
+contracts each**. The composition adds a fifth isolated `expectedFailure` that
+calls the actual original `WebSecurity.validate()` with a fictional remote
+peer and a caller-owned equality-spoofing `str` subclass as trusted proxy.
+It requires denial; the currently unmodified source permits the mismatched
+peer. This is an **in-memory config/admission proof**, never evidence of a
+real external exploit. The nine remaining composition controls are green
+contracts and **cannot fix or certify** the source flaws. An unexpectedSuccess, ordinary FAIL or ERROR is not a
 release success and must be investigated; do not silently suppress it.
 
 For a valid future release, #202's owner must implement constructor-time exact
 identity checks, preserve both predicates through request handling, and make
-the four source REDs ordinary passing tests. Validate compatibility with the
+all five source REDs ordinary passing tests. Validate compatibility with the
 latest shared base, actual ingress/TLS, operator/client consent, tenant/session
 boundaries, revocation, independently authenticated proxy/network identity,
 registered permanent VPS runner and human security/privacy review.
@@ -66,9 +70,14 @@ for file in \
 done
 ```
 
-Capture the precise commit SHA, Python 3.11/3.14 results and each
-`expectedFailure`, plus genuine registered permanent VPS provenance before
-claiming tested. The composition **does not** imply those checks have run.
+**Previous exact head** `cfbd2aea4986afef5523eebfbdcc210e1285eb36`
+passed [hosted #38868523138](https://github.com/Zennay/Lightup/actions/runs/38868523138)
+with four of four jobs successful (each interpreter: 528 units, four expected
+source failures, and 86 real producer integrations). That **predates the new
+polymorphic-proxy source-RED** and is not exact-head proof for this update.
+Capture the latest commit SHA, Python 3.11/3.14 result and *five* expected
+source failures, plus separate genuine registered permanent VPS provenance
+before claiming updated tests. Hosted green is not release authority.
 To avoid worsening the existing permanent self-hosted CI backlog, keep
 branch-only and do not initiate a duplicate canonical CI run or merge/deploy
 without owner coordination.
