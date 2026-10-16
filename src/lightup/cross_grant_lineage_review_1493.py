@@ -238,6 +238,9 @@ def review_cross_grant_batch(
     grant_footprints: dict[str, tuple[frozenset[str], frozenset[str]]] = {}
     grant_snapshots: dict[str, tuple[object, ...]] = {}
     legacy_snapshots: dict[str, tuple[object, ...]] = {}
+    # One asserted reference may not designate two distinct fictional actors
+    # in a cohort. These are caller assertions, never trusted provenance.
+    reference_actors: dict[str, str] = {}
     for item in candidates:
         if not _cohort_id(item.client_id) or not _cohort_id(item.engagement_id):
             return CrossGrantBatchReview("HOLD", "noncanonical tenant cohort")
@@ -263,6 +266,14 @@ def review_cross_grant_batch(
         )
         if result.status != "REVIEW_ONLY":
             return CrossGrantBatchReview("HOLD", "at least one claim failed review")
+        claimed_reference = item.durable.reference
+        prior_actor = reference_actors.setdefault(
+            claimed_reference, item.durable.approved_by
+        )
+        if prior_actor != item.durable.approved_by:
+            return CrossGrantBatchReview(
+                "HOLD", "conflicting source-reference actor"
+            )
         asset_capability = (item.asset, item.capability_id)
         prior_grant = asset_capability_grants.setdefault(
             asset_capability, item.durable.grant_id
