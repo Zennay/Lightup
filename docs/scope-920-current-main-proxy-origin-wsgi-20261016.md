@@ -27,20 +27,24 @@ production `trusted_proxy_ip` and non-null `public_origin` before parsing
 or storing; a proxy `str` subclass's overridden equality must not make a
 different socket peer trusted.
 
-**Sixteen genuine installed-source synthetic unit tests**:
-- nine ordinary controls covering exact built-in IPv4/IPv6 identity,
+**Nineteen genuine installed-source synthetic unit tests**:
+- ten ordinary controls covering exact built-in IPv4/IPv6 identity,
   forwarded-header non-authority, independent host/HTTPS and POST Origin,
   actual WSGI anonymous login, and genuine builtin untrusted peer producing
   403/no-store *before* store use or POST body read, plus actual production
   `create_production_app` factory built-in canonical admission and bad
   built-in configuration rejection before any (mocked) store construction;
-- seven deliberately OPEN original-source `unittest.expectedFailure` checks:
+- nine deliberately OPEN original-source `unittest.expectedFailure` checks:
   reject subclass proxy at construction, reject subclass public origin at
   construction, reject subclass-equality spoof at actual `validate()`, and
   reject the same fictional request at actual installed WSGI `create_app()`,
   reject subclass proxy/origin inputs at the **real production factory**
   before constructing a domain store, and block the fictional request on
-  WSGI created by the actual factory.
+  WSGI created by the actual factory. Two additional new source REDs
+  require a configured production gate and real production-factory WSGI
+  to reject a **missing** `REMOTE_ADDR` even when a fictional untrusted
+  proxy `str` subclass claims arbitrary values are equal. A new ordinary
+  WSGI control proves missing peer is rejected by canonical builtin config.
 
 The real factory uses a fictional absolute database path and `Mock` DomainStore;
 no file is created or opened. All tests use fictitious `.example.test` and documentation-only
@@ -62,11 +66,11 @@ The opt-in, **independent targeted** diagnostic runner is:
 python scripts/check_scope_920_current_main_acceptance_20261016.py
 ```
 
-It runs **exactly 16 owned tests**, insists on **exactly seven intentionally
+It runs **exactly 19 owned tests**, insists on **exactly nine intentionally
 open source REDs**, no other skip/error/unexpectedSuccess, and prints a
 minimal JSON receipt with explicit literal `false` for source-fix,
 release, merge, scan, dispatch, registered VPS, full-suite and consent
-authority. Exit 0 means **only these 16 tests ran as designed**, not
+authority. Exit 0 means **only these 19 tests ran as designed**, not
 "all LightUp tests green" and never release authorization. If any case
 changes it fails with a HOLD receipt. The tool cannot replace exact-head
 GitHub job logs or the queued permanent VPS CI; only run it on trusted
@@ -117,3 +121,22 @@ Permanent VPS [#38870507522](https://github.com/Zennay/Lightup/actions/runs/3887
 was queued with two jobs unassigned, not proof of real runner execution.
 The opt-in standalone 16-case command above is a narrow diagnostic **not a
 workaround for full-suite certification or permission to release**.
+
+## W4 current-main missing-peer trust boundary (2026-10-16)
+
+New tests require the production peer to be **present and exact** before
+any anonymous WSGI dispatch. The original `WebSecurity._validate` compares
+`environ.get("REMOTE_ADDR") != self.trusted_proxy_ip`: a caller-owned
+`str` subclass can override equality such that **missing**
+`REMOTE_ADDR` (the `None` returned by `get`) compares equal to the stored
+proxy identity. One ordinary WSGI test uses an exact builtin proxy and
+requires 403/no-store/no-store access for missing peer; two **intentional
+source REDs** test the original `validate` and the actual production factory's
+WSGI path against a fictional always-equal proxy config object. They test
+only synthetic in-process metadata; never an external request or exploit.
+
+The latest W4 head is separate from W3 and previous hosted jobs. Re-run
+immutable-current-head jobs for this change and require **10 ordinary PASS +
+9 deliberate source expectedFailures**. Current-main baseline #301 remains
+independently red; do not suppress that or claim full suite green. The
+standalone 19-case tool is a **narrow diagnostic**, not current VPS authority.
