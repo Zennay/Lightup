@@ -317,6 +317,12 @@ def run(root: Path = ROOT) -> int:
         if not test_result_valid(result):
             print("HOLD: test_outcomes")
             return 2
+        # Source re-check after test execution narrows accidental mid-run drift.
+        # It still cannot prove interpreter import/cache lineage or prevent a
+        # malicious concurrent writer reverting bytes between checks.
+        if not pinned_tree_valid(root):
+            print("HOLD: source_changed_during_tests")
+            return 2
     except (Exception, SystemExit):
         print("HOLD: test_runtime")
         return 2
