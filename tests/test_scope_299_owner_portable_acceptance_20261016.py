@@ -140,6 +140,44 @@ class SourceOwnerPortable299Tests(unittest.TestCase):
             original,
         )
 
+    def test_owner_asset_binding_remains_deny_only_for_unlisted_public_host(self):
+        # This safety assertion becomes active when installed #100-style
+        # Authorization.assets exists. Main does not implement that feature.
+        if not _supports_assets():
+            self.assertNotIn("assets", {f.name for f in fields(Authorization)})
+            return
+        other = "other-review.example.test"
+        policy = ScopePolicy(
+            allow_private_lab=False, explicit_hosts=frozenset({HOST, other}),
+        )
+        valid_for_host_only = _grant(HOST)
+        permitted = policy.decide(Target(HOST, valid_for_host_only))
+        rejected = policy.decide(Target(other, valid_for_host_only))
+        self.assertTrue(permitted.allowed)
+        self.assertFalse(rejected.allowed)
+        self.assertEqual(rejected.reason, ScopeReason.AUTHORIZATION_ASSET_MISMATCH)
+        self.assertEqual(valid_for_host_only.assets, (HOST,))
+
+    def test_owner_revocation_remains_deny_only_even_with_matching_assets(self):
+        # #100 source owns revocation. It must remain effective independently
+        # of the separate #299 client provenance fix. This does not assert
+        # that current main (without revoked_at) has this feature.
+        actual_fields = {f.name for f in fields(Authorization)}
+        if "revoked_at" not in actual_fields:
+            self.assertNotIn("assets", actual_fields)
+            self.assertNotIn("revoked_at", actual_fields)
+            return
+        extras = {"assets": (HOST,)} if "assets" in actual_fields else {}
+        revoked = Authorization(
+            owner="fictional-owner", reference=_CLIENT,
+            revoked_at=datetime.now(timezone.utc) - timedelta(minutes=2),
+            **extras,
+        )
+        decision = _policy(HOST).decide(Target(HOST, revoked))
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.reason, ScopeReason.AUTHORIZATION_REVOKED)
+        self.assertFalse(revoked.is_current())
+
     @unittest.expectedFailure
     def test_red_blank_client_owner_must_not_admit_bound_public_host(self):
         self.assertFalse(
@@ -190,7 +228,7 @@ class SourceOwnerPortable299Oracle(unittest.TestCase):
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(SourceOwnerPortable299Tests)
         result = unittest.TestResult()
         suite.run(result)
-        self.assertEqual(result.testsRun, 15)
+        self.assertEqual(result.testsRun, 17)
         self.assertEqual(result.errors, [])
         self.assertEqual(result.failures, [])
         self.assertEqual(result.skipped, [])
