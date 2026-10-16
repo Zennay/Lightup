@@ -7,7 +7,7 @@ This module deliberately imports no adapters, stores, clients, or handlers.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Literal
 
@@ -22,10 +22,17 @@ _ASSET = re.compile(r"[a-z0-9][a-z0-9.-]{0,252}\Z", re.ASCII)
 class CrossGrantLineageReview:
     status: Literal["HOLD", "REVIEW_ONLY"]
     reason: str
-    authorized: bool = False
-    consent_verified: bool = False
-    dispatch_allowed: bool = False
-    release_allowed: bool = False
+    # These non-authorizing result fields cannot be supplied by a caller.
+    # They remain included in dataclasses.asdict() for review receipts.
+    authorized: Literal[False] = field(default=False, init=False)
+    consent_verified: Literal[False] = field(default=False, init=False)
+    dispatch_allowed: Literal[False] = field(default=False, init=False)
+    release_allowed: Literal[False] = field(default=False, init=False)
+
+    def __post_init__(self) -> None:
+        if (type(self.status) is not str or self.status not in ("HOLD", "REVIEW_ONLY")
+                or type(self.reason) is not str or not (1 <= len(self.reason) <= 128)):
+            raise ValueError("noncanonical non-authorizing review receipt")
 
 
 def _hold(reason: str) -> CrossGrantLineageReview:
@@ -134,10 +141,17 @@ class CrossGrantBatchReview:
     status: Literal["HOLD", "REVIEW_ONLY"]
     reason: str
     reviewed: int = 0
-    authorized: bool = False
-    consent_verified: bool = False
-    dispatch_allowed: bool = False
-    release_allowed: bool = False
+    authorized: Literal[False] = field(default=False, init=False)
+    consent_verified: Literal[False] = field(default=False, init=False)
+    dispatch_allowed: Literal[False] = field(default=False, init=False)
+    release_allowed: Literal[False] = field(default=False, init=False)
+
+    def __post_init__(self) -> None:
+        if (type(self.status) is not str or self.status not in ("HOLD", "REVIEW_ONLY")
+                or type(self.reason) is not str or not (1 <= len(self.reason) <= 128)
+                or type(self.reviewed) is not int or not (0 <= self.reviewed <= 32)
+                or (self.status == "HOLD" and self.reviewed != 0)):
+            raise ValueError("noncanonical non-authorizing batch receipt")
 
 
 def review_cross_grant_batch(
