@@ -687,5 +687,57 @@ class FictionalCliTests(unittest.TestCase):
             self.assertEqual(cli._render(old), cli._HOLD)
             self.assertIn(b'"status":"REVIEW_ONLY"', cli._render(same))
 
+
+    def test_pinned_only_every_single_byte_mutation_is_atomic_hold(self):
+        # Every one-byte mutation of the canonical, independently pinned
+        # synthetic request must fail closed, including schema and pin edits.
+        payload = request_pinned(copies=(GOOD, GOOD))
+        self.assertEqual(cli._parse_request(payload, pinned_only=True).status,
+                         "REVIEW_ONLY")
+        for index in range(len(payload)):
+            altered = (
+                payload[:index]
+                + bytes(((payload[index] + 1) % 256,))
+                + payload[index + 1:]
+            )
+            review = cli._parse_request(altered, pinned_only=True)
+            self.assertEqual(
+                (review.status, review.sha256), ("HOLD", None),
+                msg="unexpected one-byte mutation acceptance at index %d" % index,
+            )
+            self.assertIs(review.authorized, False)
+
+    def test_pinned_only_joint_copy_edits_still_held_with_original_pin(self):
+        original_pin = hashlib.sha256(GOOD).hexdigest()
+        raw = GOOD
+        for index in range(len(raw)):
+            replacement = bytes(((raw[index] + 1) % 256,))
+            changed = raw[:index] + replacement + raw[index + 1:]
+            # Any arbitrary synthetic corruption of all copies with the same
+            # independent reference must hold without echo or partial SHA.
+            wrapped = json.dumps(
+                {
+                    "schema": "lightup-fictional-cli-pinned-v1",
+                    "original": changed.decode("latin1"),
+                    "copies": [changed.decode("latin1"), changed.decode("latin1")],
+                    "expected_sha256": original_pin,
+                },
+                ensure_ascii=True, separators=(",", ":"),
+            ).encode("ascii")
+            verdict = cli._parse_request(wrapped, pinned_only=True)
+            self.assertEqual((verdict.status, verdict.sha256), ("HOLD", None))
+            self.assertEqual(cli._render(verdict), cli._HOLD)
+
+    def test_pinned_only_resource_caps_in_real_subprocess(self):
+        module = "lightup.fictional_packet_cli_pinned_1503"
+        for raw in (b"x" * 8193, b"{" * 8193, b"", b"\xff", b"[]",
+                    request_pinned(copies=(GOOD,) * 16) + b" "):
+            outcome = process(raw, module=module)
+            self.assertEqual(
+                (outcome.returncode, outcome.stdout, outcome.stderr),
+                (3, cli._HOLD, b""),
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
