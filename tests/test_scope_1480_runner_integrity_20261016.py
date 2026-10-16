@@ -166,6 +166,40 @@ class Scope1480RunnerTests(unittest.TestCase):
         self.assertEqual(len(payload["expected_case_manifest_sha256"]), 64)
         self.assertFalse(payload["release_authorized"])
 
+    def _assert_drift_after_test_execution_holds(self, pinned_check_name):
+        reviewer = _runner()
+        output = io.StringIO()
+        # No checkout mutation is needed: this is a deterministic
+        # simulated source replacement between preflight and postflight.
+        with patch.object(
+            reviewer, pinned_check_name, side_effect=[True, False],
+        ) as check:
+            with contextlib.redirect_stdout(output):
+                exit_code = reviewer.main()
+        verdict = json.loads(output.getvalue())
+        self.assertEqual(check.call_count, 2)
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(verdict["status"], "HOLD")
+        self.assertEqual(verdict["reason"], "source_or_review_drift_during_tests")
+        self.assertEqual(verdict["tests_run"], 44)
+        self.assertEqual(verdict["expected_source_reds"], 1)
+        self.assertIs(verdict["independent_ci_attestation"], False)
+        self.assertIs(verdict["release_authorized"], False)
+        self.assertIs(verdict["may_issue_grants"], False)
+        self.assertIs(verdict["may_dispatch_tools"], False)
+        self.assertIs(verdict["full_suite_green"], False)
+
+    def test_original_activation_blob_drift_after_run_is_hold(self):
+        self._assert_drift_after_test_execution_holds("_original_source_is_pinned")
+
+    def test_original_dependency_blob_drift_after_run_is_hold(self):
+        self._assert_drift_after_test_execution_holds(
+            "_original_dependency_sources_are_pinned"
+        )
+
+    def test_review_source_blob_drift_after_run_is_hold(self):
+        self._assert_drift_after_test_execution_holds("_review_material_is_pinned")
+
     def test_loaded_method_ids_match_exact_source_inventory(self):
         reviewer = _runner()
         suite = unittest.TestSuite()
