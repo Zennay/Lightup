@@ -1,0 +1,35 @@
+name: Scope 1511 fictional LAB capability review (non-authorizing)
+
+on:
+  pull_request:
+    paths:
+      - 'src/lightup/fictional_lab_capability_review_1511.py'
+      - 'tests/test_fictional_lab_capability_review_1511.py'
+      - 'docs/scope-lab-capability-identity-1511.md'
+      - '.github/workflows/scope-lab-capability-review-1511.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fictional-lab-capability:
+    name: Offline only / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.14']
+    env:
+      PYTHONPATH: src
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5 immutable
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6 immutable
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Unwired synthetic-only acceptance and historical source REDs
+        run: python -m unittest discover -s tests -p 'test_fictional_lab_capability_review_1511.py' -v
