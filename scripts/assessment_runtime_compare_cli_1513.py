@@ -39,15 +39,18 @@ def _reject_nonfinite(_value):
     raise ValueError("nonfinite JSON literal")
 
 
-def _parse_case(path):
+def _read_json(path, maximum_bytes=MAX_BYTES):
     with Path(path).open("rb") as handle:
-        payload = handle.read(MAX_BYTES + 1)
-    if not payload or len(payload) > MAX_BYTES:
+        payload = handle.read(maximum_bytes + 1)
+    if not payload or len(payload) > maximum_bytes:
         raise ValueError("invalid input size")
-    document = json.loads(
+    return json.loads(
         payload.decode("utf-8"), object_pairs_hook=_dict_no_duplicates,
         parse_constant=_reject_nonfinite,
     )
+
+
+def _parse_case_document(document):
     if type(document) is not dict or set(document) != {"record", "context"}:
         raise ValueError("invalid case schema")
     record_data, context_data = document["record"], document["context"]
@@ -105,6 +108,10 @@ def _parse_case(path):
         created_at=created,
     )
     return record, context
+
+
+def _parse_case(path):
+    return _parse_case_document(_read_json(path))
 
 
 def _output(result):
