@@ -18,6 +18,7 @@ OWNED = {
     Path("tests/test_fictional_lab_capability_review_1511.py"),
     Path("tests/test_fictional_lab_capability_cli_1511.py"),
     Path("tests/test_fictional_lab_capability_sealing_1511.py"),
+    Path("tests/test_fictional_lab_capability_transition_1511.py"),
     Path("tests/test_fictional_lab_capability_isolation_1511.py"),
     Path("docs/scope-lab-capability-identity-1511.md"),
     Path(".github/workflows/scope-lab-capability-review-1511.yml"),
