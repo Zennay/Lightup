@@ -58,7 +58,7 @@ class SyntheticScopeDeltaCLITests(TestCase):
         )
         self.assertEqual(set(report), {
             "contract", "status", "transition_count", "first_held_step",
-            "expanded_dimensions", "narrowed_dimensions",
+            "held_steps", "expanded_dimensions", "narrowed_dimensions",
             "authorized", "consent_verified", "dispatch_allowed", "release_allowed",
         })
         for flag in ("authorized", "consent_verified", "dispatch_allowed", "release_allowed"):
@@ -85,8 +85,47 @@ class SyntheticScopeDeltaCLITests(TestCase):
             status="HOLD", code=3,
         )
         self.assertEqual(report["first_held_step"], 1)
+        self.assertEqual(report["held_steps"], [1])
         self.assertEqual(report["expanded_dimensions"], ["risk"])
         self.assertEqual(report["narrowed_dimensions"], [])
+
+    def test_cli_lists_every_widening_transition_without_asset_values(self):
+        original = snapshot()
+        risk = snapshot(risk=5)
+        asset = snapshot(assets=[
+            "alpha.example.test", "beta.example.test", "gamma.example.test",
+        ])
+        records = [original, risk, original, asset, snapshot(
+            assets=asset["assets"], risk=4,
+        )]
+        report = self.assert_wire(
+            launch(wire(records), "--offline-review-only"), status="HOLD", code=3,
+        )
+        self.assertEqual(report["held_steps"], [1, 3, 4])
+        self.assertEqual(report["first_held_step"], 1)
+        self.assertEqual(report["expanded_dimensions"], ["assets", "risk"])
+        self.assertNotIn("gamma.example.test", json.dumps(report))
+
+    def test_cli_invalid_late_record_discards_earlier_transition_metadata(self):
+        records = [
+            snapshot(), snapshot(risk=5),
+            snapshot(assets=["private.real.invalid"]),
+        ]
+        result = launch(wire(records), "--offline-review-only")
+        report = self.assert_wire(result, status="HOLD", code=3)
+        self.assertEqual(report["held_steps"], [])
+        self.assertEqual(report["expanded_dimensions"], [])
+        self.assertIsNone(report["first_held_step"])
+        self.assertEqual(report["transition_count"], 0)
+        self.assertNotIn(b"private.real.invalid", result.stdout)
+
+    def test_cli_all_15_boundaries_report_exact_bounded_held_steps(self):
+        records = [snapshot(risk=3 if i % 2 == 0 else 5) for i in range(16)]
+        report = self.assert_wire(
+            launch(wire(records), "--offline-review-only"), status="HOLD", code=3,
+        )
+        self.assertEqual(report["transition_count"], 15)
+        self.assertEqual(report["held_steps"], list(range(1, 16, 2)))
 
     def test_real_host_and_sensitive_fields_are_zero_echo_hold(self):
         bad = snapshot(assets=["real.corp.example", "beta.example.test"])
