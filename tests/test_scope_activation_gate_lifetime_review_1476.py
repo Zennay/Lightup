@@ -234,6 +234,35 @@ class LifetimeReviewTests(unittest.TestCase):
                 self.check_no_authority(receipt)
                 self.assertIsNone(pin_gate_for_offline_review(g))
 
+    def test_deleted_activation_dataclass_field_cannot_fall_back_to_default(self):
+        g = gate()
+        pin = pin_gate_for_offline_review(g)
+        object.__delattr__(g.activation_policy, "mode")
+        result = review_gate_lifetime(g, pin)
+        self.assertIs(result.status, LifetimeStatus.HOLD)
+        self.check_no_authority(result)
+        self.assertIsNone(pin_gate_for_offline_review(g))
+
+    def test_injected_unknown_policy_metadata_must_hold(self):
+        for obj_name in ("scope_policy", "activation_policy"):
+            with self.subTest(obj_name=obj_name):
+                g = gate()
+                pin = pin_gate_for_offline_review(g)
+                vars(getattr(g, obj_name))["unexpected_control"] = "fictional"
+                result = review_gate_lifetime(g, pin)
+                self.assertIs(result.status, LifetimeStatus.HOLD)
+                self.check_no_authority(result)
+                self.assertIsNone(pin_gate_for_offline_review(g))
+
+    def test_injected_gate_metadata_must_hold(self):
+        g = gate()
+        pin = pin_gate_for_offline_review(g)
+        vars(g)["unexpected_runtime_flag"] = True
+        result = review_gate_lifetime(g, pin)
+        self.assertIs(result.status, LifetimeStatus.HOLD)
+        self.check_no_authority(result)
+        self.assertIsNone(pin_gate_for_offline_review(g))
+
     def test_receipt_and_snapshot_repr_never_repeat_raw_policy_data(self):
         secret = "FAKE-CONFIDENTIAL-" + "X" * 70
         g = gate(
