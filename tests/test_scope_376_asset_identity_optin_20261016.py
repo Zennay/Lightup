@@ -387,6 +387,50 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
                     self.assertEqual(self._persisted_snapshot(), before)
         self.assertIs(DomainStore.record_authorization_grant, original)
 
+    def test_bad_identity_is_rejected_before_original_grant_or_any_db_access(self):
+        # Strict call-boundary proof, not a production middleware installation.
+        called = []
+        def forbidden_original(*args, **kwargs):
+            called.append(True)
+            raise AssertionError("original grant record reached")
+        bad_cases = (
+            _scope(("private-marker\\x00.example.test",)),
+            _scope((42,)),
+            _scope(excluded=("private-marker\\u00a0excluded",)),
+            _scope(excluded=("excluded.example.test", "excluded.example.test")),
+        )
+        with patch.object(DomainStore, "record_authorization_grant",
+                          self._owner_candidate(forbidden_original)), \\
+             patch.object(DomainStore, "_connect",
+                          side_effect=AssertionError("SQLite opened")), \\
+             patch.object(DomainStore, "get_engagement",
+                          side_effect=AssertionError("engagement looked up")):
+            for scope in bad_cases:
+                with self.subTest(index=repr(scope.assets)[:32]):
+                    with self.assertRaisesRegex(
+                        ValueError, "^asset identity shape requires independent review$"
+                    ) as caught:
+                        self._record(scope)
+                    self.assertNotIn("private-marker", str(caught.exception))
+        self.assertFalse(called)
+        self.assertIsNot(DomainStore.record_authorization_grant, forbidden_original)
+
+    def test_shape_only_success_never_short_circuits_original_grant_gate(self):
+        # A positive review can only reach the separate, original owner method.
+        calls = []
+        def owner_gate(*args, **kwargs):
+            calls.append(args)
+            raise PermissionError("fictional owner gate still required")
+        original = DomainStore.record_authorization_grant
+        with patch.object(DomainStore, "record_authorization_grant",
+                          self._owner_candidate(owner_gate)):
+            with self.assertRaisesRegex(PermissionError, "fictional owner gate still required"):
+                self._record(_scope())
+        self.assertEqual(len(calls), 1)
+        self.assertIs(calls[0][0], self.store)
+        self.assertIs(DomainStore.record_authorization_grant, original)
+        self.assertEqual(self._persisted_snapshot(), ())
+
     def test_ordinary_grant_passes_only_through_temporary_review_wrapper(self):
         original = DomainStore.record_authorization_grant
         scope = _scope(("fixture.example.test",), ("blocked.example.test",))
