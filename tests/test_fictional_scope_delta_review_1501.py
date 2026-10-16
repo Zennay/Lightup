@@ -456,6 +456,66 @@ class FictionalScopeDeltaTests(TestCase):
         for name in ("authorized", "consent_verified", "dispatch_allowed", "release_allowed"):
             self.assertIs(getattr(result, name), False)
 
+    def test_history_reports_every_widening_transition_in_order(self):
+        baseline = proposal()
+        extra_risk = proposal(risk=5)
+        expanded_assets = proposal(
+            assets=("alpha.example.test", "beta.example.test", "gamma.example.test")
+        )
+        # Widening at steps 1, 3 and 4, with narrower step 2.
+        history = (baseline, extra_risk, baseline, expanded_assets,
+                   proposal(assets=expanded_assets.assets, risk=4))
+        outcome = review_fictional_scope_history(history)
+        self.assertEqual(outcome.status, "HOLD")
+        self.assertEqual(outcome.transition_count, 4)
+        self.assertEqual(outcome.first_held_step, 1)
+        self.assertEqual(outcome.held_steps, (1, 3, 4))
+        self.assertEqual(outcome.expanded_dimensions, ("assets", "risk"))
+        self.assertNotIn("gamma.example.test", repr(outcome))
+        self.assert_history_inert(outcome)
+
+    def test_history_sixteen_snapshots_keep_all_eight_widening_indices(self):
+        snapshots = tuple(proposal(risk=3 if i % 2 == 0 else 5)
+                          for i in range(16))
+        outcome = review_fictional_scope_history(snapshots)
+        self.assertEqual(outcome.status, "HOLD")
+        self.assertEqual(outcome.transition_count, 15)
+        self.assertEqual(outcome.held_steps, tuple(range(1, 16, 2)))
+        self.assertEqual(outcome.first_held_step, 1)
+        self.assert_history_inert(outcome)
+
+    def test_history_invalid_tail_suppresses_all_partial_held_indices(self):
+        snapshots = (proposal(), proposal(risk=5),
+                     proposal(assets=("secret.private.invalid",)))
+        outcome = review_fictional_scope_history(snapshots)
+        self.assertEqual(outcome.status, "HOLD")
+        self.assertEqual(outcome.transition_count, 0)
+        self.assertIsNone(outcome.first_held_step)
+        self.assertEqual(outcome.held_steps, ())
+        self.assertNotIn("secret.private.invalid", repr(outcome))
+        self.assert_history_inert(outcome)
+
+    def test_history_constructor_rejects_forged_held_step_metadata(self):
+        invalid = (
+            ("HOLD", 2, 1, ("risk",), (), ()),
+            ("HOLD", 2, 1, ("risk",), (), (2,)),
+            ("HOLD", 2, 1, ("risk",), (), (1, 1)),
+            ("HOLD", 2, 1, ("risk",), (), (2, 1)),
+            ("HOLD", 2, 1, ("risk",), (), (True,)),
+            ("HOLD", 2, 1, ("risk",), (), (0, 1)),
+            ("HOLD", 2, 1, ("risk",), (), (1, 3)),
+            ("HOLD", 0, None, (), (), (1,)),
+            ("REVIEW_ONLY", 1, None, (), (), (1,)),
+            ("HOLD", 2, 1, ("risk",), (), [1]),
+        )
+        for args in invalid:
+            with self.subTest(args=args), self.assertRaises(ValueError):
+                ScopeHistoryReview(*args)
+        self.assertEqual(
+            ScopeHistoryReview("HOLD", 2, 1, ("risk",), (), (1, 2)).held_steps,
+            (1, 2),
+        )
+
     def test_history_catches_transient_widening_even_when_endpoints_equal(self):
         old = proposal()
         wide = proposal(risk=5, valid_from=T0 - timedelta(hours=1))
@@ -465,6 +525,7 @@ class FictionalScopeDeltaTests(TestCase):
         self.assertEqual(result.first_held_step, 1)
         self.assertEqual(result.transition_count, 2)
         self.assertEqual(result.expanded_dimensions, ("risk", "valid_from"))
+        self.assertEqual(result.held_steps, (1,))
         self.assertEqual(result.narrowed_dimensions, ())
 
     def test_history_aggregates_distinct_expansions_in_canonical_order(self):
@@ -499,6 +560,7 @@ class FictionalScopeDeltaTests(TestCase):
                 result = review_fictional_scope_history(snapshots)
                 self.assertEqual(result.status, "REVIEW_ONLY")
                 self.assertEqual(result.narrowed_dimensions, expected)
+                self.assertEqual(result.held_steps, ())
                 self.assertEqual(result.transition_count, len(snapshots) - 1)
                 self.assertIsNone(result.first_held_step)
                 self.assert_history_inert(result)
