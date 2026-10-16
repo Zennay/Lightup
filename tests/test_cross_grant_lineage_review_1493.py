@@ -16,7 +16,9 @@ from lightup.engagements import AuthorizationGrant, RiskLevel, ScopeDefinition
 from lightup.execution_policy import ExecutionPolicy, ExecutionRequest, InteractionKind
 from lightup.models import Authorization, Target
 from lightup.scope import ScopePolicy
-from lightup.cross_grant_lineage_review_1493 import review_cross_grant_lineage
+from lightup.cross_grant_lineage_review_1493 import (
+    CrossGrantCandidate, review_cross_grant_batch, review_cross_grant_lineage,
+)
 
 NOW = datetime(2020, 1, 1, 12, 0, tzinfo=timezone.utc)
 START, END = NOW - timedelta(hours=1), NOW + timedelta(hours=1)
@@ -203,6 +205,107 @@ class CrossGrantLineageTests(unittest.TestCase):
         # The independent review can still call matching, historical assertions
         # REVIEW_ONLY because its explicit clock is not authenticated.
         self.assertEqual(self.check().status, "REVIEW_ONLY")
+
+
+
+
+def batch_candidate(*, asset="app.example.test", capability="web-baseline",
+                    client="CLIENT-1", engagement="ENG-1", grant_id="G-1"):
+    a, b, _ = fixture()
+    b = dataclasses.replace(b, grant_id=grant_id,
+                            scope=dataclasses.replace(
+                                b.scope, assets=(asset,),
+                                allowed_capabilities=(capability,)))
+    return CrossGrantCandidate(a, b, asset, capability, client, engagement,
+                               RiskLevel.LOW_IMPACT)
+
+
+class CrossGrantBatchTests(unittest.TestCase):
+    def review(self, candidates):
+        return review_cross_grant_batch(candidates, evaluated_at=NOW)
+
+    def test_coherent_single_record_never_authorizes(self):
+        r = self.review((batch_candidate(),))
+        self.assertEqual((r.status, r.reviewed), ("REVIEW_ONLY", 1))
+        self.assertEqual((r.authorized, r.consent_verified, r.dispatch_allowed,
+                          r.release_allowed), (False, False, False, False))
+
+    def test_coherent_two_distinct_assets_same_fictional_cohort(self):
+        r = self.review((batch_candidate(),
+                         batch_candidate(asset="second.example.test", grant_id="G-2")))
+        self.assertEqual((r.status, r.reviewed), ("REVIEW_ONLY", 2))
+
+    def test_empty_batch_hold(self):
+        self.assertEqual(self.review(()).status, "HOLD")
+
+    def test_wrong_container_hold(self):
+        self.assertEqual(self.review([batch_candidate()]).status, "HOLD")
+
+    def test_over_32_batch_hold(self):
+        self.assertEqual(self.review(tuple(batch_candidate(grant_id=f"G-{i}") for i in range(33))).status, "HOLD")
+
+    def test_malformed_record_hold(self):
+        self.assertEqual(self.review((batch_candidate(), object())).status, "HOLD")
+
+    def test_mixed_client_hold_atomic(self):
+        r = self.review((batch_candidate(),
+                         batch_candidate(client="CLIENT-2", grant_id="G-2")))
+        self.assertEqual((r.status, r.reviewed, r.authorized), ("HOLD", 0, False))
+
+    def test_mixed_engagement_hold_atomic(self):
+        r = self.review((batch_candidate(),
+                         batch_candidate(engagement="ENG-2", grant_id="G-2")))
+        self.assertEqual((r.status, r.reviewed), ("HOLD", 0))
+
+    def test_exact_duplicate_record_hold(self):
+        candidate = batch_candidate()
+        self.assertEqual(self.review((candidate, candidate)).status, "HOLD")
+
+    def test_duplicate_grant_asset_capability_claim_hold(self):
+        x = batch_candidate()
+        y = dataclasses.replace(x, legacy=dataclasses.replace(x.legacy))
+        self.assertEqual(self.review((x, y)).status, "HOLD")
+
+    def test_incoherent_second_grant_atomic_hold(self):
+        x = batch_candidate()
+        y = batch_candidate(grant_id="G-2")
+        y = dataclasses.replace(y, legacy=dataclasses.replace(y.legacy, reference="WRONG"))
+        self.assertEqual((self.review((x, y)).status, self.review((x, y)).reviewed),
+                         ("HOLD", 0))
+
+    def test_second_record_invalid_capability_denied(self):
+        x = batch_candidate()
+        y = dataclasses.replace(batch_candidate(grant_id="G-2"), capability_id="OTHER")
+        self.assertEqual(self.review((x, y)).status, "HOLD")
+
+    def test_unhashable_asset_is_hold_not_exception(self):
+        x = dataclasses.replace(batch_candidate(), asset=["forged"])
+        self.assertEqual(self.review((x,)).status, "HOLD")
+
+    def test_unhashable_capability_is_hold_not_exception(self):
+        x = dataclasses.replace(batch_candidate(), capability_id=["forged"])
+        self.assertEqual(self.review((x,)).status, "HOLD")
+
+    def test_invalid_id_shape_denied_before_hash(self):
+        x = batch_candidate()
+        x = dataclasses.replace(x, durable=dataclasses.replace(x.durable, grant_id=[]))
+        self.assertEqual(self.review((x,)).status, "HOLD")
+
+    def test_naive_batch_clock_denied(self):
+        self.assertEqual(review_cross_grant_batch(
+            (batch_candidate(),), evaluated_at=NOW.replace(tzinfo=None)).status, "HOLD")
+
+    def test_batch_bounds_32_accepted_with_distinct_synthetic_grants(self):
+        batch = tuple(batch_candidate(grant_id=f"G-{i}") for i in range(32))
+        r = self.review(batch)
+        self.assertEqual((r.status, r.reviewed), ("REVIEW_ONLY", 32))
+
+    def test_standalone_batch_never_reads_network_db_file_or_exec(self):
+        with patch.object(socket, "socket", side_effect=AssertionError("socket")), \
+             patch.object(sqlite3, "connect", side_effect=AssertionError("sqlite")), \
+             patch.object(subprocess, "Popen", side_effect=AssertionError("process")), \
+             patch("builtins.open", side_effect=AssertionError("file")):
+            self.assertEqual(self.review((batch_candidate(),)).status, "REVIEW_ONLY")
 
 
 if __name__ == "__main__":
