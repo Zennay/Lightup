@@ -24,7 +24,9 @@ OWN_TEST_FILES = (
 )
 ACTIVATION = ROOT / "src" / "lightup" / "activation.py"
 ORIGINAL_SOURCE_BLOB = "156e94c18d5221b3d55e2c9fff4e393369e0f38e"
-EXPECTED_RED = "test_expected_red_authorized_permit_cannot_be_stamped_after_expiry"
+EXPECTED_RED = ("test_scope_1480_activation_issuance_instant_20261016."
+                "ActivationIssuanceInstant1480Tests."
+                "test_expected_red_authorized_permit_cannot_be_stamped_after_expiry")
 EXPECTED_METHODS = 33
 
 EXPECTED_TEST_IDS = frozenset({
@@ -149,7 +151,7 @@ def main() -> int:
     result = unittest.TextTestRunner(stream=capture, verbosity=2).run(suite)
     red_is_exact = (
         len(result.expectedFailures) == 1
-        and EXPECTED_RED in result.expectedFailures[0][0].id()
+        and EXPECTED_RED == result.expectedFailures[0][0].id()
         and "AssertionError: PermissionError not raised" in result.expectedFailures[0][1]
     )
     okay = (
