@@ -60,3 +60,17 @@ PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_scope_decision_coh
 ```
 
 Bewust apart gehouden van originele vijf gepinde bestanden / vaste 18-methoden source-RED checker. Nieuw **49 eigen methoden in totaal: 46 gewone + 3 originele expected RED** op de volledige suite, waarvan 17 NIEUWE methoden na de vorige W3 immutable head. De nieuwste CI voor W4 is *niet* bewezen door W3 en moet op de exacte nieuwe code-SHA onafhankelijk worden beoordeeld. **INCUBATE · DRAFT/HOLD · geen merge/deploy/scan/grants/handlers/echte assets.**
+
+## W5 — beleidmetadata-snapshot en reden-/hosttype-restricties
+
+Het **eigen, nog steeds niet aangesloten** cohort-hulppad weigert nu ook bekende tegenstrijdigheden waar de oorspronkelijke dataclass-annotaties niet tegen beschermen. Per exact `ScopePolicy` leest het de vier oorspronkelijk gedefinieerde velden **één keer** uit een gekopieerde dataclass-`__dict__`. Verwijderde/extra velden, truthy integers in twee boolean-vlaggen, mutable hostsets/netwerklijsten, subclasses en te grote configuraties → `HOLD` zonder gedeeltelijke uitkomst. Grenzering is expliciet reviewbeperking: hoogstens 64 hosts, 64 netwerken, 512 tekens per host of 128 per networkstring; productiebetekenis en legitieme grotere configuraties vereisen eigenaarreview.
+
+Synthetische verkeerde classificaties zoals `PRIVATE_LAB` bij een publiek DNS-hostname of globaal IP, `EXPLICIT_NETWORK` bij een hostname en `EXPLICIT_HOST` bij een IP krijgen nu `reason_host_kind_mismatch`/HOLD. Een niet-globaal IP is **uitdrukkelijk GEEN bewijs van vertrouwde privé-lab-inventaris**; het echte beleid moet #1422/#1424 en exact geauthentiseerde inventaris onafhankelijk behandelen. Nul DNS/sockets/callbacks en altijd twee false uitvoer-/releasevlaggen.
+
+Nieuwe `tests/test_scope_decision_policy_metadata_1482_20261016.py`: **19 normale fictieve tests**, waaronder echte originele `ScopePolicy.decide`-controles, mutable velden, booltypeverwarring, weggehaalde dataclassvelden met class-default fallback, extra attributen en één gedeelde originele snapshot; geen productie-source-owner bestand gewijzigd. **Nieuwe eigen testinventaris: 68 methoden (65 normaal + drie originele expected-RED)**, nog zonder exacte W5 head-hosted/VPS bewijs. 
+
+```bash
+PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_scope_decision_policy_metadata_1482_20261016.py' -v
+```
+
+Zelfs een `REVIEW_ONLY`-cohortstatus stelt geen echte beleidsprovenance, grant, cliënt-/operatorconsent, revocation, security review of release vast. **INCUBATE M3/M7 · DRAFT/HOLD · geen merge/deploy/grants/targets/scan/handlers.**
