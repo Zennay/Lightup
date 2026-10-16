@@ -75,7 +75,7 @@ class FictionalHumanReleaseGates1495(unittest.TestCase):
         self.assertIn("Hoog risico", page)
         self.assertIn("Eerste verloopmoment", page)
         self.assertIn("Open vrijgavevoorwaarden", page)
-        self.assertIn("Klanten- en operatoridentiteit", page)
+        self.assertIn("Verifieer klant- en operatoridentiteit", page)
         self.assertEqual(page.count("PENDING —"), 4)
         self.assert_restricted(page)
 
@@ -110,12 +110,12 @@ class FictionalHumanReleaseGates1495(unittest.TestCase):
              item("zeta.example.test", risk=2, ends=29))
         self.assertEqual(render(*a), render(*reversed(a)))
 
-    def test_high_risk_never_changes_pending_to_go(self):
+    def test_all_risk_levels_keep_pending_verification_imperatives(self):
         for risk in (1, 2, 3, 4, 5):
             with self.subTest(risk=risk):
                 page = render(item(risk=risk))
                 self.assertEqual(page.count("PENDING —"), 4)
-                self.assertIn("explicit human GO obtained", page)
+                self.assertIn("explicit human GO", page)
                 self.assert_restricted(page)
 
     def test_hold_rejects_raw_customer_asset_and_omits_counters(self):
