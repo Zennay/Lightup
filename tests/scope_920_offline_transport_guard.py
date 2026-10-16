@@ -111,7 +111,13 @@ def review_json(data: bytes) -> dict[str, object]:
 
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
-    if args != ["--offline-synthetic-only"]:
+    # A programmatic caller may pass a list/subclass with forged equality.
+    # Do not access stdin until BOTH outer/inner argv types are canonical.
+    opt_in = (
+        type(args) is list and len(args) == 1
+        and type(args[0]) is str and args[0] == "--offline-synthetic-only"
+    )
+    if not opt_in:
         decision = review_metadata(None)
     else:
         decision = review_json(sys.stdin.buffer.read(MAX_INPUT_BYTES + 1))
