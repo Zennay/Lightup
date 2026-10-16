@@ -175,6 +175,56 @@ class AssetShapeReview376(unittest.TestCase):
             self.assertFalse(receipt)
             self.assertEqual(receipt.as_public_dict()["decision"], status)
 
+    def test_frozen_receipts_mutated_by_reflection_still_serialize_hold(self):
+        class DangerousStatus(str):
+            def __eq__(self, other):
+                raise AssertionError("hostile string comparator must not run")
+        statuses = ("APPROVED", "RELEASED", "PASS", True, 7, None,
+                    DangerousStatus("REVIEW_ONLY"), object())
+        for status in statuses:
+            with self.subTest(value_type=type(status).__name__):
+                receipt = AssetIdentityShapeReceipt("REVIEW_ONLY")
+                object.__setattr__(receipt, "decision", status)
+                self.assertFalse(receipt)
+                actual = receipt.as_public_dict()
+                self.assertEqual(actual["decision"], "HOLD")
+                self.assertTrue(all(value is False
+                                    for key, value in actual.items()
+                                    if key != "decision"))
+        receipt = AssetIdentityShapeReceipt("REVIEW_ONLY")
+        object.__delattr__(receipt, "decision")
+        self.assertEqual(receipt.as_public_dict()["decision"], "HOLD")
+        self.assertFalse(receipt)
+
+    def test_reflective_scope_mutations_do_not_make_missing_exclusions_reviewable(self):
+        scope = _scope(excluded=("excluded.example.test",))
+        first = review_asset_identity_shape(scope)
+        self.assertEqual(first.decision, "REVIEW_ONLY")
+        fields = object.__getattribute__(scope, "__dict__")
+        # Direct dict writes defeat frozen dataclass access restrictions.
+        fields.pop("excluded_assets")
+        self.assertEqual(review_asset_identity_shape(scope).decision, "HOLD")
+        fields["excluded_assets"] = ["excluded.example.test"]
+        self.assertEqual(review_asset_identity_shape(scope).decision, "HOLD")
+        fields["excluded_assets"] = ("excluded.example.test",)
+        self.assertEqual(review_asset_identity_shape(scope).decision, "REVIEW_ONLY")
+
+    def test_deterministic_512_noncanonical_identity_variants_hold(self):
+        # Only syntactic shape review; not alias, ownership or network checks.
+        for i in range(512):
+            seed = "fixture-%03d.example.test" % i
+            bad = (
+                seed + "\\u00a0extra" if i % 4 == 0 else
+                seed + "\\tinvalid" if i % 4 == 1 else
+                seed + " another" if i % 4 == 2 else
+                seed + "\\x00invalid"
+            )
+            with self.subTest(index=i):
+                self.assertEqual(review_asset_identity_shape(_scope((bad,))).decision, "HOLD")
+                self.assertEqual(review_asset_identity_shape(
+                    _scope(excluded=(bad,))
+                ).decision, "HOLD")
+
     def test_review_never_opens_file_socket_database_or_process(self):
         scope = _scope()
         with patch("builtins.open", side_effect=AssertionError("file")), \
@@ -231,6 +281,20 @@ class ExistingDomainSourceRed376(unittest.TestCase):
         before = self._row_count()
         with self.assertRaises(ValueError):
             self._record(_scope(excluded=(123,)))
+        self.assertEqual(self._row_count(), before)
+
+    @unittest.expectedFailure
+    def test_original_source_rejects_nontext_allowed_asset_before_sqlite(self):
+        before = self._row_count()
+        with self.assertRaises(ValueError):
+            self._record(_scope((123,)))
+        self.assertEqual(self._row_count(), before)
+
+    @unittest.expectedFailure
+    def test_original_source_rejects_control_char_allowed_asset_before_sqlite(self):
+        before = self._row_count()
+        with self.assertRaises(ValueError):
+            self._record(_scope(("fixture\\x00.example.test",)))
         self.assertEqual(self._row_count(), before)
 
     def test_canonical_legacy_grant_roundtrip_still_works(self):
@@ -371,17 +435,19 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
 
 
 class ExactRedOracle376(unittest.TestCase):
-    def test_three_real_source_red_cases_are_not_hidden_as_green(self):
+    def test_five_real_source_red_cases_are_not_hidden_as_green(self):
         names = ("test_original_source_rejects_blank_allowlisted_identity_before_sqlite",
                  "test_original_source_rejects_blank_exclusion_before_sqlite",
-                 "test_original_source_rejects_nontext_exclusion_before_sqlite")
+                 "test_original_source_rejects_nontext_exclusion_before_sqlite",
+                 "test_original_source_rejects_nontext_allowed_asset_before_sqlite",
+                 "test_original_source_rejects_control_char_allowed_asset_before_sqlite")
         result = unittest.TestResult()
         suite = unittest.TestSuite(ExistingDomainSourceRed376(name) for name in names)
         suite.run(result)
-        self.assertEqual(result.testsRun, 3)
+        self.assertEqual(result.testsRun, 5)
         self.assertFalse(result.errors)
         self.assertFalse(result.failures)
-        self.assertEqual(len(result.expectedFailures), 3)
+        self.assertEqual(len(result.expectedFailures), 5)
         self.assertFalse(result.unexpectedSuccesses)
 
 
