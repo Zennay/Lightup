@@ -1134,5 +1134,85 @@ class FictionalCliTests(unittest.TestCase):
                 self.assertEqual(result.status, expected)
                 self.assertIs(result.dispatch_allowed, False)
 
+
+    def test_missing_or_invalid_external_pin_holds_before_reading_stdin(self):
+        key = "LIGHTUP_FICTIONAL_EXPECTED_SHA256_1503"
+        class Unreadable:
+            def read(self, maximum):
+                raise AssertionError("must not read absent or malformed-pin input")
+        class Input:
+            buffer = Unreadable()
+        class Output:
+            def __init__(self):
+                self.buffer = io.BytesIO()
+        pin = hashlib.sha256(GOOD).hexdigest()
+        for bad in (None, "", "bad", "0" * 63, pin.upper(), pin + "\n"):
+            with self.subTest(value=(bad or "(missing)")[:10]):
+                output = Output()
+                with patch.dict(os.environ, {}, clear=False):
+                    if bad is None:
+                        os.environ.pop(key, None)
+                    else:
+                        os.environ[key] = bad
+                    with patch.object(cli.sys, "argv", ["anchored"]), \
+                         patch.object(cli.sys, "stdin", Input()), \
+                         patch.object(cli.sys, "stdout", output):
+                        self.assertEqual(cli.main_anchored(), 3)
+                self.assertEqual(output.buffer.getvalue(), cli._HOLD)
+
+    def test_external_pin_is_snapshotted_before_stream_consumption(self):
+        key = "LIGHTUP_FICTIONAL_EXPECTED_SHA256_1503"
+        alpha = hashlib.sha256(GOOD).hexdigest()
+        beta = hashlib.sha256(BAD_COPY).hexdigest()
+        payload = request_pinned()
+        class SwappingStream:
+            def __init__(self):
+                self.calls = 0
+            def read(self, maximum):
+                self.calls += 1
+                if self.calls == 1:
+                    os.environ[key] = beta
+                    return payload
+                return b""
+        class Input:
+            buffer = SwappingStream()
+        class Output:
+            def __init__(self):
+                self.buffer = io.BytesIO()
+        output = Output()
+        with patch.dict(os.environ, {key: alpha}):
+            with patch.object(cli.sys, "argv", ["anchored"]), \
+                 patch.object(cli.sys, "stdin", Input()), \
+                 patch.object(cli.sys, "stdout", output):
+                self.assertEqual(cli.main_anchored(), 2)
+        parsed = json.loads(output.buffer.getvalue())
+        self.assertEqual((parsed["status"], parsed["sha256"]),
+                         ("REVIEW_ONLY", alpha))
+        self.assertIs(parsed["authorized"], False)
+
+    def test_anchored_cli_checked_in_fixtures_genuine_subprocess(self):
+        module = "lightup.fictional_packet_cli_anchored_1503"
+        pin = hashlib.sha256(GOOD).hexdigest()
+        folder = ROOT / "docs" / "examples"
+        for name, code in (
+            ("fictional-copy-cli-pinned-1503.json", 2),
+            ("fictional-copy-cli-pinned-held-1503.json", 3),
+            ("fictional-copy-cli-1503.json", 3),
+        ):
+            with self.subTest(name=name):
+                payload = (folder / name).read_bytes()
+                p = process(
+                    payload, module=module,
+                    env_overrides={
+                        "LIGHTUP_FICTIONAL_EXPECTED_SHA256_1503": pin,
+                    },
+                )
+                self.assertEqual((p.returncode, p.stderr), (code, b""))
+                self.assertNotIn(b".example.test", p.stdout)
+                self.assertIn(
+                    b'"status":"REVIEW_ONLY"' if code == 2 else b'"status":"HOLD"',
+                    p.stdout,
+                )
+
 if __name__ == "__main__":
     unittest.main()
