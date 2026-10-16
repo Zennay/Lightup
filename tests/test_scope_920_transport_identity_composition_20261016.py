@@ -72,11 +72,12 @@ class TransportIdentityCompositionTests(unittest.TestCase):
         ):
             with self.subTest(override=override):
                 with self.assertRaises(RequestRejected):
-                    self.gate.validate(self.request(
+                    request = self.request(
                         REQUEST_METHOD="POST",
                         HTTP_ORIGIN="https://lightup.example.test",
-                        **override,
-                    ))
+                    )
+                    request.update(override)
+                    self.gate.validate(request)
 
     def test_invalid_production_settings_refuse_at_constructor(self):
         for kwargs in (
