@@ -92,17 +92,20 @@ def _anonymous_pipe(fd: int) -> bool:
     If procfs is unavailable or the descriptor cannot be identified exactly,
     we return HOLD rather than accepting an unverified FIFO as anonymous.
     """
-    metadata = os.fstat(fd)
-    if not stat.S_ISFIFO(metadata.st_mode):
-        return False
-    link = os.readlink("/proc/self/fd/" + str(fd))
-    return (
-        link.startswith("pipe:[")
-        and link.endswith("]")
-        and link[6:-1].isascii()
-        and link[6:-1].isdecimal()
-        and int(link[6:-1]) == metadata.st_ino
-    )
+    try:
+        metadata = os.fstat(fd)
+        if not stat.S_ISFIFO(metadata.st_mode):
+            return False
+        link = os.readlink("/proc/self/fd/" + str(fd))
+        return (
+            link.startswith("pipe:[")
+            and link.endswith("]")
+            and link[6:-1].isascii()
+            and link[6:-1].isdecimal()
+            and int(link[6:-1]) == metadata.st_ino
+        )
+    except (OSError, ValueError, TypeError, OverflowError):
+        return False  # Procfs unavailable or malformed: no pipe provenance.
 
 
 def _safe_streams() -> bool:
