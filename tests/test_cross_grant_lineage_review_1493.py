@@ -17,7 +17,8 @@ from lightup.execution_policy import ExecutionPolicy, ExecutionRequest, Interact
 from lightup.models import Authorization, Target
 from lightup.scope import ScopePolicy
 from lightup.cross_grant_lineage_review_1493 import (
-    CrossGrantCandidate, review_cross_grant_batch, review_cross_grant_lineage,
+    CrossGrantCandidate, CrossGrantLineageReview, CrossGrantBatchReview,
+    review_cross_grant_batch, review_cross_grant_lineage,
 )
 
 NOW = datetime(2020, 1, 1, 12, 0, tzinfo=timezone.utc)
@@ -60,6 +61,27 @@ class CrossGrantLineageTests(unittest.TestCase):
     def test_result_immutable(self):
         with self.assertRaises(dataclasses.FrozenInstanceError):
             self.check().dispatch_allowed = True
+
+    def test_lineage_receipt_cannot_be_constructed_with_authority(self):
+        for field_name in ("authorized", "consent_verified", "dispatch_allowed",
+                           "release_allowed"):
+            with self.subTest(field=field_name):
+                with self.assertRaises(TypeError):
+                    CrossGrantLineageReview("REVIEW_ONLY", "synthetic", **{field_name: True})
+
+    def test_lineage_receipt_rejects_fake_status_and_reason(self):
+        for fake_status in ("GO", "AUTHORIZED", "OK", True, "", 1):
+            with self.subTest(status=fake_status):
+                with self.assertRaises(ValueError):
+                    CrossGrantLineageReview(fake_status, "synthetic")
+        with self.assertRaises(ValueError):
+            CrossGrantLineageReview("HOLD", " " * 129)
+
+    def test_review_receipt_serialization_keeps_four_false_flags(self):
+        out = dataclasses.asdict(self.check())
+        self.assertEqual((out["authorized"], out["consent_verified"],
+                          out["dispatch_allowed"], out["release_allowed"]),
+                         (False, False, False, False))
 
     def test_reference_mismatch(self):
         a, b, _ = fixture()
@@ -299,6 +321,36 @@ def batch_candidate(*, asset="app.example.test", capability="web-baseline",
 class CrossGrantBatchTests(unittest.TestCase):
     def review(self, candidates):
         return review_cross_grant_batch(candidates, evaluated_at=NOW)
+
+    def test_batch_receipt_constructor_never_accepts_authority(self):
+        for field_name in ("authorized", "consent_verified", "dispatch_allowed",
+                           "release_allowed"):
+            with self.subTest(field=field_name):
+                with self.assertRaises(TypeError):
+                    CrossGrantBatchReview("REVIEW_ONLY", "synthetic", 1, **{field_name: True})
+
+    def test_batch_receipt_rejects_fake_status_and_count(self):
+        for fake_status in ("GO", "AUTHORIZED", "OK", True, "", 1):
+            with self.subTest(status=fake_status):
+                with self.assertRaises(ValueError):
+                    CrossGrantBatchReview(fake_status, "synthetic")
+        for count in (True, -1, 33, 0.5, "2"):
+            with self.subTest(count=count):
+                with self.assertRaises(ValueError):
+                    CrossGrantBatchReview("REVIEW_ONLY", "synthetic", count)
+
+    def test_batch_hold_receipt_cannot_claim_reviewed_items(self):
+        with self.assertRaises(ValueError):
+            CrossGrantBatchReview("HOLD", "synthetic", 1)
+
+    def test_batch_receipt_serialization_and_replace_seal_authority(self):
+        review = self.review((batch_candidate(),))
+        out = dataclasses.asdict(review)
+        self.assertEqual((out["authorized"], out["consent_verified"],
+                          out["dispatch_allowed"], out["release_allowed"]),
+                         (False, False, False, False))
+        with self.assertRaises(ValueError):
+            dataclasses.replace(review, authorized=True)
 
     def test_coherent_single_record_never_authorizes(self):
         r = self.review((batch_candidate(),))
