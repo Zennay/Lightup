@@ -148,6 +148,44 @@ class SyntheticIdentityIntakeCliTest(unittest.TestCase):
                     raw = json.dumps(obj, ensure_ascii=False).encode("utf-8")
                     self.assert_receipt(raw, expected)
 
+    def test_nfkc_compatibility_lookalikes_hold_in_both_identity_fields(self):
+        """An NFKC alias is not the same proven legal person or prospect."""
+        import unicodedata
+        examples = ("Ａ", "①", "ﬃ", "𝓐", "Ⅳ", "²", "㍿")
+        for lookalike in examples:
+            self.assertTrue(unicodedata.is_normalized("NFC", lookalike))
+            self.assertFalse(unicodedata.is_normalized("NFKC", lookalike))
+            for key in ("prospect_id", "organization_name"):
+                with self.subTest(key=key, glyph=hex(ord(lookalike))):
+                    payload = {"prospect_id": "Fiction-1", "organization_name": "Fiction"}
+                    payload[key] = "Fiction-" + lookalike
+                    for ensure_ascii in (True, False):
+                        self.assert_receipt(
+                            json.dumps(payload, ensure_ascii=ensure_ascii)
+                            .encode("utf-8"),
+                            "HOLD",
+                        )
+
+    def test_canonical_noncompatibility_unicode_stays_review_only(self):
+        """Do not accidentally deny ordinary accented fictional names."""
+        import unicodedata
+        for spelling in ("Café Fiction", "Fiktion-Å", "Αθήνα", "東京", "Zoë"):
+            with self.subTest(spelling=spelling):
+                self.assertTrue(unicodedata.is_normalized("NFKC", spelling))
+                payload = {"prospect_id": spelling, "organization_name": spelling}
+                self.assert_receipt(json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                                    "REVIEW_ONLY")
+
+    def test_compatibility_alias_cannot_be_reflected_or_normalized_into_receipt(self):
+        """Receipt remains an opaque HOLD, never a rewritten identity."""
+        payload = {"prospect_id": "SECRET-Ａ", "organization_name": "PRIVATE-①"}
+        raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        code, verdict, body = self.run_cli(raw, "--offline-synthetic-only")
+        self.assertEqual((code, verdict), (2, "HOLD"))
+        self.assertNotIn(b"SECRET", body)
+        self.assertNotIn(b"PRIVATE", body)
+        self.assertNotIn(b"Fiction", body)
+
     def test_invisible_unicode_noncharacters_hold_for_both_fields(self):
         for scalar in (0xFDD0, 0xFDEF, 0xFFFE, 0xFFFF,
                        0x1FFFE, 0x2FFFF, 0x10FFFF):
