@@ -6,10 +6,13 @@ from __future__ import annotations
 
 import ast
 import json
+import io
+from contextlib import redirect_stdout, redirect_stderr
 from pathlib import Path
 import subprocess
 import sys
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -130,6 +133,53 @@ class Scope299LocalSuiteReceiptAcceptance(unittest.TestCase):
         self.assertNotIn("permission", data)
         self.assertNotIn("authorized", data)
         self.assertNotIn("source_verified", data)
+
+
+    def test_internal_noisy_suite_is_silenced_without_privacy_leak(self):
+        # The owner diagnostic must never mix untrusted unittest prints with
+        # its one-line structured HOLD receipt, even from unexpected tests.
+        from scripts import scope_299_local_acceptance_receipt_20261016 as runner
+
+        marker = "SYNTHETIC-OWNER-SECRET-MUST-NOT-ESCAPE"
+        class NoisySuite:
+            def run(self, result):
+                print(marker)
+                print(marker, file=sys.stderr)
+                return result
+
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with (
+            mock.patch.object(runner.unittest.defaultTestLoader, "loadTestsFromNames",
+                              return_value=NoisySuite()),
+            redirect_stdout(stdout),
+            redirect_stderr(stderr),
+        ):
+            matching = runner.run_local_tests()
+        self.assertFalse(matching)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertEqual(stderr.getvalue(), "")
+
+    def test_internal_throwing_suite_is_silenced_and_fails_closed(self):
+        from scripts import scope_299_local_acceptance_receipt_20261016 as runner
+
+        marker = "SYNTHETIC-EXCEPTION-CONTENT-NO-ECHO"
+        class ThrowingSuite:
+            def run(self, result):
+                print(marker)
+                print(marker, file=sys.stderr)
+                raise RuntimeError(marker)
+
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with (
+            mock.patch.object(runner.unittest.defaultTestLoader, "loadTestsFromNames",
+                              return_value=ThrowingSuite()),
+            redirect_stdout(stdout),
+            redirect_stderr(stderr),
+        ):
+            matching = runner.run_local_tests()
+        self.assertFalse(matching)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertEqual(stderr.getvalue(), "")
 
 
 if __name__ == "__main__":
