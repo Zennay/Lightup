@@ -60,6 +60,19 @@ def acceptance_tests_are_pinned() -> bool:
 
 
 
+def loaded_security_is_from_checkout() -> bool:
+    """Verify the discovered tests imported this checkout, not stale sys.modules."""
+    module = sys.modules.get("lightup.webapp.security")
+    path = getattr(module, "__file__", None)
+    if type(path) is not str:
+        return False
+    expected = ROOT / "src" / "lightup" / "webapp" / "security.py"
+    try:
+        return Path(path).resolve(strict=True) == expected.resolve(strict=True)
+    except (OSError, RuntimeError, TypeError, ValueError):
+        return False
+
+
 def receipt(*, status: str, methods: int, source_reds: int) -> str:
     return json.dumps(
         {
@@ -93,7 +106,7 @@ def main() -> int:
         pattern=PATTERN,
         top_level_dir=str(tests_dir),
     )
-    if suite.countTestCases() != EXPECTED_METHODS:
+    if suite.countTestCases() != EXPECTED_METHODS or not loaded_security_is_from_checkout():
         print(receipt(status="HOLD", methods=suite.countTestCases(),
                       source_reds=0))
         return 2
