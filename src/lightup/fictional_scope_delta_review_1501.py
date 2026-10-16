@@ -112,17 +112,18 @@ def _valid(proposal: object) -> bool:
 
 
 def _snapshot(proposal: object) -> FictionalScopeProposal | None:
-    """Copy exact immutable built-in values once before validation and review.
+    """Double-capture untrusted fields; reject visible in-flight mutation.
 
-    A frozen dataclass can be changed by a hostile in-process caller using
-    object.__setattr__. Never validate an untrusted record and then read its
-    fields a second time for a verdict. The fresh copy is owned only by this
-    module and cannot be changed by the caller after capture.
+    A frozen dataclass can still be mutated by hostile in-process code using
+    object.__setattr__. Compare two separately captured exact built-in records,
+    validate BOTH, and use only our first private copy for the decision.
+    This detects observable mixed reads, not an atomic cross-thread snapshot:
+    a coordinated A->B->A mutation can still evade the consistency check.
     """
     if type(proposal) is not FictionalScopeProposal:
         return None
     try:
-        captured = FictionalScopeProposal(
+        first = FictionalScopeProposal(
             assets=proposal.assets,
             capabilities=proposal.capabilities,
             exclusions=proposal.exclusions,
@@ -130,7 +131,18 @@ def _snapshot(proposal: object) -> FictionalScopeProposal | None:
             valid_from=proposal.valid_from,
             valid_until=proposal.valid_until,
         )
-        return captured if _valid(captured) else None
+        second = FictionalScopeProposal(
+            assets=proposal.assets,
+            capabilities=proposal.capabilities,
+            exclusions=proposal.exclusions,
+            risk=proposal.risk,
+            valid_from=proposal.valid_from,
+            valid_until=proposal.valid_until,
+        )
+        # Reject invalid/alien fields BEFORE equality can invoke user code.
+        if not _valid(first) or not _valid(second):
+            return None
+        return first if first == second else None
     except (AttributeError, TypeError, ValueError, OverflowError):
         return None
 
