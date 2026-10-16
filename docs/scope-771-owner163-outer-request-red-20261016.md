@@ -9,8 +9,7 @@ This independently added acceptance packet starts at **unchanged source-owner
 PR #163** at commit `3dfacdcf2d939cd5e19bf9ce143f03a0b16a4274`.
 It neither changes the owner's `src/lightup/execution_policy.py` nor
 supersedes other source owners (#121, #124, #162, #567, #575, #576, #740,
-#741). The separate opt-in strict admission PR #1174 is not wired into this
-installed source and is **not** substituted for owner integration.
+#741). Independent [draft #1174](https://github.com/Zennay/Lightup/pull/1174) already owns a **broader** standalone strict admission reference with nested scope/grant checks. The narrow local wrapper added below is NOT a rewrite or replacement for #1174 and does NOT wire #1174 into any consumer; neither helper replaces owner-source integration.
 
 The installed #163 `ExecutionPolicy.decide()` reads
 `request.interaction`, `request.requested_risk` and `request.is_lab`
@@ -60,8 +59,7 @@ issuance, registry mutation or customer data in the test logic.
 
 ## Handoff / evidence limits
 
-This branch is **test-and-documentation only**. It does not activate the
-opt-in policy from #1174 and is not a production repair. GitHub-hosted
+The **installed owner-source acceptance module** remains test-and-documentation only. This child separately contains a narrow, UNWIRED opt-in reference helper and its own green tests. Neither opt-in module (this one or #1174) is imported by the default app or source-owner policy, so this is not a production repair. GitHub-hosted
 suite green with expected failures means reproducible defects, never GO.
 A queued/unassigned self-hosted job is **not** runner proof.
 No merge or deployment is authorized by this packet.
@@ -73,3 +71,35 @@ Every intentional source RED now has a distinct stable synthetic failure marker,
 ## Mutation-tested replay integrity
 
 Two additional ordinary synthetic mutation controls **execute the real replay oracle under temporary, in-process monkey-patched owner policy**: a generic `RuntimeError` must be rejected because it carries no exact source defect marker, and a simulated complete canonical deny fix must be rejected as unexpected RED success until reviewed migration to normal PASS. Patching is confined to unittest contexts; it does not persist, issue grants, run handlers or modify source ownership.
+
+## Narrow, working, opt-in envelope admission (not a production fix)
+
+The wholly new isolated `src/lightup/scope_771_request_admission_optin.py` exports
+`decide_exact_execution_request(policy, request)`. It rejects a policy that is
+not **exactly** `ExecutionPolicy`, then rejects a request that is not
+**exactly** `ExecutionRequest` with a typed `PolicyDecision(False, ...)`.
+Both checks occur before any attacker-controllable request getter or policy
+subclass override can run. The exact canonical pair delegates to the original
+owner's `policy.decide(request)` unchanged; authorization cannot be broadened
+by the helper itself. A returned allow is **only an in-memory policy decision**
+and never permission to start a scanner or real capability.
+
+A completely separate new
+`tests/test_scope_771_request_admission_optin_20261016.py` uses 26
+ordinary in-memory tests: exact fictional analysis/passive/lab modes and valid
+approved synthetic target; missing, expired, revoked or mismatched fictional
+grants, risk, target and capability narrowing; malformed canonical fields;
+duck getters that throw on use; subclass getters and policy overrides that
+must never run; null/opaque input denial; and request/grant non-mutation.
+No network, real grant, registry, authorization write, target handler,
+tool execution or deployment.
+
+**Collision note:** existing [PR #1174](https://github.com/Zennay/Lightup/pull/1174)
+already implements a different, more comprehensive **unwired** strict policy
+module with nested grant checks. Do not overwrite its files or take over
+that owner's integration. This narrower adapter tests an exact source-owner
+`#163` delegation seam only, for eventual **owner review**. It is not a
+production substitute for #1174 and does not itself prove grant authenticity,
+live revocation, destination binding, operator step-up or durable consent.
+The original 26-case source-RED test module is still separate: eight known
+owner-source REDs are unresolved even if all opt-in controls pass.
