@@ -309,5 +309,79 @@ class FictionalCliTests(unittest.TestCase):
         self.assertEqual(cli._render(good), cli._HOLD)
 
 
+    def test_builder_reproduces_exact_committed_cli_examples(self):
+        folder = ROOT / "docs" / "examples"
+        self.assertEqual(
+            cli.build_fictional_cli_envelope(GOOD, (GOOD, GOOD)),
+            (folder / "fictional-copy-cli-1503.json").read_bytes(),
+        )
+        self.assertEqual(
+            cli.build_fictional_cli_envelope(GOOD, (GOOD, BAD_COPY)),
+            (folder / "fictional-copy-cli-held-1503.json").read_bytes(),
+        )
+
+    def test_builder_matches_canonical_reference_all_copy_count_boundaries(self):
+        for count in (1, 2, 8, 15, 16):
+            with self.subTest(count=count):
+                copies = (GOOD,) * count
+                built = cli.build_fictional_cli_envelope(GOOD, copies)
+                self.assertEqual(built, request(copies=copies))
+                self.assertLessEqual(len(built), 8192)
+                self.assertEqual(cli._parse_request(built).status, "REVIEW_ONLY")
+                self.assertEqual(process(built).returncode, 2)
+
+    def test_builder_valid_changed_copy_produces_exact_hold_envelope(self):
+        for count in (1, 2, 16):
+            with self.subTest(count=count):
+                copies = (GOOD,) * (count - 1) + (BAD_COPY,)
+                encoded = cli.build_fictional_cli_envelope(GOOD, copies)
+                self.assertEqual(encoded, request(copies=copies))
+                review = cli._parse_request(encoded)
+                self.assertEqual((review.status, review.sha256), ("HOLD", None))
+                self.assertIs(review.authorized, False)
+
+    def test_builder_rejects_bad_types_nonfictional_and_oversized_batches(self):
+        class ByteSubclass(bytes):
+            def decode(self, _encoding):
+                raise AssertionError("subclass decode callback forbidden")
+        class TupleSubclass(tuple):
+            def __iter__(self):
+                raise AssertionError("subclass iteration callback forbidden")
+        for original, copies in (
+            (None, (GOOD,)),
+            (b"", (GOOD,)),
+            (ByteSubclass(GOOD), (GOOD,)),
+            (GOOD, []),
+            (GOOD, ()),
+            (GOOD, (GOOD,) * 17),
+            (GOOD, TupleSubclass((GOOD,))),
+            (GOOD, (ByteSubclass(GOOD),)),
+            (GOOD, (GOOD, b"client.example.com")),
+            (GOOD, (GOOD, None)),
+        ):
+            with self.subTest(typ=type(original).__name__, count=str(type(copies))):
+                self.assertIsNone(cli.build_fictional_cli_envelope(original, copies))
+
+    def test_builder_isolated_from_io_and_does_not_grant_consent(self):
+        with patch("builtins.open", side_effect=AssertionError("file")), \
+             patch("socket.socket", side_effect=AssertionError("network")), \
+             patch("sqlite3.connect", side_effect=AssertionError("db")), \
+             patch("subprocess.Popen", side_effect=AssertionError("process")):
+            good = cli.build_fictional_cli_envelope(GOOD, (GOOD,))
+            bad = cli.build_fictional_cli_envelope(GOOD, (BAD_COPY,))
+            self.assertEqual(cli._parse_request(good).status, "REVIEW_ONLY")
+            self.assertEqual(cli._parse_request(bad).status, "HOLD")
+            for raw in (good, bad):
+                obj = json.loads(raw)
+                self.assertEqual(tuple(obj), ("schema", "original", "copies"))
+                self.assertEqual(obj["schema"], "lightup-fictional-cli-v1")
+                self.assertNotIn("approved", obj)
+                for p in (obj["original"], *obj["copies"]):
+                    parsed = json.loads(p)
+                    for k in ("authorized", "consent_verified", "dispatch_allowed",
+                              "release_allowed"):
+                        self.assertIs(parsed[k], False)
+
+
 if __name__ == "__main__":
     unittest.main()
