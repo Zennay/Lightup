@@ -10,6 +10,17 @@ import unittest
 from lightup.webapp.security import RequestRejected, WebSecurity
 
 
+
+class PolymorphicProxyIdentity(str):
+    """Fictional caller-owned proxy object; must not be a trust anchor."""
+
+    def __eq__(self, other):
+        return other in ("127.0.0.1", "203.0.113.19")
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+
 class TransportIdentityCompositionTests(unittest.TestCase):
     def setUp(self):
         self.gate = WebSecurity(
@@ -114,6 +125,18 @@ class TransportIdentityCompositionTests(unittest.TestCase):
                 except RequestRejected:
                     pass
                 self.assertEqual(request, before)
+
+    @unittest.expectedFailure
+    def test_red_caller_proxy_equality_cannot_admit_untrusted_peer(self):
+        # This is an offline source-RED, not an external connection attempt.
+        # Before any request checks the constructor MUST reject polymorphic
+        # identity. The original source currently retains the object instead.
+        gate = WebSecurity(
+            public_origin="https://lightup.example.test",
+            trusted_proxy_ip=PolymorphicProxyIdentity("127.0.0.1"),
+        )
+        with self.assertRaises(RequestRejected):
+            gate.validate(self.request(REMOTE_ADDR="203.0.113.19"))
 
     def test_invalid_production_settings_refuse_at_constructor(self):
         for kwargs in (
