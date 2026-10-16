@@ -33,7 +33,7 @@ def packet(**updates):
         "revoked": False,
     }
     claim.update(updates)
-    return {"assessment_time": DATE, "claims": [claim]}
+    return {"schema": "FICTIONAL-LAB-LINEAGE-V1", "assessment_time": DATE, "claims": [claim]}
 
 
 def encode(doc):
