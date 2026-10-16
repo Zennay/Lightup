@@ -163,6 +163,48 @@ class CanonicalOptinRegistryAdmission(unittest.TestCase):
         self.assertEqual(self.registry.definitions(), before)
         self.assertIs(self.registry.get("safe-existing")[1], never_handler)
 
+    def test_exact_registry_instance_rebound_register_cannot_bypass_controls(self):
+        invoked = []
+        self.registry.register = lambda definition, handler: invoked.append(
+            (definition, handler))
+        with self.assertRaisesRegex(OrchestrationError, "shadowed"):
+            register_exact_tool_definition(self.registry, valid(), never_handler)
+        self.assertEqual(invoked, [])
+        self.assertEqual(self.registry.definitions(), ())
+
+    def test_shadowed_registry_cannot_override_unknown_capability_rejection(self):
+        invoked = []
+        self.registry.register = lambda definition, handler: invoked.append(True)
+        bad = ToolDefinition(
+            "fictional-unknown", "forged-unknown",
+            InteractionKind.PASSIVE_PUBLIC, RiskLevel.PASSIVE, "fictional",
+        )
+        with self.assertRaisesRegex(OrchestrationError, "shadowed"):
+            register_exact_tool_definition(self.registry, bad, never_handler)
+        self.assertEqual(invoked, [])
+        self.assertEqual(self.registry.definitions(), ())
+
+    def test_removed_instance_shadow_restores_original_owner_registration(self):
+        original = valid("fictional-normal")
+        self.registry.register = lambda *_args: never_handler()
+        with self.assertRaises(OrchestrationError):
+            register_exact_tool_definition(self.registry, original, never_handler)
+        del self.registry.register
+        register_exact_tool_definition(self.registry, original, never_handler)
+        definition, handler = self.registry.get("fictional-normal")
+        self.assertIs(definition, original)
+        self.assertIs(handler, never_handler)
+
+    def test_existing_registry_stays_unchanged_under_rebound_register(self):
+        original = valid("safe-existing")
+        register_exact_tool_definition(self.registry, original, never_handler)
+        previous = self.registry.definitions()
+        self.registry.register = lambda *_args: self.fail("shadow invoked")
+        with self.assertRaisesRegex(OrchestrationError, "shadowed"):
+            register_exact_tool_definition(self.registry, valid("new-tool"), never_handler)
+        self.assertEqual(self.registry.definitions(), previous)
+        self.assertIs(self.registry.get("safe-existing")[1], never_handler)
+
     def test_registry_subclass_cannot_intercept_registration(self):
         spy = MaliciousRegistry()
         with self.assertRaises(OrchestrationError):
