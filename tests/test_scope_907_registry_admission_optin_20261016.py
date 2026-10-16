@@ -70,6 +70,43 @@ class CanonicalOptinRegistryAdmission(unittest.TestCase):
         self.assertIs(stored, d)
         self.assertIs(handler, never_handler)
 
+    def test_forged_class_definition_rejected_before_metadata_reads(self):
+        class ForgedDefinition:
+            @property
+            def __class__(self):
+                return ToolDefinition
+
+            @property
+            def tool_id(self):
+                raise AssertionError("spoofed definition metadata getter read")
+
+            def validate_arguments(self, _args):
+                raise AssertionError("spoofed validator executed")
+        forged = ForgedDefinition()
+        self.assertIsInstance(forged, ToolDefinition)
+        self.assertIsNot(type(forged), ToolDefinition)
+        self.assert_denied_atomic(forged)
+
+    def test_forged_class_registry_rejected_before_registrar_dispatch(self):
+        class ForgedRegistry:
+            def __init__(self):
+                self.called = False
+
+            @property
+            def __class__(self):
+                return ToolRegistry
+
+            def register(self, definition, handler):
+                self.called = True
+                raise AssertionError("forged registry invoked")
+
+        registry = ForgedRegistry()
+        self.assertIsInstance(registry, ToolRegistry)
+        self.assertIsNot(type(registry), ToolRegistry)
+        with self.assertRaises(OrchestrationError):
+            register_exact_tool_definition(registry, valid(), never_handler)
+        self.assertIs(registry.called, False)
+
     def test_untrusted_plain_object_rejected_before_fields(self):
         self.assert_denied_atomic(object())
 
