@@ -263,3 +263,29 @@ not a secure filesystem or independent authorization boundary.
 - Even a future registered-VPS SUCCESS would **not** repair the 16 open
   installed-source identity REDs or substitute for consent, client asset
   ownership, real revocation, independent security/privacy or human GO.
+
+## W11 — stdout readyness TOCTOU race eliminated (isolated CLI only)
+
+Earlier reviewer code called `select.select` to check stdout was writable
+and then executed a **blocking** `os.write`. Another concurrent writer could
+fill the shared pipe between those operations, leaving the review process
+hung after it had already read the synthetic identity. This was a genuine
+bounded-execution gap even though the earlier full-pipe test was green.
+
+The CLI now uses a single short nonblocking `os.write` for its fixed-size
+generic receipt (well below Linux's atomic `PIPE_BUF` minimum), never
+waiting for a pipe to drain. It reads the inherited stdout blocking flag,
+temporarily changes it to nonblocking and restores its previous state in a
+`finally` block even on a full pipe/competing writer exception. If a receipt
+cannot be written fully, it returns false and main ends HOLD/exit 2. The
+output remains fixed `HOLD` or `REVIEW_ONLY`, never a real authorization.
+
+Three new **real anonymous-pipe** tests verify a successful short receipt in
+both initial blocking modes, a prefilled pipe with exact no-leak/no-partial
+behavior, and a deterministic competing writer filling the pipe at the
+actual `os.write` instant. These are local synthetic Linux tests, not
+production scope admission or an OS sandbox. A Python process can be
+suspended by the host scheduler, and temporarily changing a shared file
+description flag is a local diagnostic tradeoff, not a broader liveness
+guarantee. The 16 installed-source RED defects and permanent VPS proof
+remain separate blockers.
