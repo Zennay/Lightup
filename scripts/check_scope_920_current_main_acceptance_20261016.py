@@ -26,7 +26,7 @@ MAX_SOURCE_BYTES = 65536
 
 
 def git_blob_id(content: bytes) -> str:
-    header = b"blob " + str(len(content)).encode("ascii") + b"\\x00"
+    header = b"blob " + str(len(content)).encode("ascii") + bytes((0,))
     return hashlib.sha1(header + content).hexdigest()
 
 
