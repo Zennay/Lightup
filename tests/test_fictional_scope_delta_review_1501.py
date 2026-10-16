@@ -470,6 +470,10 @@ class FictionalScopeDeltaTests(TestCase):
         self.assertEqual(outcome.transition_count, 4)
         self.assertEqual(outcome.first_held_step, 1)
         self.assertEqual(outcome.held_steps, (1, 3, 4))
+        self.assertEqual(
+            outcome.held_step_dimensions,
+            (("risk",), ("assets",), ("risk",)),
+        )
         self.assertEqual(outcome.expanded_dimensions, ("assets", "risk"))
         self.assertNotIn("gamma.example.test", repr(outcome))
         self.assert_history_inert(outcome)
@@ -481,6 +485,7 @@ class FictionalScopeDeltaTests(TestCase):
         self.assertEqual(outcome.status, "HOLD")
         self.assertEqual(outcome.transition_count, 15)
         self.assertEqual(outcome.held_steps, tuple(range(1, 16, 2)))
+        self.assertEqual(outcome.held_step_dimensions, (("risk",),) * 8)
         self.assertEqual(outcome.first_held_step, 1)
         self.assert_history_inert(outcome)
 
@@ -492,6 +497,7 @@ class FictionalScopeDeltaTests(TestCase):
         self.assertEqual(outcome.transition_count, 0)
         self.assertIsNone(outcome.first_held_step)
         self.assertEqual(outcome.held_steps, ())
+        self.assertEqual(outcome.held_step_dimensions, ())
         self.assertNotIn("secret.private.invalid", repr(outcome))
         self.assert_history_inert(outcome)
 
@@ -507,14 +513,39 @@ class FictionalScopeDeltaTests(TestCase):
             ("HOLD", 0, None, (), (), (1,)),
             ("REVIEW_ONLY", 1, None, (), (), (1,)),
             ("HOLD", 2, 1, ("risk",), (), [1]),
+            ("HOLD", 2, 1, ("risk",), (), (1,), ()),
+            ("HOLD", 2, 1, ("risk",), (), (1,), (("assets",),)),
+            ("HOLD", 2, 1, ("risk",), (), (1,), (("risk", "risk"),)),
+            ("HOLD", 2, 1, ("risk",), (), (1,), (("made_up",),)),
+            ("HOLD", 2, 1, ("risk",), (), (1,), [["risk"]]),
+            ("REVIEW_ONLY", 2, None, (), (), (), (("risk",),)),
         )
         for args in invalid:
             with self.subTest(args=args), self.assertRaises(ValueError):
                 ScopeHistoryReview(*args)
         self.assertEqual(
-            ScopeHistoryReview("HOLD", 2, 1, ("risk",), (), (1, 2)).held_steps,
+            ScopeHistoryReview(
+                "HOLD", 2, 1, ("risk",), (), (1, 2), (("risk",), ("risk",))
+            ).held_steps,
             (1, 2),
         )
+
+    def test_widening_category_union_follows_per_step_details(self):
+        old = proposal()
+        added = proposal(assets=(
+            "alpha.example.test", "beta.example.test", "gamma.example.test",
+        ))
+        higher = proposal(assets=added.assets, risk=4)
+        earlier = proposal(assets=added.assets, risk=4,
+                           valid_from=T0 - timedelta(minutes=1))
+        outcome = review_fictional_scope_history((old, added, higher, earlier))
+        self.assertEqual(outcome.held_steps, (1, 2, 3))
+        self.assertEqual(
+            outcome.held_step_dimensions,
+            (("assets",), ("risk",), ("valid_from",)),
+        )
+        self.assertEqual(outcome.expanded_dimensions, ("assets", "risk", "valid_from"))
+        self.assert_history_inert(outcome)
 
     def test_history_catches_transient_widening_even_when_endpoints_equal(self):
         old = proposal()
