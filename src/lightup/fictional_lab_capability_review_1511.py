@@ -14,17 +14,35 @@ _MAX_ID_LENGTH = 64
 _MAX_IDS = 64
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, init=False)
 class LabCapabilityReview1511:
+    """Advisory result: API callers cannot request affirmative authority fields.
+
+    Like all ordinary Python values this is NOT an unforgeable security token;
+    object.__setattr__ and untrusted object construction can still forge
+    *individual* Python objects. Never use this result as an authorization gate.
+    """
+
     status: str
-    authorized: bool = False
-    consent_verified: bool = False
-    dispatch_allowed: bool = False
-    release_allowed: bool = False
+    authorized: bool
+    consent_verified: bool
+    dispatch_allowed: bool
+    release_allowed: bool
+
+    def __init__(self, status: str) -> None:
+        if type(status) is not str or status not in ("HOLD", "REVIEW_ONLY"):
+            raise ValueError("invalid fictional review status")
+        object.__setattr__(self, "status", status)
+        object.__setattr__(self, "authorized", False)
+        object.__setattr__(self, "consent_verified", False)
+        object.__setattr__(self, "dispatch_allowed", False)
+        object.__setattr__(self, "release_allowed", False)
 
 
-_HOLD = LabCapabilityReview1511("HOLD")
-_REVIEW_ONLY = LabCapabilityReview1511("REVIEW_ONLY")
+def _hold() -> LabCapabilityReview1511:
+    # Fresh result on every call: modifying one in memory with
+    # object.__setattr__ cannot contaminate subsequent review calls.
+    return LabCapabilityReview1511("HOLD")
 
 
 def _canonical_capability_id(value: object) -> bool:
@@ -42,24 +60,24 @@ def review_fictional_lab_capability_1511(
 ) -> LabCapabilityReview1511:
     """Strict in-memory *advisory* check; never grant LAB_ONLY execution.
 
-    Requires an exact tuple of canonical builtin strings.  A tuple subclass,
+    Requires an exact tuple of canonical builtin strings. A tuple subclass,
     string subclass, duplicated alias, absent ID, or any malformed value
     always results in generic HOLD. Only a locally consistent *fictional*
-    snapshot yields REVIEW_ONLY, with all authority fields permanently false.
+    snapshot yields REVIEW_ONLY, with all authority fields set false.
 
     This must not be used as an authority or registry/consent attestation.
     """
     if type(fictional_allowlist) is not tuple:
-        return _HOLD
+        return _hold()
     if not (1 <= len(fictional_allowlist) <= _MAX_IDS):
-        return _HOLD
+        return _hold()
     if not _canonical_capability_id(requested):
-        return _HOLD
+        return _hold()
     # Builtins-only path; avoid touching arbitrary caller-supplied objects.
     if any(not _canonical_capability_id(item) for item in fictional_allowlist):
-        return _HOLD
+        return _hold()
     if len(set(fictional_allowlist)) != len(fictional_allowlist):
-        return _HOLD
+        return _hold()
     if requested not in fictional_allowlist:
-        return _HOLD
-    return _REVIEW_ONLY
+        return _hold()
+    return LabCapabilityReview1511("REVIEW_ONLY")
