@@ -82,7 +82,7 @@ for the source-owner fix at `ToolRegistry.register` itself.
 
 A further independent file
 `tests/test_scope_907_registry_admission_optin_20261016.py` checks
-**21 ordinary tests** across exact canonical registration, allowed synthetic
+**24 ordinary tests** across exact canonical registration, allowed synthetic
 lab registration, malformed risk/interaction/capability rejection, parameter
 type enforcement, duplicate IDs, forged ToolDefinition subclasses, duck
 metadata with getter spies, forged ToolRegistry objects, and two new denial-atomicity cases where an already-registered valid tool stays untouched after malformed subsequent input. All handlers
@@ -111,3 +111,23 @@ not fix production lifetime-binding issues #940 or owner-source #907 REDs;
 caller-controlled nested `ToolParameter` contents and mutable internal
 registry state remain distinct source-owner review topics. Do not wire to
 production without owner review/security and permanent VPS evidence.
+
+## W12: frozen outer definition is not a frozen instance validator
+
+Python's frozen dataclass declaration is not a security boundary against
+`object.__setattr__`. A caller can attach `validate_arguments = forged`
+to an otherwise **exact** `ToolDefinition` instance, which will hide its
+original owner class method after registration. The isolated opt-in admission
+helper now inspects the exact object's ordinary `__dict__` and fails closed
+with typed `OrchestrationError` when `validate_arguments` is shadowed,
+**before** a potentially unsafe validation method could be stored or called.
+The helper still does **not** invoke the tool handler.
+
+Three new ordinary tests show (1) the injected validator is never called
+and never stored, (2) rejection cannot change an already populated
+registry, and (3) removing the synthetic shadow restores canonical
+required-argument validation and registration. This is an opt-in guard only;
+owner #156 still owns `ToolRegistry.register`, and the installed source
+continues to have five observed source REDs. Arbitrary changes to nested
+mutable metadata, `registry._tools`, or a global owner class monkeypatch
+are **not covered** and must not be accepted as safe/authorized by this test.
