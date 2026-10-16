@@ -307,6 +307,82 @@ class FictionalScopeDeltaTests(TestCase):
         self.assertEqual(outcome.status, "HOLD")
         self.assert_inert(outcome)
 
+    def test_review_owns_defensive_copy_of_untrusted_source(self):
+        from lightup.fictional_scope_delta_review_1501 import _snapshot
+
+        original = proposal(risk=3)
+        frozen_copy = _snapshot(original)
+        self.assertIsNot(original, frozen_copy)
+        self.assertEqual(frozen_copy.risk, 3)
+        object.__setattr__(original, "risk", 5)
+        self.assertEqual(frozen_copy.risk, 3)
+        self.assertEqual(original.risk, 5)
+
+    def test_delta_source_mutation_after_snapshot_cannot_widen_verdict(self):
+        from lightup import fictional_scope_delta_review_1501 as module
+
+        old = proposal()
+        later = proposal()
+        actual = module._snapshot
+        copies = []
+
+        def mutate_after_capture(value):
+            captured = actual(value)
+            copies.append(captured)
+            if value is old and captured is not None:
+                object.__setattr__(old, "risk", 5)
+            return captured
+
+        with patch.object(module, "_snapshot", side_effect=mutate_after_capture):
+            reviewed = module.review_fictional_scope_delta(old, later)
+        self.assertEqual(reviewed.status, "REVIEW_ONLY")
+        self.assertEqual(reviewed.expanded_dimensions, ())
+        self.assertEqual(old.risk, 5)
+        self.assertIsNot(copies[0], old)
+        self.assert_inert(reviewed)
+
+    def test_history_source_mutation_after_first_capture_does_not_rewrite_prior_step(self):
+        from lightup import fictional_scope_delta_review_1501 as module
+
+        first = proposal()
+        middle = proposal(risk=2)
+        final = proposal(risk=1)
+        real_snapshot = module._snapshot
+        observed = set()
+
+        def mutate_first_after_copy(value):
+            result = real_snapshot(value)
+            if value is first and id(value) not in observed:
+                observed.add(id(value))
+                object.__setattr__(first, "risk", 5)
+            return result
+
+        with patch.object(module, "_snapshot", side_effect=mutate_first_after_copy):
+            reviewed = module.review_fictional_scope_history((first, middle, final))
+        self.assertEqual(first.risk, 5)
+        self.assertEqual(reviewed.status, "REVIEW_ONLY")
+        self.assertEqual(reviewed.narrowed_dimensions, ("risk",))
+        self.assertIsNone(reviewed.first_held_step)
+        self.assert_history_inert(reviewed)
+
+    def test_exhaustive_small_risk_and_window_monotonicity_oracle(self):
+        # Independent finite oracle: any risk increase, earlier start or later
+        # end must HOLD; all others remain unapproved REVIEW_ONLY.
+        initial = proposal()
+        for risk in range(1, 6):
+            for start_seconds in (-60, 0, 60):
+                for end_seconds in (-60, 0, 60):
+                    with self.subTest(risk=risk, start=start_seconds, end=end_seconds):
+                        candidate = proposal(
+                            risk=risk,
+                            valid_from=T0 + timedelta(seconds=start_seconds),
+                            valid_until=T1 + timedelta(seconds=end_seconds),
+                        )
+                        outcome = review_fictional_scope_delta(initial, candidate)
+                        expands = risk > 3 or start_seconds < 0 or end_seconds > 0
+                        self.assertEqual(outcome.status, "HOLD" if expands else "REVIEW_ONLY")
+                        self.assert_inert(outcome)
+
     def test_many_deterministic_widening_cases_do_not_approve(self):
         old = proposal()
         for index in range(256):
