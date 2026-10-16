@@ -258,8 +258,8 @@ class FictionalCliTests(unittest.TestCase):
         for wrote in (0, 1, None, True, False, -1, len(cli._HOLD)):
             with self.subTest(wrote=wrote):
                 out = Out(wrote)
-                with patch.object(cli.sys, "argv", ["fictional_packet_cli_1503.py"]), \\
-                     patch.object(cli.sys, "stdin", Input(request())), \\
+                with patch.object(cli.sys, "argv", ["fictional_packet_cli_1503.py"]), \
+                     patch.object(cli.sys, "stdin", Input(request())), \
                      patch.object(cli.sys, "stdout", out):
                     self.assertEqual(cli.main(), 3)
                 self.assertTrue(out.output)
@@ -273,8 +273,8 @@ class FictionalCliTests(unittest.TestCase):
             def __init__(self):
                 self.buffer = io.BytesIO()
         out = Out()
-        with patch.object(cli.sys, "argv", ["fictional_packet_cli_1503.py"]), \\
-             patch.object(cli.sys, "stdin", Input()), \\
+        with patch.object(cli.sys, "argv", ["fictional_packet_cli_1503.py"]), \
+             patch.object(cli.sys, "stdin", Input()), \
              patch.object(cli.sys, "stdout", out):
             self.assertEqual(cli.main(), 2)
         self.assertTrue(out.buffer.getvalue().endswith(b"\\n"))
