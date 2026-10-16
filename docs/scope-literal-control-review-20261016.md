@@ -40,3 +40,7 @@ Added isolated `tests/test_scope_literal_json_boundary_20261016.py` with determi
 ## W6 — fail-closed stdin read failure
 
 The opt-in review-only CLI now maps `OSError`/`InterruptedError` while reading stdin to the same hardcoded generic HOLD, never a traceback echo of a caller-supplied stream error. Dedicated tests prove one bounded read of exactly 8193 bytes maximum, no stdout data leak, partial stream HOLD and four authority/release flags false. The no-socket, no-child, no-file-open tripwires cover this error path too. This is only offline reliability, never an authorization or execution upgrade.
+
+## W7 — deliberately isolated Python 3.11 / 3.14 hosted proof
+
+Added a **branch-specific push-only** GitHub-hosted workflow `.github/workflows/scope-literal-controls-20261016.yml` to test exactly this worker's new files without a pull-request event, canonical permanent self-hosted queue, existing source-owner workflows or any real target. It pins upstream checkout/setup-python actions by immutable SHA, uses no persisted checkout credentials, grants `contents: read` only, verifies checked-out commit equals the pushed SHA, runs compile/tests on Python3.11 and 3.14, checks the production baseline's three small scope/policy unit files and confirms CLI-only exit 2/3 with fixed false-authority JSON. This is *isolated laboratory proof*, never full original LightUp CI, permanent registered VPS evidence or authority to merge/deploy.
