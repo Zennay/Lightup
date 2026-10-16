@@ -294,16 +294,18 @@ def module_origins_valid(root: Path = ROOT, *, require_all: bool = False) -> boo
                 if require_all:
                     return False
                 continue
-            expected = str(root / relative)
+            expected = (root / relative).resolve(strict=True)
             reported = getattr(module, "__file__", None)
             spec = getattr(module, "__spec__", None)
             origin = getattr(spec, "origin", None)
+            if type(reported) is not str or type(origin) is not str:
+                return False
             if (
-                type(reported) is not str or type(origin) is not str
-                or reported != expected or origin != expected
+                Path(reported).resolve(strict=True) != expected
+                or Path(origin).resolve(strict=True) != expected
             ):
                 return False
-    except (AttributeError, TypeError, ValueError):
+    except (AttributeError, TypeError, ValueError, OSError, RuntimeError):
         return False
     return True
 
