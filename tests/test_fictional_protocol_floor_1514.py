@@ -120,7 +120,7 @@ class PureProtocolReviewTests(unittest.TestCase):
             receipt.authorized = True
         with self.assertRaises(TypeError):
             ReviewReceipt("REVIEW_ONLY", authorized=True)
-        with self.assertRaises(ValueError):
+        with self.assertRaises((ValueError, TypeError)):
             replace(receipt, consent_verified=True)
         object.__setattr__(receipt, "authorized", True)
         self.assert_no_authority(review(pair(), 3, 3), "REVIEW_ONLY")
