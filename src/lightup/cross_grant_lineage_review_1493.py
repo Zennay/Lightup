@@ -115,3 +115,71 @@ def review_cross_grant_lineage(
     # objects. An independent authenticated source/consent/revocation check
     # remains mandatory outside this preview; no dispatch result exists.
     return CrossGrantLineageReview("REVIEW_ONLY", "synthetic records are internally coherent")
+
+
+@dataclass(frozen=True)
+class CrossGrantCandidate:
+    """Caller-supplied fictional assertions; never an execution instruction."""
+    legacy: Authorization
+    durable: AuthorizationGrant
+    asset: str
+    capability_id: str
+    client_id: str
+    engagement_id: str
+    requested_risk: RiskLevel
+
+
+@dataclass(frozen=True)
+class CrossGrantBatchReview:
+    status: Literal["HOLD", "REVIEW_ONLY"]
+    reason: str
+    reviewed: int = 0
+    authorized: bool = False
+    consent_verified: bool = False
+    dispatch_allowed: bool = False
+    release_allowed: bool = False
+
+
+def review_cross_grant_batch(
+    candidates: tuple[CrossGrantCandidate, ...],
+    *,
+    evaluated_at: datetime,
+) -> CrossGrantBatchReview:
+    """Atomic, bounded HOLD-only gate on a supplied fictional cohort.
+
+    No partial results are published; a single malformed/replayed/mixed-tenant
+    claim invalidates the entire review. Both HOLD and REVIEW_ONLY are
+    categorically non-authorizing.
+    """
+    if type(candidates) is not tuple or not (1 <= len(candidates) <= 32):
+        return CrossGrantBatchReview("HOLD", "noncanonical batch length")
+    if not _utc(evaluated_at):
+        return CrossGrantBatchReview("HOLD", "noncanonical batch instant")
+    if not all(type(candidate) is CrossGrantCandidate for candidate in candidates):
+        return CrossGrantBatchReview("HOLD", "noncanonical batch claim")
+    first = candidates[0]
+    seen: set[tuple[str, str, str]] = set()
+    for item in candidates:
+        if item.client_id != first.client_id or item.engagement_id != first.engagement_id:
+            return CrossGrantBatchReview("HOLD", "mixed tenant or engagement")
+        if type(item.durable) is not AuthorizationGrant or not _identifier(item.durable.grant_id):
+            return CrossGrantBatchReview("HOLD", "invalid durable grant identity")
+        key = (item.durable.grant_id, item.asset, item.capability_id)
+        # Keep the same exact identity on every replay; do not allow duplicates
+        # to inflate a report's apparent proof count.
+        if key in seen:
+            return CrossGrantBatchReview("HOLD", "duplicate grant-asset-capability claim")
+        seen.add(key)
+        result = review_cross_grant_lineage(
+            item.legacy, item.durable, asset=item.asset,
+            capability_id=item.capability_id,
+            client_id=item.client_id,
+            engagement_id=item.engagement_id,
+            requested_risk=item.requested_risk,
+            evaluated_at=evaluated_at,
+        )
+        if result.status != "REVIEW_ONLY":
+            return CrossGrantBatchReview("HOLD", "at least one claim failed review")
+    return CrossGrantBatchReview(
+        "REVIEW_ONLY", "coherent synthetic batch without trusted authority", len(candidates)
+    )
