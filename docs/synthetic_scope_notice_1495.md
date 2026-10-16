@@ -155,3 +155,24 @@ PYTHONPATH=src python -m lightup.synthetic_scope_notice_display_cli_1495 \
 De nieuwe `synthetic_scope_notice_display_cli_1495` accepteert **uitsluitend** de exacte `--synthetic-json-to-html`-vlag en leest hoogstens 65.537 bytes van standaardinvoer. De decoder weigert meer dan 65.536 bytes; ongeldige JSON of extra CLI-vlaggen geven een vaste, generieke **HOLD-HTML-pagina met exitcode 3**, zonder brongegevens, targets, wachtwoorden of CLI-vlaggen te echoën. Alleen canonieke `REVIEW_ONLY`-JSON geeft een fictieve HTML-pagina met **exitcode 2**. **Exitcode 0, daadwerkelijke toestemming of een uitvoeractie zijn onmogelijk.** De HTML bevat een vaste no-authority-waarschuwing en vier altijd nog open `PENDING`-voorwaarden. Er zijn geen scripts, webcalls, formulieren of uitvoerknoppen. Let op: bij `set -e` of `pipefail` moet de operator zelf rekening houden met de expliciet niet-nul exitcodes.
 
 Dit is werkvoorbereiding; gebruik nooit echte klanten/targetdomeinen en beschouw syntactisch geldige JSON **niet** als een geauthenticeerde handtekening of controle op bestaande grants. Zeventien echte Python-subprocess-methoden in `tests/test_synthetic_scope_notice_display_cli_1495.py` testen beide uitvoerende programma's achter elkaar, EN/NL, corruptie/te grote payloads, vervalste `authorized`-velden, opgenomen klantgegevens, extra vlaggen, dubbel JSON en geen valse exit0. Zoals steeds moet exacte-head CI eerst worden gecontroleerd voor een PASS-claim.
+
+## W15: Veilige offline vergelijking van twee fictieve scopes
+
+Er is nu een echte, onafhankelijke read-only before/after vergelijking. De functie `compare_fictional_scope_envelopes(raw: bytes)` accepteert alleen één JSON-object met precies de sleutels `before` en `after`. Elk veld moet een zelfstandig, volledig geldig fictief REVIEW_ONLY-JSON-document van de eerdere scopegenerator bevatten. Limiet: 131.072 bytes voor het paar en maximaal 32 scopes per kant.
+
+De bestaande strenge consumer reconstrueert eerst volledig en onafhankelijk het oorspronkelijke rapport voor *beide* documenten. Eén ongeldig document (HOLD, echte domeinen, onbekende of dubbele sleutel, vervalste autorisatievlag, verkeerde risicoscore, tijdvenster, extra goedkeuringstekst) veroorzaakt atomische HOLD, zonder data van het andere document te tonen. Alleen volledig valide fictieve voorstellen worden in een inert HTML-overzicht vergeleken; dat toont identieke paren, voorgestelde wijzigingen, alleen in after (NIET VERLEEND), en alleen in before (NIET INGETROKKEN). Verwijderen uit deze preview is géén revocation van echte grants. De vier releasevoorwaarden blijven expliciet PENDING.
+
+De opzettelijk beperkte commandline-interface is: `PYTHONPATH=src python -m lightup.synthetic_scope_notice_compare_cli_1495 --synthetic-pair-to-html < pair.json > comparison.html`. De invoer mag alleen lokaal via stdin worden verstrekt, niet als url, pad naar een target, runtimegrant of scanactie. Een geldige synthetische REVIEW_ONLY geeft exitcode 2; ongeldige invoer genereert een vaste privacyveilige HOLD-pagina en exitcode 3; nooit exitcode 0. Op zichzelf kan deze vergelijking niets authenticeren, toestemming verlenen of intrekken.
+
+Maak een invoerbestand pair.json met vóór- en ná-gegevens die door de bestaande fictieve JSON-scopegenerator zijn geproduceerd:
+
+```bash
+PYTHONPATH=src python -m lightup.synthetic_scope_notice_cli_1495 --synthetic-only --format json < fictional-input-before.json > before.json
+PYTHONPATH=src python -m lightup.synthetic_scope_notice_cli_1495 --synthetic-only --format json < fictional-input-after.json > after.json
+python -c 'import json; print(json.dumps({"before":json.load(open("before.json")), "after":json.load(open("after.json"))}))' > pair.json
+PYTHONPATH=src python -m lightup.synthetic_scope_notice_compare_cli_1495 --synthetic-pair-to-html < pair.json > comparison.html
+```
+
+Deze opdrachten geven bij een synthetisch geldig voorbeeld bewust niet-nul exitcode 2 terug; bij shells met `set -e` is een expliciete afhandeling nodig. Voor beide voorbeeldinvoerbestanden kan het bestaande uitsluitend fictieve voorbeeldbestand worden gekopieerd, met een andere capability of risicoscore om een verschil te laten zien.
+
+De 26 Python-origineelbron- en 14 echte end-to-endcommandlinetests in `tests/test_synthetic_scope_notice_compare_1495.py` en `tests/test_synthetic_scope_notice_compare_cli_1495.py` toetsen risicowijzigingen, tijdvensters, toegevoegd/verwijderd, internationaal bronmateriaal, strict fail-closed, geen actieve UI en niet-nul status. Exact-head-gehoste CI-bewijs op commit `4544a2cd8dac4b1a4b57a7dfc3cc1958aa849c27`: eigen workflow #38933371968; oorspronkelijke Python 3.11 job `117082656826`, Python 3.14 job `117082657275`; elk **238 tests OK**. Dit is geen volledige LightUp-CI, geen VPS-validatie en geen toestemming. DRAFT/HOLD.
