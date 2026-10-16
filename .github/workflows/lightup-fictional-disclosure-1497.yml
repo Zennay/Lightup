@@ -49,7 +49,7 @@ jobs:
           actual=$?
           set -e
           test "$actual" -eq 2
-          python -c 'import json; x=json.load(open("/tmp/lightup-1497-offline.json")); assert x["status"]=="REVIEW_ONLY" and x["authorized"] is False and x["consent_verified"] is False and x["dispatch_allowed"] is False and x["release_allowed"] is False and "NOT AUTHORIZED" in x["notice"]'
+          python -c 'import json; x=json.load(open("/tmp/lightup-1497-offline.json")); assert x["contract"]=="FICTIONAL-SCOPE-HANDOFF-1497-V1" and x["status"]=="REVIEW_ONLY" and x["authorized"] is False and x["consent_verified"] is False and x["dispatch_allowed"] is False and x["release_allowed"] is False and "NOT AUTHORIZED" in x["notice"]'
       - name: Forged fictional approval must be generic HOLD 3 without echo
         shell: bash
         run: |
@@ -58,4 +58,4 @@ jobs:
           actual=$?
           set -e
           test "$actual" -eq 3
-          python -c 'import json; text=open("/tmp/lightup-1497-denied.json").read(); x=json.loads(text); assert x["status"]=="HOLD" and x["reviewed_notes"]==0 and x["authorized"] is False and x["consent_verified"] is False and x["dispatch_allowed"] is False and x["release_allowed"] is False and "approved" not in text and "alpha.example.test" not in text'
+          python -c 'import json; text=open("/tmp/lightup-1497-denied.json").read(); x=json.loads(text); assert x["contract"]=="FICTIONAL-SCOPE-HANDOFF-1497-V1" and x["status"]=="HOLD" and x["reviewed_notes"]==0 and x["authorized"] is False and x["consent_verified"] is False and x["dispatch_allowed"] is False and x["release_allowed"] is False and "approved" not in text and "alpha.example.test" not in text'
