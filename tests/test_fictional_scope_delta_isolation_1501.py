@@ -100,4 +100,13 @@ class FictionalScopeIsolationTests(TestCase):
                         if isinstance(callee, ast.Name):
                             self.assertNotIn(callee.id, forbidden_names)
                         elif isinstance(callee, ast.Attribute):
-                            self.assertNotIn(callee.attr, forbidden_names)
+                            # `re.compile` builds a safe regex, not Python
+                            # bytecode. Don't turn static review into a false
+                            # production blocker for regular expressions.
+                            safe_regex = (
+                                callee.attr == "compile"
+                                and isinstance(callee.value, ast.Name)
+                                and callee.value.id == "re"
+                            )
+                            if not safe_regex:
+                                self.assertNotIn(callee.attr, forbidden_names)
