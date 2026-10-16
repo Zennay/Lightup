@@ -72,6 +72,7 @@ def review_fictional_lab_lineage(
 
     seen_refs: set[str] = set()
     seen_sessions: set[str] = set()
+    cohort: tuple[str, str] | None = None
     for claim in claims:
         if type(claim) is not FictionalLabLineageClaim:
             return _HOLD
@@ -97,6 +98,14 @@ def review_fictional_lab_lineage(
             _identity(asset, "ASSET"),
             _identity(capability, "CAP"),
         )):
+            return _HOLD
+        # This standalone fictional review accepts only one claimed operator
+        # and engagement per batch. Mixed actor/engagement claims are held
+        # atomically rather than implicitly combining distinct authorities.
+        # The caller may still fabricate the entire cohort: NOT consent.
+        if cohort is None:
+            cohort = (actor, engagement)
+        elif cohort != (actor, engagement):
             return _HOLD
         if type(revoked) is not bool or revoked:
             return _HOLD
