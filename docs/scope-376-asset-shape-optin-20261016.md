@@ -39,6 +39,16 @@ Two new ordinary test methods cover duplicate/collision false receipts and expli
 
 **W5 needs new exact-HEAD hosted Python 3.11/3.14 evidence**; previous W4 logs cannot establish this implementation's test result.
 
+## W6 — exact dataclass instance-field integrity
+
+An additional non-authorizing safety gap was identified in the standalone opt-in reviewer itself. `ScopeDefinition` is a frozen dataclass but an in-process caller can use `object.__delattr__` or directly mutate `__dict__`. Reading `scope.excluded_assets` after deletion could silently fall back to the class default empty tuple, **losing an intended exclusion in the shape preview**; a completely uninitialized exact instance could raise `AttributeError` instead of generic HOLD. Neither is a verified production privilege escalation, but both are inappropriate review semantics.
+
+The own pure helper now checks the exact native `dict` instance-field envelope of **exactly** four built-in string keys (`assets`, `excluded_assets`, `allowed_capabilities`, `max_risk`) *before* reading the values. It bounds count first and verifies key types before key-set equality, so malicious key subclasses cannot run their own comparison/hash methods during review. Missing, extra, uninitialized or nontext-keyed instances return `HOLD` with six false authority markers. This is conservative: if the original domain dataclass intentionally adds a field in future, the reviewer will HOLD pending owner review rather than assume compatibility.
+
+Two ordinary regression test methods cover all four deleted fields, an uninitialized exact instance, an extra attribute and a poisoned non-string dictionary key. The real disposable SQLite test-only owner-adoption wrapper now includes a scope with a deleted exclusion and proves **no INSERT** occurs when the preview is required; on its own, the unchanged original production source is still not repaired. This reviewer must never grant rights or touch client data.
+
+**W6 HEAD requires fresh evidence** from original hosted Python 3.11 and 3.14 logs, true producer integration and registered VPS runner; older W5 proof does not apply.
+
 ## Owner decision needed
 The existing domain/grant source owner should decide whether this narrow text-shape preflight, or an equivalent source-side guard, belongs directly before any persisted grant row. The reviewer ceilings are **illustrative** and may reject legitimate large scopes; do not treat them as approved product policy. If integrated, the original source must enforce the same reject-before-write semantics and preserve valid grant roundtrips. Convert the three original-source expectedFailure methods to ordinary PASS only after the actual production source is fixed and revalidated. Do not claim the opt-in helper fixes persistent authorization.
 
