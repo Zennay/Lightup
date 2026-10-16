@@ -67,46 +67,48 @@ def _canonical_tuple(values: object, *, allow_empty: bool) -> bool:
     return True
 
 
-def review_asset_identity_shape(scope: object) -> AssetIdentityShapeReceipt:
-    """Review a *synthetic* ScopeDefinition's value shape without authorizing it.
+def _canonical_asset_snapshot(scope: object) -> tuple[tuple[str, ...], tuple[str, ...]] | None:
+    """Take ONE shape-reviewed immutable asset/exclusion snapshot, or deny.
 
-    A conservative canonical-text subset; DNS, CIDR, consent, tenancy,
-    expiry, revocation and capability authority are deliberately NOT checked.
+    Internal offline value contract. This snapshot neither grants authority nor
+    validates risk, capabilities, provenance, consent or revocation. Never
+    reuse the mutable original ScopeDefinition object after reviewing it.
     """
-    # Reject subclass objects before reading any caller-controlled attributes.
     if type(scope) is not ScopeDefinition:
-        return AssetIdentityShapeReceipt("HOLD")
-    # A frozen dataclass is not tamper-proof: object.__delattr__ can remove
-    # exclusions and ordinary attribute lookup would silently use its class
-    # default (). Require the exact instance field envelope before accesses.
+        return None
     try:
         fields = object.__getattribute__(scope, "__dict__")
     except (AttributeError, TypeError):
-        return AssetIdentityShapeReceipt("HOLD")
+        return None
     if type(fields) is not dict or len(fields) != 4:
-        return AssetIdentityShapeReceipt("HOLD")
-    # Take a bounded snapshot of the exact built-in dict before validating.
-    # A caller can bypass frozen dataclass assignment and change its __dict__.
-    # Never interleave key checks on one version with value reads from another.
+        return None
     snapshot = fields.copy()
     if len(snapshot) != 4 or any(type(key) is not str for key in snapshot):
-        return AssetIdentityShapeReceipt("HOLD")
+        return None
     if set(snapshot) != {"assets", "excluded_assets", "max_risk",
                          "allowed_capabilities"}:
-        return AssetIdentityShapeReceipt("HOLD")
+        return None
     assets = snapshot["assets"]
     exclusions = snapshot["excluded_assets"]
     if not _canonical_tuple(assets, allow_empty=False):
-        return AssetIdentityShapeReceipt("HOLD")
+        return None
     if not _canonical_tuple(exclusions, allow_empty=True):
-        return AssetIdentityShapeReceipt("HOLD")
-    # Values are now confirmed exact native strings. Repeated identities, or
-    # exact allow/exclude contradictions, need owner review rather than a
-    # guessed precedence. Do NOT casefold/normalize or create authorization.
+        return None
+    # Both are now exact native tuples of exact native str elements.
     allowed = set(assets)
     excluded = set(exclusions)
     if (len(allowed) != len(assets)
             or len(excluded) != len(exclusions)
             or not allowed.isdisjoint(excluded)):
-        return AssetIdentityShapeReceipt("HOLD")
-    return AssetIdentityShapeReceipt("REVIEW_ONLY")
+        return None
+    return assets, exclusions
+
+
+def review_asset_identity_shape(scope: object) -> AssetIdentityShapeReceipt:
+    """Inspect asset *shape* only: never treat REVIEW_ONLY as authorization.
+
+    Risk/capability/consent, DNS/IP, tenure, expiry, tenancy and revocation
+    remain independent owner-controlled requirements.
+    """
+    result = _canonical_asset_snapshot(scope)
+    return AssetIdentityShapeReceipt("REVIEW_ONLY" if result is not None else "HOLD")
