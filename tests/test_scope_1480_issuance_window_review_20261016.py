@@ -127,6 +127,39 @@ class IssuanceWindowReview1480Tests(unittest.TestCase):
                     )
                     self._check_no_authority(decision)
 
+    def test_incomplete_forged_dataclass_is_hold_not_attribute_error(self):
+        # object.__new__ can create an exact Authorization without __init__.
+        forged = object.__new__(Authorization)
+        result = review_issuance_window(authorization=forged, issued_at=END)
+        self.assertEqual(result.status, "HOLD")
+        self.assertEqual(result.reason, "noncanonical_finite_utc_window")
+        self._check_no_authority(result)
+
+    def test_erased_bound_on_frozen_authorization_holds(self):
+        for missing in ("valid_from", "valid_until"):
+            with self.subTest(missing=missing):
+                auth = _auth()
+                object.__delattr__(auth, missing)
+                result = review_issuance_window(
+                    authorization=auth, issued_at=END
+                )
+                self.assertEqual(result.reason, "noncanonical_finite_utc_window")
+                self._check_no_authority(result)
+
+    def test_review_uses_one_field_snapshot_not_live_bound_getattr(self):
+        auth = _auth()
+        original = Authorization.__getattribute__
+
+        def reject_separate_live_bound_read(instance, field):
+            if field in ("valid_from", "valid_until"):
+                raise AssertionError("time bounds must come from one snapshot")
+            return original(instance, field)
+
+        with patch.object(Authorization, "__getattribute__", reject_separate_live_bound_read):
+            result = review_issuance_window(authorization=auth, issued_at=END)
+        self.assertEqual(result.status, "REVIEW_ONLY")
+        self._check_no_authority(result)
+
     def test_review_requires_no_network(self):
         with patch("socket.socket", side_effect=AssertionError("unexpected socket")):
             result = review_issuance_window(authorization=_auth(), issued_at=END)
