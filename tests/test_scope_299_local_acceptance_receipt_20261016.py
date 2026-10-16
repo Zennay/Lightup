@@ -93,12 +93,12 @@ class Scope299LocalSuiteReceiptAcceptance(unittest.TestCase):
         finally:
             sys.path.pop(0)
 
-    def test_suite_contract_is_locked_to_only_three_owned_modules(self):
+    def test_suite_contract_is_locked_to_four_owned_modules(self):
         sys.path.insert(0, str(ROOT))
         try:
             from scripts import scope_299_local_acceptance_receipt_20261016 as script
-            self.assertEqual(script.EXPECTED_TESTS, 88
-            self.assertEqual(script.EXPECTED_SOURCE_REDS, 30
+            self.assertEqual(script.EXPECTED_TESTS, 88)
+            self.assertEqual(script.EXPECTED_SOURCE_REDS, 30)
             self.assertEqual(
                 script.TEST_MODULES,
                 (
