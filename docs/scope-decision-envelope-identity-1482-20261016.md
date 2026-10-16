@@ -19,16 +19,10 @@ Control tests verify legitimate in-memory loopback LAB use, public-name LAB deni
 ## Reproduction
 
 ```bash
-PYTHONPATH=src python3 -m unittest -v tests/test_scope_decision_shape_activation_1482_20261016.py
-```
-
-The invocation as a path may vary with unittest discovery. Portable alternative:
-
-```bash
 PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_scope_decision_shape_activation_1482_20261016.py' -v
 ```
 
-Expected partition: **14 ordinary PASS and exactly 3 original-source `expected failure`**, barring additional regressions. Expected failures intentionally remain open: a `unittest.expectedFailure` is not a production repair or green security attestation. Review any unexpected success carefully against exact original SHA before promoting it.
+Expected partition: **15 ordinary PASS and exactly 3 original-source `expected failure`**, barring additional regressions. Expected failures intentionally remain open: a `unittest.expectedFailure` is not a production repair or green security attestation. Review any unexpected success carefully against exact original SHA before promoting it.
 
 ## Ownership / independent prerequisites
 
