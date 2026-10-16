@@ -191,6 +191,16 @@ LIGHTUP_FICTIONAL_EXPECTED_SHA256_1503="$(sha256sum docs/examples/fictional-copy
 # generic HOLD / exit 3
 ```
 
+If the environment variable is **missing or malformed**, the program emits
+generic `HOLD`/exit 3 **without reading stdin at all**. This avoids
+needlessly waiting for an open untrusted pipe when the independent reference
+is already unusable. A valid external reference is captured once before
+reading the complete bounded input, so changes to the environment variable
+during stdin consumption do not silently replace the reference for that
+review. Neither property authenticates who set the environment value.
+The dedicated tests cover both behaviours and exercise the version-controlled
+fictional fixtures through actual Python subprocesses.
+
 The command requires three facts to match: strictly canonical **fictional**
 packet bytes, the pinned hash **inside** the canonical v2 envelope and the
 independently supplied **environment** SHA-256. It also denies legacy v1
