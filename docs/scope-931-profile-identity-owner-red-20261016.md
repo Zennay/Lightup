@@ -289,3 +289,20 @@ suspended by the host scheduler, and temporarily changing a shared file
 description flag is a local diagnostic tradeoff, not a broader liveness
 guarantee. The 16 installed-source RED defects and permanent VPS proof
 remain separate blockers.
+
+## W12 — actual child-process EOF and inherited fd-state witness
+
+W11's direct-helper tests alone cannot prove how Python's real subprocess
+stdout inheritance behaves. Two additional **real subprocess** tests use
+anonymous OS pipes and require: (a) starting with blocking stdout or
+nonblocking stdout, a successful short REVIEW_ONLY receipt preserves that
+original flag in the parent's shared open-file description; and (b) when
+the only reader closes before the child emits its receipt, the process
+terminates with nonzero HOLD exit code 2, **no traceback or stderr leak**,
+and no indefinitely blocked writer.
+
+These tests use only fictional JSON and local pipes. They do not run a
+scanner or make network requests. Both source-owner validation (#931) and
+permission to activate tools remain separate; hosted and permanent VPS CI
+must use the latest immutable W12 head. The previous W11 hosted proof is
+older-SHA evidence, not a substitute.
