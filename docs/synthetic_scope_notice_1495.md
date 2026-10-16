@@ -63,3 +63,15 @@ python -m lightup.synthetic_scope_notice_cli_1495 --synthetic-only --lang nl \
 
 Pure Python: `render_scope_notice((example,), review_at=now, language="nl")`. Zonder de expliciete keuze blijft Engels de standaard; met `--lang en` is de Engelstalige uitvoer identiek. Ook in het Nederlands blijven **NOT AUTHORIZED** én **NIET GEAUTORISEERD** letterlijk zichtbaar en zijn alle vier authority-vlaggen onvoorwaardelijk `False`. Bevestiging bij een risico van 4–5 is een waarschuwing, **geen** opname in een werkelijk toestemmingssysteem. Andere locale-tags, verdachte extensies of normalisatie worden altijd `HOLD`, niet teruggevallen op een mogelijk verkeerd geïnterpreteerde taal. Tien afzonderlijke Nederlandse/Engelse gewone directe + echte CLI regressietests in `tests/test_synthetic_scope_notice_locale_1495.py`.
 
+
+## JSON-formaat voor toekomstige, niet-geautoriseerde dashboards
+
+```bash
+python -m lightup.synthetic_scope_notice_cli_1495 --synthetic-only --lang nl --format json \
+  < examples/fictional_scope_notice_1495.json
+```
+
+Opt-in machineleesbare output bevat exact `status`, `notice`, `reviewed`, `elevated_risk` en **vier letterlijke `false` vlaggen**: `authorized`, `consent_verified`, `dispatch_allowed`, `release_allowed`. De `notice` blijft consequent **NOT AUTHORIZED** melden. Geldige fictieve input blijft exit 2; ongeldige JSON/paar-sleutels, privacygevoelige externe assets en andere fouten geven een generiek niet-echoënd JSON-`HOLD` object met exit 3. **Geen 0-exit, geen executie, geen echte autorisatie**. Andere parameterordes, alias-vlaggen of niet-ondersteunde formaten worden atomisch geweigerd.
+
+Twaalf aparte echte subprocess-regressies in `tests/test_synthetic_scope_notice_json_1495.py` bewijzen determinisme, NL/EN, privacy, dubbele JSON-sleutels, 65.536-byte grens, risicoscores, exact machineveld-schema en altijd blijvende vier valse authority-vlaggen. Dit JSON-formaat is uitsluitend een **preview-gegevensvorm**, geen gecertificeerd toestemmingsbewijs. Het mag pas in een werkelijke operator-UI worden geïntegreerd na onafhankelijke review én uitdrukkelijke menselijke GO.
+
