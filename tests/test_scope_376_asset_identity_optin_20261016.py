@@ -80,10 +80,38 @@ class AssetShapeReview376(unittest.TestCase):
             self.assertEqual(review_asset_identity_shape(_scope(assets=values)).decision, "HOLD")
         self.assertEqual(review_asset_identity_shape(_scope(("x" * 2048,))).decision,
                          "REVIEW_ONLY")
-        self.assertEqual(review_asset_identity_shape(_scope(("x",) * 256)).decision,
-                         "REVIEW_ONLY")
+        self.assertEqual(review_asset_identity_shape(_scope(
+            tuple("fixture-%03d.example.test" % index for index in range(256))
+        )).decision, "REVIEW_ONLY")
         self.assertEqual(review_asset_identity_shape(_scope(excluded=["x"])).decision,
                          "HOLD")
+
+    def test_exact_duplicates_and_allow_exclude_collisions_are_hold_only(self):
+        cases = (
+            _scope(("fixture.example.test", "fixture.example.test")),
+            _scope(excluded=("blocked.example.test", "blocked.example.test")),
+            _scope(("fixture.example.test",), ("fixture.example.test",)),
+            _scope(("fixture.example.test", "other.example.test"),
+                   ("other.example.test",)),
+        )
+        for scope in cases:
+            with self.subTest(case=scope):
+                receipt = review_asset_identity_shape(scope)
+                self.assertEqual(receipt.decision, "HOLD")
+                self.assertFalse(receipt)
+                self.assertTrue(all(
+                    value is False for key, value in receipt.as_public_dict().items()
+                    if key != "decision"
+                ))
+
+    def test_no_normalization_or_alias_authority_is_inferred(self):
+        # Case variants are only raw-text shape-reviewed: their equivalence,
+        # ownership and scope permission require independent owner checks.
+        scope = _scope(("EXAMPLE.test",), ("example.test",))
+        receipt = review_asset_identity_shape(scope)
+        self.assertEqual(receipt.decision, "REVIEW_ONLY")
+        self.assertFalse(receipt)
+        self.assertIs(receipt.as_public_dict()["grant_permitted"], False)
 
     def test_public_receipts_do_not_echo_assets_or_confer_authority(self):
         marker = "private-fixture-marker-never-echo"
@@ -241,6 +269,9 @@ class OwnerAdoptionSameConnection376(unittest.TestCase):
             _scope(excluded=("fixture.example.test\u00a0other",)),
             _scope(excluded=("fixture.example.test", None)),
             _scope(excluded=("secret.invalid",) * 257),
+            _scope(("fixture.example.test", "fixture.example.test")),
+            _scope(excluded=("blocked.example.test", "blocked.example.test")),
+            _scope(("fixture.example.test",), ("fixture.example.test",)),
         )
         with patch.object(DomainStore, "record_authorization_grant",
                           self._owner_candidate(original)):
