@@ -72,3 +72,12 @@ A source owner may reuse the pure metadata reviewer only after independently dec
 - New `tests/test_scope_1480_issuance_transition_20261016.py`: ten ordinary tests for inclusive windows, same-instant controls, false early/late transitions, rollback/reordering, datetime subclasses, missing authorization and read-only input. Pure reference remains completely **UNWIRED** and cannot invoke tools/handlers, issue permits, access real assets, or change authorization.
 
 **Owner adoption contract:** real `ActivationGate.issue` / dispatch owner must choose a trusted, coherent authorization time sampling/linearization point and apply durable revocation / target / tenant / capability checks. Do not turn a supplied REVIEW_ONLY oracle output into authorization. `#1480` expected RED must remain until original installed source is actually repaired; any promotion requires independent safety review, full hosted CI and permanent VPS evidence before human GO.
+
+
+## W5 — coherent original-bound snapshot across both reviewed instants
+
+The pure `review_issuance_transition` now captures **one** in-memory immutable `Authorization` snapshot of original `valid_from` and `valid_until` before either temporal review. A caller retaining the original frozen dataclass can otherwise force `object.__setattr__` in a synthetic interleaving to widen the second read. The reviewer never lets the second instant see an expanded window even when the original held input is changed mid-review.
+
+A dedicated **race-canary ordinary PASS** mutates the caller-held input after the first helper call, proves the deliberate widening happened only to that object, proves both reviews used the **same independent snapshot**, and still requires `HOLD: issuance_after_approved_window`. This is purely in-process; nothing reads external clocks, customer records, authorization sources or handlers.
+
+New strict opt-in checker now runs **33 own source/reference methods**: 32 ordinary controls + exactly **one original installed-source expected RED**; separate 3 runner integrity tests verify the checker. The checker returns never-authorizing REVIEW_ONLY/HOLD, not a full-suite/CI bypass. **Original ActivationGate remains unchanged and unsafe at the observed narrow issuance race until source owner fixes it.**
