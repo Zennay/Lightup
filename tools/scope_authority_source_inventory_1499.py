@@ -11,6 +11,9 @@ import ast
 from dataclasses import asdict, dataclass, field
 import hashlib
 import json
+import os
+import stat
+from contextlib import ExitStack
 from pathlib import Path
 
 CONTRACT = "LIGHTUP-SOURCE-AUTHORITY-INVENTORY-1499-V1"
@@ -202,22 +205,41 @@ def review_source_bytes(source_files: object) -> InventoryVerdict:
 
 
 def review_checked_in_sources() -> InventoryVerdict:
-    """Read only built-in relative, nonsymlink source paths; no CLI path args."""
+    """Open only five built-in local files, no symlink-follow and no path args.
+
+    dir_fd + O_NOFOLLOW protects each open against parent/file symlink swaps
+    between a separate path check and open; O_NONBLOCK avoids FIFO open hangs.
+    On systems lacking these POSIX primitives, fail closed with generic HOLD.
+    This is NOT a trusted filesystem attestation or runtime authorization.
+    """
+    if not all(hasattr(os, name) for name in
+               ("O_NOFOLLOW", "O_DIRECTORY", "O_NONBLOCK")):
+        return _hold()
+    dir_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    file_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
     paths = {}
-    for rel in PINNED_SOURCES:
-        full = REPO_ROOT / rel
-        if full.is_symlink() or full.parent.is_symlink() or full.parent.parent.is_symlink():
-            return _hold()
-        try:
-            if not full.is_file() or full.stat().st_size > MAX_FILE_BYTES:
-                return _hold()
-            with full.open("rb") as stream:
-                data = stream.read(MAX_FILE_BYTES + 1)
-        except (OSError, ValueError):
-            return _hold()
-        if len(data) > MAX_FILE_BYTES:
-            return _hold()
-        paths[rel] = data
+    try:
+        with ExitStack() as handles:
+            root_fd = os.open(REPO_ROOT, dir_flags)
+            handles.callback(os.close, root_fd)
+            src_fd = os.open("src", dir_flags, dir_fd=root_fd)
+            handles.callback(os.close, src_fd)
+            package_fd = os.open("lightup", dir_flags, dir_fd=src_fd)
+            handles.callback(os.close, package_fd)
+            for rel in PINNED_SOURCES:
+                # The last path component is fixed in source, never input.
+                file_name = rel.rsplit("/", 1)[-1]
+                fd = os.open(file_name, file_flags, dir_fd=package_fd)
+                with os.fdopen(fd, "rb") as stream:
+                    details = os.fstat(stream.fileno())
+                    if not stat.S_ISREG(details.st_mode) or details.st_size > MAX_FILE_BYTES:
+                        return _hold()
+                    data = stream.read(MAX_FILE_BYTES + 1)
+                if len(data) > MAX_FILE_BYTES:
+                    return _hold()
+                paths[rel] = data
+    except (OSError, ValueError):
+        return _hold()
     return review_source_bytes(paths)
 
 
