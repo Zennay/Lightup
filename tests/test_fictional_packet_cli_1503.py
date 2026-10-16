@@ -34,10 +34,10 @@ def request(original=GOOD, copies=(GOOD,)):
     ).encode("ascii")
 
 
-def process(payload):
+def process(payload, args=()):
     env = {**os.environ, "PYTHONPATH": str(PACKAGE), "PYTHONDONTWRITEBYTECODE": "1"}
     return subprocess.run(
-        [sys.executable, "-m", "lightup.fictional_packet_cli_1503"],
+        [sys.executable, "-m", "lightup.fictional_packet_cli_1503", *args],
         input=payload, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         env=env, cwd=ROOT, timeout=15, check=False,
     )
@@ -228,6 +228,58 @@ class FictionalCliTests(unittest.TestCase):
         with patch.object(cli.sys, "stdin", Input(request())), \
              patch.object(cli.sys, "stdout", Broken()):
             self.assertEqual(cli.main(), 3)
+
+
+    def test_unknown_commandline_flags_never_promote_review(self):
+        for args in (
+            ("--approve",), ("--grant", "yes"), ("--output", "approval.json"),
+            ("--help",), ("--unsafe",), ("file.json",),
+        ):
+            with self.subTest(args=args):
+                result = process(request(), args=args)
+                self.assertEqual(result.returncode, 3)
+                self.assertEqual(result.stdout, cli._HOLD)
+                self.assertEqual(result.stderr, b"")
+
+    def test_incomplete_or_noninteger_stdout_write_always_exits_three(self):
+        class Input:
+            def __init__(self, raw):
+                self.buffer = io.BytesIO(raw)
+        class Out:
+            def __init__(self, result):
+                self.result = result
+                self.buffer = self
+                self.output = []
+            def write(self, data):
+                self.output.append(bytes(data))
+                return self.result
+            def flush(self):
+                pass
+        for wrote in (0, 1, None, True, False, -1, len(cli._HOLD)):
+            with self.subTest(wrote=wrote):
+                out = Out(wrote)
+                with patch.object(cli.sys, "argv", ["fictional_packet_cli_1503.py"]), \\
+                     patch.object(cli.sys, "stdin", Input(request())), \\
+                     patch.object(cli.sys, "stdout", out):
+                    self.assertEqual(cli.main(), 3)
+                self.assertTrue(out.output)
+                self.assertTrue(out.output[0].startswith(b'{"status":"REVIEW_ONLY"'))
+
+    def test_successful_stdout_write_requires_full_length(self):
+        class Input:
+            def __init__(self):
+                self.buffer = io.BytesIO(request())
+        class Out:
+            def __init__(self):
+                self.buffer = io.BytesIO()
+        out = Out()
+        with patch.object(cli.sys, "argv", ["fictional_packet_cli_1503.py"]), \\
+             patch.object(cli.sys, "stdin", Input()), \\
+             patch.object(cli.sys, "stdout", out):
+            self.assertEqual(cli.main(), 2)
+        self.assertTrue(out.buffer.getvalue().endswith(b"\\n"))
+        self.assertNotIn(b".example.test", out.buffer.getvalue())
+
 
 
 if __name__ == "__main__":
