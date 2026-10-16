@@ -34,9 +34,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Compile isolated offline tests
-        run: python -m py_compile tests/test_scope_cli_policy_marker_905.py
+        run: python -m py_compile tests/test_scope_cli_policy_marker_905.py tests/test_scope_cli_precoercion_905.py
       - name: Source-owner acceptance with known REDs
         env:
           PYTHONPATH: src
           PYTHONDONTWRITEBYTECODE: "1"
-        run: python -m unittest discover -s tests -p 'test_scope_cli_policy_marker_905.py' -v
+        run: python -m unittest discover -s tests -p 'test_scope_cli*_905.py' -v
