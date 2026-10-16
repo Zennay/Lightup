@@ -146,5 +146,31 @@ class TestFictionalSequence(unittest.TestCase):
         self.assert_hold((ChangedOnAccess(*tuple(getattr(sample()[0], f) for f in
                        ("case_id", "sequence", "packet_sha256", "observed_at"))), sample()[1]))
 
+
+    def test_second_snapshot_catches_observed_exact_record_change(self):
+        records = sample()
+        target = records[1]
+        original_get = FictionalHandoff.__getattribute__
+        calls = [0]
+
+        def changed_on_second_copy(record, attribute):
+            if record is target and attribute == "packet_sha256":
+                calls[0] += 1
+                if calls[0] == 2:
+                    object.__setattr__(record, "packet_sha256", "f" * 64)
+            return original_get(record, attribute)
+
+        with patch.object(FictionalHandoff, "__getattribute__", changed_on_second_copy):
+            self.assert_hold(records)
+        self.assertEqual(calls[0], 2)
+
+    def test_exact_24h_boundary_is_review_only_without_authority(self):
+        records = list(sample(2))
+        records[1] = FictionalHandoff(records[1].case_id, 2,
+                                     records[1].packet_sha256, "2026-01-02T12:01:00Z")
+        result = review_fictional_handoff_sequence(tuple(records))
+        self.assertEqual((result.status, result.checked_records), ("REVIEW_ONLY", 2))
+        self.assertIs(result.authorized, False)
+
 if __name__ == "__main__":
     unittest.main()
