@@ -34,9 +34,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Compile isolated tests
-        run: python -m py_compile tests/test_scope_grant_validity_subclass_738.py
+        run: python -m py_compile tests/test_scope_grant_validity_subclass_738.py tests/test_scope_grant_precomparison_738.py
       - name: Exact stored-boundary owner RED acceptance
         env:
           PYTHONPATH: src
           PYTHONDONTWRITEBYTECODE: "1"
-        run: python -m unittest discover -s tests -p 'test_scope_grant_validity_subclass_738.py' -v
+        run: python -m unittest discover -s tests -p 'test_scope_grant*_738.py' -v
