@@ -115,6 +115,41 @@ class FictionalCliTests(unittest.TestCase):
         r, code = self.check(conflict)
         self.assertEqual((r["status"], r["reviewed"], code), ("HOLD", 0, 2))
 
+    def test_same_grant_id_identical_two_asset_legacy_stays_review_only(self):
+        def coherent(document):
+            first = document["candidates"][0]
+            first["durable"]["scope"]["assets"] = [
+                "app.example.test", "other.example.test"]
+            first["durable"]["scope"]["allowed_capabilities"] = [
+                "web-baseline", "tls-baseline"]
+            second = copy.deepcopy(first)
+            second["asset"] = "other.example.test"
+            second["capability_id"] = "tls-baseline"
+            document["candidates"].append(second)
+        r, code = self.check(coherent)
+        self.assertEqual((r["status"], r["reviewed"], code),
+                         ("REVIEW_ONLY", 2, 2))
+        self.assertFalse(r["authorized"])
+        self.assertFalse(r["release_allowed"])
+
+    def test_same_grant_id_changed_legacy_window_is_atomic_hold(self):
+        def rebinding(document):
+            first = document["candidates"][0]
+            first["durable"]["scope"]["assets"] = [
+                "app.example.test", "other.example.test"]
+            first["durable"]["scope"]["allowed_capabilities"] = [
+                "web-baseline", "tls-baseline"]
+            second = copy.deepcopy(first)
+            second["asset"] = "other.example.test"
+            second["capability_id"] = "tls-baseline"
+            second["legacy"]["valid_from"] = "2020-01-01T11:01:00Z"
+            document["candidates"].append(second)
+        r, code = self.check(rebinding)
+        self.assertEqual((r["status"], r["reason"], r["reviewed"], code),
+                         ("HOLD", "COHERENCE_DENIED", 0, 2))
+        self.assertFalse(r["authorized"])
+        self.assertFalse(r["dispatch_allowed"])
+
     def test_privacy_receipt_does_not_echo_identity(self):
         r, _ = self.check()
         printed = json.dumps(r)
