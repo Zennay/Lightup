@@ -20,13 +20,15 @@ Untrusted duck-typed objects or subclasses can currently pass the policy
 as if they were a canonical request. This is an in-memory boundary
 demonstration, **not** proof that an external target has been reached.
 
-## Acceptance contract (17 tests; 8 deliberately OPEN source RED)
+## Acceptance contract (24 tests; 8 deliberately OPEN source RED)
 
 The new standalone `tests/test_scope_771_owner163_outer_request_red_20261016.py`
-has eight ordinary green controls: exact analysis and passive requests,
+has fifteen ordinary green controls: exact analysis and passive requests,
 canonical lab boolean false/true owner semantics, target-active without
 grant denial, exact fictional target-active with valid grant allowed, revoked
-grant denied, and wrong-client tenant mismatch denied. Eight source-RED cases
+grant denied, wrong-client or wrong-engagement tenant mismatch denied, expired
+grant rejection, risk escalation denial, wrong asset and capability denials,
+and malformed lab-context boolean and analysis-risk typing denials. Eight source-RED cases
 require denial for a synthetic duck analysis request, duck passive request,
 subclass analysis, subclass lab true, property-spy object before any untrusted
 getter, duck target-active with an otherwise valid fictional grant, subclass
@@ -63,3 +65,7 @@ opt-in policy from #1174 and is not a production repair. GitHub-hosted
 suite green with expected failures means reproducible defects, never GO.
 A queued/unassigned self-hosted job is **not** runner proof.
 No merge or deployment is authorized by this packet.
+
+## Exact witness markers — avoid false-green expected failures
+
+Every intentional source RED now has a distinct stable synthetic failure marker, verified by the replay oracle against the actual `unittest.expectedFailures` traceback for that case. Unexpected `TypeError`/`ValueError`, arbitrary crashes or unrelated assertions **cannot** satisfy the RED count. A duck or subclass source RED must first receive an actual `PolicyDecision(allowed=True)` and then hit its dedicated marker; malformed missing-members must witness `AttributeError`; the property spy must witness **real untrusted getter reads**. If the production source starts denying the outer object correctly, its RED becomes an unexpected success until an authorized source owner promotes that assertion. Seven new ordinary controls preserve source-owner time, tenant, capability, asset, risk and exact type safety behavior.
