@@ -152,9 +152,9 @@ class FullScopeOverlapTests(unittest.TestCase):
 
     def test_scope_overlap_detected_without_file_network_db_process_access(self):
         first, second = overlapping()
-        with patch.object(socket, "socket", side_effect=AssertionError("network")), \\
-             patch.object(sqlite3, "connect", side_effect=AssertionError("database")), \\
-             patch.object(subprocess, "Popen", side_effect=AssertionError("process")), \\
+        with patch.object(socket, "socket", side_effect=AssertionError("network")), \
+             patch.object(sqlite3, "connect", side_effect=AssertionError("database")), \
+             patch.object(subprocess, "Popen", side_effect=AssertionError("process")), \
              patch("builtins.open", side_effect=AssertionError("file")):
             self.assertEqual(review(first, second).status, "HOLD")
 
