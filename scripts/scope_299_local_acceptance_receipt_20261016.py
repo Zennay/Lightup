@@ -22,7 +22,7 @@ TEST_MODULES = (
     "test_scope_299_legacy_pair_review_20261016",
     "test_scope_299_owner_portable_acceptance_20261016",
 )
-EXPECTED_TESTS = 79
+EXPECTED_TESTS = 81
 EXPECTED_SOURCE_REDS = 24
 FALSE_AUTHORITIES = {
     "can_authorize": False,
