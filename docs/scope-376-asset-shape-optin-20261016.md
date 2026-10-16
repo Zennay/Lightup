@@ -59,6 +59,15 @@ Further **three distinct safety improvements** on this OWN draft lane:
 
 This addition is **not** the production source fix, an integrated guard, an issuer, evidence of consent or a permission for any target/scan. Original source owners #554 and #100 and other PR owners retain their files. Exact latest W7 SHA tests must be inspected afresh; W6 hosted green own tests and unresolved unrelated #301 full-suite failure are historical evidence, not W7 verification.
 
+## W8 — strict no-DB-call denial seam and independent owner gate
+
+Two more **ordinary original-method-seam integration tests** strengthen the safety contract without changing any production file:
+
+- For fictional malformed numeric, NUL-containing, hidden Unicode whitespace and duplicate exclusions, the temporary test-only owner-candidate `record_authorization_grant` wrapper is run with BOTH the original persistence function and underlying `DomainStore._connect/get_engagement` replaced by strict canaries that would fail instantly if called. Rejection happens **before any original call, SQLite opening or engagement read**, and its generic ValueError never echoes a sensitive marker.
+- A canonical fictional shape review is not itself an authorization. A separate owner-gate canary remains mandatory and raises `PermissionError` if no separate consent, tenancy or source checks admit the grant. The test proves the preview does **not** short-circuit this gate or insert a row into disposable SQLite. A positive REVIEW_ONLY decision is not a permit.
+
+All tests remain synthetic with temporary local SQLite, no customer permission or tool execution. Nothing installs the temporary wrapper. These are acceptance/handoff constraints for the actual source owner, not evidence that production currently denies those malformed records. **Recheck the exact W8 immutable SHA hosted logs**, and retain DRAFT/HOLD under #1144 VPS queue and #301 base-test dependency.
+
 ## Owner decision needed
 The existing domain/grant source owner should decide whether this narrow text-shape preflight, or an equivalent source-side guard, belongs directly before any persisted grant row. The reviewer ceilings are **illustrative** and may reject legitimate large scopes; do not treat them as approved product policy. If integrated, the original source must enforce the same reject-before-write semantics and preserve valid grant roundtrips. Convert the three original-source expectedFailure methods to ordinary PASS only after the actual production source is fixed and revalidated. Do not claim the opt-in helper fixes persistent authorization.
 
