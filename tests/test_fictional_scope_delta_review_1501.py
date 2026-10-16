@@ -383,6 +383,61 @@ class FictionalScopeDeltaTests(TestCase):
                         self.assertEqual(outcome.status, "HOLD" if expands else "REVIEW_ONLY")
                         self.assert_inert(outcome)
 
+    def test_exhaustive_small_scope_lattice_monotonicity(self):
+        from itertools import combinations
+
+        def subsets(items):
+            return tuple(
+                group for length in range(1, len(items) + 1)
+                for group in combinations(items, length)
+            )
+
+        names = ("alpha.example.test", "beta.example.test", "gamma.example.test")
+        capabilities = ("headers_view", "metadata_view", "tls_summary")
+        baseline = proposal(exclusions=("alpha.example.test",))
+        checked = 0
+        for assets in subsets(names):
+            for caps in subsets(capabilities):
+                exclusions = ((), ("alpha.example.test",)) if "alpha.example.test" in assets else ((),)
+                for excluded in exclusions:
+                    for risk in range(1, 6):
+                        for start_delta in (-60, 0, 60):
+                            for end_delta in (-60, 0, 60):
+                                candidate = proposal(
+                                    assets=assets, capabilities=caps, exclusions=excluded,
+                                    risk=risk,
+                                    valid_from=T0 + timedelta(seconds=start_delta),
+                                    valid_until=T1 + timedelta(seconds=end_delta),
+                                )
+                                result = review_fictional_scope_delta(baseline, candidate)
+                                # Separate logical oracle over source values, not
+                                # the reviewer code or its dimension names.
+                                contained = (
+                                    all(a in baseline.assets for a in assets)
+                                    and all(c in baseline.capabilities for c in caps)
+                                    and all(e in excluded for e in baseline.exclusions)
+                                    and risk <= baseline.risk
+                                    and start_delta >= 0 and end_delta <= 0
+                                )
+                                self.assertEqual(
+                                    result.status,
+                                    "REVIEW_ONLY" if contained else "HOLD",
+                                )
+                                self.assert_inert(result)
+                                checked += 1
+        self.assertGreater(checked, 3500)
+
+    def test_sixteen_snapshot_chain_detects_last_transition_widening(self):
+        baseline = proposal()
+        earlier = tuple(proposal(risk=3) for _ in range(15))
+        last = proposal(risk=4)
+        result = review_fictional_scope_history(earlier + (last,))
+        self.assertEqual(result.status, "HOLD")
+        self.assertEqual(result.first_held_step, 15)
+        self.assertEqual(result.expanded_dimensions, ("risk",))
+        self.assertEqual(result.transition_count, 15)
+        self.assert_history_inert(result)
+
     def test_many_deterministic_widening_cases_do_not_approve(self):
         old = proposal()
         for index in range(256):
