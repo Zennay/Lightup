@@ -24,6 +24,13 @@ OWN_TEST_FILES = (
 )
 ACTIVATION = ROOT / "src" / "lightup" / "activation.py"
 ORIGINAL_SOURCE_BLOB = "156e94c18d5221b3d55e2c9fff4e393369e0f38e"
+# Original runtime depends on these two source modules for authorization
+# semantics. Pin their bytes too, not only ActivationGate and our own tests.
+# We NEVER change them or treat a matching blob as real permission.
+ORIGINAL_DEPENDENCY_BLOBS = {
+    "src/lightup/models.py": "74b96d45a5308d39e2c4c930728e10a2ccc18d2a",
+    "src/lightup/scope.py": "23909917822b5630c76be0cb47c99e1549b30cf8",
+}
 EXPECTED_RED = ("test_scope_1480_activation_issuance_instant_20261016."
                 "ActivationIssuanceInstant1480Tests."
                 "test_expected_red_authorized_permit_cannot_be_stamped_after_expiry")
@@ -101,9 +108,19 @@ def _original_source_is_pinned() -> bool:
         return False
 
 
+def _original_dependency_sources_are_pinned() -> bool:
+    """No source acceptance if installed grant/scope semantics have drifted."""
+    return _review_blobs_match(ORIGINAL_DEPENDENCY_BLOBS)
+
+
 def _review_material_is_pinned() -> bool:
     """No execution if any expected test/helper source blob has drifted."""
-    for relative_name, expected_sha in PINNED_REVIEW_BLOBS.items():
+    return _review_blobs_match(PINNED_REVIEW_BLOBS)
+
+
+def _review_blobs_match(expected_blobs: dict[str, str]) -> bool:
+    """Inspect original Git blob framing with bounded, no-symlink file reads."""
+    for relative_name, expected_sha in expected_blobs.items():
         path = ROOT / relative_name
         try:
             if path.is_symlink() or not path.is_file():
@@ -170,6 +187,9 @@ def main() -> int:
     # when filing #1480. Do not silently promote a repaired or drifted source.
     if not _original_source_is_pinned():
         print(json.dumps(_verdict("HOLD", "original_activation_source_blob_mismatch"), sort_keys=True))
+        return 1
+    if not _original_dependency_sources_are_pinned():
+        print(json.dumps(_verdict("HOLD", "original_authorization_dependency_blob_mismatch"), sort_keys=True))
         return 1
     if not _review_material_is_pinned():
         print(json.dumps(_verdict("HOLD", "review_material_blob_mismatch"), sort_keys=True))
