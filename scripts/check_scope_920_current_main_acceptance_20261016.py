@@ -16,8 +16,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 PATTERN = "test_scope_920_current_main_proxy_origin_wsgi_20261016.py"
-EXPECTED_METHODS = 16
-EXPECTED_SOURCE_REDS = 7
+EXPECTED_METHODS = 19
+EXPECTED_SOURCE_REDS = 9
 
 
 def receipt(*, status: str, methods: int, source_reds: int) -> str:
