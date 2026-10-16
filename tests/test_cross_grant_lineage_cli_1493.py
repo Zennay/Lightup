@@ -2,6 +2,7 @@
 import copy
 import json
 import os
+import random
 import socket
 import sqlite3
 import subprocess
@@ -300,6 +301,50 @@ class FictionalCliTests(unittest.TestCase):
 
     def test_overly_long_text_denied(self):
         self.assert_invalid(lambda d: d["candidates"][0].update(client_id="A" * 129))
+
+    def test_deterministic_1024_byte_mutants_never_grant_authority(self):
+        baseline = encoded(valid_document())
+        rng = random.Random(1493)
+        mutation_values = (0, 9, 10, 13, 34, 39, 44, 58, 91, 93, 123, 125, 127, 128, 255)
+        for index in range(1024):
+            position = rng.randrange(len(baseline) + 1)
+            byte = rng.choice(mutation_values)
+            if index % 3 == 0:
+                mutant = baseline[:position] + bytes((byte,)) + baseline[position:]
+            elif index % 3 == 1:
+                mutant = baseline[:position] + bytes((byte,)) + baseline[position + 1:]
+            else:
+                mutant = baseline[:position] + baseline[position + 1:]
+            receipt, exit_code = evaluate_bytes(mutant)
+            self.assertIn(exit_code, (2, 3))
+            self.assertIn(receipt["status"], ("HOLD", "REVIEW_ONLY"))
+            self.assertEqual(receipt["reviewed"], 0 if receipt["status"] == "HOLD" else 1)
+            for field in ("authorized", "consent_verified", "dispatch_allowed", "release_allowed"):
+                self.assertIs(receipt[field], False)
+
+    def test_deeply_nested_json_stays_denied_and_sanitized(self):
+        payload = b"[" * 900 + b"0" + b"]" * 900
+        receipt, exit_code = evaluate_bytes(payload)
+        self.assertEqual(exit_code, 3)
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(receipt["reason"], "INVALID_INPUT")
+        self.assertFalse(receipt["release_allowed"])
+
+    def test_excessive_stdin_subprocess_returns_no_authority_and_exit_3(self):
+        process = subprocess.run(
+            [sys.executable, "-B", "-m", "lightup.cross_grant_lineage_cli_1493",
+             "--synthetic-only"],
+            input=(b" " * (MAX_INPUT_BYTES + 1)),
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=15, check=False,
+        )
+        self.assertEqual(process.returncode, 3)
+        self.assertEqual(process.stderr, b"")
+        receipt = json.loads(process.stdout)
+        self.assertEqual((receipt["status"], receipt["reviewed"]), ("HOLD", 0))
+        self.assertEqual((receipt["authorized"], receipt["consent_verified"],
+                          receipt["dispatch_allowed"], receipt["release_allowed"]),
+                         (False, False, False, False))
 
     def test_cli_requires_explicit_synthetic_only_flag(self):
         process = subprocess.run(
