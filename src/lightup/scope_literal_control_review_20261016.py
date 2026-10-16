@@ -20,6 +20,12 @@ class LiteralReview:
     dispatch_allowed: bool = field(init=False, default=False)
     release_allowed: bool = field(init=False, default=False)
 
+    def __post_init__(self) -> None:
+        # A Literal type hint alone provides no runtime validation. Invalid
+        # states cannot be misrepresented as a review outcome.
+        if type(self.status) is not str or self.status not in ("HOLD", "REVIEW_ONLY"):
+            raise ValueError("invalid offline review state")
+
 
 def review_literals(candidates: object) -> LiteralReview:
     """Reject lossy/control-bearing review strings, without parsing authority.
