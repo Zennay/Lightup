@@ -80,3 +80,19 @@ assertion compares `git rev-parse HEAD` with the immutable event head SHA
 before any offline test runs. This test verifies *only* the isolated local
 assessment-runtime suite, not full project hosted or registered VPS release
 gates; the permanent operator-owned VPS job is tracked independently.
+
+## Explicit scored-cohort JSON CLI
+
+Run `PYTHONPATH=src python scripts/assessment_runtime_ground_truth_cohort_cli_1513.py old.json new.json`
+with two explicitly selected, at-most-262144-byte local JSON arrays (1..64).
+Each item has exactly `scenario`, `record`, `context`. `record` and `context`
+use the existing complete lab evaluation schema; `scenario` has exactly
+`scenario_id`, `name`, `description`, `targets` (original host strings),
+`endpoints` (same original strings), and `expected_findings` (complete explicit
+list of `identifier`, `title`, `capability_id`, `severity` objects).
+No live targets, network, worker, grant or persistence are used. Invalid,
+public/nonlab, forged, duplicate, inconsistent or oversized packets cause
+**generic HOLD** without partial output or input echo. A valid nonregressed
+packet is only an unauthenticated `REVIEW_ONLY` and exits **2**; regression or
+invalid input exits **3**; exit zero is impossible. Four authority fields are
+always false. Do not use with genuine client secrets or as release evidence.
