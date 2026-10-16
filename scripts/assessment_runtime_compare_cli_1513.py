@@ -133,7 +133,7 @@ def main(argv=None):
             result = compare_lab_evaluations(
                 baseline, candidate, baseline_context, candidate_context,
             )
-        except (OSError, ValueError, TypeError, KeyError, OverflowError, UnicodeError):
+        except (OSError, ValueError, TypeError, KeyError, OverflowError, UnicodeError, RecursionError):
             pass
     if result is None:
         # A rejected packet never reflects caller-supplied metadata or paths.
