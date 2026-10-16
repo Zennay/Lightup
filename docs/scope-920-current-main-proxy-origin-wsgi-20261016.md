@@ -15,8 +15,9 @@ tests/docs-only acceptance child of the CURRENT shared `main`, not the historic
   tests the exact historical #202 code (not current main). Its test paths,
   original sidecar branches #1255/#1256, #202 source and all other workers
   remain completely untouched.
-- This branch adds only three *unique, new* paths:
+- This branch adds only four *unique, new* paths:
   `tests/test_scope_920_current_main_proxy_origin_wsgi_20261016.py`,
+  `tests/test_scope_920_runner_provenance_20261016.py`,
   `scripts/check_scope_920_current_main_acceptance_20261016.py`, and
   this document. No existing source, tests, CI, runners or workflows edited.
 
@@ -174,3 +175,35 @@ was FAILED due the separate #301 expired fixture (19 owned cases behaved
 10 ordinary OK/9 expected RED). **It predates this change**; do not claim
 exact-head green until new job logs have been verified. Current-main full
 suite remains pending owner #1452's already drafted clock correction.
+
+## W6: immutable local source fingerprint and independent fail-closed CLI QA
+
+The **opt-in standalone 20/9 runner** now checks the exact *Git blob ID* of
+`src/lightup/webapp/security.py` in its checkout **before even discovering
+unit tests**. Expected original current-main source blob:
+`ca657372e43a15f212b3b7c92605f9f29e055531`. Git framing is computed
+in-memory as `SHA1(b"blob " + size + NUL + content)`; this deliberately
+matches the already pinned GitHub blob, without a git subprocess, network,
+customer files or external source access. A missing file, symlinked source,
+oversized file, unreadable file or ANY changed source bytes causes immediate
+`HOLD` and nonzero exit; the script never claims authority from its own
+plain-text receipt. It does not and cannot validate the *entire* branch,
+runner identity or cryptographic build provenance. On eventual source-owner
+repair the old exact-blob guard will deliberately require review/update.
+
+A new separate test-only module
+`tests/test_scope_920_runner_provenance_20261016.py` adds **five ordinary
+controls** for exact known Git blob encoding (`hello` and `hello\\n`),
+current source pin, altered fictitious local source, missing fictitious local
+source, and early `HOLD` without running tests or granting release/merge/
+scan/dispatch/VPS/full-suite/consent flags. The altered-source fixtures use
+`tempfile.TemporaryDirectory` and contain only synthetic bytes, no real
+assets or client data.
+
+These five checks are part of regular GitHub hosted unit tests, **not** the
+standalone command's exactly 20 scope-source regression methods; the narrow
+command deliberately cannot mark the rest of LightUp's full suite green.
+Do not claim these W6 changes are tested on a specific head until its actual
+hosted original job logs have been reviewed. The unrelated #301 frozen-clock
+fixture remains an independent ordinary full-suite FAIL owned by draft #1452;
+permanent VPS #1144 still requires real runner execution. **DRAFT/HOLD**.
