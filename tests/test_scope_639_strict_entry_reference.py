@@ -138,6 +138,29 @@ class StrictEntryReferenceTest(unittest.TestCase):
     def test_deeply_nested_malformed_json_fails_closed(self):
         self.assertIsNone(self.review(assets="[" * 2500 + "0" + "]" * 2500))
 
+
+    def test_seeded_mixed_corruption_900_cases_all_hold(self):
+        """Deterministic hostile nested entries cannot be partially accepted."""
+        from random import Random
+
+        rng = Random(639)
+        bad = (None, False, True, 0, -1, 2.75, [], {},
+               "", " ", "\t", "\u2003", ["nested"], {"capability": "web-baseline"})
+        entries = (
+            ("assets", "app.example.invalid"),
+            ("exclusions", "excluded.example.invalid"),
+            ("capabilities", "web-baseline"),
+        )
+        for index in range(300):
+            corrupt = rng.choice(bad)
+            for field, canonical in entries:
+                with self.subTest(index=index, field=field):
+                    payload = json.dumps([canonical, corrupt], separators=(",", ":"))
+                    self.assertIsNone(
+                        self.review(**{field: payload}),
+                        "one invalid nested item cannot be dropped or coerced",
+                    )
+
     def test_real_sqlite_snapshot_corruption_review_has_no_write(self):
         with tempfile.TemporaryDirectory() as tmp:
             store = DomainStore(Path(tmp) / "scope639-review.db")
