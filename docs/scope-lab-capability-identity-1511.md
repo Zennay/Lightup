@@ -122,3 +122,29 @@ the new tests. This remains **separate from the original producer, execution
 handlers and live authorization**. Full original CI, a genuinely registered
 permanent named VPS, independent security/privacy and actual client+operator
 consent/revocation remain release prerequisites.
+
+## W4 — actual in-process source-contract simulation (test instance only)
+
+The additional isolated acceptance file
+`tests/test_fictional_lab_capability_transition_1511.py` exercises an
+**individual synthetic** `ActivationGate` through an entirely test-local
+wrapper. The wrapper checks strict fictional capability identity and
+then calls the unchanged original gate. Invalid blank, polymorphic, unknown,
+noncanonical and overlong capability IDs are denied *by the test wrapper*
+before an in-memory permit could be constructed. A canonical fake loopback
+`web-baseline` fixture still behaves as the original LAB_ONLY path; PLAN_ONLY
+and explicit public-host examples remain denied even with wrapper.
+
+One test intentionally demonstrates that the **unwrapped original**
+`ActivationGate.issue` STILL issues a synthetic whitespace capability permit.
+This distinction prevents treating a successful wrapper test as actual
+product remediation. There are no live targets, DNS, external sockets,
+handlers, grants or deployments. No `ActivationGate` class/source edits
+or persistent monkeypatch occur. The local wrapper is not exportable or
+installed and its caller-provided fictional tool list is not a trusted
+capability registry. A full production design would still require owner
+review of canonical registry identity, real consent/revocation, race safety,
+and immutable audit evidence.
+
+W4 acceptance is included in the dedicated own read-only hosted Python3.11
+and Python3.14 CI; only results from the **new exact HEAD** may be cited.
