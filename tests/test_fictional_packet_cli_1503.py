@@ -895,5 +895,70 @@ class FictionalCliTests(unittest.TestCase):
                 self.assertEqual(dest.buffer.getvalue(), cli._HOLD)
 
 
+
+    def test_every_fragmentation_split_preserves_exact_valid_pinned_review(self):
+        payload = request_pinned(copies=(GOOD, GOOD))
+        class TwoPart:
+            def __init__(self, left, right):
+                self.parts = iter((left, right, b""))
+            def read(self, maximum):
+                chunk = next(self.parts, b"")
+                self.max_requested = maximum
+                return chunk
+        for split in range(1, len(payload)):
+            reader = TwoPart(payload[:split], payload[split:])
+            data = cli._read_bounded_stdin(reader)
+            self.assertEqual(data, payload)
+            review = cli._parse_request(data, pinned_only=True)
+            self.assertEqual(
+                (review.status, review.authorized), ("REVIEW_ONLY", False),
+                msg="split %d" % split,
+            )
+
+    def test_late_invalid_chunk_never_reaches_parser_as_valid_prefix(self):
+        valid = request_pinned()
+        class WithInvalid:
+            def __init__(self, next_chunk):
+                self.parts = iter((valid, next_chunk, b""))
+            def read(self, maximum):
+                return next(self.parts, b"")
+        for bad in ("text", memoryview(b"x"), bytearray(b"x"), None, 7):
+            with self.subTest(kind=type(bad).__name__):
+                self.assertIsNone(cli._read_bounded_stdin(WithInvalid(bad)))
+
+    def test_real_subprocess_pinned_only_chunked_pipe_rejects_suffix(self):
+        module = "lightup.fictional_packet_cli_pinned_1503"
+        env = {**os.environ, "PYTHONPATH": str(PACKAGE),
+               "PYTHONDONTWRITEBYTECODE": "1"}
+        data = request_pinned(copies=(GOOD, GOOD))
+        for tail, code in ((b"", 2), (b"\n", 3), (b"{} DUMMY", 3)):
+            with self.subTest(tail=tail):
+                proc = subprocess.Popen(
+                    [sys.executable, "-m", module],
+                    stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE, cwd=ROOT, env=env,
+                )
+                try:
+                    # Two writes followed by EOF: actual OS pipe, not one
+                    # subprocess.run(input=...) call.
+                    proc.stdin.write(data[:len(data) // 2])
+                    proc.stdin.flush()
+                    proc.stdin.write(data[len(data) // 2:] + tail)
+                    proc.stdin.flush()
+                    proc.stdin.close()
+                    proc.stdin = None
+                    output, error = proc.communicate(timeout=10)
+                finally:
+                    if proc.poll() is None:
+                        proc.kill()
+                        proc.communicate()
+                self.assertEqual((proc.returncode, error), (code, b""))
+                self.assertEqual(
+                    output, cli._HOLD if code == 3 else
+                    cli._render(cli._parse_request(data, pinned_only=True)),
+                )
+                self.assertNotIn(b".example.test", output)
+
+
 if __name__ == "__main__":
     unittest.main()
