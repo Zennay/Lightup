@@ -11,6 +11,8 @@ on:
       - tests/test_assessment_runtime_diff_1513.py
       - tests/test_assessment_runtime_cohort_1513.py
       - tests/test_assessment_runtime_integration_1513.py
+      - tests/test_assessment_runtime_cli_1513.py
+      - scripts/assessment_runtime_compare_cli_1513.py
       - .github/workflows/assessment-runtime-diff-1513.yml
   workflow_dispatch:
 
