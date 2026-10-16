@@ -200,6 +200,42 @@ class ExactExecutionRequestOptinAcceptance(unittest.TestCase):
             "offline-only", RiskLevel.ANALYSIS_ONLY
         ))
 
+    def test_forged_class_property_cannot_impersonate_execution_request(self):
+        class ForgedClassRequest:
+            @property
+            def __class__(self):
+                return ExecutionRequest
+
+            @property
+            def interaction(self):
+                raise AssertionError("forged request must not be inspected")
+        self.assert_deny(ForgedClassRequest())
+
+    def test_target_grant_duck_class_forgery_stays_denied_without_getters(self):
+        class ForgedGrantEnvelope:
+            @property
+            def __class__(self):
+                return ExecutionRequest
+
+            @property
+            def authorization(self):
+                raise AssertionError("forged grant must never be inspected")
+
+            @property
+            def interaction(self):
+                raise AssertionError("forged interaction must never be inspected")
+        self.assert_deny(ForgedGrantEnvelope())
+
+    def test_custom_policy_with_forged_class_property_does_not_run(self):
+        class ForgedClassPolicy:
+            @property
+            def __class__(self):
+                return ExecutionPolicy
+
+            def decide(self, request):
+                raise AssertionError("forged policy must never be dispatched")
+        self.assert_deny(self.target(), policy=ForgedClassPolicy())
+
     def test_subclass_of_policy_is_denied_before_method_dispatch(self):
         request = self.target()
         self.assert_deny(request, policy=UntrustedPolicySubclass())
