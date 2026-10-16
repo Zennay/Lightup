@@ -26,4 +26,10 @@ def register_exact_tool_definition(
         raise OrchestrationError("canonical ToolRegistry object required")
     if type(definition) is not ToolDefinition:
         raise OrchestrationError("canonical ToolDefinition object required")
-    registry.register(definition, handler)
+    # ToolRegistry instances are mutable; exact outer type does not prevent
+    # `registry.register = forged_registrar` on an otherwise exact instance.
+    # Reject such rewiring without calling the forged callable or modifying
+    # the registry, then dispatch through the trusted owner class method.
+    if "register" in object.__getattribute__(registry, "__dict__"):
+        raise OrchestrationError("registry admission binding was shadowed")
+    ToolRegistry.register(registry, definition, handler)
