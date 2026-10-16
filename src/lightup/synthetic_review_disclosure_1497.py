@@ -43,6 +43,25 @@ class DisclosureVerdict:
     dispatch_allowed: bool = field(default=False, init=False)
     release_allowed: bool = field(default=False, init=False)
 
+    def __post_init__(self) -> None:
+        """Refuse forged verdict words/counts even in direct constructions.
+
+        Never treat this as an authenticated or tamper-proof object: this is
+        just one more shape-invariant against accidental downstream misuse.
+        """
+        if not (type(self.status) is str and type(self.notice) is str
+                and type(self.reviewed_notes) is int):
+            raise ValueError("invalid fictional review verdict")
+        if self.status == "HOLD":
+            valid = self.notice == _HOLD_NOTICE and self.reviewed_notes == 0
+        elif self.status == "REVIEW_ONLY":
+            valid = (self.notice == _REVIEW_NOTICE
+                     and 1 <= self.reviewed_notes <= _MAX_NOTES)
+        else:
+            valid = False
+        if not valid:
+            raise ValueError("invalid fictional review verdict")
+
 
 def _hold() -> DisclosureVerdict:
     return DisclosureVerdict("HOLD", _HOLD_NOTICE, 0)
@@ -75,6 +94,9 @@ def review_fictional_handoff_notes(notes: object) -> DisclosureVerdict:
         if parsed is None:
             return _hold()
         capability = parsed.group("capability")
+        # Do not display IDNA/punycode lookalike labels as reassuring examples.
+        if parsed.group("host").startswith("xn--"):
+            return _hold()
         if capability not in _FICTIONAL_CAPABILITIES:
             return _hold()
         key = (parsed.group("host"), capability)
