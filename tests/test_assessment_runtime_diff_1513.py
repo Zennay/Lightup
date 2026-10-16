@@ -93,6 +93,7 @@ class AssessmentRuntimeDiffTests(unittest.TestCase):
             (a, b, ca, replace(cb, mode=AssessmentMode.PASSIVE_DISCOVERY)),
             (a, b, ca, replace(cb, approved_risk=RiskLevel.PASSIVE)),
             (a, b, ca, replace(cb, engagement_id="other")),
+            (a, b, ca, replace(cb, client_id="other-tenant")),
             (a, replace(b, run_id="wrong"), ca, cb),
             (a, replace(b, model_bindings=(("planner", "scripted/lab"), ("weird", 4))), ca, cb),
             (a, replace(b, record_id=""), ca, cb),
