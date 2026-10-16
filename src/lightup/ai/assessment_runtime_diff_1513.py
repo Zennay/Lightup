@@ -7,6 +7,7 @@ It never authorizes an assessment, probes assets, or dispatches a tool.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from math import isfinite
 
 from .orchestration import RunContext
@@ -61,6 +62,19 @@ def _valid_label(value: object) -> bool:
     )
 
 
+def _valid_utc_instant(value: object) -> bool:
+    """Reject naive, non-UTC, subclassed or malformed timestamps."""
+    if type(value) is datetime:
+        return value.tzinfo is not None and value.utcoffset() == timedelta(0)
+    if not _valid_label(value) or "T" not in value:
+        return False
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return False
+    return parsed.tzinfo is not None and parsed.utcoffset() == timedelta(0)
+
+
 def _valid_metrics(value: object) -> bool:
     # Independent of the original EvaluationMetrics.validate() owner (#834).
     if type(value) is not EvaluationMetrics:
@@ -90,7 +104,7 @@ def _valid_record(record: object, context: object) -> bool:
         "record_id", "scenario_id", "run_id", "engine_version",
     )):
         return False
-    if type(record.notes) is not str or not _valid_label(record.created_at):
+    if type(record.notes) is not str or not _valid_utc_instant(record.created_at):
         return False
     if type(record.model_bindings) is not tuple or len(record.model_bindings) > 64:
         return False
@@ -105,8 +119,10 @@ def _valid_record(record: object, context: object) -> bool:
         or context.mode is not AssessmentMode.LAB_AUTONOMOUS
         or context.approved_risk is not RiskLevel.DESTRUCTIVE_LAB_ONLY
         or context.authorization is not None
-        or type(context.run_id) is not str
-        or type(context.engagement_id) is not str
+        or not _valid_label(context.run_id)
+        or not _valid_label(context.engagement_id)
+        or not _valid_label(context.client_id)
+        or not _valid_utc_instant(context.created_at)
         or context.run_id != record.run_id
         or context.engagement_id != record.scenario_id
     ):
