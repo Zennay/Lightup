@@ -51,8 +51,8 @@ class Scope1480RunnerTests(unittest.TestCase):
                 start_dir=str(ROOT / "tests"), pattern=filename,
             ))
         ids = reviewer._loaded_test_ids(suite)
-        self.assertEqual(len(ids), 33)
-        self.assertEqual(len(set(ids)), 33)
+        self.assertEqual(len(ids), 36)
+        self.assertEqual(len(set(ids)), 36)
         self.assertTrue(reviewer._has_exact_test_inventory(ids))
 
     def test_same_count_wrong_or_duplicated_case_ids_are_denied(self):
@@ -85,7 +85,7 @@ class Scope1480RunnerTests(unittest.TestCase):
         self.assertFalse(verdict["may_dispatch_tools"])
         self.assertFalse(verdict["release_authorized"])
 
-    def test_source_pinned_full_33_method_oracle_never_authorizes(self):
+    def test_source_pinned_full_36_method_oracle_never_authorizes(self):
         reviewer = _runner()
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
@@ -93,7 +93,7 @@ class Scope1480RunnerTests(unittest.TestCase):
         verdict = json.loads(out.getvalue())
         self.assertEqual(code, 0)
         self.assertEqual(verdict["status"], "REVIEW_ONLY")
-        self.assertEqual(verdict["tests_run"], 33)
+        self.assertEqual(verdict["tests_run"], 36)
         self.assertEqual(verdict["expected_source_reds"], 1)
         for key in (
             "source_fixed",
