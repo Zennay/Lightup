@@ -739,5 +739,161 @@ class FictionalCliTests(unittest.TestCase):
             )
 
 
+
+    def test_full_stdin_reader_reassembles_short_valid_pinned_chunks(self):
+        source = request_pinned(copies=(GOOD, GOOD))
+        class Chunks:
+            def __init__(self, data, chunk_size):
+                self.data = data
+                self.chunk_size = chunk_size
+                self.offset = 0
+                self.calls = 0
+            def read(self, max_length):
+                self.calls += 1
+                n = min(self.chunk_size, max_length, len(self.data) - self.offset)
+                chunk = self.data[self.offset:self.offset + n]
+                self.offset += n
+                return chunk
+        for size in (1, 2, 3, 7, 31, 1024):
+            with self.subTest(size=size):
+                reader = Chunks(source, size)
+                received = cli._read_bounded_stdin(reader)
+                self.assertEqual(received, source)
+                self.assertEqual(
+                    cli._parse_request(received, pinned_only=True).status,
+                    "REVIEW_ONLY",
+                )
+                self.assertGreater(reader.calls, 1)
+
+    def test_fragmented_stdin_never_ignores_trailing_bytes_after_valid_json(self):
+        valid = request_pinned()
+        class Delayed:
+            def __init__(self, pieces):
+                self.pieces = iter(pieces)
+            def read(self, max_length):
+                piece = next(self.pieces, b"")
+                self.max_length = max_length
+                return piece
+        for trailing in (b" ", b"\n", b"{}", b'{"authorized":true}',
+                         b"PASSWORD-DUMMY-NO-ECHO"):
+            with self.subTest(trailing=trailing):
+                stream = Delayed((valid, trailing, b""))
+                received = cli._read_bounded_stdin(stream)
+                self.assertEqual(received, valid + trailing)
+                result = cli._parse_request(received, pinned_only=True)
+                self.assertEqual((result.status, result.sha256), ("HOLD", None))
+                self.assertEqual(cli._render(result), cli._HOLD)
+
+    def test_pinned_only_main_reads_complete_fragmented_stream(self):
+        valid = request_pinned()
+        class Chunks:
+            def __init__(self, data):
+                self.data = data
+                self.offset = 0
+            def read(self, maximum):
+                end = min(len(self.data), self.offset + 11, self.offset + maximum)
+                result = self.data[self.offset:end]
+                self.offset = end
+                return result
+        class Input:
+            def __init__(self, data):
+                self.buffer = Chunks(data)
+        class Output:
+            def __init__(self):
+                self.buffer = io.BytesIO()
+        for raw, code in ((valid, 2), (valid + b" ", 3),
+                          (valid + b'{"dispatch_allowed":true}', 3)):
+            with self.subTest(ending=raw[len(valid):]):
+                sink = Output()
+                with patch.object(cli.sys, "argv", ["fictional-pinned"]), \
+                     patch.object(cli.sys, "stdin", Input(raw)), \
+                     patch.object(cli.sys, "stdout", sink):
+                    self.assertEqual(cli.main_pinned(), code)
+                output = sink.buffer.getvalue()
+                self.assertLessEqual(len(output), 200)
+                self.assertNotIn(b".example.test", output)
+                self.assertIn(
+                    b'"status":"REVIEW_ONLY"' if code == 2 else b'"status":"HOLD"',
+                    output,
+                )
+
+    def test_reader_rejects_nonbytes_chunks_and_overlimit_without_coercion(self):
+        class AlienBytes(bytes):
+            def __bytes__(self):
+                raise AssertionError("must not coerce caller chunk")
+        class InvalidChunk:
+            def __init__(self, chunk):
+                self.chunk = chunk
+            def read(self, _max_length):
+                return self.chunk
+        for chunk in (
+            "text", None, memoryview(b"hi"), bytearray(b"hi"),
+            AlienBytes(b"hi"), 1, True, b"x" * 8193,
+        ):
+            with self.subTest(kind=type(chunk).__name__):
+                self.assertIsNone(
+                    cli._read_bounded_stdin(InvalidChunk(chunk))
+                )
+
+    def test_reader_exact_8192_boundary_and_overflow_in_separate_chunks(self):
+        class Parts:
+            def __init__(self, parts):
+                self.pieces = iter(parts)
+                self.requested = []
+            def read(self, maximum):
+                self.requested.append(maximum)
+                return next(self.pieces, b"")
+        permitted = Parts((b"a" * 8192, b""))
+        self.assertEqual(cli._read_bounded_stdin(permitted), b"a" * 8192)
+        self.assertEqual(permitted.requested, [8193, 1])
+        rejected = Parts((b"a" * 8192, b"b", b""))
+        self.assertIsNone(cli._read_bounded_stdin(rejected))
+        self.assertEqual(rejected.requested, [8193, 1])
+        for path in (b"a" * 8191, b"x" * 8192):
+            excess = Parts((path, b"zz", b""))
+            self.assertIsNone(cli._read_bounded_stdin(excess))
+            self.assertLessEqual(max(excess.requested), 8193)
+
+    def test_reader_bounded_under_unending_one_byte_stream(self):
+        class NeverEnd:
+            def __init__(self):
+                self.calls = 0
+            def read(self, maximum):
+                self.calls += 1
+                self.last_maximum = maximum
+                return b"x"
+        stream = NeverEnd()
+        self.assertIsNone(cli._read_bounded_stdin(stream))
+        self.assertEqual(stream.calls, 8193)
+        self.assertEqual(stream.last_maximum, 1)
+
+    def test_trailing_chunks_do_not_bypass_legacy_or_pinned_cli(self):
+        # Both public entrypoints share the same complete, bounded reader.
+        cases = (
+            (request(), cli.main),
+            (request_pinned(), cli.main),
+            (request_pinned(), cli.main_pinned),
+        )
+        class Pieces:
+            def __init__(self, parts):
+                self.parts = iter(parts)
+            def read(self, maximum):
+                return next(self.parts, b"")
+        class In:
+            def __init__(self, parts):
+                self.buffer = Pieces(parts)
+        class Out:
+            def __init__(self):
+                self.buffer = io.BytesIO()
+        for base, method in cases:
+            with self.subTest(method=method.__name__, size=len(base)):
+                dest = Out()
+                with patch.object(cli.sys, "argv", ["only-command"]), \
+                     patch.object(cli.sys, "stdin", In((base, b" ", b""))), \
+                     patch.object(cli.sys, "stdout", dest):
+                    self.assertEqual(method(), 3)
+                self.assertEqual(dest.buffer.getvalue(), cli._HOLD)
+
+
 if __name__ == "__main__":
     unittest.main()
