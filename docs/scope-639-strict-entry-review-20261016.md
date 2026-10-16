@@ -3,8 +3,11 @@
 ## Purpose and explicit NON-authority
 
 This work remains **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD**.
-The new opt-in reference `tests/scope_639_strict_entry_reference.py` is **not**
-imported by LightUp production modules. It does not issue `AuthorizationGrant`
+The pure reusable helper `src/lightup/persisted_scope_entries_639.py` is **not**
+called by installed LightUp authorization paths. The original
+`tests/scope_639_strict_entry_reference.py` is now a test-import shim
+re-exporting this single source implementation; the suite verifies exact
+function/class identity so a dead test-only duplicate cannot pass by mistake. It does not issue `AuthorizationGrant`
 objects, make policy decisions, acquire permissions, issue tenant authority, talk
 to hosts or scan anything. Even a successful shape review alone MUST NEVER
 permit active execution.
@@ -15,7 +18,7 @@ It is not a safe hotfix by itself.
 
 ## Contract
 
-`review_scope_entries(assets_json=..., excluded_assets_json=..., allowed_capabilities_json=...)`
+`lightup.persisted_scope_entries_639.review_persisted_scope_entries(assets_json=..., excluded_assets_json=..., allowed_capabilities_json=...)`
 
 - Requires **exact built-in strings** as all three raw SQLite JSON columns.
   A subclass with hostile `__eq__`, `strip`, `__str__` cannot be used
@@ -27,7 +30,7 @@ It is not a safe hotfix by itself.
   elements. Invalid *one* element rejects the entire scope.
 - Assets and allowed-capability arrays must each be **nonempty**; the exclusion
   array can be empty. This matches issue #639 required invariants.
-- A valid result is a `ReviewedScopeEntries` **immutable named tuple**, never
+- A valid result is a `PersistedScopeEntries` **immutable named tuple**, never
   a grant, permission or risk decision. It deliberately performs **no**
   cap-registry lookup, revocation, clock or client validation.
 - Rejects without any SQLite write. Historical raw rows remain available
@@ -40,7 +43,9 @@ It is not a safe hotfix by itself.
 immutable outputs, malformed containers, nested JSON `null/bool/number/object`,
 blank Unicode whitespace, hostile subclasses/objects, raw SQLite types,
 **900 deterministic seeded mixed-entry corruption subcases** across every
-persisted array,
+persisted array, source-export identity proof and an explicit test that valid
+shape contains NO client, tenant, issuer, consent, grant, revocation or time,
+
 deep nesting, an explicit **no filesystem/socket/SQLite/subprocess I/O**
 canary for the pure reviewer, and one separate real temporary SQLite mutation
 + nonwrite proof.
@@ -57,8 +62,16 @@ being green DOES NOT repair those REDs.
 
 Original source owner #554 owns the actual
 `DomainStore.resolve_authorization_for_execution` change. To integrate
-safely, apply equivalent exact nested-array checks **inside** that already
-owned resolver before `_grant_from_row`, then run old + new tests as
+safely, the owner can import the pure helper and check **the three JSON strings
+from the already fetched, joined, tenant-scoped SQLite row inside that same
+resolver**. If the helper returns `None`, the original resolver returns `None`
+BEFORE `_grant_from_row`, without reconstructing a grant or issuing authority.
+Do **NOT** re-read a separate SQLite connection first: check/use interleaving
+would create a TOCTOU window and could approve different state from that
+used by `_grant_from_row`. The owner must preserve all pre-existing lineage,
+status, provenance, risk, registry, clock and revocation checks. The helper
+only validates text shape and does not validate real consent or destination.
+Then run old + new tests as
 ordinary true PASS, remove obsolete source-behavior replay expectations, and
 verify all tenant/provenance/registry/risk/revocation/time and zero-target-I/O
 properties. Other pending branches and source files must not be copied,
