@@ -9,6 +9,9 @@ from itertools import product
 from random import Random
 
 from datetime import datetime, timezone
+from pathlib import Path
+import builtins
+import sqlite3
 import os
 import socket
 import subprocess
@@ -587,6 +590,58 @@ class ScopeReplayMatrix344Tests(unittest.TestCase):
             baseline = tuple(p.decide(t) for p, t in cases)
             for _ in range(8):
                 self.assertEqual(tuple(p.decide(t) for p, t in cases), baseline)
+
+    def test_no_filesystem_database_or_environment_access_during_source_decisions(self):
+        cases = scenarios()
+        with patch.object(builtins, "open", side_effect=AssertionError("file")), \
+             patch.object(Path, "open", side_effect=AssertionError("path")), \
+             patch.object(sqlite3, "connect", side_effect=AssertionError("sqlite")), \
+             patch.object(os, "getenv", side_effect=AssertionError("environment")):
+            original = tuple(policy.decide(target) for policy, target in cases)
+            for _ in range(4):
+                self.assertEqual(
+                    tuple(policy.decide(target) for policy, target in cases),
+                    original,
+                )
+        self.assertEqual(len(original), 96)
+        self.assertTrue(any(item.allowed for item in original))
+        self.assertTrue(any(not item.allowed for item in original))
+
+    def test_canary_file_access_guard_blocks_injected_source_touch(self):
+        real = ScopePolicy.decide
+        calls = 0
+
+        def broken(policy, target):
+            nonlocal calls
+            calls += 1
+            Path("/fictional/offline-never-opened").open("rb")
+            return real(policy, target)
+
+        with patch.object(Path, "open", side_effect=AssertionError("path")), \
+             patch.object(ScopePolicy, "decide", broken):
+            with self.assertRaisesRegex(AssertionError, "^path$"):
+                ScopePolicy().decide(Target("localhost"))
+        self.assertEqual(calls, 1)
+        self.assertIs(type(ScopePolicy().decide(Target("localhost"))),
+                      ScopeDecision)
+
+    def test_canary_database_access_guard_blocks_injected_source_touch(self):
+        real = ScopePolicy.decide
+        calls = 0
+
+        def broken(policy, target):
+            nonlocal calls
+            calls += 1
+            sqlite3.connect(":memory:")
+            return real(policy, target)
+
+        with patch.object(sqlite3, "connect", side_effect=AssertionError("sqlite")), \
+             patch.object(ScopePolicy, "decide", broken):
+            with self.assertRaisesRegex(AssertionError, "^sqlite$"):
+                ScopePolicy().decide(Target("localhost"))
+        self.assertEqual(calls, 1)
+        self.assertIs(type(ScopePolicy().decide(Target("localhost"))),
+                      ScopeDecision)
 
     def test_canonical_fixture_does_not_ever_create_permit_or_grant(self):
         for policy, target in scenarios():
