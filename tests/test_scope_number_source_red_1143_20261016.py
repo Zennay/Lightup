@@ -59,7 +59,7 @@ class NumberSourceRed1143Tests(unittest.TestCase):
         # This is intentionally an UNRESOLVED source-owner requirement.
         # Existing ParamKind.NUMBER accepts NaN/Infinity; expectedFailure
         # records the original source RED without turning CI falsely green.
-        with patch.object(socket, "socket", side_effect=AssertionError("socket forbidden")), \\
+        with patch.object(socket, "socket", side_effect=AssertionError("socket forbidden")), \
              patch.object(subprocess, "Popen", side_effect=AssertionError("process forbidden")):
             with self.assertRaises(OrchestrationError):
                 self.executor.execute(self.context, self._call(value))
