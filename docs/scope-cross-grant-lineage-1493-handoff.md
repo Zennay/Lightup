@@ -1,0 +1,29 @@
+# #1493 — Cross-grant lineage, non-authorizing offline review
+
+**Status:** LightUp INCUBATE M3/M7 · PLAN/LAB ONLY · **DRAFT/HOLD**.
+Never merge/deploy or infer an execution grant, customer consent, trusted operator, actual client asset, or target authorization from this report.
+
+## Existing source boundary (read-only)
+- `models.Authorization` is a legacy `Target` proof, read by `ScopePolicy` and `ActivationGate`.
+- `engagements.AuthorizationGrant` carries a separate tenant/engagement/scope/validity claim, read by `ExecutionPolicy`.
+- Even if each independently says yes, the two are **not cryptographically or durably joined**. The legacy object does not include a client/engagement ID. Equality of `legacy.owner` and `durable.approved_by` is a *review heuristic*, not authenticated equality of roles.
+- Existing #262 independently tests allow/deny across policy gates; #1491 reviews a legacy permit against one scope decision. This review checks **two disjoint grant assertions** and is neither of those implementations.
+
+## New opt-in, unwired component
+`src/lightup/cross_grant_lineage_review_1493.py` is a pure, bounded in-memory reviewer requiring explicit synthetic `legacy`, `durable`, `client_id`, `engagement_id`, `asset`, `capability_id`, `requested_risk`, `evaluated_at`. The caller owns all data, including the clock. Exact built-in primitive/dataclass/enum checks reject subclass/coercion, whitespace, malformed asset entries, overlong IDs or duplicate asset/capability entries; review also requires UTC instants, legacy window wholly contained by the durable window, reference/actor equality, explicit exact asset and capability membership, and risk bounds. The deliberately conservative no-wildcard policy may reject otherwise legitimate broad authorizations until product owners review it.
+
+**Every output, including coherent synthetic assertions, has fixed literal false `authorized`, `consent_verified`, `dispatch_allowed` and `release_allowed`.** Possible statuses are **HOLD** and **REVIEW_ONLY** only; this is not a production policy plugin or authority source.
+
+## Offline acceptance
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_cross_grant_lineage_review_1493.py' -v
+```
+The 35 tests include fixed 2020 UTC input fixtures and real original policy source smoke showing historical approvals remain rejected at present without any external targets/handlers. All names use imaginary `.example.test` documentation values, and review uses no DB, socket, file, subprocess, HTTP or DNS operations.
+
+## Still RED / human-controlled release gates
+- Genuine linkage to the authenticated operator, canonical client and engagement, approved asset/capability, signed decision and durable trusted row, *not* equality of two caller-supplied strings.
+- Proof of current revocation and revalidation at use time, including atomic proof that approval cannot be replayed against another run or tool. Coordinate with original source owners #99/#100, #1491/#1492 and executor chain without editing their files/branches.
+- Security/privacy approval, representative customer consent, exact-head hosted test success, registered `self-hosted,zcloud,vps` job and verified `vps-bb300bba`, then explicit human GO. No bypass for #301 / #1144.
+- No activation, active scanning, production consumer wiring or permanent runner changes in this branch.
+
+GitHub issue: https://github.com/Zennay/Lightup/issues/1493
