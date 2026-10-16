@@ -231,6 +231,74 @@ class StaticAuthoritySourceInventoryTests(unittest.TestCase):
                     self.skipTest("symlink unsupported on runner")
                 self.assertEqual(inventory.review_checked_in_sources().status, "HOLD")
 
+    def test_nonregular_fifo_source_is_refused_without_blocking(self):
+        if not hasattr(os, "mkfifo"):
+            self.skipTest("POSIX FIFO requires mkfifo")
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            for rel, contents in self.baseline.items():
+                path = base / rel
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(contents)
+            blocked = base / "src/lightup/scope.py"
+            blocked.unlink()
+            os.mkfifo(blocked)
+            with patch.object(inventory, "REPO_ROOT", base):
+                self.assertEqual(inventory.review_checked_in_sources().status, "HOLD")
+
+    def test_symlinked_parent_package_dir_is_refused(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            alternate = base / "alternate-package"
+            alternate.mkdir(parents=True)
+            for rel, contents in self.baseline.items():
+                (alternate / Path(rel).name).write_bytes(contents)
+            src = base / "src"
+            src.mkdir()
+            try:
+                (src / "lightup").symlink_to(alternate, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                self.skipTest("symlinks unavailable")
+            with patch.object(inventory, "REPO_ROOT", base):
+                self.assertEqual(inventory.review_checked_in_sources().status, "HOLD")
+
+    def test_symlink_swap_just_before_file_open_is_refused(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            for rel, contents in self.baseline.items():
+                path = base / rel
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(contents)
+            original_open = inventory.os.open
+            swapped = [False]
+            def inject_swap(name, *args, **kwargs):
+                if name == "scope.py" and not swapped[0]:
+                    swapped[0] = True
+                    path = base / "src/lightup/scope.py"
+                    path.unlink()
+                    path.symlink_to(base / "src/lightup/models.py")
+                return original_open(name, *args, **kwargs)
+            with patch.object(inventory, "REPO_ROOT", base), \
+                 patch.object(inventory.os, "open", side_effect=inject_swap):
+                self.assertEqual(inventory.review_checked_in_sources().status, "HOLD")
+            self.assertTrue(swapped[0])
+
+    def test_symlinked_checkout_root_is_refused(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            actual = base / "real-repo"
+            for rel, contents in self.baseline.items():
+                path = actual / rel
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(contents)
+            fake = base / "symlinked-repo"
+            try:
+                fake.symlink_to(actual, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                self.skipTest("symlinks unavailable")
+            with patch.object(inventory, "REPO_ROOT", fake):
+                self.assertEqual(inventory.review_checked_in_sources().status, "HOLD")
+
     def test_cli_real_subprocess_only_exit_two_or_three_and_exact_fields(self):
         base = [sys.executable, str(ROOT / "tools/scope_authority_source_inventory_1499.py")]
         for argv, expected in ((["--offline-review-only"], ("REVIEW_ONLY", 2)),
