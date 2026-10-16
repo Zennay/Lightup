@@ -34,9 +34,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Compile offline acceptance test
-        run: python -m py_compile tests/test_scope_direct_grant_identity_741.py
+        run: python -m py_compile tests/test_scope_direct_grant_identity_741.py tests/test_scope_direct_grant_preinvoke_741.py
       - name: Verify known source RED contracts
         env:
           PYTHONPATH: src
           PYTHONDONTWRITEBYTECODE: "1"
-        run: python -m unittest discover -s tests -p 'test_scope_direct_grant_identity_741.py' -v
+        run: python -m unittest discover -s tests -p 'test_scope_direct_grant*_741.py' -v
