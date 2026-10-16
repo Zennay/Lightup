@@ -13,7 +13,7 @@ from lightup.activation import ActivationGate, ActivationMode, ActivationPolicy
 from lightup.models import Authorization, Target
 from lightup.scope import ScopePolicy
 from lightup.scope_target_binding_review_1517 import (
-    BindingReview1517, review_target_binding_1517,
+    BindingReview1517, review_target_binding_1517, review_target_binding_batch_1517,
 )
 
 A = ("case.example.test", "owner-alpha", "grant-alpha", 7)
@@ -151,6 +151,61 @@ class TargetBindingReview1517Tests(unittest.TestCase):
              patch("lightup.activation.token_urlsafe", return_value="offline-fixture"):
             with self.assertRaises(PermissionError):
                 gate.issue(target, "synthetic-capability")
+
+    def test_atomic_batch_all_distinct_fictional_records(self):
+        records = tuple(
+            ((f"case{i}.example.test", f"owner-{i}", f"grant-{i}", i + 1),) * 2
+            for i in range(64)
+        )
+        result = review_target_binding_batch_1517(records)
+        self.assertEqual(result.status, "REVIEW_ONLY")
+        self.assertIs(result.authorized, False)
+        self.assertIs(result.consent_verified, False)
+        self.assertIs(result.dispatch_allowed, False)
+        self.assertIs(result.release_allowed, False)
+        self.assertEqual(len(records), 64)
+
+    def test_atomic_batch_rejects_all_one_position_drifts(self):
+        good = tuple(
+            ((f"case{i}.example.test", f"owner-{i}", f"grant-{i}", i + 1),) * 2
+            for i in range(12)
+        )
+        for position in range(len(good)):
+            for field in range(4):
+                changed = list(good[position][1])
+                changed[field] = (f"other{position}.example.test" if field == 0
+                                  else f"owner-other{position}" if field == 1
+                                  else f"grant-other{position}" if field == 2
+                                  else 123456)
+                candidate = list(good)
+                candidate[position] = (good[position][0], tuple(changed))
+                with self.subTest(position=position, field=field):
+                    self.assertEqual(review_target_binding_batch_1517(tuple(candidate)).status, "HOLD")
+
+    def test_atomic_batch_rejects_duplicates_and_ambiguous_grants(self):
+        one = (A, A)
+        duplicate_asset = ((A[0], "owner-beta", "grant-beta", 9),) * 2
+        duplicate_grant = (("other.example.test", "owner-beta", A[2], 9),) * 2
+        for value in ((one, one), (one, duplicate_asset), (one, duplicate_grant)):
+            self.assertEqual(review_target_binding_batch_1517(value).status, "HOLD")
+        self.assertEqual(review_target_binding_batch_1517((one,)).status, "REVIEW_ONLY")
+
+    def test_atomic_batch_bounded_polymorphic_and_empty(self):
+        item = (A, A)
+        for value in ([], (), (item,) * 65, [item], ForgedTuple((item,)),
+                      ((A, B),), ((A,),), (list(item),), (ForgedTuple(item),),
+                      ((ForgedTuple(A), A),), ((A, (A[0], A[1], A[2], True)),)):
+            self.assertEqual(review_target_binding_batch_1517(value).status, "HOLD")
+
+    def test_batch_no_io_and_no_echo(self):
+        item = (A, A)
+        with patch("builtins.open", side_effect=AssertionError("file I/O")), \
+             patch.object(socket, "socket", side_effect=AssertionError("network")), \
+             patch.object(subprocess, "Popen", side_effect=AssertionError("process")):
+            self.assertEqual(review_target_binding_batch_1517((item,)).status, "REVIEW_ONLY")
+            bad = review_target_binding_batch_1517(((A, B),))
+            self.assertEqual(bad.status, "HOLD")
+            self.assertNotIn("example.test", repr(bad))
 
 
 if __name__ == "__main__":
