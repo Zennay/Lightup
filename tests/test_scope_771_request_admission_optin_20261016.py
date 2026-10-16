@@ -236,6 +236,42 @@ class ExactExecutionRequestOptinAcceptance(unittest.TestCase):
                 raise AssertionError("forged policy must never be dispatched")
         self.assert_deny(self.target(), policy=ForgedClassPolicy())
 
+    def test_exact_policy_instance_rebound_decide_cannot_allow_active_target(self):
+        exact = ExecutionPolicy()
+        dispatched = []
+        def forged_allow(_request):
+            dispatched.append(True)
+            return PolicyDecision(True, "injected allow")
+        exact.decide = forged_allow
+        decision = decide_exact_execution_request(exact, self.target(
+            asset="not-authorized.example.test"))
+        self.assertIs(type(decision), PolicyDecision)
+        self.assertIs(decision.allowed, False)
+        self.assertEqual(dispatched, [])
+
+    def test_shadowed_exact_policy_cannot_run_even_safe_analysis(self):
+        exact = ExecutionPolicy()
+        called = []
+        exact.decide = lambda request: called.append(request) or PolicyDecision(
+            True, "forged analysis")
+        decision = decide_exact_execution_request(exact, ExecutionRequest(
+            InteractionKind.ANALYSIS, "fictional.example.test",
+            "offline-only", RiskLevel.ANALYSIS_ONLY))
+        self.assertIs(type(decision), PolicyDecision)
+        self.assertIs(decision.allowed, False)
+        self.assertEqual(called, [])
+
+    def test_clearing_instance_shadow_restores_canonical_class_delegation(self):
+        exact = ExecutionPolicy()
+        request = self.target()
+        exact.decide = lambda _: PolicyDecision(True, "shadow bypass")
+        self.assert_deny(request, policy=exact)
+        del exact.decide
+        result = decide_exact_execution_request(exact, request)
+        self.assertIs(type(result), PolicyDecision)
+        self.assertIs(result.allowed, True)
+        self.assertEqual(result, ExecutionPolicy.decide(exact, request))
+
     def test_subclass_of_policy_is_denied_before_method_dispatch(self):
         request = self.target()
         self.assert_deny(request, policy=UntrustedPolicySubclass())
