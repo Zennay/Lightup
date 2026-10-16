@@ -211,3 +211,22 @@ regression feeds forged `pipe:[inode]` spellings and a mismatched inode
 against `fstat`, requiring denial; only an exact matching synthetic
 kernel-link format is accepted. The latest W8 commit requires complete
 immutable-head hosted 3.11/3.14 and separately permanent VPS evidence.
+
+## W9 — Unicode NFKC alias collision is HOLD, never identity normalization
+
+The independent synthetic-only CLI already held non-NFC Unicode. W9 also
+holds valid-NFC text that changes under NFKC, including fullwidth Latin,
+circled numbers, compatibility ligatures, mathematical alphabets and Roman
+numerals. Such strings can display differently but map to common text under
+compatibility normalization. Unlike a canonicalization library, **the CLI
+never changes or binds any input to the normalized text**: a potential alias
+requires human review rather than a synthetic allow/deny decision about a
+real person or organization. Legitimate NFC/NFKC-stable non-English text
+remains only REVIEW_ONLY (no customer consent or grant).
+
+Three additional real subprocess unittest cases pin both identity fields,
+escaped and raw UTF-8 JSON spellings, ordinary internationalized names and
+receipt privacy. Source-owner #175 requirements remain **exact built-in str +
+nonblank**; this stricter optional offline check is NOT promoted into the
+real `ProspectProfile` constructor or deployed scope policy.
+Expected owner-source REDs remain open.
