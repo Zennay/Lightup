@@ -169,8 +169,7 @@ class FictionalScopeDeltaTests(TestCase):
             pass
 
         for bad in (
-            CustomProposal(**proposal().__dict__) if hasattr(proposal(), "__dict__") else
-                CustomProposal(("alpha.example.test",), ("headers_view",), (), 1, T0, T1),
+            CustomProposal(("alpha.example.test",), ("headers_view",), (), 1, T0, T1),
             proposal(assets=CustomTuple(("alpha.example.test",))),
             proposal(assets=(CustomString("alpha.example.test"),)),
             proposal(risk=CustomInt(3)),
@@ -199,7 +198,7 @@ class FictionalScopeDeltaTests(TestCase):
             result.status = "APPROVED"
         with self.assertRaises(FrozenInstanceError):
             proposal().risk = 7
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             ScopeDeltaReview("REVIEW_ONLY", ("risk",), ())
         with self.assertRaises(TypeError):
             ScopeDeltaReview("HOLD", (), (), authorized=True)
@@ -214,6 +213,22 @@ class FictionalScopeDeltaTests(TestCase):
              patch("subprocess.Popen", side_effect=AssertionError("process")):
             self.assertEqual(review_fictional_scope_delta(proposal(), proposal()).status, "REVIEW_ONLY")
             self.assertEqual(review_fictional_scope_delta(proposal(), proposal(risk=5)).status, "HOLD")
+
+    def test_exact_31_day_boundary_and_source_immutability(self):
+        old = proposal(valid_until=T0 + timedelta(days=31))
+        same = proposal(valid_until=T0 + timedelta(days=31))
+        before = repr((old, same))
+        result = review_fictional_scope_delta(old, same)
+        self.assertEqual(result.status, "REVIEW_ONLY")
+        self.assertEqual(repr((old, same)), before)
+        too_long = proposal(valid_until=T0 + timedelta(days=31, seconds=1))
+        self.assertEqual(review_fictional_scope_delta(old, too_long).status, "HOLD")
+        self.assert_inert(result)
+
+    def test_nonboolean_proof_flags_cannot_be_constructed(self):
+        for field in ("authorized", "consent_verified", "dispatch_allowed", "release_allowed"):
+            with self.subTest(field=field), self.assertRaises(TypeError):
+                ScopeDeltaReview("HOLD", (), (), **{field: True})
 
     def test_many_deterministic_widening_cases_do_not_approve(self):
         old = proposal()
