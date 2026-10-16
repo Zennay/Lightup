@@ -13,6 +13,7 @@ import sys
 
 
 MAX_STDIN_BYTES = 4096
+MAX_NESTING_DEPTH = 32
 _REQUIRED_KEYS = frozenset(("owner", "reference"))
 _FALSE_CAPABILITIES = {
     "can_authorize": False,
@@ -51,6 +52,37 @@ def _reject_json_constant(_value: str) -> None:
     raise ValueError("noncanonical synthetic packet")
 
 
+def _exceeds_json_depth(raw: bytes) -> bool:
+    """Bytewise lexical depth cap, invariant across Python JSON implementations.
+
+    Ignore delimiters inside JSON strings, including escaped quote/backslash.
+    The full JSON decoder separately validates syntax and matching brackets.
+    """
+    depth = 0
+    quoted = False
+    escaped = False
+    for byte in raw:
+        if quoted:
+            if escaped:
+                escaped = False
+            elif byte == 92:  # backslash
+                escaped = True
+            elif byte == 34:  # quote
+                quoted = False
+        elif byte == 34:
+            quoted = True
+        elif byte in (91, 123):  # [ or {
+            depth += 1
+            if depth > MAX_NESTING_DEPTH:
+                return True
+        elif byte in (93, 125):  # ] or }
+            depth -= 1
+            if depth < 0:
+                return True
+    # Remaining unclosed nesting/quotes are rejected by json.loads.
+    return False
+
+
 def review_bytes(raw: bytes) -> tuple[str, int]:
     """Return only a bounded fixed diagnostic code and a nonzero exit code.
 
@@ -58,6 +90,8 @@ def review_bytes(raw: bytes) -> tuple[str, int]:
     Exit 3 = malformed, ambiguous or oversized input (also HOLD).
     """
     if type(raw) is not bytes or not raw or len(raw) > MAX_STDIN_BYTES:
+        return "invalid_packet", 3
+    if _exceeds_json_depth(raw):
         return "invalid_packet", 3
     try:
         candidate = json.loads(
