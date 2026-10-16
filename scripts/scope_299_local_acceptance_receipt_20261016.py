@@ -50,6 +50,7 @@ def _forbid_network(*_args: object, **_kwargs: object) -> None:
 def run_local_tests() -> bool:
     # A test suite may import the repo's current installed source only; no target
     # arguments, remote repositories or production config are accepted.
+    original_sys_path = sys.path[:]
     sys.path.insert(0, str(ROOT / "tests"))
     sys.path.insert(0, str(ROOT / "src"))
     try:
@@ -81,8 +82,9 @@ def run_local_tests() -> bool:
         # The output never echoes exception text, source input or paths.
         return False
     finally:
-        sys.path.pop(0)
-        sys.path.pop(0)
+        # Installed-source test imports also add a src path; restore the full
+        # original list, not just the two entries inserted by this function.
+        sys.path[:] = original_sys_path
 
 
 def main(argv: list[str] | None = None) -> int:
