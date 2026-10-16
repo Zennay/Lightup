@@ -5,6 +5,7 @@ on:
     paths:
       - 'src/lightup/fictional_packet_copy_1503.py'
       - 'src/lightup/fictional_packet_cli_1503.py'
+      - 'src/lightup/fictional_packet_cli_pinned_1503.py'
       - 'tests/test_fictional_packet_copy_1503.py'
       - 'tests/test_fictional_packet_cli_1503.py'
       - 'docs/fictional_packet_copy_1503.md'
