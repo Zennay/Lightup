@@ -59,6 +59,20 @@ The only two process exit codes are **2 = REVIEW_ONLY** (syntactic fictional his
 
 For a fictional sequence `A → risk-expanded B → A → host-expanded C → risk-expanded D`, the reviewer returns `status="HOLD"`, `first_held_step=1`, `held_steps=(1, 3, 4)`, and category lists `held_step_dimensions=(("risk",), ("assets",), ("risk",))`, plus the fixed summary `expanded_dimensions=("assets", "risk")`. A deliberately malformed last record makes **the entire result** generic HOLD with no transition indices; a safely narrowed history returns `REVIEW_ONLY` and no held steps. Indices are for human navigation through the caller's own **synthetic** material only; they are not a signed audit trail or evidence of authorized provenance. Existing project dispatch and permission code remains entirely independent.
 
+## Reproducible, checked-in offline examples
+
+Two canonical **fictional-only** sample files exercise the full reviewed subprocess contract without real hosts, accounts or credentials. Run from the repository root (a nonzero result is **intentional**, not a successful authorization):
+
+```sh
+PYTHONPATH=src python -m lightup.fictional_scope_delta_cli_1501 --offline-review-only < docs/examples/scope-fictional-narrowed-1501.json
+# REVIEW_ONLY; expected process exit 2 (never grants any rights)
+
+PYTHONPATH=src python -m lightup.fictional_scope_delta_cli_1501 --offline-review-only < docs/examples/scope-fictional-temporary-widening-1501.json
+# HOLD; expected process exit 3, step 1 (risk), even after step 2 rollback
+```
+
+These committed input files are strictly compact, sorted ASCII JSON with an optional single final newline. CI runs both actual subprocess examples on Python 3.11 and 3.14, checks all four permission flags remain `false`, validates `held_steps` and `held_step_dimensions`, and rejects wrong exit codes. Do **not** replace the sample assets with real hostnames, API keys, private URLs, customer scopes or credentials. This helper is never a production authorization gate.
+
 ## Stable in-memory snapshots and explicit remaining race limits
 
 For each input record, the reviewer now copies its six exact built-in fields into a private frozen dataclass **before** validating it or computing any scope difference. Comparisons run on the reviewer-owned captured values; a caller changing its original frozen record by deliberately bypassing `object.__setattr__` *after capture* cannot rewrite a previously captured verdict. The history reviewer independently captures every entry, validates **all** of them before producing any transition witness, and returns generic HOLD when a record is malformed. Ordinary adversarial unit tests use an injected post-capture caller mutation, prove returned snapshots are separate objects, cover 45 independent risk/time monotonicity combinations and verify invalid nested history stays zero-echo HOLD.
