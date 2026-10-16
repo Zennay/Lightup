@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import select
+import stat
 import sys
 import time
 import unicodedata
@@ -73,6 +74,31 @@ def receipt(status: str) -> str:
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
+def _safe_streams() -> bool:
+    """Use a distinct anonymous local pipe for input and a safe receipt sink."""
+    try:
+        input_fd, output_fd = sys.stdin.fileno(), sys.stdout.fileno()
+        if (input_fd, output_fd) != (0, 1):
+            return False
+        source, destination = os.fstat(input_fd), os.fstat(output_fd)
+        if not stat.S_ISFIFO(source.st_mode):
+            return False  # Never implicitly read local files, devices or sockets.
+        if not (
+            stat.S_ISFIFO(destination.st_mode)
+            or (stat.S_ISCHR(destination.st_mode) and os.isatty(output_fd))
+        ):
+            return False  # Never create a file or send a receipt to a socket.
+        if (
+            stat.S_ISFIFO(destination.st_mode)
+            and (source.st_dev, source.st_ino)
+            == (destination.st_dev, destination.st_ino)
+        ):
+            return False  # A receipt cannot become data on its own stdin pipe.
+        return True
+    except (OSError, ValueError, TypeError):
+        return False
+
+
 def _read_bounded_stdin() -> bytes | None:
     """Require EOF within two seconds; never trust a partial pipe as complete."""
     deadline = time.monotonic() + 2.0
@@ -96,14 +122,32 @@ def _read_bounded_stdin() -> bytes | None:
         return None
 
 
+def _write_receipt(status: str) -> bool:
+    """Do not block forever or partially reveal a receipt into a full pipe."""
+    try:
+        fd = sys.stdout.fileno()
+        message = (receipt(status) + "\n").encode("ascii")
+        if stat.S_ISFIFO(os.fstat(fd).st_mode):
+            _, writable, _ = select.select([], [fd], [], 0)
+            if not writable:
+                return False
+        return os.write(fd, message) == len(message)
+    except (OSError, ValueError, TypeError):
+        return False
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    # Check endpoint type before touching potentially sensitive stdin.
+    if not _safe_streams():
+        return 2
     status = "HOLD"
     if argv == ["--offline-synthetic-only"]:
         raw = _read_bounded_stdin()
         if raw is not None:
             status = review(raw)
-    sys.stdout.write(receipt(status) + "\n")
+    if not _write_receipt(status):
+        return 2
     return 3 if status == "REVIEW_ONLY" else 2
 
 
