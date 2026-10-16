@@ -24,4 +24,10 @@ def decide_exact_execution_request(
         return PolicyDecision(False, "canonical ExecutionPolicy object required")
     if type(request) is not ExecutionRequest:
         return PolicyDecision(False, "canonical ExecutionRequest object required")
-    return policy.decide(request)
+    # The owner policy currently has a writable instance __dict__.
+    # Exact runtime type alone cannot prevent `policy.decide = forged_allow`.
+    # Fail closed on an instance-level method shadow and call the original
+    # source-owner class method directly, never an instance-rebound method.
+    if "decide" in object.__getattribute__(policy, "__dict__"):
+        return PolicyDecision(False, "policy decision binding was shadowed")
+    return ExecutionPolicy.decide(policy, request)
