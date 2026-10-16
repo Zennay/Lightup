@@ -29,12 +29,12 @@ it does not by itself prove target execution or consent bypass.
 
 ```sh
 PYTHONPATH=src python -m unittest discover -s tests \
-  -p 'test_scope_passive_confidence_915.py' -v
+  -p 'test_scope_passive*_915.py' -v
 ```
 
-Six canonical PASS tests, five deliberate expected **source RED** tests
-on the pinned PR #175. After the owner's source fix, remove the
-`@expectedFailure` decorators, demand all 11 ordinary PASS on Python
+Seven canonical PASS tests, seven deliberate expected **source RED** tests
+on the pinned PR #175. The additional `tests/test_scope_passive_precomparison_915.py` rejects non-canonical floats **before any attacker-controlled `__ge__` or `__le__` runs**, including a throwing comparison override. A source-type check after rich comparison is too late. After the owner's source fix, remove the
+`@expectedFailure` decorators, demand all 14 ordinary PASS on Python
 3.11 and 3.14, then verify exact-head whole-repository hosted and
 genuinely registered canonical VPS CI before any deployment. The isolated
 hosted matrix is not evidence of authorization, independent client/operator
