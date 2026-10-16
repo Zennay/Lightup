@@ -67,7 +67,8 @@ class SyntheticIdentityIntakeCliTest(unittest.TestCase):
             "eval", "exec", "compile", "__import__", "open", "input",
             "breakpoint",
         }
-        allowed_os = {"fstat", "read", "write", "readlink"}
+        allowed_os = {"fstat", "read", "write", "readlink",
+                      "get_blocking", "set_blocking"}
         allowed_sys = {"stdin", "stdout", "argv"}
         for node in ast.walk(source):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
@@ -79,6 +80,114 @@ class SyntheticIdentityIntakeCliTest(unittest.TestCase):
                     self.assertIn(node.attr, allowed_sys)
         self.assertNotIn("http://", SCRIPT.read_text(encoding="utf-8"))
         self.assertNotIn("https://", SCRIPT.read_text(encoding="utf-8"))
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "Linux anonymous pipe receipt")
+    def test_direct_receipt_write_restores_original_blocking_mode(self):
+        import importlib.util
+        from unittest import mock
+        spec = importlib.util.spec_from_file_location("scope931_write_restore", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        for initially_blocking in (True, False):
+            read_fd, write_fd = os.pipe()
+            try:
+                os.set_blocking(write_fd, initially_blocking)
+                fake = mock.Mock()
+                fake.fileno.return_value = write_fd
+                with mock.patch.object(module.sys, "stdout", fake):
+                    self.assertTrue(module._write_receipt("REVIEW_ONLY"))
+                self.assertEqual(os.get_blocking(write_fd), initially_blocking)
+                output = os.read(read_fd, 4096)
+                decoded = json.loads(output)
+                self.assertEqual(decoded["status"], "REVIEW_ONLY")
+                self.assertTrue(all(decoded[flag] is False for flag in FALSE_FLAGS))
+            finally:
+                os.close(read_fd)
+                os.close(write_fd)
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "Linux anonymous pipe receipt")
+    def test_full_pipe_direct_helper_is_nonblocking_and_preserves_state(self):
+        import importlib.util
+        from unittest import mock
+        spec = importlib.util.spec_from_file_location("scope931_write_full", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        read_fd, write_fd = os.pipe()
+        try:
+            os.set_blocking(write_fd, False)
+            written = 0
+            while True:
+                try:
+                    written += os.write(write_fd, b"F" * 4096)
+                except BlockingIOError:
+                    break
+            self.assertGreater(written, 0)
+            os.set_blocking(write_fd, True)
+            fake = mock.Mock()
+            fake.fileno.return_value = write_fd
+            with mock.patch.object(module.sys, "stdout", fake):
+                self.assertFalse(module._write_receipt("REVIEW_ONLY"))
+            self.assertTrue(os.get_blocking(write_fd))
+            os.set_blocking(read_fd, False)
+            readback = bytearray()
+            while True:
+                try:
+                    chunk = os.read(read_fd, 4096)
+                    if not chunk:
+                        break
+                    readback.extend(chunk)
+                except BlockingIOError:
+                    break
+            self.assertEqual(readback, b"F" * written)
+        finally:
+            os.close(read_fd)
+            os.close(write_fd)
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "Linux anonymous pipe receipt")
+    def test_competing_pipe_writer_failure_does_not_leak_or_hang(self):
+        import importlib.util
+        from unittest import mock
+        spec = importlib.util.spec_from_file_location("scope931_write_race", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        read_fd, write_fd = os.pipe()
+        try:
+            os.set_blocking(write_fd, True)
+            fake = mock.Mock()
+            fake.fileno.return_value = write_fd
+            saved_write = os.write
+
+            def race_write(fd, msg):
+                # Simulates a competitor exhausting pipe capacity just as
+                # the nonblocking receipt write is attempted.
+                self.assertEqual(fd, write_fd)
+                self.assertFalse(os.get_blocking(write_fd))
+                while True:
+                    try:
+                        saved_write(write_fd, b"R" * 4096)
+                    except BlockingIOError:
+                        break
+                return saved_write(fd, msg)  # Must fail without blocking.
+
+            with mock.patch.object(module.sys, "stdout", fake):
+                with mock.patch.object(module.os, "write", side_effect=race_write):
+                    self.assertFalse(module._write_receipt("REVIEW_ONLY"))
+            self.assertTrue(os.get_blocking(write_fd))
+            os.set_blocking(read_fd, False)
+            remaining = bytearray()
+            while True:
+                try:
+                    part = os.read(read_fd, 4096)
+                    if not part:
+                        break
+                    remaining.extend(part)
+                except BlockingIOError:
+                    break
+            self.assertTrue(remaining)
+            self.assertEqual(set(remaining), {ord("R")})
+        finally:
+            os.close(read_fd)
+            os.close(write_fd)
 
     def test_valid_exact_shape_never_grants_authority(self):
         self.assert_receipt(
