@@ -132,6 +132,48 @@ class CanonicalExecutionRequestOwner163Contract(unittest.TestCase):
                                   "client_id": "other-fictional-client"})
         self.assert_denied(req)
 
+    def test_exact_target_active_expired_grant_denied(self):
+        expired = replace(
+            self.grant,
+            valid_from=datetime.now(timezone.utc) - timedelta(hours=2),
+            valid_until=datetime.now(timezone.utc) - timedelta(minutes=1),
+        )
+        self.assert_denied(ExecutionRequest(**self.target_kwargs(expired)))
+
+    def test_exact_target_active_wrong_engagement_denied(self):
+        payload = self.target_kwargs()
+        payload["engagement_id"] = "other-fictional-engagement"
+        self.assert_denied(ExecutionRequest(**payload))
+
+    def test_exact_target_active_above_grant_risk_denied(self):
+        payload = self.target_kwargs()
+        payload["requested_risk"] = RiskLevel.ELEVATED
+        self.assert_denied(ExecutionRequest(**payload))
+
+    def test_exact_target_active_wrong_asset_denied(self):
+        payload = self.target_kwargs()
+        payload["asset"] = "unauthorized.example.test"
+        self.assert_denied(ExecutionRequest(**payload))
+
+    def test_exact_target_active_wrong_capability_denied(self):
+        payload = self.target_kwargs()
+        payload["capability_id"] = "not-in-fictitious-grant"
+        self.assert_denied(ExecutionRequest(**payload))
+
+    def test_exact_lab_truthy_string_context_denied(self):
+        candidate = ExecutionRequest(
+            InteractionKind.LAB_ACTIVE, "lab.invalid", "offline-only",
+            RiskLevel.STANDARD, is_lab="false",
+        )
+        self.assert_denied(candidate)
+
+    def test_exact_analysis_string_risk_denied(self):
+        candidate = ExecutionRequest(
+            InteractionKind.ANALYSIS, "fictional.example.test", "offline-only",
+            "analysis_only",
+        )
+        self.assert_denied(candidate)
+
     @unittest.expectedFailure
     def test_red_duck_target_active_with_grant_must_be_denied(self):
         duck = DuckRequest(InteractionKind.TARGET_ACTIVE, RiskLevel.LOW_IMPACT)
