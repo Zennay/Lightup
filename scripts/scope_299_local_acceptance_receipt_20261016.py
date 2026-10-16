@@ -20,9 +20,10 @@ TEST_MODULES = (
     "test_scope_299_legacy_provenance_red_20261015",
     "test_scope_299_legacy_provenance_review_20261016",
     "test_scope_299_legacy_pair_review_20261016",
+    "test_scope_299_owner_portable_acceptance_20261016",
 )
-EXPECTED_TESTS = 63
-EXPECTED_SOURCE_REDS = 16
+EXPECTED_TESTS = 79
+EXPECTED_SOURCE_REDS = 24
 FALSE_AUTHORITIES = {
     "can_authorize": False,
     "can_dispatch": False,
@@ -71,10 +72,10 @@ def run_local_tests() -> bool:
                 and not result.failures
                 and not result.skipped
                 and not result.unexpectedSuccesses
-                # Exactly 16 expected failures, all owned by installed-source
-                # tests; synthetic-only subprocess suites are always green.
+                # Exactly 24 intentional installed-source REDs, including the 8
+                # owner-portable source REDs; synthetic CLI suites stay green.
                 and all(
-                    case.__class__.__name__ == "LegacyAuthorization299Tests"
+                    case.__class__.__name__ in {"LegacyAuthorization299Tests", "SourceOwnerPortable299Tests"}
                     for case, _detail in result.expectedFailures
                 )
             )
