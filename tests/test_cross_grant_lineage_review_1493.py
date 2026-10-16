@@ -341,26 +341,30 @@ class CrossGrantBatchTests(unittest.TestCase):
 
     def test_same_grant_id_different_validity_is_atomic_hold(self):
         first = batch_candidate()
-        changed_grant = dataclasses.replace(
-            first.durable, valid_until=first.durable.valid_until + timedelta(seconds=1))
-        second = dataclasses.replace(first, durable=changed_grant, capability_id="tls-baseline")
+        common_scope = dataclasses.replace(
+            first.durable.scope, allowed_capabilities=("web-baseline", "tls-baseline"))
+        first = dataclasses.replace(
+            first, durable=dataclasses.replace(first.durable, scope=common_scope))
         second = dataclasses.replace(
-            second, durable=dataclasses.replace(
-                changed_grant, scope=dataclasses.replace(
-                    changed_grant.scope, allowed_capabilities=("web-baseline", "tls-baseline"))))
-        # Individually coherent. As a cohort, same ID means different snapshots.
+            first, capability_id="tls-baseline",
+            durable=dataclasses.replace(first.durable, valid_until=first.durable.valid_until + timedelta(seconds=1)))
+        # Both records independently pass; only the shared grant ID snapshot differs.
+        self.assertEqual(self.review((first,)).status, "REVIEW_ONLY")
+        self.assertEqual(self.review((second,)).status, "REVIEW_ONLY")
         self.assertEqual(self.review((first, second)).status, "HOLD")
 
     def test_same_grant_id_different_approval_reference_is_atomic_hold(self):
         first = batch_candidate()
-        second = dataclasses.replace(
-            first,
-            capability_id="tls-baseline",
-            legacy=dataclasses.replace(first.legacy, reference="SYNTH-REF-2"),
-            durable=dataclasses.replace(
-                first.durable, reference="SYNTH-REF-2",
-                scope=dataclasses.replace(
+        first = dataclasses.replace(
+            first, durable=dataclasses.replace(
+                first.durable, scope=dataclasses.replace(
                     first.durable.scope, allowed_capabilities=("web-baseline", "tls-baseline"))))
+        second = dataclasses.replace(
+            first, capability_id="tls-baseline",
+            legacy=dataclasses.replace(first.legacy, reference="SYNTH-REF-2"),
+            durable=dataclasses.replace(first.durable, reference="SYNTH-REF-2"))
+        self.assertEqual(self.review((first,)).status, "REVIEW_ONLY")
+        self.assertEqual(self.review((second,)).status, "REVIEW_ONLY")
         self.assertEqual(self.review((first, second)).status, "HOLD")
 
     def test_different_grant_ids_may_have_independent_validated_snapshots(self):
@@ -371,23 +375,29 @@ class CrossGrantBatchTests(unittest.TestCase):
 
     def test_same_grant_id_cross_reference_actor_rejected(self):
         first = batch_candidate()
-        second = dataclasses.replace(first, capability_id="tls-baseline")
+        first = dataclasses.replace(
+            first, durable=dataclasses.replace(
+                first.durable, scope=dataclasses.replace(
+                    first.durable.scope, allowed_capabilities=("web-baseline", "tls-baseline"))))
         second = dataclasses.replace(
-            second, legacy=dataclasses.replace(second.legacy, owner="other@example.test"),
-            durable=dataclasses.replace(
-                second.durable, approved_by="other@example.test",
-                scope=dataclasses.replace(
-                    second.durable.scope, allowed_capabilities=("web-baseline", "tls-baseline"))))
+            first, capability_id="tls-baseline",
+            legacy=dataclasses.replace(first.legacy, owner="other@example.test"),
+            durable=dataclasses.replace(first.durable, approved_by="other@example.test"))
+        self.assertEqual(self.review((first,)).status, "REVIEW_ONLY")
+        self.assertEqual(self.review((second,)).status, "REVIEW_ONLY")
         self.assertEqual(self.review((first, second)).status, "HOLD")
 
     def test_same_grant_id_different_retest_flag_rejected(self):
         first = batch_candidate()
-        second = dataclasses.replace(first, capability_id="tls-baseline")
+        first = dataclasses.replace(
+            first, durable=dataclasses.replace(
+                first.durable, scope=dataclasses.replace(
+                    first.durable.scope, allowed_capabilities=("web-baseline", "tls-baseline"))))
         second = dataclasses.replace(
-            second, durable=dataclasses.replace(
-                second.durable, recurring_retest_allowed=True,
-                scope=dataclasses.replace(
-                    second.durable.scope, allowed_capabilities=("web-baseline", "tls-baseline"))))
+            first, capability_id="tls-baseline",
+            durable=dataclasses.replace(first.durable, recurring_retest_allowed=True))
+        self.assertEqual(self.review((first,)).status, "REVIEW_ONLY")
+        self.assertEqual(self.review((second,)).status, "REVIEW_ONLY")
         self.assertEqual(self.review((first, second)).status, "HOLD")
 
     def test_standalone_batch_never_reads_network_db_file_or_exec(self):
