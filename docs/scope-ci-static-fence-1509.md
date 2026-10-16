@@ -11,9 +11,15 @@ A separate scope-authorization worker can check that the unchanged, original `.g
 - `tests/test_scope_ci_static_fence_1509.py` checks original bytes, every critical control removed, runner/hostname/permissions/checkout/credential/matrix/integration/canary downgrades, every single-byte XOR mutation, injected YAML jobs, wrong types/bytes subclasses, and blocked I/O/process/network hooks.
 - Dedicated **opt-in, no-secrets GitHub-hosted** `.github/workflows/lightup-scope-static-fence-1509.yml` runs only these ordinary tests on Python 3.11 and 3.14. It does not change the canonical runner/workflow, and passing this isolated hosted job cannot count as the permanent VPS runner evidence.
 
+## Optional bounded local stdin interface
+
+Run `python scripts/scope_ci_static_fence_cli_1509.py < .github/workflows/lightup-ci.yml`. It prints only a fixed no-input-echo JSON receipt; a matching offline snapshot yields `REVIEW_ONLY` and intentional process **exit 2**, any modified/malformed/oversized input `HOLD` **exit 3**; **never exit 0**. Standard input reads at most 16,385 bytes. This is a convenience wrapper around the same pure no-I/O logic, not network verification or an execution gate.
+
+`tests/test_scope_ci_static_fence_cli_1509.py` exercises actual bounded Python subprocess/fragmented-stdin behavior and adversarial input. Tests do not invoke customer tools or scan any host.
+
 ## Important blind spots / required gates
 An internally consistent *maliciously chosen new snapshot* could have its hash replaced by a bad actor; the tool is not a signature or trusted auditor. The function does not parse/execute YAML and never queries current GitHub jobs. `REVIEW_ONLY` says only **same bytes as the original reviewed workflow**, not that the workflow ran. It cannot prove CI completeness, registered machine identity, confidentiality or real consent.
 
 Issue [#1144](https://github.com/Zennay/Lightup/issues/1144) remains the operator's registered permanent `vps-bb300bba` proof; [#1309](https://github.com/Zennay/Lightup/issues/1309) owns read-only *live* CI run metadata; [#1499](https://github.com/Zennay/Lightup/issues/1499) owns source AST review; [#301](https://github.com/Zennay/Lightup/issues/301) retains the original source-owner date test. This branch modifies none of their paths. Full original hosted suite on exact head, genuine registered permanent VPS jobs, original source fixes, separately independently verified client **and** operator consent, revocation at execution use, independent security/privacy review and explicit human GO remain mandatory.
 
-Local: `python -m unittest discover -s tests -p 'test_scope_ci_static_fence_1509.py' -v`. No scans, target/network actions or policy/grant decisions are performed.
+Local: `python -m unittest discover -s tests -p 'test_scope_ci_static_fence*1509.py' -v`. No scans, target/network actions or policy/grant decisions are performed.
