@@ -122,6 +122,11 @@ class OfflineZoneReviewTests(unittest.TestCase):
             "https://[::1]/search",
             "http://[::1]/?debug=1",
             "http://[::1]/#frag",
+            "http://[::1]?",
+            "http://[::1]#",
+            "http://[::1]/?#",
+            "HTTP://[::1]",
+            "hTTp://[::1]",
             "ftp://[::1]/",
         ):
             with self.subTest(value=value):

@@ -180,10 +180,12 @@ class SubprocessCliTests(unittest.TestCase):
         self.assertEqual(code, 3)
         self.assertEqual(payload["status"], "REVIEW_ONLY")
 
-    def test_real_cli_scoped_ipv6_hold_nonzero(self):
-        code, payload = self.invoke(json.dumps({"schema": SCHEMA, "authorities": ["[fd00::1%eth0]"]}).encode())
-        self.assertEqual(code, 2)
-        self.assertEqual(payload["status"], "HOLD")
+    def test_real_cli_scoped_or_noncanonical_ipv6_hold_nonzero(self):
+        for value in ("[fd00::1%eth0]", "HTTP://[::1]", "http://[::1]?", "http://[::1]#"):
+            with self.subTest(value=value):
+                code, payload = self.invoke(json.dumps({"schema": SCHEMA, "authorities": [value]}).encode())
+                self.assertEqual(code, 2)
+                self.assertEqual(payload["status"], "HOLD")
 
     def test_real_cli_default_no_args_refuses(self):
         code, payload = self.invoke(b"", args=())

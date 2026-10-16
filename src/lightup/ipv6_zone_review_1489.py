@@ -44,6 +44,10 @@ def review_ipv6_authority_zone(value: object) -> ZoneReview:
     if not value.isascii() or any(ord(c) < 33 or ord(c) > 126 for c in value):
         return _HOLD_FORMAT
     if "://" in value:
+        # urlsplit lowercases schemes and erases empty '?' / '#' delimiters.
+        # Reject those original-byte aliases before parsing, never normalize them.
+        if not value.startswith(("http://", "https://")) or "?" in value or "#" in value:
+            return _HOLD_FORMAT
         try:
             parsed = urlsplit(value)
             if (
