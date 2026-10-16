@@ -239,6 +239,39 @@ class CurrentMainTransportIdentityTest(unittest.TestCase):
             response, _ = invoke(app, request_without_peer)
         self.assertEqual(response["status"], "403 Forbidden")
 
+    def test_test_local_constructor_reference_clears_all_nine_source_reds(self):
+        """Acceptance mutation witness only; never patches deployed source.
+
+        Apply exact built-in identity checking only during this test. The
+        nine deliberate RED method bodies must *all* become ordinary PASS
+        when configuration is refused before any polymorphic comparison.
+        Directly call methods because unittest.expectedFailure only marks
+        test runner expectations; it does not wrap each test method.
+        """
+        original_post_init = WebSecurity.__post_init__
+
+        def reference_post_init(instance):
+            if instance.public_origin is not None and type(instance.public_origin) is not str:
+                raise ValueError("public origin must be an exact built-in string")
+            if type(instance.trusted_proxy_ip) is not str:
+                raise ValueError("proxy must be an exact built-in string")
+            original_post_init(instance)
+
+        red_names = sorted(
+            name for name in dir(type(self)) if name.startswith("test_red_")
+        )
+        self.assertEqual(len(red_names), 9)
+        with patch.object(WebSecurity, "__post_init__", reference_post_init):
+            for name in red_names:
+                with self.subTest(source_red=name):
+                    case = type(self)(name)
+                    case.setUp()
+                    getattr(case, name)()
+            # Canonical real production mode still validates under the same
+            # temporary reference contract; source patch is removed on exit.
+            WebSecurity(ORIGIN, "127.0.0.1").validate(request())
+            WebSecurity(ORIGIN, "::1").validate(request(REMOTE_ADDR="::1"))
+
     @unittest.expectedFailure
     def test_red_nonbuiltin_trusted_proxy_rejected_at_constructor(self):
         with self.assertRaises(ValueError):
