@@ -49,6 +49,27 @@ class Scope920RunnerProvenanceTest(unittest.TestCase):
             with patch.object(acceptance, "ROOT", Path(temp)):
                 self.assertFalse(acceptance.source_is_pinned())
 
+    def test_real_offline_runner_executes_all_twenty_but_never_releases(self):
+        # Drive the *real* opt-in runner in process on the pinned current-main
+        # WebSecurity source, nested inside this separate provenance test.
+        # No subprocess, socket, external target, or dispatch can be reached.
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with patch("sys.stdout", stdout), patch("sys.stderr", stderr):
+            exit_code = acceptance.main()
+        self.assertEqual(exit_code, 0, stderr.getvalue()[-1200:])
+        result = json.loads(stdout.getvalue())
+        self.assertEqual(result["status"], "REVIEW_ONLY")
+        self.assertEqual(result["tests_run"], 20)
+        self.assertEqual(result["expected_source_failures"], 9)
+        for field in (
+            "release_authorized", "merge_authorized", "scan_authorized",
+            "dispatch_authorized", "registered_vps_verified",
+            "full_suite_verified", "client_operator_consent_verified",
+            "source_fixed",
+        ):
+            with self.subTest(field=field):
+                self.assertIs(result[field], False)
+
     def test_source_drift_does_not_run_tests_or_grant_any_authority(self):
         output = io.StringIO()
         with patch.object(acceptance, "source_is_pinned", return_value=False):
