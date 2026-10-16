@@ -98,6 +98,7 @@ class OfflineCliTests(unittest.TestCase):
         for change in (
             ("context", "is_lab", False),
             ("context", "approved_risk", 1),
+            ("context", "client_id", "another-client"),
             ("record", "scenario_id", "other"),
         ):
             candidate = json.loads(json.dumps(self.candidate))
