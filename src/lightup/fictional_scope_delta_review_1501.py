@@ -73,7 +73,8 @@ def _items(value: object, *, assets: bool, max_count: int, nonempty: bool) -> bo
         if any(type(item) is not str or len(item) > 48 or _ASSET.fullmatch(item) is None
                for item in value):
             return False
-    elif any(type(item) is not str or item not in _CAPABILITIES for item in value):
+    elif any(type(item) is not str or len(item) > 16 or item not in _CAPABILITIES
+             for item in value):
         return False
     return value == tuple(sorted(set(value)))
 
