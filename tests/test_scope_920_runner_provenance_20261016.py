@@ -199,6 +199,27 @@ class Scope920RunnerProvenanceTest(unittest.TestCase):
             with self.subTest(field=field):
                 self.assertIs(result[field], False)
 
+    def test_real_suite_cannot_issue_review_only_after_input_swaps(self):
+        # The 20 *real* installed-source tests run, then the final pin read
+        # simulates a changed source, changed test module, or imported module.
+        for guard_name in (
+            "source_is_pinned", "acceptance_tests_are_pinned",
+            "loaded_security_is_from_checkout",
+        ):
+            with self.subTest(guard=guard_name):
+                stdout, stderr = io.StringIO(), io.StringIO()
+                with patch.object(acceptance, guard_name, side_effect=[True, False]):
+                    with patch("sys.stdout", stdout), patch("sys.stderr", stderr):
+                        status = acceptance.main()
+                data = json.loads(stdout.getvalue())
+                self.assertEqual(status, 2, stderr.getvalue()[-1400:])
+                self.assertEqual(data["status"], "HOLD")
+                self.assertEqual(data["tests_run"], 20)
+                self.assertEqual(data["expected_source_failures"], 9)
+                self.assertIs(data["release_authorized"], False)
+                self.assertIs(data["full_suite_verified"], False)
+                self.assertIs(data["registered_vps_verified"], False)
+
     def test_source_drift_does_not_run_tests_or_grant_any_authority(self):
         output = io.StringIO()
         with patch.object(acceptance, "source_is_pinned", return_value=False):
