@@ -69,3 +69,9 @@ The main acceptance had proved that canonical production-source decisions were r
 - Every negative canary also asserts that the local mock ran, so a vacuous expectation of `AssertionError` cannot disguise unused patches. The tests never invoke adapters, scans, network, handlers, real customer assets or real grants.
 
 Current exact own acceptance: **31 methods** (24 genuine installed-source checks + seven test-harness mutation canaries) in the same single test module. This is a local review/test contract; it does not protect against concurrent mutable callers, malicious test runners, trusted source tampering or consent forgery.
+
+### W4 — Storage and environment non-interference
+
+A genuine source-integrated **96-case matrix, repeated four times**, now patches `builtins.open`, `pathlib.Path.open`, `sqlite3.connect` and `os.getenv` to raise if `ScopePolicy.decide` attempts any local file, database or environment access. This is distinct from W1–W3's socket/DNS/process guards. Two additional deliberately injected test-only mutation canaries exercise actual blocked file/database calls to show the denial guards are live, then confirm that the real unpatched `ScopePolicy.decide` method is restored. No file/database read is ever actually allowed by the tests.
+
+**Total 34 owner methods**: 24 original real-source acceptance tests, seven deterministic synthetic decision/input mutation canaries, and three filesystem/storage/environment boundary tests. Their results never authorize real targets, create permits, admit grants, dispatch handlers or prove source chain-of-custody. The entire matrix remains fabricated and in-process.
