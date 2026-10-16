@@ -31,6 +31,14 @@ The own optional pure shape checker now rejects **internal ASCII or Unicode whit
 
 **W4 exact HEAD needs fresh test evidence**, not older W3/W2 logs. The unrelated #301 date-expired base test and permanently queued #1144 runner remain separate dependencies.
 
+## W5 — exact duplicate/collision HOLD with no alias authority
+
+After all items are proven **exact built-in strings** and bounded, the unwired review now rejects **exact duplicate** allowed or excluded assets and exact overlap of an allowlisted and excluded asset, instead of silently guessing the intended priority. This is a conservative intake HOLD requiring the source owner's independent policy review: exclusions overlapping allowed assets may have legitimate narrowing semantics, so these results MUST NOT be promoted to automatic production denial or considered authoritative without an explicit design decision. It makes **no** casefold, IDNA, Unicode normalization, DNS, or alias-equivalence claims; a case variant can remain **REVIEW_ONLY shape-only** while both authority and alias policy stay unverified.
+
+Two new ordinary test methods cover duplicate/collision false receipts and explicit case-sensitive-only semantics. The previous 256-item inclusive positive boundary fixture now uses **256 distinct** fictional identities, and the exact temporary original-SQLite pre-insert preview also tests three extra collision inputs without writing a row. All existing source-owner gates remain unchanged and not installed.
+
+**W5 needs new exact-HEAD hosted Python 3.11/3.14 evidence**; previous W4 logs cannot establish this implementation's test result.
+
 ## Owner decision needed
 The existing domain/grant source owner should decide whether this narrow text-shape preflight, or an equivalent source-side guard, belongs directly before any persisted grant row. The reviewer ceilings are **illustrative** and may reject legitimate large scopes; do not treat them as approved product policy. If integrated, the original source must enforce the same reject-before-write semantics and preserve valid grant roundtrips. Convert the three original-source expectedFailure methods to ordinary PASS only after the actual production source is fixed and revalidated. Do not claim the opt-in helper fixes persistent authorization.
 
