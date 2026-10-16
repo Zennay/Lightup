@@ -743,6 +743,41 @@ class ScopeReplayMatrix344Tests(unittest.TestCase):
             ),
         )
 
+    def test_concurrent_source_decisions_reject_all_io(self):
+        # All source IO classes stay refused even when multiple original
+        # ScopePolicy.decide calls run concurrently. Only synthetic immutable
+        # Target/Authorization/ScopePolicy objects are involved.
+        cases = scenarios()
+        before = tuple(original_values(p, t) for p, t in cases)
+        baseline = tuple(p.decide(t) for p, t in cases)
+        indices = list(range(96)) * 4
+        Random(3442).shuffle(indices)
+
+        def decide(index):
+            policy, target = cases[index]
+            return index, policy.decide(target)
+
+        with patch.object(socket, "socket", side_effect=AssertionError("socket")), \
+             patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns")), \
+             patch.object(socket, "gethostbyname", side_effect=AssertionError("dns")), \
+             patch.object(urllib_request, "urlopen", side_effect=AssertionError("http")), \
+             patch.object(subprocess, "Popen", side_effect=AssertionError("process")), \
+             patch.object(os, "system", side_effect=AssertionError("shell")), \
+             patch.object(os, "getenv", side_effect=AssertionError("env")), \
+             patch.object(builtins, "open", side_effect=AssertionError("file")), \
+             patch.object(Path, "open", side_effect=AssertionError("path")), \
+             patch.object(sqlite3, "connect", side_effect=AssertionError("database")):
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                outcomes = tuple(pool.map(decide, indices))
+        self.assertEqual(len(outcomes), 384)
+        for index, result in outcomes:
+            self.assertEqual(result, baseline[index])
+        self.assertEqual(
+            tuple(original_values(p, t) for p, t in cases), before
+        )
+        self.assertTrue(any(item.allowed for item in baseline))
+        self.assertTrue(any(not item.allowed for item in baseline))
+
     def test_canonical_fixture_does_not_ever_create_permit_or_grant(self):
         for policy, target in scenarios():
             decision = policy.decide(target)
