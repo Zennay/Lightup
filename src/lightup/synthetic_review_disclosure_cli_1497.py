@@ -18,7 +18,7 @@ def main(argv: list[str] | None = None) -> int:
                 parsed = json.loads(raw.decode("utf-8", "strict"))
                 if type(parsed) is list:
                     verdict = review_fictional_handoff_notes(tuple(parsed))
-        except (UnicodeError, ValueError, TypeError, OverflowError):
+        except (UnicodeError, ValueError, TypeError, OverflowError, RecursionError):
             pass
     print(json.dumps(asdict(verdict), sort_keys=True, separators=(",", ":"), ensure_ascii=True))
     return 2 if verdict.status == "REVIEW_ONLY" else 3
