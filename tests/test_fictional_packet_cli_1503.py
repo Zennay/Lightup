@@ -34,6 +34,21 @@ def request(original=GOOD, copies=(GOOD,)):
     ).encode("ascii")
 
 
+
+def request_pinned(original=GOOD, copies=(GOOD,), expected_sha256=None):
+    if expected_sha256 is None:
+        expected_sha256 = hashlib.sha256(GOOD).hexdigest()
+    return json.dumps(
+        {
+            "schema": "lightup-fictional-cli-pinned-v1",
+            "original": original.decode("ascii"),
+            "copies": [copy.decode("ascii") for copy in copies],
+            "expected_sha256": expected_sha256,
+        },
+        ensure_ascii=True, separators=(",", ":"), sort_keys=False,
+    ).encode("ascii")
+
+
 def process(payload, args=()):
     env = {**os.environ, "PYTHONPATH": str(PACKAGE), "PYTHONDONTWRITEBYTECODE": "1"}
     return subprocess.run(
@@ -381,6 +396,141 @@ class FictionalCliTests(unittest.TestCase):
                     for k in ("authorized", "consent_verified", "dispatch_allowed",
                               "release_allowed"):
                         self.assertIs(parsed[k], False)
+
+
+
+    def test_independently_pinned_cli_subprocess_is_non_authorizing(self):
+        payload = request_pinned(copies=(GOOD,) * 16)
+        result = process(payload)
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stderr, b"")
+        parsed = json.loads(result.stdout)
+        self.assertEqual(parsed["status"], "REVIEW_ONLY")
+        self.assertEqual(parsed["sha256"], hashlib.sha256(GOOD).hexdigest())
+        for field in ("authorized", "consent_verified", "dispatch_allowed",
+                      "release_allowed"):
+            self.assertIs(parsed[field], False)
+
+    def test_pinned_cli_denies_both_packets_substituted_against_old_pin(self):
+        # Unpinned v1 cannot detect synchronized replacement.
+        forged_unpinned = request(original=BAD_COPY, copies=(BAD_COPY, BAD_COPY))
+        self.assertEqual(cli._parse_request(forged_unpinned).status, "REVIEW_ONLY")
+        old_pin = hashlib.sha256(GOOD).hexdigest()
+        forged_pinned = request_pinned(
+            original=BAD_COPY, copies=(BAD_COPY, BAD_COPY),
+            expected_sha256=old_pin,
+        )
+        result = process(forged_pinned)
+        self.assertEqual(result.returncode, 3)
+        self.assertEqual(result.stdout, cli._HOLD)
+        self.assertEqual(result.stderr, b"")
+
+    def test_caller_can_forge_new_pin_so_no_origin_authority(self):
+        forged = request_pinned(
+            original=BAD_COPY, copies=(BAD_COPY,),
+            expected_sha256=hashlib.sha256(BAD_COPY).hexdigest(),
+        )
+        # Verifies only equality against caller-controlled pin, NOT consent.
+        result = cli._parse_request(forged)
+        self.assertEqual(result.status, "REVIEW_ONLY")
+        self.assertIs(result.authorized, False)
+        self.assertIs(result.release_allowed, False)
+
+    def test_pinned_builder_is_exact_and_reproduces_reference(self):
+        digest = hashlib.sha256(GOOD).hexdigest()
+        for copies in ((GOOD,), (GOOD,) * 16, (GOOD, BAD_COPY)):
+            with self.subTest(count=len(copies)):
+                payload = cli.build_fictional_pinned_cli_envelope(
+                    GOOD, copies, digest,
+                )
+                self.assertIs(type(payload), bytes)
+                self.assertEqual(payload, request_pinned(copies=copies))
+                self.assertLessEqual(len(payload), 8192)
+        self.assertEqual(cli._parse_request(
+            cli.build_fictional_pinned_cli_envelope(GOOD, (BAD_COPY,), digest)
+        ).status, "HOLD")
+
+    def test_strict_pinned_envelope_keys_and_schema_do_not_confuse_v1(self):
+        basic = json.loads(request())
+        basic["expected_sha256"] = hashlib.sha256(GOOD).hexdigest()
+        self.assert_hold(json.dumps(
+            basic, ensure_ascii=True, separators=(",", ":")
+        ).encode("ascii"))
+        pinned = json.loads(request_pinned())
+        pinned["schema"] = "lightup-fictional-cli-v1"
+        self.assert_hold(json.dumps(
+            pinned, ensure_ascii=True, separators=(",", ":")
+        ).encode("ascii"))
+        valid = request_pinned()
+        self.assert_hold(valid + b"\n")
+        self.assert_hold(b" " + valid)
+        self.assert_hold(valid[:-1] + b',"expected_sha256":"0"}')
+        self.assert_hold(valid.replace(b'"expected_sha256":', b'"pin":'))
+        self.assert_hold(valid.replace(
+            b',"expected_sha256":', b',"unknown":1,"expected_sha256":'
+        ))
+
+    def test_pinned_malformed_hash_and_overlong_reference_atomic_hold(self):
+        digest = hashlib.sha256(GOOD).hexdigest()
+        for pin in (
+            "0" * 64, digest.upper(), digest[:-1], digest + "0",
+            " " + digest[:-1], "X" * 64, 0, True, None, [],
+        ):
+            with self.subTest(kind=str(type(pin))):
+                envelope = json.dumps({
+                    "schema": "lightup-fictional-cli-pinned-v1",
+                    "original": GOOD.decode("ascii"),
+                    "copies": [GOOD.decode("ascii")],
+                    "expected_sha256": pin,
+                }, ensure_ascii=True, separators=(",", ":")).encode("ascii")
+                result = cli._parse_request(envelope)
+                self.assertEqual((result.status, result.sha256), ("HOLD", None))
+
+    def test_pinned_builder_exact_type_boundary_no_subclass_callbacks(self):
+        class AlienPin(str):
+            def __eq__(self, _):
+                raise AssertionError("must reject subclasses before equality")
+        digest = hashlib.sha256(GOOD).hexdigest()
+        for pin in (
+            None, True, digest.upper(), "G" * 64,
+            digest[:-1], AlienPin(digest),
+        ):
+            with self.subTest(type=type(pin).__name__):
+                self.assertIsNone(
+                    cli.build_fictional_pinned_cli_envelope(GOOD, (GOOD,), pin)
+                )
+        self.assertIsNone(
+            cli.build_fictional_pinned_cli_envelope(
+                GOOD, (GOOD,) * 17, digest
+            )
+        )
+
+    def test_pinned_cli_output_does_not_echo_pin_or_target(self):
+        supplied_pin = "0" * 64
+        payload = request_pinned(
+            original=BAD_COPY, copies=(BAD_COPY,), expected_sha256=supplied_pin,
+        )
+        result = process(payload)
+        self.assertEqual(result.stdout, cli._HOLD)
+        self.assertEqual(result.returncode, 3)
+        self.assertNotIn(b"beta.example.test", result.stdout)
+        self.assertNotIn(supplied_pin.encode("ascii"), result.stdout)
+
+    def test_pinned_path_no_file_socket_sqlite_process_adapters(self):
+        digest = hashlib.sha256(GOOD).hexdigest()
+        with patch("builtins.open", side_effect=AssertionError("file")), \
+             patch("socket.socket", side_effect=AssertionError("net")), \
+             patch("sqlite3.connect", side_effect=AssertionError("db")), \
+             patch("subprocess.Popen", side_effect=AssertionError("process")):
+            payload = cli.build_fictional_pinned_cli_envelope(
+                GOOD, (GOOD,), digest,
+            )
+            self.assertEqual(cli._parse_request(payload).status, "REVIEW_ONLY")
+            self.assertEqual(cli._parse_request(
+                cli.build_fictional_pinned_cli_envelope(
+                    GOOD, (BAD_COPY,), digest
+                )
+            ).status, "HOLD")
 
 
 if __name__ == "__main__":
