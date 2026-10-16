@@ -251,6 +251,72 @@ class NestedPersistedScopeAdmissionTest(unittest.TestCase):
         self.assertFalse(hasattr(preview, "is_current"))
         self.assertEqual(before, self._snapshot())
 
+    def test_opt_in_same_row_resolver_seam_denies_corruption(self):
+        """Offline-only preview of owner integration: no permanent patch.
+
+        The installed resolver stays unchanged. During this one test only,
+        _grant_from_row receives its already-fetched joined sqlite3.Row and
+        refuses bad entries *before* any grant reconstruction. The existing
+        resolver catches ValueError and fails closed without handler/network.
+        """
+        from unittest.mock import patch
+
+        original_parse = self.store._grant_from_row
+        seen = []
+
+        def checked_from_same_row(row):
+            self.assertEqual(
+                tuple(row[column] for column in (
+                    "assets_json", "excluded_assets_json",
+                    "allowed_capabilities_json",
+                )),
+                self._snapshot(),
+                "guard must inspect the identical raw row, never a second query",
+            )
+            seen.append(row["grant_id"])
+            if review_persisted_scope_entries(
+                assets_json=row["assets_json"],
+                excluded_assets_json=row["excluded_assets_json"],
+                allowed_capabilities_json=row["allowed_capabilities_json"],
+            ) is None:
+                raise ValueError("synthetic invalid nested grant scope")
+            return original_parse(row)
+
+        cases = (
+            ("assets_json", "[]"),
+            ("assets_json", '["app.example.invalid",null]'),
+            ("assets_json", '["app.example.invalid",{}]'),
+            ("assets_json", '["app.example.invalid",123]'),
+            ("excluded_assets_json", '["excluded.example.invalid",false]'),
+            ("excluded_assets_json", '["excluded.example.invalid","   "]'),
+            ("allowed_capabilities_json", '["web-baseline",{}]'),
+        )
+        with patch.object(self.store, "_grant_from_row", side_effect=checked_from_same_row):
+            # Keep the exact old normal policy success intact.
+            self.assertIsNotNone(self.store.resolve_authorization_for_execution(self.grant))
+            for column, payload in cases:
+                with self.subTest(column=column, payload=payload):
+                    with self.store._connect() as con:
+                        con.execute(
+                            "UPDATE authorization_grants SET "
+                            "assets_json=?,excluded_assets_json=?,allowed_capabilities_json=? "
+                            "WHERE grant_id=?",
+                            (*self.original, self.grant.grant_id),
+                        )
+                    before = self._mutate(column, payload)
+                    self.assertIsNone(
+                        self.store.resolve_authorization_for_execution(self.grant),
+                        "same-row shape rejection should deny, not crash or grant",
+                    )
+                    self.assertEqual(self._snapshot(), before)
+            self.assertEqual(len(seen), len(cases) + 1)
+            self.assertTrue(all(value == self.grant.grant_id for value in seen))
+
+        # The original source is NOT repaired by the temporary test patch.
+        before = self._mutate("assets_json", '["app.example.invalid",null]')
+        self.assertIsNotNone(self.store.resolve_authorization_for_execution(self.grant))
+        self.assertEqual(self._snapshot(), before)
+
     def test_exact_original_source_red_replay_witness(self):
         """Ordinary PASS oracle: no unrelated exception can fake a source-RED."""
         cases = (
