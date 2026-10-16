@@ -9,7 +9,9 @@ from unittest.mock import patch
 from lightup.fictional_scope_delta_review_1501 import (
     FictionalScopeProposal,
     ScopeDeltaReview,
+    ScopeHistoryReview,
     review_fictional_scope_delta,
+    review_fictional_scope_history,
 )
 
 T0 = datetime(2026, 11, 1, 10, 0, tzinfo=timezone.utc)
@@ -260,6 +262,148 @@ class FictionalScopeDeltaTests(TestCase):
                 self.assertEqual(outcome.status, "HOLD")
                 self.assert_inert(outcome)
 
+
+
+    def assert_history_inert(self, result):
+        self.assertIs(type(result), ScopeHistoryReview)
+        self.assertIn(result.status, ("HOLD", "REVIEW_ONLY"))
+        for name in ("authorized", "consent_verified", "dispatch_allowed", "release_allowed"):
+            self.assertIs(getattr(result, name), False)
+
+    def test_history_catches_transient_widening_even_when_endpoints_equal(self):
+        old = proposal()
+        wide = proposal(risk=5, valid_from=T0 - timedelta(hours=1))
+        result = review_fictional_scope_history((old, wide, old))
+        self.assert_history_inert(result)
+        self.assertEqual(result.status, "HOLD")
+        self.assertEqual(result.first_held_step, 1)
+        self.assertEqual(result.transition_count, 2)
+        self.assertEqual(result.expanded_dimensions, ("risk", "valid_from"))
+        self.assertEqual(result.narrowed_dimensions, ())
+
+    def test_history_aggregates_distinct_expansions_in_canonical_order(self):
+        first = proposal()
+        second = proposal(assets=("alpha.example.test", "beta.example.test", "gamma.example.test"))
+        third = proposal(
+            assets=("alpha.example.test", "beta.example.test", "gamma.example.test"),
+            capabilities=("headers_view", "metadata_view", "tls_summary"),
+            risk=4,
+        )
+        result = review_fictional_scope_history((first, second, third))
+        self.assertEqual(result.status, "HOLD")
+        self.assertEqual(result.first_held_step, 1)
+        self.assertEqual(result.expanded_dimensions, ("assets", "capabilities", "risk"))
+        self.assertNotIn("gamma.example.test", repr(result))
+        self.assert_history_inert(result)
+
+    def test_history_equal_and_monotonically_narrowed_are_review_only(self):
+        old = proposal()
+        narrower = proposal(assets=("alpha.example.test",), risk=2)
+        narrowest = proposal(
+            assets=("alpha.example.test",),
+            capabilities=("headers_view",),
+            risk=1,
+            valid_from=T0 + timedelta(hours=1),
+        )
+        for snapshots, expected in (
+            ((old, old), ()),
+            ((old, narrower, narrowest), ("assets", "capabilities", "risk", "valid_from")),
+        ):
+            with self.subTest(snapshots=len(snapshots)):
+                result = review_fictional_scope_history(snapshots)
+                self.assertEqual(result.status, "REVIEW_ONLY")
+                self.assertEqual(result.narrowed_dimensions, expected)
+                self.assertEqual(result.transition_count, len(snapshots) - 1)
+                self.assertIsNone(result.first_held_step)
+                self.assert_history_inert(result)
+
+    def test_history_last_malformed_entry_overrides_earlier_widening(self):
+        original = proposal()
+        wide = proposal(risk=5)
+        invalid_tail = proposal(assets=("live.example.com",))
+        result = review_fictional_scope_history((original, wide, invalid_tail))
+        self.assertEqual(result.status, "HOLD")
+        self.assertEqual(result.transition_count, 0)
+        self.assertIsNone(result.first_held_step)
+        self.assertEqual(result.expanded_dimensions, ())
+        self.assertEqual(result.narrowed_dimensions, ())
+        self.assertNotIn("live.example.com", repr(result))
+        self.assert_history_inert(result)
+
+    def test_history_rejects_invalid_type_bounds_and_forged_slot(self):
+        invalid = object.__new__(FictionalScopeProposal)
+        variants = (
+            None, [],
+            (proposal(),), (proposal(),) * 17,
+            [proposal(), proposal()],
+            (proposal(), invalid),
+            (invalid, proposal()),
+            (proposal(), proposal(risk=True)),
+        )
+        for history in variants:
+            result = review_fictional_scope_history(history)
+            self.assertEqual(result.status, "HOLD")
+            self.assertEqual(result.transition_count, 0)
+            self.assertEqual(result.expanded_dimensions, ())
+            self.assert_history_inert(result)
+
+    def test_history_16_records_boundary_does_not_lose_middles(self):
+        series = tuple(proposal(risk=3 if i < 5 else 4) for i in range(16))
+        result = review_fictional_scope_history(series)
+        self.assertEqual(result.status, "HOLD")
+        self.assertEqual(result.first_held_step, 5)
+        self.assertEqual(result.transition_count, 15)
+        self.assertEqual(result.expanded_dimensions, ("risk",))
+        self.assert_history_inert(result)
+        self.assertEqual(review_fictional_scope_history(series + (proposal(),)).transition_count, 0)
+
+    def test_history_mutation_and_io_guard(self):
+        old = proposal()
+        history = (old, proposal(risk=2), old)
+        before = repr(history)
+        with patch("builtins.open", side_effect=AssertionError("file")), \\
+             patch("os.open", side_effect=AssertionError("os")), \\
+             patch("socket.socket", side_effect=AssertionError("network")), \\
+             patch("sqlite3.connect", side_effect=AssertionError("database")), \\
+             patch("subprocess.Popen", side_effect=AssertionError("process")):
+            result = review_fictional_scope_history(history)
+        self.assertEqual(repr(history), before)
+        self.assertEqual(result.status, "HOLD")
+        self.assertEqual(result.first_held_step, 2)
+        self.assert_history_inert(result)
+
+    def test_history_result_is_immutable_and_cannot_be_forged_by_constructor(self):
+        result = review_fictional_scope_history((proposal(), proposal()))
+        with self.assertRaises(FrozenInstanceError):
+            result.status = "AUTHORIZED"
+        for args in (
+            ("REVIEW_ONLY", 0, None, (), ()),
+            ("REVIEW_ONLY", 1, 1, (), ()),
+            ("REVIEW_ONLY", 1, None, ("risk",), ()),
+            ("HOLD", 1, None, ("risk",), ()),
+            ("HOLD", 1, 0, ("risk",), ()),
+            ("HOLD", 1, 1, (), ()),
+            ("HOLD", 1, 1, ("risk",), ("assets",)),
+            ("HOLD", True, 1, ("risk",), ()),
+        ):
+            with self.subTest(args=args), self.assertRaises(ValueError):
+                ScopeHistoryReview(*args)
+        with self.assertRaises(TypeError):
+            ScopeHistoryReview("HOLD", 0, None, (), (), authorized=True)
+        self.assert_history_inert(result)
+
+    def test_history_256_deterministic_transient_risk_reversions(self):
+        baseline = proposal()
+        for i in range(256):
+            variant = proposal(
+                risk=4 if i % 2 else 5,
+                valid_until=T1 + timedelta(seconds=i + 1),
+            )
+            result = review_fictional_scope_history((baseline, variant, baseline))
+            self.assertEqual(result.status, "HOLD")
+            self.assertEqual(result.expanded_dimensions, ("risk", "valid_until"))
+            self.assertEqual(result.first_held_step, 1)
+            self.assert_history_inert(result)
 
 if __name__ == "__main__":
     import unittest
