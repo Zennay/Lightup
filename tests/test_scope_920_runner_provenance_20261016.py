@@ -89,6 +89,60 @@ class Scope920RunnerProvenanceTest(unittest.TestCase):
             with patch.object(acceptance, "ROOT", Path(temp)):
                 self.assertFalse(acceptance.source_is_pinned())
 
+    def test_wrong_test_count_holds_before_runner_invocation(self):
+        output = io.StringIO()
+        with patch.object(acceptance, "source_is_pinned", return_value=True):
+            with patch.object(acceptance, "acceptance_tests_are_pinned", return_value=True):
+                with patch.object(acceptance.unittest, "TestLoader") as loader:
+                    loader.return_value.discover.return_value.countTestCases.return_value = 19
+                    with patch.object(acceptance.unittest, "TextTestRunner") as runner:
+                        with patch("sys.stdout", output):
+                            self.assertEqual(acceptance.main(), 2)
+                        runner.assert_not_called()
+        data = json.loads(output.getvalue())
+        self.assertEqual(data["status"], "HOLD")
+        self.assertEqual(data["tests_run"], 19)
+        self.assertIs(data["release_authorized"], False)
+
+    def test_bad_unit_outcomes_never_yield_review_only(self):
+        # Exercise the actual CLI decision function, but replace ONLY the
+        # local synthetic TestLoader/runner result; no executor is invoked.
+        cases = (
+            ("unexpected_success", {"unexpectedSuccesses": ["fixed"]}),
+            ("unexpected_skip", {"skipped": ["ignored"]}),
+            ("ordinary_failure", {"failures": ["broken"]}),
+            ("runtime_error", {"errors": ["broken"]}),
+            ("source_red_missing", {"expectedFailures": [None] * 8}),
+            ("source_red_extra", {"expectedFailures": [None] * 10}),
+            ("wrong_result_count", {"testsRun": 19}),
+            ("was_unsuccessful", {"successful": False}),
+        )
+        for title, changes in cases:
+            with self.subTest(case=title):
+                output = io.StringIO()
+                with patch.object(acceptance, "source_is_pinned", return_value=True):
+                    with patch.object(acceptance, "acceptance_tests_are_pinned", return_value=True):
+                        with patch.object(acceptance.unittest, "TestLoader") as loader:
+                            loader.return_value.discover.return_value.countTestCases.return_value = 20
+                            with patch.object(acceptance.unittest, "TextTestRunner") as runner:
+                                outcome = runner.return_value.run.return_value
+                                outcome.wasSuccessful.return_value = changes.get("successful", True)
+                                outcome.testsRun = changes.get("testsRun", 20)
+                                outcome.expectedFailures = changes.get("expectedFailures", [None] * 9)
+                                outcome.unexpectedSuccesses = changes.get("unexpectedSuccesses", [])
+                                outcome.skipped = changes.get("skipped", [])
+                                outcome.failures = changes.get("failures", [])
+                                outcome.errors = changes.get("errors", [])
+                                # unittest's wasSuccessful should normally reflect
+                                # failures; the CLI must not trust it blindly.
+                                with patch("sys.stdout", output):
+                                    status = acceptance.main()
+                receipt = json.loads(output.getvalue())
+                self.assertEqual(status, 2)
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertIs(receipt["merge_authorized"], False)
+                self.assertIs(receipt["release_authorized"], False)
+
     def test_real_offline_runner_executes_all_twenty_but_never_releases(self):
         # Drive the *real* opt-in runner in process on the pinned current-main
         # WebSecurity source, nested inside this separate provenance test.
