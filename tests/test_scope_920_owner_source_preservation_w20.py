@@ -31,6 +31,32 @@ class WebSecuritySourcePreservationW20(unittest.TestCase):
     def test_remote_peer_does_not_gain_proxy_trust(self) -> None:
         self.assertDenied(_production(REMOTE_ADDR="203.0.113.17"))
 
+    def test_spoofed_proxy_cannot_make_synthetic_remote_peer_trusted(self) -> None:
+        class _EqualitySpoofProxy(str):
+            def __new__(cls, value: str, alias: str):
+                item = str.__new__(cls, value)
+                item.alias = alias
+                return item
+
+            def __eq__(self, other: object) -> bool:
+                return str(other) == self.alias
+
+            def __ne__(self, other: object) -> bool:
+                return not self.__eq__(other)
+
+            def __hash__(self) -> int:
+                return hash(self.alias)
+
+        forged = _EqualitySpoofProxy("127.0.0.1", "203.0.113.17")
+        # Constructor denial is ideal; request denial is a secondary guard.
+        # The original owner source satisfies neither: it wrongly permits
+        # this *synthetic* remote peer with a malicious config object.
+        with self.assertRaises((ValueError, RequestRejected)):
+            security = WebSecurity(
+                public_origin="https://lightup.example", trusted_proxy_ip=forged,
+            )
+            security.validate(_production(REMOTE_ADDR="203.0.113.17"))
+
     def test_forwarded_http_does_not_claim_https(self) -> None:
         self.assertDenied(_production(HTTP_X_FORWARDED_PROTO="http"))
 
