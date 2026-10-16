@@ -6,12 +6,16 @@ on:
     paths:
       - src/lightup/scope_target_binding_review_1517.py
       - tests/test_scope_target_binding_review_1517.py
+      - tests/test_scope_target_binding_cli_1517.py
+      - scripts/scope_target_binding_review_cli_1517.py
       - docs/scope-target-binding-drift-1517.md
       - .github/workflows/scope-target-binding-review-1517.yml
   pull_request:
     paths:
       - src/lightup/scope_target_binding_review_1517.py
       - tests/test_scope_target_binding_review_1517.py
+      - tests/test_scope_target_binding_cli_1517.py
+      - scripts/scope_target_binding_review_cli_1517.py
       - docs/scope-target-binding-drift-1517.md
       - .github/workflows/scope-target-binding-review-1517.yml
 
@@ -43,4 +47,4 @@ jobs:
           PYTHONDONTWRITEBYTECODE: '1'
           PYTHONNOUSERSITE: '1'
         run: |
-          python -W error::ResourceWarning -m unittest discover -s tests -p 'test_scope_target_binding_review_1517.py' -v
+          python -W error::ResourceWarning -m unittest discover -s tests -p 'test_scope_target_binding_*_1517.py' -v
