@@ -235,6 +235,19 @@ class ProtocolCliTests(unittest.TestCase):
             rows = [{"version": 3, "case_id": variant, "sequence": 1}]
             self.assertEqual(_review_raw(encoded(rows)), "HOLD")
 
+    def test_deeply_nested_hostile_json_is_generic_hold_without_traceback(self):
+        # 1,600 levels fit the input byte cap and can trigger json decoder recursion.
+        hostile = b"[" * 1600 + b"0" + b"]" * 1600
+        self.assertLessEqual(len(hostile), 4096)
+        self.assertEqual(_review_raw(hostile), "HOLD")
+        result = subprocess.run(
+            [sys.executable, str(TOOLS / "fictional_protocol_floor_cli_1514.py")],
+            input=hostile, capture_output=True, timeout=10, check=False,
+        )
+        self.assertEqual(result.returncode, 3)
+        self.assertEqual(result.stdout, b"HOLD\\n".replace(b"\\n", b"\n"))
+        self.assertEqual(result.stderr, b"")
+
     def test_cli_all_one_byte_corruptions_do_not_authorize(self):
         valid = encoded()
         for i in range(len(valid)):
