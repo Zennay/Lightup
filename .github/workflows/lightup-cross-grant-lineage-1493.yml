@@ -24,7 +24,7 @@ permissions:
   contents: read
 jobs:
   strict-offline-review:
-    name: Offline 248-method review / Python ${{ matrix.python-version }}
+    name: Offline 250-method review / Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
@@ -51,8 +51,8 @@ jobs:
               pattern='test_cross_grant*_1493.py',
           )
           count = suite.countTestCases()
-          if count != 248:
-              raise SystemExit(f'ISOLATED_1493 wrong test inventory: {count}, expected 248')
+          if count != 250:
+              raise SystemExit(f'ISOLATED_1493 wrong test inventory: {count}, expected 250')
           result = unittest.TextTestRunner(verbosity=2).run(suite)
           print('ISOLATED_1493', {
               'tests': result.testsRun,
@@ -62,7 +62,7 @@ jobs:
               'expected_failures': len(result.expectedFailures),
               'unexpected_successes': len(result.unexpectedSuccesses),
           })
-          if not result.wasSuccessful() or result.testsRun != 248 or result.skipped or result.expectedFailures:
+          if not result.wasSuccessful() or result.testsRun != 250 or result.skipped or result.expectedFailures:
               raise SystemExit('ISOLATED_1493: HOLD (non-success or masked tests)')
           PY
       - name: Attest actual fictional sample CLI on stdin (always nonzero)
