@@ -130,6 +130,11 @@ PYTHONPATH=src python -m lightup.fictional_packet_cli_pinned_1503 < docs/example
 # HOLD, exit 3: legacy v1 denied even when all fictional copies match.
 ```
 
+The dedicated Python3.11/3.14 offline suite now also asserts that **every
+single-byte edit of a canonical v2 request** yields generic HOLD, joint
+single-byte changes to original and all copies remain HOLD against the old
+independent pin, and malformed/oversize subprocess input never exits 0.
+
 The pinned-only module is a tiny wrapper around the **same strictly bounded
 stdin** and **same generic HOLD/REVIEW_ONLY result writer**. It passes a
 non-user-controlled boolean to a private parser that **rejects v1 at schema
@@ -144,6 +149,6 @@ legacy fallback. No runtime or ingress module imports or invokes either CLI.
 
 ## Tests and ownership
 
-Run opt-in isolated tests (including exhaustive byte edits, builder invariants, 16-copy fanout, no-I/O tripwires) with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_fictional_packet_copy_1503.py' -v`. Dedicated **hosted** Python 3.11/3.14 workflow `.github/workflows/lightup-fictional-packet-1503.yml` runs both new offline test files when the new file set changes. This does not substitute for original full hosted preflight or the genuinely registered permanent VPS runner (#1144). All files exclusively added under #1503; do not cherry-pick as production authorization.
+Run both opt-in isolated suites with `PYTHONPATH=src python -m unittest discover -s tests -p 'test_fictional_packet*_1503.py' -v`; this pattern executes the copy checker and CLI test modules (including pinned-only real-subprocess cases, byte edits, fanout, and no-I/O tripwires). Dedicated **hosted** Python 3.11/3.14 workflow `.github/workflows/lightup-fictional-packet-1503.yml` runs both new offline test files when the new file set changes. This does not substitute for original full hosted preflight or the genuinely registered permanent VPS runner (#1144). All files exclusively added under #1503; do not cherry-pick as production authorization.
 
 **Release STOP:** Original source owner fixes incl. #301, authentic both-client-and-operator informed consent, runtime revocation-at-use, full exact-head hosted + registered VPS proof, independent security/privacy review and explicit human GO remain open. Do **not** merge, deploy, scan, issue grants, wire any handler or assert approval based on this packet.
