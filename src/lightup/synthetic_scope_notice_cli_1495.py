@@ -67,13 +67,20 @@ def _parse(raw: bytes) -> tuple[tuple[ScopeProposal, ...], datetime]:
 
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
-    if type(args) is not list or args != ["--synthetic-only"]:
+    if type(args) is not list:
+        print(_INVALID_MESSAGE)
+        return 3
+    if args == ["--synthetic-only"]:
+        language = "en"
+    elif args in (["--synthetic-only", "--lang", "nl"], ["--synthetic-only", "--lang", "en"]):
+        language = args[-1]
+    else:
         print(_INVALID_MESSAGE)
         return 3
     try:
         raw = sys.stdin.buffer.read(_MAX_JSON_BYTES + 1)
         props, at = _parse(raw)
-        notice = render_scope_notice(props, review_at=at)
+        notice = render_scope_notice(props, review_at=at, language=language)
     except (ValueError, TypeError, UnicodeError, RecursionError, OverflowError):
         print(_INVALID_MESSAGE)
         return 3
