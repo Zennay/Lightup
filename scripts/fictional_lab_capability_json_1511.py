@@ -40,7 +40,7 @@ def parse_fictional_envelope_1511(
     """
     if type(data) is not bytes or not 1 <= len(data) <= _MAX_BYTES:
         return None
-    if type(expected_schema) is not str or requested_type not in (str, list):
+    if type(expected_schema) is not str or (requested_type is not str and requested_type is not list):
         return None
     try:
         raw = data.decode("ascii")
