@@ -233,3 +233,33 @@ hosts, real client/operator grants or execution handlers are accessed.
 The owned Python3.11/3.14 pinned read-only workflow now includes
 these tests and the owned-file isolation inventory. Remains
 **PLAN/LAB ONLY, DRAFT/HOLD**.
+
+## W8 — exact source registry compatibility (read-only canary)
+
+Current immutable product `src/lightup/capabilities.py` describes a
+high-level 31-entry catalog: 26 `PLANNING` IDs, five `LAB_ONLY` IDs:
+`ot-lab`, `wireless-lab`, `social-engineering-lab`,
+`human-layer-lab`, and `physical-security-lab`. All source IDs
+fit this candidate's exact built-in lowercase dash-separated ASCII
+identity contract and have `requires_explicit_activation=True`.
+
+New purely offline test file
+`test_fictional_lab_capability_registry_compat_1511.py`
+imports the source **metadata only** (no handlers), checks this
+compatibility against all 31 entries, verifies fake allowlist copies
+never produce any of the four positive consent/authority/release/
+dispatch flags, and rejects a fabricated identifier in every sampled
+cohort position. Critically, even copying all 26 PLANNING IDs into a
+local fictional allowlist produces only `REVIEW_ONLY` **with all four
+false flags** — it does NOT make planning capabilities executable.
+Likewise copying the five LAB_ONLY IDs does not prove human/operator
+permission.
+
+These are source-drift compatibility checks, not authentic registry
+attestation, actual consent evidence, network scans, or a deployed
+policy. If the source catalog legitimately changes, its **owner**
+must review and update the expected source-derived canary; no local
+test may automatically promote new permissions. Current real
+`ActivationGate.issue()` still needs an independently owned fix,
+and full exact-HEAD hosted + registered permanent VPS evidence, privacy/
+security review and explicit human GO remain release blockers.
