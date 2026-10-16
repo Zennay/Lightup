@@ -66,17 +66,33 @@ def review_asset_identity_shape(scope: object) -> AssetIdentityShapeReceipt:
     # Reject subclass objects before reading any caller-controlled attributes.
     if type(scope) is not ScopeDefinition:
         return AssetIdentityShapeReceipt("HOLD")
-    if not _canonical_tuple(scope.assets, allow_empty=False):
+    # A frozen dataclass is not tamper-proof: object.__delattr__ can remove
+    # exclusions and ordinary attribute lookup would silently use its class
+    # default (). Require the exact instance field envelope before accesses.
+    try:
+        fields = object.__getattribute__(scope, "__dict__")
+    except (AttributeError, TypeError):
         return AssetIdentityShapeReceipt("HOLD")
-    if not _canonical_tuple(scope.excluded_assets, allow_empty=True):
+    if type(fields) is not dict or len(fields) != 4:
+        return AssetIdentityShapeReceipt("HOLD")
+    if any(type(key) is not str for key in fields):
+        return AssetIdentityShapeReceipt("HOLD")
+    if set(fields) != {"assets", "excluded_assets", "max_risk",
+                       "allowed_capabilities"}:
+        return AssetIdentityShapeReceipt("HOLD")
+    assets = fields["assets"]
+    exclusions = fields["excluded_assets"]
+    if not _canonical_tuple(assets, allow_empty=False):
+        return AssetIdentityShapeReceipt("HOLD")
+    if not _canonical_tuple(exclusions, allow_empty=True):
         return AssetIdentityShapeReceipt("HOLD")
     # Values are now confirmed exact native strings. Repeated identities, or
     # exact allow/exclude contradictions, need owner review rather than a
     # guessed precedence. Do NOT casefold/normalize or create authorization.
-    allowed = set(scope.assets)
-    excluded = set(scope.excluded_assets)
-    if (len(allowed) != len(scope.assets)
-            or len(excluded) != len(scope.excluded_assets)
+    allowed = set(assets)
+    excluded = set(exclusions)
+    if (len(allowed) != len(assets)
+            or len(excluded) != len(exclusions)
             or not allowed.isdisjoint(excluded)):
         return AssetIdentityShapeReceipt("HOLD")
     return AssetIdentityShapeReceipt("REVIEW_ONLY")
