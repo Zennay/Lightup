@@ -59,3 +59,45 @@ latest-head CI matrix. A successful isolated child does not merge the owner fix.
    revocation checks, separate operator permission and appropriate risk gate.
 
 **NO MERGE / DEPLOY / REAL GRANTS / TARGET SCANS / ACTIVE SECURITY ACTIONS.**
+
+## W3 — standalone synthetic-only intake review (uninstalled)
+
+New **`scripts/scope_931_synthetic_identity_intake_20261016.py`** is a
+*standalone offline diagnostic*, with companion
+`tests/test_scope_931_synthetic_identity_intake_20261016.py`.
+It does not import or alter `lightup`, instantiate a client grant, contact any
+target, call DNS/network, inspect customer files or wire itself into admission.
+Invoking it is **not** customer consent or permission to run an assessment.
+
+Usage on **fictional JSON only**, through standard input:
+
+```sh
+printf '%s' '{"prospect_id":"fictional-id","organization_name":"Fiction Corp"}' |
+  python scripts/scope_931_synthetic_identity_intake_20261016.py --offline-synthetic-only
+```
+
+The diagnostic consumes at most 4,097 bytes (4,096 byte accepted ceiling),
+strict JSON and exactly two keys, rejecting duplicate keys, non-UTF-8,
+nonfinite JSON constants, malformed types, blank text, decoded control,
+zero-width/bidi format characters, and overlong identity fields (128/256
+codepoints). It intentionally **does not normalize identity strings**:
+surrounding padding is retained but not printed, and Unicode letters may
+receive syntactic `REVIEW_ONLY`. This is **shape review only**, never proof
+that a human gave authorization or that a claimed organization is genuine.
+Synthetic/non-synthetic provenance cannot be established from this JSON.
+
+Every command and error path returns **nonzero** (2 for `HOLD`, 3 for
+`REVIEW_ONLY`), with an opaque constant-shape JSON receipt. The six
+`authorization`, `permit`, `dispatch`, `scan`, `deploy`, `release`
+fields are always literal `false`; no input identity, source, exception or
+argument is emitted. There is no success/GO result. The ordinary current
+`ProspectProfile` implementation is unchanged and remains deficient.
+
+Companion real subprocess tests exercise correct and corrupted JSON, duplicate
+decoded keys, raw invalid UTF-8, types, whitespace, Unicode control/bidi,
+bounded payloads, flag rejection, fixed confidentiality-preserving receipt,
+canonical/noncanonical objects and deterministic key-order metamorphic cases.
+These are **additional green tests**, not source remediation; do not
+promote an offline review-only status into product release evidence.
+
+**W3 exact-HEAD CI is required separately from the W2 520+86 logs.**
