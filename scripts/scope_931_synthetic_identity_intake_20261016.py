@@ -33,15 +33,27 @@ def _reject_nonfinite(value: str) -> None:
     raise ValueError("nonfinite")
 
 
+def _is_unicode_noncharacter(char: str) -> bool:
+    """Reserved scalar values may be invisible but are not Cc/Cf/Cs."""
+    scalar = ord(char)
+    return (0xFDD0 <= scalar <= 0xFDEF) or (scalar & 0xFFFE) == 0xFFFE
+
+
 def _exact_nonblank(value: object, max_length: int) -> bool:
     if type(value) is not str or not value.strip():
         return False
     if len(value) > max_length:
         return False
-    # Conservative offline screening: unusual controls/formats go to HOLD,
-    # not normalization. Valid Unicode letters are not automatically denied.
-    if any(unicodedata.category(char) in {"Cc", "Cf", "Cs"}
-           for char in value):
+    # Shape review is byte-identity-conservative: do NOT silently compose,
+    # trim, NFKC-fold, case-fold or rebind a caller's exact identity text.
+    # Non-NFC identity is HOLD for manual review, not "corrected" or matched.
+    if not unicodedata.is_normalized("NFC", value):
+        return False
+    if any(
+        unicodedata.category(char) in {"Cc", "Cf", "Cs", "Zl", "Zp"}
+        or _is_unicode_noncharacter(char)
+        for char in value
+    ):
         return False
     return True
 
