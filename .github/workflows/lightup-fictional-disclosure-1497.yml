@@ -8,12 +8,14 @@ on:
       - 'src/lightup/synthetic_review_disclosure_1497.py'
       - 'src/lightup/synthetic_review_disclosure_cli_1497.py'
       - 'tests/test_synthetic_review_disclosure_1497.py'
+      - 'examples/fictional_review_handoff_hold_1497.json'
       - '.github/workflows/lightup-fictional-disclosure-1497.yml'
   pull_request:
     paths:
       - 'src/lightup/synthetic_review_disclosure_1497.py'
       - 'src/lightup/synthetic_review_disclosure_cli_1497.py'
       - 'tests/test_synthetic_review_disclosure_1497.py'
+      - 'examples/fictional_review_handoff_hold_1497.json'
       - 'examples/fictional_review_handoff_1497.json'
       - '.github/workflows/lightup-fictional-disclosure-1497.yml'
   workflow_dispatch:
@@ -48,3 +50,12 @@ jobs:
           set -e
           test "$actual" -eq 2
           python -c 'import json; x=json.load(open("/tmp/lightup-1497-offline.json")); assert x["status"]=="REVIEW_ONLY" and x["authorized"] is False and x["consent_verified"] is False and x["dispatch_allowed"] is False and x["release_allowed"] is False and "NOT AUTHORIZED" in x["notice"]'
+      - name: Forged fictional approval must be generic HOLD 3 without echo
+        shell: bash
+        run: |
+          set +e
+          PYTHONPATH=src python -m lightup.synthetic_review_disclosure_cli_1497 --synthetic-only < examples/fictional_review_handoff_hold_1497.json > /tmp/lightup-1497-denied.json
+          actual=$?
+          set -e
+          test "$actual" -eq 3
+          python -c 'import json; text=open("/tmp/lightup-1497-denied.json").read(); x=json.loads(text); assert x["status"]=="HOLD" and x["reviewed_notes"]==0 and x["authorized"] is False and x["consent_verified"] is False and x["dispatch_allowed"] is False and x["release_allowed"] is False and "approved" not in text and "alpha.example.test" not in text'
