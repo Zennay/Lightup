@@ -64,6 +64,32 @@ class FictionalDisclosureReviewTests(unittest.TestCase):
         self.assertEqual(verdict.reviewed_notes, 16)
         self.assertIs(verdict.authorized, False)
 
+    def test_1600_control_and_separator_insertions_are_quarantined(self):
+        # Every insertion must fail for arbitrary positions, including inside
+        # the otherwise valid reserved hostname; no parser substring rescue.
+        positions = range(len(VALID) + 1)
+        bad_chars = ("\x00", "\x01", "\x09", "\x0a", "\x0d",
+                     "\x1f", "\x7f", "/", "\\", "\"",
+                     "'", "<", ">", "@", "#", "~", "|", "\u202e")
+        tested = 0
+        for index in positions:
+            for char in bad_chars:
+                verdict = review((VALID[:index] + char + VALID[index:],))
+                self.assertEqual(verdict.status, "HOLD", (index, ord(char)))
+                self.assertEqual(verdict.reviewed_notes, 0)
+                tested += 1
+        self.assertGreater(tested, 1000)
+
+    def test_16_distinct_proposals_atomic_late_duplicate_hold(self):
+        valid = tuple(
+            f"Asset node{i}.example.test; capability header_read; proposed risk 2."
+            for i in range(15)
+        )
+        self.assertEqual(review(valid + (
+            "Asset node15.example.test; capability header_read; proposed risk 5.",
+        )).status, "REVIEW_ONLY")
+        self.assertEqual(review(valid + (valid[0],)).status, "HOLD")
+
     def test_input_tuple_and_strings_not_mutated(self):
         records = (VALID, "Asset beta.example.test; capability header_read; proposed risk 3.")
         before = records[:]
@@ -381,6 +407,22 @@ class FictionalDisclosureCliTests(unittest.TestCase):
         result = self.invoke(json.dumps({"notes": [VALID]}).encode(), "--synthetic-only")
         self.assertEqual(result.returncode, 3)
         self.assertEqual(json.loads(result.stdout)["reviewed_notes"], 0)
+
+    def test_cli_rejects_surrogate_escape_without_traceback_or_echo(self):
+        x = self.invoke(b'["Asset alpha.example.test; capability header_read; proposed risk 2.\\ud800"]', "--synthetic-only")
+        self.assertEqual(x.returncode, 3)
+        self.assertEqual(json.loads(x.stdout)["status"], "HOLD")
+        self.assertNotIn(b"Traceback", x.stderr)
+        self.assertNotIn(b"alpha.example.test", x.stdout)
+
+    def test_cli_rejects_nonfinite_number_and_bad_scalar_types(self):
+        for payload in (b'["Asset alpha.example.test", NaN]',
+                        b'[true]', b'[false]', b'[null]', b'[0]',
+                        b'["Asset alpha.example.test", Infinity]'):
+            with self.subTest(payload=payload[:32]):
+                x = self.invoke(payload, "--synthetic-only")
+                self.assertEqual(x.returncode, 3)
+                self.assertEqual(json.loads(x.stdout)["reviewed_notes"], 0)
 
     def test_real_subprocess_rejects_nested_dict(self):
         x = self.invoke(b'[{"text":"alpha.example.test"}]', "--synthetic-only")
