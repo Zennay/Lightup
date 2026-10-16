@@ -48,6 +48,61 @@ REQUIRED_METHODS = {
 }
 _FORBIDDEN_CALLS = frozenset({"eval", "exec", "compile", "__import__"})
 
+# Call topology hints are structural *presence/order* checks only. They do NOT
+# prove that conditionals are effective; the original source still needs a
+# human security review and source-owner RED fixes.
+EXPECTED_ORDERED_CALLS = {
+    ("src/lightup/scope.py", "ScopePolicy", "decide"): (
+        "normalize_host", "ip_address", "is_current",
+    ),
+    ("src/lightup/activation.py", "ActivationGate", "issue"): (
+        "decide", "token_urlsafe", "ExecutionPermit",
+    ),
+    ("src/lightup/execution_policy.py", "ExecutionPolicy", "decide"): (
+        "is_current", "allows_asset", "allows_capability",
+    ),
+}
+
+
+def _static_call_names(fn: ast.FunctionDef) -> tuple[str, ...]:
+    """Lexical call name sequence only. Never resolves or executes callees."""
+    nodes = [node for node in ast.walk(fn) if isinstance(node, ast.Call)]
+    nodes.sort(key=lambda item: (item.lineno, item.col_offset))
+    return tuple(
+        node.func.id if type(node.func) is ast.Name else
+        node.func.attr if type(node.func) is ast.Attribute else ""
+        for node in nodes
+    )
+
+
+def _has_early_scope_denial(fn: ast.FunctionDef) -> bool:
+    """Check the source AST's first unconditional-looking permission boundary.
+
+    Specifically verifies: decision = scope_policy.decide(target), then
+    if not decision.allowed: raise PermissionError(...) before permit return.
+    This DOES NOT prove the runtime condition's semantics.
+    """
+    decisions = [n for n in ast.walk(fn) if isinstance(n, ast.Call)
+                 and type(n.func) is ast.Attribute and n.func.attr == "decide"]
+    permits = [n for n in ast.walk(fn) if isinstance(n, ast.Call)
+               and type(n.func) is ast.Name and n.func.id == "ExecutionPermit"]
+    denies = []
+    for statement in fn.body:
+        if not isinstance(statement, ast.If):
+            continue
+        test = statement.test
+        if not (type(test) is ast.UnaryOp and type(test.op) is ast.Not
+                and type(test.operand) is ast.Attribute
+                and test.operand.attr == "allowed"
+                and type(test.operand.value) is ast.Name
+                and test.operand.value.id == "decision"):
+            continue
+        if any(type(n) is ast.Raise for child in statement.body for n in ast.walk(child)):
+            denies.append(statement)
+    return (len(decisions) == 1 and len(permits) == 1 and len(denies) == 1
+            and decisions[0].lineno < denies[0].lineno < permits[0].lineno)
+
+
 
 @dataclass(frozen=True)
 class InventoryVerdict:
@@ -110,6 +165,21 @@ def inspect_static_shape(path: str, source: str) -> bool:
                 if type(node) is ast.Call and type(node.func) is ast.Name:
                     if node.func.id in _FORBIDDEN_CALLS:
                         return False
+            expected_calls = EXPECTED_ORDERED_CALLS.get((path, cname, method))
+            if expected_calls is not None:
+                calls = _static_call_names(fn)
+                indices = [i for i, name in enumerate(calls) if name in expected_calls]
+                observed = tuple(calls[i] for i in indices)
+                # Exact expected call names may be repeated in real code
+                # (ScopePolicy checks both explicit host & network). Require
+                # canonical first-occurrence order without banning repeats.
+                first = tuple(next((i for i, name in enumerate(calls) if name == expected), -1)
+                              for expected in expected_calls)
+                if -1 in first or first != tuple(sorted(first)):
+                    return False
+            if (path, cname, method) == ("src/lightup/activation.py", "ActivationGate", "issue"):
+                if not _has_early_scope_denial(fn):
+                    return False
     return True
 
 
