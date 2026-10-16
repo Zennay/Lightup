@@ -50,7 +50,9 @@ def _canonical_tuple(values: object, *, allow_empty: bool) -> bool:
             return False
         if not value or len(value) > _MAX_ITEM_LENGTH or value != value.strip():
             return False
-        if any(ord(char) < 32 or ord(char) == 127 for char in value):
+        # Embedded and non-ASCII whitespace is never a canonical asset ID.
+        # Exact built-in str only: no attacker-supplied __str__/comparison.
+        if any(char.isspace() or ord(char) < 32 or ord(char) == 127 for char in value):
             return False
     return True
 
