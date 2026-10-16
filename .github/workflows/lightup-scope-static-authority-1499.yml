@@ -7,11 +7,13 @@ on:
     paths:
       - 'tools/scope_authority_source_inventory_1499.py'
       - 'tests/test_scope_static_authority_1499.py'
+      - 'docs/scope-authority-static-inventory-1499.md'
       - '.github/workflows/lightup-scope-static-authority-1499.yml'
   pull_request:
     paths:
       - 'tools/scope_authority_source_inventory_1499.py'
       - 'tests/test_scope_static_authority_1499.py'
+      - 'docs/scope-authority-static-inventory-1499.md'
       - '.github/workflows/lightup-scope-static-authority-1499.yml'
   workflow_dispatch:
 
