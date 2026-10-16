@@ -94,4 +94,4 @@ The additive `tests/test_lab_session_lineage_1487_20261016.py` contains **18 ind
 PYTHONPATH=src python -m unittest tests.test_lab_session_lineage_1487_20261016 -v
 ```
 
-W5 now has **68 owned test methods in six new tests files**: original 50 (44 ordinary + 6 intentional OPEN source expected-RED) plus 18 new self-contained ordinary methods. **This is a planned code count, not evidence of CI success**; rely only on latest immutable-head hosted Python 3.11/3.14 raw logs, distinguish the existing #301 unrelated expired fixture and the canonical self-hosted VPS lane. Do not merge, wire to ActivationGate, deploy, or claim customer/operator consent.
+W5 now has **68 owned test methods in five new test files**: original 50 (44 ordinary + 6 intentional OPEN source expected-RED) plus 18 new self-contained ordinary methods. **This is a planned code count, not evidence of CI success**; rely only on latest immutable-head hosted Python 3.11/3.14 raw logs, distinguish the existing #301 unrelated expired fixture and the canonical self-hosted VPS lane. Do not merge, wire to ActivationGate, deploy, or claim customer/operator consent.
