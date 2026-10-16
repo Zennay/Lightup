@@ -213,3 +213,23 @@ operator consent, revocation at use, privacy/security review, owner
 source fixes, full hosted AND actual registered permanent VPS green,
 and explicit human GO remain mandatory. **DRAFT/HOLD; no merge,
 deployment, scans, targets, grants or handler execution.**
+
+## W7 — guarded execution of both real CLI main functions
+
+The new
+`tests/test_fictional_lab_capability_cli_process_boundary_1511.py`
+calls both **real single and batch CLI `main()`** entrypoints with
+synthetic in-memory stdin and capture-only stdout, after monkeypatching
+common Python filesystem open/write/mutation, socket and subprocess
+constructors to fail immediately if used. Checks cover valid fictional
+review, untrusted malformed/corrupt/overlong input, no user-data echo,
+fixed generic statuses and **never exit 0**.
+
+This is ordinary in-process Python instrumentation of the exact own
+entrypoints, **not a comprehensive kernel syscall sandbox or a proof about
+the deployed Nginx/Gunicorn ingress**. No user files, targets, network
+hosts, real client/operator grants or execution handlers are accessed.
+
+The owned Python3.11/3.14 pinned read-only workflow now includes
+these tests and the owned-file isolation inventory. Remains
+**PLAN/LAB ONLY, DRAFT/HOLD**.
