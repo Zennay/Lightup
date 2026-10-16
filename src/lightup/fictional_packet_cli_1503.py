@@ -91,7 +91,14 @@ def build_fictional_pinned_cli_envelope(
     return encoded if len(encoded) <= _INPUT_LIMIT else None
 
 
-def _parse_request(payload: bytes) -> CopyReview:
+def _parse_request(payload: bytes, *, pinned_only: bool = False) -> CopyReview:
+    """Parse strict synthetic schema; pinned-only mode refuses legacy v1.
+
+    pinned_only is an internal exact built-in bool, not a user-supplied flag.
+    The default preserves v1 tests and backwards compatibility.
+    """
+    if type(pinned_only) is not bool:
+        return CopyReview("HOLD")
     if type(payload) is not bytes or not 1 <= len(payload) <= _INPUT_LIMIT:
         return CopyReview("HOLD")
     try:
@@ -106,7 +113,7 @@ def _parse_request(payload: bytes) -> CopyReview:
         if type(schema) is not str:
             return CopyReview("HOLD")
         if schema == _SCHEMA:
-            if tuple(request) != _KEYS:
+            if pinned_only or tuple(request) != _KEYS:
                 return CopyReview("HOLD")
         elif schema == _PINNED_SCHEMA:
             if (
@@ -168,14 +175,16 @@ def _render(review: CopyReview) -> bytes:
     )
 
 
-def main() -> int:
-    """Read stdin exactly once, never output untrusted text or success exit 0."""
+def _run_cli(*, pinned_only: bool) -> int:
+    """One bounded stdin transaction; never return success exit 0."""
+    if type(pinned_only) is not bool:
+        pinned_only = True
     try:
         if len(sys.argv) != 1:
             rendered = _HOLD
         else:
             payload = sys.stdin.buffer.read(_INPUT_LIMIT + 1)
-            rendered = _render(_parse_request(payload))
+            rendered = _render(_parse_request(payload, pinned_only=pinned_only))
     except (OSError, ValueError, TypeError, AttributeError, UnicodeError, RecursionError):
         rendered = _HOLD
     try:
@@ -186,6 +195,16 @@ def main() -> int:
     except (BrokenPipeError, OSError, ValueError, AttributeError, TypeError):
         return 3
     return 2 if rendered != _HOLD else 3
+
+
+def main() -> int:
+    """Legacy-compatible fictional-only CLI (unpinned and pinned review)."""
+    return _run_cli(pinned_only=False)
+
+
+def main_pinned() -> int:
+    """Pinned-only fictional review: explicitly reject schema downgrade to v1."""
+    return _run_cli(pinned_only=True)
 
 
 if __name__ == "__main__":
