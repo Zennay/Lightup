@@ -62,6 +62,13 @@ Ten new genuine in-memory/serialized CLI regressions cover collision, reversed o
 
 Five further ordinary acceptance methods prove **permutation independence**: 24 orders each of four in-memory claims (ambiguous => HOLD, disjoint => REVIEW_ONLY), six orders each of three canonical JSON CLI claims, and preserved original source objects even after repeated denial. Every output still holds the literal four false authority flags; there is no partial count or trusted source implication. The dedicated workflow enforces an exact 150-method inventory on hosted Python 3.11 and 3.14 and executes the real fictional stdin CLI sample with nonzero exit status.
 
+## W12 — Real negative stdin CI samples (both Python versions)
+Two more wholly fictional checked-in JSON inputs are now covered by an **actual CLI subprocess** on Python 3.11 and 3.14, not just calls to `evaluate_bytes`:
+- `examples/fictional_cross_grant_collision_1493.json` contains two separately coherent grants claiming the **same** synthetic `app.example.test`/`web-baseline` pair under distinct IDs. The real executable must return **HOLD**, `reviewed=0`, reason `COHERENCE_DENIED`, all four authority fields false, and exit **2**.
+- `examples/fictional_cross_grant_forged_authority_1493.json` contains an extra `authorized: true` field inserted into a fictional candidate. The real executable must refuse the unknown field with **HOLD**, `reviewed=0`, reason `INVALID_INPUT`, all four authority fields false, and exit **3**.
+
+The isolated matrix also checks the original internally coherent fictional sample (only REVIEW_ONLY, never authority, exit 2); all three samples use `.example.test` and `SYNTH-` identities. No targets, credential reads, scans, handlers, revocation processing or production release occur.
+
 ## Still RED / human-controlled release gates
 - Genuine linkage to the authenticated operator, canonical client and engagement, approved asset/capability, signed decision and durable trusted row, *not* equality of two caller-supplied strings.
 - Proof of current revocation and revalidation at use time, including atomic proof that approval cannot be replayed against another run or tool. Coordinate with original source owners #99/#100, #1491/#1492 and executor chain without editing their files/branches.
