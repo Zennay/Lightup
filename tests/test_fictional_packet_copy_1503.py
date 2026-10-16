@@ -13,6 +13,8 @@ from unittest.mock import patch
 from lightup.fictional_packet_copy_1503 import (
     CopyReview,
     compare_fictional_packet_copies,
+    compare_fictional_packet_fanout,
+    build_fictional_copy_packet,
 )
 
 FIELDS = (
@@ -206,6 +208,172 @@ class FictionalPacketCopyTests(unittest.TestCase):
                 continue
             with self.subTest(file=path.relative_to(root)):
                 self.assertNotIn("fictional_packet_copy_1503", path.read_text(encoding="utf-8"))
+
+
+    def test_canonical_builder_produces_exact_reserved_fictional_bytes(self):
+        raw = build_fictional_copy_packet(
+            "alpha.example.test", "REVIEW_REQUIRED",
+            ("metadata_read", "report_preview"),
+        )
+        self.assertIs(type(raw), bytes)
+        self.assertEqual(raw, CANONICAL)
+        self.assertEqual(compare_fictional_packet_copies(raw, raw).status, "REVIEW_ONLY")
+
+    def test_builder_exhaustively_matches_existing_canonical_oracle(self):
+        for asset, message, capabilities in itertools.product(
+            ("a.example.test", "fictional-7.example.test", "alpha.example.test"),
+            ("REVIEW_REQUIRED", "REVIEW_ON_HOLD"),
+            (("metadata_read",), ("metadata_read", "report_preview"),
+             ("metadata_read", "report_preview", "scope_review"),
+             ("report_preview", "scope_review")),
+        ):
+            with self.subTest(asset=asset, message=message, capabilities=capabilities):
+                result = build_fictional_copy_packet(asset, message, capabilities)
+                self.assertIs(type(result), bytes)
+                expected = packet([
+                    (k, {"asset": asset, "message": message,
+                         "capabilities": list(capabilities)}.get(k, v))
+                    for k, v in FIELDS
+                ])
+                self.assertEqual(result, expected)
+
+    def test_builder_rejects_noncanonical_and_real_asset_claims_atomically(self):
+        for asset in ("", "example.com", "client.com", "127.0.0.1",
+                      "xn--fake.example.test", "fake--alias.example.test",
+                      "bad-.example.test", "UPPER.example.test", "e\\u0301.example.test",
+                      "a.example.test.evil", "a" * 33 + ".example.test"):
+            with self.subTest(asset=asset):
+                self.assertIsNone(build_fictional_copy_packet(
+                    asset, "REVIEW_REQUIRED", ("metadata_read",)
+                ))
+        for capabilities in ((), ("metadata_read", "metadata_read"),
+                             ("scope_review", "metadata_read"),
+                             ("exploit",), ("metadata_read", "exploit"),
+                             ("metadata_read",) * 4):
+            with self.subTest(capabilities=capabilities):
+                self.assertIsNone(build_fictional_copy_packet(
+                    "alpha.example.test", "REVIEW_REQUIRED", capabilities
+                ))
+
+    def test_builder_rejects_dynamic_type_callbacks_without_invocation(self):
+        class AlienText(str):
+            def __str__(self):
+                raise AssertionError("unsafe string coercion")
+        class AlienTuple(tuple):
+            def __iter__(self):
+                raise AssertionError("unsafe tuple iteration")
+        class AlienItem(str):
+            def __eq__(self, other):
+                raise AssertionError("unsafe equality")
+        for args in (
+            (AlienText("alpha.example.test"), "REVIEW_REQUIRED", ("metadata_read",)),
+            ("alpha.example.test", AlienText("REVIEW_REQUIRED"), ("metadata_read",)),
+            ("alpha.example.test", "REVIEW_REQUIRED", AlienTuple(("metadata_read",))),
+            ("alpha.example.test", "REVIEW_REQUIRED", (AlienItem("metadata_read"),)),
+            ("alpha.example.test", "REVIEW_REQUIRED", ["metadata_read"]),
+            ("alpha.example.test", "REVIEW_REQUIRED", None),
+            ("alpha.example.test", "REVIEW_REQUIRED", ("metadata_read", True)),
+            ("alpha.example.test", "REVIEW_REQUIRED", ("metadata_read", 7)),
+        ):
+            self.assertIsNone(build_fictional_copy_packet(*args))
+
+    def test_builder_does_not_accept_authority_fields_or_claim_validation(self):
+        with self.assertRaises(TypeError):
+            build_fictional_copy_packet(
+                "alpha.example.test", "REVIEW_REQUIRED", ("metadata_read",),
+                authorized=True,
+            )
+        self.assertIsNone(build_fictional_copy_packet(
+            "alpha.example.test", "APPROVED", ("metadata_read",)
+        ))
+        raw = build_fictional_copy_packet(
+            "alpha.example.test", "REVIEW_ON_HOLD", ("scope_review",)
+        )
+        obj = json.loads(raw)
+        for key in ("authorized", "consent_verified", "dispatch_allowed", "release_allowed"):
+            self.assertIs(obj[key], False)
+
+    def test_fanout_review_one_and_sixteen_copies_digest_only(self):
+        for count in (1, 2, 8, 16):
+            with self.subTest(count=count):
+                copies = (CANONICAL,) * count
+                actual = compare_fictional_packet_fanout(CANONICAL, copies)
+                self.assertEqual(actual.status, "REVIEW_ONLY")
+                self.assertEqual(actual.sha256, hashlib.sha256(CANONICAL).hexdigest())
+                self.assertIs(actual.authorized, False)
+                self.assertIs(actual.consent_verified, False)
+                self.assertIs(actual.dispatch_allowed, False)
+                self.assertIs(actual.release_allowed, False)
+
+    def test_fanout_empty_oversized_and_non_tuple_held(self):
+        class UntrustedTuple(tuple):
+            def __iter__(self):
+                raise AssertionError("alien iteration callback")
+        cases = ((), (CANONICAL,) * 17, [CANONICAL], "fake",
+                 UntrustedTuple((CANONICAL,)), None, b"fake")
+        for candidate in cases:
+            verdict = compare_fictional_packet_fanout(CANONICAL, candidate)
+            self.assertEqual((verdict.status, verdict.sha256), ("HOLD", None))
+
+    def test_fanout_atomic_hold_at_every_receiver_position(self):
+        bad = CANONICAL.replace(b"alpha.example.test", b"client.example.test")
+        for count in (1, 2, 8, 16):
+            for position in range(count):
+                with self.subTest(count=count, position=position):
+                    copies = (CANONICAL,) * position + (bad,) + (
+                        CANONICAL,) * (count - position - 1)
+                    verdict = compare_fictional_packet_fanout(CANONICAL, copies)
+                    self.assertEqual((verdict.status, verdict.sha256), ("HOLD", None))
+                    self.assertIs(verdict.release_allowed, False)
+
+    def test_fanout_rejects_malformed_late_receiver_without_partial_digest(self):
+        for bad in (None, b"", bytearray(CANONICAL), CANONICAL + b"\\n",
+                    CANONICAL.replace(b"false", b"true"),
+                    CANONICAL.replace(b"REVIEW_REQUIRED", b"APPROVED")):
+            result = compare_fictional_packet_fanout(
+                CANONICAL, (CANONICAL,) * 15 + (bad,)
+            )
+            self.assertEqual((result.status, result.sha256), ("HOLD", None))
+
+    def test_fanout_invalid_baseline_and_forged_subclass_held(self):
+        class ByteSubclass(bytes):
+            pass
+        for original in (None, b"", CANONICAL + b" ",
+                         ByteSubclass(CANONICAL), b"private.example.com"):
+            verdict = compare_fictional_packet_fanout(original, (CANONICAL,))
+            self.assertEqual((verdict.status, verdict.sha256), ("HOLD", None))
+        verdict = compare_fictional_packet_fanout(
+            CANONICAL, (ByteSubclass(CANONICAL),)
+        )
+        self.assertEqual((verdict.status, verdict.sha256), ("HOLD", None))
+
+    def test_fanout_matches_pairwise_review_on_valid_single_copy(self):
+        for original, received in (
+            (CANONICAL, CANONICAL),
+            (CANONICAL, CANONICAL.replace(b"report_preview", b"scope_review")),
+            (b"broken", CANONICAL),
+            (CANONICAL, CANONICAL + b" "),
+        ):
+            with self.subTest(original=original[:16], received=received[:16]):
+                self.assertEqual(
+                    compare_fictional_packet_fanout(original, (received,)),
+                    compare_fictional_packet_copies(original, received),
+                )
+
+    def test_builder_and_fanout_no_io_or_external_callbacks(self):
+        with patch("builtins.open", side_effect=AssertionError("file IO")), \\
+             patch("socket.socket", side_effect=AssertionError("network IO")), \\
+             patch("sqlite3.connect", side_effect=AssertionError("DB IO")), \\
+             patch("subprocess.Popen", side_effect=AssertionError("process IO")):
+            made = build_fictional_copy_packet(
+                "alpha.example.test", "REVIEW_REQUIRED",
+                ("metadata_read", "report_preview")
+            )
+            self.assertEqual(made, CANONICAL)
+            self.assertEqual(compare_fictional_packet_fanout(made, (made,) * 16).status,
+                             "REVIEW_ONLY")
+            self.assertEqual(compare_fictional_packet_fanout(made, (made, b"bad")).status,
+                             "HOLD")
 
 if __name__ == "__main__":
     unittest.main()
