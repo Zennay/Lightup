@@ -78,6 +78,23 @@ class FictionalScopeIsolationTests(TestCase):
             with self.subTest(source=source):
                 self.assertFalse(_imports_owned_module(ast.parse(source)))
 
+    def test_dedicated_ci_never_targets_authorized_execution_or_self_hosted(self):
+        workflow = ROOT / ".github" / "workflows" / "scope-fictional-delta-1501.yml"
+        content = workflow.read_text(encoding="utf-8")
+        self.assertIn("  pull_request:", content)
+        self.assertIn("  workflow_dispatch:", content)
+        self.assertNotIn("  push:", content)
+        self.assertIn("runs-on: ubuntu-latest", content)
+        self.assertNotIn("runs-on: self-hosted", content)
+        self.assertIn("permissions:\n  contents: read", content)
+        self.assertIn("cancel-in-progress: true", content)
+        self.assertIn("lightup-1501-synthetic-", content)
+        self.assertIn("docs/examples/scope-fictional-*-1501.json", content)
+        self.assertIn("test_fictional_scope_delta*_1501.py", content)
+        self.assertNotIn("workflow_call:", content)
+        self.assertNotIn("schedule:", content)
+        self.assertNotIn("deployment:", content)
+
     def test_review_modules_have_no_active_source_or_external_io_imports(self):
         for name in OWNED:
             with self.subTest(file=name):
