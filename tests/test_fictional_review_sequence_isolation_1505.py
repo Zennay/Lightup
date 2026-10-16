@@ -87,10 +87,12 @@ class TestFictionalReviewModuleIsolation(unittest.TestCase):
     def test_own_ci_stays_hosted_readonly_path_filtered_and_no_deploy(self):
         content = (ROOT / ".github/workflows/scope-fictional-review-sequence-1505.yml").read_text()
         for required in ("pull_request:", "paths:", "permissions:\n  contents: read",
-                         "runs-on: ubuntu-latest", "3.11", "3.14",
+                         "runs-on: ubuntu-latest", "timeout-minutes: 10",
+                         "persist-credentials: false", "3.11", "3.14",
                          "test_fictional_review_sequence*_1505.py"):
             self.assertIn(required, content)
-        for forbidden in ("runs-on: self-hosted", "secrets.", "deploy:", "push:", "write-all",
+        for forbidden in ("runs-on: self-hosted", "secrets.", "deploy:", "push:",
+                          "pull_request_target:", "id-token: write", "write-all",
                           "contents: write", "sudo "):
             self.assertNotIn(forbidden, content)
 
