@@ -1,29 +1,34 @@
-"""Bounded, non-authorizing quarantine for *fictional* scope-review handoff notes.
+"""Isolated canonical, fictional scope-review note quarantine.
 
-This is a deliberately conservative privacy linter, NOT a reliable secret detector,
-permission verifier, sanitizer, or a gate connected to LightUp runtime.
+This is a *non-authorizing*, intentionally narrow review preflight, not a
+general-purpose PII/secret scanner or a proof that a note is safe to publish.
+Only specially formatted examples in the reserved example.test namespace can
+ever receive REVIEW_ONLY. Arbitrary pasted free text is always HOLD.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import re
 
 _MAX_NOTES = 16
 _MAX_NOTE_BYTES = 4096
 _MAX_TOTAL_BYTES = 32768
-_ALLOWED_CHARS = re.compile(r"[A-Za-z0-9 .;:,=_()!\-\n]+\Z")
-_DOTTED_NAME = re.compile(r"(?<![A-Za-z0-9_.-])[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+(?![A-Za-z0-9_.-])")
-_RESERVED_HOST = re.compile(r"(?:[a-z]|[a-z][a-z0-9-]{0,61}[a-z0-9])\.example\.test\Z")
-_IPV4_SHAPE = re.compile(r"(?<![A-Za-z0-9])(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?![A-Za-z0-9])")
-_IPV6_SHAPE = re.compile(r"(?:[0-9A-Fa-f]{0,4}:){2,}[0-9A-Fa-f]{0,4}")
-_SECRET_HINT = re.compile(
-    r"(?i)(?:\b(?:password|passwd|secret|bearer|token|cookie|api[_-]?key|private[_-]?key|access[_-]?token|client[_-]?secret|session[_-]?id)\b|\b(?:sk-[A-Za-z0-9_-]+|gh[pousr]_[A-Za-z0-9]+|github_pat_[A-Za-z0-9_]+|AKIA[0-9A-Z]{16}))"
+
+# Accept one complete, explicitly fictional record: never "find" a good-looking
+# substring inside attacker-controlled notes. Canonical grammar is deliberately
+# much narrower than the production asset/capability model.
+_CANONICAL_NOTE = re.compile(
+    r"\AAsset (?P<host>(?:[a-z]|[a-z][a-z0-9-]{0,61}[a-z0-9])\.example\.test); "
+    r"capability (?P<capability>[a-z][a-z0-9_]{0,47}); proposed risk (?P<risk>[1-5])\.\Z"
 )
-_AUTHORITY_CLAIM = re.compile(
-    r"(?i)\b(?:approved|authorized|approval[ ]+granted|consent[ ]+granted|go[ ]+live|signed[ ]+off)\b"
+_FICTIONAL_CAPABILITIES = frozenset({
+    "header_read", "tls_review", "service_inventory", "passive_discovery",
+})
+_HOLD_NOTICE = "HOLD — offline handoff quarantined; no input echoed. NOT AUTHORIZED."
+_REVIEW_NOTICE = (
+    "REVIEW_ONLY — fictional notes still require independent human privacy "
+    "and scope review. NOT AUTHORIZED."
 )
-_GENERIC_HOLD = "HOLD — offline handoff quarantined; no input echoed. NOT AUTHORIZED."
-_REVIEW = "REVIEW_ONLY — fictional notes still require independent human privacy and scope review. NOT AUTHORIZED."
 
 
 @dataclass(frozen=True)
@@ -31,45 +36,52 @@ class DisclosureVerdict:
     status: str
     notice: str
     reviewed_notes: int
-    authorized: bool = False
-    consent_verified: bool = False
-    dispatch_allowed: bool = False
-    release_allowed: bool = False
+    # Cannot even pass authority flags to this class's constructor. This is an
+    # output-shape guard, not cryptographic integrity or permission enforcement.
+    authorized: bool = field(default=False, init=False)
+    consent_verified: bool = field(default=False, init=False)
+    dispatch_allowed: bool = field(default=False, init=False)
+    release_allowed: bool = field(default=False, init=False)
 
 
 def _hold() -> DisclosureVerdict:
-    return DisclosureVerdict("HOLD", _GENERIC_HOLD, 0)
+    return DisclosureVerdict("HOLD", _HOLD_NOTICE, 0)
 
 
 def review_fictional_handoff_notes(notes: object) -> DisclosureVerdict:
-    """Review 1..16 exact strings; return immutable metadata ONLY.
+    """Atomically review 1–16 exact builtin strings, without source-text echo.
 
-    No untrusted note content, rejected host, credential-like value or detailed
-    rejection reason is returned. False negatives remain possible: REVIEW_ONLY
-    NEVER means safe to publish, let alone authorization to execute.
+    REVIEW_ONLY is solely a fictional-format check. It is never authorization
+    to publish, issue grants, scan, execute, dispatch, or treat notes as consent.
+    On *any* malformed or conflicting record, return the same generic HOLD.
     """
     if type(notes) is not tuple or not (1 <= len(notes) <= _MAX_NOTES):
         return _hold()
-    total = 0
+
+    total_bytes = 0
+    seen = set()
     for note in notes:
-        if type(note) is not str or not note.strip():
+        if type(note) is not str or not note:
             return _hold()
         try:
-            raw = note.encode("ascii", "strict")
+            size = len(note.encode("ascii", "strict"))
         except UnicodeError:
             return _hold()
-        total += len(raw)
-        if len(raw) > _MAX_NOTE_BYTES or total > _MAX_TOTAL_BYTES:
+        total_bytes += size
+        if size > _MAX_NOTE_BYTES or total_bytes > _MAX_TOTAL_BYTES:
             return _hold()
-        if not _ALLOWED_CHARS.fullmatch(note) or "\r" in note or "\x00" in note:
+
+        parsed = _CANONICAL_NOTE.fullmatch(note)
+        if parsed is None:
             return _hold()
-        if (_SECRET_HINT.search(note) or _AUTHORITY_CLAIM.search(note)
-                or _IPV4_SHAPE.search(note) or _IPV6_SHAPE.search(note)):
+        capability = parsed.group("capability")
+        if capability not in _FICTIONAL_CAPABILITIES:
             return _hold()
-        hosts = _DOTTED_NAME.findall(note)
-        if not hosts or any(_RESERVED_HOST.fullmatch(host) is None for host in hosts):
+        key = (parsed.group("host"), capability)
+        if key in seen:
+            # A repeated asset+capability with any risk is ambiguous and must
+            # not be represented as two independently accepted proposals.
             return _hold()
-        # Dotted punctuation cannot be used to smuggle a host split across tokens.
-        if ".." in note or ". " in note and re.search(r"\.[ ]+[A-Za-z0-9-]+\.", note):
-            return _hold()
-    return DisclosureVerdict("REVIEW_ONLY", _REVIEW, len(notes))
+        seen.add(key)
+
+    return DisclosureVerdict("REVIEW_ONLY", _REVIEW_NOTICE, len(notes))
