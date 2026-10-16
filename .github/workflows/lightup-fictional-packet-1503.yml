@@ -4,10 +4,14 @@ on:
   pull_request:
     paths:
       - 'src/lightup/fictional_packet_copy_1503.py'
+      - 'src/lightup/fictional_packet_cli_1503.py'
       - 'tests/test_fictional_packet_copy_1503.py'
+      - 'tests/test_fictional_packet_cli_1503.py'
       - 'docs/fictional_packet_copy_1503.md'
       - 'docs/examples/fictional-copy-1503.json'
       - 'docs/examples/fictional-copy-changed-1503.json'
+      - 'docs/examples/fictional-copy-cli-1503.json'
+      - 'docs/examples/fictional-copy-cli-held-1503.json'
       - '.github/workflows/lightup-fictional-packet-1503.yml'
   workflow_dispatch:
 
@@ -35,8 +39,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - name: Run only synthetic byte-copy tests (no scans)
+      - name: Run only synthetic byte-copy and offline CLI tests (no scans)
         env:
           PYTHONPATH: src
           PYTHONDONTWRITEBYTECODE: '1'
-        run: python -m unittest discover -s tests -p 'test_fictional_packet_copy_1503.py' -v
+        run: |
+          python -m unittest discover -s tests -p 'test_fictional_packet_copy_1503.py' -v
+          python -m unittest discover -s tests -p 'test_fictional_packet_cli_1503.py' -v
