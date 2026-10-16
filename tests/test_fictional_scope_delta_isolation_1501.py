@@ -44,19 +44,39 @@ def _imports_owned_module(tree: ast.AST) -> bool:
                 for alias in node.names
             ):
                 return True
+        elif isinstance(node, ast.Call) and node.args:
+            # A literal dynamic import can bypass ordinary import statements.
+            # Detect literal imports only; generated names or imported aliases
+            # cannot be proven absent by this offline syntax-only check.
+            fn = node.func
+            is_import = (
+                isinstance(fn, ast.Name) and fn.id in {"__import__", "import_module"}
+            ) or (
+                isinstance(fn, ast.Attribute)
+                and fn.attr == "import_module"
+                and isinstance(fn.value, ast.Name)
+                and fn.value.id == "importlib"
+            )
+            if is_import and isinstance(node.args[0], ast.Constant):
+                name = node.args[0].value
+                if type(name) is str and any(owned in name for owned in MODULES):
+                    return True
     return False
 
 
 class FictionalScopeIsolationTests(TestCase):
     def test_existing_production_sources_do_not_statically_import_new_review_code(self):
         self.assertEqual(len(OWNED), 2)
-        paths = tuple(PACKAGE.glob("*.py"))
+        paths = tuple(sorted(PACKAGE.rglob("*.py")))
         self.assertGreater(len(paths), 5)
+        self.assertTrue(any(path.parent != PACKAGE for path in paths),
+                        "Nested production packages must remain in the review set")
         for path in paths:
-            if path.name in OWNED:
+            if path.parent == PACKAGE and path.name in OWNED:
                 continue
-            with self.subTest(file=path.name):
-                tree = ast.parse(path.read_text(encoding="utf-8"), filename=path.name)
+            relative = str(path.relative_to(PACKAGE))
+            with self.subTest(file=relative):
+                tree = ast.parse(path.read_text(encoding="utf-8"), filename=relative)
                 self.assertFalse(
                     _imports_owned_module(tree),
                     "Original source unexpectedly imports synthetic reviewer",
@@ -70,6 +90,9 @@ class FictionalScopeIsolationTests(TestCase):
             "from .fictional_scope_delta_review_1501 import review_fictional_scope_delta",
             "import lightup.fictional_scope_delta_review_1501",
             "import lightup.fictional_scope_delta_cli_1501 as harmless_alias",
+            "importlib.import_module('lightup.fictional_scope_delta_review_1501')",
+            "from importlib import import_module\nimport_module('lightup.fictional_scope_delta_cli_1501')",
+            "__import__('lightup.fictional_scope_delta_review_1501')",
         )
         for source in should_detect:
             with self.subTest(source=source):
