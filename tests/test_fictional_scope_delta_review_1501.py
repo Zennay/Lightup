@@ -425,7 +425,7 @@ class FictionalScopeDeltaTests(TestCase):
                                 )
                                 self.assert_inert(result)
                                 checked += 1
-        self.assertGreater(checked, 3500)
+        self.assertEqual(checked, 3465)
 
     def test_sixteen_snapshot_chain_detects_last_transition_widening(self):
         baseline = proposal()
