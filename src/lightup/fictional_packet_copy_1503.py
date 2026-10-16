@@ -77,6 +77,9 @@ def _is_canonical_fictional_packet(raw: bytes) -> bool:
         asset = parsed["asset"]
         if type(asset) is not str or _ASSET.fullmatch(asset) is None:
             return False
+        label = asset[:-len(".example.test")]
+        if label.startswith("xn--") or "--" in label or label.endswith("-"):
+            return False
         if type(parsed["message"]) is not str or parsed["message"] not in _MESSAGES:
             return False
         capabilities = parsed["capabilities"]
