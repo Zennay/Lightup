@@ -1,0 +1,43 @@
+name: LightUp #1501 fictional scope delta offline review
+on:
+  pull_request:
+    paths:
+      - "src/lightup/fictional_scope_delta_review_1501.py"
+      - "src/lightup/fictional_scope_delta_cli_1501.py"
+      - "tests/test_fictional_scope_delta_review_1501.py"
+      - "tests/test_fictional_scope_delta_cli_1501.py"
+      - "docs/scope-fictional-proposal-delta-review-1501.md"
+      - "docs/examples/scope-fictional-*-1501.json"
+      - ".github/workflows/scope-fictional-delta-1501.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Dedicated to #1501. Never cancel canonical VPS jobs or other workers' CI.
+# A new PR head supersedes this reviewer's older hosted run only.
+concurrency:
+  group: lightup-1501-synthetic-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-review-only:
+    name: Isolated tests Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Synthetic reviewer tests only (never authorization)
+        env:
+          PYTHONPATH: src
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -m unittest discover -s tests -p 'test_fictional_scope_delta*_1501.py' -v
