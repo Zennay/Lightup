@@ -68,7 +68,7 @@ def _render(review: CopyReview) -> bytes:
         or review.release_allowed is not False
     ):
         return _HOLD
-    if review.status != "REVIEW_ONLY":
+    if type(review.status) is not str or review.status != "REVIEW_ONLY":
         return _HOLD
     digest = review.sha256
     if (
@@ -92,14 +92,14 @@ def main() -> int:
         else:
             payload = sys.stdin.buffer.read(_INPUT_LIMIT + 1)
             rendered = _render(_parse_request(payload))
-    except (OSError, ValueError, TypeError, UnicodeError, RecursionError):
+    except (OSError, ValueError, TypeError, AttributeError, UnicodeError, RecursionError):
         rendered = _HOLD
     try:
         written = sys.stdout.buffer.write(rendered)
         if type(written) is not int or written != len(rendered):
             return 3
         sys.stdout.buffer.flush()
-    except (BrokenPipeError, OSError, ValueError):
+    except (BrokenPipeError, OSError, ValueError, AttributeError, TypeError):
         return 3
     return 2 if rendered != _HOLD else 3
 
