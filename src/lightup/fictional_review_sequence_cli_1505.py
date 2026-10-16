@@ -79,11 +79,35 @@ def emit_review(result: ReviewOutcome) -> str:
     }, separators=(",", ":"), ensure_ascii=True)
 
 
+def _read_bounded_to_eof(reader: object) -> bytes:
+    """Read an entire finite fictional envelope, not just one fragmented read.
+
+    Even an exactly 8192-byte payload needs a final one-byte EOF check.  Never
+    request more than the remaining cap+1 and stop without further reads once
+    an overlong or non-builtin bytes chunk is observed.
+    """
+    fragments: list[bytes] = []
+    total = 0
+    while True:
+        allowance = _MAX_BYTES + 1 - total
+        if allowance <= 0:
+            raise ValueError("oversized fictional input")
+        chunk = reader.read(allowance)
+        if type(chunk) is not bytes or len(chunk) > allowance:
+            raise ValueError("noncanonical stdin chunk")
+        if not chunk:
+            return b"".join(fragments)
+        total += len(chunk)
+        if total > _MAX_BYTES:
+            raise ValueError("oversized fictional input")
+        fragments.append(chunk)
+
+
 def main() -> int:
     result = ReviewOutcome("HOLD")
     if len(sys.argv) == 1:
         try:
-            result = parse_fictional_stdin(sys.stdin.buffer.read(_MAX_BYTES + 1))
+            result = parse_fictional_stdin(_read_bounded_to_eof(sys.stdin.buffer))
         except (OSError, ValueError, TypeError):
             result = ReviewOutcome("HOLD")
     rendered = emit_review(result)
