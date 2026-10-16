@@ -206,6 +206,34 @@ class LifetimeReviewTests(unittest.TestCase):
         self.assertIs(receipt.status, LifetimeStatus.REVIEW_ONLY)
         self.check_no_authority(receipt)
 
+    def test_uninitialized_gate_is_not_pinned(self):
+        uninitialized = object.__new__(ActivationGate)
+        self.assertIsNone(pin_gate_for_offline_review(uninitialized))
+        self.assertIs(
+            review_gate_lifetime(uninitialized, object()).status,
+            LifetimeStatus.HOLD,
+        )
+
+    def test_deleted_gate_policy_field_is_generic_hold(self):
+        g = gate()
+        pin = pin_gate_for_offline_review(g)
+        del g.activation_policy
+        receipt = review_gate_lifetime(g, pin)
+        self.assertIs(receipt.status, LifetimeStatus.HOLD)
+        self.check_no_authority(receipt)
+        self.assertIsNone(pin_gate_for_offline_review(g))
+
+    def test_deleted_nested_fields_hold_without_exception(self):
+        for deleted_field in ("explicit_hosts", "allow_private_lab"):
+            with self.subTest(deleted_field=deleted_field):
+                g = gate()
+                pin = pin_gate_for_offline_review(g)
+                object.__delattr__(g.scope_policy, deleted_field)
+                receipt = review_gate_lifetime(g, pin)
+                self.assertIs(receipt.status, LifetimeStatus.HOLD)
+                self.check_no_authority(receipt)
+                self.assertIsNone(pin_gate_for_offline_review(g))
+
     def test_receipt_and_snapshot_repr_never_repeat_raw_policy_data(self):
         secret = "FAKE-CONFIDENTIAL-" + "X" * 70
         g = gate(
