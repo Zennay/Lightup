@@ -10,7 +10,7 @@ permissions:
   contents: read
 jobs:
   strict-offline-review:
-    name: Offline 35-method review / Python ${{ matrix.python-version }}
+    name: Offline 53-method review / Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
@@ -37,8 +37,8 @@ jobs:
               pattern='test_cross_grant_lineage_review_1493.py',
           )
           count = suite.countTestCases()
-          if count != 35:
-              raise SystemExit(f'ISOLATED_1493 wrong test inventory: {count}, expected 35')
+          if count != 53:
+              raise SystemExit(f'ISOLATED_1493 wrong test inventory: {count}, expected 53')
           result = unittest.TextTestRunner(verbosity=2).run(suite)
           print('ISOLATED_1493', {
               'tests': result.testsRun,
@@ -48,6 +48,6 @@ jobs:
               'expected_failures': len(result.expectedFailures),
               'unexpected_successes': len(result.unexpectedSuccesses),
           })
-          if not result.wasSuccessful() or result.testsRun != 35 or result.skipped or result.expectedFailures:
+          if not result.wasSuccessful() or result.testsRun != 53 or result.skipped or result.expectedFailures:
               raise SystemExit('ISOLATED_1493: HOLD (non-success or masked tests)')
           PY
