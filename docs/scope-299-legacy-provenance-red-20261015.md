@@ -83,3 +83,27 @@ The independent `tests/test_scope_299_legacy_pair_review_20261016.py` adds **18 
 When both purely synthetic shapes are canonical, exact byte-for-byte *decoded string* equality gives `unchanged_shape_only` (exit 2); a different owner or reference gives `provenance_changed` (exit 2). Both results are bounded, deterministic and **always HOLD** with six `false` authority flags; neither is trusted customer consent, authenticated issuer provenance, revocation/current-grant evidence, scope permission, operator step-up or authorization. No raw values, tokens, targets, exception text or file paths are echoed. A matching user-controlled pair cannot prove immutability in the persistent issuer's records.
 
 This W5 scope deliberately does **not** change source-owned `ActivationGate`/`ScopePolicy`/`ToolExecutor`, issue #1433's grant-amendment owner, other workers, CI workflows or runtime deployment. It creates an independent privacy-minimal *legacy owner/reference field* differential diagnostic only. All real authorization closure still belongs to #100/#105/#107 and the independent gate owners. DRAFT/HOLD, no merge, deploy, grant, scan or target interaction.
+
+## W6 — installed-source permit lineage closure and scoped owner handoff
+
+Issue [#299](https://github.com/Zennay/Lightup/issues/299) explicitly requires **distinct client authorization reference** on every `AUTHORIZED` permit and **no client authorization reference** on lab-only permits. The original W1–W5 tests proved public-scope admission defects but did not yet assert those two permit-field invariants directly.
+
+Four additional precisely classified installed-source `@expectedFailure` requirements now cover:
+1. `Authorization.is_current()` must fail closed on empty owner, even for otherwise current time windows;
+2. `Authorization.is_current()` must fail closed on a dict-typed reference;
+3. a synthetic `AUTHORIZED` public-host permit must separately expose `authorization_reference="FICTIONAL-CLIENT-NOT-A-GRANT"`, NOT just the distinct operator `activation_reference`;
+4. the same separation must hold for explicitly authorized public networks.
+
+Two additional ordinary controls prove `LAB_ONLY` can issue only an inert **loopback, no-client-authorization** permit without fabricating `authorization_reference`, and prove a canonical client `Authorization` stays current without mutating its fields. **Both modes construct only pure data and never call a handler, target or network**. The strict independent RED replay-oracle is updated from 21 to **27** real source acceptance cases (11 normal PASS + 16 intentional installed-source RED), plus the oracle itself = **28 top-level installed-source methods**. All own cases remain intentionally non-release evidence until source remediations are independently validated.
+
+### Cross-branch source owner evidence (read-only)
+
+Read-only inspection compared the current `main` installed source to active [source-owner PR #100](https://github.com/Zennay/Lightup/pull/100) exact HEAD `ef553b6e0aa0c99855e9907f4b2dee9edc5aac0f`:
+- `main` has no `ExecutionPermit.authorization_reference`, while #100 **already declares it** and passes the client `target.authorization.reference` into its inert `AUTHORIZED` permit; the client/reference *separation* piece is therefore **implemented on the other owner branch but not on main**, **not merged**, and cannot be misreported as a new production fix from this PR.
+- Both currently inspected `Authorization.is_current` variants still focus on time (and #100 revocation) without canonical owner/reference validation. This **remaining #299 source rejection defect belongs to #100/#105 owners**.
+- #100 adds asset and revocation checks; source-owner acceptance should retain those and not accidentally regress per-asset binding/revocation while adding canonical legacy provenance checks.
+- `main` returns loopback scope without client authorization; `LAB_ONLY` issues `authorization_reference=None` on #100 as explicit separate field. Preserve this difference from true `AUTHORIZED` client provenance.
+- The separate [#107 source-owner PR](https://github.com/Zennay/Lightup/pull/107) remains OPEN/DRAFT; live grant validity remains a separate time-of-use release prerequisite, even if canonical shape is fixed.
+- The acceptance tests on this branch intentionally import **current `main` source**, not unmerged #100, so the `authorization_reference` RED represents **main's integration debt**, whereas the legacy provenance REDs additionally identify #100's unfinished source hardening. Owner should re-run/convert appropriate tests on their exact integrated SHA without rebasing or writing from this worker.
+
+**Owner-only correction checklist:** require exact built-in trimmed, nonempty `owner` and `reference` before any public allow/permit; retain trusted asset/tenant/grant binding, valid-time/revocation and independent operator approval; populate distinct permit references for `AUTHORIZED` and none for lab-only; turn expected REDs into normal PASS only after source fix and log the actual exact-head CI/VPS proof. No real target, consent, grant, deployment, merge or active test is authorized by this document.
