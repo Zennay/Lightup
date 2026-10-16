@@ -6,6 +6,7 @@ A REVIEW_ONLY result is never a grant, verified consent, or release approval.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from unicodedata import category
 
 from .engagements import ScopeDefinition
 
@@ -60,9 +61,10 @@ def _canonical_tuple(values: object, *, allow_empty: bool) -> bool:
             return False
         if not value or len(value) > _MAX_ITEM_LENGTH or value != value.strip():
             return False
-        # Embedded and non-ASCII whitespace is never a canonical asset ID.
-        # Exact built-in str only: no attacker-supplied __str__/comparison.
-        if any(char.isspace() or ord(char) < 32 or ord(char) == 127 for char in value):
+        # Exact built-in strings only. Unicode C* includes controls, format
+        # characters (bidi/zero-width), surrogates, private-use, unassigned.
+        # Do not silently normalize or reinterpret identity/alias authority.
+        if any(char.isspace() or category(char).startswith("C") for char in value):
             return False
     return True
 
