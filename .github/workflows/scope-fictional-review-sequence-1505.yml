@@ -13,6 +13,7 @@ on:
       - 'src/lightup/fictional_review_sequence_linked_1505.py'
       - 'src/lightup/fictional_review_sequence_linked_cli_1505.py'
       - 'src/lightup/fictional_review_sequence_tip_1505.py'
+      - 'src/lightup/fictional_review_sequence_tip_cli_1505.py'
       - 'tests/test_fictional_review_sequence_1505.py'
       - 'tests/test_fictional_review_sequence_cli_1505.py'
       - 'tests/test_fictional_review_sequence_compare_1505.py'
@@ -31,12 +32,14 @@ on:
       - 'tests/test_fictional_review_sequence_linked_cli_1505.py'
       - 'tests/test_fictional_review_sequence_linked_matrix_1505.py'
       - 'tests/test_fictional_review_sequence_tip_1505.py'
+      - 'tests/test_fictional_review_sequence_tip_cli_1505.py'
       - 'docs/scope-fictional-review-sequence-1505.md'
       - 'docs/examples/fictional-sequence-1505-*.json'
       - 'docs/examples/fictional-pair-1505-*.json'
       - 'docs/examples/fictional-segments-1505-*.json'
       - 'docs/examples/fictional-anchor-1505-*.json'
       - 'docs/examples/fictional-links-1505-*.json'
+      - 'docs/examples/fictional-tip-1505-*.json'
       - '.github/workflows/scope-fictional-review-sequence-1505.yml'
   workflow_dispatch:
 
