@@ -91,15 +91,10 @@ class FictionalPacketCopyTests(unittest.TestCase):
     def test_real_assets_urls_and_confusables_held(self):
         for value in ("example.com", "alpha.example.test.evil", "192.168.0.1",
                       "http://alpha.example.test", "xn--test.example.test",
-                      "a--b.example.test"):
+                      "a--b.example.test", "ends-.example.test"):
             with self.subTest(value=value):
                 candidate = packet([(k, value if k == "asset" else v) for k, v in FIELDS])
-                # Invalid pseudo-IDNA has a syntactically legal appearance but
-                # no Unicode decoding/provenance; only exact fictional syntax is claimed.
-                if value == "xn--test.example.test" or value == "a--b.example.test":
-                    self.assert_hold(CANONICAL if False else CANONICAL.replace(b"alpha.example.test", b"alpha.example.test.evil"))
-                else:
-                    self.assert_hold(candidate)
+                self.assert_hold(candidate)
 
     def test_invalid_message_or_schema_held(self):
         for key, value in (("message", "APPROVED"), ("schema", "v2"),
@@ -140,7 +135,7 @@ class FictionalPacketCopyTests(unittest.TestCase):
         )
 
     def test_duplicate_and_ambiguous_nested_json(self):
-        self.assert_hold(CANONICAL.replace(b"[]", b"[]"))
+        self.assert_hold(CANONICAL.replace(b'["metadata_read","report_preview"]', b'[["metadata_read"],"report_preview"]'))
         self.assert_hold(b'{"schema":"lightup-fictional-copy-v1"}')
         self.assert_hold(b'{"schema":NaN}')
         self.assert_hold(b"[" * 300 + b"]" * 300)
