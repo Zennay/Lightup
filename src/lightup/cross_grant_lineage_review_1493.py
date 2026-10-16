@@ -18,6 +18,8 @@ _ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9@._:/-]{0,127}\Z", re.ASCII)
 _ASSET = re.compile(r"[a-z0-9][a-z0-9.-]{0,252}\Z", re.ASCII)
 _HOST_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z", re.ASCII)
 _ACTOR = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9._-]{0,62}[A-Za-z0-9])?@example\.test\Z", re.ASCII)
+# Only fictional capability slugs, never paths, URLs or alias-looking IDs.
+_CAPABILITY = re.compile(r"[a-z][a-z0-9_-]{0,63}\Z", re.ASCII)
 
 
 @dataclass(frozen=True)
@@ -67,10 +69,17 @@ def _utc(value: object) -> bool:
     return type(value) is datetime and value.tzinfo is timezone.utc and value.fold == 0
 
 
-def _exact_set(value: object, *, assets: bool = False, required: bool = True) -> bool:
+def _capability(value: object) -> bool:
+    return type(value) is str and _CAPABILITY.fullmatch(value) is not None
+
+
+def _exact_set(
+    value: object, *, assets: bool = False, capabilities: bool = False,
+    required: bool = True,
+) -> bool:
     if type(value) is not tuple or len(value) > 256 or (required and not value):
         return False
-    checker = _asset if assets else _identifier
+    checker = _asset if assets else _capability if capabilities else _identifier
     return all(checker(item) for item in value) and len(set(value)) == len(value)
 
 
@@ -101,6 +110,8 @@ def review_cross_grant_lineage(
         return _hold("noncanonical identity")
     if not _asset(asset):
         return _hold("noncanonical asset")
+    if not _capability(capability_id):
+        return _hold("noncanonical capability")
     # This UNWIRED preview has only caller-owned, invented provenance.
     # Require obviously fictional actors and reference markers so a real
     # operator address or consent ticket cannot be mistaken for lab evidence.
@@ -137,7 +148,7 @@ def review_cross_grant_lineage(
     if not (
         _exact_set(scope.assets, assets=True)
         and _exact_set(scope.excluded_assets, assets=True, required=False)
-        and _exact_set(scope.allowed_capabilities)
+        and _exact_set(scope.allowed_capabilities, capabilities=True)
     ):
         return _hold("ambiguous scope entries")
     if asset not in scope.assets or asset in scope.excluded_assets:
@@ -223,7 +234,7 @@ def review_cross_grant_batch(
             return CrossGrantBatchReview("HOLD", "mixed tenant or engagement")
         if type(item.durable) is not AuthorizationGrant or not _identifier(item.durable.grant_id):
             return CrossGrantBatchReview("HOLD", "invalid durable grant identity")
-        if not _asset(item.asset) or not _identifier(item.capability_id):
+        if not _asset(item.asset) or not _capability(item.capability_id):
             return CrossGrantBatchReview("HOLD", "noncanonical claim identity")
         key = (item.durable.grant_id, item.asset, item.capability_id)
         # Keep the same exact identity on every replay; do not allow duplicates
