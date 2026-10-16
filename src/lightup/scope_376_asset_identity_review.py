@@ -17,6 +17,11 @@ _MAX_ITEM_LENGTH = 2048
 class AssetIdentityShapeReceipt:
     decision: str
 
+    def __post_init__(self) -> None:
+        # Prevent counterfeit APPROVED/PASS or coercive status objects.
+        if type(self.decision) is not str or self.decision not in ("HOLD", "REVIEW_ONLY"):
+            raise ValueError("invalid review decision")
+
     def __bool__(self) -> bool:
         """Never let a successful *shape* review act as a truthy permit."""
         return False
