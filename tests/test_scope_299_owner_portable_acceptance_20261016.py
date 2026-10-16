@@ -212,12 +212,12 @@ class SourceOwnerPortable299Tests(unittest.TestCase):
     def test_red_embedded_newline_owner_cannot_admit_exact_public_asset(self):
         # Embedded control characters are not canonical, even when text
         # is nonempty and has no leading or trailing whitespace.
-        grant = _grant(HOST, owner="fictional\\nspoofed-owner")
+        grant = _grant(HOST, owner="fictional\nspoofed-owner")
         self.assertFalse(_policy(HOST).decide(Target(HOST, grant)).allowed)
 
     @unittest.expectedFailure
     def test_red_nul_reference_cannot_admit_exact_network_asset(self):
-        grant = _grant(IP, reference="FICTIONAL\\u0000REFERENCE")
+        grant = _grant(IP, reference="FICTIONAL\u0000REFERENCE")
         self.assertFalse(_policy(IP).decide(Target(IP, grant)).allowed)
 
     @unittest.expectedFailure
