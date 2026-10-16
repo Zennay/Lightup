@@ -169,5 +169,55 @@ class RiskRecordGuardTests(unittest.TestCase):
         self.assertNotIn(secret.encode(), proc.stdout + proc.stderr)
 
 
+
+    def test_polymorphic_dictionary_keys_are_rejected_before_caller_methods(self) -> None:
+        class _TrackedKey(str):
+            def __new__(cls, value):
+                obj = str.__new__(cls, value)
+                obj.calls = 0
+                return obj
+
+            def __hash__(self):
+                self.calls += 1
+                return str.__hash__(self)
+
+            def __eq__(self, other):
+                self.calls += 1
+                return str.__eq__(self, other)
+
+        trap = _TrackedKey("approval_id")
+        payload = dict(_SAMPLE)
+        original_value = payload.pop("approval_id")
+        payload[trap] = original_value
+        trap.calls = 0
+        receipt = review_record(payload)
+        self.assertEqual(receipt["decision"], "HOLD")
+        self.assertEqual(trap.calls, 0, "untrusted key methods must not run")
+        self.assertNoAuthority(receipt)
+        self.assertEqual(len(payload), len(_SAMPLE))
+
+    def test_nonstring_dictionary_keys_fail_before_equality_or_hashing(self) -> None:
+        class _SpoofKey:
+            def __init__(self):
+                self.calls = 0
+
+            def __hash__(self):
+                self.calls += 1
+                return hash("approval_id")
+
+            def __eq__(self, other):
+                self.calls += 1
+                return other == "approval_id"
+
+        trap = _SpoofKey()
+        payload = dict(_SAMPLE)
+        value = payload.pop("approval_id")
+        payload[trap] = value
+        trap.calls = 0
+        receipt = review_record(payload)
+        self.assertEqual(receipt["decision"], "HOLD")
+        self.assertEqual(trap.calls, 0, "untrusted key methods must not run")
+        self.assertNoAuthority(receipt)
+
 if __name__ == "__main__":
     unittest.main()
