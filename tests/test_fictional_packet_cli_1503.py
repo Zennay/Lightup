@@ -49,10 +49,10 @@ def request_pinned(original=GOOD, copies=(GOOD,), expected_sha256=None):
     ).encode("ascii")
 
 
-def process(payload, args=()):
+def process(payload, args=(), module="lightup.fictional_packet_cli_1503"):
     env = {**os.environ, "PYTHONPATH": str(PACKAGE), "PYTHONDONTWRITEBYTECODE": "1"}
     return subprocess.run(
-        [sys.executable, "-m", "lightup.fictional_packet_cli_1503", *args],
+        [sys.executable, "-m", module, *args],
         input=payload, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         env=env, cwd=ROOT, timeout=15, check=False,
     )
@@ -212,6 +212,7 @@ class FictionalCliTests(unittest.TestCase):
     def test_unwired_cli_absent_from_production_source_modules(self):
         for path in (PACKAGE / "lightup").rglob("*.py"):
             if path.name in ("fictional_packet_cli_1503.py",
+                             "fictional_packet_cli_pinned_1503.py",
                              "fictional_packet_copy_1503.py"):
                 continue
             self.assertNotIn("fictional_packet_cli_1503",
@@ -569,6 +570,122 @@ class FictionalCliTests(unittest.TestCase):
                 self.assertNotIn(b".example.test", result.stdout)
                 self.assertLessEqual(len(result.stdout), 200)
 
+
+
+    def test_pinned_only_subprocess_rejects_valid_unpinned_v1(self):
+        module = "lightup.fictional_packet_cli_pinned_1503"
+        for copies in ((GOOD,), (GOOD,) * 16):
+            old = request(copies=copies)
+            self.assertEqual(process(old).returncode, 2)
+            result = process(old, module=module)
+            self.assertEqual((result.returncode, result.stdout, result.stderr),
+                             (3, cli._HOLD, b""))
+            self.assertNotIn(b".example.test", result.stdout)
+
+    def test_pinned_only_subprocess_accepts_valid_v2_without_authority(self):
+        module = "lightup.fictional_packet_cli_pinned_1503"
+        for copies in ((GOOD,), (GOOD, GOOD), (GOOD,) * 16):
+            with self.subTest(count=len(copies)):
+                result = process(request_pinned(copies=copies), module=module)
+                self.assertEqual(result.returncode, 2)
+                self.assertEqual(result.stderr, b"")
+                verdict = json.loads(result.stdout)
+                self.assertEqual(verdict["status"], "REVIEW_ONLY")
+                self.assertEqual(verdict["sha256"], hashlib.sha256(GOOD).hexdigest())
+                for key in ("authorized", "consent_verified",
+                            "dispatch_allowed", "release_allowed"):
+                    self.assertIs(verdict[key], False)
+                self.assertNotIn(b".example.test", result.stdout)
+
+    def test_pinned_only_denies_joint_forgery_with_fixed_external_pin(self):
+        module = "lightup.fictional_packet_cli_pinned_1503"
+        result = process(
+            request_pinned(original=BAD_COPY, copies=(BAD_COPY,) * 16),
+            module=module,
+        )
+        self.assertEqual((result.returncode, result.stdout, result.stderr),
+                         (3, cli._HOLD, b""))
+        # A dishonest actor replacing the PIN too still cannot authenticate.
+        same_forged_pin = request_pinned(
+            original=BAD_COPY, copies=(BAD_COPY,),
+            expected_sha256=hashlib.sha256(BAD_COPY).hexdigest(),
+        )
+        outcome = process(same_forged_pin, module=module)
+        self.assertEqual(outcome.returncode, 2)
+        self.assertIs(json.loads(outcome.stdout)["authorized"], False)
+
+    def test_pinned_only_denies_downgrade_even_with_field_injection(self):
+        module = "lightup.fictional_packet_cli_pinned_1503"
+        for payload in (
+            request(),
+            request_pinned().replace(b"lightup-fictional-cli-pinned-v1",
+                                     b"lightup-fictional-cli-v1"),
+            request_pinned() + b"\\n",
+            b" " + request_pinned(),
+            request_pinned().replace(b'"expected_sha256":',
+                                     b'"pinned_sha256":'),
+            request_pinned().replace(b'"original":', b'"original" :'),
+        ):
+            with self.subTest(length=len(payload)):
+                result = process(payload, module=module)
+                self.assertEqual(result.returncode, 3)
+                self.assertEqual(result.stdout, cli._HOLD)
+                self.assertEqual(result.stderr, b"")
+
+    def test_pinned_only_denies_all_commandline_options(self):
+        module = "lightup.fictional_packet_cli_pinned_1503"
+        for args in (("--help",), ("--allow-unpinned",),
+                     ("--approve",), ("file.json",)):
+            result = process(request_pinned(), args=args, module=module)
+            self.assertEqual((result.returncode, result.stdout, result.stderr),
+                             (3, cli._HOLD, b""))
+
+    def test_pinned_only_in_process_parser_enforces_dedicated_flag(self):
+        old = request()
+        pinned = request_pinned()
+        self.assertEqual(cli._parse_request(old).status, "REVIEW_ONLY")
+        self.assertEqual(
+            (cli._parse_request(old, pinned_only=True).status,
+             cli._parse_request(old, pinned_only=True).sha256),
+            ("HOLD", None),
+        )
+        self.assertEqual(cli._parse_request(pinned, pinned_only=True).status,
+                         "REVIEW_ONLY")
+        for wrong in (None, 0, 1, "True", [], b"1"):
+            with self.subTest(wrong=wrong):
+                self.assertEqual(
+                    cli._parse_request(pinned, pinned_only=wrong).status,
+                    "HOLD",
+                )
+
+    def test_pinned_only_fixture_commands_match_legacy_cli_contract(self):
+        module = "lightup.fictional_packet_cli_pinned_1503"
+        examples = ROOT / "docs" / "examples"
+        for fname, code in (
+            ("fictional-copy-cli-pinned-1503.json", 2),
+            ("fictional-copy-cli-pinned-held-1503.json", 3),
+        ):
+            data = (examples / fname).read_bytes()
+            outcome = process(data, module=module)
+            self.assertEqual(outcome.returncode, code)
+            self.assertEqual(outcome.stderr, b"")
+            self.assertNotIn(b".example.test", outcome.stdout)
+            expected = process(data)
+            self.assertEqual(outcome.stdout, expected.stdout)
+
+    def test_pinned_only_parser_and_renderer_do_not_touch_external_adapters(self):
+        with patch("builtins.open", side_effect=AssertionError("file")), \
+             patch("socket.socket", side_effect=AssertionError("network")), \
+             patch("sqlite3.connect", side_effect=AssertionError("db")), \
+             patch("subprocess.Popen", side_effect=AssertionError("process")):
+            old = cli._parse_request(request(), pinned_only=True)
+            same = cli._parse_request(request_pinned(), pinned_only=True)
+            bad = cli._parse_request(request_pinned(original=BAD_COPY,
+                                          copies=(BAD_COPY,)), pinned_only=True)
+            self.assertEqual((old.status, bad.status, same.status),
+                             ("HOLD", "HOLD", "REVIEW_ONLY"))
+            self.assertEqual(cli._render(old), cli._HOLD)
+            self.assertIn(b'"status":"REVIEW_ONLY"', cli._render(same))
 
 if __name__ == "__main__":
     unittest.main()
