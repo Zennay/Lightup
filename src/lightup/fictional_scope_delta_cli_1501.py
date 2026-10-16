@@ -19,7 +19,7 @@ from .fictional_scope_delta_review_1501 import (
 
 _CONTRACT = "FICTIONAL-SCOPE-HISTORY-1501-V1"
 _MAX_BYTES = 32768
-_INSTANT = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\\Z", re.ASCII)
+_INSTANT = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\Z", re.ASCII)
 _FIELDS = frozenset(
     ("assets", "capabilities", "exclusions", "risk", "valid_from", "valid_until")
 )
@@ -52,9 +52,9 @@ def _load(raw: bytes) -> ScopeHistoryReview:
         raise ValueError("invalid input size")
     # ASCII, no whitespace decorations, no alternate JSON key order/escapes,
     # duplicates, floats or NaN. Optional SINGLE LF is permitted.
-    if raw.endswith(b"\\n"):
+    if raw.endswith(b"\n"):
         raw = raw[:-1]
-    if not raw or raw.endswith(b"\\n"):
+    if not raw or raw.endswith(b"\n"):
         raise ValueError("invalid framing")
     value = json.loads(
         raw.decode("ascii"),
@@ -115,7 +115,7 @@ def main() -> int:
         "dispatch_allowed": False,
         "release_allowed": False,
     }
-    sys.stdout.write(json.dumps(report, sort_keys=True, separators=(",", ":")) + "\\n")
+    sys.stdout.write(json.dumps(report, sort_keys=True, separators=(",", ":")) + "\n")
     return 2 if review.status == "REVIEW_ONLY" else 3
 
 
