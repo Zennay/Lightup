@@ -71,11 +71,14 @@ def _valid_metrics(value: object) -> bool:
             return False
     for name in _SCORES:
         number = getattr(value, name)
-        if type(number) not in (int, float) or not isfinite(number) or not 0 <= number <= 1:
+        if (type(number) not in (int, float) or not 0 <= number <= 1
+                or (type(number) is float and not isfinite(number))):
             return False
     for name in _COSTS:
         number = getattr(value, name)
-        if type(number) not in (int, float) or not isfinite(number) or number < 0:
+        if (type(number) not in (int, float) or number < 0
+                or (type(number) is int and number > 1_000_000_000_000)
+                or (type(number) is float and not isfinite(number))):
             return False
     return True
 
