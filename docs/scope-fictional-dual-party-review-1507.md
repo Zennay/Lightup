@@ -20,10 +20,25 @@ This input is intentionally *untrusted* and can be coordinated/fabricated; even 
 ## Isolated checks
 
 ```bash
-PYTHONPATH=src python -m unittest discover -s tests -p 'test_fictional_dual_party_review_1507.py' -v
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_fictional_dual_party*_1507.py' -v
 ```
 
-The dedicated SHA-pinned read-only GitHub workflow runs this subset on Python 3.11 and 3.14, without using a self-hosted runner or interfering with original workflows. An isolated PASS is never full hosted or permanent VPS evidence.
+The dedicated SHA-pinned read-only GitHub workflow runs both the pure reviewer and opt-in subprocess CLI suites on Python 3.11 and 3.14, without using a self-hosted runner or interfering with original workflows. An isolated PASS is never full hosted or permanent VPS evidence.
+
+## Separate opt-in stdin CLI
+
+Run without touching a target, grant or database:
+
+```bash
+PYTHONPATH=src python -m lightup.fictional_dual_party_cli_1507 < tests/fixtures/fictional_dual_party_valid_1507.json
+# prints REVIEW_ONLY, process exit 2 (never exit 0)
+PYTHONPATH=src python -m lightup.fictional_dual_party_cli_1507 < tests/fixtures/fictional_dual_party_revoked_1507.json
+# prints HOLD, process exit 3
+```
+
+Input must be **fully canonical sorted-key ASCII JSON** in a 4,096-byte maximum envelope with exact `schema=fictional_dual_party_v1`, `review_at` exact ISO UTC second timestamp ending `Z`, and exactly two `claims`. Each claim has exactly the ten named dataclass fields; `capabilities` is a JSON list converted internally to an immutable tuple. Duplicate keys at any depth, escaped/noncanonical variants, trailing bytes, unknown fields, Unicode, malformed dates, all non-JSON constants and oversized stdin atomically HOLD. The CLI reads from stdin through EOF and emits only one constant token. **Never pipe real customer information to it**, and do not misinterpret exit 2 as a successful authorization. Use only fictional examples. The process does not make network or target calls.
+
+The dedicated normal unittest suite includes actual split-pipe subprocess delivery, valid/revoked fixture checks, object-type and UTC attacks, duplicate-key/extra-data checks, NUL corruption and deterministic bit-flip fuzz on synthetic bytes. No real names or actual customer identifiers are used.
 
 ## Explicit scope/ownership fence
 
