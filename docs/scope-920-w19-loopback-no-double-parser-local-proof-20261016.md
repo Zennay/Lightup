@@ -34,3 +34,11 @@ Actual W19 standalone results: **18/18 unit tests PASS, 18/18 pytest methods PAS
 The preceding W17 source-matched 5 intentional adversarial local mutations, done on disposable non-GitHub copies, were all caught by their targeted regressions; no production mutation occurred. W19 removes provably redundant IP parsing; legitimate fictional loopback still REVIEW_ONLY and remote/noncanonical peer remains HOLD.
 
 No canonical hosted Python 3.11/3.14 job or registered VPS runner performed this W19 verification; #1144 runner queue issue remains outside this child, cause unknown. PR #202 must fix the original #918/#919 installed source-RED requirements and validate them on exact integrated source. No real consent/grants/dispatch/targets/scans/deploy; independent privacy/security and explicit human GO still absent. **Keep branch-only; no PR/merge/CI dispatch, release or actual scope grant.**
+## W19 new regression test itself was mutation-validated
+
+Two additional independent, disposable local-only mutations targeted the six-subcase malicious-origin regression *after* the exact reviewed W19 helper was locally verified:
+
+1. Remove the strict DNS label grammar validation while preserving all other code: the targeted new method failed with **3 expected failed subcases** (and 3 controls remained green).
+2. Replace final exact URL canonicality comparison with unconditional true after other checks: the same new method failed its **case-normalization canary** (1 expected failed subcase, 5 controls green).
+
+Both mutations were introduced only into ephemeral local copies; neither was committed, installed, deployed or sent over a network. The pristine W19 GitHub-identical code still passes 18 unit methods / 47 subtests and the cross-project 46 methods / 107 subtests. They demonstrate that the extra origin validation is not an empty green-only assertion. These intentional mutant failures do **not** imply a production-source exploit or an unresolved bug in this synthetic helper.
