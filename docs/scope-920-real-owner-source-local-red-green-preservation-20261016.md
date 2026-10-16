@@ -83,3 +83,18 @@ All tests use built-in Python dictionaries and fictional documentation domains a
 **Actual rerun:** Original owner `src/lightup/webapp/security.py` still **5 failures among 28 methods** (4 original source acceptance and 1 synthetic config-misuse test); local four-line candidate **28/28 unittest PASS and 28/28 pytest PASS**, with 2 subprocess-independent pytest subtests and warnings-as-errors. Additional seven preservation controls PASS unchanged on both the original owner and patched candidate. The full LightUp repo/hosted CI/VPS is **not** validated by this limited three-module source harness.
 
 The existing PR #202 production owner must own any implementation, integration and release GO. **Still DRAFT/HOLD.**
+
+## Measured branch coverage — strictly the patched *single source module*
+
+Executed in the disposable source-owner module mirror on Python 3.13.5:
+
+```bash
+PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 PYTHONWARNINGS='error::ResourceWarning' \
+  coverage run --branch --source=lightup.webapp.security -m pytest -q -p no:cacheprovider \
+  tests/test_scope_authorization_public_origin_identity.py \
+  tests/test_scope_authorization_trusted_proxy_identity.py \
+  tests/test_scope_920_source_owner_preservation_w20.py
+coverage report -m --include='*/webapp/security.py'
+```
+
+**28 passed, 2 pytest subtests passed.** Source-owner WebSecurity local candidate: **73 statements, 6 missed, 46 branches, 8 partial branch edges, 88% statement+branch coverage** (coverage.py's combined metric). This is coverage of only `src/lightup/webapp/security.py` in a **locally modified copy**, not of the entire LightUp project, WSGI/Gunicorn/Nginx integration, real network behavior, unpatched GitHub owner source, or actual release authorization. The unmodified source's original tests still have 5 failures among 28 methods.
