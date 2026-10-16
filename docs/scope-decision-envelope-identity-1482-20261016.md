@@ -86,3 +86,17 @@ PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_scope_decision_hos
 ```
 
 **Blijft INCUBATE M3/M7, DRAFT/HOLD.** Geen edits aan andere workers of originele uitvoering, geen merge/deploy/grants/target/scan.
+
+## W7 — expliciet opt-in originele ScopePolicy differentiële bronproef op fictieve data
+
+Nieuwe afzonderlijke `src/lightup/activation_fictional_source_differential_1482.py` **roept in tegenstelling tot de oorspronkelijke shape-only hulp expliciet één keer** de huidige `ScopePolicy.decide` aan. Dat gebeurt uitsluitend ná een strikte afwijzing van alle niet-fictieve inputs: exacte `ScopePolicy`, `Target` en `ScopeDecision` klassen, ongewijzigde vier beleidmetadatavelden, `allow_private_lab=False`, `require_authorization_for_public=True`, lege expliciete CIDR's, enkel exacte fictieve `*.example.test` hosts of `localhost`/`127.0.0.1`, geen `Authorization`, lege exacte labels en uitsluitend fictieve allowlist entries. Dit zijn **tests van in-process bronbeslissingen zonder I/O**, niet van echte scan- of consentadmission.
+
+De helper vergelijkt het door de echte oorspronkelijke bron gegeven `ScopeDecision` met het aangeboden claim-object en geeft bij verschillen, externe/ongeldige targets, waarden of bronexceptions slechts generieke `HOLD` terug. Een gelijkblijvende oorspronkelijke fictieve beslissing geeft `REVIEW_ONLY` met beide execution-/releasevlaggen **false**, nooit een permit of scan. Het is geen verificatie van een gesigneerde codebron of beschermd tegen gemodificeerde Python-klassen: gebruik alleen in onafhankelijk geverifieerde lokale CI-checkouts. Volledige echte runtime- en scope-/operator-grant-verificatie blijft bij de oorspronkelijke eigenaren.
+
+Nieuwe `tests/test_scope_fictional_source_differential_1482_20261016.py` met **20 offline tests**: echte positieve/negatieve lokale originele beslissingen, geconstrueerde claimvervalsing, verkeerde target, expliciet malformed URL, niet-fictieve grants en metadata, policy bronexception, host admission vóór callback, nul DNS/socket/proces, geen gevoelig detail in HOLD en onwijzigbare false-authority uitkomsten.
+
+```bash
+PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_scope_fictional_source_differential_1482_20261016.py' -v
+```
+
+Na W6 **75 eigen tests**, plus W7 **20 nieuwe** = **95 tests (92 gewone + drie bekende originele source-RED)**. Alleen exacte huidige HEAD hosted Python 3.11/3.14 en permanente VPS CI kunnen nieuwe conclusies dragen. **Niet geïntegreerd, geen merge/deploy, geen echte klanten/targets/grants/scans.**
