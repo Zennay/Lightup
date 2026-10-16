@@ -15,6 +15,7 @@ OWN = (
     "fictional_review_sequence_compare_1505.py",
     "fictional_review_sequence_pair_cli_1505.py",
     "fictional_review_sequence_segments_1505.py",
+    "fictional_review_sequence_segments_cli_1505.py",
 )
 MODULES = tuple("lightup." + filename[:-3] for filename in OWN)
 
@@ -95,11 +96,12 @@ class TestFictionalReviewModuleIsolation(unittest.TestCase):
         patterns = (
             "fictional-sequence-1505-*.json",
             "fictional-pair-1505-*.json",
+            "fictional-segments-1505-*.json",
         )
         examples = []
         for glob in patterns:
             examples.extend((ROOT / "docs/examples").glob(glob))
-        self.assertEqual(len(examples), 4)
+        self.assertEqual(len(examples), 6)
         for path in examples:
             payload = path.read_bytes()
             self.assertTrue(1 <= len(payload) <= 8192, path.name)
