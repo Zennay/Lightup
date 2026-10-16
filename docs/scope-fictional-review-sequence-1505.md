@@ -19,4 +19,4 @@ CLI accepts **1..8192 ASCII bytes**, exact compact JSON key order and unique fie
 
 **Nothing authorizes execution.** Never feed real customer/target data. Do not merge/deploy/release; owner/security/privacy review, original production fixes, independently authenticated informed client **and** operator consent, revocation-at-use, exact-head full hosted CI, permanent registered `vps-bb300bba` CI and explicit **human GO** are outstanding. Isolated hosted tests on this draft are **not** original production/security release evidence.
 
-This tool owns only the seven new #1505 paths. Existing #1501 semantic proposal delta, #1503 packet byte-copy, #1484 legacy-permit replay and original production authorization remain with their owners.
+This tool owns only the eight new #1505 paths. Existing #1501 semantic proposal delta, #1503 packet byte-copy, #1484 legacy-permit replay and original production authorization remain with their owners.
