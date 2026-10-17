@@ -324,7 +324,7 @@ class OfflineTreeModesTests(unittest.TestCase):
             )
             hook.chmod(0o755)
             git("config", "filter.fictional.clean", str(hook))
-            tracked.write_text("after\n")
+            tracked.write_text("AFTER!\n")
             with patch.object(guard, "ROOT", root):
                 protected = guard.git("status", "--porcelain=v1", "-z",
                                       "--untracked-files=all")
