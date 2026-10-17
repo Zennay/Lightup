@@ -40,6 +40,19 @@ def _tokens(raw: object) -> list[bytes]:
     return raw[:-1].split(b"\0")
 
 
+def _ambiguous_display_character(char: str) -> bool:
+    """Reject invisible/ambiguous Unicode marks; ordinary spaces are valid."""
+    category = unicodedata.category(char)
+    point = ord(char)
+    return (
+        category in ("Cf", "Zl", "Zp") or
+        (category == "Zs" and char != " ") or
+        point in (0x034F, 0x2800) or
+        0xFE00 <= point <= 0xFE0F or
+        0xE0100 <= point <= 0xE01EF
+    )
+
+
 def _path(value: bytes) -> str:
     if not value or len(value) > _MAX_PATH:
         raise PathIdentityHold()
@@ -50,7 +63,7 @@ def _path(value: bytes) -> str:
     if (result.startswith("/") or "\\" in result or
             any(component in ("", ".", "..") for component in result.split("/")) or
             any((ord(c) < 32 and ord(c) != 9) or ord(c) == 127 or
-                unicodedata.category(c) == "Cf" for c in result)):
+                _ambiguous_display_character(c) for c in result)):
         # Other control characters (but not NUL-delimited-safe tabs) are held:
         # the source-owner must explicitly decide what Git reporting supports.
         raise PathIdentityHold()
@@ -103,7 +116,8 @@ def _status_code(raw: bytes) -> str:
         return raw.decode("ascii")
     if len(raw) >= 2 and raw[:1] in (b"R", b"C"):
         score = raw[1:]
-        if len(score) <= 3 and score.isdigit() and 0 <= int(score) <= 100:
+        if (1 <= len(score) <= 3 and score.isdigit() and
+                (len(score) == 1 or score[0] != 48) and int(score) <= 100):
             return raw[:1].decode("ascii")
     raise PathIdentityHold()
 
@@ -143,6 +157,8 @@ def parse_git_path_outputs(
         if len(header) != 3:
             raise PathIdentityHold()
         additions, deletions = _count(header[0]), _count(header[1])
+        if (additions is None) != (deletions is None):
+            raise PathIdentityHold()
         if header[2] == b"":
             if idx + 2 > len(numstat):
                 raise PathIdentityHold()
@@ -170,6 +186,9 @@ def parse_git_path_outputs(
                 raise PathIdentityHold()
             seen.add(normalized)
         additions, deletions = stats.pop(key)
+        if ((code == "A" and deletions not in (0, None)) or
+                (code == "D" and additions not in (0, None))):
+            raise PathIdentityHold()
         checked.append(CheckedGitPath(code, path, original, additions, deletions))
     if stats:
         raise PathIdentityHold()
