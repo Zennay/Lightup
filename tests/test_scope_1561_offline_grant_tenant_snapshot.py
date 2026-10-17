@@ -206,5 +206,87 @@ class GrantTenantSnapshot1561(unittest.TestCase):
             self.assertEqual(self.audit()["status"], "REVIEW_ONLY")
 
 
+    def test_empty_tables_review_only_is_still_non_authorizing(self):
+        with contextlib.closing(sqlite3.connect(self.db)) as con:
+            with con:
+                con.execute("DELETE FROM authorization_grants")
+        r = self.audit()
+        self.assertEqual(r["status"], "REVIEW_ONLY")
+        self.assertEqual(r["total"], 0)
+
+    def test_tenant_ids_remain_exact_opaque_strings(self):
+        self.corrupt(
+            "UPDATE authorization_grants SET client_id=? WHERE grant_id=?",
+            (" " + self.a.client_id + " ", self.ga.grant_id),
+        )
+        self.assertEqual(self.audit()["reason"], "tenant_lineage_mismatch")
+
+    def test_parent_directory_symlink_is_rejected(self):
+        symlink_parent = Path(self.temp.name) / "dir-alias"
+        symlink_parent.symlink_to(Path(self.temp.name), target_is_directory=True)
+        r = inspect_offline_grant_tenants(
+            str(symlink_parent / self.db.name)
+        )
+        self.assertEqual(r["reason"], "unsafe_snapshot")
+
+    def test_too_many_grants_holds_with_zero_partial_counts(self):
+        from lightup.scope_grant_tenant_snapshot_1561 import MAX_GRANTS
+        with contextlib.closing(sqlite3.connect(self.db)) as con:
+            existing = con.execute(
+                "SELECT grant_id,client_id,engagement_id,approved_by,reference,"
+                "assets_json,excluded_assets_json,allowed_capabilities_json,"
+                "max_risk,valid_from,valid_until,recurring_retest_allowed,created_at "
+                "FROM authorization_grants LIMIT 1"
+            ).fetchone()
+            with con:
+                con.executemany(
+                    "INSERT INTO authorization_grants("
+                    "grant_id,client_id,engagement_id,approved_by,reference,"
+                    "assets_json,excluded_assets_json,allowed_capabilities_json,"
+                    "max_risk,valid_from,valid_until,recurring_retest_allowed,created_at"
+                    ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    [
+                        (f"fake-grant-{i}", *existing[1:])
+                        for i in range(MAX_GRANTS)
+                    ],
+                )
+        r = self.audit()
+        self.assertEqual(r["reason"], "too_many_grants")
+        self.assertEqual((r["total"], r["coherent"], r["mismatch"], r["orphan"]),
+                         (0, 0, 0, 0))
+
+    def test_invalid_sqlite_payload_holds_without_exposing_bytes(self):
+        self.db.write_bytes(b"fictional-invalid-sqlite|secret-should-not-leak")
+        result = self.audit()
+        self.assertEqual(result["status"], "HOLD")
+        self.assertNotIn("secret-should-not-leak", json.dumps(result))
+
+    def test_os_metadata_remains_unchanged_on_valid_read(self):
+        before = self.db.stat()
+        self.audit()
+        after = self.db.stat()
+        self.assertEqual(
+            (before.st_dev, before.st_ino, before.st_size,
+             before.st_mtime_ns, before.st_ctime_ns),
+            (after.st_dev, after.st_ino, after.st_size,
+             after.st_mtime_ns, after.st_ctime_ns),
+        )
+
+    def test_corrupt_snapshot_emits_no_identifiers_even_with_poisoned_fields(self):
+        self.corrupt(
+            "UPDATE authorization_grants SET client_id=?, reference=? "
+            "WHERE grant_id=?",
+            ("opaque-private-tenant-please-never-print",
+             "private-authorization-reference-please-never-print",
+             self.ga.grant_id),
+        )
+        result = self.audit()
+        wire = json.dumps(result)
+        for token in ("opaque-private-tenant-please-never-print",
+                      "private-authorization-reference-please-never-print",
+                      str(self.db), self.ga.grant_id):
+            self.assertNotIn(token, wire)
+
+
 if __name__ == "__main__":
     unittest.main()
