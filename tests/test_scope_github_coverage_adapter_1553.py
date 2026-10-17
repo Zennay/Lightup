@@ -32,10 +32,10 @@ def packet():
 def records():
     return [
         {"filename": ".github/workflows/ci.yml", "status": "added",
-         "additions": 4, "deletions": 0, "patch": "@@ -0,0 +1 @@\n+permissions: write-all\n"},
+         "additions": 1, "deletions": 0, "patch": "@@ -0,0 +1 @@\n+permissions: write-all\n"},
         {"filename": "infra/policy.tf", "status": "modified",
          "additions": 1, "deletions": 1,
-         "patch": "@@ -1 +1 @@\n+ingress { cidr_blocks = [\"0.0.0.0/0\"] }\n"},
+         "patch": "@@ -1 +1 @@\n-ingress { cidr_blocks = [\"127.0.0.1/32\"] }\n+ingress { cidr_blocks = [\"0.0.0.0/0\"] }\n"},
     ]
 
 
@@ -168,6 +168,57 @@ class InstalledBridgeTest(unittest.TestCase):
         r = records()
         r[0]["previous_filename"] = ".github/workflows/old.yml"
         self.assert_rejected_before_adapter(packet(), r)
+
+    def test_missing_patch_is_hold_before_adapter(self):
+        r = records()
+        del r[0]["patch"]
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_empty_and_non_diff_patch_are_hold(self):
+        for bad in ("", "plain line", "+permissions: write-all", "@@ not a valid hunk\n+x\n"):
+            with self.subTest(patch=bad[:15]):
+                r = records()
+                r[0]["patch"] = bad
+                self.assert_rejected_before_adapter(packet(), r)
+
+    def test_mismatched_added_and_deleted_line_stats_are_hold(self):
+        r = records()
+        r[0]["additions"] += 1
+        self.assert_rejected_before_adapter(packet(), r)
+        r = records()
+        r[1]["deletions"] = 0
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_truncated_patch_body_is_hold(self):
+        r = records()
+        r[1]["patch"] = "@@ -1 +1 @@\n+ingress {}\n"
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_unrecognized_diff_line_or_crlf_is_hold(self):
+        for bad in (
+            "@@ -1 +1 @@\n+safe\nunexpected\n",
+            "@@ -1 +1 @@\r\n+safe\r\n",
+            "@@@ -1,1 -1,1 +1,1 @@@\n+safe\n",
+        ):
+            with self.subTest(patch=bad[:25]):
+                r = records()
+                r[0]["patch"] = bad
+                self.assert_rejected_before_adapter(packet(), r)
+
+    def test_zero_changes_diff_is_hold(self):
+        r = records()
+        r[0]["patch"] = "@@ -1 +1 @@\n context only\n"
+        r[0]["additions"] = 0
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_multihunk_diff_counts_match_real_installed_adapter(self):
+        r = records()
+        r[0]["additions"] = 2
+        r[0]["patch"] = (
+            "@@ -1 +1,2 @@\n+permissions: write-all\n context\n"
+            "@@ -10 +11 @@\n+allow: all\n"
+        )
+        self.assert_fence(bridge.preview(packet(), r), "REVIEW_ONLY")
 
     def test_caller_input_purity(self):
         p, r = packet(), records()
