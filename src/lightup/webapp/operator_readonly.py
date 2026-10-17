@@ -54,6 +54,13 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             ),
             self.portal_request_receipt, "portal",
         ))
+        self.routes.append((
+            "GET", re.compile(
+                r"^/api/v1/portal/(?P<client_id>[\\w-]+)/requests/"
+                r"(?P<request_id>[\\w-]+)$"
+            ),
+            self.portal_request_receipt_api, "portal",
+        ))
 
     def authorization_desk(self, auth: AuthState, form: dict[str, str]) -> Response:
         from .authorization_desk import render_authorization_desk
@@ -109,6 +116,13 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             return Response("<h1>Client authorization required</h1>",
                             status="403 Forbidden")
         return super().portal_submit_request(auth, form, client_id)
+
+    def portal_request_receipt_api(
+        self, auth: AuthState, form: dict[str, str], client_id: str,
+        request_id: str,
+    ) -> Response:
+        from .portal_receipt_api import request_receipt_json
+        return request_receipt_json(self.store, auth, client_id, request_id)
 
     def portal_request_receipt(
         self, auth: AuthState, form: dict[str, str], client_id: str,
