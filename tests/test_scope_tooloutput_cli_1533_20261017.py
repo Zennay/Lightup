@@ -62,7 +62,7 @@ class OfflineToolOutputCliTests(unittest.TestCase):
             json.dumps(_envelope([_row(payload_hex="AA")])).encode(),
             json.dumps(_envelope([_row(payload_hex="ff ff")])).encode(),
             json.dumps(_envelope([_row(kind="note\\nmalicious")])).encode(),
-            json.dumps(_envelope([_row(summary="synthetic\\u202e")])).encode(),
+            json.dumps(_envelope([_row(summary="synthetic\u202e")])).encode(),
             json.dumps(_envelope([{"summary": "a", "kind": "note", "payload_hex": "ff", "extra": "x"}])).encode(),
             b'{"schema":"lightup.scope1533.synthetic.v1","synthetic_only":true,"items":[{"summary":"s","kind":"note","kind":"note","payload_hex":""}]}',
             b'{"schema":"lightup.scope1533.synthetic.v1","synthetic_only":true,"items":[{"summary":"s","kind":"note","payload_hex":""}],"items":[]}',
