@@ -187,3 +187,25 @@ The JSON disposition is fixed to `RECORD_ONLY`; its request-binding, client/oper
 ## Implementation and release boundary
 
 The new operator and client features change only files owned by the opt-in [PR #1566](https://github.com/Zennay/Lightup/pull/1566). The release remains **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD** until independent security/privacy review, live authorization with revocation, exact-head required CI and explicit human release approval. No QA suites, external target scans, production grant issuance or deployment are introduced.
+
+## Safe browser-side authorization decisions and grant freeze (issue #673 / #177)
+
+The opt-in guarded web application now goes beyond read-only status screens by enforcing **real, server-side workflow restrictions** before its existing decision handlers are reached.
+
+**Request approvals:**
+- `POST /assessments/requests/<request_id>/decision` accepts only the literal `approve` or `reject`, not an ambiguous value silently mapped to rejection.
+- Administrative `approve` requires an open request, `AUTHORIZED_ASSESSMENT` mode, client review risk 1–4, a bounded nonempty duplicate-free asset tuple, an active client, and an existing **current** `CLIENT_ADMIN`/`CLIENT_MEMBER` requester identity belonging to that same tenant. It rejects an operator-origin request or a request with pre-existing decision metadata.
+- The approver may never approve their own request. Invalid requests may still be explicitly rejected to close bad historical records.
+- The inherited operator assessment screen replaces unsafe **Approve** forms with an explanatory locked badge, while keeping a valid Reject action. The POST checks remain independently enforced and return HTTP `423 Locked` on unsafe approval. Legitimate administrative reviews still record `APPROVED` and redirect normally.
+- An administrative `APPROVED` request does **not** grant execution or constitute historical client signature; current account role alone cannot prove who originally controlled the account.
+
+**Risk elevations:**
+- `POST /assessments/elevations/<approval_id>/decision` accepts only `approve` or `deny`. Approving additionally requires a pending record without prior decision metadata, a bounded 1–4 risk level, a nonempty bounded justification, a current genuine tenant-bound client requester, an engagement from the same tenant and an independent operator decision maker.
+- Self-decisions are locked; the existing domain method's separate self-review check is left intact. Unsafe elevation buttons in the operator screen are replaced with locked explanatory notices rather than inviting an action the server must refuse. Explicit legitimate decisions continue through the existing domain method.
+
+**Grant creation and legacy exposure:**
+- `POST /engagements/<engagement_id>/grants` in this guarded opt-in app **always returns HTTP `423 Locked`**, regardless of form fields, until the real immutable approved-request/grant binding (#177), separate signed consent and at-use revocation are implemented in the domain and security authority surfaces.
+- The operator client detail page removes the inherited grant-create forms. Previously stored time-current grants are labeled as **unverified records**, not valid scanning authority. Their underlying reference/approver/asset detail panel is withheld on that screen until persisted grant lineage is independently revalidated (#829); the dedicated operator authorization desk supports separately scoped read-only inspection.
+- No new grants or execution permits are issued by this feature. This is a **guard only in the explicitly selected WSGI variant**, not a fix for direct `DomainStore` API callers or the default application. The domain issues #177 and #829, source-owner PR #182 and all security/CI/consent/release gates remain outstanding.
+
+This change modifies only the opt-in portal's own module plus a new `authorization_controls.py`; existing source-owner approval handlers, domain, database schema, workflows and production deployment are unchanged. No QA or regression suites were added or run. Short source-compile and direct in-process functional inspections were used.
