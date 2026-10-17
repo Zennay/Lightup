@@ -161,11 +161,13 @@ class EnvironmentFenceTests(unittest.TestCase):
         # not a mutable YAML inline implementation.
         source = (ROOT / "scripts/check_scope_git_env_tree_20261017.py").read_text()
         self.assertIn("e73b7445c87ad239bdb03c50a99078ef93163b02", source)
-        self.assertEqual(content.count("python -I -B scripts/check_scope_git_env_tree_20261017.py"), 2)
+        self.assertEqual(content.count("python -I -S -B scripts/check_scope_git_env_tree_20261017.py"), 2)
         self.assertNotIn("run: python scripts/", content)
         self.assertNotIn("python -B -m unittest", content)
-        self.assertIn("python -I -B -c", content)
-        self.assertEqual(content.count("python -I -B -m unittest discover"), 2)
+        self.assertNotIn("python -I -B", content)
+        self.assertIn(" -S ", content)
+        self.assertIn("python -I -S -B -c", content)
+        self.assertEqual(content.count("python -I -S -B -m unittest discover"), 2)
         self.assertIn("tests/test_scope_git_env_tree_20261017.py", content)
         self.assertNotIn("workflow_dispatch", content)
         self.assertNotIn("pull_request:", content)
@@ -175,12 +177,12 @@ class EnvironmentFenceTests(unittest.TestCase):
     def test_ci_attests_real_environment_before_git_checks(self):
         workflow = (ROOT / ".github" / "workflows" /
                     "scope-git-env-attestation-20261017.yml").read_text()
-        check = "python -I -B scripts/scope_git_env_attestation_20261017.py"
+        check = "python -I -S -B scripts/scope_git_env_attestation_20261017.py"
         self.assertEqual(workflow.count(check), 2)
         first = workflow.index(check)
         last = workflow.rindex(check)
         self.assertLess(first, workflow.index("git rev-parse HEAD"))
-        self.assertGreater(last, workflow.index("python -I -B -m unittest discover"))
+        self.assertGreater(last, workflow.index("python -I -S -B -m unittest discover"))
         self.assertIn("test \"$review_rc\" -eq 2", workflow)
         self.assertIn("test \"$review_out\" = ", workflow)
 
