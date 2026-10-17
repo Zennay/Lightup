@@ -68,6 +68,16 @@ class SnapshotReviewTests(unittest.TestCase):
     def test_independent_branches_parallel_wave(self):
         self.review(wire([entry(8, B), entry(2, C), entry(5, D)]), [[2, 5, 8]])
 
+    def test_inferred_graph_fingerprint_is_stable_across_snapshot_row_order(self):
+        forward = wire([entry(10, B), entry(20, C, B), entry(30, D, C)])
+        reverse = wire([entry(30, D, C), entry(20, C, B), entry(10, B)])
+        a, code_a = adapter.evaluate(forward)
+        b, code_b = adapter.evaluate(reverse)
+        self.assertEqual((code_a, code_b), (3, 3))
+        self.assertEqual(a["waves"], b["waves"])
+        self.assertNotEqual(a["input_sha256"], b["input_sha256"])
+        self.assertEqual(a["derived_graph_sha256"], b["derived_graph_sha256"])
+
     def test_out_of_order_rows_stable(self):
         rng = random.Random(1549)
         rows = [entry(10, B), entry(20, C, B), entry(30, D, C)]
