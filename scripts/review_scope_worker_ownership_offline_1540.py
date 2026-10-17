@@ -23,6 +23,25 @@ _ROOT = {"version", "repository_full_name", "base_sha", "reviews",
 _OWNER = {"worker", "head_sha", "paths"}
 
 
+# Immutable-in-this-reviewer, fail-closed sensitive source/control-plane
+# identities. They are NOT a complete policy or any production permission.
+# A caller's `protected_paths` can tighten but NEVER remove these holds.
+CRITICAL_HOLD_PATHS = (
+    "src/lightup",
+    ".github",
+    "pyproject.toml",
+    "setup.py",
+    "setup.cfg",
+    "tox.ini",
+    "uv.lock",
+    "poetry.lock",
+    "requirements.txt",
+    "Dockerfile",
+    "Makefile",
+    ".pre-commit-config.yaml",
+)
+
+
 def _conflict(a: str, b: str) -> bool:
     a, b = a.casefold(), b.casefold()
     return a == b or a.startswith(b + "/") or b.startswith(a + "/")
@@ -93,7 +112,8 @@ def _prepare(raw: bytes) -> bytes:
         if actual != declared:
             raise review.InvalidProposal("unaccounted or invented file")
         for path in actual:
-            if any(_conflict(path, p) for p in protected):
+            if (any(_conflict(path, p) for p in protected)
+                    or any(_conflict(path, p) for p in CRITICAL_HOLD_PATHS)):
                 raise review.InvalidProposal("protected source collision")
     return pair_raw
 
