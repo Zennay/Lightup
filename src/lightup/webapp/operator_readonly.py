@@ -45,19 +45,19 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             self.authorization_desk, "operator",
         ))
         self.routes.append((
-            "GET", re.compile(r"^/authorization-desk/clients/(?P<client_id>[\\w-]+)$"),
+            "GET", re.compile(r"^/authorization-desk/clients/(?P<client_id>[\w-]+)$"),
             self.authorization_client_desk, "operator",
         ))
         self.routes.append((
             "GET", re.compile(
-                r"^/portal/(?P<client_id>[\\w-]+)/requests/(?P<request_id>[\\w-]+)$"
+                r"^/portal/(?P<client_id>[\w-]+)/requests/(?P<request_id>[\w-]+)$"
             ),
             self.portal_request_receipt, "portal",
         ))
         self.routes.append((
             "GET", re.compile(
-                r"^/api/v1/portal/(?P<client_id>[\\w-]+)/requests/"
-                r"(?P<request_id>[\\w-]+)$"
+                r"^/api/v1/portal/(?P<client_id>[\w-]+)/requests/"
+                r"(?P<request_id>[\w-]+)$"
             ),
             self.portal_request_receipt_api, "portal",
         ))
