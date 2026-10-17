@@ -340,10 +340,14 @@ def client_thread_json(
     except (ClarificationDenied, KeyError, ValueError, TypeError):
         return Response('{"error":"conversation unavailable"}', "404 Not Found",
                         "application/json; charset=utf-8")
-    return Response(
-        json.dumps(snapshot, ensure_ascii=True, separators=(",", ":")),
-        content_type="application/json; charset=utf-8",
-    )
+    payload = json.dumps(snapshot, ensure_ascii=True, separators=(",", ":"))
+    if len(payload.encode("utf-8")) > 128 * 1024:
+        return Response(
+            '{"error":"conversation too large to export"}',
+            status="413 Payload Too Large",
+            content_type="application/json; charset=utf-8",
+        )
+    return Response(payload, content_type="application/json; charset=utf-8")
 
 
 def operator_thread_json(store: DomainStore, auth: AuthState, request_id: str) -> Response:
@@ -355,10 +359,14 @@ def operator_thread_json(store: DomainStore, auth: AuthState, request_id: str) -
     except (ClarificationDenied, KeyError, ValueError, TypeError):
         return Response('{"error":"conversation unavailable"}', "404 Not Found",
                         "application/json; charset=utf-8")
-    return Response(
-        json.dumps(snapshot, ensure_ascii=True, separators=(",", ":")),
-        content_type="application/json; charset=utf-8",
-    )
+    payload = json.dumps(snapshot, ensure_ascii=True, separators=(",", ":"))
+    if len(payload.encode("utf-8")) > 128 * 1024:
+        return Response(
+            '{"error":"conversation too large to export"}',
+            status="413 Payload Too Large",
+            content_type="application/json; charset=utf-8",
+        )
+    return Response(payload, content_type="application/json; charset=utf-8")
 
 
 def clarification_inbox_snapshot(
