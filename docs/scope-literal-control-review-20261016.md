@@ -72,3 +72,7 @@ An otherwise valid fictional stdin packet previously yielded REVIEW_ONLY when th
 ## W14 — query/fragment text ambiguity cannot become review-eligible
 
 Added a conservative offline HOLD fence for `?` and `#` in exact fictional authority strings. A human review packet is not a URL parser, and query/fragment delimiters may disappear or change meaning in a later parser; accordingly the entire batch is rejected, with no candidate echo or authority/consent/dispatch/release. Three dedicated tests first reproduced ordinary REVIEW_ONLY on synthetic `fictional.example.test?mode=other` and `https://localhost/#allow`, then verified the stricter output and a still-eligible plain fictional control. This does not decide legitimate URL admission and does not modify source-owner #1289/#1290.
+
+## W15 — independent deterministic randomized eligibility oracle
+
+Added an independent regex/ASCII-casefold reference for conservative review eligibility, separate from the production review implementation. A deterministic 1,200-batch fictional seeded corpus plus every ASCII-byte insertion at three positions in first/middle/last entries of a 64-entry batch checks for result mismatches, result privacy and four always-false authority/consent/dispatch/release fields. The corpus is repeatable in both Python interpreters, does not use real targets or network and does not prove real scope admission correctness. Actual source owner #1289 remains responsible for admission.
