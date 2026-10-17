@@ -48,7 +48,7 @@ def _parse(raw: bytes) -> dict[str, object]:
         raise InvalidManifest("size")
     # All admitted keys and values are ASCII identities. Unicode escapes can
     # conceal byte-different spellings of the same branch/commit claim.
-    if b"\\\\u" in raw:
+    if b"\\u" in raw:
         raise InvalidManifest("escaped identity")
     try:
         data = json.loads(raw.decode("utf-8", errors="strict"),
