@@ -92,3 +92,50 @@ that other source-owned connection lifecycle.
 
 Do not infer release readiness from a green *test-only* hosted workflow.
 Source owner review and all earlier HOLD conditions remain unchanged.
+
+## W3 — real offline synthetic provenance-review CLI (entirely unwired)
+
+Added **two new exclusively-owned files** without touching any existing
+production importer, handler, SourceOwner PR #554 or parallel work:
+- `scripts/review_scope_grant_provenance_synthetic_649.py`: stdlib-only
+  `stdin` JSON fixture reviewer, strict `lightup.scope649.provenance.synthetic.v1`,
+  literal `synthetic_only:true`, 1–32 exact JSON provenance pairs,
+  16,384-byte maximum input, exact-field validation and duplicate-key rejection.
+  Fictional synthetic values only, canonical bounded Unicode/NFC, no controls,
+  direction overrides, empty/whitespace, subclasses or ambiguous coercion.
+  Atomic all-or-nothing `HOLD` for invalid inputs, `REVIEW_ONLY` only for
+  structurally valid **synthetic** pairs. This is a shape preview, **not a
+  verification of provenance, real approvals, identity or consent**.
+- `tests/test_scope_grant_provenance_synthetic_review_649_20261017.py`:
+  **16 ordinary PASS** on both actual Python 3.11/3.14 hosted and connected
+  Python3.14.4 zSSH; real CLI subprocesses prove exit **2 HOLD** or
+  **3 REVIEW_ONLY**, never zero, fixed 7-false-authority JSON output, no
+  user-data echo/traceback, malformed UTF-8, duplicate key, nonfinite float,
+  corrupt batch, max-size/length, stdout failure and stdin failure controls.
+  Also checks no production import/network capability.
+- The reviewer is **not** imported into production `DomainStore` and
+  cannot create grants, call handlers, read DB state, inspect targets or
+  establish human consent. It accepts only synthetic examples. Its stricter
+  canonical rendering is independent of #649's required original source
+  exact-built-in `str` repair; do not confuse the reviewer with that fix.
+- The branch-only Actions workflow now proves **exactly five wholly NEW own
+  files** under the pinned owner base, runs **16 own synthetic reviewer PASS**
+  plus **16 original issuance tests (5 ordinary PASS + 11 still expected
+  owner REDs)**, and independently verifies all eleven source RED identities
+  remain unresolved. No original owner test is silently promoted.
+
+### Verified W3 exact-head evidence
+
+[Own isolated hosted Actions #39006000914](https://github.com/Zennay/Lightup/actions/runs/39006000914)
+**COMPLETED SUCCESS** at exact `4e65712e47d87be31e300f54f4265564c2766bd1`:
+Python3.14 real job `117318501053`, Python3.11 job `117318501224`.
+Both original logs: **16 reviewer PASS + 16 issuance tests (5 PASS +
+11 expected source failures)**, exact five-file own-tree PASS, strict
+eleven-source-RED identity proof PASS. Reproduced reviewer 16/16 on
+`vps-bb300bba` Python3.14.4, clean own branch.
+
+**Still DRAFT/HOLD**: This feature is non-authorizing and not wired into
+issuance. Original source owner repair, full project and permanent registered
+VPS runner proof, independent actual client/operator consent and at-use
+revocation, independent privacy/security signoff and HUMAN GO remain required.
+NO MERGE, DEPLOY, REAL ASSETS, SCANS, GRANTS, HANDLERS OR RELEASE.
