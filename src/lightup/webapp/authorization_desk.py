@@ -289,6 +289,18 @@ def render_operator_request_detail(
                 'review only; it does NOT create a grant or verify written '
                 'client consent.</p>' + approval + rejection
             )
+    from .request_clarifications import (
+        messages_for_request, render_thread_html, ClarificationDenied,
+    )
+    try:
+        thread = messages_for_request(store, auth, request_id)
+        discussion = render_thread_html(
+            thread, auth, operator=True,
+            action="/operator/requests/" + request_id + "/clarifications",
+        )
+    except (ClarificationDenied, KeyError, ValueError, TypeError):
+        return Response("<h1>Clarification history unavailable</h1>",
+                        status="503 Service Unavailable")
     body = (
         '<h1>Request review details</h1>'
         '<p class="sub">Review a request and, when eligible, record an '
@@ -318,7 +330,8 @@ def render_operator_request_detail(
         '<div class="card"><strong>Requested assets</strong><ul>' +
         assets + '</ul><details><summary>Original request notes</summary><p>'
         + _e(request.notes or "—") + '</p></details></div>'
-        '<div class="card"><strong>Administrative request review</strong>'
+        + discussion
+        + '<div class="card"><strong>Administrative request review</strong>'
         '<p class="meta">The decision endpoint independently enforces these '
         'eligibility restrictions; another browser cannot bypass them.</p>'
         + actions + '</div>'
