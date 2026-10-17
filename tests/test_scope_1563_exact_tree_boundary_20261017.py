@@ -397,8 +397,8 @@ class MutationWitnessQualityTests(unittest.TestCase):
         ))
 
 
-    def test_all_seven_mutation_canaries_have_distinct_expected_contracts(self):
-        self.assertEqual(len(self.proof.MUTATIONS), 7)
+    def test_all_nine_mutation_canaries_have_distinct_expected_contracts(self):
+        self.assertEqual(len(self.proof.MUTATIONS), 9)
         expected = {
             "grant_mints_membership",
             "invalid_identity_rescued",
@@ -407,6 +407,8 @@ class MutationWitnessQualityTests(unittest.TestCase):
             "cidr_right_neighbor_authorizes",
             "hostname_wildcard_authorizes",
             "denied_identity_rewritten",
+            "reason_string_type_confusion",
+            "decision_proxy_type_confusion",
         }
         self.assertEqual({entry[0] for entry in self.proof.MUTATIONS}, expected)
         for name, broken, method in self.proof.MUTATIONS:
