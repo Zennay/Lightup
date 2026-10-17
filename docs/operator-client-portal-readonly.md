@@ -116,7 +116,7 @@ The same opt-in WSGI product now supports these **read-only** routes in addition
 |---|---|---|
 | `GET /authorization-desk/queue/pending` | Operator session | Filter the desk to submitted / under-review requests |
 | `GET /authorization-desk/queue/decided` | Operator session | Filter the desk to requests with a recorded decision |
-| `GET /authorization-desk/requests/<request_id>` | Operator session | Read a complete request dossier, including risk, asset scope, notes and requester-account observation; no approve/reject button or automatic decision |
+| `GET /authorization-desk/requests/<request_id>` | Operator session | Read a request dossier with risk, asset scope, notes and requester provenance; where eligible, record an explicit guarded administrative approve/reject decision; no grant or scan authorization |
 | `GET /api/v1/operator/authorization-queue` | Operator session only | A bounded pending-review JSON list with links to the dossiers |
 | `GET /api/v1/portal/<client_id>/requests` | Signed-in tenant-bound client or operator reader | A bounded list of that tenant's request status records and receipt URLs |
 
@@ -209,3 +209,14 @@ The opt-in guarded web application now goes beyond read-only status screens by e
 - No new grants or execution permits are issued by this feature. This is a **guard only in the explicitly selected WSGI variant**, not a fix for direct `DomainStore` API callers or the default application. The domain issues #177 and #829, source-owner PR #182 and all security/CI/consent/release gates remain outstanding.
 
 This change modifies only the opt-in portal's own module plus a new `authorization_controls.py`; existing source-owner approval handlers, domain, database schema, workflows and production deployment are unchanged. No QA or regression suites were added or run. Short source-compile and direct in-process functional inspections were used.
+
+## Actionable guarded request dossier
+
+The opt-in request dossier `GET /authorization-desk/requests/<request_id>` now provides the complete administrative workflow directly in the operator review screen:
+
+- For an open, genuinely same-tenant client-origin request with valid bounded mode/risk/assets, show two explicit CSRF-protected POST forms: **Approve administrative request** and **Reject request**.
+- If the server-side provenance guard finds a missing/mismatched requester, operator-originated request, already-recorded decision metadata, invalid mode, invalid risk or ambiguous asset scope, show **Approval blocked** and its concrete reason instead. The safe **Reject request** action remains to close malformed historical submissions.
+- The server always repeats the authorization check inside `OperatorReadOnlyWebApp.decide_request`; the page is not a source of authority. A direct POST, altered form or stale bookmarked URL cannot bypass the same guard.
+- These controls change **only** the stored administrative request status using the existing domain method. An `APPROVED` request never creates an execution grant or certifies actual written customer consent.
+
+The default `LightUpWebApp` and domain API still require their independently owned security and request/grant-binding fixes before production use; the guarded WSGI variant remains opt-in and DRAFT/HOLD.
