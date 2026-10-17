@@ -71,15 +71,20 @@ function diff(a,b){
  };
  exact(a.requested_assets,b.requested_assets,'scope');
  exact(a.excluded_assets,b.excluded_assets,'exclusion');
- const ranges=LightUpScopeNetwork.expansion(a.requested_assets,b.requested_assets);
- for(const item of ranges.added)
-   add('review-expansion','network_coverage','Proposed address/host not fully covered by prior scope: '+item);
- for(const item of ranges.removed)
-   add('review-restriction','network_coverage','Prior address/host not fully covered by proposed scope: '+item);
+ const beforeCoverage=LightUpScopeNetwork.effectiveCoverage(a.requested_assets,a.excluded_assets);
+ const afterCoverage=LightUpScopeNetwork.effectiveCoverage(b.requested_assets,b.excluded_assets);
+ const ranges=LightUpScopeNetwork.coverageDifference(beforeCoverage,afterCoverage);
+ if(ranges){
+  for(const item of ranges.added)
+   add('review-expansion','effective_scope','Effective proposed scope gains '+(item.asset||item.family+' integer interval '+item.start+' → '+item.end)+' after exclusions (manual review required).');
+  for(const item of ranges.removed)
+   add('review-restriction','effective_scope','Effective proposed scope loses '+(item.asset||item.family+' integer interval '+item.start+' → '+item.end)+' after exclusions.');
+  if(ranges.truncated)add('needs-context','truncated','Full effective-scope difference exceeds preview limit; review separately.');
+ }else add('needs-context','scope_identity','Invalid assets prevent effective-scope interval comparison.');
  for(const item of LightUpScopeNetwork.inspect(b.requested_assets,b.excluded_assets))
    if(item.code==='exclusion_overlap'||item.code==='included_overlap'||item.code==='global_range'||item.level==='error')
       add('needs-context','asset_boundary',item.message);
- if(ranges.unparsed)add('needs-context','asset_identity','Malformed identity in an imported draft: do not rely on coverage calculations.');
+
  if(b.requested_risk>a.requested_risk)add('review-expansion','risk','Risk increase '+a.requested_risk+' → '+b.requested_risk);
  if(b.requested_risk<a.requested_risk)add('review-restriction','risk','Risk decrease '+a.requested_risk+' → '+b.requested_risk);
  if(a.requested_mode!==b.requested_mode)add('review-expansion','mode','Mode change: '+a.requested_mode+' → '+b.requested_mode+' (manual review needed)');
@@ -93,7 +98,7 @@ function diff(a,b){
  if(a.client_label!==b.client_label)add('needs-context','client','Client label changed: labels do not authenticate identities.');
  if(a.proposal_name!==b.proposal_name)add('needs-context','title','Proposal name changed.');
  if(a.requested_assets.some(s=>s.includes('/'))||b.requested_assets.some(s=>s.includes('/'))||a.excluded_assets.some(s=>s.includes('/'))||b.excluded_assets.some(s=>s.includes('/')))add('needs-context','cidr','CIDR membership, overlaps and exclusions require independent manual or authoritative policy review.');
- if(a.requested_assets.some(s=>s.includes(':'))||b.requested_assets.some(s=>s.includes(':')))add('needs-context','ipv6','IPv6 aliases and ranges are not normalized by this exact-string comparison.');
+ if(a.requested_assets.some(s=>s.includes(':'))||b.requested_assets.some(s=>s.includes(':')))add('needs-context','ipv6','IPv6 ranges are normalized numerically for review but require independent authoritative scope checks.');
  if(b.requested_risk===4)add('needs-context','risk','Risk 4 requires separate explicit risk approval.');
  if(a.requested_assets.length!==unique(a.requested_assets).size||b.requested_assets.length!==unique(b.requested_assets).size)add('needs-context','duplicates','An input draft has duplicate asset labels.');
  const expanded=records.filter(r=>r.level==='review-expansion').length;
