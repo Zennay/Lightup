@@ -26,7 +26,7 @@ def tree(paths=PATHS, mode=b"100644", kind=b"blob", oid=OID):
 
 class OfflineTreeModesTests(unittest.TestCase):
     def test_all_five_new_regular_git_blobs_pass(self):
-        self.assertEqual(len(guard.OWNED), 5)
+        self.assertEqual(len(guard.OWNED), 6)
         self.assertTrue(guard.safe_tree(tree(), delta()))
 
     def test_symlinks_executables_gitlinks_and_mismatched_objects_hold(self):

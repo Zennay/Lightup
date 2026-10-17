@@ -17,6 +17,7 @@ OWNED = frozenset({
     "scripts/scope_git_env_attestation_20261017.py",
     "scripts/check_scope_git_env_tree_20261017.py",
     "tests/test_scope_git_env_attestation_20261017.py",
+    "tests/test_scope_git_env_tree_20261017.py",
 })
 SHA1 = re.compile(rb"[0-9a-f]{40}\Z")
 
