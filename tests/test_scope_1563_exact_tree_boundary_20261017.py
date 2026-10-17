@@ -416,6 +416,47 @@ class MutationWitnessQualityTests(unittest.TestCase):
         self.assertTrue(self.proof.suite_manifest_valid())
 
 
+
+    def test_original_baseline_refuses_expected_failure_or_skip(self):
+        result = unittest.TestResult()
+        result.testsRun = len(self.proof.REQUIRED_TEST_METHODS)
+        self.assertTrue(self.proof.baseline_is_strictly_green(result))
+        result.expectedFailures.append((self, "synthetic unresolved safety RED"))
+        self.assertTrue(result.wasSuccessful())  # unittest's misleading default
+        self.assertFalse(self.proof.baseline_is_strictly_green(result))
+        result.expectedFailures.clear()
+        result.skipped.append((self, "synthetic safety bypass"))
+        self.assertTrue(result.wasSuccessful())
+        self.assertFalse(self.proof.baseline_is_strictly_green(result))
+        result.skipped.clear()
+        result.testsRun -= 1
+        self.assertFalse(self.proof.baseline_is_strictly_green(result))
+
+    def test_actual_expected_failure_decorator_cannot_greenwash_named_contract(self):
+        cls = self.proof.suite_module.ScopeMembershipMetamorphicTests
+        name = "test_ipv6_right_neighbor_of_declared_prefix_remains_unlisted"
+        with patch.object(cls, name, unittest.expectedFailure(lambda self: self.fail("SYNTHETIC RED"))):
+            self.assertTrue(self.proof.suite_manifest_valid())
+            result = self.proof.run_suite()
+            self.assertEqual(result.testsRun, len(self.proof.REQUIRED_TEST_METHODS))
+            self.assertTrue(result.wasSuccessful())
+            self.assertEqual(len(result.expectedFailures), 1)
+            self.assertFalse(self.proof.baseline_is_strictly_green(result))
+        self.assertTrue(self.proof.suite_manifest_valid())
+
+    def test_actual_skip_decorator_cannot_suppress_named_contract(self):
+        cls = self.proof.suite_module.ScopeMembershipMetamorphicTests
+        name = "test_ipv4_right_neighbor_of_declared_cidr_remains_unlisted"
+        skipped = unittest.skip("SYNTHETIC HOLD")(lambda self: None)
+        with patch.object(cls, name, skipped):
+            self.assertTrue(self.proof.suite_manifest_valid())
+            result = self.proof.run_suite()
+            self.assertEqual(result.testsRun, len(self.proof.REQUIRED_TEST_METHODS))
+            self.assertTrue(result.wasSuccessful())
+            self.assertEqual(len(result.skipped), 1)
+            self.assertFalse(self.proof.baseline_is_strictly_green(result))
+        self.assertTrue(self.proof.suite_manifest_valid())
+
     def test_downstream_mutation_manifest_is_separate_and_exact(self):
         self.assertEqual(
             {entry[0] for entry in self.proof.DOWNSTREAM_MUTATIONS},
