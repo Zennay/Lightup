@@ -147,7 +147,7 @@ class EnvironmentFenceTests(unittest.TestCase):
                         "write_text", "write_bytes",
                     })
         self.assertEqual(imports, {
-            "__future__", "json", "os", "sys", "collections.abc",
+            "__future__", "json", "os", "re", "sys", "collections.abc",
         })
 
     def test_dedicated_hosted_workflow_is_read_only(self):
@@ -207,6 +207,41 @@ class EnvironmentFenceTests(unittest.TestCase):
             def __getitem__(self, key):
                 raise KeyError(key)
         self.assertEqual(module().review_environment(BadValues())["status"], "HOLD")
+
+    def test_exact_github_python_toolcache_profile_is_non_authorizing(self):
+        for version in ("3.11.17", "3.14.8"):
+            with self.subTest(version=version):
+                root = "/opt/hostedtoolcache/Python/" + version + "/x64"
+                env = {
+                    "GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "push",
+                    "GITHUB_REF": "refs/heads/chatgpt/scope-auth-git-env-fence-20261017-0115",
+                    "GITHUB_SHA": "a" * 40,
+                    "RUNNER_OS": "Linux",
+                    "pythonLocation": root, "Python_ROOT_DIR": root,
+                    "LD_LIBRARY_PATH": root + "/lib",
+                }
+                receipt = module().review_environment(env)
+                self.assertEqual(receipt["status"], "REVIEW_ONLY")
+                self.assertTrue(all(receipt[k] is False for k in receipt if k != "status"))
+                for key, bad in (
+                    ("GITHUB_ACTIONS", "false"),
+                    ("GITHUB_REF", "refs/pull/2/merge"),
+                    ("GITHUB_SHA", "not-a-sha"),
+                    ("RUNNER_OS", "Windows"),
+                    ("Python_ROOT_DIR", root + "/elsewhere"),
+                    ("LD_LIBRARY_PATH", root + "/lib:/tmp/inject"),
+                    ("LD_LIBRARY_PATH", "/tmp/inject"),
+                    ("pythonLocation", root + "/../other"),
+                ):
+                    with self.subTest(key=key, bad=bad):
+                        self.assertEqual(
+                            module().review_environment(dict(env, **{key: bad}))["status"],
+                            "HOLD",
+                        )
+                self.assertEqual(
+                    module().review_environment(dict(env, LD_PRELOAD="fictional.so"))["status"],
+                    "HOLD",
+                )
 
     def test_cli_disallows_grant_switch(self):
         child=subprocess.run(

@@ -114,3 +114,27 @@ Therefore a REVIEW_ONLY result is not proof of trusted process startup,
 absence of shell hooks, safe HOME/XDG config or immutable future env.
 Only a non-authorizing negative policy report is emitted. The work is
 still isolated from production and any release authority.
+
+## W5 — hosted setup-python profile, preserving strict HOLD
+
+The W4 loader check exposed a genuine hosted-CI incompatibility:
+GitHub-hosted `actions/setup-python` supplies `LD_LIBRARY_PATH`
+pointing to its own `/opt/hostedtoolcache/Python/3.x.y/x64/lib`.
+Run #38991024082 legitimately failed both interpreters at the *initial
+environment reviewer* (no tests executed in those failing jobs).
+Logs established the exact Python 3.11 and 3.14 runner values.
+
+The exception is a tightly bounded, purely **lexical** recognition of
+that setup-python configuration: literal Linux runner; own push event/ref;
+40-character lowercase SHA; identical `pythonLocation` and
+`Python_ROOT_DIR`; a strict Python 3.11 or 3.14 x64 toolcache location;
+and `LD_LIBRARY_PATH` equal to that location plus `/lib`. All other
+loader overrides, extra search-path segments, malformed origins, wrong
+branch, pull-request refs, or absent fields remain HOLD.
+
+These environment strings are **self-reported**, not cryptographically
+attested. A malicious actor able to set the whole environment could
+imitate the profile. The result still conveys only `REVIEW_ONLY` with
+all four authority flags false; it does not assert trusted binary/library
+provenance, clean worktree, client consent or any permission. Real
+source-owner authorization repairs and human release GO remain blocked.

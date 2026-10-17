@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from collections.abc import Mapping
 
@@ -29,6 +30,24 @@ _HOST_RUNTIME_OVERRIDES = frozenset({
 })
 
 
+def _expected_hosted_toolcache_path(environment: Mapping, value: str) -> bool:
+    """Only match an EXACT hosted setup-python path, never grant trust."""
+    root = environment.get("pythonLocation")
+    return (
+        type(root) is str
+        and re.fullmatch(r"/opt/hostedtoolcache/Python/3\.(?:11|14)\.[0-9]+/x64", root) is not None
+        and environment.get("Python_ROOT_DIR") == root
+        and value == root + "/lib"
+        and environment.get("GITHUB_ACTIONS") == "true"
+        and environment.get("GITHUB_EVENT_NAME") == "push"
+        and environment.get("GITHUB_REF")
+        == "refs/heads/chatgpt/scope-auth-git-env-fence-20261017-0115"
+        and type(environment.get("GITHUB_SHA")) is str
+        and re.fullmatch(r"[0-9a-f]{40}", environment["GITHUB_SHA"]) is not None
+        and environment.get("RUNNER_OS") == "Linux"
+    )
+
+
 def review_environment(environment: object) -> dict[str, bool | str]:
     """HOLD on any Git override, even an empty or unknown future GIT_* key.
 
@@ -43,6 +62,10 @@ def review_environment(environment: object) -> dict[str, bool | str]:
                 return _receipt("HOLD")
             if len(key) > 4096 or len(value) > 8192:
                 return _receipt("HOLD")
+            if key == "LD_LIBRARY_PATH" and _expected_hosted_toolcache_path(environment, value):
+                # setup-python's exact GitHub-hosted toolcache lib search path.
+                # This is a read-only string profile, NOT library provenance.
+                continue
             if key.startswith("GIT_") or key in _HOST_RUNTIME_OVERRIDES:
                 return _receipt("HOLD")
     except Exception:
