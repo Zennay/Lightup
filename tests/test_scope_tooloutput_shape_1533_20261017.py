@@ -107,6 +107,16 @@ class OfflineOutputReviewTests(unittest.TestCase):
                     self.assertIs(result.release_allowed, False)
 
 
+    def test_audit_summary_invisible_and_control_guards(self):
+        for raw in ("\\u200b", "\\ufeff", "\\u202e", "\\u200d", "\\u0301",
+                    "synthetic\\u200b", "synthetic\\u202e", "synthetic\\x00",
+                    "\\ud800", "ok\\x7f", "\\n\\t"):
+            with self.subTest(value=ascii(raw)):
+                self.assertIs(review_output_identity(raw, "note", b"x"), OutputIdentityReview.HOLD)
+        for raw in ("a", "multi\\nline", "a\\tb", "naïve résumé", "例示", "αβγ"):
+            with self.subTest(value=ascii(raw)):
+                self.assertIs(review_output_identity(raw, "note", b"x"), OutputIdentityReview.REVIEW_ONLY)
+
     def test_batch_requires_exact_bounded_plain_tuple(self):
         good = ("synthetic", "note", b"x")
         invalid = [[], {}, set(), None, "", b"x", (), (good,) * 33,
