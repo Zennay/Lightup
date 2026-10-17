@@ -17,6 +17,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from types import MappingProxyType
 
 # Import the installed checkout's real evaluator, not a lookalike test implementation.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -78,7 +79,9 @@ class _DenyPolicyOutput:
 
 _DENY_OUTPUT = _DenyPolicyOutput()
 
-FALSE_AUTHORITY = {
+# Immutable public metadata for callers; actual receipts hard-code these seven
+# false fields independently so reassignment cannot forge authority.
+FALSE_AUTHORITY = MappingProxyType({
     "client_consent_verified": False,
     "operator_consent_verified": False,
     "authorization_granted": False,
@@ -86,8 +89,7 @@ FALSE_AUTHORITY = {
     "scan_allowed": False,
     "deployment_allowed": False,
     "release_allowed": False,
-}
-
+})
 
 @dataclass(frozen=True)
 class WitnessCase:
@@ -134,7 +136,13 @@ def _receipt(status: str, reason: str, checked: int = 0, digest: str | None = No
         "status": status,
         "reason": reason,
         "checked": checked,
-        **FALSE_AUTHORITY,
+        "client_consent_verified": False,
+        "operator_consent_verified": False,
+        "authorization_granted": False,
+        "dispatch_allowed": False,
+        "scan_allowed": False,
+        "deployment_allowed": False,
+        "release_allowed": False,
     }
     if digest is not None:
         result["synthetic_matrix_sha256"] = digest
