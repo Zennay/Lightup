@@ -312,5 +312,41 @@ class GrantTenantReadIntegrity829(unittest.TestCase):
             )
         self.assertIsNone(current)
 
+    @unittest.expectedFailure
+    def test_source_red_foreign_corrupt_scope_cannot_break_valid_listing(self):
+        """A wrong-tenant grant's corrupt JSON must be filtered before decode."""
+        good = self.grant(self.eng_a, "fictional-valid-json")
+        foreign = self.grant(self.eng_a, "fictional-foreign-bad-json")
+        with sqlite3.connect(self.db) as con:
+            con.execute(
+                "UPDATE authorization_grants SET client_id=?, assets_json=? "
+                "WHERE grant_id=?",
+                (self.b.client_id, "{broken fictional JSON", foreign.grant_id),
+            )
+        before = self.row_snapshot()
+        rows = self.store.list_authorization_grants(
+            self.ctx_a, self.eng_a.engagement_id
+        )
+        self.assertEqual([r.grant_id for r in rows], [good.grant_id])
+        self.assertEqual(self.row_snapshot(), before)
+
+    @unittest.expectedFailure
+    def test_source_red_foreign_invalid_window_does_not_poison_current(self):
+        """Unowned timestamp garbage cannot prevent reading a valid A grant."""
+        good = self.grant(self.eng_a, "fictional-valid-date")
+        foreign = self.grant(self.eng_a, "fictional-foreign-bad-date")
+        with sqlite3.connect(self.db) as con:
+            con.execute(
+                "UPDATE authorization_grants SET client_id=?,valid_until=? "
+                "WHERE grant_id=?",
+                (self.b.client_id, "not-a-fictional-datetime", foreign.grant_id),
+            )
+        current = self.store.get_current_grant(
+            self.ctx_a, self.eng_a.engagement_id, now=self.now
+        )
+        self.assertIsNotNone(current)
+        self.assertEqual(current.grant_id, good.grant_id)
+
+
 if __name__ == "__main__":
     unittest.main()
