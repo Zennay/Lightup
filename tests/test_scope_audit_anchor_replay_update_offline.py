@@ -130,6 +130,25 @@ class FictionalReplayLedgerTests(unittest.TestCase):
         root["after"]["entries"][2]["tip_sha256"] = record["tip_sha256"]
         self.assert_hold(root, tip)
 
+    def test_each_prior_nonce_or_tip_cannot_be_replayed_510_subcases(self):
+        # Every previously externally anchored value stays unavailable,
+        # even when the new fictional receipt gets a newly valid MAC.
+        initial, tip = fixture(old=255, added=(300,))
+        self.assertEqual(
+            "REVIEW_ONLY",
+            verify_replay_update(encode(initial), tip, KEY, NOW, KEY_ID)["status"],
+        )
+        for field in ("nonce", "tip_sha256"):
+            for index in range(255):
+                with self.subTest(field=field, old_record=index):
+                    root, fixed_tip = fixture(old=255, added=(300,))
+                    stolen = root["before"]["entries"][index][field]
+                    new_receipt = root["incoming"]["attestations"][0]
+                    new_receipt[field] = stolen
+                    self._resign(new_receipt)
+                    root["after"]["entries"][-1][field] = stolen
+                    self.assert_hold(root, fixed_tip)
+
     def test_untrusted_modified_historical_anchor_rejected(self):
         root, tip = fixture()
         root["before"]["entries"][0]["nonce"] = "f" * 32
