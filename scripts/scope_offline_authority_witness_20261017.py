@@ -9,6 +9,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import signal
+import threading
 import sys
 from contextvars import ContextVar
 from contextlib import redirect_stderr, redirect_stdout
@@ -20,6 +22,20 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from lightup.models import Authorization, Target  # noqa: E402
 from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason  # noqa: E402
+
+# A per-review 2.5-second real-time deadline on POSIX/Linux prevents a
+# stalled installed evaluator from denying a bounded offline HOLD receipt.
+# Refuse, rather than overwrite, any alarm already owned by another component.
+EVALUATION_DEADLINE_SECONDS = 2.5
+
+
+class _WitnessTimeLimit(BaseException):
+    """Out-of-band timer exception that ordinary Exception handlers cannot swallow."""
+
+
+def _witness_alarm(_signum: int, _frame: object) -> None:
+    raise _WitnessTimeLimit()
+
 
 SCHEMA = "lightup.scope-offline-decision-witness.v1"
 # These hashes attest only the fictional fixtures and observed classifications.
@@ -195,8 +211,40 @@ def _fixture_snapshot(fixtures: object) -> list[list[object]] | None:
     return rows
 
 
+def _evaluate_pinned_cases(fixtures: tuple[WitnessCase, ...], fixture_digest: str) -> dict[str, object]:
+    """Called only under the exclusive deadline and after fixture-pin admission."""
+    observed: list[list[object]] = []
+    for case in fixtures:
+        token = _WITNESS_EVALUATION_ACTIVE.set(True)
+        try:
+            with redirect_stdout(_DENY_OUTPUT), redirect_stderr(_DENY_OUTPUT):
+                decision = case.policy.decide(case.target)
+        finally:
+            _WITNESS_EVALUATION_ACTIVE.reset(token)
+        if (
+            type(decision) is not ScopeDecision
+            or type(decision.allowed) is not bool
+            or (decision.normalized_host is not None and type(decision.normalized_host) is not str)
+            or type(decision.reason) is not ScopeReason
+        ):
+            return _receipt("HOLD", "invalid_decision_shape")
+        if (
+            decision.allowed is not case.expected_allowed
+            or decision.normalized_host != case.expected_host
+            or decision.reason is not case.expected_reason
+        ):
+            return _receipt("HOLD", "scope_policy_contract_drift")
+        observed.append([case.case_id, decision.allowed, decision.normalized_host, decision.reason.value])
+    digest = _hash_canonical_rows(observed)
+    if digest != REFERENCE_BEHAVIOR_SHA256:
+        return _receipt("HOLD", "reference_behavior_drift")
+    receipt = _receipt("REVIEW_ONLY", "canonical_synthetic_matrix_matches", len(fixtures), digest)
+    receipt["synthetic_fixture_sha256"] = fixture_digest
+    return receipt
+
+
 def evaluate(cases: tuple[WitnessCase, ...] | None = None) -> dict[str, object]:
-    """Only pin-matched, prevalidated fictional fixtures reach the real evaluator."""
+    """Only pin-matched, bounded fictional evaluation may yield REVIEW_ONLY."""
     try:
         fixtures = canonical_cases() if cases is None else cases
         snapshot = _fixture_snapshot(fixtures)
@@ -205,36 +253,31 @@ def evaluate(cases: tuple[WitnessCase, ...] | None = None) -> dict[str, object]:
         fixture_digest = _hash_canonical_rows(snapshot)
         if fixture_digest != REFERENCE_FIXTURE_SHA256:
             return _receipt("HOLD", "reference_fixture_drift")
-        observed: list[list[object]] = []
-        for case in fixtures:
-            token = _WITNESS_EVALUATION_ACTIVE.set(True)
-            try:
-                with redirect_stdout(_DENY_OUTPUT), redirect_stderr(_DENY_OUTPUT):
-                    decision = case.policy.decide(case.target)
-            finally:
-                _WITNESS_EVALUATION_ACTIVE.reset(token)
-            if (
-                type(decision) is not ScopeDecision
-                or type(decision.allowed) is not bool
-                or (decision.normalized_host is not None and type(decision.normalized_host) is not str)
-                or type(decision.reason) is not ScopeReason
-            ):
-                return _receipt("HOLD", "invalid_decision_shape")
-            if (
-                decision.allowed is not case.expected_allowed
-                or decision.normalized_host != case.expected_host
-                or decision.reason is not case.expected_reason
-            ):
-                return _receipt("HOLD", "scope_policy_contract_drift")
-            observed.append([case.case_id, decision.allowed, decision.normalized_host, decision.reason.value])
-        digest = _hash_canonical_rows(observed)
-        if digest != REFERENCE_BEHAVIOR_SHA256:
-            return _receipt("HOLD", "reference_behavior_drift")
-        receipt = _receipt("REVIEW_ONLY", "canonical_synthetic_matrix_matches", len(fixtures), digest)
-        receipt["synthetic_fixture_sha256"] = fixture_digest
-        return receipt
+        # Never steal an existing process-level SIGALRM timer, silently run
+        # without the deadline, or execute a policy on a worker thread.
+        if (
+            threading.current_thread() is not threading.main_thread()
+            or not hasattr(signal, "setitimer")
+            or not hasattr(signal, "SIGALRM")
+            or _WITNESS_EVALUATION_ACTIVE.get()
+            or signal.getsignal(signal.SIGALRM) is not signal.SIG_DFL
+            or any(signal.getitimer(signal.ITIMER_REAL))
+        ):
+            return _receipt("HOLD", "offline_witness_time_fence_unavailable")
+        prior_handler = signal.getsignal(signal.SIGALRM)
+        try:
+            signal.signal(signal.SIGALRM, _witness_alarm)
+            signal.setitimer(signal.ITIMER_REAL, EVALUATION_DEADLINE_SECONDS)
+            return _evaluate_pinned_cases(fixtures, fixture_digest)
+        finally:
+            # Restore both resources even if the policy crashed, returned
+            # early or exceeded the wall-clock budget.
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            signal.signal(signal.SIGALRM, prior_handler)
+    except _WitnessTimeLimit:
+        return _receipt("HOLD", "offline_witness_time_budget_exceeded")
     except Exception:
-        # Never echo potentially sensitive input/exception data to the review channel.
+        # No potentially sensitive input, error, or exception messages appear.
         return _receipt("HOLD", "offline_witness_evaluation_failed")
 
 
