@@ -120,3 +120,7 @@ A new synthetic RED showed the count-based strict evidence gate could still retu
 ## W25 — exact Git tree blob modes, no symlinks or submodules
 
 The previous branch ownership fence checked names and add-only status but did not inspect each object's Git mode. A newly-added symlink (`120000`), executable blob (`100755`) or gitlink/submodule (`160000`) at an otherwise approved path could have passed the name-only proof. New `safe_tree` compares the *exact* names from the NUL-delimited add-only Git diff against a SHA-pinned HEAD `git ls-tree -r -z`, and requires every corresponding mode/type to be precisely `100644 blob` plus an ASCII 40-digit hexadecimal object ID. Malformed/missing/duplicate/foreign tree records all HOLD. Five dedicated synthetic tests cover those cases and the live local branch check reports PASS. This verifies only our own branch’s stored tree object metadata, not any real authorization, merge safety or runtime sandbox.
+
+## W26 — newly introduced tree-mode checks become mandatory CI evidence
+
+After adding the independent `test_scope_literal_git_modes_20261016.py` module, the held branch's fixed evidence inventory was upgraded to **16 required owned test modules** and a strict minimum of 96 executed tests. A new negative check explicitly attempts to remove the Git-mode test module without lowering aggregate test count; the evidence gate now HOLDs. The 96-test Python 3.14 isolated local run passed with exactly 4 open original source expectedFailures. No runtime components were activated.

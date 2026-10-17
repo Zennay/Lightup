@@ -51,13 +51,21 @@ class ManifestEvidenceTests(unittest.TestCase):
 
     def test_missing_whole_owned_module_cannot_hide_behind_test_count(self):
         ids, result, modules = self.example()
-        missing = "test_scope_literal_adapter_errors_20261016"
-        # Without a fixed manifest, dropping a whole 1-test module while
-        # retaining other tests above the floor could still look green.
-        changed = tuple(ident.replace(missing + ".", "test_scope_literal_other_20261016.") if ident.startswith(missing + ".") else ident for ident in ids)
-        observed = {ident.split(".", 1)[0] for ident in changed}
-        self.assertEqual(len(changed), len(ids))
-        self.assertFalse(manifest.check_evidence(changed, result, observed))
+        # A whole module must be provably present, even if the total number
+        # of tests remains above the minimum by retaining all other tests.
+        for missing in (
+            "test_scope_literal_adapter_errors_20261016",
+            "test_scope_literal_git_modes_20261016",
+        ):
+            with self.subTest(missing=missing):
+                changed = tuple(
+                    ident.replace(missing + ".", "test_scope_literal_other_20261016.")
+                    if ident.startswith(missing + ".") else ident
+                    for ident in ids
+                )
+                observed = {ident.split(".", 1)[0] for ident in changed}
+                self.assertEqual(len(changed), len(ids))
+                self.assertFalse(manifest.check_evidence(changed, result, observed))
 
     def test_skips_fail_closed_even_if_test_runner_says_success(self):
         ids, result, modules = self.example()

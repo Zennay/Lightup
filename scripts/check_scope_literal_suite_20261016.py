@@ -20,7 +20,7 @@ KNOWN_SOURCE_REDS = frozenset({
     "test_scope_literal_controls_20261016.InstalledSourceRedWitness.test_original_lab_activation_must_deny_control_char_authority",
     "test_scope_literal_controls_20261016.InstalledSourceRedWitness.test_original_scope_must_not_convert_newline_in_url",
 })
-MIN_TESTS = 90
+MIN_TESTS = 96
 REQUIRED_MODULES = frozenset({
     "test_scope_literal_adapter_errors_20261016",
     "test_scope_literal_aliases_20261016",
@@ -28,6 +28,7 @@ REQUIRED_MODULES = frozenset({
     "test_scope_literal_cli_flags_20261016",
     "test_scope_literal_controls_20261016",
     "test_scope_literal_encoded_review_20261016",
+    "test_scope_literal_git_modes_20261016",
     "test_scope_literal_json_boundary_20261016",
     "test_scope_literal_metamorphic_20261016",
     "test_scope_literal_output_errors_20261016",
