@@ -25,7 +25,7 @@
 <div class="field"><label for="client">Client label (optional)</label><input id="client" maxlength="100" placeholder="Organisation / project alias" autocomplete="off"></div>
 <div class="field"><label for="risk">Requested risk level</label><select id="risk"><option value="1">1 · Low / observation</option><option value="2">2 · Limited testing</option><option value="3">3 · Elevated testing</option><option value="4">4 · High risk (separate approval)</option></select></div>
 </div>
-<div class="field"><label for="mode">Requested assessment mode</label><select id="mode"><option value="authorized_assessment">Authorized assessment (review required)</option><option value="lab_only">Private laboratory (no real target rights)</option></select></div>
+<div class="field"><label for="mode">Requested assessment mode</label><select id="mode"><option value="authorized_assessment">Authorized assessment (review required)</option><option value="analysis_only">Analysis only (no target execution)</option></select></div>
 <div class="field"><label for="assets">Proposed in-scope assets</label><textarea id="assets" spellcheck="false" placeholder="app.example.com&#10;192.0.2.15&#10;198.51.100.0/28" maxlength="12000"></textarea><small>One exact hostname, IP or CIDR per line. No URLs, wildcards, credentials, ports or domains with ambiguous suffixes. These are proposals, not allowlist entries.</small></div>
 <div class="field"><label for="excluded">Explicitly excluded assets</label><textarea id="excluded" spellcheck="false" placeholder="admin.example.com" maxlength="12000"></textarea><small>Exclusions are for review only. Operators must enforce exclusions independently; do not rely on text matching as an execution boundary.</small></div>
 <div class="field"><label for="purpose">Purpose, safety conditions and approach</label><textarea id="purpose" maxlength="3000" placeholder="Why is the assessment needed? What is prohibited? Who should be contacted for stop/revocation?"></textarea></div>
@@ -136,7 +136,7 @@ function read() {
 function show() {
   const {problems,draft,canExport}=read();
   $('readiness').textContent = canExport ? 'Ready for human review' : 'Incomplete draft';
-  $('summary').textContent = draft.requested_assets.length+' proposed · '+draft.excluded_assets.length+' excluded · risk '+draft.requested_risk+' · '+(draft.requested_mode==='lab_only'?'private lab':'authorized assessment');
+  $('summary').textContent = draft.requested_assets.length+' proposed · '+draft.excluded_assets.length+' excluded · risk '+draft.requested_risk+' · '+(draft.requested_mode==='analysis_only'?'analysis only':'authorized assessment');
   $('issues').replaceChildren();
   if (!problems.length) { const li=document.createElement('li');li.className='ok';li.textContent='No obvious input problems. Approval is still required.';$('issues').append(li); }
   for(const p of problems){const li=document.createElement('li');li.className=p.fatal?'error':'';li.textContent=(p.fatal?'Fix: ':'Review: ')+p.message;$('issues').append(li);}
@@ -195,7 +195,7 @@ $('import').addEventListener('change',async(event)=>{
       data.requested_assets.length>80||data.excluded_assets.length>80||
       !data.requested_assets.every(v=>str(v,120))||!data.excluded_assets.every(v=>str(v,120))||
       !str(data.proposal_name,120)||!str(data.client_label,100)||!str(data.notes,3000)||
-      !['authorized_assessment','lab_only'].includes(data.requested_mode)||
+      !['authorized_assessment','analysis_only'].includes(data.requested_mode)||
       !Number.isInteger(data.requested_risk)||data.requested_risk<1||data.requested_risk>4||
       !data.proposed_window_local || typeof data.proposed_window_local!=='object' ||
       !data.proposed_activities || typeof data.proposed_activities!=='object' ||
