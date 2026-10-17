@@ -72,6 +72,26 @@ MUTATIONS = (
 )
 
 
+
+def mutation_detected(result: unittest.TestResult, expected_test_prefix: str) -> bool:
+    """Only real AssertionError safety denials count as killing a mutation.
+
+    An import error, AttributeError, TimeoutError or other test crash is not
+    evidence that a fail-open change was caught by the intended assertion.
+    """
+    if (
+        result.testsRun != 7 or result.errors or result.expectedFailures
+        or result.unexpectedSuccesses or not result.failures
+    ):
+        return False
+    if not all("AssertionError:" in detail for _, detail in result.failures):
+        return False
+    return any(
+        expected_test_prefix in str(case) for case, _ in result.failures
+    )
+
+
+
 def main() -> int:
     baseline = run_suite()
     if not baseline.wasSuccessful() or baseline.testsRun != 7:
@@ -85,18 +105,14 @@ def main() -> int:
     for name, broken, expected_test_prefix in MUTATIONS:
         with patch.object(ScopePolicy, "decide", broken):
             result = run_suite()
-        reported = tuple(
-            str(case) for case, _detail in result.failures + result.errors
-        )
-        if result.testsRun != 7 or not any(
-            expected_test_prefix in name_of_test for name_of_test in reported
-        ):
+        if not mutation_detected(result, expected_test_prefix):
             print(
                 f"HOLD: mutation {name} was NOT detected by the expected contract "
-                f"(ran={result.testsRun}, caught={len(reported)})"
+                f"(ran={result.testsRun}, assertions={len(result.failures)}, "
+                f"unexpected_errors={len(result.errors)})"
             )
             return 2
-        print(f"DETECTED {name}: {len(reported)} negative regressions failed")
+        print(f"DETECTED {name}: {len(result.failures)} assertion-based negative regressions failed")
 
     if ScopePolicy.decide is not REAL_DECIDE:
         print("HOLD: ScopePolicy restored function identity changed")
