@@ -8,6 +8,8 @@ on:
       - '.github/workflows/scope-literal-controls-20261016.yml'
       - 'src/lightup/scope_literal_control_review_20261016.py'
       - 'scripts/review_scope_literal_controls_20261016.py'
+      - 'scripts/check_scope_literal_suite_20261016.py'
+      - 'scripts/check_scope_literal_branch_20261016.py'
       - 'tests/test_scope_literal_*20261016.py'
       - 'docs/scope-literal-control-review-20261016.md'
 
@@ -33,6 +35,7 @@ jobs:
         with:
           ref: '${{ github.sha }}'
           persist-credentials: false
+          fetch-depth: 0
       - name: Install interpreter
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
@@ -42,9 +45,11 @@ jobs:
           EXPECTED_HEAD: '${{ github.sha }}'
         run: |
           test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+      - name: Verify exact-head branch contains ONLY owned new files
+        run: python scripts/check_scope_literal_branch_20261016.py
       - name: Compile own strictly offline code
         run: |
-          python -m compileall -q src/lightup/scope_literal_control_review_20261016.py scripts/review_scope_literal_controls_20261016.py scripts/check_scope_literal_suite_20261016.py
+          python -m compileall -q src/lightup/scope_literal_control_review_20261016.py scripts/review_scope_literal_controls_20261016.py scripts/check_scope_literal_suite_20261016.py scripts/check_scope_literal_branch_20261016.py
           # Keep future exclusively owned test modules in the same proof lane.
           python -m compileall -q tests/test_scope_literal_*20261016.py
       - name: Offline literals and original source-RED witnesses only
