@@ -333,3 +333,35 @@ starts a delayed shell child; shortening only the test-local deadline
 proves the child starts but never reaches its delayed filesystem marker
 after HOLD. This is not permission to execute Git aliases or real
 untrusted shell commands in regular validation.
+
+
+## W62–W65 — ambiguous 'filter=unspecified' bypass sealed on clean-main draft
+
+Git's regular `check-attr -z --stdin filter` returns the literal value
+`unspecified` **both** when no filter is selected and when the checked-out
+attributes explicitly select `filter=unspecified`. The latter is a valid
+Git driver name: configuring `filter.unspecified.clean` in a disposable
+repository makes unguarded read-only `git status` execute the selected
+shell fixture against an equal-length modified tracked file. Thus the
+original offline filter preflight could incorrectly return REVIEW_ONLY
+for a selected executable driver. This was reproduced with only
+temporary fictional Git repositories; no real targets were touched.
+
+The dedicated, unwired `_tracked_files_have_no_filters` now calls
+`check-attr --all -z --stdin` for the exact tracked paths. Unlike the
+single-attribute query, `--all` returns triplets only for **present**
+resolved attributes, including literal `filter=unspecified`, attributes
+expanded from `[attr]` macros, `.git/info/attributes`, and the configured
+global `core.attributesFile`. The parser accepts only bounded exact
+NUL triplets from known tracked paths; duplicates, malformed names or
+values, unknown paths, and every selected `filter` attribute cause HOLD
+before `git status`. Ordinary `text`/`eol` attributes remain allowed.
+This is fail-closed diagnostic evidence, not a production repair,
+authority, real provenance, or consent.
+
+Dedicated source-integrated real Git tests prove red-to-green for the
+explicit `unspecified` driver, info/global sources, and a macro-expanded
+driver, with an actual external marker in **unprotected disposable**
+controls and no marker when protected. The helper never runs its
+protected `git status` against a selected filter. Additional mocked
+bad-triplet cases prove malformed output always HOLD.
