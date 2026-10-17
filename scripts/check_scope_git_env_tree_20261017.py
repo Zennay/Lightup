@@ -90,10 +90,10 @@ def _tracked_files_have_no_filters() -> bool:
         files.returncode != 0 or type(files.stdout) is not bytes
         or type(files.stderr) is not bytes or files.stderr
         or not files.stdout or len(files.stdout) > 262144
-        or not files.stdout.endswith(b"\\0")
+        or not files.stdout.endswith(b"\0")
     ):
         return False
-    names = files.stdout[:-1].split(b"\\0")
+    names = files.stdout[:-1].split(b"\0")
     if len(names) > 8192 or len(set(names)) != len(names):
         return False
     attrs = _git_raw("check-attr", "-z", "--stdin", "filter", data=files.stdout)
@@ -101,10 +101,10 @@ def _tracked_files_have_no_filters() -> bool:
         attrs.returncode != 0 or type(attrs.stdout) is not bytes
         or type(attrs.stderr) is not bytes or attrs.stderr
         or not attrs.stdout or len(attrs.stdout) > 786432
-        or not attrs.stdout.endswith(b"\\0")
+        or not attrs.stdout.endswith(b"\0")
     ):
         return False
-    fields = attrs.stdout[:-1].split(b"\\0")
+    fields = attrs.stdout[:-1].split(b"\0")
     if len(fields) != 3 * len(names):
         return False
     for index, path in enumerate(names):
