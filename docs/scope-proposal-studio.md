@@ -2,12 +2,14 @@
 
 ## Product
 
-Standalone browser-only workspace at `studio/index.html` with three connected product experiences:
+Standalone browser-only workspace at `studio/index.html` with four connected product experiences:
 
 1. **Scope Proposal Studio** (`studio/scope-proposal.html`): prepare and export a client-readable assessment proposal with explicitly proposed asset identities, exclusions, risk 1–4, `AssessmentMode`-compatible value (`analysis_only` or `authorized_assessment`), intended activities, notes/stop instructions, and a local-time planning window. Inline review catches duplicate/invalid literal assets, canonical IPv4/IPv6 aliases, exact and intersecting scope/exclusion CIDRs, and reversed dates; manual review warnings cover CIDR ownership, IPv6, higher risk, and incomplete windows. Display a handoff brief; print or copy it; JSON import/export under 64 KiB, max 80 assets per list. All inputs remain in memory only.
 2. **Scope Change Review** (`studio/scope-change-review.html`): load two v1 proposal-draft JSON exports (64 KiB max each), compare exact case-folded asset identities and exclusions, risk, mode, activities, windows, and safety-note changes. Highlight potential expansion separately from restriction and context changes. Shared local `scope-network.js` parses IPv4/IPv6 CIDRs into canonical integer intervals and flags effective new or removed address-space coverage even if differing network notation hides the literal change; DNS remains intentionally unresolved. Export a privacy-minimal, non-authorizing structured review note, excluding free-text purpose content.
 
 3. **Engagement Handoff Builder** (`studio/engagement-handoff.html`): import the client proposal, record client/operator coordination contacts and emergency stop contact, stop conditions, privacy and evidence-handling plan, service/rate limits, rollback and incident procedure. The page surfaces outstanding preparation materials and exports a human-readable dossier and versioned `lightup.engagement_preparation_draft` JSON with literal false consent, authorization, grant, execution and release fields. "Prepared for human review" never equals "authorized".
+
+4. **Scope Portfolio Board** (`studio/scope-portfolio.html`): import up to 20 separate drafts in the browser, deduplicate by recomputed stable SHA-256 revision, filter by risk/label/asset, summarize declared scopes and analyze potential cross-proposal numeric IPv4/IPv6 overlaps and local planning-window collisions. Download a read-only JSON portfolio and CSV work manifest. No notes or contact details appear in exports, and spreadsheet-formula-leading cells are escaped before CSV download. The board is not the authenticated authorization inbox and does not establish shared tenancy or actual booked windows.
 
 Open `studio/index.html` from a local checkout in a modern browser; no server, build, third-party dependencies, remote scripts, cookies, `localStorage`, database, authentication, fetch/API or real-target contact. Files are downloaded by user action only. For example:
 
@@ -15,7 +17,8 @@ Open `studio/index.html` from a local checkout in a modern browser; no server, b
 studio/index.html
   ├── scope-proposal.html       → lightup-scope-draft.json
   ├── scope-change-review.html  ← before/after draft files → lightup-scope-change-review.json
-  └── engagement-handoff.html   ← draft file → lightup-engagement-preparation.json
+  ├── engagement-handoff.html   ← draft file → lightup-engagement-preparation.json
+  └── scope-portfolio.html      ← multiple draft files → privacy-minimal portfolio JSON/CSV
       scope-network.js         (shared local address-range analysis)
       scope-fingerprint.js     (unsigned stable scope revision SHA-256)
 ```
@@ -31,7 +34,7 @@ Review notes use `kind: "lightup.scope_comparison_notes"` and `disposition: "REV
 ### Scope boundaries
 
 - This is **proposal creation and change communication**, not a grant issuer, authorization engine, scope policy, risk approval, active security tool or execution adapter.
-- All imported JSON is considered untrusted. The tools never establish the submitter's identity, asset ownership, tenant membership, scope coverage, server-side validity, current revocation, or consent.
+- All imported JSON is considered untrusted. The portfolio caps proposal files at 64 KiB each, 20 proposals and 1 MiB input per selection; duplicate revisions are not silently counted as new engagements. The tools never establish the submitter's identity, asset ownership, tenant membership, scope coverage, server-side validity, current revocation, or consent.
 - Exports can contain potentially sensitive client notes/assets; review where to share them. This standalone, local-browser experience sends no data over the network.
 - Local datetime inputs have no timezone offset. Planning times must be resolved and approved independently in UTC by the operator.
 - Risk 4 requires independent risk escalation approval; even `analysis_only` does not grant any operational access.
