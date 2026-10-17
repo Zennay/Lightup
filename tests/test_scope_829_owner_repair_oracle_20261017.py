@@ -28,6 +28,13 @@ QUERY = (
     '                (engagement.engagement_id,),'
 )
 OWNER_FILTER = (
+    '"SELECT g.* FROM authorization_grants AS g '
+    'JOIN engagements AS e ON e.engagement_id=g.engagement_id '
+    'AND e.client_id=g.client_id '
+    'WHERE g.engagement_id=? AND e.client_id=? ORDER BY g.created_at DESC",\n'
+    '                (engagement.engagement_id, engagement.client_id),'
+)
+CLIENT_ONLY_FILTER = (
     '"SELECT * FROM authorization_grants WHERE engagement_id=? AND client_id=? ORDER BY created_at DESC",\n'
     '                (engagement.engagement_id, engagement.client_id),'
 )
@@ -97,6 +104,8 @@ def _run_source_variant(variant: str) -> dict:
         patched = raw
     elif variant == "correct":
         patched = raw.replace(QUERY, OWNER_FILTER)
+    elif variant == "owner_only":
+        patched = raw.replace(QUERY, CLIENT_ONLY_FILTER)
     elif variant == "trim":
         patched = raw.replace(QUERY, TRIM_FILTER)
     elif variant == "limit":
@@ -145,21 +154,25 @@ def _run_source_variant(variant: str) -> dict:
             "count", "failures", "errors", "skipped",
             "unexpected_success", "expected_failure",
         }
-        assert result["count"] == 23, (variant, result)
+        assert result["count"] == 25, (variant, result)
         assert result["skipped"] == 0 and result["expected_failure"] == 0
         assert result["unexpected_success"] == 0
         return result
 
 
 class Scope829OwnerRepairOracle(unittest.TestCase):
-    def test_original_source_has_fourteen_strict_reds(self):
+    def test_original_source_has_sixteen_strict_reds(self):
         result = _run_source_variant("original")
-        self.assertEqual(len(result["failures"]) + len(result["errors"]), 14)
+        self.assertEqual(len(result["failures"]) + len(result["errors"]), 16)
 
-    def test_exact_tenant_owner_filter_fixes_all_real_cases(self):
+    def test_joined_current_owner_filter_fixes_all_real_cases(self):
         result = _run_source_variant("correct")
         self.assertEqual(result["failures"], [])
         self.assertEqual(result["errors"], [])
+
+    def test_filtering_only_cached_client_id_is_not_race_safe(self):
+        result = _run_source_variant("owner_only")
+        self.assertGreater(len(result["failures"]) + len(result["errors"]), 0)
 
     def test_trimming_opaque_tenant_ids_is_not_sufficient(self):
         result = _run_source_variant("trim")
