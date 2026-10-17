@@ -98,7 +98,7 @@ class PairReview649Tests(unittest.TestCase):
         for value in ([], [{}] * 33, tuple([{"before": record(), "after": record()}]),
                       "not a list", 0, None, {}):
             with self.subTest(type=type(value).__name__):
-                self.assertIs(pair.review_pair_batch(packet(value)).status, base.ReviewStatus.HOLD)
+                raw = packet()\n                raw["pairs"] = value\n                self.assertIs(pair.review_pair_batch(raw).status, base.ReviewStatus.HOLD)
 
     def test_reject_untrusted_fields_or_forged_synthetic_marker(self):
         for value in (None, False, 1, "true", [], {}):
