@@ -168,6 +168,69 @@ raise SystemExit(entry['main']([]))
                 self.assertEqual(child.stdout, b"")
                 self.assertEqual(child.stderr, b"")
 
+
+    def test_fragmented_stdin_cannot_approve_valid_prefix_with_trailing_bytes(self):
+        # A legitimate read(n) may return fewer than n bytes without EOF.
+        # One-shot reading can incorrectly approve a valid prefix even though
+        # untrusted bytes still follow in the same logical input stream.
+        program = """import io,json,runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+valid=json.dumps({"schema":"lightup.scope1533.synthetic.v1",
+                  "synthetic_only":True,"items":[
+                    {"summary":"safe fixture","kind":"note","payload_hex":"ab"}]}).encode()
+class Fragmented:
+    def __init__(self):
+        self.pending=[valid,b'\\x00INJECTED_TRAILING_BYTES',b'']
+    def read(self, limit):
+        piece=self.pending.pop(0)
+        if len(piece)>limit: raise AssertionError('over-read')
+        return piece
+class FakeStdin: pass
+source=FakeStdin()
+source.buffer=Fragmented()
+sys.stdin=source
+raise SystemExit(entry['main']([]))
+"""
+        child = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", program],
+            cwd=ROOT, input=b"", capture_output=True, timeout=8, check=False,
+        )
+        self.assertEqual(child.returncode, 2, child.stderr)
+        self.assertEqual(child.stderr, b"")
+        receipt = json.loads(child.stdout)
+        self.assertEqual(receipt["status"], "HOLD")
+        for name in FALSE_KEYS:
+            self.assertIs(receipt[name], False)
+
+    def test_fragmented_valid_input_is_assembled_and_reviewed_only(self):
+        program = """import json,runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+valid=json.dumps({"schema":"lightup.scope1533.synthetic.v1",
+                  "synthetic_only":True,"items":[
+                    {"summary":"synthetic","kind":"note","payload_hex":"ab"}]}).encode()
+chunks=[bytes([b]) for b in valid]+[b'']
+class Fragmented:
+    def read(self, limit):
+        piece=chunks.pop(0)
+        if len(piece)>limit: raise AssertionError('over-read')
+        return piece
+class FakeStdin: pass
+source=FakeStdin()
+source.buffer=Fragmented()
+sys.stdin=source
+raise SystemExit(entry['main']([]))
+"""
+        child = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", program],
+            cwd=ROOT, input=b"", capture_output=True, timeout=8, check=False,
+        )
+        self.assertEqual(child.returncode, 3, child.stderr)
+        self.assertEqual(child.stderr, b"")
+        receipt = json.loads(child.stdout)
+        self.assertEqual(receipt["status"], "REVIEW_ONLY")
+        for name in FALSE_KEYS:
+            self.assertIs(receipt[name], False)
+
     def test_real_cli_under_original_native_no_io_tripwire(self):
         # Reuse the existing owner's unchanged guard fixture. This is a
         # Python-level interposition test, not a kernel sandbox or consent.
