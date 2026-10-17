@@ -6,7 +6,9 @@ Set LIGHTUP_SCOPE1533_REQUIRE_SOURCE_FIX=1 to require actual source fixes.
 from __future__ import annotations
 
 import ast
+import copy
 import os
+import pickle
 from pathlib import Path
 import sys
 import unittest
@@ -42,6 +44,13 @@ class OfflineOutputReviewTests(unittest.TestCase):
                 self.assertNotIsInstance(value, str, "review status must not be accepted as string authority")
                 self.assertNotEqual(value, value.value, "string comparisons cannot imply grant")
                 self.assertNotEqual(value, "AUTHORIZED")
+                for property_name in ("authorized", "consent_verified", "dispatch_allowed", "release_allowed"):
+                    self.assertIs(getattr(value, property_name), False)
+                for cloned in (copy.copy(value), copy.deepcopy(value), pickle.loads(pickle.dumps(value))):
+                    self.assertIs(cloned, value)
+                    self.assertFalse(cloned)
+                    self.assertIs(cloned.dispatch_allowed, False)
+                    self.assertIs(cloned.release_allowed, False)
         with self.assertRaises(AttributeError):
             OutputIdentityReview.HOLD.value = "AUTHORIZED"
 
@@ -78,6 +87,24 @@ class OfflineOutputReviewTests(unittest.TestCase):
             ("x", "Note", b""),
         ]:
             self.assertIs(review_output_identity(*fields), OutputIdentityReview.HOLD)
+
+    def test_no_identity_or_authority_upgrade_under_deterministic_kind_mutations(self):
+        # Synthetic metadata only; never dispatch actual workers.
+        accepted = "http-baseline-observation"
+        self.assertIs(review_output_identity("synthetic", accepted, b"x"), OutputIdentityReview.REVIEW_ONLY)
+        for index in range(len(accepted)):
+            for replacement in ("\\x00", "\\n", "\\r", "\\t", "\\u200b", "\\u202e", "\\u2066", "/",
+                                ":", "\\", "A", "9" if index == 0 else "@"):
+                changed = accepted[:index] + replacement + accepted[index + 1:]
+                if changed == accepted:
+                    continue
+                with self.subTest(position=index, char=ascii(replacement)):
+                    result = review_output_identity("synthetic", changed, b"x")
+                    self.assertIs(result, OutputIdentityReview.HOLD)
+                    self.assertIs(result.authorized, False)
+                    self.assertIs(result.consent_verified, False)
+                    self.assertIs(result.dispatch_allowed, False)
+                    self.assertIs(result.release_allowed, False)
 
     def test_malformed_fields_atomic_hold(self):
         values = [
