@@ -25,6 +25,12 @@ suite_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(suite_module)
 
 from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason  # noqa: E402
+from lightup.orchestrator import Planner, AssessmentPlan
+from lightup.activation import ActivationGate
+import lightup.orchestrator as orchestrator_module
+import lightup.activation as activation_module
+REAL_PLAN = Planner.build
+REAL_ISSUE = ActivationGate.issue
 
 REAL_DECIDE = ScopePolicy.decide
 
@@ -44,6 +50,9 @@ REQUIRED_TEST_METHODS = frozenset({
     "test_generated_global_ipv4_nonmembers_do_not_gain_scope",
     "test_normalized_host_is_not_rebound_to_a_declared_identity",
     "test_nonmember_recheck_after_untrusted_grant_replacement_stays_denied",
+    "test_nonmember_cannot_enter_planner_capability_discovery",
+    "test_nonmember_never_reaches_permit_token_creation_in_any_mode",
+    "test_invalid_identity_stops_planner_and_permit_before_side_effects",
 })
 
 
@@ -162,6 +171,56 @@ MUTATIONS = (
 )
 
 
+def illegally_plan_capabilities_for_denied_target(self, target):
+    original = REAL_PLAN(self, target)
+    if not original.scope.allowed:
+        return AssessmentPlan(
+            original.target, original.scope, ("synthetic-untrusted-capability",),
+            execution_enabled=False,
+        )
+    return original
+
+
+def illegally_discover_capabilities_before_policy_denial(self, target):
+    orchestrator_module.get_capabilities()
+    return REAL_PLAN(self, target)
+
+
+def illegally_enable_denied_assessment_execution(self, target):
+    original = REAL_PLAN(self, target)
+    if not original.scope.allowed:
+        return AssessmentPlan(
+            original.target, original.scope, original.capability_ids,
+            execution_enabled=True,
+        )
+    return original
+
+
+def illegally_return_object_without_scope_permit(self, target, capability_id):
+    # A synthetic sentinel is deliberately NOT an ExecutionPermit or grant.
+    return object()
+
+
+def illegally_allocate_token_before_membership(self, target, capability_id):
+    activation_module.token_urlsafe(24)
+    return REAL_ISSUE(self, target, capability_id)
+
+
+DOWNSTREAM_MUTATIONS = (
+    ("planner_denied_capabilities", Planner, "build", illegally_plan_capabilities_for_denied_target,
+     "test_nonmember_cannot_enter_planner"),
+    ("planner_early_discovery", Planner, "build", illegally_discover_capabilities_before_policy_denial,
+     "test_nonmember_cannot_enter_planner"),
+    ("planner_execution_enabled", Planner, "build", illegally_enable_denied_assessment_execution,
+     "test_nonmember_cannot_enter_planner"),
+    ("permit_gate_missing_membership", ActivationGate, "issue", illegally_return_object_without_scope_permit,
+     "test_nonmember_never_reaches_permit"),
+    ("permit_token_before_membership", ActivationGate, "issue", illegally_allocate_token_before_membership,
+     "test_nonmember_never_reaches_permit"),
+)
+
+
+
 
 def mutation_detected(result: unittest.TestResult, expected_test_prefix: str) -> bool:
     """Only real AssertionError safety denials count as killing a mutation.
@@ -189,7 +248,7 @@ def main() -> int:
     baseline = run_suite()
     if not baseline.wasSuccessful() or baseline.testsRun != len(REQUIRED_TEST_METHODS):
         print(
-            "HOLD: all 13 negative regressions must pass first; "
+            "HOLD: all 16 negative regressions must pass first; "
             f"ran={baseline.testsRun} failures={len(baseline.failures)} "
             f"errors={len(baseline.errors)}"
         )
@@ -207,10 +266,25 @@ def main() -> int:
             return 2
         print(f"DETECTED {name}: {len(result.failures)} assertion-based negative regressions failed")
 
-    if ScopePolicy.decide is not REAL_DECIDE:
-        print("HOLD: ScopePolicy restored function identity changed")
+    for name, owner, method, broken, expected_test_prefix in DOWNSTREAM_MUTATIONS:
+        with patch.object(owner, method, broken):
+            result = run_suite()
+        if not mutation_detected(result, expected_test_prefix):
+            print(
+                f"HOLD: downstream mutation {name} NOT caught by required assertion "
+                f"(ran={result.testsRun}, assertions={len(result.failures)}, "
+                f"unexpected_errors={len(result.errors)})"
+            )
+            return 2
+        print(f"DETECTED {name}: {len(result.failures)} assertion-based denials")
+    if (
+        ScopePolicy.decide is not REAL_DECIDE
+        or Planner.build is not REAL_PLAN
+        or ActivationGate.issue is not REAL_ISSUE
+    ):
+        print("HOLD: restored source function identity changed")
         return 2
-    print("PASS: clean baseline and all nine fail-open mutation canaries")
+    print("PASS: clean baseline and all 14 fail-open mutation canaries")
     return 0
 
 
