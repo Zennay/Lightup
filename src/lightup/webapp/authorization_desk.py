@@ -30,7 +30,11 @@ def _origin_label(store: DomainStore, requested_by: str, client_id: str) -> str:
 
 
 def render_authorization_desk(
-    store: DomainStore, auth: AuthState, *, max_rows: int = 60
+    store: DomainStore,
+    auth: AuthState,
+    *,
+    client_id: str | None = None,
+    max_rows: int = 60,
 ) -> Response:
     """Render an operator-only, no-write authorization and lineage overview.
 
@@ -46,9 +50,16 @@ def render_authorization_desk(
     # Bound HTML output; an overflow is visible and is never silently treated
     # as complete. The store remains read-only throughout.
     max_rows = min(100, max(1, max_rows))
-    clients = store.list_clients(ctx)
-    requests = store.list_assessment_requests(ctx)
-    engagements = store.list_engagements(ctx)
+    if client_id is None:
+        clients = store.list_clients(ctx)
+        requests = store.list_assessment_requests(ctx)
+        engagements = store.list_engagements(ctx)
+    else:
+        # A named-client view still authenticates as the operator; it does not
+        # synthesize a client session or consult user-provided role claims.
+        clients = [store.get_client(ctx, client_id)]
+        requests = store.list_assessment_requests(ctx, client_id)
+        engagements = store.list_engagements(ctx, client_id)
     client_map = {c.client_id: c for c in clients}
     snapshot = datetime.now(timezone.utc)
     pending_count = sum(
@@ -59,12 +70,16 @@ def render_authorization_desk(
         origin = _origin_label(store, request.requested_by, request.client_id)
         client = client_map.get(request.client_id)
         client_name = client.name if client else "Unknown client — review"
+        client_link = (
+            '<a href="/authorization-desk/clients/' + _e(request.client_id) +
+            '">' + _e(client_name) + '</a>'
+        )
         requested_assets = ", ".join(request.requested_assets[:8])
         if len(request.requested_assets) > 8:
             requested_assets += " … (additional assets omitted)"
         request_cards.append(
             '<div class="card">'
-            '<div class="row"><strong>' + _e(client_name) + '</strong>'
+            '<div class="row"><strong>' + client_link + '</strong>'
             '<span class="badge warn">' + _e(request.status.value) + '</span></div>'
             '<p class="meta">Request: ' + _e(request.request_id)
             + '<br>Requested mode: ' + _e(request.requested_mode.value)
@@ -115,8 +130,15 @@ def render_authorization_desk(
             + ' requests and engagements per section are shown. '
             'This page is not a complete audit or an authorization decision.</p></div>'
         )
+    client_links = "".join(
+        '<a href="/authorization-desk/clients/' + _e(client.client_id)
+        + '">' + _e(client.name) + '</a> · '
+        for client in clients[:max_rows]
+    )
+    selected_name = clients[0].name if client_id is not None else None
     body = (
-        '<h1>Authorization desk</h1>'
+        '<h1>Authorization desk' +
+        (' — ' + _e(selected_name) if selected_name else '') + '</h1>'
         '<p class="sub">Read-only triage of assessment requests, account lineage '
         'and stored grant records. Never an execution or consent certificate.</p>'
         '<div class="card"><div class="row">'
@@ -135,7 +157,10 @@ def render_authorization_desk(
         '</div><div class="kpi-label">Engagements</div></div></div>'
         '<p><a href="/assessments">Open operator assessment review</a>'
         ' · <a href="/clients">Client records</a>'
+        ' · <a href="/authorization-desk">All clients</a>'
         ' · <a href="/">Overview</a></p>'
+        + (('<div class="card"><strong>Choose client</strong><p class="meta">'
+             + client_links + '</p></div>') if client_id is None else '')
         + overflow
         + '<h2>Client assessment requests</h2>'
         + ("".join(request_cards) or '<p class="empty">No requests recorded.</p>')
