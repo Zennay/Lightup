@@ -14,11 +14,24 @@ import scope_686_guard_probe_offline as probe
 
 
 class PrematureRead:
-    def __init__(self, real_guard):
+    def __init__(self, real_guard, method):
         self.real_guard = real_guard
+        self.method = method
 
     def __call__(self, environ, start_response):
-        environ["wsgi.input"].read(1)
+        stream = environ["wsgi.input"]
+        if self.method == "read":
+            stream.read(1)
+        elif self.method == "readline":
+            stream.readline(1)
+        elif self.method == "readinto":
+            stream.readinto(bytearray(1))
+        elif self.method == "getvalue":
+            stream.getvalue()
+        elif self.method == "iterator":
+            next(iter(stream), b"")
+        else:
+            raise RuntimeError("invalid synthetic stream mutation")
         return self.real_guard(environ, start_response)
 
 
@@ -46,15 +59,25 @@ def must_reject(label: str, factory) -> None:
 
 def verify_mutations() -> dict:
     must_reject("guard_removed", lambda app: app)
-    must_reject("body_read_early", lambda app: PrematureRead(CookieEnvelopeGuard(app)))
+    for label, operation in (
+        ("body_read_early", "read"),
+        ("body_readline_early", "readline"),
+        ("body_readinto_early", "readinto"),
+        ("body_getvalue_early", "getvalue"),
+        ("body_iterator_early", "iterator"),
+    ):
+        must_reject(label, lambda app, op=operation: PrematureRead(
+            CookieEnvelopeGuard(app), op))
     must_reject("session_cookie_mutation", lambda app: CookieInjection(CookieEnvelopeGuard(app)))
     return {
         "status": "HOLD",
         "release_authorized": False,
         "candidate_mutant_coverage": "PASS",
-        "mutants_rejected": 3,
+        "mutants_rejected": 7,
         "mutation_labels": [
-            "guard_removed", "body_read_early", "session_cookie_mutation",
+            "guard_removed", "body_read_early", "body_readline_early",
+            "body_readinto_early", "body_getvalue_early",
+            "body_iterator_early", "session_cookie_mutation",
         ],
         "real_target_io_performed": False,
     }
