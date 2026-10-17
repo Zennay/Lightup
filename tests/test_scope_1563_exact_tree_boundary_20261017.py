@@ -573,6 +573,29 @@ class MutationWitnessQualityTests(unittest.TestCase):
         result.subtest_attempts[method] += 1
         self.assertTrue(self.proof.mutation_detected(result, "test_invalid_target"))
 
+    def test_early_security_assertion_may_stop_only_its_own_nested_subcases(self):
+        with patch.object(self.proof.ScopePolicy, "decide",
+                          self.proof.illegally_accept_invalid_target):
+            result = self.proof.run_suite()
+        affected = "test_invalid_identity_stops_planner_and_permit_before_side_effects"
+        self.assertEqual(result.subtest_attempts[affected], 16)
+        self.assertEqual(self.proof.EXPECTED_CASE_COUNTS[affected], 64)
+        self.assertEqual(result.testsRun, 16)
+        self.assertFalse(result.errors)
+        self.assertTrue(self.proof.mutation_subcases_valid(result))
+        self.assertTrue(self.proof.mutation_detected(result, "test_invalid_target"))
+        self.assertIs(self.proof.ScopePolicy.decide, self.proof.REAL_DECIDE)
+
+    def test_missing_subcase_in_unaffected_test_is_not_mutation_proof(self):
+        result = self.result()
+        self.assertTrue(self.proof.mutation_detected(result, "test_invalid_target"))
+        name = "test_generated_global_ipv4_nonmembers_do_not_gain_scope"
+        result.subtest_attempts[name] -= 1
+        self.assertFalse(self.proof.mutation_subcases_valid(result))
+        self.assertFalse(self.proof.mutation_detected(result, "test_invalid_target"))
+        result.subtest_attempts[name] += 1
+        self.assertTrue(self.proof.mutation_detected(result, "test_invalid_target"))
+
     def test_real_mutation_runs_exercise_full_subcase_attempt_counts(self):
         cls = self.proof.suite_module.ScopeMembershipMetamorphicTests
         with patch.object(self.proof.ScopePolicy, "decide", self.proof.illegally_promote_cidr_right_neighbor):
