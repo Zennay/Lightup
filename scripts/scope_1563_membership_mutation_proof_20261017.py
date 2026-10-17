@@ -64,11 +64,42 @@ def illegally_honor_authorized_label(self, target):
     return decision
 
 
+
+def illegally_promote_cidr_right_neighbor(self, target):
+    decision = REAL_DECIDE(self, target)
+    if decision.reason == ScopeReason.OUT_OF_SCOPE and decision.normalized_host == "9.9.9.16":
+        return ScopeDecision(True, decision.normalized_host, ScopeReason.EXPLICIT_NETWORK)
+    return decision
+
+
+def illegally_infer_wildcard_subdomain(self, target):
+    decision = REAL_DECIDE(self, target)
+    if (
+        decision.reason == ScopeReason.OUT_OF_SCOPE
+        and decision.normalized_host == "untrusted.scoped.example.test"
+    ):
+        return ScopeDecision(True, decision.normalized_host, ScopeReason.EXPLICIT_HOST)
+    return decision
+
+
+def illegally_rebind_denied_host_to_declared_host(self, target):
+    decision = REAL_DECIDE(self, target)
+    if (
+        decision.reason == ScopeReason.OUT_OF_SCOPE
+        and decision.normalized_host == "unlisted.example.test"
+    ):
+        return ScopeDecision(False, "declared.example.test", ScopeReason.OUT_OF_SCOPE)
+    return decision
+
+
 MUTATIONS = (
     ("grant_mints_membership", illegally_mint_membership, "test_undeclared_public_hostname"),
     ("invalid_identity_rescued", illegally_accept_invalid_target, "test_invalid_target"),
     ("grant_checked_before_scope", illegally_check_grant_before_membership, "test_undeclared_public_hostname"),
     ("spoofed_label_authorizes", illegally_honor_authorized_label, "test_untrusted_authorization_shape"),
+    ("cidr_right_neighbor_authorizes", illegally_promote_cidr_right_neighbor, "test_ipv4_right_neighbor"),
+    ("hostname_wildcard_authorizes", illegally_infer_wildcard_subdomain, "test_unlisted_subdomain"),
+    ("denied_identity_rewritten", illegally_rebind_denied_host_to_declared_host, "test_normalized_host"),
 )
 
 
@@ -80,7 +111,7 @@ def mutation_detected(result: unittest.TestResult, expected_test_prefix: str) ->
     evidence that a fail-open change was caught by the intended assertion.
     """
     if (
-        result.testsRun != 7 or result.errors or result.expectedFailures
+        result.testsRun != 13 or result.errors or result.expectedFailures
         or result.unexpectedSuccesses or not result.failures
     ):
         return False
@@ -94,9 +125,9 @@ def mutation_detected(result: unittest.TestResult, expected_test_prefix: str) ->
 
 def main() -> int:
     baseline = run_suite()
-    if not baseline.wasSuccessful() or baseline.testsRun != 7:
+    if not baseline.wasSuccessful() or baseline.testsRun != 13:
         print(
-            "HOLD: original seven regressions must all pass first; "
+            "HOLD: all 13 negative regressions must pass first; "
             f"ran={baseline.testsRun} failures={len(baseline.failures)} "
             f"errors={len(baseline.errors)}"
         )
@@ -117,7 +148,7 @@ def main() -> int:
     if ScopePolicy.decide is not REAL_DECIDE:
         print("HOLD: ScopePolicy restored function identity changed")
         return 2
-    print("PASS: clean baseline and all four fail-open mutation canaries")
+    print("PASS: clean baseline and all seven fail-open mutation canaries")
     return 0
 
 
