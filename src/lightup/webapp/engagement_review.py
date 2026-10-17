@@ -8,6 +8,7 @@ client/operator consent, or permission to run any tool.
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -25,7 +26,7 @@ def _operator(auth: AuthState) -> bool:
 
 
 def _safe_identity(value: object) -> bool:
-    return type(value) is str and 0 < len(value) <= 128
+    return (type(value) is str and re.fullmatch(r"[A-Za-z0-9-]{1,80}", value) is not None)
 
 
 def _assessment_candidates(grant: Any, requests: list[Any]) -> list[str]:
@@ -276,5 +277,141 @@ def engagement_review_json(
     payload = json.dumps(snap, ensure_ascii=True, separators=(",", ":"))
     if len(payload.encode("utf-8")) > 128 * 1024:
         return Response('{"error":"review too large"}',
+                        "413 Payload Too Large", "application/json; charset=utf-8")
+    return Response(payload, content_type="application/json; charset=utf-8")
+
+
+def attention_snapshot(
+    store: DomainStore, auth: AuthState, *, limit: int = 32
+) -> dict[str, Any] | None:
+    """Bounded read-only work queue of engagement provenance observations.
+
+    Nothing in this index is a release or execution verdict; each engagement
+    requires an independent verified client/operator authorization workflow.
+    """
+    if not _operator(auth):
+        return None
+    bound = max(1, min(MAX_ITEMS, limit))
+    try:
+        engagements = store.list_engagements(auth.context)
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return None
+    records = []
+    for engagement in engagements[:bound]:
+        if not _safe_identity(engagement.engagement_id):
+            # A damaged stored identity must never turn into a navigable link.
+            return None
+        detail = engagement_snapshot(store, auth, engagement.engagement_id)
+        if detail is None:
+            records.append({
+                "engagement_id": engagement.engagement_id,
+                "client_name": "Unknown",
+                "engagement_name": "Unavailable",
+                "grant_count": None,
+                "follow_up": ["Engagement records cannot be read safely"],
+                "review_url": (
+                    "/authorization-desk/engagements/" + engagement.engagement_id
+                ),
+            })
+            continue
+        follow_up = []
+        if detail["grant_count"] == 0:
+            follow_up.append("No grant records stored")
+        for grant in detail["grants"]:
+            if grant["lineage"] != "Recorded client/engagement IDs agree":
+                follow_up.append("Incoherent persisted client/engagement lineage")
+            if grant["window"] != (
+                "Recorded time window currently overlaps UTC — NOT permission"
+            ):
+                follow_up.append("Grant period missing, invalid or not current")
+            if not grant["request_candidates"]:
+                follow_up.append("No approved same-client textual request counterpart")
+        if detail["partial"]:
+            follow_up.append("Partial record view — further records not inspected")
+        # The domain currently has no persisted immutable request-to-grant
+        # binding; even a textual counterpart never removes this requirement.
+        follow_up.append("Immutable approved-request/grant binding not verified")
+        follow_up.append("Separate consent and at-use revocation not verified")
+        records.append({
+            "engagement_id": engagement.engagement_id,
+            "client_name": detail["client_name"],
+            "engagement_name": detail["engagement_name"],
+            "grant_count": detail["grant_count"],
+            "follow_up": sorted(set(follow_up)),
+            "review_url": (
+                "/authorization-desk/engagements/" + engagement.engagement_id
+            ),
+        })
+    return {
+        "schema": "lightup.operator-engagement-attention.v1",
+        "disposition": "REVIEW_ONLY",
+        "engagement_total": len(engagements),
+        "partial": len(engagements) > bound,
+        "items": records,
+        "request_binding_verified": False,
+        "client_consent_verified": False,
+        "operator_consent_verified": False,
+        "revocation_checked_at_use": False,
+        "execution_authorized": False,
+        "release_approved": False,
+        "notice": (
+            "The attention queue groups stored records for human follow-up. "
+            "No item is approved for target interaction."
+        ),
+    }
+
+
+def engagement_attention_page(store: DomainStore, auth: AuthState) -> Response:
+    if not _operator(auth):
+        return Response("<h1>Operator access required</h1>", "403 Forbidden")
+    snapshot = attention_snapshot(store, auth)
+    if snapshot is None:
+        return Response("<h1>Engagement worklist unavailable</h1>",
+                        "503 Service Unavailable")
+    cards = []
+    for item in snapshot["items"]:
+        follow_ups = "".join(
+            "<li>" + _e(reason) + "</li>"
+            for reason in item["follow_up"]
+        )
+        cards.append(
+            '<div class="card"><div class="row"><strong>' +
+            _e(item["client_name"]) + " — " +
+            _e(item["engagement_name"]) +
+            '</strong><span class="badge lock">Review required</span></div>'
+            '<p class="meta">Recorded grants: ' +
+            _e(item["grant_count"]) + '</p><ul>' +
+            follow_ups + '</ul><a href="' +
+            _e(item["review_url"]) + '">Open engagement dossier →</a></div>'
+        )
+    body = (
+        '<h1>Engagement follow-up inbox</h1>'
+        '<p class="sub">Human-readable next actions from existing records; '
+        'never a permissions, consent or scanning dashboard.</p>'
+        '<div class="card"><span class="badge lock">Execution locked</span>'
+        '<p class="meta">The permanent request → grant binding, separate '
+        'client/operator consent and live revocation check remain required '
+        'outside this view.</p></div>'
+        '<p><a href="/authorization-desk">Authorization desk</a> · '
+        '<a href="/api/v1/operator/engagements/attention">Read-only JSON</a></p>'
+        + ('<p class="meta">Partial view; additional engagements omitted.</p>'
+           if snapshot["partial"] else "")
+        + ("".join(cards) or '<p class="empty">No engagements recorded.</p>')
+    )
+    return Response(_page("LightUp — Engagement worklist", "assessments",
+                          body, auth))
+
+
+def engagement_attention_json(store: DomainStore, auth: AuthState) -> Response:
+    if not _operator(auth):
+        return Response('{"error":"operator access required"}',
+                        "403 Forbidden", "application/json; charset=utf-8")
+    snap = attention_snapshot(store, auth)
+    if snap is None:
+        return Response('{"error":"engagement worklist unavailable"}',
+                        "503 Service Unavailable", "application/json; charset=utf-8")
+    payload = json.dumps(snap, ensure_ascii=True, separators=(",", ":"))
+    if len(payload.encode("utf-8")) > 128 * 1024:
+        return Response('{"error":"engagement queue too large"}',
                         "413 Payload Too Large", "application/json; charset=utf-8")
     return Response(payload, content_type="application/json; charset=utf-8")
