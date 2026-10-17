@@ -426,3 +426,59 @@ Evidence at own exact HEAD
 
 **INCUBATE M3/M7 / PLAN-LAB ONLY / DRAFT-HOLD. No merge, deploy, real
 assets, scans, grants, handler dispatch or release.**
+
+## W10 — mutation-negative repair oracle and invisible Unicode provenance
+
+The source-owner base **has not changed** (PR #554 exact
+`4c8d5651fc0e23f94514daae56b4e5fe0549de37`); this acceptance
+branch still owns only its original eight newly added paths.
+
+**Independent repairability verification, *not* a source fix:** the positive
+in-memory child-process oracle still makes all **18 original issuer
+acceptance methods ordinary PASS** when both `approved_by` and `reference`
+are validated as exact built-in strings and canonicalized before the
+unmodified source function is called. Its separate *deliberately incomplete*
+mutation-control children now omit each type check one at a time.
+Both mutate-only child processes remain **genuinely FAIL** and name
+the corresponding still-broken reference/approver acceptance methods.
+This proves that neither one-sided repair can hide remaining source REDs.
+Outside these children the original code remains at **7 ordinary PASS /
+11 expected source failures**. All data is fictional and temporary.
+
+**Real separate reviewer RED→GREEN:** the original canonical-text check
+recognized NFC but accepted internal invisible no-break/en/ideographic
+spaces, combining grapheme joiner and variation selectors, plus Hangul
+filler and blank Braille characters whose Unicode category is not a
+control/whitespace. This could create visually ambiguous **fictional**
+provenance, **not a demonstrated real authorization bypass**. Synthetic
+reviewer source now rejects non-ASCII Unicode `Zs` spaces except normal
+U+0020 interior space; U+034F, FE00..FE0F, E0100..E01EF; and invisible
+U+115F, U+1160, U+3164, U+FFA0, U+2800. It continues to accept ordinary
+ASCII space, NFC precomposed names such as Élodie, and legitimate synthetic
+ASCII references. Supplementary variation selectors are explicitly tested
+with a correct `\\U000e0100` fixture.
+
+Actual **RED before the source correction** on connected permitted zSSH
+Python3.14.4: first Unicode controls **10 failure subtests**, then
+the extra Hangul/Braille set **10 failure subtests**. After owned
+source fixes: **26/26 ordinary base reviewer PASS**,
+**22/22 paired reviewer PASS** (including both snapshots that contain
+the same invalid invisible mark) and **4/4 positive/negative oracle tests
+PASS**, all under Python3.14.4 strict reviewer ResourceWarnings.
+
+At own actual functional code SHA `355276ecd9fd2126803fd683254df41b0acc02f2`
+the complete allowed isolated zSSH suite returned **636 unit tests OK
+(11 genuine source expectedFailures) + 86 integration tests OK**.
+Following paired no-false-match test at `de6af340c0a31e40b6d5b5aa8377abd5fc51de4e`,
+real permitted zSSH verified **22/22 paired tests PASS** and
+`scripts/check_safety_canaries.py` all offline controls TRUE:
+activation locked, public targets denied, authentication required,
+revocation enforced, explicit lab scope, no non-loopback binding,
+no real target contact and temporary state removed.
+
+The reviewed standalone receiver has no production callers, no network
+or database capability, no authority. **DRAFT/HOLD** until source owner
+#554 actually repairs source contracts, authenticated real client/operator
+consent and at-use revocation, independent security/privacy, exact integrated
+hosted and **permanently registered** VPS Actions CI, explicit HUMAN GO.
+NO MERGE, DEPLOY, SCANS, REAL GRANTS, HANDLERS OR RELEASE.
