@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -76,7 +77,7 @@ class CanonicalGrantScopeAcceptance(unittest.TestCase):
         )
 
     def durable_count(self):
-        with sqlite3.connect(self.store.path) as connection:
+        with closing(sqlite3.connect(self.store.path)) as connection:
             return connection.execute(
                 "SELECT COUNT(*) FROM authorization_grants "
                 "WHERE engagement_id=?", (self.engagement.engagement_id,)
@@ -88,7 +89,7 @@ class CanonicalGrantScopeAcceptance(unittest.TestCase):
         self.assertIs(type(grant.scope), ScopeDefinition)
         self.assertEqual(grant.scope.max_risk, RiskLevel.STANDARD)
         self.assertEqual(self.durable_count(), 1)
-        with sqlite3.connect(self.store.path) as connection:
+        with closing(sqlite3.connect(self.store.path)) as connection:
             row = connection.execute(
                 "SELECT max_risk, assets_json, allowed_capabilities_json "
                 "FROM authorization_grants WHERE grant_id=?", (grant.grant_id,)
@@ -157,7 +158,7 @@ class CanonicalGrantScopeAcceptance(unittest.TestCase):
             pass
         else:
             # On the unpatched source this reaches SQLite with risk=5.
-            with sqlite3.connect(self.store.path) as connection:
+            with closing(sqlite3.connect(self.store.path)) as connection:
                 stored = connection.execute(
                     "SELECT max_risk FROM authorization_grants "
                     "WHERE engagement_id=?", (self.engagement.engagement_id,)
