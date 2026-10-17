@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import io
+from collections import Counter
 import pathlib
 import sys
 import unittest
@@ -56,6 +57,57 @@ REQUIRED_TEST_METHODS = frozenset({
 })
 
 
+# These are the literal baseline counts of exercised offline, in-memory
+# `with self.subTest(...)` blocks, including nested permit-mode checks.
+# A security method may keep its name and succeed yet omit its entire matrix.
+EXPECTED_CASE_COUNTS = {
+    "test_generated_global_ipv4_nonmembers_do_not_gain_scope": 256,
+    "test_invalid_identity_stops_planner_and_permit_before_side_effects": 64,
+    "test_invalid_target_cannot_be_rescued_by_grant_or_auth_flag": 32,
+    "test_ipv4_right_neighbor_of_declared_cidr_remains_unlisted": 24,
+    "test_ipv6_right_neighbor_of_declared_prefix_remains_unlisted": 16,
+    "test_nonmember_cannot_enter_planner_capability_discovery": 24,
+    "test_nonmember_never_reaches_permit_token_creation_in_any_mode": 72,
+    "test_nonmember_recheck_after_untrusted_grant_replacement_stays_denied": 48,
+    "test_normalized_host_is_not_rebound_to_a_declared_identity": 12,
+    "test_public_ipv6_outside_declared_prefix_stays_out_of_scope": 32,
+    "test_undeclared_public_hostname_is_invariant_under_grant_substitution": 24,
+    "test_undeclared_public_network_is_invariant_under_grant_substitution": 24,
+    "test_unlisted_subdomain_parent_and_suffix_do_not_inherit_host_grant": 48,
+    "test_unrelated_declared_hosts_cannot_change_membership": 24,
+    "test_unrelated_declared_networks_cannot_change_membership": 24,
+    "test_untrusted_authorization_shape_and_label_cannot_mint_membership": 6,
+}
+
+
+class CoverageResult(unittest.TextTestResult):
+    """Record actually completed subcases, not just named test discovery."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.subtest_attempts: Counter[str] = Counter()
+        self.subtest_passes: Counter[str] = Counter()
+
+    def addSubTest(self, test, subtest, err):
+        name = getattr(test, "_testMethodName", "")
+        self.subtest_attempts[name] += 1
+        if err is None:
+            self.subtest_passes[name] += 1
+        super().addSubTest(test, subtest, err)
+
+
+def all_subcases_covered(result: unittest.TestResult) -> bool:
+    """Fail closed for a partial matrix or an unknown result implementation."""
+    return (
+        type(result) is CoverageResult
+        and set(EXPECTED_CASE_COUNTS) == REQUIRED_TEST_METHODS
+        and sum(EXPECTED_CASE_COUNTS.values()) == 730
+        and dict(result.subtest_attempts) == EXPECTED_CASE_COUNTS
+        and dict(result.subtest_passes) == EXPECTED_CASE_COUNTS
+    )
+
+
+
 def suite_manifest_valid() -> bool:
     suite = unittest.defaultTestLoader.loadTestsFromModule(suite_module)
     names: list[str] = []
@@ -77,7 +129,9 @@ def suite_manifest_valid() -> bool:
 
 def run_suite() -> unittest.TestResult:
     suite = unittest.defaultTestLoader.loadTestsFromModule(suite_module)
-    return unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(suite)
+    return unittest.TextTestRunner(
+        stream=io.StringIO(), verbosity=0, resultclass=CoverageResult,
+    ).run(suite)
 
 
 def illegally_mint_membership(self, target):
@@ -239,6 +293,7 @@ def baseline_is_strictly_green(result: unittest.TestResult) -> bool:
         and not result.skipped
         and not result.expectedFailures
         and not result.unexpectedSuccesses
+        and all_subcases_covered(result)
     )
 
 
@@ -271,7 +326,8 @@ def main() -> int:
             "HOLD: all 16 negative regressions must pass first; "
             f"ran={baseline.testsRun} failures={len(baseline.failures)} "
             f"errors={len(baseline.errors)} "
-            f"skipped={len(baseline.skipped)} expected_red={len(baseline.expectedFailures)}"
+            f"skipped={len(baseline.skipped)} expected_red={len(baseline.expectedFailures)} "
+            f"completed_subcases={sum(getattr(baseline, 'subtest_passes', {}).values())}/730"
         )
         return 2
 
