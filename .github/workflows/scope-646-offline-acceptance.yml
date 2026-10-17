@@ -126,7 +126,7 @@ jobs:
           import tempfile
 
           original = Path("src/lightup/domain.py").read_text(encoding="utf-8")
-          marker = ('        ctx.require_operator("record_authorization_grant")\\n'
+          marker = ('        ctx.require_operator("record_authorization_grant")\n'
                     '        if not isinstance(recurring_retest_allowed, bool):')
           assert original.count(marker) == 1, "source646_owner_boundary_changed"
           guards = (
@@ -139,9 +139,9 @@ jobs:
                   shutil.copytree("src", temp_src)
                   target = temp_src / "lightup" / "domain.py"
                   replacement = (
-                      '        ctx.require_operator("record_authorization_grant")\\n'
-                      '        ' + guard + '\\n'
-                      '            raise ValueError("noncanonical scope")\\n'
+                      '        ctx.require_operator("record_authorization_grant")\n'
+                      '        ' + guard + '\n'
+                      '            raise ValueError("noncanonical scope")\n'
                       '        if not isinstance(recurring_retest_allowed, bool):'
                   )
                   target.write_text(original.replace(marker, replacement),
@@ -162,7 +162,7 @@ jobs:
                   if expect_green:
                       assert completed.returncode == 0, "exact_owner_rehearsal_RED"
                       assert "Ran 11 tests in " in output
-                      assert "\\nOK\\n" in output and "expected failures" not in output
+                      assert "\nOK\n" in output and "expected failures" not in output
                       print("scope646_disposable_exact_owner_repair=GREEN_11")
                   else:
                       assert completed.returncode != 0, "weak_isinstance_repair_undetected"
