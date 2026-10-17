@@ -315,3 +315,17 @@ evidence *diagnostic* only; even PASS is not authorization, proof of
 provenance across administrative trust boundaries, verified consent or
 release permission. Full original hosted CI, permanent named VPS,
 source-owner security fixes and independent human GO remain required.
+
+## W60–W61 — terminate detached Git descendants on evidence timeout (2026-10-17)
+
+A rejected Git child can exit before its descendants release inherited
+stdout/stderr. Killing only the original process PID would leave such
+helpers running beyond the bounded evidence deadline. Git now runs in a
+dedicated process session and the failure handler sends SIGKILL to the
+**entire process group** before reaping the Git parent. This cleanup is
+restricted to the freshly launched helper session, not existing workers
+or any production scanner processes. A synthetic disposable Git alias
+starts a delayed shell child; shortening only the test-local deadline
+proves the child starts but never reaches its delayed filesystem marker
+after HOLD. This is not permission to execute Git aliases or real
+untrusted shell commands in regular validation.
