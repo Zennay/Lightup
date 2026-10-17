@@ -66,6 +66,6 @@ jobs:
             -p 'test_scope_grant_issuance_provenance_649_20261017.py' -v
       - name: Explain remaining source-owner gates
         run: |
-          echo "Four ordinary passing controls; six intentionally unresolved source expectedFailures."
+          echo "Only ordinary controls count as PASS; all source expectedFailures remain unresolved."
           echo "This matrix is NOT the original complete hosted or permanent registered VPS proof."
           echo "DRAFT/HOLD. No merge, deploy, real target, scan, grant, handler dispatch or release."
