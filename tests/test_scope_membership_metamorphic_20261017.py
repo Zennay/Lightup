@@ -17,6 +17,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from lightup.models import Authorization, Target
 from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason
+from lightup.activation import ActivationGate, ActivationMode, ActivationPolicy
+from lightup.orchestrator import AssessmentPlan, Planner
 
 
 def _grant_variants():
@@ -325,6 +327,101 @@ class ScopeMembershipMetamorphicTests(unittest.TestCase):
                                 policy, Target(value, authorization=grant, labels=("authorized",)),
                                 expected_host=canonical,
                             )
+
+
+    def test_nonmember_cannot_enter_planner_capability_discovery(self):
+        # The planner must deny before even requesting capabilities. A mocked
+        # provider is an observation sentinel, never a real adapter/handler.
+        for require_auth in (False, True):
+            policy = ScopePolicy(
+                allow_private_lab=False,
+                explicit_hosts=frozenset({"approved.example.test"}),
+                explicit_networks=("9.9.9.0/28",),
+                require_authorization_for_public=require_auth,
+            )
+            planner = Planner(policy)
+            for name, grant in _grant_variants():
+                for value in ("unlisted.example.test", "9.9.9.16", "https://[2606:4700:4700::8]/"):
+                    with self.subTest(flag=require_auth, grant=name, value=value):
+                        target = Target(value, authorization=grant, labels=("AUTHORIZED",))
+                        before = (target.value, target.authorization, target.labels)
+                        with ExitStack() as stack:
+                            _block_all_external_and_grant_admission(stack)
+                            spy = stack.enter_context(patch("lightup.orchestrator.get_capabilities", return_value=()))
+                            plan = planner.build(target)
+                        self.assertIs(type(plan), AssessmentPlan)
+                        self.assertIs(type(plan.scope), ScopeDecision)
+                        self.assertIs(type(plan.scope.reason), ScopeReason)
+                        self.assertIs(plan.scope.allowed, False)
+                        self.assertEqual(plan.scope.reason, ScopeReason.OUT_OF_SCOPE)
+                        self.assertEqual(plan.capability_ids, ())
+                        self.assertIs(plan.execution_enabled, False)
+                        self.assertEqual(plan.target, value)
+                        spy.assert_not_called()
+                        self.assertEqual((target.value, target.authorization, target.labels), before)
+
+    def test_nonmember_never_reaches_permit_token_creation_in_any_mode(self):
+        # Calling the inactive authorization gate must raise before token
+        # generation for nonmembers; no permits, handlers or active scans exist.
+        for mode in (ActivationMode.PLAN_ONLY, ActivationMode.LAB_ONLY, ActivationMode.AUTHORIZED):
+            for require_auth in (False, True):
+                policy = ScopePolicy(
+                    allow_private_lab=False,
+                    explicit_hosts=frozenset({"approved.example.test"}),
+                    explicit_networks=("9.9.9.0/28",),
+                    require_authorization_for_public=require_auth,
+                )
+                gate = ActivationGate(
+                    policy, ActivationPolicy(mode=mode, activation_reference="SYNTHETIC-NOT-AUTHORITY"),
+                )
+                for name, grant in _grant_variants():
+                    for value in ("unlisted.example.test", "9.9.9.16", "https://[2606:4700:4700::8]/"):
+                        with self.subTest(mode=mode.value, flag=require_auth, grant=name, value=value):
+                            target = Target(value, authorization=grant, labels=("AUTHORIZED",))
+                            before = (target.value, target.authorization, target.labels)
+                            with ExitStack() as stack:
+                                _block_all_external_and_grant_admission(stack)
+                                token_spy = stack.enter_context(
+                                    patch("lightup.activation.token_urlsafe", return_value="SYNTHETIC-NEVER-ISSUE")
+                                )
+                                with self.assertRaisesRegex(PermissionError, "target denied by scope gate"):
+                                    gate.issue(target, "fictional-capability-not-registered")
+                            token_spy.assert_not_called()
+                            self.assertEqual((target.value, target.authorization, target.labels), before)
+
+    def test_invalid_identity_stops_planner_and_permit_before_side_effects(self):
+        policy = ScopePolicy(
+            allow_private_lab=False,
+            explicit_hosts=frozenset({"approved.example.test"}),
+        )
+        for value in ("", "   ", "https://", "https:///"):
+            for name, grant in _grant_variants():
+                with self.subTest(value=value, grant=name):
+                    target = Target(value, authorization=grant)
+                    with ExitStack() as stack:
+                        _block_all_external_and_grant_admission(stack)
+                        capabilities = stack.enter_context(
+                            patch("lightup.orchestrator.get_capabilities", return_value=())
+                        )
+                        token = stack.enter_context(
+                            patch("lightup.activation.token_urlsafe", return_value="SYNTHETIC-NEVER-ISSUE")
+                        )
+                        plan = Planner(policy).build(target)
+                        self.assertEqual(plan.scope.reason, ScopeReason.INVALID_TARGET)
+                        self.assertIs(plan.execution_enabled, False)
+                        self.assertEqual(plan.capability_ids, ())
+                        capabilities.assert_not_called()
+                        for mode in (ActivationMode.PLAN_ONLY, ActivationMode.LAB_ONLY, ActivationMode.AUTHORIZED):
+                            with self.subTest(mode=mode.value):
+                                gate = ActivationGate(
+                                    policy,
+                                    ActivationPolicy(
+                                        mode=mode, activation_reference="SYNTHETIC-NOT-AUTHORITY"
+                                    ),
+                                )
+                                with self.assertRaisesRegex(PermissionError, "target denied by scope gate"):
+                                    gate.issue(target, "fictional-capability-not-registered")
+                        token.assert_not_called()
 
 
 if __name__ == "__main__":
