@@ -382,6 +382,43 @@ raise SystemExit(entry['main']([]))
         for name in FALSE_KEYS:
             self.assertIs(receipt[name], False)
 
+
+    def test_shortread_operation_limit_exactly_4096_including_eof(self):
+        # 4095 one-byte fragments plus EOF are accepted; 4096 fragments plus
+        # required EOF exceed the *operation* budget and must remain HOLD.
+        for byte_count, expected_code in ((4095, 3), (4096, 2)):
+            with self.subTest(reads_before_eof=byte_count):
+                program = """import json,runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+raw=json.dumps({"schema":"lightup.scope1533.synthetic.v1",
+                "synthetic_only":True,"items":[
+                    {"summary":"synthetic","kind":"note","payload_hex":"ff"}]}).encode()
+raw+=b' '*(%d-len(raw))
+class Reader:
+    def __init__(self):
+        self.at=0
+    def read(self, maximum):
+        part=raw[self.at:self.at+1]
+        self.at+=len(part)
+        return part
+class Input: pass
+source=Input()
+source.buffer=Reader()
+sys.stdin=source
+raise SystemExit(entry['main']([]))
+""" % byte_count
+                result = subprocess.run(
+                    [sys.executable, "-I", "-S", "-B", "-c", program],
+                    cwd=ROOT, input=b"", capture_output=True, timeout=8,
+                )
+                self.assertEqual(result.returncode, expected_code, result.stderr)
+                self.assertEqual(result.stderr, b"")
+                receipt = json.loads(result.stdout)
+                self.assertEqual(receipt["status"],
+                                 "REVIEW_ONLY" if expected_code == 3 else "HOLD")
+                for key in FALSE_KEYS:
+                    self.assertIs(receipt[key], False)
+
     def test_real_cli_under_original_native_no_io_tripwire(self):
         # Reuse the existing owner's unchanged guard fixture. This is a
         # Python-level interposition test, not a kernel sandbox or consent.
