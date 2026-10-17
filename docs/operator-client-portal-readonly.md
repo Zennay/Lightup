@@ -48,3 +48,26 @@ The production factory delegates to LightUp's existing mandatory HTTPS public-or
 This intentionally **does not alter** `src/lightup/webapp/app.py`, which is still owned by [PR #182](https://github.com/Zennay/Lightup/pull/182), or `src/lightup/domain.py` / consent sources owned by other workers. The original unguarded `create_app` and its default development/production entrypoints are unchanged. To gain this behavior, consumers must **explicitly switch** to the guarded factory or launcher. The default application remains affected until the web source owner integrates an equivalent guard after collision-free review.
 
 This branch is an implementation candidate, **not** a release/consent certificate. Do not merge or deploy under the current HOLD posture without the existing independently authenticated client/operator consent and revocation requirements, security/privacy review, exact approved release-head hosted and registered VPS CI, and explicit human GO. No new QA or regression suite is included in this deliverable.
+
+## Operator authorization desk (read-only product screen)
+
+The same guarded app also adds:
+
+- `GET /authorization-desk` — an operator-only overview of clients, pending assessment requests, current requester-account provenance observations, engagement records and *time-current grant records*.
+- `GET /authorization-desk/clients/<client_id>` — a specific client's requests and engagements without synthesizing a client session. The domain layer resolves the named client through the operator's own context.
+- A visible **Open read-only authorization desk** link on the existing operator overview, plus a client navigation list in the desk. The ordinary client portal is unchanged for real client users.
+- Explicit "Active execution locked" / "Dual-party consent not verified" / "Release not approved" notices. An approved assessment request is **not** automatically paired with a grant. A time-current grant is **not** proof of client/operator consent, at-use revocation or release authority.
+- Per-request origin diagnostics distinguish a current client-admin/member account bound to the same client, an operator account, an unknown account, and a different-tenant account. This is a **current-account-role observation**, not signed evidence of the request's historical author.
+- Stored grants with mismatched engagement/client lineage are flagged for review instead of being displayed as an acceptable grant record. Incomplete/invalid grant parsing is also marked for review.
+- Output is HTML-escaped and capped at 60 records per section (up to 100 internally), with an explicit partial-view notice. All requests originate from the server's existing authenticated store; there are no user-controlled SQL fragments or write routes on the desk.
+
+The desk is available **only** when explicitly running the guarded factory/launcher described above; ordinary LightUp entrypoints are unaffected. It introduces no new database schema and does not modify existing assessment approval handlers, domain methods or source-owned web handlers.
+
+### What the operator can do
+
+1. Sign in to the guarded LightUp web shell using the existing operator account.
+2. Open **Authorization desk** from the operator overview and select a client.
+3. Investigate requests whose current requester account is an operator, missing, or attached to another tenant.
+4. Use the existing **Assessments** screen to perform authorized review. Do not treat the desk's informational badges as permission for real target interaction.
+
+**No deployment, release promotion or execution authorization is implied.** This opt-in screen cannot grant or revoke consent and cannot run tools.
