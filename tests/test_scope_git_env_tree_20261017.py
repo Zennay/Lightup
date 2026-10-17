@@ -510,6 +510,52 @@ class OfflineTreeModesTests(unittest.TestCase):
             git("-c", "core.fsmonitor=false", "status", "--porcelain=v1")
             self.assertTrue(marker.exists())
 
+    def test_selected_filter_attribute_from_info_or_global_file_is_hold(self):
+        """Git must respect every resolved attribute source, not just .gitattributes."""
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        for origin in ("info", "global"):
+            with self.subTest(origin=origin):
+                with tempfile.TemporaryDirectory(
+                    prefix="scope_git_filter_source_", dir=FILE.parents[1]
+                ) as tmp:
+                    root = Path(tmp)
+                    def git(*args):
+                        return subprocess.run(
+                            [guard.GIT_BINARY, *args], cwd=root, check=True,
+                            capture_output=True, timeout=6,
+                        ).stdout
+                    git("init", "-q")
+                    tracked = root / "file.txt"
+                    tracked.write_text("before\n")
+                    git("add", "file.txt")
+                    git("-c", "user.name=Offline", "-c",
+                        "user.email=offline@example.invalid",
+                        "commit", "-qm", "fictional attribute origin fixture")
+                    target = (
+                        root / ".git" / "info" / "attributes"
+                        if origin == "info" else root / "global_attrs"
+                    )
+                    target.write_text("file.txt filter=unspecified\n")
+                    if origin == "global":
+                        git("config", "core.attributesFile", str(target))
+                    marker = root / "ran-external-driver"
+                    hook = root / "driver.sh"
+                    hook.write_text(
+                        "#!/bin/sh\nprintf invoked > '" + str(marker) + "'\ncat\n"
+                    )
+                    hook.chmod(0o755)
+                    git("config", "filter.unspecified.clean", str(hook))
+                    tracked.write_text("AFTER!\n")
+                    with patch.object(guard, "ROOT", root):
+                        self.assertFalse(guard._tracked_files_have_no_filters())
+                        result = guard.git("status", "--porcelain=v1", "-z")
+                    self.assertEqual(result.returncode, 3)
+                    self.assertFalse(marker.exists())
+                    git("-c", "core.fsmonitor=false", "status", "--porcelain=v1")
+                    self.assertTrue(marker.exists())
+                    
     def test_status_allows_tracked_nonfilter_attributes(self):
         """Normal end-of-line settings are not external filter drivers."""
         import subprocess
@@ -540,7 +586,7 @@ class OfflineTreeModesTests(unittest.TestCase):
         from subprocess import CompletedProcess
         from unittest.mock import patch
         names = b"file.txt\0"
-        attr = b"file.txt\0filter\0unspecified\0"
+        attr = b"file.txt\0text\0set\0"
         good_files = CompletedProcess([], 0, names, b"")
         for abnormal in (
             CompletedProcess([], 1, names, b""),
@@ -554,6 +600,10 @@ class OfflineTreeModesTests(unittest.TestCase):
                     self.assertFalse(guard._tracked_files_have_no_filters())
         for abnormal in (
             CompletedProcess([], 0, b"file.txt\0filter\0evil\0", b""),
+            CompletedProcess([], 0, b"file.txt\0filter\0unspecified\0", b""),
+            CompletedProcess([], 0, b"file.txt\0filter\0unset\0", b""),
+            CompletedProcess([], 0, b"file.txt\0FILTER\0set\0", b""),
+            CompletedProcess([], 0, b"file.txt\0text\0set\0file.txt\0text\0set\0", b""),
             CompletedProcess([], 0, attr[:-1], b""),
             CompletedProcess([], 0, attr + attr, b""),
             CompletedProcess([], 0, b"other.txt\0filter\0unspecified\0", b""),
@@ -567,6 +617,11 @@ class OfflineTreeModesTests(unittest.TestCase):
             good_files, CompletedProcess([], 0, attr, b""),
         ]):
             self.assertTrue(guard._tracked_files_have_no_filters())
+        with patch.object(guard, "_git_raw", side_effect=[
+            good_files, CompletedProcess([], 0, b"", b""),
+        ]):
+            self.assertTrue(guard._tracked_files_have_no_filters())
+
 
 
 
