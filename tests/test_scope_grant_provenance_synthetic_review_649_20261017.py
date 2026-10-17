@@ -196,7 +196,7 @@ class Scope649ReviewerTests(unittest.TestCase):
             "\u3000",  # ideographic space
             "\u034f",  # combining grapheme joiner
             "\ufe0f",  # emoji variation selector
-            "\\U000e0100",  # supplementary variation selector
+            "\U000e0100",  # supplementary variation selector
         ):
             bad = "SYNTH" + invisible + "649"
             for field in ("approved_by", "reference"):
