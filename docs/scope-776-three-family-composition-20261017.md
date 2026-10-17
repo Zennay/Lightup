@@ -21,7 +21,7 @@ The checker pins each allowed remote blob in two independent ways (immutable com
 - `tests/test_scope_776_composed_identity_20261017.py` — 8 distinct cross-family methods, 3 ordinary controls and 5 genuinely outstanding original source REDs. Combined with 9 #648 and 9 #775 methods gives **26 total (8 ordinary PASS + 18 original source expectedFailures)** on original unchanged #554.
 - `manifests/scope-776-three-family-20261017.json` — exact owner, immutable source heads/blob identities and five literal `false` authority flags.
 - `scripts/scope_776_composition_check_20261017.py` — actual runnable offline aggregator. It materializes source and tests into an automatically cleaned temporary directory, checks exact 26/18 original results, creates a local constructor-level exact risk + tuple + string guard and requires all 26 strict tests to PASS ordinarily, and verifies two intentionally incomplete repairs (`no_risk`, `no_entries`) still fail for their original issue probes. Does not mutate original source Git working tree.
-- `tests/test_scope_776_manifest_rules.py` — **11 ordinary, independently tested** positive/negative controls for authority flags, provenance SHA/source order, #773 non-execution, expected counts, literal booleans, and explicit rejection of modified owner/other-worker or non-additive paths.
+- `tests/test_scope_776_manifest_rules.py` — **14 ordinary, independently tested** positive/negative controls for authority flags, provenance SHA/source order, #773 non-execution, expected counts, literal booleans, explicit rejection of modified owner/other-worker/non-additive paths, and a machine-readable diagnostic receipt that cannot claim consent, permanent CI or HUMAN GO.
 - This handoff document.
 
 The previous #648 and #775 owners' own files are **not copied into this branch**. They are materialized by SHA into a temporary directory solely when the checker is run.
@@ -63,7 +63,18 @@ python3 -B scripts/scope_776_composition_check_20261017.py --full
 - Disposable combined exact-type constructor guard: **26/26 ordinary strict PASS**. Partial/no-risk and partial/no-entry guards each **RED**.
 - First original whole suite with constructor-level risk check had **593 tests; one ERROR** due only to the early-constructor fixture above; independent real integration **86/86 PASS**.
 - With **fixture migrated in disposable copy only**: **593/593 whole unit tests PASS, 86/86 integration PASS**.
-- Initial 9 manifest tamper/control tests were **9/9 PASS**; then two real source-path collision tests were added for **11/11 PASS**. On this later exact owned code, **604/604 whole unit PASS + 86/86 integration PASS** under the same **disposable-only** source+fixture corrections.
+- Initial 9 manifest controls and 2 owner-path collision controls were extended by 3 machine HOLD receipt controls, for **14/14 dedicated unit PASS**. The 604-unit figure was measured on the preceding owned commit; the latest complete regression count must be read from a fresh current-head check. All source and fixture fixes remain **disposable-only**.
 - All temporary source checkouts cleaned automatically by the script; original Git worktree clean after execution.
 
 **Do not treat a GREEN acceptance runner with intentionally expected source failures or a local-only temporary patch as source-owner remediation, actual consent, live at-use authorization/revocation, named permanent VPS runner CI, security/privacy signoff, or HUMAN GO.** #773 independent work remains owned by its active reviewer. [#776](https://github.com/Zennay/Lightup/issues/776) explicitly directs branch-only composition while the canonical permanent VPS queue is saturated. **Do not open another redundant PR/workflow or release.**
+
+## Machine-readable HOLD diagnostic (no authority)
+
+With `--json`, the checker emits one final `SCOPE776_RECEIPT_JSON={...}` line **only after all local provenance and test gates have succeeded**. The receipt is bounded and privacy-minimal: exact current source SHA, original owner-base SHA, 18 original source RED identities/26 subcases, 26 isolated strict local repair checks, plus optional actual disposable unit/integration counts from `--full`. All `may_authorize`, `may_dispatch`, `may_scan`, `may_deploy`, `may_release`, `human_go`, real consent, security/privacy approval, permanent registered VPS CI and source-remediation flags are **literal `false`**. No user-supplied raw actor, target, asset or customer data is included. The `--json` flag does not create files or confer a real signed attestation.
+
+```sh
+python3 -B scripts/scope_776_composition_check_20261017.py --json
+python3 -B scripts/scope_776_composition_check_20261017.py --full --json
+```
+
+The three negative receipt tests reject malformed SHA strings, unsupported/incomplete full-suite metrics and boolean masquerades. Treat the receipt as an operational progress signal only; it is **not** trusted release evidence.
