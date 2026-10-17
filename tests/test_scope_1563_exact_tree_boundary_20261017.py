@@ -184,6 +184,20 @@ class HostedTriggerContractTests(unittest.TestCase):
         self.assertIn("persist-credentials: false", workflow)
 
 
+    def test_owner_composition_gate_precedes_foreign_overlay(self):
+        path = (pathlib.Path(__file__).resolve().parents[1] /
+                ".github/workflows/scope-1563-owner301-compat-offline.yml")
+        workflow = path.read_text(encoding="utf-8")
+        self.assertIn("fetch-depth: 0", workflow)
+        gate_call = 'python3 scripts/scope_1563_exact_tree_boundary_20261017.py --expected-head "$EXACT_HEAD"'
+        foreign_overlay = 'git show "$EXACT_OWNER_SHA:$OWNER_TEST_PATH"'
+        self.assertIn(gate_call, workflow)
+        self.assertIn('test "$scope_gate" -eq 3', workflow)
+        self.assertLess(workflow.index(gate_call), workflow.index(foreign_overlay))
+        self.assertIn("persist-credentials: false", workflow)
+
+
+
 class MutationWitnessQualityTests(unittest.TestCase):
     """An unrelated exception must never be mistaken for an auth rejection."""
 
