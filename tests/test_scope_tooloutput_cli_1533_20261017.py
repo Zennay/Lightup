@@ -139,6 +139,35 @@ raise SystemExit(entry['main'](['--unsupported']))
         self.assertEqual(child.stderr, b"", "flush failure must not leak tracebacks")
         self.assertEqual(child.stdout, b"")
 
+
+    def test_partial_or_false_stdout_write_is_never_review_success(self):
+        # A write() may return without an exception while confirming fewer
+        # characters than requested. Treat it as undelivered evidence receipt.
+        for accepted_chars in ("0", "1", "None", "True"):
+            with self.subTest(writer_response=accepted_chars):
+                program = """import io,json,runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+class FakeStdin:
+    buffer=io.BytesIO(json.dumps({"schema":"lightup.scope1533.synthetic.v1",
+                                  "synthetic_only":True,"items":[
+                                   {"summary":"fixture","kind":"note","payload_hex":"aa"}]}).encode())
+class PartialOutput:
+    def write(self, message):
+        return %s
+    def flush(self):
+        return None
+sys.stdin=FakeStdin()
+sys.stdout=PartialOutput()
+raise SystemExit(entry['main']([]))
+""" % accepted_chars
+                child = subprocess.run(
+                    [sys.executable, "-I", "-S", "-B", "-c", program],
+                    cwd=ROOT, input=b"", capture_output=True, timeout=8,
+                )
+                self.assertEqual(child.returncode, 2, child.stderr)
+                self.assertEqual(child.stdout, b"")
+                self.assertEqual(child.stderr, b"")
+
     def test_real_cli_under_original_native_no_io_tripwire(self):
         # Reuse the existing owner's unchanged guard fixture. This is a
         # Python-level interposition test, not a kernel sandbox or consent.
