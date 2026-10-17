@@ -73,3 +73,47 @@ That fixture has now been corrected to assert **only immutable durable state**,
 which should hold both before and after a fix. Re-run the full strict suite on
 the latest exact branch commit before considering the proposed source-owner
 change ready. No production source was committed.
+
+## W2 — strict bilateral source + authenticated WSGI composition (17 October 2026)
+
+The same isolated owner branch now adds two new test modules and expands its
+original SQLite acceptance to **18 genuine temporary-SQLite methods**.
+The actual *unmodified* source has **6 ordinary PASS and 12 source-owned
+expected REDs**. Newly pinned cases include bidirectional A/B corruption,
+newer corrupt grant masking a valid older grant, BLOB tenant IDs, whitespace
+aliases, SQL-shaped opaque values, and multiple corrupt rows.
+
+**Real authenticated downstream UI proof:** a separate 5-method in-process
+WSGI test creates an actual operator account and session in disposable SQLite
+(no bound HTTP server). Original source gives 3 ordinary PASS and **2
+expected source REDs**: `/clients/<fictional-A-id>` can show an
+`Authorization current` badge and a grant reference copied from a
+pre-existing corrupt B-owned stored row. This is an operator **display and
+read-integrity flaw**, *not* evidence of an unauthorized remote scan,
+cross-tenant session bypass, or execution grant.
+
+**Independent source mutation matrix:** new
+`tests/test_scope_829_owner_repair_oracle_20261017.py` makes ephemeral
+copies of the original package and runs **all 23 REAL (18 SQLite + 5 WSGI)
+methods without any expectedFailure wrappers**, inside isolated subprocesses.
+Five normal oracle methods pass when:
+- the original owner source gives exactly **14 strict REDs**;
+- the full tenant-owner SQL equality fix yields **23/23 ordinary PASS**;
+- three weaker alternatives are strictly rejected: trimming opaque tenant
+  IDs, limiting the SELECT to one row, or filtering only
+  `get_current_grant` while keeping `list_authorization_grants` leaky.
+
+At exact branch HEAD for the W2 mutation matrix, combined source suite is
+**28 methods = 14 ordinary PASS and 14 deliberately open source
+expectedFailures** on connected authorized zSSH (Python 3.14.4).
+The two changed modules and WSGI tests are exclusively NEW owner files.
+No source owner or shared workflow is modified. Python emits unrelated
+historical SQLite ResourceWarnings in original upstream paths; none of these
+are counted as a passing release gate.
+
+**Important:** `expectedFailure` is explicitly never green production
+security. When the source owner integrates the fix, all 14 source RED tests
+must be made ordinary assertions and the full 23-case package must pass on
+the actual production source, with exact approved SHA CI and independent
+human security/privacy sign-off. The synthetic oracle itself does not
+repair production or authorize any activity.
