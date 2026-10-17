@@ -1,0 +1,84 @@
+name: Scope 1563 membership-before-grant offline
+
+on:
+  # Every new head commit must be checked, including a source-only intrusion.
+  # Path filters here would let an unowned-only change escape the gate.
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scope-1563-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  membership-no-authority:
+    if: >-
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.head_ref == 'chatgpt/scope-1563-membership-metamorphic-20261017') ||
+      (github.event_name == 'workflow_dispatch' &&
+       github.ref_name == 'chatgpt/scope-1563-membership-metamorphic-20261017')
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.14']
+    steps:
+      - name: Checkout exact untrusted branch head without stored credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Verify exact checked-out SHA
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Fail closed on committed history before running project Python
+        shell: bash
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXACT_HEAD"
+          git diff --exit-code
+          git diff --cached --exit-code
+          test -z "$(git ls-files --others --exclude-standard)"
+          set +e
+          python3 scripts/scope_1563_exact_tree_boundary_20261017.py --expected-head "$EXACT_HEAD"
+          gate_result=$?
+          set -e
+          test "$gate_result" -eq 3
+      - name: Python runtime
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Offline compile and negative-only proof
+        env:
+          PYTHONPATH: src
+          PYTHONDONTWRITEBYTECODE: '1'
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python -m py_compile tests/test_scope_membership_metamorphic_20261017.py
+          python -m unittest discover -s tests -p 'test_scope_membership_metamorphic_20261017.py' -v
+          python scripts/scope_1563_membership_mutation_proof_20261017.py
+          python -m unittest discover -s tests -p 'test_scope_1563_exact_tree_boundary_20261017.py' -v
+          set +e
+          python scripts/scope_1563_exact_tree_boundary_20261017.py --expected-head "$EXACT_HEAD"
+          result=$?
+          set -e
+          test "$result" -eq 3
+      - name: Assert no leftover tracked/index/untracked changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          git diff --exit-code
+          git diff --cached --exit-code
+          test -z "$(git ls-files --others --exclude-standard)"
