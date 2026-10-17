@@ -5,8 +5,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import re
+import selectors
 import subprocess
 import sys
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "7b9142bb9e9d5403d7a3e41914edddef4511c8a8"
@@ -70,12 +72,75 @@ GIT_BINARY = "/usr/bin/git"
 
 
 def _git_raw(*args: str, data: bytes | None = None) -> subprocess.CompletedProcess[bytes]:
-    # Never consult PATH for Git. Disable repository-provided fsmonitor hooks.
-    return subprocess.run(
-        [GIT_BINARY, "-c", "core.fsmonitor=false", *args],
-        cwd=ROOT, input=data, capture_output=True, timeout=15,
-    )
+    """Bound Git stdout/stderr while reading; never capture unlimited bytes.
 
+    Git input is limited before spawning. Selector-driven pipe reads reject
+    excessive output immediately without reading it fully into memory.
+    """
+    if data is not None and (type(data) is not bytes or len(data) > 262144):
+        raise ValueError("invalid bounded Git stdin")
+    command = [GIT_BINARY, "-c", "core.fsmonitor=false", *args]
+    process = subprocess.Popen(
+        command, cwd=ROOT,
+        stdin=subprocess.PIPE if data is not None else subprocess.DEVNULL,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
+    out = bytearray()
+    err = bytearray()
+    offset = 0
+    deadline = time.monotonic() + 15
+    try:
+        with selectors.DefaultSelector() as streams:
+            assert process.stdout is not None and process.stderr is not None
+            streams.register(process.stdout, selectors.EVENT_READ, "out")
+            streams.register(process.stderr, selectors.EVENT_READ, "err")
+            if data is not None:
+                assert process.stdin is not None
+                streams.register(process.stdin, selectors.EVENT_WRITE, "in")
+            while streams.get_map():
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise subprocess.TimeoutExpired(command, 15)
+                ready = streams.select(remaining)
+                if not ready:
+                    raise subprocess.TimeoutExpired(command, 15)
+                for key, _ in ready:
+                    channel = key.data
+                    stream = key.fileobj
+                    if channel == "in":
+                        assert data is not None
+                        try:
+                            count = os.write(stream.fileno(), data[offset:offset + 16384])
+                        except BrokenPipeError:
+                            count = 0
+                            offset = len(data)
+                        offset += count
+                        if offset >= len(data):
+                            streams.unregister(stream)
+                            stream.close()
+                    else:
+                        block = os.read(stream.fileno(), 16384)
+                        if not block:
+                            streams.unregister(stream)
+                            stream.close()
+                        else:
+                            buffer = out if channel == "out" else err
+                            limit = 786432 if channel == "out" else 16384
+                            if len(buffer) + len(block) > limit:
+                                raise ValueError("Git output exceeds bounded review cap")
+                            buffer.extend(block)
+        result = process.wait(timeout=max(0.001, deadline - time.monotonic()))
+        return subprocess.CompletedProcess(command, result, bytes(out), bytes(err))
+    except BaseException:
+        if process.poll() is None:
+            process.kill()
+        process.wait()
+        raise
+    finally:
+        for stream in (process.stdin, process.stdout, process.stderr):
+            if stream is not None:
+                stream.close()
 
 def _tracked_files_have_no_filters() -> bool:
     """Fail closed BEFORE Git status can execute a configured clean filter.
