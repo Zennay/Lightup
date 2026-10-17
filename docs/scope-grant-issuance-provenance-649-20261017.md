@@ -213,3 +213,53 @@ under unchanged #554 source-owner base. This is **not source repair, consent
 verification, release approval, or any real target assessment**. Original
 11 issuance source REDs and all DRAFT/HOLD human/privacy/security/permanent
 VPS CI gates remain.
+
+## W6 — real issue-to-reviewer SQLite bridge, alias RED→GREEN, exhaustive mutation tests
+
+The owned branch adds a new **ordinary in-process integration regression** to
+`tests/test_scope_grant_issuance_provenance_649_20261017.py`:
+a synthetic `str`-subclass `reference` enters the unchanged #554
+`DomainStore.record_authorization_grant` in a **temporary SQLite**. On the
+current unfixed original source, the first `.strip()` allows nonempty
+validation while the second produces a *blank stored reference*. The test
+feeds independent fictional before/after snapshots into our **unwired**
+comparator and verifies its `HOLD`, all-false authority receipt. On a future
+source-owner exact-type fix, this bridge accepts the alternative secure
+behavior: issuance returns `ValueError` **and no row is stored**. This is a
+real local bug reproduction, NOT a real customer grant or target execution.
+
+Two further distinct offline quality invariants were implemented **only in
+our standalone `scripts/review_scope_grant_provenance_pair_synthetic_649.py`**:
+- The original reviewer accepted `{"before": same_object, "after":
+  same_object}` or reused dict pointers across batch rows as
+  `REVIEW_ONLY`, despite having no independent synthetic snapshots.
+  **Actual RED** on own unpatched head `3111efad55df011e8c4f67a9cfdf418c11c86c86`:
+  **18 test methods, 2 ordinary FAIL** on connected zSSH Python 3.14.4.
+  **Owner-only GREEN fix** `bf7d912ef3a5eaf8bcaf3af62fe68e15fadab30c`
+  rejects repeated *in-memory object identities* atomically. It does **not**
+  authenticate separately constructed or deliberately forged text copies.
+- A deterministic mutation oracle flips every single bit of the minimal
+  **fictional** JSON test fixture and requires generic `HOLD` for each
+  mutation. Another check invalidates all 32 possible corrupt batch slots;
+  matching genuine fictional pairs remain `REVIEW_ONLY` (not authority).
+- Real OS stdin fragmentation was added as a child-process test, with
+  explicitly closed stdout/stderr handles. The final isolated Python3.14.4
+  pair-test invocation with `-W error::ResourceWarning` is warning-clean.
+
+Latest directly verified own zSSH Python3.14.4 before this documentation:
+**19 ordinary PASS** fictional pair CLI checks,
+**19 ordinary PASS** existing standalone synthetic shape reviewer, and
+**17 original-source issuance methods = 6 ordinary PASS + 11 explicitly
+unrepaired expectedFailures**. The separate strict source-fix oracle
+continues to require all eleven exact current source-RED identities; its
+environmental opt-in cannot silently substitute green production behavior.
+
+The owner PR #554 source and actual customer-facing grant state were NOT
+changed. The hosted CI matrix independently verifies Python 3.11/3.14,
+seven strictly new owned paths, and the original source-RED identities.
+Full original hosted preflight and permanent *registered* VPS Actions proof
+remain **independent** gates. Do not interpret a transient isolated shell run
+as the permanently registered runner. **INCUBATE M3/M7 · DRAFT/HOLD**:
+no merge, real targets, scans, grants, handlers, deploy or release; separate
+client/operator consent with revocation at use, security/privacy and HUMAN GO
+are mandatory.
