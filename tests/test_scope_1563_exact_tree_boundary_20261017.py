@@ -397,6 +397,24 @@ class MutationWitnessQualityTests(unittest.TestCase):
         ))
 
 
+
+    def test_exact_membership_contract_manifest_is_complete(self):
+        self.assertEqual(len(self.proof.REQUIRED_TEST_METHODS), 13)
+        self.assertTrue(self.proof.suite_manifest_valid())
+
+    def test_security_case_replacement_with_unrelated_stub_is_rejected(self):
+        # Preserve total of 13 tests while replacing one meaningful case.
+        # A mere testsRun == 13 gate would produce an unsafe false green.
+        cls = self.proof.suite_module.ScopeMembershipMetamorphicTests
+        missing = "test_ipv6_right_neighbor_of_declared_prefix_remains_unlisted"
+        replacement = "test_noop_unrelated_stub"
+        with patch.object(cls, missing, None):
+            with patch.object(cls, replacement, lambda self: None, create=True):
+                suite = unittest.defaultTestLoader.loadTestsFromModule(self.proof.suite_module)
+                self.assertEqual(suite.countTestCases(), 13)
+                self.assertFalse(self.proof.suite_manifest_valid())
+        self.assertTrue(self.proof.suite_manifest_valid())
+
     def test_all_nine_mutation_canaries_have_distinct_expected_contracts(self):
         self.assertEqual(len(self.proof.MUTATIONS), 9)
         expected = {
