@@ -22,6 +22,10 @@ class HandlerAdmissionReview:
     dispatch_allowed: bool = field(default=False, init=False)
     release_allowed: bool = field(default=False, init=False)
 
+    def __post_init__(self) -> None:
+        if type(self.status) is not str or self.status not in ("HOLD", "REVIEW_ONLY"):
+            raise ValueError("invalid offline review status")
+
 
 def review_handlers(records: object) -> HandlerAdmissionReview:
     """Review 1..32 EXACT synthetic (identifier, plain_function) pairs.

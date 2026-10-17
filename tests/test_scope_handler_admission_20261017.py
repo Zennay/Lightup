@@ -135,6 +135,16 @@ class HandlerAdmissionReviewTests(unittest.TestCase):
             HandlerAdmissionReview("REVIEW_ONLY", authorized=True)
         self.assertTrue(dataclasses.is_dataclass(HandlerAdmissionReview))
 
+    def test_review_receipt_rejects_forged_statuses(self):
+        from scope_handler_admission_review_20261017 import HandlerAdmissionReview
+        class Deceptive(str):
+            def __eq__(self, other):
+                raise AssertionError("subclass comparison must never run")
+        for forged in ("APPROVED", "AUTHORIZED", "", None, True, 0, Deceptive("REVIEW_ONLY")):
+            with self.subTest(forged=type(forged).__name__):
+                with self.assertRaises(ValueError):
+                    HandlerAdmissionReview(forged)
+
     def test_purity_input_does_not_change(self):
         records = (("x", inert_handler),)
         before = tuple(records)
