@@ -55,8 +55,9 @@ does not authenticate Git ancestry.
 - Cross-worker case-insensitive **exact path** collisions and file-vs-directory
   **ancestor/descendant** collisions return HOLD. Nonoverlapping children in
   the same directory remain reviewable.
-- Duplicate path aliases inside a single worker, repeated branches, any
-  inconsistent base and all malformed JSON return HOLD atomically.
+- Duplicate path aliases **and impossible parent/file child paths within a
+  single worker**, repeated branches, any inconsistent base and all malformed
+  JSON return HOLD atomically.
 - Receipt never echoes path names, other user input or error details, and
   its six authority/consent/dispatch/merge/deploy/release flags are always
   the literal JSON boolean `false`.
