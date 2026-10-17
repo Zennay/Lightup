@@ -106,6 +106,30 @@ class Scope649ReviewerTests(unittest.TestCase):
         self.assertIs(replace(clean, status=subject.ReviewStatus.REVIEW_ONLY).status,
                       subject.ReviewStatus.REVIEW_ONLY)
 
+    def test_receipt_constructor_rejects_foreign_values_without_callbacks(self):
+        class ForeignAuthority:
+            def __bool__(self):
+                raise AssertionError("foreign bool invoked")
+
+            def __eq__(self, other):
+                raise AssertionError("foreign comparison invoked")
+
+            def __str__(self):
+                raise AssertionError("foreign formatting invoked")
+
+        for name in (
+            "authorization_verified", "consent_verified", "permit_issued",
+            "dispatch_allowed", "execution_enabled", "merge_approved",
+            "release_approved",
+        ):
+            with self.subTest(field=name):
+                with self.assertRaises(ValueError):
+                    subject.ReviewReceipt(
+                        subject.ReviewStatus.HOLD, **{name: ForeignAuthority()}
+                    )
+        with self.assertRaises(ValueError):
+            subject.ReviewReceipt(ForeignAuthority())
+
     def test_refuses_foreign_mapping_without_touching_foreign_iteration(self):
         self.assertIs(subject.review_batch(_TrapDict(packet())).status, subject.ReviewStatus.HOLD)
 
