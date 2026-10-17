@@ -204,6 +204,24 @@ class InstalledSourceAcceptanceTests(unittest.TestCase):
             reg.register(definition, second_handler)
         self.assertIs(reg.get(definition.tool_id)[1], inert_handler)
 
+    def test_duplicate_tool_id_denial_precedes_hostile_handler_reflection(self):
+        # A duplicate registration must reject based on the registry key before
+        # inspecting a foreign callable's metadata or replacing a good binding.
+        class ReflectionTrap:
+            @property
+            def __signature__(self):
+                raise AssertionError("no foreign signature inspection on duplicate")
+            def __call__(self, context, arguments):
+                raise AssertionError("no foreign callable execution on duplicate")
+        reg = ToolRegistry()
+        original = self._definition()
+        reg.register(original, inert_handler)
+        before = reg.definitions()
+        with self.assertRaises(OrchestrationError):
+            reg.register(original, ReflectionTrap())
+        self.assertEqual(reg.definitions(), before)
+        self.assertIs(reg.get(original.tool_id)[1], inert_handler)
+
     @source_red_until_owner_fix
     def test_source_red_noncallable_must_be_rejected_before_registration(self):
         reg = ToolRegistry()
