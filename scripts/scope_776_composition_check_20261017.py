@@ -162,7 +162,10 @@ def migrate_disposable_fixture(path: Path) -> None:
 
 
 def run_unittest(dest: Path, strict: bool, pattern: str, extra: tuple[str, ...] = ()):
-    env = dict(os.environ, PYTHONPATH=str(dest / "src"),
+    search_path = str(dest / "src")
+    if extra:
+        search_path += os.pathsep + str(dest / "tests")
+    env = dict(os.environ, PYTHONPATH=search_path,
                PYTHONDONTWRITEBYTECODE="1",
                LIGHTUP_SCOPE648_REQUIRE_SOURCE_FIX="1" if strict else "0",
                LIGHTUP_SCOPE775_REQUIRE_SOURCE_FIX="1" if strict else "0",
