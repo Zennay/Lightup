@@ -54,12 +54,14 @@
 <ul class="issues" id="issues" aria-live="polite"></ul>
 <h3>Operator handoff preview</h3>
 <pre class="preview" id="brief"></pre>
+<h3>Scope revision fingerprint</h3><p class="privacy" id="revision" style="overflow-wrap:anywhere">No revision identity yet.</p><p class="privacy">SHA-256 is an unsigned comparison aid, not a consent signature, ownership proof or grant.</p>
 <h3>Structured draft JSON</h3>
 <pre class="preview" id="json"></pre>
 <p class="privacy">Only a legitimate signed-in client may submit a request in the authenticated LightUp portal. An independent operator must review it. This studio does not post to that portal.</p>
 </aside>
 </main>
 <script src="./scope-network.js"></script>
+<script src="./scope-fingerprint.js"></script>
 <script>
 (function () {
 'use strict';
@@ -67,6 +69,7 @@ const $ = id => document.getElementById(id);
 const fields = ['title','client','risk','mode','assets','excluded','purpose','start','end','passive','config','network'];
 const MAX_BYTES = 65536;
 let imported = false;
+let renderRevision=0;
 function str(value,max) { return typeof value === 'string' && value.length <= max ? value : null; }
 function arrayLines(text) {
   return text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
@@ -163,6 +166,11 @@ function show() {
   ].join('\n');
   $('brief').textContent=text;
   $('json').textContent=JSON.stringify(draft,null,2);
+  const revision=++renderRevision;
+  LightUpScopeDigest.fingerprint(draft).then(hash=>{
+    if(revision!==renderRevision)return;
+    $('revision').textContent=hash ? 'Unsigned scope revision SHA-256: '+hash : 'Fingerprint unavailable in this browser context. Draft remains non-authorizing.';
+  }).catch(()=>{if(revision===renderRevision)$('revision').textContent='Fingerprint unavailable; never treat as authorization.';});
   $('download').disabled=!canExport;
   $('copy').disabled=!canExport;
   $('print').disabled=!canExport;
@@ -170,8 +178,9 @@ function show() {
 }
 for(const id of fields) $(id).addEventListener('input',show);
 function feedback(s){$('feedback').textContent=s;}
-$('download').addEventListener('click',()=>{
+$('download').addEventListener('click',async()=>{
   const {draft,canExport}=show(); if(!canExport) return;
+  try {const hash=await LightUpScopeDigest.fingerprint(draft);if(hash)draft.scope_fingerprint_sha256=hash;}catch(_){}
   const blob=new Blob([JSON.stringify(draft,null,2)+'\n'],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download='lightup-scope-draft.json';document.body.append(a);a.click();a.remove();
@@ -205,6 +214,10 @@ $('import').addEventListener('change',async(event)=>{
       !data.proposed_window_local || typeof data.proposed_window_local!=='object' ||
       !data.proposed_activities || typeof data.proposed_activities!=='object' ||
       !['passive_analysis','configuration_review','private_lab_network_checks'].every(k=>typeof data.proposed_activities[k]==='boolean')) throw new Error('invalid format');
+    if(data.scope_fingerprint_sha256!==undefined){
+      const computed=await LightUpScopeDigest.fingerprint(data);
+      if(!computed||data.scope_fingerprint_sha256!==computed)throw new Error('fingerprint mismatch');
+    }
     const windowFields=data.proposed_window_local;
     if(!['start','end'].every(k=>windowFields[k]===null||(typeof windowFields[k]==='string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(windowFields[k]))))throw new Error('invalid window');
     $('title').value=data.proposal_name;$('client').value=data.client_label;$('purpose').value=data.notes;
