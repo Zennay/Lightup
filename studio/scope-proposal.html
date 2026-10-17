@@ -33,6 +33,7 @@
 <div class="field"><label for="start">Requested window start (optional)</label><input id="start" type="datetime-local"></div>
 <div class="field"><label for="end">Requested window end (optional)</label><input id="end" type="datetime-local"></div>
 </div>
+<p class="privacy" id="utcWindow">Local planning times are not yet normalized to UTC.</p>
 <div class="field"><label>Proposed activities (not permissions)</label><div class="checks">
 <label><input type="checkbox" id="passive" checked> Passive analysis</label>
 <label><input type="checkbox" id="config"> Configuration review</label>
@@ -62,6 +63,7 @@
 </main>
 <script src="./scope-network.js"></script>
 <script src="./scope-fingerprint.js"></script>
+<script src="./planning-window.js"></script>
 <script>
 (function () {
 'use strict';
@@ -123,6 +125,13 @@ function read() {
   if ($('mode').value==='authorized_assessment') problems.push({fatal:false,message:'Public/real assets require independent authenticated consent, current revocation checks and an issued grant; none is provided by this draft.'});
   if ($('network').checked) problems.push({fatal:false,message:'Lab-only network checks require separate lab authorization and isolated environment.'});
   if (imported) problems.push({fatal:false,message:'Imported content is untrusted and must be reviewed independently.'});
+  const window=LightUpPlanningWindow.resolve($('start').value,$('end').value);
+  if(['invalid','nonexistent_local_time','ambiguous_dst_hour','reverse_window'].includes(window.status))
+    problems.push({fatal:true,message:'Planning time invalid or DST-ambiguous: '+window.status+'. Use unambiguous local times.'});
+  if(window.status==='resolved')problems.push({fatal:false,message:'Review exact planned UTC interval '+window.start+' → '+window.end+' ('+window.timezone+'). Not an approved time window.'});
+  $('utcWindow').textContent=window.status==='resolved'
+    ? 'Proposed UTC: '+window.start+' → '+window.end+' · Source browser timezone: '+window.timezone
+    : 'Planning window: '+window.status+' · Browser timezone '+window.timezone+'. Only resolved windows may be compared across time zones.';
   const now = new Date().toISOString();
   const draft = {
     schema_version:1, kind:'lightup.scope_proposal_draft', state:'DRAFT_ONLY',
@@ -137,6 +146,7 @@ function read() {
       private_lab_network_checks:$('network').checked
     },
     proposed_window_local:{start:$('start').value||null,end:$('end').value||null},
+    proposed_window_utc:window,
     exported_at_utc:now
   };
   return {problems,draft,canExport:!problems.some(p=>p.fatal)};
@@ -218,6 +228,13 @@ $('import').addEventListener('change',async(event)=>{
       const computed=await LightUpScopeDigest.fingerprint(data);
       if(!computed||data.scope_fingerprint_sha256!==computed)throw new Error('fingerprint mismatch');
     }
+    if(!LightUpPlanningWindow.validateStored(data.proposed_window_local,data.proposed_window_utc))throw new Error('invalid UTC interval');
+    if(data.proposed_window_utc?.status==='resolved'){
+      const current=LightUpPlanningWindow.resolve(data.proposed_window_local.start,data.proposed_window_local.end);
+      if(data.proposed_window_utc.timezone!==current.timezone||current.status!=='resolved'||
+         current.start!==data.proposed_window_utc.start||current.end!==data.proposed_window_utc.end)
+        throw new Error('timezone mismatch: existing draft must be edited in original timezone');
+    }
     const windowFields=data.proposed_window_local;
     if(!['start','end'].every(k=>windowFields[k]===null||(typeof windowFields[k]==='string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(windowFields[k]))))throw new Error('invalid window');
     $('title').value=data.proposal_name;$('client').value=data.client_label;$('purpose').value=data.notes;
@@ -228,7 +245,7 @@ $('import').addEventListener('change',async(event)=>{
     $('config').checked=data.proposed_activities.configuration_review;
     $('network').checked=data.proposed_activities.private_lab_network_checks;
     imported=true;show();feedback('Imported as an untrusted draft. Review every field; no identity or authority was imported.');
-  } catch (_) {feedback('Import rejected: invalid or unsupported draft format. Existing fields unchanged.');}
+  } catch (error) {feedback('Import rejected: '+(error.message||'invalid draft')+'. Existing fields unchanged.');}
   event.target.value='';
 });
 show();
