@@ -1,0 +1,177 @@
+name: "LightUp #646 offline scope identity acceptance"
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'tests/test_scope_grant_scope_identity_646_20261017.py'
+      - 'docs/scope-grant-scope-identity-646-20261017.md'
+      - '.github/workflows/scope-646-offline-acceptance.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-scope-identity:
+    # Hosted-only, opt-in, does NOT claim the permanent VPS gate.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Verify original owner base is ancestor
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e 4c8d5651fc0e23f94514daae56b4e5fe0549de37^{commit}
+          git merge-base --is-ancestor 4c8d5651fc0e23f94514daae56b4e5fe0549de37 HEAD
+          # Ownership gate: fail if ANY original/other-worker path was changed.
+          expected=$(printf '%s\n' \
+            '.github/workflows/scope-646-offline-acceptance.yml' \
+            'docs/scope-grant-scope-identity-646-20261017.md' \
+            'tests/test_scope_grant_scope_identity_646_20261017.py')
+          actual=$(git diff --name-only 4c8d5651fc0e23f94514daae56b4e5fe0549de37 HEAD)
+          test "$actual" = "$expected"
+          for path in \
+            '.github/workflows/scope-646-offline-acceptance.yml' \
+            'docs/scope-grant-scope-identity-646-20261017.md' \
+            'tests/test_scope_grant_scope_identity_646_20261017.py'; do
+            test "$(git ls-tree HEAD "$path" | cut -d" " -f1,2)" = '100644 blob'
+            test -z "$(git ls-tree 4c8d5651fc0e23f94514daae56b4e5fe0549de37 "$path")"
+          done
+          echo 'scope646_owned_paths=PASS'
+      - name: Scope #646 offline acceptance (source REDs must remain visible)
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PYTHONPATH=src
+          python -B -m unittest discover -s tests -p 'test_scope_grant_scope_identity_646_20261017.py' -v
+      - name: Pin six original source RED names and exact causes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          import re
+          import subprocess
+          import sys
+
+          env = dict(os.environ, PYTHONPATH="src", LIGHTUP_SCOPE646_REQUIRE_SOURCE_FIX="1")
+          result = subprocess.run(
+              [sys.executable, "-B", "-m", "unittest", "discover", "-s", "tests",
+               "-p", "test_scope_grant_scope_identity_646_20261017.py", "-q"],
+              env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+              timeout=90, check=False,
+          )
+          output = result.stdout
+          expected = {
+              "test_source_red_structural_duck_scope_fails_atomically":
+                  ("FAIL", "AssertionError: (<class 'ValueError'>, <class 'TypeError'>) not raised"),
+              "test_source_red_scope_subclass_fails_atomically":
+                  ("FAIL", "AssertionError: (<class 'ValueError'>, <class 'TypeError'>) not raised"),
+              "test_source_red_flipping_subclass_cannot_persist_destructive_risk":
+                  ("FAIL", "AssertionError: 5 == 5 : unpatched source persisted destructive risk after safe validation"),
+              "test_source_red_none_scope_is_invalid_not_attribute_error":
+                  ("ERROR", "AttributeError: 'NoneType' object has no attribute 'max_risk'"),
+              "test_source_red_forged_class_metadata_does_not_mint_scope_identity":
+                  ("FAIL", "AssertionError: (<class 'ValueError'>, <class 'TypeError'>) not raised"),
+              "test_source_red_rejects_foreign_scope_without_accessing_fields":
+                  ("ERROR", "RuntimeError: scope field trap was evaluated"),
+          }
+          headers = list(re.finditer(
+              r"(?m)^(FAIL|ERROR): (test_source_red_[a-z0-9_]+) \(", output
+          ))
+          observed = {}
+          for match in headers:
+              kind, name = match.groups()
+              segment = output[match.end():]
+              separator = segment.find("======================================================================")
+              if separator != -1:
+                  segment = segment[:separator]
+              if name in observed:
+                  raise SystemExit("source646_duplicate_red_header")
+              observed[name] = (kind, segment)
+
+          if result.returncode == 0 or set(observed) != set(expected):
+              raise SystemExit("source646_red_identity_mismatch")
+          if not re.search(r"(?m)^Ran 11 tests in ", output):
+              raise SystemExit("source646_test_count_mismatch")
+          if "FAILED (failures=4, errors=2)" not in output:
+              raise SystemExit("source646_strict_result_mismatch")
+          for name, (kind, reason) in expected.items():
+              actual_kind, evidence = observed[name]
+              if actual_kind != kind or reason not in evidence:
+                  raise SystemExit("source646_red_cause_mismatch:" + name)
+          print("scope646_exact_six_source_RED_identities_and_causes=PASS")
+          print("scope646_original_production_still_unfixed=HOLD")
+          PY
+      - name: Disposable exact-type versus weak isinstance owner-fix rehearsal
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import shutil
+          import subprocess
+          import sys
+          import tempfile
+
+          original = Path("src/lightup/domain.py").read_text(encoding="utf-8")
+          marker = ('        ctx.require_operator("record_authorization_grant")\n'
+                    '        if not isinstance(recurring_retest_allowed, bool):')
+          assert original.count(marker) == 1, "source646_owner_boundary_changed"
+          guards = (
+              ("exact", 'if type(scope) is not ScopeDefinition:', True),
+              ("weak", 'if not isinstance(scope, ScopeDefinition):', False),
+          )
+          for label, guard, expect_green in guards:
+              with tempfile.TemporaryDirectory(prefix="scope646_disposable_") as temp:
+                  temp_src = Path(temp, "src")
+                  shutil.copytree("src", temp_src)
+                  target = temp_src / "lightup" / "domain.py"
+                  replacement = (
+                      '        ctx.require_operator("record_authorization_grant")\n'
+                      '        ' + guard + '\n'
+                      '            raise ValueError("noncanonical scope")\n'
+                      '        if not isinstance(recurring_retest_allowed, bool):'
+                  )
+                  target.write_text(original.replace(marker, replacement),
+                                    encoding="utf-8")
+                  env = dict(os.environ,
+                             LIGHTUP_SCOPE646_REQUIRE_SOURCE_FIX="1",
+                             PYTHONPATH=str(temp_src.resolve()),
+                             PYTHONDONTWRITEBYTECODE="1")
+                  completed = subprocess.run(
+                      [sys.executable, "-B", "-m", "unittest", "discover",
+                       "-s", "tests",
+                       "-p", "test_scope_grant_scope_identity_646_20261017.py",
+                       "-q"],
+                      env=env, text=True, stdout=subprocess.PIPE,
+                      stderr=subprocess.STDOUT, timeout=90, check=False,
+                  )
+                  output = completed.stdout
+                  if expect_green:
+                      assert completed.returncode == 0, "exact_owner_rehearsal_RED"
+                      assert "Ran 11 tests in " in output
+                      assert "\nOK\n" in output and "expected failures" not in output
+                      print("scope646_disposable_exact_owner_repair=GREEN_11")
+                  else:
+                      assert completed.returncode != 0, "weak_isinstance_repair_undetected"
+                      assert "test_source_red_scope_subclass_fails_atomically" in output
+                      assert "test_source_red_forged_class_metadata_does_not_mint_scope_identity" in output
+                      assert "test_source_red_flipping_subclass_cannot_persist_destructive_risk" in output
+                      print("scope646_disposable_weak_isinstance_repair=RED_EXPECTED")
+          print("scope646_original_source_workspace=UNCHANGED")
+          PY
+      - name: Confirm tree remains untouched by tests
+        run: |
+          test -z "$(git status --porcelain)"
