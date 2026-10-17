@@ -227,6 +227,42 @@ class AdditiveOwnershipTests(unittest.TestCase):
             with redirect_stdout(io.StringIO()):
                 self.assertEqual(guard.main(), 1)
 
+    def test_real_git_index_flag_transitions_are_hold(self):
+        """Independent real-Git proof in a disposable, synthetic nested repo."""
+        import subprocess
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory(prefix=".scope-index-fixture-", dir=ROOT) as home:
+            work = Path(home)
+            def git(*args):
+                return subprocess.run(
+                    ["git", *args], cwd=work, capture_output=True,
+                    timeout=5, check=True,
+                )
+            git("init", "-q")
+            sample = work / "fictional-offline.txt"
+            sample.write_text("fictitious initial text\n", encoding="ascii")
+            git("add", sample.name)
+            git("-c", "user.name=Offline Test", "-c", "user.email=offline@example.test",
+                "commit", "-q", "-m", "fictional fixture")
+            self.assertTrue(guard.clean_index_flags(git("ls-files", "-v", "-z", "--cached")))
+            for enable, disable in (
+                ("--assume-unchanged", "--no-assume-unchanged"),
+                ("--skip-worktree", "--no-skip-worktree"),
+            ):
+                with self.subTest(flag=enable):
+                    git("update-index", enable, sample.name)
+                    sample.write_text("fictitious changed text\n", encoding="ascii")
+                    # Git deliberately hides these files from ordinary status.
+                    self.assertEqual(
+                        git("status", "--porcelain=v1", "--untracked-files=all", "-z").stdout,
+                        b"",
+                    )
+                    self.assertFalse(guard.clean_index_flags(
+                        git("ls-files", "-v", "-z", "--cached"),
+                    ))
+                    git("update-index", disable, sample.name)
+            self.assertTrue(guard.clean_index_flags(git("ls-files", "-v", "-z", "--cached")))
+
     def test_missing_required_worker_files_is_hold(self):
         for required in guard.OWNED_EXACT:
             with self.subTest(path=required):
