@@ -37,6 +37,14 @@ def _constant_text(node: ast.AST) -> str | None:
     return text if text is not None and len(text) <= 256 else None
 
 
+def _fromlist_requests_reviewer(node: ast.AST | None) -> bool:
+    """Only literal built-in list/tuple fromlists can load our package child."""
+    return (
+        isinstance(node, (ast.List, ast.Tuple))
+        and any(_constant_text(item) == REVIEWER for item in node.elts)
+    )
+
+
 def references_review_module(source: str) -> bool:
     """Detect imports and statically reconstructable calls, never eval code."""
     tree = ast.parse(source)
@@ -48,6 +56,7 @@ def references_review_module(source: str) -> bool:
     # A bare local function named import_module is NOT an imported loader.
     # __import__ alone is always available as a Python builtin.
     import_module_names = {"__import__"}
+    builtin_import_names = {"__import__"}
     runpy_names = {"runpy"}
     pkgutil_names = {"pkgutil"}
     run_module_names: set[str] = set()
@@ -69,6 +78,7 @@ def references_review_module(source: str) -> bool:
                     import_module_names.add(alias.asname or alias.name)
                 if node.module == "builtins" and alias.name == "__import__":
                     import_module_names.add(alias.asname or alias.name)
+                    builtin_import_names.add(alias.asname or alias.name)
                 if node.module == "runpy" and alias.name == "run_module":
                     run_module_names.add(alias.asname or alias.name)
                 if node.module == "pkgutil" and alias.name == "resolve_name":
@@ -120,6 +130,30 @@ def references_review_module(source: str) -> bool:
                     or (called.args[0].id in pkgutil_names and _constant_text(called.args[1]) == "resolve_name")
                 )
             )
+            builtin_import = (
+                (isinstance(called, ast.Name) and called.id in builtin_import_names)
+                or (
+                    isinstance(called, ast.Attribute)
+                    and isinstance(called.value, ast.Name)
+                    and called.attr == "__import__"
+                    and called.value.id in builtins_names
+                )
+                or (
+                    isinstance(called, ast.Call)
+                    and isinstance(called.func, ast.Name)
+                    and called.func.id == "getattr"
+                    and len(called.args) == 2
+                    and isinstance(called.args[0], ast.Name)
+                    and called.args[0].id in builtins_names
+                    and _constant_text(called.args[1]) == "__import__"
+                )
+            )
+            if builtin_import and literal == "lightup":
+                # The fourth positional argument is the CPython fromlist.
+                arg = node.args[3] if len(node.args) >= 4 else None
+                arg = next((kw.value for kw in node.keywords if kw.arg == "fromlist"), arg)
+                if _fromlist_requests_reviewer(arg):
+                    return True
             if direct_import or qualified_import or getattr_import:
                 # pkgutil.resolve_name supports both dotted member access and
                 # "module:symbol". The reviewer must not load through either.
@@ -266,6 +300,34 @@ class RuntimeIsolationStaticTests(unittest.TestCase):
             "def run_module(*, mod_name): return mod_name\nrun_module(mod_name='lightup.scope_literal_control_review_20261016')",
         )
         for source in controls:
+            with self.subTest(source=source):
+                self.assertFalse(references_review_module(source))
+
+    def test_builtin_fromlist_package_imports(self):
+        # __import__("lightup", fromlist=(reviewer,)) asks CPython to
+        # import a previously missing package child as a side effect.
+        patterns = (
+            "__import__('lightup', fromlist=['scope_literal_control_review_20261016'])",
+            "__import__('lightup', fromlist=('scope_literal_control_review_20261016',))",
+            "__import__('lightup', None, None, ['scope_literal_control_review_20261016'])",
+            "import builtins as bi\nbi.__import__('lightup', fromlist=['scope_literal_control_review_20261016'])",
+            "from builtins import __import__ as load\nload('lightup', fromlist=['scope_literal_control_review_20261016'])",
+            "import builtins as bi\ngetattr(bi,'__import__')('lightup', fromlist=['scope_literal_control_review_20261016'])",
+            "__import__('lightup', fromlist=['scope_literal_' + 'control_review_20261016'])",
+        )
+        for source in patterns:
+            with self.subTest(source=source):
+                self.assertTrue(references_review_module(source))
+
+    def test_builtin_fromlist_unrelated_controls(self):
+        patterns = (
+            "__import__('other', fromlist=['scope_literal_control_review_20261016'])",
+            "__import__('lightup', fromlist=['other_module'])",
+            "__import__('lightup', fromlist=dynamic_items)",
+            "import importlib\nimportlib.import_module('lightup', package='scope_literal_control_review_20261016')",
+            "__import__('lightup', fromlist=['scope_literal_control_review_20261016_suffix'])",
+        )
+        for source in patterns:
             with self.subTest(source=source):
                 self.assertFalse(references_review_module(source))
 
