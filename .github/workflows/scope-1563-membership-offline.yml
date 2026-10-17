@@ -6,6 +6,7 @@ on:
       - 'tests/test_scope_membership_metamorphic_20261017.py'
       - 'docs/scope-1563-membership-metamorphic-20261017.md'
       - '.github/workflows/scope-1563-membership-offline.yml'
+      - 'scripts/scope_1563_membership_mutation_proof_20261017.py'
   workflow_dispatch:
 
 permissions:
@@ -45,5 +46,6 @@ jobs:
         run: |
           python -m py_compile tests/test_scope_membership_metamorphic_20261017.py
           python -m unittest discover -s tests -p 'test_scope_membership_metamorphic_20261017.py' -v
+          python scripts/scope_1563_membership_mutation_proof_20261017.py
       - name: Assert no leftover changes
         run: git diff --exit-code
