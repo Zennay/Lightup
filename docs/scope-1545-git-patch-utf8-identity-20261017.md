@@ -136,3 +136,21 @@ standalone workflow to checkout@v5 and setup-python@v6 (Node.js 24-based),
 without modifying any other project workflows. The new exact-head hosted
 result must be checked separately rather than claiming the former head's
 success as proof of this updated workflow.
+
+## W5 — disposable original-source strict repair rehearsal (no owner file changed)
+
+Two additional source-integrated tests run against actual independent synthetic
+Git commits without remotes or hooks. In a temporary `unittest.mock.patch`
+context only, replacing `_git`'s codec with strict UTF-8 decoding and
+rethrowing undecodable text as `GitChangeError` denies an invalid `0xff` patch
+before returning any inferred evidence; an ordinary `café naïve` UTF-8
+patch retains its full text and passes the synthetic strict reviewer. Both
+contexts explicitly assert the installed `_git` callable is restored after
+the test. Original `src/lightup/git_changes.py` is unchanged on disk and in
+GitHub. A regression in this owner-suggested behavior fails the tests.
+
+Latest isolated Python 3.14.4 zSSH proof: **25 test methods**, **24 ordinary
+PASS + one deliberately unresolved original source expectedFailure**. New
+hosted evidence belongs only to whichever *final exact SHA* passes in GitHub
+Actions; earlier green hosted runs refer to superseded code SHA, not this W5
+repair rehearsal. Remains completely DRAFT/HOLD without source-owner merge.

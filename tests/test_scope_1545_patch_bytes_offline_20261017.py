@@ -306,6 +306,40 @@ class OriginalSourceGitPatchTests(unittest.TestCase):
         self.assertIn("\ufffd",patch_text)
         self.assertFalse(reviewer.check_patch(patch_text.encode("utf-8")))
 
+    def test_disposable_strict_git_decoder_rehearsal_denies_invalid_patch(self):
+        # An in-memory patch, never written into source owner code/branch.
+        sys.path.insert(0,str(ROOT/"src"))
+        from lightup import git_changes
+        a,b = self.fixture(b"# \xff invalid synthetic UTF8\n")
+        original = git_changes._git
+        def strict(repo, *args, check=True):
+            raw = git_changes._git_bytes(repo, *args, check=check)
+            try:
+                return raw.decode("utf-8", "strict")
+            except UnicodeDecodeError:
+                raise git_changes.GitChangeError("undecodable textual Git evidence") from None
+        with patch.object(git_changes, "_git", strict):
+            with self.assertRaises(git_changes.GitChangeError):
+                git_changes.collect_git_range(self.root,a,b,merge_base=False,repository="synthetic/fixture")
+        self.assertIs(git_changes._git, original)
+
+    def test_disposable_strict_git_decoder_keeps_unicode_intact(self):
+        sys.path.insert(0,str(ROOT/"src"))
+        from lightup import git_changes
+        a,b = self.fixture("# café naïve\n".encode("utf-8"))
+        original = git_changes._git
+        def strict(repo, *args, check=True):
+            raw = git_changes._git_bytes(repo, *args, check=check)
+            try:
+                return raw.decode("utf-8", "strict")
+            except UnicodeDecodeError:
+                raise git_changes.GitChangeError("undecodable textual Git evidence") from None
+        with patch.object(git_changes, "_git", strict):
+            result = git_changes.collect_git_range(self.root,a,b,merge_base=False,repository="synthetic/fixture")
+            self.assertIn("café naïve", result.files[0]["patch"])
+            self.assertTrue(reviewer.check_patch(result.files[0]["patch"].encode("utf-8")))
+        self.assertIs(git_changes._git, original)
+
     @unittest.expectedFailure
     def test_source_owner_eventually_rejects_invalid_patch_bytes_before_review(self):
         sys.path.insert(0,str(ROOT/"src"))
