@@ -8,6 +8,7 @@ notes or unbounded data.  All reads use the existing tenant-isolated store.
 from __future__ import annotations
 
 import json
+import re
 
 from ..domain import AccessContext, DomainStore, TenantIsolationError
 from .app import AuthState, Response
@@ -37,7 +38,11 @@ def request_receipt_json(
         request = store.get_assessment_request(ctx, request_id)
     except (KeyError, TenantIsolationError, ValueError, TypeError):
         return _missing()
-    if request.client_id != client_id:
+    if (
+        request.client_id != client_id
+        or not isinstance(request.request_id, str)
+        or re.fullmatch(r"[A-Za-z0-9-]{1,80}", request.request_id) is None
+    ):
         return _missing()
 
     limit = min(100, max(1, max_assets))
@@ -119,6 +124,7 @@ def request_inbox_json(
         if (
             request.client_id != client_id
             or type(request.request_id) is not str
+            or re.fullmatch(r"[A-Za-z0-9-]{1,80}", request.request_id) is None
             or not isinstance(request.requested_assets, tuple)
         ):
             return _missing()
