@@ -297,6 +297,33 @@ def baseline_is_strictly_green(result: unittest.TestResult) -> bool:
     )
 
 
+def mutation_subcases_valid(result: unittest.TestResult) -> bool:
+    """Early assertion failure may truncate nested cases only in its own test.
+
+    Every untouched test must still exercise its full original matrix. A
+    failing outer subTest can legitimately stop its own nested checks; that
+    missing coverage is evidence of the same already-caught regression.
+    """
+    if type(result) is not CoverageResult:
+        return False
+    attempted = result.subtest_attempts
+    if set(attempted) != REQUIRED_TEST_METHODS:
+        return False
+    failed_methods = set()
+    for case, _details in result.failures:
+        parent = getattr(case, "test_case", case)
+        name = getattr(parent, "_testMethodName", None)
+        if name in REQUIRED_TEST_METHODS:
+            failed_methods.add(name)
+    for name, expected in EXPECTED_CASE_COUNTS.items():
+        observed = attempted[name]
+        if type(observed) is not int or not 1 <= observed <= expected:
+            return False
+        if observed < expected and name not in failed_methods:
+            return False
+    return True
+
+
 def mutation_detected(result: unittest.TestResult, expected_test_prefix: str) -> bool:
     """Only real AssertionError safety denials count as killing a mutation.
 
@@ -306,8 +333,7 @@ def mutation_detected(result: unittest.TestResult, expected_test_prefix: str) ->
     if (
         result.testsRun != len(REQUIRED_TEST_METHODS) or result.errors or result.expectedFailures
         or result.unexpectedSuccesses or result.skipped or not result.failures
-        or type(result) is not CoverageResult
-        or dict(result.subtest_attempts) != EXPECTED_CASE_COUNTS
+        or not mutation_subcases_valid(result)
     ):
         return False
     if not all("AssertionError:" in detail for _, detail in result.failures):
