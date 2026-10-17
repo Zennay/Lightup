@@ -165,6 +165,29 @@ class Scope649ReviewerTests(unittest.TestCase):
             with self.subTest(raw=raw[:40]):
                 self.assertIs(subject.parse_and_review(raw).status, subject.ReviewStatus.HOLD)
 
+    def test_every_proper_json_prefix_fails_closed(self):
+        complete = encode(packet())
+        self.assertIs(subject.parse_and_review(complete).status, subject.ReviewStatus.REVIEW_ONLY)
+        for position in range(len(complete)):
+            with self.subTest(prefix=position):
+                status = subject.parse_and_review(complete[:position]).status
+                self.assertIs(status, subject.ReviewStatus.HOLD)
+                self.assertFalse(status)
+
+    def test_authority_shaped_json_mutations_never_acquire_authority(self):
+        sample = encode(packet())
+        for field in (b'schema', b'synthetic_only', b'approved_by', b'reference'):
+            for replacement in (field.upper(), field + b'_authority', b'consent_verified'):
+                with self.subTest(field=field, replacement=replacement):
+                    mutated = sample.replace(b'"' + field + b'"', b'"' + replacement + b'"', 1)
+                    receipt = subject.parse_and_review(mutated)
+                    self.assertIs(receipt.status, subject.ReviewStatus.HOLD)
+                    self.assertFalse(receipt)
+                    self.assertFalse(receipt.authorization_verified)
+                    self.assertFalse(receipt.consent_verified)
+                    self.assertFalse(receipt.permit_issued)
+                    self.assertFalse(receipt.release_approved)
+
     def test_json_size_limit_is_strict(self):
         self.assertIs(subject.parse_and_review(b"0" * (subject.MAX_STDIN + 1)).status, subject.ReviewStatus.HOLD)
         self.assertIs(subject.parse_and_review(bytearray(encode(packet()))).status, subject.ReviewStatus.HOLD)
