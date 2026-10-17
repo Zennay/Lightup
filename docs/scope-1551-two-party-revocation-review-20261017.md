@@ -24,6 +24,21 @@ Result is exactly a privacy-minimal JSON status and reason plus eight false flag
 - If stdout fails, process returns nonzero, never grants authority.
 
 ## Validation and required independent gates
-25 focused unit/subprocess methods + deterministic mutation, duplicate/temporal/replay/overlong input and no-network-source tests. Dedicated hosted Python3.11/3.14 exact-head workflow is NOT the complete original hosted / permanently registered LightUp VPS CI.
+29 focused unit/subprocess methods + deterministic mutation, duplicate/temporal/replay/overlong input and no-network-source tests. Dedicated hosted Python3.11/3.14 exact-head workflow is NOT the complete original hosted / permanently registered LightUp VPS CI.
 
 Before ANY integration/release: separately authenticated real client+operator identities; trusted immutable scope/PR snapshots; durable, append-only, privacy-reviewed revocation source; real at-use, concurrency-safe revocation revalidation; source-owner approval; original exact-release-head complete hosted+permanent named VPS CI; independent security/privacy review; and explicit HUMAN GO. Until then: HOLD, no merge/deploy/scan/grant/handlers/release.
+
+## W2: multi-snapshot continuity and externally pinned digest (non-authorizing)
+
+New independent offline timeline reviewer (scripts/review_scope_consent_timeline_1551_offline.py) with dedicated tests. The timeline input is strict JSON with exactly schema_version 1 and entries (2–16; max 128 KiB). Each entry has packet (the original strict v1 claim packet) and previous_sha256. The first predecessor must be null; each later predecessor equals SHA-256 of canonical JSON bytes of the preceding full entry, including the preceding link. UTC review time must increase; proposal SHA, scope SHA, and the full fictional consent pair must remain immutable. Any revocation or malformed packet HOLD.
+
+Two CLI modes:
+- Plain stdin timeline: unanchored fictional internal continuity only, REVIEW_ONLY/exit3 if consistent.
+- --expected-head followed by one lowercase 64-character SHA-256: verifies that the final canonical entry matches an *externally retained* expected digest, otherwise HOLD/exit2.
+- Unexpected flags and invalid pins HOLD/exit2. No mode exits 0; all eight grant/scan/dispatch/merge/deploy/release authority flags remain false.
+
+The caller must independently retain and trust the expected digest: a head digest that arrives with the same untrusted packet is NOT a trust anchor. A deliberate negative regression shows all fabricated entries can be rewritten and all internal digests recomputed to regain REVIEW_ONLY unanchored, whereas the old independent head pin makes that substitution HOLD. Even a pinned consistency result is not proof of real signatures, client/operator identity, complete real-world revocation or any execution permission.
+
+The new code and source-owner boundaries remain isolated: no live scope, activation, grant, DB, worker, shared CI or production changes. Expected proof: **53 focused methods** (29 original and 24 timeline tests), plus 86 existing offline producer integrations, Python 3.14.4 VPS and exact-head isolated hosted Python 3.11+3.14 CI. The hosted ownership fence now allows only SIX new regular Git mode-100644 paths, original main pinned, zero source-file modifications. Permanent named VPS and full original release CI are NOT bypassed.
+
+DRAFT/HOLD. No merge, release, target scan, handler, active execution or grant.
