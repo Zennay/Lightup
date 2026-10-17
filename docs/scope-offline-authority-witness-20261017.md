@@ -71,6 +71,16 @@ The exact latest source+documentation head `ae9967b2f3e257991ef3e1dc3d41354074db
 
 Independent GitHub compare from pinned original main to current branch: **18 exclusively additive commits / 0 behind, precisely three NEW owned files and zero modifications of any existing source, production authority, workflow, runner or another worker's files**. No PR was opened or permanent runner job dispatched. The clone's Git index/worktree was clean after the tests.
 
+## W6 — fail-closed evaluator output privacy (17 October 2026)
+
+The context-local witness now also redirects Python-level `stdout` and `stderr` **only for each call** to the real installed scope evaluator. An attempt to `print` or write to either stream raises `PermissionError`, produces generic `HOLD/offline_witness_evaluation_failed`, and never includes the attempted text in the machine JSON receipt. The streams and Python audit-hook context are restored in `finally`; subsequent normal evaluations still succeed.
+
+This covers regular Python prints/writes, **not** raw native writes to inherited file descriptors or arbitrary untrusted native code, and is not a strong security sandbox. All code remains for *reviewed offline fixtures only*.
+
+On the connected zSSH Python 3.14.4 disposable checkout, **26/26 dedicated tests PASS** and **86/86 producer integration tests PASS** at exact code head `d5208ae1b335d17b6dbf7dc5b2d99d2ed52e2baf`; clean Git worktree and index. The previous post-audit-hook full original unit suite ran **1,262 tests with five previously baselined failures and 23 expectedFailures**, not a full-green production gate.
+
+GitHub comparison after output-privacy hardening was **21 additive own commits / 0 behind original main**, exactly three new dedicated paths and zero changes to any existing source-owner, other worker, shared workflow, runner, grant, activation, live consent or deployment file. All statuses continue to disable authorization and execution; no PR/CI retry/merge/deployment/scan/grant is attempted.
+
 ## Gate interpretation
 
 - Green unit tests validate the witness's own classification, deterministic receipt, zero-network boundary, no authority flags and mutation-detection sensitivities.
