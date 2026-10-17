@@ -260,6 +260,92 @@ class SyntheticGate(unittest.TestCase):
             _all_newline_corrupt_tokens_accepted(all_repaired, Invalid)
         )
 
+    def test_all_single_byte_status_codes_have_explicit_verdict(self):
+        """255 noncanonical byte/status values cannot disappear from review."""
+        canonical = {ord("A"), ord("M"), ord("D"), ord("T")}
+        for value in range(256):
+            status = bytes((value,))
+            stream = status + b"\0file.py\0"
+            with self.subTest(status_byte=value):
+                if value in canonical:
+                    self.assertEqual(review.review_stream(stream), 1)
+                else:
+                    with self.assertRaises(review.StatusHold):
+                        review.review_stream(stream)
+
+    def test_late_corrupt_status_does_not_approve_valid_prefix(self):
+        # A late bad token must hold the entire fictional batch, not silently
+        # discard the corrupt record or approve earlier valid file entries.
+        stream = (
+            b"A\0safe_name.py\0"
+            b"R100\n\0private_original.py\0private_modified.py\0"
+            b"M\0later_good.py\0"
+        )
+        with self.assertRaises(review.StatusHold):
+            review.review_stream(stream)
+        completed = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", str(SCRIPT)],
+            input=packet(stream), capture_output=True, timeout=8,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 2)
+        self.assertEqual(json.loads(completed.stdout)["decision"], "HOLD")
+        for forbidden in (
+            b"safe_name.py", b"private_original.py",
+            b"private_modified.py", b"later_good.py",
+        ):
+            self.assertNotIn(forbidden, completed.stdout)
+        self.assertEqual(completed.stderr, b"")
+
+    def test_cli_stdin_read_and_stdout_flush_errors_fail_closed(self):
+        from unittest.mock import patch
+        good = packet(b"M\0file.py\0")
+
+        class BrokenReader:
+            def __init__(self):
+                self.buffer = self
+
+            def read(self, _amount):
+                raise OSError("synthetic stdin stream failure")
+
+        class Reader:
+            def __init__(self):
+                self.buffer = self
+                self.remaining = [good, b""]
+
+            def read(self, _amount):
+                return self.remaining.pop(0)
+
+        class Writer:
+            def __init__(self, fail_flush=False):
+                self.buffer = self
+                self.bytes = bytearray()
+                self.fail_flush = fail_flush
+
+            def write(self, value):
+                self.bytes.extend(value)
+                return len(value)
+
+            def flush(self):
+                if self.fail_flush:
+                    raise OSError("synthetic stdout flush failure")
+
+        hold_receipt = Writer()
+        with patch.object(review.sys, "stdin", BrokenReader()), patch.object(
+            review.sys, "stdout", hold_receipt
+        ):
+            self.assertEqual(review.main(), 2)
+        self.assertEqual(json.loads(hold_receipt.bytes)["decision"], "HOLD")
+        self.assertNotIn(b"file.py", hold_receipt.bytes)
+
+        flush_failure = Writer(fail_flush=True)
+        with patch.object(review.sys, "stdin", Reader()), patch.object(
+            review.sys, "stdout", flush_failure
+        ):
+            self.assertEqual(review.main(), 2)
+        # Return codes, not untrusted stdout alone, govern review verdicts.
+        self.assertNotIn(b"file.py", flush_failure.bytes)
+
     def test_exhaustive_rename_copy_score_byte_grammar(self):
         # Exact Git --name-status -z uses three decimal similarity digits.
         for prefix in (b"R", b"C"):
