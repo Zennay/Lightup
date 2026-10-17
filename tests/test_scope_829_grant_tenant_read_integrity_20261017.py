@@ -110,25 +110,17 @@ class GrantTenantReadIntegrity829(unittest.TestCase):
             now=self.now + timedelta(days=2),
         ))
 
-    def test_original_source_corruption_witness_is_read_only(self):
-        """A passing witness proves the exact *unsafe* original-source behavior.
-
-        Do not interpret this as repaired. The expectedFailure tests below
-        express the correct desired authorization boundary.
-        """
+    def test_corrupt_grant_reads_leave_durable_bytes_unchanged(self):
+        """Both original source and a future fail-closed fix must read only."""
         good = self.grant(self.eng_a)
         self.corrupt_grant_client(good.grant_id, self.b.client_id)
         before = self.row_snapshot()
-        observed = self.store.list_authorization_grants(
+        self.store.list_authorization_grants(
             self.ctx_a, self.eng_a.engagement_id
         )
-        current = self.store.get_current_grant(
+        self.store.get_current_grant(
             self.ctx_a, self.eng_a.engagement_id, now=self.now
         )
-        self.assertEqual([g.grant_id for g in observed], [good.grant_id])
-        self.assertEqual(observed[0].client_id, self.b.client_id)
-        self.assertEqual(current.grant_id, good.grant_id)
-        self.assertEqual(current.client_id, self.b.client_id)
         self.assertEqual(self.row_snapshot(), before)
 
     @unittest.expectedFailure
