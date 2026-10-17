@@ -28,8 +28,8 @@ def packet(stream: bytes) -> bytes:
 
 class SyntheticGate(unittest.TestCase):
     def test_ordinary_types(self):
-        for status in (b"A", b"M", b"D", b"T", b"R0", b"R1", b"R99",
-                       b"R100", b"C0", b"C50", b"C100"):
+        for status in (b"A", b"M", b"D", b"T", b"R000", b"R001", b"R099",
+                       b"R100", b"C000", b"C050", b"C100"):
             with self.subTest(status=status):
                 stream = status + b"\0" + (b"old.py\0" if status[:1] in b"RC" else b"") + b"new.py\0"
                 self.assertEqual(review.review_packet(packet(stream)), 1)
@@ -40,7 +40,8 @@ class SyntheticGate(unittest.TestCase):
 
     def test_invalid_statuses_atomically_hold(self):
         invalid = (b"Q", b"U", b"X", b"Mgarbage", b"R", b"C",
-                   b"Rnotanumber", b"R001", b"C00", b"R101", b"C999",
+                   b"Rnotanumber", b"R0", b"R1", b"R99", b"C0", b"C50",
+                   b"C99", b"R0000", b"C00", b"R101", b"C999",
                    b"M1", b"r100", b"R-1", b"R+1", b"R1.0", b"R\xff")
         for item in invalid:
             with self.subTest(item=item):
@@ -111,6 +112,8 @@ class SyntheticGate(unittest.TestCase):
             (b"M\0file.py\0", 3, "REVIEW_ONLY"),
             (b"Q\0file.py\0", 2, "HOLD"),
             (b"Mgarbage\0file.py\0", 2, "HOLD"),
+            (b"R1\0old.py\0new.py\0", 2, "HOLD"),
+            (b"R100\0old.py\0new.py\0", 3, "REVIEW_ONLY"),
             (b"Rnotanumber\0old.py\0new.py\0", 2, "HOLD"),
         ):
             result = subprocess.run(
@@ -127,6 +130,70 @@ class SyntheticGate(unittest.TestCase):
             self.assertEqual(set(obj), set(review._FLAGS))
             self.assertTrue(all(value is False for value in obj.values()))
             self.assertNotIn(b"file.py", result.stdout)
+
+    def test_partial_stdin_reads_do_not_accept_prefix(self):
+        good = packet(b"M\0file.py\0")
+
+        class FragmentedInput:
+            def __init__(self, pieces):
+                self.pieces = list(pieces)
+                self.buffer = self
+
+            def read(self, amount):
+                self.test_last_amount = amount
+                return self.pieces.pop(0) if self.pieces else b""
+
+        class Sink:
+            def __init__(self):
+                self.data = bytearray()
+                self.buffer = self
+
+            def write(self, raw):
+                self.data.extend(raw)
+                return len(raw)
+
+            def flush(self):
+                pass
+
+        from unittest.mock import patch
+        for chunks, code, decision in (
+            ([good[:7], good[7:], b""], 3, "REVIEW_ONLY"),
+            ([good, b"\\n", b""], 2, "HOLD"),
+        ):
+            with self.subTest(chunks=chunks):
+                output = Sink()
+                with patch.object(review.sys, "stdin", FragmentedInput(chunks)), patch.object(review.sys, "stdout", output):
+                    result = review.main()
+                self.assertEqual(result, code)
+                self.assertEqual(json.loads(output.data)["decision"], decision)
+
+    def test_short_stdout_write_is_always_failure(self):
+        good = packet(b"M\0file.py\0")
+
+        class Source:
+            def __init__(self):
+                self.buffer = self
+                self.called = False
+
+            def read(self, amount):
+                if not self.called:
+                    self.called = True
+                    return good
+                return b""
+
+        class ShortSink:
+            def __init__(self):
+                self.buffer = self
+
+            def write(self, data):
+                return len(data) - 1
+
+            def flush(self):
+                pass
+
+        from unittest.mock import patch
+        with patch.object(review.sys, "stdin", Source()), patch.object(review.sys, "stdout", ShortSink()):
+            self.assertEqual(review.main(), 2)
 
     def test_real_disposable_git_zero_delimited_output(self):
         with tempfile.TemporaryDirectory() as tmp:
