@@ -33,3 +33,50 @@ Tests: `PYTHONPATH=src python -m unittest -v tests.test_scope_github_file_covera
 **Consistency is not completeness.** The `expected_changed_files`, claimed pagination flags, and expected/observed SHAs are fictional/untrusted in this module. Malicious matching metadata cannot be authenticated offline; REVIEW_ONLY is a *request for further review*, never a PASS. Stronger source-owner integration must fetch and authenticate the PR metadata from GitHub, iterate the authoritative changed-files endpoint with full pagination, bind immutable base/head SHA at both reads, compare the exact received count and status, and fail closed before any inferred verdict/report persistence. GitHub compare endpoints may cap arrays; cross-check the PR's authoritative `changed_files`, not merely a caller's `too_large` boolean.
 
 **Release HOLD remains** pending owner source integration, independent security/privacy review, distinct real client + operator authorization with at-use revocation, exact-head hosted + permanent named VPS CI, and explicit human GO. No new source-owner code, existing runner workflow, target, grant, dispatch or release is touched by this isolated branch.
+
+## W2 — installed ChangeSet adapter admission, still disconnected from production
+
+New solely-owned `src/lightup/scope_github_coverage_adapter_1553.py` and
+`tests/test_scope_github_coverage_adapter_1553.py` compose two separately
+provided fictional views of the same GitHub file set: (1) strict claim
+envelope and (2) bounded detailed file records. The real installed
+`github_pull_request_changeset` is invoked **only after both views match
+exactly** (file count, filename identity, SHA consistency, no partial
+pagination or truncation), all records use exact supported statuses and
+nonnegative bounded counters, rename paths are sane, and raw patches are
+bounded UTF-8 text. A new tuple of built-in primitive records is supplied
+to the existing adapter; the caller's original records are not modified.
+
+This is source-integration *proof* in the separate isolated, opt-in lane, not
+a change to `github_changes.py` or `cli.py`. No live GitHub data is
+retrieved or authenticated; the reviewer remains REVIEW_ONLY even if all
+synthetic claims agree. Any invalid metadata, source-adapter rejection,
+duplicate or missing file exits HOLD **before a verdict can be promoted**.
+
+Run:
+
+```sh
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_github_coverage_adapter_1553.py' -v
+```
+
+The standalone opt-in adapter CLI consumes only one JSON object with exact
+keys `coverage` and `records` on stdin:
+
+```sh
+PYTHONPATH=src python -m lightup.scope_github_coverage_adapter_1553 --synthetic-only < fictional.json
+```
+
+It emits only fixed false authority fields, HOLD/exit2 or
+REVIEW_ONLY/exit3, with at most a synthetic file count and number of
+**inferred** signals. Neither output is approval. Dedicated subprocess tests
+cover malformed input, duplicate JSON keys, invalid UTF-8, oversize data and
+secret non-disclosure. The same new workflow now exercises both independent
+30-method coverage tests (one known source-owner RED) and 26 installed-adapter
+acceptance tests on Python 3.11 and 3.14. Actual final-head runs must be
+inspected before any green claim.
+
+Unchanged release requirements: authoritative authenticated GitHub full
+pagination + stable base/head proof implemented and reviewed by #1538 source
+owner; separate real client/operator consent with at-use revocation;
+independent privacy/security review; original hosted and permanently
+registered named-VPS CI on approved exact SHA; human GO. **NO MERGE OR DEPLOY.**
