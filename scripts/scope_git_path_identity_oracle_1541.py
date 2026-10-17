@@ -61,8 +61,9 @@ def _path(value: bytes) -> str:
     except UnicodeError:
         raise PathIdentityHold() from None
     if (result.startswith("/") or "\\" in result or
-            any(component in ("", ".", "..") for component in result.split("/")) or
-            any((ord(c) < 32 and ord(c) != 9) or ord(c) == 127 or
+            any(component in ("", ".", "..") or component.endswith((".", " "))
+                for component in result.split("/")) or
+            any((unicodedata.category(c) == "Cc" and c != "\t") or
                 _ambiguous_display_character(c) for c in result)):
         # Other control characters (but not NUL-delimited-safe tabs) are held:
         # the source-owner must explicitly decide what Git reporting supports.
@@ -150,6 +151,7 @@ def parse_git_path_outputs(
             raise PathIdentityHold()
 
     stats: dict[tuple[str, str | None], tuple[int | None, int | None]] = {}
+    stat_order: list[tuple[str, str | None]] = []
     idx = 0
     while idx < len(numstat):
         header = numstat[idx].split(b"\t", 2)
@@ -171,8 +173,13 @@ def parse_git_path_outputs(
         if key in stats or len(stats) >= _MAX_FILES:
             raise PathIdentityHold()
         stats[key] = additions, deletions
+        stat_order.append(key)
 
-    if len(rows) != len(stats) or not rows:
+    if (len(rows) != len(stats) or not rows or
+            [(path, original) for _, path, original in rows] != stat_order):
+        # Separate Git invocations must preserve the same byte-exact ordered
+        # changes. Set-equivalent but reordered claims are not proof of one
+        # coherent snapshot; never silently reconcile them by dict lookup.
         raise PathIdentityHold()
     checked: list[CheckedGitPath] = []
     seen: set[str] = set()
