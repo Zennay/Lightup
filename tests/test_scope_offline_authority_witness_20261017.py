@@ -108,8 +108,8 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         self.assert_no_authority(result)
 
     def test_no_network_socket_or_dns_is_necessary(self):
-        with patch.object(socket, "socket", side_effect=AssertionError("network invoked")), \\
-             patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns invoked")):
+        with (patch.object(socket, "socket", side_effect=AssertionError("network invoked")),
+              patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns invoked"))):
             result = witness.evaluate()
         self.assertEqual(result["status"], "REVIEW_ONLY")
         self.assert_no_authority(result)
