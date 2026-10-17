@@ -549,6 +549,38 @@ class StrictSourceOwnerGate(unittest.TestCase):
                     self.assertTrue(owner._parse_name_status(stream))
         self.assertIs(owner._STATUS_CODE, original)
 
+    def test_source_full_status_byte_and_similarity_grammar(self):
+        """Mandatory, non-authorizing exact Git status grammar on repaired source."""
+        import os
+        if os.environ.get("LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX") != "1":
+            self.skipTest("original source-owner repair not integrated into this branch")
+        sys.path.insert(0, str(ROOT / "src"))
+        from lightup.git_changes import GitChangeError, _parse_name_status
+        simple = {ord("A"), ord("M"), ord("D"), ord("T")}
+        for value in range(256):
+            stream = bytes((value,)) + b"\0one.py\0"
+            with self.subTest(status_byte=value):
+                if value in simple:
+                    self.assertEqual(len(_parse_name_status(stream)), 1)
+                else:
+                    with self.assertRaises(GitChangeError):
+                        _parse_name_status(stream)
+
+        for prefix in (b"R", b"C"):
+            for score in range(101):
+                status = prefix + f"{score:03d}".encode("ascii")
+                stream = status + b"\0old.py\0new.py\0"
+                with self.subTest(status=status):
+                    self.assertEqual(
+                        _parse_name_status(stream),
+                        [(prefix.decode("ascii"), "old.py", "new.py")],
+                    )
+            for score in (b"", b"0", b"1", b"99", b"101", b"200", b"999", b"0000",
+                          b"001\n", b"100\n", b"099\r"):
+                with self.subTest(prefix=prefix, corrupt=score):
+                    with self.assertRaises(GitChangeError):
+                        _parse_name_status(prefix + score + b"\0old.py\0new.py\0")
+
     def test_source_rejects_all_five_original_invalid_forms(self):
         import os
         if os.environ.get("LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX") != "1":
