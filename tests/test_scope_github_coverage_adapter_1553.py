@@ -205,6 +205,53 @@ class InstalledBridgeTest(unittest.TestCase):
                 r[0]["patch"] = bad
                 self.assert_rejected_before_adapter(packet(), r)
 
+    def test_hunk_declared_old_span_must_match_body(self):
+        r = records()
+        r[1]["patch"] = (
+            "@@ -1,3 +1,3 @@\n"
+            "-ingress { cidr_blocks = [\"127.0.0.1/32\"] }\n"
+            "+ingress { cidr_blocks = [\"0.0.0.0/0\"] }\n"
+        )
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_hunk_declared_new_span_must_match_body(self):
+        r = records()
+        r[1]["patch"] = (
+            "@@ -1 +1,3 @@\n"
+            "-ingress { cidr_blocks = [\"127.0.0.1/32\"] }\n"
+            "+ingress { cidr_blocks = [\"0.0.0.0/0\"] }\n"
+        )
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_hunk_overflow_is_hold(self):
+        r = records()
+        r[0]["patch"] = "@@ -0,0 +1,0 @@\n+permissions: write-all\n"
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_hunk_zero_ranges_with_visible_lines_are_hold(self):
+        r = records()
+        r[0]["patch"] = "@@ -0,0 +1,0 @@\n+permissions: write-all\n"
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_incomplete_first_hunk_before_second_is_hold(self):
+        r = records()
+        r[0]["additions"] = 2
+        r[0]["patch"] = (
+            "@@ -1 +1,2 @@\n+permissions: write-all\n"
+            "@@ -10,0 +11 @@\n+allow: all\n"
+        )
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_hunk_leading_zeros_are_hold(self):
+        r = records()
+        r[0]["patch"] = "@@ -00,0 +01 @@\n+permissions: write-all\n"
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_hunk_oversize_declared_ranges_are_hold(self):
+        r = records()
+        r[0]["patch"] = "@@ -0,0 +1,999999999 @@\n+permissions: write-all\n"
+        self.assert_rejected_before_adapter(packet(), r)
+
     def test_zero_changes_diff_is_hold(self):
         r = records()
         r[0]["patch"] = "@@ -1 +1 @@\n context only\n"
@@ -216,7 +263,7 @@ class InstalledBridgeTest(unittest.TestCase):
         r[0]["additions"] = 2
         r[0]["patch"] = (
             "@@ -1 +1,2 @@\n+permissions: write-all\n context\n"
-            "@@ -10 +11 @@\n+allow: all\n"
+            "@@ -10,0 +11 @@\n+allow: all\n"
         )
         self.assert_fence(bridge.preview(packet(), r), "REVIEW_ONLY")
 
