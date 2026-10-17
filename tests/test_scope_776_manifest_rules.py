@@ -30,7 +30,7 @@ class OfflineCompositionManifestRules(unittest.TestCase):
         p = patch.object(checker, "MANIFEST", self.path)
         p.start()
         self.addCleanup(p.stop)
-        p = patch.object(checker, "git", return_value=b"")
+        p = patch.object(checker, "git", side_effect=self.fake_git)
         p.start()
         self.addCleanup(p.stop)
         p = patch.object(checker, "blob", return_value=b"")
@@ -39,6 +39,20 @@ class OfflineCompositionManifestRules(unittest.TestCase):
         p = patch.object(checker.subprocess, "run")
         p.start()
         self.addCleanup(p.stop)
+
+    @staticmethod
+    def fake_git(*args):
+        if args[:2] == ("diff", "--name-status"):
+            return "".join("A\\t" + path + "\\n" for path in
+                           checker.OWN_PATHS).encode("utf-8")
+        if args[:2] == ("ls-tree", "HEAD"):
+            return ("100644 blob " + "0" * 40 +
+                    "\\t" + args[-1] + "\\n").encode("utf-8")
+        if args and args[0] == "ls-tree":
+            return b""
+        if args and args[0] == "status":
+            return b""
+        return b""
 
     def assert_refused(self, expected: str):
         self.path.write_text(json.dumps(self.manifest), encoding="utf-8")
@@ -89,6 +103,28 @@ class OfflineCompositionManifestRules(unittest.TestCase):
     def test_source_red_count_understatement_is_denied(self):
         self.manifest["expected_source_reds"] = 0
         self.assert_refused("scope776_manifest_shape_or_count_changed")
+
+    def test_any_other_worker_file_change_is_refused(self):
+        original = self.fake_git
+
+        def tamper(*args):
+            if args[:2] == ("diff", "--name-status"):
+                return original(*args) + b"M\\tsrc/lightup/domain.py\\n"
+            return original(*args)
+
+        with patch.object(checker, "git", side_effect=tamper):
+            self.assert_refused("scope776_source_or_other_worker_path_changed")
+
+    def test_deleted_or_overwritten_own_test_is_refused(self):
+        original = self.fake_git
+
+        def tamper(*args):
+            if args[:2] == ("diff", "--name-status"):
+                return original(*args).replace(b"A\\ttests/", b"M\\ttests/", 1)
+            return original(*args)
+
+        with patch.object(checker, "git", side_effect=tamper):
+            self.assert_refused("scope776_source_or_other_worker_path_changed")
 
     def test_imported_source_and_vetted_risk_reference_are_exact(self):
         self.assertEqual([x["issue"] for x in self.manifest["composed_tests"]],
