@@ -351,3 +351,124 @@ def operator_thread_json(store: DomainStore, auth: AuthState, request_id: str) -
         json.dumps(snapshot, ensure_ascii=True, separators=(",", ":")),
         content_type="application/json; charset=utf-8",
     )
+
+
+def clarification_inbox_snapshot(
+    store: DomainStore, auth: AuthState, *, limit: int = 60,
+) -> dict:
+    """Current open request threads, grouped by who should act next.
+
+    The index is not a consent or signature register; it contains no message
+    bodies and cannot create or decide an assessment request.
+    """
+    ctx = _context(auth)
+    if ctx.role is not Role.OPERATOR:
+        raise ClarificationDenied("A real operator account is required")
+    count = max(1, min(60, limit))
+    with sqlite3.connect(store.path, timeout=10) as db:
+        db.execute("PRAGMA foreign_keys=ON")
+        rows = db.execute(
+            "SELECT m.request_id,m.client_id,m.message_kind,m.created_at "
+            "FROM assessment_clarifications m "
+            "JOIN assessment_requests r ON r.request_id=m.request_id "
+            "AND r.client_id=m.client_id "
+            "WHERE r.status IN ('submitted','under_review') "
+            "AND NOT EXISTS("
+            " SELECT 1 FROM assessment_clarifications newer "
+            " WHERE newer.request_id=m.request_id AND newer.client_id=m.client_id "
+            " AND (newer.created_at > m.created_at OR "
+            " (newer.created_at=m.created_at AND newer.message_id>m.message_id))"
+            ") ORDER BY m.created_at DESC,m.message_id DESC LIMIT ?",
+            (count + 1,),
+        ).fetchall()
+    items = []
+    for req_id, client_id, kind, latest_at in rows[:count]:
+        if not _safe_id(req_id) or not _safe_id(client_id):
+            raise ClarificationDenied("Stored thread identity is invalid")
+        request = _read_request(store, ctx, req_id)
+        if request.client_id != client_id:
+            raise ClarificationDenied("Inconsistent request tenant")
+        if kind not in ("question", "reply"):
+            raise ClarificationDenied("Stored conversation kind is invalid")
+        items.append({
+            "request_id": req_id,
+            "client_id": client_id,
+            "waiting_for": "client" if kind == "question" else "operator",
+            "last_message_at": latest_at,
+            "review_url": "/authorization-desk/requests/" + req_id,
+        })
+    return {
+        "schema": "lightup.clarification-inbox.v1",
+        "disposition": "DISCUSSION_ONLY",
+        "items": items,
+        "partial": len(rows) > count,
+        "execution_authorized": False,
+        "consent_verified": False,
+        "grant_bound": False,
+        "notice": "This queue is for administrative clarification only.",
+    }
+
+
+def operator_clarification_inbox_page(
+    store: DomainStore, auth: AuthState,
+) -> Response:
+    if not auth.is_operator:
+        return Response("<h1>Operator required</h1>", status="403 Forbidden")
+    try:
+        inbox = clarification_inbox_snapshot(store, auth)
+    except (ClarificationDenied, KeyError, ValueError, TypeError):
+        return Response("<h1>Clarification inbox unavailable</h1>",
+                        status="503 Service Unavailable")
+    needs_operator = [
+        item for item in inbox["items"] if item["waiting_for"] == "operator"
+    ]
+    waiting_client = [
+        item for item in inbox["items"] if item["waiting_for"] == "client"
+    ]
+
+    def cards(items: list[dict]) -> str:
+        return "".join(
+            '<div class="card"><strong>Request ' + _e(item["request_id"])
+            + '</strong><p class="meta">Client: ' + _e(item["client_id"])
+            + '<br>Last activity: ' + _e(item["last_message_at"])
+            + '</p><a href="' + _e(item["review_url"])
+            + '">Open conversation and request dossier →</a></div>'
+            for item in items
+        ) or '<p class="empty">No open clarifications in this group.</p>'
+
+    body = (
+        '<h1>Clarification inbox</h1>'
+        '<p class="sub">Follow up on pending client discussions before '
+        'administrative review. No grant or scan is authorized here.</p>'
+        '<div class="card"><span class="badge lock">Discussion only</span>'
+        '<p class="meta">Client replies are not signed consent; approval '
+        'still requires independently verified authority and domain gates.</p>'
+        '<a href="/authorization-desk">Authorization desk</a> · '
+        '<a href="/api/v1/operator/clarifications">Read-only JSON</a></div>'
+        + ('<p class="meta">Showing only the most recent threads.</p>'
+           if inbox["partial"] else "")
+        + '<h2>Needs operator follow-up (' + str(len(needs_operator)) + ')</h2>'
+        + cards(needs_operator)
+        + '<h2>Waiting for client (' + str(len(waiting_client)) + ')</h2>'
+        + cards(waiting_client)
+    )
+    return Response(_page("LightUp — Clarification inbox", "assessments",
+                          body, auth))
+
+
+def operator_clarification_inbox_json(
+    store: DomainStore, auth: AuthState,
+) -> Response:
+    if not auth.is_operator:
+        return Response('{"error":"operator required"}', status="403 Forbidden",
+                        content_type="application/json; charset=utf-8")
+    try:
+        data = clarification_inbox_snapshot(store, auth)
+    except (ClarificationDenied, KeyError, ValueError, TypeError):
+        return Response('{"error":"clarification inbox unavailable"}',
+                        status="503 Service Unavailable",
+                        content_type="application/json; charset=utf-8")
+    return Response(
+        json.dumps(data, ensure_ascii=True, separators=(",", ":")),
+        content_type="application/json; charset=utf-8",
+    )
