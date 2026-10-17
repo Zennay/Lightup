@@ -8,8 +8,11 @@ from __future__ import annotations
 from pathlib import Path
 import re
 import subprocess
+import os
+from collections.abc import Mapping
 
 ROOT = Path(__file__).resolve().parents[1]
+EXPECTED_BRANCH = "chatgpt/scope-control-char-literal-review-20261016-2327"
 OWNED_EXACT = frozenset({
     ".github/workflows/scope-literal-controls-20261016.yml",
     "docs/scope-literal-control-review-20261016.md",
@@ -102,11 +105,41 @@ def clean_worktree_status(result: object) -> bool:
     )
 
 
+def branch_identity(
+    symbolic: subprocess.CompletedProcess[bytes],
+    head: subprocess.CompletedProcess[bytes],
+    environment: Mapping[str, str],
+) -> bool:
+    """Never certify another worker's branch or an unpinned PR merge-ref."""
+    if (
+        not isinstance(symbolic, subprocess.CompletedProcess)
+        or not isinstance(head, subprocess.CompletedProcess)
+        or head.returncode != 0
+        or type(head.stdout) is not bytes
+        or re.fullmatch(rb"[0-9a-f]{40}", head.stdout.strip()) is None
+    ):
+        return False
+    if environment.get("GITHUB_ACTIONS") == "true":
+        return (
+            symbolic.returncode in (0, 1)
+            and environment.get("GITHUB_EVENT_NAME") == "push"
+            and environment.get("GITHUB_REF") == "refs/heads/" + EXPECTED_BRANCH
+            and environment.get("GITHUB_SHA") == head.stdout.strip().decode("ascii")
+        )
+    return (
+        environment.get("GITHUB_ACTIONS") is None
+        and symbolic.returncode == 0
+        and type(symbolic.stdout) is bytes
+        and symbolic.stdout == EXPECTED_BRANCH.encode("ascii") + b"\n"
+    )
+
+
 def main() -> int:
     try:
         # A remote main move must never silently change the held base.
         base = _git("merge-base", "--is-ancestor", "origin/main", "HEAD")
         head = _git("rev-parse", "HEAD")
+        symbolic = _git("symbolic-ref", "--quiet", "--short", "HEAD")
         diff = _git(
             "diff", "--name-status", "-z", "--no-renames",
             "origin/main", "HEAD",
@@ -118,6 +151,7 @@ def main() -> int:
         status = _git("status", "--porcelain=v1", "--untracked-files=all", "-z")
         ok = (
             clean_worktree_status(status) and
+            branch_identity(symbolic, head, os.environ) and
             base.returncode == 0 and head.returncode == 0
             and re.fullmatch(rb"[0-9a-f]{40}", head.stdout.strip()) is not None
             and tree is not None and tree.returncode == 0

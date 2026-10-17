@@ -95,6 +95,7 @@ class AdditiveOwnershipTests(unittest.TestCase):
                 "diff": good,
                 "ls-tree": tree,
                 "status": b" M src/lightup/scope.py\0",
+                "symbolic-ref": guard.EXPECTED_BRANCH.encode("ascii") + b"\n",
             }
             return CompletedProcess(args, 0, out[label], b"")
         with patch.object(guard, "_git", side_effect=simulated):
@@ -106,6 +107,34 @@ class AdditiveOwnershipTests(unittest.TestCase):
         self.assertEqual(workflow.count(branch_proof), 2)
         self.assertLess(workflow.index(branch_proof), workflow.index("python scripts/check_scope_literal_suite_20261016.py"))
         self.assertGreater(workflow.rindex(branch_proof), workflow.index("test \"$bad_out\""))
+
+    def test_branch_identity_requires_exact_owner_lane(self):
+        from subprocess import CompletedProcess
+        branch = guard.EXPECTED_BRANCH.encode("ascii") + b"\n"
+        head = CompletedProcess(["git"], 0, b"a" * 40 + b"\n", b"")
+        def ref(data: bytes, rc: int = 0):
+            return CompletedProcess(["git"], rc, data, b"")
+        self.assertTrue(guard.branch_identity(ref(branch), head, {}))
+        for candidate in (b"main\n", b"other-worker\n", b"chatgpt/scope-control-char-literal-review-20261016-2327x\n", b""):
+            self.assertFalse(guard.branch_identity(ref(candidate), head, {}))
+        self.assertFalse(guard.branch_identity(ref(b"", 1), head, {}))
+        # GitHub's SHA checkout is detached, but its push event has a frozen
+        # exact ref and SHA; a PR merge ref is never acceptable.
+        ci = {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_EVENT_NAME": "push",
+            "GITHUB_REF": "refs/heads/" + guard.EXPECTED_BRANCH,
+            "GITHUB_SHA": "a" * 40,
+        }
+        self.assertTrue(guard.branch_identity(ref(b"", 1), head, ci))
+        for key, invalid in (
+            ("GITHUB_EVENT_NAME", "pull_request"),
+            ("GITHUB_REF", "refs/pull/123/merge"),
+            ("GITHUB_SHA", "b" * 40),
+        ):
+            with self.subTest(key=key):
+                altered = dict(ci, **{key: invalid})
+                self.assertFalse(guard.branch_identity(ref(b"", 1), head, altered))
 
     def test_missing_required_worker_files_is_hold(self):
         for required in guard.OWNED_EXACT:
