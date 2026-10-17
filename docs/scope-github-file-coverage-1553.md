@@ -150,3 +150,53 @@ ready. The receipt contains no customer input or raw patches.
 The additional **CI gate is not production CI**, no permanent VPS runner or
 actual grant authority is added or relaxed. All hard release HOLD conditions
 remain.
+
+## W6 — exact PR snapshot counts and 100-file page completeness (offline only)
+
+New isolated owned module `src/lightup/scope_github_pr_pages_1553.py` accepts
+a BEFORE PR snapshot, ordered 100-file REST page records, and an AFTER PR
+snapshot. The module is a pure offline consumer of *normalized FICTIONAL
+caller-supplied records*, never an HTTP/API client or authorization gate.
+
+PR snapshots must have exact fields `version`, `synthetic_only`,
+`repository`, `pr_number`, `base_sha`, `head_sha` and `changed_files`.
+The two snapshots must exactly match, including base/head immutable SHAs,
+repository and PR number, and changed-files count. This module conservatively
+holds claimed totals outside 1–300; this is NOT GitHub's general page cap.
+
+Each page must have `page`, `per_page=100`, `files`. The module derives
+the exact page count and every page length from the PR's claimed
+`changed_files`, enforcing strictly ordered, numbered and complete pages;
+no missing 100-file middle pages, duplicates, wrong sizes, overcomplete pages,
+or cross-page filename collisions. It never takes an independent arbitrary
+expected count from the caller. Only fully consistent page sets are bridged
+through our strict patch/hunk adapter and finally the **real installed**,
+original source-owner `github_pull_request_changeset` (unchanged).
+
+This **does not authenticate Github data**. An attacker who can forge all
+normalized metadata can supply a consistent lie. Real owner #1538 must fetch
+the two PR snapshots and every file page from the same trusted authenticated
+GitHub client, verify immutable PR/repo identity and exact base/head,
+handle paginated REST response provenance and API consistency, and HOLD on
+missing/binary/oversize patches. No real online GitHub token, network,
+production source, operator or grant is touched by this module.
+
+Run isolated local tests:
+
+```sh
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_github_pr_pages_1553.py' -v
+PYTHONPATH=src python -m lightup.scope_github_pr_pages_1553 --synthetic-pages-only < fictional-pr.json
+```
+
+The CLI accepts exact keys `before`, `pages`, `after`. It produces only
+HOLD/exit2 or REVIEW_ONLY/exit3, **never exit0 or authority**. Fixed privacy
+minimal fields do not echo filenames, SHA, patches or repository names. The
+new 32-method suite covers 1/99/100/101/199/200/201/299/300 file boundaries,
+missing/duplicate/short/reordered pages, SHA/count/identity drift,
+malformed types and privacy. Dedicated hosted 3.11/3.14 CI now asserts
+**exact 117 methods, one original-source expected RED, zero skips**.
+
+Status: INCUBATE M3/M7 — DRAFT/HOLD. No merge, deploy, targets, real scans,
+grants, handlers or release. Original-source owner integration, authenticated
+real two-party consent plus revocation-at-use, independent security/privacy
+review, permanent named-VPS CI and HUMAN GO still mandatory.
