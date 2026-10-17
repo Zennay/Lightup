@@ -2,7 +2,7 @@
 
 ## Product
 
-Standalone browser-only workspace at `studio/index.html` with four connected product experiences:
+Standalone browser-only workspace at `studio/index.html` with five connected product experiences:
 
 1. **Scope Proposal Studio** (`studio/scope-proposal.html`): prepare and export a client-readable assessment proposal with explicitly proposed asset identities, exclusions, risk 1–4, `AssessmentMode`-compatible value (`analysis_only` or `authorized_assessment`), intended activities, notes/stop instructions, and a local-time planning window. Inline review catches duplicate/invalid literal assets, canonical IPv4/IPv6 aliases, exact and intersecting scope/exclusion CIDRs, and reversed dates; manual review warnings cover CIDR ownership, IPv6, higher risk, and incomplete windows. Display a handoff brief; print or copy it; JSON import/export under 64 KiB, max 80 assets per list. All inputs remain in memory only.
 2. **Scope Change Review** (`studio/scope-change-review.html`): load two v1 proposal-draft JSON exports (64 KiB max each), compare exact case-folded asset identities and exclusions, risk, mode, activities, windows, and safety-note changes. Highlight potential expansion separately from restriction and context changes. Shared local `scope-network.js` parses IPv4/IPv6 CIDRs into canonical integer intervals and flags effective new or removed address-space coverage even if differing network notation hides the literal change; DNS remains intentionally unresolved. Export a privacy-minimal, non-authorizing structured review note, excluding free-text purpose content.
@@ -11,6 +11,8 @@ Standalone browser-only workspace at `studio/index.html` with four connected pro
 
 4. **Scope Portfolio Board** (`studio/scope-portfolio.html`): import up to 20 separate drafts in the browser, deduplicate by recomputed stable SHA-256 revision, filter by risk/label/asset, summarize declared scopes and analyze potential cross-proposal numeric IPv4/IPv6 overlaps and local planning-window collisions. Download a read-only JSON portfolio and CSV work manifest. No notes or contact details appear in exports, and spreadsheet-formula-leading cells are escaped before CSV download. The board is not the authenticated authorization inbox and does not establish shared tenancy or actual booked windows.
 
+5. **Effective Scope Explorer** (`studio/effective-scope.html`): import an existing untrusted v1 proposal and display the exact numeric IPv4/IPv6 ranges remaining after subtracting the user-declared exclusions. Renders bounded, minimal CIDR fragments, exact integer address counts (as decimal text), literal hostnames and manual-review flags. Export a bounded, explicitly non-authorizing preview; the first 180 CIDR segments are shown and marked truncated when more remain. Does not resolve DNS, prove ownership or enforce execution scope.
+
 Open `studio/index.html` from a local checkout in a modern browser; no server, build, third-party dependencies, remote scripts, cookies, `localStorage`, database, authentication, fetch/API or real-target contact. Files are downloaded by user action only. For example:
 
 ```text
@@ -18,7 +20,9 @@ studio/index.html
   ├── scope-proposal.html       → lightup-scope-draft.json
   ├── scope-change-review.html  ← before/after draft files → lightup-scope-change-review.json
   ├── engagement-handoff.html   ← draft file → lightup-engagement-preparation.json
-  └── scope-portfolio.html      ← multiple draft files → privacy-minimal portfolio JSON/CSV
+  ├── scope-portfolio.html      ← multiple draft files → privacy-minimal portfolio JSON/CSV
+  └── effective-scope.html      ← draft file → bounded effective-scope JSON review
+      planning-window.js       (browser-local → UTC, DST ambiguity handling)
       scope-network.js         (shared local address-range analysis)
       scope-fingerprint.js     (unsigned stable scope revision SHA-256)
 ```
@@ -47,3 +51,13 @@ New paths are isolated within `studio/` and this new document. Operational hando
 **Notion phase:** INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Do not merge to default, deploy, issue client grants, scan live assets, dispatch active handlers or claim release completion while the existing gates are unmet: durable approved-request→grant binding (#177), default web source owner (#182), tenant-lineage fix (#829), original hosted CI #301, named permanent VPS CI, real separately authenticated client/operator consent with at-use revocation, independent privacy/security signoff, exact-head review and explicit HUMAN GO.
 
 **No new QA/regression tests or suites** are added by this feature. A source syntax/build inspection is sufficient for this branch's iteration, not a substitute for later mandatory existing CI and security review.
+
+### Recent source refinements: interval semantics and clock provenance
+
+- **CIDR network identity:** a proposed network address must be aligned to its prefix (`192.0.2.0/24` is accepted, `192.0.2.12/24` is refused), so an unaligned host prefix can no longer be silently interpreted as a larger network. This is a proposal syntax fence, **not** an authorization fence.
+- **Effective proposed scope:** shared `scope-network.js` subtracts declared numeric IPv4/IPv6 exclusions before producing address-space change or portfolio overlap hints. The Effective Scope Explorer prints a bounded set of minimal CIDR blocks and precise decimal address counts. Textual hostnames are not DNS-resolved and exact-match hostname exclusions are removed locally. Real authorization remains the domain's own separate job.
+- **Time provenance:** `planning-window.js` converts local draft windows to UTC using the author's browser timezone and recorded offsets. Spring nonexistent times, ambiguous fall-back times and reversed intervals cannot be exported as resolved windows. Imported source-local wall times and offsets must match the stored UTC instants; cross-timezone editing preserves the original source window until the user explicitly changes the time fields. Missing legacy UTC metadata remains available for human review but cannot establish a clear cross-timezone scheduling comparison.
+- **Privacy:** portfolio JSON omits local upload filenames, and all generated review payloads use literal false authorization, consent, grant, execution and release flags. File-import schema checks are bounded and reject malformed or mismatching unsigned scope digests when present.
+
+A self-reported window is still **not** an operator-approved schedule. A SHA-256 checksum is not an authenticated signature and provides no identity assurance. Avoid importing drafts through ordinary network services; the studio does not submit requests, grants or real operations.
+
