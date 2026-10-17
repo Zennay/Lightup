@@ -310,9 +310,9 @@ class OfflineTreeModesTests(unittest.TestCase):
                     capture_output=True, timeout=6,
                 ).stdout
             git("init", "-q")
-            (root / ".gitattributes").write_text("file.txt filter=fictional\\n")
+            (root / ".gitattributes").write_text("file.txt filter=fictional\n")
             tracked = root / "file.txt"
-            tracked.write_text("before\\n")
+            tracked.write_text("before\n")
             git("add", ".gitattributes", "file.txt")
             git("-c", "user.name=Offline Review", "-c",
                 "user.email=offline@example.invalid",
@@ -320,11 +320,11 @@ class OfflineTreeModesTests(unittest.TestCase):
             marker = root / "external-filter-ran"
             hook = root / "filter.sh"
             hook.write_text(
-                "#!/bin/sh\\nprintf invoked > '" + str(marker) + "'\\ncat\\n"
+                "#!/bin/sh\nprintf invoked > '" + str(marker) + "'\ncat\n"
             )
             hook.chmod(0o755)
             git("config", "filter.fictional.clean", str(hook))
-            tracked.write_text("after\\n")
+            tracked.write_text("after\n")
             with patch.object(guard, "ROOT", root):
                 protected = guard.git("status", "--porcelain=v1", "-z",
                                       "--untracked-files=all")
@@ -348,8 +348,8 @@ class OfflineTreeModesTests(unittest.TestCase):
                     capture_output=True, timeout=6,
                 ).stdout
             git("init", "-q")
-            (root / ".gitattributes").write_text("file.txt text eol=lf\\n")
-            (root / "file.txt").write_text("canonical\\n")
+            (root / ".gitattributes").write_text("file.txt text eol=lf\n")
+            (root / "file.txt").write_text("canonical\n")
             git("add", ".gitattributes", "file.txt")
             git("-c", "user.name=Offline Review", "-c",
                 "user.email=offline@example.invalid",
@@ -364,24 +364,24 @@ class OfflineTreeModesTests(unittest.TestCase):
     def test_filter_preflight_fails_closed_on_malformed_git_evidence(self):
         from subprocess import CompletedProcess
         from unittest.mock import patch
-        names = b"file.txt\\0"
-        attr = b"file.txt\\0filter\\0unspecified\\0"
+        names = b"file.txt\0"
+        attr = b"file.txt\0filter\0unspecified\0"
         good_files = CompletedProcess([], 0, names, b"")
         for abnormal in (
             CompletedProcess([], 1, names, b""),
             CompletedProcess([], 0, names, b"warning"),
             CompletedProcess([], 0, b"file.txt", b""),
             CompletedProcess([], 0, names * 2, b""),
-            CompletedProcess([], 0, b"x" * 262145 + b"\\0", b""),
+            CompletedProcess([], 0, b"x" * 262145 + b"\0", b""),
         ):
             with self.subTest(variant=repr(abnormal)[:75]):
                 with patch.object(guard, "_git_raw", return_value=abnormal):
                     self.assertFalse(guard._tracked_files_have_no_filters())
         for abnormal in (
-            CompletedProcess([], 0, b"file.txt\\0filter\\0evil\\0", b""),
+            CompletedProcess([], 0, b"file.txt\0filter\0evil\0", b""),
             CompletedProcess([], 0, attr[:-1], b""),
             CompletedProcess([], 0, attr + attr, b""),
-            CompletedProcess([], 0, b"other.txt\\0filter\\0unspecified\\0", b""),
+            CompletedProcess([], 0, b"other.txt\0filter\0unspecified\0", b""),
             CompletedProcess([], 0, attr, b"warning"),
             CompletedProcess([], 2, attr, b""),
         ):
