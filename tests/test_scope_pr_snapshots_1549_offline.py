@@ -68,6 +68,59 @@ class SnapshotReviewTests(unittest.TestCase):
     def test_independent_branches_parallel_wave(self):
         self.review(wire([entry(8, B), entry(2, C), entry(5, D)]), [[2, 5, 8]])
 
+    def test_two_read_consistent_snapshot_accepts_reordered_rows_only(self):
+        rows = [entry(10, B), entry(20, C, B), entry(30, D, C)]
+        data = json.dumps({"version": 2, "root_sha": A,
+                           "first_read": rows, "second_read": list(reversed(rows))}).encode()
+        receipt, code = adapter.evaluate(data)
+        self.assertEqual(code, 3)
+        self.assertEqual(receipt["status"], "REVIEW_ONLY")
+        self.assertEqual(receipt["protocol"], "PR_SNAPSHOT_V2_DOUBLE_READ")
+        self.assertEqual(receipt["waves"], [[10], [20], [30]])
+        self.assertTrue(all(receipt[k] is False for k in adapter.OFF_FLAGS))
+
+    def test_two_read_detects_head_base_owner_number_and_missing_changes(self):
+        first = [entry(10, B), entry(20, C, B)]
+        mutations = [
+            [entry(10, D), entry(20, C, D)],
+            [entry(10, B), entry(20, C, D)],
+            [entry(10, B, owner="worker-x"), entry(20, C, B)],
+            [entry(10, B), entry(21, C, B)],
+            [entry(10, B)],
+            [entry(10, B), entry(20, C, B, state="closed")],
+            [entry(10, B), entry(20, C, B, draft=False)],
+            [entry(10, B), entry(20, B)],
+        ]
+        for second in mutations:
+            with self.subTest(rows=second):
+                raw = json.dumps({"version": 2, "root_sha": A,
+                                  "first_read": first, "second_read": second}).encode()
+                self.hold(raw)
+
+    def test_two_read_missing_or_malformed_metadata_holds(self):
+        source = {"version": 2, "root_sha": A,
+                  "first_read": [entry(10, B)], "second_read": [entry(10, B)]}
+        for key in ("first_read", "second_read", "root_sha"):
+            changed = dict(source)
+            del changed[key]
+            self.hold(json.dumps(changed).encode())
+        for bad in (None, [], "bad", [{"number": 10}], [False], [entry(10, B)]*2):
+            changed = dict(source, second_read=bad)
+            self.hold(json.dumps(changed).encode())
+
+    def test_two_read_real_child_process_remains_hold_only_advisory(self):
+        script = ROOT / "scripts/review_scope_pr_snapshots_1549_offline.py"
+        snapshots = {"version": 2, "root_sha": A,
+                     "first_read": [entry(10, B)], "second_read": [entry(10, B)]}
+        raw = json.dumps(snapshots).encode()
+        result = subprocess.run([sys.executable, "-I", "-S", "-B", str(script)],
+                                input=raw, capture_output=True, timeout=15)
+        self.assertEqual(result.returncode, 3, result.stderr)
+        receipt = json.loads(result.stdout)
+        self.assertEqual(receipt["protocol"], "PR_SNAPSHOT_V2_DOUBLE_READ")
+        self.assertFalse(receipt["merge_plan_approved"])
+        self.assertFalse(receipt["source_authenticated"])
+
     def test_inferred_graph_fingerprint_is_stable_across_snapshot_row_order(self):
         forward = wire([entry(10, B), entry(20, C, B), entry(30, D, C)])
         reverse = wire([entry(30, D, C), entry(20, C, B), entry(10, B)])
