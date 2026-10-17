@@ -95,6 +95,43 @@ class CompositionSafetyTests(unittest.TestCase):
             r = compose._run_tests(Path.cwd(), "synthetic", ["-s", "tests"])
             self.assertEqual((r["methods"], r["expected_source_failures"]), (13, 4))
 
+    def test_passing_unit_output_cannot_reduce_scope_coverage(self):
+        too_few = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout=(
+                b"Ran 22 tests in 0.01s\n\nOK (expected failures=13)\n"), stderr=b"")
+        with patch.object(compose.subprocess, "run", return_value=too_few):
+            with self.assertRaisesRegex(compose.CompositionHold, "coverage/RED"):
+                compose._run_tests(Path.cwd(), "scope686", ["-s", "tests"])
+
+    def test_passing_unit_output_cannot_hide_dropped_source_red(self):
+        fewer_reds = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout=(
+                b"Ran 23 tests in 0.01s\n\nOK (expected failures=12)\n"), stderr=b"")
+        with patch.object(compose.subprocess, "run", return_value=fewer_reds):
+            with self.assertRaisesRegex(compose.CompositionHold, "coverage/RED"):
+                compose._run_tests(Path.cwd(), "scope686", ["-s", "tests"])
+
+    def test_exact_coverage_allows_only_declared_red_count(self):
+        correct = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout=(
+                b"Ran 23 tests in 0.01s\n\nOK (expected failures=13)\n"), stderr=b"")
+        with patch.object(compose.subprocess, "run", return_value=correct):
+            r = compose._run_tests(Path.cwd(), "scope686", ["-s", "tests"])
+        self.assertEqual((r["methods"], r["expected_source_failures"]), (23, 13))
+
+    def test_failure_hint_includes_test_name_not_sensitive_error_details(self):
+        failed = subprocess.CompletedProcess(
+            args=[], returncode=1,
+            stdout=b"", stderr=(
+                b"FAIL: test_fictional_owner_defect (test_module)\n"
+                b"AssertionError: token=DO_NOT_PRINT_SENSITIVE\n"
+                b"Ran 23 tests in 0.01s\nFAILED (failures=1)\n"))
+        with patch.object(compose.subprocess, "run", return_value=failed):
+            with self.assertRaises(compose.CompositionHold) as exc:
+                compose._run_tests(Path.cwd(), "scope686", ["-s", "tests"])
+        self.assertIn("test_fictional_owner_defect", str(exc.exception))
+        self.assertNotIn("DO_NOT_PRINT_SENSITIVE", str(exc.exception))
+
     @staticmethod
     def good_guard_receipt():
         return {
