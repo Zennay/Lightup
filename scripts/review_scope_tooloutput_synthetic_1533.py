@@ -106,7 +106,7 @@ def main(args: list[str]) -> int:
         try:
             raw = sys.stdin.buffer.read(_MAX_STDIN + 1)
             result = review_output_batch(_parse_synthetic(raw))
-        except (OSError, ValueError, TypeError, UnicodeError, RecursionError, OverflowError):
+        except (OSError, AttributeError, ValueError, TypeError, UnicodeError, RecursionError, OverflowError):
             pass
     response = {
         "schema": "lightup.scope1533.receipt.v1",
@@ -119,7 +119,12 @@ def main(args: list[str]) -> int:
         "merge_approved": False,
         "release_approved": False,
     }
-    sys.stdout.write(json.dumps(response, sort_keys=True, separators=(",", ":")) + "\n")
+    try:
+        sys.stdout.write(json.dumps(response, sort_keys=True, separators=(",", ":")) + "\n")
+    except (OSError, UnicodeError, ValueError):
+        # An unusable response channel cannot carry a review receipt. Never
+        # promote it to success or leak exception details on stderr.
+        return 2
     return 3 if result is OutputIdentityReview.REVIEW_ONLY else 2
 
 
