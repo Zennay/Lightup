@@ -24,6 +24,7 @@ from lightup.scope_tooloutput_shape_review_20261017 import (
 
 _SCHEMA = "lightup.scope1533.synthetic.v1"
 _MAX_STDIN = 65_536
+_MAX_STDIN_READS = 4_096  # Bound adversarial streams returning tiny fragments.
 _MAX_CONTAINERS = 34  # root dict + items list + up to 32 item dicts
 _HEX = re.compile(r"[0-9a-f]*\Z", re.ASCII)
 
@@ -110,7 +111,7 @@ def _read_complete_bounded_stdin(reader: object) -> bytes:
     closed on oversized, anomalous or non-byte responses.
     """
     collected = bytearray()
-    while True:
+    for _ in range(_MAX_STDIN_READS):
         remaining = _MAX_STDIN + 1 - len(collected)
         chunk = reader.read(remaining)
         if type(chunk) is not bytes:
@@ -120,6 +121,9 @@ def _read_complete_bounded_stdin(reader: object) -> bytes:
         if not chunk:
             return bytes(collected)
         collected.extend(chunk)
+    # Even with a small byte count, a stream may deliberately drip one byte
+    # per call. Do not let callback count become an unbounded workload.
+    raise ValueError("stdin exceeds bounded read operations")
 
 
 def main(args: list[str]) -> int:
