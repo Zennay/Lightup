@@ -617,6 +617,31 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         self.assertEqual(receipt["status"], "HOLD")
         self.assert_no_authority(receipt)
 
+    def test_swallowed_timeout_signal_cannot_yield_review_only(self):
+        if not hasattr(signal, "setitimer") or threading.current_thread() is not threading.main_thread():
+            self.skipTest("POSIX main-thread alarm required")
+        if signal.getsignal(signal.SIGALRM) != signal.SIG_DFL or any(signal.getitimer(signal.ITIMER_REAL)):
+            self.skipTest("external alarm in use")
+        original = witness.ScopePolicy.decide
+        def policy_swallows_deadline(self, target):
+            try:
+                time.sleep(witness.EVALUATION_DEADLINE_SECONDS + 0.6)
+            except BaseException:
+                # Deliberately simulate a callback that catches SIGALRM's
+                # BaseException sentinel and goes on to return a valid result.
+                pass
+            return original(self, target)
+        started = time.monotonic()
+        with patch.object(witness.ScopePolicy, "decide", policy_swallows_deadline):
+            result = witness.evaluate()
+        elapsed = time.monotonic() - started
+        self.assertGreaterEqual(elapsed, witness.EVALUATION_DEADLINE_SECONDS - 0.1)
+        self.assertLess(elapsed, witness.EVALUATION_DEADLINE_SECONDS + 1.5)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "offline_witness_time_budget_exceeded")
+        self.assert_no_authority(result)
+        self.assertEqual(witness.evaluate()["status"], "REVIEW_ONLY")
+
     def test_no_network_socket_or_dns_is_necessary(self):
         with (patch.object(socket, "socket", side_effect=AssertionError("network invoked")),
               patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns invoked"))):
