@@ -59,6 +59,7 @@
 <p class="privacy">Only a legitimate signed-in client may submit a request in the authenticated LightUp portal. An independent operator must review it. This studio does not post to that portal.</p>
 </aside>
 </main>
+<script src="./scope-network.js"></script>
 <script>
 (function () {
 'use strict';
@@ -86,7 +87,7 @@ function validHostname(text) {
     text.split('.').every(part=>/^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/.test(part)) &&
     !text.includes('..') && !/^\d+(?:\.\d+){3}$/.test(text);
 }
-function validAsset(s) {return validIPv4(s)||validIPv6(s)||validHostname(s);}
+function validAsset(s) {return LightUpScopeNetwork.parse(s)!==null;}
 function parseAssets(raw,kind,problems) {
   const entries = arrayLines(raw), seen=new Set(), out=[];
   if(entries.length>80) problems.push({fatal:true,message:kind+' exceeds 80 items.'});
@@ -105,10 +106,14 @@ function read() {
   if (!requested.length) problems.push({fatal:true,message:'Add at least one proposed asset.'});
   if (!str($('title').value.trim(),120)||!$('title').value.trim()) problems.push({fatal:true,message:'Provide a proposal name.'});
   if (!$('purpose').value.trim()) problems.push({fatal:true,message:'Describe the purpose and stop conditions.'});
+  for (const issue of LightUpScopeNetwork.inspect(requested,excluded)) {
+    if (issue.code==='included_overlap' || issue.code==='exclusion_overlap' || issue.code==='global_range' || issue.code==='ipv6')
+      problems.push({fatal:false,message:issue.message});
+  }
   const excludeSet=new Set(excluded.map(s=>s.toLowerCase()));
   for(const s of requested) if(excludeSet.has(s.toLowerCase())) problems.push({fatal:true,message:'Asset appears in both proposed and excluded lists: '+s.slice(0,80)});
-  if (requested.some(s=>s.includes('/')) || excluded.some(s=>s.includes('/'))) problems.push({fatal:false,message:'CIDR ranges need manual ownership and exclusion review: overlapping addresses are not automatically resolved.'});
-  if (requested.some(s=>s.includes(':')) || excluded.some(s=>s.includes(':'))) problems.push({fatal:false,message:'IPv6 literals must be separately canonicalized and verified by the operator.'});
+  if (requested.some(s=>s.includes('/')) || excluded.some(s=>s.includes('/'))) problems.push({fatal:false,message:'CIDR range membership is estimated locally, but authoritative ownership and exclusions still need operator review.'});
+  
   if ($('start').value && $('end').value && $('end').value<=$('start').value) problems.push({fatal:true,message:'Requested end must be later than start.'});
   if (!$('start').value || !$('end').value) problems.push({fatal:false,message:'The requested window is incomplete; operator must agree on a full UTC interval.'});
   if ($('risk').value==='4') problems.push({fatal:false,message:'Risk 4 needs a separate explicit risk approval before any assessment.'});
