@@ -26,6 +26,34 @@ class CountedStream(io.BytesIO):
         self.reads += 1
         return super().read(*args, **kwargs)
 
+    def readline(self, *args, **kwargs):
+        self.reads += 1
+        return super().readline(*args, **kwargs)
+
+    def readlines(self, *args, **kwargs):
+        self.reads += 1
+        return super().readlines(*args, **kwargs)
+
+    def readinto(self, *args, **kwargs):
+        self.reads += 1
+        return super().readinto(*args, **kwargs)
+
+    def read1(self, *args, **kwargs):
+        self.reads += 1
+        return super().read1(*args, **kwargs)
+
+    def getvalue(self, *args, **kwargs):
+        self.reads += 1
+        return super().getvalue(*args, **kwargs)
+
+    def getbuffer(self, *args, **kwargs):
+        self.reads += 1
+        return super().getbuffer(*args, **kwargs)
+
+    def __next__(self):
+        self.reads += 1
+        return super().__next__()
+
 
 
 class GuardProbeHold(Exception):
