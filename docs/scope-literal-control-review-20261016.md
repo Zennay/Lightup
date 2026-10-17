@@ -88,3 +88,7 @@ Added strictly offline `test_scope_literal_runtime_isolation_20261016.py`. It sc
 ## W17 — fold only statically literal module-name expressions
 
 Five test cases proved the earlier AST-only reviewer-import fence missed directly reconstructable module names: adjacent constant string concatenation, literal f-strings, and literal `getattr(importlib, 'import_module')`. The guard now reconstructs only bounded, fully static AST string expressions (maximum 256 chars) and checks these additional import-call shapes. It does NOT execute imports or evaluate expressions. Computed variables, reflective imports and `eval` are deliberately outside this static proof; no claim of comprehensive runtime isolation. Original source-owner files remain untouched.
+
+## W18 — equivalent RFC JSON spellings never silently change review meaning
+
+Added a distinct in-process canonical wire acceptance pack: 4 tests covering every possible ASCII whitespace insertion at every position of a two-candidate fictional packet, JSON unicode escape aliases and escaped object keys, duplicate object keys, noncanonical punctuation, BOM/extra bytes, reversed independent candidate ordering and batch case/dot collisions. Every alternative byte spelling is evaluated without sockets, file opens or subprocesses; only exact canonical review input returns REVIEW_ONLY, always with all authorization/consent/dispatch/release fields false. The input is never echoed in HOLD output. This is input integrity evidence, not a parser-derived authorization or authentication.
