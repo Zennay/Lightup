@@ -126,7 +126,7 @@ def main() -> int:
         print("scope_env_owned_tree=HOLD")
         return 3
     try:
-        status = git("status", "--porcelain=v1", "-z", "--untracked-files=all")
+        status = git("status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=all")
         branch = os.environ.get("GITHUB_REF", "")
         sha = os.environ.get("GITHUB_SHA", "")
         head = git("rev-parse", "HEAD")
