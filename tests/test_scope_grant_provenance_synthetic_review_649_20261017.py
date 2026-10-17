@@ -130,6 +130,17 @@ class Scope649ReviewerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             subject.ReviewReceipt(ForeignAuthority())
 
+    def test_receipt_cannot_be_subclassed_to_override_fail_closed_validation(self):
+        # Prior to sealing, Python subclasses could override __post_init__
+        # and construct a misleading authority-bearing review receipt.
+        with self.assertRaises(TypeError):
+            class ForgedReceipt(subject.ReviewReceipt):
+                def __post_init__(self):
+                    return None
+
+        self.assertFalse(subject.ReviewReceipt(subject.ReviewStatus.HOLD))
+        self.assertFalse(subject.ReviewReceipt(subject.ReviewStatus.REVIEW_ONLY))
+
     def test_refuses_foreign_mapping_without_touching_foreign_iteration(self):
         self.assertIs(subject.review_batch(_TrapDict(packet())).status, subject.ReviewStatus.HOLD)
 
