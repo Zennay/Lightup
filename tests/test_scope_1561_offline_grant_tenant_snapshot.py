@@ -288,5 +288,41 @@ class GrantTenantSnapshot1561(unittest.TestCase):
             self.assertNotIn(token, wire)
 
 
+    def test_inode_hash_is_exact_real_snapshot_sha256(self):
+        from lightup.scope_grant_tenant_snapshot_1561 import (
+            _path_snapshot, _snapshot_sha256,
+        )
+        expected = hashlib.sha256(self.db.read_bytes()).digest()
+        self.assertEqual(
+            _snapshot_sha256(self.db, _path_snapshot(self.db)), expected,
+        )
+
+    def test_hash_drift_is_detected_even_if_metadata_stays_constant(self):
+        from lightup import scope_grant_tenant_snapshot_1561 as module
+        digest = hashlib.sha256(self.db.read_bytes()).digest()
+        with patch.object(module, "_snapshot_sha256",
+                          side_effect=[digest, b"changed-fake-digest"]):
+            r = module.inspect_offline_grant_tenants(str(self.db))
+        self.assertEqual(r["status"], "HOLD")
+        self.assertEqual(r["reason"], "snapshot_changed")
+        self.assertEqual(r["total"], 0)
+
+    def test_hardlinked_database_holds(self):
+        alias = Path(self.temp.name) / "another-link.sqlite"
+        os.link(self.db, alias)
+        r = inspect_offline_grant_tenants(str(self.db))
+        self.assertEqual(r["reason"], "unsafe_snapshot")
+
+    def test_mutated_inode_signature_holds_before_sql_open(self):
+        from lightup.scope_grant_tenant_snapshot_1561 import (
+            _path_snapshot, _snapshot_sha256, _HOLD,
+        )
+        meta = _path_snapshot(self.db)
+        forged = (meta[0], meta[1] + 1, *meta[2:])
+        with self.assertRaises(_HOLD) as denied:
+            _snapshot_sha256(self.db, forged)
+        self.assertEqual(denied.exception.reason, "snapshot_changed")
+
+
 if __name__ == "__main__":
     unittest.main()
