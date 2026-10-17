@@ -211,7 +211,7 @@ class Scope649ReviewerTests(unittest.TestCase):
 
     def test_batch_is_atomic_up_to_thirty_two(self):
         item = {"approved_by": "Synthetic Operator", "reference": "SYNTH-649"}
-        self.assertIs(subject.review_batch(packet([dict(item)] * 32)).status, subject.ReviewStatus.REVIEW_ONLY)
+        self.assertIs(subject.review_batch(packet([dict(item) for _ in range(32)])).status, subject.ReviewStatus.REVIEW_ONLY)
         for pos in (0, 15, 31):
             rows = [dict(item) for _ in range(32)]
             rows[pos]["reference"] = ""
