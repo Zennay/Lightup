@@ -418,5 +418,77 @@ class GrantTenantSnapshot1561(unittest.TestCase):
         self.assertEqual(result["missing_client"], 1)
 
 
+    def test_grantless_dangling_engagement_still_holds(self):
+        """A database with zero grants can still have invalid tenant lineage."""
+        with contextlib.closing(sqlite3.connect(self.db)) as conn:
+            with conn:
+                conn.execute("DELETE FROM authorization_grants")
+                conn.execute(
+                    "UPDATE engagements SET client_id=? WHERE engagement_id=?",
+                    ("fictional-no-such-client", self.ea.engagement_id),
+                )
+        result = self.audit()
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "orphaned_client")
+        self.assertEqual(result["total"], 0)
+        self.assertEqual(result["unbound_engagements"], 1)
+
+    def test_valid_extra_engagement_without_grants_is_counted(self):
+        self.store.create_engagement(
+            self.op, self.a.client_id, "Fictional ungranted engagement"
+        )
+        result = self.audit()
+        self.assertEqual(result["status"], "REVIEW_ONLY")
+        self.assertEqual(result["engagements_checked"], 3)
+        self.assertEqual(result["unbound_engagements"], 0)
+
+    def test_too_many_engagements_holds_without_partial_counts(self):
+        from lightup.scope_grant_tenant_snapshot_1561 import MAX_ENGAGEMENTS
+        with contextlib.closing(sqlite3.connect(self.db)) as conn:
+            with conn:
+                conn.executemany(
+                    "INSERT INTO engagements(engagement_id,client_id,name,"
+                    "status,created_at) VALUES (?,?,?,?,?)",
+                    (
+                        (f"synthetic-engagement-{i}", self.a.client_id,
+                         "fictional", "active", "2030-01-01T00:00:00+00:00")
+                        for i in range(MAX_ENGAGEMENTS)
+                    ),
+                )
+        result = self.audit()
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "too_many_engagements")
+        for key in ("coherent", "mismatch", "orphan", "missing_client",
+                    "unbound_engagements", "engagements_checked", "total"):
+            self.assertEqual(result[key], 0, key)
+
+    def test_malformed_grantless_engagement_client_holds(self):
+        with contextlib.closing(sqlite3.connect(self.db)) as conn:
+            with conn:
+                conn.execute("DELETE FROM authorization_grants")
+        self.corrupt(
+            "UPDATE engagements SET client_id=? WHERE engagement_id=?",
+            (sqlite3.Binary(b"fake-nonstring-tenant"), self.ea.engagement_id),
+        )
+        result = self.audit()
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "invalid_record")
+        self.assertEqual(result["total"], 0)
+
+    def test_exact_client_identity_even_without_grants(self):
+        with contextlib.closing(sqlite3.connect(self.db)) as conn:
+            with conn:
+                conn.execute("DELETE FROM authorization_grants")
+        self.corrupt(
+            "UPDATE engagements SET client_id=? WHERE engagement_id=?",
+            (self.a.client_id.upper(), self.ea.engagement_id),
+        )
+        result = self.audit()
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "orphaned_client")
+        self.assertEqual(result["unbound_engagements"], 1)
+
+
+
 if __name__ == "__main__":
     unittest.main()
