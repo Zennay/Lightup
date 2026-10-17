@@ -8,6 +8,8 @@ on:
       - '.github/workflows/scope-git-env-attestation-20261017.yml'
       - 'scripts/scope_git_env_attestation_20261017.py'
       - 'tests/test_scope_git_env_attestation_20261017.py'
+      - 'scripts/check_scope_git_env_tree_20261017.py'
+      - 'tests/test_scope_git_env_tree_20261017.py'
       - 'docs/scope-git-env-attestation-20261017.md'
 
 permissions:
@@ -50,35 +52,13 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$GITHUB_EVENT_NAME" = push
           test "$GITHUB_REF" = refs/heads/chatgpt/scope-auth-git-env-fence-20261017-0115
-      - name: Verify separate additive ownership since pinned base
-        run: |
-          python - <<'PY'
-          import subprocess
-          base = "7b9142bb9e9d5403d7a3e41914edddef4511c8a8"
-          allowed = {
-              ".github/workflows/scope-git-env-attestation-20261017.yml",
-              "scripts/scope_git_env_attestation_20261017.py",
-              "tests/test_scope_git_env_attestation_20261017.py",
-              "docs/scope-git-env-attestation-20261017.md",
-          }
-          raw = subprocess.check_output([
-              "git", "diff", "--name-status", "-z",
-              "--no-renames", base, "HEAD",
-          ]).decode("ascii").split("\0")
-          assert raw[-1] == ""
-          records = list(zip(raw[::2], raw[1::2]))
-          assert len(records) == 4
-          assert all(status == "A" for status, _ in records)
-          assert {name for _, name in records} == allowed
-          assert subprocess.check_output([
-              "git", "status", "--porcelain=v1", "--untracked-files=all",
-          ]) == b""
-          print("isolated_scope_git_env_additivity=PASS")
-          PY
+      - name: Verify exact owned additions and regular Git blob modes
+        run: python scripts/check_scope_git_env_tree_20261017.py
       - name: Compile and test ONLY separately owned offline files
         run: |
-          python -m compileall -q scripts/scope_git_env_attestation_20261017.py tests/test_scope_git_env_attestation_20261017.py
+          python -m compileall -q scripts/scope_git_env_attestation_20261017.py tests/test_scope_git_env_attestation_20261017.py scripts/check_scope_git_env_tree_20261017.py tests/test_scope_git_env_tree_20261017.py
           python -m unittest discover -s tests -p test_scope_git_env_attestation_20261017.py -q
+          python -m unittest discover -s tests -p test_scope_git_env_tree_20261017.py -q
       - name: Reattest non-authorizing Git environment after tests
         run: |
           set +e
@@ -87,6 +67,5 @@ jobs:
           set -e
           test "$review_rc" -eq 2
           test "$review_out" = '{"status":"REVIEW_ONLY","authorized":false,"consent_verified":false,"dispatch_allowed":false,"release_allowed":false}'
-      - name: Verify no test changes the checkout
-        run: |
-          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      - name: Reverify exact owned blob modes and unchanged checkout
+        run: python scripts/check_scope_git_env_tree_20261017.py

@@ -157,7 +157,12 @@ class EnvironmentFenceTests(unittest.TestCase):
         self.assertIn("runs-on: ubuntu-latest", content)
         self.assertIn("['3.11', '3.14']", content)
         self.assertIn("persist-credentials: false", content)
-        self.assertIn("7b9142bb9e9d5403d7a3e41914edddef4511c8a8", content)
+        # Pinned base now lives in the separately owned mode validator,
+        # not a mutable YAML inline implementation.
+        source = (ROOT / "scripts/check_scope_git_env_tree_20261017.py").read_text()
+        self.assertIn("7b9142bb9e9d5403d7a3e41914edddef4511c8a8", source)
+        self.assertEqual(content.count("python scripts/check_scope_git_env_tree_20261017.py"), 2)
+        self.assertIn("tests/test_scope_git_env_tree_20261017.py", content)
         self.assertNotIn("workflow_dispatch", content)
         self.assertNotIn("pull_request:", content)
         self.assertNotIn("contents: write", content)

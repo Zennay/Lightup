@@ -69,3 +69,28 @@ after the own tests**; a differing status, unauthorized field, output or
 exit code fails CI. These checks neither replace the active worker's
 original tree proof nor confer any authorization. Source owners and
 release review remain independent. **DRAFT/HOLD.**
+
+## W3 — exact owned Git file-mode boundary
+
+A separate own-path offline validator
+`scripts/check_scope_git_env_tree_20261017.py` replaces the CI workflow's
+former pathname-only inline script. It reads Git's NUL-delimited
+`diff --name-status --no-renames` and `ls-tree -r -z` output for the
+unchanged pinned parent. Exactly five *new*, exclusively owned paths are
+allowed and required, each with a Git `100644 blob` and a lowercase 40-digit
+object ID. Symlinks (`120000`), executable entries (`100755`), submodule
+gitlinks (`160000`), tree entries, duplicates, malformed wire bytes and
+unrelated changes fail closed. There are no production changes.
+
+Six new adversarial tests supply fabricated delta/tree blobs and simulate
+the script's exact-head `push` environment through mocked Git subprocesses.
+They check normal PASS and wrong SHA, `GIT_DIR` override and symlink HOLD.
+These fixtures do not scan or contact targets, and cannot grant authority.
+The dedicated hosted workflow runs the proof **before and after** the
+isolated Python 3.11 / 3.14 tests.
+
+**Proof limits:** a matching Git tree shape alone does not guarantee
+worktree bytes, index flags, ignored files, signed provenance or at-use
+environment stability. The other concurrently owned branch handles its own
+independent worktree/index attestation and remains unchanged. This report
+never authorizes LightUp execution or deployment. Continue DRAFT/HOLD.
