@@ -63,6 +63,10 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             self.portal_request_receipt, "portal",
         ))
         self.routes.append((
+            "GET", re.compile(r"^/api/v1/portal/(?P<client_id>[\w-]+)/requests$"),
+            self.portal_request_inbox_api, "portal",
+        ))
+        self.routes.append((
             "GET", re.compile(
                 r"^/api/v1/portal/(?P<client_id>[\w-]+)/requests/"
                 r"(?P<request_id>[\w-]+)$"
@@ -112,6 +116,26 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
 
     def _dispatch(self, method: str, path: str, form: dict[str, str],
                   auth: AuthState) -> Response:
+        if method == "GET" and path.startswith("/api/v1/portal/"):
+            # A machine client must not interpret a redirect to an HTML sign-in
+            # page as a successful JSON response. Keep missing and other-tenant
+            # resources indistinguishable.
+            if not auth.signed_in or type(auth.context) is not AccessContext:
+                return Response(
+                    '{"error":"authentication required"}',
+                    status="401 Unauthorized",
+                    content_type="application/json; charset=utf-8",
+                )
+            if not auth.is_operator:
+                matched = re.fullmatch(
+                    r"/api/v1/portal/([\w-]+)/requests(?:/[\w-]+)?", path
+                )
+                if matched is not None and auth.context.client_id != matched.group(1):
+                    return Response(
+                        '{"error":"receipt not available"}',
+                        status="404 Not Found",
+                        content_type="application/json; charset=utf-8",
+                    )
         # Reject every future operator-initiated portal POST as well, not only
         # the currently defined /portal/<client>/requests route.
         if method == "POST" and path.startswith("/portal/") and auth.is_operator:
@@ -136,6 +160,12 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             return Response("<h1>Client authorization required</h1>",
                             status="403 Forbidden")
         return super().portal_submit_request(auth, form, client_id)
+
+    def portal_request_inbox_api(
+        self, auth: AuthState, form: dict[str, str], client_id: str
+    ) -> Response:
+        from .portal_receipt_api import request_inbox_json
+        return request_inbox_json(self.store, auth, client_id)
 
     def portal_request_receipt_api(
         self, auth: AuthState, form: dict[str, str], client_id: str,
@@ -201,7 +231,12 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
         ) or '<p class="empty">No request receipts.</p>'
         if len(requests) > 30:
             links += '<p class="meta">Only the 30 newest receipts are shown.</p>'
-        receipt_section = '<h2>Request receipts</h2>' + links
+        receipt_section = (
+            '<h2>Request receipts</h2>'
+            '<p class="meta"><a href="/api/v1/portal/' + _e(client_id)
+            + '/requests">Machine-readable request history (JSON)</a></p>'
+            + links
+        )
         offset = markup.find(_PORTAL_FORM_HEADING)
         if offset < 0 or markup.find(_PORTAL_FORM_HEADING, offset + 1) >= 0:
             return Response("<h1>Portal view unavailable</h1>",
