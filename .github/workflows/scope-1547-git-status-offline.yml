@@ -21,6 +21,9 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+          # Inspect exactly this worker's branch, never GitHub's synthetic
+          # PR merge ref that may contain the moving source owner's code.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
@@ -28,6 +31,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
           git merge-base --is-ancestor c37b909907fc7291cb28b2f37a78db7f2fea2855 HEAD
           git diff --name-only c37b909907fc7291cb28b2f37a78db7f2fea2855 HEAD | sort > /tmp/scope1547-actual.txt
           printf "%s\n" ".github/workflows/scope-1547-git-status-offline.yml" "docs/scope-1547-git-status-atomic-hold-20261017.md" "scripts/review_scope_git_status_synthetic_1547.py" "tests/test_scope_1547_synthetic_git_status.py" > /tmp/scope1547-expected.txt
