@@ -78,6 +78,26 @@ Dedicated current #686 module: **23 methods, 10 ordinary PASS and 13 intentional
 
 **Important provenance limit:** the exact **own #1555 source commit** is verifiable, but these three owner file overlays were **never committed as a single reviewed release SHA**. A private filesystem composition exit 0 is **not** equivalent to GitHub-hosted Python3.11/3.14 exact-head green or permanent named-VPS Actions CI. The original own-only branch still contains the uncorrected time-bomb fixture #301 and fails whole-suite CI for that known reason. No upstream PR branches, production code, runner registration, live API, credentials, targets or installed proxies were modified in the proof.
 
+## Reproducible offline source-owner composition — executable, not a release gate
+
+This branch now owns three **new isolated files**, in addition to the original two test/document paths, with no overlap with source owners:
+- `scripts/scope_686_owner_composition_offline.py`: no-network composition builder, strict 40-character commit and SHA-1 Git blob pinning, clean-root prerequisite, symlink/non-regular-file refusal, disposable checkout, real smoke or full test discovery and machine-readable **HOLD-only** receipt.
+- `scripts/scope_686_guard_probe_offline.py`: actual opt-in `CookieEnvelopeGuard(create_app(store))` against disposable operator/client SQLite sessions, **nine** ambiguous-cookie POSTs and a valid-credential public login POST denied **before any body read / session lookup or mutation**, three normal positive controls, no real target I/O.
+- `tests/test_scope_686_owner_composition_offline.py`: **21 isolated ordinary PASS tests** of wrong SHA/ref, malicious path, mismatching pinned tree/blob, dirty source, missing evidence, nonzero test exits, coverage and expected-RED drift, leaked exception text, unsafe forged guard receipt, or attempts to treat `HOLD` as `GO`.
+
+The runner pins **four separate existing ownership blobs**, without editing those owners or changing the installed production entrypoint: #1452 frozen-clock `#301` test fixture, #182 web app source, #1169 unwired WSGI cookie guard, and #1536 Python3.14 warning-safe registry report source. The last pin is essential: an earlier legitimate full run **failed four independent legacy native-I/O guard tests** with unsafe exit code 92 due to existing Python3.14 `SyntaxWarning`; exactly the already-owned source correction in #1536 resolved that block without removing or weakening the tripwire.
+
+Run from a clean local checkout containing all four pinned commits (no auto-fetch or network):
+```sh
+HEAD="$(git rev-parse HEAD)"
+python3 scripts/scope_686_owner_composition_offline.py --source "$PWD" --head "$HEAD" --mode smoke
+python3 scripts/scope_686_owner_composition_offline.py --source "$PWD" --head "$HEAD" --mode full
+PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_scope_686_owner_composition_offline.py' -q
+```
+The CLI emits exactly one structured JSON object, with `status:"HOLD"`, `release_authorized:false`, `real_target_interaction_authorized:false`. An absent pin, invalid tree/hash, unclean source, incorrect test counts, unexpected or missing deliberate expectedFailures, malformed probe receipt, unit/test failure or timeout produces exit code **2** with compatibility **FAIL** and no release authority. Known test failure names, but **not exception values, cookie values or private paths**, may appear in the reason.
+
+**Observed reproducible full owner composition on connected zSSH, Python3.14.4**, own runner SHA `9fa728474804d95c931fddf3d76c57d3240f4a97`: `1,297` full tests, **46 intentionally unresolved source expectedFailures**, no unexpected failures, producer integration **86/86 PASS**, nine guard duplicates denied pre-body, normal role isolation retained, clean source checkout, receipt `candidate_compatibility:"PASS",status:"HOLD",release_authorized:false`. This is a **synthetic candidate composition** with pinned bytes in a local, transient checkout, NOT a signed combined Git commit, independent source review, actual proxy wire proof, full hosted Python 3.11/3.14 approved-release CI, permanent named VPS workflow receipt, or real authenticated consent. Do not run it against public targets or treat it as authority.
+
 ## Release requirements
 
 Independent source owner fix, dedicated regression ordinary GREEN on that exact source commit, full original Python 3.11/3.14 hosted preflight and named permanent self-hosted VPS CI on the approved release SHA, separate truly authenticated client and operator consent with at-use revocation, independent security/privacy review, and explicit human GO.
