@@ -156,3 +156,46 @@ handlerdispatch of release.** Voor echte GO blijven exacte release SHA
 complete hosted CI plus benoemde permanente VPS GitHub Actions,
 onafhankelijke privacy-/securityreview, authentieke gescheiden client- en
 operatorconsent met at-use intrekking, en expliciete menselijke GO vereist.
+
+
+## W6–W7 · hierarchical path aliases, Unicode display traps and Git metadata semantics (2026-10-17)
+
+**Own branch only; NO source-owner or default-branch edits.** New entirely
+owned fixture `tests/test_scope_git_path_hierarchy_1541_20261017.py`
+reproduced **eight initially failing methods** (11 methods total) on the
+real connected zSSH VPS Python 3.14.4 at SHA `ee0a5b1`. Conservative
+repairs to the already owned, *unwired* oracle in `719d7da` then made
+all eleven pass. Files that are also claimed as an ancestor directory
+(e.g. `a` and `a/b`) and cross-platform case/NFC aliases of ancestor
+directories now yield generic `HOLD`, as do invisible Unicode format
+characters. This intentionally holds some legitimate Git file-to-directory
+transitions; humans must review such cases without treating the return as
+authorization.
+
+Next, additional actual red probes initially found **14 failing subcases**
+in status/count and Unicode display integrity; malformed Git binary
+numstat half-sentinels, noncanonical rename scores, impossible
+added/deleted line counts and invisible Unicode whitespace/variation marks
+now return `HOLD`. Real ordinary cases (canonical added/removed files,
+two-sentinel binary changes, UTF-8/TAB names and sibling source files) still
+pass. **No real asset, network probe, Git metadata read or handler is invoked
+by the oracle.** Strict lower-level review is only for synthetic/
+independently authenticated, already collected byte streams, never
+actual repository authenticity.
+
+At exact own HEAD `c9e686184d44aa14b2d8491855705fdf3fd99747`
+verified via allowed zSSH, own **17 hierarchy + 21 byte parser + 7
+source acceptance = 45/45 ordinary PASS**. Original owner change-review
+**26/26 PASS**, original change-review storage **4/4 PASS**:
+**75/75 tested, 0 expectedFailures, 0 errors, clean tree.**
+Owner-branch comparison: **18 commits ahead/0 behind, exactly five
+wholly NEW own paths, no modified existing source, action, runner or
+parallel-worker paths**. No GitHub hosted or permanently registered VPS
+Actions green is claimed from this local run.
+
+**Still INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** All authenticated
+real-world client and operator approvals with at-use revocation,
+independent privacy/security review, exact approved release SHA full hosted
+and named permanent VPS CI, source-owner integration and explicit HUMAN GO
+remain mandatory. NO main merge, deploy, real target, scan, grant,
+handler dispatch or release.
