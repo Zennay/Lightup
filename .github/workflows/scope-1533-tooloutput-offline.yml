@@ -45,13 +45,13 @@ jobs:
               return subprocess.check_output(["git", *args], text=True).strip()
           assert git("merge-base", base, "HEAD") == base, "wrong original main ancestor"
           changed = git("diff", "--name-status", base, "HEAD").splitlines()
-          assert set(changed) == {"A\\t" + x for x in expected}, changed
+          assert set(changed) == {"A\t" + x for x in expected}, changed
           assert not git("status", "--porcelain=v1", "--untracked-files=all"), "dirty checkout"
           print("scope1533_owned_tree=PASS")
           PY
       - name: Offline review with original source REDs
         run: python -I -S -B -m unittest discover -s tests -p 'test_scope_tooloutput_shape_1533_20261017.py' -v
-      - name: Verify exact unresolved source RED count in strict mode
+      - name: Strict post-fix gate must identify all six original source REDs
         shell: bash
         run: |
           set +e
@@ -59,16 +59,14 @@ jobs:
           status=$?
           set -e
           log="$RUNNER_TEMP/scope1533-strict-red.log"
+          test "$status" -ne 0
           grep -q 'FAILED (failures=6)' "$log"
           ! grep -q 'ERROR' "$log"
-          test "$status" -ne 0
           for name in nonstring_summary blank_summary nonstring_evidence_kind blank_evidence_kind mutable_payload text_payload; do
             grep -q "FAIL: test_source_red_$name " "$log"
           done
-          test "$(grep -c '^AssertionError: OrchestrationError not raised
-          echo 'six_original_source_reds=CONFIRMED; no source remediation implied'
- "$log")" -eq 6
+          test "$(grep -c '^AssertionError: OrchestrationError not raised$' "$log")" -eq 6
           test "$(grep -c '^FAIL: test_source_red_' "$log")" -eq 6
-          git status --porcelain=v1 --untracked-files=all | grep -q '^' && exit 1 || true
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
           echo 'scope1533_owned_tree_after=PASS'
           echo 'six_original_source_reds=CONFIRMED; no source remediation implied'
