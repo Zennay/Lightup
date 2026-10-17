@@ -21,11 +21,12 @@ from urllib.parse import quote
 
 MAX_SNAPSHOT_BYTES = 16 * 1024 * 1024
 MAX_GRANTS = 10_000
+MAX_ENGAGEMENTS = 10_000
 _ALLOWED_REASON = frozenset({
     "coherent_offline_snapshot", "tenant_lineage_mismatch",
     "orphaned_engagement", "invalid_input", "unsafe_snapshot",
     "invalid_schema", "invalid_record", "too_many_grants",
-    "snapshot_changed", "orphaned_client",
+    "snapshot_changed", "orphaned_client", "too_many_engagements",
 })
 _REQUIRED = {
     "clients": ("client_id",),
@@ -51,7 +52,8 @@ class _HOLD(Exception):
 
 
 def _receipt(reason: str, coherent: int = 0, mismatch: int = 0,
-             orphan: int = 0, missing_client: int = 0) -> dict:
+             orphan: int = 0, missing_client: int = 0,
+             unbound_engagements: int = 0, engagements_checked: int = 0) -> dict:
     assert reason in _ALLOWED_REASON
     return {
         "status": "REVIEW_ONLY" if reason == "coherent_offline_snapshot" else "HOLD",
@@ -60,6 +62,8 @@ def _receipt(reason: str, coherent: int = 0, mismatch: int = 0,
         "mismatch": mismatch,
         "orphan": orphan,
         "missing_client": missing_client,
+        "unbound_engagements": unbound_engagements,
+        "engagements_checked": engagements_checked,
         "total": coherent + mismatch + orphan + missing_client,
         **_FLAGS,
     }
@@ -221,23 +225,46 @@ def inspect_offline_grant_tenants(snapshot_path: str) -> dict:
                     mismatch += 1
                 else:
                     coherent += 1
+
+            # Engagements without any grants still need a real client owner.
+            # An empty grant table must not disguise a broken engagement.
+            engagement_rows = con.execute(
+                "SELECT e.engagement_id,e.client_id,c.client_id "
+                "FROM engagements AS e "
+                "LEFT JOIN clients AS c ON "
+                "c.client_id COLLATE BINARY = e.client_id COLLATE BINARY "
+                "LIMIT ?",
+                (MAX_ENGAGEMENTS + 1,),
+            ).fetchall()
+            if len(engagement_rows) > MAX_ENGAGEMENTS:
+                raise _HOLD("too_many_engagements")
+            engagements_checked = len(engagement_rows)
+            unbound_engagements = 0
+            for engagement_id, owner_client, actual_client in engagement_rows:
+                if not all(
+                    type(v) is str and 0 < len(v) <= 1024
+                    for v in (engagement_id, owner_client)
+                ):
+                    raise _HOLD("invalid_record")
+                if actual_client is None:
+                    unbound_engagements += 1
+                elif type(actual_client) is not str or actual_client != owner_client:
+                    raise _HOLD("invalid_record")
         finally:
             con.close()
         if _path_snapshot(path) != before:
             raise _HOLD("snapshot_changed")
         if _snapshot_sha256(path, before) != original_hash:
             raise _HOLD("snapshot_changed")
+        counts = (coherent, mismatch, orphan, missing_client,
+                  unbound_engagements, engagements_checked)
         if orphan:
-            return _receipt("orphaned_engagement", coherent, mismatch,
-                            orphan, missing_client)
-        if missing_client:
-            return _receipt("orphaned_client", coherent, mismatch,
-                            orphan, missing_client)
+            return _receipt("orphaned_engagement", *counts)
+        if missing_client or unbound_engagements:
+            return _receipt("orphaned_client", *counts)
         if mismatch:
-            return _receipt("tenant_lineage_mismatch", coherent, mismatch,
-                            orphan, missing_client)
-        return _receipt("coherent_offline_snapshot", coherent, mismatch,
-                        orphan, missing_client)
+            return _receipt("tenant_lineage_mismatch", *counts)
+        return _receipt("coherent_offline_snapshot", *counts)
     except _HOLD as error:
         return _receipt(error.reason)
     except (OSError, sqlite3.Error, ValueError, OverflowError,
