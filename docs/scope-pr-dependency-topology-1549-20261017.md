@@ -31,3 +31,15 @@ A REVIEW_ONLY preview is **not permission to merge or deploy**. True source owne
 - **Stress matrix:** 64-node maximum DAGs and multiple deterministic reordered synthetic topologies, malicious duplicated/cyclic/missing predecessor refs and exact 131072-byte positive/131073-byte HOLD boundaries.
 - **Dedicated hosted workflow hardening:** only the four explicitly owned new paths are allowed, and each must be an ordinary Git blob mode `100644`; executable `100755`, symlink `120000`, other missing/malformed path modes HOLD before any test. A no-remote/no-hook disposable Git fixture exercises actual regular/executable/symlink Git tree modes. No changes to shared CI or permanent runner.
 - These are strictly isolated tests of **fictional review metadata** and the own workflow. They are not client/operator consent or verification of real Git object ancestry and do not permit grants, merges, dispatch, scans or release.
+
+## W7 stdout result boundary
+
+The reviewer must never return `REVIEW_ONLY`/exit 3 merely because a
+user-controlled stdout stream *claims* that all bytes were written. In-process
+output can be replaced by a custom writer whose integer subclass overrides
+comparison. Require `type(write_count) is int` and `write_count == len(line)`
+after successful flush; otherwise fail closed with exit 2. The isolated test
+includes a deliberately forged `__eq__`/`__ne__` count, plus partial write
+and flush-error cases. A pipe failure can still leave a truncated partial line:
+consumers must enforce complete JSON and the process exit code, never trust a
+prefix. This is offline receipt integrity, not runtime authorization.
