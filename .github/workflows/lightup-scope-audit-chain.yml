@@ -1,0 +1,50 @@
+name: LightUp fictional scope audit-chain isolated proof
+
+on:
+  pull_request:
+    paths:
+      - 'src/lightup/scope_audit_chain_offline.py'
+      - 'tests/test_scope_audit_chain_offline.py'
+      - '.github/workflows/lightup-scope-audit-chain.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scope-audit-chain-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-only:
+    name: Fictional audit-chain Python ${{ matrix.python }} (HOSTED / NOT VPS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Pin proof to immutable checkout SHA
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+      - name: Compile exclusively owned files
+        run: python -m compileall -q src/lightup/scope_audit_chain_offline.py tests/test_scope_audit_chain_offline.py
+      - name: Real isolated API and subprocess regressions
+        env:
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests -p test_scope_audit_chain_offline.py -v
+      - name: Existing safety invariants
+        env:
+          PYTHONPATH: src
+        run: python scripts/check_safety_canaries.py
+      - name: Hold boundary
+        run: echo 'HOSTED isolated proof only; DOES NOT grant consent, approval, VPS CI proof, merge or release authority.'
