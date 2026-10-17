@@ -365,7 +365,7 @@ class MutationWitnessQualityTests(unittest.TestCase):
                         "test_invalid_target_cannot_be_rescued_by_grant_or_auth_flag")
 
         result = unittest.TestResult()
-        result.testsRun = 7
+        result.testsRun = 13
         case = Case()
         if assertion:
             result.failures.append((case, "Traceback: AssertionError: denied correctly"))
@@ -395,6 +395,31 @@ class MutationWitnessQualityTests(unittest.TestCase):
         self.assertFalse(self.proof.mutation_detected(
             self.result(assertion=False), "test_invalid_target"
         ))
+
+
+    def test_all_seven_mutation_canaries_have_distinct_expected_contracts(self):
+        self.assertEqual(len(self.proof.MUTATIONS), 7)
+        expected = {
+            "grant_mints_membership",
+            "invalid_identity_rescued",
+            "grant_checked_before_scope",
+            "spoofed_label_authorizes",
+            "cidr_right_neighbor_authorizes",
+            "hostname_wildcard_authorizes",
+            "denied_identity_rewritten",
+        }
+        self.assertEqual({entry[0] for entry in self.proof.MUTATIONS}, expected)
+        for name, broken, method in self.proof.MUTATIONS:
+            with self.subTest(mutation=name):
+                self.assertTrue(callable(broken))
+                self.assertTrue(method.startswith("test_"))
+
+    def test_mutation_harness_refuses_old_partial_test_count(self):
+        result = self.result()
+        result.testsRun = 7
+        self.assertFalse(self.proof.mutation_detected(result, "test_invalid_target"))
+        result.testsRun = 13
+        self.assertTrue(self.proof.mutation_detected(result, "test_invalid_target"))
 
     def test_expected_red_or_exception_text_is_not_acceptance(self):
         result = self.result(expected=True)
