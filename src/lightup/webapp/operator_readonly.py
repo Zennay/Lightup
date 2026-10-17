@@ -17,7 +17,7 @@ from ipaddress import ip_address
 from wsgiref.simple_server import make_server
 
 from ..domain import AccessContext, DomainStore, Role
-from .app import AuthState, LightUpWebApp, Response
+from .app import AuthState, LightUpWebApp, Response, _e, _page
 from .security import WebSecurity
 
 _PORTAL_FORM_HEADING = "<h2>Request an assessment</h2>"
@@ -47,6 +47,12 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
         self.routes.append((
             "GET", re.compile(r"^/authorization-desk/clients/(?P<client_id>[\\w-]+)$"),
             self.authorization_client_desk, "operator",
+        ))
+        self.routes.append((
+            "GET", re.compile(
+                r"^/portal/(?P<client_id>[\\w-]+)/requests/(?P<request_id>[\\w-]+)$"
+            ),
+            self.portal_request_receipt, "portal",
         ))
 
     def authorization_desk(self, auth: AuthState, form: dict[str, str]) -> Response:
@@ -104,12 +110,68 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
                             status="403 Forbidden")
         return super().portal_submit_request(auth, form, client_id)
 
+    def portal_request_receipt(
+        self, auth: AuthState, form: dict[str, str], client_id: str,
+        request_id: str,
+    ) -> Response:
+        """Tenant-isolated, read-only status receipt; never an approval token."""
+        context = self._portal_context(auth, client_id)
+        request = self.store.get_assessment_request(context, request_id)
+        if request.client_id != client_id:
+            return Response("<h1>Forbidden</h1>", status="403 Forbidden")
+        body = (
+            '<h1>Assessment request receipt</h1>'
+            '<p class="sub">An acknowledgement of a recorded request, '
+            'not a grant or a signed client authorization.</p>'
+            '<div class="card"><span class="badge warn">Active testing locked</span>'
+            '<p><strong>Request ID:</strong> ' + _e(request.request_id) +
+            '<br><strong>Status:</strong> ' + _e(request.status.value) +
+            '<br><strong>Requested assets:</strong> ' + _e(
+                ", ".join(request.requested_assets)
+            ) + '<br><strong>Requested mode:</strong> ' +
+            _e(request.requested_mode.value) +
+            '<br><strong>Risk level:</strong> ' + _e(int(request.requested_risk)) +
+            '<br><strong>Submitted:</strong> ' + _e(request.created_at) +
+            '<br><strong>Decision date:</strong> ' +
+            _e(request.decided_at or "Not reviewed") +
+            '</p><details><summary>Notes</summary><p>' +
+            _e(request.notes or "—") + '</p></details></div>'
+            '<div class="card"><strong>Authorization is separate</strong>'
+            '<p class="meta">An approved request, if any, does not authorize '
+            'target contact. Actual client consent, operator approval, '
+            'scope/grant checks, live revocation and release approval '
+            'are independent gates.</p></div>'
+            '<p><a href="/portal/' + _e(client_id) +
+            '">Back to client portal</a></p>'
+        )
+        return Response(_page("LightUp — Request receipt", "portal", body, auth,
+                              portal_client=client_id))
+
     def portal(self, auth: AuthState, form: dict[str, str],
                client_id: str) -> Response:
         page = super().portal(auth, form, client_id)
-        if not auth.is_operator:
-            return page
         markup = page.body.decode("utf-8")
+        # Show actionable links to durable request receipts without changing
+        # the existing portal's source-owned cards or write handlers.
+        view_context = self._portal_context(auth, client_id)
+        requests = self.store.list_assessment_requests(view_context)
+        links = "".join(
+            '<div class="card"><a href="/portal/' + _e(client_id) +
+            '/requests/' + _e(request.request_id) + '">View request ' +
+            _e(request.request_id) + '</a><br><span class="meta">Status: ' +
+            _e(request.status.value) + '</span></div>'
+            for request in requests[:30]
+        ) or '<p class="empty">No request receipts.</p>'
+        if len(requests) > 30:
+            links += '<p class="meta">Only the 30 newest receipts are shown.</p>'
+        receipt_section = '<h2>Request receipts</h2>' + links
+        offset = markup.find(_PORTAL_FORM_HEADING)
+        if offset < 0 or markup.find(_PORTAL_FORM_HEADING, offset + 1) >= 0:
+            return Response("<h1>Portal view unavailable</h1>",
+                            status="503 Service Unavailable")
+        markup = markup[:offset] + receipt_section + markup[offset:]
+        if not auth.is_operator:
+            return Response(markup, status=page.status)
         start = markup.find(_PORTAL_FORM_HEADING)
         end = markup.find(_PORTAL_FORM_END, start) if start >= 0 else -1
         if start < 0 or end < 0 or markup.find(_PORTAL_FORM_HEADING, start + 1) != -1:
