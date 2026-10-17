@@ -34,7 +34,7 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 1
+          fetch-depth: 0
       - name: Pin branch and independent owner fixture
         env:
           EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -46,6 +46,13 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$EXACT_HEAD"
+          # Mandatory immutable-base owner tree check BEFORE any temporary
+          # foreign owner blobs are overlaid. Exit 3 means REVIEW_ONLY.
+          set +e
+          python3 scripts/scope_1563_exact_tree_boundary_20261017.py --expected-head "$EXACT_HEAD"
+          scope_gate=$?
+          set -e
+          test "$scope_gate" -eq 3
           git -c credential.helper= fetch --no-tags --depth=1 origin "$EXACT_OWNER_SHA"
           test "$(git rev-parse FETCH_HEAD)" = "$EXACT_OWNER_SHA"
           git show "$EXACT_OWNER_SHA:$OWNER_TEST_PATH" > "$OWNER_TEST_PATH"
