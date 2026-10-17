@@ -11,7 +11,7 @@ import sys
 import unittest
 
 from lightup.scope_audit_chain_offline import (
-    MAX_EVENTS, SCHEMA as CHAIN_SCHEMA, ZERO_HASH, compute_event_hash,
+    MAX_EVENTS, SCHEMA as CHAIN_SCHEMA, ZERO_HASH, compute_event_hash, verify_chain,
 )
 from lightup.scope_audit_chain_checkpoints_offline import (
     MAX_CHECKPOINTS, MAX_INPUT_BYTES, SCHEMA, verify_checkpoints,
@@ -92,6 +92,34 @@ class CheckpointAcceptanceTests(unittest.TestCase):
     def test_bound_64_records_last_checkpoint(self):
         obj, tips = bundle([1, 32, MAX_EVENTS])
         self.accepted(obj, tips, (3, 1, 64, 63))
+
+    def test_capacity_eight_checkpoints_with_64_final_records(self):
+        lengths = [1, 2, 3, 4, 8, 16, 32, 64]
+        obj, tips = bundle(lengths)
+        self.accepted(obj, tips, (8, 1, 64, 63))
+
+    def test_forked_individually_valid_reanchored_history_holds(self):
+        obj, tips = bundle([2, 3, 4])
+        last = obj["snapshots"][-1]["events"]
+        previous = ZERO_HASH
+        for record in last:
+            body = {key: value for key, value in record.items() if key != "sha256"}
+            old = datetime.strptime(body["at"], "%Y-%m-%dT%H:%M:%SZ")
+            body["at"] = (old + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            body["previous_sha256"] = previous
+            previous = compute_event_hash(body)
+            record.update({**body, "sha256": previous})
+        # Individually coherent SHA does not allow rewriting prior checkpoints.
+        self.assertEqual(
+            "REVIEW_ONLY", verify_chain(encode(obj["snapshots"][-1]), previous)["status"]
+        )
+        self.hold(obj, tips[:-1] + (previous,))
+
+    def test_all_trusted_anchors_in_correct_order_required(self):
+        obj, tips = bundle([1, 2, 3, 4])
+        self.hold(obj, tips[::-1])
+        self.hold(obj, tips[:-1])
+        self.hold(obj, tips + ("f" * 64,))
 
     def test_withdrawal_can_end_last_checkpoint(self):
         obj, tips = bundle([1, 2, 3], withdraw_last=True)
