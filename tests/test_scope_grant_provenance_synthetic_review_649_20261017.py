@@ -187,6 +187,29 @@ class Scope649ReviewerTests(unittest.TestCase):
                     raw["items"][0][field] = value
                     self.assertIs(subject.review_batch(raw).status, subject.ReviewStatus.HOLD)
 
+    def test_noncanonical_internal_unicode_spacing_and_ignorable_marks_hold(self):
+        # NFC alone cannot identify visually hidden characters in fictional
+        # provenance. Ordinary ASCII interior spaces remain allowed.
+        for invisible in (
+            "\u00a0",  # no-break space, inside a string
+            "\u2002",  # en space
+            "\u3000",  # ideographic space
+            "\u034f",  # combining grapheme joiner
+            "\ufe0f",  # emoji variation selector
+            "\\U000e0100",  # supplementary variation selector
+        ):
+            bad = "SYNTH" + invisible + "649"
+            for field in ("approved_by", "reference"):
+                with self.subTest(codepoint=hex(ord(invisible)), field=field):
+                    raw = packet()
+                    raw["items"][0][field] = bad
+                    self.assertIs(
+                        subject.review_batch(raw).status,
+                        subject.ReviewStatus.HOLD,
+                    )
+        ok = packet([{"approved_by": "Synthetic Operator", "reference": "SYNTH 649"}])
+        self.assertIs(subject.review_batch(ok).status, subject.ReviewStatus.REVIEW_ONLY)
+
     def test_allows_canonical_unicode_for_fictional_labels(self):
         value = packet([{"approved_by": "Élodie", "reference": "SYNTH-É"}])
         self.assertIs(subject.review_batch(value).status, subject.ReviewStatus.REVIEW_ONLY)
