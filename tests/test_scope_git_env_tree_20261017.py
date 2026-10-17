@@ -103,6 +103,11 @@ class OfflineTreeModesTests(unittest.TestCase):
         status = [call for call in calls if call[0] == "status"]
         self.assertEqual(len(status), 1)
         self.assertIn("--ignore-submodules=all", status[0])
+        diff_calls = [call for call in calls if call[0] == "diff"]
+        self.assertEqual(len(diff_calls), 1)
+        self.assertIn("--no-ext-diff", diff_calls[0])
+        self.assertIn("--no-textconv", diff_calls[0])
+        self.assertIn("--no-renames", diff_calls[0])
 
     def test_main_exact_push_and_tampered_modes(self):
         from subprocess import CompletedProcess
