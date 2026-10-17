@@ -183,11 +183,38 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
         request = self.store.get_assessment_request(context, request_id)
         if request.client_id != client_id:
             return Response("<h1>Forbidden</h1>", status="403 Forbidden")
+        stage = request.status.value
+        if stage in {"submitted", "under_review"}:
+            progress = (
+                '<span class="badge warn">Waiting for review</span>'
+                '<p class="meta">Request recorded. An operator still needs to '
+                'review it; approval and verified consent are separate.</p>'
+            )
+        elif stage == "approved":
+            progress = (
+                '<span class="badge warn">Request approved — execution locked</span>'
+                '<p class="meta">The administrative request was approved. '
+                'This is not an engagement grant or independently verified '
+                'client consent and cannot activate target testing.</p>'
+            )
+        elif stage == "rejected":
+            progress = (
+                '<span class="badge lock">Request rejected</span>'
+                '<p class="meta">The request was not approved. A new client '
+                'request is required to propose a different scope.</p>'
+            )
+        else:
+            progress = (
+                '<span class="badge lock">Review status unavailable</span>'
+                '<p class="meta">No authorization can be inferred from '
+                'an unrecognized request state.</p>'
+            )
         body = (
             '<h1>Assessment request receipt</h1>'
             '<p class="sub">An acknowledgement of a recorded request, '
             'not a grant or a signed client authorization.</p>'
-            '<div class="card"><span class="badge warn">Active testing locked</span>'
+            '<div class="card"><span class="badge lock">Active testing locked</span>'
+            + progress +
             '<p><strong>Request ID:</strong> ' + _e(request.request_id) +
             '<br><strong>Status:</strong> ' + _e(request.status.value) +
             '<br><strong>Requested assets:</strong> ' + _e(
@@ -223,10 +250,16 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
         view_context = self._portal_context(auth, client_id)
         requests = self.store.list_assessment_requests(view_context)
         links = "".join(
-            '<div class="card"><a href="/portal/' + _e(client_id) +
-            '/requests/' + _e(request.request_id) + '">View request ' +
-            _e(request.request_id) + '</a><br><span class="meta">Status: ' +
-            _e(request.status.value) + '</span></div>'
+            '<div class="card"><div class="row"><strong>'
+            + _e(", ".join(asset[:100] for asset in request.requested_assets[:2])
+                 or "Assessment request")
+            + '</strong><span class="badge">'
+            + _e(request.status.value) + '</span></div>'
+            + '<p class="meta">Requested risk ' + _e(int(request.requested_risk))
+            + ' · Submitted ' + _e(request.created_at)
+            + '</p><a href="/portal/' + _e(client_id)
+            + '/requests/' + _e(request.request_id)
+            + '">View status and request details →</a></div>'
             for request in requests[:30]
         ) or '<p class="empty">No request receipts.</p>'
         if len(requests) > 30:
