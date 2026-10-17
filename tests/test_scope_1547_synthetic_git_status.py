@@ -549,6 +549,70 @@ class StrictSourceOwnerGate(unittest.TestCase):
                     self.assertTrue(owner._parse_name_status(stream))
         self.assertIs(owner._STATUS_CODE, original)
 
+    def test_source_and_review_accept_actual_disposable_git_wire(self):
+        """Owner source parser and our separate reviewer agree on real Git -z.
+
+        This creates a local no-hook/no-remote disposable repository. It does
+        not authenticate or authorize a client, target, Git remote or action.
+        """
+        import os
+        if os.environ.get("LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX") != "1":
+            self.skipTest("source-owner repair not integrated into pinned source")
+        sys.path.insert(0, str(ROOT / "src"))
+        from lightup.git_changes import _parse_name_status
+        with tempfile.TemporaryDirectory() as temp:
+            repo = Path(temp)
+
+            def git(*args):
+                return subprocess.run(
+                    ["git", "-c", "core.hooksPath=/dev/null",
+                     "-C", str(repo), *args],
+                    capture_output=True, timeout=8, check=True,
+                ).stdout
+
+            git("init", "-q")
+            (repo / "rename_me.py").write_text(
+                "unique rename content\n", encoding="utf-8"
+            )
+            (repo / "modify_me.py").write_text(
+                "value = 1\n", encoding="utf-8"
+            )
+            (repo / "delete_me.py").write_text(
+                "obsolete and unique\n", encoding="utf-8"
+            )
+            git("add", ".")
+            git("-c", "user.email=fixture@example.invalid", "-c",
+                "user.name=Fixture", "commit", "-qm", "source")
+            git("mv", "rename_me.py", "renamed.py")
+            (repo / "modify_me.py").write_text(
+                "value = 2\n", encoding="utf-8"
+            )
+            (repo / "delete_me.py").unlink()
+            (repo / "add_me.py").write_text(
+                "new distinct payload\n", encoding="utf-8"
+            )
+            git("add", "-A")
+            git("-c", "user.email=fixture@example.invalid", "-c",
+                "user.name=Fixture", "commit", "-qm", "destination")
+            raw = git("diff", "--name-status", "-M", "-z", "HEAD~1", "HEAD")
+            parsed = _parse_name_status(raw)
+            self.assertEqual(review.review_stream(raw), len(parsed))
+            self.assertEqual(
+                {(kind, previous, current) for kind, previous, current in parsed},
+                {
+                    ("A", None, "add_me.py"),
+                    ("D", None, "delete_me.py"),
+                    ("M", None, "modify_me.py"),
+                    ("R", "rename_me.py", "renamed.py"),
+                },
+            )
+            corrupt = raw + b"M\n\0fictitious.py\0"
+            with self.assertRaises(review.StatusHold):
+                review.review_stream(corrupt)
+            from lightup.git_changes import GitChangeError
+            with self.assertRaises(GitChangeError):
+                _parse_name_status(corrupt)
+
     def test_source_full_status_byte_and_similarity_grammar(self):
         """Mandatory, non-authorizing exact Git status grammar on repaired source."""
         import os
