@@ -53,6 +53,18 @@ This directly reproduces pre-existing defects for those exact failing testcases;
 - **23/23 focused Python3.14.4 tests PASS** on authorized zSSH, exact intermediate branch `b94c5b992b120839d0d764ef68735f957a427531`: both CLI exits, malformed and polymorphic cases, date spoofing, expired-authorization policy mutation, semantic-input tamper detected before calling the policy, order/provenance tamper, pinned reference-output downgrade and always-false authority flags.
 - This is an *unwired offline diagnostic*, with no added target action or production authorization path. Existing #301 and #1535 source/fixture owners remain untouched; do not mistake a witness PASS for project-wide test green.
 
+## W4 — Python I/O denial during installed-scope evaluation (17 October 2026)
+
+**New runtime fence:** the offline witness installs a context-local Python audit hook that is active **only while** the installed `ScopePolicy.decide()` method runs. During that call, common Python audit events for sockets/DNS/network, file opens, child processes, OS fork/exec/spawn/system, and native-library loads are denied by raising `PermissionError`. The generic catch turns such an attempt into `HOLD/offline_witness_evaluation_failed` without printing audit arguments. The guard resets in `finally`, including after exceptions.
+
+This is **not a security sandbox** and cannot stop every possible native/OS-level I/O or untrusted module import before the guard is active. The witness remains intended for reviewed, trusted offline fixture code only; no live credentials, targets or authorization may be supplied.
+
+Actual connected zSSH VPS Python 3.14.4 test receipts on exact own intermediate SHA `a5cc8e0a3da77978ae331a52319a02eb85c35e50`:
+- **25/25 dedicated tests PASS**, including real Python socket-construction, file-read and subprocess-spawn attempt regressions (all denied); private audit arguments are not echoed; subsequent clean evaluations still pass.
+- **86/86 real producer integration tests PASS** with `PYTHONPATH=tests:src` and unchanged original source.
+- Previous whole local unit suite at `6c6025ea59e04595150ed2fdc9d53e520bbe0837` ran **1,260 tests, 5 inherited identical baseline failures, 23 expected failures**. The five existing failing subtests were previously independently reproduced on untouched original main. This is NOT whole-suite green, source-owner repair, hosted 3.11/3.14 CI or registered named VPS proof.
+- The offline stopline and seven literal false authority flags remain unchanged, and no runtime target, grant, handler, source-owner path, CI/runner or production state was changed.
+
 ## Gate interpretation
 
 - Green unit tests validate the witness's own classification, deterministic receipt, zero-network boundary, no authority flags and mutation-detection sensitivities.
