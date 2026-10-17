@@ -132,6 +132,24 @@ class OfflineOutputReviewTests(unittest.TestCase):
     def test_source_red_text_payload(self):
         self.assert_source_rejects(evidence_payload="not bytes")
 
+    @source_red
+    def test_source_red_summary_str_subclass(self):
+        class ForgedSummary(str):
+            pass
+        self.assert_source_rejects(summary=ForgedSummary("synthetic"))
+
+    @source_red
+    def test_source_red_evidence_kind_str_subclass(self):
+        class ForgedKind(str):
+            pass
+        self.assert_source_rejects(evidence_kind=ForgedKind("note"))
+
+    @source_red
+    def test_source_red_payload_bytes_subclass(self):
+        class ForgedPayload(bytes):
+            pass
+        self.assert_source_rejects(evidence_payload=ForgedPayload(b"payload"))
+
 
 if __name__ == "__main__":
     unittest.main()
