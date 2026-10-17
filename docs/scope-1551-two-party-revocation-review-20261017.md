@@ -39,6 +39,14 @@ Two CLI modes:
 
 The caller must independently retain and trust the expected digest: a head digest that arrives with the same untrusted packet is NOT a trust anchor. A deliberate negative regression shows all fabricated entries can be rewritten and all internal digests recomputed to regain REVIEW_ONLY unanchored, whereas the old independent head pin makes that substitution HOLD. Even a pinned consistency result is not proof of real signatures, client/operator identity, complete real-world revocation or any execution permission.
 
-The new code and source-owner boundaries remain isolated: no live scope, activation, grant, DB, worker, shared CI or production changes. Expected proof: **53 focused methods** (29 original and 24 timeline tests), plus 86 existing offline producer integrations, Python 3.14.4 VPS and exact-head isolated hosted Python 3.11+3.14 CI. The hosted ownership fence now allows only SIX new regular Git mode-100644 paths, original main pinned, zero source-file modifications. Permanent named VPS and full original release CI are NOT bypassed.
+The new code and source-owner boundaries remain isolated: no live scope, activation, grant, DB, worker, shared CI or production changes. Expected proof: **55 focused methods** (29 original and 24 timeline tests), plus 86 existing offline producer integrations, Python 3.14.4 VPS and exact-head isolated hosted Python 3.11+3.14 CI. The hosted ownership fence now allows only SIX new regular Git mode-100644 paths, original main pinned, zero source-file modifications. Permanent named VPS and full original release CI are NOT bypassed.
 
 DRAFT/HOLD. No merge, release, target scan, handler, active execution or grant.
+
+## W3: deterministic adversarial byte-fuzz and digest semantics
+
+The owned Python3.14 zSSH verification has now exercised **3,000 repeatable corrupted timeline byte candidates** (seed 1551, replace/insert/delete/truncate) under a separately supplied original head digest. Exactly 2,998 became HOLD; two harmless inserted JSON whitespace bytes preserved semantically identical canonical claims and were still REVIEW_ONLY. All 3,000 had all eight authority flags literally false. Both behaviors are now encoded as two permanent regression methods; **55 own unit/subprocess methods** pass.
+
+The digest covers canonical JSON **objects**, not the original raw whitespace and presentation. It is not a byte-exact wire signature. A trusted external pin can detect changes to the scope/consent/timestamp claims; it is still unable to prove caller identity, independent consent, revocation completeness, or release authorization.
+
+Original main's existing #301 and #1535 failure modes are separate from this owned reviewer; do not convert any source-owner RED into an expected failure. Own hosted 3.11/3.14 and producer integration proofs remain required for the exact final head.

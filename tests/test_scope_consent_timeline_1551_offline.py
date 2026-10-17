@@ -257,5 +257,40 @@ class Timeline(unittest.TestCase):
         self.assertEqual("HOLD", timeline.review(replacement)["status"])
 
 
+    def test_pinned_corrupted_bytes_never_grant_any_authority(self):
+        import random
+        rng = random.Random(1551)
+        original = make_timeline()
+        raw_original = raw(original)
+        pin = timeline.entry_digest(original["entries"][-1])
+        counts = {"HOLD": 0, "REVIEW_ONLY": 0}
+        for _ in range(3000):
+            trial = bytearray(raw_original)
+            operation = rng.randrange(4)
+            offset = rng.randrange(len(trial))
+            if operation == 0:
+                trial[offset] = rng.randrange(256)
+            elif operation == 1:
+                del trial[offset]
+            elif operation == 2:
+                trial[offset:offset] = bytes([rng.randrange(256)])
+            else:
+                trial = trial[:offset]
+            result = timeline.review(bytes(trial), expected_head_sha256=pin)
+            counts[result["status"]] += 1
+            self.assertTrue(all(result[k] is False for k in timeline.claim.AUTHORITY_FLAGS))
+        self.assertEqual({"HOLD": 2998, "REVIEW_ONLY": 2}, counts)
+
+    def test_semantically_equivalent_whitespace_does_not_forge_new_head(self):
+        batch = make_timeline()
+        pin = timeline.entry_digest(batch["entries"][-1])
+        original = raw(batch)
+        changed = original.replace(b'"event_seq":11,', b'"event_seq":11\t,', 1)
+        self.assertNotEqual(original, changed)
+        result = timeline.review(changed, expected_head_sha256=pin)
+        self.assertEqual("REVIEW_ONLY", result["status"])
+        self.assertTrue(all(result[k] is False for k in timeline.claim.AUTHORITY_FLAGS))
+
+
 if __name__ == "__main__":
     unittest.main()
