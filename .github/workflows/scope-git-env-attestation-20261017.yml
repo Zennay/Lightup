@@ -42,7 +42,7 @@ jobs:
       - name: Verify non-authorizing Git environment before Git evidence
         run: |
           set +e
-          review_out="$(python -I -B scripts/scope_git_env_attestation_20261017.py)"
+          review_out="$(python -I -S -B scripts/scope_git_env_attestation_20261017.py)"
           review_rc="$?"
           set -e
           test "$review_rc" -eq 2
@@ -53,22 +53,23 @@ jobs:
           test "$GITHUB_EVENT_NAME" = push
           test "$GITHUB_REF" = refs/heads/chatgpt/scope-git-env-main-isolated-1528-20261017
       - name: Verify exact owned additions and regular Git blob modes
-        run: python -I -B scripts/check_scope_git_env_tree_20261017.py
+        run: python -I -S -B scripts/check_scope_git_env_tree_20261017.py
       - name: Compile and test ONLY separately owned offline files
         run: |
-          # -I drops user-site, PYTHONPATH and CWD imports; -B keeps checkout clean.
+          # -I ignores user-site/PYTHONPATH/CWD; -S also skips global site and .pth startup.
+          # -B prevents Python bytecode writes in the attested checkout.
           # Source compile only: compileall writes ignored bytecode and would
           # defeat the strict ignored-file evidence fence below.
-          python -I -B -c 'from pathlib import Path; paths = ("scripts/scope_git_env_attestation_20261017.py", "tests/test_scope_git_env_attestation_20261017.py", "scripts/check_scope_git_env_tree_20261017.py", "tests/test_scope_git_env_tree_20261017.py"); [compile(Path(p).read_bytes(), p, "exec") for p in paths]'
-          python -I -B -m unittest discover -s tests -p test_scope_git_env_attestation_20261017.py -q
-          python -I -B -m unittest discover -s tests -p test_scope_git_env_tree_20261017.py -q
+          python -I -S -B -c 'from pathlib import Path; paths = ("scripts/scope_git_env_attestation_20261017.py", "tests/test_scope_git_env_attestation_20261017.py", "scripts/check_scope_git_env_tree_20261017.py", "tests/test_scope_git_env_tree_20261017.py"); [compile(Path(p).read_bytes(), p, "exec") for p in paths]'
+          python -I -S -B -m unittest discover -s tests -p test_scope_git_env_attestation_20261017.py -q
+          python -I -S -B -m unittest discover -s tests -p test_scope_git_env_tree_20261017.py -q
       - name: Reattest non-authorizing Git environment after tests
         run: |
           set +e
-          review_out="$(python -I -B scripts/scope_git_env_attestation_20261017.py)"
+          review_out="$(python -I -S -B scripts/scope_git_env_attestation_20261017.py)"
           review_rc="$?"
           set -e
           test "$review_rc" -eq 2
           test "$review_out" = '{"status":"REVIEW_ONLY","authorized":false,"consent_verified":false,"dispatch_allowed":false,"release_allowed":false}'
       - name: Reverify exact owned blob modes and unchanged checkout
-        run: python -I -B scripts/check_scope_git_env_tree_20261017.py
+        run: python -I -S -B scripts/check_scope_git_env_tree_20261017.py
