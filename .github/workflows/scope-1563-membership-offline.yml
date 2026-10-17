@@ -1,0 +1,49 @@
+name: Scope 1563 membership-before-grant offline
+
+on:
+  pull_request:
+    paths:
+      - 'tests/test_scope_membership_metamorphic_20261017.py'
+      - 'docs/scope-1563-membership-metamorphic-20261017.md'
+      - '.github/workflows/scope-1563-membership-offline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scope-1563-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  membership-no-authority:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.14']
+    steps:
+      - name: Checkout exact untrusted branch head without stored credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact checked-out SHA
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Python runtime
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Offline compile and negative-only proof
+        env:
+          PYTHONPATH: src
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m py_compile tests/test_scope_membership_metamorphic_20261017.py
+          python -m unittest discover -s tests -p 'test_scope_membership_metamorphic_20261017.py' -v
+      - name: Assert no leftover changes
+        run: git diff --exit-code
