@@ -101,11 +101,32 @@ def _parse_synthetic(raw: bytes) -> tuple[tuple[str, str, bytes], ...]:
     return tuple(parsed)
 
 
+def _read_complete_bounded_stdin(reader: object) -> bytes:
+    """Read to genuine EOF; short reads do not mark end-of-envelope.
+
+    A single read(n) can return only a prefix on some byte streams. Never
+    interpret a valid prefix as a complete synthetic review claim while
+    unread bytes remain. Inspect at most the first 65,537 bytes and fail
+    closed on oversized, anomalous or non-byte responses.
+    """
+    collected = bytearray()
+    while True:
+        remaining = _MAX_STDIN + 1 - len(collected)
+        chunk = reader.read(remaining)
+        if type(chunk) is not bytes:
+            raise ValueError("invalid stdin byte source")
+        if len(chunk) > remaining or len(chunk) > _MAX_STDIN - len(collected):
+            raise ValueError("stdin exceeds finite resource boundary")
+        if not chunk:
+            return bytes(collected)
+        collected.extend(chunk)
+
+
 def main(args: list[str]) -> int:
     result = OutputIdentityReview.HOLD
     if type(args) is list and not args:
         try:
-            raw = sys.stdin.buffer.read(_MAX_STDIN + 1)
+            raw = _read_complete_bounded_stdin(sys.stdin.buffer)
             result = review_output_batch(_parse_synthetic(raw))
         except (OSError, AttributeError, ValueError, TypeError, UnicodeError, RecursionError, OverflowError):
             pass
