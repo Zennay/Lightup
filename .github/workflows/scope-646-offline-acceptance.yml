@@ -87,7 +87,7 @@ jobs:
                   ("ERROR", "RuntimeError: scope field trap was evaluated"),
           }
           headers = list(re.finditer(
-              r"(?m)^(FAIL|ERROR): (test_source_red_[a-z0-9_]+) \\(", output
+              r"(?m)^(FAIL|ERROR): (test_source_red_[a-z0-9_]+) \(", output
           ))
           observed = {}
           for match in headers:
