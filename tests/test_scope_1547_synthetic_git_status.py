@@ -235,6 +235,31 @@ class SyntheticGate(unittest.TestCase):
                     self.assertEqual(review.main(), code)
                 self.assertEqual(json.loads(sink.payload)["decision"], verdict)
 
+    def test_source_owner_newline_red_promotes_partial_and_fixed_contract(self):
+        class Invalid(ValueError):
+            pass
+
+        def allow_everything(_raw):
+            return ("M", None, "path.py")
+
+        def partial_repair(raw):
+            if raw.startswith(b"C"):
+                raise Invalid("copy status strictly rejected")
+            return ("M", None, "path.py")
+
+        def all_repaired(_raw):
+            raise Invalid("trailing LF is not a status token")
+
+        self.assertTrue(
+            _all_newline_corrupt_tokens_accepted(allow_everything, Invalid)
+        )
+        self.assertFalse(
+            _all_newline_corrupt_tokens_accepted(partial_repair, Invalid)
+        )
+        self.assertFalse(
+            _all_newline_corrupt_tokens_accepted(all_repaired, Invalid)
+        )
+
     def test_exhaustive_rename_copy_score_byte_grammar(self):
         # Exact Git --name-status -z uses three decimal similarity digits.
         for prefix in (b"R", b"C"):
@@ -304,6 +329,39 @@ class SyntheticGate(unittest.TestCase):
             self.assertEqual(review.review_stream(stream), 1)
 
 
+_OWNER_NEWLINE_CORRUPT = (
+    b"M\n\0src/a.py\0",
+    b"A\n\0src/a.py\0",
+    b"R100\n\0old.py\0new.py\0",
+    b"C001\n\0old.py\0new.py\0",
+)
+
+
+def _all_newline_corrupt_tokens_accepted(parse_status, error_type) -> bool:
+    """Only fully-unfixed owner sources receive the historical expected RED.
+
+    Any partial repair is already a mandatory ordinary test failure. This
+    function does not confer authorization or change the imported parser.
+    """
+    for raw in _OWNER_NEWLINE_CORRUPT:
+        try:
+            parse_status(raw)
+        except error_type:
+            return False
+    return True
+
+
+def _original_newline_red_until_owner_fix(method):
+    import os
+    sys.path.insert(0, str(ROOT / "src"))
+    from lightup.git_changes import GitChangeError, _parse_name_status
+    if os.environ.get("LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX") == "1":
+        return method
+    if _all_newline_corrupt_tokens_accepted(_parse_name_status, GitChangeError):
+        return unittest.expectedFailure(method)
+    return method
+
+
 def _original_red_until_owner_source_is_strict(method):
     """Preserve source RED on the pinned old owner code, enforce normal GREEN
     as soon as the source owner's canonical status/terminator parser is present.
@@ -351,7 +409,7 @@ class OriginalOwnerContract(unittest.TestCase):
             self.parse_numstat(b"1\t0\tsrc/a.py")
 
 
-    @unittest.expectedFailure
+    @_original_newline_red_until_owner_fix
     def test_owner_rejects_newline_suffixed_status_tokens(self):
         """Known original source gap: regex dollar anchor ignores trailing LF."""
         for stream in (
