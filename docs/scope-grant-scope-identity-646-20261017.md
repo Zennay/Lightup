@@ -59,3 +59,12 @@ This enforces the exact built-in type **before any untrusted scope attribute acc
 - `git diff --name-status` of throwaway copy: only `M src/lightup/domain.py`. **No Git push, no source-owner branch or PR update, no deploy, no real grant/asset or network scan.**
 
 This is **reproducible local patch validation**, not a delivered source fix, multi-version source-fixed CI, or production authorization. Source owner #554 alone should implement/review the source change with other pending domain work, revalidate all integration and permanent named VPS gates, and obtain the separate human consent and release approvals.
+
+## Hosted opt-in owner-repair parity (Python 3.11 and 3.14)
+
+The separately owned CI job now creates **two independent temporary copied Python source trees per interpreter** (neither modifies the checked-out original source):
+
+1. **Exact-type rehearsal:** inserts the two-line `type(scope) is not ScopeDefinition` guard after `ctx.require_operator`, then requires all 11 original-source acceptance methods to pass **ordinarily** under the strict `LIGHTUP_SCOPE646_REQUIRE_SOURCE_FIX=1` switch (zero `expectedFailure`).
+2. **Deliberately weak rehearsal:** substitutes `not isinstance(scope, ScopeDefinition)`. The strict suite **must fail** and expose the subclass, forged `__class__` and risk-flip canaries; an `isinstance()`-only owner fix is insufficient.
+
+The original unmodified source is evaluated in a separate step with a deterministic six-name/six-cause expected-RED check; a replacement regression or unrelated failure cannot be counted as this known defect. All own Git blobs, original owner base ancestry and the original checkout cleanliness are independently checked. These checks are **hosted opt-in non-authorizing acceptance**, not a permanent named-VPS release gate and not a source fix. Their snapshots are local process tests, not durable audit records.
