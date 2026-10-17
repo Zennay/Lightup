@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import io
+import os
 from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime, timezone, timedelta
 import re
@@ -548,6 +549,41 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         self.assertEqual(result["status"], "HOLD")
         self.assertEqual(result["reason"], "invalid_decision_shape")
         self.assert_no_authority(result)
+
+    def test_os_environment_side_effect_attempt_must_hold_without_leak(self):
+        original = witness.ScopePolicy.decide
+        key = "LIGHTUP_SCOPE_1565_SYNTHETIC_AUDIT_TEST"
+        def env_policy(self, target):
+            result = original(self, target)
+            os.putenv(key, "SYNTHETIC-NOT-CONSENT")
+            return result
+        try:
+            with patch.object(witness.ScopePolicy, "decide", env_policy):
+                result = witness.evaluate()
+        finally:
+            # Contain the deliberate RED test in the disposable process.
+            os.unsetenv(key)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "offline_witness_evaluation_failed")
+        self.assertNotIn(key, json.dumps(result))
+        self.assert_no_authority(result)
+
+    def test_chdir_and_copy_audit_attempts_must_hold(self):
+        original = witness.ScopePolicy.decide
+        for name in ("os.chdir", "shutil.copyfile"):
+            with self.subTest(name=name):
+                def mutated_policy(self, target):
+                    result = original(self, target)
+                    if name == "os.chdir":
+                        os.chdir(os.getcwd())  # Same directory; only audit side effect.
+                    else:
+                        sys.audit("shutil.copyfile", "fictional-source", "fictional-dest")
+                    return result
+                with patch.object(witness.ScopePolicy, "decide", mutated_policy):
+                    receipt = witness.evaluate()
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertEqual(receipt["reason"], "offline_witness_evaluation_failed")
+                self.assert_no_authority(receipt)
 
     def test_no_network_socket_or_dns_is_necessary(self):
         with (patch.object(socket, "socket", side_effect=AssertionError("network invoked")),
