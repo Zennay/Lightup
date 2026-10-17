@@ -62,8 +62,11 @@ def _canonical_decode(raw):
     except (UnicodeError, ValueError, TypeError, RecursionError) as exc:
         raise InvalidProposal("invalid JSON") from exc
     # No alternate spellings, key orderings, whitespace or escaped aliases.
-    canonical = json.dumps(data, sort_keys=True, separators=(",", ":"),
-                           ensure_ascii=True, allow_nan=False).encode("ascii")
+    try:
+        canonical = json.dumps(data, sort_keys=True, separators=(",", ":"),
+                               ensure_ascii=True, allow_nan=False).encode("ascii")
+    except (ValueError, TypeError, OverflowError, RecursionError) as exc:
+        raise InvalidProposal("noncanonical JSON") from exc
     if raw != canonical:
         raise InvalidProposal("noncanonical JSON")
     return data
