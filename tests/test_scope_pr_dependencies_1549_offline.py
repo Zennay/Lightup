@@ -122,6 +122,19 @@ class DependencyReviewTests(unittest.TestCase):
         self.review(manifest([item(i, f"{i:040x}") for i in range(1, 65)]),
                     [list(range(1, 65))])
 
+    def test_cli_rejects_any_unexpected_arguments(self):
+        script = ROOT / "scripts/review_scope_pr_dependencies_1549_offline.py"
+        for arg in ("--authorize", "--merge", "--help", "--release", "unused"):
+            with self.subTest(arg=arg):
+                result = subprocess.run([sys.executable, "-I", "-S", "-B", str(script), arg],
+                                        input=manifest(), capture_output=True, timeout=15)
+                self.assertEqual(result.returncode, 2)
+                self.assertEqual(result.stderr, b"")
+                receipt = json.loads(result.stdout)
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertEqual(receipt["waves"], [])
+                self.assertTrue(all(receipt[k] is False for k in OFF_FLAGS))
+
     def test_real_child_process_review_and_hold(self):
         script = ROOT / "scripts/review_scope_pr_dependencies_1549_offline.py"
         for data, status, code in ((manifest(), "REVIEW_ONLY", 3), (b"BAD", "HOLD", 2),
