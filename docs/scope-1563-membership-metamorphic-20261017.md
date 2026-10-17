@@ -81,9 +81,17 @@ The corrected new-only \`scripts/scope_1563_exact_tree_boundary_20261017.py\` no
 - Rejects transient modification of original source, addition then deletion of foreign-worker paths, deletion then re-creation of own files, intermediate symlinks or executable \`100755\` modes, and merge commits even where final changes appear legitimate.
 - Independently verifies each changed path's committed Git object type, exact name, canonical regular-file mode and object identity. The output also reports the count of individually checked commits, but still returns non-authorizing \`REVIEW_ONLY/exit 3\`; every anomaly returns \`HOLD/exit 2\`.
 
-The extra **seven ordinary local-Git fixture tests** cover intermediate forbidden edit/revert, foreign add/remove, own delete/readd, symlink/permission-mode toggles, non-linear merges and commit count. Combined with earlier guards, the isolated Git/witness suite now contains **26 real test methods**. Connected zSSH ran them all PASS on the actual own branch code at \`3d14491efc500590a64665254bea68400324fc51\`. This is offline verification of PR **path ownership**, not a source-security audit or permission to merge.
+The extra **seven ordinary local-Git fixture tests** cover intermediate forbidden edit/revert, foreign add/remove, own delete/readd, symlink/permission-mode toggles, non-linear merges and commit count. Combined with earlier guards, the isolated Git/witness suite now contains **28 real test methods**. Connected zSSH ran them all PASS on the actual own branch code at \`3d14491efc500590a64665254bea68400324fc51\`. This is offline verification of PR **path ownership**, not a source-security audit or permission to merge.
 
 CI remains tied to the exact current PR head and validates this history **before** composed #301/#1535 owner-file overlays. These owner snapshots remain temporary test-only and cannot turn the original base suite or permanent registered VPS CI green. Release requires all independent authorization, revocation, security/privacy, exact-head CI and human GO gates.
+
+## W16 — CI checkout index/tracked/untracked custody
+
+The original post-test \`git diff --exit-code\` is **unstaged-only**. In a synthetic disposable repository, an owned file changed only in the Git index: \`git diff --name-only\` produced no output while \`git diff --cached --name-only\` reported the staged modification. This is independent from the immutable committed-tree history review: both must run.
+
+Both exclusively issue-owned CI workflows now check \`git diff --cached --exit-code\` and \`git ls-files --others --exclude-standard\` in addition to their previous requirements. The focused workflow also reasserts the precise checkout head at the end. The compatibility workflow continues to require exactly the **two known temporarily overlaid, unstaged** foreign owner paths; any additional index or nonignored untracked changes causes a failure. Two new acceptance tests prove the staged-only blind spot and enforce cleanup lines in both workflow files.
+
+Connected permitted zSSH, exact \`bf4fcf083987c74333210e69d6e8ad44279bbfe2\`: **28/28 Git/tree/CI tests PASS, 86/86 producer integrations PASS and original safety canaries PASS**; exact audit receipt \`REVIEW_ONLY ... added_paths 7 checked_commits 38\`; checkout clean. Full hosted CI on the ultimately updated HEAD must be verified separately and is not release authorization.
 
 ## Stop conditions
 
