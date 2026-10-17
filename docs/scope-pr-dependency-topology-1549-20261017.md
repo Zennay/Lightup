@@ -43,3 +43,54 @@ includes a deliberately forged `__eq__`/`__ne__` count, plus partial write
 and flush-error cases. A pipe failure can still leave a truncated partial line:
 consumers must enforce complete JSON and the process exit code, never trust a
 prefix. This is offline receipt integrity, not runtime authorization.
+
+## W8 — normalized GitHub draft-PR snapshots (new offline capability)
+
+[Standalone snapshot adapter](../scripts/review_scope_pr_snapshots_1549_offline.py)
+accepts a **manually supplied, strictly bounded and explicitly unauthenticated**
+normalized subset of GitHub PR metadata. It never queries GitHub, Git, DNS,
+networks, the LightUp authorization system or real targets. Reviewers can use
+trusted read-only GitHub tools *separately* to collect the exact fields:
+
+```json
+{
+  "version": 1,
+  "root_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "pull_requests": [
+    {
+      "number": 1550, "owner": "worker-a", "state": "open", "draft": true,
+      "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "number": 1551, "owner": "worker-b", "state": "open", "draft": true,
+      "head_sha": "cccccccccccccccccccccccccccccccccccccccc",
+      "base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  ]
+}
+```
+
+Usage: `python3 -I -S -B scripts/review_scope_pr_snapshots_1549_offline.py < normalized-fictional.json`.
+The adapter verifies exact JSON keys/types, lowercase ASCII owner labels,
+nonzero 40-hex identities, max 64 distinct open *draft* PRs, a common exact
+root, and an unambiguous base-to-head predecessor **within the provided
+snapshot only**. Roots have `base_sha == root_sha`; otherwise a predecessor's
+`head_sha` must exactly match. No implicit foreign predecessor, cycle,
+non-draft, closed PR, extra authority field, repeat, or malformed input is
+accepted. Because GitHub's single base reference cannot prove a merge of
+multiple parents, this adapter infers **only simple single-parent chains**;
+the original synthetic DAG reviewer remains a separate tool for declared
+multi-parent review claims.
+
+Valid *fictional* snapshot => `REVIEW_ONLY`/exit 3 with deterministic waves.
+Anything ambiguous => generic `HOLD`/exit 2. Nine output flags, including
+`source_authenticated` and `merge_plan_approved`, remain **false**,
+even with valid input. Never exit 0; no authorization, merging, approvals,
+dispatch, scans, grants, production or deployments. The adapter does NOT
+prove authentic metadata, actual Git graph ancestry, head freshness,
+runtime permissions, or a complete release dependency graph.
+
+Tests: `python3 -I -S -B -m unittest discover -s tests -p 'test_scope_pr_*1549_offline.py' -v`.
+The exclusively owned hosted Python3.11/3.14 workflow checks **six**
+plain add-only Git mode-100644 files and this combined test suite.
