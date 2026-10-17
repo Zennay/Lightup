@@ -235,3 +235,27 @@ permanent named runner exact approved-SHA CI, full hosted CI, separate
 authenticated client/operator permission including revocation at use,
 independent privacy/security and explicit HUMAN GO. Neither test
 success nor this offline reviewer grants consent or execution rights.
+
+
+## W10 · Synthetic-only executable Git byte-stream HOLD preflight (2026-10-17)
+
+Additional independently owned, **new** files:
+- `tests/test_scope_git_path_stream_coherence_1541_20261017.py`: actual RED acceptance pinned byte-exact ordered row identity, Windows-like trailing period/space, and hidden C1 Unicode control characters. Initial actual connected zSSH execution: **12 failed subcases**. Our *already owned, unwired* oracle was corrected by `a82ce06`, after which all 12 ordinary methods passed and the existing 45 own tests remained green.
+- `scripts/review_scope_git_path_streams_synthetic_1541.py`: executable bounded stdin-only synthetic review, **not imported or wired by LightUp production**. It reads one `lightup.scope_git_paths_synthetic.v1` exact-canonical sorted/minimal JSON document, requiring `synthetic_only:true` and exact `status_b64`/`numstat_b64` raw Git zero-delimited byte-stream fields. It limits the JSON to 786432 bytes and each decoded field to 262144 bytes. Invalid schema, duplicate keys, unknown authority-like fields, noncanonical JSON/base64, stream mismatches, malformed Unicode or size => **generic `HOLD` / exit 2**. Valid synthetic canonical shapes => **`REVIEW_ONLY` / exit 3**. Exit 0 is impossible by design. Both fixed JSON receipts contain seven *literal false* authorization/consent/permit/dispatch/execution/merge/release fields and no filenames, raw user bytes or secrets.
+- `tests/test_scope_git_path_stream_cli_1541_20261017.py`: 14 ordinary executable subprocess/purity tests, including Python `-I -S -B` isolation, size/Unicode/dedup/privacy/error-path fences, direct `open`/socket/subprocess I/O tripwires in the pure reviewer.
+- `tests/test_scope_git_path_native_cli_1541_20261017.py`: **5 ordinary actual local Git -z integration tests**: UTF-8/TAB multi-file order and rename accepted as fictional advisory; literal file-to-directory transition, invalid UTF-8 and terminal-dot names produce HOLD. Local fixture repositories have disabled Git hooks, no remotes, no credentials and no target contact.
+
+To run a prebuilt *fictional* canonical packet:
+
+```sh
+python3 -I -S -B scripts/review_scope_git_path_streams_synthetic_1541.py < synthetic-packet.json
+# return 3 = REVIEW_ONLY; return 2 = HOLD; never return 0
+```
+
+**This is not a GitHub provenance validator.** A canonical JSON snapshot is
+still self-asserted unless independently authenticated. A REVIEW_ONLY receipt
+cannot grant client/operator consent, authorization, scans, handlers, releases
+or production CI GO. None of the code is wired into production, GitHub Actions,
+real Git repositories, scans, grants or dispatchers. Original #1538 owner
+branch and separate #1536 source-owner fix remain untouched. No CI runner
+queues added. **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.**
