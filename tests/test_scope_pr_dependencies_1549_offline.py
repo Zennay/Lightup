@@ -128,6 +128,18 @@ class DependencyReviewTests(unittest.TestCase):
         self.review(manifest([item(i, f"{i:040x}") for i in range(1, 65)]),
                     [list(range(1, 65))])
 
+    def test_python_bytes_subclass_cannot_reinterpret_input_before_admission(self):
+        canonical = manifest([item(1, B)])
+        class DeceptiveBytes(bytes):
+            def decode(self, *args, **kwargs):
+                return canonical.decode("utf-8")
+        class PlainSubclass(bytes):
+            pass
+        # A byte subclass can substitute unrelated text from its overridden
+        # decoder. Neither it nor an innocent subclass crosses the boundary.
+        self.hold(DeceptiveBytes(b"INVALID"))
+        self.hold(PlainSubclass(canonical))
+
     def test_exact_git_blob_mode_gate_in_disposable_no_remote_repo(self):
         # Only unit-test fixtures invoke Git. The runtime reviewer never does.
         with tempfile.TemporaryDirectory(prefix=".scope1549-mode-", dir=ROOT) as tmp:
