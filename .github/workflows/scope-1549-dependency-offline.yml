@@ -1,0 +1,65 @@
+name: Scope 1549 offline DAG HOLD (hosted only)
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/review_scope_pr_dependencies_1549_offline.py'
+      - 'scripts/review_scope_pr_snapshots_1549_offline.py'
+      - 'tests/test_scope_pr_snapshots_1549_offline.py'
+      - 'tests/test_scope_pr_dependencies_1549_offline.py'
+      - 'docs/scope-pr-dependency-topology-1549-20261017.md'
+      - '.github/workflows/scope-1549-dependency-offline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-offline:
+    name: Synthetic DAG reviewer / Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.14']
+    steps:
+      - name: Checkout exact PR head only
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Assert pinned base and exclusively additive own paths and blob modes
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=e73b7445c87ad239bdb03c50a99078ef93163b02
+          git merge-base --is-ancestor "$base" HEAD
+          test -z "$(git diff --name-only --diff-filter=MDRT "$base"...HEAD)"
+          git diff --name-only --diff-filter=A "$base"...HEAD | sort > actual.txt
+          printf '%s\n' \
+            .github/workflows/scope-1549-dependency-offline.yml \
+            docs/scope-pr-dependency-topology-1549-20261017.md \
+            scripts/review_scope_pr_dependencies_1549_offline.py \
+            scripts/review_scope_pr_snapshots_1549_offline.py \
+            tests/test_scope_pr_dependencies_1549_offline.py \
+            tests/test_scope_pr_snapshots_1549_offline.py | sort > expected.txt
+          diff -u expected.txt actual.txt
+          # An allowed filename is not an allowed symlink or executable.
+          # Require six exact plain Git blobs (100644), not links (120000)
+          # or executable/script-mode substitutions (100755).
+          while IFS= read -r path; do
+            mode="$(git ls-tree HEAD -- "$path" | cut -d ' ' -f1)"
+            test "$mode" = 100644
+          done < expected.txt
+          rm actual.txt expected.txt
+      - name: Own strict synthetic tests (never grants authority)
+        run: python -I -S -B -m unittest discover -s tests -p 'test_scope_pr_*1549_offline.py' -v
+      - name: Original non-target producer integration
+        env:
+          PYTHONPATH: src:tests:.
+        run: python -S -B -m unittest discover -s tests/integration -p 'test_*.py' -q
