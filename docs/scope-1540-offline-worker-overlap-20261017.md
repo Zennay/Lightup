@@ -206,10 +206,58 @@ a branch's complete diff, inspect file modes/symlinks, detect source-level
 semantic conflicts or verify any SHA. REVIEW_ONLY must **never** be
 interpreted as conflict-free, approval, permission to trigger handlers, or GO.
 
+## Opt-in worker ownership and protected-source overlay
+
+A **fourth separate non-authorizing offline** reviewer checks that the *exact*
+affected paths from every declared PR/compare pair match that worker's claimed
+file inventory. It can conservatively HOLD when any affected file is outside
+the owner's declared change set, when a supposedly owned file is missing in
+the actual compare, or when a changed path touches a caller-designated
+protected source path. This is a proposed **review-only** ownership boundary,
+not a trusted owner directory, runtime authorization, GitHub installation,
+signature verification or source-of-truth policy.
+
+```sh
+python3 -I -S -B scripts/review_scope_worker_ownership_offline_1540.py < examples/scope1540-owner-review-only.json
+# => REVIEW_ONLY, process exit 3, all six false authority flags
+python3 -I -S -B scripts/review_scope_worker_ownership_offline_1540.py < examples/scope1540-owner-hold.json
+# => HOLD, process exit 2, all six false authority flags
+```
+
+The canonical JSON envelope contains exactly `version:1`,
+`repository_full_name`, `base_sha`, `reviews` (the same strict
+PR+compare view described above), `ownership` and `protected_paths`.
+Every `ownership` item must have exactly `worker`, `head_sha` and
+`paths`. The unique worker and exact claimed commit must match one
+review entry. `paths` must **exactly equal** the actual changed filename
+set **including both old and new paths** of copies and renames; neither
+missing paths nor additional invented paths are permitted. Casefold aliases,
+nonportable filenames and duplicate worker claims are HOLD.
+
+`protected_paths` must be a nonempty, bounded (1–64) list of exact,
+case-insensitively unambiguous relative path identities (not globs or
+shell patterns). Both ancestor and descendant collisions are rejected;
+unrelated children in the same directory can still be reviewed. A
+path claimed as owned by a worker does **not** override a protected path.
+
+**Provenance limitations:** all ownership identities, protected paths,
+PR data, comparisons and SHAs are supplied by the caller. A malicious or
+mistaken caller can omit an important protected path or forge all inputs.
+The only trustworthy protection is an external, independently maintained
+scope/owner inventory and independently verified GitHub evidence, enforced
+separately. `REVIEW_ONLY` means only that the supplied *claims* pass these
+syntactic checks; never verified ownership, authorization, consent, release,
+merge eligibility or a successful independent safety assessment.
+
+Two synthetic committed no-credentials samples demonstrate both statuses;
+regressions cover 16 workers × 16 file claims, case-insensitive protected
+aliases, rename-source accounting, fake extra/missing paths, tampered SHA,
+no-echo CLI receipts and oversized fail-closed input.
+
 ## Ownership and release gate
 
-This branch adds two unwired offline reviewers, independent acceptance suites
-and this document, solely under fifteen newly owned paths. No edits to
+This branch adds four unwired offline reviewers, independent acceptance suites,
+synthetic examples and this document, solely under twenty-one newly owned paths. No edits to
 existing source owners' `src/lightup/*`, other workers' branches, existing
 workflows, real clients/targets, live grants, execution handlers, scanning,
 remediation, or deployment.
