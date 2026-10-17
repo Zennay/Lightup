@@ -35,13 +35,14 @@ class _TrapDict(dict):
 
 
 class _HostileKey:
-    def __init__(self):
+    def __init__(self, colliding_key):
         self.armed = False
+        self.colliding_hash = hash(colliding_key)
 
     def __hash__(self):
         if self.armed:
             raise AssertionError("foreign hash executed after intake")
-        return 473
+        return self.colliding_hash
 
     def __eq__(self, other):
         if self.armed:
@@ -78,7 +79,7 @@ class Scope649ReviewerTests(unittest.TestCase):
     def test_exact_dict_foreign_keys_are_rejected_without_rehashing_them(self):
         for nested in (False, True):
             with self.subTest(nested=nested):
-                key = _HostileKey()
+                key = _HostileKey("reference" if nested else "schema")
                 raw = packet()
                 if nested:
                     item = raw["items"][0]
