@@ -9,7 +9,7 @@ from inspect import CO_ASYNC_GENERATOR, CO_COROUTINE, CO_GENERATOR, CO_VARARGS, 
 from types import FunctionType
 import re
 
-_NAME = re.compile(r"[a-z][a-z0-9_]{0,63}\\Z", flags=re.ASCII)
+_NAME = re.compile(r"[a-z][a-z0-9_]{0,63}\Z", flags=re.ASCII)
 _UNSAFE_FLAGS = CO_ASYNC_GENERATOR | CO_COROUTINE | CO_GENERATOR | CO_VARARGS | CO_VARKEYWORDS
 
 
