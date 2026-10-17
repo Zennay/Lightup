@@ -11,6 +11,7 @@ import json
 import re
 import sys
 from contextvars import ContextVar
+from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -47,6 +48,19 @@ def _deny_witness_io(event: str, args: tuple[object, ...]) -> None:
 
 
 sys.addaudithook(_deny_witness_io)
+
+
+class _DenyPolicyOutput:
+    """Keep Python-level scope-evaluator output out of machine receipts."""
+
+    def write(self, payload: str) -> int:
+        raise PermissionError("offline witness disallows policy stdout or stderr")
+
+    def flush(self) -> None:
+        return None
+
+
+_DENY_OUTPUT = _DenyPolicyOutput()
 
 FALSE_AUTHORITY = {
     "client_consent_verified": False,
@@ -195,7 +209,8 @@ def evaluate(cases: tuple[WitnessCase, ...] | None = None) -> dict[str, object]:
         for case in fixtures:
             token = _WITNESS_EVALUATION_ACTIVE.set(True)
             try:
-                decision = case.policy.decide(case.target)
+                with redirect_stdout(_DENY_OUTPUT), redirect_stderr(_DENY_OUTPUT):
+                    decision = case.policy.decide(case.target)
             finally:
                 _WITNESS_EVALUATION_ACTIVE.reset(token)
             if (
