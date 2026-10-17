@@ -7,6 +7,8 @@ No user targets, network I/O, grants, handlers, or production state are read/wri
 from __future__ import annotations
 
 import hashlib
+import importlib.util
+import marshal
 import json
 import re
 import signal
@@ -47,6 +49,25 @@ def _trusted_source_hashes() -> dict[str, str] | None:
             hashed = hashlib.sha256(chunk).hexdigest()
             if hashed != expected:
                 return None
+            # Importlib can execute a timestamp-valid .pyc instead of the
+            # SHA-pinned .py. Before importing, compare the entire executable
+            # marshal payload to a fresh compilation of the pinned bytes.
+            # Never unmarshal or execute the untrusted cache itself.
+            cache = Path(importlib.util.cache_from_source(str(candidate)))
+            if cache.is_symlink():
+                return None
+            if cache.is_file():
+                with cache.open("rb") as handle:
+                    bytecode = handle.read(262145)
+                if len(bytecode) > 262144 or len(bytecode) < 16:
+                    return None
+                expected_code = compile(
+                    chunk, str(candidate), "exec",
+                    dont_inherit=True, optimize=sys.flags.optimize,
+                )
+                if (bytecode[:4] != importlib.util.MAGIC_NUMBER
+                    or bytecode[16:] != marshal.dumps(expected_code)):
+                    return None
             found[rel] = hashed
         return found
     except (OSError, ValueError):
