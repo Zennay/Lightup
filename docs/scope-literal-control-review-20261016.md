@@ -112,3 +112,7 @@ Four synthetic regression cases first demonstrated that the original AST guard f
 ## W23 — detect accidental promotion in unrelated application scripts
 
 The static-only isolation test now scans *both* normal application Python modules and the project scripts directory. It excludes only this worker's explicitly named inert opt-in CLI and its two diagnostics; any direct/literal import of the offline reviewer in another script causes an isolated test failure. The test also requires that all three explicitly excluded helpers actually exist, preventing overly broad exclusions. This is additive QA for unintended wiring, not a replacement for runtime security review or complete code-flow proof.
+
+## W24 — pin all prior owned test modules against silent deletion
+
+A new synthetic RED showed the count-based strict evidence gate could still return PASS after an entire old owned test module vanished, provided enough remaining tests were discovered. The gate now requires the complete pinned **15-module** original review-test inventory, separately from the actual dynamically discovered module set, exact four original source RED identities and new minimum test count of 90. The negative test removes one previously registered module while keeping test count unchanged; it now correctly HOLDs. New test files may still be added. This is an own-lane CI completeness contract, not full-project verification or permission to deploy.

@@ -19,9 +19,16 @@ spec.loader.exec_module(manifest)
 
 class ManifestEvidenceTests(unittest.TestCase):
     def example(self):
-        ids = tuple(sorted(manifest.KNOWN_SOURCE_REDS)) + tuple(
+        source_reds = tuple(sorted(manifest.KNOWN_SOURCE_REDS))
+        other_modules = manifest.REQUIRED_MODULES - {
+            "test_scope_literal_controls_20261016",
+        }
+        pinned = tuple(
+            f"{module}.Sample.test_coverage" for module in sorted(other_modules)
+        )
+        ids = source_reds + pinned + tuple(
             f"test_scope_literal_fixture_20261016.Sample.test_case_{i:03d}"
-            for i in range(manifest.MIN_TESTS - len(manifest.KNOWN_SOURCE_REDS))
+            for i in range(manifest.MIN_TESTS - len(source_reds) - len(pinned))
         )
         result = unittest.TestResult()
         result.testsRun = len(ids)
@@ -41,6 +48,16 @@ class ManifestEvidenceTests(unittest.TestCase):
         self.assertFalse(manifest.check_evidence(ids[:-1], result, modules))
         self.assertFalse(manifest.check_evidence(ids[:-1] + (ids[0],), result, modules))
         self.assertFalse(manifest.check_evidence(ids, result, modules | {"test_scope_literal_missing"}))
+
+    def test_missing_whole_owned_module_cannot_hide_behind_test_count(self):
+        ids, result, modules = self.example()
+        missing = "test_scope_literal_adapter_errors_20261016"
+        # Without a fixed manifest, dropping a whole 1-test module while
+        # retaining other tests above the floor could still look green.
+        changed = tuple(ident.replace(missing + ".", "test_scope_literal_other_20261016.") if ident.startswith(missing + ".") else ident for ident in ids)
+        observed = {ident.split(".", 1)[0] for ident in changed}
+        self.assertEqual(len(changed), len(ids))
+        self.assertFalse(manifest.check_evidence(changed, result, observed))
 
     def test_skips_fail_closed_even_if_test_runner_says_success(self):
         ids, result, modules = self.example()

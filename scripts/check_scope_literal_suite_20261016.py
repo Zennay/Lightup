@@ -20,7 +20,25 @@ KNOWN_SOURCE_REDS = frozenset({
     "test_scope_literal_controls_20261016.InstalledSourceRedWitness.test_original_lab_activation_must_deny_control_char_authority",
     "test_scope_literal_controls_20261016.InstalledSourceRedWitness.test_original_scope_must_not_convert_newline_in_url",
 })
-MIN_TESTS = 88
+MIN_TESTS = 90
+REQUIRED_MODULES = frozenset({
+    "test_scope_literal_adapter_errors_20261016",
+    "test_scope_literal_aliases_20261016",
+    "test_scope_literal_canonical_equivalence_20261016",
+    "test_scope_literal_cli_flags_20261016",
+    "test_scope_literal_controls_20261016",
+    "test_scope_literal_encoded_review_20261016",
+    "test_scope_literal_json_boundary_20261016",
+    "test_scope_literal_metamorphic_20261016",
+    "test_scope_literal_output_errors_20261016",
+    "test_scope_literal_ownership_20261016",
+    "test_scope_literal_query_fragments_20261016",
+    "test_scope_literal_runtime_isolation_20261016",
+    "test_scope_literal_short_reads_20261016",
+    "test_scope_literal_stream_errors_20261016",
+    "test_scope_literal_suite_integrity_20261016",
+})
+
 
 
 def _cases(suite: unittest.TestSuite):
@@ -38,6 +56,7 @@ def check_evidence(ids: tuple[str, ...], result: unittest.TestResult, expected_m
         len(ids) >= MIN_TESTS
         and len(ids) == len(set(ids))
         and {item.split(".", 1)[0] for item in ids} == expected_modules
+        and REQUIRED_MODULES <= expected_modules
         and KNOWN_SOURCE_REDS <= set(ids)
         and red_ids == KNOWN_SOURCE_REDS
         and len(result.expectedFailures) == len(KNOWN_SOURCE_REDS)
