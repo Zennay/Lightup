@@ -458,3 +458,34 @@ gate or proof against a privileged concurrent attacker.
 No merge, deploy, real asset scan, grant, handler execution or
 release. Existing project-phase, source-owner, privacy, consent,
 original full hosted and named permanent VPS proof gates remain open.
+
+
+## W90–W92 — child Git environment isolation (2026-10-17)
+
+The offline source-review checker runs `/usr/bin/git` even for read-only
+operations. A normal `subprocess.Popen` without an explicit `env`
+would forward ambient `GIT_*` Git config/worktree redirection,
+`LD_*`/`DYLD_*` dynamic-loader keys, and `PYTHON*` startup keys
+to each Git child. Main's earlier fail-closed `GIT_*` check addresses
+one entrypoint only; it does not by itself protect direct helper calls.
+The isolated helper now builds a subprocess-only environment copy
+that drops *all* those four prefix families before every new Git
+process. The parent environment and any installed global or system
+settings are not changed. The absolute executable pathname and
+before-status filter, ignored-file and per-file Git blob fences remain
+mandatory.
+
+Executable synthetic tests create only temporary Git repositories,
+intercept the newly spawned subprocess's argument envelope, assert
+that mock `GIT_DIR`, `GIT_CONFIG_COUNT`, previously unknown Git
+overrides, `LD_PRELOAD` and Python/DYLD startup keys are absent, and
+verify that normal Git status/version still succeeds. These tests
+never load an actual external library or contact an external target.
+They also cover not-yet-known future override-prefixed names, while
+allowing an unrelated GitHub event marker to pass through.
+
+This cannot retroactively undo loader effects on the already-running
+Python interpreter and cannot certify all global/system Git metadata.
+Its output is non-authorizing diagnostic evidence, **not** a permit,
+customer consent, operator approval, deployed guard, runtime scanning
+policy, complete original-project CI success, or a release decision.
