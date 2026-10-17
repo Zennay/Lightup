@@ -70,24 +70,24 @@ class IndependentPathHierarchyAcceptance(unittest.TestCase):
         self.hold("src/okay.py", "docs/hidden\u202e-secrets.txt")
 
     def test_binary_counts_must_be_paired(self):
-        for stat in (b"-\\t1\\tbin.dat\\0", b"1\\t-\\tbin.dat\\0"):
+        for stat in (b"-\t1\tbin.dat\0", b"1\t-\tbin.dat\0"):
             with self.subTest(stat=stat):
                 with self.assertRaises(PathIdentityHold):
-                    parse_git_path_outputs(b"M\\0bin.dat\\0", stat)
+                    parse_git_path_outputs(b"M\0bin.dat\0", stat)
 
     def test_addition_must_not_claim_deleted_text_lines(self):
         with self.assertRaises(PathIdentityHold):
-            parse_git_path_outputs(b"A\\0new.py\\0", b"4\\t1\\tnew.py\\0")
+            parse_git_path_outputs(b"A\0new.py\0", b"4\t1\tnew.py\0")
 
     def test_deletion_must_not_claim_added_text_lines(self):
         with self.assertRaises(PathIdentityHold):
-            parse_git_path_outputs(b"D\\0old.py\\0", b"1\\t4\\told.py\\0")
+            parse_git_path_outputs(b"D\0old.py\0", b"1\t4\told.py\0")
 
     def test_added_removed_and_binary_controls_still_parse(self):
         for status, stat, counts in (
-            (b"A\\0new.py\\0", b"4\\t0\\tnew.py\\0", (4, 0)),
-            (b"D\\0old.py\\0", b"0\\t4\\told.py\\0", (0, 4)),
-            (b"M\\0photo.bin\\0", b"-\\t-\\tphoto.bin\\0", (None, None)),
+            (b"A\0new.py\0", b"4\t0\tnew.py\0", (4, 0)),
+            (b"D\0old.py\0", b"0\t4\told.py\0", (0, 4)),
+            (b"M\0photo.bin\0", b"-\t-\tphoto.bin\0", (None, None)),
         ):
             with self.subTest(status=status):
                 actual = parse_git_path_outputs(status, stat)
@@ -98,14 +98,14 @@ class IndependentPathHierarchyAcceptance(unittest.TestCase):
             with self.subTest(code=code):
                 with self.assertRaises(PathIdentityHold):
                     parse_git_path_outputs(
-                        code + b"\\0old.py\\0new.py\\0",
-                        b"0\\t0\\t\\0old.py\\0new.py\\0",
+                        code + b"\0old.py\0new.py\0",
+                        b"0\t0\t\0old.py\0new.py\0",
                     )
 
     def test_nonbreaking_and_line_separator_names_hold(self):
-        for name in ("name\\u00a0part.py", "name\\u2028part.py",
-                     "name\\u2029part.py", "name\\u034f.py",
-                     "name\\ufe0f.py", "name\\u2800.py"):
+        for name in ("name\u00a0part.py", "name\u2028part.py",
+                     "name\u2029part.py", "name\u034f.py",
+                     "name\ufe0f.py", "name\u2800.py"):
             with self.subTest(name=repr(name)):
                 self.hold(name)
 
