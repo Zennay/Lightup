@@ -28,6 +28,11 @@ _OWNER = (
     ("src/lightup/webapp/session_cookie_guard.py",
      "31055e7f5de9046405afea14bc945feb8f21d8be",
      "272ee4394457f539477f689e5561e7107f8d5db9"),
+    # Existing #1536 owner correction; one warning-safe source line, no
+    # altered I/O sandbox. Needed by original Python3.14 native-I/O fleet.
+    ("src/lightup/capability_registry_history_report.py",
+     "f8b91596d48f318cb75050b70ccbf5a50d2cd106",
+     "9626d0a41bf44430c27b6a67d11fa509e6ff2b1e"),
 )
 
 
