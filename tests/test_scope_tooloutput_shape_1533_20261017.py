@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from lightup.ai.orchestration import OrchestrationError, ToolOutput
-from lightup.scope_tooloutput_shape_review_20261017 import review_output_identity
+from lightup.scope_tooloutput_shape_review_20261017 import OutputIdentityReview, review_output_identity
 
 STRICT = os.environ.get("LIGHTUP_SCOPE1533_REQUIRE_SOURCE_FIX") == "1"
 source_red = (lambda f: f) if STRICT else unittest.expectedFailure
@@ -26,6 +26,20 @@ class OfflineOutputReviewTests(unittest.TestCase):
         self.assertEqual(review_output_identity("synthetic summary", "note", b""), "REVIEW_ONLY")
         self.assertEqual(review_output_identity("synthetic summary", "note", b"x"), "REVIEW_ONLY")
         self.assertNotEqual(review_output_identity("synthetic summary", "note", b"x"), "AUTHORIZED")
+
+    def test_statuses_are_immutable_and_always_falsy(self):
+        for fields, status in [
+            (("ok", "note", b"x"), OutputIdentityReview.REVIEW_ONLY),
+            (("ok", "note", "bad"), OutputIdentityReview.HOLD),
+        ]:
+            with self.subTest(status=status):
+                value = review_output_identity(*fields)
+                self.assertIs(value, status)
+                self.assertFalse(value, "review receipt may not act as authorization")
+                self.assertFalse(bool(value))
+                self.assertEqual(value.value, status.value)
+        with self.assertRaises(AttributeError):
+            OutputIdentityReview.HOLD.value = "AUTHORIZED"
 
     def test_malformed_fields_atomic_hold(self):
         values = [
