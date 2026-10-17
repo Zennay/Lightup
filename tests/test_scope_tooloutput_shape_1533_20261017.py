@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from lightup.ai.orchestration import OrchestrationError, ToolOutput
-from lightup.scope_tooloutput_shape_review_20261017 import OutputIdentityReview, review_output_identity
+from lightup.scope_tooloutput_shape_review_20261017 import OutputIdentityReview, review_output_identity, review_output_batch
 
 STRICT = os.environ.get("LIGHTUP_SCOPE1533_REQUIRE_SOURCE_FIX") == "1"
 source_red = (lambda f: f) if STRICT else unittest.expectedFailure
@@ -105,6 +105,60 @@ class OfflineOutputReviewTests(unittest.TestCase):
                     self.assertIs(result.consent_verified, False)
                     self.assertIs(result.dispatch_allowed, False)
                     self.assertIs(result.release_allowed, False)
+
+
+    def test_batch_requires_exact_bounded_plain_tuple(self):
+        good = ("synthetic", "note", b"x")
+        invalid = [[], {}, set(), None, "", b"x", (), (good,) * 33,
+                   [good], [good] * 32, (good, ("bad",)), (("synthetic", "note"),),
+                   ((("synthetic", "note", b"x", "extra")),)]
+        for value in invalid:
+            with self.subTest(label=type(value).__name__, count=len(value) if hasattr(value, "__len__") else None):
+                self.assertIs(review_output_batch(value), OutputIdentityReview.HOLD)
+        for n in (1, 2, 16, 32):
+            self.assertIs(review_output_batch((good,) * n), OutputIdentityReview.REVIEW_ONLY)
+        self.assertIs(review_output_batch((good,) * 33), OutputIdentityReview.HOLD)
+
+    def test_batch_atomic_hold_for_invalid_entry_at_every_position(self):
+        canonical = ("synthetic", "http-baseline-observation", b"fixture")
+        for size in (1, 2, 16, 32):
+            for position in range(size):
+                rows = [canonical] * size
+                rows[position] = ("synthetic", "note\\nforged", b"fixture")
+                before = tuple(rows)
+                receipt = review_output_batch(tuple(rows))
+                self.assertIs(receipt, OutputIdentityReview.HOLD)
+                self.assertFalse(receipt)
+                self.assertIs(receipt.authorized, False)
+                self.assertIs(receipt.dispatch_allowed, False)
+                self.assertEqual(tuple(rows), before)
+
+    def test_batch_rejects_foreign_iterable_without_touching_protocols(self):
+        visited = []
+        class HostileSequence:
+            def __iter__(self):
+                visited.append("iter")
+                raise AssertionError("foreign iterator invoked")
+            def __len__(self):
+                visited.append("len")
+                raise AssertionError("foreign length invoked")
+        class ForeignTuple(tuple):
+            def __iter__(self):
+                visited.append("foreign tuple iter")
+                raise AssertionError("foreign tuple iter")
+        self.assertIs(review_output_batch(HostileSequence()), OutputIdentityReview.HOLD)
+        self.assertIs(review_output_batch(ForeignTuple((("x", "note", b"y"),))), OutputIdentityReview.HOLD)
+        self.assertIs(review_output_batch(((HostileSequence(), "note", b"y"),)), OutputIdentityReview.HOLD)
+        self.assertEqual(visited, [])
+
+    def test_batch_supports_all_three_installed_worker_evidence_kinds(self):
+        kinds = ("http-baseline-observation", "service-inventory-observation", "tls-baseline-observation")
+        batch = tuple(("synthetic", kind, b"synthetic") for kind in kinds)
+        receipt = review_output_batch(batch)
+        self.assertIs(receipt, OutputIdentityReview.REVIEW_ONLY)
+        self.assertFalse(receipt)
+        for property_name in ("authorized", "consent_verified", "dispatch_allowed", "release_allowed"):
+            self.assertIs(getattr(receipt, property_name), False)
 
     def test_malformed_fields_atomic_hold(self):
         values = [
