@@ -53,10 +53,26 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_audit_chain*o
 
 The CLI emits only `REVIEW_ONLY` (exit code **3**, with counts of old/new/newly appended records) or `HOLD` (exit code **2**, all counts zero). `consent_verified`, `authorization_granted`, and `release_approved` are always `false`. Even two apparently valid anchors are **not** proof of source provenance if both were provided by the same untrusted actor. Importantly, this tool verifies offline *history continuity*, not live revocation, real human consent, digital signature, deployability, or a durable authorization record.
 
+## Multi-checkpoint continuity: no skipped pinned history
+
+A third completely offline, separately opt-in verifier handles **2–8 fictional chronological snapshots** in one atomic batch. Input JSON must contain exactly `schema` and `snapshots`, with schema `LIGHTUP-FICTIONAL-SCOPE-AUDIT-CHECKPOINTS-V1` and an array of complete earlier-described chain objects. The array **must not contain anchors or approval fields**. Trusted, externally recorded tips are passed separately via one `--expected-tip` option **for every** snapshot, in order. A missing, extra or reordered snapshot is `HOLD` when compared to this fixed tip list.
+
+Each checkpoint is independently validated against its exact external SHA-256 tip, the total checkpoint count must match exactly, and each successive event array must strictly append to its immediate predecessor. Entire input <= `266240` bytes; each individual canonical snapshot <= 32 KiB and 64 records. The first checkpoint may contain several prior fictional records; no checkpoint can roll back or amend them. Terminal withdrawal cannot be followed by new records. Eight valid checkpoints are accepted; nine are denied.
+
+```bash
+PYTHONPATH=src python -m lightup.scope_audit_chain_checkpoints_offline \
+  --synthetic-only \
+  --expected-tip <trusted-tip-for-snapshot-1> \
+  --expected-tip <trusted-tip-for-snapshot-2> \
+  --expected-tip <trusted-tip-for-snapshot-3> < fictional-checkpoints.json
+```
+
+Output is a privacy-minimal `REVIEW_ONLY` (exit **3**) with checkpoint and record counts or atomic `HOLD` (exit **2**) with zero counts. All consent/authorization/release fields are explicitly false. This checker **does not verify the origin** of externally supplied tips and cannot know that unprovided checkpoints existed; no history proof can compensate for missing independent trustworthy anchors. Even a perfect local result cannot establish customer permission, revocation at time of use, source authenticity or deployment clearance.
+
 ## Deterministic falsification coverage
 
 Dedicated matrix `tests/test_scope_audit_chain_mutation_offline.py` exercises the actual 64-event capacity limit, 65-event HOLD, 64-position digest tampering, 64-position predecessor tampering, 192 exact integer-sequence type confusions, 64-position forged authorization flags, 64-position unknown event kinds, 20 independently rehashed prefix revisions, 15 truncation attempts, deeply nested JSON, invalid UTF-8 and duplicate fields. This is 483 targeted subcases across the primary matrices, besides ordinary standalone unit/real CLI tests. The tests run offline and never contact real targets.
 
 ## Ownership and integration
 
-Seven entirely new owned paths only: `src/lightup/scope_audit_chain_offline.py`, `tests/test_scope_audit_chain_offline.py`, `src/lightup/scope_audit_chain_transition_offline.py`, `tests/test_scope_audit_chain_transition_offline.py`, `tests/test_scope_audit_chain_mutation_offline.py`, this document, and `.github/workflows/lightup-scope-audit-chain.yml`. The new hosted-only dual-Python isolated proof is supplementary; it does **not** replace the existing full preflight or named permanent VPS CI. Existing concurrent review (#1551), consent/scope digest (#1507/#1505), revocation (#554/#100) and CI/provenance (#1309) owners remain untouched. The operator has to independently authenticate a trustworthy anchor before relying on content integrity. No merge, release or real-world scope use is permitted without separate approved source-owner/security/privacy review, exact-release validation and human GO.
+Nine entirely new owned paths only: `src/lightup/scope_audit_chain_offline.py`, `tests/test_scope_audit_chain_offline.py`, `src/lightup/scope_audit_chain_transition_offline.py`, `tests/test_scope_audit_chain_transition_offline.py`, `tests/test_scope_audit_chain_mutation_offline.py`, `src/lightup/scope_audit_chain_checkpoints_offline.py`, `tests/test_scope_audit_chain_checkpoints_offline.py`, this document, and `.github/workflows/lightup-scope-audit-chain.yml`. The new hosted-only dual-Python isolated proof is supplementary; it does **not** replace the existing full preflight or named permanent VPS CI. Existing concurrent review (#1551), consent/scope digest (#1507/#1505), revocation (#554/#100) and CI/provenance (#1309) owners remain untouched. The operator has to independently authenticate a trustworthy anchor before relying on content integrity. No merge, release or real-world scope use is permitted without separate approved source-owner/security/privacy review, exact-release validation and human GO.
