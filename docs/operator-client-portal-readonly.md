@@ -135,3 +135,15 @@ The API is an **information display contract only**. It never exports a grant or
 ### Current delivery and release gates
 
 This is still an *opt-in web integration*, not the default installed LightUp application. The web source owner (#182) owns integration into the default routes. Under **INCUBATE M3/M7 PLAN/LAB ONLY / DRAFT HOLD** there must be no merge or deploy without independent security/privacy acceptance, separately authenticated client/operator consent with revocation at use, exact head required hosted/permanent named VPS CI, and an explicit human GO. No additional QA/regression suites were written or executed for this feature.
+
+## Decision provenance review (issue #673)
+
+The operator desk and request detail now report an additional **decision-lineage observation** for the specific original risk behind #673: the same account requesting and reviewing its own work.
+
+- A stored decision in the `approved` / `rejected` state that references the **same `requested_by` and `decided_by` identity** is visibly flagged for human investigation.
+- A decided record missing reviewer identity or decision timestamp is flagged.
+- A pending record already carrying a reviewer identity or timestamp is flagged.
+- A reviewer account that no longer exists or is not **currently** an operator is flagged.
+- A present operator account is described as a **current-role observation**, never proof of role at decision time or of valid two-party consent.
+
+The record remains unchanged by this view. Nothing here reverses approvals or grants execution authorization; actual immutable approval provenance, independent consent and at-use revocation need their existing separately owned source and security gates.
