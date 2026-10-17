@@ -2,6 +2,7 @@
 import io
 import json
 import pathlib
+import random
 import subprocess
 import sys
 import unittest
@@ -124,6 +125,49 @@ class DependencyReviewTests(unittest.TestCase):
     def test_many_independent(self):
         self.review(manifest([item(i, f"{i:040x}") for i in range(1, 65)]),
                     [list(range(1, 65))])
+
+    def test_repeatable_full_capacity_dependency_graph_and_negative_mutations(self):
+        # Systematic synthetic 64-node chain and unrelated roots, reordered
+        # without changing the review result or broadening authority.
+        rng = random.Random(1549)
+        for length in (1, 2, 3, 16, 32, 64):
+            graph = []
+            expected = []
+            for i in range(1, length + 1):
+                head = f"{i:040x}"
+                independent = (i % 7 == 1)
+                deps = [] if independent else [i - 1]
+                base = A if independent else f"{i - 1:040x}"
+                graph.append(item(i, head, base, deps, owner=f"worker-{i}"))
+                if independent:
+                    expected.append([i])
+            # Independently derive levels by simple depth recurrence, not the
+            # reviewer's topology routine (avoids common implementation bugs).
+            levels = {}
+            for entry in graph:
+                levels[entry["id"]] = (
+                    max((levels[d] for d in entry["depends_on"]), default=-1) + 1
+                )
+            waves = [[i for i in range(1, length + 1) if levels[i] == depth]
+                     for depth in range(max(levels.values()) + 1)]
+            for _ in range(12):
+                order = graph[:]
+                rng.shuffle(order)
+                self.review(manifest(order), waves)
+            if length >= 2:
+                bad = [dict(x) for x in graph]
+                bad[-1]["depends_on"] = [bad[-1]["id"]]
+                self.hold(manifest(bad))
+                bad = [dict(x) for x in graph]
+                bad[-1]["head_sha"] = bad[0]["head_sha"]
+                self.hold(manifest(bad))
+
+    def test_maximum_bounded_valid_whitespace_and_one_extra_byte(self):
+        raw = manifest([item(1, B)])
+        padding = b" " * (MAX_INPUT - len(raw))
+        self.review(raw + padding, [[1]])
+        self.hold(raw + padding + b" ")
+        self.hold(padding + raw + b" ")
 
     def test_zero_git_oid_and_unicode_escaped_identity_hold(self):
         zero = "0" * 40
