@@ -72,13 +72,58 @@ def _canonical_decode(raw):
     return data
 
 
+def _conflicts(candidate: str, existing: set[str]) -> bool:
+    return any(candidate == old or candidate.startswith(old + "/")
+               or old.startswith(candidate + "/") for old in existing)
+
+
+def _versioned_paths(item: dict, version: int) -> list[str]:
+    """Flatten both sides of renames/copies; no Git path semantics inferred."""
+    if version == 1:
+        if set(item) != {"worker", "branch", "base_sha", "paths"}:
+            raise InvalidProposal("v1 worker schema")
+        paths = item["paths"]
+        if type(paths) is not list or not (1 <= len(paths) <= 64):
+            raise InvalidProposal("v1 path count")
+        return paths
+
+    if set(item) != {"worker", "branch", "base_sha", "changes"}:
+        raise InvalidProposal("v2 worker schema")
+    changes = item["changes"]
+    if type(changes) is not list or not (1 <= len(changes) <= 64):
+        raise InvalidProposal("v2 change count")
+    paths = []
+    for entry in changes:
+        if type(entry) is not dict:
+            raise InvalidProposal("v2 change schema")
+        if set(entry) == {"op", "path"}:
+            if type(entry["op"]) is not str or entry["op"] not in {
+                    "add", "modify", "delete"}:
+                raise InvalidProposal("v2 operation")
+            paths.append(entry["path"])
+        elif set(entry) == {"op", "path", "from_path"}:
+            if type(entry["op"]) is not str or entry["op"] not in {
+                    "rename", "copy"}:
+                raise InvalidProposal("v2 source operation")
+            paths.extend((entry["path"], entry["from_path"]))
+        else:
+            raise InvalidProposal("v2 fields")
+    return paths
+
+
 def check(raw: bytes) -> str:
-    """Return REVIEW_ONLY or HOLD; never return an authorizing verdict."""
+    """Return REVIEW_ONLY or HOLD; never return an authorizing verdict.
+
+    V1 accepts each worker's affected paths. V2 additionally accepts explicit
+    bounded changes with both source and destination identities for rename/
+    copy. Both protocols are fictional, read-only, and provenance-unverified.
+    """
     try:
         doc = _canonical_decode(raw)
         if type(doc) is not dict or set(doc) != {"version", "base_sha", "proposals"}:
             raise InvalidProposal("schema")
-        if type(doc["version"]) is not int or doc["version"] != 1:
+        version = doc["version"]
+        if type(version) is not int or version not in (1, 2):
             raise InvalidProposal("version")
         pin = doc["base_sha"]
         if type(pin) is not str or PIN.fullmatch(pin) is None:
@@ -88,9 +133,9 @@ def check(raw: bytes) -> str:
             raise InvalidProposal("proposal count")
         workers, branches, prior_paths = set(), set(), set()
         for item in items:
-            if type(item) is not dict or set(item) != {
-                    "worker", "branch", "base_sha", "paths"}:
+            if type(item) is not dict:
                 raise InvalidProposal("proposal shape")
+            paths = _versioned_paths(item, version)
             worker, branch, base = item["worker"], item["branch"], item["base_sha"]
             if type(worker) is not str or WORKER.fullmatch(worker) is None:
                 raise InvalidProposal("worker")
@@ -100,23 +145,17 @@ def check(raw: bytes) -> str:
                 raise InvalidProposal("duplicate owner")
             workers.add(worker)
             branches.add(branch.casefold())
-            paths = item["paths"]
-            if type(paths) is not list or not (1 <= len(paths) <= 64):
-                raise InvalidProposal("path count")
             local_paths = set()
             for path in paths:
                 if not _safe_path(path):
                     raise InvalidProposal("path")
                 folded = path.casefold()
-                if any(folded == prev or folded.startswith(prev + "/")
-                       or prev.startswith(folded + "/") for prev in local_paths):
+                if _conflicts(folded, local_paths):
                     raise InvalidProposal("duplicate or parent-child path")
                 local_paths.add(folded)
-            # Both intra-worker and cross-worker trees must remain unambiguous.
             for current in local_paths:
-                if any(current == prev or current.startswith(prev + "/")
-                       or prev.startswith(current + "/") for prev in prior_paths):
-                    raise InvalidProposal("overlap")
+                if _conflicts(current, prior_paths):
+                    raise InvalidProposal("cross-worker overlap")
             prior_paths.update(local_paths)
         return "REVIEW_ONLY"
     except (InvalidProposal, OverflowError, RecursionError, MemoryError):
