@@ -1,0 +1,140 @@
+"""Standalone stdlib acceptance of synthetic PR topology review; issue #1549."""
+import json
+import pathlib
+import subprocess
+import sys
+import unittest
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from scripts.review_scope_pr_dependencies_1549_offline import evaluate, MAX_INPUT, OFF_FLAGS
+
+A, B, C, D, E = ["a"*40, "b"*40, "c"*40, "d"*40, "e"*40]
+DEFAULT = object()
+
+
+def item(n, head, base=A, deps=None, owner="worker-a"):
+    return dict(id=n, owner=owner, head_sha=head, base_sha=base,
+                depends_on=[] if deps is None else deps)
+
+
+def manifest(entries=DEFAULT, **extra):
+    data = dict(version=1, root_sha=A,
+                entries=[item(4, B), item(2, C, B, [4]), item(9, D, C, [2])]
+                if entries is DEFAULT else entries)
+    data.update(extra)
+    return json.dumps(data, separators=(",", ":")).encode()
+
+
+class DependencyReviewTests(unittest.TestCase):
+    def hold(self, data):
+        receipt, exit_code = evaluate(data)
+        self.assertEqual(exit_code, 2)
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(receipt["waves"], [])
+        self.assertEqual(set(receipt), {"status", "waves", *OFF_FLAGS})
+        self.assertTrue(all(receipt[k] is False for k in OFF_FLAGS))
+
+    def review(self, data, waves):
+        receipt, exit_code = evaluate(data)
+        self.assertEqual(exit_code, 3)
+        self.assertEqual(receipt["status"], "REVIEW_ONLY")
+        self.assertEqual(receipt["waves"], waves)
+        self.assertTrue(all(receipt[k] is False for k in OFF_FLAGS))
+
+    def test_stacked_three(self):
+        self.review(manifest(), [[4], [2], [9]])
+
+    def test_independent_sorted(self):
+        self.review(manifest([item(5, B), item(1, C), item(3, D)]), [[1, 3, 5]])
+
+    def test_fan_in(self):
+        self.review(manifest([item(10, B), item(11, C), item(12, D, B, [10, 11])]),
+                    [[10, 11], [12]])
+
+    def test_bad_json_and_duplicates(self):
+        for data in (b"", b"not json", b"{", b"\xff", b"\xef\xbb\xbf{}",
+                     b'{"x":NaN}', b"[]", b"null",
+                     b'{"version":1,"version":1,"entries":[],"root_sha":"'+A.encode()+b'"}'):
+            with self.subTest(data=data[:18]):
+                self.hold(data)
+
+    def test_boundaries_and_bad_envelopes(self):
+        self.hold(b" " * (MAX_INPUT + 1))
+        self.hold(manifest([]))
+        self.hold(manifest([item(i, f"{i:040x}") for i in range(1, 66)]))
+        for bad in ("text", {}, True, 1, None):
+            self.hold(manifest(bad))
+            self.hold(manifest([bad]))
+
+    def test_self_missing_repeated_untyped_dependencies(self):
+        for deps in ([99], [1], [2, 2], [True], [1.0], ["1"], list(range(2,19))):
+            with self.subTest(deps=deps):
+                self.hold(manifest([item(1, B, A, deps)]))
+
+    def test_cycle_two_and_three(self):
+        self.hold(manifest([item(1, B, C, [2]), item(2, C, B, [1])]))
+        self.hold(manifest([item(1, B, D, [3]), item(2, C, B, [1]), item(3, D, C, [2])]))
+
+    def test_duplicate_identity(self):
+        self.hold(manifest([item(1, B), item(1, C)]))
+        self.hold(manifest([item(1, B), item(2, B)]))
+
+    def test_stale_or_ambiguous_base(self):
+        for entries in ([item(1, B, C)], [item(1, B, A, [2]), item(2, C)],
+                        [item(1, B), item(2, C, E, [1])],
+                        [item(1, A)], [item(1, B, B)]):
+            with self.subTest(entries=entries):
+                self.hold(manifest(entries))
+
+    def test_exact_sha_fence(self):
+        for s in ("A"*40, "a"*39, "a"*41, "g"*40, 12, True, None):
+            with self.subTest(sha=s):
+                self.hold(manifest([item(1, s)]))
+                self.hold(manifest([item(1, B, s)]))
+                self.hold(manifest([item(1, B)], root_sha=s))
+
+    def test_owner_identity_fence(self):
+        for owner in ("", "Alice", "álice", "wοrker", "-bad", "bad-", "a b",
+                      "a\n", "x"*41, True, None, 3):
+            with self.subTest(owner=owner):
+                self.hold(manifest([item(1, B, owner=owner)]))
+
+    def test_schema_and_authority_injection(self):
+        for key in ("consent", "can_merge", "release_authorized"):
+            self.hold(manifest([item(1, B)], **{key: True}))
+            ent = item(1, B)
+            ent[key] = True
+            self.hold(manifest([ent]))
+
+    def test_exact_ints_and_versions(self):
+        for val in (True, False, 1.0, "1", 0, -1, None, 2147483648):
+            self.hold(manifest([item(val, B)]))
+        for val in (True, "1", 1.0, None, 2):
+            self.hold(manifest([item(1, B)], version=val))
+
+    def test_nested_duplicate_json_keys(self):
+        raw = manifest([item(1, B)])
+        self.hold(raw.replace(b'"owner":"worker-a"', b'"owner":"worker-a","owner":"worker-b"'))
+        self.hold(raw.replace(b'"entries":', b'"entries":[],"entries":'))
+
+    def test_many_independent(self):
+        self.review(manifest([item(i, f"{i:040x}") for i in range(1, 65)]),
+                    [list(range(1, 65))])
+
+    def test_real_child_process_review_and_hold(self):
+        script = ROOT / "scripts/review_scope_pr_dependencies_1549_offline.py"
+        for data, status, code in ((manifest(), "REVIEW_ONLY", 3), (b"BAD", "HOLD", 2),
+                                   (b"x"*(MAX_INPUT+200), "HOLD", 2)):
+            with self.subTest(status=status, length=len(data)):
+                result = subprocess.run([sys.executable, "-I", "-S", "-B", str(script)],
+                                        input=data, capture_output=True, timeout=15)
+                self.assertEqual(result.returncode, code, result.stderr)
+                self.assertEqual(result.stderr, b"")
+                self.assertEqual(result.stdout.count(b"\n"), 1)
+                self.assertEqual(json.loads(result.stdout)["status"], status)
+                self.assertTrue(all(json.loads(result.stdout)[key] is False for key in OFF_FLAGS))
+
+
+if __name__ == "__main__":
+    unittest.main()
