@@ -185,6 +185,24 @@ class PairReview649Tests(unittest.TestCase):
             raw["pairs"][0]["after"]["reference"] = invalid
             self.assertIs(pair.review_pair_batch(raw).status, base.ReviewStatus.HOLD)
 
+    def test_invisible_unicode_provenance_is_hold_in_both_snapshot_slots(self):
+        for mark in (
+            "\u00a0", "\u2002", "\u3000",
+            "\u034f", "\ufe0f", "\U000e0100",
+        ):
+            for phase in ("before", "after"):
+                for field in ("approved_by", "reference"):
+                    with self.subTest(mark=hex(ord(mark)), phase=phase, field=field):
+                        data = packet()
+                        data["pairs"][0][phase][field] = "SYNTH" + mark + "649"
+                        self.assertIs(
+                            pair.review_pair_batch(data).status, base.ReviewStatus.HOLD
+                        )
+                        self.assertIs(
+                            pair.parse_and_compare(encode(data)).status,
+                            base.ReviewStatus.HOLD,
+                        )
+
     def test_exact_duplicate_json_key_and_nonfinite_rejection(self):
         valid = encode(packet())
         bad = (
