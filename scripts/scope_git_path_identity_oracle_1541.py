@@ -48,7 +48,7 @@ def _path(value: bytes) -> str:
         raise PathIdentityHold() from None
     if (result.startswith("/") or "\\" in result or
             any(component in ("", ".", "..") for component in result.split("/")) or
-            any((ord(c) < 32 and c != "\\t") or ord(c) == 127 for c in result)):
+            any((ord(c) < 32 and ord(c) != 9) or ord(c) == 127 for c in result)):
         # Other control characters (but not NUL-delimited-safe tabs) are held:
         # the source-owner must explicitly decide what Git reporting supports.
         raise PathIdentityHold()
