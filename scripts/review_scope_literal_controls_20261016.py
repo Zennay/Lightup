@@ -88,4 +88,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    # No options or positional arguments are defined. Never silently ignore
+    # seemingly authorizing flags such as --grant or --dispatch.
+    if len(sys.argv) != 1:
+        raise SystemExit(_emit(_HOLD, 3))
     raise SystemExit(main())

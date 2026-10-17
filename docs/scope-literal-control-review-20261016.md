@@ -64,3 +64,7 @@ This *text-review-only* layer now conservatively HOLDs duplicate ASCII spellings
 ## W12 — own-workflow compile coverage maintained automatically
 
 The dedicated branch-only GitHub-hosted matrix now compiles **all** `tests/test_scope_literal_*20261016.py` owned test modules by glob, not merely a stale hand-maintained subset. The restricted tests remain a distinct offline review lane and do not claim permanent VPS or full-project approval. This change is confined to the already-owned isolated workflow and documentation.
+
+## W13 — no ignored authority-looking CLI flags
+
+An otherwise valid fictional stdin packet previously yielded REVIEW_ONLY when the caller supplied unknown CLI flags such as `--grant=true`, `--mode authorized` or `--dispatch`, because the opt-in executable silently ignored arguments. Its `__main__` gate now requires exactly the interpreter-provided script path in `argv`; any extra option/positional input yields the generic non-echoing HOLD with exit3 **before reading stdin**. New real-subprocess tests cover eleven representative confusing flags, an ordinary flag-free REVIEW_ONLY, and malformed stdin. No new commands or authority are enabled; the in-process unit API remains a narrow test seam, not a public CLI mode.
