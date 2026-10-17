@@ -42,7 +42,7 @@ def add_all(root: Path):
 
 
 class Scope1558AddOnlyTests(unittest.TestCase):
-    def test_eight_exact_new_files_pass(self):
+    def test_ten_exact_new_files_pass(self):
         context, root, base = initialize_fixture()
         with context:
             add_all(root)
@@ -111,7 +111,7 @@ class Scope1558AddOnlyTests(unittest.TestCase):
         with context:
             add_all(root)
             output = validate_owned_changes(root, base, OWNED_FILES)
-            self.assertEqual(8, len(output))
+            self.assertEqual(10, len(output))
 
 
 if __name__ == "__main__":
