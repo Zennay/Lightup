@@ -20,10 +20,13 @@ def entry(n, head, base=A, owner="worker-a", draft=True, state="open"):
             "draft": draft, "state": state}
 
 
-def wire(entries=None, **overrides):
+DEFAULT = object()
+
+
+def wire(entries=DEFAULT, **overrides):
     data = {"version": 1, "root_sha": A, "pull_requests": [
         entry(10, B), entry(20, C, B), entry(30, D, C),
-    ] if entries is None else entries}
+    ] if entries is DEFAULT else entries}
     data.update(overrides)
     return json.dumps(data, separators=(",", ":"), ensure_ascii=True).encode()
 
