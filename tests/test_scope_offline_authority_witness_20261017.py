@@ -358,6 +358,62 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         self.assertEqual(outputs[0]["reason"], "offline_witness_time_fence_unavailable")
         self.assert_no_authority(outputs[0])
 
+    def test_preexisting_alarm_timer_is_not_stolen_or_discharged(self):
+        if not hasattr(signal, "setitimer") or threading.current_thread() is not threading.main_thread():
+            self.skipTest("POSIX main-thread alarm required")
+        if signal.getsignal(signal.SIGALRM) != signal.SIG_DFL or any(signal.getitimer(signal.ITIMER_REAL)):
+            self.skipTest("external alarm is active")
+        # A genuine external timer (without a custom handler) must be detected
+        # before the scope policy is invoked. Disarm during cleanup.
+        observed = []
+        def forbidden(self, target):
+            observed.append("executed")
+            raise AssertionError("must not execute with someone else's alarm")
+        signal.setitimer(signal.ITIMER_REAL, 12)
+        try:
+            with patch.object(witness.ScopePolicy, "decide", forbidden):
+                result = witness.evaluate()
+            remainder, repeat = signal.getitimer(signal.ITIMER_REAL)
+            self.assertGreater(remainder, 10)
+            self.assertEqual(repeat, 0)
+            self.assertEqual(observed, [])
+            self.assertEqual(result["status"], "HOLD")
+            self.assertEqual(result["reason"], "offline_witness_time_fence_unavailable")
+            self.assert_no_authority(result)
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+        self.assertEqual(witness.evaluate()["status"], "REVIEW_ONLY")
+
+    def test_nested_witness_does_not_rearm_or_gain_positive_verdict(self):
+        original = witness.ScopePolicy.decide
+        nested_receipts = []
+        def nested_decide(self, target):
+            nested_receipts.append(witness.evaluate())
+            return original(self, target)
+        with patch.object(witness.ScopePolicy, "decide", nested_decide):
+            outer = witness.evaluate()
+        self.assertEqual(outer["status"], "REVIEW_ONLY")
+        self.assertEqual(len(nested_receipts), 17)
+        for result in nested_receipts:
+            self.assertEqual(result["status"], "HOLD")
+            self.assertEqual(result["reason"], "offline_witness_time_fence_unavailable")
+            self.assert_no_authority(result)
+
+    def test_scope_crash_restores_alarm_and_subsequent_review_works(self):
+        if not hasattr(signal, "setitimer") or threading.current_thread() is not threading.main_thread():
+            self.skipTest("POSIX main-thread alarm required")
+        if signal.getsignal(signal.SIGALRM) != signal.SIG_DFL or any(signal.getitimer(signal.ITIMER_REAL)):
+            self.skipTest("external alarm is active")
+        before_handler = signal.getsignal(signal.SIGALRM)
+        before_timer = signal.getitimer(signal.ITIMER_REAL)
+        with patch.object(witness.ScopePolicy, "decide", side_effect=ValueError("private failure")):
+            result = witness.evaluate()
+        self.assertEqual(result["status"], "HOLD")
+        self.assert_no_authority(result)
+        self.assertEqual(signal.getsignal(signal.SIGALRM), before_handler)
+        self.assertEqual(signal.getitimer(signal.ITIMER_REAL), before_timer)
+        self.assertEqual(witness.evaluate()["status"], "REVIEW_ONLY")
+
     def test_clean_evaluation_does_not_keep_or_change_global_alarm(self):
         if not hasattr(signal, "setitimer") or threading.current_thread() is not threading.main_thread():
             self.skipTest("POSIX main-thread alarm required")
