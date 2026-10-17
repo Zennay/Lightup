@@ -334,6 +334,65 @@ class OfflineTreeModesTests(unittest.TestCase):
                         with redirect_stdout(io.StringIO()):
                             self.assertEqual(guard.main(), 3)
 
+    def test_git_child_scrubs_dangerous_environment_overrides(self):
+        """A subprocess must not inherit Git redirection or loader/startup keys."""
+        import os
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_git_env_child_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp)
+            subprocess.run(
+                [guard.GIT_BINARY, "init", "-q"], cwd=root,
+                check=True, capture_output=True, timeout=6,
+            )
+            overrides = {
+                "GIT_DIR": "/fictional/redirected",
+                "GIT_CONFIG_COUNT": "1",
+                "GIT_FUTURE_OVERRIDE": "synthetic",
+                "LD_PRELOAD": "/fictional/library.so",
+                "LD_LIBRARY_PATH": "/fictional/lib",
+                "DYLD_INSERT_LIBRARIES": "/fictional/dyld",
+                "PYTHONPATH": "/fictional/imports",
+                "PYTHONSAFEPATH": "0",
+                "GITHUB_ACTIONS": "true",
+            }
+            original_popen = subprocess.Popen
+            calls = []
+            def observe_child(*args, **kwargs):
+                child = kwargs["env"]
+                calls.append(child)
+                self.assertEqual(child.get("GITHUB_ACTIONS"), "true")
+                for key in overrides:
+                    if key != "GITHUB_ACTIONS":
+                        self.assertNotIn(key, child)
+                return original_popen(*args, **kwargs)
+            with patch.object(guard, "ROOT", root), \
+                 patch.dict(os.environ, overrides), \
+                 patch.object(guard.subprocess, "Popen", side_effect=observe_child):
+                process = guard._git_raw("status", "--porcelain=v1")
+            self.assertEqual(process.returncode, 0)
+            self.assertEqual(process.stdout, b"")
+            self.assertEqual(process.stderr, b"")
+            self.assertEqual(len(calls), 1)
+
+    def test_git_child_environment_contains_no_unknown_override_prefix(self):
+        import subprocess
+        from unittest.mock import patch
+        original_popen = subprocess.Popen
+        with patch.dict(
+            guard.os.environ, {"GIT__UNRECOGNIZED": "x", "LD_ODD": "y",
+                               "DYLD_FUTURE": "z", "PYTHON_FUTURE": "p"},
+        ):
+            with patch.object(guard.subprocess, "Popen", side_effect=original_popen) as popen:
+                result = guard._git_raw("--version")
+            self.assertEqual(result.returncode, 0)
+            forwarded = popen.call_args.kwargs["env"]
+            self.assertFalse(any(
+                k.startswith(("GIT_", "LD_", "DYLD_", "PYTHON"))
+                for k in forwarded
+            ))
+
     def test_git_stdin_ceiling_rejects_before_process_spawn(self):
         from unittest.mock import patch
         with patch.object(guard.subprocess, "Popen", side_effect=AssertionError("spawn")):
