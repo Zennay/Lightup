@@ -57,7 +57,7 @@ def review_output_identity(summary: object, evidence_kind: object, evidence_payl
     # newlines/tabs for readable multiline summaries, but reject invisible
     # format marks, surrogates, and embedded non-whitespace control bytes.
     if any(category(char) in {"Cf", "Cs"} or
-           (category(char) == "Cc" and char not in "\\n\\r\\t") for char in summary):
+           (category(char) == "Cc" and char not in "\n\r\t") for char in summary):
         return OutputIdentityReview.HOLD
     if not any(not char.isspace() and category(char) not in {"Mn", "Me"} for char in summary):
         return OutputIdentityReview.HOLD
