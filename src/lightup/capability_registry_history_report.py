@@ -69,7 +69,7 @@ def render_capability_registry_history_markdown(snapshots: tuple[bytes, ...]) ->
                     return _hold_report()
                 lines.append(
                     f"| {transition.from_index + 1} → {transition.to_index + 1} "
-                    f"| \`{capability_id}\` | {', '.join(fields)} |"
+                    f"| \\`{capability_id}\\` | {', '.join(fields)} |"
                 )
     else:
         lines.extend([
