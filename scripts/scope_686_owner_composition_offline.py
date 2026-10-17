@@ -172,9 +172,11 @@ def _probe_mutants(checkout: Path, optimization: str) -> dict:
             or receipt.get("status") != "HOLD"
             or receipt.get("release_authorized") is not False
             or receipt.get("candidate_mutant_coverage") != "PASS"
-            or receipt.get("mutants_rejected") != 3
+            or receipt.get("mutants_rejected") != 7
             or receipt.get("mutation_labels") != [
-                "guard_removed", "body_read_early", "session_cookie_mutation"]
+                "guard_removed", "body_read_early", "body_readline_early",
+                "body_readinto_early", "body_getvalue_early",
+                "body_iterator_early", "session_cookie_mutation"]
             or receipt.get("real_target_io_performed") is not False):
         raise CompositionHold("unsafe or incomplete guard mutation receipt")
     return {"python_optimization": optimization, "receipt": receipt}
