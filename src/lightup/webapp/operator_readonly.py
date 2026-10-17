@@ -506,6 +506,27 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
                 '<p class="meta">No authorization can be inferred from '
                 'an unrecognized request state.</p>'
             )
+        from .request_clarifications import (
+            messages_for_request, render_thread_html, ClarificationDenied,
+        )
+        try:
+            conversation = messages_for_request(
+                self.store, auth, request_id, client_id=client_id
+            )
+            discussion = render_thread_html(
+                conversation, auth, operator=auth.is_operator,
+                action=(
+                    "/operator/requests/" + request_id + "/clarifications"
+                    if auth.is_operator else
+                    "/portal/" + client_id + "/requests/" + request_id
+                    + "/clarifications"
+                ),
+            )
+        except (ClarificationDenied, KeyError, ValueError, TypeError):
+            return Response(
+                "<h1>Conversation unavailable</h1>",
+                status="503 Service Unavailable",
+            )
         body = (
             '<h1>Assessment request receipt</h1>'
             '<p class="sub">An acknowledgement of a recorded request, '
@@ -533,7 +554,11 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             '">Back to client portal</a> · '
             '<a href="/api/v1/portal/' + _e(client_id) +
             '/requests/' + _e(request.request_id) +
-            '">View machine-readable JSON status</a></p>'
+            '">View machine-readable JSON status</a> · '
+            '<a href="/api/v1/portal/' + _e(client_id)
+            + '/requests/' + _e(request_id)
+            + '/clarifications">View discussion JSON</a></p>'
+            + discussion
         )
         return Response(_page("LightUp — Request receipt", "portal", body, auth,
                               portal_client=client_id))
