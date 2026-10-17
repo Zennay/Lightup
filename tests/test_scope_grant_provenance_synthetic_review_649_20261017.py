@@ -219,6 +219,22 @@ class Scope649ReviewerTests(unittest.TestCase):
         for rows in ([], [dict(item)] * 33, tuple([item])):
             self.assertIs(subject.review_batch(packet(rows)).status, subject.ReviewStatus.HOLD)
 
+    def test_v1_review_batch_must_not_reuse_one_mutable_row_pointer(self):
+        # One object repeated 32 times is not 32 separately represented
+        # review examples; avoid misleading batch provenance counts.
+        reused = {"approved_by": "Synthetic Operator", "reference": "SYNTH-649"}
+        for count in (2, 3, 32):
+            with self.subTest(count=count):
+                self.assertIs(
+                    subject.review_batch(packet([reused] * count)).status,
+                    subject.ReviewStatus.HOLD,
+                )
+        separate = [dict(reused) for _ in range(32)]
+        self.assertIs(
+            subject.review_batch(packet(separate)).status,
+            subject.ReviewStatus.REVIEW_ONLY,
+        )
+
     def test_json_rejects_duplicate_keys_and_nonfinite_values(self):
         for raw in (
             b'{"schema":"x","schema":"y"}',
