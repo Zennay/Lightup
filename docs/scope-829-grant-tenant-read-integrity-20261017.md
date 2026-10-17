@@ -44,14 +44,39 @@ future CI requires all 11 methods to pass ordinarily.
 
 ## Suggested implementation handoff — source owner only
 
-In `DomainStore.list_authorization_grants`, after authenticated
-`get_engagement(ctx, engagement_id)`, filter grant rows with both:
-`WHERE engagement_id=? AND client_id=?`, binding the authorized
-`engagement.engagement_id` **and** `engagement.client_id`. Preserve
-newest-first ordering. Ensure `get_current_grant` inherits the same
-fail-closed filter and that read-only calls never normalize corrupt rows.
-An equivalent validated join to engagements is acceptable. The source owner
-must review composition with other authorization/data-integrity branches.
+The first local owner-fix oracle validated equality between the stored
+`authorization_grants.client_id` and the previously fetched authorized
+`engagement.client_id`. **That simple two-parameter SELECT does not fully
+protect against an engagement owner changing between those two SQLite reads.**
+W3 proved this second in-process read-order gap with two deterministic
+temporary-SQLite regression cases.
+
+A stronger single-statement, owner-bound SQLite read, in the original owner
+`DomainStore.list_authorization_grants` source, can use:
+
+```sql
+SELECT g.*
+FROM authorization_grants AS g
+JOIN engagements AS e
+  ON e.engagement_id = g.engagement_id
+ AND e.client_id = g.client_id
+WHERE g.engagement_id = ?
+  AND e.client_id = ?
+ORDER BY g.created_at DESC
+```
+
+Bind `(engagement.engagement_id, engagement.client_id)` from the
+already-authorized engagement. The same *statement* now checks current
+persisted engagement ownership, stored grant lineage, and the authorized
+tenant; any intervening rebind to a different owner gives **no result**.
+Preserve valid newest-first ordering, immutable storage and the
+`get_current_grant` inheritance. For a stronger concurrent write threat
+model, consider authorization and read in one transactional snapshot too:
+this synthetic interleaving test is not an exhaustive live concurrency proof.
+
+The source owner must independently review this proposal against other active
+source-authority branches, including use of SQLite transactions and
+whole-request revocation checks. No actual source owner code was committed.
 
 ## Release boundaries
 
@@ -117,3 +142,27 @@ must be made ordinary assertions and the full 23-case package must pass on
 the actual production source, with exact approved SHA CI and independent
 human security/privacy sign-off. The synthetic oracle itself does not
 repair production or authorize any activity.
+
+## W3 — deterministic owner-rebinding interleave and stronger JOIN oracle
+
+An additional **two** genuine temporary-SQLite source REDs simulate the
+engagement owner changing A → B **after** the first authorized
+`get_engagement` read but **before** the grant query. On original source
+and on the earlier apparently sufficient `WHERE engagement_id=? AND
+client_id=?` fix, stale A grants can still escape. This is a synthetic
+controlled interleaving, not a proven real remote race exploit.
+
+The independent isolated source-oracle has been upgraded to:
+- original source **16 strict REDs** among **25 real methods**;
+- fresh engagement JOIN and both exact owner equality bindings:
+  **25/25 real SQLite + operator WSGI tests PASS** without expectedFailure;
+- four deliberately weaker source changes (**cached tenant-only predicate**,
+  `TRIM` matching, premature `LIMIT 1`, and current-grant-only filtering)
+  all remain STRICT RED.
+
+On exact W3 head `c97f8a9352da7017055f554c65023ffbf2a26166`,
+connected zSSH Python 3.14.4 ran **31 methods** total, comprising
+**15 ordinary PASS, 16 known installed-source expectedFailures**; no
+unexpected success or unexpected failure. No production code, client
+asset, live network endpoint, actual grant, handler or worker-owned file
+was changed. The named self-hosted CI is not thereby certified.
