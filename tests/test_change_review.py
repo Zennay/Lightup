@@ -415,6 +415,8 @@ class GitPathIdentityTests(unittest.TestCase):
                 _parse_numstat(bad)
         for bad in (b"M\x00", b"R100\x00a\x00", b"M\x00a\x00M\x00a\x00",
                     b"Mgarbage\x00a\x00", b"Rnotanumber\x00a\x00b\x00",
-                    b"R101\x00a\x00b\x00", b"Q\x00a\x00", b"M\x00a"):
+                    b"R101\x00a\x00b\x00", b"Q\x00a\x00", b"M\x00a",
+                    b"M\n\x00a\x00", b"A\n\x00a\x00", b"R100\n\x00a\x00b\x00",
+                    b"C001\n\x00a\x00b\x00"):
             with self.subTest(status=bad), self.assertRaises(GitChangeError):
                 _parse_name_status(bad)

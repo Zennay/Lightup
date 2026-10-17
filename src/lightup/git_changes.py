@@ -91,7 +91,7 @@ def _path(raw: bytes) -> str:
     return path
 
 
-_STATUS_CODE = re.compile(rb"^(?:[ADMT]|[RC](?:0[0-9]{2}|100))$")  # git prints R%03d
+_STATUS_CODE = re.compile(rb"(?:[ADMT]|[RC](?:0[0-9]{2}|100))")  # git prints R%03d
 
 
 def _nul_records(output: bytes) -> list[bytes]:
@@ -141,7 +141,7 @@ def _parse_name_status(output: bytes) -> list[tuple[str, str | None, str]]:
     seen: set[str] = set()
     index = 0
     while index < len(tokens):
-        if not _STATUS_CODE.match(tokens[index]):
+        if not _STATUS_CODE.fullmatch(tokens[index]):
             raise GitChangeError(f"unsupported git status code {tokens[index][:8]!r}")
         letter = tokens[index][:1].decode("ascii")
         width = 3 if letter in {"R", "C"} else 2
