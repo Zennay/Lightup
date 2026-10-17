@@ -27,7 +27,7 @@ _COMPARE = {"base_sha", "head_sha", "status", "ahead_by",
             "behind_by", "too_large", "files", "repository_full_name"}
 
 
-_REPOSITORY_PART = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,99}\\Z")
+_REPOSITORY_PART = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,99}\Z")
 
 
 def _repository_name(value: object) -> bool:
