@@ -7,7 +7,7 @@ issue #177, or authentic independent client/operator consent at use.
 
 from __future__ import annotations
 
-from ..domain import AccessContext, DomainStore, RequestStatus, Role
+from ..domain import AccessContext, ApprovalStatus, DomainStore, RequestStatus, Role
 from ..engagements import AssessmentMode, RiskLevel
 from .app import AuthState, Response, _e
 
@@ -158,3 +158,87 @@ def workflow_denied(message: str = "Action requires verified authorization") -> 
         '<h1>Authorization boundary</h1><p class="meta">' + _e(message) + '</p>',
         status="423 Locked",
     )
+
+
+def elevation_blockers(store: DomainStore, auth: AuthState, record) -> tuple[str, ...]:
+    """Protect an administrative risk-elevation review from fabricated origin."""
+    ctx = auth.context
+    if type(ctx) is not AccessContext or ctx.role is not Role.OPERATOR:
+        return ("A real operator session is required",)
+    problems: list[str] = []
+    if record.status is not ApprovalStatus.PENDING:
+        problems.append("Risk elevation is already decided")
+    if record.decided_by is not None or record.decided_at is not None:
+        problems.append("Pending risk elevation has inconsistent decision metadata")
+    if (
+        type(record.requested_risk) is not RiskLevel
+        or not (RiskLevel.PASSIVE <= record.requested_risk <= RiskLevel.ELEVATED)
+    ):
+        problems.append("Risk is outside the bounded client risk range")
+    if (
+        type(record.justification) is not str or
+        not 0 < len(record.justification.strip()) <= 4096
+    ):
+        problems.append("Risk elevation has an invalid justification")
+    if record.requested_by == ctx.user_id:
+        problems.append("An operator cannot decide their own risk request")
+    try:
+        requester = store.context_for_user(record.requested_by)
+        engagement = store.get_engagement(ctx, record.engagement_id)
+    except (KeyError, ValueError, TypeError):
+        problems.append("Risk elevation requester/engagement provenance is missing")
+    else:
+        if (
+            type(requester) is not AccessContext
+            or type(requester.role) is not Role
+            or requester.role not in (Role.CLIENT_ADMIN, Role.CLIENT_MEMBER)
+            or requester.client_id != record.client_id
+            or engagement.client_id != record.client_id
+        ):
+            problems.append("Risk elevation requester is not from this client")
+    return tuple(problems)
+
+
+def hide_unsafe_elevation_buttons(
+    markup: str, store: DomainStore, auth: AuthState
+) -> str | None:
+    """Render dangerous risk-elevation actions as locked, not actionable."""
+    approvals = [
+        a for a in store.list_risk_approvals(auth.context)
+        if a.status is ApprovalStatus.PENDING
+    ]
+    for approval in approvals:
+        reasons = elevation_blockers(store, auth, approval)
+        if not reasons:
+            continue
+        action = '/assessments/elevations/' + _e(approval.approval_id) + '/decision'
+        open_form = '<form class="inline" method="post" action="' + action + '">'
+        start = markup.find(open_form)
+        if start < 0 or markup.count(open_form) != 2:
+            return None
+        end_marker = '<button>Approve elevation</button></form>'
+        end = markup.find(end_marker, start)
+        second_form = markup.find('<form', start + len(open_form))
+        if end < 0 or (second_form >= 0 and second_form < end):
+            return None
+        end += len(end_marker)
+        locked = (
+            '<span class="badge lock">Risk elevation approval locked: '
+            + _e("; ".join(reasons)) + '</span> '
+        )
+        markup = markup[:start] + locked + markup[end:]
+        # The domain forbids self-decision even when it is a denial. Hide the
+        # second form for the same actor instead of offering a dead-end button.
+        if approval.requested_by == auth.context.user_id:
+            remaining = markup.find(open_form)
+            if remaining < 0:
+                return None
+            close = markup.find('</form>', remaining)
+            if close < 0:
+                return None
+            markup = (
+                markup[:remaining]
+                + '<span class="badge lock">Self-decision prohibited</span>'
+                + markup[close + len('</form>'):]
+            )
+    return markup
