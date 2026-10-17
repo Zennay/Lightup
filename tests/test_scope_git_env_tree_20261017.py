@@ -348,6 +348,34 @@ class OfflineTreeModesTests(unittest.TestCase):
             self.assertEqual(result.stdout, digest)
             self.assertEqual(result.stderr, b"")
 
+    def test_timeout_terminates_descendant_git_alias_process_group(self):
+        """A child inheriting stdout must not outlive rejected Git evidence."""
+        import shlex
+        import subprocess
+        import tempfile
+        import time
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_git_descendant_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp)
+            subprocess.run([guard.GIT_BINARY, "init", "-q"], cwd=root,
+                           check=True, capture_output=True, timeout=6)
+            started = root / "started"
+            late = root / "late"
+            script = root / "nested-fixture.sh"
+            script.write_text(
+                "#!/bin/sh\nprintf started > " + shlex.quote(str(started)) +
+                "\nsleep 0.7\nprintf late > " + shlex.quote(str(late)) + "\n"
+            )
+            script.chmod(0o755)
+            alias = "alias.delayed=!" + shlex.quote(str(script))
+            with patch.object(guard, "ROOT", root), \
+                 patch.object(guard, "GIT_TIMEOUT_SECONDS", 0.5):
+                with self.assertRaises(subprocess.TimeoutExpired):
+                    guard._git_raw("-c", alias, "delayed")
+            self.assertTrue(started.is_file(), "synthetic descendant did not start")
+            time.sleep(0.85)
+            self.assertFalse(late.exists(), "orphaned Git helper survived the timeout")
+
     def test_git_stderr_over_limit_is_rejected_during_capture(self):
         import shlex
         import subprocess
