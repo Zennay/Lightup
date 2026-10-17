@@ -347,6 +347,41 @@ print('ALL_JSON_BYTE_SEAMS_REMAIN_NON_AUTHORIZING')
         self.assertEqual(child.stdout, b"ALL_JSON_BYTE_SEAMS_REMAIN_NON_AUTHORIZING\n")
         self.assertEqual(child.stderr, b"")
 
+
+    def test_excessive_shortread_callbacks_are_bounded_independently_of_bytes(self):
+        # A malicious/buggy source may return a one-byte fragment per call.
+        # Input size alone does not bound Python-level callback count.
+        program = """import json,runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+raw=json.dumps({"schema":"lightup.scope1533.synthetic.v1",
+                "synthetic_only":True,"items":[
+                    {"summary":"synthetic","kind":"note","payload_hex":"ff"}]}).encode()
+raw+=b' '*(5000-len(raw))
+class TinyReader:
+    def __init__(self):
+        self.calls=0
+    def read(self, max_bytes):
+        if max_bytes<1: raise AssertionError('bad read limit')
+        at=self.calls
+        self.calls+=1
+        return raw[at:at+1]
+class FakeStdin: pass
+source=FakeStdin()
+source.buffer=TinyReader()
+sys.stdin=source
+raise SystemExit(entry['main']([]))
+"""
+        child = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", program],
+            cwd=ROOT, input=b"", capture_output=True, timeout=8,
+        )
+        self.assertEqual(child.returncode, 2, child.stderr)
+        self.assertEqual(child.stderr, b"")
+        receipt = json.loads(child.stdout)
+        self.assertEqual(receipt["status"], "HOLD")
+        for name in FALSE_KEYS:
+            self.assertIs(receipt[name], False)
+
     def test_real_cli_under_original_native_no_io_tripwire(self):
         # Reuse the existing owner's unchanged guard fixture. This is a
         # Python-level interposition test, not a kernel sandbox or consent.
