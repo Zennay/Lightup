@@ -126,6 +126,42 @@ class OfflineCompositionManifestRules(unittest.TestCase):
         with patch.object(checker, "git", side_effect=tamper):
             self.assert_refused("scope776_source_or_other_worker_path_changed")
 
+    def test_machine_hold_receipt_is_never_release_or_authority(self):
+        receipt = checker.make_held_receipt("a" * 40, full=True,
+                                            units=606, integration=86)
+        self.assertEqual(receipt["head_sha"], "a" * 40)
+        self.assertEqual(receipt["original_expected_source_red_methods"], 18)
+        self.assertEqual(receipt["original_strict_failing_subtests"], 26)
+        self.assertEqual(receipt["temporary_repair_strict_green_methods"], 26)
+        self.assertEqual(receipt["full_disposable_units"], 606)
+        self.assertEqual(receipt["full_disposable_integration"], 86)
+        for key in ("human_go", "may_authorize", "may_dispatch", "may_scan",
+                    "may_deploy", "may_release", "source_repair_committed",
+                    "permanent_registered_vps_ci_verified",
+                    "genuine_client_operator_consent_verified",
+                    "security_privacy_review_approved",
+                    "upstream_773_imported_or_executed"):
+            with self.subTest(key=key):
+                self.assertIs(receipt[key], False)
+
+    def test_machine_receipt_requires_full_proof_when_claimed(self):
+        for args in (
+            {"full": True},
+            {"full": True, "units": 606},
+            {"full": False, "units": 606, "integration": 86},
+            {"full": 1, "units": 606, "integration": 86},
+            {"full": True, "units": True, "integration": 86},
+        ):
+            with self.subTest(args=args):
+                with self.assertRaisesRegex(RuntimeError, "scope776_"):
+                    checker.make_held_receipt("a" * 40, **args)
+
+    def test_machine_receipt_cannot_use_unpinned_head_shape(self):
+        for invalid in ("HEAD", "000", "g" * 40, "", "0" * 41):
+            with self.subTest(head=invalid):
+                with self.assertRaisesRegex(RuntimeError, "invalid_exact_head"):
+                    checker.make_held_receipt(invalid, full=False)
+
     def test_imported_source_and_vetted_risk_reference_are_exact(self):
         self.assertEqual([x["issue"] for x in self.manifest["composed_tests"]],
                          [648, 775])
