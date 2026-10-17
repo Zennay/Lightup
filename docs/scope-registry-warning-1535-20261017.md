@@ -16,3 +16,10 @@ Escape the backslashes in the f-string source properly while retaining **byte-fo
 - The separate full original hosted suite still has historical #301 stale-date fixture RED, owned by draft #1452. Named permanent VPS runner #1144, full CI, separate authenticated client/operator consent with at-use revoke, privacy/security and HUMAN GO remain independent.
 
 **DRAFT/HOLD. No release authority follows from offline green tests.**
+
+
+## W2 · exact pre/post fix Python semantics proof
+
+[Dedicated exact-head run #39003010617](https://github.com/Zennay/Lightup/actions/runs/39003010617) passed separately on Python3.11 (job `117309694133`) and Python3.14 (job `117309694355`). In addition to **3 strict new source tests + 16 original report output tests + 3 original native offline I/O tests** on each interpreter, the workflow now reads the original pinned `e73b7445c87ad239bdb03c50a99078ef93163b02:src/lightup/capability_registry_history_report.py` via read-only Git, proves **exactly TWO** bad slash-backtick byte sequences in original source, proves new source is byte-exact original with ONLY those two string-escape corrections and compares full Python ASTs with location attributes excluded; **ASTs are identical**. No alternative I/O allowlist, consent, exception-handling, handler or release behavior is changed.
+
+This is a narrow warning-free reviewer portability repair and no grant/scan/provenance authorization. Original entire hosted preflight remains separate RED on independent #301 expired-date fixture; any future merge is DRAFT/HOLD until complete real hosted + permanently registered VPS Actions evidence, source-owner review, authenticated client/operator consent and at-use revocation, privacy/security and explicit human GO.
