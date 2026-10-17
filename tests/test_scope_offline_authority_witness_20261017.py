@@ -107,6 +107,42 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         self.assertEqual(result["status"], "HOLD")
         self.assert_no_authority(result)
 
+    def test_polymorphic_target_value_is_rejected_before_normalization(self):
+        calls = []
+        class SpoofedValue(str):
+            def strip(self, *args, **kwargs):
+                calls.append("strip")
+                raise AssertionError("untrusted target normalization executed")
+        cases = witness.canonical_cases()
+        evil = (replace(cases[0], target=witness.Target(SpoofedValue("127.0.0.1"))),) + cases[1:]
+        result = witness.evaluate(evil)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "invalid_witness_matrix")
+        self.assertEqual(calls, [])
+        self.assert_no_authority(result)
+
+    def test_polymorphic_policy_and_authorization_are_rejected_before_decide(self):
+        cases = witness.canonical_cases()
+        class SpoofedSet(frozenset):
+            def __iter__(self):
+                raise AssertionError("untrusted policy iteration executed")
+        class SpoofedAuthorization(witness.Authorization):
+            def is_current(self, now=None):
+                raise AssertionError("untrusted authorization evaluated")
+        altered_policy = replace(cases[0], policy=witness.ScopePolicy(explicit_hosts=SpoofedSet({"fixture.example.test"})))
+        altered_auth = replace(
+            cases[6],
+            target=witness.Target("fixture.example.test", authorization=SpoofedAuthorization("fake", "not-consent")),
+        )
+        for changed_index, changed in ((0, altered_policy), (6, altered_auth)):
+            with self.subTest(case_index=changed_index):
+                scenarios = list(cases)
+                scenarios[changed_index] = changed
+                result = witness.evaluate(tuple(scenarios))
+                self.assertEqual(result["status"], "HOLD")
+                self.assertEqual(result["reason"], "invalid_witness_matrix")
+                self.assert_no_authority(result)
+
     def test_no_network_socket_or_dns_is_necessary(self):
         with (patch.object(socket, "socket", side_effect=AssertionError("network invoked")),
               patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns invoked"))):
