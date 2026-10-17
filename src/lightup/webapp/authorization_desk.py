@@ -97,6 +97,16 @@ def render_authorization_desk(
             == (queue == "pending")
         ]
     )
+    from .request_clarifications import thread_states, ClarificationDenied
+    try:
+        clarification_badges = thread_states(
+            store, auth,
+            [request.request_id for request in visible_requests[:max_rows]],
+            client_id=client_id,
+        )
+    except (ClarificationDenied, ValueError, TypeError):
+        return Response("<h1>Request inbox unavailable</h1>",
+                        status="503 Service Unavailable")
     request_cards = []
     for request in visible_requests[:max_rows]:
         origin = _origin_label(store, request.requested_by, request.client_id)
@@ -120,6 +130,8 @@ def render_authorization_desk(
             + '<br>Assets: ' + _e(requested_assets or "—")
             + '<br>Current account provenance: ' + _e(origin)
             + '<br>Decision provenance: ' + _e(decision_lineage)
+            + '<br>Clarifications: '
+            + _e(clarification_badges.get(request.request_id, "No question yet"))
             + '</p><p><a href="/authorization-desk/requests/'
             + _e(request.request_id) + '">View request details →</a></p>'
             '<p class="meta">Review of a request is not client consent '
@@ -365,6 +377,10 @@ def render_operator_queue_json(
     pending = [request for request in requests
                if request.status.value in {"submitted", "under_review"}]
     bound = max(1, min(50, max_rows))
+    from .request_clarifications import thread_states
+    clarification_badges = thread_states(
+        store, auth, [req.request_id for req in pending[:bound]]
+    )
     items = []
     for request in pending[:bound]:
         if (
@@ -387,6 +403,9 @@ def render_operator_queue_json(
             "requested_mode": request.requested_mode.value,
             "requested_risk": int(request.requested_risk),
             "submitted_at": request.created_at,
+            "clarification_state": clarification_badges.get(
+                request.request_id, "No question yet"
+            ),
             "origin_observation": origin,
             "requester_review_needed": (
                 origin != "Matching client account (current role only)"
