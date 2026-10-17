@@ -261,7 +261,7 @@ class SyntheticGate(unittest.TestCase):
         )
 
     def test_all_single_byte_status_codes_have_explicit_verdict(self):
-        """255 noncanonical byte/status values cannot disappear from review."""
+        """All 256 single-byte tokens have explicit accept/HOLD outcomes."""
         canonical = {ord("A"), ord("M"), ord("D"), ord("T")}
         for value in range(256):
             status = bytes((value,))
