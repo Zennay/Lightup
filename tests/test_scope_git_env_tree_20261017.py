@@ -708,6 +708,47 @@ class OfflineTreeModesTests(unittest.TestCase):
                 self.assertEqual(git("status", "--porcelain=v1", "-z"), b"")
                 self.assertFalse(guard._worktree_blobs_match_head(raw_tree))
 
+    def test_owned_blob_fd_walk_rejects_parent_symlink_swap(self):
+        """Directory components are nofollow-opened after any earlier lstat."""
+        import os
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_parent_swap_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp)
+            def git(*args):
+                return subprocess.run(
+                    [guard.GIT_BINARY, *args], cwd=root, check=True,
+                    capture_output=True, timeout=6,
+                ).stdout
+            git("init", "-q")
+            source = root / "scripts" / "owner.py"
+            source.parent.mkdir()
+            source.write_text("SAFE=True\n")
+            git("add", "scripts/owner.py")
+            git("-c", "user.name=Offline", "-c",
+                "user.email=offline@example.invalid",
+                "commit", "-qm", "fictional nested fixture")
+            tree_raw = git("ls-tree", "-r", "-z", "HEAD", "--", "scripts/owner.py")
+            with patch.object(guard, "ROOT", root), \
+                 patch.object(guard, "OWNED", frozenset({"scripts/owner.py"})):
+                self.assertTrue(guard._worktree_blobs_match_head(tree_raw))
+                real_open = os.open
+                swapped = [False]
+                def swap_before_directory_open(path, flags, *args, **kwargs):
+                    if path == root and not swapped[0]:
+                        swapped[0] = True
+                        (root / "scripts").rename(root / "real-scripts")
+                        (root / "scripts").symlink_to("real-scripts", target_is_directory=True)
+                    return real_open(path, flags, *args, **kwargs)
+                with patch.object(guard.os, "open", side_effect=swap_before_directory_open):
+                    self.assertFalse(guard._worktree_blobs_match_head(tree_raw))
+                self.assertTrue(swapped[0])
+                self.assertTrue((root / "scripts").is_symlink())
+                (root / "scripts").unlink()
+                (root / "real-scripts").rename(root / "scripts")
+                self.assertTrue(guard._worktree_blobs_match_head(tree_raw))
+
     def test_actual_owned_blob_rejects_missing_symlink_and_oversize(self):
         import subprocess
         import tempfile
