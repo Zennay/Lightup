@@ -67,3 +67,28 @@ from this test-only reviewer result.
   by draft PR #1452.
 - **No merge, deploy, active scan, real asset/target, grant, handler dispatch
   or release.** Human source-owner decision first.
+
+## W2 — hostile duck-typed values, I/O trap, existing durable row checks
+
+Expanded the **same owned test file only** on exact clean parent without any
+source owner modification. Own regression tests now cover:
+- a non-string object impersonating `.strip()` for both provenance fields;
+- a raw `bytes` reference;
+- rejection atomicity even when a valid grant already exists;
+- preservation of an existing legitimate approval/reference pair;
+- two successive canonical built-in `str` grants as an ordinary positive control;
+- blocked `socket.socket`, `socket.getaddrinfo` and `subprocess.Popen`
+  around the entire disposable database fixture. No network or process ran.
+
+Connected zSSH Python **3.14.4** own HEAD `dec43073b5c021bbfab8f4d5b998e2dc7927165e`:
+**16 tests = five ordinary PASS + 11 original source expectedFailures**,
+no unexpected ordinary FAIL/ERROR. The separate true opt-in source-owner
+gate gives **9 ordinary FAIL + 2 ERROR** on the currently unpatched source.
+The errors are non-string `.strip` failures; none of the eleven is a
+fixed source security contract. Existing `DomainStore` SQLite connection
+lifecycle can also emit Python3.14 `ResourceWarning: unclosed database`
+upon garbage collection; this acceptance does not alter or silently relax
+that other source-owned connection lifecycle.
+
+Do not infer release readiness from a green *test-only* hosted workflow.
+Source owner review and all earlier HOLD conditions remain unchanged.
