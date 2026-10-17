@@ -1,0 +1,84 @@
+name: Scope 1545 - synthetic patch identity (DRAFT HOLD)
+
+on:
+  pull_request:
+    branches:
+      - claude/lightup-leap
+    paths:
+      - "scripts/review_scope_patch_bytes_offline_1545.py"
+      - "tests/test_scope_1545_patch_bytes_offline_20261017.py"
+      - "docs/scope-1545-git-patch-utf8-identity-20261017.md"
+      - ".github/workflows/scope1545-patch-bytes.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lightup-scope-1545-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  held-synthetic-patch-review:
+    name: Hosted Python ${{ matrix.python-version }} (NO RELEASE)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.14"]
+    steps:
+      - name: Checkout exact PR source
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install hosted Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Verify exclusive additive ownership vs pinned source-owner commit
+        shell: bash
+        run: |
+          python - <<'PY'
+          import subprocess
+          BASE = "26dd88d33c8735658ae819c7e017b2f36493a039"
+          EXPECTED = {
+              "A\tdocs/scope-1545-git-patch-utf8-identity-20261017.md",
+              "A\tscripts/review_scope_patch_bytes_offline_1545.py",
+              "A\ttests/test_scope_1545_patch_bytes_offline_20261017.py",
+              "A\t.github/workflows/scope1545-patch-bytes.yml",
+          }
+          def git(*args):
+              return subprocess.check_output(
+                  ["git", "-c", "core.fsmonitor=false", *args],
+                  timeout=10,
+              ).decode("ascii")
+          if git("merge-base", BASE, "HEAD").strip() != BASE:
+              raise SystemExit("HOLD: pinned source-owner base not ancestor")
+          records = git("diff", "--no-renames", "--name-status", "-z", BASE, "HEAD")
+          parts = records.rstrip("\0").split("\0")
+          if len(parts) != 2 * len(EXPECTED):
+              raise SystemExit("HOLD: wrong changed path count")
+          actual = {f"{parts[i]}\t{parts[i+1]}" for i in range(0, len(parts), 2)}
+          if actual != EXPECTED:
+              raise SystemExit("HOLD: must change only four additive 1545-owned files")
+          print("scope1545_exact_owner_paths=PASS")
+          PY
+      - name: Run isolated patch bytes tests, strictly no syntax warnings
+        shell: bash
+        run: |
+          python -W error::SyntaxWarning -I -S -B -m unittest discover \
+            -s tests -p test_scope_1545_patch_bytes_offline_20261017.py -v
+      - name: Confirm relevant original owner controls (not full release CI)
+        shell: bash
+        run: |
+          PYTHONPATH=src python -S -B -m unittest discover \
+            -s tests -p test_change_review.py -q
+          PYTHONPATH=src python -S -B -m unittest discover \
+            -s tests -p test_github_changes.py -q
+      - name: Not a grant, merge, or deployment
+        if: always()
+        run: |
+          echo "INCUBATE M3/M7; DRAFT/HOLD; hosted-only diagnostics."
+          echo "NO REAL TARGETS, GRANTS, SCANS, DISPATCH, MERGE, DEPLOY OR RELEASE."
