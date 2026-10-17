@@ -276,6 +276,26 @@ class RuntimeIsolationStaticTests(unittest.TestCase):
                     "Other script has started importing inert scope reviewer",
                 )
 
+    def test_deployment_entrypoints_cannot_import_reviewer(self):
+        files = sorted((ROOT / "deploy").rglob("*.py"))
+        self.assertGreaterEqual(len(files), 1)
+        for path in files:
+            with self.subTest(path=str(path.relative_to(ROOT))):
+                self.assertFalse(
+                    references_review_module(path.read_text(encoding="utf-8")),
+                    "Deployment Python must not promote offline reviewer",
+                )
+
+    def test_lab_fixture_entrypoints_cannot_import_reviewer(self):
+        files = sorted((ROOT / "lab").rglob("*.py"))
+        self.assertGreaterEqual(len(files), 2)
+        for path in files:
+            with self.subTest(path=str(path.relative_to(ROOT))):
+                self.assertFalse(
+                    references_review_module(path.read_text(encoding="utf-8")),
+                    "Lab fixture must not promote offline reviewer",
+                )
+
     def test_catches_every_literal_import_shape(self):
         patterns = (
             "import lightup.scope_literal_control_review_20261016",

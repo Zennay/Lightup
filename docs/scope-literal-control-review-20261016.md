@@ -198,3 +198,26 @@ operator consents remain unproven; the original #1289 / PR #1290 owns
 source admission repairs. Still **INCUBATE M3/M7, PLAN/LAB ONLY,
 DRAFT/HOLD**. No merge, deployment, real targets/scans, grants, handlers
 or release. All review receipt authority flags remain permanently false.
+
+## W33–W34 — literal joins and deploy/lab AST isolation (17 October 2026)
+
+The own, opt-in static import reviewer now recognizes bounded literal
+`str.join` assembly (up to 16 literal tuple/list parts, maximum 256
+resulting characters). This prevents a deterministic source-only join
+from hiding the fictional review module name in `importlib.import_module`,
+`__import__` fromlists or literal `exec` code. Variable parts and arbitrary
+method calls remain outside this no-execution lexical analysis.
+
+The read-only source isolation check previously covered `src/lightup` and
+`scripts`. It now explicitly scans the existing Python deployment
+configuration in `deploy` and synthetic fixtures under `lab`, and asserts
+these inventories are nonempty so a missing scan directory cannot silently
+count as successful verification. No files in those source/fixture directories
+are edited or imported during testing. Strict own suite threshold: **111**
+distinct tests, including exactly four intentionally unresolved original
+source expectedFailures; local Python3.14: 107 ordinary PASS, 4 expected REDs.
+
+Still strictly **DRAFT/HOLD, PLAN/LAB ONLY, non-authorizing**. The AST check
+does not attest dynamic code, real consent, release readiness, full original
+hosted CI or a registered permanent VPS runner; source-owner #1289 / PR #1290
+remains responsible for production admission. No merge/deploy/scan/grant.
