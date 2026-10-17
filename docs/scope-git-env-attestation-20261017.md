@@ -489,3 +489,34 @@ Python interpreter and cannot certify all global/system Git metadata.
 Its output is non-authorizing diagnostic evidence, **not** a permit,
 customer consent, operator approval, deployed guard, runtime scanning
 policy, complete original-project CI success, or a release decision.
+
+
+## W93–W96 — descriptor-anchored Git blob reads prevent parent symlink races (2026-10-17)
+
+The earlier exact-owned worktree blob hash verifier checked each parent
+path for symlinks and then opened the final file using an absolute
+pathname. On a concurrently modified checkout, an intermediate
+directory could theoretically be swapped for a symlink between that
+check and `open`; a leaf-only `O_NOFOLLOW` does not protect an
+intermediate directory component.
+
+The isolated source reviewer now first opens the checkout root as a
+directory and descends through **each** owned path component with
+directory-relative file descriptors (`os.open(..., dir_fd=...)`).
+Every directory component requires `O_DIRECTORY|O_NOFOLLOW`;
+the final regular file requires `O_NOFOLLOW`. On platforms lacking
+either primitive, the review returns HOLD rather than performing
+a less constrained pathname open. Descriptor handles are closed in
+all paths, file metadata and raw bytes remain bounded (1 MiB max
+per file), and the canonical Git blob hash check still applies.
+
+A real disposable repository fixture verifies a valid nested source
+file PASS; a deterministic swap of its parent directory into a
+symlink between the pre-check and anchored open returns HOLD; and
+restoring the original directory returns PASS. A separate synthetic
+test checks that absent `O_DIRECTORY` or `O_NOFOLLOW` fails closed.
+
+These diagnostics remain offline and non-authorizing. There is no
+claim of a race-free snapshot against privileged writers who can
+change file contents after validation, nor any permission to deploy,
+scan, grant, dispatch a handler or release LightUp.
