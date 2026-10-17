@@ -81,6 +81,18 @@ On the connected zSSH Python 3.14.4 disposable checkout, **26/26 dedicated tests
 
 GitHub comparison after output-privacy hardening was **21 additive own commits / 0 behind original main**, exactly three new dedicated paths and zero changes to any existing source-owner, other worker, shared workflow, runner, grant, activation, live consent or deployment file. All statuses continue to disable authorization and execution; no PR/CI retry/merge/deployment/scan/grant is attempted.
 
+## W7 — hard wall-clock scope-evaluation deadline (17 October 2026)
+
+A source-policy regression that never returns must not leave the offline review CLI running indefinitely or capable of emitting a positive receipt. The witness now uses a **2.5-second POSIX `ITIMER_REAL` deadline** for the complete **17-case** installed evaluator invocation. A dedicated `BaseException` sentinel interrupts ordinary blocking operations even if a source policy catches standard `Exception`; it produces generic `HOLD/offline_witness_time_budget_exceeded` and exit **2**. No target data, exception text, grant or execution ability is emitted.
+
+- **Timer ownership is fail-closed:** any pre-existing `SIGALRM` handler or armed timer, a worker-thread call, unavailable `setitimer`, or nested evaluation causes `HOLD/offline_witness_time_fence_unavailable` before the installed scope evaluator runs. The witness **never steals or cancels another component's timer**.
+- The temporary handler and timer are restored in `finally` on success, exception and timeout. The context-local Python I/O/output-denial guard remains separate and intact.
+- **Limitations:** this timer is only supported in the main thread on POSIX/Linux. It is not a kernel-enforced sandbox, OS resource limit, protection against arbitrary native code or a substitute for reviewed source and trusted execution. On unsupported hosts it fails closed. Code designed to suppress or override Python signals is outside its security promise. Do not run the witness on an untrusted plugin or live customer target.
+- **Demonstrated RED → GREEN:** prior exact witness accepted `REVIEW_ONLY` from a background-thread evaluation instead of `HOLD`. A new regression exposed this and the deadline fix corrects it.
+- Connected authorized zSSH VPS, exact code head `0424e22f45617b547f7e052748e51fcc7a046c05`, Python 3.14.4: **33/33 targeted tests PASS; 86/86 producer integrations PASS**. A genuine 7-second stalled mocked policy was bounded within 4.5 seconds; external alarm ownership, nested calls, crash recovery and clean follow-up evaluation were tested.
+- Same exact code-head full local unit suite: **1,270 cases, five previously baseline-reproduced ordinary FAILs, 23 expectedFailures**. Those failures belong to existing #301 and #1535/registry-history source/fixture owners and appear on original main; this is not a wholly green project run or a release decision.
+- The work remains strictly branch-only/additive with zero existing source, shared CI/runner, another-worker, runtime authorization, handler, live consent, deployment or target code changed.
+
 ## Gate interpretation
 
 - Green unit tests validate the witness's own classification, deterministic receipt, zero-network boundary, no authority flags and mutation-detection sensitivities.
