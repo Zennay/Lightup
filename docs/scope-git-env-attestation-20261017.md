@@ -402,3 +402,35 @@ consent, a scan or release. Scope source-owner security fixes,
 authenticated client and operator consent plus at-use revocation,
 full original CI, registered permanent VPS and explicit human GO
 remain independent prerequisites.
+
+
+## W80–W86 — exact owned working-file bytes defeat Git index misdirection (2026-10-17)
+
+A separate real, temporary Git repository showed that
+`git update-index --assume-unchanged owned.py` lets Python source on disk
+change while `git status --porcelain -z` remains empty and `git ls-tree
+HEAD` still reports the pristine committed Git blob. Likewise, a
+`skip-worktree` flag can conceal a missing locally checked-out file.
+Git commit/manifest validation alone does **not** prove that the bytes
+actually available to an interpreter match the committed source.
+
+The additive, unwired `_worktree_blobs_match_head` now verifies **all
+six** exclusively owned, new review files against the exact Git blob
+SHA-1 object bytes (`blob {len}\\0{raw}`) recorded by `ls-tree HEAD`.
+It refuses absent, symlinked, nonregular, oversized (>1 MiB per file),
+unexpected or mismatched files. Intermediate symlinks are rejected,
+reads are bounded to 1 MiB + 1 byte, regular-file descriptors are
+re-checked after opening with `O_NOFOLLOW`/`O_NONBLOCK` where
+available, and any exception fails closed. Both the original checked
+Git manifest and the actual worktree content must match, in addition
+to the ignored-file and clean-status gates. A checkout with altered
+index bits must HOLD even if `git status` reports clean.
+
+Disposable Git regressions demonstrate ordinary correct source PASS,
+unmodified HEAD with altered `assume-unchanged` source HOLD, missing
+`skip-worktree` source HOLD, plus missing/symlinked/oversized source
+HOLD. This remains strictly negative source review evidence: **not**
+a production security gate, tamper-proof runtime isolation, real
+client/operator permission, an original CI pass, or release approval.
+No production LightUp code, VPS runner, grant, handler or scanner is
+modified by this work.
