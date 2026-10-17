@@ -89,6 +89,35 @@ class FutureOwnerSourceOracle649(unittest.TestCase):
         self.assertIn("OK", process.stderr)
         self.assertNotIn("expected failures", process.stderr.lower())
 
+    def test_partial_owner_fix_still_exposes_reference_source_reds(self):
+        """A deliberately incomplete fix must NOT turn the oracle green."""
+        guarded = "if type(approved_by) is not str or type(reference) is not str:"
+        incomplete = "if type(approved_by) is not str:"
+        self.assertEqual(CHILD_ORACLE.count(guarded), 1)
+        partial = CHILD_ORACLE.replace(guarded, incomplete, 1)
+        env = dict(os.environ)
+        env.pop("LIGHTUP_SCOPE649_REQUIRE_SOURCE_FIX", None)
+        process = subprocess.run(
+            [
+                sys.executable, "-I", "-S", "-B", "-c", partial,
+                str(ROOT / "src"), str(ROOT / "tests"),
+            ],
+            env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, timeout=35, check=False,
+        )
+        self.assertNotEqual(process.returncode, 0)
+        self.assertIn("Ran 18 tests", process.stderr)
+        self.assertIn("FAILED", process.stderr)
+        self.assertIn(
+            "test_rejects_exactly_nonbuiltin_reference_str_subclass",
+            process.stderr,
+        )
+        self.assertNotIn(
+            "SCOPE649_EPHEMERAL_FIXTURE_ONLY=18 ordinary PASS",
+            process.stdout,
+        )
+        self.assertNotIn("expected failures", process.stderr.lower())
+
     def test_oracle_is_child_only_and_source_tree_remains_unpatched(self):
         # Test-only wrapper source is local to CHILD_ORACLE, not the installed
         # DomainStore implementation; never patch main interpreter globals.
