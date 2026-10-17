@@ -690,6 +690,36 @@ class MutationWitnessQualityTests(unittest.TestCase):
         self.assertTrue(self.proof.mutation_detected(result, "test_ipv4_right_neighbor"))
         self.assertIs(self.proof.ScopePolicy.decide, self.proof.REAL_DECIDE)
 
+    def test_offline_review_receipt_never_grants_authority(self):
+        code, evidence = self.proof.review_offline(verbose=False)
+        self.assertEqual(code, 0)
+        self.assertEqual(evidence["disposition"], "REVIEW_ONLY")
+        self.assertEqual(evidence["methods_executed"], 16)
+        self.assertEqual(evidence["cases_passed"], 730)
+        self.assertEqual(evidence["mutation_canaries_caught"], 14)
+        self.assertEqual(len(evidence["expected_input_sha256"]), 16)
+        self.assertEqual(len(evidence["mutations"]), 14)
+        self.assertEqual({x["caught"] for x in evidence["mutations"]}, {True})
+        for key in (
+            "authority_granted", "scan_permitted", "release_approved",
+            "real_client_or_operator_consent_verified", "registered_vps_ci_verified",
+            "original_full_ci_verified", "immutable_git_history_verified",
+        ):
+            self.assertIs(evidence[key], False)
+
+    def test_offline_review_manifest_hold_emits_no_false_authority(self):
+        with patch.object(self.proof, "suite_manifest_valid", return_value=False):
+            with patch.object(self.proof, "run_suite", side_effect=AssertionError("must not run suite")):
+                code, evidence = self.proof.review_offline(verbose=False)
+        self.assertEqual(code, 2)
+        self.assertEqual(evidence["disposition"], "HOLD")
+        self.assertEqual(evidence["hold_reason"], "NAMED_TEST_MANIFEST_MISMATCH")
+        self.assertEqual(evidence["methods_executed"], 0)
+        self.assertEqual(evidence["cases_passed"], 0)
+        self.assertEqual(evidence["mutation_canaries_caught"], 0)
+        self.assertFalse(evidence["release_approved"])
+        self.assertFalse(evidence["authority_granted"])
+
     def test_expected_red_or_exception_text_is_not_acceptance(self):
         result = self.result(expected=True)
         self.assertFalse(self.proof.mutation_detected(result, "test_invalid_target"))
