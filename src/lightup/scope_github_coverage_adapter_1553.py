@@ -21,14 +21,17 @@ _MAX_CHANGED_LINES = 1_000_000
 _RECORD_REQUIRED = frozenset({"filename", "status", "additions", "deletions"})
 _RECORD_OPTIONAL = frozenset({"previous_filename", "patch"})
 _STATUSES = frozenset({"added", "modified", "removed", "renamed", "copied", "changed"})
-_HUNK = re.compile(r"@@ -[0-9]+(?:,[0-9]+)? \+[0-9]+(?:,[0-9]+)? @@(?: .*)?\Z")
+_HUNK = re.compile(
+    r"@@ -(0|[1-9][0-9]*)(?:,(0|[1-9][0-9]*))? "
+    r"\+(0|[1-9][0-9]*)(?:,(0|[1-9][0-9]*))? @@(?: .*)?\Z"
+)
 
 
 def _complete_patch_stats(patch: str) -> tuple[int, int] | None:
-    """Conservatively count full, ordinary GitHub unified-hunk text only.
+    """Require complete ordinary unified hunks, not merely matching +/- totals.
 
-    Binary, omitted, partial or unknown/combined diffs HOLD. This is a
-    consistency check for fictional inputs, never proof of authentic Git data.
+    GitHub patch metadata is fictional and untrusted here. Even satisfying
+    hunk spans does not authenticate the patch against real Git objects.
     """
     if not patch or "\r" in patch:
         return None
@@ -37,25 +40,38 @@ def _complete_patch_stats(patch: str) -> tuple[int, int] | None:
         lines.pop()
     seen_hunk = False
     additions = removals = 0
+    old_remaining = new_remaining = 0
     for line in lines:
-        if _HUNK.fullmatch(line) is not None:
+        match = _HUNK.fullmatch(line)
+        if match is not None:
+            if seen_hunk and (old_remaining or new_remaining):
+                return None
+            old_remaining = int(match.group(2) if match.group(2) is not None else 1)
+            new_remaining = int(match.group(4) if match.group(4) is not None else 1)
+            if old_remaining > _MAX_CHANGED_LINES or new_remaining > _MAX_CHANGED_LINES:
+                return None
             seen_hunk = True
         elif not seen_hunk:
             return None
         elif line.startswith("+"):
             additions += 1
+            new_remaining -= 1
         elif line.startswith("-"):
             removals += 1
+            old_remaining -= 1
         elif line.startswith(" "):
-            pass
+            old_remaining -= 1
+            new_remaining -= 1
         elif line == "\\ No newline at end of file":
             pass
         else:
             return None
-    if not seen_hunk or additions + removals == 0:
+        if old_remaining < 0 or new_remaining < 0:
+            return None
+    if (not seen_hunk or additions + removals == 0
+            or old_remaining or new_remaining):
         return None
     return additions, removals
-
 
 def _output(status: str, file_count: int = 0, inferred_signals: int = 0) -> dict[str, object]:
     result: dict[str, object] = {
