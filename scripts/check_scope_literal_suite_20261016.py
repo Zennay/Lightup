@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+"""Strictly offline test-discovery health check; never authorizes or deploys.
+
+The original four source RED witnesses remain expected failures, not fixes.
+Run only the separately-owned scope-literal test family.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+import sys
+import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
+TESTS = ROOT / "tests"
+sys.path.insert(0, str(ROOT / "src"))
+
+KNOWN_SOURCE_REDS = frozenset({
+    "test_scope_literal_controls_20261016.InstalledSourceRedWitness.test_original_scope_must_not_convert_newline_to_loopback",
+    "test_scope_literal_controls_20261016.InstalledSourceRedWitness.test_original_scope_must_not_convert_tab_to_loopback",
+    "test_scope_literal_controls_20261016.InstalledSourceRedWitness.test_original_lab_activation_must_deny_control_char_authority",
+    "test_scope_literal_controls_20261016.InstalledSourceRedWitness.test_original_scope_must_not_convert_newline_in_url",
+})
+MIN_TESTS = 77
+
+
+def _cases(suite: unittest.TestSuite):
+    for item in suite:
+        if isinstance(item, unittest.TestSuite):
+            yield from _cases(item)
+        else:
+            yield item
+
+
+def check_evidence(ids: tuple[str, ...], result: unittest.TestResult, expected_modules: set[str]) -> bool:
+    """Refuse green from skipped/missing tests, new REDs or missing modules."""
+    red_ids = {case.id() for case, _text in result.expectedFailures}
+    return (
+        len(ids) >= MIN_TESTS
+        and len(ids) == len(set(ids))
+        and {item.split(".", 1)[0] for item in ids} == expected_modules
+        and KNOWN_SOURCE_REDS <= set(ids)
+        and red_ids == KNOWN_SOURCE_REDS
+        and not (result.failures or result.errors or result.skipped or result.unexpectedSuccesses)
+        and result.testsRun == len(ids)
+        and result.wasSuccessful()
+    )
+
+
+def main() -> int:
+    suite = unittest.defaultTestLoader.discover(
+        start_dir=str(TESTS), pattern="test_scope_literal_*20261016.py",
+        top_level_dir=str(TESTS),
+    )
+    # TestCase instances can be mutated/cleared while a suite runs.
+    # Snapshot source names before execution and validate result afterwards.
+    cases = tuple(_cases(suite))
+    ids = [case.id() for case in cases]
+    modules = {p.stem for p in TESTS.glob("test_scope_literal_*20261016.py")}
+    result = unittest.TextTestRunner(verbosity=1).run(suite)
+    good = check_evidence(tuple(ids), result, modules)
+    print(
+        "scope_review_isolated_proof="
+        + ("PASS" if good else "HOLD")
+        + f" tests={result.testsRun} ordinary_pass="
+        + str(result.testsRun - len(result.expectedFailures))
+        + f" expected_source_reds={len(result.expectedFailures)}"
+    )
+    return 0 if good else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

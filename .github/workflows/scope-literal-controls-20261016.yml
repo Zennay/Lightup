@@ -44,14 +44,14 @@ jobs:
           test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
       - name: Compile own strictly offline code
         run: |
-          python -m compileall -q src/lightup/scope_literal_control_review_20261016.py scripts/review_scope_literal_controls_20261016.py
+          python -m compileall -q src/lightup/scope_literal_control_review_20261016.py scripts/review_scope_literal_controls_20261016.py scripts/check_scope_literal_suite_20261016.py
           # Keep future exclusively owned test modules in the same proof lane.
           python -m compileall -q tests/test_scope_literal_*20261016.py
       - name: Offline literals and original source-RED witnesses only
         env:
           PYTHONPATH: src
         run: |
-          python -m unittest discover -s tests -p 'test_scope_literal_*20261016.py' -v
+          python scripts/check_scope_literal_suite_20261016.py
           python -m unittest discover -s tests -p 'test_scope.py' -q
           python -m unittest discover -s tests -p 'test_activation.py' -q
           python -m unittest discover -s tests -p 'test_execution_policy.py' -q
