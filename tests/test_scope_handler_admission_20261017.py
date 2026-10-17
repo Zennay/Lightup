@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import dataclasses
+import os
 import pathlib
 import sys
 import unittest
@@ -18,6 +19,18 @@ from lightup.ai.orchestration import (
 from lightup.capabilities import get_capabilities
 from lightup.engagements import RiskLevel
 from lightup.execution_policy import InteractionKind
+
+
+def source_red_until_owner_fix(test):
+    """Promote original source REDs to ordinary mandatory tests only in strict mode.
+
+    Default behavior records known unchanged-production gaps as expected failures.
+    An explicit literal 1 changes source REDs into ordinary tests so source owners
+    can verify their actual patch without changing test code or this PR.
+    """
+    if os.environ.get("LIGHTUP_SCOPE1531_REQUIRE_SOURCE_FIX") == "1":
+        return test
+    return unittest.expectedFailure(test)
 
 
 def inert_handler(context, arguments):
@@ -191,7 +204,7 @@ class InstalledSourceAcceptanceTests(unittest.TestCase):
             reg.register(definition, second_handler)
         self.assertIs(reg.get(definition.tool_id)[1], inert_handler)
 
-    @unittest.expectedFailure
+    @source_red_until_owner_fix
     def test_source_red_noncallable_must_be_rejected_before_registration(self):
         reg = ToolRegistry()
         definition = self._definition()
@@ -199,7 +212,7 @@ class InstalledSourceAcceptanceTests(unittest.TestCase):
             reg.register(definition, None)
         self.assertEqual(reg.definitions(), ())
 
-    @unittest.expectedFailure
+    @source_red_until_owner_fix
     def test_source_red_numeric_handler_must_be_rejected_atomically(self):
         reg = ToolRegistry()
         definition = self._definition()
@@ -207,7 +220,7 @@ class InstalledSourceAcceptanceTests(unittest.TestCase):
             reg.register(definition, 123)
         self.assertEqual(reg.definitions(), ())
 
-    @unittest.expectedFailure
+    @source_red_until_owner_fix
     def test_source_red_wrong_handler_arity_must_fail_before_registry_mutation(self):
         reg = ToolRegistry()
         original = self._definition()
@@ -219,7 +232,7 @@ class InstalledSourceAcceptanceTests(unittest.TestCase):
         self.assertEqual(reg.definitions(), before)
         self.assertIs(reg.get(original.tool_id)[1], inert_handler)
 
-    @unittest.expectedFailure
+    @source_red_until_owner_fix
     def test_source_red_async_handler_must_fail_before_registry_mutation(self):
         reg = ToolRegistry()
         original = self._definition()
@@ -231,7 +244,7 @@ class InstalledSourceAcceptanceTests(unittest.TestCase):
         self.assertEqual(reg.definitions(), before)
         self.assertIs(reg.get(original.tool_id)[1], inert_handler)
 
-    @unittest.expectedFailure
+    @source_red_until_owner_fix
     def test_source_red_generator_handler_must_be_rejected_atomically(self):
         reg = ToolRegistry()
         definition = self._definition("scope_1531_generator")
@@ -239,7 +252,7 @@ class InstalledSourceAcceptanceTests(unittest.TestCase):
             reg.register(definition, generator_handler)
         self.assertEqual(reg.definitions(), ())
 
-    @unittest.expectedFailure
+    @source_red_until_owner_fix
     def test_source_red_foreign_callable_signature_must_not_be_reflected(self):
         class SignatureTrap:
             @property
