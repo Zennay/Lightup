@@ -149,6 +149,37 @@ def _probe_guard(checkout: Path) -> dict:
     return receipt
 
 
+
+def _probe_mutants(checkout: Path, optimization: str) -> dict:
+    if optimization not in {"-O", "-OO"}:
+        raise CompositionHold("unsupported python optimization check")
+    env = dict(os.environ, PYTHONPATH="src", PYTHONDONTWRITEBYTECODE="1")
+    try:
+        p = subprocess.run(
+            [sys.executable, optimization,
+             "scripts/scope_686_guard_mutants_offline.py"],
+            cwd=checkout, env=env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=35, check=False)
+    except subprocess.TimeoutExpired as exc:
+        raise CompositionHold("opt-in mutant proof timeout") from exc
+    if p.returncode:
+        raise CompositionHold("opt-in guard mutation falsely accepted or failed")
+    try:
+        receipt = json.loads(p.stdout)
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise CompositionHold("invalid guard mutation receipt") from exc
+    if (not isinstance(receipt, dict)
+            or receipt.get("status") != "HOLD"
+            or receipt.get("release_authorized") is not False
+            or receipt.get("candidate_mutant_coverage") != "PASS"
+            or receipt.get("mutants_rejected") != 3
+            or receipt.get("mutation_labels") != [
+                "guard_removed", "body_read_early", "session_cookie_mutation"]
+            or receipt.get("real_target_io_performed") is not False):
+        raise CompositionHold("unsafe or incomplete guard mutation receipt")
+    return {"python_optimization": optimization, "receipt": receipt}
+
+
 def verify(source: Path, head: str, mode: str) -> dict:
     """Return a non-authorizing result. Raises CompositionHold on any uncertainty."""
     head = _sha(head)
@@ -196,6 +227,7 @@ def verify(source: Path, head: str, mode: str) -> dict:
             ]
         results = [_run_tests(dest, label, argv) for label, argv in cases]
         guard_probe = _probe_guard(dest)
+        mutant_checks = [_probe_mutants(dest, mode) for mode in ("-O", "-OO")]
         return {
             "status": "HOLD", "release_authorized": False,
             "real_target_interaction_authorized": False,
@@ -205,6 +237,7 @@ def verify(source: Path, head: str, mode: str) -> dict:
                 for path, commit, blob in _OWNER
             ],
             "test_mode": mode, "checks": results, "guard_probe": guard_probe,
+            "optimized_mutant_checks": mutant_checks,
             "limitations": "Disposable local owner composition, not exact-release-head hosted/permanent-VPS CI or deployed ingress proof.",
         }
 
