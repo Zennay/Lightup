@@ -101,6 +101,19 @@ class PrefixIndexTests(unittest.TestCase):
                     self.assertEqual(review.check(as_bytes(value)),
                                      "HOLD" if conflict(a, b) else "REVIEW_ONLY")
 
+    def test_unportable_git_and_windows_special_paths_hold(self):
+        # A cross-platform review must not silently treat Git internals or
+        # Windows device names as normal, independently writable source files.
+        for bad in (".git/config", ".GIT/hooks/pre-commit", ".git",
+                    "CON", "con.txt", "aux", "PRN.log", "nul",
+                    "lpt9", "COM1.py", "docs/CON", "src/.GiT/objects"):
+            for version in (1, 2):
+                with self.subTest(bad=bad, version=version):
+                    entry = bad if version == 1 else {"op": "add", "path": bad}
+                    other = "other.md" if version == 1 else {"op": "add", "path": "other.md"}
+                    self.assertEqual(review.check(as_bytes(doc(
+                        version, [[entry], [other]]))), "HOLD")
+
     def test_index_receipts_never_include_path_names(self):
         confidential = "src/private-confidential-key.py"
         value = doc(1, [[confidential], [confidential]])
