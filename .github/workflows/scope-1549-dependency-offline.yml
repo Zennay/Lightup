@@ -45,6 +45,13 @@ jobs:
             scripts/review_scope_pr_dependencies_1549_offline.py \
             tests/test_scope_pr_dependencies_1549_offline.py | sort > expected.txt
           diff -u expected.txt actual.txt
+          # An allowed filename is not an allowed symlink or executable.
+          # Require four plain Git blobs (100644), not links (120000)
+          # or executable/script-mode substitutions (100755).
+          while IFS= read -r path; do
+            mode="$(git ls-tree HEAD -- "$path" | cut -d ' ' -f1)"
+            test "$mode" = 100644
+          done < expected.txt
           rm actual.txt expected.txt
       - name: Own strict synthetic tests (never grants authority)
         run: python -I -S -B -m unittest discover -s tests -p test_scope_pr_dependencies_1549_offline.py -v
