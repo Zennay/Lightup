@@ -139,3 +139,35 @@ issuance. Original source owner repair, full project and permanent registered
 VPS runner proof, independent actual client/operator consent and at-use
 revocation, independent privacy/security signoff and HUMAN GO remain required.
 NO MERGE, DEPLOY, REAL ASSETS, SCANS, GRANTS, HANDLERS OR RELEASE.
+
+## W4 — proven RED→GREEN hostile dictionary-key equality fence
+
+A new **owned offline synthetic reviewer** test builds exact built-in Python
+`dict` objects containing attacker-controlled keys whose `__hash__` is
+made to collide with either the trusted outer `schema` key or inner
+`reference` key. Each key's `__eq__` raises if invoked *after* intake.
+
+**Genuine red before repair:** exact own pre-fix `40ff5ee105eb5b286992746641d16ffe5b130c33`
+on permitted `vps-bb300bba` Python3.14.4 gave **17 tests, two FAIL
+subtests**, both at `set(value) != expected` / `set(item) != expected`.
+The source reviewer unexpectedly executed the hostile key's `__eq__` while
+examining membership. This is an **offline synthetic-review purity defect**,
+not a finding that original production issued unauthorized grants.
+
+**Owned fix:** commit `affd8ea0e1680b38ffea4fd90a0e5deeb606188d`
+adds `_has_exact_keys()`: exact built-in dict, exact key count, **first**
+verify every key is an exact built-in `str`, **then** safely compare
+their names. Foreign `__hash__`/`__eq__` are never invoked in this review
+branch. Same zSSH isolated tests **17/17 ordinary PASS**, with the original
+16 source-issuance tests unchanged at 5 normal PASS / 11 expected source
+REDs. Review is still not wired into `DomainStore`.
+
+Follow-up own commit `509a9f248110ae52bfc309af5a655ddc699db229`
+adds deterministic truncation of **every proper JSON prefix** plus
+authority-shaped key substitution tests. Permitted Python3.14.4 VPS suite:
+**19/19 ordinary synthetic reviewer PASS**, source owner REDs unchanged,
+Git clean, no source or other worker files edited.
+
+This branch remains **INCUBATE M3/M7 — DRAFT/HOLD**. No synthetic status
+claims actual client/operator consent; no release, target, scan, grant,
+handler dispatch, merge or deployment.
