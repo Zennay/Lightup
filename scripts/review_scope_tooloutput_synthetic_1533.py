@@ -106,7 +106,7 @@ def main(args: list[str]) -> int:
         try:
             raw = sys.stdin.buffer.read(_MAX_STDIN + 1)
             result = review_output_batch(_parse_synthetic(raw))
-        except (ValueError, TypeError, UnicodeError, RecursionError, OverflowError):
+        except (OSError, ValueError, TypeError, UnicodeError, RecursionError, OverflowError):
             pass
     response = {
         "schema": "lightup.scope1533.receipt.v1",
