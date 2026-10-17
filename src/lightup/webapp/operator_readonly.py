@@ -17,7 +17,7 @@ from ipaddress import ip_address
 from wsgiref.simple_server import make_server
 
 from ..domain import AccessContext, DomainStore, Role
-from .app import AuthState, LightUpWebApp, Response, _e, _page
+from .app import AuthState, LightUpWebApp, Response, _e, _page, _redirect
 from .security import WebSecurity
 
 _PORTAL_FORM_HEADING = "<h2>Request an assessment</h2>"
@@ -181,6 +181,91 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
         )
         return Response(markup[:offset] + callout + markup[offset:],
                         status=page.status)
+
+    def client_detail(self, auth: AuthState, form: dict[str, str],
+                      client_id: str) -> Response:
+        """Hide grant-creation forms until issue #177 is enforced in the domain."""
+        from .authorization_controls import lock_grant_form
+
+        page = super().client_detail(auth, form, client_id)
+        ctx = auth.context
+        engagements = self.store.list_engagements(ctx, client_id)
+        missing = sum(
+            self.store.get_current_grant(ctx, eng.engagement_id) is None
+            for eng in engagements
+        )
+        markup = lock_grant_form(page.body.decode("utf-8"), expected=missing)
+        if markup is None:
+            return Response("<h1>Client details unavailable safely</h1>",
+                            status="503 Service Unavailable")
+        return Response(markup, status=page.status)
+
+    def record_grant(self, auth: AuthState, form: dict[str, str],
+                     engagement_id: str) -> Response:
+        """No unbound web-origin grant may be issued through this variant."""
+        from .authorization_controls import workflow_denied
+        return workflow_denied(
+            "Grant creation is locked until a durable approved-request-to-grant "
+            "relationship and verified client/operator consent are enforced "
+            "inside the domain. A recorded approval alone is not authority."
+        )
+
+    def assessments(self, auth: AuthState, form: dict[str, str]) -> Response:
+        from .authorization_controls import hide_unsafe_approval_buttons
+
+        page = super().assessments(auth, form)
+        markup = hide_unsafe_approval_buttons(
+            page.body.decode("utf-8"), self.store, auth
+        )
+        if markup is None:
+            return Response("<h1>Assessment review unavailable safely</h1>",
+                            status="503 Service Unavailable")
+        banner = (
+            '<div class="card"><span class="badge lock">'
+            'Execution and grant issuance locked</span>'
+            '<p class="meta">Request approvals are administrative records, '
+            'not independently authenticated client consent. Grant creation '
+            'remains blocked until the request-to-grant domain invariant is '
+            'implemented. Requests with suspicious provenance cannot be approved.'
+            '</p><a href="/authorization-desk/queue/pending">'
+            'Open safeguarded review inbox</a></div>'
+        )
+        anchor = '<h2>Assessment requests</h2>'
+        if markup.count(anchor) != 1:
+            return Response("<h1>Assessment review unavailable safely</h1>",
+                            status="503 Service Unavailable")
+        return Response(markup.replace(anchor, banner + anchor),
+                        status=page.status)
+
+    def decide_request(self, auth: AuthState, form: dict[str, str],
+                       request_id: str) -> Response:
+        """Only current tenant-bound client requests may gain APPROVED status.
+
+        Rejection remains possible for invalid historical requests so they can
+        be closed without approving them. Neither action creates a grant.
+        """
+        from .authorization_controls import approval_blockers, workflow_denied
+
+        ctx = auth.context
+        if type(ctx) is not AccessContext or ctx.role is not Role.OPERATOR:
+            return workflow_denied("A real operator account is required")
+        decision = form.get("decision")
+        if decision not in ("approve", "reject"):
+            return workflow_denied("An explicit approve or reject is required")
+        try:
+            request = self.store.get_assessment_request(ctx, request_id)
+        except (KeyError, ValueError, TypeError):
+            return workflow_denied("The stored request is unavailable")
+        if decision == "approve":
+            problems = approval_blockers(self.store, auth, request)
+            if problems:
+                return workflow_denied(
+                    "Approval refused: " + "; ".join(problems)
+                )
+        self.store.review_assessment_request(
+            ctx, request_id, approve=(decision == "approve")
+        )
+        return _redirect("/assessments")
 
     def _dispatch(self, method: str, path: str, form: dict[str, str],
                   auth: AuthState) -> Response:
