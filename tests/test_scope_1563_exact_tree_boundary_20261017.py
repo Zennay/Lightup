@@ -165,6 +165,61 @@ class TemporaryOwnerTreeTests(unittest.TestCase):
         self.assertEqual(result["decision"], "REVIEW_ONLY")
 
 
+    def test_transient_original_source_change_then_revert_still_holds(self):
+        original_head = self._build_owned()
+        self.assertEqual(gate.inspect_exact_head(self.root, original_head)["decision"], "REVIEW_ONLY")
+        self._write("README.md", "synthetic unowned intermediate change")
+        self._commit()
+        self._write("README.md", "base")
+        final_head = self._commit()
+        self.assertEqual(self._git("diff", "--name-only", original_head, final_head), "")
+        with self.assertRaisesRegex(gate.Hold, "forbidden transient"):
+            gate.inspect_exact_head(self.root, final_head)
+
+    def test_temporary_unowned_added_file_then_delete_still_holds(self):
+        original_head = self._build_owned()
+        self._write("src/lightup/foreign-worker.py", "synthetic unowned file")
+        self._commit()
+        (self.root / "src/lightup/foreign-worker.py").unlink()
+        final_head = self._commit()
+        self.assertEqual(self._git("diff", "--name-only", original_head, final_head), "")
+        with self.assertRaises(gate.Hold):
+            gate.inspect_exact_head(self.root, final_head)
+
+    def test_owned_file_delete_and_readd_still_holds(self):
+        original_head = self._build_owned()
+        path = self.root / sorted(gate.ALLOWED_ADDED)[0]
+        original = path.read_bytes()
+        path.unlink()
+        self._commit()
+        path.write_bytes(original)
+        final_head = self._commit()
+        self.assertEqual(self._git("diff", "--name-only", original_head, final_head), "")
+        with self.assertRaises(gate.Hold):
+            gate.inspect_exact_head(self.root, final_head)
+
+    def test_temporary_symlink_then_original_regular_file_still_holds(self):
+        original_head = self._build_owned()
+        path = self.root / sorted(gate.ALLOWED_ADDED)[0]
+        original = path.read_bytes()
+        path.unlink()
+        path.symlink_to(self.root / "README.md")
+        self._commit()
+        path.unlink()
+        path.write_bytes(original)
+        final_head = self._commit()
+        self.assertEqual(self._git("diff", "--name-only", original_head, final_head), "")
+        with self.assertRaises(gate.Hold):
+            gate.inspect_exact_head(self.root, final_head)
+
+    def test_commit_history_count_and_no_release_authority(self):
+        original_head = self._build_owned()
+        decision = gate.inspect_exact_head(self.root, original_head)
+        self.assertEqual(decision["checked_commits"], 1)
+        self.assertIs(decision["release_approved"], False)
+        self.assertIs(decision["authorization_granted"], False)
+
+
 class HostedTriggerContractTests(unittest.TestCase):
     def test_any_head_change_triggers_tree_review(self):
         workflow = (pathlib.Path(__file__).resolve().parents[1] /
