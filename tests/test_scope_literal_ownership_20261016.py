@@ -173,7 +173,8 @@ class AdditiveOwnershipTests(unittest.TestCase):
             "GITHUB_REF": "refs/heads/" + guard.EXPECTED_BRANCH,
             "GITHUB_SHA": "a" * 40,
         }
-        with patch.object(guard, "_git", side_effect=fake_git):
+        with patch.object(guard, "_git", side_effect=fake_git), \
+             patch.object(guard, "worktree_matches_tree", return_value=True):
             for altered, expected in (
                 (good, 0),
                 (dict(good, GITHUB_SHA="b" * 40), 1),

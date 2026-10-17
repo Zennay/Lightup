@@ -9,6 +9,8 @@ from pathlib import Path
 import re
 import subprocess
 import os
+import stat
+import hashlib
 from collections.abc import Mapping
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -85,6 +87,64 @@ def safe_tree(tree: bytes, delta: bytes) -> bool:
             return False
         found.add(name)
     return found == paths
+
+
+MAX_OWNED_BLOB_BYTES = 1024 * 1024
+
+
+def worktree_matches_tree(tree: bytes, delta: bytes, root: Path) -> bool:
+    """Prove exact regular-file bytes of each own path match the Git HEAD OID.
+
+    Git's native blob object encoding includes `blob <len>\0` before file
+    bytes. This only verifies a checkout against existing Git SHA-1 objects;
+    it cannot establish security consent, SHA-1 collision resistance or
+    runtime immutability. No file is executed or written.
+    """
+    if not safe_tree(tree, delta) or not isinstance(root, Path):
+        return False
+    for entry in tree[:-1].split(b"\0"):
+        try:
+            header, raw_path = entry.split(b"\t", 1)
+            expected_oid = header.split(b" ")[-1]
+            path = raw_path.decode("ascii")
+            fd = os.open(root / path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        except (ValueError, UnicodeError, OSError):
+            return False
+        try:
+            original = os.fstat(fd)
+            if not stat.S_ISREG(original.st_mode) or original.st_size > MAX_OWNED_BLOB_BYTES:
+                return False
+            pieces: list[bytes] = []
+            total = 0
+            while True:
+                chunk = os.read(fd, min(65536, MAX_OWNED_BLOB_BYTES + 1 - total))
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > MAX_OWNED_BLOB_BYTES:
+                    return False
+                pieces.append(chunk)
+            last = os.fstat(fd)
+            if (
+                original.st_dev != last.st_dev
+                or original.st_ino != last.st_ino
+                or original.st_size != last.st_size
+                or original.st_mtime_ns != last.st_mtime_ns
+            ):
+                return False
+            contents = b"".join(pieces)
+            if len(contents) != original.st_size:
+                return False
+            digest = hashlib.sha1(
+                b"blob " + str(len(contents)).encode("ascii") + b"\0" + contents
+            ).hexdigest().encode("ascii")
+            if digest != expected_oid:
+                return False
+        except (OSError, ValueError, OverflowError):
+            return False
+        finally:
+            os.close(fd)
+    return True
 
 
 def _git(*args: str) -> subprocess.CompletedProcess[bytes]:
@@ -239,7 +299,7 @@ def main() -> int:
             base.returncode == 0 and head.returncode == 0
             and re.fullmatch(rb"[0-9a-f]{40}", head.stdout.strip()) is not None
             and tree is not None and tree.returncode == 0
-            and safe_tree(tree.stdout, diff.stdout)
+            and worktree_matches_tree(tree.stdout, diff.stdout, ROOT)
         )
     except (OSError, ValueError, TypeError, subprocess.TimeoutExpired):
         ok = False

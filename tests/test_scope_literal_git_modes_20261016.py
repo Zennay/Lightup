@@ -55,6 +55,45 @@ class TreeModeFenceTests(unittest.TestCase):
         self.assertFalse(guard.safe_tree(valid.replace(b"scripts", b"scr\xffpts"), changes()))
         self.assertFalse(guard.safe_tree(valid + b"0" * 16385, changes()))
 
+    def test_exact_worktree_bytes_must_match_owned_head_tree(self):
+        """Independent synthetic Git blob IDs without touching a real remote."""
+        import hashlib
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory(prefix=".scope-blob-fixture-", dir=ROOT) as home:
+            root = Path(home)
+            refs = {}
+            for path in PATHS:
+                target = root / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                content = b"synthetic-offline-blob:" + path.encode("ascii")
+                target.write_bytes(content)
+                refs[path] = hashlib.sha1(
+                    b"blob " + str(len(content)).encode("ascii") + b"\0" + content
+                ).hexdigest().encode("ascii")
+            records = b"".join(
+                b"100644 blob " + refs[path] + b"\t" + path.encode("ascii") + b"\0"
+                for path in PATHS
+            )
+            self.assertTrue(guard.worktree_matches_tree(records, changes(), root))
+            victim = root / PATHS[-1]
+            victim.write_bytes(b"modified-and-not-staged")
+            self.assertFalse(guard.worktree_matches_tree(records, changes(), root))
+            victim.unlink()
+            self.assertFalse(guard.worktree_matches_tree(records, changes(), root))
+            victim.symlink_to(root / PATHS[0])
+            self.assertFalse(guard.worktree_matches_tree(records, changes(), root))
+            victim.unlink()
+            victim.write_bytes(b"x" * (guard.MAX_OWNED_BLOB_BYTES + 1))
+            self.assertFalse(guard.worktree_matches_tree(records, changes(), root))
+
+    def test_worktree_blob_proof_fails_on_tree_or_delta_tampering(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory(prefix=".scope-blob-negative-", dir=ROOT) as home:
+            root = Path(home)
+            self.assertFalse(guard.worktree_matches_tree(tree(), changes(), root))
+            self.assertFalse(guard.worktree_matches_tree(tree(mode="120000"), changes(), root))
+            self.assertFalse(guard.worktree_matches_tree(tree(), changes()[:-1], root))
+
     def test_missing_added_tree_entry_is_hold(self):
         self.assertFalse(guard.safe_tree(tree(PATHS[:-1]), changes()))
         self.assertFalse(guard.safe_tree(tree(), changes(PATHS[:-1])))
