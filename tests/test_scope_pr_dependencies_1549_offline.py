@@ -128,6 +128,39 @@ class DependencyReviewTests(unittest.TestCase):
         self.review(manifest([item(i, f"{i:040x}") for i in range(1, 65)]),
                     [list(range(1, 65))])
 
+    def test_stdout_spoofed_count_never_commits_review_exit(self):
+        class CountClaim(int):
+            def __eq__(self, other):
+                return True
+        class SpoofedSink:
+            def write(self, text):
+                return CountClaim(0)
+            def flush(self):
+                pass
+        incoming = io.TextIOWrapper(io.BytesIO(manifest()), encoding="utf-8")
+        with mock.patch.object(checker.sys, "stdin", incoming), \
+             mock.patch.object(checker.sys, "stdout", SpoofedSink()), \
+             mock.patch.object(checker.sys, "argv", ["reviewer"]):
+            self.assertEqual(checker.main(), 2)
+
+    def test_stdout_partial_or_failed_flush_never_reviews(self):
+        class FailingSink:
+            def __init__(self, value, fails=False):
+                self.value = value
+                self.fails = fails
+            def write(self, text):
+                return self.value if self.value is not None else len(text)
+            def flush(self):
+                if self.fails:
+                    raise OSError("broken sink")
+        for sink in (FailingSink(1), FailingSink(None, True)):
+            with self.subTest(sink=sink.__dict__):
+                incoming = io.TextIOWrapper(io.BytesIO(manifest()), encoding="utf-8")
+                with mock.patch.object(checker.sys, "stdin", incoming), \
+                     mock.patch.object(checker.sys, "stdout", sink), \
+                     mock.patch.object(checker.sys, "argv", ["reviewer"]):
+                    self.assertEqual(checker.main(), 2)
+
     def test_python_bytes_subclass_cannot_reinterpret_input_before_admission(self):
         canonical = manifest([item(1, B)])
         class DeceptiveBytes(bytes):
