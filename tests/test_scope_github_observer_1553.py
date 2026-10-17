@@ -273,6 +273,9 @@ class InjectedTransportTests(unittest.TestCase):
 
     def test_snapshot_alias_mutation_cannot_change_parsed_before(self):
         c = Transport()
+        # Deliberately alias both transport snapshots. The first read must be
+        # detached before a page callback mutates this shared foreign object.
+        c.after = c.before
         orig = c.fetch_page
         def mutate(repo, number, index, size):
             c.before["changed_files"] = 777
