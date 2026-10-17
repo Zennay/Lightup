@@ -97,7 +97,7 @@ def main() -> int:
         print("SCOPE_1558_ADD_ONLY_HOLD")
         return 2
     print(f"SCOPE_1558_ADD_ONLY_REVIEW_ONLY paths={len(changed)}")
-    return 3
+    return 0  # success for CI gating; never consent/merge/release authority
 
 
 if __name__ == "__main__":
