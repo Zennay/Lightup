@@ -389,7 +389,17 @@ def evaluate(cases: tuple[WitnessCase, ...] | None = None) -> dict[str, object]:
         try:
             signal.signal(signal.SIGALRM, _witness_alarm)
             signal.setitimer(signal.ITIMER_REAL, EVALUATION_DEADLINE_SECONDS)
-            return _evaluate_pinned_cases(fixtures, fixture_digest, snapshot, deadline)
+            outcome = _evaluate_pinned_cases(fixtures, fixture_digest, snapshot, deadline)
+            if outcome["status"] == "REVIEW_ONLY":
+                # Snapshot and decision hashes alone are insufficient:
+                # source bytes and already-loaded module identity can change
+                # between the initial trust check and the final evidence.
+                if (not _cached_imports_canonical()
+                    or _trusted_source_hashes() != _VERIFIED_SOURCE):
+                    return _receipt("HOLD", "offline_witness_source_drift")
+                if time.monotonic() >= deadline:
+                    return _receipt("HOLD", "offline_witness_time_budget_exceeded")
+            return outcome
         finally:
             # Restore both resources even if the policy crashed, returned
             # early or exceeded the wall-clock budget.
