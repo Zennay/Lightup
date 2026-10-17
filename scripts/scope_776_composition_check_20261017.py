@@ -255,12 +255,53 @@ def verify_original_strict_red_identities(root: Path, code: int,
     print("scope776_original_exact_18_source_RED_methods_26_failing_subcases=PASS")
 
 
+def make_held_receipt(head_sha: str, full: bool,
+                      units: int | None = None,
+                      integration: int | None = None) -> dict:
+    # This is a diagnostic result, NEVER an authority or release credential.
+    if not re.fullmatch(r"[a-f0-9]{40}", head_sha):
+        raise RuntimeError("scope776_invalid_exact_head")
+    if type(full) is not bool or (units is not None and type(units) is not int):
+        raise RuntimeError("scope776_invalid_receipt_counts")
+    if integration is not None and type(integration) is not int:
+        raise RuntimeError("scope776_invalid_receipt_counts")
+    if (full and (units is None or integration is None)
+            or not full and (units is not None or integration is not None)):
+        raise RuntimeError("scope776_receipt_full_source_proof_mismatch")
+    return {
+        "schema": "lightup.scope776.offline_receipt.v1",
+        "head_sha": head_sha,
+        "owner_base_sha": OWNER_SHA,
+        "phase": "INCUBATE_M3_M7_PLAN_LAB_ONLY_DRAFT_HOLD",
+        "original_expected_source_red_methods": 18,
+        "original_strict_failing_subtests": 26,
+        "temporary_repair_strict_green_methods": 26,
+        "source_repair_committed": False,
+        "upstream_773_imported_or_executed": False,
+        "full_disposable_units": units,
+        "full_disposable_integration": integration,
+        "permanent_registered_vps_ci_verified": False,
+        "genuine_client_operator_consent_verified": False,
+        "security_privacy_review_approved": False,
+        "human_go": False,
+        "may_authorize": False,
+        "may_dispatch": False,
+        "may_scan": False,
+        "may_deploy": False,
+        "may_release": False,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Offline #776 held source composition")
     parser.add_argument("--full", action="store_true",
                         help="Also run original complete unit and localhost integration")
+    parser.add_argument("--json", action="store_true",
+                        help="Append machine-readable privacy-minimal HOLD receipt")
     args = parser.parse_args()
     verify_manifest()
+    unit_count = None
+    integration_count = None
     with tempfile.TemporaryDirectory(prefix="lightup_scope776_") as temp:
         root = Path(temp)
         shutil.copytree(PROJECT / "src", root / "src")
@@ -297,17 +338,20 @@ def main() -> int:
                     unit_code, unit_out = run_unittest(root, True, "test*.py")
                     if unit_code or not re.search(r"(?m)^OK$", unit_out):
                         raise RuntimeError("scope776_full_unit_regression:" + unit_out[-1400:])
-                    print("scope776_full_disposable_units=" +
-                          re.search(r"(?m)^Ran (\d+) tests in ", unit_out).group(1) +
-                          "_PASS")
+                    unit_count = int(re.search(
+                        r"(?m)^Ran (\d+) tests in ", unit_out
+                    ).group(1))
+                    print("scope776_full_disposable_units=" + str(unit_count) + "_PASS")
                     integration_code, integration_out = run_unittest(
                         root, True, "test*.py", extra=("tests/integration",))
                     if integration_code or not re.search(r"(?m)^OK$", integration_out):
                         raise RuntimeError("scope776_full_integration_regression:" +
                                            integration_out[-1400:])
+                    integration_count = int(re.search(
+                        r"(?m)^Ran (\d+) tests in ", integration_out
+                    ).group(1))
                     print("scope776_full_local_integration=" +
-                          re.search(r"(?m)^Ran (\d+) tests in ", integration_out).group(1) +
-                          "_PASS")
+                          str(integration_count) + "_PASS")
             else:
                 if code == 0:
                     raise RuntimeError("scope776_weak_guard_unexpected_GREEN:" + variant)
@@ -319,7 +363,15 @@ def main() -> int:
                 if expected not in output:
                     raise RuntimeError("scope776_weak_guard_wrong_RED:" + variant)
                 print("scope776_deliberately_incomplete_" + variant + "=RED_EXPECTED")
+    # Emitted only after all evidence gates succeed and temp source is gone.
     print("scope776_no_source_owner_modification_or_release=HOLD")
+    if args.json:
+        receipt = make_held_receipt(
+            git("rev-parse", "HEAD").decode("ascii", "strict").strip(),
+            full=args.full, units=unit_count, integration=integration_count,
+        )
+        print("SCOPE776_RECEIPT_JSON=" +
+              json.dumps(receipt, sort_keys=True, separators=(",", ":")))
     return 0
 
 
