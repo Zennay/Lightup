@@ -707,6 +707,18 @@ class MutationWitnessQualityTests(unittest.TestCase):
         ):
             self.assertIs(evidence[key], False)
 
+    def test_incomplete_mutant_inventory_makes_receipt_hold_before_running(self):
+        self.assertTrue(self.proof.mutant_inventory_valid())
+        with patch.object(self.proof, "MUTATIONS", ()):
+            with patch.object(self.proof, "run_suite", side_effect=AssertionError("not run")):
+                code, evidence = self.proof.review_offline(verbose=False)
+        self.assertEqual(code, 2)
+        self.assertEqual(evidence["disposition"], "HOLD")
+        self.assertEqual(evidence["hold_reason"], "MUTATION_INVENTORY_INCOMPLETE")
+        self.assertEqual(evidence["mutation_canaries_caught"], 0)
+        self.assertIs(evidence["release_approved"], False)
+        self.assertIs(evidence["authority_granted"], False)
+
     def test_offline_review_manifest_hold_emits_no_false_authority(self):
         with patch.object(self.proof, "suite_manifest_valid", return_value=False):
             with patch.object(self.proof, "run_suite", side_effect=AssertionError("must not run suite")):
