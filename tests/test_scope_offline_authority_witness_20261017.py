@@ -623,13 +623,16 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         if signal.getsignal(signal.SIGALRM) != signal.SIG_DFL or any(signal.getitimer(signal.ITIMER_REAL)):
             self.skipTest("external alarm in use")
         original = witness.ScopePolicy.decide
+        first_case = [True]
         def policy_swallows_deadline(self, target):
-            try:
-                time.sleep(witness.EVALUATION_DEADLINE_SECONDS + 0.6)
-            except BaseException:
-                # Deliberately simulate a callback that catches SIGALRM's
-                # BaseException sentinel and goes on to return a valid result.
-                pass
+            if first_case[0]:
+                first_case[0] = False
+                try:
+                    time.sleep(witness.EVALUATION_DEADLINE_SECONDS + 0.6)
+                except BaseException:
+                    # Swallow the ONE-SHOT SIGALRM, then return a valid
+                    # first result. Later cases stay fast and deterministic.
+                    pass
             return original(self, target)
         started = time.monotonic()
         with patch.object(witness.ScopePolicy, "decide", policy_swallows_deadline):
