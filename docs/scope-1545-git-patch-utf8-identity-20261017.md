@@ -103,3 +103,16 @@ real separately authenticated client and operator approval, live at-use
 revocation, privacy/security review, complete approved-exact-head hosted and
 permanently registered VPS CI, plus explicit HUMAN GO remain mandatory.
 No merges, deployments, scans, target activity or grants from this lane.
+
+## Owner baseline advanced independently while acceptance remained isolated
+
+The original owner PR #1538 independently advanced from pinned SHA
+26dd88d3 to 112868100d21 during this worker iteration and modified source
+paths belonging solely to that owner. Read-only inspection of the newer
+source still showed lossy UTF-8 patch decoding; nothing was edited or copied
+from the owner's new commit. Hosted acceptance deliberately checks out the
+**head.sha of this independently owned draft PR**, not GitHub's synthetic PR
+merge ref, and verifies four *only-new* paths relative to pinned exact owner
+baseline. Therefore a parallel owner branch advance cannot silently insert
+other workers' code into this branch's purported exact-head acceptance.
+This does not prove the owner branch at any later release head is repaired.

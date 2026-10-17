@@ -30,6 +30,7 @@ jobs:
       - name: Checkout exact PR source
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Install hosted Python
@@ -53,12 +54,15 @@ jobs:
                   ["git", "-c", "core.fsmonitor=false", *args],
                   timeout=10,
               ).decode("ascii")
-          assert git("merge-base", BASE, "HEAD").strip() == BASE, "base SHA not ancestor"
+          if git("merge-base", BASE, "HEAD").strip() != BASE:
+              raise SystemExit("HOLD: pinned source-owner base not ancestor")
           records = git("diff", "--no-renames", "--name-status", "-z", BASE, "HEAD")
           parts = records.rstrip("\0").split("\0")
-          assert len(parts) == 2 * len(EXPECTED), "wrong changed path count"
+          if len(parts) != 2 * len(EXPECTED):
+              raise SystemExit("HOLD: wrong changed path count")
           actual = {f"{parts[i]}\t{parts[i+1]}" for i in range(0, len(parts), 2)}
-          assert actual == EXPECTED, "must change only four additive 1545-owned files"
+          if actual != EXPECTED:
+              raise SystemExit("HOLD: must change only four additive 1545-owned files")
           print("scope1545_exact_owner_paths=PASS")
           PY
       - name: Run isolated patch bytes tests, strictly no syntax warnings
