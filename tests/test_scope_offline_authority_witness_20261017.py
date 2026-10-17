@@ -240,6 +240,42 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         self.assertNotIn("synthetic_matrix_sha256", result)
         self.assert_no_authority(result)
 
+    def test_python_network_file_and_process_attempts_hold_during_witness(self):
+        original = witness.ScopePolicy.decide
+        def policy_with_io(self, target, which):
+            if which == "socket":
+                with socket.socket():
+                    pass
+            elif which == "file":
+                Path(__file__).read_text(encoding="utf-8")
+            elif which == "process":
+                subprocess.run([sys.executable, "-c", "print('fictional')"], check=True)
+            return original(self, target)
+        for which in ("socket", "file", "process"):
+            with self.subTest(kind=which):
+                with patch.object(
+                    witness.ScopePolicy, "decide",
+                    lambda self, target: policy_with_io(self, target, which),
+                ):
+                    result = witness.evaluate()
+                self.assertEqual(result["status"], "HOLD")
+                self.assertEqual(result["reason"], "offline_witness_evaluation_failed")
+                self.assert_no_authority(result)
+                self.assertNotIn("synthetic_matrix_sha256", result)
+                # A blocked operation must never poison a subsequent clean review.
+                self.assertEqual(witness.evaluate()["status"], "REVIEW_ONLY")
+
+    def test_python_audit_arguments_are_never_reflected_to_receipt(self):
+        def policy_with_private_audit(self, target):
+            sys.audit("socket.connect", "private-operator-context")
+            raise AssertionError("must not reach this point")
+        with patch.object(witness.ScopePolicy, "decide", policy_with_private_audit):
+            receipt = witness.evaluate()
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(receipt["reason"], "offline_witness_evaluation_failed")
+        self.assertNotIn("private-operator-context", json.dumps(receipt))
+        self.assert_no_authority(receipt)
+
     def test_no_network_socket_or_dns_is_necessary(self):
         with (patch.object(socket, "socket", side_effect=AssertionError("network invoked")),
               patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns invoked"))):
