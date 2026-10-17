@@ -22,7 +22,9 @@ All duplicate cases require rejection **before** `DomainStore.session_context`. 
 
 ### Test-only source-owner repair oracle (not runtime code)
 
-The expanded suite includes **10 deliberately unresolved original-source expectedFailures** and **8 ordinary passing test methods**. `test_owner_fix_rehearsal_turns_ten_original_source_reds_green` temporarily replaces only one *test app instance's* `_authenticate` binding with a minimal synthetic duplicate-occurrence gate. It calls **all 10 red method bodies directly** (so that the `expectedFailure` decorator cannot hide errors), retests valid operator/client authentication and repeated unrelated cookies, then checks **128 seeded adversarial duplicate combinations**. A deliberately incomplete values-only duplicate check must still fail on two equal session credentials.
+The expanded suite includes **11 deliberately unresolved original-source expectedFailures** and **8 ordinary passing test methods**. `test_owner_fix_rehearsal_turns_eleven_original_source_reds_green` temporarily replaces one *test app instance's* `_authenticate` binding and the synthetic WSGI trust-boundary `WebSecurity.validate` class hook with minimal duplicate-occurrence denial. It calls **all 11 red method bodies directly** (so that the `expectedFailure` decorator cannot hide errors), retests valid operator/client authentication and repeated unrelated cookies, then checks **128 seeded adversarial duplicate combinations**. A deliberately incomplete values-only duplicate check must still fail on two equal session credentials.
+
+An additional direct RED specifically checks public `POST /login` against mocked session creation and revocation; its current original-source failure shows an actual **source code trust-boundary gap**, not an observed live exploit. An ingress guard gives a generic `403` and must leave original sessions intact; a test-only `_authenticate` patch alone would not protect the public login path.
 
 This is a **bounded behavioral repair rehearsal**, **not** a complete `Cookie` grammar parser, source-owner patch, installed middleware, real proxy evidence, or live consent. Its simplistic semicolon counting is confined to the fictional test fixture and MUST NOT be copied into production. Production parsing must independently handle RFC cookie quoting, controls, exact cookie-name identity, maximum sizes, malformed envelope types, and intermediary normalization, together with ingress owner #1169/#1170.
 
@@ -32,11 +34,11 @@ Run:
 PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_scope_686_duplicate_session_cookies.py' -v
 ```
 
-The eight expected failures are an explicit *source-owner TODO*, **not** evidence that the flaw is fixed. An actual source fix should remove the `expectedFailure` decorators and make all 18 (or more) ordinary PASS, with strict no-session-lookup assertion preserved. A future unexpected success under `expectedFailure` is a migration signal and must be reviewed, not silently accepted.
+The eight expected failures are an explicit *source-owner TODO*, **not** evidence that the flaw is fixed. An actual source fix should remove the `expectedFailure` decorators and make all 19 (or more) ordinary PASS, with strict no-session-lookup assertion preserved. A future unexpected success under `expectedFailure` is a migration signal and must be reviewed, not silently accepted.
 
 ## Source-owner handoff (do not implement here)
 
-1. Reject any ambiguous `lightup_session` duplicate **before** generic `SimpleCookie` normalization or any durable session lookup. Include same-value duplicates and reversed operator/client order; do not use first- or last-wins selection.
+1. Reject any ambiguous `lightup_session` duplicate **at the WSGI ingress before form parsing, public login routing, generic `SimpleCookie` normalization, or any durable session lookup**. Returning `ANONYMOUS` from `_authenticate` alone is NOT sufficient: public `POST /login` can still mint a session from supplied credentials. The dedicated source-RED checks require no `create_session`, `revoke_session`, or `Set-Cookie` on ambiguous login requests. Include same-value duplicates and reversed operator/client order; do not use first- or last-wins selection.
 2. Make raw-header parser behavior explicit and test alongside the *actual* production WSGI entrypoint. If using PR #1169's standalone guard, wire it only through the appropriate web/ingress owner and independently review path/charset/quote semantics.
 3. Keep rejection side-effect-free: no session lookup, session revocation, tenant mutation or cookie-setting. Preserve successful single-token authentication and tenant access isolation.
 4. Capture edge-to-Gunicorn normalization separately under [ingress issue #1170](https://github.com/Zennay/Lightup/issues/1170); WSGI-level tests cannot prove proxy treatment of two physical Cookie headers.
