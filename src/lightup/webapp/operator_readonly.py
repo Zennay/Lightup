@@ -49,6 +49,14 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             self.authorization_client_desk, "operator",
         ))
         self.routes.append((
+            "GET", re.compile(r"^/authorization-desk/queue/(?P<queue>pending|decided)$"),
+            self.authorization_queue, "operator",
+        ))
+        self.routes.append((
+            "GET", re.compile(r"^/authorization-desk/requests/(?P<request_id>[\w-]+)$"),
+            self.authorization_request_detail, "operator",
+        ))
+        self.routes.append((
             "GET", re.compile(
                 r"^/portal/(?P<client_id>[\w-]+)/requests/(?P<request_id>[\w-]+)$"
             ),
@@ -71,6 +79,18 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
     ) -> Response:
         from .authorization_desk import render_authorization_desk
         return render_authorization_desk(self.store, auth, client_id=client_id)
+
+    def authorization_queue(
+        self, auth: AuthState, form: dict[str, str], queue: str
+    ) -> Response:
+        from .authorization_desk import render_authorization_desk
+        return render_authorization_desk(self.store, auth, queue=queue)
+
+    def authorization_request_detail(
+        self, auth: AuthState, form: dict[str, str], request_id: str
+    ) -> Response:
+        from .authorization_desk import render_operator_request_detail
+        return render_operator_request_detail(self.store, auth, request_id)
 
     def overview(self, auth: AuthState, form: dict[str, str]) -> Response:
         page = super().overview(auth, form)
