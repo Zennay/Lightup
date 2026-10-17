@@ -88,7 +88,7 @@ jobs:
             cd "$tempdir"
             LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX=1 PYTHONPATH=src:tests \
               python -S -B -m unittest \
-              test_scope_1547_synthetic_git_status.StrictSourceOwnerGate.test_source_rejects_all_five_original_invalid_forms -v
+              test_scope_1547_synthetic_git_status.StrictSourceOwnerGate -v
           )
       - name: Source-owner status is review-only, never an authority grant
         run: echo "Source acceptance alone cannot authorize merge, scan, grant, release or deployment"
