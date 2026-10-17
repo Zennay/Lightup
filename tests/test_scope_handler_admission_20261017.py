@@ -1,7 +1,6 @@
 """No-network, no-execution acceptance for opt-in scope #1531 reviewer."""
 from __future__ import annotations
 
-import dataclasses
 import os
 import pathlib
 import sys
@@ -146,7 +145,10 @@ class HandlerAdmissionReviewTests(unittest.TestCase):
         from scope_handler_admission_review_20261017 import HandlerAdmissionReview
         with self.assertRaises(TypeError):
             HandlerAdmissionReview("REVIEW_ONLY", authorized=True)
-        self.assertTrue(dataclasses.is_dataclass(HandlerAdmissionReview))
+        receipt = HandlerAdmissionReview("REVIEW_ONLY")
+        self.assertIsInstance(receipt, tuple)
+        self.assertEqual(tuple(receipt), ("REVIEW_ONLY",))
+        self.assertEqual(receipt.status, "REVIEW_ONLY")
 
     def test_review_receipt_rejects_forged_statuses(self):
         from scope_handler_admission_review_20261017 import HandlerAdmissionReview
@@ -165,9 +167,24 @@ class HandlerAdmissionReviewTests(unittest.TestCase):
             self.assertEqual(review_handlers(records).status, "REVIEW_ONLY")
         self.assertEqual(records, before)
 
-    def test_review_is_independent_of_prior_result_mutation(self):
-        result = review_handlers((("x", inert_handler),))
-        object.__setattr__(result, "authorized", True)
+    def test_review_is_immutable_even_via_object_setattr(self):
+        receipt = review_handlers((("x", inert_handler),))
+        for field_name, forged in (
+            ("status", "AUTHORIZED"),
+            ("authorized", True),
+            ("consent_verified", True),
+            ("dispatch_allowed", True),
+            ("release_allowed", True),
+            ("__dict__", {"authorized": True}),
+        ):
+            with self.subTest(field_name=field_name):
+                with self.assertRaises((AttributeError, TypeError)):
+                    object.__setattr__(receipt, field_name, forged)
+        self.assertEqual(receipt.status, "REVIEW_ONLY")
+        self.assertFalse(receipt.authorized)
+        self.assertFalse(receipt.consent_verified)
+        self.assertFalse(receipt.dispatch_allowed)
+        self.assertFalse(receipt.release_allowed)
         self.assertFalse(review_handlers((("x", inert_handler),)).authorized)
 
     def test_no_file_process_or_network_io(self):

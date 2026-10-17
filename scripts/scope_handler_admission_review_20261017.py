@@ -5,27 +5,50 @@ No handler is ever invoked; a REVIEW_ONLY result must never be used as consent.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from inspect import CO_ASYNC_GENERATOR, CO_COROUTINE, CO_GENERATOR, CO_VARARGS, CO_VARKEYWORDS
 from types import FunctionType
 import re
 
-_NAME = re.compile(r"[a-z][a-z0-9_]{0,63}\Z", flags=re.ASCII)
+_NAME = re.compile(r"[a-z][a-z0-9_]{0,63}\\Z", flags=re.ASCII)
 _UNSAFE_FLAGS = CO_ASYNC_GENERATOR | CO_COROUTINE | CO_GENERATOR | CO_VARARGS | CO_VARKEYWORDS
 
 
-@dataclass(frozen=True, slots=True)
-class HandlerAdmissionReview:
-    status: str
-    authorized: bool = field(default=False, init=False)
-    consent_verified: bool = field(default=False, init=False)
-    dispatch_allowed: bool = field(default=False, init=False)
-    release_allowed: bool = field(default=False, init=False)
+class HandlerAdmissionReview(tuple):
+    """Immutable single-status observation. It does not grant authority.
 
-    def __post_init__(self) -> None:
-        if type(self.status) is not str or self.status not in ("HOLD", "REVIEW_ONLY"):
+    A tuple has no writable slots or dictionary. Even object.__setattr__
+    cannot flip one of the four false authority properties.
+    This is ordinary in-process misuse resistance, NOT a security principal.
+    """
+    __slots__ = ()
+
+    def __new__(cls, status: str) -> HandlerAdmissionReview:
+        if cls is not HandlerAdmissionReview or type(status) is not str or status not in ("HOLD", "REVIEW_ONLY"):
             raise ValueError("invalid offline review status")
+        return tuple.__new__(cls, (status,))
 
+    @property
+    def status(self) -> str:
+        return self[0]
+
+    @property
+    def authorized(self) -> bool:
+        return False
+
+    @property
+    def consent_verified(self) -> bool:
+        return False
+
+    @property
+    def dispatch_allowed(self) -> bool:
+        return False
+
+    @property
+    def release_allowed(self) -> bool:
+        return False
+
+    def __repr__(self) -> str:
+        return f"HandlerAdmissionReview(status={self.status!r})"
 
 def review_handlers(records: object) -> HandlerAdmissionReview:
     """Review 1..32 EXACT synthetic (identifier, plain_function) pairs.
