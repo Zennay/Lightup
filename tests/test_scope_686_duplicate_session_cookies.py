@@ -192,6 +192,11 @@ class DuplicateSessionCookieAcceptance(unittest.TestCase):
 
 
     @unittest.expectedFailure
+    def test_red_duplicate_valid_then_invalid_prelookup(self):
+        self._assert_ambiguous_denied_prelookup(
+            f"lightup_session={self.operator_token}; lightup_session=invalid")
+
+    @unittest.expectedFailure
     def test_red_duplicate_three_cookie_variants_prelookup(self):
         self._assert_ambiguous_denied_prelookup(
             "theme=dark; lightup_session=" + self.operator_token
@@ -243,7 +248,42 @@ class DuplicateSessionCookieAcceptance(unittest.TestCase):
         self.assertTrue(auth.signed_in)
         self.assertTrue(auth.is_operator)
 
-    def test_owner_fix_rehearsal_turns_eleven_original_source_reds_green(self):
+    def test_expected_source_reds_are_exact_assertion_failures_not_errors(self):
+        # A broad @expectedFailure can accidentally disguise import errors,
+        # TypeErrors or missing fixtures as a security finding. Prove the
+        # ORIGINAL unmodified source fails for the intended admission reasons.
+        observed = {
+            "test_red_duplicate_identical_operator_token_prelookup",
+            "test_red_duplicate_operator_then_client_prelookup",
+            "test_red_duplicate_client_then_operator_prelookup",
+            "test_red_duplicate_surrounded_by_unrelated_cookies",
+            "test_red_duplicate_valid_after_invalid_prelookup",
+            "test_red_duplicate_valid_then_invalid_prelookup",
+            "test_red_wsgi_duplicate_must_not_gain_operator_access",
+            "test_red_duplicate_cannot_logout_either_session",
+            "test_red_duplicate_cannot_create_client",
+            "test_red_duplicate_three_cookie_variants_prelookup",
+            "test_red_duplicate_mixed_spaces_prelookup",
+            "test_red_duplicate_public_login_must_not_issue_fresh_session",
+        }
+        declared = {
+            name for name in dir(type(self))
+            if name.startswith("test_red_")
+            and getattr(getattr(type(self), name), "__unittest_expecting_failure__", False)
+        }
+        self.assertEqual(declared, observed)
+        for name in sorted(observed):
+            with self.subTest(original_source_red=name):
+                with self.assertRaises(AssertionError) as failure:
+                    getattr(self, name)()
+                message = str(failure.exception)
+                self.assertTrue(
+                    "session_context" in message or "200 OK" in message
+                    or "303 See Other" in message or "Set-Cookie" in message,
+                    (name, message[:100]),
+                )
+
+    def test_owner_fix_rehearsal_turns_twelve_original_source_reds_green(self):
         # A *test-local witness only*, not a production parser or a wired
         # middleware: reproduces the narrowly specified duplicate count
         # admission invariant for the exact synthetic cookie shapes below.
@@ -272,6 +312,7 @@ class DuplicateSessionCookieAcceptance(unittest.TestCase):
             "test_red_duplicate_three_cookie_variants_prelookup",
             "test_red_duplicate_mixed_spaces_prelookup",
             "test_red_duplicate_public_login_must_not_issue_fresh_session",
+            "test_red_duplicate_valid_then_invalid_prelookup",
         )
         raw_validate = self.app.security.validate
 
