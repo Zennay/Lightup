@@ -211,12 +211,16 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
         )
 
     def assessments(self, auth: AuthState, form: dict[str, str]) -> Response:
-        from .authorization_controls import hide_unsafe_approval_buttons
+        from .authorization_controls import (
+            hide_unsafe_approval_buttons, hide_unsafe_elevation_buttons,
+        )
 
         page = super().assessments(auth, form)
         markup = hide_unsafe_approval_buttons(
             page.body.decode("utf-8"), self.store, auth
         )
+        if markup is not None:
+            markup = hide_unsafe_elevation_buttons(markup, self.store, auth)
         if markup is None:
             return Response("<h1>Assessment review unavailable safely</h1>",
                             status="503 Service Unavailable")
@@ -264,6 +268,42 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
                 )
         self.store.review_assessment_request(
             ctx, request_id, approve=(decision == "approve")
+        )
+        return _redirect("/assessments")
+
+    def decide_elevation(self, auth: AuthState, form: dict[str, str],
+                         approval_id: str) -> Response:
+        """Only an independently client-originated pending risk request may pass."""
+        from .authorization_controls import elevation_blockers, workflow_denied
+
+        ctx = auth.context
+        if type(ctx) is not AccessContext or ctx.role is not Role.OPERATOR:
+            return workflow_denied("A real operator account is required")
+        decision = form.get("decision")
+        if decision not in ("approve", "deny"):
+            return workflow_denied("An explicit approve or deny is required")
+        try:
+            stored = next(
+                (item for item in self.store.list_risk_approvals(ctx)
+                 if item.approval_id == approval_id),
+                None,
+            )
+        except (KeyError, ValueError, TypeError):
+            return workflow_denied("The risk elevation record is unavailable")
+        if stored is None:
+            return workflow_denied("The risk elevation record is unavailable")
+        if stored.requested_by == ctx.user_id:
+            return workflow_denied("Risk elevations cannot be self-decided")
+        if decision == "approve":
+            reasons = elevation_blockers(self.store, auth, stored)
+            if reasons:
+                return workflow_denied(
+                    "Risk elevation approval refused: " + "; ".join(reasons)
+                )
+        # The original domain method separately checks role and prevents
+        # self-decision; this opt-in web gate never creates a client grant.
+        self.store.decide_risk_elevation(
+            ctx, approval_id, approve=(decision == "approve")
         )
         return _redirect("/assessments")
 
