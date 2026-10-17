@@ -9,7 +9,7 @@ Standalone browser-only workspace at `studio/index.html` with three connected pr
 
 3. **Engagement Handoff Builder** (`studio/engagement-handoff.html`): import the client proposal, record client/operator coordination contacts and emergency stop contact, stop conditions, privacy and evidence-handling plan, service/rate limits, rollback and incident procedure. The page surfaces outstanding preparation materials and exports a human-readable dossier and versioned `lightup.engagement_preparation_draft` JSON with literal false consent, authorization, grant, execution and release fields. "Prepared for human review" never equals "authorized".
 
-Open `studio/index.html` from a local checkout in a modern browser; no server, build, dependencies, external scripts, cookies, `localStorage`, database, authentication, fetch/API or real-target contact. Files are downloaded by user action only. For example:
+Open `studio/index.html` from a local checkout in a modern browser; no server, build, third-party dependencies, remote scripts, cookies, `localStorage`, database, authentication, fetch/API or real-target contact. Files are downloaded by user action only. For example:
 
 ```text
 studio/index.html
@@ -17,11 +17,14 @@ studio/index.html
   ├── scope-change-review.html  ← before/after draft files → lightup-scope-change-review.json
   └── engagement-handoff.html   ← draft file → lightup-engagement-preparation.json
       scope-network.js         (shared local address-range analysis)
+      scope-fingerprint.js     (unsigned stable scope revision SHA-256)
 ```
 
 ### Format and compatibility
 
 Proposal exports use `kind: "lightup.scope_proposal_draft"`, `schema_version: 1`, `state: "DRAFT_ONLY"`, `requested_assets`, `excluded_assets`, `requested_mode`, `requested_risk`, `notes`, `proposed_activities` and `proposed_window_local`. The review accepts only this v1 shape. Modes correspond to `lightup.engagements.AssessmentMode`; fields are **not** a `DomainStore.create_assessment_request` payload. They contain no authoritative client ID, actor identity, CSRF token, grant, consent signature, or approved request ID.
+
+The composer also computes an **unsigned scope revision SHA-256 fingerprint** over stable, canonicalized draft fields (including numerical IPv4/IPv6 identities). Volatile export timestamps are excluded. This identifies versions for collaboration but is **not** a cryptographic signature, authenticated consent, client ownership, or grant. If the browser's local secure context lacks `crypto.subtle`, the composer still works and simply omits the fingerprint. A provided fingerprint in an imported draft must match local recomputation or import is refused. The change-review compares and exports both independently recomputed fingerprints; the engagement handoff repeats the imported proposal fingerprint without turning it into authority. Do not use this as #177 domain request-to-grant evidence.
 
 Review notes use `kind: "lightup.scope_comparison_notes"` and `disposition: "REVIEW_ONLY"` with literal false authentication/consent/authorization/grant/execution/scan/release flags. Local IPv4/IPv6 CIDR interval comparison is a review aid, **not a DNS or execution-policy membership check**. It can detect netblocks containing other netblocks and may warn when semantic address-space differs despite a textual match, but it never proves ownership, exclusion enforcement or that use of a range is allowed. A recorded exclusion does not bind future execution. The studio intentionally does **not** submit the draft to the authenticated portal or write any durable state; a verified client must submit through normal authenticated flows.
 
