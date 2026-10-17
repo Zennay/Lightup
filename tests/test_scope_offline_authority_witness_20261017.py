@@ -585,6 +585,38 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
                 self.assertEqual(receipt["reason"], "offline_witness_evaluation_failed")
                 self.assert_no_authority(receipt)
 
+    def test_evaluator_must_not_escape_through_baseexception_variants(self):
+        for failure in (SystemExit(0), SystemExit(3), KeyboardInterrupt(), GeneratorExit()):
+            with self.subTest(name=type(failure).__name__, status=getattr(failure, "code", None)):
+                with patch.object(witness.ScopePolicy, "decide", side_effect=failure):
+                    try:
+                        receipt = witness.evaluate()
+                    except BaseException as escaped:
+                        self.fail(f"{type(escaped).__name__} escaped the offline HOLD boundary")
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertEqual(receipt["reason"], "offline_witness_evaluation_failed")
+                self.assert_no_authority(receipt)
+                self.assertEqual(witness.evaluate()["status"], "REVIEW_ONLY")
+
+    def test_real_python_child_cannot_exit_zero_via_policy_systemexit(self):
+        script_dir = str(ROOT / "scripts")
+        program = (
+            f"import sys; sys.path.insert(0, {script_dir!r}); "
+            "import scope_offline_authority_witness_20261017 as w; "
+            "w.ScopePolicy.decide=lambda self,target: "
+            "(_ for _ in ()).throw(SystemExit(0)); "
+            "raise SystemExit(w.main(['--offline-lab-only']))"
+        )
+        done = subprocess.run(
+            [sys.executable, "-c", program],
+            capture_output=True, text=True, timeout=12, check=False,
+        )
+        self.assertEqual(done.returncode, 2, done.stderr)
+        self.assertEqual(done.stderr, "")
+        receipt = json.loads(done.stdout)
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assert_no_authority(receipt)
+
     def test_no_network_socket_or_dns_is_necessary(self):
         with (patch.object(socket, "socket", side_effect=AssertionError("network invoked")),
               patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns invoked"))):
