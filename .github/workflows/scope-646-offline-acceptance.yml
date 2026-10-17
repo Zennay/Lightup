@@ -113,6 +113,65 @@ jobs:
           print("scope646_exact_six_source_RED_identities_and_causes=PASS")
           print("scope646_original_production_still_unfixed=HOLD")
           PY
+      - name: Disposable exact-type versus weak isinstance owner-fix rehearsal
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import shutil
+          import subprocess
+          import sys
+          import tempfile
+
+          original = Path("src/lightup/domain.py").read_text(encoding="utf-8")
+          marker = ('        ctx.require_operator("record_authorization_grant")\\n'
+                    '        if not isinstance(recurring_retest_allowed, bool):')
+          assert original.count(marker) == 1, "source646_owner_boundary_changed"
+          guards = (
+              ("exact", 'if type(scope) is not ScopeDefinition:', True),
+              ("weak", 'if not isinstance(scope, ScopeDefinition):', False),
+          )
+          for label, guard, expect_green in guards:
+              with tempfile.TemporaryDirectory(prefix="scope646_disposable_") as temp:
+                  temp_src = Path(temp, "src")
+                  shutil.copytree("src", temp_src)
+                  target = temp_src / "lightup" / "domain.py"
+                  replacement = (
+                      '        ctx.require_operator("record_authorization_grant")\\n'
+                      '        ' + guard + '\\n'
+                      '            raise ValueError("noncanonical scope")\\n'
+                      '        if not isinstance(recurring_retest_allowed, bool):'
+                  )
+                  target.write_text(original.replace(marker, replacement),
+                                    encoding="utf-8")
+                  env = dict(os.environ,
+                             LIGHTUP_SCOPE646_REQUIRE_SOURCE_FIX="1",
+                             PYTHONPATH=str(temp_src.resolve()),
+                             PYTHONDONTWRITEBYTECODE="1")
+                  completed = subprocess.run(
+                      [sys.executable, "-B", "-m", "unittest", "discover",
+                       "-s", "tests",
+                       "-p", "test_scope_grant_scope_identity_646_20261017.py",
+                       "-q"],
+                      env=env, text=True, stdout=subprocess.PIPE,
+                      stderr=subprocess.STDOUT, timeout=90, check=False,
+                  )
+                  output = completed.stdout
+                  if expect_green:
+                      assert completed.returncode == 0, "exact_owner_rehearsal_RED"
+                      assert "Ran 11 tests in " in output
+                      assert "\\nOK\\n" in output and "expected failures" not in output
+                      print("scope646_disposable_exact_owner_repair=GREEN_11")
+                  else:
+                      assert completed.returncode != 0, "weak_isinstance_repair_undetected"
+                      assert "test_source_red_scope_subclass_fails_atomically" in output
+                      assert "test_source_red_forged_class_metadata_does_not_mint_scope_identity" in output
+                      assert "test_source_red_flipping_subclass_cannot_persist_destructive_risk" in output
+                      print("scope646_disposable_weak_isinstance_repair=RED_EXPECTED")
+          print("scope646_original_source_workspace=UNCHANGED")
+          PY
       - name: Confirm tree remains untouched by tests
         run: |
           test -z "$(git status --porcelain)"
