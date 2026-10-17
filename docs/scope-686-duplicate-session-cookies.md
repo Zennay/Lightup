@@ -22,7 +22,7 @@ All duplicate cases require rejection **before** `DomainStore.session_context`. 
 
 ### Test-only source-owner repair oracle (not runtime code)
 
-The expanded suite includes **11 deliberately unresolved original-source expectedFailures** and **8 ordinary passing test methods**. `test_owner_fix_rehearsal_turns_eleven_original_source_reds_green` temporarily replaces one *test app instance's* `_authenticate` binding and the synthetic WSGI trust-boundary `WebSecurity.validate` class hook with minimal duplicate-occurrence denial. It calls **all 11 red method bodies directly** (so that the `expectedFailure` decorator cannot hide errors), retests valid operator/client authentication and repeated unrelated cookies, then checks **128 seeded adversarial duplicate combinations**. A deliberately incomplete values-only duplicate check must still fail on two equal session credentials.
+The expanded suite includes **12 deliberately unresolved original-source expectedFailures** and **9 ordinary passing test methods**. `test_owner_fix_rehearsal_turns_twelve_original_source_reds_green` temporarily replaces one *test app instance's* `_authenticate` binding and the synthetic WSGI trust-boundary `WebSecurity.validate` class hook with minimal duplicate-occurrence denial. It calls **all 12 red method bodies directly** (so that the `expectedFailure` decorator cannot hide errors), retests valid operator/client authentication and repeated unrelated cookies, then checks **128 seeded adversarial duplicate combinations**. A deliberately incomplete values-only duplicate check must still fail on two equal session credentials.
 
 An additional direct RED specifically checks public `POST /login` against mocked session creation and revocation; its current original-source failure shows an actual **source code trust-boundary gap**, not an observed live exploit. An ingress guard gives a generic `403` and must leave original sessions intact; a test-only `_authenticate` patch alone would not protect the public login path.
 
@@ -34,7 +34,7 @@ Run:
 PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_scope_686_duplicate_session_cookies.py' -v
 ```
 
-The eight expected failures are an explicit *source-owner TODO*, **not** evidence that the flaw is fixed. An actual source fix should remove the `expectedFailure` decorators and make all 19 (or more) ordinary PASS, with strict no-session-lookup assertion preserved. A future unexpected success under `expectedFailure` is a migration signal and must be reviewed, not silently accepted.
+The eight expected failures are an explicit *source-owner TODO*, **not** evidence that the flaw is fixed. An actual source fix should remove the `expectedFailure` decorators and make all 21 (or more) ordinary PASS, with strict no-session-lookup assertion preserved. A future unexpected success under `expectedFailure` is a migration signal and must be reviewed, not silently accepted.
 
 ## Source-owner handoff (do not implement here)
 
@@ -42,6 +42,22 @@ The eight expected failures are an explicit *source-owner TODO*, **not** evidenc
 2. Make raw-header parser behavior explicit and test alongside the *actual* production WSGI entrypoint. If using PR #1169's standalone guard, wire it only through the appropriate web/ingress owner and independently review path/charset/quote semantics.
 3. Keep rejection side-effect-free: no session lookup, session revocation, tenant mutation or cookie-setting. Preserve successful single-token authentication and tenant access isolation.
 4. Capture edge-to-Gunicorn normalization separately under [ingress issue #1170](https://github.com/Zennay/Lightup/issues/1170); WSGI-level tests cannot prove proxy treatment of two physical Cookie headers.
+
+## Separate installed opt-in owner proof — read-only branch composition
+
+On a **separate, disposable, clean checkout** of the unchanged [cookie-guard owner PR #1169](https://github.com/Zennay/Lightup/pull/1169) exact SHA `31055e7f5de9046405afea14bc945feb8f21d8be`, an independent Python3.14 script constructed synthetic real `DomainStore` operator/client sessions and exercised the **existing** opt-in `CookieEnvelopeGuard(create_app(store))` without changing owner files. It verified:
+- **8 ambiguous session envelope cases** -> exact `400 Bad Request`, zero `session_context` / `create_session` / `revoke_session` calls, no `Set-Cookie`.
+- **public `POST /login` with valid fictional credentials and duplicate cookies** -> `400`, zero lookup, zero session creation/revocation and no `Set-Cookie`.
+- **3 legitimate single-token controls** -> operator `200 OK`, operator plus duplicated unrelated theme cookies `200 OK`, client operator-route denial `403 Forbidden`.
+- Both original synthetic session records remain valid. Checkout `git status --porcelain` empty.
+
+Result: `REAL_OWNER_GUARD=PASS; DIVERSE_DUPLICATES=8; LOGIN_NO_SESSION_SIDE_EFFECT=PASS; VALID_CONTROLS=3; AUTHENTIC_SESSION_PRESERVATION=PASS; NO_TARGET_IO`.
+
+This is **actual existing opt-in guard functionality** in a disposal-only fixture, stronger than a hypothetical monkeypatch; it is **NOT the installed Gunicorn/production-entrypoint wiring**, not independent real proxy-header field proof and cannot authorize a merge, live scanning or grants. The unchanged production `create_app` still needs intentional admission integration by the web/ingress owner, plus #1170 edge normalization evidence.
+
+## Original-source RED failure identity
+
+The new ordinary acceptance method enumerates **exactly 12 intentionally red source tests**, calls them directly and confirms each fails via an `AssertionError` containing a relevant session-lookup/HTTP/authentication assertion, **not** an unrelated exception masked by `@expectedFailure`. The twelfth case exercises valid-then-invalid duplicate order. All twelve remain unresolved in unchanged production `app.py`. The witness itself must be removed or migrated when the source owner fixes the production boundary.
 
 ## Release requirements
 
