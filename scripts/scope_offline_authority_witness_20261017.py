@@ -47,20 +47,21 @@ REFERENCE_BEHAVIOR_SHA256 = "075c7598f4a01809cd19ef8a02d9380a2bdbde01e2a22fd8dfc
 # accidentally added to ScopePolicy.decide(). Not an OS sandbox or defense against
 # native-code bypass: the witness remains PLAN/LAB ONLY, non-authorizing.
 _WITNESS_EVALUATION_ACTIVE: ContextVar[bool] = ContextVar("scope1565_audit", default=False)
+# Deny *categories*, not a small incomplete list of operations:
+# process env/chdir/unlink/rename etc. are audited as os.* but do not necessarily
+# open files, and shutil.* can perform independent filesystem effects.
 _DENIED_AUDIT_EVENTS = frozenset({
-    "open", "subprocess.Popen", "os.system", "os.fork", "os.forkpty",
-    "os.posix_spawn", "os.startfile", "ctypes.dlopen",
+    "open", "sys.addaudithook", "sys.settrace", "sys.setprofile",
 })
+_DENIED_AUDIT_PREFIXES = ("socket.", "subprocess.", "os.", "shutil.", "ctypes.")
 
 
 def _deny_witness_io(event: str, args: tuple[object, ...]) -> None:
     if _WITNESS_EVALUATION_ACTIVE.get() and (
         event in _DENIED_AUDIT_EVENTS
-        or event.startswith("socket.")
-        or event.startswith("os.exec")
-        or event.startswith("os.spawn")
+        or event.startswith(_DENIED_AUDIT_PREFIXES)
     ):
-        # Never include the event's potentially private arguments in receipts.
+        # Never include audit arguments, paths, secrets or evaluator state.
         raise PermissionError("offline witness policy evaluation forbids Python I/O")
 
 
