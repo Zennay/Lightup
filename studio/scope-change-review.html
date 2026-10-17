@@ -11,7 +11,7 @@
 <section class="card"><h2>1. Baseline proposal</h2><label for="before">Load the earlier LightUp scope draft</label><input type="file" id="before" accept=".json,application/json"><p id="beforeName" role="status">Not loaded.</p></section>
 <section class="card"><h2>2. Updated proposal</h2><label for="after">Load the proposed replacement</label><input type="file" id="after" accept=".json,application/json"><p id="afterName" role="status">Not loaded.</p></section>
 </div>
-<div class="alert"><strong>Decision boundary:</strong> This viewer performs exact text comparisons only; it cannot resolve DNS, prove asset ownership, canonicalize CIDRs, verify exclusions, authenticate either party or authorize any activity. Every proposed change requires normal authenticated operator review, separate client consent and current revocation controls.</div>
+<div class="alert"><strong>Decision boundary:</strong> This viewer performs literal and numerical IP/CIDR overlap comparisons only; it cannot resolve DNS, prove asset ownership, canonicalize CIDRs, verify exclusions, authenticate either party or authorize any activity. Every proposed change requires normal authenticated operator review, separate client consent and current revocation controls.</div>
 <section class="card">
 <h2>Human review summary <span class="pill">REVIEW_ONLY</span></h2>
 <p id="status" role="status" aria-live="polite">Load two drafts to compare.</p>
@@ -21,6 +21,7 @@
 </section>
 <p class="muted">Everything happens in this browser tab. Files are parsed in memory (64 KiB per file), never uploaded or stored. No remote scripts, telemetry, endpoints or network access are used.</p>
 </main>
+<script src="./scope-network.js"></script>
 <script>
 (function(){
 'use strict';
@@ -64,6 +65,15 @@ function diff(a,b){
  };
  exact(a.requested_assets,b.requested_assets,'scope');
  exact(a.excluded_assets,b.excluded_assets,'exclusion');
+ const ranges=LightUpScopeNetwork.expansion(a.requested_assets,b.requested_assets);
+ for(const item of ranges.added)
+   add('review-expansion','network_coverage','Proposed address/host not fully covered by prior scope: '+item);
+ for(const item of ranges.removed)
+   add('review-restriction','network_coverage','Prior address/host not fully covered by proposed scope: '+item);
+ for(const item of LightUpScopeNetwork.inspect(b.requested_assets,b.excluded_assets))
+   if(item.code==='exclusion_overlap'||item.code==='included_overlap'||item.code==='global_range'||item.level==='error')
+      add('needs-context','asset_boundary',item.message);
+ if(ranges.unparsed)add('needs-context','asset_identity','Malformed identity in an imported draft: do not rely on coverage calculations.');
  if(b.requested_risk>a.requested_risk)add('review-expansion','risk','Risk increase '+a.requested_risk+' → '+b.requested_risk);
  if(b.requested_risk<a.requested_risk)add('review-restriction','risk','Risk decrease '+a.requested_risk+' → '+b.requested_risk);
  if(a.requested_mode!==b.requested_mode)add('review-expansion','mode','Mode change: '+a.requested_mode+' → '+b.requested_mode+' (manual review needed)');
@@ -103,7 +113,7 @@ function show(){
  const s=review.summary;
  $('status').textContent='Found '+s.expansion_flags+' possible expansion(s), '+s.restriction_flags+' restriction(s) and '+s.context_flags+' manual-context item(s). No permission is implied.';
  const results=$('results');
- if(!review.warnings.length)addRow(results,'review-restriction','No exact-text changes','Identical scope draft fields; this does not establish approval or valid ownership.');
+ if(!review.warnings.length)addRow(results,'review-restriction','No literal changes','Identical scope draft fields; this does not establish approval or valid ownership.');
  for(const item of review.warnings)addRow(results,item.level,item.category.replaceAll('_',' ').toUpperCase(),item.detail);
  $('json').textContent=JSON.stringify(review,null,2);
  $('print').disabled=false;$('export').disabled=false;
