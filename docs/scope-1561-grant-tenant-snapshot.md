@@ -124,3 +124,54 @@ metadata held constant (fault injected), hardlinked path rejection, and
 mismatched inode signature refusal. These are offline filesystem invariants,
 not permission checks. The ordinary original code source and customer data
 remain wholly untouched.
+
+## W4–W5 — three-table client truth and grantless-engagement integrity
+
+Earlier HEAD `51cd163d2d64992b4b17060f5c350032b84e45ab`
+incorrectly yielded a `REVIEW_ONLY` receipt if an engagement and grant
+agreed on a fictional-but-**nonexistent** `clients.client_id`. This
+is a confirmed, local SQLite **false-green** in the diagnostic (not evidence
+of remote exploitation). The original tests proving that gap were introduced
+**before** the fix and ran RED.
+
+The inspector now requires all three real tables — `clients`,
+`engagements`, and `authorization_grants` — with the expected primary-key
+columns. Stored owner linkage is joined to actual clients and compared
+**byte-exactly**, using explicit SQLite `COLLATE BINARY` and Python's exact
+built-in string checks. This refuses SQLite `NOCASE` aliasing of engagement
+or client IDs, a missing client row, missing clients table or malformed ID.
+The JSON receipt introduces aggregate `missing_client`, without exposing
+IDs or references, and `orphaned_client` maps to `HOLD`/exit 2.
+
+**New completeness guard:** every stored engagement is independently joined
+to its real client, including engagements without grants. A snapshot with
+**zero grants** and a broken engagement owner must still HOLD. This second
+scan is bounded to **10,000 engagements**, with `too_many_engagements` also
+producing HOLD/exit 2 and **all partial counts zero**. Receipts add
+`unbound_engagements` and `engagements_checked`; `total` continues to mean
+*total grants*, not engagements. Partial failures and invalid records still
+emit only zero-count HOLD receipts.
+
+The existing scope is deliberately narrow: these counts cannot establish
+client consent, authorization provenance, ownership of network assets, grant
+expiry/revocation, account session legitimacy or anything about target safety.
+No customer database is opened, no live service is contacted and no writer
+or grant issuer is added.
+
+Regression history:
+- Five synthetic original-source tests reproduced missing-client and
+  `NOCASE` false-green behavior; after the exact client join, **32/32**
+  isolated original tests passed.
+- Five more tests proved a separate grantless-engagement false-green, bounded
+  engagement inventory and malformed ungranted engagement handling;
+  after the second scan, **37/37** tests passed on connected zSSH
+  Python 3.14.4 at commit
+  `dac451e9f468f0603793907c9b773ec087447a37`.
+- Previous hosted evidence on older commits does **not** validate this
+  newer implementation: new exact-head hosted and original shared CI must
+  be assessed separately. Source-owner #829 defect is **not** repaired.
+
+The result is still a **non-authorizing HOLD/REVIEW_ONLY diagnostic**.
+Never use this tool on active/production customer data and never treat
+either result as approval to merge, deploy, issue grants, dispatch tools,
+scan or release.
