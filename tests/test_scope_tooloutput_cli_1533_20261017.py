@@ -231,6 +231,72 @@ raise SystemExit(entry['main']([]))
         for name in FALSE_KEYS:
             self.assertIs(receipt[name], False)
 
+
+    def test_exact_stdin_ceiling_at_eof_and_one_byte_overflow(self):
+        # The 65,536-byte budget applies across all reads, not per fragment.
+        for overflow in (0, 1):
+            with self.subTest(over_ceiling=bool(overflow)):
+                code = """import io,json,runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+valid=json.dumps({"schema":"lightup.scope1533.synthetic.v1",
+                  "synthetic_only":True,"items":[
+                    {"summary":"synthetic","kind":"note","payload_hex":"aa"}]}).encode()
+data=valid + b' '*(65536+%d-len(valid))
+class ChunkReader:
+    def __init__(self, payload):
+        self.payload=payload
+        self.offset=0
+        self.calls=0
+    def read(self, maximum):
+        self.calls+=1
+        part=self.payload[self.offset:self.offset+min(maximum, 2039)]
+        self.offset+=len(part)
+        return part
+class Input: pass
+source=Input()
+source.buffer=ChunkReader(data)
+sys.stdin=source
+code=entry['main']([])
+if source.buffer.calls < 32: raise SystemExit(99)
+raise SystemExit(code)
+""" % overflow
+                child = subprocess.run(
+                    [sys.executable, "-I", "-S", "-B", "-c", code],
+                    cwd=ROOT, input=b"", capture_output=True, timeout=8,
+                )
+                expected = "HOLD" if overflow else "REVIEW_ONLY"
+                self.assertEqual(child.returncode, 2 if overflow else 3, child.stderr)
+                self.assertEqual(child.stderr, b"")
+                receipt = json.loads(child.stdout)
+                self.assertEqual(receipt["status"], expected)
+                for key in FALSE_KEYS:
+                    self.assertIs(receipt[key], False)
+
+    def test_shortread_stream_anomalies_never_approve_review(self):
+        # A fake raw reader may return bytes-like aliases or more than asked:
+        # the CLI must accept only real bytes whose total stays bounded.
+        for response in ("bytearray(b'x')", "memoryview(b'x')", "None",
+                         "b'x'*65538"):
+            with self.subTest(response=response):
+                code = """import runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+class Reader:
+    def read(self, maximum):
+        return %s
+class Input: pass
+source=Input()
+source.buffer=Reader()
+sys.stdin=source
+raise SystemExit(entry['main']([]))
+""" % response
+                child = subprocess.run(
+                    [sys.executable, "-I", "-S", "-B", "-c", code],
+                    cwd=ROOT, input=b"", capture_output=True, timeout=8,
+                )
+                self.assertEqual(child.returncode, 2, child.stderr)
+                self.assertEqual(child.stderr, b"")
+                self.assertEqual(json.loads(child.stdout)["status"], "HOLD")
+
     def test_real_cli_under_original_native_no_io_tripwire(self):
         # Reuse the existing owner's unchanged guard fixture. This is a
         # Python-level interposition test, not a kernel sandbox or consent.
