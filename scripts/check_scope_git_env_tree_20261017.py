@@ -256,6 +256,24 @@ def _worktree_blobs_match_head(raw: object) -> bool:
         return False
 
 
+def _owned_index_flags_are_canonical() -> bool:
+    """No assume-unchanged, skip-worktree, or staged index ambiguity.
+
+    Git may suppress status for an indexed file despite future local
+    changes; even currently byte-exact files must not carry those flags.
+    """
+    result = _git_raw("ls-files", "-v", "-z", "--", *sorted(OWNED))
+    if (
+        result.returncode != 0 or type(result.stdout) is not bytes
+        or type(result.stderr) is not bytes or result.stderr
+        or len(result.stdout) > 8192 or not result.stdout.endswith(b"\0")
+    ):
+        return False
+    observed = result.stdout[:-1].split(b"\0")
+    expected = {b"H " + path.encode("ascii") for path in OWNED}
+    return len(observed) == len(expected) and set(observed) == expected
+
+
 def _ignored_worktree_is_empty() -> bool:
     """Ignored files cannot count as a clean source checkout.
 
@@ -319,6 +337,7 @@ def main() -> int:
             and ancestor.returncode == 0 and diff.returncode == 0
             and tree.returncode == 0 and safe_tree(tree.stdout, diff.stdout)
             and _worktree_blobs_match_head(tree.stdout)
+            and _owned_index_flags_are_canonical()
         )
     except (OSError, UnicodeError, ValueError, TypeError, subprocess.TimeoutExpired):
         good = False
