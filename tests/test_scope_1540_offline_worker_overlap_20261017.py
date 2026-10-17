@@ -55,6 +55,16 @@ class OfflineWorkerOverlapTests(unittest.TestCase):
                                proposal("scope-b", "b", second))
                 self.assertEqual(review.check(encode(doc)), "HOLD")
 
+
+    def test_same_worker_parent_child_path_set_is_impossible_git_tree(self):
+        for first, second in (("src", "src/a.py"),
+                              ("src/a.py", "src/a.py/deep"),
+                              ("A/B", "a/b/child")):
+            with self.subTest(first=first, second=second):
+                doc = document(proposal("scope-a", "a", first, second),
+                               proposal("scope-b", "b", "unrelated.py"))
+                self.assertEqual(review.check(encode(doc)), "HOLD")
+
     def test_common_directory_is_not_automatically_conflict(self):
         doc = document(proposal("scope-a", "a", "src/a.py"),
                        proposal("scope-b", "b", "src/b.py"))
