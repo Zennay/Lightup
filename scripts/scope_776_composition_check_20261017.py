@@ -109,7 +109,7 @@ def verify_manifest() -> dict:
     for c, p, s in (*SOURCE_BLOBS.values(), REFERENCE_773):
         blob(c, p, s)
     # Explicit collision boundary: every change is exactly one new own path.
-    expected = {"A\\t" + path for path in OWN_PATHS}
+    expected = {"A\t" + path for path in OWN_PATHS}
     actual = set(git("diff", "--name-status", OWNER_SHA, "HEAD").decode(
         "utf-8", "strict").splitlines())
     if len(actual) != len(OWN_PATHS) or actual != expected:
