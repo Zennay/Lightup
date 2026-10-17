@@ -7,6 +7,8 @@ import os
 import random
 import subprocess
 import sys
+import tempfile
+from pathlib import Path
 import unittest
 from unittest import mock
 
@@ -365,6 +367,68 @@ class InstalledBridgeTest(unittest.TestCase):
             "@@ -10 +11 @@\n unchanged\n"
         )
         self.assert_fence(bridge.preview(packet(), r), "REVIEW_ONLY")
+
+    def _real_git_patch(self, old_text, new_text, *, unified=1):
+        """Real local --no-index diff, not a network or target operation."""
+        with tempfile.TemporaryDirectory(prefix="lightup1553-gitdiff-") as td:
+            old_path, new_path = Path(td, "old.txt"), Path(td, "new.txt")
+            old_path.write_text(old_text, encoding="utf-8")
+            new_path.write_text(new_text, encoding="utf-8")
+            env = os.environ.copy()
+            env["GIT_CONFIG_NOSYSTEM"] = "1"
+            env["GIT_CONFIG_GLOBAL"] = os.devnull
+            result = subprocess.run(
+                ["git", "diff", "--no-index", "--no-ext-diff", "--no-textconv",
+                 f"--unified={unified}", str(old_path), str(new_path)],
+                capture_output=True, timeout=10, env=env,
+            )
+        self.assertEqual(result.returncode, 1, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stderr, b"")
+        body = result.stdout.decode("utf-8")
+        hunks = body[body.index("@@ -"):]
+        add = sum(line.startswith("+") for line in hunks.splitlines())
+        delete = sum(line.startswith("-") for line in hunks.splitlines())
+        return hunks, add, delete
+
+    def test_real_git_addition_hunk_is_review_only(self):
+        patch, additions, deletions = self._real_git_patch("", "permissions: write-all\n")
+        self.assertEqual((additions, deletions), (1, 0))
+        r = records()
+        r[0].update(status="added", patch=patch, additions=additions, deletions=deletions)
+        self.assert_fence(bridge.preview(packet(), r), "REVIEW_ONLY")
+
+    def test_real_git_removal_hunk_is_review_only(self):
+        patch, additions, deletions = self._real_git_patch("old policy\n", "")
+        self.assertEqual((additions, deletions), (0, 1))
+        r = records()
+        r[0].update(status="removed", patch=patch, additions=additions, deletions=deletions)
+        self.assert_fence(bridge.preview(packet(), r), "REVIEW_ONLY")
+
+    def test_real_git_sparse_hunks_are_review_only(self):
+        old = [f"line-{i}\n" for i in range(60)]
+        new = list(old)
+        new[4] = "harden auth guard\n"
+        new[51] = "harden network policy\n"
+        patch, additions, deletions = self._real_git_patch("".join(old), "".join(new))
+        self.assertGreaterEqual(patch.count("@@ -"), 2)
+        self.assertEqual((additions, deletions), (2, 2))
+        r = records()
+        r[0].update(status="modified", patch=patch, additions=additions, deletions=deletions)
+        self.assert_fence(bridge.preview(packet(), r), "REVIEW_ONLY")
+
+    def test_real_git_sparse_patch_coordinate_tamper_is_hold(self):
+        old = [f"line-{i}\n" for i in range(60)]
+        new = list(old)
+        new[4] = "harden auth guard\n"
+        new[51] = "harden network policy\n"
+        patch, additions, deletions = self._real_git_patch("".join(old), "".join(new))
+        import re
+        positions = list(re.finditer(r"@@ -[0-9,]+ \+[0-9,]+ @@", patch))
+        self.assertEqual(len(positions), 2)
+        tampered = patch[:positions[1].start()] + patch[positions[0].start():positions[0].end()] + patch[positions[1].end():]
+        r = records()
+        r[0].update(status="modified", patch=tampered, additions=additions, deletions=deletions)
+        self.assert_rejected_before_adapter(packet(), r)
 
     def test_caller_input_purity(self):
         p, r = packet(), records()
