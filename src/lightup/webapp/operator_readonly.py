@@ -12,6 +12,7 @@ This module adds no active capability and is not a consent or release gate.
 from __future__ import annotations
 
 import argparse
+import re
 from ipaddress import ip_address
 from wsgiref.simple_server import make_server
 
@@ -31,12 +32,40 @@ _OPERATOR_READONLY_NOTICE = (
 
 
 class OperatorReadOnlyWebApp(LightUpWebApp):
-    """Drop-in WSGI variant that enforces client-origin portal writes.
+    """Guard portal writes and expose an operator-only, read-only review desk.
 
-    Defense in depth: guard portal POSTs at the dispatcher before calling any
-    handler, then require an actual tenant-bound client AccessContext again in
-    the write handler.  Never construct a synthetic client identity for writes.
+    Authorization boundaries are enforced inside the dispatcher and write
+    handler; new GET-only review routes never mutate durable state.
     """
+
+    def __init__(self, store: DomainStore, security: WebSecurity | None = None):
+        super().__init__(store, security)
+        self.routes.append((
+            "GET", re.compile(r"^/authorization-desk$"),
+            self.authorization_desk, "operator",
+        ))
+
+    def authorization_desk(self, auth: AuthState, form: dict[str, str]) -> Response:
+        from .authorization_desk import render_authorization_desk
+        return render_authorization_desk(self.store, auth)
+
+    def overview(self, auth: AuthState, form: dict[str, str]) -> Response:
+        page = super().overview(auth, form)
+        markup = page.body.decode("utf-8")
+        marker = "</div></main>"
+        offset = markup.rfind(marker)
+        if offset < 0:
+            return Response("<h1>Overview unavailable</h1>",
+                            status="503 Service Unavailable")
+        callout = (
+            '<div class="card"><strong>Authorization desk</strong>'
+            '<p class="meta">Review client requests, account provenance and '
+            'stored grant records without activating execution.</p>'
+            '<a href="/authorization-desk">Open read-only authorization desk →</a>'
+            '</div>'
+        )
+        return Response(markup[:offset] + callout + markup[offset:],
+                        status=page.status)
 
     def _dispatch(self, method: str, path: str, form: dict[str, str],
                   auth: AuthState) -> Response:
@@ -57,6 +86,7 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
         ctx = auth.context
         if (
             type(ctx) is not AccessContext
+            or type(ctx.role) is not Role
             or ctx.role not in (Role.CLIENT_ADMIN, Role.CLIENT_MEMBER)
             or ctx.client_id != client_id
         ):
