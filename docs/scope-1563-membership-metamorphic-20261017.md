@@ -14,7 +14,7 @@ Each negative decision must:
 - never call `Authorization.is_current`: authorization evaluation is downstream of membership;
 - never invoke DNS, socket connection, or urllib HTTP entry points (fail-fast patched sentinels).
 
-Metamorphic dimensions: public hostname/IP/URL lexical forms; no grant/current/expired/future grant; public authorization required/disabled; unrelated hostname allowlists; disjoint IPv4 CIDR allowlists; invalid/blank target identity.
+Metamorphic dimensions: public hostname/IPv4/IPv6/URL lexical forms; no grant/current/expired/future grant; public authorization required/disabled; private-lab flag enabled/disabled for public IPv6; unrelated hostname allowlists; disjoint IPv4/IPv6 CIDR allowlists; invalid/blank target identity; spoofed `Target.labels` and an authorization-shaped object that raises if accessed.
 
 **Not covered / not asserted:** which legacy authorization fields, assets, provenance, revocation epoch, or approval steps may enable a *positive* declared-public-target decision. Those belong to live source-owner #100/#107 and other branches. The tests are **negative-only**, not an alternative source of authorization.
 
