@@ -58,7 +58,7 @@ def git(*args: str) -> bytes:
 
 def blob(commit: str, path: str, checksum: str) -> bytes:
     data = git("cat-file", "-p", commit + ":" + path)
-    raw = b"blob " + str(len(data)).encode("ascii") + b"\\x00" + data
+    raw = b"blob " + str(len(data)).encode("ascii") + b"\x00" + data
     if hashlib.sha1(raw).hexdigest() != checksum:
         raise RuntimeError("pinned_source_blob_mismatch:" + path)
     return data
@@ -105,48 +105,48 @@ def verify_manifest() -> dict:
     return manifest
 
 
-ANCHOR = "    excluded_assets: tuple[str, ...] = ()\\n\\n    @staticmethod\\n"
+ANCHOR = "    excluded_assets: tuple[str, ...] = ()\n\n    @staticmethod\n"
 
 
 def local_guard(original: str, variant: str) -> str:
     if original.count(ANCHOR) != 1:
         raise RuntimeError("scope776_owner_source_boundary_changed")
-    statement = "    def __post_init__(self) -> None:\\n"
+    statement = "    def __post_init__(self) -> None:\n"
     if variant != "no_risk":
         statement += (
-            "        if type(self.max_risk) is not RiskLevel:\\n"
-            "            raise ValueError('scope risk requires exact RiskLevel')\\n"
+            "        if type(self.max_risk) is not RiskLevel:\n"
+            "            raise ValueError('scope risk requires exact RiskLevel')\n"
         )
     statement += (
-        '        for name in ("assets", "excluded_assets", "allowed_capabilities"):\\n'
-        "            values = object.__getattribute__(self, name)\\n"
-        "            if type(values) is not tuple:\\n"
-        "                raise ValueError('scope collection requires exact tuple')\\n"
+        '        for name in ("assets", "excluded_assets", "allowed_capabilities"):\n'
+        "            values = object.__getattribute__(self, name)\n"
+        "            if type(values) is not tuple:\n"
+        "                raise ValueError('scope collection requires exact tuple')\n"
     )
     if variant != "no_entries":
         statement += (
-            "            for item in values:\\n"
-            "                if type(item) is not str:\\n"
-            "                    raise ValueError('scope entry requires exact str')\\n"
+            "            for item in values:\n"
+            "                if type(item) is not str:\n"
+            "                    raise ValueError('scope entry requires exact str')\n"
         )
     return original.replace(ANCHOR,
-                            "    excluded_assets: tuple[str, ...] = ()\\n\\n"
-                            + statement + "\\n    @staticmethod\\n")
+                            "    excluded_assets: tuple[str, ...] = ()\n\n"
+                            + statement + "\n    @staticmethod\n")
 
 
 OLD_FIXTURE = (
-    '            ScopeDefinition(\\n'
-    '                assets=("app.acme.example",),\\n'
-    '                max_risk=5,  # type: ignore[arg-type]\\n'
-    '                allowed_capabilities=("web-baseline",),\\n'
-    '            ),\\n'
+    '            ScopeDefinition(\n'
+    '                assets=("app.acme.example",),\n'
+    '                max_risk=5,  # type: ignore[arg-type]\n'
+    '                allowed_capabilities=("web-baseline",),\n'
+    '            ),\n'
 )
-FIXTURE_ANCHOR = "        for index, scope in enumerate(invalid_scopes):\\n"
+FIXTURE_ANCHOR = "        for index, scope in enumerate(invalid_scopes):\n"
 NEW_FIXTURE = (
-    '        # #776 disposable migration: constructor rejects malformed risk.\\n'
-    '        with self.assertRaises(ValueError):\\n'
-    '            ScopeDefinition(assets=("app.acme.example",), max_risk=5,\\n'
-    '                            allowed_capabilities=("web-baseline",))\\n'
+    '        # #776 disposable migration: constructor rejects malformed risk.\n'
+    '        with self.assertRaises(ValueError):\n'
+    '            ScopeDefinition(assets=("app.acme.example",), max_risk=5,\n'
+    '                            allowed_capabilities=("web-baseline",))\n'
 )
 
 
@@ -225,7 +225,7 @@ def main() -> int:
                     if unit_code or not re.search(r"(?m)^OK$", unit_out):
                         raise RuntimeError("scope776_full_unit_regression:" + unit_out[-1400:])
                     print("scope776_full_disposable_units=" +
-                          re.search(r"(?m)^Ran (\\d+) tests in ", unit_out).group(1) +
+                          re.search(r"(?m)^Ran (\d+) tests in ", unit_out).group(1) +
                           "_PASS")
                     integration_code, integration_out = run_unittest(
                         root, True, "test*.py", extra=("tests/integration",))
@@ -233,7 +233,7 @@ def main() -> int:
                         raise RuntimeError("scope776_full_integration_regression:" +
                                            integration_out[-1400:])
                     print("scope776_full_local_integration=" +
-                          re.search(r"(?m)^Ran (\\d+) tests in ", integration_out).group(1) +
+                          re.search(r"(?m)^Ran (\d+) tests in ", integration_out).group(1) +
                           "_PASS")
             else:
                 if code == 0:
