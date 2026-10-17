@@ -1,0 +1,104 @@
+"""AST-only proof that the inert fictional reviewer stays out of runtime imports.
+
+No application imports, filesystem writes, network calls or permissions.
+Computed reflection/eval is not proven safe by a static lexical guard.
+"""
+from __future__ import annotations
+
+import ast
+from pathlib import Path
+import unittest
+from unittest.mock import patch
+
+ROOT = Path(__file__).resolve().parents[1]
+REVIEWER = "scope_literal_control_review_20261016"
+SOURCE_DIR = ROOT / "src" / "lightup"
+
+
+def references_review_module(source: str) -> bool:
+    """Detect direct, from-list, and literal dynamic references to this module."""
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            if any(name.name.split(".")[-1] == REVIEWER for name in node.names):
+                return True
+        elif isinstance(node, ast.ImportFrom):
+            if node.module and node.module.split(".")[-1] == REVIEWER:
+                return True
+            # Both "from lightup import reviewer" and "from . import reviewer"
+            # can promote the module despite the module field not containing it.
+            if any(name.name == REVIEWER for name in node.names):
+                return True
+        elif isinstance(node, ast.Call) and node.args:
+            literal = node.args[0]
+            if not isinstance(literal, ast.Constant) or type(literal.value) is not str:
+                continue
+            called = node.func
+            direct_import = isinstance(called, ast.Name) and called.id in (
+                "__import__", "import_module",
+            )
+            qualified_import = (
+                isinstance(called, ast.Attribute) and called.attr == "import_module"
+                and isinstance(called.value, ast.Name) and called.value.id == "importlib"
+            )
+            if (direct_import or qualified_import) and literal.value.split(".")[-1] == REVIEWER:
+                return True
+    return False
+
+
+class RuntimeIsolationStaticTests(unittest.TestCase):
+    def test_all_production_modules_stay_unwired(self):
+        files = sorted(SOURCE_DIR.rglob("*.py"))
+        self.assertGreater(len(files), 30)
+        with patch("socket.socket", side_effect=AssertionError("offline AST only")):
+            for path in files:
+                if path.stem == REVIEWER:
+                    continue
+                with self.subTest(path=str(path.relative_to(ROOT))):
+                    self.assertFalse(
+                        references_review_module(path.read_text(encoding="utf-8")),
+                        "Inert reviewer imported in application source",
+                    )
+
+    def test_catches_every_literal_import_shape(self):
+        patterns = (
+            "import lightup.scope_literal_control_review_20261016",
+            "import lightup.scope_literal_control_review_20261016 as imported",
+            "from lightup.scope_literal_control_review_20261016 import review_literals",
+            "from .scope_literal_control_review_20261016 import review_literals",
+            "from lightup import scope_literal_control_review_20261016",
+            "from . import scope_literal_control_review_20261016",
+            "from importlib import import_module\nimport_module('lightup.scope_literal_control_review_20261016')",
+            "import importlib\nimportlib.import_module('lightup.scope_literal_control_review_20261016')",
+            "__import__('lightup.scope_literal_control_review_20261016')",
+        )
+        for source in patterns:
+            with self.subTest(source=source):
+                self.assertTrue(references_review_module(source))
+
+    def test_does_not_flag_unrelated_imports_or_comments(self):
+        samples = (
+            "import lightup.scope\nfrom lightup import scope",
+            "# import lightup.scope_literal_control_review_20261016",
+            "message = 'scope_literal_control_review_20261016'",
+            "import importlib\nimportlib.import_module('lightup.scope')",
+            "from . import activation",
+            "from lightup.other import review_literals",
+            "def f():\n    return 'lightup.scope_literal_control_review_20261016'",
+        )
+        for source in samples:
+            with self.subTest(source=source):
+                self.assertFalse(references_review_module(source))
+
+    def test_reflection_limit_is_documented_not_claimed_proven(self):
+        # Built-up strings and reflection are deliberately OUTSIDE the
+        # claimed AST-literal threat model, not a false assertion of safety.
+        code = (
+            "module = 'scope_literal_' + 'control_review_20261016'\n"
+            "__import__('lightup.' + module)"
+        )
+        self.assertFalse(references_review_module(code))
+
+
+if __name__ == "__main__":
+    unittest.main()

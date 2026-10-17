@@ -76,3 +76,11 @@ Added a conservative offline HOLD fence for `?` and `#` in exact fictional autho
 ## W15 — independent deterministic randomized eligibility oracle
 
 Added an independent regex/ASCII-casefold reference for conservative review eligibility, separate from the production review implementation. A deterministic 1,200-batch fictional seeded corpus plus every ASCII-byte insertion at three positions in first/middle/last entries of a 64-entry batch checks for result mismatches, result privacy and four always-false authority/consent/dispatch/release fields. The corpus is repeatable in both Python interpreters, does not use real targets or network and does not prove real scope admission correctness. Actual source owner #1289 remains responsible for admission.
+
+## W15 — independent deterministic review-status oracle (already pushed)
+
+The branch added synthetic-only mutation proofs in `test_scope_literal_metamorphic_20261016.py`: a separate regular-expression oracle, three locations on three distinct members of a full fictional 64-item batch, every ASCII byte, and 1,200 seeded independent batches. Every output remains non-authorizing; this is an offline status invariance test and no production admission fix.
+
+## W16 — AST import-path isolation proof
+
+Added strictly offline `test_scope_literal_runtime_isolation_20261016.py`. It scans original application Python ASTs and rejects direct import, relative import, from-package imported module alias, literal `__import__`, and literal `importlib.import_module` loading of the owned offline reviewer. It includes synthetic positive and negative shape tests so a future from-list import cannot silently bypass the existing naive AST guard. It intentionally cannot prove safety against computed strings, runtime reflection or `eval`; static proof is NOT a sandbox, authorization fact or production integration approval. It never executes application modules or calls a network.
