@@ -25,7 +25,7 @@ def file(status, filename, previous_filename=None):
 
 def snap(worker, files, **extras):
     value = {"worker": worker, "branch": "review/" + worker,
-             "base_sha": PIN, "head_sha": "a" * 39 + str(len(worker) % 10),
+             "base_sha": PIN, "head_sha": "a" * 39 + format(sum(map(ord, worker)) % 16, "x"),
              "compare_status": "ahead", "ahead_by": 2, "behind_by": 0,
              "too_large": False, "expected_file_count": len(files),
              "files": files}
@@ -118,6 +118,13 @@ class CompareAdapterTests(unittest.TestCase):
             else:
                 doc["snapshots"][0]["files"][0]["allow_merge"] = True
             self.assertEqual(adapter.check(encode(doc)), "HOLD")
+
+    def test_replayed_same_commit_claimed_by_two_workers_holds(self):
+        doc = document()
+        # Even disjoint claimed paths are not independently owned if both
+        # branches assert exactly the same commit head.
+        doc["snapshots"][1]["head_sha"] = doc["snapshots"][0]["head_sha"]
+        self.assertEqual(adapter.check(encode(doc)), "HOLD")
 
     def test_duplicate_branches_and_worker_alias_holds(self):
         doc = document(second=snap("scope-one", [file("added", "distinct.py")]))
