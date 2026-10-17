@@ -36,7 +36,7 @@ def _bad_constant(_: str) -> object:
 
 
 def _exact_sha(value: object) -> bool:
-    return type(value) is str and SHA.fullmatch(value) is not None
+    return type(value) is str and value != "0" * 40 and SHA.fullmatch(value) is not None
 
 
 def _exact_id(value: object) -> bool:
@@ -46,6 +46,10 @@ def _exact_id(value: object) -> bool:
 def _parse(raw: bytes) -> dict[str, object]:
     if not isinstance(raw, bytes) or not raw or len(raw) > MAX_INPUT:
         raise InvalidManifest("size")
+    # All admitted keys and values are ASCII identities. Unicode escapes can
+    # conceal byte-different spellings of the same branch/commit claim.
+    if b"\\\\u" in raw:
+        raise InvalidManifest("escaped identity")
     try:
         data = json.loads(raw.decode("utf-8", errors="strict"),
                           object_pairs_hook=_unique_pairs, parse_constant=_bad_constant)
