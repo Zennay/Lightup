@@ -14,7 +14,10 @@ import hmac
 import json
 import os
 import re
+import select
+import stat
 import sys
+import time
 
 SCHEMA = "LIGHTUP-FICTIONAL-AUDIT-TIP-MAC-V1"
 DOMAIN = b"LIGHTUP-FICTIONAL-AUDIT-TIP-MAC-V1\x00"
@@ -173,9 +176,19 @@ def verify_attestation(
 def _read_fd_secret(fd: int) -> bytes:
     if type(fd) is not int or not 3 <= fd <= 255:
         raise InvalidAttestation("synthetic key fd")
+    # Never wait indefinitely for a malicious/incomplete inherited pipe.
+    # Only a regular disposable fixture file or a dedicated anonymous pipe
+    # is accepted; sockets/devices and arbitrary process FDs are rejected.
+    descriptor_mode = os.fstat(fd).st_mode
+    if not (stat.S_ISREG(descriptor_mode) or stat.S_ISFIFO(descriptor_mode)):
+        raise InvalidAttestation("non-file synthetic key descriptor")
+    deadline = time.monotonic() + 2.0
     blocks: list[bytes] = []
     total = 0
     while total <= MAX_KEY_BYTES:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0 or not select.select([fd], [], [], remaining)[0]:
+            raise InvalidAttestation("synthetic key descriptor timed out")
         block = os.read(fd, MAX_KEY_BYTES + 1 - total)
         if not block:
             break
