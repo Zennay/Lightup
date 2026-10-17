@@ -197,7 +197,8 @@ def main(argv: list[str] | None = None) -> int:
     except Hold as exc:
         print("HOLD:", str(exc), file=sys.stderr)
         return 2
-    print("REVIEW_ONLY", result["head"], "added_paths", result["added_paths"])
+    print("REVIEW_ONLY", result["head"], "added_paths", result["added_paths"],
+          "checked_commits", result["checked_commits"])
     return 3  # non-authorizing by construction: never exit 0
 
 
