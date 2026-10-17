@@ -89,6 +89,71 @@ class SnapshotReviewTests(unittest.TestCase):
     def test_independent_branches_parallel_wave(self):
         self.review(wire([entry(8, B), entry(2, C), entry(5, D)]), [[2, 5, 8]])
 
+    def test_v3_64_stacked_prs_and_independent_reordered_waves(self):
+        # Maximum bounded stack: each prior branch ref must be named exactly.
+        rows = []
+        for i in range(1, 65):
+            previous_sha = A if i == 1 else f"{i-1:040x}"
+            base_ref = "main" if i == 1 else f"pr-{i-1}"
+            rows.append(repo_entry(i, f"{i:040x}", previous_sha,
+                                   base_ref, f"pr-{i}"))
+        original = wire_v3(rows, rows)
+        reordered = wire_v3(list(reversed(rows)), list(reversed(rows)))
+        a, ca = adapter.evaluate(original)
+        b, cb = adapter.evaluate(reordered)
+        self.assertEqual((ca, cb), (3, 3))
+        self.assertEqual(a["waves"], [[i] for i in range(1, 65)])
+        self.assertEqual(a["derived_graph_sha256"], b["derived_graph_sha256"])
+        self.assertNotEqual(a["input_sha256"], b["input_sha256"])
+        parallel = [repo_entry(i, f"{i:040x}", A, "main", f"pr-{i}")
+                    for i in range(1, 65)]
+        receipt, code = adapter.evaluate(wire_v3(parallel, list(reversed(parallel))))
+        self.assertEqual(code, 3)
+        self.assertEqual(receipt["waves"], [list(range(1, 65))])
+        self.assertTrue(all(receipt[k] is False for k in adapter.OFF_FLAGS))
+
+    def test_v3_invalid_repo_ref_and_schema_boundaries(self):
+        good = repo_entry(10, B, A, "main", "scope/one")
+        for repo in ("", "Other Repo/Lightup", "Other//Lightup",
+                     "Other/..", "Other/Lightup.lock", "Zennay/lightup",
+                     "../Lightup", None, 12):
+            with self.subTest(repository=repo):
+                self.assertEqual(adapter.evaluate(wire_v3([good], [good],
+                                                          repository=repo))[1], 2)
+        for ref in ("", "/main", "main/", "MAIN ", "main..next", "main//next",
+                    "main.lock", ".hidden", "main/.private", "main@{test}",
+                    None, 8):
+            with self.subTest(root_ref=ref):
+                self.assertEqual(adapter.evaluate(wire_v3([good], [good],
+                                                          root_ref=ref))[1], 2)
+        base = json.loads(wire_v3([good], [good]))
+        for key in ("repository", "root_ref", "first_read", "second_read"):
+            changed = dict(base)
+            del changed[key]
+            self.assertEqual(adapter.evaluate(json.dumps(changed).encode())[1], 2)
+        changed = dict(base, can_merge=True)
+        self.assertEqual(adapter.evaluate(json.dumps(changed).encode())[1], 2)
+        raw = wire_v3([good], [good])
+        self.assertEqual(adapter.evaluate(raw + b" "*(adapter.core.MAX_INPUT-len(raw)))[1], 3)
+        self.assertEqual(adapter.evaluate(raw + b" "*(adapter.core.MAX_INPUT-len(raw)+1))[1], 2)
+
+    def test_v3_real_isolated_child_process_and_no_authority_options(self):
+        script = ROOT / "scripts/review_scope_pr_snapshots_1549_offline.py"
+        row = repo_entry(1550, B, A, "main", "scope/own-pr")
+        payload = wire_v3([row], [row])
+        for argv, inp, expected in (([], payload, 3),
+                                    ([], wire_v3([row], [dict(row, head_ref="new")]), 2),
+                                    (["--authorize"], payload, 2),
+                                    (["--merge"], payload, 2)):
+            with self.subTest(argv=argv, expected=expected):
+                p = subprocess.run([sys.executable, "-I", "-S", "-B", str(script), *argv],
+                                   input=inp, capture_output=True, timeout=15)
+                self.assertEqual(p.returncode, expected, p.stderr)
+                self.assertEqual(p.stderr, b"")
+                receipt = json.loads(p.stdout)
+                self.assertEqual(receipt["status"], "REVIEW_ONLY" if expected == 3 else "HOLD")
+                self.assertTrue(all(receipt[k] is False for k in adapter.OFF_FLAGS))
+
     def test_v3_same_repository_and_refs_two_reads_advisory_only(self):
         rows = [
             repo_entry(10, B, A, "main", "scope-a"),
