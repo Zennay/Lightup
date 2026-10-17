@@ -272,6 +272,12 @@ protected inventory and asserts that a worker owns the file:
   `scripts/review_scope_capability_registry_offline.py`,
   `scripts/export_scope_capability_registry_offline.py`,
   `scripts/render_scope_registry_history_offline.py`.
+- **The offline reviewers themselves:** `scripts/review_scope_worker_overlap_offline_1540.py`,
+  `scripts/review_scope_compare_snapshots_offline_1540.py`,
+  `scripts/review_scope_pr_compare_pair_offline_1540.py` and
+  `scripts/review_scope_worker_ownership_offline_1540.py`.
+  No advisory checker may silently classify a change to its own parser
+  or its trust dependencies as `REVIEW_ONLY`.
 
 The reviewer checks exact path-segment ancestry, not indiscriminate string
 prefixes; e.g. `src/lightup_fake/file.py` and
@@ -283,6 +289,19 @@ complete: no claim is made about symlinks, Git file modes, credentials,
 provenance, authenticity, safe target scope, grants, or release eligibility.
 Protected source changes require independent review: `HOLD` is not a
 permanent denial or a substitute for human judgement.
+
+A runnable canonical synthetic negative fixture makes the distinction
+reproducible: `examples/scope1540-invariant-critical-path-hold.json`
+claims an otherwise disjoint workflow change and an unrelated protected
+inventory. Nevertheless:
+
+```sh
+python3 -I -S -B scripts/review_scope_worker_ownership_offline_1540.py < examples/scope1540-invariant-critical-path-hold.json
+# -> HOLD, exit 2, no user-provided paths echoed, six false authority fields
+```
+
+The corresponding dedicated subprocess and byte-integrity regressions
+are part of `test_scope_1540_*_20261017.py` discovery.
 
 A fresh read-only compare of draft PR #1537 and #1539 shows they each
 touch at least one `.github/workflows/` file. The formerly
