@@ -197,6 +197,8 @@ def render_authorization_desk(
         ' · <a href="/clients">Client records</a>'
         ' · <a href="/authorization-desk">All clients</a>'
         ' · <a href="/api/v1/operator/authorization-queue">JSON work queue</a>'
+        ' · <a href="/authorization-desk/engagements/attention">'
+        'Engagement follow-up inbox</a>'
         ' · <a href="/">Overview</a></p>'
         '<p class="meta">Request inbox: '
         '<a href="/authorization-desk">All requests</a> · '
