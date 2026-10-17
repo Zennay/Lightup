@@ -259,3 +259,56 @@ or production CI GO. None of the code is wired into production, GitHub Actions,
 real Git repositories, scans, grants or dispatchers. Original #1538 owner
 branch and separate #1536 source-owner fix remain untouched. No CI runner
 queues added. **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.**
+
+
+## W11 · Cold Python 3.14 verification; cached bytecode is not CI proof (2026-10-17)
+
+At code-and-doc head `2f24d8f1d4526fcfc20f30d9181056e62f184049`,
+the isolated connected zSSH Python3.14.4 VPS test selection completed:
+**76/76 own scope Git path tests, 30/30 original change-review/
+review-store tests and 86/86 original producer integrations PASS**
+(**192 ordinary tests**, clean own checkout).
+
+A subsequent **warm checkout** `PYTHONPATH=src:tests python3 -B -m
+unittest discover -s tests -q` reported **1,349 tests OK**. This
+status was **NOT a valid cold native-warning proof**: compiled
+`__pycache__` modules can be read even with `-B` (which prevents
+new cache writes, but does not by itself disable cache reads). A
+separate explicit source `compile(...)` under
+`warnings.simplefilter('error', SyntaxWarning)` proved the original
+`src/lightup/capability_registry_history_report.py` still has
+invalid escaped-backtick source.
+
+To eliminate stale cache effects, I created a **new source-only /tmp
+Git checkout** at *exact own SHA* `2f24d8f` (not a dirty copy) and
+ran native fleet acceptance and the **entire** Python3.14 suite
+without any pre-existing bytecode. Exact results:
+
+- Original native fleet: **3 methods, two ordinary FAIL**, both the
+  already owned #1535 warning-triggered exit 92 from
+  `render_scope_registry_history_offline.py`.
+- Cold full suite: **1,349 tests, exactly those two ordinary FAIL**
+  (zero new own Git-path/CLI failures), exit 1; tree clean.
+- Independently **new, separate /tmp checkout** on the *same exact
+  own commit* plus **only the already-reviewed independent #1536
+  owner-fix source blob** from
+  `f8b91596d48f318cb75050b70ccbf5a50d2cd106`:
+  explicit compile with syntax warnings as errors **PASS**, cold
+  complete Python3.14 suite **1,349 tests OK**, exit 0.
+  The only checkout difference is an uncommitted
+  `M src/lightup/capability_registry_history_report.py` in the
+  *disposable proof copy*, never pushed or merged.
+
+This corrects any misleading earlier **warm green** status:
+the *published* own branch **is not cold-full-green** without the
+separately owned source correction; the clean combined fixture is
+green but **NOT** an integrated, published, reviewed release SHA or
+named permanent GitHub VPS Actions job. The owner #1536 controls that
+source fix; this lane has NOT changed the owner source or branch.
+
+**INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** No main merge,
+deployment, active target, scans, grants, handlers or release.
+Independently authenticated separate client/operator consent with
+at-use revocation, security/privacy review, exact final release-SHA
+full hosted and permanently registered VPS GitHub Actions and explicit
+HUMAN GO remain necessary.
