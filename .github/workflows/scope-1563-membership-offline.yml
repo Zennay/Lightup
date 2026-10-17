@@ -7,6 +7,8 @@ on:
       - 'docs/scope-1563-membership-metamorphic-20261017.md'
       - '.github/workflows/scope-1563-membership-offline.yml'
       - 'scripts/scope_1563_membership_mutation_proof_20261017.py'
+      - 'scripts/scope_1563_exact_tree_boundary_20261017.py'
+      - 'tests/test_scope_1563_exact_tree_boundary_20261017.py'
   workflow_dispatch:
 
 permissions:
@@ -30,6 +32,7 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
       - name: Verify exact checked-out SHA
         env:
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -43,9 +46,16 @@ jobs:
         env:
           PYTHONPATH: src
           PYTHONDONTWRITEBYTECODE: '1'
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           python -m py_compile tests/test_scope_membership_metamorphic_20261017.py
           python -m unittest discover -s tests -p 'test_scope_membership_metamorphic_20261017.py' -v
           python scripts/scope_1563_membership_mutation_proof_20261017.py
+          python -m unittest discover -s tests -p 'test_scope_1563_exact_tree_boundary_20261017.py' -v
+          set +e
+          python scripts/scope_1563_exact_tree_boundary_20261017.py --expected-head "$EXACT_HEAD"
+          result=$?
+          set -e
+          test "$result" -eq 3
       - name: Assert no leftover changes
         run: git diff --exit-code
