@@ -328,3 +328,49 @@ client AND operator consents with at-use revocation, independent
 security/privacy signoff and explicit HUMAN GO remain separate gates.
 
 **NO MERGE / DEPLOY / REAL TARGET / SCAN / GRANT / HANDLER / RELEASE.**
+
+## W8 — synthetic batch alias fence, hard I/O tripwires and final review corpus
+
+**Independent non-authorizing reviewer validation only**, still stacked above
+original unchanged source owner PR #554 HEAD
+`4c8d5651fc0e23f94514daae56b4e5fe0549de37`.
+No original production code, other PR branches or real grants touched.
+
+- The basic fictional `review_batch()` previously accepted one same Python
+  mutable item repeated as `[item] * 32`, yielding `REVIEW_ONLY` even
+  though 32 independent test examples were not represented. Reproduced a
+  **real local RED** on own head
+  `d99f9a506fd308676ac2de354e9bf4cf92ae35b5`:
+  **24 methods, 3 failing alias subtests** (2/3/32 repetitions).
+  Own source-only fix `0161a4d6a6e57ca9e053fd350033c1a121e7ab3c`
+  rejects repeated in-process mutable row identities. Corrected the positive
+  32-case fixture to create 32 distinct builtin dicts. **This does not
+  authenticate textual/copy provenance, or verify any real grant.**
+- Independent combined negative-I/O test now patches
+  `builtins.open`, `socket.socket`, `socket.getaddrinfo`,
+  `sqlite3.connect` and `subprocess.Popen` to fail immediately.
+  Both review modules' direct shape checks and JSON parsers pass valid and
+  invalid fictional samples without touching those facilities. This is
+  **an offline unit tripwire**, not sandbox proof for arbitrary code.
+- Allowed connected `vps-bb300bba` Python3.14.4, owned isolated clean
+  Git tree at exact own
+  `4ebc9355fead891390fef2735689b65887d91457`: **24/24
+  ordinary base reviewer PASS**, **20/20 ordinary paired reviewer PASS**,
+  all under strict `-W error::ResourceWarning`; full unmodified project
+  **629 unit tests OK (11 deliberately unresolved original source RED
+  expectedFailures) + 86 integration tests OK**. No deployment.
+- [Exact-head own hosted CI #39007811979](https://github.com/Zennay/Lightup/actions/runs/39007811979)
+  **COMPLETED SUCCESS**; original Python3.14 job `117323761570` and
+  Python3.11 job `117323761683` logs independently reviewed:
+  **24 ordinary reviewer PASS + 20 ordinary pair PASS + 18 issuance tests
+  (7 ordinary PASS, 11 original source expectedFailures)**. Exact
+  **seven wholly-new owned files** and strict identity of all eleven
+  unresolved source REDs both independently PASS.
+
+Still **INCUBATE M3/M7 / DRAFT/HOLD**: the real owner
+`DomainStore.record_authorization_grant()` issuance validation is not
+fixed by these helpers. Original complete integrated hosted pipeline on the
+release base, a *permanently registered* self-hosted VPS Actions worker,
+separately authenticated real client/operator consents plus live revocation,
+independent privacy/security signoff, and explicit human GO are required
+before any target, real grant, merge, deploy, handler or release.
