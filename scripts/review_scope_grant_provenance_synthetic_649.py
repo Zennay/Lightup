@@ -83,7 +83,11 @@ def _clean_text(value: object) -> bool:
             return False
         if (codepoint == 0x034F or
                 0xFE00 <= codepoint <= 0xFE0F or
-                0xE0100 <= codepoint <= 0xE01EF):
+                0xE0100 <= codepoint <= 0xE01EF or
+                codepoint in {0x115F, 0x1160, 0x3164, 0xFFA0, 0x2800}):
+            # These NFC-stable Hangul fillers / blank Braille symbol can be
+            # visually empty even though Unicode does not classify them as
+            # controls or whitespace.
             return False
     return True
 
