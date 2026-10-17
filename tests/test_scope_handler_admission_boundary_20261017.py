@@ -200,18 +200,28 @@ class ReviewBoundaryTests(unittest.TestCase):
 
         original_code = candidate.__code__
         self.assertEqual(review_handlers((("candidate", candidate),)).status, "REVIEW_ONLY")
-        try:
-            for alternate in (coroutine, generator, async_generator):
-                with self.subTest(code=alternate.__name__):
-                    candidate.__code__ = alternate.__code__
-                    receipt = review_handlers((("candidate", candidate),))
-                    self.assertEqual(receipt.status, "HOLD")
-                    self.assertFalse(receipt.authorized)
-                    self.assertFalse(receipt.consent_verified)
-                    self.assertFalse(receipt.dispatch_allowed)
-                    self.assertFalse(receipt.release_allowed)
-        finally:
-            candidate.__code__ = original_code
+        # Python 3.14 deprecates replacing an ordinary function's code object
+        # with generator/coroutine code. This offline regression examines
+        # shape drift only and intentionally executes none of that code.
+        import warnings
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="Assigning a code object of non-matching type",
+                category=DeprecationWarning,
+            )
+            try:
+                for alternate in (coroutine, generator, async_generator):
+                    with self.subTest(code=alternate.__name__):
+                        candidate.__code__ = alternate.__code__
+                        receipt = review_handlers((("candidate", candidate),))
+                        self.assertEqual(receipt.status, "HOLD")
+                        self.assertFalse(receipt.authorized)
+                        self.assertFalse(receipt.consent_verified)
+                        self.assertFalse(receipt.dispatch_allowed)
+                        self.assertFalse(receipt.release_allowed)
+            finally:
+                candidate.__code__ = original_code
         self.assertEqual(review_handlers((("candidate", candidate),)).status, "REVIEW_ONLY")
 
     def test_keyword_defaults_mutation_forces_fresh_hold(self):
