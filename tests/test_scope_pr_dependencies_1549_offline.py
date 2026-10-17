@@ -1,9 +1,11 @@
 """Standalone stdlib acceptance of synthetic PR topology review; issue #1549."""
 import io
+import os
 import json
 import pathlib
 import random
 import subprocess
+import tempfile
 import sys
 import unittest
 from unittest import mock
@@ -125,6 +127,29 @@ class DependencyReviewTests(unittest.TestCase):
     def test_many_independent(self):
         self.review(manifest([item(i, f"{i:040x}") for i in range(1, 65)]),
                     [list(range(1, 65))])
+
+    def test_exact_git_blob_mode_gate_in_disposable_no_remote_repo(self):
+        # Only unit-test fixtures invoke Git. The runtime reviewer never does.
+        with tempfile.TemporaryDirectory(prefix=".scope1549-mode-", dir=ROOT) as tmp:
+            folder = pathlib.Path(tmp)
+            def git(*args):
+                return subprocess.run(["git", *args], cwd=folder, capture_output=True,
+                                      text=True, timeout=15, check=True).stdout.strip()
+            git("init", "-q")
+            (folder / "ordinary.py").write_text("pass\\n", encoding="utf-8")
+            (folder / "executable.py").write_text("pass\\n", encoding="utf-8")
+            os.chmod(folder / "executable.py", 0o755)
+            (folder / "symlink.py").symlink_to("ordinary.py")
+            git("add", "--", "ordinary.py", "executable.py", "symlink.py")
+            git("-c", "core.hooksPath=/dev/null", "-c", "user.name=OfflineFixture",
+                "-c", "user.email=fixture@example.invalid", "commit", "-qm", "synthetic")
+            def allowed(path):
+                entry = git("ls-tree", "HEAD", "--", path)
+                return entry.split(" ", 1)[0] == "100644"
+            self.assertTrue(allowed("ordinary.py"))
+            self.assertFalse(allowed("executable.py"))
+            self.assertFalse(allowed("symlink.py"))
+            self.assertFalse(allowed("missing.py"))
 
     def test_repeatable_full_capacity_dependency_graph_and_negative_mutations(self):
         # Systematic synthetic 64-node chain and unrelated roots, reordered
