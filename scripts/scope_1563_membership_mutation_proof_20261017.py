@@ -92,6 +92,26 @@ def illegally_rebind_denied_host_to_declared_host(self, target):
     return decision
 
 
+
+def illegally_serialize_reason_as_string(self, target):
+    decision = REAL_DECIDE(self, target)
+    if decision.reason == ScopeReason.OUT_OF_SCOPE:
+        return ScopeDecision(False, decision.normalized_host, "out_of_scope")
+    return decision
+
+
+def illegally_swap_canonical_decision_for_structural_proxy(self, target):
+    decision = REAL_DECIDE(self, target)
+    if decision.reason == ScopeReason.OUT_OF_SCOPE:
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            allowed=False,
+            normalized_host=decision.normalized_host,
+            reason=ScopeReason.OUT_OF_SCOPE,
+        )
+    return decision
+
+
 MUTATIONS = (
     ("grant_mints_membership", illegally_mint_membership, "test_undeclared_public_hostname"),
     ("invalid_identity_rescued", illegally_accept_invalid_target, "test_invalid_target"),
@@ -100,6 +120,8 @@ MUTATIONS = (
     ("cidr_right_neighbor_authorizes", illegally_promote_cidr_right_neighbor, "test_ipv4_right_neighbor"),
     ("hostname_wildcard_authorizes", illegally_infer_wildcard_subdomain, "test_unlisted_subdomain"),
     ("denied_identity_rewritten", illegally_rebind_denied_host_to_declared_host, "test_normalized_host"),
+    ("reason_string_type_confusion", illegally_serialize_reason_as_string, "test_undeclared_public_hostname"),
+    ("decision_proxy_type_confusion", illegally_swap_canonical_decision_for_structural_proxy, "test_undeclared_public_hostname"),
 )
 
 
@@ -148,7 +170,7 @@ def main() -> int:
     if ScopePolicy.decide is not REAL_DECIDE:
         print("HOLD: ScopePolicy restored function identity changed")
         return 2
-    print("PASS: clean baseline and all seven fail-open mutation canaries")
+    print("PASS: clean baseline and all nine fail-open mutation canaries")
     return 0
 
 
