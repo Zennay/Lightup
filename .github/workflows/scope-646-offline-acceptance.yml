@@ -54,6 +54,65 @@ jobs:
           set -euo pipefail
           export PYTHONPATH=src
           python -B -m unittest discover -s tests -p 'test_scope_grant_scope_identity_646_20261017.py' -v
+      - name: Pin six original source RED names and exact causes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          import re
+          import subprocess
+          import sys
+
+          env = dict(os.environ, PYTHONPATH="src", LIGHTUP_SCOPE646_REQUIRE_SOURCE_FIX="1")
+          result = subprocess.run(
+              [sys.executable, "-B", "-m", "unittest", "discover", "-s", "tests",
+               "-p", "test_scope_grant_scope_identity_646_20261017.py", "-q"],
+              env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+              timeout=90, check=False,
+          )
+          output = result.stdout
+          expected = {
+              "test_source_red_structural_duck_scope_fails_atomically":
+                  ("FAIL", "AssertionError: (<class 'ValueError'>, <class 'TypeError'>) not raised"),
+              "test_source_red_scope_subclass_fails_atomically":
+                  ("FAIL", "AssertionError: (<class 'ValueError'>, <class 'TypeError'>) not raised"),
+              "test_source_red_flipping_subclass_cannot_persist_destructive_risk":
+                  ("FAIL", "AssertionError: 5 == 5 : unpatched source persisted destructive risk after safe validation"),
+              "test_source_red_none_scope_is_invalid_not_attribute_error":
+                  ("ERROR", "AttributeError: 'NoneType' object has no attribute 'max_risk'"),
+              "test_source_red_forged_class_metadata_does_not_mint_scope_identity":
+                  ("FAIL", "AssertionError: (<class 'ValueError'>, <class 'TypeError'>) not raised"),
+              "test_source_red_rejects_foreign_scope_without_accessing_fields":
+                  ("ERROR", "RuntimeError: scope field trap was evaluated"),
+          }
+          headers = list(re.finditer(
+              r"(?m)^(FAIL|ERROR): (test_source_red_[a-z0-9_]+) \\(", output
+          ))
+          observed = {}
+          for match in headers:
+              kind, name = match.groups()
+              segment = output[match.end():]
+              separator = segment.find("======================================================================")
+              if separator != -1:
+                  segment = segment[:separator]
+              if name in observed:
+                  raise SystemExit("source646_duplicate_red_header")
+              observed[name] = (kind, segment)
+
+          if result.returncode == 0 or set(observed) != set(expected):
+              raise SystemExit("source646_red_identity_mismatch")
+          if not re.search(r"(?m)^Ran 10 tests in ", output):
+              raise SystemExit("source646_test_count_mismatch")
+          if "FAILED (failures=4, errors=2)" not in output:
+              raise SystemExit("source646_strict_result_mismatch")
+          for name, (kind, reason) in expected.items():
+              actual_kind, evidence = observed[name]
+              if actual_kind != kind or reason not in evidence:
+                  raise SystemExit("source646_red_cause_mismatch:" + name)
+          print("scope646_exact_six_source_RED_identities_and_causes=PASS")
+          print("scope646_original_production_still_unfixed=HOLD")
+          PY
       - name: Confirm tree remains untouched by tests
         run: |
           test -z "$(git status --porcelain)"
