@@ -287,3 +287,31 @@ It does not modify runtime permissions, deployment or release gates.
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** Git-history evidence is
 review-only, not real client consent, at-use revocation or authorization.
 No scan, grant, handler dispatch, merge or deployment is permitted by it.
+
+
+## W56–W59 — bounded Git evidence subprocess I/O (2026-10-17)
+
+Prior to this update, the isolated Git-tree checker used
+`subprocess.run(..., capture_output=True)`, which fully buffered arbitrary
+Git stdout/stderr **before** examining their sizes. A maliciously large
+repository response could cause unnecessary memory pressure, even when
+the eventual review would HOLD. The new `_git_raw` uses selector-driven
+bounded pipes. It checks stdin type/size before process creation (max
+262,144 bytes), accumulates no more than 786,432 bytes stdout or
+16,384 bytes stderr, has a 15-second total deadline, and kills/reaps
+the Git subprocess on timeout or oversized streams. Unexpected output
+or exceptions fail closed in the existing generic, non-authorizing
+`scope_env_owned_tree=HOLD` path.
+
+Additional true disposable Git tests cover exact upper stdin with a
+hash-object digest, no-spawn oversized input, greater-than-cap 786,433-byte
+Git blob stdout, a 25,000-byte Git alias stderr fixture, and ordinary
+status after both deliberate overflow conditions. No actual LightUp
+targets, original project worker processes, deployments, credentials,
+permissions or source-owner paths are touched.
+
+As with the earlier filter preflight, this helper is an opt-in Git
+evidence *diagnostic* only; even PASS is not authorization, proof of
+provenance across administrative trust boundaries, verified consent or
+release permission. Full original hosted CI, permanent named VPS,
+source-owner security fixes and independent human GO remain required.
