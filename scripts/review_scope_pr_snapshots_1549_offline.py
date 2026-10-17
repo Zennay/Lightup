@@ -87,7 +87,7 @@ def _transform(raw: bytes) -> bytes:
             "head_sha": row["head_sha"], "base_sha": base,
             "depends_on": deps,
         })
-    return json.dumps({"version": 1, "root_sha": root, "entries": entries},
+    # Canonical semantic graph ordering: permutations change the raw-input\n    # digest, but must not change the inferred graph fingerprint.\n    entries.sort(key=lambda row: row["id"])\n    return json.dumps({"version": 1, "root_sha": root, "entries": entries},
                       ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("ascii")
 
 
