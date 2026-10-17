@@ -36,10 +36,17 @@ def review_pair_batch(value: object) -> base.ReviewReceipt:
     pairs = value["pairs"]
     if type(pairs) is not list or not 1 <= len(pairs) <= MAX_PAIRS:
         return hold
+    seen_object_ids: set[int] = set()
     for pair in pairs:
         if not base._has_exact_keys(pair, _PAIR_KEYS):
             return hold
         before, after = pair["before"], pair["after"]
+        # A duplicate in-memory object gives no separate synthetic snapshots.
+        # This does not authenticate separately created but forged copies.
+        own_ids = {id(pair), id(before), id(after)}
+        if len(own_ids) != 3 or not seen_object_ids.isdisjoint(own_ids):
+            return hold
+        seen_object_ids.update(own_ids)
         if not base._has_exact_keys(before, _PROVENANCE_KEYS):
             return hold
         if not base._has_exact_keys(after, _PROVENANCE_KEYS):
