@@ -108,3 +108,10 @@ as an execution or release permit.
 - New integration test executes the actual original #1538 inferred reviewer with only fictional source patch data. Default policy classifies the synthetic critical secret-shaped line as BLOCK, while configured wildcard suppression yields PASS; both reports remain explicitly not_authorization=true. The independent offline floor reviewer HOLDs both weakening settings. This proves the practical distinction without any grant or handler.
 - Public review-helper input with a str subclass whose __ne__ runs untrusted code initially produced a genuine failing test; the helper now checks type before equality, rejecting the hostile object without invoking its comparison methods. This is **not** a bypass of the stdin JSON transport (which already creates built-in strings only) but protects the standalone library boundary.
 - New exact HEAD test tally: **23 methods = 22 ordinary PASS, one deliberately unresolved owner source expectedFailure**, strict SyntaxWarning-as-error Python 3.14.4. No original owner files changed.
+
+## W5 — independent opt-in hosted Python-version acceptance
+
+- New *exclusively owned* GitHub Actions workflow: .github/workflows/scope-1543-synthetic-policy-floor.yml. Restricted to own branch PR/push and optional manual dispatch, with read-only contents permissions and checkout credentials not persisted. Only GitHub-hosted ubuntu-latest for Python 3.11 and 3.14; **no self-hosted runner usage** in this workflow, no deploy/grant/dispatch action.
+- Exact original #1538 ancestor and precisely four newly added paths (CLI/tests/docs/workflow) are checked in a read-only Git object preflight. It does **not** attest external authorization or approvals.
+- Dedicated commands run the original installed source-review tests, new 23-method acceptance, and GitHub change/semantics compatibility tests. A clean tree is mandatory after testing; any mismatch fails the hosted diagnostic, not production.
+- Hosted green is not permanent named VPS CI and must not be treated as a release gate. The independent #1535 original Python3.14 full-suite failures remain unresolved.

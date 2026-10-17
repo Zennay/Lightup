@@ -1,0 +1,83 @@
+name: "LightUp scope #1543 — synthetic policy floor (NON-AUTHORIZING)"
+
+on:
+  push:
+    branches:
+      - chatgpt/scope-1543-policy-floor-offline-20261017
+    paths:
+      - scripts/review_scope_policy_floor_offline_1543.py
+      - tests/test_scope_1543_policy_floor_offline_20261017.py
+      - docs/scope-1543-synthetic-change-policy-floor-20261017.md
+      - .github/workflows/scope-1543-synthetic-policy-floor.yml
+  pull_request:
+    branches:
+      - claude/lightup-leap
+    paths:
+      - scripts/review_scope_policy_floor_offline_1543.py
+      - tests/test_scope_1543_policy_floor_offline_20261017.py
+      - docs/scope-1543-synthetic-change-policy-floor-20261017.md
+      - .github/workflows/scope-1543-synthetic-policy-floor.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scope1543-offline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  independent-non-authorizing-tests:
+    name: "Offline / Python ${{ matrix.python-version }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: "Require original #1538 ancestor and exclusive additive paths"
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=26dd88d33c8735658ae819c7e017b2f36493a039
+          git cat-file -e "${base}^{commit}"
+          test "$(git merge-base "$base" HEAD)" = "$base"
+          git diff --name-only "$base" HEAD | sort > /tmp/scope1543-owned-actual
+          printf '%s\n' \
+            .github/workflows/scope-1543-synthetic-policy-floor.yml \
+            docs/scope-1543-synthetic-change-policy-floor-20261017.md \
+            scripts/review_scope_policy_floor_offline_1543.py \
+            tests/test_scope_1543_policy_floor_offline_20261017.py \
+            | sort > /tmp/scope1543-owned-expected
+          diff -u /tmp/scope1543-owned-expected /tmp/scope1543-owned-actual
+          test "$(git diff --diff-filter=ACMRTUXB --name-only "$base" HEAD | wc -l)" -eq 4
+          test "$(git diff --diff-filter=D --name-only "$base" HEAD | wc -l)" -eq 0
+          echo "owned_scope1543_additive_paths=PASS"
+      - name: "Standalone strict offline reviewer and original source canary"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -W error::SyntaxWarning -I -S -B -m unittest discover \
+            -s tests -p test_scope_1543_policy_floor_offline_20261017.py -v
+      - name: "Original installed review source regression"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I -S -B -m unittest discover -s tests -p test_change_review.py -q
+          python -I -S -B -m unittest discover -s tests -p test_change_review_store.py -q
+          PYTHONPATH=.:src python -S -B -m unittest discover -s tests -p test_github_changes.py -q
+          PYTHONPATH=.:src python -S -B -m unittest discover -s tests -p test_change_semantics.py -q
+      - name: "Check the exact owned tree remains unchanged"
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          echo "scope1543_clean_worktree=PASS"
