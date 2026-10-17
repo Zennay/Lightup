@@ -48,6 +48,10 @@ def references_review_module(source: str) -> bool:
     # A bare local function named import_module is NOT an imported loader.
     # __import__ alone is always available as a Python builtin.
     import_module_names = {"__import__"}
+    runpy_names = {"runpy"}
+    pkgutil_names = {"pkgutil"}
+    run_module_names: set[str] = set()
+    resolve_name_names: set[str] = set()
     for node in nodes:
         if isinstance(node, ast.Import):
             for alias in node.names:
@@ -55,12 +59,20 @@ def references_review_module(source: str) -> bool:
                     importlib_names.add(alias.asname or alias.name)
                 if alias.name == "builtins":
                     builtins_names.add(alias.asname or alias.name)
+                if alias.name == "runpy":
+                    runpy_names.add(alias.asname or alias.name)
+                if alias.name == "pkgutil":
+                    pkgutil_names.add(alias.asname or alias.name)
         elif isinstance(node, ast.ImportFrom):
             for alias in node.names:
                 if node.module == "importlib" and alias.name == "import_module":
                     import_module_names.add(alias.asname or alias.name)
                 if node.module == "builtins" and alias.name == "__import__":
                     import_module_names.add(alias.asname or alias.name)
+                if node.module == "runpy" and alias.name == "run_module":
+                    run_module_names.add(alias.asname or alias.name)
+                if node.module == "pkgutil" and alias.name == "resolve_name":
+                    resolve_name_names.add(alias.asname or alias.name)
     for node in nodes:
         if isinstance(node, ast.Import):
             if any(name.name.split(".")[-1] == REVIEWER for name in node.names):
@@ -73,18 +85,17 @@ def references_review_module(source: str) -> bool:
             if any(name.name == REVIEWER for name in node.names):
                 return True
         elif isinstance(node, ast.Call):
-            # Both importlib.import_module(name=...) and __import__(name=...)
-            # accept keyword-only spelling; source literals must not bypass
-            # static unwired-review checks solely by call syntax.
+            # Named loader entrypoints may use name= or runpy's mod_name=.
+            # Only fold literal strings; never execute application code.
             literal = (
                 _constant_text(node.args[0]) if node.args else
-                next((_constant_text(kw.value) for kw in node.keywords if kw.arg == "name"), None)
+                next((_constant_text(kw.value) for kw in node.keywords if kw.arg in ("name", "mod_name")), None)
             )
             if literal is None:
                 continue
             called = node.func
             direct_import = isinstance(called, ast.Name) and called.id in (
-                "__import__", *import_module_names,
+                "__import__", *import_module_names, *run_module_names, *resolve_name_names,
             )
             qualified_import = (
                 isinstance(called, ast.Attribute)
@@ -92,6 +103,8 @@ def references_review_module(source: str) -> bool:
                 and (
                     (called.attr == "import_module" and called.value.id in importlib_names)
                     or (called.attr == "__import__" and called.value.id in builtins_names)
+                    or (called.attr == "run_module" and called.value.id in runpy_names)
+                    or (called.attr == "resolve_name" and called.value.id in pkgutil_names)
                 )
             )
             getattr_import = (
@@ -103,10 +116,17 @@ def references_review_module(source: str) -> bool:
                 and (
                     (called.args[0].id in importlib_names and _constant_text(called.args[1]) == "import_module")
                     or (called.args[0].id in builtins_names and _constant_text(called.args[1]) == "__import__")
+                    or (called.args[0].id in runpy_names and _constant_text(called.args[1]) == "run_module")
+                    or (called.args[0].id in pkgutil_names and _constant_text(called.args[1]) == "resolve_name")
                 )
             )
-            if (direct_import or qualified_import or getattr_import) and literal.split(".")[-1] == REVIEWER:
-                return True
+            if direct_import or qualified_import or getattr_import:
+                # pkgutil.resolve_name supports both dotted member access and
+                # "module:symbol". The reviewer must not load through either.
+                module_name = literal.split(":", 1)[0]
+                parts = module_name.split(".")
+                if REVIEWER in parts:
+                    return True
     return False
 
 
