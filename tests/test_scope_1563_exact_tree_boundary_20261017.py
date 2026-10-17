@@ -220,6 +220,33 @@ class TemporaryOwnerTreeTests(unittest.TestCase):
         self.assertIs(decision["authorization_granted"], False)
 
 
+    def test_temporary_executable_mode_then_restore_still_holds(self):
+        original_head = self._build_owned()
+        file = self.root / sorted(gate.ALLOWED_ADDED)[0]
+        file.chmod(0o755)
+        self._commit()
+        file.chmod(0o644)
+        final_head = self._commit()
+        self.assertEqual(self._git("diff", "--name-only", original_head, final_head), "")
+        with self.assertRaises(gate.Hold):
+            gate.inspect_exact_head(self.root, final_head)
+
+    def test_merge_commit_with_apparently_valid_final_tree_still_holds(self):
+        original_head = self._build_owned()
+        files = sorted(gate.ALLOWED_ADDED)
+        self._git("switch", "-q", "-c", "synthetic-branch-A")
+        self._write(files[0], "branch A owns own path")
+        self._commit()
+        self._git("switch", "-q", "-c", "synthetic-branch-B", original_head)
+        self._write(files[1], "branch B owns another owned path")
+        self._commit()
+        self._git("-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+                  "merge", "--no-ff", "-q", "synthetic-branch-A", "-m", "synthetic merge")
+        merged_head = self._git("rev-parse", "HEAD")
+        with self.assertRaisesRegex(gate.Hold, "nonlinear"):
+            gate.inspect_exact_head(self.root, merged_head)
+
+
 class HostedTriggerContractTests(unittest.TestCase):
     def test_any_head_change_triggers_tree_review(self):
         workflow = (pathlib.Path(__file__).resolve().parents[1] /
