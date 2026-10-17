@@ -128,3 +128,38 @@ After adding the independent `test_scope_literal_git_modes_20261016.py` module, 
 ## W27 — reject literal builtins import aliases in offline AST isolation
 
 Four new deliberately RED synthetic samples showed the offline AST proof had overlooked `builtins.__import__`, `import builtins as bi`, `from builtins import __import__ as loader`, and the static `getattr(bi, '__import__')` shape. The strictly non-executing guard now collects those directly imported aliases and recognizes fully literal target strings in their call shapes. This is **not** complete proof against arbitrary reflection/rebinding/computed imports; it does not wire the reviewer, touch production source, or authorize execution. The strict isolated suite minimum rises to 97 to account for the new regression method.
+
+
+## W28–W29 — keyword-only, runpy and pkgutil static loader gaps (17 October 2026)
+
+The independent static test of *unwired* scope review first missed Python's
+`importlib.import_module(name=...)` and `__import__(name=...)` forms. Two
+synthetic tests exposed keyword-only loader calls and documented a negative
+control for a local, unrelated function named `import_module`. A dedicated
+fix now recognizes the exact statically literal `name=` while avoiding that
+local function false positive. This is a guard for code review, **not** runtime
+sandboxing and **not** a production authorization change.
+
+A further isolated test+fix covers literal `runpy.run_module` (including
+`mod_name=`) and `pkgutil.resolve_name`, direct imported aliases, module
+aliases and literal `getattr` variants. The latter checks fictional dotted
+member lookup and `module:symbol` spelling. Only fully static module names
+qualify for this AST fence; computed names, indirect references, monkeypatching,
+`eval` and dynamically loaded plugins remain explicitly **unproven**. No
+application modules are imported or executed during this check.
+
+The CI manifest now requires **101 distinct discovered owned tests**, including
+all existing 16 isolated modules and exactly four still-open *original source*
+expectedFailures. Actual registered-VPS-local Python 3.14 run after W29:
+`scope_owned_additive_branch=PASS`,
+`scope_review_isolated_proof=PASS tests=101 ordinary_pass=97 expected_source_reds=4`;
+no unexpected test errors. Full original LightUp CI and permanent named VPS
+runner validation are not represented by this count; dedicated hosted status
+must be checked independently for the exact final commit.
+
+All changes remain exclusively in the pre-existing owner-owned offline static
+review test module, own suite gate and this own documentation. Original target
+admission source owner [#1289](https://github.com/Zennay/Lightup/issues/1289),
+other parallel workers, installed runtime and deployment remain untouched.
+**INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD — NO MERGE, REAL ASSET,
+SCAN, GRANT, CONSENT CLAIM, HANDLER DISPATCH OR RELEASE.**
