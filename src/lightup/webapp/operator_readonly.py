@@ -571,6 +571,17 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
         # the existing portal's source-owned cards or write handlers.
         view_context = self._portal_context(auth, client_id)
         requests = self.store.list_assessment_requests(view_context)
+        from .request_clarifications import thread_states, ClarificationDenied
+        try:
+            clarification_badges = thread_states(
+                self.store, auth,
+                [item.request_id for item in requests[:30]], client_id=client_id,
+            )
+        except (ClarificationDenied, ValueError, TypeError):
+            return Response(
+                "<h1>Client inbox unavailable</h1>",
+                status="503 Service Unavailable",
+            )
         links = "".join(
             '<div class="card"><div class="row"><strong>'
             + _e(", ".join(asset[:100] for asset in request.requested_assets[:2])
@@ -579,6 +590,8 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             + _e(request.status.value) + '</span></div>'
             + '<p class="meta">Requested risk ' + _e(int(request.requested_risk))
             + ' · Submitted ' + _e(request.created_at)
+            + '</p><p class="meta">Clarifications: '
+            + _e(clarification_badges.get(request.request_id, "No question yet"))
             + '</p><a href="/portal/' + _e(client_id)
             + '/requests/' + _e(request.request_id)
             + '">View status and request details →</a></div>'
