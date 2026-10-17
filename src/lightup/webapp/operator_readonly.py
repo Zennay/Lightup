@@ -538,6 +538,7 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             )
             discussion = render_thread_html(
                 conversation, auth, operator=auth.is_operator,
+                allow_post=not auth.is_operator,
                 action=(
                     "/operator/requests/" + request_id + "/clarifications"
                     if auth.is_operator else
