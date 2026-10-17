@@ -118,6 +118,18 @@ A source-policy regression that never returns must not leave the offline review 
 - Complete original local unit suite on that exact head: **1,282 tests, five ordinary FAIL, 23 expectedFailures**. All five failure identities match the already independently baseline-reproduced original-source #301 expired test fixture and #1535 Python 3.14 registry-history subprocess failures. No additional unexpected failures relative to previous branch/full-suite run. This does NOT imply full project green.
 - This is a **checked Python-level boundary**, not a tamper-proof sandbox: trusted reviewed checkout only; native writes, direct memory mutation (including modify-then-restore) and unaudited operations are not categorically prevented. No authentic consent, target scans, runtime authorization, deployment, merge, hosted Python 3.11/3.14 or named self-hosted runner CI were performed.
 
+## W10 — no zero-exit escape from the offline authority witness (17 October 2026)
+
+The offline witness must **never** allow an installed evaluator callback to silently turn its machine-facing `HOLD/exit 2` and `REVIEW_ONLY/exit 3` protocol into `exit 0` or an unstructured aborted result.
+
+**Actual reproduced RED**: the old `evaluate()` caught `Exception` but not `BaseException`; injecting `SystemExit(0)` in `ScopePolicy.decide()` made a real Python child exit with status **0**, emitting no machine-readable HOLD receipt. Direct regressions also caught escaping `SystemExit(3)`, `KeyboardInterrupt` and `GeneratorExit` (five observed failing subtests before fix).
+
+**Fix**: `evaluate()` now catches `BaseException` after its dedicated `_WitnessTimeLimit` handler and always returns a generic `HOLD/offline_witness_evaluation_failed` with the seven literal deny flags and CLI **exit 2**. Time-budget overruns retain `HOLD/offline_witness_time_budget_exceeded`. The POSIX alarm and Python context-local I/O/output guards are restored before error handling. No underlying exception text, target or key reaches JSON.
+
+**Intentional limitation**: in this **standalone offline proof program only**, `KeyboardInterrupt` is reported as HOLD rather than propagated to the caller to preserve the machine receipt. This does not alter production interrupt behavior or make untrusted/native code safe. An external process kill, OS termination or native process exit can still prevent a receipt; this is a Python-level control only.
+
+**Verified on connected authorized zSSH**: Python 3.14.4, exact source head `9beb08fe78cd55860b4a12ac26f6ece876b14c30`: **47/47 dedicated tests PASS**, **86/86 real producer integration tests PASS**, including a genuine subprocess regression showing `SystemExit(0)` now returns `HOLD/2`, not process exit 0. The earlier full suite with 1,282 unit tests had the same five known original-source/fixture REDs; no claim of complete project green. No production authority, target operation, runner action, merge or deployment was introduced.
+
 ## Gate interpretation
 
 - Green unit tests validate the witness's own classification, deterministic receipt, zero-network boundary, no authority flags and mutation-detection sensitivities.
