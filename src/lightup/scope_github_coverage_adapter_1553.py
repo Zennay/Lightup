@@ -7,6 +7,7 @@ No returned output can confer release/scan/grant/dispatch authority.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from typing import Any
 
@@ -20,6 +21,40 @@ _MAX_CHANGED_LINES = 1_000_000
 _RECORD_REQUIRED = frozenset({"filename", "status", "additions", "deletions"})
 _RECORD_OPTIONAL = frozenset({"previous_filename", "patch"})
 _STATUSES = frozenset({"added", "modified", "removed", "renamed", "copied", "changed"})
+_HUNK = re.compile(r"@@ -[0-9]+(?:,[0-9]+)? \\+[0-9]+(?:,[0-9]+)? @@(?: .*)?\\Z")
+
+
+def _complete_patch_stats(patch: str) -> tuple[int, int] | None:
+    """Conservatively count full, ordinary GitHub unified-hunk text only.
+
+    Binary, omitted, partial or unknown/combined diffs HOLD. This is a
+    consistency check for fictional inputs, never proof of authentic Git data.
+    """
+    if not patch or "\\r" in patch:
+        return None
+    lines = patch.split("\\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    seen_hunk = False
+    additions = removals = 0
+    for line in lines:
+        if _HUNK.fullmatch(line) is not None:
+            seen_hunk = True
+        elif not seen_hunk:
+            return None
+        elif line.startswith("+"):
+            additions += 1
+        elif line.startswith("-"):
+            removals += 1
+        elif line.startswith(" "):
+            pass
+        elif line == "\\\\ No newline at end of file":
+            pass
+        else:
+            return None
+    if not seen_hunk or additions + removals == 0:
+        return None
+    return additions, removals
 
 
 def _output(status: str, file_count: int = 0, inferred_signals: int = 0) -> dict[str, object]:
@@ -81,16 +116,23 @@ def preview(coverage: object, records: object) -> dict[str, object]:
         snapshot = {key: record[key] for key in _RECORD_REQUIRED}
         if has_previous:
             snapshot["previous_filename"] = record["previous_filename"]
-        if "patch" in record:
-            patch = record["patch"]
-            if type(patch) is not str:
+        # A missing/binary/partial patch hides possibly security-sensitive lines.
+        # Never infer a complete change from path metadata alone.
+        if "patch" not in record:
+            return _output("HOLD")
+        patch = record["patch"]
+        if type(patch) is not str:
+            return _output("HOLD")
+        try:
+            if len(patch.encode("utf-8")) > _MAX_PATCH_BYTES:
                 return _output("HOLD")
-            try:
-                if len(patch.encode("utf-8")) > _MAX_PATCH_BYTES:
-                    return _output("HOLD")
-            except UnicodeError:
-                return _output("HOLD")
-            snapshot["patch"] = patch
+        except UnicodeError:
+            return _output("HOLD")
+        if _complete_patch_stats(patch) != (
+            record["additions"], record["deletions"]
+        ):
+            return _output("HOLD")
+        snapshot["patch"] = patch
         snapshots.append(snapshot)
 
     if seen != paths:
