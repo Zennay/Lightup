@@ -6,6 +6,8 @@ on:
       - 'chatgpt/scope-1533-tooloutput-contract-20261017-*'
     paths:
       - 'src/lightup/scope_tooloutput_shape_review_20261017.py'
+      - 'scripts/review_scope_tooloutput_synthetic_1533.py'
+      - 'tests/test_scope_tooloutput_cli_1533_20261017.py'
       - 'tests/test_scope_tooloutput_shape_1533_20261017.py'
       - '.github/workflows/scope-1533-tooloutput-offline.yml'
       - 'docs/scope-tooloutput-1533-20261017.md'
@@ -42,6 +44,8 @@ jobs:
               "tests/test_scope_tooloutput_shape_1533_20261017.py",
               ".github/workflows/scope-1533-tooloutput-offline.yml",
               "docs/scope-tooloutput-1533-20261017.md",
+              "scripts/review_scope_tooloutput_synthetic_1533.py",
+              "tests/test_scope_tooloutput_cli_1533_20261017.py",
           }
           def git(*args):
               return subprocess.check_output(["git", *args], text=True).strip()
@@ -59,6 +63,8 @@ jobs:
           PY
       - name: Offline review with original source REDs
         run: python -I -S -B -m unittest discover -s tests -p 'test_scope_tooloutput_shape_1533_20261017.py' -v
+      - name: Real stdin-only synthetic ToolOutput reviewer CLI matrix
+        run: python -I -S -B -m unittest discover -s tests -p 'test_scope_tooloutput_cli_1533_20261017.py' -v
       - name: Existing original main orchestration regression (synthetic fixtures)
         env:
           PYTHONPATH: src
