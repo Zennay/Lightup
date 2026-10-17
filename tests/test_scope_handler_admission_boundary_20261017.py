@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+import functools
 import pathlib
 import sys
 import unittest
@@ -69,6 +70,48 @@ class ReviewBoundaryTests(unittest.TestCase):
             with self.subTest(bad=repr(bad)):
                 rows = tuple((f"a_{i}", inert) for i in range(31)) + ((bad, inert),)
                 self.assertEqual(review_handlers(rows).status, "HOLD")
+
+    def test_mutated_function_code_requires_fresh_review(self):
+        def candidate(context, arguments):
+            return None
+        def wrong_arity(context):
+            return None
+        original_code = candidate.__code__
+        self.assertEqual(review_handlers((("candidate", candidate),)).status, "REVIEW_ONLY")
+        try:
+            candidate.__code__ = wrong_arity.__code__
+            self.assertEqual(review_handlers((("candidate", candidate),)).status, "HOLD")
+        finally:
+            candidate.__code__ = original_code
+        self.assertEqual(review_handlers((("candidate", candidate),)).status, "REVIEW_ONLY")
+
+    def test_mutated_defaults_require_fresh_review(self):
+        def candidate(context, arguments):
+            return None
+        self.assertEqual(review_handlers((("candidate", candidate),)).status, "REVIEW_ONLY")
+        try:
+            candidate.__defaults__ = (None,)
+            self.assertEqual(review_handlers((("candidate", candidate),)).status, "HOLD")
+        finally:
+            candidate.__defaults__ = None
+        self.assertEqual(review_handlers((("candidate", candidate),)).status, "REVIEW_ONLY")
+
+    def test_callable_adapters_are_never_invoked_by_offline_review(self):
+        class CallableTrap:
+            def __call__(self, context, arguments):
+                raise AssertionError("external callback must never execute")
+        class BoundTrap:
+            def execute(self, context, arguments):
+                raise AssertionError("bound callback must never execute")
+        for value in (CallableTrap(), BoundTrap().execute,
+                      functools.partial(inert, None), len):
+            with self.subTest(value=type(value).__name__):
+                result = review_handlers((("candidate", value),))
+                self.assertEqual(result.status, "HOLD")
+                self.assertFalse(result.authorized)
+                self.assertFalse(result.consent_verified)
+                self.assertFalse(result.dispatch_allowed)
+                self.assertFalse(result.release_allowed)
 
 
 if __name__ == "__main__":
