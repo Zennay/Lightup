@@ -24,6 +24,7 @@
 </main>
 <script src="./scope-network.js"></script>
 <script src="./scope-fingerprint.js"></script>
+<script src="./planning-window.js"></script>
 <script>
 (function(){
 'use strict';
@@ -51,7 +52,7 @@ function read(file){
   if(!file || file.size>MAX){reject(new Error('File missing or too large'));return;}
   try{
    const t=await file.text(), d=JSON.parse(t,(k,v)=>['__proto__','constructor','prototype'].includes(k)?undefined:v);
-   if(!valid(d))throw new Error('Unsupported/unsafe draft schema');
+   if(!valid(d)||!LightUpPlanningWindow.validateStored(d.proposed_window_local,d.proposed_window_utc))throw new Error('Unsupported/unsafe draft schema');
    if(d.scope_fingerprint_sha256!==undefined){
      const computed=await LightUpScopeDigest.fingerprint(d);
      if(!computed || d.scope_fingerprint_sha256!==computed)throw new Error('scope revision mismatch');
@@ -92,6 +93,12 @@ function diff(a,b){
  if(starts[0]!==starts[1] || ends[0]!==ends[1]){
   add('review-expansion','window','Requested local planning window changed: '+(starts[0]||'?')+' → '+(ends[0]||'?')+' becomes '+(starts[1]||'?')+' → '+(ends[1]||'?'));
  }
+ const leftUtc=a.proposed_window_utc,rightUtc=b.proposed_window_utc;
+ if(leftUtc?.status==='resolved'&&rightUtc?.status==='resolved'){
+  if(leftUtc.start!==rightUtc.start||leftUtc.end!==rightUtc.end){
+    add('needs-context','utc_window','Proposed UTC window changed: '+leftUtc.start+' → '+leftUtc.end+' becomes '+rightUtc.start+' → '+rightUtc.end+'. Independent operator approval required.');
+  }
+ }else add('needs-context','utc_window','At least one draft has no resolved UTC interval; timeline changes cannot be compared reliably across timezones.');
  const names=['passive_analysis','configuration_review','private_lab_network_checks'];
  for(const k of names) if(a.proposed_activities[k]!==b.proposed_activities[k]) add(b.proposed_activities[k]?'review-expansion':'review-restriction','activity',k.replaceAll('_',' ')+(b.proposed_activities[k]?' proposed':' withdrawn'));
  if(a.notes!==b.notes)add('needs-context','notes','Purpose and safety conditions changed: both versions must be reviewed; free text is deliberately not copied into the notes export.');
