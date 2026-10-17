@@ -34,15 +34,15 @@ jobs:
           git cat-file -e 4c8d5651fc0e23f94514daae56b4e5fe0549de37^{commit}
           git merge-base --is-ancestor 4c8d5651fc0e23f94514daae56b4e5fe0549de37 HEAD
           # Ownership gate: fail if ANY original/other-worker path was changed.
-          expected=$(printf '%s\\n' \\
-            '.github/workflows/scope-646-offline-acceptance.yml' \\
-            'docs/scope-grant-scope-identity-646-20261017.md' \\
+          expected=$(printf '%s\n' \
+            '.github/workflows/scope-646-offline-acceptance.yml' \
+            'docs/scope-grant-scope-identity-646-20261017.md' \
             'tests/test_scope_grant_scope_identity_646_20261017.py')
           actual=$(git diff --name-only 4c8d5651fc0e23f94514daae56b4e5fe0549de37 HEAD)
           test "$actual" = "$expected"
-          for path in \\
-            '.github/workflows/scope-646-offline-acceptance.yml' \\
-            'docs/scope-grant-scope-identity-646-20261017.md' \\
+          for path in \
+            '.github/workflows/scope-646-offline-acceptance.yml' \
+            'docs/scope-grant-scope-identity-646-20261017.md' \
             'tests/test_scope_grant_scope_identity_646_20261017.py'; do
             test "$(git ls-tree HEAD "$path" | cut -f1)" = '100644 blob'
             test -z "$(git ls-tree 4c8d5651fc0e23f94514daae56b4e5fe0549de37 "$path")"
