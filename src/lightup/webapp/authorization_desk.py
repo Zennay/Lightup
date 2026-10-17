@@ -8,7 +8,6 @@ issues permits, grants, approvals, revocations or tool executions.
 
 from __future__ import annotations
 
-from collections import defaultdict
 from datetime import datetime, timezone
 
 from ..domain import AccessContext, DomainStore, Role
@@ -51,24 +50,13 @@ def render_authorization_desk(
     requests = store.list_assessment_requests(ctx)
     engagements = store.list_engagements(ctx)
     client_map = {c.client_id: c for c in clients}
-    engagements_by_client: dict[str, list] = defaultdict(list)
-    for engagement in engagements:
-        engagements_by_client[engagement.client_id].append(engagement)
-
-    requests_by_client: dict[str, list] = defaultdict(list)
-    for request in requests:
-        requests_by_client[request.client_id].append(request)
-
     snapshot = datetime.now(timezone.utc)
     pending_count = sum(
         req.status.value in {"submitted", "under_review"} for req in requests
     )
-    unsafe_origin_count = 0
     request_cards = []
     for request in requests[:max_rows]:
         origin = _origin_label(store, request.requested_by, request.client_id)
-        if "review" in origin.lower():
-            unsafe_origin_count += 1
         client = client_map.get(request.client_id)
         client_name = client.name if client else "Unknown client — review"
         requested_assets = ", ".join(request.requested_assets[:8])
