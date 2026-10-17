@@ -56,12 +56,17 @@ def request_receipt_json(
     ):
         return _missing()
 
+    from .request_clarifications import thread_states
+    clarification_state = thread_states(
+        store, auth, [request.request_id], client_id=client_id,
+    ).get(request.request_id, "No question yet")
     payload = {
         "schema": "lightup.portal-request-receipt.v1",
         "disposition": "RECORD_ONLY",
         "request_id": request.request_id,
         "client_id": request.client_id,
         "status": request.status.value,
+        "clarification_state": clarification_state,
         "requested_mode": request.requested_mode.value,
         "requested_risk": int(request.requested_risk),
         "submitted_at": request.created_at,
@@ -119,6 +124,11 @@ def request_inbox_json(
         return _missing()
 
     bound = max(1, min(50, max_rows))
+    from .request_clarifications import thread_states
+    clarification_badges = thread_states(
+        store, auth, [req.request_id for req in requests[:bound]],
+        client_id=client_id,
+    )
     rows = []
     for request in requests[:bound]:
         if (
@@ -131,6 +141,9 @@ def request_inbox_json(
         rows.append({
             "request_id": request.request_id,
             "status": request.status.value,
+            "clarification_state": clarification_badges.get(
+                request.request_id, "No question yet"
+            ),
             "requested_mode": request.requested_mode.value,
             "requested_risk": int(request.requested_risk),
             "submitted_at": request.created_at,
