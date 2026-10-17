@@ -4,6 +4,9 @@ from __future__ import annotations
 import json
 import io
 import os
+import importlib.util
+import marshal
+import struct
 import shutil
 import tempfile
 from contextlib import redirect_stdout, redirect_stderr
@@ -208,6 +211,47 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         self.assertEqual(result["reason"], "offline_witness_source_drift")
         self.assert_no_authority(result)
         self.assertEqual(witness.evaluate()["status"], "REVIEW_ONLY")
+
+    def test_forged_bytecode_cache_is_rejected_before_import(self):
+        # A timestamp-matching .pyc can have different executable bytes
+        # while all pinned .py source SHA-256 digests remain unchanged.
+        with tempfile.TemporaryDirectory(prefix="lightup-bytecode-test-") as tmp:
+            root = Path(tmp)
+            pkg = root / "src" / "lightup"
+            scripts = root / "scripts"
+            scripts.mkdir()
+            pkg.mkdir(parents=True)
+            script = scripts / "scope_offline_authority_witness_20261017.py"
+            shutil.copyfile(ROOT / "scripts" / script.name, script)
+            for filename in ("__init__.py", "models.py", "scope.py"):
+                shutil.copyfile(ROOT / "src" / "lightup" / filename, pkg / filename)
+            scope_source = pkg / "scope.py"
+            marker = root / "evil-pyc-imported"
+            fake_contents = (
+                "from pathlib import Path\n"
+                f"Path({str(marker)!r}).write_text('executed', encoding='utf-8')\n"
+                + scope_source.read_text(encoding="utf-8")
+            )
+            code = compile(fake_contents, str(scope_source), "exec")
+            current = scope_source.stat()
+            cache = Path(importlib.util.cache_from_source(str(scope_source)))
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            cache.write_bytes(
+                importlib.util.MAGIC_NUMBER
+                + struct.pack("<III", 0, int(current.st_mtime), current.st_size)
+                + marshal.dumps(code)
+            )
+            done = subprocess.run(
+                [sys.executable, str(script), "--offline-lab-only"],
+                capture_output=True, text=True, timeout=12, check=False,
+            )
+            self.assertFalse(marker.exists(), "a forged .pyc executed before source admission")
+        self.assertEqual(done.returncode, 2, done.stderr)
+        self.assertEqual(done.stderr, "")
+        result = json.loads(done.stdout)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "offline_witness_source_drift")
+        self.assert_no_authority(result)
 
     def test_canonical_matrix_is_review_only_not_execution_permission(self):
         result = witness.evaluate()
