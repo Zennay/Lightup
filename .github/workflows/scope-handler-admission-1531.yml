@@ -84,5 +84,22 @@ jobs:
           fi
           grep -F 'Ran 36 tests' "$strict_log"
           grep -Fx 'FAILED (failures=6)' "$strict_log"
+          # A count alone is insufficient: one newly broken unrelated test could
+          # mask a fixed source-owner acceptance test while the total remains six.
+          # Compare each exact unittest FAIL identifier, no unexpected errors.
+          expected_red_names="$(printf '%s\\n' \\
+            'test_source_red_noncallable_must_be_rejected_before_registration' \\
+            'test_source_red_numeric_handler_must_be_rejected_atomically' \\
+            'test_source_red_wrong_handler_arity_must_fail_before_registry_mutation' \\
+            'test_source_red_async_handler_must_fail_before_registry_mutation' \\
+            'test_source_red_generator_handler_must_be_rejected_atomically' \\
+            'test_source_red_foreign_callable_signature_must_not_be_reflected' | sort)"
+          actual_red_names="$(sed -n 's/^FAIL: \\([^ ]*\\) (.*/\\1/p' "$strict_log" | sort)"
+          test "$actual_red_names" = "$expected_red_names"
+          if grep -E '^(ERROR: |UNEXPECTED SUCCESS: )' "$strict_log"; then
+            echo 'Unexpected additional source/test error in strict gate'
+            exit 1
+          fi
+          echo 'scope1531_strict_source_red_names=PASS'
           echo 'scope1531_strict_source_red=6'
           assert_owned_tree
