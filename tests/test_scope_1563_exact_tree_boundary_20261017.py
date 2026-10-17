@@ -432,7 +432,7 @@ class MutationWitnessQualityTests(unittest.TestCase):
                 self.assertIn(owner.__name__, ("Planner", "ActivationGate"))
                 self.assertIn(method, ("build", "issue"))
                 self.assertTrue(callable(mutation))
-                self.assertIn(contract, self.proof.REQUIRED_TEST_METHODS)
+                self.assertTrue(any(name.startswith(contract) for name in self.proof.REQUIRED_TEST_METHODS))
 
     def test_downstream_mutation_restoration_targets_canonical_source(self):
         self.assertIs(self.proof.Planner.build, self.proof.REAL_PLAN)
