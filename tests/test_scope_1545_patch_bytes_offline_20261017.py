@@ -205,6 +205,16 @@ class ReviewBytesTests(unittest.TestCase):
             "re", "sys", "unicodedata",
         })
 
+    def test_workflow_is_hosted_only_and_pins_current_pr_head(self):
+        source = (ROOT / ".github" / "workflows" / "scope1545-patch-bytes.yml").read_text(encoding="utf-8")
+        self.assertIn("actions/checkout@v5", source)
+        self.assertIn("actions/setup-python@v6", source)
+        self.assertIn("permissions:\n  contents: read", source)
+        self.assertIn("ref: ${{ github.event.pull_request.head.sha }}", source)
+        self.assertIn("runs-on: ubuntu-24.04", source)
+        self.assertNotIn("self-hosted", source)
+        self.assertNotIn("workflow_dispatch:", source)
+
     def test_cli_canonical_exit_three_and_all_flags_false(self):
         code, receipt = cli(encoded(document(GOOD, UTF)))
         self.assertEqual(code, 3)

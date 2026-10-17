@@ -116,3 +116,23 @@ merge ref, and verifies four *only-new* paths relative to pinned exact owner
 baseline. Therefore a parallel owner branch advance cannot silently insert
 other workers' code into this branch's purported exact-head acceptance.
 This does not prove the owner branch at any later release head is repaired.
+
+## Hosted exact-HEAD completed evidence and runner runtime upkeep
+
+GitHub own exact-source SHA 3e17f8be3d38f8e9506cb46b569e598005c3332e:
+[hosted run #39023764451](https://github.com/Zennay/Lightup/actions/runs/39023764451)
+COMPLETED SUCCESS for **both** actual hosted jobs, Python 3.11 job
+117370593517 and Python 3.14 job 117370593678. Original raw logs independently
+verified exact commit checkout, four-additive-paths assertion, 22 own methods
+(21 ordinary PASS and one intentionally unremediated original-source
+expectedFailure), plus 26 original change review and 9 GitHub-change unit
+cases **per interpreter**. This only proves opt-in hosted checks, not an
+owner source repair or named VPS runner. Entire original hosted preflight
+and self-hosted permanent runner are separately held gates.
+
+The original logs also warned Node.js 20 is deprecated in checkout@v4 and
+setup-python@v5. A subsequent entirely owner-isolated commit upgrades this
+standalone workflow to checkout@v5 and setup-python@v6 (Node.js 24-based),
+without modifying any other project workflows. The new exact-head hosted
+result must be checked separately rather than claiming the former head's
+success as proof of this updated workflow.
