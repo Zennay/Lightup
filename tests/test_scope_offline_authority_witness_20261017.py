@@ -115,7 +115,7 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         self.assert_no_authority(result)
 
     def test_main_refuses_missing_or_invalid_opt_in(self):
-        for args in ([], ["--json"], ["--offline-lab-only", "--anything"], "bad", [object()], (["--offline-lab-only"]), ["--offline-lab-only", 1]):
+        for args in ([], ["--json"], ["--offline-lab-only", "--anything"], "bad", [object()], ["--offline-lab-only", 1]):
             with self.subTest(args=repr(args)):
                 with patch("builtins.print") as report:
                     code = witness.main(args)
