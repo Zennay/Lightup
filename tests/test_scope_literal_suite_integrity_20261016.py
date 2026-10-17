@@ -17,6 +17,17 @@ manifest = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(manifest)
 
 
+PINNED_GATES = frozenset({
+    "test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_real_branch_checker_rejects_dirty_checkout",
+    "test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_workflow_checks_clean_checkout_after_tests",
+    "test_scope_literal_runtime_isolation_20261016.RuntimeIsolationStaticTests.test_all_production_modules_stay_unwired",
+    "test_scope_literal_runtime_isolation_20261016.RuntimeIsolationStaticTests.test_deployment_entrypoints_cannot_import_reviewer",
+    "test_scope_literal_runtime_isolation_20261016.RuntimeIsolationStaticTests.test_lab_fixture_entrypoints_cannot_import_reviewer",
+    "test_scope_literal_suite_integrity_20261016.ManifestEvidenceTests.test_replayed_known_red_cannot_hide_duplicate_expected_failures",
+    "test_scope_literal_suite_integrity_20261016.ManifestEvidenceTests.test_named_safety_sentinel_cannot_be_replaced_by_dummy",
+})
+
+
 class ManifestEvidenceTests(unittest.TestCase):
     def example(self):
         source_reds = tuple(sorted(manifest.KNOWN_SOURCE_REDS))
@@ -26,9 +37,9 @@ class ManifestEvidenceTests(unittest.TestCase):
         pinned = tuple(
             f"{module}.Sample.test_coverage" for module in sorted(other_modules)
         )
-        ids = source_reds + pinned + tuple(
+        ids = source_reds + pinned + tuple(sorted(PINNED_GATES)) + tuple(
             f"test_scope_literal_fixture_20261016.Sample.test_case_{i:03d}"
-            for i in range(manifest.MIN_TESTS - len(source_reds) - len(pinned))
+            for i in range(manifest.MIN_TESTS - len(source_reds) - len(pinned) - len(PINNED_GATES))
         )
         result = unittest.TestResult()
         result.testsRun = len(ids)
@@ -66,6 +77,17 @@ class ManifestEvidenceTests(unittest.TestCase):
                 observed = {ident.split(".", 1)[0] for ident in changed}
                 self.assertEqual(len(changed), len(ids))
                 self.assertFalse(manifest.check_evidence(changed, result, observed))
+
+    def test_named_safety_sentinel_cannot_be_replaced_by_dummy(self):
+        ids, result, modules = self.example()
+        self.assertTrue(manifest.check_evidence(ids, result, modules))
+        for pinned in sorted(PINNED_GATES):
+            with self.subTest(pinned=pinned):
+                replacement = pinned.split(".")[0] + ".Other.test_replacement_dummy"
+                changed = tuple(replacement if x == pinned else x for x in ids)
+                self.assertEqual(len(changed), len(ids))
+                self.assertEqual({x.split(".", 1)[0] for x in changed}, modules)
+                self.assertFalse(manifest.check_evidence(changed, result, modules))
 
     def test_skips_fail_closed_even_if_test_runner_says_success(self):
         ids, result, modules = self.example()

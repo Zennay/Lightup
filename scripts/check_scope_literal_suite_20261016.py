@@ -20,7 +20,16 @@ KNOWN_SOURCE_REDS = frozenset({
     "test_scope_literal_controls_20261016.InstalledSourceRedWitness.test_original_lab_activation_must_deny_control_char_authority",
     "test_scope_literal_controls_20261016.InstalledSourceRedWitness.test_original_scope_must_not_convert_newline_in_url",
 })
-MIN_TESTS = 114
+MIN_TESTS = 115
+REQUIRED_CASES = frozenset({
+    "test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_real_branch_checker_rejects_dirty_checkout",
+    "test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_workflow_checks_clean_checkout_after_tests",
+    "test_scope_literal_runtime_isolation_20261016.RuntimeIsolationStaticTests.test_all_production_modules_stay_unwired",
+    "test_scope_literal_runtime_isolation_20261016.RuntimeIsolationStaticTests.test_deployment_entrypoints_cannot_import_reviewer",
+    "test_scope_literal_runtime_isolation_20261016.RuntimeIsolationStaticTests.test_lab_fixture_entrypoints_cannot_import_reviewer",
+    "test_scope_literal_suite_integrity_20261016.ManifestEvidenceTests.test_replayed_known_red_cannot_hide_duplicate_expected_failures",
+    "test_scope_literal_suite_integrity_20261016.ManifestEvidenceTests.test_named_safety_sentinel_cannot_be_replaced_by_dummy",
+})
 REQUIRED_MODULES = frozenset({
     "test_scope_literal_adapter_errors_20261016",
     "test_scope_literal_aliases_20261016",
@@ -58,6 +67,7 @@ def check_evidence(ids: tuple[str, ...], result: unittest.TestResult, expected_m
         and len(ids) == len(set(ids))
         and {item.split(".", 1)[0] for item in ids} == expected_modules
         and REQUIRED_MODULES <= expected_modules
+        and REQUIRED_CASES <= set(ids)
         and KNOWN_SOURCE_REDS <= set(ids)
         and red_ids == KNOWN_SOURCE_REDS
         and len(result.expectedFailures) == len(KNOWN_SOURCE_REDS)
