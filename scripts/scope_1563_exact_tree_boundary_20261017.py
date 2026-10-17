@@ -100,7 +100,7 @@ def parse_changes(data: bytes) -> frozenset[str]:
     return frozenset(changed)
 
 
-def inspect_exact_head(root: Path, expected_head: str) -> dict[str, str | int]:
+def inspect_exact_head(root: Path, expected_head: str) -> dict[str, str | int | bool]:
     if not SHA_PATTERN.fullmatch(expected_head):
         raise Hold("expected head must be an exact 40-byte hex SHA")
     head = _sha(_git(root, "rev-parse", "--verify", "HEAD"))
@@ -132,8 +132,8 @@ def inspect_exact_head(root: Path, expected_head: str) -> dict[str, str | int]:
         "base": ORIGINAL_BASE,
         "head": head,
         "added_paths": len(changed),
-        "authorization_granted": "false",
-        "release_approved": "false",
+        "authorization_granted": False,
+        "release_approved": False,
     }
 
 
