@@ -220,17 +220,17 @@ class SyntheticGate(unittest.TestCase):
             def flush(self):
                 pass
 
-        for fragments in (
-            [good[i:i+1] for i in range(len(good))] + [b""],
-            [b"x"] * 257,
-            [good[:3], "not bytes", good[3:]],
-            [good[:3], None, good[3:]],
+        for fragments, code, verdict in (
+            ([good[i:i+1] for i in range(len(good))] + [b""], 3, "REVIEW_ONLY"),
+            ([b"x"] * 257, 2, "HOLD"),
+            ([good[:3], "not bytes", good[3:]], 2, "HOLD"),
+            ([good[:3], None, good[3:]], 2, "HOLD"),
         ):
             with self.subTest(piece_count=len(fragments)):
                 sink = Sink()
                 with patch.object(review.sys, "stdin", Source(fragments)), patch.object(review.sys, "stdout", sink):
-                    self.assertEqual(review.main(), 2)
-                self.assertEqual(json.loads(sink.payload)["decision"], "HOLD")
+                    self.assertEqual(review.main(), code)
+                self.assertEqual(json.loads(sink.payload)["decision"], verdict)
 
     def test_real_disposable_git_add_modify_delete_stream(self):
         with tempfile.TemporaryDirectory() as temp:
