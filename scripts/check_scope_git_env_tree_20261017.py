@@ -64,8 +64,13 @@ def safe_tree(raw: object, delta: object) -> bool:
         return False
 
 
+# Hosted CI and the independent VPS checkout both use this absolute Git
+# executable. Never resolve an attacker-supplied basename through PATH.
+GIT_BINARY = "/usr/bin/git"
+
+
 def git(*args: str) -> subprocess.CompletedProcess[bytes]:
-    return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, timeout=15)
+    return subprocess.run([GIT_BINARY, *args], cwd=ROOT, capture_output=True, timeout=15)
 
 
 def main() -> int:

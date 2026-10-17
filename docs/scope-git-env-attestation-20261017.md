@@ -183,3 +183,20 @@ This remains a **negative environment string review**; environment keys
 are supplied by a caller, can change later, and do not constitute binary,
 repository, consent, grant or release attestation. The hosted toolcache
 profile is not cryptographic provenance. DRAFT/HOLD persists.
+
+## W9 — prevent PATH-shadowed Git evidence
+
+An offline regression with a disposable fake executable named `git`
+placed before `/usr/bin` in `PATH` reproduced a false process identity:
+the original validator called `subprocess.run(["git", ...])` and read the
+fake program's arbitrary output. The validator now calls only the
+known absolute `/usr/bin/git` executable on Linux. Both the zSSH
+Ubuntu checkout and GitHub's Ubuntu hosted runner use this path. The
+regression now proves that a forged leading PATH entry cannot redirect
+the Git evidence process.
+
+This path pinning does **not** cryptographically authenticate the binary,
+prevent altered libraries, guarantee safe inherited Git config or turn
+review-only evidence into release consent. The hosted path is a deliberate
+platform constraint; missing `/usr/bin/git` yields HOLD, not a fallback
+to `PATH`. No real Git config or production application was changed.

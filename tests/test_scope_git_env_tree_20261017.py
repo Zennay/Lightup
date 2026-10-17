@@ -156,6 +156,20 @@ class OfflineTreeModesTests(unittest.TestCase):
                 git("ls-tree", "-r", "-z", "HEAD", "--", *PATHS), delta()
             ))
 
+    def test_path_shadowed_git_executable_is_not_used(self):
+        """A fake 'git' earlier in PATH must never supply our evidence."""
+        import os
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_fake_git_", dir=FILE.parents[1]) as temp:
+            fake = Path(temp) / "git"
+            fake.write_text("#!/bin/sh\necho fake-git-version\n")
+            fake.chmod(0o755)
+            with patch.dict(os.environ, {"PATH": str(Path(temp)) + ":/usr/bin:/bin"}):
+                real = guard.git("--version")
+            self.assertEqual(real.returncode, 0)
+            self.assertTrue(real.stdout.startswith(b"git version "), real.stdout)
+
     def test_no_reusing_other_worker_paths(self):
         for item in ("src/lightup/scope.py", "tests/test_scope.py",
                      "scripts/check_scope_literal_branch_20261016.py"):
