@@ -31,6 +31,26 @@ def _origin_label(store: DomainStore, requested_by: str, client_id: str) -> str:
     return "Account/tenant mismatch — review"
 
 
+def _decision_lineage_label(store: DomainStore, request) -> str:
+    """Flag historically suspicious request/decision lineage, never certify it."""
+    decided = request.status.value in {"approved", "rejected"}
+    if not decided:
+        if request.decided_by is not None or request.decided_at is not None:
+            return "Pending request already has decision metadata — review"
+        return "No recorded decision"
+    if not request.decided_by or not request.decided_at:
+        return "Decision missing reviewer identity or timestamp — review"
+    if request.decided_by == request.requested_by:
+        return "Same account submitted and decided this request — review"
+    try:
+        reviewer = store.context_for_user(request.decided_by)
+    except (KeyError, ValueError, TypeError):
+        return "Decision reviewer account not found — review"
+    if type(reviewer) is not AccessContext or reviewer.role is not Role.OPERATOR:
+        return "Decision reviewer account not currently an operator — review"
+    return "Recorded reviewer has an operator account (current role only)"
+
+
 def render_authorization_desk(
     store: DomainStore,
     auth: AuthState,
@@ -80,6 +100,7 @@ def render_authorization_desk(
     request_cards = []
     for request in visible_requests[:max_rows]:
         origin = _origin_label(store, request.requested_by, request.client_id)
+        decision_lineage = _decision_lineage_label(store, request)
         client = client_map.get(request.client_id)
         client_name = client.name if client else "Unknown client — review"
         client_link = (
@@ -98,6 +119,7 @@ def render_authorization_desk(
             + ' · risk level ' + _e(int(request.requested_risk))
             + '<br>Assets: ' + _e(requested_assets or "—")
             + '<br>Current account provenance: ' + _e(origin)
+            + '<br>Decision provenance: ' + _e(decision_lineage)
             + '</p><p><a href="/authorization-desk/requests/'
             + _e(request.request_id) + '">View request details →</a></p>'
             '<p class="meta">Review of a request is not client consent '
@@ -208,6 +230,7 @@ def render_operator_request_detail(
         return Response("<h1>Request unavailable</h1>", status="404 Not Found")
 
     origin = _origin_label(store, request.requested_by, request.client_id)
+    decision_lineage = _decision_lineage_label(store, request)
     origin_risk = origin != "Matching client account (current role only)"
     provenance = (
         '<span class="badge lock">Requester lineage needs investigation</span>'
@@ -247,6 +270,10 @@ def render_operator_request_detail(
         + '</p><p class="meta">This describes the requester account at viewing '
         'time; it is not cryptographic proof of historical client identity '
         'or authenticated client consent.</p></div>'
+        '<div class="card"><strong>Decision provenance</strong>'
+        '<p class="meta">' + _e(decision_lineage) + '</p>'
+        '<p class="meta">A status or a current reviewer role is not evidence '
+        'of historically valid independent client/operator consent.</p></div>'
         '<div class="card"><strong>Requested assets</strong><ul>' +
         assets + '</ul><details><summary>Original request notes</summary><p>'
         + _e(request.notes or "—") + '</p></details></div>'
