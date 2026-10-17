@@ -82,7 +82,7 @@ jobs:
             echo "Unexpected strict success: owner-source state changed; review expected RED markers"
             exit 1
           fi
-          grep -F 'Ran 39 tests' "$strict_log"
+          grep -F 'Ran 40 tests' "$strict_log"
           grep -Fx 'FAILED (failures=6)' "$strict_log"
           # A count alone is insufficient: one newly broken unrelated test could
           # mask a fixed source-owner acceptance test while the total remains six.
@@ -96,4 +96,9 @@ jobs:
           fi
           echo 'scope1531_strict_source_red_names=PASS'
           echo 'scope1531_strict_source_red=6'
+          # Broader stock ToolRegistry/ToolExecutor policy regression, isolated
+          # in this matrix; uses fictional callbacks and temporary local SQLite.
+          # This is NOT a network scan, active work, permanent VPS proof or release.
+          python -I -S -B -c 'import sys, unittest; sys.path.insert(0, "src"); suite=unittest.defaultTestLoader.discover("tests", pattern="test_orchestration.py"); result=unittest.TextTestRunner(verbosity=2).run(suite); raise SystemExit(not result.wasSuccessful())'
+          echo 'scope1531_stock_orchestration=PASS'
           assert_owned_tree
