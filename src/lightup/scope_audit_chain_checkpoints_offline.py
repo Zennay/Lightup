@@ -15,6 +15,7 @@ from .scope_audit_chain_offline import (
     MAX_BYTES,
     _hex,
     _reject_constant,
+    _strict_json_int,
     _unique_object,
     verify_chain,
 )
@@ -46,6 +47,7 @@ def _review_checkpoints(
             raw.decode("utf-8", errors="strict"),
             object_pairs_hook=_unique_object,
             parse_constant=_reject_constant,
+            parse_int=_strict_json_int,
         )
     except (ValueError, UnicodeDecodeError, TypeError) as exc:
         raise InvalidChain("checkpoint JSON") from exc
