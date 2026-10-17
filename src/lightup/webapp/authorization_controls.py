@@ -29,6 +29,8 @@ def approval_blockers(store: DomainStore, auth: AuthState, request) -> tuple[str
         RequestStatus.SUBMITTED, RequestStatus.UNDER_REVIEW
     ):
         problems.append("Request is no longer open for review")
+    if request.decided_by is not None or request.decided_at is not None:
+        problems.append("Pending request has unexpected decision metadata")
     if request.requested_mode is not AssessmentMode.AUTHORIZED_ASSESSMENT:
         problems.append("Request mode is not authorized-assessment")
     if type(request.requested_risk) is not RiskLevel or not (
@@ -104,10 +106,26 @@ def lock_grant_form(markup: str, *, expected: int) -> str | None:
     ).replace(
         'No current authorization</span>',
         'No time-current grant record</span>',
-    ).replace(
-        '<summary>Authorization details</summary>',
-        '<summary>Recorded grant details (not execution authority)</summary>',
     )
+    # Parent web app renders granted scope by trusting the domain's persisted
+    # grant lineage. Until #829 fixes that domain read, hide the *entire*
+    # existing grant detail pane rather than accidentally showing another
+    # tenant's grant reference under this client. The guarded authorization
+    # desk offers a separately scoped, read-only inspection path.
+    prior = re.compile(
+        r'<details><summary>Authorization details</summary>'
+        r'<p class="meta">.*?</p></details>',
+        re.DOTALL,
+    )
+    changed, old_details = prior.subn(
+        '<p class="meta">Stored grant details are withheld here until their '
+        'client/engagement lineage is revalidated in the domain. '
+        'See Authorization desk for independently scoped review; '
+        'a recorded grant is not execution permission.</p>',
+        changed,
+    )
+    if '<summary>Authorization details</summary>' in changed:
+        return None
     return changed
 
 
