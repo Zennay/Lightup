@@ -241,7 +241,7 @@ def verify_original_strict_red_identities(root: Path, code: int,
 
     observed = Counter(
         name for kind, name in re.findall(
-            r"(?m)^(FAIL|ERROR): (test_source_red_[a-z0-9_]+) \\(", output
+            r"(?m)^(FAIL|ERROR): (test_source_red_[a-z0-9_]+) \(", output
         )
     )
     expected = Counter({name: 1 for name in expected_methods})
