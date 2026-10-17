@@ -20,7 +20,7 @@ KNOWN_SOURCE_REDS = frozenset({
     "test_scope_literal_controls_20261016.InstalledSourceRedWitness.test_original_lab_activation_must_deny_control_char_authority",
     "test_scope_literal_controls_20261016.InstalledSourceRedWitness.test_original_scope_must_not_convert_newline_in_url",
 })
-MIN_TESTS = 77
+MIN_TESTS = 88
 
 
 def _cases(suite: unittest.TestSuite):
@@ -40,6 +40,7 @@ def check_evidence(ids: tuple[str, ...], result: unittest.TestResult, expected_m
         and {item.split(".", 1)[0] for item in ids} == expected_modules
         and KNOWN_SOURCE_REDS <= set(ids)
         and red_ids == KNOWN_SOURCE_REDS
+        and len(result.expectedFailures) == len(KNOWN_SOURCE_REDS)
         and not (result.failures or result.errors or result.skipped or result.unexpectedSuccesses)
         and result.testsRun == len(ids)
         and result.wasSuccessful()

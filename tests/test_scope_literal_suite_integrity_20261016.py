@@ -54,6 +54,12 @@ class ManifestEvidenceTests(unittest.TestCase):
         )
         self.assertFalse(manifest.check_evidence(ids, result, modules))
 
+    def test_replayed_known_red_cannot_hide_duplicate_expected_failures(self):
+        ids, result, modules = self.example()
+        # The same original-source RED must not be counted twice as proof.
+        result.expectedFailures.append(result.expectedFailures[0])
+        self.assertFalse(manifest.check_evidence(ids, result, modules))
+
     def test_missing_original_red_contract_fails_closed(self):
         ids, result, modules = self.example()
         result.expectedFailures.pop()
