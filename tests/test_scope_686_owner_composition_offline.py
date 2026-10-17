@@ -180,6 +180,60 @@ class CompositionSafetyTests(unittest.TestCase):
                     with self.assertRaises(compose.CompositionHold):
                         compose._probe_guard(Path.cwd())
 
+    @staticmethod
+    def correct_mutant_receipt():
+        return {
+            "status": "HOLD",
+            "release_authorized": False,
+            "candidate_mutant_coverage": "PASS",
+            "mutants_rejected": 3,
+            "mutation_labels": [
+                "guard_removed", "body_read_early", "session_cookie_mutation"],
+            "real_target_io_performed": False,
+        }
+
+    def test_optimized_mutation_checks_remain_hold_only(self):
+        data = json.dumps(self.correct_mutant_receipt()).encode()
+        ok = subprocess.CompletedProcess(args=[], returncode=0, stdout=data, stderr=b"")
+        for opt in ("-O", "-OO"):
+            with self.subTest(opt=opt):
+                with patch.object(compose.subprocess, "run", return_value=ok) as runner:
+                    receipt = compose._probe_mutants(Path.cwd(), opt)
+                self.assertEqual(receipt["python_optimization"], opt)
+                self.assertFalse(receipt["receipt"]["release_authorized"])
+                self.assertIn(opt, runner.call_args.args[0])
+
+    def test_optimized_mutation_harness_rejects_false_coverage(self):
+        faults = (
+            {"status": "GO"}, {"release_authorized": True},
+            {"candidate_mutant_coverage": "UNKNOWN"},
+            {"mutants_rejected": 2}, {"real_target_io_performed": True},
+            {"mutation_labels": ["guard_removed", "body_read_early"]},
+        )
+        for flaw in faults:
+            with self.subTest(flaw=flaw):
+                data = json.dumps(self.correct_mutant_receipt() | flaw).encode()
+                completed = subprocess.CompletedProcess(
+                    args=[], returncode=0, stdout=data, stderr=b"")
+                with patch.object(compose.subprocess, "run", return_value=completed):
+                    with self.assertRaises(compose.CompositionHold):
+                        compose._probe_mutants(Path.cwd(), "-OO")
+
+    def test_optimized_mutation_harness_fails_on_nonzero_or_bad_json(self):
+        for code, output in ((2, b"{}"), (0, b"INVALID"), (0, b"[]")):
+            with self.subTest(code=code, output=output):
+                p = subprocess.CompletedProcess(
+                    args=[], returncode=code, stdout=output, stderr=b"")
+                with patch.object(compose.subprocess, "run", return_value=p):
+                    with self.assertRaises(compose.CompositionHold):
+                        compose._probe_mutants(Path.cwd(), "-O")
+
+    def test_unknown_optimization_never_launches_subprocess(self):
+        with patch.object(compose.subprocess, "run") as subproc:
+            with self.assertRaises(compose.CompositionHold):
+                compose._probe_mutants(Path.cwd(), "-X")
+            subproc.assert_not_called()
+
     def test_main_bad_sha_emits_json_hold_nonzero(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
