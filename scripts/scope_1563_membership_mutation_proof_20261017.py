@@ -305,7 +305,9 @@ def mutation_detected(result: unittest.TestResult, expected_test_prefix: str) ->
     """
     if (
         result.testsRun != len(REQUIRED_TEST_METHODS) or result.errors or result.expectedFailures
-        or result.unexpectedSuccesses or not result.failures
+        or result.unexpectedSuccesses or result.skipped or not result.failures
+        or type(result) is not CoverageResult
+        or dict(result.subtest_attempts) != EXPECTED_CASE_COUNTS
     ):
         return False
     if not all("AssertionError:" in detail for _, detail in result.failures):
