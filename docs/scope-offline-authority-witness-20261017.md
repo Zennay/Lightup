@@ -65,6 +65,12 @@ Actual connected zSSH VPS Python 3.14.4 test receipts on exact own intermediate 
 - Previous whole local unit suite at `6c6025ea59e04595150ed2fdc9d53e520bbe0837` ran **1,260 tests, 5 inherited identical baseline failures, 23 expected failures**. The five existing failing subtests were previously independently reproduced on untouched original main. This is NOT whole-suite green, source-owner repair, hosted 3.11/3.14 CI or registered named VPS proof.
 - The offline stopline and seven literal false authority flags remain unchanged, and no runtime target, grant, handler, source-owner path, CI/runner or production state was changed.
 
+## W5 — exact full-suite comparison after I/O guard
+
+The exact latest source+documentation head `ae9967b2f3e257991ef3e1dc3d41354074db5a3c` was checked on connected zSSH Python 3.14.4 with the original suite: **1,262 tests executed, exactly five inherited ordinary FAILs, 23 expectedFailures**. The five failure identities are the same two registry-history composed CLI failures, one #301 expired-calendar fixture and two registry-history socket-fleet cases independently reproduced on original unmodified `main`. There are **no new unexpected failures** relative to the previous exact branch before the Python I/O guard (1,260 tests, same five FAILs). This supports non-regression for the new hook but is **not** a passing full suite.
+
+Independent GitHub compare from pinned original main to current branch: **18 exclusively additive commits / 0 behind, precisely three NEW owned files and zero modifications of any existing source, production authority, workflow, runner or another worker's files**. No PR was opened or permanent runner job dispatched. The clone's Git index/worktree was clean after the tests.
+
 ## Gate interpretation
 
 - Green unit tests validate the witness's own classification, deterministic receipt, zero-network boundary, no authority flags and mutation-detection sensitivities.
