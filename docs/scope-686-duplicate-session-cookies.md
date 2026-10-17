@@ -16,15 +16,15 @@ It does **not** touch the active [web source owner PR #182](https://github.com/Z
 
 ## Acceptance matrix and RED discipline
 
-Standalone full-source regression uses **only disposable local SQLite** and fictional operator/client sessions. Tests with a single valid operator or client cookie, unrelated cookies, an invalid token and no session cookie are ordinary GREEN controls. Duplicate session credentials are recorded as **eight specific original-source expectedFailure tests**, including identical repeated values, reverse-order valid client/operator tokens, unrelated surrounding cookies, invalid followed by valid, protected WSGI GET, POST logout and POST tenant creation. For the POST cases, `revoke_session` and `create_client` are mocked; the regression never actually revokes a session or writes a client.
+Standalone full-source regression uses **only disposable local SQLite** and fictional operator/client sessions. Tests with a single valid operator or client cookie, unrelated cookies, an invalid token and no session cookie are ordinary GREEN controls. Duplicate session credentials are recorded as **thirteen specific original-source expectedFailure tests**, including identical repeated values, reverse-order valid client/operator tokens, unrelated surrounding cookies, invalid followed by valid, protected WSGI GET, POST logout and POST tenant creation. For the POST cases, `revoke_session` and `create_client` are mocked; the regression never actually revokes a session or writes a client.
 
-All duplicate cases require rejection **before** `DomainStore.session_context`. Denial must not change either live session or emit a `Set-Cookie`; one unambiguous credential plus unrelated cookies must continue to work. Denial must not depend on which duplicate appears first.
+All duplicate cases require rejection **before** `DomainStore.session_context`. Denial must occur **before reading any request body** and must not change either live session or emit a `Set-Cookie`; one unambiguous credential plus unrelated cookies must continue to work. Denial must not depend on which duplicate appears first.
 
 ### Test-only source-owner repair oracle (not runtime code)
 
-The expanded suite includes **12 deliberately unresolved original-source expectedFailures** and **9 ordinary passing test methods**. `test_owner_fix_rehearsal_turns_twelve_original_source_reds_green` temporarily replaces one *test app instance's* `_authenticate` binding and the synthetic WSGI trust-boundary `WebSecurity.validate` class hook with minimal duplicate-occurrence denial. It calls **all 12 red method bodies directly** (so that the `expectedFailure` decorator cannot hide errors), retests valid operator/client authentication and repeated unrelated cookies, then checks **128 seeded adversarial duplicate combinations**. A deliberately incomplete values-only duplicate check must still fail on two equal session credentials.
+The expanded suite includes **13 deliberately unresolved original-source expectedFailures** and **10 ordinary passing test methods**. `test_owner_fix_rehearsal_turns_thirteen_original_source_reds_green` temporarily replaces one *test app instance's* `_authenticate` binding and the synthetic WSGI trust-boundary `WebSecurity.validate` class hook with minimal duplicate-occurrence denial. It calls **all 13 red method bodies directly** (so that the `expectedFailure` decorator cannot hide errors), retests valid operator/client authentication and repeated unrelated cookies, then checks **128 seeded adversarial duplicate combinations**. A deliberately incomplete values-only duplicate check must still fail on two equal session credentials.
 
-An additional direct RED specifically checks public `POST /login` against mocked session creation and revocation; its current original-source failure shows an actual **source code trust-boundary gap**, not an observed live exploit. An ingress guard gives a generic `403` and must leave original sessions intact; a test-only `_authenticate` patch alone would not protect the public login path.
+A separate ordinary mutation check proves an `_authenticate`-only patch still permits public login session creation and allows premature POST-body reads. An additional direct RED specifically checks public `POST /login` against mocked session creation and revocation; its current original-source failure shows an actual **source code trust-boundary gap**, not an observed live exploit. An ingress guard gives a generic `403` and must leave original sessions intact; a test-only `_authenticate` patch alone would not protect the public login path.
 
 This is a **bounded behavioral repair rehearsal**, **not** a complete `Cookie` grammar parser, source-owner patch, installed middleware, real proxy evidence, or live consent. Its simplistic semicolon counting is confined to the fictional test fixture and MUST NOT be copied into production. Production parsing must independently handle RFC cookie quoting, controls, exact cookie-name identity, maximum sizes, malformed envelope types, and intermediary normalization, together with ingress owner #1169/#1170.
 
@@ -34,7 +34,7 @@ Run:
 PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_scope_686_duplicate_session_cookies.py' -v
 ```
 
-The eight expected failures are an explicit *source-owner TODO*, **not** evidence that the flaw is fixed. An actual source fix should remove the `expectedFailure` decorators and make all 21 (or more) ordinary PASS, with strict no-session-lookup assertion preserved. A future unexpected success under `expectedFailure` is a migration signal and must be reviewed, not silently accepted.
+The thirteen expected failures are an explicit *source-owner TODO*, **not** evidence that the flaw is fixed. An actual source fix should remove the `expectedFailure` decorators and make all 23 (or more) ordinary PASS, with strict no-session-lookup assertion preserved. A future unexpected success under `expectedFailure` is a migration signal and must be reviewed, not silently accepted.
 
 ## Source-owner handoff (do not implement here)
 
@@ -57,7 +57,26 @@ This is **actual existing opt-in guard functionality** in a disposal-only fixtur
 
 ## Original-source RED failure identity
 
-The new ordinary acceptance method enumerates **exactly 12 intentionally red source tests**, calls them directly and confirms each fails via an `AssertionError` containing a relevant session-lookup/HTTP/authentication assertion, **not** an unrelated exception masked by `@expectedFailure`. The twelfth case exercises valid-then-invalid duplicate order. All twelve remain unresolved in unchanged production `app.py`. The witness itself must be removed or migrated when the source owner fixes the production boundary.
+The new ordinary acceptance method enumerates **exactly 13 intentionally red source tests**, calls them directly and confirms each fails via an `AssertionError` containing a relevant session-lookup/HTTP/authentication assertion, **not** an unrelated exception masked by `@expectedFailure`. The twelfth case exercises valid-then-invalid duplicate order; the thirteenth additionally requires rejection **before POST form-body I/O**. All thirteen remain unresolved in unchanged production `app.py`. The witness itself must be removed or migrated when the source owner fixes the production boundary.
+
+## Four-owner isolated whole-project composition — passing, not merged
+
+On connected `vps-bb300bba` Python 3.14.4, a **disposable, never-pushed** checkout combined:
+1. Own [draft #1555](https://github.com/Zennay/Lightup/pull/1555) test source at exact `55442a534091c83fe921a41972753615c1901afd` (additive acceptance files, no deployed auth changes).
+2. The existing [#301 owner fixture correction PR #1452](https://github.com/Zennay/Lightup/pull/1452) at `89c7973a330550cd5b8fad23abb54e4a81f85639` (one **temporary** original unit-fixture overlay; correct frozen-clock test only, does not resolve #301 authorization source REDs).
+3. The unchanged [#182 web-input owner](https://github.com/Zennay/Lightup/pull/182) `app.py` at `8c97eb0490bc0d5d1bfdb883c9d1434f6b21749c` (temporary file overlay).
+4. The unchanged [#1169 opt-in cookie-guard owner](https://github.com/Zennay/Lightup/pull/1169) `session_cookie_guard.py` at `31055e7f5de9046405afea14bc945feb8f21d8be` (temporary untracked file, **not** application-entrypoint wiring).
+
+The true **whole installed-source unit discovery** in that temporary 4-owner composition:
+```
+PYTHONPATH=src python3 -m unittest discover -s tests -q
+Ran 1280 tests in 56.645s
+OK (expected failures=46)
+FOUR_OWNER_EXACT_686_HEAD_FULL_EXIT=0
+```
+Dedicated current #686 module: **23 methods, 10 ordinary PASS and 13 intentionally unresolved source expectedFailures**. Existing original producer integration: **86/86 PASS**, safety canaries PASS, original webapp 23/23 PASS. The existing opt-in guard demonstrably denied a duplicate-cookie public POST **before any WSGI body read** (a counting stream recorded `0` reads), with zero session lookups/writes and intact sessions.
+
+**Important provenance limit:** the exact **own #1555 source commit** is verifiable, but these three owner file overlays were **never committed as a single reviewed release SHA**. A private filesystem composition exit 0 is **not** equivalent to GitHub-hosted Python3.11/3.14 exact-head green or permanent named-VPS Actions CI. The original own-only branch still contains the uncorrected time-bomb fixture #301 and fails whole-suite CI for that known reason. No upstream PR branches, production code, runner registration, live API, credentials, targets or installed proxies were modified in the proof.
 
 ## Release requirements
 
