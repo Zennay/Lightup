@@ -51,6 +51,28 @@ def build_parser() -> argparse.ArgumentParser:
     assess.add_argument("--profile")
     assess.add_argument("--no-review", action="store_true")
 
+    review = sub.add_parser(
+        "review-change",
+        help="pre-merge security review of a git range (offline, inferred verdict)")
+    review.add_argument("--repo", default=".", help="local git checkout")
+    review.add_argument("--base", default="origin/main")
+    review.add_argument("--head", default="HEAD")
+    review.add_argument("--repository", help="owner/name (default: from origin)")
+    review.add_argument("--client-id", default="local")
+    review.add_argument("--compare-json",
+                        help="GitHub compare API JSON instead of a local git range")
+    review.add_argument("--policy", help="policy JSON (default: <repo>/.lightup-review.json)")
+    review.add_argument("--format", choices=("markdown", "json", "sarif"),
+                        default="markdown")
+    review.add_argument("--output", help="write the report here instead of stdout")
+    review.add_argument("--sarif-output", help="additionally write SARIF here")
+    review.add_argument("--json-output", help="additionally write JSON here")
+    review.add_argument("--no-merge-base", action="store_true",
+                        help="diff base..head directly instead of from the merge base")
+    review.add_argument("--fail-on", default="block",
+                        choices=("never", "warning", "review", "block"),
+                        help="exit 1 when the verdict is at least this severe")
+
     boot = sub.add_parser("create-operator",
                           help="bootstrap the first operator account")
     boot.add_argument("--db", default="lightup.db")
@@ -87,6 +109,92 @@ def _account_command(args: argparse.Namespace) -> int:
     return 0
 
 
+_FAIL_ON = {
+    "never": None,
+    "warning": "PASS_WITH_WARNING",
+    "review": "REVIEW_REQUIRED",
+    "block": "BLOCK",
+}
+
+
+def _review_change_command(args: argparse.Namespace) -> int:
+    import os
+    import sys
+    from pathlib import Path
+
+    from .change_review import (
+        ChangeReviewPolicy, render_markdown, render_sarif, review_change,
+    )
+    from .changes import ChangeSourceKind
+    from .git_changes import GitChangeError, collect_git_range
+
+    repo = Path(args.repo)
+    policy_path = Path(args.policy) if args.policy else repo / ".lightup-review.json"
+    try:
+        policy = (ChangeReviewPolicy.load(policy_path)
+                  if args.policy or policy_path.is_file() else ChangeReviewPolicy())
+    except (OSError, ValueError) as exc:
+        print(f"lightup: invalid review policy {policy_path}: {exc}", file=sys.stderr)
+        return 2
+
+    try:
+        if args.compare_json:
+            compare = json.loads(Path(args.compare_json).read_text(encoding="utf-8"))
+            base = compare.get("merge_base_commit", {}).get("sha") or compare["base_commit"]["sha"]
+            head = compare["commits"][-1]["sha"] if compare.get("commits") else args.head
+            review = review_change(
+                client_id=args.client_id,
+                repository=args.repository or "local/repository",
+                base_revision=base, head_revision=head,
+                files=compare.get("files", []),
+                source_kind=ChangeSourceKind.GITHUB_COMMIT,
+                policy=policy,
+            )
+        else:
+            git_range = collect_git_range(
+                repo, args.base, args.head, repository=args.repository,
+                merge_base=not args.no_merge_base,
+            )
+            review = review_change(
+                client_id=args.client_id,
+                repository=git_range.repository,
+                base_revision=git_range.base_revision,
+                head_revision=git_range.head_revision,
+                files=git_range.files,
+                structured_deltas=git_range.structured_deltas,
+                policy=policy,
+            )
+    except (GitChangeError, KeyError, ValueError, OSError) as exc:
+        print(f"lightup: change review failed: {exc}", file=sys.stderr)
+        return 2
+
+    markdown = render_markdown(review)
+    rendered = {
+        "markdown": lambda: markdown,
+        "json": lambda: json.dumps(review.to_dict(), indent=2) + "\n",
+        "sarif": lambda: json.dumps(render_sarif(review), indent=2) + "\n",
+    }
+    text = rendered[args.format]()
+    if args.output:
+        Path(args.output).write_text(text, encoding="utf-8")
+    else:
+        sys.stdout.write(text)
+    if args.sarif_output:
+        Path(args.sarif_output).write_text(rendered["sarif"](), encoding="utf-8")
+    if args.json_output:
+        Path(args.json_output).write_text(rendered["json"](), encoding="utf-8")
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with open(summary, "a", encoding="utf-8") as handle:
+            handle.write(markdown)
+
+    threshold = _FAIL_ON[args.fail_on]
+    if threshold is None:
+        return 0
+    order = ["PASS", "PASS_WITH_WARNING", "REVIEW_REQUIRED", "BLOCK"]
+    return 1 if order.index(review.verdict.value) >= order.index(threshold) else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
@@ -114,6 +222,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.no_review:
             argv.append("--no-review")
         return main_assess(argv)
+
+    if args.command == "review-change":
+        return _review_change_command(args)
 
     if args.command in {"create-operator", "create-client-user"}:
         return _account_command(args)
