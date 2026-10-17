@@ -200,3 +200,47 @@ Status: INCUBATE M3/M7 — DRAFT/HOLD. No merge, deploy, targets, real scans,
 grants, handlers or release. Original-source owner integration, authenticated
 real two-party consent plus revocation-at-use, independent security/privacy
 review, permanent named-VPS CI and HUMAN GO still mandatory.
+
+## W7 — bounded injected read sequence + mandatory empty end page
+
+New entirely #1553-owned `scope_github_observer_1553.py` accepts **two
+injected callbacks** (`fetch_pr(repository, pr_number)` and
+`fetch_page(repository, pr_number, page, per_page)`). No GitHub HTTP client,
+credentials, network requests, CI runner or live client/asset is provided by
+this module. Source authentication remains explicitly OUT OF SCOPE.
+
+Its deterministic, *fictional callback* read order is:
+
+```text
+PR metadata BEFORE -> exact page 1..N (100/file page)
+-> require EXTRA page N+1 exists and is EMPTY
+-> PR metadata AFTER -> existing strict offline page/patch bridge
+-> actual installed (unaltered) github_pull_request_changeset
+```
+
+The callback arguments must match the exact requested repo and PR number;
+the before/after snapshots must retain **identical repo, PR number, changed
+file count, base and head SHA**. It detaches each mutable response into plain
+JSON data within an aggregate 128 KiB preview budget and refuses malformed
+JSON/data, duplicate pages or paths, incomplete middle pages, extra files on
+the mandatory *end sentinel*, changing PR metadata, callback exceptions,
+timeouts and payload overflow with **HOLD**. No follow-on hook is called
+after an observed early inconsistency; no original ChangeSet inference call
+is made on incomplete evidence. All outputs remain privacy-minimal
+HOLD/REVIEW_ONLY with all effect/authority flags false.
+
+31 dedicated acceptance tests execute real callback ordering with simulated
+transport failure at the initial metadata read, middle file page, end
+sentinel and final metadata read; 1/99/100/101/200/201/300 file boundaries;
+unexpected extra end-page records; forged counts; snapshot alias mutation;
+non-finite and oversized data; and no authority output. The OWN independent
+GitHub-hosted workflow now requires exactly **148 tests** combined, **one
+deliberate owner-source expectedFailure**, zero errors/failures/skips.
+
+This is an *unwired offline illustration of the authenticated client
+integration contract*, NOT a trusted GitHub authenticated fetcher. Injected
+callbacks may themselves carry side effects or forge both responses: the
+source owner must only ever use a separately audited, authenticated,
+read-only GitHub client with exact response provenance and recorded file
+digests before inferred review persistence. No scan, grant, merge, deploy,
+handler or release is authorized. All prior project release gates stay HOLD.
