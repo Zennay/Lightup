@@ -10,6 +10,7 @@ on:
       - scripts/review_scope_grant_provenance_synthetic_649.py
       - scripts/review_scope_grant_provenance_pair_synthetic_649.py
       - tests/test_scope_grant_provenance_pair_649_20261017.py
+      - tests/test_scope_grant_issuance_owner_fix_oracle_649_20261017.py
       - docs/scope-grant-issuance-provenance-649-20261017.md
       - .github/workflows/scope-649-provenance-20261017.yml
   workflow_dispatch:
@@ -54,6 +55,7 @@ jobs:
               "scripts/review_scope_grant_provenance_synthetic_649.py",
               "scripts/review_scope_grant_provenance_pair_synthetic_649.py",
               "tests/test_scope_grant_provenance_pair_649_20261017.py",
+              "tests/test_scope_grant_issuance_owner_fix_oracle_649_20261017.py",
               ".github/workflows/scope-649-provenance-20261017.yml",
           }
           def git(*args):
@@ -82,6 +84,12 @@ jobs:
         run: |
           python -I -S -B -m unittest discover -s tests \
             -p 'test_scope_grant_provenance_pair_649_20261017.py' -v
+      - name: Prove eleven source REDs are repairable using ephemeral child-only owner fixture
+        shell: bash
+        run: |
+          python -I -S -B -m unittest discover -s tests \
+            -p 'test_scope_grant_issuance_owner_fix_oracle_649_20261017.py' -v
+          echo "EPHEMERAL FIXTURE ONLY: source owner branch is unchanged."
       - name: Verify exact unfixed source RED names, not just expectedFailure totals
         shell: bash
         run: |
