@@ -384,6 +384,21 @@ class GitPathIdentityTests(unittest.TestCase):
         with self.assertRaises(GitChangeError):
             collect_git_range(self.repo, "HEAD~1", "HEAD", repository="a/b")
 
+    def test_non_utf8_patch_content_is_unanalyzed_not_guessed(self):
+        (self.repo / "legacy.py").write_bytes(b"x = 1\n")
+        self._commit("base")
+        (self.repo / "legacy.py").write_bytes(b"x = '\xff'\nsubprocess.run(c, shell=True)\n")
+        self._commit("head")
+        git_range = collect_git_range(self.repo, "HEAD~1", "HEAD", repository="a/b")
+        record = git_range.files[0]
+        self.assertIsNone(record["patch"])
+        review = review_change(
+            client_id="c", repository="a/b", base_revision=git_range.base_revision,
+            head_revision=git_range.head_revision, files=git_range.files)
+        self.assertEqual(review.unanalyzed_paths, ("legacy.py",))
+        self.assertNotEqual(review.verdict.value, "PASS")
+        self.assertNotIn("\ufffd", json.dumps(review.to_dict()))
+
     def test_parsers_reject_malformed_and_duplicate_records(self):
         from lightup.git_changes import _parse_name_status, _parse_numstat
 

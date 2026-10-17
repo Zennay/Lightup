@@ -68,6 +68,18 @@ def _git(repo: Path, *args: str, check: bool = True) -> str:
     return _git_bytes(repo, *args, check=check).decode("utf-8", "replace")
 
 
+def _strict_text(raw: bytes) -> str | None:
+    """Decode patch bytes exactly, or ``None`` so the file counts as unanalyzed.
+
+    Lossy decoding would make rules run on text that differs from the change.
+    A non-UTF-8 patch is reported as a coverage gap instead of being guessed at.
+    """
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+
+
 def _path(raw: bytes) -> str:
     """Decode one NUL-delimited git path exactly; never substitute bytes."""
     try:
@@ -192,10 +204,10 @@ def collect_git_range(
         if status is None:
             continue
         added, removed = numstat[path]
-        patch = _git(
+        patch = _strict_text(_git_bytes(
             repo, "--literal-pathspecs", "diff", "--no-color", "--no-ext-diff", "-U3", "-M",
             base_sha, head_sha, "--", *(p for p in (previous, path) if p),
-        )
+        ))
         record: dict[str, Any] = {
             "filename": path,
             "status": status,
