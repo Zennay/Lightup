@@ -14,6 +14,7 @@ spec = importlib.util.spec_from_file_location("scope1540_pair", SCRIPT)
 pair = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pair)
 PIN = "d" * 40
+REPO = "Zennay/Lightup"
 
 
 def review(worker, number, head, files, *, branch=None):
@@ -21,10 +22,11 @@ def review(worker, number, head, files, *, branch=None):
     return {"worker": worker, "branch": branch,
             "pr": {"number": number, "state": "open", "draft": True,
                    "base_sha": PIN, "head_sha": head, "head_ref": branch,
-                   "changed_files": len(files)},
+                   "changed_files": len(files), "head_repo_full_name": REPO},
             "compare": {"base_sha": PIN, "head_sha": head,
                         "status": "ahead", "ahead_by": 2, "behind_by": 0,
-                        "too_large": False, "files": files}}
+                        "too_large": False, "files": files,
+                        "repository_full_name": REPO}}
 
 
 def file(status, filename, previous_filename=None):
@@ -34,7 +36,7 @@ def file(status, filename, previous_filename=None):
     return data
 
 
-GOOD = {"version": 1, "base_sha": PIN, "reviews": [
+GOOD = {"version": 1, "base_sha": PIN, "repository_full_name": REPO, "reviews": [
     review("scope-a", 1537, "a" * 40,
            [file("renamed", "docs/updated.md", "docs/original.md")]),
     review("scope-b", 1539, "b" * 40, [file("added", "tests/new.py")]),
@@ -55,6 +57,31 @@ class PairedSourceConsistencyTests(unittest.TestCase):
         item = copy.deepcopy(GOOD)
         item["reviews"][1]["compare"]["files"] = [file("modified", "docs/ORIGINAL.md")]
         self.assertEqual(pair.check(encode(item)), "HOLD")
+
+    def test_cross_repository_or_fork_mismatch_holds(self):
+        import copy
+        cases = (
+            ("root", "repository_full_name", "Other/Repository"),
+            ("pr", "head_repo_full_name", "Other/Repository"),
+            ("compare", "repository_full_name", "Other/Repository"),
+            ("root", "repository_full_name", "../Lightup"),
+            ("root", "repository_full_name", "Zennay//Lightup"),
+            ("pr", "head_repo_full_name", None),
+            ("compare", "repository_full_name", True),
+        )
+        for section, key, bad in cases:
+            with self.subTest(section=section, bad=bad):
+                item = copy.deepcopy(GOOD)
+                dest = item if section == "root" else item["reviews"][0][section]
+                dest[key] = bad
+                self.assertEqual(pair.check(encode(item)), "HOLD")
+        for section, key in (("root", "repository_full_name"),
+                             ("pr", "head_repo_full_name"),
+                             ("compare", "repository_full_name")):
+            item = copy.deepcopy(GOOD)
+            dest = item if section == "root" else item["reviews"][0][section]
+            del dest[key]
+            self.assertEqual(pair.check(encode(item)), "HOLD")
 
     def test_wrong_head_or_base_either_view_holds(self):
         import copy
