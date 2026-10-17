@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import io
+from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime, timezone, timedelta
 import re
 import socket
@@ -275,6 +277,27 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         self.assertEqual(receipt["reason"], "offline_witness_evaluation_failed")
         self.assertNotIn("private-operator-context", json.dumps(receipt))
         self.assert_no_authority(receipt)
+
+    def test_evaluator_stdout_and_stderr_attempts_hold_without_private_echo(self):
+        for channel in ("stdout", "stderr"):
+            with self.subTest(channel=channel):
+                def noisy_policy(self, target):
+                    if channel == "stdout":
+                        sys.stdout.write("PRIVATE-SCOPE-OUTPUT")
+                    else:
+                        sys.stderr.write("PRIVATE-SCOPE-OUTPUT")
+                    raise AssertionError("unexpected continued execution")
+                out, err = io.StringIO(), io.StringIO()
+                with patch.object(witness.ScopePolicy, "decide", noisy_policy):
+                    with redirect_stdout(out), redirect_stderr(err):
+                        receipt = witness.evaluate()
+                self.assertEqual(receipt["status"], "HOLD")
+                self.assertEqual(receipt["reason"], "offline_witness_evaluation_failed")
+                self.assertEqual(out.getvalue(), "")
+                self.assertEqual(err.getvalue(), "")
+                self.assertNotIn("PRIVATE-SCOPE-OUTPUT", json.dumps(receipt))
+                self.assert_no_authority(receipt)
+                self.assertEqual(witness.evaluate()["status"], "REVIEW_ONLY")
 
     def test_no_network_socket_or_dns_is_necessary(self):
         with (patch.object(socket, "socket", side_effect=AssertionError("network invoked")),
