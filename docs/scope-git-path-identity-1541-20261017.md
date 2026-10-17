@@ -65,3 +65,42 @@ scanning, handler, grant, or release. Original owner repairs, complete
 approved-SHA hosted + permanent named VPS runner CI, separate
 authenticated client/operator approval with revocation at use,
 independent privacy/security review, and explicit HUMAN GO remain required.
+
+
+## W2–W3: independent byte-exact repairability oracle (2026-10-17)
+
+New wholly owned, **unwired**, stdlib-only helper:
+[`scripts/scope_git_path_identity_oracle_1541.py`](../scripts/scope_git_path_identity_oracle_1541.py).
+It accepts *already collected* native Git `--name-status -z` and
+`--numstat -z` byte streams, validates exact UTF-8 identities, changed
+path/status/count matching and rename source/target association, and refuses
+malformed/oversized/duplicate/casefold/normalization/path-traversal identity
+claims with generic `PathIdentityHold`. It never runs Git or opens a
+network/file/target, and its returned frozen path tuples convey no consent,
+grant, scan, handler permission, trusted Git provenance or release verdict.
+
+Companion [oracle test suite](../tests/test_scope_git_path_identity_oracle_1541_20261017.py)
+includes **19 test methods** (including two actual self-contained disposable
+Git repositories confirming native `-z` Unicode/TAB bytes and fail-closed
+invalid UTF-8) with dozens of adversarial subcases. A separate original-source
+witness meta-test refuses hidden TypeError/ImportError/other non-assertion
+failures among the three deliberately open source REDs.
+
+**Actual connected zSSH Python3.14.4 at exact pushed
+`3170c14e1d5e2d7381ae6a4a0fa4f04220b4f772`: 28 test methods,
+25 ordinary PASS + 3 explicitly unresolved original-source
+expectedFailures, no unexpected failures/errors; disposable clone worktree
+clean.** This is NOT original source-owner patch acceptance, complete project
+CI, canonical permanent VPS runner CI, or release proof.
+
+GitHub compare against untouched owner base
+`3eee4f69c28f4192ba1224431f609cb2fb18ebc2`: **nine isolated commits,
+exactly four wholly NEW files**, no original/parallel worker file changed,
+zero behind. [Draft PR #1542](https://github.com/Zennay/Lightup/pull/1542)
+targets the feature owner's `claude/lightup-leap` branch (not `main`) to
+keep the review focused on these additive changes. Owner still needs a real
+strict-bytes, bounded Git adapter repair and all three RED source expectations
+upgraded to ordinary PASS before integration.
+
+**HOLD persists. No default-branch merge/deploy, live targets, active scans,
+real consents, grants, handlers, or release.**
