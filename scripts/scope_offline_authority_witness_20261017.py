@@ -149,6 +149,21 @@ def _receipt(status: str, reason: str, checked: int = 0, digest: str | None = No
     return result
 
 
+# Python frozen dataclasses can still acquire extra instance keys through
+# object.__setattr__. Such shadow fields must not silently enter a positive
+# review, even if all declared fields and classifications remain unchanged.
+_CASE_KEYS = frozenset({"case_id", "target", "policy", "expected_allowed", "expected_host", "expected_reason"})
+_TARGET_KEYS = frozenset({"value", "authorization", "labels"})
+_AUTH_KEYS = frozenset({"owner", "reference", "valid_from", "valid_until"})
+_POLICY_KEYS = frozenset({"allow_private_lab", "explicit_hosts", "explicit_networks", "require_authorization_for_public"})
+_DECISION_KEYS = frozenset({"allowed", "normalized_host", "reason"})
+
+
+def _exact_fields(instance: object, expected: frozenset[str]) -> bool:
+    fields = vars(instance)
+    return type(fields) is dict and fields.keys() == expected
+
+
 def _hash_canonical_rows(rows: list[list[object]]) -> str:
     raw = json.dumps(rows, sort_keys=True, ensure_ascii=True, separators=(",", ":")).encode("ascii")
     return hashlib.sha256(raw).hexdigest()
@@ -163,10 +178,12 @@ def _fixture_snapshot(fixtures: object) -> list[list[object]] | None:
     for case in fixtures:
         if (
             type(case) is not WitnessCase
+            or not _exact_fields(case, _CASE_KEYS)
             or type(case.case_id) is not str
             or re.fullmatch(r"[a-z][a-z0-9-]{0,63}", case.case_id) is None
             or case.case_id in seen
             or type(case.target) is not Target
+            or not _exact_fields(case.target, _TARGET_KEYS)
             or type(case.target.value) is not str
             or len(case.target.value) > 512
             or not case.target.value.isascii()
@@ -174,6 +191,7 @@ def _fixture_snapshot(fixtures: object) -> list[list[object]] | None:
             or len(case.target.labels) > 16
             or any(type(label) is not str or len(label) > 128 for label in case.target.labels)
             or type(case.policy) is not ScopePolicy
+            or not _exact_fields(case.policy, _POLICY_KEYS)
             or type(case.policy.allow_private_lab) is not bool
             or type(case.policy.require_authorization_for_public) is not bool
             or type(case.policy.explicit_hosts) is not frozenset
@@ -191,6 +209,7 @@ def _fixture_snapshot(fixtures: object) -> list[list[object]] | None:
         if authorization is not None:
             if (
                 type(authorization) is not Authorization
+                or not _exact_fields(authorization, _AUTH_KEYS)
                 or type(authorization.owner) is not str
                 or len(authorization.owner) > 128
                 or type(authorization.reference) is not str
@@ -238,6 +257,7 @@ def _evaluate_pinned_cases(fixtures: tuple[WitnessCase, ...], fixture_digest: st
             return _receipt("HOLD", "offline_witness_fixture_mutated")
         if (
             type(decision) is not ScopeDecision
+            or not _exact_fields(decision, _DECISION_KEYS)
             or type(decision.allowed) is not bool
             or (decision.normalized_host is not None and type(decision.normalized_host) is not str)
             or type(decision.reason) is not ScopeReason
