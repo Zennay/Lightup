@@ -321,6 +321,54 @@ class OfflineTreeModesTests(unittest.TestCase):
                         with redirect_stdout(io.StringIO()):
                             self.assertEqual(guard.main(), 3)
 
+    def test_git_stdin_ceiling_rejects_before_process_spawn(self):
+        from unittest.mock import patch
+        with patch.object(guard.subprocess, "Popen", side_effect=AssertionError("spawn")):
+            with self.assertRaisesRegex(ValueError, "bounded Git stdin"):
+                guard._git_raw("hash-object", "--stdin", data=b"x" * 262145)
+            with self.assertRaisesRegex(ValueError, "bounded Git stdin"):
+                guard._git_raw("hash-object", "--stdin", data=bytearray(b"x"))
+
+    def test_git_streaming_handles_bounded_pipe_stdin(self):
+        import hashlib
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_git_pipe_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp)
+            subprocess.run([guard.GIT_BINARY, "init", "-q"], cwd=root,
+                           check=True, capture_output=True)
+            content = b"x" * 262144
+            digest = hashlib.sha1(
+                b"blob " + str(len(content)).encode() + b"\0" + content
+            ).hexdigest().encode() + b"\n"
+            with patch.object(guard, "ROOT", root):
+                result = guard._git_raw("hash-object", "--stdin", data=content)
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, digest)
+            self.assertEqual(result.stderr, b"")
+
+    def test_git_stdout_over_limit_is_rejected_during_capture(self):
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_git_output_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp)
+            def setup(*args):
+                subprocess.run([guard.GIT_BINARY, *args], cwd=root,
+                               check=True, capture_output=True, timeout=6)
+            setup("init", "-q")
+            (root / "large.txt").write_bytes(b"x" * 786433)
+            setup("add", "large.txt")
+            setup("-c", "user.name=Offline", "-c",
+                  "user.email=offline@example.invalid",
+                  "commit", "-qm", "only fictional bounded-output fixture")
+            with patch.object(guard, "ROOT", root):
+                with self.assertRaisesRegex(ValueError, "Git output exceeds"):
+                    guard._git_raw("show", "HEAD:large.txt")
+                status = guard.git("status", "--porcelain=v1")
+            self.assertEqual(status.returncode, 0)
+            self.assertEqual(status.stdout, b"")
     def test_no_reusing_other_worker_paths(self):
         for item in ("src/lightup/scope.py", "tests/test_scope.py",
                      "scripts/check_scope_literal_branch_20261016.py"):
