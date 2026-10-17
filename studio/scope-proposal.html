@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>LightUp · Scope Proposal Studio</title>
+<style>
+:root{font:15px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#eaf1fb;background:#0b1120;--line:#31415a;--muted:#a8bad1;--brand:#70dfc8}
+*{box-sizing:border-box}body{margin:0}header{padding:25px max(22px,calc((100vw - 1240px)/2));border-bottom:1px solid #26364d;background:#101d31}header h1{margin:.1em 0;font-size:clamp(25px,3vw,37px);letter-spacing:-.035em}header p{max-width:900px;margin:0;color:var(--muted)}.brand{color:var(--brand);text-transform:uppercase;letter-spacing:.13em;font-weight:800;font-size:.77rem}.shell{max-width:1280px;margin:0 auto;padding:25px 20px 60px;display:grid;gap:22px;grid-template-columns:minmax(330px,1.3fr) minmax(320px,1fr)}.card{border:1px solid var(--line);border-radius:17px;background:#111d30;padding:22px;min-width:0}.card h2{margin:0 0 4px;font-size:1.2rem}.card>p{color:var(--muted);margin:0 0 18px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{margin:15px 0}label{display:block;font-weight:700;margin-bottom:6px}small,.hint{color:var(--muted)}input,textarea,select{width:100%;border:1px solid #50617b;border-radius:8px;background:#0b1627;color:#fff;padding:11px 12px;font:inherit}textarea{min-height:130px;resize:vertical;white-space:pre-wrap}input:focus,textarea:focus,select:focus{outline:2px solid var(--brand);outline-offset:1px}button{cursor:pointer;font:inherit;font-weight:750;border:1px solid #536781;border-radius:8px;color:#eef8ff;background:#263951;padding:10px 13px}button.primary{background:#6ee1c6;color:#071b20;border-color:#6ee1c6}button:hover{filter:brightness(1.1)}button:disabled{opacity:.45;cursor:not-allowed}button.danger{background:transparent;color:#ffb9b9}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:17px}.warning{border:1px solid #99814c;background:#2c271b;padding:12px;border-radius:10px;color:#f4dfac}.warning strong{color:#ffe9b6}.pill{display:inline-flex;border:1px solid #62728c;border-radius:30px;padding:4px 10px;font-size:.74rem;font-weight:800;letter-spacing:.04em}.status{display:grid;gap:10px;margin:15px 0}.status p{margin:0}.status div{padding:12px;background:#17263e;border-radius:8px}.issues{list-style:none;padding:0}.issues li{border-left:3px solid #d9ad62;background:#26251f;margin-bottom:8px;padding:8px 10px}.issues .error{border-color:#ff8c8c;background:#302029}.issues .ok{border-color:#71dcbf;background:#18362f}.preview{white-space:pre-wrap;overflow-wrap:anywhere;background:#080f1c;border:1px solid #384b67;padding:15px;min-height:180px;border-radius:10px;font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;max-height:550px;overflow:auto}section .step{display:inline-block;color:#7fe3cc;font-size:.78rem;font-weight:750;letter-spacing:.08em}.checks{display:flex;gap:14px;flex-wrap:wrap}.checks label{display:flex;align-items:center;gap:7px;font-weight:500}.checks input{width:auto}.privacy{color:#aec3d8;font-size:.88rem}.toggle{display:flex;gap:8px;align-items:center}.toggle input{width:auto}.readiness{font-size:1.3rem;font-weight:800}.previewActions{position:sticky;top:10px}.sr{position:absolute;left:-9999px}@media(max-width:850px){.shell{grid-template-columns:1fr}.grid{grid-template-columns:1fr}header{padding:22px}.card{padding:17px}}@media print{body{background:white;color:#000}header,.editor,.actions,.privacy,.warning button{display:none!important}.shell{display:block;padding:0}.card{border:0;color:#000;background:#fff}.preview{white-space:pre-wrap;color:#000;background:#fff;border:0;font-size:12px;max-height:none}.status div{background:#eee;color:#000}.warning{color:#000;background:#eee}}
+</style>
+</head>
+<body>
+<header>
+<div class="brand">LIGHTUP / OFFLINE PLANNING</div>
+<h1>Scope Proposal Studio</h1>
+<p>Build a clear assessment request before client/operator review. This page works locally, makes no network requests and cannot grant authorization, submit requests or start security assessments.</p>
+</header>
+<main class="shell">
+<section class="card editor" aria-label="Draft editor">
+<h2>Prepare a scope</h2>
+<p>A single, reviewable draft. Nothing is automatically submitted or saved.</p>
+<div class="field"><label for="title">Proposal name</label><input id="title" maxlength="120" placeholder="e.g. Internal web application review" autocomplete="off"></div>
+<div class="grid">
+<div class="field"><label for="client">Client label (optional)</label><input id="client" maxlength="100" placeholder="Organisation / project alias" autocomplete="off"></div>
+<div class="field"><label for="risk">Requested risk level</label><select id="risk"><option value="1">1 · Low / observation</option><option value="2">2 · Limited testing</option><option value="3">3 · Elevated testing</option><option value="4">4 · High risk (separate approval)</option></select></div>
+</div>
+<div class="field"><label for="mode">Requested assessment mode</label><select id="mode"><option value="authorized_assessment">Authorized assessment (review required)</option><option value="lab_only">Private laboratory (no real target rights)</option></select></div>
+<div class="field"><label for="assets">Proposed in-scope assets</label><textarea id="assets" spellcheck="false" placeholder="app.example.com&#10;192.0.2.15&#10;198.51.100.0/28" maxlength="12000"></textarea><small>One exact hostname, IP or CIDR per line. No URLs, wildcards, credentials, ports or domains with ambiguous suffixes. These are proposals, not allowlist entries.</small></div>
+<div class="field"><label for="excluded">Explicitly excluded assets</label><textarea id="excluded" spellcheck="false" placeholder="admin.example.com" maxlength="12000"></textarea><small>Exclusions are for review only. Operators must enforce exclusions independently; do not rely on text matching as an execution boundary.</small></div>
+<div class="field"><label for="purpose">Purpose, safety conditions and approach</label><textarea id="purpose" maxlength="3000" placeholder="Why is the assessment needed? What is prohibited? Who should be contacted for stop/revocation?"></textarea></div>
+<div class="grid">
+<div class="field"><label for="start">Requested window start (optional)</label><input id="start" type="datetime-local"></div>
+<div class="field"><label for="end">Requested window end (optional)</label><input id="end" type="datetime-local"></div>
+</div>
+<div class="field"><label>Proposed activities (not permissions)</label><div class="checks">
+<label><input type="checkbox" id="passive" checked> Passive analysis</label>
+<label><input type="checkbox" id="config"> Configuration review</label>
+<label><input type="checkbox" id="network"> Lab-only network checks</label>
+</div></div>
+<div class="warning"><strong>Authorization is not issued here.</strong> A draft, export, screenshot or printed copy cannot establish identity, ownership, scope approval, client consent, operator consent, revocation status, a grant or execution capability.</div>
+<div class="actions"><button class="primary" id="download" type="button">Export draft JSON</button><button id="print" type="button">Print brief</button><button id="copy" type="button">Copy brief</button><button id="reset" class="danger" type="button">Clear</button></div>
+<div class="field"><label for="import">Import a previous draft JSON</label><input id="import" type="file" accept=".json,application/json"><small>Local file only, maximum 64 KiB. Imports require the exact LightUp draft schema; external records never confer permissions.</small></div>
+<p class="privacy" id="feedback" role="status" aria-live="polite">Local-only. No analytics, server connection, browser storage or automatic uploads.</p>
+</section>
+<aside class="card" aria-label="Proposal review">
+<h2>Review and handoff</h2>
+<p>Check scope quality, missing decisions and the exact export before sending it through an authenticated channel.</p>
+<div class="status">
+<div><span class="pill">NON-AUTHORIZING</span> <span class="readiness" id="readiness">Incomplete draft</span></div>
+<div id="summary">No assets entered.</div>
+</div>
+<h3>Items to resolve</h3>
+<ul class="issues" id="issues" aria-live="polite"></ul>
+<h3>Operator handoff preview</h3>
+<pre class="preview" id="brief"></pre>
+<h3>Structured draft JSON</h3>
+<pre class="preview" id="json"></pre>
+<p class="privacy">Only a legitimate signed-in client may submit a request in the authenticated LightUp portal. An independent operator must review it. This studio does not post to that portal.</p>
+</aside>
+</main>
+<script>
+(function () {
+'use strict';
+const $ = id => document.getElementById(id);
+const fields = ['title','client','risk','mode','assets','excluded','purpose','start','end','passive','config','network'];
+const MAX_BYTES = 65536;
+let imported = false;
+function str(value,max) { return typeof value === 'string' && value.length <= max ? value : null; }
+function arrayLines(text) {
+  return text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+}
+function validIPv4(text) {
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})(?:\/(\d{1,2}))?$/.exec(text);
+  return !!m && m.slice(1,5).every(n=>Number(n)<=255 && String(Number(n))===n) &&
+    (m[5] === undefined || Number(m[5])<=32);
+}
+function validIPv6(text) {
+  const pieces=text.split('/');
+  if (pieces.length>2 || (pieces[1]!==undefined && (!/^(?:0|[1-9]\d{0,2})$/.test(pieces[1])|| Number(pieces[1])>128))) return false;
+  if (!/^[0-9a-fA-F:]+$/.test(pieces[0]) || !pieces[0].includes(':')) return false;
+  try { new URL('http://['+pieces[0]+']/'); return true; } catch (_) { return false; }
+}
+function validHostname(text) {
+  return text.length<=253 && text.includes('.') && !text.endsWith('.') &&
+    text.split('.').every(part=>/^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/.test(part)) &&
+    !text.includes('..') && !/^\d+(?:\.\d+){3}$/.test(text);
+}
+function validAsset(s) {return validIPv4(s)||validIPv6(s)||validHostname(s);}
+function parseAssets(raw,kind,problems) {
+  const entries = arrayLines(raw), seen=new Set(), out=[];
+  if(entries.length>80) problems.push({fatal:true,message:kind+' exceeds 80 items.'});
+  for(const s of entries.slice(0,81)) {
+    const key=s.toLowerCase();
+    if(!validAsset(s)) problems.push({fatal:true,message:kind+': invalid exact asset identity "'+s.slice(0,80)+'".'});
+    if(seen.has(key)) problems.push({fatal:true,message:kind+': duplicate "'+s.slice(0,80)+'".'});
+    seen.add(key); out.push(s);
+  }
+  return out;
+}
+function read() {
+  const problems=[];
+  const requested=parseAssets($('assets').value,'Proposed scope',problems);
+  const excluded=parseAssets($('excluded').value,'Excluded scope',problems);
+  if (!requested.length) problems.push({fatal:true,message:'Add at least one proposed asset.'});
+  if (!str($('title').value.trim(),120)||!$('title').value.trim()) problems.push({fatal:true,message:'Provide a proposal name.'});
+  if (!$('purpose').value.trim()) problems.push({fatal:true,message:'Describe the purpose and stop conditions.'});
+  const excludeSet=new Set(excluded.map(s=>s.toLowerCase()));
+  for(const s of requested) if(excludeSet.has(s.toLowerCase())) problems.push({fatal:true,message:'Asset appears in both proposed and excluded lists: '+s.slice(0,80)});
+  if (requested.some(s=>s.includes('/')) || excluded.some(s=>s.includes('/'))) problems.push({fatal:false,message:'CIDR ranges need manual ownership and exclusion review: overlapping addresses are not automatically resolved.'});
+  if (requested.some(s=>s.includes(':')) || excluded.some(s=>s.includes(':'))) problems.push({fatal:false,message:'IPv6 literals must be separately canonicalized and verified by the operator.'});
+  if ($('start').value && $('end').value && $('end').value<=$('start').value) problems.push({fatal:true,message:'Requested end must be later than start.'});
+  if (!$('start').value || !$('end').value) problems.push({fatal:false,message:'The requested window is incomplete; operator must agree on a full UTC interval.'});
+  if ($('risk').value==='4') problems.push({fatal:false,message:'Risk 4 needs a separate explicit risk approval before any assessment.'});
+  if ($('mode').value==='authorized_assessment') problems.push({fatal:false,message:'Public/real assets require independent authenticated consent, current revocation checks and an issued grant; none is provided by this draft.'});
+  if ($('network').checked) problems.push({fatal:false,message:'Lab-only network checks require separate lab authorization and isolated environment.'});
+  if (imported) problems.push({fatal:false,message:'Imported content is untrusted and must be reviewed independently.'});
+  const now = new Date().toISOString();
+  const draft = {
+    schema_version:1, kind:'lightup.scope_proposal_draft', state:'DRAFT_ONLY',
+    authorization:false, client_consent:false, operator_consent:false, grant:false,
+    execution:false, revocation_checked:false,
+    proposal_name:$('title').value.trim(), client_label:$('client').value.trim(),
+    requested_assets:requested, excluded_assets:excluded,
+    requested_mode:$('mode').value, requested_risk:Number($('risk').value),
+    notes:$('purpose').value.trim(), proposed_activities:{
+      passive_analysis:$('passive').checked,
+      configuration_review:$('config').checked,
+      private_lab_network_checks:$('network').checked
+    },
+    proposed_window_local:{start:$('start').value||null,end:$('end').value||null},
+    exported_at_utc:now
+  };
+  return {problems,draft,canExport:!problems.some(p=>p.fatal)};
+}
+function show() {
+  const {problems,draft,canExport}=read();
+  $('readiness').textContent = canExport ? 'Ready for human review' : 'Incomplete draft';
+  $('summary').textContent = draft.requested_assets.length+' proposed · '+draft.excluded_assets.length+' excluded · risk '+draft.requested_risk+' · '+(draft.requested_mode==='lab_only'?'private lab':'authorized assessment');
+  $('issues').replaceChildren();
+  if (!problems.length) { const li=document.createElement('li');li.className='ok';li.textContent='No obvious input problems. Approval is still required.';$('issues').append(li); }
+  for(const p of problems){const li=document.createElement('li');li.className=p.fatal?'error':'';li.textContent=(p.fatal?'Fix: ':'Review: ')+p.message;$('issues').append(li);}
+  const text=[
+    'LIGHTUP · SCOPE PROPOSAL / DRAFT ONLY',
+    'Proposal: '+(draft.proposal_name||'—'),
+    'Client label: '+(draft.client_label||'—'),
+    'Assessment mode: '+draft.requested_mode,
+    'Requested risk level: '+draft.requested_risk,
+    'PROPOSED ASSETS (NOT AUTHORIZED):',
+    ...draft.requested_assets.map(s=>'  + '+s),
+    'EXCLUSIONS (REQUIRE OPERATOR VERIFICATION):',
+    ...(draft.excluded_assets.length?draft.excluded_assets.map(s=>'  - '+s):['  No exclusions recorded']),
+    'Requested local planning window: '+(draft.proposed_window_local.start||'?')+' → '+(draft.proposed_window_local.end||'?'),
+    'Activities: '+Object.entries(draft.proposed_activities).filter(([,v])=>v).map(([k])=>k.replaceAll('_',' ')).join('; '),
+    'Purpose/constraints:\n'+(draft.notes||'—'),
+    'Outstanding input concerns: '+problems.filter(p=>p.fatal).length,
+    'STATUS: DRAFT ONLY. NO CONSENT, GRANT, SCAN, OR EXECUTION RIGHT.'
+  ].join('\n');
+  $('brief').textContent=text;
+  $('json').textContent=JSON.stringify(draft,null,2);
+  $('download').disabled=!canExport;
+  $('copy').disabled=!canExport;
+  $('print').disabled=!canExport;
+  return {draft,canExport,text};
+}
+for(const id of fields) $(id).addEventListener('input',show);
+function feedback(s){$('feedback').textContent=s;}
+$('download').addEventListener('click',()=>{
+  const {draft,canExport}=show(); if(!canExport) return;
+  const blob=new Blob([JSON.stringify(draft,null,2)+'\n'],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='lightup-scope-draft.json';document.body.append(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),500);feedback('JSON draft exported locally. Not submitted or authorized.');
+});
+$('print').addEventListener('click',()=>{if(show().canExport) window.print();});
+$('copy').addEventListener('click',async()=>{
+  const {text,canExport}=show();if(!canExport)return;
+  try{await navigator.clipboard.writeText(text);feedback('Draft brief copied. Handle through an authenticated channel.');}
+  catch(_){feedback('Browser clipboard unavailable; select the handoff preview text to copy.');}
+});
+$('reset').addEventListener('click',()=>{
+  if(!window.confirm('Clear all fields? This draft is not saved.'))return;
+  fields.forEach(id=>{const el=$(id);if(el.type==='checkbox')el.checked=id==='passive';else el.value=id==='risk'?'1':id==='mode'?'authorized_assessment':'';});
+  imported=false; $('import').value=''; feedback('Cleared locally.');show();
+});
+$('import').addEventListener('change',async(event)=>{
+  const file=event.target.files[0];if(!file)return;
+  if(file.size>MAX_BYTES){feedback('Import refused: maximum 64 KiB.');event.target.value='';return;}
+  try {
+    const text=await file.text();
+    let data=JSON.parse(text,(key,value)=>key==='__proto__'||key==='constructor'||key==='prototype'?undefined:value);
+    if(!data||Array.isArray(data)||data.schema_version!==1||data.kind!=='lightup.scope_proposal_draft'||data.state!=='DRAFT_ONLY'||
+      data.authorization!==false||data.client_consent!==false||data.operator_consent!==false||data.grant!==false||data.execution!==false||
+      !Array.isArray(data.requested_assets)||!Array.isArray(data.excluded_assets)||
+      data.requested_assets.length>80||data.excluded_assets.length>80||
+      !data.requested_assets.every(v=>str(v,120))||!data.excluded_assets.every(v=>str(v,120))||
+      !str(data.proposal_name,120)||!str(data.client_label,100)||!str(data.notes,3000)||
+      !['authorized_assessment','lab_only'].includes(data.requested_mode)||
+      !Number.isInteger(data.requested_risk)||data.requested_risk<1||data.requested_risk>4||
+      !data.proposed_window_local || typeof data.proposed_window_local!=='object' ||
+      !data.proposed_activities || typeof data.proposed_activities!=='object' ||
+      !['passive_analysis','configuration_review','private_lab_network_checks'].every(k=>typeof data.proposed_activities[k]==='boolean')) throw new Error('invalid format');
+    const windowFields=data.proposed_window_local;
+    if(!['start','end'].every(k=>windowFields[k]===null||(typeof windowFields[k]==='string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(windowFields[k]))))throw new Error('invalid window');
+    $('title').value=data.proposal_name;$('client').value=data.client_label;$('purpose').value=data.notes;
+    $('risk').value=String(data.requested_risk);$('mode').value=data.requested_mode;
+    $('assets').value=data.requested_assets.join('\n');$('excluded').value=data.excluded_assets.join('\n');
+    $('start').value=windowFields.start||'';$('end').value=windowFields.end||'';
+    $('passive').checked=data.proposed_activities.passive_analysis;
+    $('config').checked=data.proposed_activities.configuration_review;
+    $('network').checked=data.proposed_activities.private_lab_network_checks;
+    imported=true;show();feedback('Imported as an untrusted draft. Review every field; no identity or authority was imported.');
+  } catch (_) {feedback('Import rejected: invalid or unsupported draft format. Existing fields unchanged.');}
+  event.target.value='';
+});
+show();
+})();
+</script>
+</body>
+</html>
