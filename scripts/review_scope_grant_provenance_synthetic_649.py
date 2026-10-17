@@ -38,6 +38,10 @@ class ReviewReceipt:
     merge_approved: bool = False
     release_approved: bool = False
 
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        """Do not let a subclass override the non-authorizing receipt guard."""
+        raise TypeError("synthetic review receipts are sealed")
+
     def __post_init__(self) -> None:
         """A review receipt cannot be forged into an apparent authority claim.
 
