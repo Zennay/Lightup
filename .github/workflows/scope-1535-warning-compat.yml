@@ -48,7 +48,7 @@ jobs:
           assert git("rev-parse", "HEAD") == os.environ["GITHUB_SHA"]
           assert git("merge-base", base, "HEAD") == base
           actual = set(git("diff", "--name-status", base, "HEAD").splitlines())
-          assert actual == {"A\\t" + name for name in own_new} | {"M\\t" + own_modified}, actual
+          assert actual == {"A\t" + name for name in own_new} | {"M\t" + own_modified}, actual
           for name in sorted(own_new | {own_modified}):
               mode, kind, sha, path = git("ls-tree", "HEAD", "--", name).split(None, 3)
               assert (mode, kind, path) == ("100644", "blob", name)
