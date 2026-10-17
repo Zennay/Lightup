@@ -6,6 +6,7 @@ network service, or an authorization/runtime API. Review-only is NOT approval.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -96,7 +97,10 @@ def evaluate(raw: bytes) -> tuple[dict[str, object], int]:
         receipt, exit_code = core.evaluate(transformed)
         if exit_code != 3:
             return _receipt("HOLD"), 2
-        return _receipt("REVIEW_ONLY", receipt["waves"]), 3
+        verified = _receipt("REVIEW_ONLY", receipt["waves"])
+        verified["input_sha256"] = hashlib.sha256(raw).hexdigest()
+        verified["derived_graph_sha256"] = receipt["input_sha256"]
+        return verified, 3
     except (ValueError, TypeError, UnicodeError, RecursionError, OverflowError, MemoryError):
         return _receipt("HOLD"), 2
 
