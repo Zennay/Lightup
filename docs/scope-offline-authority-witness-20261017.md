@@ -130,6 +130,14 @@ The offline witness must **never** allow an installed evaluator callback to sile
 
 **Verified on connected authorized zSSH**: Python 3.14.4, exact source head `9beb08fe78cd55860b4a12ac26f6ece876b14c30`: **47/47 dedicated tests PASS**, **86/86 real producer integration tests PASS**, including a genuine subprocess regression showing `SystemExit(0)` now returns `HOLD/2`, not process exit 0. The earlier full suite with 1,282 unit tests had the same five known original-source/fixture REDs; no claim of complete project green. No production authority, target operation, runner action, merge or deployment was introduced.
 
+## W11 — swallowed one-shot SIGALRM must never become REVIEW_ONLY (17 October 2026)
+
+**New source-proven RED**: an installed policy callback that catches all `BaseException` could swallow the one-shot `ITIMER_REAL` deadline signal after 2.5 seconds, return the original matching `ScopeDecision`, and incorrectly obtain `REVIEW_ONLY`. This was reproduced in a real Python 3.14.4 child: **one new assertion failed**, showing `REVIEW_ONLY` after approximately 2.506 seconds despite the expired budget. The test was scoped to one fictional fixture, ensuring no additional sleeping cases or real side effects.
+
+**Independent fix**: record a `time.monotonic()` deadline when arming the private `SIGALRM` timer. After *every* source-policy decision, and again just before accepting the final digest and positive receipt, compare monotonic time with that immutable budget. If expired, immediately return generic `HOLD/offline_witness_time_budget_exceeded` and exit **2**, even when the callback swallowed the signal. The original timebox, exact fixture checks and seven deny flags remain enforced.
+
+**Actual zSSH verification:** Python 3.14.4 on own source SHA `93be44b645bb88d2f0c49561c061c43a8c94e71a`: **48/48 dedicated tests PASS**, **86/86 original producer integrations PASS**, including the former RED swallowed-signal regression. The signal/timer is restored and a subsequent clean offline invocation still yields `REVIEW_ONLY/3`. The deadline is still a cooperative Python-process-level measure, **not a kernel-enforced or native-code-resistant resource sandbox**: an infinite loop that deliberately suppresses Python signals can still hang the interpreter.
+
 ## Gate interpretation
 
 - Green unit tests validate the witness's own classification, deterministic receipt, zero-network boundary, no authority flags and mutation-detection sensitivities.
