@@ -101,6 +101,7 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
 
     def test_unchanged_source_cli_attests_both_real_sources_without_leaking_paths(self):
         expected = {
+            "src/lightup/__init__.py": "24b02c39a8fe5041da81517a9aace8ba27161c5e020611d222755a6a6f429b01",
             "src/lightup/models.py": "f84779b55f193c2d0a143418cf569c3539ee2bdb92e76a542ffda39643d3b541",
             "src/lightup/scope.py": "1bf081d0b85490466fbb4ad95b2d12917882ed51d05627139bdd5abf110018c0",
         }
@@ -109,6 +110,27 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         self.assertEqual(result["source_sha256"], expected)
         self.assert_no_authority(result)
         self.assertNotIn(str(ROOT), json.dumps(result))
+
+    def test_preloaded_noncanonical_policy_module_cannot_look_like_current_checkout(self):
+        # Even if source files match SHA, Python can satisfy imports from
+        # sys.modules. An already-cached module outside the pinned checkout
+        # must return HOLD before the real evaluator is used.
+        source = str(ROOT / "src")
+        script = str(ROOT / "scripts" / "scope_offline_authority_witness_20261017.py")
+        snippet = (
+            f"import sys,runpy;sys.path.insert(0,{source!r});"
+            "import lightup.scope as cached;"
+            "cached.__file__='/fictional/cached/scope.py';"
+            f"sys.argv=[{script!r},'--offline-lab-only'];"
+            f"runpy.run_path({script!r},run_name='__main__')"
+        )
+        done = subprocess.run([sys.executable,"-c",snippet],capture_output=True,text=True,timeout=12,check=False)
+        self.assertEqual(done.returncode,2,done.stderr)
+        self.assertEqual(done.stderr,"")
+        body = json.loads(done.stdout)
+        self.assertEqual(body["status"],"HOLD")
+        self.assertEqual(body["reason"],"offline_witness_source_drift")
+        self.assert_no_authority(body)
 
     def test_canonical_matrix_is_review_only_not_execution_permission(self):
         result = witness.evaluate()
