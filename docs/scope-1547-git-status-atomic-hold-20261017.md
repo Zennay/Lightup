@@ -1,5 +1,25 @@
 # Scope #1547 — exact synthetic Git status stream HOLD acceptance
 
+## CURRENT VERIFIED STATUS — 17 October 2026 · W13 (supersedes historical RED entries below)
+
+**INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** The previously failing original source-owner newline status parser **has now been independently fixed** on separately owned draft #1538 at exact SHA `f9358ac4d21ca722e0ce1dc3d885aa45024fa9ba`: its original `_STATUS_CODE.match()` was changed to exact `.fullmatch()` and new native source regressions were added for four newline corruptions. This source owner repair is *not* our commit or a release.
+
+### New mandatory original source proof, above and beyond earlier synthetic receipt tests
+- Added independent *source-owner* strict test for **all 256 single-byte status tokens** (exactly A/M/D/T accepted, all other values denied with `GitChangeError`) and **202 valid three-digit R000..R100 / C000..C100 similarity codes**, plus malformed shortened/out-of-range/newline variants. Combined with the previous nine malformed source contracts, the current actual source owner SHA now passes mandatory source grammar tests.
+- Added a genuinely disposable local **no-hook/no-remote** Git repository integrating real Git `diff --name-status -M -z` bytes with the *two independently implemented* parsers. Four actual Git A/D/M/R records parse with precisely the same status/path identities and count; a late synthetic LF-corrupt record causes both to reject the entire stream. Git fixture never targets any real infrastructure.
+- Own latest actual VPS old pinned source suite: **29 test methods OK (six intentional pinned-original-source expectedFailures; four optional source-owner skip methods)**; separate real current owner strict gate: **four methods ordinary PASS with `LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX=1`**, no legacy expectedFailures.
+
+### Actual combined code and exact CI evidence
+- Permitted zSSH **full Python 3.14 unit discovery: 1,305/1,305 ordinary PASS**, zero skip, zero expected source failure, in isolated disposable checkout with **only actual owner #1538 repaired `git_changes.py` SHA `f9358ac4...` and independently owned #1536 warning report blob `f8b915...`** overlaid locally. No hand-made regex replacement needed. Both files restored afterward and source/own temp checkouts clean. This remains *uncommitted local composability* of two separately owned fixes, not published integrated release SHA.
+- [Exact own GitHub-hosted CI run #39029577957](https://github.com/Zennay/Lightup/actions/runs/39029577957): **COMPLETED SUCCESS all 4/4 jobs**, Python3.11 and Python3.14 synthetic reviewer **2/2** and Python3.11 and Python3.14 actual live-branch original source acceptance **2/2** on verified owner SHA `f9358ac4d21ca722e0ce1dc3d885aa45024fa9ba`. Historical earlier red runs are accurately recorded below but are superseded by this newer source fix and proof.
+- [Exact own GitHub-hosted full offline preflight run #39029577956](https://github.com/Zennay/Lightup/actions/runs/39029577956): **COMPLETED SUCCESS all 4/4 jobs** (Python 3.11/3.14 unit; 3.11/3.14 original producer integrations). All are GitHub-hosted, **NOT** permanently registered named VPS runner proof.
+- [Current named permanent runner LightUp CI run #39029577978](https://github.com/Zennay/Lightup/actions/runs/39029577978) still **QUEUED/unproven**. No runner bypass, deploy, merge, or real target access.
+
+**NON-AUTHORIZING HOLD REMAINS:** original owner branch is still a draft; independent security and privacy review, real separately authenticated client/operator consent and revocation at use, exact approved integrated source/release SHA hosted + **permanently registered named VPS** CI, and explicit HUMAN GO remain mandatory. Passing source grammar review does NOT grant permission for scans, grants, handler dispatch, merges, deploys, or releases.
+
+---
+
+
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Do not merge, deploy, scan targets, authorize grants or dispatch handlers.**
 
 ## Original source-owner finding
