@@ -1,8 +1,8 @@
 """Owner-isolated source acceptance for #1541 / draft #1538 Git path identity.
 
 All repositories and Git objects are fictional, made locally under TemporaryDirectory.
-The three expected failures are *known original-source defects*, not green
-production evidence. No network, handlers, target, consent or release operation.
+On the owner's independently updated feature head, all formerly failing
+source canaries must now pass as ordinary tests, with no masking decorators. No network, handlers, target, consent or release operation.
 """
 from __future__ import annotations
 
@@ -105,15 +105,12 @@ class GitChangePathIdentityAcceptance(unittest.TestCase):
         self.git("config", "core.quotePath", "false")
         self.assert_full_single_file("café.py")
 
-    @unittest.expectedFailure
     def test_red_canonical_unicode_path_must_keep_patch_with_default_git_quoting(self):
         self.assert_full_single_file("café.py")
 
-    @unittest.expectedFailure
     def test_red_tab_in_path_must_not_silently_drop_changed_patch(self):
         self.assert_full_single_file("name\tpart.py")
 
-    @unittest.expectedFailure
     @unittest.skipUnless(os.name == "posix", "byte path fixture requires POSIX")
     def test_red_distinct_undecodable_paths_must_hold_before_any_review(self):
         names = (b"\xfe.py", b"\xff.py")
@@ -133,9 +130,9 @@ class SourceRedIntegrityTests(unittest.TestCase):
         "test_red_distinct_undecodable_paths_must_hold_before_any_review",
     )
 
-    def test_original_defects_are_three_real_assertion_failures_not_masked_errors(self):
+    def test_repaired_owner_source_passes_all_three_strict_original_regressions(self):
         for name in self.RED_METHODS:
-            self.assertTrue(
+            self.assertFalse(
                 getattr(GitChangePathIdentityAcceptance.__dict__[name],
                         "__unittest_expecting_failure__", False),
                 name,
@@ -145,15 +142,11 @@ class SourceRedIntegrityTests(unittest.TestCase):
             [GitChangePathIdentityAcceptance(name) for name in self.RED_METHODS]
         ).run(result)
         self.assertEqual(result.testsRun, len(self.RED_METHODS))
-        self.assertEqual(len(result.expectedFailures), len(self.RED_METHODS))
+        self.assertFalse(result.expectedFailures)
         self.assertFalse(result.errors)
         self.assertFalse(result.failures)
         self.assertFalse(result.unexpectedSuccesses)
-        for _case, traceback in result.expectedFailures:
-            self.assertIn("AssertionError:", traceback)
-            self.assertNotIn("TypeError:", traceback)
-            self.assertNotIn("OSError:", traceback)
-            self.assertNotIn("ImportError:", traceback)
+        self.assertTrue(result.wasSuccessful())
 
 if __name__ == "__main__":
     unittest.main()
