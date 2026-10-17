@@ -199,3 +199,39 @@ independent privacy/security review, exact approved release SHA full hosted
 and named permanent VPS CI, source-owner integration and explicit HUMAN GO
 remain mandatory. NO main merge, deploy, real target, scan, grant,
 handler dispatch or release.
+
+
+## W8 · whole 1,318-test owner-fix composition on a disposable VPS checkout (2026-10-17)
+
+The **unaltered own** SHA `92d26bee8dfdb4bda6b841ab0e92a05ca942b836`
+ran the whole native Python3.14.4 unit suite on the connected zSSH VPS:
+**1,318 tests with exactly two existing #1535 native registry-history I/O
+tripwire failures (exit 92)**; all new own source/advisory tests passed.
+There is **no published full-suite GREEN** at this SHA.
+
+Using a **separate /tmp disposable clone** (NOT a GitHub branch update),
+fetched original independent source-owner [draft #1536](https://github.com/Zennay/Lightup/pull/1536)
+exact SHA `f8b91596d48f318cb75050b70ccbf5a50d2cd106`,
+applied only that already-reviewed owner source blob
+`src/lightup/capability_registry_history_report.py` to the disposable
+worktree, then actually ran:
+
+```shell
+PYTHONPATH=src:tests python3 -B -m unittest discover -s tests -q
+```
+
+**1,318/1,318 unit tests OK** (Python 3.14.4, connected zSSH); exact
+checked-out own commit remained `92d26bee`, with **exactly one local
+uncommitted source-file modification** in the disposable checkout.
+No original owner branch, own GitHub branch, main, runner, deployment,
+real target, authorization, grant, scan or handler was modified.
+Expected test-only warning output (Python3.14 invalid escapes in separate
+original assertion fixtures, ResourceWarnings and local TLS BrokenPipe)
+is not a failing unittest status. This proves local composability,
+**not** an approved integrated release SHA or registered VPS Actions job.
+
+Production release remains **DRAFT/HOLD** pending source-owner integration,
+permanent named runner exact approved-SHA CI, full hosted CI, separate
+authenticated client/operator permission including revocation at use,
+independent privacy/security and explicit HUMAN GO. Neither test
+success nor this offline reviewer grants consent or execution rights.
