@@ -34,6 +34,21 @@ class _TrapDict(dict):
         raise AssertionError("foreign mapping executed")
 
 
+class _HostileKey:
+    def __init__(self):
+        self.armed = False
+
+    def __hash__(self):
+        if self.armed:
+            raise AssertionError("foreign hash executed after intake")
+        return 473
+
+    def __eq__(self, other):
+        if self.armed:
+            raise AssertionError("foreign comparison executed after intake")
+        return self is other
+
+
 class _TrapStr(str):
     def strip(self, *a, **kw):
         raise AssertionError("foreign text executed")
@@ -59,6 +74,19 @@ class Scope649ReviewerTests(unittest.TestCase):
 
     def test_refuses_foreign_mapping_without_touching_foreign_iteration(self):
         self.assertIs(subject.review_batch(_TrapDict(packet())).status, subject.ReviewStatus.HOLD)
+
+    def test_exact_dict_foreign_keys_are_rejected_without_rehashing_them(self):
+        for nested in (False, True):
+            with self.subTest(nested=nested):
+                key = _HostileKey()
+                raw = packet()
+                if nested:
+                    item = raw["items"][0]
+                    item[key] = item.pop("reference")
+                else:
+                    raw[key] = raw.pop("schema")
+                key.armed = True
+                self.assertIs(subject.review_batch(raw).status, subject.ReviewStatus.HOLD)
 
     def test_refuses_foreign_string_without_stripping(self):
         raw = packet()
