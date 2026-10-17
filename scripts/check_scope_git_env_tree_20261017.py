@@ -202,9 +202,28 @@ def _tracked_files_have_no_filters() -> bool:
         seen.add(identity)
     return True
 
+
+def _ignored_worktree_is_empty() -> bool:
+    """Ignored files cannot count as a clean source checkout.
+
+    Git status intentionally omits paths hidden by .gitignore,
+    .git/info/exclude, or global excludes. A hidden Python module or
+    startup hook could affect this evidence run while status says clean.
+    No ignored cache, script, bytecode, or executable is trusted here.
+    """
+    result = _git_raw(
+        "ls-files", "--others", "--ignored", "--exclude-standard", "-z"
+    )
+    return (
+        result.returncode == 0
+        and type(result.stdout) is bytes and result.stdout == b""
+        and type(result.stderr) is bytes and result.stderr == b""
+    )
+
+
 def git(*args: str) -> subprocess.CompletedProcess[bytes]:
-    if args and args[0] == "status" and not _tracked_files_have_no_filters():
-        # Do not invoke status if an external filter may execute.
+    if args and args[0] == "status" and (\n        not _tracked_files_have_no_filters() or not _ignored_worktree_is_empty()\n    ):
+        # No status if an external filter or invisible ignored file exists.
         return subprocess.CompletedProcess(args, 3, b"", b"")
     return _git_raw(*args)
 
