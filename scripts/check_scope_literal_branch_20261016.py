@@ -29,25 +29,59 @@ def safe_change(status: str, path: str) -> bool:
     )
 
 
-def safe_diff(raw: bytes) -> bool:
-    """Only exact NUL-delimited, added, exclusively own paths are acceptable."""
+def _owned_additions(raw: bytes) -> set[str] | None:
+    """Return a valid diff's exact owned paths, or None for malformed bytes."""
     if type(raw) is not bytes or not raw or len(raw) > 16384:
-        return False
+        return None
     try:
         segments = raw.decode("ascii").split("\0")
     except UnicodeError:
-        return False
+        return None
     if segments[-1] != "":
-        return False
+        return None
     segments.pop()
     if not segments or len(segments) % 2:
-        return False
+        return None
     names = set()
     for status, path in zip(segments[::2], segments[1::2]):
         if not safe_change(status, path) or path in names:
-            return False
+            return None
         names.add(path)
-    return OWNED_EXACT <= names
+    return names if OWNED_EXACT <= names else None
+
+
+def safe_diff(raw: bytes) -> bool:
+    """Only own exact paths may be newly added, never changed or deleted."""
+    return _owned_additions(raw) is not None
+
+
+def safe_tree(tree: bytes, delta: bytes) -> bool:
+    """Demand regular Git blobs at every added path; no links/gitlinks."""
+    paths = _owned_additions(delta)
+    if paths is None or type(tree) is not bytes or not tree or len(tree) > 32768:
+        return False
+    entries = tree.split(b"\0")
+    if entries[-1] != b"":
+        return False
+    entries.pop()
+    if len(entries) != len(paths):
+        return False
+    found: set[str] = set()
+    for entry in entries:
+        try:
+            header, path_raw = entry.split(b"\t", 1)
+            mode, kind, oid = header.split(b" ")
+            name = path_raw.decode("ascii")
+        except (ValueError, UnicodeError):
+            return False
+        if (
+            mode != b"100644" or kind != b"blob"
+            or re.fullmatch(rb"[0-9a-f]{40}", oid) is None
+            or name not in paths or name in found
+        ):
+            return False
+        found.add(name)
+    return found == paths
 
 
 def _git(*args: str) -> subprocess.CompletedProcess[bytes]:
@@ -66,10 +100,13 @@ def main() -> int:
             "diff", "--name-status", "-z", "--no-renames",
             "origin/main", "HEAD",
         )
+        owned = _owned_additions(diff.stdout) if diff.returncode == 0 else None
+        tree = _git("ls-tree", "-r", "-z", "HEAD", "--", *sorted(owned)) if owned else None
         ok = (
             base.returncode == 0 and head.returncode == 0
-            and len(head.stdout.strip()) == 40
-            and diff.returncode == 0 and safe_diff(diff.stdout)
+            and re.fullmatch(rb"[0-9a-f]{40}", head.stdout.strip()) is not None
+            and tree is not None and tree.returncode == 0
+            and safe_tree(tree.stdout, diff.stdout)
         )
     except (OSError, ValueError, TypeError, subprocess.TimeoutExpired):
         ok = False
