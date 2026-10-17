@@ -102,6 +102,22 @@ A source-policy regression that never returns must not leave the offline review 
 - Both new regressions prove forged metadata has no influence on real reviews, malicious extra keys are not echoed, and a direct mutation attempt is rejected. These are **self-contained output-integrity controls**, not a new signature, real consent validation, source-owner repair or execution gate.
 - Connected authorized zSSH on exact code SHA `4279f7daa7681fe5bb48a9a20f8ea49de03326e5`, Python 3.14.4: **35/35 dedicated tests PASS**, **86/86 original producer-integrations PASS** and clean Git index/tree. The parent full-suite baseline at `0424e22f45617b547f7e052748e51fcc7a046c05` was **1,270 tests, five inherited FAILs, 23 expectedFailures**. No claim of green complete suite on this later head until separately run.
 
+## W9 — read-only authorizer-input integrity and Python side-effect coverage (17 October 2026)
+
+**Scope**: still the three entirely new files on the separate #1565 branch; original installed `ScopePolicy.decide()`, authentication, jobs, CI, operational runner and all other scope owners remain unchanged. The *offline* witness is NOT a production authorization gate.
+
+### Reproduced independent failures → fixes
+
+1. **Post-decision fixture mutation**: four new RED tests proved `REVIEW_ONLY` even when the supposedly frozen `Target.value`, a fictional `Authorization.reference`, a `ScopePolicy` option or a **future case's** expected result had been modified using `object.__setattr__` after computing matching decision output. Fixed by retaining the original fully validated 17-case matrix snapshot and rechecking **all 17 fixtures after each policy call**. Any change returns `HOLD/offline_witness_fixture_mutated` before the next case, without emitting altered values.
+2. **Hidden dataclass attributes**: four further RED tests proved synthetic `Target`, `Authorization`, `ScopePolicy`, `WitnessCase` and returned `ScopeDecision` objects could acquire additional instance attributes without altering declared values, and still yield a positive receipt. Fixed exact instance-keyset checks for every object: mismatched fixture properties return `HOLD/offline_witness_fixture_mutated`, and an expanded decision returns `HOLD/invalid_decision_shape`. Baseline sample hashes are unchanged.
+3. **Audited process side effects**: three RED subcases proved ordinary Python environment changes (`os.putenv`), directory changes (`os.chdir`) and file-copy audit events (`shutil.copyfile`) were not caught by the earlier incomplete audit-event list. The context-local evaluation hook now denies full Python audit families: `os.*`, `shutil.*`, `socket.*`, `subprocess.*`, `ctypes.*`, plus `open` and common interpreter instrumentation events. All produce generic `HOLD/offline_witness_evaluation_failed` with no arguments echoed. Deliberate failure tests use only fictional local state and clean up after themselves.
+
+### Actual on-host regression evidence
+
+- Connected authorized zSSH VPS, Python 3.14.4, exact code head `2aa3b894203c1e12889922918a2d17a3b315a80b`: **45/45 dedicated witness unit methods PASS** and **86/86 original producer integration tests PASS**.
+- Complete original local unit suite on that exact head: **1,282 tests, five ordinary FAIL, 23 expectedFailures**. All five failure identities match the already independently baseline-reproduced original-source #301 expired test fixture and #1535 Python 3.14 registry-history subprocess failures. No additional unexpected failures relative to previous branch/full-suite run. This does NOT imply full project green.
+- This is a **checked Python-level boundary**, not a tamper-proof sandbox: trusted reviewed checkout only; native writes, direct memory mutation (including modify-then-restore) and unaudited operations are not categorically prevented. No authentic consent, target scans, runtime authorization, deployment, merge, hosted Python 3.11/3.14 or named self-hosted runner CI were performed.
+
 ## Gate interpretation
 
 - Green unit tests validate the witness's own classification, deterministic receipt, zero-network boundary, no authority flags and mutation-detection sensitivities.
