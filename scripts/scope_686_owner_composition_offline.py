@@ -97,6 +97,34 @@ def _run_tests(checkout: Path, label: str, args: list[str]) -> dict:
     }
 
 
+def _probe_guard(checkout: Path) -> dict:
+    env = dict(os.environ, PYTHONPATH="src", PYTHONDONTWRITEBYTECODE="1")
+    try:
+        result = subprocess.run(
+            [sys.executable, "scripts/scope_686_guard_probe_offline.py"],
+            cwd=checkout, env=env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=30, check=False)
+    except subprocess.TimeoutExpired as exc:
+        raise CompositionHold("opt-in guard probe timed out") from exc
+    if result.returncode:
+        raise CompositionHold("real opt-in guard probe failed")
+    try:
+        receipt = json.loads(result.stdout)
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise CompositionHold("invalid guard probe receipt") from exc
+    if (not isinstance(receipt, dict)
+            or receipt.get("status") != "HOLD"
+            or receipt.get("release_authorized") is not False
+            or receipt.get("candidate_compatibility") != "PASS"
+            or receipt.get("duplicates_denied_prebody") != 9
+            or receipt.get("public_login_denied_prebody") is not True
+            or receipt.get("single_session_controls_passed") != 3
+            or receipt.get("session_lookup_or_write_before_denial") is not False
+            or receipt.get("real_target_io_performed") is not False):
+        raise CompositionHold("unsafe or incomplete guard probe claims")
+    return receipt
+
+
 def verify(source: Path, head: str, mode: str) -> dict:
     """Return a non-authorizing result. Raises CompositionHold on any uncertainty."""
     head = _sha(head)
@@ -143,6 +171,7 @@ def verify(source: Path, head: str, mode: str) -> dict:
                 ("integration", ["-s", "tests/integration", "-q"]),
             ]
         results = [_run_tests(dest, label, argv) for label, argv in cases]
+        guard_probe = _probe_guard(dest)
         return {
             "status": "HOLD", "release_authorized": False,
             "real_target_interaction_authorized": False,
@@ -151,7 +180,7 @@ def verify(source: Path, head: str, mode: str) -> dict:
                 {"path": path, "commit": commit, "blob": blob}
                 for path, commit, blob in _OWNER
             ],
-            "test_mode": mode, "checks": results,
+            "test_mode": mode, "checks": results, "guard_probe": guard_probe,
             "limitations": "Disposable local owner composition, not exact-release-head hosted/permanent-VPS CI or deployed ingress proof.",
         }
 
