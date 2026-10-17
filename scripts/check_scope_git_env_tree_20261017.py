@@ -2,9 +2,11 @@
 """Isolated immutable Git tree shape check. No authorization or scans."""
 from __future__ import annotations
 
+import hashlib
 import os
 from pathlib import Path
 import re
+import stat
 import selectors
 import signal
 import subprocess
@@ -203,6 +205,57 @@ def _tracked_files_have_no_filters() -> bool:
     return True
 
 
+def _worktree_blobs_match_head(raw: object) -> bool:
+    """Check actual owned source bytes, not merely index/status Git metadata.
+
+    An assume-unchanged/skip-worktree index can hide modified source even
+    when git status is empty and HEAD's Git tree still looks correct.
+    """
+    if type(raw) is not bytes or len(raw) > 16384 or not raw.endswith(b"\\0"):
+        return False
+    try:
+        root = ROOT.resolve(strict=True)
+        found: set[str] = set()
+        for record in raw[:-1].split(b"\\0"):
+            meta, path = record.split(b"\\t", 1)
+            mode, kind, oid = meta.split(b" ")
+            name = path.decode("ascii")
+            if (
+                mode != b"100644" or kind != b"blob" or
+                SHA1.fullmatch(oid) is None or name not in OWNED or
+                name in found
+            ):
+                return False
+            found.add(name)
+            target = root
+            components = name.split("/")
+            # Reject even intermediate symlinks, not just file symlinks.
+            for part in components:
+                if part in ("", ".", ".."):
+                    return False
+                target = target / part
+                if target.is_symlink():
+                    return False
+            metadata = target.lstat()
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > 1048576:
+                return False
+            flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+            fd = os.open(target, flags)
+            with os.fdopen(fd, "rb") as handle:
+                current = os.fstat(handle.fileno())
+                if not stat.S_ISREG(current.st_mode) or current.st_size > 1048576:
+                    return False
+                payload = handle.read(1048577)
+            if len(payload) > 1048576 or len(payload) != current.st_size:
+                return False
+            blob = b"blob " + str(len(payload)).encode("ascii") + b"\\0" + payload
+            if hashlib.sha1(blob).hexdigest().encode("ascii") != oid:
+                return False
+        return found == OWNED
+    except (OSError, ValueError, UnicodeError, TypeError):
+        return False
+
+
 def _ignored_worktree_is_empty() -> bool:
     """Ignored files cannot count as a clean source checkout.
 
@@ -265,6 +318,7 @@ def main() -> int:
             and top.stdout == os.fsencode(str(ROOT.resolve())) + b"\n"
             and ancestor.returncode == 0 and diff.returncode == 0
             and tree.returncode == 0 and safe_tree(tree.stdout, diff.stdout)
+            and _worktree_blobs_match_head(tree.stdout)
         )
     except (OSError, UnicodeError, ValueError, TypeError, subprocess.TimeoutExpired):
         good = False
