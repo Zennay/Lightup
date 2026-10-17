@@ -365,7 +365,7 @@ class MutationWitnessQualityTests(unittest.TestCase):
                         "test_invalid_target_cannot_be_rescued_by_grant_or_auth_flag")
 
         result = unittest.TestResult()
-        result.testsRun = 13
+        result.testsRun = 16
         case = Case()
         if assertion:
             result.failures.append((case, "Traceback: AssertionError: denied correctly"))
@@ -399,21 +399,45 @@ class MutationWitnessQualityTests(unittest.TestCase):
 
 
     def test_exact_membership_contract_manifest_is_complete(self):
-        self.assertEqual(len(self.proof.REQUIRED_TEST_METHODS), 13)
+        self.assertEqual(len(self.proof.REQUIRED_TEST_METHODS), 16)
         self.assertTrue(self.proof.suite_manifest_valid())
 
     def test_security_case_replacement_with_unrelated_stub_is_rejected(self):
-        # Preserve total of 13 tests while replacing one meaningful case.
-        # A mere testsRun == 13 gate would produce an unsafe false green.
+        # Preserve total of 16 tests while replacing one meaningful case.
+        # A mere testsRun == 16 gate would produce an unsafe false green.
         cls = self.proof.suite_module.ScopeMembershipMetamorphicTests
         missing = "test_ipv6_right_neighbor_of_declared_prefix_remains_unlisted"
         replacement = "test_noop_unrelated_stub"
         with patch.object(cls, missing, None):
             with patch.object(cls, replacement, lambda self: None, create=True):
                 suite = unittest.defaultTestLoader.loadTestsFromModule(self.proof.suite_module)
-                self.assertEqual(suite.countTestCases(), 13)
+                self.assertEqual(suite.countTestCases(), 16)
                 self.assertFalse(self.proof.suite_manifest_valid())
         self.assertTrue(self.proof.suite_manifest_valid())
+
+
+    def test_downstream_mutation_manifest_is_separate_and_exact(self):
+        self.assertEqual(
+            {entry[0] for entry in self.proof.DOWNSTREAM_MUTATIONS},
+            {
+                "planner_denied_capabilities",
+                "planner_early_discovery",
+                "planner_execution_enabled",
+                "permit_gate_missing_membership",
+                "permit_token_before_membership",
+            },
+        )
+        for name, owner, method, mutation, contract in self.proof.DOWNSTREAM_MUTATIONS:
+            with self.subTest(mutation=name):
+                self.assertIn(owner.__name__, ("Planner", "ActivationGate"))
+                self.assertIn(method, ("build", "issue"))
+                self.assertTrue(callable(mutation))
+                self.assertIn(contract, self.proof.REQUIRED_TEST_METHODS)
+
+    def test_downstream_mutation_restoration_targets_canonical_source(self):
+        self.assertIs(self.proof.Planner.build, self.proof.REAL_PLAN)
+        self.assertIs(self.proof.ActivationGate.issue, self.proof.REAL_ISSUE)
+        self.assertEqual(len(self.proof.REQUIRED_TEST_METHODS), 16)
 
     def test_all_nine_mutation_canaries_have_distinct_expected_contracts(self):
         self.assertEqual(len(self.proof.MUTATIONS), 9)
@@ -438,7 +462,7 @@ class MutationWitnessQualityTests(unittest.TestCase):
         result = self.result()
         result.testsRun = 7
         self.assertFalse(self.proof.mutation_detected(result, "test_invalid_target"))
-        result.testsRun = 13
+        result.testsRun = 16
         self.assertTrue(self.proof.mutation_detected(result, "test_invalid_target"))
 
     def test_expected_red_or_exception_text_is_not_acceptance(self):
