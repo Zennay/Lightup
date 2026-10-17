@@ -20,8 +20,16 @@ KNOWN_SOURCE_REDS = frozenset({
     "test_scope_literal_controls_20261016.InstalledSourceRedWitness.test_original_lab_activation_must_deny_control_char_authority",
     "test_scope_literal_controls_20261016.InstalledSourceRedWitness.test_original_scope_must_not_convert_newline_in_url",
 })
-MIN_TESTS = 128
+MIN_TESTS = 129
 REQUIRED_CASES = frozenset({
+    'test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_index_flags_reject_assume_unchanged_and_skip_worktree',
+    'test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_real_git_index_flag_transitions_are_hold',
+    'test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_ignored_source_files_force_hold',
+    'test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_ignored_python_file_is_invisible_to_git_status_but_not_to_new_fence',
+    'test_scope_literal_git_modes_20261016.TreeModeFenceTests.test_exact_worktree_bytes_must_match_owned_head_tree',
+    'test_scope_literal_git_modes_20261016.TreeModeFenceTests.test_worktree_blob_proof_fails_on_tree_or_delta_tampering',
+    'test_scope_literal_suite_integrity_20261016.ManifestEvidenceTests.test_source_integrity_sentinels_are_mandatory',
+
     "test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_real_branch_checker_rejects_dirty_checkout",
     "test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_workflow_checks_clean_checkout_after_tests",
     "test_scope_literal_runtime_isolation_20261016.RuntimeIsolationStaticTests.test_all_production_modules_stay_unwired",

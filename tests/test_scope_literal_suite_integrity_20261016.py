@@ -18,6 +18,14 @@ spec.loader.exec_module(manifest)
 
 
 PINNED_GATES = frozenset({
+    'test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_index_flags_reject_assume_unchanged_and_skip_worktree',
+    'test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_real_git_index_flag_transitions_are_hold',
+    'test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_ignored_source_files_force_hold',
+    'test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_ignored_python_file_is_invisible_to_git_status_but_not_to_new_fence',
+    'test_scope_literal_git_modes_20261016.TreeModeFenceTests.test_exact_worktree_bytes_must_match_owned_head_tree',
+    'test_scope_literal_git_modes_20261016.TreeModeFenceTests.test_worktree_blob_proof_fails_on_tree_or_delta_tampering',
+    'test_scope_literal_suite_integrity_20261016.ManifestEvidenceTests.test_source_integrity_sentinels_are_mandatory',
+
     "test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_real_branch_checker_rejects_dirty_checkout",
     "test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_workflow_checks_clean_checkout_after_tests",
     "test_scope_literal_runtime_isolation_20261016.RuntimeIsolationStaticTests.test_all_production_modules_stay_unwired",
@@ -49,6 +57,24 @@ class ManifestEvidenceTests(unittest.TestCase):
         ]
         modules = {item.split(".", 1)[0] for item in ids}
         return ids, result, modules
+
+    def test_source_integrity_sentinels_are_mandatory(self):
+        from pathlib import Path
+        required_names = frozenset({
+            "test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_index_flags_reject_assume_unchanged_and_skip_worktree",
+            "test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_real_git_index_flag_transitions_are_hold",
+            "test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_ignored_source_files_force_hold",
+            "test_scope_literal_ownership_20261016.AdditiveOwnershipTests.test_ignored_python_file_is_invisible_to_git_status_but_not_to_new_fence",
+            "test_scope_literal_git_modes_20261016.TreeModeFenceTests.test_exact_worktree_bytes_must_match_owned_head_tree",
+            "test_scope_literal_git_modes_20261016.TreeModeFenceTests.test_worktree_blob_proof_fails_on_tree_or_delta_tampering",
+        })
+        self.assertEqual(PINNED_GATES, manifest.REQUIRED_CASES)
+        self.assertTrue(required_names <= PINNED_GATES)
+        for item in required_names:
+            with self.subTest(case=item):
+                module, cls, method = item.split(".")
+                self.assertTrue((ROOT / "tests" / (module + ".py")).is_file())
+                self.assertTrue(method.startswith("test_"))
 
     def test_correct_manifest_is_valid_synthetic_proof(self):
         ids, result, modules = self.example()
