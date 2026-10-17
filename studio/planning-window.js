@@ -42,7 +42,9 @@ function validateStored(local,window){
  if(Object.keys(window).some(k=>!allowed.includes(k)))return false;
  const hasNull=window.status==='unscheduled'||window.status==='incomplete';
  if(hasNull){
-   return window.start===null&&window.end===null&&typeof window.timezone==='string'&&window.timezone.length<=100;
+   const emptyStart=local&&local.start===null,emptyEnd=local&&local.end===null;
+   const correctState=window.status==='unscheduled'?(emptyStart&&emptyEnd):(emptyStart!==emptyEnd);
+   return !!correctState&&window.start===null&&window.end===null&&typeof window.timezone==='string'&&window.timezone.length<=100;
  }
  if(window.status!=='resolved'||typeof window.timezone!=='string'||window.timezone.length>100||
     typeof window.start!=='string'||typeof window.end!=='string'||!Number.isInteger(window.start_offset_minutes)||
@@ -52,12 +54,25 @@ function validateStored(local,window){
  const ISO=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00\.000Z$/;
  if(!ISO.test(window.start)||!ISO.test(window.end)||window.start>=window.end)return false;
  if(Number.isNaN(Date.parse(window.start))||Number.isNaN(Date.parse(window.end)))return false;
- // The source zone has to be retained. Never recalculate an existing draft in another browser's zone.
- return !!local&&typeof local==='object'&&typeof local.start==='string'&&typeof local.end==='string';
+ // Bind imported UTC instants to source-local wall times and recorded offsets.
+ // This is a consistency check, not proof of the named timezone's authenticity.
+ if(!local||typeof local!=='object'||typeof local.start!=='string'||typeof local.end!=='string')return false;
+ const a=DATE.exec(local.start),b=DATE.exec(local.end);
+ if(!a||!b)return false;
+ const toUTC=(match,minutes)=>{
+  const [,year,month,day,hour,minute]=match.map(Number);
+  return new Date(Date.UTC(year,month-1,day,hour,minute)+minutes*60000).toISOString();
+ };
+ try {
+  return toUTC(a,window.start_offset_minutes)===window.start &&
+         toUTC(b,window.end_offset_minutes)===window.end;
+ }catch(_){return false;}
 }
 function overlaps(a,b){
  if(!a||!b||a.status!=='resolved'||b.status!=='resolved')return null;
- if(!validateStored({start:'source',end:'source'},a)||!validateStored({start:'source',end:'source'},b))return null;
+ // The import boundary validated wall time/UTC consistency. Compare only bounded ISO instants here.
+ const ISO=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00\.000Z$/;
+ if(!ISO.test(a.start)||!ISO.test(a.end)||!ISO.test(b.start)||!ISO.test(b.end))return null;
  return a.start<b.end&&b.start<a.end;
 }
 global.LightUpPlanningWindow=Object.freeze({localTimestamp,resolve,validateStored,overlaps,timezone});
