@@ -153,6 +153,14 @@ If any source is missing, changed, oversized or is a symlink, imports are **skip
 
 **Actual connected zSSH proof:** Python 3.14.4 at intermediate exact source head `0319899d79a7e9181859d5673962b0051a5733cb`: **54/54 dedicated tests PASS**, **86/86 original producer integration tests PASS**, clean Git index and worktree. These local SHA pins are **not signatures, trusted build attestations, OS sandboxing, or verification of already-executed code**; source can still be altered concurrently, bytecode caches and native bypass remain outside the guarantee. Any legitimate source-owner update will intentionally make the witness HOLD until independently reviewed and repinned.
 
+## W13 — before-positive source provenance re-attestation (17 October 2026)
+
+**Independent RED reproduced on connected zSSH:** a policy evaluation could succeed while its pinned source files or imported module origin changed **after** the initial `evaluate()` provenance check. Two new regression methods forced a valid first source hash and a changed second hash, and separately mutated `lightup.scope.__file__` during a legitimate decision. On the original W12 code, both scenarios incorrectly yielded `REVIEW_ONLY` or only one source-check call, demonstrating a stale positive source-evidence window.
+
+**FIX:** right after the complete 17-case policy matrix, and still inside the exclusive 2.5-second time fence, the witness rechecks **both** full source SHA256 bytes and cached Python-module origins. Any difference produces `HOLD/offline_witness_source_drift`, without a positive digest or paths. It then checks monotonic elapsed time again before finally returning an affirmative non-authorizing review receipt. This retains the existing before-import proof, strict no-symlink source checks and dedicated nested-review HOLD.
+
+**Authorized zSSH Python 3.14.4 evidence:** exact code SHA `90dbb8436582649484e8c40e63b787c729597c26`: **56/56 focused regressions PASS, 86/86 original producer integrations PASS**, clean Git index/worktree. The two new source-race tests both changed RED→GREEN. This is still not an atomic filesystem import or an OS/code-signing trust boundary: short transient modify-restore, malicious bytecode caches or native interpreter memory modification are outside the stated proof. Only reviewed synthetic offline use is valid; real grant, dispatch and release remain disabled.
+
 ## Gate interpretation
 
 - Green unit tests validate the witness's own classification, deterministic receipt, zero-network boundary, no authority flags and mutation-detection sensitivities.
