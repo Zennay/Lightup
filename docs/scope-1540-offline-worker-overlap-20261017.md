@@ -122,6 +122,54 @@ and enforce DRAFT/HOLD separately. Even a valid status from this adapter
 does **not** establish ancestry, prove complete or safe integration,
 permit a merge, record consent, issue a grant or approve release.
 
+### Dual-view PR/compare consistency (offline, new)
+
+A third, standalone **advisory-only** CLI checks two complementary
+*caller-provided* observations before forwarding normalized compare data
+to the existing offline path reviewer. It never contacts GitHub, calls
+handlers, writes evidence, mints authority, starts CI, or changes a branch:
+
+```sh
+python3 -I -S -B scripts/review_scope_pr_compare_pair_offline_1540.py < examples/scope1540-pr-pair-review-only.json
+# REVIEW_ONLY, exit 3, six literal false authority flags
+python3 -I -S -B scripts/review_scope_pr_compare_pair_offline_1540.py < examples/scope1540-pr-pair-hold.json
+# HOLD, exit 2, six literal false authority flags
+```
+
+**Input:** canonical compact sorted-key ASCII JSON, maximum 65,536 bytes,
+with exact root fields `version:1`, `base_sha`,
+`repository_full_name`, `reviews`. Repository identity is a bounded
+case-sensitive ASCII `owner/name` reference, *not* an authenticated
+GitHub connection. Exactly 2–32 reviews, each with exactly `worker`,
+`branch`, `pr`, and `compare`:
+
+- `pr` exact fields: `number` (unique positive exact integer),
+  `state:"open"`, `draft:true`, `base_sha`, `head_sha`,
+  `head_ref`, `changed_files`, `head_repo_full_name`. The
+  branch, pinned base and repository name must match the outer review.
+  Forked or mismatched repositories are conservatively HOLD.
+- `compare` exact fields: `base_sha`, `head_sha`,
+  `repository_full_name`, `status:"ahead"`, positive `ahead_by`,
+  zero `behind_by`, `too_large:false` and `files`. Both commit
+  references must match the PR and its pinned common base exactly.
+  `len(files)` must equal the PR's `changed_files` (1–64).
+- A PR number or compared head SHA used by two different workers,
+  missing old/new rename provenance, unexpected status, changed branch,
+  closed/non-draft PR, trailing JSON bytes, casefold file identity
+  collision or any extra field causes atomic `HOLD`.
+- The existing version-2 path engine still checks every source and
+  destination of renames/copies, and the receipts remain fixed, no-echo
+  non-authorizing results (never success code 0).
+
+These **two views can both be forged or stale**. Comparing their claims
+neither independently authenticates the GitHub source nor proves commit
+provenance, ownership, pagination completeness, file modes, symbolic links,
+permission, reviewed code, release criteria or actual client/operator consent.
+The source of both snapshots and completeness of the GitHub compare must
+be verified *outside* the CLI before an operator can treat even
+`REVIEW_ONLY` as meaningful preliminary information. No operation here
+can lift LightUp's release HOLD.
+
 The 40-character sample SHA is **fictional**; it must not be mistaken for a
 real origin/base attestation. Multiple workers must submit precisely the same
 pinned baseline SHA. Reject different, missing, syntactically wrong, uppercase
@@ -161,7 +209,7 @@ interpreted as conflict-free, approval, permission to trigger handlers, or GO.
 ## Ownership and release gate
 
 This branch adds two unwired offline reviewers, independent acceptance suites
-and this document, solely under ten newly owned paths. No edits to
+and this document, solely under fifteen newly owned paths. No edits to
 existing source owners' `src/lightup/*`, other workers' branches, existing
 workflows, real clients/targets, live grants, execution handlers, scanning,
 remediation, or deployment.
