@@ -133,5 +133,24 @@ class TemporaryOwnerTreeTests(unittest.TestCase):
             gate.inspect_exact_head(self.root, head)
 
 
+class HostedTriggerContractTests(unittest.TestCase):
+    def test_any_head_change_triggers_tree_review(self):
+        workflow = (pathlib.Path(__file__).resolve().parents[1] /
+                    ".github/workflows/scope-1563-membership-offline.yml").read_text()
+        trigger = workflow.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
+        self.assertIn("pull_request:", trigger)
+        self.assertIn("synchronize", trigger)
+        self.assertNotIn("paths:", trigger)
+        self.assertIn("github.head_ref == 'chatgpt/scope-1563-membership-metamorphic-20261017'", workflow)
+
+    def test_non_authorizing_exit_three_required_in_workflow(self):
+        workflow = (pathlib.Path(__file__).resolve().parents[1] /
+                    ".github/workflows/scope-1563-membership-offline.yml").read_text()
+        self.assertIn("python scripts/scope_1563_exact_tree_boundary_20261017.py", workflow)
+        self.assertIn('test "$result" -eq 3', workflow)
+        self.assertIn("fetch-depth: 0", workflow)
+        self.assertIn("persist-credentials: false", workflow)
+
+
 if __name__ == "__main__":
     unittest.main()
