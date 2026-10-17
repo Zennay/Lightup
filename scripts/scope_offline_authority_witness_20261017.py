@@ -326,6 +326,11 @@ def _evaluate_pinned_cases(fixtures: tuple[WitnessCase, ...], fixture_digest: st
 
 def evaluate(cases: tuple[WitnessCase, ...] | None = None) -> dict[str, object]:
     """Only pin-matched, bounded fictional evaluation may yield REVIEW_ONLY."""
+    # Nested evaluation already runs under the caller's no-I/O fence, so
+    # refuse before file-based provenance inspection rather than triggering
+    # an audited file-open and producing a misleading source-drift reason.
+    if _WITNESS_EVALUATION_ACTIVE.get():
+        return _receipt("HOLD", "offline_witness_time_fence_unavailable")
     if _VERIFIED_SOURCE is None or _trusted_source_hashes() is None:
         return _receipt("HOLD", _SOURCE_STATUS)
     try:
