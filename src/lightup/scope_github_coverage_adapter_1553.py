@@ -27,11 +27,11 @@ _HUNK = re.compile(
 )
 
 
-def _complete_patch_stats(patch: str) -> tuple[int, int] | None:
-    """Require complete ordinary unified hunks, not merely matching +/- totals.
+def _complete_patch_stats(patch: str, status: str) -> tuple[int, int] | None:
+    """Reject inconsistent hunk coverage and status, never authenticate Git.
 
-    GitHub patch metadata is fictional and untrusted here. Even satisfying
-    hunk spans does not authenticate the patch against real Git objects.
+    The old/new file-coordinate gaps between consecutive hunks must be equal:
+    those omitted regions are unchanged context, not unexplained edits.
     """
     if not patch or "\r" in patch:
         return None
@@ -41,15 +41,34 @@ def _complete_patch_stats(patch: str) -> tuple[int, int] | None:
     seen_hunk = False
     additions = removals = 0
     old_remaining = new_remaining = 0
+    last_old_end: int | None = None
+    last_new_end: int | None = None
     for line in lines:
         match = _HUNK.fullmatch(line)
         if match is not None:
             if seen_hunk and (old_remaining or new_remaining):
                 return None
-            old_remaining = int(match.group(2) if match.group(2) is not None else 1)
-            new_remaining = int(match.group(4) if match.group(4) is not None else 1)
-            if old_remaining > _MAX_CHANGED_LINES or new_remaining > _MAX_CHANGED_LINES:
+            old_start, new_start = int(match.group(1)), int(match.group(3))
+            old_count = int(match.group(2) if match.group(2) is not None else 1)
+            new_count = int(match.group(4) if match.group(4) is not None else 1)
+            if any(n > _MAX_CHANGED_LINES for n in (
+                old_start, new_start, old_count, new_count
+            )):
                 return None
+            if (old_count > 0 and old_start == 0) or (new_count > 0 and new_start == 0):
+                return None
+            if status == "added" and (old_start != 0 or old_count != 0):
+                return None
+            if status == "removed" and (new_start != 0 or new_count != 0):
+                return None
+            if last_old_end is not None and last_new_end is not None:
+                old_gap = old_start - last_old_end
+                new_gap = new_start - last_new_end
+                if old_gap < 0 or new_gap < 0 or old_gap != new_gap:
+                    return None
+            last_old_end = old_start + old_count
+            last_new_end = new_start + new_count
+            old_remaining, new_remaining = old_count, new_count
             seen_hunk = True
         elif not seen_hunk:
             return None
@@ -70,6 +89,10 @@ def _complete_patch_stats(patch: str) -> tuple[int, int] | None:
             return None
     if (not seen_hunk or additions + removals == 0
             or old_remaining or new_remaining):
+        return None
+    if status == "added" and removals:
+        return None
+    if status == "removed" and additions:
         return None
     return additions, removals
 
@@ -144,7 +167,7 @@ def preview(coverage: object, records: object) -> dict[str, object]:
                 return _output("HOLD")
         except UnicodeError:
             return _output("HOLD")
-        if _complete_patch_stats(patch) != (
+        if _complete_patch_stats(patch, status) != (
             record["additions"], record["deletions"]
         ):
             return _output("HOLD")
