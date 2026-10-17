@@ -44,7 +44,7 @@ jobs:
             '.github/workflows/scope-646-offline-acceptance.yml' \
             'docs/scope-grant-scope-identity-646-20261017.md' \
             'tests/test_scope_grant_scope_identity_646_20261017.py'; do
-            test "$(git ls-tree HEAD "$path" | cut -f1)" = '100644 blob'
+            test "$(git ls-tree HEAD "$path" | cut -d" " -f1,2)" = '100644 blob'
             test -z "$(git ls-tree 4c8d5651fc0e23f94514daae56b4e5fe0549de37 "$path")"
           done
           echo 'scope646_owned_paths=PASS'
