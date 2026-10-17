@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -19,6 +20,10 @@ from lightup.models import Authorization, Target  # noqa: E402
 from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason  # noqa: E402
 
 SCHEMA = "lightup.scope-offline-decision-witness.v1"
+# These hashes attest only the fictional fixtures and observed classifications.
+# They are not source signatures, real consent, or release/merge authority.
+REFERENCE_FIXTURE_SHA256 = "PENDING_INITIAL_VALIDATION"
+REFERENCE_BEHAVIOR_SHA256 = "075c7598f4a01809cd19ef8a02d9380a2bdbde01e2a22fd8dfc940475386dcb1"
 FALSE_AUTHORITY = {
     "client_consent_verified": False,
     "operator_consent_verified": False,
@@ -82,55 +87,88 @@ def _receipt(status: str, reason: str, checked: int = 0, digest: str | None = No
     return result
 
 
+def _hash_canonical_rows(rows: list[list[object]]) -> str:
+    raw = json.dumps(rows, sort_keys=True, ensure_ascii=True, separators=(",", ":")).encode("ascii")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _fixture_snapshot(fixtures: object) -> list[list[object]] | None:
+    """Validate every fictional case before calling any policy method."""
+    if type(fixtures) is not tuple or len(fixtures) != 17:
+        return None
+    seen: set[str] = set()
+    rows: list[list[object]] = []
+    for case in fixtures:
+        if (
+            type(case) is not WitnessCase
+            or type(case.case_id) is not str
+            or re.fullmatch(r"[a-z][a-z0-9-]{0,63}", case.case_id) is None
+            or case.case_id in seen
+            or type(case.target) is not Target
+            or type(case.target.value) is not str
+            or len(case.target.value) > 512
+            or not case.target.value.isascii()
+            or type(case.target.labels) is not tuple
+            or len(case.target.labels) > 16
+            or any(type(label) is not str or len(label) > 128 for label in case.target.labels)
+            or type(case.policy) is not ScopePolicy
+            or type(case.policy.allow_private_lab) is not bool
+            or type(case.policy.require_authorization_for_public) is not bool
+            or type(case.policy.explicit_hosts) is not frozenset
+            or len(case.policy.explicit_hosts) > 16
+            or any(type(item) is not str or len(item) > 253 for item in case.policy.explicit_hosts)
+            or type(case.policy.explicit_networks) is not tuple
+            or len(case.policy.explicit_networks) > 16
+            or any(type(item) is not str or len(item) > 64 for item in case.policy.explicit_networks)
+            or type(case.expected_allowed) is not bool
+            or (case.expected_host is not None and type(case.expected_host) is not str)
+            or type(case.expected_reason) is not ScopeReason
+        ):
+            return None
+        authorization = case.target.authorization
+        if authorization is not None:
+            if (
+                type(authorization) is not Authorization
+                or type(authorization.owner) is not str
+                or len(authorization.owner) > 128
+                or type(authorization.reference) is not str
+                or len(authorization.reference) > 128
+            ):
+                return None
+            for bound in (authorization.valid_from, authorization.valid_until):
+                if bound is not None and (
+                    type(bound) is not datetime or bound.tzinfo is not timezone.utc
+                ):
+                    return None
+        rows.append([
+            case.case_id, case.target.value, list(case.target.labels),
+            None if authorization is None else [
+                authorization.owner, authorization.reference,
+                None if authorization.valid_from is None else authorization.valid_from.isoformat(),
+                None if authorization.valid_until is None else authorization.valid_until.isoformat(),
+            ],
+            case.policy.allow_private_lab,
+            sorted(case.policy.explicit_hosts),
+            list(case.policy.explicit_networks),
+            case.policy.require_authorization_for_public,
+            case.expected_allowed, case.expected_host, case.expected_reason.value,
+        ])
+        seen.add(case.case_id)
+    return rows
+
+
 def evaluate(cases: tuple[WitnessCase, ...] | None = None) -> dict[str, object]:
-    """Evaluate only synthetic in-memory cases. Returns a non-authorizing result."""
+    """Only pin-matched, prevalidated fictional fixtures reach the real evaluator."""
     try:
         fixtures = canonical_cases() if cases is None else cases
-        if type(fixtures) is not tuple or len(fixtures) != 17:
+        snapshot = _fixture_snapshot(fixtures)
+        if snapshot is None:
             return _receipt("HOLD", "invalid_witness_matrix")
-        ids: set[str] = set()
+        fixture_digest = _hash_canonical_rows(snapshot)
+        if fixture_digest != REFERENCE_FIXTURE_SHA256:
+            return _receipt("HOLD", "reference_fixture_drift")
         observed: list[list[object]] = []
         for case in fixtures:
-            if (
-                type(case) is not WitnessCase
-                or type(case.case_id) is not str
-                or not case.case_id.isascii()
-                or not case.case_id
-                or case.case_id in ids
-                or type(case.target) is not Target
-                or type(case.target.value) is not str
-                or type(case.target.labels) is not tuple
-                or any(type(label) is not str for label in case.target.labels)
-                or (
-                    case.target.authorization is not None
-                    and (
-                        type(case.target.authorization) is not Authorization
-                        or type(case.target.authorization.owner) is not str
-                        or type(case.target.authorization.reference) is not str
-                        or any(
-                            bound is not None and (
-                                type(bound) is not datetime or bound.tzinfo is not timezone.utc
-                            )
-                            for bound in (
-                                case.target.authorization.valid_from,
-                                case.target.authorization.valid_until,
-                            )
-                        )
-                    )
-                )
-                or type(case.policy) is not ScopePolicy
-                or type(case.policy.allow_private_lab) is not bool
-                or type(case.policy.require_authorization_for_public) is not bool
-                or type(case.policy.explicit_hosts) is not frozenset
-                or any(type(item) is not str for item in case.policy.explicit_hosts)
-                or type(case.policy.explicit_networks) is not tuple
-                or any(type(item) is not str for item in case.policy.explicit_networks)
-                or type(case.expected_allowed) is not bool
-                or (case.expected_host is not None and type(case.expected_host) is not str)
-                or type(case.expected_reason) is not ScopeReason
-            ):
-                return _receipt("HOLD", "invalid_witness_matrix")
-            ids.add(case.case_id)
             decision = case.policy.decide(case.target)
             if (
                 type(decision) is not ScopeDecision
@@ -146,8 +184,12 @@ def evaluate(cases: tuple[WitnessCase, ...] | None = None) -> dict[str, object]:
             ):
                 return _receipt("HOLD", "scope_policy_contract_drift")
             observed.append([case.case_id, decision.allowed, decision.normalized_host, decision.reason.value])
-        raw = json.dumps(observed, sort_keys=True, ensure_ascii=True, separators=(",", ":")).encode("ascii")
-        return _receipt("REVIEW_ONLY", "canonical_synthetic_matrix_matches", len(fixtures), hashlib.sha256(raw).hexdigest())
+        digest = _hash_canonical_rows(observed)
+        if digest != REFERENCE_BEHAVIOR_SHA256:
+            return _receipt("HOLD", "reference_behavior_drift")
+        receipt = _receipt("REVIEW_ONLY", "canonical_synthetic_matrix_matches", len(fixtures), digest)
+        receipt["synthetic_fixture_sha256"] = fixture_digest
+        return receipt
     except Exception:
         # Never echo potentially sensitive input/exception data to the review channel.
         return _receipt("HOLD", "offline_witness_evaluation_failed")
