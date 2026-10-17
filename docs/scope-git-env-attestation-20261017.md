@@ -434,3 +434,27 @@ a production security gate, tamper-proof runtime isolation, real
 client/operator permission, an original CI pass, or release approval.
 No production LightUp code, VPS runner, grant, handler or scanner is
 modified by this work.
+
+
+## W87–W89 — canonical index flags required even when bytes currently match (2026-10-17)
+
+A clean and byte-identical tracked source file may nevertheless have
+Git's `assume-unchanged` or `skip-worktree` bit set. The previous raw
+worktree-blob verifier would correctly reject **existing** divergence,
+but it could not warn about those hidden future-source-change masks
+while a file still happened to match the committed SHA-1.
+
+The separate, read-only index-fence now examines `git ls-files -v -z`
+for **exactly the six scope-owned tracked paths** and requires literal
+canonical `H path\\0` for every path. Lowercase assume-unchanged
+(`h`), skip-worktree (`S`), duplicate/missing/unexpected paths,
+nonzero Git exit or any diagnostic output produce HOLD. Real
+disposable Git regression toggles both flags while content is still
+unchanged and proves each transitions from PASS to HOLD and back
+after removing the flag. The already proven raw file-byte check
+remains independently mandatory; neither check is an authorization
+gate or proof against a privileged concurrent attacker.
+
+No merge, deploy, real asset scan, grant, handler execution or
+release. Existing project-phase, source-owner, privacy, consent,
+original full hosted and named permanent VPS proof gates remain open.
