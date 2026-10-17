@@ -102,8 +102,8 @@ class TemporaryOwnerTreeTests(unittest.TestCase):
         result = gate.inspect_exact_head(self.root, head)
         self.assertEqual(result["decision"], "REVIEW_ONLY")
         self.assertEqual(result["added_paths"], len(gate.ALLOWED_ADDED))
-        self.assertEqual(result["authorization_granted"], "false")
-        self.assertEqual(result["release_approved"], "false")
+        self.assertIs(result["authorization_granted"], False)
+        self.assertIs(result["release_approved"], False)
 
     def test_reject_source_change_even_with_all_expected_new_paths(self):
         self._write("README.md", "modified original file")
