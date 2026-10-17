@@ -84,8 +84,15 @@ def _git_raw(*args: str, data: bytes | None = None) -> subprocess.CompletedProce
     if data is not None and (type(data) is not bytes or len(data) > 262144):
         raise ValueError("invalid bounded Git stdin")
     command = [GIT_BINARY, "-c", "core.fsmonitor=false", *args]
+    # A read-only Git query still launches a new executable. Never forward
+    # Python startup, Git config/worktree or dynamic-loader override variables
+    # into that executable, even when _git_raw is called outside main().
+    child_env = {
+        key: value for key, value in os.environ.items()
+        if not key.startswith(("GIT_", "LD_", "DYLD_", "PYTHON"))
+    }
     process = subprocess.Popen(
-        command, cwd=ROOT,
+        command, cwd=ROOT, env=child_env,
         stdin=subprocess.PIPE if data is not None else subprocess.DEVNULL,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         start_new_session=True,
