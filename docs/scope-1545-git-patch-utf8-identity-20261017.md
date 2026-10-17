@@ -202,3 +202,27 @@ The current owner-isolated hosted Python 3.11/3.14 and complete preflight
 and [#39024580177](https://github.com/Zennay/Lightup/actions/runs/39024580177)
 were green on the *previous* W7 SHA, not claimed for the new W8 SHA until
 that exact commit has its own independent run evidence.
+
+## W9 — real Git EOF marker source/semantic integrity, RED-to-GREEN
+
+The fictional validator accepted **five actual negative Git hunk fixtures**
+that falsely placed `\\ No newline at end of file` before further same-side
+lines (3 failing subcases) or before a subsequent separate hunk (2 more).
+Such a record cannot claim faithfully to describe the last line of the
+underlying file. The checker now validates that the immediately preceding
+`-`/`+`/context line is actually final on its affected hunk side, and
+rejects any later hunk after an EOF marker. No Git configuration, source-owner
+module, real file content, or execution capability was touched.
+
+Separate independently committed positive controls use **real temporary
+Git repositories without hooks, remote connections or external targets**:
+a normal two-distant-hunk patch with complete context and another real
+multi-hunk patch whose *last* hunk correctly carries the Git EOF marker are
+both still admitted only as non-authorizing REVIEW_ONLY. Valid UTF-8 text and
+unambiguous Git geometry were explicitly protected against regressions.
+
+Current connected zSSH Python3.14.4: **33 test methods executed = 32 ordinary
+PASS + 1 original-source expectedFailure**. Initial five negative subcases
+were truly RED and are now GREEN. These isolated results and the corresponding
+GitHub-hosted checks must remain separate from entire original unit and
+permanent named VPS runner acceptance; no merge/release authority follows.

@@ -102,7 +102,12 @@ def check_patch(raw: bytes) -> bool:
         previous_old_end = -1
         previous_new_end = -1
         hunks = 0
+        file_end_claimed = False
         while index < len(lines):
+            # An EOF marker applies to a final file line, so no separate
+            # later hunk may follow it even if that hunk's ranges are sorted.
+            if file_end_claimed:
+                return False
             match = HUNK.fullmatch(lines[index])
             if match is None:
                 return False
@@ -127,13 +132,23 @@ def check_patch(raw: bytes) -> bool:
             old_seen = new_seen = 0
             changed = False
             last_content = False
+            last_prefix = ""
             used_no_newline = False
             while index < len(lines) and not lines[index].startswith("@@ "):
                 line = lines[index]
                 if line == r"\ No newline at end of file":
                     if not last_content or used_no_newline:
                         return False
+                    # This marker can only describe the final line on the
+                    # affected side of the Git file. No future old/new lines
+                    # may legitimately follow an end-of-file claim.
+                    if (last_prefix == "-" and old_seen != old_count
+                            or last_prefix == "+" and new_seen != new_count
+                            or last_prefix == " " and
+                                (old_seen != old_count or new_seen != new_count)):
+                        return False
                     used_no_newline = True
+                    file_end_claimed = True
                     last_content = False
                 else:
                     if not line or line[0] not in " +-":
@@ -145,6 +160,7 @@ def check_patch(raw: bytes) -> bool:
                     if line[0] in " +":
                         new_seen += 1
                     last_content = True
+                    last_prefix = line[0]
                     used_no_newline = False
                 if old_seen > old_count or new_seen > new_count:
                     return False

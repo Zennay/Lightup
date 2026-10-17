@@ -166,6 +166,25 @@ class ReviewBytesTests(unittest.TestCase):
             with self.subTest(raw=raw):
                 self.assertFalse(reviewer.check_patch(raw))
 
+    def test_git_no_newline_markers_cannot_claim_middle_of_file(self):
+        invalid = (
+            b"@@ -1,2 +1,2 @@\n-old\n\\ No newline at end of file\n context\n+new",
+            b"@@ -1,2 +1,2 @@\n-old\n+new\n\\ No newline at end of file\n context",
+            b"@@ -1,2 +1,2 @@\n context\n\\ No newline at end of file\n-old\n+new",
+        )
+        for raw in invalid:
+            with self.subTest(raw=raw[:65]):
+                self.hold(encoded(document(raw)))
+
+    def test_git_no_newline_end_of_file_cannot_precede_later_hunks(self):
+        for first_hunk in (
+            b"@@ -1 +1 @@\n-old\n\\ No newline at end of file\n+new",
+            b"@@ -1 +1 @@\n-old\n+new\n\\ No newline at end of file",
+        ):
+            fake = first_hunk + b"\n@@ -10 +10 @@\n-before\n+after"
+            with self.subTest(first=first_hunk[:45]):
+                self.hold(encoded(document(fake)))
+
     def test_noncanonical_base64_and_digest_holds(self):
         for changed in ("patch_b64", "sha256"):
             specimen = document(GOOD)
@@ -327,6 +346,49 @@ class OriginalSourceGitPatchTests(unittest.TestCase):
         patch_text = result.files[0]["patch"]
         self.assertIn("café",patch_text)
         self.assertTrue(reviewer.check_patch(patch_text.encode("utf-8")))
+
+    def test_real_git_two_distant_hunks_preserve_exact_review_shape(self):
+        sys.path.insert(0,str(ROOT/"src"))
+        from lightup.git_changes import collect_git_range
+        original = [f"line_{n} = {n}\n" for n in range(1, 50)]
+        (self.root/"fixture.py").write_text("".join(original),encoding="utf-8")
+        self.git("add","fixture.py")
+        self.git("-c","user.name=Synthetic","-c","user.email=synthetic@example.invalid","commit","-qm","base")
+        before=self.git("rev-parse","HEAD").decode().strip()
+        changed=list(original)
+        changed[2]="line_3 = 300\n"
+        changed[41]="line_42 = 4200\n"
+        (self.root/"fixture.py").write_text("".join(changed),encoding="utf-8")
+        self.git("add","fixture.py")
+        self.git("-c","user.name=Synthetic","-c","user.email=synthetic@example.invalid","commit","-qm","changed")
+        after=self.git("rev-parse","HEAD").decode().strip()
+        got=collect_git_range(self.root,before,after,merge_base=False,repository="synthetic/fixture")
+        patch_text=got.files[0]["patch"]
+        self.assertEqual(patch_text.count("@@ -"),2)
+        self.assertTrue(reviewer.check_patch(patch_text.encode("utf-8")))
+        self.assertEqual(reviewer.evaluate(encoded(document(patch_text.encode()))),reviewer.REVIEW_ONLY)
+
+    def test_real_git_valid_final_hunk_no_newline_after_earlier_change(self):
+        sys.path.insert(0,str(ROOT/"src"))
+        from lightup.git_changes import collect_git_range
+        lines=[f"sample_{n}\n" for n in range(1, 54)]
+        (self.root/"fixture.py").write_text("".join(lines),encoding="utf-8")
+        self.git("add","fixture.py")
+        self.git("-c","user.name=Synthetic","-c","user.email=synthetic@example.invalid","commit","-qm","base")
+        before=self.git("rev-parse","HEAD").decode().strip()
+        updated=list(lines)
+        updated[2]="sample_3_modified\n"
+        updated[-1]="sample_53_modified"
+        (self.root/"fixture.py").write_text("".join(updated),encoding="utf-8")
+        self.git("add","fixture.py")
+        self.git("-c","user.name=Synthetic","-c","user.email=synthetic@example.invalid","commit","-qm","changed")
+        after=self.git("rev-parse","HEAD").decode().strip()
+        data=collect_git_range(self.root,before,after,merge_base=False,repository="synthetic/fixture")
+        raw=data.files[0]["patch"].encode("utf-8")
+        self.assertEqual(raw.count(b"@@ -"),2)
+        self.assertIn(b"\\ No newline at end of file",raw)
+        self.assertTrue(reviewer.check_patch(raw))
+        self.assertEqual(reviewer.evaluate(encoded(document(raw))),reviewer.REVIEW_ONLY)
 
     def test_actual_raw_invalid_utf8_patch_is_lossily_decoded(self):
         sys.path.insert(0,str(ROOT/"src"))
