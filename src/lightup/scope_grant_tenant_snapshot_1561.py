@@ -10,6 +10,7 @@ ambiguity is HOLD (exit 2). Exit 0 is intentionally impossible.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sqlite3
@@ -91,6 +92,46 @@ def _path_snapshot(path: Path):
         raise _HOLD("unsafe_snapshot") from None
 
 
+def _snapshot_sha256(path: Path, expected_metadata: tuple) -> bytes:
+    """Read only the exact checked inode; hash a bounded offline snapshot.
+
+    Opening via O_NOFOLLOW closes the last-component symlink race. If the
+    platform lacks that flag, reject rather than quietly degrade security.
+    """
+    nofollow = getattr(os, "O_NOFOLLOW", None)
+    if nofollow is None:
+        raise _HOLD("unsafe_snapshot")
+    fd = -1
+    try:
+        fd = os.open(str(path), os.O_RDONLY | nofollow |
+                     getattr(os, "O_CLOEXEC", 0))
+        info = os.fstat(fd)
+        got = (info.st_dev, info.st_ino, info.st_size,
+               info.st_mtime_ns, info.st_ctime_ns)
+        if got != expected_metadata or not stat.S_ISREG(info.st_mode):
+            raise _HOLD("snapshot_changed")
+        digest = hashlib.sha256()
+        count = 0
+        while True:
+            block = os.read(fd, 65536)
+            if not block:
+                break
+            count += len(block)
+            if count > MAX_SNAPSHOT_BYTES:
+                raise _HOLD("snapshot_changed")
+            digest.update(block)
+        if count != info.st_size:
+            raise _HOLD("snapshot_changed")
+        return digest.digest()
+    except _HOLD:
+        raise
+    except (OSError, OverflowError, MemoryError):
+        raise _HOLD("unsafe_snapshot") from None
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
 def _guard_schema(con: sqlite3.Connection) -> None:
     # Reject views, missing tables and schema variants without attempting
     # any repair. With PKs, a join cannot multiply rows ambiguously.
@@ -124,6 +165,7 @@ def inspect_offline_grant_tenants(snapshot_path: str) -> dict:
             raise _HOLD("invalid_input")
         path = Path(snapshot_path).absolute()
         before = _path_snapshot(path)
+        original_hash = _snapshot_sha256(path, before)
         uri = "file:" + quote(str(path), safe="/") + "?mode=ro&immutable=1"
         con = sqlite3.connect(uri, uri=True, timeout=0)
         try:
@@ -168,6 +210,8 @@ def inspect_offline_grant_tenants(snapshot_path: str) -> dict:
         finally:
             con.close()
         if _path_snapshot(path) != before:
+            raise _HOLD("snapshot_changed")
+        if _snapshot_sha256(path, before) != original_hash:
             raise _HOLD("snapshot_changed")
         if orphan:
             return _receipt("orphaned_engagement", coherent, mismatch, orphan)
