@@ -107,3 +107,31 @@ The stable disposition is always `RECORD_ONLY`. It intentionally has the followi
 ```
 
 This contract is suitable for displaying *request status* in a separate authenticated client interface. It is **never** a token permitting real-target work and does not replace authenticated separate client/operator consent or a live grant/revocation check.
+
+## Request inbox, operator work queue and review detail
+
+The same opt-in WSGI product now supports these **read-only** routes in addition to the prior client receipt and operator desk:
+
+| Route | Access | Product behavior |
+|---|---|---|
+| `GET /authorization-desk/queue/pending` | Operator session | Filter the desk to submitted / under-review requests |
+| `GET /authorization-desk/queue/decided` | Operator session | Filter the desk to requests with a recorded decision |
+| `GET /authorization-desk/requests/<request_id>` | Operator session | Read a complete request dossier, including risk, asset scope, notes and requester-account observation; no approve/reject button or automatic decision |
+| `GET /api/v1/operator/authorization-queue` | Operator session only | A bounded pending-review JSON list with links to the dossiers |
+| `GET /api/v1/portal/<client_id>/requests` | Signed-in tenant-bound client or operator reader | A bounded list of that tenant's request status records and receipt URLs |
+
+The operator overview still links to the main desk. The desk has direct pending/decided filter links, client drilldowns and a link for each request to its detail. The request detail gives the operator a human-readable explanation of the current account-role observation **without** asserting that the person actually consented or had that role when they submitted the request.
+
+The client portal shows legible request status cards (requested risk, creation time, first requested asset and status), and request receipts distinguish recorded, waiting, approved and rejected states. **An approved request is not a scan authorization**. They also link to the authenticated JSON status and tenant-scoped history.
+
+### Machine-readable contract
+
+The operator queue is `lightup.operator-request-inbox.v1`, `REVIEW_ONLY`. It lists pending requests up to 50 per snapshot and reports whether more exist. Client history is `lightup.portal-request-index.v1`, `RECORD_ONLY`, limited to 40 per snapshot. Both omit original free-text notes and sensitive session/evidence data. Request receipt IDs used in navigable URLs are bounded to canonical letters/digits/hyphens; malformed stored identities cause a generic denial, never a trusted or actionable link.
+
+Both JSON index endpoints and the existing single-receipt endpoint return content type `application/json` and preserve LightUp's existing no-store/content-security protections. Unauthorized JSON callers receive JSON 401/403 rather than a successful HTML login redirect; mismatched tenants receive a generic 404 response. Both index schemas keep `execution_authorized`, `client_consent_verified`, `operator_consent_verified`, `grant_bound` and `release_approved` strictly `false`.
+
+The API is an **information display contract only**. It never exports a grant or changes execution rights, the source-owned approval state machine, scope definitions, live revocation or client/operator consent.
+
+### Current delivery and release gates
+
+This is still an *opt-in web integration*, not the default installed LightUp application. The web source owner (#182) owns integration into the default routes. Under **INCUBATE M3/M7 PLAN/LAB ONLY / DRAFT HOLD** there must be no merge or deploy without independent security/privacy acceptance, separately authenticated client/operator consent with revocation at use, exact head required hosted/permanent named VPS CI, and an explicit human GO. No additional QA/regression suites were written or executed for this feature.
