@@ -97,7 +97,8 @@ class OfflineTreeModesTests(unittest.TestCase):
             "GITHUB_SHA": sha,
         }
         with patch.object(guard, "git", side_effect=fake_git), \
-             patch.object(guard, "_worktree_blobs_match_head", return_value=True):
+             patch.object(guard, "_worktree_blobs_match_head", return_value=True), \
+             patch.object(guard, "_owned_index_flags_are_canonical", return_value=True):
             with patch.dict(guard.os.environ, env, clear=True):
                 with redirect_stdout(io.StringIO()):
                     self.assertEqual(guard.main(), 0)
@@ -138,7 +139,8 @@ class OfflineTreeModesTests(unittest.TestCase):
             )
             return CompletedProcess(argv, 0, data, b"")
         with patch.object(guard, "git", side_effect=fake_git), \
-             patch.object(guard, "_worktree_blobs_match_head", return_value=True):
+             patch.object(guard, "_worktree_blobs_match_head", return_value=True), \
+             patch.object(guard, "_owned_index_flags_are_canonical", return_value=True):
             with patch.dict(guard.os.environ, event, clear=True):
                 with redirect_stdout(io.StringIO()) as output:
                     self.assertEqual(guard.main(), 0)
@@ -272,7 +274,8 @@ class OfflineTreeModesTests(unittest.TestCase):
                 }[argv[0]]
             return CompletedProcess(argv, 0, output, b"")
         with patch.object(guard, "git", side_effect=fake_git), \
-             patch.object(guard, "_worktree_blobs_match_head", return_value=True):
+             patch.object(guard, "_worktree_blobs_match_head", return_value=True), \
+             patch.object(guard, "_owned_index_flags_are_canonical", return_value=True):
             with patch.dict(guard.os.environ, context, clear=True):
                 with redirect_stdout(io.StringIO()) as out:
                     self.assertEqual(guard.main(), 3)
@@ -325,7 +328,8 @@ class OfflineTreeModesTests(unittest.TestCase):
                     stderr = b"fictional integrity warning\n" if args[0] == warned else b""
                     return CompletedProcess(args, 0, result, stderr)
                 with patch.object(guard, "git", side_effect=fake_git), \
-             patch.object(guard, "_worktree_blobs_match_head", return_value=True):
+             patch.object(guard, "_worktree_blobs_match_head", return_value=True), \
+             patch.object(guard, "_owned_index_flags_are_canonical", return_value=True):
                     with patch.dict(guard.os.environ, event, clear=True):
                         with redirect_stdout(io.StringIO()):
                             self.assertEqual(guard.main(), 3)
@@ -537,6 +541,59 @@ class OfflineTreeModesTests(unittest.TestCase):
             bytecode.unlink()
             with patch.object(guard, "ROOT", root):
                 self.assertTrue(guard._ignored_worktree_is_empty())
+
+    def test_currently_clean_index_rejects_assume_and_skip_flags(self):
+        """Reject dangerous index flags even BEFORE source content changes."""
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_index_flags_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp)
+            def git(*argv):
+                return subprocess.run(
+                    [guard.GIT_BINARY, *argv], cwd=root,
+                    check=True, capture_output=True, timeout=6,
+                ).stdout
+            git("init", "-q")
+            (root / "owned.py").write_text("SAFE=True\n")
+            git("add", "owned.py")
+            git("-c", "user.name=Reviewer", "-c",
+                "user.email=reviewer@example.invalid",
+                "commit", "-qm", "synthetic index fixture")
+            with patch.object(guard, "ROOT", root), \
+                 patch.object(guard, "OWNED", frozenset({"owned.py"})):
+                self.assertTrue(guard._owned_index_flags_are_canonical())
+                git("update-index", "--assume-unchanged", "owned.py")
+                self.assertEqual(git("status", "--porcelain=v1", "-z"), b"")
+                self.assertFalse(guard._owned_index_flags_are_canonical())
+                git("update-index", "--no-assume-unchanged", "owned.py")
+                self.assertTrue(guard._owned_index_flags_are_canonical())
+                git("update-index", "--skip-worktree", "owned.py")
+                self.assertEqual(git("status", "--porcelain=v1", "-z"), b"")
+                self.assertFalse(guard._owned_index_flags_are_canonical())
+                git("update-index", "--no-skip-worktree", "owned.py")
+                self.assertTrue(guard._owned_index_flags_are_canonical())
+
+    def test_owned_index_flags_fail_closed_on_ambiguous_git(self):
+        from subprocess import CompletedProcess
+        from unittest.mock import patch
+        with patch.object(guard, "OWNED", frozenset({"owned.py"})):
+            good = b"H owned.py\0"
+            for output, rc, stderr in (
+                (b"h owned.py\0", 0, b""),
+                (b"S owned.py\0", 0, b""),
+                (b"H owned.py\0H owned.py\0", 0, b""),
+                (b"H other.py\0", 0, b""),
+                (good[:-1], 0, b""),
+                (good, 1, b""),
+                (good, 0, b"warning"),
+                (b"x" * 8193 + b"\0", 0, b""),
+            ):
+                with self.subTest(output=output[:26],rc=rc):
+                    with patch.object(guard, "_git_raw", return_value=CompletedProcess([],rc,output,stderr)):
+                        self.assertFalse(guard._owned_index_flags_are_canonical())
+            with patch.object(guard, "_git_raw", return_value=CompletedProcess([],0,good,b"")):
+                self.assertTrue(guard._owned_index_flags_are_canonical())
 
     def test_ignored_probe_fail_closed_on_malformed_git(self):
         from subprocess import CompletedProcess
