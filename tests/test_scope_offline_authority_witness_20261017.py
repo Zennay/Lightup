@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone, timedelta
 import re
 import socket
 import subprocess
@@ -30,7 +31,7 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
     def test_canonical_matrix_is_review_only_not_execution_permission(self):
         result = witness.evaluate()
         self.assertEqual(result["status"], "REVIEW_ONLY")
-        self.assertEqual(result["checked"], 11)
+        self.assertEqual(result["checked"], 17)
         self.assertRegex(result["synthetic_matrix_sha256"], r"^[0-9a-f]{64}$")
         self.assert_no_authority(result)
 
@@ -142,6 +143,54 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
                 self.assertEqual(result["status"], "HOLD")
                 self.assertEqual(result["reason"], "invalid_witness_matrix")
                 self.assert_no_authority(result)
+
+    def test_time_bound_authorization_and_no_auth_policy_are_distinct_controls(self):
+        cases = {case.case_id: case for case in witness.canonical_cases()}
+        for identity in ("explicit-host-expired", "explicit-host-not-yet", "explicit-cidr-expired"):
+            with self.subTest(case=identity):
+                original = cases[identity]
+                self.assertFalse(original.expected_allowed)
+                self.assertIs(original.expected_reason, witness.ScopeReason.AUTHORIZATION_EXPIRED)
+        bypass = cases["explicit-host-no-auth-policy"]
+        self.assertTrue(bypass.expected_allowed)
+        self.assertIs(bypass.policy.require_authorization_for_public, False)
+        self.assertIsNone(bypass.target.authorization)
+        self.assertEqual(witness.evaluate()["status"], "REVIEW_ONLY")
+
+    def test_time_bound_alias_or_non_utc_metadata_is_denied_before_policy(self):
+        cases = witness.canonical_cases()
+        original = cases[11]
+        class DeceptiveDatetime(datetime):
+            def __lt__(self, other):
+                raise AssertionError("untrusted date comparison executed")
+        inputs = (
+            DeceptiveDatetime(2000, 1, 1, tzinfo=timezone.utc),
+            datetime(2000, 1, 1),
+            datetime(2000, 1, 1, tzinfo=timezone(timedelta(hours=1))),
+            "2000-01-01",
+        )
+        for bound in inputs:
+            with self.subTest(bound_type=type(bound).__name__, bound_tz=str(getattr(bound, "tzinfo", None))):
+                auth = witness.Authorization(owner="fictional-reviewer", reference="SYNTHETIC-EXPIRED", valid_until=bound)
+                alternate = replace(original, target=witness.Target(original.target.value, authorization=auth))
+                result = witness.evaluate(cases[:11] + (alternate,) + cases[12:])
+                self.assertEqual(result["status"], "HOLD")
+                self.assertEqual(result["reason"], "invalid_witness_matrix")
+                self.assert_no_authority(result)
+
+    def test_expiry_policy_bypass_or_reason_mutation_is_detected(self):
+        cases = witness.canonical_cases()
+        original_decide = witness.ScopePolicy.decide
+        def ignore_expiry(self, target):
+            decision = original_decide(self, target)
+            if decision.reason is witness.ScopeReason.AUTHORIZATION_EXPIRED:
+                return witness.ScopeDecision(True, decision.normalized_host, witness.ScopeReason.EXPLICIT_HOST)
+            return decision
+        with patch.object(witness.ScopePolicy, "decide", ignore_expiry):
+            result = witness.evaluate()
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "scope_policy_contract_drift")
+        self.assert_no_authority(result)
 
     def test_no_network_socket_or_dns_is_necessary(self):
         with (patch.object(socket, "socket", side_effect=AssertionError("network invoked")),
