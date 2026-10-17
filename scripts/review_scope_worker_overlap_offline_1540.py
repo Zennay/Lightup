@@ -44,13 +44,26 @@ def _safe_branch(value):
             and all(part for part in value.split("/")))
 
 
+def _portable_segment(part: str) -> bool:
+    if part in (".", "..") or SEGMENT.fullmatch(part) is None:
+        return False
+    if part.endswith(".") or part.casefold() == ".git":
+        return False
+    # Git metadata internals and Win32 DOS device names are never considered
+    # unambiguous files in a cross-platform worker proposal.
+    stem = part.split(".", 1)[0].casefold()
+    if stem in {"con", "prn", "aux", "nul"}:
+        return False
+    if re.fullmatch(r"(?:com|lpt)[1-9]", stem) is not None:
+        return False
+    return True
+
+
 def _safe_path(value):
     if type(value) is not str or len(value) > 240 or not value:
         return False
     parts = value.split("/")
-    return (len(parts) <= 16 and all(
-        part not in (".", "..") and SEGMENT.fullmatch(part) is not None
-        and not part.endswith(".") for part in parts))
+    return len(parts) <= 16 and all(_portable_segment(part) for part in parts)
 
 
 def _canonical_decode(raw):
