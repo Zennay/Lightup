@@ -50,7 +50,7 @@ jobs:
             tests/test_scope_pr_snapshots_1549_offline.py | sort > expected.txt
           diff -u expected.txt actual.txt
           # An allowed filename is not an allowed symlink or executable.
-          # Require four plain Git blobs (100644), not links (120000)
+          # Require six exact plain Git blobs (100644), not links (120000)
           # or executable/script-mode substitutions (100755).
           while IFS= read -r path; do
             mode="$(git ls-tree HEAD -- "$path" | cut -d ' ' -f1)"
