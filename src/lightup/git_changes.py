@@ -91,16 +91,28 @@ def _path(raw: bytes) -> str:
     return path
 
 
+_STATUS_CODE = re.compile(rb"^(?:[ADMT]|[RC](?:0[0-9]{2}|100))$")  # git prints R%03d
+
+
+def _nul_records(output: bytes) -> list[bytes]:
+    """Split ``-z`` output; a non-empty output must end with exactly one NUL."""
+    if not output:
+        return []
+    if not output.endswith(b"\0"):
+        raise GitChangeError("git -z output is not NUL-terminated")
+    return output[:-1].split(b"\0")
+
+
 def _parse_numstat(output: bytes) -> dict[str, tuple[int | None, int | None]]:
     """Parse ``git diff --numstat -z`` (renames are ``a\tr\t\0old\0new\0``)."""
-    tokens = output.split(b"\0")
-    if tokens and tokens[-1] == b"":
-        tokens.pop()
+    tokens = _nul_records(output)
     result: dict[str, tuple[int | None, int | None]] = {}
     index = 0
     while index < len(tokens):
         fields = tokens[index].split(b"\t", 2)
-        if len(fields) != 3:
+        if len(fields) != 3 or not all(
+            count == b"-" or count.isdigit() for count in fields[:2]
+        ):
             raise GitChangeError("malformed git numstat record")
         added, removed, name = fields
         if name:
@@ -119,15 +131,19 @@ def _parse_numstat(output: bytes) -> dict[str, tuple[int | None, int | None]]:
 
 
 def _parse_name_status(output: bytes) -> list[tuple[str, str | None, str]]:
-    """Parse ``git diff --name-status -z`` into (letter, previous, path)."""
-    tokens = output.split(b"\0")
-    if tokens and tokens[-1] == b"":
-        tokens.pop()
+    """Parse ``git diff --name-status -z`` into (letter, previous, path).
+
+    Unknown or malformed status codes fail closed instead of silently
+    dropping the file from the review.
+    """
+    tokens = _nul_records(output)
     entries: list[tuple[str, str | None, str]] = []
     seen: set[str] = set()
     index = 0
     while index < len(tokens):
-        letter = tokens[index][:1].decode("ascii", "replace")
+        if not _STATUS_CODE.match(tokens[index]):
+            raise GitChangeError(f"unsupported git status code {tokens[index][:8]!r}")
+        letter = tokens[index][:1].decode("ascii")
         width = 3 if letter in {"R", "C"} else 2
         if index + width > len(tokens):
             raise GitChangeError("truncated git name-status record")
