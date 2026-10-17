@@ -132,11 +132,17 @@ def receipt(exit_code: int) -> str:
 
 def main() -> int:
     # No options, paths, subprocesses, network, file reads, or runtime imports.
-    code = HOLD if len(sys.argv) != 1 else evaluate(sys.stdin.buffer.read(MAX_INPUT_BYTES + 1))
     try:
-        sys.stdout.write(receipt(code))
+        code = HOLD if len(sys.argv) != 1 else evaluate(sys.stdin.buffer.read(MAX_INPUT_BYTES + 1))
+    except (OSError, ValueError, UnicodeError):
+        code = HOLD
+    message = receipt(code)
+    try:
+        written = sys.stdout.write(message)
+        if written != len(message):
+            return HOLD
         sys.stdout.flush()
-    except (OSError, ValueError):
+    except (OSError, ValueError, UnicodeError):
         return HOLD
     return code
 

@@ -94,3 +94,11 @@ self-hosted VPS GitHub Actions evidence, and explicit HUMAN GO.
 
 The synthetic reviewer is advisory only; never integrate a REVIEW_ONLY receipt
 as an execution or release permit.
+
+## W2 — real transport RED-to-GREEN and affected original-suite evidence
+
+- First committed owner-isolated SHA 3fd30dc47edb6037bd4e9fe40046d870a0121996: 19 tests = 18 ordinary PASS + one intentionally unresolved source expectedFailure.
+- Newly added real fail-closed transport tests initially **ERROR** when stdin raised OSError and **FAIL** when stdout wrote fewer characters than requested but the CLI still returned exit 3. Both corrected within the exclusively owned CLI without source-owner changes. Now 21/21 executed = **20 ordinary PASS + one intentionally outstanding expectedFailure**; strict SyntaxWarning-as-error test command completed successfully on connected zSSH Python 3.14.4.
+- Existing source-owner test modules passed separately: test_change_review.py 26/26, test_change_review_store.py 4/4, test_github_changes.py 9/9, test_change_semantics.py 6/6 — **45 ordinary existing tests**. github_changes.py initially lacked a package import under Python -I without installation; rerun with PYTHONPATH=src (only this isolated checkout) passed. This is an invocation artifact, not a code defect.
+- A full repository unittest discovery was attempted in the same checkout, but the zSSH individual command hit its **30-second deadline** before completion; no full-suite success is claimed. Pre-existing #1535 SyntaxWarning is still present at this source-owner base. Do not promote to release.
+- No new or existing workflows/runner services started. No real targets, scans, customers, grants, handlers, merges, or deployment.

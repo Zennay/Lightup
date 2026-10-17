@@ -5,6 +5,8 @@ No target, handler, grants, Git commands, network, or installed source mutation.
 from __future__ import annotations
 
 import ast
+import io
+from unittest.mock import patch
 import importlib.util
 import json
 from pathlib import Path
@@ -195,6 +197,27 @@ class PolicyFloorTests(unittest.TestCase):
         code, result = run_cli(encode(good()), "--allow-release")
         self.assertEqual(code, 2)
         self.assertEqual(result["status"], "HOLD")
+
+    def test_stdin_failure_is_generic_hold_without_traceback(self):
+        class BrokenInput:
+            class buffer:
+                @staticmethod
+                def read(_amount):
+                    raise OSError("SENSITIVE_STDIN_ERROR")
+        output = io.StringIO()
+        with patch.object(reviewer.sys, "stdin", BrokenInput()), patch.object(reviewer.sys, "stdout", output), patch.object(reviewer.sys, "argv", [str(SCRIPT)]):
+            self.assertEqual(reviewer.main(), reviewer.HOLD)
+        self.assertEqual(json.loads(output.getvalue())["status"], "HOLD")
+        self.assertNotIn("SENSITIVE_STDIN_ERROR", output.getvalue())
+
+    def test_partial_stdout_cannot_report_review_only(self):
+        class PartialWriter:
+            def write(self, data):
+                return len(data) - 1
+            def flush(self):
+                return None
+        with patch.object(reviewer.sys, "stdin", type("Input", (), {"buffer": io.BytesIO(encode(good()))})()), patch.object(reviewer.sys, "stdout", PartialWriter()), patch.object(reviewer.sys, "argv", [str(SCRIPT)]):
+            self.assertEqual(reviewer.main(), reviewer.HOLD)
 
     def test_no_external_imports_or_source_wiring(self):
         tree = ast.parse(SCRIPT.read_text(encoding="utf-8"))
