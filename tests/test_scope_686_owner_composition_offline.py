@@ -186,9 +186,11 @@ class CompositionSafetyTests(unittest.TestCase):
             "status": "HOLD",
             "release_authorized": False,
             "candidate_mutant_coverage": "PASS",
-            "mutants_rejected": 3,
+            "mutants_rejected": 7,
             "mutation_labels": [
-                "guard_removed", "body_read_early", "session_cookie_mutation"],
+                "guard_removed", "body_read_early", "body_readline_early",
+                "body_readinto_early", "body_getvalue_early",
+                "body_iterator_early", "session_cookie_mutation"],
             "real_target_io_performed": False,
         }
 
