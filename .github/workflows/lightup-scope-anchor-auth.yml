@@ -1,0 +1,50 @@
+name: LightUp scope fictional MAC anchor isolated proof
+
+on:
+  pull_request:
+    paths:
+      - 'src/lightup/scope_audit_anchor_auth_offline.py'
+      - 'tests/test_scope_audit_anchor_auth_offline.py'
+      - '.github/workflows/lightup-scope-anchor-auth.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fictional-scope-anchor-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-only:
+    name: Fictional MAC anchor Python ${{ matrix.python }} (HOSTED ONLY)
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Check immutable exact head
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+      - name: Compile exclusive files
+        run: python -m compileall -q src/lightup/scope_audit_anchor_auth_offline.py tests/test_scope_audit_anchor_auth_offline.py
+      - name: Run real offline subprocess regressions
+        env:
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests -p test_scope_audit_anchor_auth_offline.py -v
+      - name: Baseline safety canaries
+        env:
+          PYTHONPATH: src
+        run: python scripts/check_safety_canaries.py
+      - name: HOLD means no live consent or release
+        run: echo 'Hosted diagnostic only, NOT named VPS CI, consent, production merge or active security scan.'
