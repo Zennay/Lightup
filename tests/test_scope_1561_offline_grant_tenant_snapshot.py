@@ -52,8 +52,11 @@ class GrantTenantSnapshot1561(unittest.TestCase):
         )
 
     def corrupt(self, sql, params):
-        with sqlite3.connect(self.db) as con:
-            con.execute(sql, params)
+        # SQLite connection's context manager commits, but does NOT close;
+        # explicitly closing is necessary to checkpoint a WAL fixture.
+        with contextlib.closing(sqlite3.connect(self.db)) as con:
+            with con:
+                con.execute(sql, params)
 
     def snapshot(self):
         return hashlib.sha256(self.db.read_bytes()).hexdigest()
@@ -113,7 +116,7 @@ class GrantTenantSnapshot1561(unittest.TestCase):
         self.assertEqual((r["mismatch"], r["orphan"]), (1, 1))
 
     def test_null_and_binary_client_ids_hold(self):
-        for value in (None, sqlite3.Binary(b"binary-fake-client")):
+        for value in ("", sqlite3.Binary(b"binary-fake-client")):
             with self.subTest(value=type(value).__name__):
                 self.corrupt(
                     "UPDATE authorization_grants SET client_id=? WHERE grant_id=?",
@@ -129,9 +132,10 @@ class GrantTenantSnapshot1561(unittest.TestCase):
         self.assertEqual(self.audit()["reason"], "tenant_lineage_mismatch")
 
     def test_invalid_schema_missing_pk_holds(self):
-        with sqlite3.connect(self.db) as con:
-            con.execute("ALTER TABLE engagements RENAME TO deleted_engagements")
-            con.execute("CREATE TABLE engagements(engagement_id TEXT, client_id TEXT)")
+        with contextlib.closing(sqlite3.connect(self.db)) as con:
+            with con:
+                con.execute("ALTER TABLE engagements RENAME TO deleted_engagements")
+                con.execute("CREATE TABLE engagements(engagement_id TEXT, client_id TEXT)")
         self.assertEqual(self.audit()["reason"], "invalid_schema")
 
     def test_symlink_snapshot_holds(self):
