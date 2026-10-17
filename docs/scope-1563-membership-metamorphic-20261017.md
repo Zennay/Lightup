@@ -70,6 +70,21 @@ The dedicated GitHub-hosted tree workflow previously used a `pull_request.paths`
 
 The test module includes two additional negative static CI regressions verifying `synchronize` is covered without a path filter, checkout ancestry is complete and credentials are not persisted, and the gate requires **non-authorizing exit 3** rather than success exit 0. On connected allowed zSSH, exact head `35a414298bf93d0a50d71157612dd2bfebd0bf24`: **11/11 tree/CI controls ordinary PASS, 7/7 membership controls PASS, 4/4 deliberate fail-open mutations detected, 86/86 producer integrations PASS, six original safety canaries correct; Git tree clean**. The final hosted PR-head run must be verified independently; there is no automatic merge or release from a passing run.
 
+## W15 — per-commit ownership, not just final-tree appearance
+
+A concrete **security defect in this review gate** was reproduced on the connected zSSH VPS before remediation: in a disposable local branch, a commit changed original \`src/lightup/scope.py\` and the immediately following commit reverted it byte-for-byte. \`git diff original_base final_head\` showed only the seven permitted new files, so the previous gate incorrectly returned \`REVIEW_ONLY/exit 3\`. No source was pushed, merged, scanned, or deployed.
+
+The corrected new-only \`scripts/scope_1563_exact_tree_boundary_20261017.py\` now checks **every commit** reachable between immutable base and the pinned exact head:
+
+- Requires one contiguous **linear** parent chain, with no ambiguous merge ancestry; maximum 128 commits and bounded Git output. Empty/truncated records fail closed.
+- Checks each individual NUL-delimited Git tree transition, rather than only the net diff; permits \`A\` and \`M\` **only on the seven dedicated own paths**.
+- Rejects transient modification of original source, addition then deletion of foreign-worker paths, deletion then re-creation of own files, intermediate symlinks or executable \`100755\` modes, and merge commits even where final changes appear legitimate.
+- Independently verifies each changed path's committed Git object type, exact name, canonical regular-file mode and object identity. The output also reports the count of individually checked commits, but still returns non-authorizing \`REVIEW_ONLY/exit 3\`; every anomaly returns \`HOLD/exit 2\`.
+
+The extra **seven ordinary local-Git fixture tests** cover intermediate forbidden edit/revert, foreign add/remove, own delete/readd, symlink/permission-mode toggles, non-linear merges and commit count. Combined with earlier guards, the isolated Git/witness suite now contains **26 real test methods**. Connected zSSH ran them all PASS on the actual own branch code at \`3d14491efc500590a64665254bea68400324fc51\`. This is offline verification of PR **path ownership**, not a source-security audit or permission to merge.
+
+CI remains tied to the exact current PR head and validates this history **before** composed #301/#1535 owner-file overlays. These owner snapshots remain temporary test-only and cannot turn the original base suite or permanent registered VPS CI green. Release requires all independent authorization, revocation, security/privacy, exact-head CI and human GO gates.
+
 ## Stop conditions
 
 No existing `src/lightup` sources, `tests/test_scope.py`, shared workflows, state/database, activation, execution, target workers, deployment or peer-worker files are modified. Scope #364 and existing PR #1263 remain independent. A green negative unit suite **is not** evidence of usable positive authority, authenticated two-party consent, at-use revocation, independent security/privacy review, passing full exact-head hosted plus registered VPS CI or HUMAN GO.
