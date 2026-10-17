@@ -96,7 +96,8 @@ class OfflineTreeModesTests(unittest.TestCase):
             "GITHUB_REF": "refs/heads/" + guard.BRANCH,
             "GITHUB_SHA": sha,
         }
-        with patch.object(guard, "git", side_effect=fake_git):
+        with patch.object(guard, "git", side_effect=fake_git), \
+             patch.object(guard, "_worktree_blobs_match_head", return_value=True):
             with patch.dict(guard.os.environ, env, clear=True):
                 with redirect_stdout(io.StringIO()):
                     self.assertEqual(guard.main(), 0)
@@ -136,7 +137,8 @@ class OfflineTreeModesTests(unittest.TestCase):
                 else expected[name]
             )
             return CompletedProcess(argv, 0, data, b"")
-        with patch.object(guard, "git", side_effect=fake_git):
+        with patch.object(guard, "git", side_effect=fake_git), \
+             patch.object(guard, "_worktree_blobs_match_head", return_value=True):
             with patch.dict(guard.os.environ, event, clear=True):
                 with redirect_stdout(io.StringIO()) as output:
                     self.assertEqual(guard.main(), 0)
@@ -269,7 +271,8 @@ class OfflineTreeModesTests(unittest.TestCase):
                     "ls-tree": tree(),
                 }[argv[0]]
             return CompletedProcess(argv, 0, output, b"")
-        with patch.object(guard, "git", side_effect=fake_git):
+        with patch.object(guard, "git", side_effect=fake_git), \
+             patch.object(guard, "_worktree_blobs_match_head", return_value=True):
             with patch.dict(guard.os.environ, context, clear=True):
                 with redirect_stdout(io.StringIO()) as out:
                     self.assertEqual(guard.main(), 3)
@@ -321,7 +324,8 @@ class OfflineTreeModesTests(unittest.TestCase):
                     )
                     stderr = b"fictional integrity warning\n" if args[0] == warned else b""
                     return CompletedProcess(args, 0, result, stderr)
-                with patch.object(guard, "git", side_effect=fake_git):
+                with patch.object(guard, "git", side_effect=fake_git), \
+             patch.object(guard, "_worktree_blobs_match_head", return_value=True):
                     with patch.dict(guard.os.environ, event, clear=True):
                         with redirect_stdout(io.StringIO()):
                             self.assertEqual(guard.main(), 3)
@@ -551,6 +555,68 @@ class OfflineTreeModesTests(unittest.TestCase):
             guard, "_git_raw", return_value=CompletedProcess([], 0, b"", b"")
         ):
             self.assertTrue(guard._ignored_worktree_is_empty())
+
+    def test_actual_owned_blob_bytes_defeat_assume_unchanged(self):
+        """HEAD blob may be sound while status hides modified Python source."""
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_hidden_index_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp)
+            def git(*args):
+                return subprocess.run(
+                    [guard.GIT_BINARY, *args], cwd=root, capture_output=True,
+                    check=True, timeout=6,
+                ).stdout
+            git("init", "-q")
+            own = root / "owned.py"
+            own.write_text("SAFE=True\n")
+            git("add", "owned.py")
+            git("-c", "user.name=Offline", "-c",
+                "user.email=reviewer@example.invalid",
+                "commit", "-qm", "fictional source baseline")
+            raw_tree = git("ls-tree", "-r", "-z", "HEAD", "--", "owned.py")
+            with patch.object(guard, "ROOT", root), \
+                 patch.object(guard, "OWNED", frozenset({"owned.py"})):
+                self.assertTrue(guard._worktree_blobs_match_head(raw_tree))
+                git("update-index", "--assume-unchanged", "owned.py")
+                own.write_text("SAFE=NO!\n")
+                self.assertEqual(git("status", "--porcelain=v1", "-z"), b"")
+                self.assertEqual(git("ls-tree", "-r", "-z", "HEAD", "--", "owned.py"), raw_tree)
+                self.assertFalse(guard._worktree_blobs_match_head(raw_tree))
+                own.write_text("SAFE=True\n")
+                self.assertTrue(guard._worktree_blobs_match_head(raw_tree))
+
+    def test_actual_owned_blob_rejects_missing_symlink_and_oversize(self):
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_blob_shape_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp)
+            def git(*args):
+                return subprocess.run(
+                    [guard.GIT_BINARY, *args], cwd=root, capture_output=True,
+                    check=True, timeout=6,
+                ).stdout
+            git("init", "-q")
+            target = root / "owned.py"
+            target.write_text("synthetic owner bytes\n")
+            git("add", "owned.py")
+            git("-c", "user.name=Offline", "-c",
+                "user.email=reviewer@example.invalid", "commit", "-qm", "fixture")
+            raw = git("ls-tree", "-r", "-z", "HEAD", "--", "owned.py")
+            with patch.object(guard, "ROOT", root), \
+                 patch.object(guard, "OWNED", frozenset({"owned.py"})):
+                self.assertTrue(guard._worktree_blobs_match_head(raw))
+                target.unlink()
+                self.assertFalse(guard._worktree_blobs_match_head(raw))
+                other = root / "fake.py"
+                other.write_text("synthetic owner bytes\n")
+                target.symlink_to(other)
+                self.assertFalse(guard._worktree_blobs_match_head(raw))
+                target.unlink()
+                target.write_bytes(b"z" * 1048577)
+                self.assertFalse(guard._worktree_blobs_match_head(raw))
 
     def test_no_reusing_other_worker_paths(self):
         for item in ("src/lightup/scope.py", "tests/test_scope.py",
