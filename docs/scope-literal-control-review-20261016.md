@@ -163,3 +163,38 @@ admission source owner [#1289](https://github.com/Zennay/Lightup/issues/1289),
 other parallel workers, installed runtime and deployment remain untouched.
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD — NO MERGE, REAL ASSET,
 SCAN, GRANT, CONSENT CLAIM, HANDLER DISPATCH OR RELEASE.**
+
+
+## W30–W32 — syntactic loader chains, never a runtime sandbox (17 October 2026)
+
+Three consecutive owner-isolated implementation steps extended the *test-only*
+AST import isolation reviewer; none changes the LightUp authority source or
+calls an executor. First, `__import__('lightup', fromlist=['reviewer'])` was
+proven missed by seven synthetic tests and covered in the checker, including
+keyword/positional tuples, aliases, and unrelated package negative controls.
+The exact child name refers only to the deliberately unwired fictional
+`scope_literal_control_review_20261016` module.
+
+Second, *short, fully literal* source strings provided to built-in
+`exec`, `eval` and `compile` are now inspected recursively as AST,
+without executing any source or importing an application module. The static
+review covers original literal Unicode strings and UTF-8 byte constants,
+fully literal concatenation, nested literal `exec` (depth bounded to 4),
+and direct builtins aliases/getattr calls. A constructed code object alone
+is not a claim of execution; this is a **conservative** reviewer.
+
+Third, tuple/list constructors holding literal `fromlist` shapes and
+exact, format-free string-constant f-string interpolation are recognized.
+Tests include positive constructor/alias/fragment cases and negative
+unrelated/dynamic cases. Computed strings, `eval` with nonliteral source,
+dynamic attribute loading, monkeypatches, plugin registries, shadowing and
+runtime identity are **NOT** proven safe by this lexical check.
+
+The own branch manifest now demands **107 tests** (103 ordinary PASS
+and the same four open original-source expectedFailures on Python 3.14
+locally before the final commit). The full original hosted suite,
+permanently registered named VPS runner and actual separate client plus
+operator consents remain unproven; the original #1289 / PR #1290 owns
+source admission repairs. Still **INCUBATE M3/M7, PLAN/LAB ONLY,
+DRAFT/HOLD**. No merge, deployment, real targets/scans, grants, handlers
+or release. All review receipt authority flags remain permanently false.

@@ -29,6 +29,15 @@ def _constant_text(node: ast.AST) -> str | None:
         left = _constant_text(node.left)
         right = _constant_text(node.right)
         text = left + right if left is not None and right is not None else None
+    elif (
+        isinstance(node, ast.FormattedValue)
+        and node.format_spec is None
+        and node.conversion in (-1, 115)
+        and isinstance(node.value, ast.Constant)
+        and type(node.value.value) is str
+    ):
+        # Exact, format-free literal f-string interpolation; never eval.
+        text = _constant_text(node.value)
     elif isinstance(node, ast.JoinedStr):
         parts = [_constant_text(part) for part in node.values]
         text = "".join(parts) if all(part is not None for part in parts) else None
@@ -39,6 +48,15 @@ def _constant_text(node: ast.AST) -> str | None:
 
 def _fromlist_requests_reviewer(node: ast.AST | None) -> bool:
     """Only literal built-in list/tuple fromlists can load our package child."""
+    if (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id in ("list", "tuple")
+        and len(node.args) == 1
+        and not node.keywords
+    ):
+        # Only immutable source syntax composed from literal built-in shapes.
+        return _fromlist_requests_reviewer(node.args[0])
     return (
         isinstance(node, (ast.List, ast.Tuple))
         and any(_constant_text(item) == REVIEWER for item in node.elts)
@@ -405,6 +423,28 @@ class RuntimeIsolationStaticTests(unittest.TestCase):
         for code in cases:
             with self.subTest(code=code):
                 self.assertFalse(references_review_module(code))
+
+    def test_static_fromlist_constructors_and_literal_fstrings(self):
+        patterns = (
+            "__import__('lightup', fromlist=tuple(['scope_literal_control_review_20261016']))",
+            "__import__('lightup', fromlist=list(('scope_literal_control_review_20261016',)))",
+            "__import__('lightup', fromlist=[f\"{'scope_literal_'}control_review_20261016\"])",
+            "import importlib\nimportlib.import_module(f\"lightup.{'scope_literal_control_review_20261016'}\")",
+        )
+        for source in patterns:
+            with self.subTest(source=source):
+                self.assertTrue(references_review_module(source))
+
+    def test_static_fromlist_constructors_negative_controls(self):
+        patterns = (
+            "__import__('lightup', fromlist=tuple(['other_module']))",
+            "__import__('other', fromlist=list(('scope_literal_control_review_20261016',)))",
+            "__import__('lightup', fromlist=tuple(dynamic))",
+            "import importlib\nimportlib.import_module(f\"lightup.{dynamic}\")",
+        )
+        for source in patterns:
+            with self.subTest(source=source):
+                self.assertFalse(references_review_module(source))
 
     def test_does_not_flag_unrelated_imports_or_comments(self):
         samples = (
