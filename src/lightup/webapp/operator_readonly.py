@@ -53,11 +53,11 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             self.authorization_engagement_attention_api, "operator",
         ))
         self.routes.append((
-            "GET", re.compile(r"^/authorization-desk/engagements/(?P<engagement_id>[\w-]+)$"),
+            "GET", re.compile(r"^/authorization-desk/engagements/(?P<engagement_id>[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$"),
             self.authorization_engagement_review, "operator",
         ))
         self.routes.append((
-            "GET", re.compile(r"^/api/v1/operator/engagements/(?P<engagement_id>[\w-]+)/review$"),
+            "GET", re.compile(r"^/api/v1/operator/engagements/(?P<engagement_id>[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/review$"),
             self.authorization_engagement_review_api, "operator",
         ))
         self.routes.append((
