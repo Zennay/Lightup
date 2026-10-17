@@ -70,6 +70,43 @@ than comparing every file against every other file. A 32-worker, 64-path-per-
 worker scenario and a multiworker rename/copy scenario have offline positive
 and adversarial regression tests.
 
+### Offline normalized-compare ingestion (new)
+
+A second executable CLI converts a **separately obtained, normalized**
+GitHub compare snapshot bundle to protocol v2 and applies the *same* path
+collision policy, without using a GitHub token, API request, shell or
+permission-granting operation:
+
+```sh
+python3 -I -S -B scripts/review_scope_compare_snapshots_offline_1540.py < synthetic-compares.json
+# Exit 3 REVIEW_ONLY; exit 2 HOLD; NEVER 0, NEVER approval
+```
+
+The exact canonical JSON root keys are `base_sha`, `snapshots`,
+`version:1`. Each of 2–32 `snapshots` must have exactly:
+`worker`, `branch`, `base_sha`, `head_sha`, `compare_status:"ahead"`,
+`ahead_by` (strict positive integer), `behind_by:0`, `too_large:false`,
+`expected_file_count` (strict integer 1–64) and `files` (exactly that many
+entries). Allowed file statuses:
+`added`, `modified`, `removed`, `renamed`, `copied`.
+Every file has exact keys `status` and `filename`; only `renamed` and
+`copied` additionally **require** exact `previous_filename`.
+
+Both the source and destination of renames/copies are included in the
+claim index; missing or ambiguous rename ancestry, stale/diverged bases,
+unknown status, oversized lists, any extra field, missing count, unexpected
+byte encoding or cross-worker collision => generic HOLD. The compare
+adapter imports **only the known local sibling reviewer** from its fixed
+script path. It neither fetches GitHub nor writes any result to disk.
+
+**Important:** `expected_file_count`, `too_large`, commit SHAs and
+`compare_status` are still untrusted **caller-provided claims**. The external
+operator must authenticate the source GitHub comparisons, confirm they cover
+all changes (including pagination, file modes, symlinks and previous paths)
+and enforce DRAFT/HOLD separately. Even a valid status from this adapter
+does **not** establish ancestry, prove complete or safe integration,
+permit a merge, record consent, issue a grant or approve release.
+
 The 40-character sample SHA is **fictional**; it must not be mistaken for a
 real origin/base attestation. Multiple workers must submit precisely the same
 pinned baseline SHA. Reject different, missing, syntactically wrong, uppercase
