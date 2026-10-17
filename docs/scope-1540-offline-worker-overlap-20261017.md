@@ -24,7 +24,7 @@ python3 -I -S -B scripts/review_scope_worker_overlap_offline_1540.py < fictional
 # Exit 3 = REVIEW_ONLY (no reported path collision, still no authorization)
 # Exit 2 = HOLD (bad, untrusted, mismatched or overlapping input)
 # Exit 0 is impossible by design
-python3 -I -S -B -m unittest discover -s tests -p 'test_scope_1540_offline_worker_overlap_20261017.py' -q
+python3 -I -S -B -m unittest discover -s tests -p 'test_scope_1540_*_20261017.py' -q
 ```
 
 Only **canonical ASCII JSON** is accepted: UTF-8 with no BOM, compact,
@@ -37,6 +37,39 @@ and write without adding a newline. Exactly:
 {"base_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","proposals":[{"base_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"chatgpt/isolated-a","paths":["docs/a.md"],"worker":"scope-a"},{"base_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"chatgpt/isolated-b","paths":["tests/b.py"],"worker":"scope-b"}],"version":1}
 ```
 
+### Version 2: explicit rename/copy/delete operations
+
+Version 1 is unchanged and remains supported. Version 2 gives each worker
+a `changes` array rather than a `paths` array; never mix them within one
+manifest. A change has exactly `{"op":"add|modify|delete","path":"..."}`
+or `{"op":"rename|copy","path":"new-path","from_path":"old-path"}`,
+where each value of `op` is **one literal verb**, not the pipe-separated
+illustration above. For example:
+
+```json
+{"base_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","proposals":[{"base_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"chatgpt/isolated-a","changes":[{"from_path":"src/old.py","op":"rename","path":"src/new.py"}],"worker":"scope-a"},{"base_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"chatgpt/isolated-b","changes":[{"op":"modify","path":"tests/other.py"}],"worker":"scope-b"}],"version":2}
+```
+
+- The **old path and new path** of every rename or copy are both claimed for
+  overlap review. A second worker modifying the source or destination returns
+  HOLD even when the changed-filenames API provides only the new name.
+- Same-worker source/destination aliases and multi-step renames reusing a
+  source or destination are conservatively HOLD. This checker is not a
+  rename-order simulator and does not prove the Git tree's eventual semantics.
+- A deletion also claims its old path, and add/modify claims the target path.
+- Each worker may submit 1–64 *operations* (rename/copy expands to two
+  identities internally), and the total input remains at most 65,536 bytes.
+- A missing `from_path`, an extra `from_path` on a non-rename operation,
+  unknown verbs, mixed versions, or extra keys cause atomic HOLD.
+- No GitHub rename metadata is discovered or authenticated by this script.
+  GitHub changed-filename lists alone are **insufficient** to safely produce
+  version 2; the input's old/new lineage must be independently verified first.
+
+The checker uses a bounded, case-folded path-component prefix index rather
+than comparing every file against every other file. A 32-worker, 64-path-per-
+worker scenario and a multiworker rename/copy scenario have offline positive
+and adversarial regression tests.
+
 The 40-character sample SHA is **fictional**; it must not be mistaken for a
 real origin/base attestation. Multiple workers must submit precisely the same
 pinned baseline SHA. Reject different, missing, syntactically wrong, uppercase
@@ -45,13 +78,16 @@ does not authenticate Git ancestry.
 
 ## Fail-closed rules
 
-- Exactly 2–32 worker entries, each with 1–64 paths, no duplicate worker
-  or case-insensitive branch identity.
+- Exactly 2–32 worker entries, each with 1–64 v1 paths or 1–64 v2
+  change operations, no duplicate worker or case-insensitive branch identity.
 - Entire input and each item have an exact field set: no `override`,
   `authorized`, `consent` or other extra claims.
 - Only bounded ASCII relative paths, with exact canonical path segments;
   no `..`, `.`, absolute paths, slashes-with-empty-segments, control
-  characters, Unicode ambiguity or Windows backslashes.
+  characters, Unicode ambiguity or Windows backslashes. Git's `.git`
+  internal directory and case-insensitive Windows device names (e.g.
+  `CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, `LPT1`–`LPT9`,
+  including extensions) are rejected as unportable change identities.
 - Cross-worker case-insensitive **exact path** collisions and file-vs-directory
   **ancestor/descendant** collisions return HOLD. Nonoverlapping children in
   the same directory remain reviewable.
@@ -63,7 +99,7 @@ does not authenticate Git ancestry.
   the literal JSON boolean `false`.
 
 On missing or invented files in the manifest, truncated GitHub compare
-pages, changed rename semantics, *different* bases, untrusted origin or
+pages, unproven rename source identities, *different* bases, untrusted origin or
 malicious submitters, the operator must **HOLD externally**, even when the
 syntactic preview says REVIEW_ONLY. It does not call the GitHub API, obtain
 a branch's complete diff, inspect file modes/symlinks, detect source-level
