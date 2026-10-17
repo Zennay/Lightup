@@ -48,8 +48,8 @@ def _path(value: bytes) -> str:
         raise PathIdentityHold() from None
     if (result.startswith("/") or "\\" in result or
             any(component in ("", ".", "..") for component in result.split("/")) or
-            any(ord(c) < 32 or ord(c) == 127 for c in result)):
-        # Control characters (including tabs/newlines) are conservatively held:
+            any((ord(c) < 32 and c != "\\t") or ord(c) == 127 for c in result)):
+        # Other control characters (but not NUL-delimited-safe tabs) are held:
         # the source-owner must explicitly decide what Git reporting supports.
         raise PathIdentityHold()
     return result
@@ -60,7 +60,7 @@ def _count(raw: bytes) -> int | None:
         return None  # Git's binary-file sentinel.
     if not raw or not raw.isascii() or not raw.isdigit():
         raise PathIdentityHold()
-    if len(raw) > 1 and raw.startswith(b"0"):
+    if len(raw) > 10 or (len(raw) > 1 and raw.startswith(b"0")):
         raise PathIdentityHold()
     value = int(raw)
     if value > _MAX_COUNT:
@@ -80,7 +80,7 @@ def _status_code(raw: bytes) -> str:
         return raw.decode("ascii")
     if len(raw) >= 2 and raw[:1] in (b"R", b"C"):
         score = raw[1:]
-        if score.isdigit() and 0 <= int(score) <= 100:
+        if len(score) <= 3 and score.isdigit() and 0 <= int(score) <= 100:
             return raw[:1].decode("ascii")
     raise PathIdentityHold()
 
