@@ -141,5 +141,50 @@ class DuplicateSessionCookieAcceptance(unittest.TestCase):
         self.assertIsNotNone(self.store.session_context(self.client_token))
 
 
+    @unittest.expectedFailure
+    def test_red_duplicate_cannot_logout_either_session(self):
+        # Block revocation even on a vulnerable source so the regression
+        # itself never destroys a valid session.
+        form = ("csrf=" + self.operator_csrf).encode("ascii")
+        env = {
+            "REQUEST_METHOD": "POST", "PATH_INFO": "/logout",
+            "CONTENT_LENGTH": str(len(form)),
+            "CONTENT_TYPE": "application/x-www-form-urlencoded",
+            "wsgi.input": io.BytesIO(form),
+            "HTTP_COOKIE": "lightup_session=" + self.client_token
+            + "; lightup_session=" + self.operator_token,
+        }
+        out = {}
+        with patch.object(self.store, "revoke_session") as revoke:
+            with patch.object(self.store, "session_context", wraps=self.store.session_context) as lookup:
+                b"".join(self.app(env, lambda s, h: out.update(status=s, headers=dict(h))))
+                lookup.assert_not_called()
+                revoke.assert_not_called()
+        self.assertIsNotNone(self.store.session_context(self.operator_token))
+        self.assertIsNotNone(self.store.session_context(self.client_token))
+        self.assertNotIn("Set-Cookie", out["headers"])
+
+    @unittest.expectedFailure
+    def test_red_duplicate_cannot_create_client(self):
+        form = b"name=ShouldNotExist"
+        env = {
+            "REQUEST_METHOD": "POST", "PATH_INFO": "/clients",
+            "CONTENT_LENGTH": str(len(form)),
+            "CONTENT_TYPE": "application/x-www-form-urlencoded",
+            "wsgi.input": io.BytesIO(form),
+            "HTTP_COOKIE": "lightup_session=" + self.client_token
+            + "; lightup_session=" + self.operator_token,
+        }
+        out = {}
+        with patch.object(self.store, "create_client") as create_client:
+            with patch.object(self.store, "session_context", wraps=self.store.session_context) as lookup:
+                b"".join(self.app(env, lambda s, h: out.update(status=s, headers=dict(h))))
+                lookup.assert_not_called()
+                create_client.assert_not_called()
+        self.assertNotIn("Set-Cookie", out["headers"])
+        self.assertIsNotNone(self.store.session_context(self.operator_token))
+        self.assertIsNotNone(self.store.session_context(self.client_token))
+
+
 if __name__ == "__main__":
     unittest.main()
