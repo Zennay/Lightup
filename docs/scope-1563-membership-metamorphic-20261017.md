@@ -186,6 +186,24 @@ Two additional genuine offline QA methods explicitly forge a case whose printed 
 
 **HOLD unchanged:** INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD. Original source-owner #301/#1535 defects, client/operator authentication, at-use revocation, independent security/privacy signoff, original full-green hosted and registered named-VPS CI, explicit HUMAN GO are not solved by these offline tests. Never merge or deploy solely on these receipts.
 
+## W32–W34 — exact subcase identity fingerprints and same-count greenwashing reproduction (2026-10-17)
+
+**Audited real security-evidence gap** in #1563's own offline harness: the previous `CoverageResult` tracked only the count of each subTest. A method that repeats **one unlisted public IP** 256 times across the four grant-label variants can keep *all 16 named methods*, *all 730 subcase counts*, zero `unittest` failures and appear green, while silently discarding 63 of the 64 distinct /28-neighbor boundary IP inputs. Exact source behavior was reproduced on a disposable authorized connected zSSH checkout:
+
+- Run the identical 256-case duplicate-input test patch against prior committed harness at `19acf9a07e8cfb2088de472693a21fab6cb801ef`: **`testsRun=16`, `ordinary_pass=True`, `subcases=730`, `safety_baseline_green=True`**. The old gate is genuinely fooled.
+- Repeat unchanged patch against new harness at code HEAD `9d4cc40db1a6fae67d5b37e6b218b45e78e9682d`: **`testsRun=16`, `ordinary_pass=True`, `subcases=730`, but `safety_baseline_green=False`**. The same-count duplicate test is **HOLD**.
+
+### Actual shipped design, entirely within three already owned #1563 files
+
+- All 16 real named methods now emit disambiguated `subTest` parameter identities: the two “unrelated declared host/network” methods previously omitted the 4-way grant label, causing only 6 unique parameter tuples among 24 cases each. Explicit `grant` labels now make **all 730 baseline case parameter tuples independently distinct**.
+- The read-only mutation/acceptance harness derives a stable canonical JSON token from the actual `unittest._SubTest.params`, with sorted keys, ASCII escaping and no nonfinite floats; no target I/O or grant is performed. A **static, explicit manifest of 16 SHA-256 digests**, one for each expected set of actual inputs, pins all 730 case identities. Both counts and exact case-fingerprints must match for a genuine baseline PASS. Count-preserving substitutions, duplicates and malformed/unserializable parameters fail closed.
+- During the deliberate fail-open mutation runs the original test identities must still be unchanged for every **fully executed** method; assertion-triggered legitimate nested early exits are permitted only in an actually assertion-failing parent method, following the independently proven W29 rules.
+- Four additional independent QA regressions cover 16 fixed SHA-256 baselines, full per-method distinctness, a real 256-of-256 equal-count fixture substitution, and an unrelated mutation-run case-identity substitution. The same core 14 fail-open safety mutants remain required to fail by matching genuine security assertions.
+
+**Actual permitted zSSH on code HEAD `9d4cc40db1a6fae67d5b37e6b218b45e78e9682d`**: **16/16** real negative scope/planner/permit tests PASS; **54/54** own Git-history/CI/subtest-integrity tests PASS; **14/14** deliberately unsafe mutations assertion-detected; clean disposable checkout. No production files, real grant or live network targets involved. Exact immutable-tree and hosted dual-Python results must be checked separately on the final documentation SHA.
+
+**This is an offline evidence quality improvement, NOT a positive consent/permit or general LightUp release gate clearance.** Fase **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD**. Still requires real independently authenticated client+operator consent with at-use revocation, source-owner repairs #301/#1535, normal original fully green exact approved SHA hosted CI AND permanently registered named VPS, privacy/security approval and explicit HUMAN GO. No merge, real scan, handler, grant, permit, deployment, shared runner change or release.
+
 ## Stop conditions
 
 No existing `src/lightup` sources, `tests/test_scope.py`, shared workflows, state/database, activation, execution, target workers, deployment or peer-worker files are modified. Scope #364 and existing PR #1263 remain independent. A green negative unit suite **is not** evidence of usable positive authority, authenticated two-party consent, at-use revocation, independent security/privacy review, passing full exact-head hosted plus registered VPS CI or HUMAN GO.
