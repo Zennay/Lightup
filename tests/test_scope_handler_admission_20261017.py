@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import copy
 import pathlib
 import sys
 import unittest
@@ -109,6 +110,23 @@ class HandlerAdmissionReviewTests(unittest.TestCase):
                 self.assertIs(receipt.dispatch_allowed, False)
                 self.assertIs(receipt.release_allowed, False)
         self.assertEqual(tuple(filter(None, results)), ())
+
+    def test_copy_of_both_advisory_receipts_remains_immutable_and_falsy(self):
+        from scope_handler_admission_review_20261017 import HandlerAdmissionReview
+        for status in ("HOLD", "REVIEW_ONLY"):
+            with self.subTest(status=status):
+                original = HandlerAdmissionReview(status)
+                for copier in (copy.copy, copy.deepcopy):
+                    with self.subTest(copier=copier.__name__):
+                        result = copier(original)
+                        self.assertIs(type(result), HandlerAdmissionReview)
+                        self.assertEqual(result.status, status)
+                        self.assertIs(bool(result), False)
+                        for flag in ("authorized", "consent_verified",
+                                     "dispatch_allowed", "release_allowed"):
+                            self.assertIs(getattr(result, flag), False)
+                            with self.assertRaises((AttributeError, TypeError)):
+                                object.__setattr__(result, flag, True)
 
     def test_canonical_multiple(self):
         self.assertEqual(review_handlers((("a", inert_handler), ("b_2", second_handler))).status, "REVIEW_ONLY")

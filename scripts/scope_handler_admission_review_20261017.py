@@ -36,6 +36,11 @@ class HandlerAdmissionReview(tuple):
         # remain false in accidental "if receipt" authorization branches.
         return False
 
+    def __getnewargs__(self) -> tuple[str]:
+        # Standard-library copy.copy/deepcopy reconstruct tuple subclasses.
+        # Return the canonical status, not the underlying tuple container.
+        return (self.status,)
+
     @property
     def authorized(self) -> bool:
         return False
