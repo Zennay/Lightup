@@ -131,11 +131,35 @@ def evaluate(raw: bytes) -> tuple[dict[str, object], int]:
     return {"status": "REVIEW_ONLY", "waves": waves, **OFF_FLAGS}, 3
 
 
+def _read_complete_input(stream: object) -> bytes:
+    """Do not review a valid prefix until the complete bounded stream hits EOF.
+
+    A short positive read is NOT EOF. Reject invalid stream types and I/O
+    anomalies without emitting a review of an earlier valid prefix.
+    """
+    parts: list[bytes] = []
+    size = 0
+    while True:
+        allowance = min(4096, MAX_INPUT + 1 - size)
+        if allowance <= 0:
+            raise InvalidManifest("oversize stdin")
+        piece = stream.read(allowance)
+        if type(piece) is not bytes or len(piece) > allowance:
+            raise InvalidManifest("noncanonical stdin chunk")
+        if not piece:
+            break
+        size += len(piece)
+        if size > MAX_INPUT:
+            raise InvalidManifest("oversize stdin")
+        parts.append(piece)
+    return b"".join(parts)
+
+
 def main() -> int:
     try:
         if len(sys.argv) != 1:
             raise InvalidManifest("unexpected CLI arguments")
-        raw = sys.stdin.buffer.read(MAX_INPUT + 1)
+        raw = _read_complete_input(sys.stdin.buffer)
         receipt, code = evaluate(raw)
     except (OSError, ValueError, TypeError, MemoryError):
         receipt, code = {"status": "HOLD", "waves": [], **OFF_FLAGS}, 2
