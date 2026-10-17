@@ -20,3 +20,16 @@
 ## Release remains HOLD
 
 Source owners decide and review a future actual `ToolOutput` or pre-handoff validation fix. Nothing here proves authenticated independent client/operator consent, consent revocation at use, permanent named VPS runner `vps-bb300bba`, complete original CI, independent security/privacy approval or human GO. Original #301 fixture preflight is separately RED. **No merge, deploy, actual target, active scan, tool dispatch, grants or release.**
+
+
+## W6 · interrupted stdin / deterministic HOLD on read failure (2026-10-17)
+
+The real `scripts/review_scope_tooloutput_synthetic_1533.py` previously let `OSError` from its bounded stdin read escape with traceback/error details. A new subprocess fixture deliberately injects `OSError("SYNTHETIC_STDIN_SECRET_NEVER_LEAK")` at `stdin.buffer.read`. **Before** the corrective one-line error handler, this failed as exit 1 with a traceback containing the synthetic marker. The CLI now treats read errors (including `InterruptedError` and `BrokenPipeError` subclasses) as a fixed privacy-minimal **HOLD** receipt and nonzero exit 2, with empty stderr, all seven security/consent/dispatch/release properties false. No catches for handler execution, no grant changes, no raw input/target storage.
+
+The exact protected main branch was not touched; [dedicated hosted W6 run #39002986164](https://github.com/Zennay/Lightup/actions/runs/39002986164) succeeded on Python3.11 and Python3.14. Original job logs: 7 CLI tests PASS, 24 shape tests (15 ordinary PASS + nine intentionally unresolved original-source expected failures), 10 existing main orchestration tests PASS on each, six exclusive own Git paths and exact nine named source REDs validated. Independently permitted zSSH own checkout repeats 7+24+10.
+
+A completely disposable copy of older #301 draft [#1452](https://github.com/Zennay/Lightup/pull/1452) with only locally copied own #1534 source/test/CLI additions and the minimal original-renderer warning fix from #1536 completed the **entire Python3.14 suite: 1,288 tests, 0 unexpected errors/failures, 42 deliberately expected original-source REDs, 61.991 s**. This is NOT a merged or release-eligible SHA.
+
+A second compatibility look at older source-owner [#156](https://github.com/Zennay/Lightup/pull/156) yielded 24 own shape tests (nine expected source REDs) and 27 original branch orchestration PASS; the seven current CLI tests also passed **only after copying two test-only guard support files** into an isolated disposable old-branch checkout. An attempted full-discovery run with the newer guard test files misinterprets 15 expected version-mismatch fixture errors as ordinary suite failures; therefore **NO owner #156 full-suite PASS is claimed**. A later attempted isolation of these guard files was refused by VPS file permissions; the limitation is respected and no alternate SSH/access workaround was attempted. The original owner branch was not modified/pushed.
+
+Remaining barriers: actual `ToolOutput` original-source fix (source surface overlaps independently owned draft #156), original #301 fixed-date test, full hosted/permanently registered named VPS CI on a real release SHA, independent authenticated client and operator consent with revocation at use, separate privacy/security and HUMAN GO. **INCUBATE M3/M7 · DRAFT/HOLD.**
