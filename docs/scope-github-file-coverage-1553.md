@@ -80,3 +80,21 @@ pagination + stable base/head proof implemented and reviewed by #1538 source
 owner; separate real client/operator consent with at-use revocation;
 independent privacy/security review; original hosted and permanently
 registered named-VPS CI on approved exact SHA; human GO. **NO MERGE OR DEPLOY.**
+
+## W3 — complete unified-hunk evidence (synthetic only)
+
+The independent real-source bridge additionally refuses missing patch text,
+binary or empty patches, invalid/unknown hunk syntax and omitted content.
+For ordinary UTF-8 GitHub unified hunks it checks **both**:
+- The declared file additions/deletions equal the actual diff `+` and `-`
+  lines across all supplied hunks (excluding context and special EOF marker).
+- Each hunk's declared old/new span exactly matches the consumed old/new
+  lines, including context lines. It rejects shortened hunks even when the
+  sum of added/deleted lines is forged to match.
+
+Unknown or combined Git diff formats, malformed Unicode and overlong patch
+content are **HOLD**, not interpreted optimistically. Strictness is
+intentional; this checker is not an authenticated Git parser. Validated
+synthetic bytes can still differ from actual GitHub objects, so successful
+results stay REVIEW_ONLY. No original code owner patch or auto-release hook
+was introduced.
