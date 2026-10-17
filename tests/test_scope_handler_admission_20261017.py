@@ -207,6 +207,30 @@ class InstalledSourceAcceptanceTests(unittest.TestCase):
             reg.register(definition, 123)
         self.assertEqual(reg.definitions(), ())
 
+    @unittest.expectedFailure
+    def test_source_red_wrong_handler_arity_must_fail_before_registry_mutation(self):
+        reg = ToolRegistry()
+        original = self._definition()
+        reg.register(original, inert_handler)
+        before = reg.definitions()
+        candidate = self._definition("scope_1531_wrong_arity")
+        with self.assertRaises(OrchestrationError):
+            reg.register(candidate, one_arg)
+        self.assertEqual(reg.definitions(), before)
+        self.assertIs(reg.get(original.tool_id)[1], inert_handler)
+
+    @unittest.expectedFailure
+    def test_source_red_async_handler_must_fail_before_registry_mutation(self):
+        reg = ToolRegistry()
+        original = self._definition()
+        reg.register(original, inert_handler)
+        before = reg.definitions()
+        candidate = self._definition("scope_1531_async_handler")
+        with self.assertRaises(OrchestrationError):
+            reg.register(candidate, async_handler)
+        self.assertEqual(reg.definitions(), before)
+        self.assertIs(reg.get(original.tool_id)[1], inert_handler)
+
 
 if __name__ == "__main__":
     unittest.main()
