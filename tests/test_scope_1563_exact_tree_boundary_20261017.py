@@ -5,6 +5,7 @@ Creates only disposable local Git repositories; no remote or real asset access.
 from __future__ import annotations
 
 import importlib.util
+import io
 import pathlib
 import subprocess
 import tempfile
@@ -418,8 +419,10 @@ class MutationWitnessQualityTests(unittest.TestCase):
 
 
     def test_original_baseline_refuses_expected_failure_or_skip(self):
-        result = unittest.TestResult()
+        result = self.proof.CoverageResult(io.StringIO(), True, 0)
         result.testsRun = len(self.proof.REQUIRED_TEST_METHODS)
+        result.subtest_attempts.update(self.proof.EXPECTED_CASE_COUNTS)
+        result.subtest_passes.update(self.proof.EXPECTED_CASE_COUNTS)
         self.assertTrue(self.proof.baseline_is_strictly_green(result))
         result.expectedFailures.append((self, "synthetic unresolved safety RED"))
         self.assertTrue(result.wasSuccessful())  # unittest's misleading default
@@ -456,6 +459,55 @@ class MutationWitnessQualityTests(unittest.TestCase):
             self.assertEqual(len(result.skipped), 1)
             self.assertFalse(self.proof.baseline_is_strictly_green(result))
         self.assertTrue(self.proof.suite_manifest_valid())
+
+
+    def test_all_730_negative_subcases_are_required_by_method(self):
+        self.assertEqual(set(self.proof.EXPECTED_CASE_COUNTS), self.proof.REQUIRED_TEST_METHODS)
+        self.assertEqual(sum(self.proof.EXPECTED_CASE_COUNTS.values()), 730)
+        original = self.proof.run_suite()
+        self.assertIs(type(original), self.proof.CoverageResult)
+        self.assertTrue(self.proof.baseline_is_strictly_green(original))
+        self.assertEqual(dict(original.subtest_passes), self.proof.EXPECTED_CASE_COUNTS)
+
+    def test_count_preserving_subcase_shift_must_fail_closed(self):
+        result = self.proof.CoverageResult(io.StringIO(), True, 0)
+        result.testsRun = len(self.proof.REQUIRED_TEST_METHODS)
+        result.subtest_attempts.update(self.proof.EXPECTED_CASE_COUNTS)
+        result.subtest_passes.update(self.proof.EXPECTED_CASE_COUNTS)
+        self.assertTrue(self.proof.baseline_is_strictly_green(result))
+        from_name = "test_generated_global_ipv4_nonmembers_do_not_gain_scope"
+        to_name = "test_ipv4_right_neighbor_of_declared_cidr_remains_unlisted"
+        for counts in (result.subtest_attempts, result.subtest_passes):
+            counts[from_name] -= 1
+            counts[to_name] += 1
+        self.assertEqual(sum(result.subtest_passes.values()), 730)
+        self.assertFalse(self.proof.all_subcases_covered(result))
+        self.assertFalse(self.proof.baseline_is_strictly_green(result))
+
+    def test_named_test_with_single_subtest_cannot_replace_full_ipv4_matrix(self):
+        cls = self.proof.suite_module.ScopeMembershipMetamorphicTests
+        method = "test_generated_global_ipv4_nonmembers_do_not_gain_scope"
+
+        def superficial_success(self):
+            with self.subTest(ip="one-synthetic-case"):
+                self.assertTrue(True)
+
+        with patch.object(cls, method, superficial_success):
+            self.assertTrue(self.proof.suite_manifest_valid())
+            result = self.proof.run_suite()
+            self.assertTrue(result.wasSuccessful())
+            self.assertEqual(result.testsRun, 16)
+            self.assertEqual(result.subtest_attempts[method], 1)
+            self.assertEqual(sum(result.subtest_passes.values()), 475)
+            self.assertFalse(self.proof.baseline_is_strictly_green(result))
+        self.assertTrue(self.proof.baseline_is_strictly_green(self.proof.run_suite()))
+
+    def test_missing_result_instrumentation_is_hold_even_with_synthetic_pass(self):
+        result = unittest.TestResult()
+        result.testsRun = 16
+        self.assertTrue(result.wasSuccessful())
+        self.assertFalse(self.proof.all_subcases_covered(result))
+        self.assertFalse(self.proof.baseline_is_strictly_green(result))
 
     def test_downstream_mutation_manifest_is_separate_and_exact(self):
         self.assertEqual(
