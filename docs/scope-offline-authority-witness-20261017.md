@@ -93,6 +93,15 @@ A source-policy regression that never returns must not leave the offline review 
 - Same exact code-head full local unit suite: **1,270 cases, five previously baseline-reproduced ordinary FAILs, 23 expectedFailures**. Those failures belong to existing #301 and #1535/registry-history source/fixture owners and appear on original main; this is not a wholly green project run or a release decision.
 - The work remains strictly branch-only/additive with zero existing source, shared CI/runner, another-worker, runtime authorization, handler, live consent, deployment or target code changed.
 
+## W8 — immutable fail-deny authority receipt (17 October 2026)
+
+**Source-verified original defect and actual RED → GREEN fix:** previously the seven false receipt flags were interpolated from mutable global `FALSE_AUTHORITY`; an in-process reassignment could fabricate JSON `true` for grant/scan/dispatch/release even though the helper itself never executed any target. A new pair of tests first demonstrated mutation was permitted and false-flag integrity was not protected.
+
+- The public `FALSE_AUTHORITY` metadata is now a read-only `MappingProxyType` so ordinary caller mutation raises `TypeError`.
+- More importantly, `_receipt()` independently constructs all **seven literal `false` fields**, without reading or merging mutable/global authority metadata. Rebinding the entire global metadata to a forged dictionary cannot make any `HOLD` or `REVIEW_ONLY` receipt claim grant, customer/operator consent, dispatch, scanning, deployment or release permission.
+- Both new regressions prove forged metadata has no influence on real reviews, malicious extra keys are not echoed, and a direct mutation attempt is rejected. These are **self-contained output-integrity controls**, not a new signature, real consent validation, source-owner repair or execution gate.
+- Connected authorized zSSH on exact code SHA `4279f7daa7681fe5bb48a9a20f8ea49de03326e5`, Python 3.14.4: **35/35 dedicated tests PASS**, **86/86 original producer-integrations PASS** and clean Git index/tree. The parent full-suite baseline at `0424e22f45617b547f7e052748e51fcc7a046c05` was **1,270 tests, five inherited FAILs, 23 expectedFailures**. No claim of green complete suite on this later head until separately run.
+
 ## Gate interpretation
 
 - Green unit tests validate the witness's own classification, deterministic receipt, zero-network boundary, no authority flags and mutation-detection sensitivities.
