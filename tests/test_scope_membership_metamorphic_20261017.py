@@ -50,8 +50,10 @@ def _block_all_external_and_grant_admission(stack: ExitStack) -> None:
         )
 
     for path in (
+        "socket.socket",  # block direct raw socket creation too
         "socket.getaddrinfo",
         "socket.gethostbyname",
+        "socket.gethostbyname_ex",
         "socket.create_connection",
         "urllib.request.urlopen",
     ):
