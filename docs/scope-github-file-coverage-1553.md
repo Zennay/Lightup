@@ -98,3 +98,28 @@ intentional; this checker is not an authenticated Git parser. Validated
 synthetic bytes can still differ from actual GitHub objects, so successful
 results stay REVIEW_ONLY. No original code owner patch or auto-release hook
 was introduced.
+
+## W4 — ordered hunk coordinates and actual local Git regression
+
+New acceptance tests first demonstrated **nine real original own-parser REDs** for
+synthetic hunk overlap, reversal, impossible unchanged gaps and inconsistencies
+between an `added`/`removed` GitHub status and the old/new file-side ranges.
+The isolated gate now also checks:
+
+- each next hunk follows the previous hunk in both old and new coordinates;
+- the omitted old/new spans *between* hunks have equal lengths (unchanged
+  regions must not silently hide modifications);
+- nonempty spans cannot start at zero, and all coordinates/counts remain bounded;
+- an `added` file has zero old-side lines; a `removed` file has zero
+  new-side lines; contradictory deletions/additions result in HOLD.
+
+The positive controls include a real, local, read-only
+`git diff --no-index --no-ext-diff --no-textconv` from disposable synthetic
+files, covering additions, deletions and distant two-hunk edits. A tampered
+genuine Git hunk must HOLD before the installed ChangeSet source is called.
+The tests use no network access, live assets, clients or credentials.
+
+This still **does not** prove that caller-provided patch text matches the
+authenticated GitHub changed-file objects. A fully consistent *fictional*
+stream remains REVIEW_ONLY / exit 3 and never grants authority. Original
+source-owner #1538, dual consent, permanent CI and human GO remain open.
