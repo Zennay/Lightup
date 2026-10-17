@@ -65,6 +65,17 @@ def approval_blockers(store: DomainStore, auth: AuthState, request) -> tuple[str
         ):
             problems.append("Submitting account is not a client of this tenant")
 
+    # Operator questions must be answered before an administrative review
+    # can record APPROVED. This is still NOT consent or grant authorization.
+    from .request_clarifications import thread_states, ClarificationDenied
+    try:
+        state = thread_states(
+            store, auth, [request.request_id], client_id=request.client_id,
+        ).get(request.request_id)
+        if state == "Awaiting client reply":
+            problems.append("The client's clarification reply is still pending")
+    except (ClarificationDenied, ValueError, TypeError):
+        problems.append("Clarification state cannot be trusted")
     try:
         client = store.get_client(ctx, request.client_id)
     except (KeyError, ValueError, TypeError):
