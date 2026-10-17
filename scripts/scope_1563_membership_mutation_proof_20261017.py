@@ -397,6 +397,31 @@ def mutation_detected(result: unittest.TestResult, expected_test_prefix: str) ->
 
 
 
+REQUIRED_SCOPE_MUTANT_NAMES = frozenset({
+    "grant_mints_membership", "invalid_identity_rescued",
+    "grant_checked_before_scope", "spoofed_label_authorizes",
+    "cidr_right_neighbor_authorizes", "hostname_wildcard_authorizes",
+    "denied_identity_rewritten", "reason_string_type_confusion",
+    "decision_proxy_type_confusion",
+})
+REQUIRED_DOWNSTREAM_MUTANT_NAMES = frozenset({
+    "planner_denied_capabilities", "planner_early_discovery",
+    "planner_execution_enabled", "permit_gate_missing_membership",
+    "permit_token_before_membership",
+})
+
+
+def mutant_inventory_valid() -> bool:
+    """A truncated witness inventory may never present itself as complete."""
+    return (
+        len(MUTATIONS) == len(REQUIRED_SCOPE_MUTANT_NAMES)
+        and len(DOWNSTREAM_MUTATIONS) == len(REQUIRED_DOWNSTREAM_MUTANT_NAMES)
+        and {name for name, _, _ in MUTATIONS} == REQUIRED_SCOPE_MUTANT_NAMES
+        and {name for name, _, _, _, _ in DOWNSTREAM_MUTATIONS}
+        == REQUIRED_DOWNSTREAM_MUTANT_NAMES
+    )
+
+
 def _review_template() -> dict:
     """Non-authorizing, privacy-minimal review output: no real targets or grants."""
     return {
@@ -436,6 +461,11 @@ def review_offline(*, verbose: bool = False) -> tuple[int, dict]:
     if not suite_manifest_valid():
         evidence["hold_reason"] = "NAMED_TEST_MANIFEST_MISMATCH"
         say("HOLD: required membership safety test manifest is incomplete or substituted")
+        return 2, evidence
+
+    if not mutant_inventory_valid():
+        evidence["hold_reason"] = "MUTATION_INVENTORY_INCOMPLETE"
+        say("HOLD: required 14 unsafe mutation scenarios incomplete or substituted")
         return 2, evidence
 
     baseline = run_suite()
