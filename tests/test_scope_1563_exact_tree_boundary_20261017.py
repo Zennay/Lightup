@@ -133,6 +133,38 @@ class TemporaryOwnerTreeTests(unittest.TestCase):
             gate.inspect_exact_head(self.root, head)
 
 
+    def test_source_only_second_commit_still_holds(self):
+        valid_head = self._build_owned()
+        self.assertEqual(gate.inspect_exact_head(self.root, valid_head)["decision"], "REVIEW_ONLY")
+        self._write("README.md", "malicious source-only follow-up")
+        forbidden_head = self._commit()
+        with self.assertRaises(gate.Hold):
+            gate.inspect_exact_head(self.root, forbidden_head)
+
+    def test_executable_mode_on_new_owned_file_holds(self):
+        valid_head = self._build_owned()
+        self.assertEqual(gate.inspect_exact_head(self.root, valid_head)["decision"], "REVIEW_ONLY")
+        path = self.root / sorted(gate.ALLOWED_ADDED)[0]
+        path.chmod(0o755)
+        forbidden_head = self._commit()
+        with self.assertRaises(gate.Hold):
+            gate.inspect_exact_head(self.root, forbidden_head)
+
+    def test_ambient_git_repository_redirect_does_not_override_root(self):
+        valid_head = self._build_owned()
+        with patch.dict("os.environ", {
+            "GIT_DIR": str(self.root / "does-not-exist"),
+            "GIT_WORK_TREE": str(self.root / "also-not-real"),
+            "GIT_NO_REPLACE_OBJECTS": "0",
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "core.fsmonitor",
+            "GIT_CONFIG_VALUE_0": "dangerous-override",
+        }):
+            result = gate.inspect_exact_head(self.root, valid_head)
+        self.assertEqual(result["head"], valid_head)
+        self.assertEqual(result["decision"], "REVIEW_ONLY")
+
+
 class HostedTriggerContractTests(unittest.TestCase):
     def test_any_head_change_triggers_tree_review(self):
         workflow = (pathlib.Path(__file__).resolve().parents[1] /
