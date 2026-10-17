@@ -1,11 +1,16 @@
 """Offline native CLI contract for #1533; no real targets or handler execution."""
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
+
+from test_scope_offline_cli_native_io_alias_20261014 import _NATIVE_ALIAS_TRIPWIRE
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/review_scope_tooloutput_synthetic_1533.py"
@@ -42,6 +47,52 @@ class OfflineToolOutputCliTests(unittest.TestCase):
             self.assertIs(receipt[name], False)
         self.assertNotIn(b"synthetic fixture", result.stdout)
         return receipt
+
+
+    def test_real_cli_under_original_native_no_io_tripwire(self):
+        # Reuse the existing owner's unchanged guard fixture. This is a
+        # Python-level interposition test, not a kernel sandbox or consent.
+        with tempfile.TemporaryDirectory(prefix="scope1533-synthetic-io-") as tmp:
+            sandbox = Path(tmp)
+            sitecustomize = sandbox / "sitecustomize.py"
+            sitecustomize.write_text(_NATIVE_ALIAS_TRIPWIRE, encoding="utf-8")
+            before = hashlib.sha256(sitecustomize.read_bytes()).hexdigest()
+            env = os.environ.copy()
+            env["PYTHONPATH"] = os.pathsep.join(
+                (str(sandbox), str(ROOT / "src"), str(ROOT))
+            )
+            env["PYTHONNOUSERSITE"] = "1"
+            env.pop("PYTHONPYCACHEPREFIX", None)
+            env["LIGHTUP_SCOPE_BOOTSTRAP_SCRIPT"] = str(SCRIPT)
+            env["LIGHTUP_SCOPE_SOURCE_ROOT"] = str(ROOT / "src/lightup")
+            env["LIGHTUP_SCOPE_SCRIPTS_ROOT"] = str(ROOT / "scripts")
+            for items, expected in [
+                ([_row(kind="http-baseline-observation")], "REVIEW_ONLY"),
+                ([_row(kind="not/allowed")], "HOLD"),
+                ([_row(), _row(kind="INVALID")], "HOLD"),
+            ]:
+                with self.subTest(outcome=expected, item_count=len(items)):
+                    child = subprocess.run(
+                        [sys.executable, "-B", str(SCRIPT)],
+                        cwd=sandbox, input=json.dumps(_envelope(items)).encode(),
+                        env=env, capture_output=True, timeout=8, check=False,
+                    )
+                    self.assertEqual(child.returncode, 3 if expected == "REVIEW_ONLY" else 2,
+                                     "native tripwire unexpectedly denied the CLI")
+                    self.assertEqual(child.stderr, b"")
+                    receipt = json.loads(child.stdout)
+                    self.assertEqual(receipt["status"], expected)
+                    for key in FALSE_KEYS:
+                        self.assertIs(receipt[key], False)
+                    self.assertEqual(
+                        {p.name for p in sandbox.iterdir()}, {"sitecustomize.py"},
+                        "offline CLI must never create files",
+                    )
+                    self.assertEqual(
+                        hashlib.sha256(sitecustomize.read_bytes()).hexdigest(),
+                        before,
+                        "offline CLI must never modify its import guard",
+                    )
 
     def test_single_and_max_batch_do_not_grant_authority(self):
         for count in (1, 2, 16, 32):
