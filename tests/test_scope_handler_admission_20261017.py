@@ -231,6 +231,33 @@ class InstalledSourceAcceptanceTests(unittest.TestCase):
         self.assertEqual(reg.definitions(), before)
         self.assertIs(reg.get(original.tool_id)[1], inert_handler)
 
+    @unittest.expectedFailure
+    def test_source_red_generator_handler_must_be_rejected_atomically(self):
+        reg = ToolRegistry()
+        definition = self._definition("scope_1531_generator")
+        with self.assertRaises(OrchestrationError):
+            reg.register(definition, generator_handler)
+        self.assertEqual(reg.definitions(), ())
+
+    @unittest.expectedFailure
+    def test_source_red_foreign_callable_signature_must_not_be_reflected(self):
+        class SignatureTrap:
+            @property
+            def __signature__(self):
+                raise AssertionError("untrusted signature property executed")
+
+            def __call__(self, context, arguments):
+                raise AssertionError("untrusted callback executed")
+
+        reg = ToolRegistry()
+        canonical = self._definition()
+        reg.register(canonical, inert_handler)
+        before = reg.definitions()
+        with self.assertRaises(OrchestrationError):
+            reg.register(self._definition("scope_1531_signature_trap"), SignatureTrap())
+        self.assertEqual(reg.definitions(), before)
+        self.assertIs(reg.get(canonical.tool_id)[1], inert_handler)
+
 
 if __name__ == "__main__":
     unittest.main()
