@@ -35,7 +35,7 @@
 <section class="card"><h2>Read-only planning manifest</h2><p>The exported summary excludes free-text safety notes, contact details, credentials and uploaded raw JSON. This summary does not convey operational authority.</p><pre id="json">Import proposals to view.</pre></section>
 <p>Everything remains local in memory. Nothing is stored in browser storage or sent to any server. Use only authorized internal sharing paths for exported plans.</p>
 </main>
-<script src="./scope-network.js"></script><script src="./scope-fingerprint.js"></script>
+<script src="./scope-network.js"></script><script src="./scope-fingerprint.js"></script><script src="./planning-window.js"></script>
 <script>
 (function(){
 'use strict';
@@ -64,8 +64,7 @@ function appendText(parent,tag,text,classes){
  parent.append(elem);return elem;
 }
 function scheduleConflict(a,b) {
- const x=a.proposed_window_local,y=b.proposed_window_local;
- return !!(x.start&&x.end&&y.start&&y.end&&x.start<y.end&&y.start<x.end);
+ return LightUpPlanningWindow.overlaps(a.proposed_window_utc,b.proposed_window_utc);
 }
 function portfolioSummary(){
  const conflicts=[],inventory=[];
@@ -76,7 +75,8 @@ function portfolioSummary(){
    file_label:entry.file,revision_sha256:entry.hash,proposal:d.proposal_name,unverified_client_label:d.client_label,
    requested_mode:d.requested_mode,requested_risk:d.requested_risk,
    asset_count:d.requested_assets.length,excluded_count:d.excluded_assets.length,
-   proposed_window_local:d.proposed_window_local,scope_warnings:own.map(w=>w.code)
+   proposed_window_local:d.proposed_window_local,
+   proposed_window_utc:d.proposed_window_utc||null,scope_warnings:own.map(w=>w.code)
   });
  }
  for(let i=0;i<portfolio.length;i++)for(let j=i+1;j<portfolio.length;j++){
@@ -94,7 +94,7 @@ function portfolioSummary(){
   if(matched.length||windowOverlap)conflicts.push({
    first_revision_sha256:a.hash,second_revision_sha256:b.hash,
    first_proposal:da.proposal_name,second_proposal:db.proposal_name,
-   overlapping_proposed_asset_examples:matched,effective_nonexcluded_scope_overlap:shared,local_window_overlap:windowOverlap,
+   overlapping_proposed_asset_examples:matched,effective_nonexcluded_scope_overlap:shared,utc_window_overlap:windowOverlap,
    explanation:'Human review of actual client ownership and canonical scope is required; this is not a permission or verified booking.'
   });
  }
@@ -103,10 +103,11 @@ function portfolioSummary(){
   source:'USER_SUPPLIED_LOCAL_DRAFTS',authenticated:false,client_consent:false,operator_consent:false,
   authorization:false,scope_approved:false,risk_approved:false,grant:false,execution:false,scan:false,release:false,
   total_proposals:inventory.length,total_asset_declarations:inventory.reduce((n,i)=>n+i.asset_count,0),
+  missing_resolved_utc_windows:inventory.filter(i=>i.proposed_window_utc?.status!=='resolved').length,
   high_risk_proposals:inventory.filter(i=>i.requested_risk===4).length,
   overlapping_or_window_conflict_pairs:conflicts.length,
   proposals:inventory,possible_conflicts:conflicts,
-  limitations:'No target interaction, DNS, CIDR/exclusion enforcement, identity verification, tenant access, temporal timezone resolution, signature, consent or authorization.'
+  limitations:'No target interaction, DNS, authoritative CIDR/exclusion enforcement, identity verification, tenant access, signature, consent or authorization. Only supplied resolved UTC windows are comparable.'
  };
  return out;
 }
@@ -133,17 +134,18 @@ function render(){
   appendText(box,'h3',d.proposal_name||'Untitled proposal');
   appendText(box,'p','Client label (unverified): '+(d.client_label||'—'),'meta');
   appendText(box,'p',d.requested_assets.length+' proposed / '+d.excluded_assets.length+' excluded assets','meta');
-  appendText(box,'p','Window (local, unverified): '+(d.proposed_window_local.start||'?')+' → '+(d.proposed_window_local.end||'?'),'meta');
+  appendText(box,'p','Window (UTC, unverified): '+(d.proposed_window_utc?.start||'?')+' → '+(d.proposed_window_utc?.end||'?'),'meta');
   appendText(box,'p','Unsigned scope SHA-256: '+(entry.hash||'unavailable'),'meta');
   appendText(box,'p','Requires independently authenticated consent, current revocation, grant and explicit authorization.','meta');
  }
  const warnings=$('warnings');warnings.replaceChildren();
+ if(r.missing_resolved_utc_windows)appendText(warnings,'p',r.missing_resolved_utc_windows+' draft(s) lack resolved UTC windows; those schedule conflicts cannot be excluded.');
  if(!r.possible_conflicts.length)appendText(warnings,'p','No shared non-excluded numeric/host scope or raw local-time overlap detected. That does not prove scopes are distinct or permitted.');
  for(const c of r.possible_conflicts){
   const box=document.createElement('div');box.className='warning';warnings.append(box);
   appendText(box,'strong',c.first_proposal+' ↔ '+c.second_proposal);
   if(c.overlapping_proposed_asset_examples.length)appendText(box,'p','Potential shared non-excluded scope (review exclusions): '+c.overlapping_proposed_asset_examples.join('; '));
-  if(c.local_window_overlap)appendText(box,'p','Proposed local time windows intersect. Separate timezone and scheduling verification required.');
+  if(c.utc_window_overlap)appendText(box,'p','Proposed UTC time windows intersect. Separate scheduling verification and human approval required.');
  }
  const high=portfolio.filter(p=>p.draft.requested_risk===4);
  if(high.length){const box=document.createElement('div');box.className='warning critical';warnings.prepend(box);appendText(box,'strong',high.length+' high-risk proposal(s) need separate risk approval.');}
@@ -151,7 +153,7 @@ function render(){
 async function parseFile(file){
  if(!file || file.size>FILE_MAX)throw Error('too large');
  const draft=JSON.parse(await file.text(),(k,v)=>['__proto__','constructor','prototype'].includes(k)?undefined:v);
- if(!valid(draft))throw Error('invalid draft');
+ if(!valid(draft)||!LightUpPlanningWindow.validateStored(draft.proposed_window_local,draft.proposed_window_utc))throw Error('invalid draft');
  const hash=await LightUpScopeDigest.fingerprint(draft);
  if(draft.scope_fingerprint_sha256!==undefined && (!hash||hash!==draft.scope_fingerprint_sha256))throw Error('fingerprint mismatch');
  return {file:file.name.slice(0,160),draft,hash};
