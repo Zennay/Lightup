@@ -162,5 +162,52 @@ class ScopeMembershipMetamorphicTests(unittest.TestCase):
                         )
 
 
+    def test_public_ipv6_outside_declared_prefix_stays_out_of_scope(self):
+        # Actual globally routable Cloudflare-format IPv6 fixture strings;
+        # no address is ever contacted, resolved or scanned.
+        for allow_private in (True, False):
+            for require_auth in (True, False):
+                policy = ScopePolicy(
+                    allow_private_lab=allow_private,
+                    explicit_networks=("2606:4700:4700::2222/128",),
+                    require_authorization_for_public=require_auth,
+                )
+                for value in (
+                    "2606:4700:4700::1111",
+                    "https://[2606:4700:4700::1111]/",
+                ):
+                    for name, grant in _grant_variants():
+                        with self.subTest(lab=allow_private, flag=require_auth,
+                                          value=value, grant=name):
+                            self._reject_off_scope(
+                                policy, Target(value, authorization=grant)
+                            )
+
+    def test_untrusted_authorization_shape_and_label_cannot_mint_membership(self):
+        class ExplodingGrant:
+            def is_current(self, *_args, **_kwargs):
+                raise AssertionError("untrusted grant must not be evaluated")
+
+        for require_auth in (True, False):
+            policy = ScopePolicy(
+                explicit_hosts=frozenset({"declared.example.test"}),
+                require_authorization_for_public=require_auth,
+            )
+            for labels in (
+                ("AUTHORIZED",),
+                ("scope:explicit-host", "review:approved"),
+                ("synthetic", "risk:low"),
+            ):
+                with self.subTest(flag=require_auth, labels=labels):
+                    self._reject_off_scope(
+                        policy,
+                        Target(
+                            "undeclared.example.test",
+                            authorization=ExplodingGrant(),  # type: ignore[arg-type]
+                            labels=labels,
+                        ),
+                    )
+
+
 if __name__ == "__main__":
     unittest.main()
