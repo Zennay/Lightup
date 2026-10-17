@@ -10,6 +10,7 @@ import hashlib
 import json
 import sys
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Import the installed checkout's real evaluator, not a lookalike test implementation.
@@ -42,6 +43,8 @@ class WitnessCase:
 def canonical_cases() -> tuple[WitnessCase, ...]:
     # Reserved synthetic hostname and local policy-only address strings. No DNS.
     sample_auth = Authorization(owner="fictional-reviewer", reference="SYNTHETIC-NOT-CONSENT")
+    expired_auth = Authorization(owner="fictional-reviewer", reference="SYNTHETIC-EXPIRED", valid_until=datetime(2000, 1, 1, tzinfo=timezone.utc))
+    future_auth = Authorization(owner="fictional-reviewer", reference="SYNTHETIC-NOT-YET", valid_from=datetime(2100, 1, 1, tzinfo=timezone.utc))
     host = "fixture.example.test"
     hosts = frozenset({host})
     cidrs = ("8.8.8.0/24",)
@@ -57,6 +60,12 @@ def canonical_cases() -> tuple[WitnessCase, ...]:
         WitnessCase("explicit-network-synthetic-control", Target("8.8.8.8", authorization=sample_auth), ScopePolicy(explicit_networks=cidrs), True, "8.8.8.8", ScopeReason.EXPLICIT_NETWORK),
         WitnessCase("host-removed-denies", Target(host, authorization=sample_auth), ScopePolicy(), False, host, ScopeReason.OUT_OF_SCOPE),
         WitnessCase("blank-target-denies", Target(" "), ScopePolicy(), False, None, ScopeReason.INVALID_TARGET),
+        WitnessCase("explicit-host-expired", Target(host, authorization=expired_auth), ScopePolicy(explicit_hosts=hosts), False, host, ScopeReason.AUTHORIZATION_EXPIRED),
+        WitnessCase("explicit-host-not-yet", Target(host, authorization=future_auth), ScopePolicy(explicit_hosts=hosts), False, host, ScopeReason.AUTHORIZATION_EXPIRED),
+        WitnessCase("explicit-cidr-expired", Target("8.8.8.8", authorization=expired_auth), ScopePolicy(explicit_networks=cidrs), False, "8.8.8.8", ScopeReason.AUTHORIZATION_EXPIRED),
+        WitnessCase("explicit-host-no-auth-policy", Target(host), ScopePolicy(explicit_hosts=hosts, require_authorization_for_public=False), True, host, ScopeReason.EXPLICIT_HOST),
+        WitnessCase("cidr-removed-denies", Target("8.8.8.8", authorization=sample_auth), ScopePolicy(), False, "8.8.8.8", ScopeReason.OUT_OF_SCOPE),
+        WitnessCase("loopback-lab-disabled", Target("127.0.0.1"), ScopePolicy(allow_private_lab=False), True, "127.0.0.1", ScopeReason.LOOPBACK),
     )
 
 
@@ -77,7 +86,7 @@ def evaluate(cases: tuple[WitnessCase, ...] | None = None) -> dict[str, object]:
     """Evaluate only synthetic in-memory cases. Returns a non-authorizing result."""
     try:
         fixtures = canonical_cases() if cases is None else cases
-        if type(fixtures) is not tuple or len(fixtures) != 11:
+        if type(fixtures) is not tuple or len(fixtures) != 17:
             return _receipt("HOLD", "invalid_witness_matrix")
         ids: set[str] = set()
         observed: list[list[object]] = []
@@ -98,8 +107,15 @@ def evaluate(cases: tuple[WitnessCase, ...] | None = None) -> dict[str, object]:
                         type(case.target.authorization) is not Authorization
                         or type(case.target.authorization.owner) is not str
                         or type(case.target.authorization.reference) is not str
-                        or case.target.authorization.valid_from is not None
-                        or case.target.authorization.valid_until is not None
+                        or any(
+                            bound is not None and (
+                                type(bound) is not datetime or bound.tzinfo is not timezone.utc
+                            )
+                            for bound in (
+                                case.target.authorization.valid_from,
+                                case.target.authorization.valid_until,
+                            )
+                        )
                     )
                 )
                 or type(case.policy) is not ScopePolicy
