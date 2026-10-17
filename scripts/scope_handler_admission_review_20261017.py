@@ -31,6 +31,11 @@ class HandlerAdmissionReview(tuple):
     def status(self) -> str:
         return self[0]
 
+    def __bool__(self) -> bool:
+        # Neither HOLD nor REVIEW_ONLY is a permit. Even a valid shape MUST
+        # remain false in accidental "if receipt" authorization branches.
+        return False
+
     @property
     def authorized(self) -> bool:
         return False

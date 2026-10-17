@@ -90,6 +90,26 @@ class HandlerAdmissionReviewTests(unittest.TestCase):
         self.assertFalse(review.dispatch_allowed)
         self.assertFalse(review.release_allowed)
 
+    def test_advisory_receipt_never_grants_authority_by_truthiness(self):
+        from scope_handler_admission_review_20261017 import HandlerAdmissionReview
+        results = (
+            HandlerAdmissionReview("HOLD"),
+            HandlerAdmissionReview("REVIEW_ONLY"),
+            review_handlers((( "valid", inert_handler),)),
+            review_handlers((( "invalid!", inert_handler),)),
+        )
+        self.assertEqual(tuple(result.status for result in results),
+                         ("HOLD", "REVIEW_ONLY", "REVIEW_ONLY", "HOLD"))
+        for receipt in results:
+            with self.subTest(status=receipt.status):
+                self.assertEqual(len(receipt), 1)
+                self.assertIs(bool(receipt), False)
+                self.assertIs(receipt.authorized, False)
+                self.assertIs(receipt.consent_verified, False)
+                self.assertIs(receipt.dispatch_allowed, False)
+                self.assertIs(receipt.release_allowed, False)
+        self.assertEqual(tuple(filter(None, results)), ())
+
     def test_canonical_multiple(self):
         self.assertEqual(review_handlers((("a", inert_handler), ("b_2", second_handler))).status, "REVIEW_ONLY")
 

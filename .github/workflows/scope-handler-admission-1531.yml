@@ -82,7 +82,7 @@ jobs:
             echo "Unexpected strict success: owner-source state changed; review expected RED markers"
             exit 1
           fi
-          grep -F 'Ran 40 tests' "$strict_log"
+          grep -F 'Ran 41 tests' "$strict_log"
           grep -Fx 'FAILED (failures=6)' "$strict_log"
           # A count alone is insufficient: one newly broken unrelated test could
           # mask a fixed source-owner acceptance test while the total remains six.
