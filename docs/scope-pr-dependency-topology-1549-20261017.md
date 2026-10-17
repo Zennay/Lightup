@@ -126,3 +126,42 @@ individual root candidate (REVIEW_ONLY/exit3) and the same candidate combined
 under that root with [#1548](https://github.com/Zennay/Lightup/pull/1548)
 as HOLD/exit2 because their historical base SHA claims differ. This does not
 prove present freshness or that either PR is safe to merge.
+
+## W11 — two-read claim-consistency fence (opt-in protocol V2)
+
+A single offline snapshot (V1) is still strictly advisory and unauthenticated.
+To detect a PR changing *between two independently collected observations*,
+the adapter now accepts optional **V2 two-read** JSON:
+
+```json
+{
+  "version": 2,
+  "root_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "first_read": [
+    {"number": 1550, "owner": "worker-a", "state": "open", "draft": true,
+     "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+  ],
+  "second_read": [
+    {"number": 1550, "owner": "worker-a", "state": "open", "draft": true,
+     "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+  ]
+}
+```
+
+Both snapshots are strictly validated as complete V1 claims, including the
+same common root, exact PR number, owner, state, draft status, and base/head.
+The inferred graph is canonically sorted, so different row order is harmless.
+**Any** missing, extra, stale, closed, nondraft, contradictory, cyclic or
+ill-typed node causes a generic `HOLD`/exit 2. Two identical admissible
+snapshots yield `PR_SNAPSHOT_V2_DOUBLE_READ` `REVIEW_ONLY`/exit 3 with
+byte-bound and canonically inferred graph fingerprints; all nine authority
+flags remain false. This detects inconsistent *claims*, **not** authenticated
+real-time GitHub provenance, guaranteed completeness, consent, approval or
+merge safety. The adapter itself does not fetch or authenticate either read.
+
+Real subprocess/negative tests cover a changing HEAD, base, owner, number,
+missing node, closed/non-draft transition, duplicate identity, malformed
+input and benign reordering. The original V1 tool remains available, but
+neither protocol gives authorization.
