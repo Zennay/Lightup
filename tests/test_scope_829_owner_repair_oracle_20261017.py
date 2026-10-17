@@ -154,16 +154,16 @@ def _run_source_variant(variant: str) -> dict:
             "count", "failures", "errors", "skipped",
             "unexpected_success", "expected_failure",
         }
-        assert result["count"] == 25, (variant, result)
+        assert result["count"] == 27, (variant, result)
         assert result["skipped"] == 0 and result["expected_failure"] == 0
         assert result["unexpected_success"] == 0
         return result
 
 
 class Scope829OwnerRepairOracle(unittest.TestCase):
-    def test_original_source_has_sixteen_strict_reds(self):
+    def test_original_source_has_eighteen_strict_reds(self):
         result = _run_source_variant("original")
-        self.assertEqual(len(result["failures"]) + len(result["errors"]), 16)
+        self.assertEqual(len(result["failures"]) + len(result["errors"]), 18)
 
     def test_joined_current_owner_filter_fixes_all_real_cases(self):
         result = _run_source_variant("correct")
