@@ -170,23 +170,37 @@ def _tracked_files_have_no_filters() -> bool:
     names = files.stdout[:-1].split(b"\0")
     if len(names) > 8192 or len(set(names)) != len(names):
         return False
-    attrs = _git_raw("check-attr", "-z", "--stdin", "filter", data=files.stdout)
+    # Ordinary check-attr filter reports "unspecified" BOTH for an absent
+    # filter and for an explicit filter=unspecified declaration. That
+    # declaration selects a real clean/process driver named "unspecified".
+    # --all emits only explicitly active attributes and disambiguates this
+    # without attempting to parse untrusted attributes-file syntax ourselves.
+    attrs = _git_raw("check-attr", "--all", "-z", "--stdin", data=files.stdout)
     if (
         attrs.returncode != 0 or type(attrs.stdout) is not bytes
         or type(attrs.stderr) is not bytes or attrs.stderr
-        or not attrs.stdout or len(attrs.stdout) > 786432
-        or not attrs.stdout.endswith(b"\0")
+        or len(attrs.stdout) > 786432
     ):
         return False
-    fields = attrs.stdout[:-1].split(b"\0")
-    if len(fields) != 3 * len(names):
+    if not attrs.stdout:
+        return True  # No selected attributes on any tracked path.
+    if not attrs.stdout.endswith(b"\0"):
         return False
-    for index, path in enumerate(names):
-        original, attr, value = fields[3 * index:3 * index + 3]
-        if original != path or attr != b"filter" or value != b"unspecified":
+    fields = attrs.stdout[:-1].split(b"\0")
+    if len(fields) % 3:
+        return False
+    allowed_paths = set(names)
+    seen: set[tuple[bytes, bytes]] = set()
+    for path, attribute, value in zip(fields[::3], fields[1::3], fields[2::3]):
+        identity = (path, attribute)
+        if (
+            path not in allowed_paths or not value or len(value) > 8192
+            or re.fullmatch(rb"[A-Za-z0-9_-]{1,64}", attribute) is None
+            or attribute.lower() == b"filter" or identity in seen
+        ):
             return False
+        seen.add(identity)
     return True
-
 
 def git(*args: str) -> subprocess.CompletedProcess[bytes]:
     if args and args[0] == "status" and not _tracked_files_have_no_filters():
