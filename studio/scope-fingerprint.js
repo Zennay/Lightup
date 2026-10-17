@@ -21,7 +21,12 @@ function canonicalObject(d){
   requested_assets:assets,excluded_assets:excluded,
   requested_mode:d.requested_mode,requested_risk:d.requested_risk,
   proposed_activities:{passive_analysis:a.passive_analysis,configuration_review:a.configuration_review,private_lab_network_checks:a.private_lab_network_checks},
-  proposed_window_local:{start:w.start??null,end:w.end??null}
+  proposed_window_local:{start:w.start??null,end:w.end??null},
+  ...(d.proposed_window_utc ? {proposed_window_utc:{
+    status:d.proposed_window_utc.status,timezone:d.proposed_window_utc.timezone,
+    start:d.proposed_window_utc.start,end:d.proposed_window_utc.end,
+    ...(d.proposed_window_utc.status==='resolved' ? {start_offset_minutes:d.proposed_window_utc.start_offset_minutes,end_offset_minutes:d.proposed_window_utc.end_offset_minutes} : {})
+  }} : {})
  };
 }
 async function fingerprint(d){
