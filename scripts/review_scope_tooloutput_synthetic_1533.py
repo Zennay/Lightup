@@ -9,6 +9,7 @@ Receipts never exit zero and never echo or persist input data.
 """
 from __future__ import annotations
 
+import io
 import json
 from pathlib import Path
 import re
@@ -121,9 +122,12 @@ def main(args: list[str]) -> int:
     }
     try:
         sys.stdout.write(json.dumps(response, sort_keys=True, separators=(",", ":")) + "\n")
-    except (OSError, UnicodeError, ValueError):
-        # An unusable response channel cannot carry a review receipt. Never
-        # promote it to success or leak exception details on stderr.
+        sys.stdout.flush()
+    except (OSError, UnicodeError, ValueError, AttributeError):
+        # A failed stdout must not be re-flushed by CPython at interpreter
+        # shutdown (which otherwise leaks a traceback and exits 120).
+        # In-memory only: no replacement file, network, subprocess or grant.
+        sys.stdout = io.StringIO()
         return 2
     return 3 if result is OutputIdentityReview.REVIEW_ONLY else 2
 
