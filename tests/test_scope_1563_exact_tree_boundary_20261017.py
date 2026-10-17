@@ -247,6 +247,19 @@ class TemporaryOwnerTreeTests(unittest.TestCase):
             gate.inspect_exact_head(self.root, merged_head)
 
 
+    def test_index_only_mutation_is_invisible_to_unstaged_diff(self):
+        owned_head = self._build_owned()
+        path = sorted(gate.ALLOWED_ADDED)[0]
+        self._write(path, "synthetic staged-only changed bytes")
+        self._git("add", path)
+        self.assertEqual(self._git("diff", "--name-only"), "")
+        self.assertEqual(self._git("diff", "--cached", "--name-only"), path)
+        # Immutable committed tree review still applies to HEAD; CI must check
+        # the index as an additional and independent trust boundary.
+        self.assertEqual(gate.inspect_exact_head(self.root, owned_head)["decision"], "REVIEW_ONLY")
+
+
+
 class HostedTriggerContractTests(unittest.TestCase):
     def test_any_head_change_triggers_tree_review(self):
         workflow = (pathlib.Path(__file__).resolve().parents[1] /
@@ -278,6 +291,19 @@ class HostedTriggerContractTests(unittest.TestCase):
         self.assertLess(workflow.index(gate_call), workflow.index(foreign_overlay))
         self.assertLess(workflow.index("- name: Python runtime"), workflow.index("- name: Pin branch"))
         self.assertIn("persist-credentials: false", workflow)
+
+
+
+    def test_both_own_ci_workflows_require_index_and_untracked_cleanliness(self):
+        root = pathlib.Path(__file__).resolve().parents[1] / ".github/workflows"
+        for name in (
+            "scope-1563-membership-offline.yml",
+            "scope-1563-owner301-compat-offline.yml",
+        ):
+            with self.subTest(workflow=name):
+                data = (root / name).read_text(encoding="utf-8")
+                self.assertIn("git diff --cached --exit-code", data)
+                self.assertIn('test -z "$(git ls-files --others --exclude-standard)"', data)
 
 
 
