@@ -45,7 +45,9 @@ def references_review_module(source: str) -> bool:
     nodes = tuple(ast.walk(tree))
     importlib_names = {"importlib"}
     builtins_names = {"builtins"}
-    import_module_names = {"import_module", "__import__"}
+    # A bare local function named import_module is NOT an imported loader.
+    # __import__ alone is always available as a Python builtin.
+    import_module_names = {"__import__"}
     for node in nodes:
         if isinstance(node, ast.Import):
             for alias in node.names:
@@ -70,8 +72,14 @@ def references_review_module(source: str) -> bool:
             # can promote the module despite the module field not containing it.
             if any(name.name == REVIEWER for name in node.names):
                 return True
-        elif isinstance(node, ast.Call) and node.args:
-            literal = _constant_text(node.args[0])
+        elif isinstance(node, ast.Call):
+            # Both importlib.import_module(name=...) and __import__(name=...)
+            # accept keyword-only spelling; source literals must not bypass
+            # static unwired-review checks solely by call syntax.
+            literal = (
+                _constant_text(node.args[0]) if node.args else
+                next((_constant_text(kw.value) for kw in node.keywords if kw.arg == "name"), None)
+            )
             if literal is None:
                 continue
             called = node.func
