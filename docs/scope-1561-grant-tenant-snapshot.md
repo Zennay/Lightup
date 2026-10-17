@@ -222,3 +222,32 @@ CI assessment. The named permanent VPS workflow may remain queued.
 Neither a successful standalone hosted workflow nor a benign
 `REVIEW_ONLY` status permits a merge, deploy, scan, handler execution,
 live grant, client authorization or release.
+
+## W7 — SQLite VM authorizer defense in depth
+
+Alongside `mode=ro&immutable=1`, this untrusted/offline-data reader
+now **verifies** `PRAGMA trusted_schema=OFF` and
+`PRAGMA query_only=ON` on the newly opened connection. Unsupported
+or refused settings produce zero-count `HOLD`; they never silently
+fall back to a weaker read mode.
+
+A new `sqlite3.Connection.set_authorizer` callback permits only
+the required `SELECT`, `READ`, `FUNCTION` VM authorizer actions and
+the two static introspection PRAGMAs (`quick_check`, `table_info`).
+All mutation-shaped SQL operations, including `INSERT`, `UPDATE`,
+`DELETE`, `ATTACH`, `DETACH`, transactions, and schema modification,
+are denied at the **SQLite authorizer** boundary in addition to
+filesystem and `query_only` restrictions.
+
+Two new genuine tests first failed against the original module because
+the callback did not exist. After adding the callback and verifying the
+defensive PRAGMA settings, connected zSSH Python 3.14.4 ran
+**44/44 ordinary synthetic test methods PASS** at exact source commit
+`46edf211ef96c955fe6167b658e881a1da3b109b`.
+
+This is extra protection against unintentional SQL additions or
+malformed-local-data handling. It is **not** a substitute for the
+operating system's file permissions, audited SQLite build, physical
+offline copy provenance, customer consent, full threat modeling or
+production-source repair. No dangerous statement is executed by this
+inspector and no live customer data is used in these tests.
