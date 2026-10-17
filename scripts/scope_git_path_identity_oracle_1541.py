@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Final
+import unicodedata
 
 _MAX_OUTPUT: Final = 262144
 _MAX_PATH: Final = 4096
@@ -48,7 +49,8 @@ def _path(value: bytes) -> str:
         raise PathIdentityHold() from None
     if (result.startswith("/") or "\\" in result or
             any(component in ("", ".", "..") for component in result.split("/")) or
-            any((ord(c) < 32 and ord(c) != 9) or ord(c) == 127 for c in result)):
+            any((ord(c) < 32 and ord(c) != 9) or ord(c) == 127 or
+                unicodedata.category(c) == "Cf" for c in result)):
         # Other control characters (but not NUL-delimited-safe tabs) are held:
         # the source-owner must explicitly decide what Git reporting supports.
         raise PathIdentityHold()
@@ -73,6 +75,27 @@ def _identity_key(value: str) -> str:
     # *advisory* collision fence, not a filesystem identity attestation.
     import unicodedata
     return unicodedata.normalize("NFC", value).casefold()
+
+
+def _deny_hierarchy_ambiguity(paths: list[str]) -> None:
+    """Fail closed on file/directory and Unicode/case directory aliases.
+
+    Git can legitimately report a file replaced by a directory in the same
+    diff. This purely advisory preflight conservatively holds such changes
+    rather than pretending they are safely unambiguous across filesystems.
+    """
+    files = {_identity_key(path) for path in paths}
+    directories: dict[str, str] = {}
+    for path in paths:
+        components = path.split("/")
+        for offset in range(1, len(components)):
+            original = "/".join(components[:offset])
+            canonical = _identity_key(original)
+            if canonical in files:
+                raise PathIdentityHold()
+            previous = directories.setdefault(canonical, original)
+            if previous != original:
+                raise PathIdentityHold()
 
 
 def _status_code(raw: bytes) -> str:
@@ -150,4 +173,6 @@ def parse_git_path_outputs(
         checked.append(CheckedGitPath(code, path, original, additions, deletions))
     if stats:
         raise PathIdentityHold()
+    _deny_hierarchy_ambiguity([p for item in checked for p in
+                               ((item.previous_path,) if item.previous_path else ()) + (item.path,)])
     return tuple(checked)
