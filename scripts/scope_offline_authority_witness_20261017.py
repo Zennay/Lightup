@@ -22,7 +22,7 @@ from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason  # noqa: E402
 SCHEMA = "lightup.scope-offline-decision-witness.v1"
 # These hashes attest only the fictional fixtures and observed classifications.
 # They are not source signatures, real consent, or release/merge authority.
-REFERENCE_FIXTURE_SHA256 = "PENDING_INITIAL_VALIDATION"
+REFERENCE_FIXTURE_SHA256 = "b7f7d7595f7afc56605410fc3dce434da8ff2bad6900672a9890cc3cc176071a"
 REFERENCE_BEHAVIOR_SHA256 = "075c7598f4a01809cd19ef8a02d9380a2bdbde01e2a22fd8dfc940475386dcb1"
 FALSE_AUTHORITY = {
     "client_consent_verified": False,
