@@ -13,6 +13,12 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 REVIEWER = "scope_literal_control_review_20261016"
 SOURCE_DIR = ROOT / "src" / "lightup"
+SCRIPT_DIR = ROOT / "scripts"
+OWNED_HELPERS = frozenset({
+    "review_scope_literal_controls_20261016.py",
+    "check_scope_literal_suite_20261016.py",
+    "check_scope_literal_branch_20261016.py",
+})
 
 
 def _constant_text(node: ast.AST) -> str | None:
@@ -98,6 +104,22 @@ class RuntimeIsolationStaticTests(unittest.TestCase):
                         references_review_module(path.read_text(encoding="utf-8")),
                         "Inert reviewer imported in application source",
                     )
+
+    def test_no_nonowned_application_script_imports_reviewer(self):
+        scripts = sorted(SCRIPT_DIR.rglob("*.py"))
+        self.assertGreaterEqual(len(scripts), len(OWNED_HELPERS))
+        self.assertEqual(
+            {path.name for path in scripts if path.name in OWNED_HELPERS},
+            OWNED_HELPERS,
+        )
+        for path in scripts:
+            if path.name in OWNED_HELPERS:
+                continue
+            with self.subTest(script=path.name):
+                self.assertFalse(
+                    references_review_module(path.read_text(encoding="utf-8")),
+                    "Other script has started importing inert scope reviewer",
+                )
 
     def test_catches_every_literal_import_shape(self):
         patterns = (

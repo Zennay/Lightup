@@ -108,3 +108,7 @@ The original strict manifest's expected-source-RED verification used a set and t
 ## W22 — alias-bound literal dynamic imports cannot bypass inert-reviewer isolation
 
 Four synthetic regression cases first demonstrated that the original AST guard failed to detect `import importlib as il`, `from importlib import import_module as load`, constant concatenation through the aliased importer, and literal `getattr(il, 'import_module')` calling the offline reviewer. The revised *strictly static, non-executing* guard now recognizes statically imported aliases and applies the earlier bounded literal-only module-name rule. Runtime reflection, function reassignment, and computed variables remain OUTSIDE the proof; this does not confer authorization or alter production imports.
+
+## W23 — detect accidental promotion in unrelated application scripts
+
+The static-only isolation test now scans *both* normal application Python modules and the project scripts directory. It excludes only this worker's explicitly named inert opt-in CLI and its two diagnostics; any direct/literal import of the offline reviewer in another script causes an isolated test failure. The test also requires that all three explicitly excluded helpers actually exist, preventing overly broad exclusions. This is additive QA for unintended wiring, not a replacement for runtime security review or complete code-flow proof.
