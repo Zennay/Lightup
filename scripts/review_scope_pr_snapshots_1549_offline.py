@@ -94,13 +94,49 @@ def _transform(raw: bytes) -> bytes:
                       ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("ascii")
 
 
+def _transform_two_read(doc: dict[str, object]) -> bytes:
+    """Require two complete, consistent *claims*, never certify provenance."""
+    if type(doc) is not dict or set(doc) != {
+        "version", "root_sha", "first_read", "second_read"
+    } or type(doc["version"]) is not int or doc["version"] != 2:
+        raise core.InvalidManifest("double-read schema")
+    root = doc["root_sha"]
+    if not core._exact_sha(root):
+        raise core.InvalidManifest("double-read root")
+
+    graphs: list[bytes] = []
+    for key in ("first_read", "second_read"):
+        rows = doc[key]
+        if type(rows) is not list or not 1 <= len(rows) <= core.MAX_ENTRIES:
+            raise core.InvalidManifest("double-read count")
+        snapshot = json.dumps(
+            {"version": 1, "root_sha": root, "pull_requests": rows},
+            ensure_ascii=True, separators=(",", ":"), sort_keys=True,
+        ).encode("ascii")
+        graphs.append(_transform(snapshot))
+    if graphs[0] != graphs[1]:
+        raise core.InvalidManifest("stale or conflicting double-read claims")
+    return graphs[0]
+
+
 def evaluate(raw: bytes) -> tuple[dict[str, object], int]:
     try:
-        transformed = _transform(raw)
+        if type(raw) is not bytes or not raw or len(raw) > core.MAX_INPUT or b"\\u" in raw:
+            raise core.InvalidManifest("bounded source bytes required")
+        doc = json.loads(raw.decode("utf-8", "strict"),
+                         object_pairs_hook=core._unique_pairs,
+                         parse_constant=core._bad_constant)
+        if type(doc) is dict and type(doc.get("version")) is int and doc["version"] == 2:
+            transformed = _transform_two_read(doc)
+            protocol = "PR_SNAPSHOT_V2_DOUBLE_READ"
+        else:
+            transformed = _transform(raw)
+            protocol = "PR_SNAPSHOT_V1"
         receipt, exit_code = core.evaluate(transformed)
         if exit_code != 3:
             return _receipt("HOLD"), 2
         verified = _receipt("REVIEW_ONLY", receipt["waves"])
+        verified["protocol"] = protocol
         verified["input_sha256"] = hashlib.sha256(raw).hexdigest()
         verified["derived_graph_sha256"] = receipt["input_sha256"]
         return verified, 3
