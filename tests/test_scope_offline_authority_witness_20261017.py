@@ -192,6 +192,54 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         self.assertEqual(result["reason"], "scope_policy_contract_drift")
         self.assert_no_authority(result)
 
+    def test_pinned_both_fixture_and_observed_digests(self):
+        result = witness.evaluate()
+        self.assertEqual(result["status"], "REVIEW_ONLY")
+        self.assertEqual(result["checked"], 17)
+        self.assertEqual(result["synthetic_fixture_sha256"], witness.REFERENCE_FIXTURE_SHA256)
+        self.assertEqual(result["synthetic_matrix_sha256"], witness.REFERENCE_BEHAVIOR_SHA256)
+        self.assert_no_authority(result)
+
+    def test_semantically_equivalent_but_modified_fixture_holds_before_policy_call(self):
+        cases = witness.canonical_cases()
+        # Both values still normalize to the same host. An output-only hash
+        # would not reveal this input mutation; the fixture pin must catch it.
+        new_target = witness.Target("localhost")
+        # Construct exactly 17 cases, with the changed case in original slot 1.
+        modified = cases[:1] + (replace(cases[1], target=new_target),) + cases[2:]
+        with patch.object(witness.ScopePolicy, "decide", side_effect=AssertionError("policy was called")) as decision:
+            result = witness.evaluate(modified)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "reference_fixture_drift")
+        self.assertNotIn("synthetic_fixture_sha256", result)
+        decision.assert_not_called()
+        self.assert_no_authority(result)
+
+    def test_corpus_reorder_and_synthetic_consent_provenance_drift_hold_pre_eval(self):
+        cases = witness.canonical_cases()
+        reordered = cases[1:2] + cases[:1] + cases[2:]
+        changed_auth = witness.Authorization("different-fictional-reviewer", "SYNTHETIC-NOT-CONSENT")
+        changed = cases[:6] + (
+            replace(cases[6], target=witness.Target(cases[6].target.value, authorization=changed_auth)),
+        ) + cases[7:]
+        for altered in (reordered, changed):
+            with self.subTest(case=altered[0].case_id):
+                with patch.object(witness.ScopePolicy, "decide", side_effect=AssertionError("called")) as decision:
+                    result = witness.evaluate(altered)
+                self.assertEqual(result["status"], "HOLD")
+                self.assertEqual(result["reason"], "reference_fixture_drift")
+                decision.assert_not_called()
+                self.assert_no_authority(result)
+
+    def test_behavior_digest_pin_rejects_changed_reference_without_positive_receipt(self):
+        with patch.object(witness, "REFERENCE_BEHAVIOR_SHA256", "0" * 64):
+            result = witness.evaluate()
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "reference_behavior_drift")
+        self.assertNotIn("synthetic_fixture_sha256", result)
+        self.assertNotIn("synthetic_matrix_sha256", result)
+        self.assert_no_authority(result)
+
     def test_no_network_socket_or_dns_is_necessary(self):
         with (patch.object(socket, "socket", side_effect=AssertionError("network invoked")),
               patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns invoked"))):
