@@ -121,7 +121,13 @@ def main(args: list[str]) -> int:
         "release_approved": False,
     }
     try:
-        sys.stdout.write(json.dumps(response, sort_keys=True, separators=(",", ":")) + "\n")
+        line = json.dumps(response, sort_keys=True, separators=(",", ":")) + "\n"
+        delivered = sys.stdout.write(line)
+        # A non-raising writer may still confirm no or partial delivery.
+        # Require an exact plain int matching the whole fixed-size receipt.
+        if type(delivered) is not int or delivered != len(line):
+            sys.stdout = io.StringIO()
+            return 2
         sys.stdout.flush()
     except (OSError, UnicodeError, ValueError, AttributeError):
         # A failed stdout must not be re-flushed by CPython at interpreter
