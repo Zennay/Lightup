@@ -74,6 +74,49 @@ raise SystemExit(entry['main']([]))
         for flag in FALSE_KEYS:
             self.assertIs(receipt[flag], False)
 
+
+    def test_missing_stdin_buffer_is_generic_hold_not_traceback(self):
+        program = """import runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+class MissingBuffer: pass
+sys.stdin=MissingBuffer()
+raise SystemExit(entry['main']([]))
+"""
+        child = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", program],
+            cwd=ROOT, input=b"", capture_output=True, timeout=8,
+        )
+        self.assertEqual(child.returncode, 2, child.stderr)
+        self.assertEqual(child.stderr, b"")
+        receipt = json.loads(child.stdout)
+        self.assertEqual(receipt["status"], "HOLD")
+        for field in FALSE_KEYS:
+            self.assertIs(receipt[field], False)
+
+    def test_broken_receipt_output_has_nonzero_exit_and_no_error_leak(self):
+        # A failed reply channel cannot produce an accurate JSON receipt.
+        # Never fall back to stdout/stderr traceback or a success exit.
+        program = """import runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+class BrokenOutput:
+    def write(self, message):
+        raise BrokenPipeError('SYNTHETIC_RESPONSE_SECRET_NEVER_LEAK')
+original=sys.stdout
+try:
+    sys.stdout=BrokenOutput()
+    code=entry['main'](['--unsupported'])
+finally:
+    sys.stdout=original
+raise SystemExit(code)
+"""
+        child = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", program],
+            cwd=ROOT, input=b"", capture_output=True, timeout=8,
+        )
+        self.assertEqual(child.returncode, 2, child.stderr)
+        self.assertEqual(child.stderr, b"")
+        self.assertEqual(child.stdout, b"", "no output channel means no receipt")
+
     def test_real_cli_under_original_native_no_io_tripwire(self):
         # Reuse the existing owner's unchanged guard fixture. This is a
         # Python-level interposition test, not a kernel sandbox or consent.
