@@ -297,5 +297,103 @@ class OfflineTreeModesTests(unittest.TestCase):
                 ))
 
 
+    def test_status_refuses_repo_filter_before_executable_can_run(self):
+        """A clean/process driver may execute from read-only Git status."""
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_git_filter_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp)
+            def git(*args):
+                return subprocess.run(
+                    [guard.GIT_BINARY, *args], cwd=root, check=True,
+                    capture_output=True, timeout=6,
+                ).stdout
+            git("init", "-q")
+            (root / ".gitattributes").write_text("file.txt filter=fictional\\n")
+            tracked = root / "file.txt"
+            tracked.write_text("before\\n")
+            git("add", ".gitattributes", "file.txt")
+            git("-c", "user.name=Offline Review", "-c",
+                "user.email=offline@example.invalid",
+                "commit", "-q", "-m", "fictional filter baseline")
+            marker = root / "external-filter-ran"
+            hook = root / "filter.sh"
+            hook.write_text(
+                "#!/bin/sh\\nprintf invoked > '" + str(marker) + "'\\ncat\\n"
+            )
+            hook.chmod(0o755)
+            git("config", "filter.fictional.clean", str(hook))
+            tracked.write_text("after\\n")
+            with patch.object(guard, "ROOT", root):
+                protected = guard.git("status", "--porcelain=v1", "-z",
+                                      "--untracked-files=all")
+            self.assertEqual(protected.returncode, 3)
+            self.assertFalse(marker.exists(), "preflight executed configured filter")
+            # Separate controlled witness proves the original read-only call
+            # really would launch the local script without this preflight.
+            git("-c", "core.fsmonitor=false", "status", "--porcelain=v1")
+            self.assertTrue(marker.exists())
+
+    def test_status_allows_tracked_nonfilter_attributes(self):
+        """Normal end-of-line settings are not external filter drivers."""
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_no_filter_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp)
+            def git(*args):
+                return subprocess.run(
+                    [guard.GIT_BINARY, *args], cwd=root, check=True,
+                    capture_output=True, timeout=6,
+                ).stdout
+            git("init", "-q")
+            (root / ".gitattributes").write_text("file.txt text eol=lf\\n")
+            (root / "file.txt").write_text("canonical\\n")
+            git("add", ".gitattributes", "file.txt")
+            git("-c", "user.name=Offline Review", "-c",
+                "user.email=offline@example.invalid",
+                "commit", "-q", "-m", "fictional ordinary attributes")
+            with patch.object(guard, "ROOT", root):
+                self.assertTrue(guard._tracked_files_have_no_filters())
+                actual = guard.git("status", "--porcelain=v1", "-z")
+            self.assertEqual(actual.returncode, 0)
+            self.assertEqual(actual.stdout, b"")
+            self.assertEqual(actual.stderr, b"")
+
+    def test_filter_preflight_fails_closed_on_malformed_git_evidence(self):
+        from subprocess import CompletedProcess
+        from unittest.mock import patch
+        names = b"file.txt\\0"
+        attr = b"file.txt\\0filter\\0unspecified\\0"
+        good_files = CompletedProcess([], 0, names, b"")
+        for abnormal in (
+            CompletedProcess([], 1, names, b""),
+            CompletedProcess([], 0, names, b"warning"),
+            CompletedProcess([], 0, b"file.txt", b""),
+            CompletedProcess([], 0, names * 2, b""),
+            CompletedProcess([], 0, b"x" * 262145 + b"\\0", b""),
+        ):
+            with self.subTest(variant=repr(abnormal)[:75]):
+                with patch.object(guard, "_git_raw", return_value=abnormal):
+                    self.assertFalse(guard._tracked_files_have_no_filters())
+        for abnormal in (
+            CompletedProcess([], 0, b"file.txt\\0filter\\0evil\\0", b""),
+            CompletedProcess([], 0, attr[:-1], b""),
+            CompletedProcess([], 0, attr + attr, b""),
+            CompletedProcess([], 0, b"other.txt\\0filter\\0unspecified\\0", b""),
+            CompletedProcess([], 0, attr, b"warning"),
+            CompletedProcess([], 2, attr, b""),
+        ):
+            with self.subTest(variant=repr(abnormal)[:75]):
+                with patch.object(guard, "_git_raw", side_effect=[good_files, abnormal]):
+                    self.assertFalse(guard._tracked_files_have_no_filters())
+        with patch.object(guard, "_git_raw", side_effect=[
+            good_files, CompletedProcess([], 0, attr, b""),
+        ]):
+            self.assertTrue(guard._tracked_files_have_no_filters())
+
+
+
 if __name__ == "__main__":
     unittest.main()
