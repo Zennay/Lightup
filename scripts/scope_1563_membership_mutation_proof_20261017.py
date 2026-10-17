@@ -141,14 +141,20 @@ def illegally_rebind_denied_host_to_declared_host(self, target):
 
 def illegally_serialize_reason_as_string(self, target):
     decision = REAL_DECIDE(self, target)
-    if decision.reason == ScopeReason.OUT_OF_SCOPE:
+    if (
+        decision.reason == ScopeReason.OUT_OF_SCOPE
+        and decision.normalized_host == "unknown.example.test"
+    ):
         return ScopeDecision(False, decision.normalized_host, "out_of_scope")
     return decision
 
 
 def illegally_swap_canonical_decision_for_structural_proxy(self, target):
     decision = REAL_DECIDE(self, target)
-    if decision.reason == ScopeReason.OUT_OF_SCOPE:
+    if (
+        decision.reason == ScopeReason.OUT_OF_SCOPE
+        and decision.normalized_host == "unknown.example.test"
+    ):
         from types import SimpleNamespace
         return SimpleNamespace(
             allowed=False,
