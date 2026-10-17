@@ -56,3 +56,7 @@ CLI `_emit` checks exact written-byte count and flush success. A broken pipe, sh
 ## W10 — atypical stdin/stdout adapter error fail-closed boundary
 
 Synthetic tests reproduced unhandled `AttributeError`, `TypeError`, `ValueError` and `BufferError` when adapter APIs were missing or failed, including closed stdout. The opt-in CLI now uses a strictly enumerated read/write exception fence: stdin adapter failures yield a generic HOLD where an output channel exists, while stdout failures force exit3 without leaking exception details. Six new tests isolate each broken adapter, with in-process socket, process spawning and file-open tripwires. `KeyboardInterrupt` and `SystemExit` remain outside these exception fences and are not reinterpreted as successful review. No runtime authorization, grant, network or original source-owner code changed.
+
+## W11 — conservative case/dot collision + userinfo HOLD
+
+This *text-review-only* layer now conservatively HOLDs duplicate ASCII spellings differing only by letter case or terminal dots and any literal `@` (userinfo confusion). It does not parse destinations, prove DNS equivalence or authorize targets. Five dedicated methods confirm e.g. `fictional.test` + `FICTIONAL.TEST`, dotted case variations, and pasted `operator@localhost` all atomically HOLD with a non-echoing result, while unrelated distinct fictional values remain REVIEW_ONLY without consent/grant. Production source-owner #1289/#1290 controls actual strict target admission and is not modified.
