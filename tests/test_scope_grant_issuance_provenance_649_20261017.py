@@ -7,9 +7,12 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import socket
+import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -42,8 +45,26 @@ class _StringSubclass(str):
     """Noncanonical provenance, even if the resulting text looks harmless."""
 
 
+class _DuckText:
+    """Untrusted object with a fake .strip API; must never impersonate text."""
+    def __init__(self):
+        self.calls = 0
+
+    def strip(self):
+        self.calls += 1
+        return "SYNTHETIC-DUCK"
+
+
 class GrantIssuanceProvenance649(unittest.TestCase):
     def setUp(self):
+        # No network or child process is part of any grant provenance test.
+        # Scoped patches are restored after every method, including failures.
+        for symbol in ("socket.socket", "socket.getaddrinfo", "subprocess.Popen"):
+            guard = patch(symbol, side_effect=AssertionError(
+                "scope649 fixture unexpectedly attempted network/process I/O"
+            ))
+            guard.start()
+            self.addCleanup(guard.stop)
         self.temp = tempfile.TemporaryDirectory(prefix="lightup-scope649-")
         self.addCleanup(self.temp.cleanup)
         self.path = Path(self.temp.name) / "synthetic.db"
@@ -131,6 +152,60 @@ class GrantIssuanceProvenance649(unittest.TestCase):
     @_source_red
     def test_nonstring_reference_is_rejected_as_validation_error(self):
         self._reject_without_rows(reference=None)
+
+    @_source_red
+    def test_rejects_duck_approver_without_consulting_foreign_methods(self):
+        value = _DuckText()
+        try:
+            self._reject_without_rows(approved_by=value)
+        finally:
+            self.assertEqual(value.calls, 0, "a non-string may not execute .strip")
+
+    @_source_red
+    def test_rejects_duck_reference_without_consulting_foreign_methods(self):
+        value = _DuckText()
+        try:
+            self._reject_without_rows(reference=value)
+        finally:
+            self.assertEqual(value.calls, 0, "a non-string may not execute .strip")
+
+    @_source_red
+    def test_rejects_bytes_reference_with_deterministic_validation_error(self):
+        self._reject_without_rows(reference=b"SYNTH-649")
+
+    @_source_red
+    def test_bad_approver_does_not_create_a_second_grant(self):
+        original = self._issue()
+        self._reject_without_rows(approved_by=_StringSubclass("Other reviewer"))
+        self.assertEqual(self._row_count(), 1)
+        self.assertEqual(
+            self.store.list_authorization_grants(
+                self.operator, self.engagement.engagement_id
+            )[0].grant_id, original.grant_id,
+        )
+
+    @_source_red
+    def test_bad_reference_does_not_overwrite_healthy_provenance(self):
+        original = self._issue()
+        self._reject_without_rows(reference=_ToggleStrip())
+        with sqlite3.connect(self.path) as con:
+            pairs = con.execute(
+                "SELECT approved_by, reference FROM authorization_grants"
+            ).fetchall()
+        self.assertEqual(pairs, [(original.approved_by, original.reference)])
+
+    def test_canonical_approver_and_reference_repeated_grants_keep_provenance(self):
+        first = self._issue()
+        second = self._issue(approved_by="Synthetic reviewer B", reference="SYNTH-B")
+        self.assertNotEqual(first.grant_id, second.grant_id)
+        with sqlite3.connect(self.path) as con:
+            pairs = set(con.execute(
+                "SELECT approved_by, reference FROM authorization_grants"
+            ).fetchall())
+        self.assertEqual(pairs, {
+            ("Synthetic operator", "SYNTH-649"),
+            ("Synthetic reviewer B", "SYNTH-B"),
+        })
 
 
 if __name__ == "__main__":
