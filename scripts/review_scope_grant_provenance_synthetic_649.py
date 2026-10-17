@@ -75,6 +75,16 @@ def _clean_text(value: object) -> bool:
         category = unicodedata.category(char)
         if category in {"Cc", "Cf", "Cs", "Co", "Cn", "Zl", "Zp"}:
             return False
+        codepoint = ord(char)
+        # NFC does not reject internal no-break/ideographic spaces or
+        # default-ignorable combining and variation-selector characters.
+        # Preserve only the ordinary ASCII interior word separator.
+        if category == "Zs" and char != " ":
+            return False
+        if (codepoint == 0x034F or
+                0xFE00 <= codepoint <= 0xFE0F or
+                0xE0100 <= codepoint <= 0xE01EF):
+            return False
     return True
 
 
