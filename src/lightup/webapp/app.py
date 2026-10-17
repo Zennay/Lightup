@@ -548,6 +548,8 @@ class LightUpWebApp:
                        for e in engagements)
                or "<p class=\"empty\">No engagements yet.</p>")
             + f"<h2>Findings</h2>{self._finding_cards(findings)}"
+            + "<h2>Proposed changes</h2>"
+            + self._change_review_cards(self.store.list_change_reviews(ctx, client_id))
         )
         return Response(_page(f"LightUp — {client.name}", "clients", body, auth))
 
@@ -703,6 +705,8 @@ class LightUpWebApp:
             + ("".join(self._coverage_card(ctx, e.engagement_id, e.name)
                        for e in self.store.list_engagements(ctx))
                or "<p class=\"empty\">No engagements yet.</p>")
+            + "<h2>Proposed changes</h2>"
+            + self._change_review_cards(self.store.list_change_reviews(ctx), portal=True)
             + f"<h2>Your assessment requests</h2>{request_rows}"
             "<h2>Request an assessment</h2>"
             "<div class=\"card\">"
@@ -771,6 +775,47 @@ class LightUpWebApp:
             f"+ {counts['unknown']} domain(s) with unknown coverage</p></details>"
             "</div>"
         )
+
+    _VERDICT_BADGES = {
+        "PASS": ("ok", "Pass"),
+        "PASS_WITH_WARNING": ("warn", "Pass with warning"),
+        "REVIEW_REQUIRED": ("warn", "Review required"),
+        "BLOCK": ("lock", "Block"),
+    }
+
+    def _change_review_cards(self, reviews, portal: bool = False) -> str:
+        if not reviews:
+            return ("<p class=\"empty\">No change reviews yet. Run "
+                    "<code>lightup review-change --db …</code> in CI to add them.</p>")
+        cards = []
+        for review in reviews:
+            report = review.report
+            css, label = self._VERDICT_BADGES.get(review.verdict, ("", review.verdict))
+            counts = report.get("severity_counts", {})
+            change = report.get("change", {})
+            reasons = "".join(f"<br>{_e(r.get('reason', ''))}"
+                              for r in report.get("reasons", []))
+            rows = "".join(
+                f"<br>{_e(h.get('severity'))} · {_e(h.get('title'))} · "
+                f"{_e(h.get('path'))}:{_e(h.get('line'))}"
+                + (f"<br><span class=\"meta\">Fix: {_e(h.get('remediation'))}</span>"
+                   if portal else "")
+                for h in report.get("hypotheses", [])[:20]
+            ) or "<br>—"
+            cards.append(
+                "<div class=\"card\"><div class=\"row\">"
+                f"<strong>{_e(review.repository)} @ {_e(review.head_revision[:12])}</strong>"
+                f"<span class=\"badge {css}\">{_e(label)}</span></div>"
+                f"<p class=\"meta\">{_e(change.get('files', 0))} file(s) · "
+                f"{_e(counts.get('critical', 0))} critical · {_e(counts.get('high', 0))} high · "
+                f"{_e(counts.get('medium', 0))} medium · reviewed {_e(review.created_at[:10])}</p>"
+                "<p class=\"meta\">Inferred from the proposed diff — not verified "
+                "against a running system and never authorization to deploy.</p>"
+                f"<details><summary>Why</summary><p class=\"meta\">{reasons}</p></details>"
+                f"<details><summary>Security hypotheses</summary><p class=\"meta\">{rows}</p>"
+                "</details></div>"
+            )
+        return "".join(cards)
 
     def _finding_cards(self, findings, portal: bool = False) -> str:
         if not findings:

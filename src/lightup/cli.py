@@ -69,6 +69,8 @@ def build_parser() -> argparse.ArgumentParser:
     review.add_argument("--json-output", help="additionally write JSON here")
     review.add_argument("--no-merge-base", action="store_true",
                         help="diff base..head directly instead of from the merge base")
+    review.add_argument("--db", help="also store the review for --client-id in this "
+                                     "LightUp database (shown in the web shell)")
     review.add_argument("--fail-on", default="block",
                         choices=("never", "warning", "review", "block"),
                         help="exit 1 when the verdict is at least this severe")
@@ -183,6 +185,17 @@ def _review_change_command(args: argparse.Namespace) -> int:
         Path(args.sarif_output).write_text(rendered["sarif"](), encoding="utf-8")
     if args.json_output:
         Path(args.json_output).write_text(rendered["json"](), encoding="utf-8")
+    if args.db:
+        from .domain import AccessContext, DomainStore, Role
+
+        try:
+            stored = DomainStore(args.db).record_change_review(
+                AccessContext("cli-change-review", Role.OPERATOR),
+                args.client_id, review.to_dict())
+        except (LookupError, PermissionError, ValueError) as exc:
+            print(f"lightup: could not store change review: {exc}", file=sys.stderr)
+            return 2
+        print(f"lightup: stored change review {stored.review_id}", file=sys.stderr)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a", encoding="utf-8") as handle:

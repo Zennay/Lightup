@@ -27,6 +27,14 @@ input errors. Inside GitHub Actions the Markdown report is appended to the job
 summary automatically. A composite action lives in `action.yml`; see
 `docs/examples/lightup-change-review.yml`.
 
+## In the web shell
+
+`--db lightup.db --client-id <client>` also stores the report for that client.
+Stored reviews appear under **Proposed changes** on the operator's client page
+and in the client portal. The store only accepts `basis=inferred`,
+`not_authorization=true` reports with a known verdict, and access is
+tenant-isolated like findings.
+
 ## Rules
 
 About 35 rules across secrets (private keys, AWS/GitHub/Slack/provider keys,

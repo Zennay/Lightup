@@ -289,6 +289,20 @@ class GitRangeEndToEndTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(json.loads(out.getvalue())["verdict"], "BLOCK")
 
+    def test_cli_stores_review_for_existing_client_only(self):
+        from lightup.domain import AccessContext, DomainStore, Role
+
+        db = self.repo / "lightup.db"
+        operator = AccessContext("t", Role.OPERATOR)
+        client = DomainStore(db).create_client(operator, "Acme")
+        argv = ["review-change", "--repo", str(self.repo), "--base", "main",
+                "--head", "feature", "--fail-on", "never", "--db", str(db)]
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(cli.main(argv + ["--client-id", client.client_id]), 0)
+            self.assertEqual(cli.main(argv + ["--client-id", "missing"]), 2)
+        stored = DomainStore(db).list_change_reviews(operator, client.client_id)
+        self.assertEqual([r.verdict for r in stored], ["BLOCK"])
+
     def test_cli_policy_file_in_repo_is_honoured(self):
         (self.repo / ".lightup-review.json").write_text(json.dumps(
             {"ignore_rules": ["secret.aws-access-key"]}))
