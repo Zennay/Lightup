@@ -107,3 +107,9 @@ Negative regression demonstrates revocation deletion with an old externally held
 The new detached revocation journal review is now covered by a 3,000-case deterministic byte mutation test (seed 1551): bit-flip, delete, insert and truncate, always starting from an identical valid fictional journal but retaining the **original independently pinned raw SHA-256**. Each of the 3,000 altered byte streams must return HOLD, and all eight execution/authorization flags must remain false. This specifically tests byte-exact pinning rather than semantic JSON normalization. A separately exercised replacement of the actors and later recomputed attacker-controlled journal pin shows that REVIEW_ONLY merely means internally consistent untrusted records, never a permit or credential.
 
 All work remains exclusively in the scope-authorization owner branch, in offline synthetic tests, not wired to actual grants, scanners, active adapters, or production CI. No real consent source is contacted.
+
+## W10: enforce review-only source isolation and failure-safe output
+
+Dedicated W10 regression confirms all four new #1551 reviewers remain absent from original src/lightup production Python imports/references; a future source-owner attempt to wire them into runtime will trip the own hosted offline review suite until reviewed explicitly. This is a narrow static source guard, not a comprehensive dynamic-import or security proof. A separate actual CLI stdout-short-write test confirms incomplete output returns nonzero/2 instead of signalling REVIEW_ONLY. The tests remain read-only and never touch active handlers, grants or real targets.
+
+The four synthetic validators and their external reference receipts still confer zero execution authority. Current historical CI gates, source-owner fixes, permanent registered runner and human GO remain required.

@@ -217,5 +217,40 @@ class DetachedJournalSafety(unittest.TestCase):
         self.assertNotIn("permit",result)
 
 
+    def test_offline_reviewers_are_not_wired_into_production_source(self):
+        root = SCRIPT.parents[1] / "src" / "lightup"
+        self.assertTrue(root.is_dir())
+        forbidden = ("review_scope_revocation_journal_1551_offline",
+                     "review_scope_document_binding_1551_offline",
+                     "review_scope_consent_timeline_1551_offline",
+                     "review_scope_consent_revocation_1551_offline")
+        inspected = 0
+        for py in root.rglob("*.py"):
+            if "__pycache__" in py.parts:
+                continue
+            source = py.read_text("utf-8")
+            for name in forbidden:
+                self.assertNotIn(name, source, str(py))
+            inspected += 1
+        self.assertGreater(inspected, 15)
+
+    def test_stdout_failure_must_return_nonzero(self):
+        import io
+        from unittest.mock import patch
+        args = ["--scope-document", str(self.scope_path),
+                "--revocation-journal", str(self.journal_path),
+                "--expected-journal-sha256", self.pin]
+        class FakeInput:
+            buffer = io.BytesIO(raw(self.batch))
+        class BrokenOutput:
+            def write(self, text):
+                return len(text)-1
+            def flush(self):
+                return None
+        with patch.object(journal_review.sys, "stdin", FakeInput()):
+            with patch.object(journal_review.sys, "stdout", BrokenOutput()):
+                self.assertEqual(2, journal_review.main(args))
+
+
 if __name__ == "__main__":
     unittest.main()
