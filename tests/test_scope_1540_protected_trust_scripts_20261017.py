@@ -39,6 +39,17 @@ class ControlPlaneEvidenceTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(reviewer.check(raw(changed(path))),"HOLD")
 
+    def test_own_review_gate_modules_cannot_self_modify_under_review(self):
+        for path in (
+            "scripts/review_scope_worker_overlap_offline_1540.py",
+            "scripts/review_scope_compare_snapshots_offline_1540.py",
+            "scripts/review_scope_pr_compare_pair_offline_1540.py",
+            "scripts/review_scope_worker_ownership_offline_1540.py",
+            "SCRIPTS/REVIEW_SCOPE_WORKER_OWNERSHIP_OFFLINE_1540.PY",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(reviewer.check(raw(changed(path))), "HOLD")
+
     def test_checkout_git_control_files_always_hold(self):
         for path in (".gitattributes",".gitmodules",".lfsconfig",".gitignore",
                      ".GITATTRIBUTES"):
