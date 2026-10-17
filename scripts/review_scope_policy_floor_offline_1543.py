@@ -72,7 +72,7 @@ def check_snapshot(document: Any) -> bool:
     """Review a synthetic policy floor. No result can create authorization."""
     if type(document) is not dict or set(document) != {"schema", "policy"}:
         return False
-    if document["schema"] != SCHEMA or type(document["schema"]) is not str:
+    if type(document["schema"]) is not str or document["schema"] != SCHEMA:
         return False
     policy = document["policy"]
     required = {

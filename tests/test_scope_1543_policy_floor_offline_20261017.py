@@ -130,6 +130,16 @@ class PolicyFloorTests(unittest.TestCase):
         specimen["policy"]["min_confidence"] = 0.0
         self.assertEqual(reviewer.evaluate(encode(specimen)), reviewer.REVIEW_ONLY)
 
+    def test_public_review_helper_rejects_string_subclass_without_equality_call(self):
+        class HostileSchema(str):
+            def __eq__(self, _other):
+                raise AssertionError("untrusted equality should never run")
+            def __ne__(self, _other):
+                raise AssertionError("untrusted inequality should never run")
+        specimen = good()
+        specimen["schema"] = HostileSchema(reviewer.SCHEMA)
+        self.assertIs(reviewer.check_snapshot(specimen), False)
+
     def test_nonfinite_confidence_holds(self):
         for value in [float("nan"), float("inf"), float("-inf")]:
             specimen = good()
@@ -230,6 +240,27 @@ class PolicyFloorTests(unittest.TestCase):
         self.assertEqual(set(imports), {"__future__", "json", "sys", "typing"})
         self.assertNotIn("lightup", imports)
         self.assertNotIn("subprocess", imports)
+
+    def test_real_inferred_review_can_report_pass_when_policy_suppresses_critical(self):
+        # Genuine #1538 source integration, entirely fictional changed Python.
+        sys.path.insert(0, str(ROOT / "src"))
+        from lightup.change_review import ChangeReviewPolicy, review_change
+        from lightup.future_security_ci_verdict import SecurityCIVerdict
+        patch = "@@ -0,0 +1 @@\n+EXAMPLE = 'AKIA" + "Q" * 16 + "'"
+        record = [{"filename": "app/example.py", "status": "modified", "additions": 1, "deletions": 0, "patch": patch}]
+        fields = {"client_id": "synthetic-client", "repository": "synthetic/project", "base_revision": "a" * 40, "head_revision": "b" * 40, "files": record}
+        blocked = review_change(**fields)
+        self.assertIs(blocked.verdict, SecurityCIVerdict.BLOCK)
+        weakened = review_change(**fields, policy=ChangeReviewPolicy.from_mapping({"ignore_paths": ["app/*"], "severity_verdicts": {"critical": "PASS"}}))
+        self.assertIs(weakened.verdict, SecurityCIVerdict.PASS)
+        self.assertTrue(weakened.suppressed)
+        self.assertIs(weakened.to_dict()["not_authorization"], True)
+        unsafe_snapshot = good()
+        unsafe_snapshot["policy"]["ignore_paths"] = ["app/*"]
+        self.assert_hold(unsafe_snapshot)
+        unsafe_snapshot = good()
+        unsafe_snapshot["policy"]["severity_verdicts"]["critical"] = "PASS"
+        self.assert_hold(unsafe_snapshot)
 
     def test_installed_change_review_source_accepts_unsafe_policy_today(self):
         # Source-owner characterization, not a permission/grant. Never mutate its code.
