@@ -45,6 +45,14 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             self.authorization_desk, "operator",
         ))
         self.routes.append((
+            "GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/scope-records$"),
+            self.portal_scope_records, "portal",
+        ))
+        self.routes.append((
+            "GET", re.compile(r"^/api/v1/portal/(?P<client_id>[\w-]+)/scope-records$"),
+            self.portal_scope_records_api, "portal",
+        ))
+        self.routes.append((
             "GET", re.compile(r"^/authorization-desk/engagements/attention$"),
             self.authorization_engagement_attention, "operator",
         ))
@@ -97,6 +105,18 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
     def authorization_desk(self, auth: AuthState, form: dict[str, str]) -> Response:
         from .authorization_desk import render_authorization_desk
         return render_authorization_desk(self.store, auth)
+
+    def portal_scope_records(
+        self, auth: AuthState, form: dict[str, str], client_id: str
+    ) -> Response:
+        from .client_scope_records import client_scope_page
+        return client_scope_page(self.store, auth, client_id)
+
+    def portal_scope_records_api(
+        self, auth: AuthState, form: dict[str, str], client_id: str
+    ) -> Response:
+        from .client_scope_records import client_scope_json
+        return client_scope_json(self.store, auth, client_id)
 
     def authorization_engagement_attention(
         self, auth: AuthState, form: dict[str, str]
@@ -193,7 +213,7 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
                 )
             if not auth.is_operator:
                 matched = re.fullmatch(
-                    r"/api/v1/portal/([\w-]+)/requests(?:/[\w-]+)?", path
+                    r"/api/v1/portal/([\w-]+)/(?:requests(?:/[\w-]+)?|scope-records)", path
                 )
                 if matched is not None and auth.context.client_id != matched.group(1):
                     return Response(
@@ -330,6 +350,12 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
         if len(requests) > 30:
             links += '<p class="meta">Only the 30 newest receipts are shown.</p>'
         receipt_section = (
+            '<div class="card"><strong>Assessment scope records</strong>'
+            '<p class="meta">Review only what is recorded for this client; '
+            'stored scope data is not permission to run tests.</p>'
+            '<a href="/portal/' + _e(client_id)
+            + '/scope-records">View recorded scopes and time windows →</a>'
+            '</div>'
             '<h2>Request receipts</h2>'
             '<p class="meta"><a href="/api/v1/portal/' + _e(client_id)
             + '/requests">Machine-readable request history (JSON)</a></p>'
