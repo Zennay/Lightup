@@ -237,6 +237,42 @@ class GrantIssuanceProvenance649(unittest.TestCase):
         self.assertFalse(result.permit_issued)
         self.assertFalse(result.authorization_verified)
 
+    def test_synthetic_approver_drift_from_disposable_db_yields_hold(self):
+        """Separate real SQLite read: corrupted approver must be review-only HOLD."""
+        scripts = str(Path(__file__).resolve().parents[1] / "scripts")
+        if scripts not in sys.path:
+            sys.path.insert(0, scripts)
+        import review_scope_grant_provenance_pair_synthetic_649 as compare
+        import review_scope_grant_provenance_synthetic_649 as audit
+
+        dirty_approver = _ToggleStrip()
+        initial = self._row_count()
+        try:
+            grant = self._issue(approved_by=dirty_approver)
+        except ValueError:
+            self.assertEqual(self._row_count(), initial)
+            self.assertEqual(dirty_approver.calls, 0)
+            return  # Correct future source-owner exact-builtin-str repair.
+        with sqlite3.connect(self.path) as connection:
+            row = connection.execute(
+                "SELECT approved_by, reference FROM authorization_grants "
+                "WHERE grant_id=?", (grant.grant_id,),
+            ).fetchone()
+        self.assertIsNotNone(row)
+        self.assertEqual(row, ("", "SYNTH-649"))
+        self.assertGreaterEqual(dirty_approver.calls, 2)
+        self.assertEqual(self._row_count(), initial + 1)
+        before = {"approved_by": "VERIFIED-SYNTHETIC", "reference": "SYNTH-649"}
+        after = {"approved_by": row[0], "reference": row[1]}
+        review = compare.review_pair_batch({
+            "schema": compare.PAIR_SCHEMA, "synthetic_only": True,
+            "pairs": [{"before": before, "after": after}],
+        })
+        self.assertIs(review.status, audit.ReviewStatus.HOLD)
+        self.assertFalse(review)
+        self.assertFalse(review.consent_verified)
+        self.assertFalse(review.release_approved)
+
     def test_canonical_approver_and_reference_repeated_grants_keep_provenance(self):
         first = self._issue()
         second = self._issue(approved_by="Synthetic reviewer B", reference="SYNTH-B")
