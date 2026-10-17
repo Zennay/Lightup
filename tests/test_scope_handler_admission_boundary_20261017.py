@@ -113,6 +113,46 @@ class ReviewBoundaryTests(unittest.TestCase):
                 self.assertFalse(result.dispatch_allowed)
                 self.assertFalse(result.release_allowed)
 
+    def test_actual_project_worker_handler_shapes_without_dispatch(self):
+        # Verify all three shipped workers, not only invented synthetic callbacks.
+        # Module imports are local; workers themselves are NEVER invoked.
+        from lightup.workers import http_baseline, service_inventory, tls_baseline
+        from unittest import mock
+        entries = (
+            ("http_baseline", http_baseline.run_http_baseline),
+            ("service_inventory", service_inventory.run_service_inventory),
+            ("tls_baseline", tls_baseline.run_tls_baseline),
+        )
+        with mock.patch("socket.socket", side_effect=AssertionError("network forbidden")), \
+             mock.patch("subprocess.Popen", side_effect=AssertionError("process forbidden")):
+            outcome = review_handlers(entries)
+        self.assertEqual(outcome.status, "REVIEW_ONLY")
+        self.assertFalse(outcome.authorized)
+        self.assertFalse(outcome.consent_verified)
+        self.assertFalse(outcome.dispatch_allowed)
+        self.assertFalse(outcome.release_allowed)
+
+    def test_actual_worker_registry_compatibility_without_handler_execution(self):
+        # Guard a source-owner repair from breaking the 3 stock worker bindings.
+        from lightup.ai.orchestration import ToolRegistry
+        from lightup.workers import http_baseline, service_inventory, tls_baseline
+        from unittest import mock
+        modules = (http_baseline, service_inventory, tls_baseline)
+        handlers = (
+            http_baseline.run_http_baseline,
+            service_inventory.run_service_inventory,
+            tls_baseline.run_tls_baseline,
+        )
+        registry = ToolRegistry()
+        with mock.patch("socket.socket", side_effect=AssertionError("network forbidden")), \
+             mock.patch("subprocess.Popen", side_effect=AssertionError("process forbidden")):
+            for module in modules:
+                module.register(registry)
+        self.assertEqual(len(registry.definitions()), len(modules))
+        self.assertEqual(
+            tuple(registry.get(module.TOOL_ID)[1] for module in modules), handlers
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
