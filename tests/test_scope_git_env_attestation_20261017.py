@@ -176,7 +176,7 @@ class EnvironmentFenceTests(unittest.TestCase):
         first = workflow.index(check)
         last = workflow.rindex(check)
         self.assertLess(first, workflow.index("git rev-parse HEAD"))
-        self.assertGreater(last, workflow.index("python -m unittest discover"))
+        self.assertGreater(last, workflow.index("python -B -m unittest discover"))
         self.assertIn("test \"$review_rc\" -eq 2", workflow)
         self.assertIn("test \"$review_out\" = ", workflow)
 
