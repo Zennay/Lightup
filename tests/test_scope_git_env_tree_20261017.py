@@ -348,6 +348,26 @@ class OfflineTreeModesTests(unittest.TestCase):
             self.assertEqual(result.stdout, digest)
             self.assertEqual(result.stderr, b"")
 
+    def test_git_stderr_over_limit_is_rejected_during_capture(self):
+        import shlex
+        import subprocess
+        import sys
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_git_stderr_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp)
+            subprocess.run([guard.GIT_BINARY, "init", "-q"], cwd=root,
+                           check=True, capture_output=True, timeout=6)
+            fixture = 'import sys;sys.stderr.write("X"*25000)'
+            alias = "alias.noisy=!" + shlex.quote(sys.executable) + " -c " + shlex.quote(fixture)
+            with patch.object(guard, "ROOT", root):
+                with self.assertRaisesRegex(ValueError, "Git output exceeds"):
+                    guard._git_raw("-c", alias, "noisy")
+                after = guard._git_raw("status", "--porcelain")
+            self.assertEqual(after.returncode, 0)
+            self.assertEqual(after.stdout, b"")
+            self.assertEqual(after.stderr, b"")
+
     def test_git_stdout_over_limit_is_rejected_during_capture(self):
         import subprocess
         import tempfile
