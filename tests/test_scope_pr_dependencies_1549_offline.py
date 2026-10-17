@@ -125,6 +125,21 @@ class DependencyReviewTests(unittest.TestCase):
         self.review(manifest([item(i, f"{i:040x}") for i in range(1, 65)]),
                     [list(range(1, 65))])
 
+    def test_zero_git_oid_and_unicode_escaped_identity_hold(self):
+        zero = "0" * 40
+        # A null Git OID means no object, not a legitimate pinned review.
+        self.hold(manifest([item(1, B, zero)], root_sha=zero))
+        self.hold(manifest([item(1, zero)]))
+        raw = manifest([item(1, B)])
+        escaped = (
+            raw.replace(b'"owner":"worker-a"', b'"owner":"worker-\\u0061"'),
+            raw.replace(b'"id":1', b'"\\u0069d":1'),
+            raw.replace(b'"head_sha":"bbbb', b'"head_sha":"\\u0062bbb'),
+        )
+        for fixture in escaped:
+            with self.subTest(fixture=fixture[:95]):
+                self.hold(fixture)
+
     def test_fragmented_stdin_requires_complete_stream_before_review(self):
         valid = manifest()
         class SegmentedInput:
