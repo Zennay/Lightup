@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import io
+import argparse
 import hashlib
 import json
 from collections import Counter, defaultdict
@@ -396,53 +397,111 @@ def mutation_detected(result: unittest.TestResult, expected_test_prefix: str) ->
 
 
 
-def main() -> int:
+def _review_template() -> dict:
+    """Non-authorizing, privacy-minimal review output: no real targets or grants."""
+    return {
+        "schema": "lightup.scope-1563.offline-evidence.v1",
+        "disposition": "HOLD",
+        "authority_granted": False,
+        "scan_permitted": False,
+        "release_approved": False,
+        "real_client_or_operator_consent_verified": False,
+        "registered_vps_ci_verified": False,
+        "original_full_ci_verified": False,
+        "immutable_git_history_verified": False,
+        "methods_required": len(REQUIRED_TEST_METHODS),
+        "cases_required": sum(EXPECTED_CASE_COUNTS.values()),
+        "methods_executed": 0,
+        "cases_passed": 0,
+        "expected_input_sha256": dict(sorted(EXPECTED_CASE_DIGESTS.items())),
+        "mutation_canaries_expected": len(MUTATIONS) + len(DOWNSTREAM_MUTATIONS),
+        "mutation_canaries_caught": 0,
+        "mutations": [],
+        "hold_reason": "NOT_RUN",
+    }
+
+
+def review_offline(*, verbose: bool = False) -> tuple[int, dict]:
+    """Execute real original denial suite + all mutants and return REVIEW_ONLY.
+
+    Even a perfect diagnostic has no authority to merge, grant, scan or deploy.
+    Source-owner repair, positive permissions, revocation and CI are separate.
+    """
+    evidence = _review_template()
+
+    def say(message):
+        if verbose:
+            print(message)
+
     if not suite_manifest_valid():
-        print("HOLD: required membership safety test manifest is incomplete or substituted")
-        return 2
+        evidence["hold_reason"] = "NAMED_TEST_MANIFEST_MISMATCH"
+        say("HOLD: required membership safety test manifest is incomplete or substituted")
+        return 2, evidence
+
     baseline = run_suite()
+    evidence["methods_executed"] = baseline.testsRun
+    evidence["cases_passed"] = sum(getattr(baseline, "subtest_passes", {}).values())
     if not baseline_is_strictly_green(baseline):
-        print(
+        evidence["hold_reason"] = "BASELINE_INCOMPLETE_OR_FAILED"
+        say(
             "HOLD: all 16 negative regressions must pass first; "
             f"ran={baseline.testsRun} failures={len(baseline.failures)} "
             f"errors={len(baseline.errors)} "
             f"skipped={len(baseline.skipped)} expected_red={len(baseline.expectedFailures)} "
-            f"completed_subcases={sum(getattr(baseline, 'subtest_passes', {}).values())}/730"
+            f"completed_subcases={evidence['cases_passed']}/730"
         )
-        return 2
+        return 2, evidence
 
-    for name, broken, expected_test_prefix in MUTATIONS:
-        with patch.object(ScopePolicy, "decide", broken):
+    candidates = (
+        (name, ScopePolicy, "decide", broken, required)
+        for name, broken, required in MUTATIONS
+    )
+    downstream = iter(DOWNSTREAM_MUTATIONS)
+    from itertools import chain
+    for name, owner, attribute, broken, expected_test_prefix in chain(candidates, downstream):
+        with patch.object(owner, attribute, broken):
             result = run_suite()
-        if not mutation_detected(result, expected_test_prefix):
-            print(
-                f"HOLD: mutation {name} was NOT detected by the expected contract "
+        detected = mutation_detected(result, expected_test_prefix)
+        if not detected:
+            evidence["hold_reason"] = "MUTATION_NOT_CAUGHT"
+            evidence["mutations"].append({"name": name, "caught": False})
+            say(
+                f"HOLD: mutation {name} NOT caught by matching security assertion "
                 f"(ran={result.testsRun}, assertions={len(result.failures)}, "
                 f"unexpected_errors={len(result.errors)})"
             )
-            return 2
-        print(f"DETECTED {name}: {len(result.failures)} assertion-based negative regressions failed")
+            return 2, evidence
+        evidence["mutations"].append({"name": name, "caught": True,
+                                      "assertions": len(result.failures)})
+        evidence["mutation_canaries_caught"] += 1
+        say(f"DETECTED {name}: {len(result.failures)} assertion-based negative regressions failed")
 
-    for name, owner, method, broken, expected_test_prefix in DOWNSTREAM_MUTATIONS:
-        with patch.object(owner, method, broken):
-            result = run_suite()
-        if not mutation_detected(result, expected_test_prefix):
-            print(
-                f"HOLD: downstream mutation {name} NOT caught by required assertion "
-                f"(ran={result.testsRun}, assertions={len(result.failures)}, "
-                f"unexpected_errors={len(result.errors)})"
-            )
-            return 2
-        print(f"DETECTED {name}: {len(result.failures)} assertion-based denials")
     if (
         ScopePolicy.decide is not REAL_DECIDE
         or Planner.build is not REAL_PLAN
         or ActivationGate.issue is not REAL_ISSUE
     ):
-        print("HOLD: restored source function identity changed")
-        return 2
-    print("PASS: clean baseline and all 14 fail-open mutation canaries")
-    return 0
+        evidence["hold_reason"] = "SOURCE_METHOD_NOT_RESTORED"
+        say("HOLD: restored source function identity changed")
+        return 2, evidence
+
+    evidence["disposition"] = "REVIEW_ONLY"
+    evidence["hold_reason"] = None
+    say("PASS: clean baseline and all 14 fail-open mutation canaries")
+    return 0, evidence
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Issue #1563: offline denial evidence only; never grants authorization"
+    )
+    parser.add_argument("--json", action="store_true",
+                        help="print one deterministic privacy-minimal JSON review record")
+    args = parser.parse_args(argv)
+    code, report = review_offline(verbose=not args.json)
+    if args.json:
+        print(json.dumps(report, sort_keys=True, separators=(",", ":"), ensure_ascii=True))
+    return code
 
 
 if __name__ == "__main__":
