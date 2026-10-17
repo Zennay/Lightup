@@ -5,9 +5,11 @@ on:
     paths:
       - 'src/lightup/scope_audit_chain_offline.py'
       - 'src/lightup/scope_audit_chain_transition_offline.py'
+      - 'src/lightup/scope_audit_chain_checkpoints_offline.py'
       - 'tests/test_scope_audit_chain_offline.py'
       - 'tests/test_scope_audit_chain_transition_offline.py'
       - 'tests/test_scope_audit_chain_mutation_offline.py'
+      - 'tests/test_scope_audit_chain_checkpoints_offline.py'
       - '.github/workflows/lightup-scope-audit-chain.yml'
   workflow_dispatch:
 
@@ -40,7 +42,7 @@ jobs:
           EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
       - name: Compile exclusively owned files
-        run: python -m compileall -q src/lightup/scope_audit_chain_offline.py src/lightup/scope_audit_chain_transition_offline.py tests/test_scope_audit_chain_offline.py tests/test_scope_audit_chain_transition_offline.py tests/test_scope_audit_chain_mutation_offline.py
+        run: python -m compileall -q src/lightup/scope_audit_chain_offline.py src/lightup/scope_audit_chain_transition_offline.py src/lightup/scope_audit_chain_checkpoints_offline.py tests/test_scope_audit_chain_offline.py tests/test_scope_audit_chain_transition_offline.py tests/test_scope_audit_chain_mutation_offline.py tests/test_scope_audit_chain_checkpoints_offline.py
       - name: Real isolated API and subprocess regressions
         env:
           PYTHONPATH: src
