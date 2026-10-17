@@ -93,7 +93,7 @@ jobs:
               "",
           ]
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as out:
-              out.write("\\n".join(lines))
+              out.write("\n".join(lines))
           print(json.dumps(d, sort_keys=True, separators=(",", ":")))
           '
           python -m unittest discover -s tests -p 'test_scope_1563_exact_tree_boundary_20261017.py' -v
