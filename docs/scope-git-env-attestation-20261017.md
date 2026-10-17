@@ -365,3 +365,40 @@ driver, with an actual external marker in **unprotected disposable**
 controls and no marker when protected. The helper never runs its
 protected `git status` against a selected filter. Additional mocked
 bad-triplet cases prove malformed output always HOLD.
+
+
+## W74–W79 — ignored worktree cannot masquerade as a clean source tree (2026-10-17)
+
+The original `git status --porcelain -z --untracked-files=all`
+deliberately **omits files covered by .gitignore, .git/info/exclude
+and core.excludesFile**. A disposable Git checkout containing tracked
+`.gitignore` and ignored untracked `sitecustomize.py` returned literally
+empty status despite a potentially interpreter-relevant file. The
+isolated checker formerly treated that empty status as a clean source
+checkout. This is a source-proof discrepancy, **not an observed exploit
+of LightUp's live target-authority runtime**.
+
+The owned and unwired Git attestation helper now calls
+`git ls-files --others --ignored --exclude-standard -z` before the
+original Git status; **only exact empty successful stdout/stderr**
+passes. Hidden `.py`, bytecode caches and any other ignored content
+HOLD. Tests use real disposable Git repositories with `.gitignore`,
+`.git/info/exclude`, and custom global exclusion files, plus mocked
+malformed Git results. The checker does not delete ignored files,
+change global Git configuration or make a grant.
+
+To keep the mandatory before/after checkout attestation compatible
+with this stricter guarantee, the separately owned Python3.11/3.14
+hosted workflow no longer runs `compileall` (which writes ignored
+`__pycache__`). It syntax-compiles four own sources in memory,
+and uses `python -B -m unittest` so tests don't generate bytecode.
+All checks remain bounded, read-only and on the existing fixed
+clean-main scope branch.
+
+This does not prove absence of malicious metadata in the `.git`
+directory, external PYTHON startup attacks or tampering by a
+privileged actor. Its receipt can **never** authorize execution,
+consent, a scan or release. Scope source-owner security fixes,
+authenticated client and operator consent plus at-use revocation,
+full original CI, registered permanent VPS and explicit human GO
+remain independent prerequisites.
