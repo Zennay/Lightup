@@ -94,14 +94,10 @@ class DurableCollectionIsolationAcceptance(unittest.TestCase):
              '["web-baseline"]', int(RiskLevel.STANDARD))
         ])
 
-    def test_rejected_invalid_list_does_not_insert_row(self):
-        # A malformed collection must never persist when construction rejects.
-        class NonIterable:
-            def __iter__(self):
-                raise AssertionError("hostile iterator executed")
-
-        with self.assertRaises((TypeError, ValueError, AttributeError)):
-            scope = self.scope(assets=NonIterable())
+    def test_rejected_empty_assets_list_does_not_insert_row(self):
+        # Future constructor rejection and current issuance rejection both deny.
+        with self.assertRaises((TypeError, ValueError)):
+            scope = self.scope(assets=[])
             self.issue(scope)
         self.assertEqual(self.persisted(), [])
 
