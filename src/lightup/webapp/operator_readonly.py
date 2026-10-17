@@ -45,6 +45,10 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             self.authorization_desk, "operator",
         ))
         self.routes.append((
+            "GET", re.compile(r"^/api/v1/operator/authorization-queue$"),
+            self.operator_queue_api, "operator",
+        ))
+        self.routes.append((
             "GET", re.compile(r"^/authorization-desk/clients/(?P<client_id>[\w-]+)$"),
             self.authorization_client_desk, "operator",
         ))
@@ -77,6 +81,10 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
     def authorization_desk(self, auth: AuthState, form: dict[str, str]) -> Response:
         from .authorization_desk import render_authorization_desk
         return render_authorization_desk(self.store, auth)
+
+    def operator_queue_api(self, auth: AuthState, form: dict[str, str]) -> Response:
+        from .authorization_desk import render_operator_queue_json
+        return render_operator_queue_json(self.store, auth)
 
     def authorization_client_desk(
         self, auth: AuthState, form: dict[str, str], client_id: str
@@ -116,6 +124,19 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
 
     def _dispatch(self, method: str, path: str, form: dict[str, str],
                   auth: AuthState) -> Response:
+        if method == "GET" and path == "/api/v1/operator/authorization-queue":
+            if not auth.signed_in or type(auth.context) is not AccessContext:
+                return Response(
+                    '{"error":"authentication required"}',
+                    status="401 Unauthorized",
+                    content_type="application/json; charset=utf-8",
+                )
+            if not auth.is_operator:
+                return Response(
+                    '{"error":"operator access required"}',
+                    status="403 Forbidden",
+                    content_type="application/json; charset=utf-8",
+                )
         if method == "GET" and path.startswith("/api/v1/portal/"):
             # A machine client must not interpret a redirect to an HTML sign-in
             # page as a successful JSON response. Keep missing and other-tenant
