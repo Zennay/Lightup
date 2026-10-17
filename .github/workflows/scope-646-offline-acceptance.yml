@@ -102,7 +102,7 @@ jobs:
 
           if result.returncode == 0 or set(observed) != set(expected):
               raise SystemExit("source646_red_identity_mismatch")
-          if not re.search(r"(?m)^Ran 10 tests in ", output):
+          if not re.search(r"(?m)^Ran 11 tests in ", output):
               raise SystemExit("source646_test_count_mismatch")
           if "FAILED (failures=4, errors=2)" not in output:
               raise SystemExit("source646_strict_result_mismatch")
