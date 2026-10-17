@@ -374,3 +374,55 @@ release base, a *permanently registered* self-hosted VPS Actions worker,
 separately authenticated real client/operator consents plus live revocation,
 independent privacy/security signoff, and explicit human GO are required
 before any target, real grant, merge, deploy, handler or release.
+
+## W9 — source-owner GREEN oracle with separate true-source RED identity
+
+This is **an acceptance-test proof, not a production patch**. The original
+source-owner #554 HEAD remains `4c8d5651fc0e23f94514daae56b4e5fe0549de37`
+and original `src/lightup/domain.py` is unchanged.
+
+New eighth exclusively owned path
+`tests/test_scope_grant_issuance_owner_fix_oracle_649_20261017.py` creates an
+**isolated Python subprocess**, never a live service, target or real grant.
+Only inside that subprocess, it monkeypatches
+`DomainStore.record_authorization_grant` with a **fictional minimal
+owner-fix prototype**: exact built-in `str` checks on approver/reference
+before any foreign `.strip()` callback, strip each clean builtin once,
+reject either blank value with `ValueError`, call the original
+owner implementation with the canonical builtin strings.
+It then loads all original 18 source-issuance tests in strict mode and
+requires **18 ordinary PASS, zero expectedFailures** and no skipped tests.
+The wrapper exists only in the discarded subprocess: zero production source
+files modified, no persistent grant, no consent/handler/target/scan.
+
+**This positive fixture oracle is intentionally separate from the original
+source RED gate.** The CI's original strict red identity subprocess does
+**not** load this optional fixture; it continues to require exactly the
+eleven still-unfixed *real source* failure/error names (nine FAIL, two ERROR),
+and the original default suite still reports 7 ordinary PASS +
+11 known expected source failures. If the original source changes, both
+checks must be reviewed against that new exact owner SHA. Passing the
+fictional oracle is neither proof that production code is fixed nor
+permission to promote, merge or deploy.
+
+Evidence at own exact HEAD
+`3a2d0e96ed279ca33442ac9242e1dce36bb14f86`:
+- [Dedicated Python3.11/3.14 hosted run #39008367329](https://github.com/Zennay/Lightup/actions/runs/39008367329)
+  **COMPLETED SUCCESS**, original Python3.14 job `117325385308`
+  and 3.11 `117325385553`. Real logs show 24 ordinary base reviewer
+  PASS, 20 ordinary pair PASS, 18 original issuance 7 PASS/11 source
+  expected REDs, 2 independent **positive owner-fix-oracle** tests PASS,
+  strict eleven-source-RED-name gate PASS, exact eight-new-file Git
+  ancestor fence PASS.
+- Connected permitted zSSH `vps-bb300bba` exact own clean HEAD,
+  Python3.14.4: positive oracle independently **2/2 PASS** and inner
+  subprocess 18/18 ordinary PASS, unchanged original 18/7+11;
+  full project **631 unit methods OK (11 expected original source failures)
+  + 86 integration tests OK**.
+- Permanent registered GitHub runner and release baseline are still
+  independent missing gates, as are source-owner code repair,
+  separately authenticated real client/operator consent and at-use
+  revocation, independent privacy/security signoff, explicit HUMAN GO.
+
+**INCUBATE M3/M7 / PLAN-LAB ONLY / DRAFT-HOLD. No merge, deploy, real
+assets, scans, grants, handler dispatch or release.**
