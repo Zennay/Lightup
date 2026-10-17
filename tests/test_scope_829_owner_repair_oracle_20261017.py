@@ -23,6 +23,31 @@ SRC = ROOT / "src" / "lightup" / "domain.py"
 REAL_TESTS = ROOT / "tests" / "test_scope_829_grant_tenant_read_integrity_20261017.py"
 REAL_WEB_TESTS = ROOT / "tests" / "test_scope_829_wsgi_status_20261017.py"
 
+# Independently pinned original RED identities: a mere count is insufficient.
+# If a new unrelated test starts failing while a source RED disappears,
+# a count-only oracle would falsely claim the old defect is still proven.
+_ORIGINAL_REDS = frozenset((
+    "test_source_red_b_tenant_current_rejects_a_lineage",
+    "test_source_red_binary_persisted_tenant_id_must_not_escape",
+    "test_source_red_client_a_current_grant_must_reject_wrong_tenant",
+    "test_source_red_client_a_list_must_filter_corrupt_b_grant",
+    "test_source_red_current_grant_skips_newer_foreign_row",
+    "test_source_red_foreign_corrupt_scope_cannot_break_valid_listing",
+    "test_source_red_foreign_invalid_window_does_not_poison_current",
+    "test_source_red_injection_shaped_stored_id_is_never_authority",
+    "test_source_red_mixed_grants_must_preserve_only_valid_lineage",
+    "test_source_red_multiple_corrupt_grants_keep_only_valid",
+    "test_source_red_operator_current_grant_must_reject_wrong_tenant",
+    "test_source_red_operator_current_must_reject_rebound_engagement",
+    "test_source_red_operator_list_must_filter_corrupt_grant",
+    "test_source_red_operator_ui_must_not_show_cross_tenant_reference",
+    "test_source_red_operator_ui_must_not_show_foreign_tenant_grant",
+    "test_source_red_padded_owner_id_is_not_equivalent",
+    "test_source_red_rebound_engagement_owner_cannot_leak_old_grant",
+    "test_source_red_unknown_persisted_client_must_not_escape",
+))
+
+
 QUERY = (
     '"SELECT * FROM authorization_grants WHERE engagement_id=? ORDER BY created_at DESC",\n'
     '                (engagement.engagement_id,),'
@@ -164,6 +189,11 @@ class Scope829OwnerRepairOracle(unittest.TestCase):
     def test_original_source_has_eighteen_strict_reds(self):
         result = _run_source_variant("original")
         self.assertEqual(len(result["failures"]) + len(result["errors"]), 18)
+        actual = {
+            identity.split(" (", 1)[0]
+            for identity in result["failures"] + result["errors"]
+        }
+        self.assertEqual(actual, _ORIGINAL_REDS)
 
     def test_joined_current_owner_filter_fixes_all_real_cases(self):
         result = _run_source_variant("correct")
