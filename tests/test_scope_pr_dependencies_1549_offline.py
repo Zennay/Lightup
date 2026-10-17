@@ -1,12 +1,15 @@
 """Standalone stdlib acceptance of synthetic PR topology review; issue #1549."""
+import io
 import json
 import pathlib
 import subprocess
 import sys
 import unittest
+from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+import scripts.review_scope_pr_dependencies_1549_offline as checker
 from scripts.review_scope_pr_dependencies_1549_offline import evaluate, MAX_INPUT, OFF_FLAGS
 
 A, B, C, D, E = ["a"*40, "b"*40, "c"*40, "d"*40, "e"*40]
@@ -121,6 +124,65 @@ class DependencyReviewTests(unittest.TestCase):
     def test_many_independent(self):
         self.review(manifest([item(i, f"{i:040x}") for i in range(1, 65)]),
                     [list(range(1, 65))])
+
+    def test_fragmented_stdin_requires_complete_stream_before_review(self):
+        valid = manifest()
+        class SegmentedInput:
+            def __init__(self, pieces):
+                self.pieces = iter(pieces)
+                self.calls = 0
+                self.buffer = self
+
+            def read(self, count):
+                self.calls += 1
+                if count <= 0:
+                    raise AssertionError("invalid bounded read")
+                return next(self.pieces, b"")
+
+        for pieces, code in (
+            ([valid[:19], valid[19:], b""], 3),
+            ([valid, b"malicious trailing bytes", b""], 2),
+            ([valid, b"\\x00", b""], 2),
+            ([valid, b" " * (MAX_INPUT + 1), b""], 2),
+            ([valid, b"{", b""], 2),
+        ):
+            with self.subTest(chunks=len(pieces), last=len(pieces[-2])):
+                incoming = SegmentedInput(pieces)
+                output = io.StringIO()
+                with mock.patch.object(checker.sys, "stdin", incoming), \
+                     mock.patch.object(checker.sys, "stdout", output), \
+                     mock.patch.object(checker.sys, "argv", ["reviewer"]):
+                    self.assertEqual(checker.main(), code)
+                receipt = json.loads(output.getvalue())
+                self.assertEqual(receipt["status"], "REVIEW_ONLY" if code == 3 else "HOLD")
+                self.assertTrue(all(receipt[k] is False for k in OFF_FLAGS))
+                self.assertGreaterEqual(incoming.calls, 2)
+
+    def test_bounded_fragmented_stdin_error_is_generic_hold(self):
+        valid = manifest()
+        class InterruptedInput:
+            buffer = None
+            def __init__(self, second):
+                self.calls = 0
+                self.second = second
+                self.buffer = self
+            def read(self, count):
+                self.calls += 1
+                if self.calls == 1:
+                    return valid
+                if isinstance(self.second, Exception):
+                    raise self.second
+                return self.second
+
+        for second in (OSError("synthetic read failure"), "not-bytes", bytearray(b"x")):
+            with self.subTest(second=type(second).__name__):
+                incoming = InterruptedInput(second)
+                output = io.StringIO()
+                with mock.patch.object(checker.sys, "stdin", incoming), \
+                     mock.patch.object(checker.sys, "stdout", output), \
+                     mock.patch.object(checker.sys, "argv", ["reviewer"]):
+                    self.assertEqual(checker.main(), 2)
+                self.assertEqual(json.loads(output.getvalue())["status"], "HOLD")
 
     def test_cli_rejects_any_unexpected_arguments(self):
         script = ROOT / "scripts/review_scope_pr_dependencies_1549_offline.py"
