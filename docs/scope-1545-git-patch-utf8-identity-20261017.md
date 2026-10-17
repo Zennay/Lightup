@@ -176,3 +176,29 @@ Connected permitted zSSH actual Python 3.14.4: **27 test methods executed;
 The 12 initial red subtest failures and the green rerun are both evidenced in
 the same isolated checkout. No live targets, scanners, network or permissions.
 Host-based CI at the updated final commit must be checked independently.
+
+## W8 — canonical Git hunk numeric representation
+
+An independent negative matrix showed the isolated fictional reviewer initially
+accepted **six** noncanonical leading-zero hunk offset/count variants, allowing
+several textual encodings to claim the same hunk geometry. All six were truly
+RED before the fix. The offline validator now accepts exactly decimal `0` or
+nonzero numbers beginning with `1`-`9` for every numeric hunk header field;
+positive legitimate Git-generated hunk controls remain green. A further
+**143 deliberately wrong** old/new count combinations now have regression
+coverage to prevent inconsistent patch-body geometry from being silently
+promoted to REVIEW_ONLY. The exact original Git source owner and other workers'
+paths are untouched; no target I/O or authorization takes place.
+
+At the updated owner-isolated HEAD, VPS Python3.14.4: **29 test methods**,
+**28 ordinary PASS + one intentionally unresolved original-source expectedFailure**.
+This is still not a release gate. The separate old-base full 1300-unit run
+was attempted with an extended 150-second zSSH allowance and completed in
+~61 seconds, with exactly **two known legacy registry-history Python3.14
+native-I/O tripwire failures (`exit 92`)** that belong to independently owned
+[#1535/#1536](https://github.com/Zennay/Lightup/pull/1536); not fixed here.
+The current owner-isolated hosted Python 3.11/3.14 and complete preflight
+[#39024580175](https://github.com/Zennay/Lightup/actions/runs/39024580175)
+and [#39024580177](https://github.com/Zennay/Lightup/actions/runs/39024580177)
+were green on the *previous* W7 SHA, not claimed for the new W8 SHA until
+that exact commit has its own independent run evidence.

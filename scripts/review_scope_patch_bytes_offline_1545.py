@@ -25,7 +25,7 @@ HOLD = 2
 REVIEW_ONLY = 3
 IDENT = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,31}\Z", re.ASCII)
 SHA256 = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
-HUNK = re.compile(r"@@ -([0-9]+)(?:,([0-9]+))? \+([0-9]+)(?:,([0-9]+))? @@(?: [^\n]*)?\Z", re.ASCII)
+HUNK = re.compile(r"@@ -(0|[1-9][0-9]*)(?:,(0|[1-9][0-9]*))? \+(0|[1-9][0-9]*)(?:,(0|[1-9][0-9]*))? @@(?: [^\n]*)?\Z", re.ASCII)
 FLAGS = {
     "authorized": False,
     "client_consent_verified": False,

@@ -114,6 +114,24 @@ class ReviewBytesTests(unittest.TestCase):
         raw = "@@ -1 +1 @@\n-# cafe\n+# café 日本語 한글".encode("utf-8")
         self.assertEqual(reviewer.evaluate(encoded(document(raw))), reviewer.REVIEW_ONLY)
 
+    def test_git_hunk_numbers_are_canonical_without_leading_zeros(self):
+        for header in (
+            b"@@ -01 +1 @@", b"@@ -1 +01 @@", b"@@ -1,01 +1 @@",
+            b"@@ -1 +1,01 @@", b"@@ -0001,1 +1,1 @@",
+            b"@@ -1,1 +001,1 @@",
+        ):
+            with self.subTest(header=header):
+                self.hold(encoded(document(header + b"\n-old\n+new")))
+
+    def test_many_structurally_inconsistent_numeric_counts_hold(self):
+        for old_count in range(0,12):
+            for new_count in range(0,12):
+                if (old_count,new_count)==(1,1):
+                    continue
+                header = f"@@ -1,{old_count} +1,{new_count} @@".encode("ascii")
+                with self.subTest(old_count=old_count,new_count=new_count):
+                    self.assertFalse(reviewer.check_patch(header+b"\n-old\n+new"))
+
     def test_wrong_hunk_line_counts_hold(self):
         for raw in (
             b"@@ -1 +1 @@\n-old",
