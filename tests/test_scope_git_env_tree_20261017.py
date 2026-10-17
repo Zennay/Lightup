@@ -71,6 +71,39 @@ class OfflineTreeModesTests(unittest.TestCase):
             with self.subTest(raw=raw[:65]):
                 self.assertFalse(guard.safe_tree(raw, delta()))
 
+    def test_original_status_ignores_submodules_on_synthetic_success(self):
+        """No inherited fsmonitor/filter execution in nested repositories."""
+        from subprocess import CompletedProcess
+        from contextlib import redirect_stdout
+        from unittest.mock import patch
+        import io
+        calls = []
+        sha = "a" * 40
+        expected = {
+            "status": b"", "rev-parse": sha.encode() + b"\n",
+            "merge-base": b"", "diff": delta(), "ls-tree": tree(),
+        }
+        def fake_git(*args):
+            calls.append(args)
+            payload = (
+                str(guard.ROOT.resolve()).encode() + b"\n"
+                if args[:2] == ("rev-parse", "--show-toplevel")
+                else expected[args[0]]
+            )
+            return CompletedProcess(args, 0, payload, b"")
+        env = {
+            "GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "push",
+            "GITHUB_REF": "refs/heads/" + guard.BRANCH,
+            "GITHUB_SHA": sha,
+        }
+        with patch.object(guard, "git", side_effect=fake_git):
+            with patch.dict(guard.os.environ, env, clear=True):
+                with redirect_stdout(io.StringIO()):
+                    self.assertEqual(guard.main(), 0)
+        status = [call for call in calls if call[0] == "status"]
+        self.assertEqual(len(status), 1)
+        self.assertIn("--ignore-submodules=all", status[0])
+
     def test_main_exact_push_and_tampered_modes(self):
         from subprocess import CompletedProcess
         from contextlib import redirect_stdout
