@@ -192,6 +192,38 @@ class DuplicateSessionCookieAcceptance(unittest.TestCase):
 
 
     @unittest.expectedFailure
+    def test_red_duplicate_denial_precedes_body_read_and_handler(self):
+        # A reject-at-_authenticate patch would still parse POST data first.
+        # The guard must run before body I/O; the test uses a local stream.
+        class CountingBody(io.BytesIO):
+            def __init__(self):
+                super().__init__(b"name=Fictional")
+                self.read_calls = 0
+
+            def read(self, *args, **kwargs):
+                self.read_calls += 1
+                return super().read(*args, **kwargs)
+
+        stream = CountingBody()
+        env = {
+            "REQUEST_METHOD": "POST", "PATH_INFO": "/clients",
+            "CONTENT_LENGTH": "14",
+            "CONTENT_TYPE": "application/x-www-form-urlencoded",
+            "wsgi.input": stream,
+            "HTTP_COOKIE": "lightup_session=" + self.client_token
+            + "; lightup_session=" + self.operator_token,
+        }
+        out = {}
+        with patch.object(self.store, "session_context", wraps=self.store.session_context) as lookup:
+            with patch.object(self.store, "create_client") as mutation:
+                b"".join(self.app(env, lambda status, headers: out.update(
+                    status=status, headers=dict(headers))))
+                self.assertEqual(stream.read_calls, 0, "request body read before cookie rejection")
+                lookup.assert_not_called()
+                mutation.assert_not_called()
+        self.assertNotIn("Set-Cookie", out["headers"])
+
+    @unittest.expectedFailure
     def test_red_duplicate_valid_then_invalid_prelookup(self):
         self._assert_ambiguous_denied_prelookup(
             f"lightup_session={self.operator_token}; lightup_session=invalid")
@@ -259,6 +291,8 @@ class DuplicateSessionCookieAcceptance(unittest.TestCase):
             "test_red_duplicate_surrounded_by_unrelated_cookies",
             "test_red_duplicate_valid_after_invalid_prelookup",
             "test_red_duplicate_valid_then_invalid_prelookup",
+            "test_red_duplicate_denial_precedes_body_read_and_handler",
+            "test_red_duplicate_denial_precedes_body_read_and_handler",
             "test_red_wsgi_duplicate_must_not_gain_operator_access",
             "test_red_duplicate_cannot_logout_either_session",
             "test_red_duplicate_cannot_create_client",
@@ -283,7 +317,7 @@ class DuplicateSessionCookieAcceptance(unittest.TestCase):
                     (name, message[:100]),
                 )
 
-    def test_owner_fix_rehearsal_turns_twelve_original_source_reds_green(self):
+    def test_owner_fix_rehearsal_turns_thirteen_original_source_reds_green(self):
         # A *test-local witness only*, not a production parser or a wired
         # middleware: reproduces the narrowly specified duplicate count
         # admission invariant for the exact synthetic cookie shapes below.
