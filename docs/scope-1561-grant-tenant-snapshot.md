@@ -175,3 +175,50 @@ The result is still a **non-authorizing HOLD/REVIEW_ONLY diagnostic**.
 Never use this tool on active/production customer data and never treat
 either result as approval to merge, deploy, issue grants, dispatch tools,
 scan or release.
+
+## W6 — explicit receipt v2, caller-visible fail-closed controls
+
+The standalone inspector now prints `receipt_version: 2` on **every**
+result, including invalid input, so callers cannot silently interpret the
+enlarged three-table contract as the earlier two-table format.
+
+Version 2 keeps original `coherent`, `mismatch`, `orphan`, and grant
+`total` counts and adds **only aggregate** `missing_client`,
+`unbound_engagements` and `engagements_checked`. A broken engagement
+with *zero* grants therefore returns `HOLD` / `orphaned_client`, not
+`REVIEW_ONLY`. On invalid schema/unsafe input/limit violation all counts
+are zero, rather than disclosing partial scan results. None of these
+fields authenticate a client, a signatory, or a grant.
+
+Additional real disposable SQLite/CLI tests verify:
+- ordinary offline filenames containing `?`, `#`, `%`, `&` and
+  Unicode are **literal**, never SQLite URI options;
+- a missing-client snapshot inspected through an actual Python subprocess
+  returns **exit 2 / HOLD**, without leaking the injected fictional
+  client text, DB path, grant identifier or reference;
+- WAL/SHM/journal snapshots are rejected **before** any SQLite connection
+  is attempted;
+- a view named `clients` cannot impersonate the real keyed table;
+- every printed receipt includes explicit version 2.
+
+First introduced the five tests against prior code; the missing version
+failed, while remaining defenses were already green. After the versioned
+receipt fix the full own suite ran **42/42 ordinary PASS** via connected
+zSSH Python 3.14.4, exact code head
+`ec3d087a1d7b1b6068ba30e1c8d6c513f0bc693d`.
+
+Historical immutable-head evidence: at earlier W5 head
+`a8f57d33c254cd926e6b20885ade07f3f154f402`, connected zSSH
+verified **37/37 own tests**, **86/86 original integrations**, and
+the original full 1,274-unit suite had exactly one existing #301 fixture
+failure and 23 documented source expected failures. GitHub-hosted
+offline-only Python 3.11/3.14 passed its own **37 test methods**;
+the full original hosted preflight independently reproduced the same
+one #301 failure in each interpreter and therefore **did not become
+a green release gate**.
+
+Every later exact-head source or documentation commit needs its own final
+CI assessment. The named permanent VPS workflow may remain queued.
+Neither a successful standalone hosted workflow nor a benign
+`REVIEW_ONLY` status permits a merge, deploy, scan, handler execution,
+live grant, client authorization or release.
