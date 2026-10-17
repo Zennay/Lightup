@@ -162,3 +162,28 @@ The operator authorization desk now links each engagement to an actual, authenti
 **Critical boundary:** [issue #177](https://github.com/Zennay/Lightup/issues/177) requires the *domain* to persist and revalidate an immutable, approved-request-to-grant relationship. This UI makes absent provenance visible but **does not fix that domain invariant**. Existing owner [PR #1434](https://github.com/Zennay/Lightup/pull/1434) covers an independent offline review; no shared source or release paths are changed here.
 
 All features stay in the explicit opt-in guarded WSGI variant. No scanning, real-world target contact, consent grant, active handler, QA suite or production deployment is introduced.
+
+## Operator engagement follow-up queue
+
+The opt-in operator desk links to `GET /authorization-desk/engagements/attention`, with a parallel `GET /api/v1/operator/engagements/attention` JSON view (`lightup.operator-engagement-attention.v1`).
+
+The worklist displays up to 32 engagements per snapshot, combining their bounded read-only grant/request observations into actionable operator follow-up messages: no grant on record, mismatched persisted tenant/engagement identities, invalid/expired/future grant windows, absent *textually possible* approved requests, or a partial/incomplete record view. Every entry also explicitly needs an immutable request→grant link, separately authenticated client/operator consent and at-use revocation. Entries navigate directly to their own engagement dossiers.
+
+The special route `/authorization-desk/engagements/attention` has a reserved name, distinct from canonical UUID engagement-detail routes. This prevents a name collision between the attention index and a requested engagement ID. No records are mutated, and every JSON authority flag is permanently false.
+
+## Client-facing recorded scope transparency
+
+New routes in the **opt-in guarded** portal:
+
+- `GET /portal/<client_id>/scope-records` — understandable read-only scope records for a signed-in matching client, or a read-only operator visitor.
+- `GET /api/v1/portal/<client_id>/scope-records` — matching `lightup.client-scope-records.v1` JSON for a tenant-bound client interface. Missing authentication returns JSON 401; a session for another tenant receives a generic JSON 404.
+
+Clients can see which assessments are registered, time windows, recorded maximum risk, included/excluded assets and whether a window has expired. **The window observation is not an authorization decision.** Existing client portal pages link to this display. The feature never edits stored grants or requests.
+
+Tenant-lineage enforcement is stricter than blindly trusting the current persisted-grant read method (see [issue #829](https://github.com/Zennay/Lightup/issues/829)): each displayed record must explicitly carry the requested client's own ID **and** its current engagement's ID, and must have a bounded, parseable scope and datetime window. If a stored grant does not meet those requirements, its content is **withheld** rather than exposed to a potentially wrong tenant. The UI reports that inconsistent records were withheld without revealing their details. Collections are bounded at 32 engagements and 48 grants each, and each scope lists up to 32 assets/exclusions; truncation is explicit.
+
+The JSON disposition is fixed to `RECORD_ONLY`; its request-binding, client/operator consent, revocation-at-use, execution and release flags are permanently false. This is customer transparency, **not** verified client consent, an execution grant or a replacement for durable domain fixes. It is independent of the domain owner and does not modify existing authorization source.
+
+## Implementation and release boundary
+
+The new operator and client features change only files owned by the opt-in [PR #1566](https://github.com/Zennay/Lightup/pull/1566). The release remains **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD** until independent security/privacy review, live authorization with revocation, exact-head required CI and explicit human release approval. No QA suites, external target scans, production grant issuance or deployment are introduced.
