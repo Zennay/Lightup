@@ -44,7 +44,7 @@ def _exact_id(value: object) -> bool:
 
 
 def _parse(raw: bytes) -> dict[str, object]:
-    if not isinstance(raw, bytes) or not raw or len(raw) > MAX_INPUT:
+    if type(raw) is not bytes or not raw or len(raw) > MAX_INPUT:
         raise InvalidManifest("size")
     # All admitted keys and values are ASCII identities. Unicode escapes can
     # conceal byte-different spellings of the same branch/commit claim.
