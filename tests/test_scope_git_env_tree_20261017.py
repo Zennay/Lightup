@@ -422,6 +422,105 @@ class OfflineTreeModesTests(unittest.TestCase):
                 status = guard.git("status", "--porcelain=v1")
             self.assertEqual(status.returncode, 0)
             self.assertEqual(status.stdout, b"")
+    def test_ignored_python_startup_is_not_clean_git_evidence(self):
+        """Git status stays clean despite executable-looking ignored files."""
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_ignored_startup_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp)
+            def raw_git(*argv):
+                return subprocess.run(
+                    [guard.GIT_BINARY, *argv], cwd=root, check=True,
+                    capture_output=True, timeout=6,
+                ).stdout
+            raw_git("init", "-q")
+            (root / ".gitignore").write_text("sitecustomize.py\n")
+            (root / "README").write_text("fictional offline only\n")
+            raw_git("add", ".")
+            raw_git("-c", "user.name=Reviewer", "-c",
+                    "user.email=reviewer@example.invalid",
+                    "commit", "-q", "-m", "synthetic ignore fixture")
+            ignored = root / "sitecustomize.py"
+            ignored.write_text("# not executed by these tests\n")
+            self.assertEqual(
+                raw_git("status", "--porcelain=v1", "-z", "--untracked-files=all"),
+                b"",
+            )
+            with patch.object(guard, "ROOT", root):
+                self.assertFalse(guard._ignored_worktree_is_empty())
+                protected = guard.git("status", "--porcelain=v1", "-z")
+            self.assertEqual(protected.returncode, 3)
+            ignored.unlink()
+            with patch.object(guard, "ROOT", root):
+                self.assertTrue(guard._ignored_worktree_is_empty())
+                normal = guard.git("status", "--porcelain=v1", "-z")
+            self.assertEqual(normal.returncode, 0)
+            self.assertEqual(normal.stdout, b"")
+
+    def test_hidden_git_info_and_global_excludes_are_never_clean(self):
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        for source in ("info", "global"):
+            with self.subTest(source=source):
+                with tempfile.TemporaryDirectory(
+                    prefix="scope_hidden_exclude_", dir=FILE.parents[1]
+                ) as tmp:
+                    root = Path(tmp)
+                    def raw_git(*argv):
+                        return subprocess.run(
+                            [guard.GIT_BINARY, *argv], cwd=root, check=True,
+                            capture_output=True, timeout=6,
+                        ).stdout
+                    raw_git("init", "-q")
+                    (root / "README").write_text("fictional only")
+                    raw_git("add", "README")
+                    raw_git("-c", "user.name=Reviewer", "-c",
+                            "user.email=reviewer@example.invalid",
+                            "commit", "-q", "-m", "baseline")
+                    exclude = (
+                        root / ".git" / "info" / "exclude"
+                        if source == "info" else root / "fictional-exclude"
+                    )
+                    exclude.write_text("hidden.py\n")
+                    if source == "global":
+                        raw_git("config", "core.excludesFile", str(exclude))
+                        # Keep the configuration file outside the tracked tree.
+                        # Global excludes is a per-repo Git config source;
+                        # isolate it to the .git internals to avoid remnants.
+                        exclude.unlink()
+                        exclude = root / ".git" / "global-excludes"
+                        exclude.write_text("hidden.py\n")
+                        raw_git("config", "core.excludesFile", str(exclude))
+                    hidden = root / "hidden.py"
+                    hidden.write_text("# inert fixture\n")
+                    self.assertEqual(raw_git("status", "--porcelain=v1", "-z"), b"")
+                    with patch.object(guard, "ROOT", root):
+                        self.assertFalse(guard._ignored_worktree_is_empty())
+                        self.assertEqual(guard.git("status", "--porcelain=v1").returncode, 3)
+                    hidden.unlink()
+                    with patch.object(guard, "ROOT", root):
+                        self.assertTrue(guard._ignored_worktree_is_empty())
+
+    def test_ignored_probe_fail_closed_on_malformed_git(self):
+        from subprocess import CompletedProcess
+        from unittest.mock import patch
+        for result in (
+            CompletedProcess([], 0, b"hidden.py\0", b""),
+            CompletedProcess([], 0, b"", b"warning"),
+            CompletedProcess([], 1, b"", b""),
+            CompletedProcess([], 0, bytearray(), b""),
+            CompletedProcess([], 0, b"", bytearray()),
+        ):
+            with self.subTest(result=repr(result)[:90]):
+                with patch.object(guard, "_git_raw", return_value=result):
+                    self.assertFalse(guard._ignored_worktree_is_empty())
+        with patch.object(
+            guard, "_git_raw", return_value=CompletedProcess([], 0, b"", b"")
+        ):
+            self.assertTrue(guard._ignored_worktree_is_empty())
+
     def test_no_reusing_other_worker_paths(self):
         for item in ("src/lightup/scope.py", "tests/test_scope.py",
                      "scripts/check_scope_literal_branch_20261016.py"):
