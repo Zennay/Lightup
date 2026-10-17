@@ -194,6 +194,7 @@ class HostedTriggerContractTests(unittest.TestCase):
         self.assertIn(gate_call, workflow)
         self.assertIn('test "$scope_gate" -eq 3', workflow)
         self.assertLess(workflow.index(gate_call), workflow.index(foreign_overlay))
+        self.assertLess(workflow.index("- name: Python runtime"), workflow.index("- name: Pin branch"))
         self.assertIn("persist-credentials: false", workflow)
 
 
