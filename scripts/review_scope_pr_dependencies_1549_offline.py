@@ -133,6 +133,8 @@ def evaluate(raw: bytes) -> tuple[dict[str, object], int]:
 
 def main() -> int:
     try:
+        if len(sys.argv) != 1:
+            raise InvalidManifest("unexpected CLI arguments")
         raw = sys.stdin.buffer.read(MAX_INPUT + 1)
         receipt, code = evaluate(raw)
     except (OSError, ValueError, TypeError, MemoryError):
