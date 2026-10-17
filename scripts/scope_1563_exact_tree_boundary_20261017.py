@@ -100,6 +100,55 @@ def parse_changes(data: bytes) -> frozenset[str]:
     return frozenset(changed)
 
 
+
+def _verify_history(root: Path, head: str) -> int:
+    """Review every original-base-to-head transition, not just final tree."""
+    entries = _git(root, "rev-list", "--reverse", "--parents", ORIGINAL_BASE + ".." + head)
+    try:
+        lines = entries.decode("ascii").splitlines()
+    except UnicodeDecodeError as exc:
+        raise Hold("invalid ancestry bytes") from exc
+    if not 1 <= len(lines) <= 128:
+        raise Hold("missing or excessive commit history")
+    parent = ORIGINAL_BASE
+    for line in lines:
+        words = line.split(" ")
+        if len(words) != 2 or words[1] != parent or any(not SHA_PATTERN.fullmatch(x) for x in words):
+            raise Hold("nonlinear/ambiguous commit history")
+        commit = words[0]
+        raw = _git(root, "diff-tree", "-r", "--no-ext-diff", "--no-renames",
+                   "--no-commit-id", "--name-status", "-z", parent, commit)
+        if not raw or not raw.endswith(b"\0"):
+            raise Hold("empty or incomplete committed diff")
+        pairs = raw.split(b"\0")[:-1]
+        if len(pairs) % 2:
+            raise Hold("truncated committed records")
+        seen = set()
+        for index in range(0, len(pairs), 2):
+            operation, raw_path = pairs[index:index+2]
+            try:
+                name = raw_path.decode("ascii")
+            except UnicodeDecodeError as exc:
+                raise Hold("non-ASCII intermediate path") from exc
+            if operation not in (b"A", b"M") or name not in ALLOWED_ADDED or name in seen:
+                raise Hold("forbidden transient source, rename, delete or duplicate")
+            seen.add(name)
+            info = _git(root, "ls-tree", "-z", commit, "--", name)
+            if not info.endswith(b"\0") or info.count(b"\0") != 1:
+                raise Hold("missing committed file")
+            try:
+                metadata, observed = info[:-1].split(b"\t", 1)
+                mode, kind, blob = metadata.decode("ascii").split(" ")
+                observed = observed.decode("ascii")
+            except (ValueError, UnicodeDecodeError) as exc:
+                raise Hold("malformed intermediate Git tree") from exc
+            if mode != "100644" or kind != "blob" or observed != name or not SHA_PATTERN.fullmatch(blob):
+                raise Hold("nonregular intermediate Git object")
+        parent = commit
+    if parent != head:
+        raise Hold("ancestry does not finish at exact head")
+    return len(lines)
+
 def inspect_exact_head(root: Path, expected_head: str) -> dict[str, str | int | bool]:
     if not SHA_PATTERN.fullmatch(expected_head):
         raise Hold("expected head must be an exact 40-byte hex SHA")
@@ -132,6 +181,7 @@ def inspect_exact_head(root: Path, expected_head: str) -> dict[str, str | int | 
         "base": ORIGINAL_BASE,
         "head": head,
         "added_paths": len(changed),
+        "checked_commits": _verify_history(root, head),
         "authorization_granted": False,
         "release_approved": False,
     }
