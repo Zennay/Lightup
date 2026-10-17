@@ -156,20 +156,23 @@ class ReviewBoundaryTests(unittest.TestCase):
     def test_strict_owner_gate_requires_literal_one_not_truthy_tokens(self):
         from unittest import mock
         from test_scope_handler_admission_20261017 import source_red_until_owner_fix
-        def dummy(self):
-            return None
-
         for token in ("", "0", "True", "true", "yes", "01", " 1", "1 ", "2"):
             with self.subTest(token=repr(token)):
+                # unittest.expectedFailure mutates the function object. Use
+                # fresh functions to avoid making strict tests false-positive.
+                def nonstrict_sample(self):
+                    return None
                 with mock.patch.dict("os.environ", {"LIGHTUP_SCOPE1531_REQUIRE_SOURCE_FIX": token}):
-                    decorated = source_red_until_owner_fix(dummy)
+                    decorated = source_red_until_owner_fix(nonstrict_sample)
                 self.assertTrue(
                     getattr(decorated, "__unittest_expecting_failure__", False),
                     "nonliteral token must not enable strict mode",
                 )
+        def strict_sample(self):
+            return None
         with mock.patch.dict("os.environ", {"LIGHTUP_SCOPE1531_REQUIRE_SOURCE_FIX": "1"}):
-            strict = source_red_until_owner_fix(dummy)
-        self.assertIs(strict, dummy)
+            strict = source_red_until_owner_fix(strict_sample)
+        self.assertIs(strict, strict_sample)
         self.assertFalse(getattr(strict, "__unittest_expecting_failure__", False))
 
     def test_source_gate_decoration_never_invokes_a_handler(self):
