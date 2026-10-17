@@ -227,10 +227,13 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
                 shutil.copyfile(ROOT / "src" / "lightup" / filename, pkg / filename)
             scope_source = pkg / "scope.py"
             marker = root / "evil-pyc-imported"
-            fake_contents = (
-                "from pathlib import Path\n"
-                f"Path({str(marker)!r}).write_text('executed', encoding='utf-8')\n"
-                + scope_source.read_text(encoding="utf-8")
+            source_text = scope_source.read_text(encoding="utf-8")
+            fake_contents = source_text.replace(
+                "from __future__ import annotations\n",
+                "from __future__ import annotations\n"
+                + "from pathlib import Path\n"
+                + f"Path({str(marker)!r}).write_text('executed', encoding='utf-8')\n",
+                1,
             )
             code = compile(fake_contents, str(scope_source), "exec")
             current = scope_source.stat()
