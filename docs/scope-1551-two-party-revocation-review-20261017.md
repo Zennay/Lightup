@@ -61,3 +61,17 @@ CLI examples for fictional input (not client consent):
 The order and syntax are exact; indexes must be canonical decimal, digests lower-case 64 hex and nonzero. The Python API accepts keyword-only `checkpoint_index` and `expected_checkpoint_sha256` together. Bad/missing/alias/index-at-last-entry arguments HOLD.
 
 Red-before-green tests proved the prior API and CLI did not have this checkpoint mode; regression suite now verifies legitimate append, rewritten history with all internal digests recomputed, an empty suffix, malformed checkpoint identities, and CLI argument variants. **Both externally retained hashes remain unauthenticated assertions unless obtained from independent trusted provenance; an offline match never grants real permission.** No network, sourceowners, shared CI, runners, real targets or production grants changed.
+
+## W5: detached exact bytes of independently provided fictional scope document
+
+The synthetic JSON v1 scope_sha256 previously matched only a self-asserted digest in claim records. A new **opt-in offline binding** now checks SHA-256 of separately supplied exact document bytes against the same claimed scope SHA across every timeline step. Review API accepts scope_document_bytes as an exact nonempty builtin bytes object (max 64 KiB). A byte change, even a trailing whitespace byte, results in HOLD. This binds content *consistency*, not authorship, signatures, trustworthy scope, human approval or authorization.
+
+A separate read-only local CLI (scripts/review_scope_document_binding_1551_offline.py) reads the timeline from bounded stdin and a specifically supplied regular local scope file. Example:
+
+    python3 -I -S -B scripts/review_scope_document_binding_1551_offline.py --scope-document /path/to/fictional-scope.txt < fictional-timeline.json
+
+Optional arguments (exact order) are --checkpoint INDEX:SHA256 then --expected-head SHA256, allowing existing independent history checkpoints and final pins to be combined with exact scope bytes. The CLI blocks symbolic links (O_NOFOLLOW), FIFOs/non-regular files (fstat + O_NONBLOCK), zero-length and >64 KiB files, oversized/invalid timeline streams, ambiguous flags, and changes to file size/inode/mtime/ctime during reading. No network calls, target interaction or disclosures of path, scope document, principal or hash in stdout. All eight authority flags remain false, exit 3 only for REVIEW_ONLY, otherwise 2, never 0.
+
+Real regression before the final fix: a file modified in place *during* a file read was accepted. The validator now checks file identity and metadata again after reading and HOLDs on drift. New subprocess tests cover exact bytes, altered file, stale claim, missing/symlink/FIFO/directory, oversized/empty file, changing inode metadata, manipulated synthetic history and combined checkpoint/head. The source/scope bytes are not copied to a report.
+
+**Safety note:** a caller able to replace *both* the external document and entire untrusted claim history can produce a new self-consistent REVIEW_ONLY unless an independent checkpoint is genuinely retained. Detached file hash correctness is neither legal consent nor runtime authority. Keep in DRAFT/HOLD until genuine independently authenticated separate client and operator approvals, revocation at time of use, privacy/security review, complete original hosted + permanent VPS CI, and explicit human release approval.

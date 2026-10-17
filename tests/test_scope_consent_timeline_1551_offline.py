@@ -353,5 +353,32 @@ class Timeline(unittest.TestCase):
                 self.assertTrue(all(output[k] is False for k in timeline.claim.AUTHORITY_FLAGS))
 
 
+    def test_exact_scope_document_content_matches_claim(self):
+        import hashlib
+        document = b"fictional-scope-document-v1\nasset: example.local\n"
+        batch = make_timeline(3)
+        digest = hashlib.sha256(document).hexdigest()
+        for row in batch["entries"]:
+            row["packet"]["scope_sha256"] = digest
+            for consent in row["packet"]["consents"]:
+                consent["scope_sha256"] = digest
+        for i in range(1,3):
+            batch["entries"][i]["previous_sha256"] = timeline.entry_digest(batch["entries"][i-1])
+        self.assertEqual("REVIEW_ONLY", timeline.review(raw(batch),
+                        scope_document_bytes=document)["status"])
+        self.assertEqual("HOLD", timeline.review(raw(batch),
+                        scope_document_bytes=document+b" ")["status"])
+
+    def test_scope_document_rejects_malformed_and_unbounded_input(self):
+        p = make_timeline()
+        for content in (b"", bytearray(b"test"), memoryview(b"test"),
+                        b"x"*65537, None, "scope", True):
+            if content is None:
+                continue
+            with self.subTest(content_type=type(content).__name__):
+                self.assertEqual("HOLD", timeline.review(raw(p),
+                                 scope_document_bytes=content)["status"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -20,6 +20,7 @@ SPEC.loader.exec_module(claim)
 
 MAX_TIMELINE_BYTES = 128 * 1024
 MAX_ENTRIES = 16
+MAX_SCOPE_DOCUMENT_BYTES = 64 * 1024
 
 
 def _fail() -> None:
@@ -37,7 +38,12 @@ def entry_digest(entry: dict[str, object]) -> str:
 
 
 def _review(raw: bytes, *, checkpoint_index: int | None = None,
-            expected_checkpoint_sha256: str | None = None) -> str:
+            expected_checkpoint_sha256: str | None = None,
+            expected_scope_sha256: str | None = None) -> str:
+    if expected_scope_sha256 is not None:
+        if (type(expected_scope_sha256) is not str
+            or not claim.DIGEST.fullmatch(expected_scope_sha256)):
+            _fail()
     if checkpoint_index is not None or expected_checkpoint_sha256 is not None:
         if (type(checkpoint_index) is not int or checkpoint_index < 0
             or type(expected_checkpoint_sha256) is not str
@@ -95,6 +101,9 @@ def _review(raw: bytes, *, checkpoint_index: int | None = None,
         if baseline_consents is None:
             baseline_consents = consents
             proposal, scope = packet["proposal_sha"], packet["scope_sha256"]
+            if (expected_scope_sha256 is not None
+                and not hmac.compare_digest(scope, expected_scope_sha256)):
+                _fail()
         elif (consents != baseline_consents or packet["proposal_sha"] != proposal
               or packet["scope_sha256"] != scope):
             _fail()
@@ -107,10 +116,18 @@ def _review(raw: bytes, *, checkpoint_index: int | None = None,
 
 def review(raw: bytes, *, expected_head_sha256: str | None = None,
            checkpoint_index: int | None = None,
-           expected_checkpoint_sha256: str | None = None) -> dict[str, object]:
+           expected_checkpoint_sha256: str | None = None,
+           scope_document_bytes: bytes | None = None) -> dict[str, object]:
     try:
+        expected_scope_sha256 = None
+        if scope_document_bytes is not None:
+            if (type(scope_document_bytes) is not bytes or not scope_document_bytes
+                or len(scope_document_bytes) > MAX_SCOPE_DOCUMENT_BYTES):
+                _fail()
+            expected_scope_sha256 = hashlib.sha256(scope_document_bytes).hexdigest()
         observed = _review(raw, checkpoint_index=checkpoint_index,
-                           expected_checkpoint_sha256=expected_checkpoint_sha256)
+                           expected_checkpoint_sha256=expected_checkpoint_sha256,
+                           expected_scope_sha256=expected_scope_sha256)
         if expected_head_sha256 is not None:
             if (type(expected_head_sha256) is not str
                 or not claim.DIGEST.fullmatch(expected_head_sha256)
