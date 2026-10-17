@@ -282,8 +282,9 @@ class PairReview649Tests(unittest.TestCase):
                 process.stdin.flush()
             process.stdin.close()
             assert process.stdout is not None and process.stderr is not None
-            output = process.stdout.read()
-            errors = process.stderr.read()
+            with process.stdout, process.stderr:
+                output = process.stdout.read()
+                errors = process.stderr.read()
             exit_code = process.wait(timeout=10)
             self.assertEqual(exit_code, 3)
             self.assertEqual(errors, b"")
