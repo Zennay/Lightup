@@ -161,6 +161,14 @@ If any source is missing, changed, oversized or is a symlink, imports are **skip
 
 **Authorized zSSH Python 3.14.4 evidence:** exact code SHA `90dbb8436582649484e8c40e63b787c729597c26`: **56/56 focused regressions PASS, 86/86 original producer integrations PASS**, clean Git index/worktree. The two new source-race tests both changed RED→GREEN. This is still not an atomic filesystem import or an OS/code-signing trust boundary: short transient modify-restore, malicious bytecode caches or native interpreter memory modification are outside the stated proof. Only reviewed synthetic offline use is valid; real grant, dispatch and release remain disabled.
 
+## W14 — CPython bytecode-cache source consistency (17 October 2026)
+
+**Actual reproduced pre-import bypass:** CPython's import system can execute a timestamp-valid `.pyc` cache rather than compiling the visible SHA256-pinned `.py` source. In a disposable fictional checkout the scope source was unchanged, yet the bytecode cache contained additional top-level code that created a marker file. The original W13 witness checked only `.py` hashes; the marker **was actually created before import admission** (RED).
+
+**FIX:** during the same pre-import source preflight for `lightup/__init__.py`, `models.py` and `scope.py`, inspect the *interpreter-selected* cache path via `importlib.util.cache_from_source`. If a cache exists, require a regular non-symlink file under 256 KiB, correct Python magic, and an **exact marshal-payload match** with a freshly `compile(..., optimize=sys.flags.optimize)`-compiled copy of the SHA256-pinned source. This is a **byte comparison only**, without loading, unmarshalling or executing any bytecode from the untrusted cache in the verifier. A modified cache emits `HOLD/offline_witness_source_drift`, exit 2, before import. Valid caches are accepted. The same preflight is re-run before `REVIEW_ONLY`.
+
+**RED→GREEN and compatibility evidence:** two isolated subprocess tests use only temporary checkout copies. A fabricated, timestamp-matching `scope.cpython-*.pyc` with malicious marker-writing code is now rejected **without executing the marker**. Separately, timestamp-valid caches legitimately compiled from all three exact source files still produce `REVIEW_ONLY/exit 3` and seven literal `false` authority flags. On the authorized zSSH Python 3.14.4 checkout, **58/58 focused methods PASS** at source head `53d2c13e21492dfb1522f3d6d619cb174c65e72e`. The validation uses runtime-specific CPython bytecode format, and is not a code-signing system or a full defense against hostile preloaded objects, native execution, modify-then-restore races or subverted Python internals.
+
 ## Gate interpretation
 
 - Green unit tests validate the witness's own classification, deterministic receipt, zero-network boundary, no authority flags and mutation-detection sensitivities.
