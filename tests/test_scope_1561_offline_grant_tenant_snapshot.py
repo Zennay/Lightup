@@ -324,5 +324,99 @@ class GrantTenantSnapshot1561(unittest.TestCase):
         self.assertEqual(denied.exception.reason, "snapshot_changed")
 
 
+    def test_missing_real_client_holds_even_when_grant_owner_matches(self):
+        """Both forged owner strings agree, but no clients row exists."""
+        ghost = "fictional-client-not-in-clients-table"
+        self.corrupt(
+            "UPDATE engagements SET client_id=? WHERE engagement_id=?",
+            (ghost, self.ea.engagement_id),
+        )
+        self.corrupt(
+            "UPDATE authorization_grants SET client_id=? WHERE grant_id=?",
+            (ghost, self.ga.grant_id),
+        )
+        result = self.audit()
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "orphaned_client")
+        self.assertEqual(result["missing_client"], 1)
+        self.assertEqual(result["coherent"], 1)
+        self.assertEqual(result["total"], 2)
+        self.assertNotIn(ghost, json.dumps(result))
+
+    def test_ghost_engagement_owner_precedes_grant_mismatch(self):
+        """A missing actual owner must not be misclassified as mere drift."""
+        ghost = "fictional-missing-real-client"
+        self.corrupt(
+            "UPDATE engagements SET client_id=? WHERE engagement_id=?",
+            (ghost, self.ea.engagement_id),
+        )
+        result = self.audit()
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "orphaned_client")
+        self.assertEqual(result["missing_client"], 1)
+        self.assertEqual(result["mismatch"], 0)
+        self.assertNotIn(ghost, json.dumps(result))
+
+    def test_missing_clients_table_never_claims_review_only(self):
+        with contextlib.closing(sqlite3.connect(self.db)) as conn:
+            with conn:
+                conn.execute("ALTER TABLE clients RENAME TO no_clients_table")
+        result = self.audit()
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "invalid_schema")
+
+    def test_nocase_engagement_id_cannot_alias_different_spelling(self):
+        forged = Path(self.temp.name) / "forged-nocase-engagement.sqlite"
+        with contextlib.closing(sqlite3.connect(forged)) as conn:
+            with conn:
+                conn.executescript("""
+                    CREATE TABLE clients(client_id TEXT PRIMARY KEY);
+                    CREATE TABLE engagements(
+                        engagement_id TEXT PRIMARY KEY COLLATE NOCASE,
+                        client_id TEXT
+                    );
+                    CREATE TABLE authorization_grants(
+                        grant_id TEXT PRIMARY KEY,
+                        engagement_id TEXT,
+                        client_id TEXT
+                    );
+                    INSERT INTO clients VALUES ('fictional-t');
+                    INSERT INTO engagements VALUES ('ENGAGEMENT-1','fictional-t');
+                    INSERT INTO authorization_grants VALUES
+                        ('fictional-grant-1','engagement-1','fictional-t');
+                """)
+        result = inspect_offline_grant_tenants(str(forged))
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "orphaned_engagement")
+        self.assertEqual(result["orphan"], 1)
+
+    def test_nocase_client_id_cannot_alias_different_owner_spelling(self):
+        forged = Path(self.temp.name) / "forged-nocase-client.sqlite"
+        with contextlib.closing(sqlite3.connect(forged)) as conn:
+            with conn:
+                conn.executescript("""
+                    CREATE TABLE clients(
+                        client_id TEXT PRIMARY KEY COLLATE NOCASE
+                    );
+                    CREATE TABLE engagements(
+                        engagement_id TEXT PRIMARY KEY,
+                        client_id TEXT
+                    );
+                    CREATE TABLE authorization_grants(
+                        grant_id TEXT PRIMARY KEY,
+                        engagement_id TEXT,
+                        client_id TEXT
+                    );
+                    INSERT INTO clients VALUES ('FICTIONAL-T');
+                    INSERT INTO engagements VALUES ('fictional-eng','fictional-t');
+                    INSERT INTO authorization_grants VALUES
+                        ('fictional-grant','fictional-eng','fictional-t');
+                """)
+        result = inspect_offline_grant_tenants(str(forged))
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "orphaned_client")
+        self.assertEqual(result["missing_client"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()
