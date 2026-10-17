@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import importlib.util
 import io
-from collections import Counter
+import hashlib
+import json
+from collections import Counter, defaultdict
 import pathlib
 import sys
 import unittest
@@ -80,6 +82,30 @@ EXPECTED_CASE_COUNTS = {
 }
 
 
+EXPECTED_CASE_DIGESTS = {
+    "test_generated_global_ipv4_nonmembers_do_not_gain_scope": "df835d93f251d277490598d3d7acaa9ea4d5bde5d8f62b92697d9e208423b9a7",
+    "test_invalid_identity_stops_planner_and_permit_before_side_effects": "32209802dd6b36e6eaade259bc3f5a6e5e20c28454c631f44a5342ff02a7933c",
+    "test_invalid_target_cannot_be_rescued_by_grant_or_auth_flag": "a1ced0840c3603a51e409865a7e138d9e20b1fada68c1ae3308a9ec07813f5f8",
+    "test_ipv4_right_neighbor_of_declared_cidr_remains_unlisted": "20ec420ed6a86a9ea2baf3299cf6dfddc9226c30a566cbf2e38c03842e2fd5fe",
+    "test_ipv6_right_neighbor_of_declared_prefix_remains_unlisted": "b341517f9c821616c64bb3a8ad595c760c21c48825b7b6a17267f91cccbb7338",
+    "test_nonmember_cannot_enter_planner_capability_discovery": "f5d744db932c2a19b6d494f913b1dfc40c80cc63783f345fc8b8bcbc54dbcfe2",
+    "test_nonmember_never_reaches_permit_token_creation_in_any_mode": "032ba5fcc64b6a3cc472d96adc021a174a6644e9ef78c42ece7de2c78c651aa5",
+    "test_nonmember_recheck_after_untrusted_grant_replacement_stays_denied": "7324e8bc27098e95b74902a8bf1b223d27f51eccc28ad194636790b4f2003e11",
+    "test_normalized_host_is_not_rebound_to_a_declared_identity": "e2cc4acb414cfec61c71fd2c8badf2f8b4a2b95c48fba65a465c407ac29f572b",
+    "test_public_ipv6_outside_declared_prefix_stays_out_of_scope": "dab8345556cbd0f91eae7addc4c89653c647e1c72082319f1741a82bb3180aed",
+    "test_undeclared_public_hostname_is_invariant_under_grant_substitution": "f087e88a43748de7391667cc0a158bca4e15519c23bbc9cc91bddf3528eee759",
+    "test_undeclared_public_network_is_invariant_under_grant_substitution": "4d0bafac6f3634d2ebdbf8cd214fc9db7986cd3ed16d20396df8366366d9b049",
+    "test_unlisted_subdomain_parent_and_suffix_do_not_inherit_host_grant": "edfde215f492de7fee57b045fde9b102cca347c845da45be4e33db7b9bb831c9",
+    "test_unrelated_declared_hosts_cannot_change_membership": "79c476cf660ef515dd224e153ac4957e6d4f23aa408d97c513f19a743c304362",
+    "test_unrelated_declared_networks_cannot_change_membership": "f850bf8ce0c138274c4a02c5bef541140171ef7526e22ee1084c2fe84bebc430",
+    "test_untrusted_authorization_shape_and_label_cannot_mint_membership": "58e176e609ce32c77fa67c5ce57c1a1b19b7ff914d2f8f563b1e62c7e6168210",
+}
+
+
+def _case_digest(tokens: list[str]) -> str:
+    return hashlib.sha256("\n".join(sorted(tokens)).encode("ascii")).hexdigest()
+
+
 class CoverageResult(unittest.TextTestResult):
     """Record actually completed subcases, not just named test discovery."""
 
@@ -87,10 +113,17 @@ class CoverageResult(unittest.TextTestResult):
         super().__init__(*args, **kwargs)
         self.subtest_attempts: Counter[str] = Counter()
         self.subtest_passes: Counter[str] = Counter()
+        self.subtest_tokens: dict[str, list[str]] = defaultdict(list)
 
     def addSubTest(self, test, subtest, err):
         name = getattr(test, "_testMethodName", "")
         self.subtest_attempts[name] += 1
+        try:
+            token = json.dumps(dict(subtest.params), sort_keys=True,
+                               ensure_ascii=True, separators=(",", ":"), allow_nan=False)
+        except (TypeError, ValueError, OverflowError):
+            token = "<NONCANONICAL-SUBTEST>"
+        self.subtest_tokens[name].append(token)
         if err is None:
             self.subtest_passes[name] += 1
         super().addSubTest(test, subtest, err)
@@ -104,6 +137,11 @@ def all_subcases_covered(result: unittest.TestResult) -> bool:
         and sum(EXPECTED_CASE_COUNTS.values()) == 730
         and dict(result.subtest_attempts) == EXPECTED_CASE_COUNTS
         and dict(result.subtest_passes) == EXPECTED_CASE_COUNTS
+        and set(EXPECTED_CASE_DIGESTS) == REQUIRED_TEST_METHODS
+        and all(
+            _case_digest(result.subtest_tokens.get(name, [])) == digest
+            for name, digest in EXPECTED_CASE_DIGESTS.items()
+        )
     )
 
 
@@ -330,6 +368,8 @@ def mutation_subcases_valid(result: unittest.TestResult) -> bool:
         if type(observed) is not int or not 1 <= observed <= expected:
             return False
         if observed < expected and name not in failed_methods:
+            return False
+        if observed == expected and _case_digest(result.subtest_tokens.get(name, [])) != EXPECTED_CASE_DIGESTS[name]:
             return False
     return True
 
