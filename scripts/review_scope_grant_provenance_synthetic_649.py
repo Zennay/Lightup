@@ -107,9 +107,13 @@ def review_batch(value: object) -> ReviewReceipt:
     items = value["items"]
     if type(items) is not list or not 1 <= len(items) <= MAX_ITEMS:
         return hold
+    seen_row_ids: set[int] = set()
     for item in items:
+        if id(item) in seen_row_ids:
+            return hold  # Reused object is not a distinct fictional review row.
         if not _has_exact_keys(item, _ENTRY_KEYS):
             return hold
+        seen_row_ids.add(id(item))
         if not _clean_text(item["approved_by"]) or not _clean_text(item["reference"]):
             return hold
     return ReviewReceipt(ReviewStatus.REVIEW_ONLY)
