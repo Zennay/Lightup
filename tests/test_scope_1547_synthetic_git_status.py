@@ -235,6 +235,26 @@ class SyntheticGate(unittest.TestCase):
                     self.assertEqual(review.main(), code)
                 self.assertEqual(json.loads(sink.payload)["decision"], verdict)
 
+    def test_exhaustive_rename_copy_score_byte_grammar(self):
+        # Exact Git --name-status -z uses three decimal similarity digits.
+        for prefix in (b"R", b"C"):
+            for score in range(101):
+                token = prefix + f"{score:03d}".encode("ascii")
+                with self.subTest(token=token):
+                    self.assertEqual(
+                        review.review_stream(token + b"\0old.py\0new.py\0"), 1
+                    )
+                if score < 100:
+                    short = prefix + str(score).encode("ascii")
+                    if short != token:
+                        with self.subTest(short=short):
+                            with self.assertRaises(review.StatusHold):
+                                review.review_stream(short + b"\0old.py\0new.py\0")
+            for invalid in (b"101", b"200", b"999", b"0000", b"0\n00"):
+                with self.subTest(prefix=prefix, invalid=invalid):
+                    with self.assertRaises(review.StatusHold):
+                        review.review_stream(prefix + invalid + b"\0old.py\0new.py\0")
+
     def test_real_disposable_git_add_modify_delete_stream(self):
         with tempfile.TemporaryDirectory() as temp:
             repo = Path(temp)
@@ -351,6 +371,39 @@ class StrictSourceOwnerGate(unittest.TestCase):
     Run only on an isolated checkout with the actual reviewed owner fix, e.g.
     LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX=1 python3 -m unittest ...
     """
+
+    def test_in_memory_exact_end_anchor_oracle(self):
+        """Prove a minimal owner-only fix without modifying any file or branch."""
+        import os
+        if os.environ.get("LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX") != "1":
+            self.skipTest("only for explicit source-owner integration verification")
+        import re
+        from unittest.mock import patch
+        sys.path.insert(0, str(ROOT / "src"))
+        from lightup import git_changes as owner
+        if not hasattr(owner, "_STATUS_CODE"):
+            self.skipTest("pinned historical owner has no strict status matcher")
+        strict_code = re.compile(rb"\A(?:[ADMT]|[RC](?:0[0-9]{2}|100))\Z")
+        malformed = (
+            b"M\n\0src/a.py\0",
+            b"A\n\0src/a.py\0",
+            b"R100\n\0old.py\0new.py\0",
+            b"C001\n\0old.py\0new.py\0",
+        )
+        original = owner._STATUS_CODE
+        with patch.object(owner, "_STATUS_CODE", strict_code):
+            for stream in malformed:
+                with self.subTest(bad=stream):
+                    with self.assertRaises(owner.GitChangeError):
+                        owner._parse_name_status(stream)
+            for stream in (
+                b"M\0src/a.py\0",
+                b"R001\0old.py\0new.py\0",
+                b"R100\0old.py\0new.py\0",
+            ):
+                with self.subTest(good=stream):
+                    self.assertTrue(owner._parse_name_status(stream))
+        self.assertIs(owner._STATUS_CODE, original)
 
     def test_source_rejects_all_five_original_invalid_forms(self):
         import os
