@@ -10,6 +10,7 @@ import hashlib
 import io
 import json
 import os
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -488,6 +489,79 @@ class GrantTenantSnapshot1561(unittest.TestCase):
         self.assertEqual(result["reason"], "orphaned_client")
         self.assertEqual(result["unbound_engagements"], 1)
 
+
+
+    def test_uri_metacharacters_and_unicode_filename_cannot_become_options(self):
+        """Quoted paths are literal paths, never SQLite URI query controls."""
+        for name in ("fake-?mode=rw&cache=shared#copy.sqlite",
+                     "fictieve-kopie-☁-%-测试.sqlite"):
+            with self.subTest(name=name):
+                alt = Path(self.temp.name) / name
+                shutil.copyfile(self.db, alt)
+                result = inspect_offline_grant_tenants(str(alt))
+                self.assertEqual(result["status"], "REVIEW_ONLY")
+                self.assertEqual(result["total"], 2)
+                self.assertNotIn(name, json.dumps(result))
+
+    def test_subprocess_ghost_client_holds_without_leaking_secret(self):
+        ghost = "secret-fake-client-should-never-be-shown"
+        self.corrupt(
+            "UPDATE engagements SET client_id=? WHERE engagement_id=?",
+            (ghost, self.ea.engagement_id),
+        )
+        self.corrupt(
+            "UPDATE authorization_grants SET client_id=? WHERE grant_id=?",
+            (ghost, self.ga.grant_id),
+        )
+        cmd = [sys.executable, "-m",
+               "lightup.scope_grant_tenant_snapshot_1561",
+               "--offline-copy", str(self.db)]
+        env = {**os.environ, "PYTHONPATH": str(
+            Path(__file__).resolve().parents[1] / "src")}
+        before = self.snapshot()
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=10,
+            env=env, check=False,
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(before, self.snapshot())
+        report = json.loads(result.stdout)
+        self.assertEqual(report["status"], "HOLD")
+        self.assertEqual(report["reason"], "orphaned_client")
+        self.assertEqual(report["missing_client"], 1)
+        for secret in (ghost, str(self.db), self.ga.grant_id, self.ga.reference):
+            self.assertNotIn(secret, result.stdout)
+
+    def test_unsafe_companion_is_rejected_before_sqlite_connection(self):
+        import lightup.scope_grant_tenant_snapshot_1561 as module
+        wal = Path(str(self.db) + "-wal")
+        wal.write_bytes(b"synthetic-untrusted-wal")
+        with patch.object(
+            module.sqlite3, "connect",
+            side_effect=AssertionError("must not open a changing snapshot"),
+        ):
+            result = module.inspect_offline_grant_tenants(str(self.db))
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "unsafe_snapshot")
+
+    def test_clients_view_cannot_masquerade_as_real_client_table(self):
+        with contextlib.closing(sqlite3.connect(self.db)) as conn:
+            with conn:
+                conn.execute("ALTER TABLE clients RENAME TO retired_fake_clients")
+                conn.execute(
+                    "CREATE VIEW clients AS "
+                    "SELECT client_id FROM retired_fake_clients"
+                )
+        result = self.audit()
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "invalid_schema")
+
+    def test_receipt_format_version_is_explicit_and_non_authorizing(self):
+        result = self.audit()
+        self.assertEqual(result["receipt_version"], 2)
+        self.assertEqual(result["engagements_checked"], 2)
+        self.assertFalse(result["authorized"])
 
 
 if __name__ == "__main__":
