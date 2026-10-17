@@ -20,7 +20,7 @@ MAX_STREAM = 32768
 MAX_RECORDS = 64
 MAX_PATH_BYTES = 1024
 _STATUS_SIMPLE = frozenset({"A", "M", "D", "T"})
-_STATUS_RENAME = re.compile(r"^[RC](?:0|[1-9][0-9]?|100)$", re.ASCII)
+_STATUS_RENAME = re.compile(r"^[RC](?:0[0-9]{2}|100)$", re.ASCII)
 _FLAGS = (
     "authorized", "client_consent", "operator_consent", "grant", "scan",
     "handler_dispatch", "merge", "deploy", "release",
@@ -135,17 +135,42 @@ def receipt(decision: str) -> bytes:
     return (json.dumps(obj, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")
 
 
+def _read_bounded_payload() -> bytes:
+    """Consume the *whole* bounded input, including fragmented pipe reads.
+
+    A valid JSON prefix must not be reviewed while a later chunk is unread.
+    A pathological stream returning unbounded short reads fails closed.
+    """
+    chunks: list[bytes] = []
+    total = 0
+    for _ in range(256):
+        amount = min(4096, MAX_INPUT + 1 - total)
+        if amount <= 0:
+            raise StatusHold("input too long")
+        piece = sys.stdin.buffer.read(amount)
+        if type(piece) is not bytes or len(piece) > amount:
+            raise StatusHold("invalid stdin read")
+        if not piece:
+            return b"".join(chunks)
+        total += len(piece)
+        if total > MAX_INPUT:
+            raise StatusHold("input too long")
+        chunks.append(piece)
+    raise StatusHold("too many fragmented reads")
+
+
 def main() -> int:
     decision = "HOLD"
     try:
-        payload = sys.stdin.buffer.read(MAX_INPUT + 1)
-        review_packet(payload)
+        review_packet(_read_bounded_payload())
         decision = "REVIEW_ONLY"
     except (StatusHold, OSError, ValueError, TypeError, OverflowError):
         decision = "HOLD"
     try:
         # No untrusted paths or statuses are returned in the receipt.
-        sys.stdout.buffer.write(receipt(decision))
+        output = receipt(decision)
+        if sys.stdout.buffer.write(output) != len(output):
+            return 2
         sys.stdout.buffer.flush()
     except (OSError, ValueError):
         return 2
