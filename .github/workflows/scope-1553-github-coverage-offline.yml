@@ -54,7 +54,7 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Strict offline 148 tests, 1 original-source RED, no missing/skipped tests
+      - name: Strict offline 148 tests and exact original-source RED identity
         shell: bash
         run: |
           set -euo pipefail
@@ -87,6 +87,16 @@ jobs:
               "unexpected_successes": 0,
           }
           print("SCOPE_1553_STRICT_RECEIPT", observed, flush=True)
+          expected_red_id = (
+              "test_scope_github_file_coverage_1553."
+              "FileCoverageReviewTest."
+              "test_unrepaired_original_github_adapter_cannot_prove_file_completeness"
+          )
+          actual_red_ids = [case.id() for case, _ in result.expectedFailures]
+          # A different expected failure is NOT permitted to impersonate the
+          # pinned, still-open original-owner source gap.
+          if actual_red_ids != [expected_red_id]:
+              sys.exit("Scope #1553 original-source RED identity changed: HOLD")
           if observed != expected or not result.wasSuccessful():
               sys.exit("Scope #1553 strict exact-suite admission HOLD")
           PY
