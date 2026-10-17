@@ -2,6 +2,7 @@
 """Bounded fictional, non-authorizing LightUp PR dependency topology reviewer."""
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sys
@@ -132,7 +133,8 @@ def evaluate(raw: bytes) -> tuple[dict[str, object], int]:
         waves = review(raw)
     except (InvalidManifest, ValueError, UnicodeError, TypeError, RecursionError, MemoryError):
         return {"status": "HOLD", "waves": [], **OFF_FLAGS}, 2
-    return {"status": "REVIEW_ONLY", "waves": waves, **OFF_FLAGS}, 3
+    return {"status": "REVIEW_ONLY", "waves": waves,
+            "input_sha256": hashlib.sha256(raw).hexdigest(), **OFF_FLAGS}, 3
 
 
 def _read_complete_input(stream: object) -> bytes:
