@@ -171,3 +171,45 @@ Git clean, no source or other worker files edited.
 This branch remains **INCUBATE M3/M7 — DRAFT/HOLD**. No synthetic status
 claims actual client/operator consent; no release, target, scan, grant,
 handler dispatch, merge or deployment.
+
+## W5 — isolated *before/after* fictional grant-provenance coherence CLI
+
+Added a **second real, runnable CLI**:
+`scripts/review_scope_grant_provenance_pair_synthetic_649.py`. It is intentionally
+offline/unwired and accepts **only exact fictional** JSON input
+`{"schema":"lightup.scope649.provenance_pair.synthetic.v1",
+"synthetic_only":true,"pairs":[{"before":{"approved_by":"Synthetic Operator",
+"reference":"SYNTH-649"},"after":{"approved_by":"Synthetic Operator",
+"reference":"SYNTH-649"}}]}`. A caller can pipe this sample through Python
+`-I -S -B`; exit **3** with `REVIEW_ONLY` means *only* that the two
+untrusted fictional strings are syntactically canonical and equal. **It cannot
+verify source authenticity, actual durable SQLite state, human consent or a
+real grant.** Any mismatch or malformed item in the 1–32-item batch produces
+atomic `HOLD` exit **2**. Neither exit is 0.
+
+This explicitly represents the #649 producer defect in a **synthetic fixture**:
+the request snapshot `reference="SYNTH-649"` followed by a stored snapshot
+`reference=""` now returns `HOLD`, without reading real data or touching
+the `DomainStore` owner code. Both normal/mismatched CLI runs use a fixed
+seven-false-authority receipt, no secret echo, no traceback, no filesystem
+input, no network, no handlers, no grants and no persistent state.
+
+Independent new
+`tests/test_scope_grant_provenance_pair_649_20261017.py` supplies **14 ordinary
+tests**: exact fields and synthetic marker, matching/mismatching examples,
+partial mismatch atomicity, maximum batch size, hostile dict-key hash collision
+and polymorphic text identity, Unicode canonicality, duplicates and nonfinite
+JSON, every truncated JSON prefix, real subprocess exit/privacy checks,
+broken stdout/stdin, and no production imports/target I/O. Connected permitted
+`vps-bb300bba` Python3.14.4 on isolated owned branch `9f745c2`:
+**14/14 pair tests PASS** and unchanged **19/19 simple synthetic reviewer
+PASS**, worktree clean. A failed fixture default and accidental literal
+escaped-newline test edit were both repaired via own test-only commits before
+this green evidence; they did not affect original source owner code.
+
+The opt-in hosted 3.11/3.14 matrix now runs both reviewers and the original
+source expected-RED acceptance, pinned to **seven exclusively new own paths**
+under unchanged #554 source-owner base. This is **not source repair, consent
+verification, release approval, or any real target assessment**. Original
+11 issuance source REDs and all DRAFT/HOLD human/privacy/security/permanent
+VPS CI gates remain.
