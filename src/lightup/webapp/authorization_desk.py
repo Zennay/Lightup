@@ -154,7 +154,9 @@ def render_authorization_desk(
             + '<br>Grant observation: ' + _e(label)
             + '</p><p class="meta">Grant issuance and live authorization '
             'require independent verified consent and at-use revocation checks.'
-            '</p></div>'
+            '</p><p><a href="/authorization-desk/engagements/'
+            + _e(engagement.engagement_id)
+            + '">Review grant/request records →</a></p></div>'
         )
 
     overflow = ""
