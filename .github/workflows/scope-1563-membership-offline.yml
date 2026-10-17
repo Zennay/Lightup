@@ -67,7 +67,35 @@ jobs:
         run: |
           python -m py_compile tests/test_scope_membership_metamorphic_20261017.py
           python -m unittest discover -s tests -p 'test_scope_membership_metamorphic_20261017.py' -v
-          python scripts/scope_1563_membership_mutation_proof_20261017.py
+          python scripts/scope_1563_membership_mutation_proof_20261017.py --json > "$RUNNER_TEMP/scope-1563-review.json"
+          python -c '
+          import json, os, pathlib
+          p = pathlib.Path(os.environ["RUNNER_TEMP"]) / "scope-1563-review.json"
+          d = json.loads(p.read_text(encoding="utf-8"))
+          assert d["schema"] == "lightup.scope-1563.offline-evidence.v1"
+          assert d["disposition"] == "REVIEW_ONLY"
+          assert d["methods_executed"] == 16 and d["cases_passed"] == 730
+          assert d["mutation_canaries_caught"] == 14
+          for key in ("authority_granted", "scan_permitted", "release_approved",
+                      "real_client_or_operator_consent_verified",
+                      "registered_vps_ci_verified", "original_full_ci_verified",
+                      "immutable_git_history_verified"):
+              assert d[key] is False, key
+          lines = [
+              "### Scope #1563 offline evidence (REVIEW ONLY)",
+              "",
+              "- 16 canonical negative tests / 730 distinct input cases checked",
+              "- 14 deliberate fail-open mutation classes caught by assertion",
+              "- Scope membership & planner / inactive permit DENIAL only",
+              "- No real client/operator consent, live grant, scan or permit",
+              "- Original full CI and registered named VPS proof NOT certified",
+              "- NO MERGE / NO RELEASE AUTHORITY / DRAFT HOLD",
+              "",
+          ]
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as out:
+              out.write("\\n".join(lines))
+          print(json.dumps(d, sort_keys=True, separators=(",", ":")))
+          '
           python -m unittest discover -s tests -p 'test_scope_1563_exact_tree_boundary_20261017.py' -v
           set +e
           python scripts/scope_1563_exact_tree_boundary_20261017.py --expected-head "$EXACT_HEAD"
