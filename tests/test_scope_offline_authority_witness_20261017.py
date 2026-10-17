@@ -4,6 +4,8 @@ from __future__ import annotations
 import json
 import io
 import os
+import shutil
+import tempfile
 from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime, timezone, timedelta
 import re
@@ -51,6 +53,62 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             witness.FALSE_AUTHORITY["release_allowed"] = True
         self.assertIs(witness.FALSE_AUTHORITY["release_allowed"], False)
+
+    def _isolated_source_child(self, corrupt_name, payload, *, prepend=False):
+        # Each source-integrity mutation executes in a fresh *fictional* temp
+        # checkout so no shared or original working file is ever changed.
+        with tempfile.TemporaryDirectory(prefix="lightup-source-witness-") as tmp:
+            base = Path(tmp)
+            scripts = base / "scripts"
+            source = base / "src" / "lightup"
+            scripts.mkdir(parents=True)
+            source.mkdir(parents=True)
+            script = scripts / "scope_offline_authority_witness_20261017.py"
+            shutil.copyfile(ROOT / "scripts" / script.name, script)
+            for name in ("__init__.py", "models.py", "scope.py"):
+                shutil.copyfile(ROOT / "src" / "lightup" / name, source / name)
+            tampered = source / corrupt_name
+            previous = tampered.read_text(encoding="utf-8")
+            tampered.write_text(payload + previous if prepend else previous + payload, encoding="utf-8")
+            return subprocess.run(
+                [sys.executable, str(script), "--offline-lab-only"],
+                capture_output=True, text=True, timeout=12, check=False,
+            )
+
+    def test_modified_scope_module_is_rejected_before_import_side_effect(self):
+        # The marker may never be created: hashing must happen BEFORE Python
+        # executes the modified scope module's top-level body.
+        with tempfile.TemporaryDirectory(prefix="lightup-never-created-") as tmp:
+            marker = Path(tmp) / "should-not-exist"
+            injected = f"from pathlib import Path\nPath({str(marker)!r}).write_text('imported', encoding='utf8')\n"
+            done = self._isolated_source_child("scope.py", injected, prepend=True)
+            self.assertFalse(marker.exists(), "tampered source executed before verification")
+        self.assertEqual(done.returncode, 2, done.stderr)
+        self.assertEqual(done.stderr, "")
+        parsed = json.loads(done.stdout)
+        self.assertEqual(parsed["status"], "HOLD")
+        self.assertEqual(parsed["reason"], "offline_witness_source_drift")
+        self.assert_no_authority(parsed)
+
+    def test_modified_models_module_is_rejected_before_import(self):
+        done = self._isolated_source_child("models.py", "\n# fictional extra model revision\n")
+        self.assertEqual(done.returncode, 2, done.stderr)
+        self.assertEqual(done.stderr, "")
+        parsed = json.loads(done.stdout)
+        self.assertEqual(parsed["status"], "HOLD")
+        self.assertEqual(parsed["reason"], "offline_witness_source_drift")
+        self.assert_no_authority(parsed)
+
+    def test_unchanged_source_cli_attests_both_real_sources_without_leaking_paths(self):
+        expected = {
+            "src/lightup/models.py": "f84779b55f193c2d0a143418cf569c3539ee2bdb92e76a542ffda39643d3b541",
+            "src/lightup/scope.py": "1bf081d0b85490466fbb4ad95b2d12917882ed51d05627139bdd5abf110018c0",
+        }
+        result = witness.evaluate()
+        self.assertEqual(result["status"], "REVIEW_ONLY")
+        self.assertEqual(result["source_sha256"], expected)
+        self.assert_no_authority(result)
+        self.assertNotIn(str(ROOT), json.dumps(result))
 
     def test_canonical_matrix_is_review_only_not_execution_permission(self):
         result = witness.evaluate()
