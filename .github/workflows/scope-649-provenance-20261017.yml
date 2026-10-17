@@ -6,6 +6,8 @@ on:
       - chatgpt/scope-authorization-resolver-durable-integrity-20261007
     paths:
       - tests/test_scope_grant_issuance_provenance_649_20261017.py
+      - tests/test_scope_grant_provenance_synthetic_review_649_20261017.py
+      - scripts/review_scope_grant_provenance_synthetic_649.py
       - docs/scope-grant-issuance-provenance-649-20261017.md
       - .github/workflows/scope-649-provenance-20261017.yml
   workflow_dispatch:
@@ -46,6 +48,8 @@ jobs:
           expected = {
               "tests/test_scope_grant_issuance_provenance_649_20261017.py",
               "docs/scope-grant-issuance-provenance-649-20261017.md",
+              "tests/test_scope_grant_provenance_synthetic_review_649_20261017.py",
+              "scripts/review_scope_grant_provenance_synthetic_649.py",
               ".github/workflows/scope-649-provenance-20261017.yml",
           }
           def git(*args):
@@ -64,6 +68,11 @@ jobs:
         run: |
           python -I -S -B -m unittest discover -s tests \
             -p 'test_scope_grant_issuance_provenance_649_20261017.py' -v
+      - name: Unwired synthetic review and real offline CLI boundary
+        shell: bash
+        run: |
+          python -I -S -B -m unittest discover -s tests \
+            -p 'test_scope_grant_provenance_synthetic_review_649_20261017.py' -v
       - name: Verify exact unfixed source RED names, not just expectedFailure totals
         shell: bash
         run: |
