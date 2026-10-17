@@ -47,6 +47,14 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             self.authorization_desk, "operator",
         ))
         self.routes.append((
+            "GET", re.compile(r"^/authorization-desk/clarifications$"),
+            self.operator_clarification_inbox, "operator",
+        ))
+        self.routes.append((
+            "GET", re.compile(r"^/api/v1/operator/clarifications$"),
+            self.operator_clarification_inbox_api, "operator",
+        ))
+        self.routes.append((
             "POST", re.compile(r"^/operator/requests/(?P<request_id>[\w-]+)/clarifications$"),
             self.operator_post_clarification, "operator",
         ))
@@ -188,6 +196,18 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
         from .request_clarifications import client_thread_json
         return client_thread_json(self.store, auth, client_id, request_id)
 
+    def operator_clarification_inbox(
+        self, auth: AuthState, form: dict[str, str]
+    ) -> Response:
+        from .request_clarifications import operator_clarification_inbox_page
+        return operator_clarification_inbox_page(self.store, auth)
+
+    def operator_clarification_inbox_api(
+        self, auth: AuthState, form: dict[str, str]
+    ) -> Response:
+        from .request_clarifications import operator_clarification_inbox_json
+        return operator_clarification_inbox_json(self.store, auth)
+
     def authorization_desk(self, auth: AuthState, form: dict[str, str]) -> Response:
         from .authorization_desk import render_authorization_desk
         return render_authorization_desk(self.store, auth)
@@ -262,7 +282,9 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             '<div class="card"><strong>Authorization desk</strong>'
             '<p class="meta">Review client requests, account provenance and '
             'stored grant records without activating execution.</p>'
-            '<a href="/authorization-desk">Open read-only authorization desk →</a>'
+            '<a href="/authorization-desk">Open authorization desk →</a> · '
+            '<a href="/authorization-desk/clarifications">'
+            'Open clarification inbox →</a>'
             '</div>'
         )
         return Response(markup[:offset] + callout + markup[offset:],
@@ -397,6 +419,7 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
                   auth: AuthState) -> Response:
         if method == "GET" and (
             path == "/api/v1/operator/authorization-queue"
+            or path == "/api/v1/operator/clarifications"
             or re.fullmatch(r"/api/v1/operator/requests/[\w-]+/clarifications", path)
             or path == "/api/v1/operator/engagements/attention"
             or re.fullmatch(r"/api/v1/operator/engagements/[\w-]+/review", path)
