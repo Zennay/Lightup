@@ -40,9 +40,35 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
 
     def __init__(self, store: DomainStore, security: WebSecurity | None = None):
         super().__init__(store, security)
+        from .request_clarifications import initialize_clarifications
+        initialize_clarifications(store)
         self.routes.append((
             "GET", re.compile(r"^/authorization-desk$"),
             self.authorization_desk, "operator",
+        ))
+        self.routes.append((
+            "POST", re.compile(r"^/operator/requests/(?P<request_id>[\w-]+)/clarifications$"),
+            self.operator_post_clarification, "operator",
+        ))
+        self.routes.append((
+            "POST", re.compile(
+                r"^/portal/(?P<client_id>[\w-]+)/requests/"
+                r"(?P<request_id>[\w-]+)/clarifications$"
+            ),
+            self.client_post_clarification, "portal",
+        ))
+        self.routes.append((
+            "GET", re.compile(
+                r"^/api/v1/operator/requests/(?P<request_id>[\w-]+)/clarifications$"
+            ),
+            self.operator_clarifications_json, "operator",
+        ))
+        self.routes.append((
+            "GET", re.compile(
+                r"^/api/v1/portal/(?P<client_id>[\w-]+)/requests/"
+                r"(?P<request_id>[\w-]+)/clarifications$"
+            ),
+            self.client_clarifications_json, "portal",
         ))
         self.routes.append((
             "GET", re.compile(r"^/portal/(?P<client_id>[\w-]+)/scope-records$"),
@@ -101,6 +127,66 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             ),
             self.portal_request_receipt_api, "portal",
         ))
+
+    def operator_post_clarification(
+        self, auth: AuthState, form: dict[str, str], request_id: str
+    ) -> Response:
+        from .request_clarifications import append_message, ClarificationDenied
+        try:
+            append_message(
+                self.store, auth, request_id, form.get("message", ""),
+                as_operator=True,
+            )
+        except (ClarificationDenied, KeyError, ValueError, TypeError):
+            return Response(
+                "<h1>Clarification not recorded</h1><p>Verify that this "
+                "request is open, your account is valid and your message "
+                "meets the length limit.</p>",
+                status="409 Conflict",
+            )
+        return _redirect("/authorization-desk/requests/" + request_id)
+
+    def client_post_clarification(
+        self, auth: AuthState, form: dict[str, str],
+        client_id: str, request_id: str
+    ) -> Response:
+        from .request_clarifications import append_message, ClarificationDenied
+        ctx = auth.context
+        if (
+            type(ctx) is not AccessContext
+            or ctx.role not in (Role.CLIENT_ADMIN, Role.CLIENT_MEMBER)
+            or ctx.client_id != client_id
+        ):
+            return Response("<h1>Client account required</h1>",
+                            status="403 Forbidden")
+        try:
+            request = self.store.get_assessment_request(ctx, request_id)
+            if request.client_id != client_id:
+                raise ClarificationDenied("Tenant mismatch")
+            append_message(
+                self.store, auth, request_id, form.get("message", ""),
+                as_operator=False,
+            )
+        except (ClarificationDenied, KeyError, ValueError, TypeError):
+            return Response(
+                "<h1>Clarification not recorded</h1><p>Only an open request "
+                "with a pending operator question accepts a client reply.</p>",
+                status="409 Conflict",
+            )
+        return _redirect("/portal/" + client_id + "/requests/" + request_id)
+
+    def operator_clarifications_json(
+        self, auth: AuthState, form: dict[str, str], request_id: str
+    ) -> Response:
+        from .request_clarifications import operator_thread_json
+        return operator_thread_json(self.store, auth, request_id)
+
+    def client_clarifications_json(
+        self, auth: AuthState, form: dict[str, str],
+        client_id: str, request_id: str,
+    ) -> Response:
+        from .request_clarifications import client_thread_json
+        return client_thread_json(self.store, auth, client_id, request_id)
 
     def authorization_desk(self, auth: AuthState, form: dict[str, str]) -> Response:
         from .authorization_desk import render_authorization_desk
@@ -311,6 +397,7 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
                   auth: AuthState) -> Response:
         if method == "GET" and (
             path == "/api/v1/operator/authorization-queue"
+            or re.fullmatch(r"/api/v1/operator/requests/[\w-]+/clarifications", path)
             or path == "/api/v1/operator/engagements/attention"
             or re.fullmatch(r"/api/v1/operator/engagements/[\w-]+/review", path)
         ):
@@ -338,7 +425,7 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
                 )
             if not auth.is_operator:
                 matched = re.fullmatch(
-                    r"/api/v1/portal/([\w-]+)/(?:requests(?:/[\w-]+)?|scope-records)", path
+                    r"/api/v1/portal/([\w-]+)/(?:requests(?:/[\w-]+(?:/clarifications)?)?|scope-records)", path
                 )
                 if matched is not None and auth.context.client_id != matched.group(1):
                     return Response(
