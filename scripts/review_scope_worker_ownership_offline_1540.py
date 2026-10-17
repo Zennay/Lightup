@@ -39,6 +39,18 @@ CRITICAL_HOLD_PATHS = (
     "Dockerfile",
     "Makefile",
     ".pre-commit-config.yaml",
+    # Changes to checkout attributes, submodules or the evidence tools
+    # themselves could invalidate a supposedly clean/safe comparison.
+    ".gitattributes",
+    ".gitmodules",
+    ".lfsconfig",
+    ".gitignore",
+    "scripts/check_safety_canaries.py",
+    "scripts/review_scope_history_against_checkout_offline.py",
+    "scripts/review_scope_registry_history_offline.py",
+    "scripts/review_scope_capability_registry_offline.py",
+    "scripts/export_scope_capability_registry_offline.py",
+    "scripts/render_scope_registry_history_offline.py",
 )
 
 
