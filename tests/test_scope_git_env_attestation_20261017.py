@@ -77,6 +77,33 @@ class EnvironmentFenceTests(unittest.TestCase):
                 self.assertEqual(obj["status"],status)
                 self.assertTrue(all(obj[k] is False for k in obj if k!="status"))
 
+    def test_python_isolated_nosite_prevents_synthetic_startup_execution(self):
+        """Witness ordinary PYTHONPATH sitecustomize and its isolated denial."""
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix="scope_python_import_", dir=ROOT) as tmp:
+            directory = Path(tmp)
+            flag = directory / "untrusted-startup-ran"
+            fixture = directory / "sitecustomize.py"
+            fixture.write_text(
+                "from pathlib import Path\n"
+                + "Path(" + repr(str(flag)) + ").write_text('ran')\n"
+            )
+            env = dict(os.environ, PYTHONPATH=str(directory))
+            witness = subprocess.run(
+                [sys.executable, "-c", "print('fixture')"],
+                cwd=directory, env=env, capture_output=True, timeout=6,
+            )
+            self.assertEqual(witness.returncode, 0)
+            self.assertTrue(flag.exists(), "unprotected Python startup fixture did not run")
+            flag.unlink()
+            protected = subprocess.run(
+                [sys.executable, "-I", "-S", "-B", "-c", "print('fixture')"],
+                cwd=directory, env=env, capture_output=True, timeout=6,
+            )
+            self.assertEqual(protected.returncode, 0)
+            self.assertEqual(protected.stdout, b"fixture\n")
+            self.assertFalse(flag.exists(), "isolated Python executed the startup fixture")
+
     def test_environment_limits_do_not_exhaust_attestation(self):
         review = module().review_environment
         for case in (
