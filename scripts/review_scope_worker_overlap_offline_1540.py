@@ -108,10 +108,11 @@ def check(raw: bytes) -> str:
                 if not _safe_path(path):
                     raise InvalidProposal("path")
                 folded = path.casefold()
-                if folded in local_paths:
-                    raise InvalidProposal("duplicate path")
+                if any(folded == prev or folded.startswith(prev + "/")
+                       or prev.startswith(folded + "/") for prev in local_paths):
+                    raise InvalidProposal("duplicate or parent-child path")
                 local_paths.add(folded)
-            # Only cross-worker overlapping paths cause cross-worker HOLD.
+            # Both intra-worker and cross-worker trees must remain unambiguous.
             for current in local_paths:
                 if any(current == prev or current.startswith(prev + "/")
                        or prev.startswith(current + "/") for prev in prior_paths):
