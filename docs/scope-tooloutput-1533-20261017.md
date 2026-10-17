@@ -33,3 +33,22 @@ A completely disposable copy of older #301 draft [#1452](https://github.com/Zenn
 A second compatibility look at older source-owner [#156](https://github.com/Zennay/Lightup/pull/156) yielded 24 own shape tests (nine expected source REDs) and 27 original branch orchestration PASS; the seven current CLI tests also passed **only after copying two test-only guard support files** into an isolated disposable old-branch checkout. An attempted full-discovery run with the newer guard test files misinterprets 15 expected version-mismatch fixture errors as ordinary suite failures; therefore **NO owner #156 full-suite PASS is claimed**. A later attempted isolation of these guard files was refused by VPS file permissions; the limitation is respected and no alternate SSH/access workaround was attempted. The original owner branch was not modified/pushed.
 
 Remaining barriers: actual `ToolOutput` original-source fix (source surface overlaps independently owned draft #156), original #301 fixed-date test, full hosted/permanently registered named VPS CI on a real release SHA, independent authenticated client and operator consent with revocation at use, separate privacy/security and HUMAN GO. **INCUBATE M3/M7 · DRAFT/HOLD.**
+
+## W7 — bounded receipt output channel must fail closed (2026-10-17)
+
+Real RED→GREEN on the **actual opt-in CLI**, with no target/network/file/policy/handler calls:
+
+- Synthetic `stdin` object lacking `.buffer` previously raised an `AttributeError` and wrote a traceback to stderr. It now returns one canonical privacy-minimal HOLD receipt (exit 2) with seven false authority flags and empty stderr.
+- Broken `stdout.write()` previously leaked `BrokenPipeError` and synthetic marker through a traceback. It now returns failure exit 2, no stderr and no output receipt (unusable channel).
+- A `write()` that appeared successful but only failed at `flush()` previously caused an interpreter-shutdown traceback and exit **120**. The CLI now explicitly flushes before returning REVIEW_ONLY and redirects a failed stream to an **in-memory** `io.StringIO` quarantine, preventing a second shutdown flush and disclosure.
+- Writers returning **0**, **1**, **None** or **True** despite a nonempty receipt previously returned REVIEW_ONLY (exit **3**) without full delivery. The CLI now checks the exact plain-int written character count against the full fixed JSON line before success; all four real subprocess REDs now return failure exit 2 with no stderr or output. This is a *local write/flush acknowledgement* only, **not** proof that a remote consumer received a receipt.
+
+**Actual test commands (safe synthetic examples, not authorization):**
+```bash
+printf '%s\n' '{"schema":"lightup.scope1533.synthetic.v1","synthetic_only":true,"items":[{"summary":"example-only","kind":"note","payload_hex":"ff00"}]}' | python3 -I -S -B scripts/review_scope_tooloutput_synthetic_1533.py
+python3 -I -S -B -m unittest discover -s tests -p test_scope_tooloutput_cli_1533_20261017.py -v
+```
+
+The CLI returns only REVIEW_ONLY (exit 3) on valid **synthetic shape**, HOLD (exit 2) on invalid shape, and failure (exit 2) without a receipt when stdout itself cannot be trusted; **never exit 0**. Both states remain completely non-authorizing. In addition to source-red acceptance, tests run the real CLI under the existing unchanged original native Python I/O tripwire. No original tool source, consent policy, grant, handler or runner has been changed.
+
+[Exact-head hosted #39003676433](https://github.com/Zennay/Lightup/actions/runs/39003676433) was successfully completed for code HEAD `ed08bfe0076696842d6d999a2a08e4375b268576`: Python3.11 job `117311645829` and Python3.14 job `117311646032`, verified original logs each show **11 CLI subprocess methods PASS**, 24 reviewer cases (**15 PASS plus nine intentionally unresolved original-source expectedFailures**) and 10 original orchestration PASS; zero accidental original source path changes. Original full hosted CI including independent owner #301 dated-fixture fix and permanent named VPS release runner remain unproven. **INCUBATE M3/M7; DRAFT/HOLD.**
