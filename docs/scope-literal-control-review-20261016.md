@@ -60,3 +60,7 @@ Synthetic tests reproduced unhandled `AttributeError`, `TypeError`, `ValueError`
 ## W11 — conservative case/dot collision + userinfo HOLD
 
 This *text-review-only* layer now conservatively HOLDs duplicate ASCII spellings differing only by letter case or terminal dots and any literal `@` (userinfo confusion). It does not parse destinations, prove DNS equivalence or authorize targets. Five dedicated methods confirm e.g. `fictional.test` + `FICTIONAL.TEST`, dotted case variations, and pasted `operator@localhost` all atomically HOLD with a non-echoing result, while unrelated distinct fictional values remain REVIEW_ONLY without consent/grant. Production source-owner #1289/#1290 controls actual strict target admission and is not modified.
+
+## W12 — own-workflow compile coverage maintained automatically
+
+The dedicated branch-only GitHub-hosted matrix now compiles **all** `tests/test_scope_literal_*20261016.py` owned test modules by glob, not merely a stale hand-maintained subset. The restricted tests remain a distinct offline review lane and do not claim permanent VPS or full-project approval. This change is confined to the already-owned isolated workflow and documentation.

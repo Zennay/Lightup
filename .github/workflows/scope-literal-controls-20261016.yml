@@ -45,7 +45,8 @@ jobs:
       - name: Compile own strictly offline code
         run: |
           python -m compileall -q src/lightup/scope_literal_control_review_20261016.py scripts/review_scope_literal_controls_20261016.py
-          python -m compileall -q tests/test_scope_literal_controls_20261016.py tests/test_scope_literal_encoded_review_20261016.py tests/test_scope_literal_json_boundary_20261016.py tests/test_scope_literal_stream_errors_20261016.py
+          # Keep future exclusively owned test modules in the same proof lane.
+          python -m compileall -q tests/test_scope_literal_*20261016.py
       - name: Offline literals and original source-RED witnesses only
         env:
           PYTHONPATH: src
