@@ -46,7 +46,7 @@ Connected zSSH on the independent temporary checkout at exact `bc946fc59e7fa070e
 
 ## Pinned sibling #301 fixture composition — hosted non-release gate
 
-Our original `main` still has the independently owned, calendar-expired *ordinary* #301 test fixture. Instead of editing the existing fixture in this PR, `.github/workflows/scope-1563-owner301-compat-offline.yml` **reads the immutable owner commit `89c7973a330550cd5b8fad23abb54e4a81f85639`** in a fresh ephemeral GitHub-hosted checkout and overlays exactly ONE existing file, `tests/test_scope_legacy_falsy_window_301_red_20261014.py`. The CI step refuses any additional modified path, verifies both SHAs, and uses only read permissions (no reusable checkout credentials).
+Original `main` still has independently owned #301 stale-clock test fixture and Python 3.14 #1535 native-I/O `SyntaxWarning`/exit-92 failures. Without editing either owner branch, `.github/workflows/scope-1563-owner301-compat-offline.yml` reads **two immutable source-owner commits** in a fresh ephemeral GitHub-hosted checkout: #1452 exact `89c7973a330550cd5b8fad23abb54e4a81f85639` for only `tests/test_scope_legacy_falsy_window_301_red_20261014.py`, plus #1536 exact `f8b91596d48f318cb75050b70ccbf5a50d2cd106` for only `src/lightup/capability_registry_history_report.py`. Exactly **TWO** intentionally overlaid file paths are allowed; both fetched owner commit SHAs and the original exact PR head are pinned. No checkout credentials, owner-branch update, service or target interaction.
 
 On the connected zSSH VPS, this exact-source overlay has already passed:
 - The owner #301 fixture acceptance: **39 tests OK, 20 known intentional expectedFailures**.
@@ -54,7 +54,7 @@ On the connected zSSH VPS, this exact-source overlay has already passed:
 - Our four fail-open mutation controls: **all correctly detected**.
 - The independently owned #1452 branch remains untouched; a temporary worktree is removed after the proof.
 
-The new hosted compatibility workflow separately runs **both Python 3.11 and 3.14** including full unit discovery, the real producer integration suite and canonical safety canaries, with the owner fixture temporarily overlaid. This is a **source-composition test only**, not permission to merge either PR or a green claim for unmodified `main`. Intentional expectedFailures still represent unresolved source defects. A hosted success must be verified on the exact SHA and cannot substitute for authentic client/operator consent, owner acceptance, or the permanent named-VPS gate.
+The compatibility workflow first demonstrated **Python 3.11 full green** with only #301; the Python 3.14 attempt correctly uncovered **four original #1535 exit-92 errors** (none in our test files). A second isolated connected-zSSH temporary composition of **both** independently owned files then passed **3/3 native offline CLI tests, 12/12 socket-fleet tests, 7/7 own scope tests, and all four mutation canaries** on Python 3.14. The updated GitHub-hosted compatibility workflow separately runs Python 3.11 and 3.14 full unit discovery, real producer integration and canonical safety canaries against this exact two-file temporary composition. This is a **source-composition test only**, not permission to merge either PR or a green claim for unmodified `main`. Intentional expectedFailures still represent unresolved source defects. A hosted success must be verified on the exact SHA and cannot substitute for authentic client/operator consent, owner acceptance, or the permanent named-VPS gate.
 
 ## Stop conditions
 
