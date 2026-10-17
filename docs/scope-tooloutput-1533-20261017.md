@@ -8,7 +8,7 @@
 
 ## Isolated, material acceptance
 
-- New unwired pure `review_output_identity` returns literal `REVIEW_ONLY` for exact plain nonblank `str` summary/kind and exact immutable `bytes` payload; otherwise generic `HOLD`. Neither status can confer authority. Foreign subclasses and coercion protocols never run.
+- New unwired pure `review_output_identity` returns an immutable **falsy** `REVIEW_ONLY` enum receipt for exact plain nonblank `str` summary/kind and exact immutable `bytes` payload; otherwise immutable falsy `HOLD`. An accidental `if receipt:` can never authorize. Neither status can confer authority. Foreign subclasses and coercion protocols never run.
 - Original-source six specifically named `expectedFailure` cases: nonstring or blank summary, nonstring or blank kind, mutable bytearray payload, string payload. Actual production repair would convert these to ordinary passing asserts that reject before any result/evidence handoff; no handler execution occurs in this test suite.
 - Literal owner post-fix switch: `LIGHTUP_SCOPE1533_REQUIRE_SOURCE_FIX=1 python -I -S -B -m unittest discover -s tests -p 'test_scope_tooloutput_shape_1533_20261017.py' -v`. In current original source this command must fail exactly six tests; this is intentional RED debt, not a promoted security pass.
 - Dedicated opt-in hosted Python 3.11 / 3.14 branch-only workflow, no secrets, no real assets, no scans/grants/handlers, no production/deploy modifications. Only own new paths.
