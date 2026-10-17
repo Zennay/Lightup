@@ -93,8 +93,19 @@ def main() -> int:
         ancestor = git("merge-base", "--is-ancestor", BASE, "HEAD")
         diff = git("diff", "--name-status", "-z", "--no-renames", BASE, "HEAD")
         tree = git("ls-tree", "-r", "-z", "HEAD", "--", *sorted(OWNED))
+        # Even successful Git commands can report config, object or worktree
+        # warnings. Such diagnostics do not constitute clean evidence.
+        git_results = (status, head, top, ancestor, diff, tree)
+        silent_git = all(
+            result.returncode == 0
+            and type(result.stdout) is bytes
+            and type(result.stderr) is bytes
+            and result.stderr == b""
+            for result in git_results
+        )
         good = (
-            os.environ.get("GITHUB_ACTIONS") == "true"
+            silent_git
+            and os.environ.get("GITHUB_ACTIONS") == "true"
             and os.environ.get("GITHUB_EVENT_NAME") == "push"
             and branch == "refs/heads/" + BRANCH
             and SHA1.fullmatch(sha.encode("ascii")) is not None

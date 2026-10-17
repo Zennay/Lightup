@@ -255,6 +255,39 @@ class OfflineTreeModesTests(unittest.TestCase):
             git("config", "core.worktree", str(foreign))
             self.assertEqual(git("rev-parse", "--show-toplevel").decode(), str(foreign))
 
+    def test_git_warning_on_success_is_not_clean_proof(self):
+        from subprocess import CompletedProcess
+        from contextlib import redirect_stdout
+        from unittest.mock import patch
+        import io
+        sha = "a" * 40
+        expected = {
+            "status": b"",
+            "rev-parse": sha.encode() + b"\n",
+            "merge-base": b"",
+            "diff": delta(),
+            "ls-tree": tree(),
+        }
+        event = {
+            "GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "push",
+            "GITHUB_REF": "refs/heads/" + guard.BRANCH,
+            "GITHUB_SHA": sha,
+        }
+        for warned in ("status", "rev-parse", "merge-base", "diff", "ls-tree"):
+            with self.subTest(command=warned):
+                def fake_git(*args):
+                    result = (
+                        str(guard.ROOT.resolve()).encode() + b"\n"
+                        if args[:2] == ("rev-parse", "--show-toplevel")
+                        else expected[args[0]]
+                    )
+                    stderr = b"fictional integrity warning\n" if args[0] == warned else b""
+                    return CompletedProcess(args, 0, result, stderr)
+                with patch.object(guard, "git", side_effect=fake_git):
+                    with patch.dict(guard.os.environ, event, clear=True):
+                        with redirect_stdout(io.StringIO()):
+                            self.assertEqual(guard.main(), 3)
+
     def test_no_reusing_other_worker_paths(self):
         for item in ("src/lightup/scope.py", "tests/test_scope.py",
                      "scripts/check_scope_literal_branch_20261016.py"):

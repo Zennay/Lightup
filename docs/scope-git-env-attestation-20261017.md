@@ -235,3 +235,18 @@ configuration cases are now covered by new tests.
 This is a narrow path-identity guard; it does not establish filesystem
 trust, prevent symlinks outside the own checkout, prove Git binary
 provenance, or confer any scan or release authority.
+
+## W12 — silent Git diagnostics required for offline proof
+
+A separate synthetic `main()` regression reproduced another misleading
+green: a Git command reporting a warning/error diagnostic to stderr while
+exiting 0 could still satisfy the original branch proof. The check now
+requires *every* evidence subprocess (status, HEAD, worktree root,
+merge-base, diff, tree) to finish with exit 0, exact byte output types
+and **zero stderr bytes**. A successful exit accompanied by diagnostic
+output becomes `scope_env_owned_tree=HOLD`, not PASS.
+
+This is a conservative lab evidence integrity condition. It may reject
+benign Git warnings, intentionally requiring human investigation rather
+than treating them as authorization, and never claims all underlying
+Git operations or repository contents are trusted.
