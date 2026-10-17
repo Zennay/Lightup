@@ -97,6 +97,18 @@ class SnapshotReviewTests(unittest.TestCase):
                                   "first_read": first, "second_read": second}).encode()
                 self.hold(raw)
 
+    def test_two_read_conflict_receipt_reports_correct_protocol_not_v1(self):
+        mismatched = {"version": 2, "root_sha": A,
+                      "first_read": [entry(10, B)],
+                      "second_read": [entry(10, C)]}
+        receipt, code = adapter.evaluate(json.dumps(mismatched).encode())
+        self.assertEqual(code, 2)
+        self.assertEqual(receipt["status"], "HOLD")
+        self.assertEqual(receipt["protocol"], "PR_SNAPSHOT_V2_DOUBLE_READ")
+        self.assertTrue(all(receipt[k] is False for k in adapter.OFF_FLAGS))
+        self.assertNotIn("input_sha256", receipt)
+        self.assertNotIn("derived_graph_sha256", receipt)
+
     def test_two_read_missing_or_malformed_metadata_holds(self):
         source = {"version": 2, "root_sha": A,
                   "first_read": [entry(10, B)], "second_read": [entry(10, B)]}
