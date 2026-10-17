@@ -9,6 +9,7 @@ issues permits, grants, approvals, revocations or tool executions.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
 
 from ..domain import AccessContext, DomainStore, Role
 from .app import AuthState, Response, _e, _page
@@ -170,6 +171,7 @@ def render_authorization_desk(
         '<p><a href="/assessments">Open operator assessment review</a>'
         ' · <a href="/clients">Client records</a>'
         ' · <a href="/authorization-desk">All clients</a>'
+        ' · <a href="/api/v1/operator/authorization-queue">JSON work queue</a>'
         ' · <a href="/">Overview</a></p>'
         '<p class="meta">Request inbox: '
         '<a href="/authorization-desk">All requests</a> · '
@@ -258,3 +260,60 @@ def render_operator_request_detail(
     )
     return Response(_page("LightUp — Request review details", "assessments",
                           body, auth))
+
+
+def render_operator_queue_json(
+    store: DomainStore, auth: AuthState, *, max_rows: int = 50
+) -> Response:
+    """Read-only, operator-only status feed for an external operator dashboard."""
+    ctx = auth.context
+    if type(ctx) is not AccessContext or ctx.role is not Role.OPERATOR:
+        return Response(
+            '{"error":"operator authentication required"}',
+            status="403 Forbidden",
+            content_type="application/json; charset=utf-8",
+        )
+    clients = {client.client_id: client.name
+               for client in store.list_clients(ctx)}
+    requests = store.list_assessment_requests(ctx)
+    pending = [request for request in requests
+               if request.status.value in {"submitted", "under_review"}]
+    bound = max(1, min(50, max_rows))
+    items = []
+    for request in pending[:bound]:
+        origin = _origin_label(store, request.requested_by, request.client_id)
+        items.append({
+            "request_id": request.request_id,
+            "client_id": request.client_id,
+            "client_name": clients.get(request.client_id, "Unrecognized client"),
+            "status": request.status.value,
+            "requested_mode": request.requested_mode.value,
+            "requested_risk": int(request.requested_risk),
+            "submitted_at": request.created_at,
+            "origin_observation": origin,
+            "requester_review_needed": (
+                origin != "Matching client account (current role only)"
+            ),
+            "review_url": "/authorization-desk/requests/" + request.request_id,
+        })
+    report = {
+        "schema": "lightup.operator-request-inbox.v1",
+        "disposition": "REVIEW_ONLY",
+        "pending_total": len(pending),
+        "has_more": len(pending) > bound,
+        "items": items,
+        "execution_authorized": False,
+        "client_consent_verified": False,
+        "operator_consent_verified": False,
+        "grant_bound": False,
+        "release_approved": False,
+        "notice": "Current account identity is not historical consent proof.",
+    }
+    raw = json.dumps(report, ensure_ascii=True, separators=(",", ":"))
+    if len(raw) > 128 * 1024:
+        return Response(
+            '{"error":"queue too large to display"}',
+            status="413 Payload Too Large",
+            content_type="application/json; charset=utf-8",
+        )
+    return Response(raw, content_type="application/json; charset=utf-8")
