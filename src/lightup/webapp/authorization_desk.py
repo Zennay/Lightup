@@ -35,6 +35,7 @@ def render_authorization_desk(
     *,
     client_id: str | None = None,
     max_rows: int = 60,
+    queue: str = "all",
 ) -> Response:
     """Render an operator-only, no-write authorization and lineage overview.
 
@@ -65,8 +66,17 @@ def render_authorization_desk(
     pending_count = sum(
         req.status.value in {"submitted", "under_review"} for req in requests
     )
+    if queue not in {"all", "pending", "decided"}:
+        return Response("<h1>Unknown queue</h1>", status="404 Not Found")
+    visible_requests = (
+        requests if queue == "all" else [
+            request for request in requests
+            if (request.status.value in {"submitted", "under_review"})
+            == (queue == "pending")
+        ]
+    )
     request_cards = []
-    for request in requests[:max_rows]:
+    for request in visible_requests[:max_rows]:
         origin = _origin_label(store, request.requested_by, request.client_id)
         client = client_map.get(request.client_id)
         client_name = client.name if client else "Unknown client — review"
@@ -86,7 +96,9 @@ def render_authorization_desk(
             + ' · risk level ' + _e(int(request.requested_risk))
             + '<br>Assets: ' + _e(requested_assets or "—")
             + '<br>Current account provenance: ' + _e(origin)
-            + '</p><p class="meta">Review of a request is not client consent '
+            + '</p><p><a href="/authorization-desk/requests/'
+            + _e(request.request_id) + '">View request details →</a></p>'
+            '<p class="meta">Review of a request is not client consent '
             'and does not authorize execution.</p></div>'
         )
 
@@ -122,7 +134,7 @@ def render_authorization_desk(
         )
 
     overflow = ""
-    if len(requests) > max_rows or len(engagements) > max_rows:
+    if len(visible_requests) > max_rows or len(engagements) > max_rows:
         overflow = (
             '<div class="card"><strong>Partial view</strong>'
             '<p class="meta">Only the latest '
@@ -159,10 +171,15 @@ def render_authorization_desk(
         ' · <a href="/clients">Client records</a>'
         ' · <a href="/authorization-desk">All clients</a>'
         ' · <a href="/">Overview</a></p>'
+        '<p class="meta">Request inbox: '
+        '<a href="/authorization-desk">All requests</a> · '
+        '<a href="/authorization-desk/queue/pending">Pending review</a> · '
+        '<a href="/authorization-desk/queue/decided">Already decided</a>'
+        '</p>'
         + (('<div class="card"><strong>Choose client</strong><p class="meta">'
              + client_links + '</p></div>') if client_id is None else '')
         + overflow
-        + '<h2>Client assessment requests</h2>'
+        + '<h2>Client assessment requests — ' + _e(queue) + '</h2>'
         + ("".join(request_cards) or '<p class="empty">No requests recorded.</p>')
         + '<h2>Engagement grant records</h2>'
         + ("".join(engagement_cards) or '<p class="empty">No engagements recorded.</p>')
@@ -172,3 +189,72 @@ def render_authorization_desk(
         'actual authorization from record coexistence.</p>'
     )
     return Response(_page("LightUp — Authorization desk", "assessments", body, auth))
+
+
+def render_operator_request_detail(
+    store: DomainStore, auth: AuthState, request_id: str,
+) -> Response:
+    """Operator-only detail page, never a review decision or grant issuance."""
+    ctx = auth.context
+    if type(ctx) is not AccessContext or ctx.role is not Role.OPERATOR:
+        return Response("<h1>Operator access required</h1>", status="403 Forbidden")
+    try:
+        request = store.get_assessment_request(ctx, request_id)
+        client = store.get_client(ctx, request.client_id)
+    except (KeyError, ValueError, TypeError):
+        return Response("<h1>Request unavailable</h1>", status="404 Not Found")
+
+    origin = _origin_label(store, request.requested_by, request.client_id)
+    origin_risk = origin != "Matching client account (current role only)"
+    provenance = (
+        '<span class="badge lock">Requester lineage needs investigation</span>'
+        if origin_risk else
+        '<span class="badge warn">Current client account, not verified consent</span>'
+    )
+    status = request.status.value
+    pending = status in {"submitted", "under_review"}
+    decision = (
+        "Awaiting operator review" if pending else
+        ("Recorded decision: " + status)
+    )
+    assets = ''.join(
+        '<li>' + _e(value) + '</li>'
+        for value in request.requested_assets[:100]
+    ) or '<li>None recorded</li>'
+    if len(request.requested_assets) > 100:
+        assets += '<li>Additional requested assets omitted (partial view)</li>'
+    body = (
+        '<h1>Request review details</h1>'
+        '<p class="sub">Read-only review of the submitted request record. '
+        'No action on this page grants or implies permission to test assets.</p>'
+        '<div class="card"><span class="badge lock">Execution locked</span> '
+        '<span class="badge lock">Consent not established</span>'
+        '<p><strong>Client:</strong> ' + _e(client.name)
+        + '<br><strong>Request:</strong> ' + _e(request.request_id)
+        + '<br><strong>Status:</strong> ' + _e(decision)
+        + '<br><strong>Requested mode:</strong> ' + _e(request.requested_mode.value)
+        + '<br><strong>Requested risk level:</strong> '
+        + _e(int(request.requested_risk))
+        + '<br><strong>Created:</strong> ' + _e(request.created_at)
+        + '<br><strong>Decision time:</strong> '
+        + _e(request.decided_at or "Not decided")
+        + '</p></div>'
+        '<div class="card"><strong>Request source</strong><br>'
+        + provenance + '<p class="meta">' + _e(origin)
+        + '</p><p class="meta">This describes the requester account at viewing '
+        'time; it is not cryptographic proof of historical client identity '
+        'or authenticated client consent.</p></div>'
+        '<div class="card"><strong>Requested assets</strong><ul>' +
+        assets + '</ul><details><summary>Original request notes</summary><p>'
+        + _e(request.notes or "—") + '</p></details></div>'
+        '<div class="card"><strong>Next steps</strong><p class="meta">'
+        'Confirm authentic client ownership, signed consent and exact '
+        'engagement/scope in the authoritative workflow. Check revocation '
+        'at the time of any future action. A recorded request status, '
+        'including APPROVED, cannot unlock active scanning.</p></div>'
+        '<p><a href="/authorization-desk/clients/' + _e(request.client_id)
+        + '">Back to client authorization desk</a> · '
+        '<a href="/assessments">Operator decisions</a></p>'
+    )
+    return Response(_page("LightUp — Request review details", "assessments",
+                          body, auth))
