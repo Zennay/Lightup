@@ -211,13 +211,13 @@ def _worktree_blobs_match_head(raw: object) -> bool:
     An assume-unchanged/skip-worktree index can hide modified source even
     when git status is empty and HEAD's Git tree still looks correct.
     """
-    if type(raw) is not bytes or len(raw) > 16384 or not raw.endswith(b"\\0"):
+    if type(raw) is not bytes or len(raw) > 16384 or not raw.endswith(b"\0"):
         return False
     try:
         root = ROOT.resolve(strict=True)
         found: set[str] = set()
-        for record in raw[:-1].split(b"\\0"):
-            meta, path = record.split(b"\\t", 1)
+        for record in raw[:-1].split(b"\0"):
+            meta, path = record.split(b"\t", 1)
             mode, kind, oid = meta.split(b" ")
             name = path.decode("ascii")
             if (
@@ -248,7 +248,7 @@ def _worktree_blobs_match_head(raw: object) -> bool:
                 payload = handle.read(1048577)
             if len(payload) > 1048576 or len(payload) != current.st_size:
                 return False
-            blob = b"blob " + str(len(payload)).encode("ascii") + b"\\0" + payload
+            blob = b"blob " + str(len(payload)).encode("ascii") + b"\0" + payload
             if hashlib.sha1(blob).hexdigest().encode("ascii") != oid:
                 return False
         return found == OWNED
