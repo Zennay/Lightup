@@ -749,6 +749,36 @@ class OfflineTreeModesTests(unittest.TestCase):
                 (root / "real-scripts").rename(root / "scripts")
                 self.assertTrue(guard._worktree_blobs_match_head(tree_raw))
 
+    def test_owned_blob_fd_walk_requires_nofollow_primitives(self):
+        """Never silently fall back to unsafe ordinary path opens."""
+        import os
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_nofollow_required_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp)
+            subprocess.run([guard.GIT_BINARY, "init", "-q"], cwd=root,
+                           check=True, capture_output=True, timeout=6)
+            target = root / "owned.py"
+            target.write_text("INERT=True\n")
+            subprocess.run([guard.GIT_BINARY, "add", "owned.py"], cwd=root,
+                           check=True, capture_output=True, timeout=6)
+            subprocess.run([guard.GIT_BINARY, "-c", "user.name=Offline",
+                            "-c", "user.email=offline@example.invalid",
+                            "commit", "-qm", "synthetic fixture"], cwd=root,
+                           check=True, capture_output=True, timeout=6)
+            raw = subprocess.run(
+                [guard.GIT_BINARY, "ls-tree", "-r", "-z", "HEAD", "--", "owned.py"],
+                cwd=root, check=True, capture_output=True, timeout=6,
+            ).stdout
+            with patch.object(guard, "ROOT", root), \
+                 patch.object(guard, "OWNED", frozenset({"owned.py"})):
+                self.assertTrue(guard._worktree_blobs_match_head(raw))
+                with patch.dict(os.__dict__, {"O_NOFOLLOW": None}):
+                    self.assertFalse(guard._worktree_blobs_match_head(raw))
+                with patch.dict(os.__dict__, {"O_DIRECTORY": None}):
+                    self.assertFalse(guard._worktree_blobs_match_head(raw))
+
     def test_actual_owned_blob_rejects_missing_symlink_and_oversize(self):
         import subprocess
         import tempfile
