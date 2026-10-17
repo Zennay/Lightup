@@ -1,0 +1,680 @@
+"""Scope #1547: source-characterization and bounded fictional status-stream gate."""
+from __future__ import annotations
+
+import base64
+import importlib.util
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPT = ROOT / "scripts" / "review_scope_git_status_synthetic_1547.py"
+spec = importlib.util.spec_from_file_location("scope1547_synthetic", SCRIPT)
+review = importlib.util.module_from_spec(spec)
+assert spec and spec.loader
+spec.loader.exec_module(review)
+
+
+def packet(stream: bytes) -> bytes:
+    return json.dumps(
+        {"schema": review.SCHEMA,
+         "name_status_b64": base64.b64encode(stream).decode("ascii")},
+        sort_keys=True, separators=(",", ":"),
+    ).encode("ascii")
+
+
+class SyntheticGate(unittest.TestCase):
+    def test_ordinary_types(self):
+        for status in (b"A", b"M", b"D", b"T", b"R000", b"R001", b"R099",
+                       b"R100", b"C000", b"C050", b"C100"):
+            with self.subTest(status=status):
+                stream = status + b"\0" + (b"old.py\0" if status[:1] in b"RC" else b"") + b"new.py\0"
+                self.assertEqual(review.review_packet(packet(stream)), 1)
+
+    def test_mixed_valid_records(self):
+        self.assertEqual(review.review_stream(
+            b"A\0src/a.py\0M\0src/b.py\0R100\0old.py\0new.py\0"), 3)
+
+    def test_invalid_statuses_atomically_hold(self):
+        invalid = (b"Q", b"U", b"X", b"Mgarbage", b"R", b"C",
+                   b"Rnotanumber", b"R0", b"R1", b"R99", b"C0", b"C50",
+                   b"C99", b"R0000", b"C00", b"R101", b"C999",
+                   b"M1", b"r100", b"R-1", b"R+1", b"R1.0", b"R\xff",
+                   b"M\n", b"A\n", b"R100\n", b"C001\n")
+        for item in invalid:
+            with self.subTest(item=item):
+                stream = item + b"\0old.py\0new.py\0" if item[:1] in b"RC" else item + b"\0new.py\0"
+                with self.assertRaises(review.StatusHold):
+                    review.review_stream(stream)
+
+    def test_status_boundary_truncation(self):
+        for stream in (
+            b"", b"M\0file.py", b"M\0", b"M\0file.py\0\0",
+            b"R100\0old.py\0", b"R100\0old.py\0new.py",
+            b"R100\0old.py\0new.py\0extra", b"M\0file.py\0Q\0other.py\0",
+            b"M\0file.py\0R100\0old.py\0",
+        ):
+            with self.subTest(stream=stream):
+                with self.assertRaises(review.StatusHold):
+                    review.review_stream(stream)
+
+    def test_path_encoding_identity_and_collisions(self):
+        invalid = (b"\xff.py", b"", b"../a.py", b"/root.py",
+                   b"src//a.py", b"src\\a.py", b"./a.py", b"src/../a.py",
+                   b"e\xcc\x81.py", b"\xef\xbf\xbd.py", b"hi\n.py")
+        for path in invalid:
+            with self.subTest(path=path):
+                with self.assertRaises(review.StatusHold):
+                    review.review_stream(b"M\0" + path + b"\0")
+        for stream in (
+            b"A\0src/A.py\0D\0src/a.py\0",
+            b"R100\0file.py\0file.py\0",
+            b"A\0file.py\0A\0file.py\0",
+        ):
+            with self.assertRaises(review.StatusHold):
+                review.review_stream(stream)
+
+    def test_unicode_control_remains_acceptable(self):
+        self.assertEqual(review.review_stream(b"M\0caf\xc3\xa9.py\0"), 1)
+
+    def test_resource_boundaries(self):
+        stream = b"".join(b"A\0x%02d.py\0" % i for i in range(64))
+        self.assertEqual(review.review_stream(stream), 64)
+        with self.assertRaises(review.StatusHold):
+            review.review_stream(stream + b"A\0overflow.py\0")
+        with self.assertRaises(review.StatusHold):
+            review.review_stream(b"M\0" + b"x" * 1025 + b"\0")
+        with self.assertRaises(review.StatusHold):
+            review.review_stream(b"M\0x.py\0" + b"\0" * review.MAX_STREAM)
+
+    def test_json_canonical_and_denial_of_authority_fields(self):
+        good = packet(b"M\0file.py\0")
+        self.assertEqual(review.review_packet(good), 1)
+        rejects = (
+            b" " + good, good + b"\n",
+            good.replace(b'"schema":', b'"schema" :'),
+            good[:-1] + b',"authorized":true}',
+            b'{"schema":"x","schema":"y","name_status_b64":"TQA="}',
+            b'{"schema":"x","name_status_b64":1}',
+            b'{"schema":"x","name_status_b64":"!!!!"}',
+            b'{"schema":"x","name_status_b64":"TR////8="}',
+            b'[]', b'null', b'\xff', b"x" * (review.MAX_INPUT + 1),
+        )
+        for obj in rejects:
+            with self.subTest(obj=obj[:70]):
+                with self.assertRaises(review.StatusHold):
+                    review.review_packet(obj)
+
+    def test_cli_exit_codes_and_no_authority(self):
+        for stream, expected, decision in (
+            (b"M\0file.py\0", 3, "REVIEW_ONLY"),
+            (b"Q\0file.py\0", 2, "HOLD"),
+            (b"Mgarbage\0file.py\0", 2, "HOLD"),
+            (b"R1\0old.py\0new.py\0", 2, "HOLD"),
+            (b"M\n\0file.py\0", 2, "HOLD"),
+            (b"R100\n\0old.py\0new.py\0", 2, "HOLD"),
+            (b"R100\0old.py\0new.py\0", 3, "REVIEW_ONLY"),
+            (b"Rnotanumber\0old.py\0new.py\0", 2, "HOLD"),
+        ):
+            result = subprocess.run(
+                [sys.executable, "-I", "-S", "-B", str(SCRIPT)],
+                input=packet(stream), capture_output=True, timeout=8, check=False,
+            )
+            self.assertEqual(result.returncode, expected)
+            self.assertEqual(result.stderr, b"")
+            obj = json.loads(result.stdout)
+            self.assertEqual(obj.pop("decision"), decision)
+            self.assertTrue(obj.pop("not_authorization"))
+            self.assertEqual(obj.pop("schema"), review.SCHEMA)
+            self.assertTrue(obj)
+            self.assertEqual(set(obj), set(review._FLAGS))
+            self.assertTrue(all(value is False for value in obj.values()))
+            self.assertNotIn(b"file.py", result.stdout)
+
+    def test_partial_stdin_reads_do_not_accept_prefix(self):
+        good = packet(b"M\0file.py\0")
+
+        class FragmentedInput:
+            def __init__(self, pieces):
+                self.pieces = list(pieces)
+                self.buffer = self
+
+            def read(self, amount):
+                self.test_last_amount = amount
+                return self.pieces.pop(0) if self.pieces else b""
+
+        class Sink:
+            def __init__(self):
+                self.data = bytearray()
+                self.buffer = self
+
+            def write(self, raw):
+                self.data.extend(raw)
+                return len(raw)
+
+            def flush(self):
+                pass
+
+        from unittest.mock import patch
+        for chunks, code, decision in (
+            ([good[:7], good[7:], b""], 3, "REVIEW_ONLY"),
+            ([good, b"\\n", b""], 2, "HOLD"),
+        ):
+            with self.subTest(chunks=chunks):
+                output = Sink()
+                with patch.object(review.sys, "stdin", FragmentedInput(chunks)), patch.object(review.sys, "stdout", output):
+                    result = review.main()
+                self.assertEqual(result, code)
+                self.assertEqual(json.loads(output.data)["decision"], decision)
+
+    def test_short_stdout_write_is_always_failure(self):
+        good = packet(b"M\0file.py\0")
+
+        class Source:
+            def __init__(self):
+                self.buffer = self
+                self.called = False
+
+            def read(self, amount):
+                if not self.called:
+                    self.called = True
+                    return good
+                return b""
+
+        class ShortSink:
+            def __init__(self):
+                self.buffer = self
+
+            def write(self, data):
+                return len(data) - 1
+
+            def flush(self):
+                pass
+
+        from unittest.mock import patch
+        with patch.object(review.sys, "stdin", Source()), patch.object(review.sys, "stdout", ShortSink()):
+            self.assertEqual(review.main(), 2)
+
+    def test_fragmentation_limits_and_corrupt_read_types_hold(self):
+        from unittest.mock import patch
+        good = packet(b"M\0file.py\0")
+
+        class Source:
+            def __init__(self, parts):
+                self.parts = list(parts)
+                self.buffer = self
+
+            def read(self, count):
+                value = self.parts.pop(0) if self.parts else b""
+                return value
+
+        class Sink:
+            def __init__(self):
+                self.buffer = self
+                self.payload = bytearray()
+
+            def write(self, value):
+                self.payload.extend(value)
+                return len(value)
+
+            def flush(self):
+                pass
+
+        for fragments, code, verdict in (
+            ([good[i:i+1] for i in range(len(good))] + [b""], 3, "REVIEW_ONLY"),
+            ([b"x"] * 257, 2, "HOLD"),
+            ([good[:3], "not bytes", good[3:]], 2, "HOLD"),
+            ([good[:3], None, good[3:]], 2, "HOLD"),
+        ):
+            with self.subTest(piece_count=len(fragments)):
+                sink = Sink()
+                with patch.object(review.sys, "stdin", Source(fragments)), patch.object(review.sys, "stdout", sink):
+                    self.assertEqual(review.main(), code)
+                self.assertEqual(json.loads(sink.payload)["decision"], verdict)
+
+    def test_source_owner_newline_red_promotes_partial_and_fixed_contract(self):
+        class Invalid(ValueError):
+            pass
+
+        def allow_everything(_raw):
+            return ("M", None, "path.py")
+
+        def partial_repair(raw):
+            if raw.startswith(b"C"):
+                raise Invalid("copy status strictly rejected")
+            return ("M", None, "path.py")
+
+        def all_repaired(_raw):
+            raise Invalid("trailing LF is not a status token")
+
+        self.assertTrue(
+            _all_newline_corrupt_tokens_accepted(allow_everything, Invalid)
+        )
+        self.assertFalse(
+            _all_newline_corrupt_tokens_accepted(partial_repair, Invalid)
+        )
+        self.assertFalse(
+            _all_newline_corrupt_tokens_accepted(all_repaired, Invalid)
+        )
+
+    def test_all_single_byte_status_codes_have_explicit_verdict(self):
+        """All 256 single-byte tokens have explicit accept/HOLD outcomes."""
+        canonical = {ord("A"), ord("M"), ord("D"), ord("T")}
+        for value in range(256):
+            status = bytes((value,))
+            stream = status + b"\0file.py\0"
+            with self.subTest(status_byte=value):
+                if value in canonical:
+                    self.assertEqual(review.review_stream(stream), 1)
+                else:
+                    with self.assertRaises(review.StatusHold):
+                        review.review_stream(stream)
+
+    def test_late_corrupt_status_does_not_approve_valid_prefix(self):
+        # A late bad token must hold the entire fictional batch, not silently
+        # discard the corrupt record or approve earlier valid file entries.
+        stream = (
+            b"A\0safe_name.py\0"
+            b"R100\n\0private_original.py\0private_modified.py\0"
+            b"M\0later_good.py\0"
+        )
+        with self.assertRaises(review.StatusHold):
+            review.review_stream(stream)
+        completed = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", str(SCRIPT)],
+            input=packet(stream), capture_output=True, timeout=8,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 2)
+        self.assertEqual(json.loads(completed.stdout)["decision"], "HOLD")
+        for forbidden in (
+            b"safe_name.py", b"private_original.py",
+            b"private_modified.py", b"later_good.py",
+        ):
+            self.assertNotIn(forbidden, completed.stdout)
+        self.assertEqual(completed.stderr, b"")
+
+    def test_cli_stdin_read_and_stdout_flush_errors_fail_closed(self):
+        from unittest.mock import patch
+        good = packet(b"M\0file.py\0")
+
+        class BrokenReader:
+            def __init__(self):
+                self.buffer = self
+
+            def read(self, _amount):
+                raise OSError("synthetic stdin stream failure")
+
+        class Reader:
+            def __init__(self):
+                self.buffer = self
+                self.remaining = [good, b""]
+
+            def read(self, _amount):
+                return self.remaining.pop(0)
+
+        class Writer:
+            def __init__(self, fail_flush=False):
+                self.buffer = self
+                self.bytes = bytearray()
+                self.fail_flush = fail_flush
+
+            def write(self, value):
+                self.bytes.extend(value)
+                return len(value)
+
+            def flush(self):
+                if self.fail_flush:
+                    raise OSError("synthetic stdout flush failure")
+
+        hold_receipt = Writer()
+        with patch.object(review.sys, "stdin", BrokenReader()), patch.object(
+            review.sys, "stdout", hold_receipt
+        ):
+            self.assertEqual(review.main(), 2)
+        self.assertEqual(json.loads(hold_receipt.bytes)["decision"], "HOLD")
+        self.assertNotIn(b"file.py", hold_receipt.bytes)
+
+        flush_failure = Writer(fail_flush=True)
+        with patch.object(review.sys, "stdin", Reader()), patch.object(
+            review.sys, "stdout", flush_failure
+        ):
+            self.assertEqual(review.main(), 2)
+        # Return codes, not untrusted stdout alone, govern review verdicts.
+        self.assertNotIn(b"file.py", flush_failure.bytes)
+
+    def test_exhaustive_rename_copy_score_byte_grammar(self):
+        # Exact Git --name-status -z uses three decimal similarity digits.
+        for prefix in (b"R", b"C"):
+            for score in range(101):
+                token = prefix + f"{score:03d}".encode("ascii")
+                with self.subTest(token=token):
+                    self.assertEqual(
+                        review.review_stream(token + b"\0old.py\0new.py\0"), 1
+                    )
+                if score < 100:
+                    short = prefix + str(score).encode("ascii")
+                    if short != token:
+                        with self.subTest(short=short):
+                            with self.assertRaises(review.StatusHold):
+                                review.review_stream(short + b"\0old.py\0new.py\0")
+            for invalid in (b"101", b"200", b"999", b"0000", b"0\n00"):
+                with self.subTest(prefix=prefix, invalid=invalid):
+                    with self.assertRaises(review.StatusHold):
+                        review.review_stream(prefix + invalid + b"\0old.py\0new.py\0")
+
+    def test_real_disposable_git_add_modify_delete_stream(self):
+        with tempfile.TemporaryDirectory() as temp:
+            repo = Path(temp)
+
+            def git(*argv):
+                return subprocess.run(
+                    ["git", "-c", "core.hooksPath=/dev/null", "-C", str(repo), *argv],
+                    capture_output=True, check=True, timeout=8,
+                ).stdout
+
+            git("init", "-q")
+            (repo / "modify.py").write_text("a\n", encoding="utf-8")
+            (repo / "delete.py").write_text("old\n", encoding="utf-8")
+            git("add", ".")
+            git("-c", "user.email=fixture@example.invalid", "-c",
+                "user.name=Fixture", "commit", "-qm", "original")
+            (repo / "modify.py").write_text("b\n", encoding="utf-8")
+            (repo / "add.py").write_text("new\n", encoding="utf-8")
+            (repo / "delete.py").unlink()
+            git("add", "-A")
+            git("-c", "user.email=fixture@example.invalid", "-c",
+                "user.name=Fixture", "commit", "-qm", "changes")
+            stream = git("diff", "--name-status", "-z", "HEAD~1", "HEAD")
+            self.assertEqual(review.review_stream(stream), 3)
+            self.assertEqual(
+                set(stream.split(b"\0")[::2]) - {b""}, {b"A", b"M", b"D"}
+            )
+
+    def test_real_disposable_git_zero_delimited_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            def git(*args):
+                return subprocess.run(
+                    ["git", "-c", "core.hooksPath=/dev/null", "-C", str(root), *args],
+                    capture_output=True, check=True, timeout=8,
+                ).stdout
+            git("init", "-q")
+            (root / "old.py").write_text("hello\n", encoding="utf-8")
+            git("add", "old.py")
+            git("-c", "user.email=fixture@example.invalid",
+                "-c", "user.name=Fixture", "commit", "-qm", "base")
+            git("mv", "old.py", "new.py")
+            git("-c", "user.email=fixture@example.invalid",
+                "-c", "user.name=Fixture", "commit", "-qam", "rename")
+            stream = git("diff", "--name-status", "-z", "HEAD~1", "HEAD")
+            self.assertIn(b"R100\0old.py\0new.py\0", stream)
+            self.assertEqual(review.review_stream(stream), 1)
+
+
+_OWNER_NEWLINE_CORRUPT = (
+    b"M\n\0src/a.py\0",
+    b"A\n\0src/a.py\0",
+    b"R100\n\0old.py\0new.py\0",
+    b"C001\n\0old.py\0new.py\0",
+)
+
+
+def _all_newline_corrupt_tokens_accepted(parse_status, error_type) -> bool:
+    """Only fully-unfixed owner sources receive the historical expected RED.
+
+    Any partial repair is already a mandatory ordinary test failure. This
+    function does not confer authorization or change the imported parser.
+    """
+    for raw in _OWNER_NEWLINE_CORRUPT:
+        try:
+            parse_status(raw)
+        except error_type:
+            return False
+    return True
+
+
+def _original_newline_red_until_owner_fix(method):
+    import os
+    sys.path.insert(0, str(ROOT / "src"))
+    from lightup.git_changes import GitChangeError, _parse_name_status
+    if os.environ.get("LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX") == "1":
+        return method
+    if _all_newline_corrupt_tokens_accepted(_parse_name_status, GitChangeError):
+        return unittest.expectedFailure(method)
+    return method
+
+
+def _original_red_until_owner_source_is_strict(method):
+    """Preserve source RED on the pinned old owner code, enforce normal GREEN
+    as soon as the source owner's canonical status/terminator parser is present.
+    Any incomplete repair with the new parser still fails the original tests.
+    """
+    original = (ROOT / "src" / "lightup" / "git_changes.py").read_text(encoding="utf-8")
+    if "_STATUS_CODE =" in original and "def _nul_records" in original:
+        return method
+    return unittest.expectedFailure(method)
+
+
+class OriginalOwnerContract(unittest.TestCase):
+    """Expected RED documents original owner code, never patches it here."""
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(ROOT / "src"))
+        from lightup.git_changes import GitChangeError, _parse_name_status, _parse_numstat
+        cls.GitChangeError = GitChangeError
+        cls.parse_status = staticmethod(_parse_name_status)
+        cls.parse_numstat = staticmethod(_parse_numstat)
+
+    @_original_red_until_owner_source_is_strict
+    def test_owner_rejects_malformed_modify_status(self):
+        with self.assertRaises(self.GitChangeError):
+            self.parse_status(b"Mgarbage\0src/a.py\0")
+
+    @_original_red_until_owner_source_is_strict
+    def test_owner_rejects_unknown_status(self):
+        with self.assertRaises(self.GitChangeError):
+            self.parse_status(b"Q\0src/a.py\0")
+
+    @_original_red_until_owner_source_is_strict
+    def test_owner_rejects_malformed_similarity(self):
+        with self.assertRaises(self.GitChangeError):
+            self.parse_status(b"Rnotanumber\0old.py\0new.py\0")
+
+    @_original_red_until_owner_source_is_strict
+    def test_owner_requires_terminator(self):
+        with self.assertRaises(self.GitChangeError):
+            self.parse_status(b"M\0src/a.py")
+
+    @_original_red_until_owner_source_is_strict
+    def test_owner_numstat_requires_terminator(self):
+        with self.assertRaises(self.GitChangeError):
+            self.parse_numstat(b"1\t0\tsrc/a.py")
+
+
+    @_original_newline_red_until_owner_fix
+    def test_owner_rejects_newline_suffixed_status_tokens(self):
+        """Known original source gap: regex dollar anchor ignores trailing LF."""
+        for stream in (
+            b"M\n\0src/a.py\0",
+            b"A\n\0src/a.py\0",
+            b"R100\n\0old.py\0new.py\0",
+            b"C001\n\0old.py\0new.py\0",
+        ):
+            with self.subTest(stream=stream):
+                with self.assertRaises(self.GitChangeError):
+                    self.parse_status(stream)
+
+
+class StrictSourceOwnerGate(unittest.TestCase):
+    """Opt-in mandatory proof for the future integrated owner source.
+
+    Run only on an isolated checkout with the actual reviewed owner fix, e.g.
+    LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX=1 python3 -m unittest ...
+    """
+
+    def test_in_memory_exact_end_anchor_oracle(self):
+        """Prove a minimal owner-only fix without modifying any file or branch."""
+        import os
+        if os.environ.get("LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX") != "1":
+            self.skipTest("only for explicit source-owner integration verification")
+        import re
+        from unittest.mock import patch
+        sys.path.insert(0, str(ROOT / "src"))
+        from lightup import git_changes as owner
+        if not hasattr(owner, "_STATUS_CODE"):
+            self.skipTest("pinned historical owner has no strict status matcher")
+        strict_code = re.compile(rb"\A(?:[ADMT]|[RC](?:0[0-9]{2}|100))\Z")
+        malformed = (
+            b"M\n\0src/a.py\0",
+            b"A\n\0src/a.py\0",
+            b"R100\n\0old.py\0new.py\0",
+            b"C001\n\0old.py\0new.py\0",
+        )
+        original = owner._STATUS_CODE
+        with patch.object(owner, "_STATUS_CODE", strict_code):
+            for stream in malformed:
+                with self.subTest(bad=stream):
+                    with self.assertRaises(owner.GitChangeError):
+                        owner._parse_name_status(stream)
+            for stream in (
+                b"M\0src/a.py\0",
+                b"R001\0old.py\0new.py\0",
+                b"R100\0old.py\0new.py\0",
+            ):
+                with self.subTest(good=stream):
+                    self.assertTrue(owner._parse_name_status(stream))
+        self.assertIs(owner._STATUS_CODE, original)
+
+    def test_source_and_review_accept_actual_disposable_git_wire(self):
+        """Owner source parser and our separate reviewer agree on real Git -z.
+
+        This creates a local no-hook/no-remote disposable repository. It does
+        not authenticate or authorize a client, target, Git remote or action.
+        """
+        import os
+        if os.environ.get("LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX") != "1":
+            self.skipTest("source-owner repair not integrated into pinned source")
+        sys.path.insert(0, str(ROOT / "src"))
+        from lightup.git_changes import _parse_name_status
+        with tempfile.TemporaryDirectory() as temp:
+            repo = Path(temp)
+
+            def git(*args):
+                return subprocess.run(
+                    ["git", "-c", "core.hooksPath=/dev/null",
+                     "-C", str(repo), *args],
+                    capture_output=True, timeout=8, check=True,
+                ).stdout
+
+            git("init", "-q")
+            (repo / "rename_me.py").write_text(
+                "unique rename content\n", encoding="utf-8"
+            )
+            (repo / "modify_me.py").write_text(
+                "value = 1\n", encoding="utf-8"
+            )
+            (repo / "delete_me.py").write_text(
+                "obsolete and unique\n", encoding="utf-8"
+            )
+            git("add", ".")
+            git("-c", "user.email=fixture@example.invalid", "-c",
+                "user.name=Fixture", "commit", "-qm", "source")
+            git("mv", "rename_me.py", "renamed.py")
+            (repo / "modify_me.py").write_text(
+                "value = 2\n", encoding="utf-8"
+            )
+            (repo / "delete_me.py").unlink()
+            (repo / "add_me.py").write_text(
+                "new distinct payload\n", encoding="utf-8"
+            )
+            git("add", "-A")
+            git("-c", "user.email=fixture@example.invalid", "-c",
+                "user.name=Fixture", "commit", "-qm", "destination")
+            raw = git("diff", "--name-status", "-M", "-z", "HEAD~1", "HEAD")
+            parsed = _parse_name_status(raw)
+            self.assertEqual(review.review_stream(raw), len(parsed))
+            self.assertEqual(
+                {(kind, previous, current) for kind, previous, current in parsed},
+                {
+                    ("A", None, "add_me.py"),
+                    ("D", None, "delete_me.py"),
+                    ("M", None, "modify_me.py"),
+                    ("R", "rename_me.py", "renamed.py"),
+                },
+            )
+            corrupt = raw + b"M\n\0fictitious.py\0"
+            with self.assertRaises(review.StatusHold):
+                review.review_stream(corrupt)
+            from lightup.git_changes import GitChangeError
+            with self.assertRaises(GitChangeError):
+                _parse_name_status(corrupt)
+
+    def test_source_full_status_byte_and_similarity_grammar(self):
+        """Mandatory, non-authorizing exact Git status grammar on repaired source."""
+        import os
+        if os.environ.get("LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX") != "1":
+            self.skipTest("original source-owner repair not integrated into this branch")
+        sys.path.insert(0, str(ROOT / "src"))
+        from lightup.git_changes import GitChangeError, _parse_name_status
+        simple = {ord("A"), ord("M"), ord("D"), ord("T")}
+        for value in range(256):
+            stream = bytes((value,)) + b"\0one.py\0"
+            with self.subTest(status_byte=value):
+                if value in simple:
+                    self.assertEqual(len(_parse_name_status(stream)), 1)
+                else:
+                    with self.assertRaises(GitChangeError):
+                        _parse_name_status(stream)
+
+        for prefix in (b"R", b"C"):
+            for score in range(101):
+                status = prefix + f"{score:03d}".encode("ascii")
+                stream = status + b"\0old.py\0new.py\0"
+                with self.subTest(status=status):
+                    self.assertEqual(
+                        _parse_name_status(stream),
+                        [(prefix.decode("ascii"), "old.py", "new.py")],
+                    )
+            for score in (b"", b"0", b"1", b"99", b"101", b"200", b"999", b"0000",
+                          b"001\n", b"100\n", b"099\r"):
+                with self.subTest(prefix=prefix, corrupt=score):
+                    with self.assertRaises(GitChangeError):
+                        _parse_name_status(prefix + score + b"\0old.py\0new.py\0")
+
+    def test_source_rejects_all_five_original_invalid_forms(self):
+        import os
+        if os.environ.get("LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX") != "1":
+            self.skipTest("source owner not integrated in this pinned branch")
+        sys.path.insert(0, str(ROOT / "src"))
+        from lightup.git_changes import GitChangeError, _parse_name_status, _parse_numstat
+        cases = (
+            (_parse_name_status, b"Mgarbage\0src/a.py\0"),
+            (_parse_name_status, b"Q\0src/a.py\0"),
+            (_parse_name_status, b"Rnotanumber\0old.py\0new.py\0"),
+            (_parse_name_status, b"M\0src/a.py"),
+            (_parse_numstat, b"1\t0\tsrc/a.py"),
+        )
+        for parser, raw in cases + (
+            (_parse_name_status, b"M\n\0src/a.py\0"),
+            (_parse_name_status, b"A\n\0src/a.py\0"),
+            (_parse_name_status, b"R100\n\0old.py\0new.py\0"),
+            (_parse_name_status, b"C001\n\0old.py\0new.py\0"),
+        ):
+            with self.subTest(raw=raw):
+                with self.assertRaises(GitChangeError):
+                    parser(raw)
+        for raw in (
+            b"M\0src/a.py\0",
+            b"R100\0old.py\0new.py\0",
+            b"R001\0old.py\0new.py\0",
+        ):
+            with self.subTest(valid=raw):
+                self.assertTrue(_parse_name_status(raw))
+
+
+if __name__ == "__main__":
+    unittest.main()
