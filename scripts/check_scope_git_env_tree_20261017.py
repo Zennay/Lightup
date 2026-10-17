@@ -220,7 +220,7 @@ def main() -> int:
         head = git("rev-parse", "HEAD")
         top = git("rev-parse", "--show-toplevel")
         ancestor = git("merge-base", "--is-ancestor", BASE, "HEAD")
-        diff = git("diff", "--name-status", "-z", "--no-renames", BASE, "HEAD")
+        diff = git("diff", "--no-ext-diff", "--no-textconv", "--name-status", "-z", "--no-renames", BASE, "HEAD")
         tree = git("ls-tree", "-r", "-z", "HEAD", "--", *sorted(OWNED))
         # Even successful Git commands can report config, object or worktree
         # warnings. Such diagnostics do not constitute clean evidence.
