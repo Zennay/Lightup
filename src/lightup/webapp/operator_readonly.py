@@ -45,6 +45,14 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             self.authorization_desk, "operator",
         ))
         self.routes.append((
+            "GET", re.compile(r"^/authorization-desk/engagements/(?P<engagement_id>[\w-]+)$"),
+            self.authorization_engagement_review, "operator",
+        ))
+        self.routes.append((
+            "GET", re.compile(r"^/api/v1/operator/engagements/(?P<engagement_id>[\w-]+)/review$"),
+            self.authorization_engagement_review_api, "operator",
+        ))
+        self.routes.append((
             "GET", re.compile(r"^/api/v1/operator/authorization-queue$"),
             self.operator_queue_api, "operator",
         ))
@@ -81,6 +89,18 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
     def authorization_desk(self, auth: AuthState, form: dict[str, str]) -> Response:
         from .authorization_desk import render_authorization_desk
         return render_authorization_desk(self.store, auth)
+
+    def authorization_engagement_review(
+        self, auth: AuthState, form: dict[str, str], engagement_id: str
+    ) -> Response:
+        from .engagement_review import engagement_review_page
+        return engagement_review_page(self.store, auth, engagement_id)
+
+    def authorization_engagement_review_api(
+        self, auth: AuthState, form: dict[str, str], engagement_id: str
+    ) -> Response:
+        from .engagement_review import engagement_review_json
+        return engagement_review_json(self.store, auth, engagement_id)
 
     def operator_queue_api(self, auth: AuthState, form: dict[str, str]) -> Response:
         from .authorization_desk import render_operator_queue_json
@@ -124,7 +144,10 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
 
     def _dispatch(self, method: str, path: str, form: dict[str, str],
                   auth: AuthState) -> Response:
-        if method == "GET" and path == "/api/v1/operator/authorization-queue":
+        if method == "GET" and (
+            path == "/api/v1/operator/authorization-queue"
+            or re.fullmatch(r"/api/v1/operator/engagements/[\w-]+/review", path)
+        ):
             if not auth.signed_in or type(auth.context) is not AccessContext:
                 return Response(
                     '{"error":"authentication required"}',
