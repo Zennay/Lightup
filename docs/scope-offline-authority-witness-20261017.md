@@ -15,7 +15,7 @@ PYTHONDONTWRITEBYTECODE=1 python3 scripts/scope_offline_authority_witness_202610
 
 On an installed canonical evaluator that matches the fixed matrix, the CLI emits exactly one sorted ASCII JSON object:
 - `schema=lightup.scope-offline-decision-witness.v1`
-- `status=REVIEW_ONLY`, `reason=canonical_synthetic_matrix_matches`, `checked=11`, a SHA-256 of ordered observed synthetic classifications
+- `status=REVIEW_ONLY`, `reason=canonical_synthetic_matrix_matches`, `checked=17`, two independently pinned SHA-256 digests for exact fictional fixture inputs and ordered observed synthetic classifications
 - `client_consent_verified`, `operator_consent_verified`, `authorization_granted`, `dispatch_allowed`, `scan_allowed`, `deployment_allowed` and `release_allowed`: exact JSON `false`
 - exit status **3**, never 0.
 
@@ -23,7 +23,7 @@ With missing/malformed opt-in, a changed decision (allow, reason, host), bad sha
 
 ## Real test surface
 
-The fixed in-memory matrix uses loopback IP/hostname, private lab IP (allowed and lab-disabled), out-of-scope public IP, a synthetically allowlisted `.example.test` hostname with and without a **fictional, unsourced** `Authorization`, explicit public CIDR with and without that same fictional object, removed explicit-host allowlist, and blank-target denial.
+The fixed **17-case** in-memory matrix uses loopback IP/hostname, private lab IP (allowed and lab-disabled), out-of-scope public IP, a synthetically allowlisted `.example.test` hostname with and without a **fictional, unsourced** `Authorization`, explicit public CIDR with and without that same fictional object, an expiration and not-yet-current date contract, an explicit policy that deliberately disables public authorization requirements (classification only, not a live permit), removed host/CIDR allowlists, and blank-target denial.
 
 This is a deterministic **behavior witness**, not a proof that the policy is secure for all targets. Canonical examples with a synthetic authorization show existing `ScopePolicy` semantics in an **offline unit invocation only**. They do not create grants or prove that an actual human approved any asset. No DNS, socket, HTTP, scan, subprocess handler, credentials, database, production data or target-capable runner step occurs in the witness itself. The subprocess regression launches only another Python process running the same offline witness.
 
@@ -42,6 +42,16 @@ On the connected zSSH VPS, two separate clean, isolated checkouts were used for 
 - `test_scope_offline_cli_socket_fleet_20261014.py`: 12 methods; two registry-history CLI subprocess cases return 92 instead of 2/3.
 
 This directly reproduces pre-existing defects for those exact failing testcases; it is **not** a claim of a complete original-main full-suite pass or a source-owner repair. Own new witness remains **16/16 PASS**. No extra named LightUp self-hosted runner workflow was started.
+
+## W3 — pinned two-layer matrix and expiry witness (17 October 2026)
+
+- Exact synthetic fixtures increased **11 → 17** with expired/not-yet-current UTC approval, expired CIDR approval, a public-host policy-without-auth counterexample, removed CIDR, and loopback despite disabled private lab. Both dates are fixed at **2000-01-01** and **2100-01-01 UTC** to keep the reference stable across present-day runs.
+- The helper now validates the *complete* exact-type in-memory fixture set before the first policy call. Bounded target strings, labels, allowed host/CIDR containers, exact UTC datetime instances and exact expected-result metadata are required; malformed input returns `HOLD` before the real `ScopePolicy.decide()` method runs.
+- The canonical fixture representation (including synthetic authorization provenance, dates and policy settings) has its own pinned SHA-256: `b7f7d7595f7afc56605410fc3dce434da8ff2bad6900672a9890cc3cc176071a`. The independent ordered observed-result hash is pinned to `075c7598f4a01809cd19ef8a02d9380a2bdbde01e2a22fd8dfc940475386dcb1`.
+- Wrong type/schema or unrecognized status = `HOLD`. Input/reference fixture drift, including a change to a semantically equivalent hostname or a fictional reviewer ID, = `HOLD/reference_fixture_drift` **before policy execution**. If allowed/reason/host changes, `HOLD/scope_policy_contract_drift`. If the observed digest differs, `HOLD/reference_behavior_drift`. Neither HOLD prints fixture contents, customer details or hashes.
+- The two hashes are plain local drift fingerprints, **not digital signatures, chain-of-custody, source authenticity, user consent, security clearance or execution permission**. They can be changed by a source writer; Git history/reviews and real independent approval remain separate prerequisites.
+- **23/23 focused Python3.14.4 tests PASS** on authorized zSSH, exact intermediate branch `b94c5b992b120839d0d764ef68735f957a427531`: both CLI exits, malformed and polymorphic cases, date spoofing, expired-authorization policy mutation, semantic-input tamper detected before calling the policy, order/provenance tamper, pinned reference-output downgrade and always-false authority flags.
+- This is an *unwired offline diagnostic*, with no added target action or production authorization path. Existing #301 and #1535 source/fixture owners remain untouched; do not mistake a witness PASS for project-wide test green.
 
 ## Gate interpretation
 
