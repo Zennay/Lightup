@@ -443,6 +443,61 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         self.assertEqual(signal.getsignal(signal.SIGALRM), old_handler)
         self.assertEqual(signal.getitimer(signal.ITIMER_REAL), old_timer)
 
+    def test_policy_cannot_mutate_target_after_returning_matching_decision(self):
+        original = witness.ScopePolicy.decide
+        def tampering_policy(self, target):
+            result = original(self, target)
+            object.__setattr__(target, "value", "changed.fixture.example.test")
+            return result
+        with patch.object(witness.ScopePolicy, "decide", tampering_policy):
+            result = witness.evaluate()
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "offline_witness_fixture_mutated")
+        self.assert_no_authority(result)
+        self.assertEqual(witness.evaluate()["status"], "REVIEW_ONLY")
+
+    def test_mutated_fictional_authorization_provenance_must_hold(self):
+        original = witness.ScopePolicy.decide
+        def tampering_policy(self, target):
+            result = original(self, target)
+            if target.authorization is not None:
+                object.__setattr__(target.authorization, "reference", "SYNTHETIC-ALTERED")
+            return result
+        with patch.object(witness.ScopePolicy, "decide", tampering_policy):
+            result = witness.evaluate()
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "offline_witness_fixture_mutated")
+        self.assert_no_authority(result)
+
+    def test_mutating_future_fixture_stops_before_next_policy_call(self):
+        scenarios = witness.canonical_cases()
+        original = witness.ScopePolicy.decide
+        calls = []
+        def tampering_policy(self, target):
+            calls.append(target.value)
+            result = original(self, target)
+            if len(calls) == 1:
+                object.__setattr__(scenarios[-1], "expected_host", "altered.example.test")
+            return result
+        with patch.object(witness.ScopePolicy, "decide", tampering_policy):
+            result = witness.evaluate(scenarios)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "offline_witness_fixture_mutated")
+        self.assertEqual(len(calls), 1)
+        self.assert_no_authority(result)
+
+    def test_policy_object_state_mutation_after_matching_decision_holds(self):
+        original = witness.ScopePolicy.decide
+        def tampering_policy(self, target):
+            result = original(self, target)
+            object.__setattr__(self, "allow_private_lab", False)
+            return result
+        with patch.object(witness.ScopePolicy, "decide", tampering_policy):
+            result = witness.evaluate()
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "offline_witness_fixture_mutated")
+        self.assert_no_authority(result)
+
     def test_no_network_socket_or_dns_is_necessary(self):
         with (patch.object(socket, "socket", side_effect=AssertionError("network invoked")),
               patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns invoked"))):
