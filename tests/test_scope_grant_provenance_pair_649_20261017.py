@@ -214,6 +214,37 @@ class PairReview649Tests(unittest.TestCase):
                 })
                 self.assertTrue(all(v is False for k,v in payload.items() if k!="status"))
 
+    def test_all_single_bit_mutations_of_minimal_fictional_pair_hold(self):
+        # The exact chosen minimal fixture contains no ignorable whitespace.
+        # This is a deterministic regression oracle, not an authenticity proof:
+        # semantically equivalent JSON spellings can legitimately exist.
+        pristine = encode(packet())
+        self.assertIs(pair.parse_and_compare(pristine).status, base.ReviewStatus.REVIEW_ONLY)
+        seen = 0
+        for offset in range(len(pristine)):
+            for bit in range(8):
+                damaged = bytearray(pristine)
+                damaged[offset] ^= 1 << bit
+                actual = pair.parse_and_compare(bytes(damaged)).status
+                with self.subTest(offset=offset, bit=bit):
+                    self.assertIs(actual, base.ReviewStatus.HOLD)
+                seen += 1
+        self.assertGreater(seen, 1200)
+
+    def test_every_batch_slot_uses_atomic_hold_not_partial_success(self):
+        initial = [{"before": record(reference=f"SYNTH-{i}"),
+                    "after": record(reference=f"SYNTH-{i}")} for i in range(32)]
+        self.assertIs(pair.review_pair_batch(packet(initial)).status, base.ReviewStatus.REVIEW_ONLY)
+        for index in range(32):
+            changed = json.loads(json.dumps(initial))
+            changed[index]["after"]["approved_by"] = "Different Fictional Reviewer"
+            with self.subTest(index=index):
+                receipt = pair.review_pair_batch(packet(changed))
+                self.assertIs(receipt.status, base.ReviewStatus.HOLD)
+                self.assertFalse(receipt)
+                self.assertFalse(receipt.authorization_verified)
+                self.assertFalse(receipt.dispatch_allowed)
+
     def test_stdin_error_or_broken_output_is_hold(self):
         class BadStdin:
             class buffer:
