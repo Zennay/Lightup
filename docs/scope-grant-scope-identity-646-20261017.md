@@ -41,3 +41,21 @@ Default successful tests with intentional `expectedFailure` do **not** constitut
 Own additions: `tests/test_scope_grant_scope_identity_646_20261017.py`, this document, and an opt-in hosted CI workflow. No original production, sibling, CI release, runner setup, customer data or other-worker paths may be changed. No real asset, DNS lookup, network scanner, handler, authorization grant, deployment or release is permitted.
 
 **HOLD** until the owner addresses original source REDs and the original full hosted + permanently registered named VPS matrix is green at an approved exact SHA, separately authenticated client/operator consent and at-use revocation have been verified, independent security/privacy review passes, and an explicit HUMAN GO is recorded. No test result grants any execution authority.
+
+## Verified disposable original-source repair rehearsal (not committed)
+
+On the connected permitted zSSH VPS, a wholly separate **temporary local Git checkout** of own acceptance branch at `173ababec44a1c8361b3b90aee858b221c14ec59` was created. Only in that throwaway filesystem copy, immediately after the original operator-role check, the following **two-line** hardening was applied to `src/lightup/domain.py`:
+
+```python
+if type(scope) is not ScopeDefinition:
+    raise ValueError("grant scope must be exact ScopeDefinition")
+```
+
+This enforces the exact built-in type **before any untrusted scope attribute access**. Evidence in that disposable Python 3.14 checkout:
+
+- Opt-in strict `LIGHTUP_SCOPE646_REQUIRE_SOURCE_FIX=1` suite: **11/11 ordinary PASS, zero expectedFailures**.
+- Original complete unit suite with the same strict opt-in: **578 tests OK, zero expectedFailures**.
+- Original integration suite with the same strict opt-in: **86 tests OK**.
+- `git diff --name-status` of throwaway copy: only `M src/lightup/domain.py`. **No Git push, no source-owner branch or PR update, no deploy, no real grant/asset or network scan.**
+
+This is **reproducible local patch validation**, not a delivered source fix, multi-version source-fixed CI, or production authorization. Source owner #554 alone should implement/review the source change with other pending domain work, revalidate all integration and permanent named VPS gates, and obtain the separate human consent and release approvals.
