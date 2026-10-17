@@ -45,6 +45,14 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             self.authorization_desk, "operator",
         ))
         self.routes.append((
+            "GET", re.compile(r"^/authorization-desk/engagements/attention$"),
+            self.authorization_engagement_attention, "operator",
+        ))
+        self.routes.append((
+            "GET", re.compile(r"^/api/v1/operator/engagements/attention$"),
+            self.authorization_engagement_attention_api, "operator",
+        ))
+        self.routes.append((
             "GET", re.compile(r"^/authorization-desk/engagements/(?P<engagement_id>[\w-]+)$"),
             self.authorization_engagement_review, "operator",
         ))
@@ -89,6 +97,18 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
     def authorization_desk(self, auth: AuthState, form: dict[str, str]) -> Response:
         from .authorization_desk import render_authorization_desk
         return render_authorization_desk(self.store, auth)
+
+    def authorization_engagement_attention(
+        self, auth: AuthState, form: dict[str, str]
+    ) -> Response:
+        from .engagement_review import engagement_attention_page
+        return engagement_attention_page(self.store, auth)
+
+    def authorization_engagement_attention_api(
+        self, auth: AuthState, form: dict[str, str]
+    ) -> Response:
+        from .engagement_review import engagement_attention_json
+        return engagement_attention_json(self.store, auth)
 
     def authorization_engagement_review(
         self, auth: AuthState, form: dict[str, str], engagement_id: str
@@ -146,6 +166,7 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
                   auth: AuthState) -> Response:
         if method == "GET" and (
             path == "/api/v1/operator/authorization-queue"
+            or path == "/api/v1/operator/engagements/attention"
             or re.fullmatch(r"/api/v1/operator/engagements/[\w-]+/review", path)
         ):
             if not auth.signed_in or type(auth.context) is not AccessContext:
