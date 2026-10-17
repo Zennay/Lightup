@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 from pathlib import Path
 import sys
 
@@ -18,12 +19,25 @@ adapter = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(adapter)
 review = adapter.review
 
-_ROOT = {"version", "base_sha", "reviews"}
+_ROOT = {"version", "base_sha", "repository_full_name", "reviews"}
 _ENTRY = {"worker", "branch", "pr", "compare"}
 _PR = {"number", "state", "draft", "base_sha", "head_sha",
-       "head_ref", "changed_files"}
+       "head_ref", "changed_files", "head_repo_full_name"}
 _COMPARE = {"base_sha", "head_sha", "status", "ahead_by",
-            "behind_by", "too_large", "files"}
+            "behind_by", "too_large", "files", "repository_full_name"}
+
+
+_REPOSITORY_PART = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,99}\\Z")
+
+
+def _repository_name(value: object) -> bool:
+    if type(value) is not str or len(value) > 150:
+        return False
+    parts = value.split("/")
+    return (len(parts) == 2
+            and all(part not in (".", "..") and
+                    _REPOSITORY_PART.fullmatch(part) is not None
+                    for part in parts))
 
 
 def _prepare(raw: bytes) -> bytes:
@@ -35,6 +49,9 @@ def _prepare(raw: bytes) -> bytes:
     pin = payload["base_sha"]
     if not adapter._sha(pin):
         raise review.InvalidProposal("common parent")
+    repo = payload["repository_full_name"]
+    if not _repository_name(repo):
+        raise review.InvalidProposal("repository identity")
     items = payload["reviews"]
     if type(items) is not list or not 2 <= len(items) <= 32:
         raise review.InvalidProposal("review count")
@@ -49,6 +66,11 @@ def _prepare(raw: bytes) -> bytes:
             raise review.InvalidProposal("PR fields")
         if type(comp) is not dict or set(comp) != _COMPARE:
             raise review.InvalidProposal("compare fields")
+        if (type(pr["head_repo_full_name"]) is not str
+                or type(comp["repository_full_name"]) is not str
+                or pr["head_repo_full_name"] != repo
+                or comp["repository_full_name"] != repo):
+            raise review.InvalidProposal("cross-repository source mismatch")
         number = pr["number"]
         if type(number) is not int or not 1 <= number <= 99_999_999:
             raise review.InvalidProposal("PR number")
