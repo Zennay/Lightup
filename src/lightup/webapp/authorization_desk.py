@@ -208,6 +208,8 @@ def render_authorization_desk(
         '<p><a href="/assessments">Open operator assessment review</a>'
         ' · <a href="/clients">Client records</a>'
         ' · <a href="/authorization-desk">All clients</a>'
+        ' · <a href="/authorization-desk/clarifications">'
+        'Clarification inbox</a>'
         ' · <a href="/api/v1/operator/authorization-queue">JSON work queue</a>'
         ' · <a href="/authorization-desk/engagements/attention">'
         'Engagement follow-up inbox</a>'
