@@ -6,6 +6,8 @@ provenance, durable non-replay or real-world client/operator authorization.
 from __future__ import annotations
 
 import hashlib
+import hmac
+import re
 import importlib.util
 import json
 from pathlib import Path
@@ -34,7 +36,14 @@ def entry_digest(entry: dict[str, object]) -> str:
     return hashlib.sha256(_canonical(entry)).hexdigest()
 
 
-def _review(raw: bytes) -> str:
+def _review(raw: bytes, *, checkpoint_index: int | None = None,
+            expected_checkpoint_sha256: str | None = None) -> str:
+    if checkpoint_index is not None or expected_checkpoint_sha256 is not None:
+        if (type(checkpoint_index) is not int or checkpoint_index < 0
+            or type(expected_checkpoint_sha256) is not str
+            or not claim.DIGEST.fullmatch(expected_checkpoint_sha256)
+            or expected_checkpoint_sha256 == "0" * 64):
+            _fail()
     if type(raw) is not bytes or not raw or len(raw) > MAX_TIMELINE_BYTES:
         _fail()
     # A strict byte identity contract; no escaped JSON-name aliases or unicode.
@@ -54,12 +63,15 @@ def _review(raw: bytes) -> str:
     if type(entries) is not list or not 2 <= len(entries) <= MAX_ENTRIES:
         _fail()
 
+    if checkpoint_index is not None and checkpoint_index >= len(entries) - 1:
+        _fail()
+
     prev_entry = None
     prev_time = None
     baseline_consents = None
     proposal = None
     scope = None
-    for item in entries:
+    for index, item in enumerate(entries):
         if type(item) is not dict or set(item) != {"packet", "previous_sha256"}:
             _fail()
         packet = item["packet"]
@@ -86,13 +98,19 @@ def _review(raw: bytes) -> str:
         elif (consents != baseline_consents or packet["proposal_sha"] != proposal
               or packet["scope_sha256"] != scope):
             _fail()
+        if index == checkpoint_index:
+            if not hmac.compare_digest(entry_digest(item), expected_checkpoint_sha256):
+                _fail()
         prev_entry, prev_time = item, now
     return entry_digest(prev_entry)
 
 
-def review(raw: bytes, *, expected_head_sha256: str | None = None) -> dict[str, object]:
+def review(raw: bytes, *, expected_head_sha256: str | None = None,
+           checkpoint_index: int | None = None,
+           expected_checkpoint_sha256: str | None = None) -> dict[str, object]:
     try:
-        observed = _review(raw)
+        observed = _review(raw, checkpoint_index=checkpoint_index,
+                           expected_checkpoint_sha256=expected_checkpoint_sha256)
         if expected_head_sha256 is not None:
             if (type(expected_head_sha256) is not str
                 or not claim.DIGEST.fullmatch(expected_head_sha256)
@@ -110,9 +128,27 @@ def main(argv: list[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
     result = None
-    if argv and not (len(argv) == 2 and argv[0] == "--expected-head"):
+    pinned_head = None
+    checkpoint_index = None
+    checkpoint_sha = None
+    if type(argv) is not list or any(type(part) is not str for part in argv):
         result = review(b"")
+    elif not argv:
+        pass
+    elif len(argv) == 2 and argv[0] == "--expected-head":
+        pinned_head = argv[1]
+    elif (len(argv) in (2, 4) and argv[0] == "--checkpoint"
+          and (len(argv) == 2 or argv[2] == "--expected-head")):
+        match = re.fullmatch(r"(0|[1-9][0-9]?):([0-9a-f]{64})", argv[1], re.ASCII)
+        if match is None:
+            result = review(b"")
+        else:
+            checkpoint_index, checkpoint_sha = int(match.group(1)), match.group(2)
+            if len(argv) == 4:
+                pinned_head = argv[3]
     else:
+        result = review(b"")
+    if result is None:
         try:
             chunks = []
             size = 0
@@ -126,7 +162,9 @@ def main(argv: list[str] | None = None) -> int:
                 if size > MAX_TIMELINE_BYTES:
                     _fail()
                 chunks.append(chunk)
-            result = review(b"".join(chunks), expected_head_sha256=(argv[1] if argv else None))
+            result = review(b"".join(chunks), expected_head_sha256=pinned_head,
+                            checkpoint_index=checkpoint_index,
+                            expected_checkpoint_sha256=checkpoint_sha)
         except (OSError, claim.PacketError, ValueError, MemoryError, OverflowError):
             result = review(b"")
     try:

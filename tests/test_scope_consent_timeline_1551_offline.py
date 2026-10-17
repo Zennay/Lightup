@@ -292,5 +292,66 @@ class Timeline(unittest.TestCase):
         self.assertTrue(all(result[k] is False for k in timeline.claim.AUTHORITY_FLAGS))
 
 
+    def test_checkpoint_append_extension_passes_only_non_authorizing(self):
+        p = make_timeline(3)
+        old_head = timeline.entry_digest(p["entries"][1])
+        r = timeline.review(raw(p), checkpoint_index=1, expected_checkpoint_sha256=old_head)
+        self.assertEqual("REVIEW_ONLY", r["status"])
+        self.assertTrue(all(r[f] is False for f in timeline.claim.AUTHORITY_FLAGS))
+
+    def test_checkpoint_detects_forged_prefix_despite_rehash(self):
+        p = make_timeline(3)
+        old_head = timeline.entry_digest(p["entries"][1])
+        altered = copy.deepcopy(p)
+        for step in altered["entries"]:
+            step["packet"]["consents"][1]["principal"] = "operator:forged"
+        for idx in range(1, 3):
+            altered["entries"][idx]["previous_sha256"] = timeline.entry_digest(altered["entries"][idx-1])
+        self.assertEqual("REVIEW_ONLY", timeline.review(raw(altered))["status"])
+        self.assertEqual("HOLD", timeline.review(raw(altered), checkpoint_index=1,
+                          expected_checkpoint_sha256=old_head)["status"])
+
+    def test_checkpoint_requires_new_suffix(self):
+        p = make_timeline(3)
+        head = timeline.entry_digest(p["entries"][2])
+        self.assertEqual("HOLD", timeline.review(raw(p), checkpoint_index=2,
+                          expected_checkpoint_sha256=head)["status"])
+
+    def test_checkpoint_rejects_type_confusion(self):
+        p = make_timeline(3)
+        good = timeline.entry_digest(p["entries"][0])
+        for index, digest in ((True,good), ("0",good), (-1,good), (0,good.upper()),
+                              (0,"0"*64), (0,good[:-1]), (0,None), (None,good),
+                              (0,bytes(good,"ascii")), (0,"c"*64)):
+            with self.subTest(index=index, digest=repr(digest)[:15]):
+                self.assertEqual("HOLD", timeline.review(raw(p), checkpoint_index=index,
+                                 expected_checkpoint_sha256=digest)["status"])
+
+
+    def test_checkpoint_cli_exact_flags_and_deny_unknown(self):
+        batch = make_timeline(3)
+        old = timeline.entry_digest(batch["entries"][1])
+        head = timeline.entry_digest(batch["entries"][2])
+        cases = (
+            (["--checkpoint", "1:" + old], 3),
+            (["--checkpoint", "1:" + old, "--expected-head", head], 3),
+            (["--checkpoint", "1:" + "c"*64], 2),
+            (["--checkpoint", "01:" + old], 2),
+            (["--checkpoint", "-1:" + old], 2),
+            (["--checkpoint", "2:" + old], 2),
+            (["--checkpoint", "1:" + old, "--authorize"], 2),
+            (["--expected-head", head, "--checkpoint", "1:" + old], 2),
+            (["--checkpoint"], 2),
+        )
+        for argv, expected in cases:
+            with self.subTest(argv=argv):
+                p = subprocess.run([sys.executable, "-I", "-S", "-B", str(SCRIPT), *argv],
+                                   input=raw(batch), capture_output=True, timeout=10)
+                self.assertEqual(expected, p.returncode, p.stderr)
+                output = json.loads(p.stdout)
+                self.assertEqual("REVIEW_ONLY" if expected == 3 else "HOLD", output["status"])
+                self.assertTrue(all(output[k] is False for k in timeline.claim.AUTHORITY_FLAGS))
+
+
 if __name__ == "__main__":
     unittest.main()

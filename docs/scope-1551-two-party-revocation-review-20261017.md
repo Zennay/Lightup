@@ -50,3 +50,14 @@ The owned Python3.14 zSSH verification has now exercised **3,000 repeatable corr
 The digest covers canonical JSON **objects**, not the original raw whitespace and presentation. It is not a byte-exact wire signature. A trusted external pin can detect changes to the scope/consent/timestamp claims; it is still unable to prove caller identity, independent consent, revocation completeness, or release authorization.
 
 Original main's existing #301 and #1535 failure modes are separate from this owned reviewer; do not convert any source-owner RED into an expected failure. Own hosted 3.11/3.14 and producer integration proofs remain required for the exact final head.
+
+## W4: independently retained checkpoint + append-only extension
+
+Previously, a final snapshot hash could prove equality to a previously retained exact *end state* but offered no way to review a legitimate new suffix relative to an older retained intermediate snapshot. The new offline checkpoint mode accepts a **zero-based checkpoint index and digest** supplied independently of the untrusted packet. It checks that the canonical full entry at the given index equals the frozen SHA-256, that every later entry remains correctly chained, and that **at least one newer entry exists**; empty replays of the same checkpoint HOLD.
+
+CLI examples for fictional input (not client consent):
+- `python3 -I -S -B scripts/review_scope_consent_timeline_1551_offline.py --checkpoint 1:<sha256> < timeline.json`
+- `python3 -I -S -B scripts/review_scope_consent_timeline_1551_offline.py --checkpoint 1:<sha256> --expected-head <new_sha256> < timeline.json`
+The order and syntax are exact; indexes must be canonical decimal, digests lower-case 64 hex and nonzero. The Python API accepts keyword-only `checkpoint_index` and `expected_checkpoint_sha256` together. Bad/missing/alias/index-at-last-entry arguments HOLD.
+
+Red-before-green tests proved the prior API and CLI did not have this checkpoint mode; regression suite now verifies legitimate append, rewritten history with all internal digests recomputed, an empty suffix, malformed checkpoint identities, and CLI argument variants. **Both externally retained hashes remain unauthenticated assertions unless obtained from independent trusted provenance; an offline match never grants real permission.** No network, sourceowners, shared CI, runners, real targets or production grants changed.
