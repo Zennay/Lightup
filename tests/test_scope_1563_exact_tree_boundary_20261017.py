@@ -361,9 +361,11 @@ class MutationWitnessQualityTests(unittest.TestCase):
     @staticmethod
     def result(*, assertion=True, error=False, expected=False, wrong=False):
         class Case:
+            _testMethodName = ("test_other_case" if wrong else
+                               "test_invalid_target_cannot_be_rescued_by_grant_or_auth_flag")
+
             def __str__(self):
-                return ("test_other_case" if wrong else
-                        "test_invalid_target_cannot_be_rescued_by_grant_or_auth_flag")
+                return self._testMethodName
 
         result = MutationWitnessQualityTests.proof.CoverageResult(io.StringIO(), True, 0)
         result.testsRun = 16
@@ -560,6 +562,37 @@ class MutationWitnessQualityTests(unittest.TestCase):
         result.testsRun = 16
         self.assertTrue(self.proof.mutation_detected(result, "test_invalid_target"))
 
+
+    def test_spoofed_printable_method_name_never_counts_as_security_failure(self):
+        result = self.result()
+        fake, message = result.failures[0]
+
+        class ForgedCase:
+            _testMethodName = "test_unrelated_success"
+
+            def __str__(self):
+                return "test_invalid_target_cannot_be_rescued_by_grant_or_auth_flag (FORGED)"
+
+        result.failures[0] = (ForgedCase(), message)
+        self.assertIn("test_invalid_target", str(result.failures[0][0]))
+        self.assertFalse(self.proof.mutation_detected(result, "test_invalid_target"))
+        result.failures[0] = (fake, message)
+        self.assertTrue(self.proof.mutation_detected(result, "test_invalid_target"))
+
+    def test_real_unittest_subtest_identity_matches_parent_method(self):
+        with patch.object(self.proof.ScopePolicy, "decide",
+                          self.proof.illegally_promote_cidr_right_neighbor):
+            result = self.proof.run_suite()
+        self.assertFalse(result.errors)
+        self.assertTrue(result.failures)
+        case, _ = result.failures[0]
+        self.assertEqual(
+            self.proof.source_test_method(case),
+            case.test_case._testMethodName,
+        )
+        self.assertTrue(
+            self.proof.mutation_detected(result, "test_ipv4_right_neighbor")
+        )
 
     def test_mutation_skip_or_missing_subcase_is_not_security_proof(self):
         result = self.result()
