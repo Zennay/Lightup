@@ -365,8 +365,10 @@ class MutationWitnessQualityTests(unittest.TestCase):
                 return ("test_other_case" if wrong else
                         "test_invalid_target_cannot_be_rescued_by_grant_or_auth_flag")
 
-        result = unittest.TestResult()
+        result = MutationWitnessQualityTests.proof.CoverageResult(io.StringIO(), True, 0)
         result.testsRun = 16
+        result.subtest_attempts.update(MutationWitnessQualityTests.proof.EXPECTED_CASE_COUNTS)
+        result.subtest_passes.update(MutationWitnessQualityTests.proof.EXPECTED_CASE_COUNTS)
         case = Case()
         if assertion:
             result.failures.append((case, "Traceback: AssertionError: denied correctly"))
@@ -557,6 +559,28 @@ class MutationWitnessQualityTests(unittest.TestCase):
         self.assertFalse(self.proof.mutation_detected(result, "test_invalid_target"))
         result.testsRun = 16
         self.assertTrue(self.proof.mutation_detected(result, "test_invalid_target"))
+
+
+    def test_mutation_skip_or_missing_subcase_is_not_security_proof(self):
+        result = self.result()
+        self.assertTrue(self.proof.mutation_detected(result, "test_invalid_target"))
+        result.skipped.append((self, "synthetic skipped branch"))
+        self.assertFalse(self.proof.mutation_detected(result, "test_invalid_target"))
+        result.skipped.clear()
+        method = "test_generated_global_ipv4_nonmembers_do_not_gain_scope"
+        result.subtest_attempts[method] -= 1
+        self.assertFalse(self.proof.mutation_detected(result, "test_invalid_target"))
+        result.subtest_attempts[method] += 1
+        self.assertTrue(self.proof.mutation_detected(result, "test_invalid_target"))
+
+    def test_real_mutation_runs_exercise_full_subcase_attempt_counts(self):
+        cls = self.proof.suite_module.ScopeMembershipMetamorphicTests
+        with patch.object(self.proof.ScopePolicy, "decide", self.proof.illegally_promote_cidr_right_neighbor):
+            result = self.proof.run_suite()
+        self.assertIs(type(result), self.proof.CoverageResult)
+        self.assertEqual(dict(result.subtest_attempts), self.proof.EXPECTED_CASE_COUNTS)
+        self.assertTrue(self.proof.mutation_detected(result, "test_ipv4_right_neighbor"))
+        self.assertIs(self.proof.ScopePolicy.decide, self.proof.REAL_DECIDE)
 
     def test_expected_red_or_exception_text_is_not_acceptance(self):
         result = self.result(expected=True)
