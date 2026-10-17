@@ -1,0 +1,44 @@
+name: Scope 1547 synthetic Git status integrity (hosted only)
+on:
+  pull_request:
+    paths:
+      - "scripts/review_scope_git_status_synthetic_1547.py"
+      - "tests/test_scope_1547_synthetic_git_status.py"
+      - "docs/scope-1547-git-status-atomic-hold-20261017.md"
+      - ".github/workflows/scope-1547-git-status-offline.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Confirm own paths, source parent and exact branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor c37b909907fc7291cb28b2f37a78db7f2fea2855 HEAD
+          git diff --name-only c37b909907fc7291cb28b2f37a78db7f2fea2855 HEAD | sort > /tmp/scope1547-actual.txt
+          printf "%s\n" ".github/workflows/scope-1547-git-status-offline.yml" "docs/scope-1547-git-status-atomic-hold-20261017.md" "scripts/review_scope_git_status_synthetic_1547.py" "tests/test_scope_1547_synthetic_git_status.py" > /tmp/scope1547-expected.txt
+          diff -u /tmp/scope1547-expected.txt /tmp/scope1547-actual.txt
+          echo "scope1547_exact_owner_paths=PASS"
+      - name: Compile only own Python files
+        shell: bash
+        run: |
+          python -W error::SyntaxWarning -B -m py_compile scripts/review_scope_git_status_synthetic_1547.py tests/test_scope_1547_synthetic_git_status.py
+      - name: Tests (source-owner REDs remain explicitly expected)
+        shell: bash
+        run: |
+          PYTHONPATH=src:tests python -I -S -B -m unittest discover -s tests -p test_scope_1547_synthetic_git_status.py -v
+      - name: Report advisory-only HOLD on release
+        run: echo "INCUBATE M3/M7 — offline REVIEW_ONLY, never consent, grant, merge or deployment"
