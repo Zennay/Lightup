@@ -173,6 +173,42 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         self.assertEqual(body["reason"],"offline_witness_source_drift")
         self.assert_no_authority(body)
 
+    def test_changed_source_after_first_attestation_must_hold_before_positive_receipt(self):
+        # Race simulation: the entry hash matches, but just before an
+        # affirmative receipt the second source check detects a change.
+        first = witness._trusted_source_hashes
+        calls = []
+        def simulate_source_update():
+            calls.append(True)
+            return first() if len(calls) == 1 else None
+        with patch.object(witness, "_trusted_source_hashes", simulate_source_update):
+            result = witness.evaluate()
+        self.assertGreaterEqual(len(calls), 2)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "offline_witness_source_drift")
+        self.assertNotIn("source_sha256", result)
+        self.assert_no_authority(result)
+
+    def test_loaded_module_identity_change_during_decide_is_not_approved(self):
+        # A source module's metadata might change between initial admission
+        # and final receipt; the witness cannot accept stale import evidence.
+        source_mod = sys.modules[witness.ScopePolicy.__module__]
+        saved = source_mod.__file__
+        decide = witness.ScopePolicy.decide
+        def alter_origin(self, target):
+            answer = decide(self, target)
+            source_mod.__file__ = "/fictional/foreign/scope.py"
+            return answer
+        try:
+            with patch.object(witness.ScopePolicy, "decide", alter_origin):
+                result = witness.evaluate()
+        finally:
+            source_mod.__file__ = saved
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "offline_witness_source_drift")
+        self.assert_no_authority(result)
+        self.assertEqual(witness.evaluate()["status"], "REVIEW_ONLY")
+
     def test_canonical_matrix_is_review_only_not_execution_permission(self):
         result = witness.evaluate()
         self.assertEqual(result["status"], "REVIEW_ONLY")
