@@ -27,6 +27,22 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_membership_me
 
 Run on original main plus this add-only branch; the dedicated new GitHub-hosted workflow pins its checked-out PR head SHA. Compare separately with the owner-source branch before claiming integration. An older green run is never evidence for a changed head.
 
+
+## Mutation-kill proof (add-only, offline)
+
+The dedicated `scripts/scope_1563_membership_mutation_proof_20261017.py` first verifies the unmodified seven-test suite is entirely green. It then temporarily replaces the **in-memory** policy decision with four intentionally unsafe implementations and **requires** a corresponding rejection test to fail for every broken variant:
+
+1. Allow a public host/IP without membership (`grant_mints_membership`).
+2. Permit an empty or syntactically invalid target (`invalid_identity_rescued`).
+3. Evaluate attached grants before scope membership (`grant_checked_before_scope`).
+4. Treat an attacker-controlled `AUTHORIZED` label as authority (`spoofed_label_authorizes`).
+
+The policy method is restored after each mutation, and the script explicitly checks its identity afterward. A source suite that fails by itself, an uncaught deliberate mutation, or an unexpected test count results in exit 2/HOLD. **Mutations are tests only, never merged into runtime behavior.**
+
+Run independently with `PYTHONDONTWRITEBYTECODE=1 python scripts/scope_1563_membership_mutation_proof_20261017.py`.
+
+Connected zSSH on the independent temporary checkout at exact `bc946fc59e7fa070e54ca6b3416be688ec7ba2ad` reproduced all four detection gates (134 / 32 / 126 / 2 deliberately failing assertions, respectively) and the unmodified seven-test baseline PASS. The own hosted matrix executes the mutation controls on both Python 3.11 and 3.14 at each **exact PR head**; final-head run status must be observed separately and is not inferred from this earlier VPS proof. No DNS, sockets, client data, live assets, grant issuance or dispatch is involved.
+
 ## Stop conditions
 
 No existing `src/lightup` sources, `tests/test_scope.py`, shared workflows, state/database, activation, execution, target workers, deployment or peer-worker files are modified. Scope #364 and existing PR #1263 remain independent. A green negative unit suite **is not** evidence of usable positive authority, authenticated two-party consent, at-use revocation, independent security/privacy review, passing full exact-head hosted plus registered VPS CI or HUMAN GO.
