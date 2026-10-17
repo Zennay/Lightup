@@ -21,6 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src" / "lightup" / "domain.py"
 REAL_TESTS = ROOT / "tests" / "test_scope_829_grant_tenant_read_integrity_20261017.py"
+REAL_WEB_TESTS = ROOT / "tests" / "test_scope_829_wsgi_status_20261017.py"
 
 QUERY = (
     '"SELECT * FROM authorization_grants WHERE engagement_id=? ORDER BY created_at DESC",\n'
@@ -61,7 +62,18 @@ case = mod.GrantTenantReadIntegrity829
 for name in dir(case):
     if name.startswith("test_source_red_"):
         getattr(case, name).__unittest_expecting_failure__ = False
-suite = unittest.defaultTestLoader.loadTestsFromTestCase(case)
+web_spec = importlib.util.spec_from_file_location("scope_829_wsgi", sys.argv[3])
+assert web_spec and web_spec.loader
+web_mod = importlib.util.module_from_spec(web_spec)
+web_spec.loader.exec_module(web_mod)
+web_case = web_mod.GrantTenantWebBoundary829
+for name in dir(web_case):
+    if name.startswith("test_source_red_"):
+        getattr(web_case, name).__unittest_expecting_failure__ = False
+suite = unittest.TestSuite((
+    unittest.defaultTestLoader.loadTestsFromTestCase(case),
+    unittest.defaultTestLoader.loadTestsFromTestCase(web_case),
+))
 result = unittest.TextTestRunner(stream=io.StringIO(), verbosity=0).run(suite)
 print(json.dumps({
     "count": result.testsRun,
@@ -76,8 +88,8 @@ print(json.dumps({
 
 def _run_source_variant(variant: str) -> dict:
     """Return strict real-SQLite result for a disposable source copy."""
-    if not REAL_TESTS.is_file():
-        raise AssertionError("missing original source acceptance tests")
+    if not REAL_TESTS.is_file() or not REAL_WEB_TESTS.is_file():
+        raise AssertionError("missing original source and authenticated WSGI acceptance tests")
     raw = SRC.read_text(encoding="utf-8")
     if raw.count(QUERY) != 1:
         raise AssertionError("source-owner read-query anchor drift: fail closed")
@@ -107,7 +119,7 @@ def _run_source_variant(variant: str) -> dict:
         proc = subprocess.run(
             [
                 sys.executable, "-I", "-c", _CHILD,
-                str(tmp_root / "src"), str(REAL_TESTS),
+                str(tmp_root / "src"), str(REAL_TESTS), str(REAL_WEB_TESTS),
             ],
             cwd=tmp_root,
             stdin=subprocess.DEVNULL,
@@ -133,16 +145,16 @@ def _run_source_variant(variant: str) -> dict:
             "count", "failures", "errors", "skipped",
             "unexpected_success", "expected_failure",
         }
-        assert result["count"] == 18, (variant, result)
+        assert result["count"] == 23, (variant, result)
         assert result["skipped"] == 0 and result["expected_failure"] == 0
         assert result["unexpected_success"] == 0
         return result
 
 
 class Scope829OwnerRepairOracle(unittest.TestCase):
-    def test_original_source_has_twelve_strict_reds(self):
+    def test_original_source_has_fourteen_strict_reds(self):
         result = _run_source_variant("original")
-        self.assertEqual(len(result["failures"]) + len(result["errors"]), 12)
+        self.assertEqual(len(result["failures"]) + len(result["errors"]), 14)
 
     def test_exact_tenant_owner_filter_fixes_all_real_cases(self):
         result = _run_source_variant("correct")
