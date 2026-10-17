@@ -34,7 +34,21 @@ def _constant_text(node: ast.AST) -> str | None:
 def references_review_module(source: str) -> bool:
     """Detect imports and statically reconstructable calls, never eval code."""
     tree = ast.parse(source)
-    for node in ast.walk(tree):
+    # Track statically named imports, including aliases. This is deliberately
+    # conservative: it does not execute alias binding or Python expressions.
+    nodes = tuple(ast.walk(tree))
+    importlib_names = {"importlib"}
+    import_module_names = {"import_module"}
+    for node in nodes:
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "importlib":
+                    importlib_names.add(alias.asname or alias.name)
+        elif isinstance(node, ast.ImportFrom) and node.module == "importlib":
+            for alias in node.names:
+                if alias.name == "import_module":
+                    import_module_names.add(alias.asname or alias.name)
+    for node in nodes:
         if isinstance(node, ast.Import):
             if any(name.name.split(".")[-1] == REVIEWER for name in node.names):
                 return True
@@ -51,11 +65,11 @@ def references_review_module(source: str) -> bool:
                 continue
             called = node.func
             direct_import = isinstance(called, ast.Name) and called.id in (
-                "__import__", "import_module",
+                "__import__", *import_module_names,
             )
             qualified_import = (
                 isinstance(called, ast.Attribute) and called.attr == "import_module"
-                and isinstance(called.value, ast.Name) and called.value.id == "importlib"
+                and isinstance(called.value, ast.Name) and called.value.id in importlib_names
             )
             getattr_import = (
                 isinstance(called, ast.Call)
@@ -63,7 +77,7 @@ def references_review_module(source: str) -> bool:
                 and called.func.id == "getattr"
                 and len(called.args) == 2
                 and isinstance(called.args[0], ast.Name)
-                and called.args[0].id == "importlib"
+                and called.args[0].id in importlib_names
                 and _constant_text(called.args[1]) == "import_module"
             )
             if (direct_import or qualified_import or getattr_import) and literal.split(".")[-1] == REVIEWER:
@@ -108,6 +122,17 @@ class RuntimeIsolationStaticTests(unittest.TestCase):
             "import importlib\ngetattr(importlib, 'import_module')('lightup.scope_literal_control_review_20261016')",
             "__import__('lightup.' + 'scope_literal_' + 'control_review_20261016')",
             "from importlib import import_module\nimport_module(f'lightup.scope_literal_control_review_20261016')",
+        )
+        for source in patterns:
+            with self.subTest(source=source):
+                self.assertTrue(references_review_module(source))
+
+    def test_importlib_aliases_cannot_bypass_static_guard(self):
+        patterns = (
+            "import importlib as il\nil.import_module('lightup.scope_literal_control_review_20261016')",
+            "from importlib import import_module as load\nload('lightup.scope_literal_control_review_20261016')",
+            "from importlib import import_module as load\nload('lightup.' + 'scope_literal_control_review_20261016')",
+            "import importlib as il\ngetattr(il, 'import_module')('lightup.scope_literal_control_review_20261016')",
         )
         for source in patterns:
             with self.subTest(source=source):

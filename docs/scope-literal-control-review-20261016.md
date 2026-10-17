@@ -104,3 +104,7 @@ The isolated branch-only hosted workflow now checks full-history SHA-pinned chec
 ## W21 — stop replayed original-source expected failures masquerading as evidence
 
 The original strict manifest's expected-source-RED verification used a set and therefore accepted a duplicate replay of one of the four known expectedFailures as valid evidence. New own negative acceptance first demonstrated that false positive, then the check was corrected to require both the **exact four unique RED IDs and exactly four actual expectedFailures**. The hosted minimum owned-suite count is now 88, including a dedicated synthetic replay test. This gate hardening cannot repair original authorisation flaws, authorize assets, or substitute for exact full and named VPS CI.
+
+## W22 — alias-bound literal dynamic imports cannot bypass inert-reviewer isolation
+
+Four synthetic regression cases first demonstrated that the original AST guard failed to detect `import importlib as il`, `from importlib import import_module as load`, constant concatenation through the aliased importer, and literal `getattr(il, 'import_module')` calling the offline reviewer. The revised *strictly static, non-executing* guard now recognizes statically imported aliases and applies the earlier bounded literal-only module-name rule. Runtime reflection, function reassignment, and computed variables remain OUTSIDE the proof; this does not confer authorization or alter production imports.
