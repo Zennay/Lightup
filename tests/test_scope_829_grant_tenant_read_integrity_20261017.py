@@ -180,5 +180,87 @@ class GrantTenantReadIntegrity829(unittest.TestCase):
         )
 
 
+    @unittest.expectedFailure
+    def test_source_red_current_grant_skips_newer_foreign_row(self):
+        """A newer corrupt grant cannot mask an older valid current grant."""
+        valid = self.grant(self.eng_a, "fictional-valid-older")
+        foreign = self.grant(self.eng_a, "fictional-invalid-newer")
+        self.corrupt_grant_client(foreign.grant_id, self.b.client_id)
+        current = self.store.get_current_grant(
+            self.ctx_a, self.eng_a.engagement_id, now=self.now
+        )
+        self.assertIsNotNone(current)
+        self.assertEqual(current.grant_id, valid.grant_id)
+
+    @unittest.expectedFailure
+    def test_source_red_b_tenant_current_rejects_a_lineage(self):
+        """Reversed A/B corruption must be denied for the other tenant too."""
+        grant = self.grant(self.eng_b)
+        self.corrupt_grant_client(grant.grant_id, self.a.client_id)
+        self.assertIsNone(self.store.get_current_grant(
+            self.ctx_b, self.eng_b.engagement_id, now=self.now
+        ))
+
+    @unittest.expectedFailure
+    def test_source_red_padded_owner_id_is_not_equivalent(self):
+        """Tenant IDs are exact opaque identifiers: never trim or normalize."""
+        grant = self.grant(self.eng_a)
+        self.corrupt_grant_client(grant.grant_id, " " + self.a.client_id + " ")
+        self.assertEqual(self.store.list_authorization_grants(
+            self.operator, self.eng_a.engagement_id
+        ), [])
+
+    @unittest.expectedFailure
+    def test_source_red_binary_persisted_tenant_id_must_not_escape(self):
+        """A BLOB stored by legacy/corrupt code must not become a grant."""
+        grant = self.grant(self.eng_a)
+        with sqlite3.connect(self.db) as con:
+            con.execute(
+                "UPDATE authorization_grants SET client_id=? WHERE grant_id=?",
+                (sqlite3.Binary(self.a.client_id.encode("ascii")), grant.grant_id),
+            )
+        self.assertEqual(self.store.list_authorization_grants(
+            self.ctx_a, self.eng_a.engagement_id
+        ), [])
+
+    @unittest.expectedFailure
+    def test_source_red_injection_shaped_stored_id_is_never_authority(self):
+        """SQL-like strings in durable rows must remain inert and rejected."""
+        grant = self.grant(self.eng_a)
+        self.corrupt_grant_client(grant.grant_id, "' OR 1=1 -- fictional")
+        self.assertIsNone(self.store.get_current_grant(
+            self.operator, self.eng_a.engagement_id, now=self.now
+        ))
+
+    @unittest.expectedFailure
+    def test_source_red_multiple_corrupt_grants_keep_only_valid(self):
+        """Filtering must cover EVERY row, not only newest or first."""
+        good = self.grant(self.eng_a, "fictional-valid")
+        foreign = self.grant(self.eng_a, "fictional-wrong-owner")
+        missing = self.grant(self.eng_a, "fictional-missing-owner")
+        self.corrupt_grant_client(foreign.grant_id, self.b.client_id)
+        self.corrupt_grant_client(missing.grant_id, "missing-fictional-client")
+        before = self.row_snapshot()
+        observed = self.store.list_authorization_grants(
+            self.operator, self.eng_a.engagement_id
+        )
+        self.assertEqual([g.grant_id for g in observed], [good.grant_id])
+        self.assertEqual(self.row_snapshot(), before)
+
+    def test_canonical_two_grants_keep_durable_read_order(self):
+        older = self.grant(self.eng_a, "fictional-older")
+        newer = self.grant(self.eng_a, "fictional-newer")
+        rows = self.store.list_authorization_grants(
+            self.ctx_a, self.eng_a.engagement_id
+        )
+        self.assertEqual([x.grant_id for x in rows], [
+            newer.grant_id, older.grant_id
+        ])
+        self.assertEqual(
+            self.store.get_current_grant(
+                self.ctx_a, self.eng_a.engagement_id, now=self.now
+            ).grant_id, newer.grant_id,
+        )
+
 if __name__ == "__main__":
     unittest.main()
