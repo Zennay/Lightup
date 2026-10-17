@@ -333,47 +333,7 @@ class OriginalOwnerContract(unittest.TestCase):
 
     @unittest.expectedFailure
     def test_owner_rejects_newline_suffixed_status_tokens(self):
-        """Still RED on owner's newer strict parser due to regex '
-    """Opt-in mandatory proof for the future integrated owner source.
-
-    Run only on an isolated checkout with the actual reviewed owner fix, e.g.
-    LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX=1 python3 -m unittest ...
-    """
-
-    def test_source_rejects_all_five_original_invalid_forms(self):
-        import os
-        if os.environ.get("LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX") != "1":
-            self.skipTest("source owner not integrated in this pinned branch")
-        sys.path.insert(0, str(ROOT / "src"))
-        from lightup.git_changes import GitChangeError, _parse_name_status, _parse_numstat
-        cases = (
-            (_parse_name_status, b"Mgarbage\0src/a.py\0"),
-            (_parse_name_status, b"Q\0src/a.py\0"),
-            (_parse_name_status, b"Rnotanumber\0old.py\0new.py\0"),
-            (_parse_name_status, b"M\0src/a.py"),
-            (_parse_numstat, b"1\t0\tsrc/a.py"),
-        )
-        for parser, raw in cases + (
-            (_parse_name_status, b"M\n\0src/a.py\0"),
-            (_parse_name_status, b"A\n\0src/a.py\0"),
-            (_parse_name_status, b"R100\n\0old.py\0new.py\0"),
-            (_parse_name_status, b"C001\n\0old.py\0new.py\0"),
-        ):
-            with self.subTest(raw=raw):
-                with self.assertRaises(GitChangeError):
-                    parser(raw)
-        for raw in (
-            b"M\0src/a.py\0",
-            b"R100\0old.py\0new.py\0",
-            b"R001\0old.py\0new.py\0",
-        ):
-            with self.subTest(valid=raw):
-                self.assertTrue(_parse_name_status(raw))
-
-
-if __name__ == "__main__":
-    unittest.main()
-."""
+        """Known original source gap: regex dollar anchor ignores trailing LF."""
         for stream in (
             b"M\n\0src/a.py\0",
             b"A\n\0src/a.py\0",
@@ -405,7 +365,12 @@ class StrictSourceOwnerGate(unittest.TestCase):
             (_parse_name_status, b"M\0src/a.py"),
             (_parse_numstat, b"1\t0\tsrc/a.py"),
         )
-        for parser, raw in cases:
+        for parser, raw in cases + (
+            (_parse_name_status, b"M\n\0src/a.py\0"),
+            (_parse_name_status, b"A\n\0src/a.py\0"),
+            (_parse_name_status, b"R100\n\0old.py\0new.py\0"),
+            (_parse_name_status, b"C001\n\0old.py\0new.py\0"),
+        ):
             with self.subTest(raw=raw):
                 with self.assertRaises(GitChangeError):
                     parser(raw)
