@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+import re
 
 from ..domain import AccessContext, DomainStore, Role
 from .app import AuthState, Response, _e, _page
@@ -281,6 +282,17 @@ def render_operator_queue_json(
     bound = max(1, min(50, max_rows))
     items = []
     for request in pending[:bound]:
+        if (
+            type(request.request_id) is not str
+            or re.fullmatch(r"[A-Za-z0-9-]{1,80}", request.request_id) is None
+            or type(request.client_id) is not str
+            or re.fullmatch(r"[A-Za-z0-9-]{1,80}", request.client_id) is None
+        ):
+            return Response(
+                '{"error":"queue data unavailable"}',
+                status="503 Service Unavailable",
+                content_type="application/json; charset=utf-8",
+            )
         origin = _origin_label(store, request.requested_by, request.client_id)
         items.append({
             "request_id": request.request_id,
