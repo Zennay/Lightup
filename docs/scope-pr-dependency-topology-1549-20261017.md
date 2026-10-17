@@ -165,3 +165,86 @@ Real subprocess/negative tests cover a changing HEAD, base, owner, number,
 missing node, closed/non-draft transition, duplicate identity, malformed
 input and benign reordering. The original V1 tool remains available, but
 neither protocol gives authorization.
+
+## W13 — repository/branch-bound V3 double-read advisory (strict opt-in)
+
+**Background:** V2 compares PR IDs and commit SHAs, but its source snapshot
+omits the repository and exact branch names. Matching synthetic V2 inputs
+therefore do not prove that each head or base points to the *same* repository
+or Git branch. This is a genuine metadata completeness gap; it is NOT a
+production authorization bypass, because neither V1 nor V2 ever confers
+authority. V3 is an additional non-authorizing, *offline-only* review profile.
+
+V3 includes exactly `version`, `repository` (case-sensitive
+`owner/repository`), `root_sha`, `root_ref` and two supplied
+`first_read` / `second_read` arrays. Every row contains the six V1
+fields plus `base_repository`, `head_repository`, `base_ref` and
+`head_ref`. Example **fictional** envelope (not live credentials):
+
+```json
+{
+  "version": 3,
+  "repository": "Example/Lightup",
+  "root_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "root_ref": "main",
+  "first_read": [{
+    "number": 10, "owner": "worker-a", "state": "open", "draft": true,
+    "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "head_repository": "Example/Lightup",
+    "base_repository": "Example/Lightup",
+    "base_ref": "main", "head_ref": "feature/scope-review"
+  }],
+  "second_read": [{
+    "number": 10, "owner": "worker-a", "state": "open", "draft": true,
+    "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "head_repository": "Example/Lightup",
+    "base_repository": "Example/Lightup",
+    "base_ref": "main", "head_ref": "feature/scope-review"
+  }]
+}
+```
+
+Run locally with `python3 -I -S -B scripts/review_scope_pr_snapshots_1549_offline.py < normalized-v3.json`.
+The program **never reads GitHub directly**. Gather each observation using
+separate independently authorized **read-only** metadata inspection. Version
+3 rejects unsupported/forked or cross-repository heads rather than trusting
+them; only PRs in the declared identical repository are eligible for advisory
+review. This conservative limitation is intentional, *not* a claim forks are
+inherently unsafe. Acceptable strict Git ref names use bounded case-sensitive
+ASCII with no `..`, doubled slash, dot component, `.lock` suffix,
+whitespace, control bytes or malformed separators. Root PRs must name the
+exact `root_ref`; stacked PRs must name the predecessor's exact `head_ref`
+as their `base_ref`, in addition to the matching exact predecessor SHA.
+Duplicate PR branches also HOLD. No implicit ancestry inference or
+cross-owner permission exists.
+
+A valid internally consistent pair returns the explicit
+`PR_SNAPSHOT_V3_REPO_BOUND_DOUBLE_READ` `REVIEW_ONLY` status with **exit 3**
+and deterministic advisory waves. Any mismatch, missing/ambiguous context or
+unsupported identity returns `HOLD` with **exit 2**; all nine safety and
+source-authentication flags **always false**, and never exit 0.
+`input_sha256` binds the raw V3 bytes; `derived_graph_sha256` binds the
+canonically sorted *repository + root ref + per-PR SHA and ref context*.
+Different case-sensitive repo or root branch claims change the derived
+fingerprint even if the same PR numbers and SHA waves occur. Neither digest
+establishes authenticity, completeness, reviewer consent, Git ancestry,
+mergeability, execution authority or production-readiness.
+
+**Actual read-only GitHub check on 2026-10-17:** PR #1550 was observed with
+head repository `Zennay/Lightup`, base `main`, and head ref
+`chatgpt/scope-1549-pr-dependency-topology-20261017`; PR #1548 had the
+same repository but base `claude/lightup-leap` and a separate head ref.
+The untrusted normalized V3 observation of #1550 alone was `REVIEW_ONLY`
+exit 3. Mutating only the head ref to #1548's observed ref, or swapping a
+claimed repository/base branch, returned `HOLD` exit 2 with all flags
+false. This is an **observed current-metadata demonstration only**, not
+a live or persistent GitHub authority gate.
+
+Isolated tests exercise 64-node stacked and parallel PR graphs, benign
+reordering, fake forks, case drift, missing refs, unsafe branch syntax,
+real child processes, oversize input, unchanged SHA with changed ref,
+and exact scope/fingerprint boundaries. All tests run in the own hosted
+Python3.11/3.14 workflow; permanent named VPS release evidence and all
+real authorization requirements remain independently blocked.
