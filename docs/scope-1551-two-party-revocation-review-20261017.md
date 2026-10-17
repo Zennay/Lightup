@@ -87,3 +87,17 @@ Original failing cases (a symlinked parent and a dot component) were reproduced 
 Previously the own offline hosted review job used floating actions/checkout@v5 and actions/setup-python@v6 action tags. On the connected zSSH host, read-only git ls-remote of the two upstream tag refs recorded checkout v5 as fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 and setup-python v6 as ece7cb06caefa5fff74198d8649806c4678c61a1. Our own hosted-only workflow now pins these exact 40-character Git commit objects. A dedicated regression rejects floating action tags and verifies both pins remain literal.
 
 The workflow still admits only owner same-repository pull requests and exact PR head, has read-only repository permissions, checkout credentials are not persisted, Python 3.11/3.14 hosted tests remain isolated from the permanent VPS queue. Pinning action commits reduces floating supply-chain drift; it is not proof of any client's authorization or release approval.
+
+## W8: independent SHA-pinned fictional revocation journal (read-only, unwired)
+
+An untrusted timeline can claim empty revocations even when a separately supplied journal contains an adverse event. New offline script: scripts/review_scope_revocation_journal_1551_offline.py; reads a detached local regular journal, requires an independently retained SHA-256 of **raw journal bytes**, and binds the same fictional scope document and timeline via the existing no-symlink path walker. No remote revocation service or real target is contacted.
+
+CLI, fictional local files only:
+
+    python3 -I -S -B scripts/review_scope_revocation_journal_1551_offline.py --scope-document /path/to/fictional-scope.txt --revocation-journal /path/to/fictional-revocations.json --expected-journal-sha256 <independent-lowercase-sha256> < fictional-timeline.json
+
+Journal v1 has exactly: schema_version integer 1, proposal_sha, scope_sha256, through_at, principals map with exact client and operator IDs, covered_sequence strict int 1-65535, and events array. Proposal, scope digest, both principals and timestamp must exactly match the validated final timeline packet. Coverage must include the last consent event sequences. Any event (including malformed, old or unknown) results in HOLD. Empty events are only internally consistent, not evidence of completeness.
+
+Raw journal <=32 KiB, strictly typed keys, no duplicate JSON names or escaped aliases. Hash must exactly match an independently stored lowercase SHA-256 pin. Misbound, stale, altered, replaced, oversized, missing, symlinked or FIFO files, unsupported flags and any revocation fail closed. All output is privacy-minimal; eight authority/dispatch/scan/release flags always false; process exits REVIEW_ONLY=3 or HOLD=2, never 0. The original original scope document remains <=64 KiB; input timeline remains <=128 KiB.
+
+Negative regression demonstrates revocation deletion with an old externally held journal pin yields HOLD. Recalculating the digest of an attacker-supplied empty journal may yield REVIEW_ONLY, but still never conveys consent, authenticated actors, durable custody, real-time revocation completeness or execution authority. Mandatory governance and release gate remain DRAFT/HOLD.

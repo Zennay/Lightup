@@ -6,9 +6,11 @@ on:
       - 'scripts/review_scope_consent_revocation_1551_offline.py'
       - 'scripts/review_scope_consent_timeline_1551_offline.py'
       - 'scripts/review_scope_document_binding_1551_offline.py'
+      - 'scripts/review_scope_revocation_journal_1551_offline.py'
       - 'tests/test_scope_consent_revocation_1551_offline.py'
       - 'tests/test_scope_consent_timeline_1551_offline.py'
       - 'tests/test_scope_document_binding_1551_offline.py'
+      - 'tests/test_scope_revocation_journal_1551_offline.py'
       - 'docs/scope-1551-two-party-revocation-review-20261017.md'
       - '.github/workflows/scope-1551-consent-revocation-offline.yml'
 
@@ -51,9 +53,11 @@ jobs:
             scripts/review_scope_consent_revocation_1551_offline.py \
             scripts/review_scope_consent_timeline_1551_offline.py \
             scripts/review_scope_document_binding_1551_offline.py \
+            scripts/review_scope_revocation_journal_1551_offline.py \
             tests/test_scope_consent_revocation_1551_offline.py \
             tests/test_scope_consent_timeline_1551_offline.py \
-            tests/test_scope_document_binding_1551_offline.py | sort > /tmp/lightup1551.expected
+            tests/test_scope_document_binding_1551_offline.py \
+            tests/test_scope_revocation_journal_1551_offline.py | sort > /tmp/lightup1551.expected
           diff -u /tmp/lightup1551.expected /tmp/lightup1551.actual
           while IFS= read -r path; do
             test "$(git ls-tree HEAD -- "$path" | cut -d ' ' -f1)" = 100644
