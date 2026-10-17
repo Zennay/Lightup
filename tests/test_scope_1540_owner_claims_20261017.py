@@ -99,10 +99,12 @@ class WorkerOwnershipTests(unittest.TestCase):
                 doc["ownership"][1]["paths"][0] = bad
                 self.assertEqual(owner.check(encoded(doc)), "HOLD")
 
-    def test_siblings_under_same_directory_can_review(self):
+    def test_noncritical_path_outside_protected_tree_can_review(self):
+        # src/lightup itself is now unconditionally HOLD even where the
+        # caller's narrow source-path inventory is incomplete.
         doc = copy.deepcopy(GOOD)
-        doc["reviews"][1]["compare"]["files"][0]["filename"] = "src/lightup/offline_fake.py"
-        doc["ownership"][1]["paths"][0] = "src/lightup/offline_fake.py"
+        doc["reviews"][1]["compare"]["files"][0]["filename"] = "src/fictional_tools/offline_fake.py"
+        doc["ownership"][1]["paths"][0] = "src/fictional_tools/offline_fake.py"
         self.assertEqual(owner.check(encoded(doc)), "REVIEW_ONLY")
 
     def test_wrong_worker_or_head_binding_holds(self):
