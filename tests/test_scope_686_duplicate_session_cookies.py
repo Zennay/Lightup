@@ -318,6 +318,32 @@ class DuplicateSessionCookieAcceptance(unittest.TestCase):
                     (name, message[:100]),
                 )
 
+    def test_authenticate_only_repair_is_insufficient_for_public_login(self):
+        # Mutation control: returning ANONYMOUS for duplicate credentials
+        # during _authenticate() does not prevent a public login from
+        # creating a session; it also happens after read_form().
+        raw_authenticate = self.app._authenticate
+
+        def inadequate_auth_only(environ):
+            raw = environ.get("HTTP_COOKIE", "")
+            occurrences = sum(
+                part.partition("=")[0].strip() == "lightup_session"
+                for part in raw.split(";")
+            ) if isinstance(raw, str) else 0
+            if occurrences > 1:
+                return ANONYMOUS
+            return raw_authenticate(environ)
+
+        with patch.object(self.app, "_authenticate", side_effect=inadequate_auth_only):
+            with self.assertRaises(AssertionError):
+                self.test_red_duplicate_public_login_must_not_issue_fresh_session()
+            with self.assertRaises(AssertionError) as rejected:
+                self.test_red_duplicate_denial_precedes_body_read_and_handler()
+            self.assertIn("request body read before cookie rejection",
+                          str(rejected.exception))
+        self.assertIsNotNone(self.store.session_context(self.operator_token))
+        self.assertIsNotNone(self.store.session_context(self.client_token))
+
     def test_owner_fix_rehearsal_turns_thirteen_original_source_reds_green(self):
         # A *test-local witness only*, not a production parser or a wired
         # middleware: reproduces the narrowly specified duplicate count
