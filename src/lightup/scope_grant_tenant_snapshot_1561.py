@@ -56,6 +56,9 @@ def _receipt(reason: str, coherent: int = 0, mismatch: int = 0,
              unbound_engagements: int = 0, engagements_checked: int = 0) -> dict:
     assert reason in _ALLOWED_REASON
     return {
+        # Explicit schema epoch prevents old consumers silently mistaking the
+        # expanded three-table receipt for the previous two-table contract.
+        "receipt_version": 2,
         "status": "REVIEW_ONLY" if reason == "coherent_offline_snapshot" else "HOLD",
         "reason": reason,
         "coherent": coherent,
