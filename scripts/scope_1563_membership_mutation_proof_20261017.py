@@ -297,6 +297,17 @@ def baseline_is_strictly_green(result: unittest.TestResult) -> bool:
     )
 
 
+def source_test_method(case) -> str | None:
+    """Use the unittest object identity, never printable subTest parameters.
+
+    str(_SubTest) includes untrusted subTest parameters which can contain a
+    security method name unrelated to the genuinely failing method.
+    """
+    parent = getattr(case, "test_case", case)
+    name = getattr(parent, "_testMethodName", None)
+    return name if type(name) is str else None
+
+
 def mutation_subcases_valid(result: unittest.TestResult) -> bool:
     """Early assertion failure may truncate nested cases only in its own test.
 
@@ -311,8 +322,7 @@ def mutation_subcases_valid(result: unittest.TestResult) -> bool:
         return False
     failed_methods = set()
     for case, _details in result.failures:
-        parent = getattr(case, "test_case", case)
-        name = getattr(parent, "_testMethodName", None)
+        name = source_test_method(case)
         if name in REQUIRED_TEST_METHODS:
             failed_methods.add(name)
     for name, expected in EXPECTED_CASE_COUNTS.items():
@@ -339,7 +349,9 @@ def mutation_detected(result: unittest.TestResult, expected_test_prefix: str) ->
     if not all("AssertionError:" in detail for _, detail in result.failures):
         return False
     return any(
-        expected_test_prefix in str(case) for case, _ in result.failures
+        (method := source_test_method(case)) is not None
+        and method.startswith(expected_test_prefix)
+        for case, _ in result.failures
     )
 
 
