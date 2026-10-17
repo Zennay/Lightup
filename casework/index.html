@@ -11,6 +11,14 @@
 <div class="panel"><h3>Resume your saved casework</h3><p class="small">Open a JSON draft previously exported from this page. The saved file includes finding summaries and unverified local edits. Verify its source before sharing or using it.</p><label for="caseworkSource">Saved remediation casework JSON</label><input type="file" accept=".json,application/json" id="caseworkSource"><p class="small">Up to 2 MiB per saved draft. No remote upload or persistent browser storage.</p></div>
 </div><p id="status" role="status" aria-live="polite">No findings loaded.</p>
 <div class="buttons actions"><button id="save" class="primary" disabled>Save casework JSON</button><button id="exportCSV" disabled>Export action register CSV</button><button id="exportMD" disabled>Export remediation brief Markdown</button><button id="print" disabled>Print plan</button><button id="reset" type="button">Clear workspace</button></div></section>
+<section class="section inputs"><h2>Refresh from a newer approved findings export</h2>
+<p>Compare a new LightUp CSV with the currently loaded source. Changed findings reset to an unassigned local action so old notes cannot silently masquerade as current retest evidence. Missing findings are <strong>not</strong> considered fixed. The prior source is never contacted.</p>
+<label for="refreshSource">New finding summary CSV for the same verified client/engagement</label>
+<input type="file" accept=".csv,text/csv" id="refreshSource">
+<div id="refreshReview" class="panel"><p>Load a casework source first, then select a newer LightUp CSV. Added, removed and changed source findings will be listed here.</p></div>
+<label><input id="sameSource" type="checkbox" style="width:auto;margin-right:8px">I independently checked that both exports originate from the same authorized client and assessment engagement. This declaration is not authentication.</label>
+<div class="buttons actions"><button id="applyRefresh" type="button" disabled>Apply reviewed source refresh</button><button id="cancelRefresh" type="button">Discard refresh preview</button></div>
+</section>
 <section class="section"><h2>2 · Prioritize and coordinate</h2>
 <div class="stats"><div class="stat"><strong id="total">0</strong>Imported findings</div><div class="stat"><strong id="urgent">0</strong>Critical / high</div><div class="stat"><strong id="open">0</strong>Open in plan</div><div class="stat"><strong id="blocked">0</strong>Blocked</div><div class="stat"><strong id="overdue">0</strong>Overdue</div><div class="stat"><strong id="retest">0</strong>Ready for retest</div></div>
 <div class="filter actions">
