@@ -7,6 +7,9 @@ from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime, timezone, timedelta
 import re
 import socket
+import signal
+import time
+import threading
 import subprocess
 import sys
 import unittest
@@ -298,6 +301,73 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
                 self.assertNotIn("PRIVATE-SCOPE-OUTPUT", json.dumps(receipt))
                 self.assert_no_authority(receipt)
                 self.assertEqual(witness.evaluate()["status"], "REVIEW_ONLY")
+
+    def test_stalled_scope_decision_has_bounded_wall_clock_and_hold(self):
+        # A buggy in-process evaluator must not hang offline review forever.
+        if not hasattr(signal, "setitimer") or threading.current_thread() is not threading.main_thread():
+            self.skipTest("POSIX main-thread alarm required")
+        if signal.getsignal(signal.SIGALRM) != signal.SIG_DFL or any(signal.getitimer(signal.ITIMER_REAL)):
+            self.skipTest("external alarm is active")
+        def stuck(self, target):
+            time.sleep(7)
+            raise AssertionError("deadline was not enforced")
+        before = time.monotonic()
+        with patch.object(witness.ScopePolicy, "decide", stuck):
+            result = witness.evaluate()
+        elapsed = time.monotonic() - before
+        self.assertLess(elapsed, 4.5)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "offline_witness_time_budget_exceeded")
+        self.assert_no_authority(result)
+        self.assertEqual(witness.evaluate()["status"], "REVIEW_ONLY")
+
+    def test_external_signal_handler_and_alarm_are_never_overwritten(self):
+        if not hasattr(signal, "setitimer") or threading.current_thread() is not threading.main_thread():
+            self.skipTest("POSIX main-thread alarm required")
+        if signal.getsignal(signal.SIGALRM) != signal.SIG_DFL or any(signal.getitimer(signal.ITIMER_REAL)):
+            self.skipTest("external alarm is active")
+        calls = []
+        def external_handler(sig, frame):
+            calls.append(sig)
+        def forbidden_decide(self, target):
+            calls.append("decision")
+            raise AssertionError("conflicting alarm must deny before policy call")
+        signal.signal(signal.SIGALRM, external_handler)
+        try:
+            with patch.object(witness.ScopePolicy, "decide", forbidden_decide):
+                result = witness.evaluate()
+            self.assertEqual(result["status"], "HOLD")
+            self.assertEqual(result["reason"], "offline_witness_time_fence_unavailable")
+            self.assertEqual(calls, [])
+            self.assertIs(signal.getsignal(signal.SIGALRM), external_handler)
+        finally:
+            signal.signal(signal.SIGALRM, signal.SIG_DFL)
+        self.assert_no_authority(result)
+        self.assertEqual(witness.evaluate()["status"], "REVIEW_ONLY")
+
+    def test_worker_thread_without_exclusive_alarm_returns_hold(self):
+        outputs = []
+        def worker():
+            outputs.append(witness.evaluate())
+        t = threading.Thread(target=worker, daemon=True)
+        t.start()
+        t.join(2)
+        self.assertFalse(t.is_alive(), "worker must never wait for an unavailable timer")
+        self.assertEqual(len(outputs), 1)
+        self.assertEqual(outputs[0]["status"], "HOLD")
+        self.assertEqual(outputs[0]["reason"], "offline_witness_time_fence_unavailable")
+        self.assert_no_authority(outputs[0])
+
+    def test_clean_evaluation_does_not_keep_or_change_global_alarm(self):
+        if not hasattr(signal, "setitimer") or threading.current_thread() is not threading.main_thread():
+            self.skipTest("POSIX main-thread alarm required")
+        if signal.getsignal(signal.SIGALRM) != signal.SIG_DFL or any(signal.getitimer(signal.ITIMER_REAL)):
+            self.skipTest("external alarm is active")
+        old_handler = signal.getsignal(signal.SIGALRM)
+        old_timer = signal.getitimer(signal.ITIMER_REAL)
+        self.assertEqual(witness.evaluate()["status"], "REVIEW_ONLY")
+        self.assertEqual(signal.getsignal(signal.SIGALRM), old_handler)
+        self.assertEqual(signal.getitimer(signal.ITIMER_REAL), old_timer)
 
     def test_no_network_socket_or_dns_is_necessary(self):
         with (patch.object(socket, "socket", side_effect=AssertionError("network invoked")),
