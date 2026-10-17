@@ -228,6 +228,20 @@ DOWNSTREAM_MUTATIONS = (
 
 
 
+
+def baseline_is_strictly_green(result: unittest.TestResult) -> bool:
+    """A test reclassified as skipped/expectedFailure is unresolved RED, not green."""
+    return (
+        result.testsRun == len(REQUIRED_TEST_METHODS)
+        and result.wasSuccessful()
+        and not result.failures
+        and not result.errors
+        and not result.skipped
+        and not result.expectedFailures
+        and not result.unexpectedSuccesses
+    )
+
+
 def mutation_detected(result: unittest.TestResult, expected_test_prefix: str) -> bool:
     """Only real AssertionError safety denials count as killing a mutation.
 
@@ -252,11 +266,12 @@ def main() -> int:
         print("HOLD: required membership safety test manifest is incomplete or substituted")
         return 2
     baseline = run_suite()
-    if not baseline.wasSuccessful() or baseline.testsRun != len(REQUIRED_TEST_METHODS):
+    if not baseline_is_strictly_green(baseline):
         print(
             "HOLD: all 16 negative regressions must pass first; "
             f"ran={baseline.testsRun} failures={len(baseline.failures)} "
-            f"errors={len(baseline.errors)}"
+            f"errors={len(baseline.errors)} "
+            f"skipped={len(baseline.skipped)} expected_red={len(baseline.expectedFailures)}"
         )
         return 2
 
