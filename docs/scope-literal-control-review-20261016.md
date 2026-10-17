@@ -221,3 +221,41 @@ Still strictly **DRAFT/HOLD, PLAN/LAB ONLY, non-authorizing**. The AST check
 does not attest dynamic code, real consent, release readiness, full original
 hosted CI or a registered permanent VPS runner; source-owner #1289 / PR #1290
 remains responsible for production admission. No merge/deploy/scan/grant.
+
+## W35–W38 — fail-closed checkout and test-proof integrity (17 October 2026)
+
+The Git additivity checker previously inspected the committed Git tree but
+could report PASS when the *actual tested checkout* contained unstaged,
+staged or untracked changes. It now checks Git porcelain-v1 `-z` with
+`--untracked-files=all` and requires exact empty output with exit 0;
+all dirty/error output yields HOLD. Synthetic tests reproduced the original
+false-PASS and now assert generic HOLD for all three states. An ignored
+file alone is not part of this proof and is not treated as clean-source
+verification; this does not replace independent build provenance.
+
+The private branch-specific hosted workflow re-runs the same exact checkout
+purity proof *after* all offline tests and CLI checks (in addition to before).
+A dedicated test pins the post-run step position; no extra runner type,
+privilege, secret or release workflow was introduced.
+
+The self-validating isolated test manifest additionally locks seven named
+safety-sentinel test IDs. Replacement by new dummy tests within the same
+module no longer permits a misleading PASS despite unchanged total count;
+six negative cases were reproduced before the fix. Exactly four known
+original-source expectedFailures remain open and are never promoted.
+
+Finally the checker distinguishes the exact owned local branch from a
+GitHub-hosted detached checkout: hosted proof requires the exact push event,
+owner branch ref and matching pushed HEAD SHA. An unrelated PR merge ref,
+wrong SHA or other local branch fails closed. A synthetic end-to-end main()
+test asserts a correct detached push succeeds and three falsified contexts
+HOLD; no real Git tree, remote, target or network was changed by that test.
+
+The own offline suite threshold is **117** (113 ordinary PASS + four
+original expectedFailures on local Python 3.14 before exact-head CI).
+All changes remain ONLY in own originally added scripts/tests/workflow
+and documentation. This is a test-evidence integrity upgrade, **not**
+production source-authority repair, complete original hosted CI, permanent
+named runner attestation or human release GO. Still **INCUBATE M3/M7,
+PLAN/LAB ONLY, DRAFT/HOLD — NO MERGE / DEPLOY / REAL TARGETS / SCANS /
+GRANTS / HANDLER DISPATCH / RELEASE**.

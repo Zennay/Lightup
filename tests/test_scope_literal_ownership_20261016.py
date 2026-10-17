@@ -136,6 +136,47 @@ class AdditiveOwnershipTests(unittest.TestCase):
                 altered = dict(ci, **{key: invalid})
                 self.assertFalse(guard.branch_identity(ref(b"", 1), head, altered))
 
+    def test_end_to_end_hosted_detached_push_proof(self):
+        # Synthetic end-to-end main() proof; never changes Git or checks out a
+        # repository. A PR merge ref / mismatched SHA cannot validate.
+        from unittest.mock import patch
+        from subprocess import CompletedProcess
+        import io
+        from contextlib import redirect_stdout
+        delta = evidence((("A", "tests/test_scope_literal_ownership_20261016.py"),))
+        paths = set(guard.OWNED_EXACT) | {"tests/test_scope_literal_ownership_20261016.py"}
+        git_tree = b"".join(
+            b"100644 blob " + b"a" * 40 + b"\t" + name.encode() + b"\0"
+            for name in sorted(paths)
+        )
+        def fake_git(*args):
+            values = {
+                "merge-base": b"",
+                "rev-parse": b"a" * 40 + b"\n",
+                "diff": delta,
+                "ls-tree": git_tree,
+                "status": b"",
+                "symbolic-ref": b"",
+            }
+            return CompletedProcess(args, 1 if args[0] == "symbolic-ref" else 0, values[args[0]], b"")
+        good = {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_EVENT_NAME": "push",
+            "GITHUB_REF": "refs/heads/" + guard.EXPECTED_BRANCH,
+            "GITHUB_SHA": "a" * 40,
+        }
+        with patch.object(guard, "_git", side_effect=fake_git):
+            for altered, expected in (
+                (good, 0),
+                (dict(good, GITHUB_SHA="b" * 40), 1),
+                (dict(good, GITHUB_EVENT_NAME="pull_request"), 1),
+                (dict(good, GITHUB_REF="refs/pull/42/merge"), 1),
+            ):
+                with self.subTest(environment=altered):
+                    with patch.dict(guard.os.environ, altered, clear=True):
+                        with redirect_stdout(io.StringIO()):
+                            self.assertEqual(guard.main(), expected)
+
     def test_missing_required_worker_files_is_hold(self):
         for required in guard.OWNED_EXACT:
             with self.subTest(path=required):
