@@ -317,3 +317,59 @@ class GitRangeEndToEndTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GitPathIdentityTests(unittest.TestCase):
+    """Exact path identity for non-ASCII, TAB, glob and invalid-UTF-8 names (#1541)."""
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory(prefix="lightup-paths-")
+        self.addCleanup(temp.cleanup)
+        self.repo = Path(temp.name)
+        _git(self.repo, "init", "-q", "-b", "main")
+
+    def _commit(self, message):
+        _git(self.repo, "add", "-A")
+        _git(self.repo, "commit", "-qm", message)
+
+    def test_unicode_tab_glob_and_rename_paths_keep_their_patch(self):
+        names = ["café.py", "t\tab.py", "glob[*].py", "old ñame.py"]
+        for name in names:
+            (self.repo / name).write_text("x = 1\n" * 5)
+        self._commit("base")
+        for name in names[:3]:
+            (self.repo / name).write_text("x = 1\n" * 4 + "x = 2\n")
+        (self.repo / "old ñame.py").rename(self.repo / "new ñame.py")
+        self._commit("head")
+        files = {f["filename"]: f for f in
+                 collect_git_range(self.repo, "HEAD~1", "HEAD", repository="a/b").files}
+        self.assertEqual(set(files), {"café.py", "t\tab.py", "glob[*].py", "new ñame.py"})
+        for name in names[:3]:
+            self.assertEqual(files[name]["additions"], 1, name)
+            self.assertIn("+x = 2", files[name]["patch"], name)
+        self.assertEqual(files["new ñame.py"]["status"], "renamed")
+        self.assertEqual(files["new ñame.py"]["previous_filename"], "old ñame.py")
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "needs byte filenames")
+    def test_invalid_utf8_paths_fail_closed(self):
+        (self.repo / "ok.py").write_text("x = 1\n")
+        self._commit("base")
+        for raw in (b"\xff.py", b"\xfe.py"):
+            with open(os.path.join(os.fsencode(self.repo), raw), "w") as handle:
+                handle.write("y = 1\n")
+        self._commit("head")
+        with self.assertRaises(GitChangeError):
+            collect_git_range(self.repo, "HEAD~1", "HEAD", repository="a/b")
+
+    def test_parsers_reject_malformed_and_duplicate_records(self):
+        from lightup.git_changes import _parse_name_status, _parse_numstat
+
+        self.assertEqual(_parse_numstat(b"1\t2\tcaf\xc3\xa9.py\x003\t0\t\x00a\x00b\x00"),
+                         {"café.py": (1, 2), "b": (3, 0)})
+        self.assertEqual(_parse_numstat(b"-\t-\tbin.png\x00"), {"bin.png": (None, None)})
+        for bad in (b"garbage\x00", b"1\t2\t\x00only-old\x00", b"1\t1\ta\x001\t1\ta\x00"):
+            with self.subTest(numstat=bad), self.assertRaises(GitChangeError):
+                _parse_numstat(bad)
+        for bad in (b"M\x00", b"R100\x00a\x00", b"M\x00a\x00M\x00a\x00"):
+            with self.subTest(status=bad), self.assertRaises(GitChangeError):
+                _parse_name_status(bad)

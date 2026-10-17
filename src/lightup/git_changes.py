@@ -50,7 +50,7 @@ def _validate_ref(ref: str) -> str:
     return ref
 
 
-def _git(repo: Path, *args: str, check: bool = True) -> str:
+def _git_bytes(repo: Path, *args: str, check: bool = True) -> bytes:
     try:
         completed = subprocess.run(
             ["git", "-C", str(repo), *args],
@@ -61,7 +61,72 @@ def _git(repo: Path, *args: str, check: bool = True) -> str:
     if check and completed.returncode != 0:
         message = completed.stderr.decode("utf-8", "replace").strip()
         raise GitChangeError(f"git {args[0]} failed: {message[:300]}")
-    return completed.stdout.decode("utf-8", "replace")
+    return completed.stdout
+
+
+def _git(repo: Path, *args: str, check: bool = True) -> str:
+    return _git_bytes(repo, *args, check=check).decode("utf-8", "replace")
+
+
+def _path(raw: bytes) -> str:
+    """Decode one NUL-delimited git path exactly; never substitute bytes."""
+    try:
+        path = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        raise GitChangeError("changed path is not valid UTF-8; refusing to guess its identity") from None
+    if not path:
+        raise GitChangeError("git reported an empty changed path")
+    return path
+
+
+def _parse_numstat(output: bytes) -> dict[str, tuple[int | None, int | None]]:
+    """Parse ``git diff --numstat -z`` (renames are ``a\tr\t\0old\0new\0``)."""
+    tokens = output.split(b"\0")
+    if tokens and tokens[-1] == b"":
+        tokens.pop()
+    result: dict[str, tuple[int | None, int | None]] = {}
+    index = 0
+    while index < len(tokens):
+        fields = tokens[index].split(b"\t", 2)
+        if len(fields) != 3:
+            raise GitChangeError("malformed git numstat record")
+        added, removed, name = fields
+        if name:
+            path, index = _path(name), index + 1
+        else:
+            if index + 2 >= len(tokens):
+                raise GitChangeError("truncated git numstat rename record")
+            path, index = _path(tokens[index + 2]), index + 3
+        if path in result:
+            raise GitChangeError(f"duplicate git numstat path {path!r}")
+        result[path] = (
+            int(added) if added.isdigit() else None,
+            int(removed) if removed.isdigit() else None,
+        )
+    return result
+
+
+def _parse_name_status(output: bytes) -> list[tuple[str, str | None, str]]:
+    """Parse ``git diff --name-status -z`` into (letter, previous, path)."""
+    tokens = output.split(b"\0")
+    if tokens and tokens[-1] == b"":
+        tokens.pop()
+    entries: list[tuple[str, str | None, str]] = []
+    seen: set[str] = set()
+    index = 0
+    while index < len(tokens):
+        letter = tokens[index][:1].decode("ascii", "replace")
+        width = 3 if letter in {"R", "C"} else 2
+        if index + width > len(tokens):
+            raise GitChangeError("truncated git name-status record")
+        previous = _path(tokens[index + 1]) if width == 3 else None
+        path = _path(tokens[index + width - 1])
+        if path in seen:
+            raise GitChangeError(f"duplicate git name-status path {path!r}")
+        seen.add(path)
+        entries.append((letter, previous, path))
+        index += width
+    return entries
 
 
 def _resolve(repo: Path, ref: str) -> str:
@@ -109,39 +174,21 @@ def collect_git_range(
     if base_sha == head_sha:
         raise GitChangeError("base and head resolve to the same commit; nothing to review")
 
-    numstat: dict[str, tuple[int | None, int | None]] = {}
-    for line in _git(repo, "diff", "--numstat", "-M", "--no-color", base_sha, head_sha).splitlines():
-        parts = line.split("\t")
-        if len(parts) < 3:
-            continue
-        added, removed, name = parts[0], parts[1], parts[-1]
-        if " => " in name:
-            name = _rename_target(name)
-        numstat[name] = (
-            int(added) if added.isdigit() else None,
-            int(removed) if removed.isdigit() else None,
-        )
-
-    status_out = _git(repo, "diff", "--name-status", "-M", "-z", "--no-color", base_sha, head_sha)
-    tokens = [token for token in status_out.split("\0") if token]
+    numstat = _parse_numstat(_git_bytes(
+        repo, "diff", "--numstat", "-M", "-z", "--no-color", base_sha, head_sha))
+    entries = _parse_name_status(_git_bytes(
+        repo, "diff", "--name-status", "-M", "-z", "--no-color", base_sha, head_sha))
+    if set(numstat) != {path for _letter, _previous, path in entries}:
+        raise GitChangeError("git numstat and name-status disagree on the changed paths")
     files: list[dict[str, Any]] = []
     deltas: dict[str, StructuredDocumentDelta] = {}
-    index = 0
-    while index < len(tokens):
-        code = tokens[index]
-        letter = code[:1]
-        if letter in {"R", "C"}:
-            previous, path = tokens[index + 1], tokens[index + 2]
-            index += 3
-        else:
-            previous, path = None, tokens[index + 1]
-            index += 2
+    for letter, previous, path in entries:
         status = _STATUS.get(letter)
         if status is None:
             continue
-        added, removed = numstat.get(path, (None, None))
+        added, removed = numstat[path]
         patch = _git(
-            repo, "diff", "--no-color", "--no-ext-diff", "-U3", "-M",
+            repo, "--literal-pathspecs", "diff", "--no-color", "--no-ext-diff", "-U3", "-M",
             base_sha, head_sha, "--", *(p for p in (previous, path) if p),
         )
         record: dict[str, Any] = {
@@ -169,15 +216,6 @@ def collect_git_range(
         files=tuple(files),
         structured_deltas=deltas,
     )
-
-
-def _rename_target(name: str) -> str:
-    # "dir/{old => new}/file" or "old => new"
-    brace = re.match(r"^(.*)\{(.*) => (.*)\}(.*)$", name)
-    if brace:
-        prefix, _, new, suffix = brace.groups()
-        return (prefix + new + suffix).replace("//", "/")
-    return name.split(" => ", 1)[1]
 
 
 def _strip_headers(patch: str) -> str:
