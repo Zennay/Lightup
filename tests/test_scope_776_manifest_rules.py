@@ -43,11 +43,11 @@ class OfflineCompositionManifestRules(unittest.TestCase):
     @staticmethod
     def fake_git(*args):
         if args[:2] == ("diff", "--name-status"):
-            return "".join("A\\t" + path + "\\n" for path in
+            return "".join("A\t" + path + "\n" for path in
                            checker.OWN_PATHS).encode("utf-8")
         if args[:2] == ("ls-tree", "HEAD"):
             return ("100644 blob " + "0" * 40 +
-                    "\\t" + args[-1] + "\\n").encode("utf-8")
+                    "\t" + args[-1] + "\n").encode("utf-8")
         if args and args[0] == "ls-tree":
             return b""
         if args and args[0] == "status":
@@ -109,7 +109,7 @@ class OfflineCompositionManifestRules(unittest.TestCase):
 
         def tamper(*args):
             if args[:2] == ("diff", "--name-status"):
-                return original(*args) + b"M\\tsrc/lightup/domain.py\\n"
+                return original(*args) + b"M\tsrc/lightup/domain.py\n"
             return original(*args)
 
         with patch.object(checker, "git", side_effect=tamper):
@@ -120,7 +120,7 @@ class OfflineCompositionManifestRules(unittest.TestCase):
 
         def tamper(*args):
             if args[:2] == ("diff", "--name-status"):
-                return original(*args).replace(b"A\\ttests/", b"M\\ttests/", 1)
+                return original(*args).replace(b"A\ttests/", b"M\ttests/", 1)
             return original(*args)
 
         with patch.object(checker, "git", side_effect=tamper):
