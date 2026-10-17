@@ -35,6 +35,10 @@ jobs:
           persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+      - name: Python runtime
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
       - name: Pin branch and independent owner fixture
         env:
           EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -63,10 +67,6 @@ jobs:
           test "$(git diff --name-only)" = "$(printf '%s\n%s' "$OWNER_WARNING_PATH" "$OWNER_TEST_PATH")"
           git diff --check
           printf 'BASE_HEAD=%s\nCOMPOSED_FIXTURE_SHA=%s\nTEMPORARY_OWNER_FIXTURE=%s\n' "$EXACT_HEAD" "$EXACT_OWNER_SHA" "$OWNER_TEST_PATH"
-      - name: Python runtime
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python }}
       - name: Prove pure offline acceptance and test-suite mutation sensitivity
         env:
           PYTHONPATH: src:tests
