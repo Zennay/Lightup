@@ -267,6 +267,104 @@ class InstalledBridgeTest(unittest.TestCase):
         )
         self.assert_fence(bridge.preview(packet(), r), "REVIEW_ONLY")
 
+    def test_duplicate_hunk_coordinates_reject_before_source_adapter(self):
+        r = records()
+        r[0]["status"] = "modified"
+        r[0]["additions"] = 2
+        r[0]["patch"] = (
+            "@@ -1 +1 @@\n-old\n+new\n"
+            "@@ -1 +1 @@\n-old\n+new\n"
+        )
+        r[0]["deletions"] = 2
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_hunk_old_coordinates_out_of_order_reject(self):
+        r = records()
+        r[0]["status"] = "modified"
+        r[0]["additions"] = 2
+        r[0]["deletions"] = 2
+        r[0]["patch"] = (
+            "@@ -15 +15 @@\n-old\n+new\n"
+            "@@ -5 +5 @@\n-old\n+new\n"
+        )
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_hunk_new_coordinates_out_of_order_reject(self):
+        r = records()
+        r[0]["status"] = "modified"
+        r[0]["additions"] = 2
+        r[0]["deletions"] = 2
+        r[0]["patch"] = (
+            "@@ -5 +15 @@\n-old\n+new\n"
+            "@@ -15 +5 @@\n-old\n+new\n"
+        )
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_mismatched_unchanged_gaps_are_hold(self):
+        r = records()
+        r[0]["status"] = "modified"
+        r[0]["additions"] = 2
+        r[0]["deletions"] = 2
+        r[0]["patch"] = (
+            "@@ -1 +1 @@\n-old\n+new\n"
+            "@@ -11 +80 @@\n-old\n+new\n"
+        )
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_first_nonzero_hunk_span_cannot_start_at_zero(self):
+        r = records()
+        r[0]["patch"] = "@@ -0,1 +1 @@\n+permissions: write-all\n"
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_added_status_cannot_remove_existing_lines(self):
+        r = records()
+        r[0]["patch"] = "@@ -1 +1 @@\n-old\n+new\n"
+        r[0]["deletions"] = 1
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_removed_status_cannot_add_new_lines(self):
+        r = records()
+        r[0]["status"] = "removed"
+        r[0]["patch"] = "@@ -1 +1 @@\n-old\n+new\n"
+        r[0]["deletions"] = 1
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_added_status_requires_zero_old_side_and_zero_deletions(self):
+        r = records()
+        r[0]["status"] = "added"
+        r[0]["patch"] = "@@ -10,0 +11 @@\n+permissions: write-all\n"
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_removed_status_requires_zero_new_side_and_zero_additions(self):
+        r = records()
+        r[0]["status"] = "removed"
+        r[0]["additions"] = 0
+        r[0]["deletions"] = 1
+        r[0]["patch"] = "@@ -1 +2,0 @@\n-old\n"
+        # A single removal is only coherent at the start of the deleted file.
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_zero_range_multi_hunk_reuse_reject(self):
+        r = records()
+        r[0]["status"] = "modified"
+        r[0]["additions"] = 2
+        r[0]["patch"] = (
+            "@@ -0,0 +1 @@\n+first\n"
+            "@@ -0,0 +3 @@\n+second\n"
+        )
+        self.assert_rejected_before_adapter(packet(), r)
+
+    def test_legitimate_sparse_hunks_are_still_review_only(self):
+        r = records()
+        r[0]["status"] = "modified"
+        r[0]["additions"] = 2
+        r[0]["deletions"] = 1
+        r[0]["patch"] = (
+            "@@ -1 +1,2 @@\n-old\n+new\n+more\n"
+            "@@ -10 +11 @@\n unchanged\n"
+        )
+        self.assert_fence(bridge.preview(packet(), r), "REVIEW_ONLY")
+
     def test_caller_input_purity(self):
         p, r = packet(), records()
         before = copy.deepcopy((p, r))
