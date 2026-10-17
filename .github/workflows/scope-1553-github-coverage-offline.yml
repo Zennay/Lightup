@@ -7,6 +7,8 @@ on:
       - tests/test_scope_github_file_coverage_1553.py
       - src/lightup/scope_github_coverage_adapter_1553.py
       - tests/test_scope_github_coverage_adapter_1553.py
+      - src/lightup/scope_github_pr_pages_1553.py
+      - tests/test_scope_github_pr_pages_1553.py
       - docs/scope-github-file-coverage-1553.md
       - .github/workflows/scope-1553-github-coverage-offline.yml
   workflow_dispatch:
@@ -43,10 +45,12 @@ jobs:
           test -f tests/test_scope_github_file_coverage_1553.py
           test -f src/lightup/scope_github_coverage_adapter_1553.py
           test -f tests/test_scope_github_coverage_adapter_1553.py
+          test -f src/lightup/scope_github_pr_pages_1553.py
+          test -f tests/test_scope_github_pr_pages_1553.py
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Strict offline 85 tests, 1 original-source RED, no missing/skipped tests
+      - name: Strict offline 117 tests, 1 original-source RED, no missing/skipped tests
         shell: bash
         run: |
           set -euo pipefail
@@ -57,6 +61,7 @@ jobs:
           suites = (
               loader.discover("tests", pattern="test_scope_github_file_coverage_1553.py"),
               loader.discover("tests", pattern="test_scope_github_coverage_adapter_1553.py"),
+              loader.discover("tests", pattern="test_scope_github_pr_pages_1553.py"),
           )
           suite = unittest.TestSuite(suites)
           result = unittest.TextTestRunner(verbosity=2).run(suite)
@@ -69,7 +74,7 @@ jobs:
               "unexpected_successes": len(result.unexpectedSuccesses),
           }
           expected = {
-              "tests": 85,
+              "tests": 117,
               "expected_failures": 1,
               "failures": 0,
               "errors": 0,
@@ -110,6 +115,26 @@ jobs:
           python - <<'PY'
           import json
           out = json.load(open("adapter.json"))
+          assert out["status"] == "HOLD"
+          assert out["file_count"] == 0
+          assert out["inferred_signal_count"] == 0
+          assert out["not_authorization"] is True
+          assert all(out[k] is False for k in (
+              "authorize", "grant", "scan", "handler", "dispatch",
+              "merge", "deploy", "release"))
+          PY
+      - name: Ensure normalized GitHub PR page preview never promotes authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          printf '{}' | PYTHONPATH=src python -m lightup.scope_github_pr_pages_1553 --synthetic-pages-only > prpages.json
+          code=$?
+          set -e
+          test "$code" = 2
+          python - <<'PY'
+          import json
+          out = json.load(open("prpages.json"))
           assert out["status"] == "HOLD"
           assert out["file_count"] == 0
           assert out["inferred_signal_count"] == 0
