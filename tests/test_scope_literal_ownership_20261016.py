@@ -100,6 +100,13 @@ class AdditiveOwnershipTests(unittest.TestCase):
         with patch.object(guard, "_git", side_effect=simulated):
             self.assertEqual(guard.main(), 1)
 
+    def test_workflow_checks_clean_checkout_after_tests(self):
+        workflow = (ROOT / ".github" / "workflows" / "scope-literal-controls-20261016.yml").read_text()
+        branch_proof = "python scripts/check_scope_literal_branch_20261016.py"
+        self.assertEqual(workflow.count(branch_proof), 2)
+        self.assertLess(workflow.index(branch_proof), workflow.index("python scripts/check_scope_literal_suite_20261016.py"))
+        self.assertGreater(workflow.rindex(branch_proof), workflow.index("test \"$bad_out\""))
+
     def test_missing_required_worker_files_is_hold(self):
         for required in guard.OWNED_EXACT:
             with self.subTest(path=required):

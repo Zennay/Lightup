@@ -72,3 +72,6 @@ jobs:
           test "$bad_rc" -eq 3
           test "$good_out" = '{"status":"REVIEW_ONLY","authorized":false,"consent_verified":false,"dispatch_allowed":false,"release_allowed":false}'
           test "$bad_out" = '{"status":"HOLD","authorized":false,"consent_verified":false,"dispatch_allowed":false,"release_allowed":false}'
+
+      - name: Reverify checkout purity after every offline test and CLI
+        run: python scripts/check_scope_literal_branch_20261016.py
