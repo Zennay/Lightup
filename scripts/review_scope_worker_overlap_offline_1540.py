@@ -72,9 +72,28 @@ def _canonical_decode(raw):
     return data
 
 
-def _conflicts(candidate: str, existing: set[str]) -> bool:
-    return any(candidate == old or candidate.startswith(old + "/")
-               or old.startswith(candidate + "/") for old in existing)
+class _PathIndex:
+    """Bounded component trie: reject exact and ancestor/descendant aliases.
+
+    All paths are already shape-checked by the public reviewer; casefold here
+    preserves the conservative cross-filesystem collision model. Once a path
+    is accepted, it is a terminal file; no path underneath can also be a file.
+    """
+
+    def __init__(self):
+        self._root = {}
+
+    def add(self, path: str) -> bool:
+        node = self._root
+        for segment in path.casefold().split("/"):
+            if None in node:
+                return False
+            node = node.setdefault(segment, {})
+        # Existing file or directory descendants: both are collisions.
+        if node:
+            return False
+        node[None] = True
+        return True
 
 
 def _versioned_paths(item: dict, version: int) -> list[str]:
@@ -131,7 +150,7 @@ def check(raw: bytes) -> str:
         items = doc["proposals"]
         if type(items) is not list or not (2 <= len(items) <= 32):
             raise InvalidProposal("proposal count")
-        workers, branches, prior_paths = set(), set(), set()
+        workers, branches, claimed_paths = set(), set(), _PathIndex()
         for item in items:
             if type(item) is not dict:
                 raise InvalidProposal("proposal shape")
@@ -145,18 +164,11 @@ def check(raw: bytes) -> str:
                 raise InvalidProposal("duplicate owner")
             workers.add(worker)
             branches.add(branch.casefold())
-            local_paths = set()
             for path in paths:
                 if not _safe_path(path):
                     raise InvalidProposal("path")
-                folded = path.casefold()
-                if _conflicts(folded, local_paths):
-                    raise InvalidProposal("duplicate or parent-child path")
-                local_paths.add(folded)
-            for current in local_paths:
-                if _conflicts(current, prior_paths):
-                    raise InvalidProposal("cross-worker overlap")
-            prior_paths.update(local_paths)
+                if not claimed_paths.add(path):
+                    raise InvalidProposal("ambiguous changed-file tree")
         return "REVIEW_ONLY"
     except (InvalidProposal, OverflowError, RecursionError, MemoryError):
         return "HOLD"
