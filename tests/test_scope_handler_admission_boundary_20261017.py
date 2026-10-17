@@ -153,6 +153,36 @@ class ReviewBoundaryTests(unittest.TestCase):
             tuple(registry.get(module.TOOL_ID)[1] for module in modules), handlers
         )
 
+    def test_strict_owner_gate_requires_literal_one_not_truthy_tokens(self):
+        from unittest import mock
+        from test_scope_handler_admission_20261017 import source_red_until_owner_fix
+        def dummy(self):
+            return None
+
+        for token in ("", "0", "True", "true", "yes", "01", " 1", "1 ", "2"):
+            with self.subTest(token=repr(token)):
+                with mock.patch.dict("os.environ", {"LIGHTUP_SCOPE1531_REQUIRE_SOURCE_FIX": token}):
+                    decorated = source_red_until_owner_fix(dummy)
+                self.assertTrue(
+                    getattr(decorated, "__unittest_expecting_failure__", False),
+                    "nonliteral token must not enable strict mode",
+                )
+        with mock.patch.dict("os.environ", {"LIGHTUP_SCOPE1531_REQUIRE_SOURCE_FIX": "1"}):
+            strict = source_red_until_owner_fix(dummy)
+        self.assertIs(strict, dummy)
+        self.assertFalse(getattr(strict, "__unittest_expecting_failure__", False))
+
+    def test_source_gate_decoration_never_invokes_a_handler(self):
+        from unittest import mock
+        from test_scope_handler_admission_20261017 import source_red_until_owner_fix
+        def trap(self):
+            raise AssertionError("untrusted source handler must never run")
+        with mock.patch.dict("os.environ", {"LIGHTUP_SCOPE1531_REQUIRE_SOURCE_FIX": "1"}):
+            self.assertIs(source_red_until_owner_fix(trap), trap)
+        with mock.patch.dict("os.environ", {"LIGHTUP_SCOPE1531_REQUIRE_SOURCE_FIX": "0"}):
+            decorated = source_red_until_owner_fix(trap)
+        self.assertTrue(getattr(decorated, "__unittest_expecting_failure__", False))
+
 
 if __name__ == "__main__":
     unittest.main()
