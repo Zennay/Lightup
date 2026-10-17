@@ -42,7 +42,8 @@ class SyntheticGate(unittest.TestCase):
         invalid = (b"Q", b"U", b"X", b"Mgarbage", b"R", b"C",
                    b"Rnotanumber", b"R0", b"R1", b"R99", b"C0", b"C50",
                    b"C99", b"R0000", b"C00", b"R101", b"C999",
-                   b"M1", b"r100", b"R-1", b"R+1", b"R1.0", b"R\xff")
+                   b"M1", b"r100", b"R-1", b"R+1", b"R1.0", b"R\xff",
+                   b"M\n", b"A\n", b"R100\n", b"C001\n")
         for item in invalid:
             with self.subTest(item=item):
                 stream = item + b"\0old.py\0new.py\0" if item[:1] in b"RC" else item + b"\0new.py\0"
@@ -113,6 +114,8 @@ class SyntheticGate(unittest.TestCase):
             (b"Q\0file.py\0", 2, "HOLD"),
             (b"Mgarbage\0file.py\0", 2, "HOLD"),
             (b"R1\0old.py\0new.py\0", 2, "HOLD"),
+            (b"M\n\0file.py\0", 2, "HOLD"),
+            (b"R100\n\0old.py\0new.py\0", 2, "HOLD"),
             (b"R100\0old.py\0new.py\0", 3, "REVIEW_ONLY"),
             (b"Rnotanumber\0old.py\0new.py\0", 2, "HOLD"),
         ):
@@ -326,6 +329,60 @@ class OriginalOwnerContract(unittest.TestCase):
     def test_owner_numstat_requires_terminator(self):
         with self.assertRaises(self.GitChangeError):
             self.parse_numstat(b"1\t0\tsrc/a.py")
+
+
+    @unittest.expectedFailure
+    def test_owner_rejects_newline_suffixed_status_tokens(self):
+        """Still RED on owner's newer strict parser due to regex '
+    """Opt-in mandatory proof for the future integrated owner source.
+
+    Run only on an isolated checkout with the actual reviewed owner fix, e.g.
+    LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX=1 python3 -m unittest ...
+    """
+
+    def test_source_rejects_all_five_original_invalid_forms(self):
+        import os
+        if os.environ.get("LIGHTUP_SCOPE1547_REQUIRE_SOURCE_FIX") != "1":
+            self.skipTest("source owner not integrated in this pinned branch")
+        sys.path.insert(0, str(ROOT / "src"))
+        from lightup.git_changes import GitChangeError, _parse_name_status, _parse_numstat
+        cases = (
+            (_parse_name_status, b"Mgarbage\0src/a.py\0"),
+            (_parse_name_status, b"Q\0src/a.py\0"),
+            (_parse_name_status, b"Rnotanumber\0old.py\0new.py\0"),
+            (_parse_name_status, b"M\0src/a.py"),
+            (_parse_numstat, b"1\t0\tsrc/a.py"),
+        )
+        for parser, raw in cases + (
+            (_parse_name_status, b"M\n\0src/a.py\0"),
+            (_parse_name_status, b"A\n\0src/a.py\0"),
+            (_parse_name_status, b"R100\n\0old.py\0new.py\0"),
+            (_parse_name_status, b"C001\n\0old.py\0new.py\0"),
+        ):
+            with self.subTest(raw=raw):
+                with self.assertRaises(GitChangeError):
+                    parser(raw)
+        for raw in (
+            b"M\0src/a.py\0",
+            b"R100\0old.py\0new.py\0",
+            b"R001\0old.py\0new.py\0",
+        ):
+            with self.subTest(valid=raw):
+                self.assertTrue(_parse_name_status(raw))
+
+
+if __name__ == "__main__":
+    unittest.main()
+."""
+        for stream in (
+            b"M\n\0src/a.py\0",
+            b"A\n\0src/a.py\0",
+            b"R100\n\0old.py\0new.py\0",
+            b"C001\n\0old.py\0new.py\0",
+        ):
+            with self.subTest(stream=stream):
+                with self.assertRaises(self.GitChangeError):
+                    self.parse_status(stream)
 
 
 class StrictSourceOwnerGate(unittest.TestCase):
