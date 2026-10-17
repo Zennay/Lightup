@@ -39,6 +39,8 @@ function parse(value) {
    if(prefix>max)return null;
    const hostBits=max-prefix, hostMask=(1n<<hostBits)-1n;
    const start=address&(((1n<<max)-1n)^hostMask);
+   // Do not silently widen e.g. 192.0.2.17/24 to 192.0.2.0/24.
+   if(bits.length===2 && start!==address)return null;
    const end=start+hostMask;
    return {raw:value,family,start,end,prefix:Number(prefix),canonical:family+':'+start.toString()+':'+prefix.toString(),isRange:prefix<max};
  }
@@ -106,5 +108,62 @@ function expansion(before,after){
  return {added,removed,unparsed:parsedAfter.some(a=>a===null)||parsedBefore.some(a=>a===null),
    caveat:'Addresses and CIDR ranges only; DNS, exclusions, asset ownership and independent authorization are not evaluated.'};
 }
-global.LightUpScopeNetwork=Object.freeze({parse,overlaps,contains,inspect,expansion});
+
+/* Interval arithmetic for UI planning only; no policy or execution decisions.
+ * Subtract excluded IP/CIDR intervals before identifying effective shared address space.
+ * Hostnames remain opaque literals, not DNS-resolved addresses. */
+function subtractIntervals(base, holes){
+ let current=base.map(a=>({start:a.start,end:a.end}));
+ for(const h of holes){
+  const next=[];
+  for(const x of current){
+   if(h.end<x.start||h.start>x.end){next.push(x);continue;}
+   if(h.start>x.start)next.push({start:x.start,end:h.start-1n});
+   if(h.end<x.end)next.push({start:h.end+1n,end:x.end});
+  }
+  current=next;
+  if(!current.length)break;
+ }
+ return current;
+}
+function effectiveCoverage(included,excluded){
+ if(!Array.isArray(included)||!Array.isArray(excluded)||included.length>80||excluded.length>80)return null;
+ const allow=included.map(parse),deny=excluded.map(parse);
+ if(allow.some(x=>!x)||deny.some(x=>!x))return null;
+ const result={hostname:new Set(),ipv4:[],ipv6:[]};
+ const deniedHost=new Set(deny.filter(a=>a.family==='hostname').map(a=>a.canonical));
+ for(const a of allow){
+  if(a.family==='hostname'&&!deniedHost.has(a.canonical))result.hostname.add(a.canonical);
+ }
+ for(const family of ['ipv4','ipv6']){
+  const allowed=mergeIntervals(allow,family);
+  const holes=mergeIntervals(deny,family);
+  result[family]=allowed.flatMap(a=>subtractIntervals([a],holes));
+ }
+ return result;
+}
+function coverageOverlap(a,b){
+ if(!a||!b)return false;
+ for(const h of a.hostname)if(b.hostname.has(h))return true;
+ for(const family of ['ipv4','ipv6']){
+  for(const x of a[family])for(const y of b[family])
+   if(x.start<=y.end&&y.start<=x.end)return true;
+ }
+ return false;
+}
+function coverageDifference(base,updated){
+ if(!base||!updated)return null;
+ const added=[],removed=[];
+ for(const family of ['ipv4','ipv6']){
+  for(const x of updated[family])added.push(...subtractIntervals([x],base[family]).map(y=>({family,start:y.start.toString(),end:y.end.toString()})));
+  for(const x of base[family])removed.push(...subtractIntervals([x],updated[family]).map(y=>({family,start:y.start.toString(),end:y.end.toString()})));
+ }
+ for(const host of updated.hostname)if(!base.hostname.has(host))added.push({family:'hostname',asset:host.slice(9)});
+ for(const host of base.hostname)if(!updated.hostname.has(host))removed.push({family:'hostname',asset:host.slice(9)});
+ return {added:added.slice(0,160),removed:removed.slice(0,160),
+  truncated:added.length>160||removed.length>160,
+  caveat:'Non-authorizing, local exact hostname and numeric IP interval hints. DNS and ownership are never inspected.'};
+}
+
+global.LightUpScopeNetwork=Object.freeze({parse,overlaps,contains,inspect,expansion,effectiveCoverage,coverageOverlap,coverageDifference});
 })(window);
