@@ -18,8 +18,10 @@ OWNED_FILES = frozenset({
     "docs/scope-audit-anchor-auth-offline.md",
     "src/lightup/scope_audit_anchor_auth_offline.py",
     "src/lightup/scope_audit_anchor_batch_offline.py",
+    "src/lightup/scope_audit_anchor_replay_update_offline.py",
     "tests/test_scope_audit_anchor_auth_offline.py",
     "tests/test_scope_audit_anchor_batch_offline.py",
+    "tests/test_scope_audit_anchor_replay_update_offline.py",
     "scripts/check_scope_1558_additive_proof.py",
     "tests/test_scope_1558_additive_proof.py",
 })
