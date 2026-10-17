@@ -33,6 +33,24 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         self.assertNotIn("authorization", receipt)
         self.assertNotIn("token", receipt)
 
+    def test_untrusted_authority_metadata_cannot_widen_any_receipt(self):
+        forged = {key: True for key in witness.FALSE_AUTHORITY}
+        forged["fictional_release_proof"] = True
+        with patch.object(witness, "FALSE_AUTHORITY", forged):
+            review = witness.evaluate()
+            hold = witness._receipt("HOLD", "artificial_test")
+        self.assertEqual(review["status"], "REVIEW_ONLY")
+        self.assertEqual(hold["status"], "HOLD")
+        for result in (review, hold):
+            for key in FLAGS:
+                self.assertIs(result[key], False, key)
+            self.assertNotIn("fictional_release_proof", result)
+
+    def test_authority_flag_constants_are_immutable(self):
+        with self.assertRaises(TypeError):
+            witness.FALSE_AUTHORITY["release_allowed"] = True
+        self.assertIs(witness.FALSE_AUTHORITY["release_allowed"], False)
+
     def test_canonical_matrix_is_review_only_not_execution_permission(self):
         result = witness.evaluate()
         self.assertEqual(result["status"], "REVIEW_ONLY")
