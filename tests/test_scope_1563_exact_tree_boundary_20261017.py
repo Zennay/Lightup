@@ -294,6 +294,43 @@ class HostedTriggerContractTests(unittest.TestCase):
 
 
 
+    def test_preflight_precedes_all_project_test_execution(self):
+        root = pathlib.Path(__file__).resolve().parents[1] / ".github/workflows"
+        focused = (root / "scope-1563-membership-offline.yml").read_text(encoding="utf-8")
+        composed = (root / "scope-1563-owner301-compat-offline.yml").read_text(encoding="utf-8")
+        gate_call = "python3 scripts/scope_1563_exact_tree_boundary_20261017.py --expected-head"
+        self.assertIn(gate_call, focused)
+        self.assertIn(gate_call, composed)
+        self.assertLess(focused.index(gate_call), focused.index("- name: Python runtime"))
+        self.assertLess(focused.index(gate_call), focused.index("python -m unittest discover"))
+        self.assertLess(composed.index(gate_call), composed.index("git show \"$EXACT_OWNER_SHA"))
+        self.assertLess(composed.index(gate_call), composed.index("python -m unittest discover"))
+
+    def test_both_workflows_guard_all_branch_changes_without_path_bypass(self):
+        root = pathlib.Path(__file__).resolve().parents[1] / ".github/workflows"
+        for name in ("scope-1563-membership-offline.yml", "scope-1563-owner301-compat-offline.yml"):
+            with self.subTest(workflow=name):
+                workflow = (root / name).read_text(encoding="utf-8")
+                trigger = workflow.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
+                self.assertIn("pull_request:", trigger)
+                self.assertIn("synchronize", trigger)
+                self.assertNotIn("paths:", trigger)
+                self.assertIn("github.head_ref == 'chatgpt/scope-1563-membership-metamorphic-20261017'", workflow)
+                self.assertIn("git diff --cached --exit-code", workflow)
+                self.assertIn('test -z "$(git ls-files --others --exclude-standard)"', workflow)
+
+    def test_preflight_rejects_dirty_index_before_any_fixture_overlay(self):
+        root = pathlib.Path(__file__).resolve().parents[1] / ".github/workflows"
+        for name in ("scope-1563-membership-offline.yml", "scope-1563-owner301-compat-offline.yml"):
+            with self.subTest(workflow=name):
+                workflow = (root / name).read_text(encoding="utf-8")
+                gate = workflow.index("python3 scripts/scope_1563_exact_tree_boundary_20261017.py --expected-head")
+                clean_index = workflow.index("git diff --cached --exit-code")
+                clean_untracked = workflow.index('test -z "$(git ls-files --others --exclude-standard)"')
+                self.assertLess(clean_index, gate)
+                self.assertLess(clean_untracked, gate)
+
+
     def test_both_own_ci_workflows_require_index_and_untracked_cleanliness(self):
         root = pathlib.Path(__file__).resolve().parents[1] / ".github/workflows"
         for name in (
