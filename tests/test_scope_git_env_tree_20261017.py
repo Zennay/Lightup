@@ -586,6 +586,11 @@ class OfflineTreeModesTests(unittest.TestCase):
                 self.assertFalse(guard._worktree_blobs_match_head(raw_tree))
                 own.write_text("SAFE=True\n")
                 self.assertTrue(guard._worktree_blobs_match_head(raw_tree))
+                git("update-index", "--no-assume-unchanged", "owned.py")
+                git("update-index", "--skip-worktree", "owned.py")
+                own.unlink()
+                self.assertEqual(git("status", "--porcelain=v1", "-z"), b"")
+                self.assertFalse(guard._worktree_blobs_match_head(raw_tree))
 
     def test_actual_owned_blob_rejects_missing_symlink_and_oversize(self):
         import subprocess
