@@ -149,8 +149,8 @@ class ScopeMembershipMetamorphicTests(unittest.TestCase):
             frozenset({"allowed.example.test", "other.example.test"}),
         ):
             for require_auth in (True, False):
-                for _, grant in _grant_variants():
-                    with self.subTest(other=sorted(other), flag=require_auth):
+                for grant_name, grant in _grant_variants():
+                    with self.subTest(other=sorted(other), flag=require_auth, grant=grant_name):
                         self._reject_off_scope(
                             ScopePolicy(
                                 allow_private_lab=False,
@@ -163,8 +163,8 @@ class ScopeMembershipMetamorphicTests(unittest.TestCase):
     def test_unrelated_declared_networks_cannot_change_membership(self):
         for networks in ((), ("8.8.8.0/24",), ("8.8.8.0/24", "1.1.1.0/24")):
             for require_auth in (True, False):
-                for _, grant in _grant_variants():
-                    with self.subTest(networks=networks, flag=require_auth):
+                for grant_name, grant in _grant_variants():
+                    with self.subTest(networks=networks, flag=require_auth, grant=grant_name):
                         self._reject_off_scope(
                             ScopePolicy(
                                 allow_private_lab=False,
