@@ -23,9 +23,10 @@ source_red = (lambda f: f) if STRICT else unittest.expectedFailure
 
 class OfflineOutputReviewTests(unittest.TestCase):
     def test_valid_plain_fields_are_review_only_not_authority(self):
-        self.assertEqual(review_output_identity("synthetic summary", "note", b""), "REVIEW_ONLY")
-        self.assertEqual(review_output_identity("synthetic summary", "note", b"x"), "REVIEW_ONLY")
+        self.assertEqual(review_output_identity("synthetic summary", "note", b""), OutputIdentityReview.REVIEW_ONLY)
+        self.assertEqual(review_output_identity("synthetic summary", "note", b"x"), OutputIdentityReview.REVIEW_ONLY)
         self.assertNotEqual(review_output_identity("synthetic summary", "note", b"x"), "AUTHORIZED")
+        self.assertNotEqual(review_output_identity("synthetic summary", "note", b"x"), "REVIEW_ONLY")
 
     def test_statuses_are_immutable_and_always_falsy(self):
         for fields, status in [
@@ -38,8 +39,45 @@ class OfflineOutputReviewTests(unittest.TestCase):
                 self.assertFalse(value, "review receipt may not act as authorization")
                 self.assertFalse(bool(value))
                 self.assertEqual(value.value, status.value)
+                self.assertNotIsInstance(value, str, "review status must not be accepted as string authority")
+                self.assertNotEqual(value, value.value, "string comparisons cannot imply grant")
+                self.assertNotEqual(value, "AUTHORIZED")
         with self.assertRaises(AttributeError):
             OutputIdentityReview.HOLD.value = "AUTHORIZED"
+
+    def test_canonical_installed_worker_output_kinds_without_execution(self):
+        expected = {
+            "http_baseline.py": "http-baseline-observation",
+            "service_inventory.py": "service-inventory-observation",
+            "tls_baseline.py": "tls-baseline-observation",
+        }
+        for filename, kind in expected.items():
+            with self.subTest(worker=filename):
+                path = ROOT / "src/lightup/workers" / filename
+                tree = ast.parse(path.read_text(encoding="utf-8"))
+                found = [
+                    keyword.value.value
+                    for call in ast.walk(tree) if isinstance(call, ast.Call)
+                    for keyword in call.keywords
+                    if keyword.arg == "evidence_kind" and isinstance(keyword.value, ast.Constant)
+                    and type(keyword.value.value) is str
+                ]
+                self.assertIn(kind, found)
+                self.assertIs(review_output_identity("synthetic", kind, b""), OutputIdentityReview.REVIEW_ONLY)
+
+    def test_review_budgets_and_canonical_kinds(self):
+        self.assertIs(review_output_identity("x" * 16_384, "a" * 80, b"x" * 4_194_304),
+                      OutputIdentityReview.REVIEW_ONLY)
+        for fields in [
+            ("x" * 16_385, "note", b""),
+            ("x", "a" * 81, b""),
+            ("x", "note", b"x" * 4_194_305),
+            ("x", "note\\u202e", b""),
+            ("x", "note\\x00", b""),
+            ("x", "note\\n", b""),
+            ("x", "Note", b""),
+        ]:
+            self.assertIs(review_output_identity(*fields), OutputIdentityReview.HOLD)
 
     def test_malformed_fields_atomic_hold(self):
         values = [
@@ -54,10 +92,21 @@ class OfflineOutputReviewTests(unittest.TestCase):
             ("ok", "note", "bytes-as-text"),
             ("ok", "note", None),
             (None, "note", b"x"),
+            ("ok", "note" + "\\x00", b"x"),
+            ("ok", "note\\nforged", b"x"),
+            ("ok", "note\\u202e", b"x"),
+            ("ok", "NOTE", b"x"),
+            ("ok", "9note", b"x"),
+            ("ok", ".note", b"x"),
+            ("ok", "note:evil", b"x"),
+            ("ok", "note\\u200b", b"x"),
+            ("ok", "n" * 81, b"x"),
+            ("x" * 16_385, "note", b"x"),
+            ("ok", "note", b"x" * 4_194_305),
         ]
         for fields in values:
             with self.subTest(fields=tuple(type(v).__name__ for v in fields)):
-                self.assertEqual(review_output_identity(*fields), "HOLD")
+                self.assertEqual(review_output_identity(*fields), OutputIdentityReview.HOLD)
 
     def test_reject_subclass_scalar_claims_without_coercion(self):
         class StrangeStr(str):
@@ -66,9 +115,9 @@ class OfflineOutputReviewTests(unittest.TestCase):
         class StrangeBytes(bytes):
             def __bytes__(self):
                 raise AssertionError("unexpected coercion")
-        self.assertEqual(review_output_identity(StrangeStr("ok"), "note", b"x"), "HOLD")
-        self.assertEqual(review_output_identity("ok", StrangeStr("note"), b"x"), "HOLD")
-        self.assertEqual(review_output_identity("ok", "note", StrangeBytes(b"x")), "HOLD")
+        self.assertEqual(review_output_identity(StrangeStr("ok"), "note", b"x"), OutputIdentityReview.HOLD)
+        self.assertEqual(review_output_identity("ok", StrangeStr("note"), b"x"), OutputIdentityReview.HOLD)
+        self.assertEqual(review_output_identity("ok", "note", StrangeBytes(b"x")), OutputIdentityReview.HOLD)
 
     def test_no_foreign_protocols_or_handler_invocation(self):
         observed = []
@@ -83,7 +132,7 @@ class OfflineOutputReviewTests(unittest.TestCase):
                 observed.append("iter")
                 raise AssertionError("iter called")
         for args in [(Trap(), "note", b"x"), ("ok", Trap(), b"x"), ("ok", "note", Trap())]:
-            self.assertEqual(review_output_identity(*args), "HOLD")
+            self.assertEqual(review_output_identity(*args), OutputIdentityReview.HOLD)
         self.assertEqual(observed, [])
 
     def test_review_is_not_imported_by_original_product_surfaces(self):
