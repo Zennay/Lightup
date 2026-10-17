@@ -69,15 +69,56 @@ def safe_tree(raw: object, delta: object) -> bool:
 GIT_BINARY = "/usr/bin/git"
 
 
-def git(*args: str) -> subprocess.CompletedProcess[bytes]:
-    # Untrusted repository config can register an external fsmonitor program
-    # that Git would otherwise execute even during innocent read-only status.
-    # The command-line config wins over repo/global config, without writing it.
+def _git_raw(*args: str, data: bytes | None = None) -> subprocess.CompletedProcess[bytes]:
+    # Never consult PATH for Git. Disable repository-provided fsmonitor hooks.
     return subprocess.run(
         [GIT_BINARY, "-c", "core.fsmonitor=false", *args],
-        cwd=ROOT, capture_output=True, timeout=15,
+        cwd=ROOT, input=data, capture_output=True, timeout=15,
     )
 
+
+def _tracked_files_have_no_filters() -> bool:
+    """Fail closed BEFORE Git status can execute a configured clean filter.
+
+    Even read-only `git status` can execute filter.<name>.clean or .process
+    from local/global Git config when .gitattributes selects that filter.
+    Neither reading ls-files nor check-attr calls the filter executable.
+    This offline proof conservatively rejects ALL selected filter drivers.
+    """
+    files = _git_raw("ls-files", "--cached", "-z")
+    if (
+        files.returncode != 0 or type(files.stdout) is not bytes
+        or type(files.stderr) is not bytes or files.stderr
+        or not files.stdout or len(files.stdout) > 262144
+        or not files.stdout.endswith(b"\\0")
+    ):
+        return False
+    names = files.stdout[:-1].split(b"\\0")
+    if len(names) > 8192 or len(set(names)) != len(names):
+        return False
+    attrs = _git_raw("check-attr", "-z", "--stdin", "filter", data=files.stdout)
+    if (
+        attrs.returncode != 0 or type(attrs.stdout) is not bytes
+        or type(attrs.stderr) is not bytes or attrs.stderr
+        or not attrs.stdout or len(attrs.stdout) > 786432
+        or not attrs.stdout.endswith(b"\\0")
+    ):
+        return False
+    fields = attrs.stdout[:-1].split(b"\\0")
+    if len(fields) != 3 * len(names):
+        return False
+    for index, path in enumerate(names):
+        original, attr, value = fields[3 * index:3 * index + 3]
+        if original != path or attr != b"filter" or value != b"unspecified":
+            return False
+    return True
+
+
+def git(*args: str) -> subprocess.CompletedProcess[bytes]:
+    if args and args[0] == "status" and not _tracked_files_have_no_filters():
+        # Do not invoke status if an external filter may execute.
+        return subprocess.CompletedProcess(args, 3, b"", b"")
+    return _git_raw(*args)
 
 def main() -> int:
     # Never attest git commands after environment-controlled redirection.
