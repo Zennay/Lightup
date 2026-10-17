@@ -83,3 +83,27 @@ This new **read-only** WSGI handler displays request ID, status, requested asset
 The receipt is looked up via the existing `DomainStore.get_assessment_request` and a tenant-scoped portal read context. A client session for another client is denied by the dispatcher/domain checks; operators retain read-only cross-client portal visibility. The link list is bounded with an explicit truncation notice.
 
 This feature is part of the **opt-in guarded** web variant only, so it does not change the active source owner for the original webapp or its route list.
+
+## Authenticated JSON request status (read-only integration)
+
+The guarded client receipt page links to:
+
+`GET /api/v1/portal/<client_id>/requests/<request_id>`
+
+This endpoint uses existing session authentication and the portal access policy, then rechecks tenant/request lineage directly through `DomainStore.get_assessment_request`. It returns `application/json` with the schema `lightup.portal-request-receipt.v1`.
+
+The response contains request ID, client ID, status, requested mode/risk, timestamp fields and up to 80 requested assets. It **does not include** client free-text notes, credentials, evidence, signed consent, grant identifiers or secrets. Asset overflow is explicit. Missing, mismatched and malformed receipts all use the same generic 404 shape. Existing HTTP no-store, content-type protection and restrictive CSP headers apply.
+
+The stable disposition is always `RECORD_ONLY`. It intentionally has the following fixed denial flags:
+
+```json
+{
+  "execution_authorized": false,
+  "client_consent_verified": false,
+  "operator_consent_verified": false,
+  "grant_bound": false,
+  "release_approved": false
+}
+```
+
+This contract is suitable for displaying *request status* in a separate authenticated client interface. It is **never** a token permitting real-target work and does not replace authenticated separate client/operator consent or a live grant/revocation check.
