@@ -564,5 +564,46 @@ class GrantTenantSnapshot1561(unittest.TestCase):
         self.assertFalse(result["authorized"])
 
 
+    def test_offline_sql_authorizer_denies_write_and_attachment_ops(self):
+        """Reject write-shaped SQLite VM opcodes even on an immutable copy."""
+        from lightup.scope_grant_tenant_snapshot_1561 import _offline_sql_authorizer
+        for code in (
+            sqlite3.SQLITE_INSERT, sqlite3.SQLITE_UPDATE,
+            sqlite3.SQLITE_DELETE, sqlite3.SQLITE_ATTACH,
+            sqlite3.SQLITE_DETACH, sqlite3.SQLITE_ALTER_TABLE,
+            sqlite3.SQLITE_DROP_TABLE, sqlite3.SQLITE_CREATE_TABLE,
+            sqlite3.SQLITE_TRANSACTION,
+        ):
+            with self.subTest(code=code):
+                self.assertEqual(
+                    _offline_sql_authorizer(code, "synthetic", None,
+                                            "main", None),
+                    sqlite3.SQLITE_DENY,
+                )
+
+    def test_sql_authorizer_allows_only_required_read_pragmas(self):
+        from lightup.scope_grant_tenant_snapshot_1561 import _offline_sql_authorizer
+        for action in (sqlite3.SQLITE_READ, sqlite3.SQLITE_SELECT,
+                       sqlite3.SQLITE_FUNCTION):
+            self.assertEqual(
+                _offline_sql_authorizer(action, "fictional", None,
+                                        "main", None),
+                sqlite3.SQLITE_OK,
+            )
+        for name in ("table_info", "quick_check"):
+            self.assertEqual(
+                _offline_sql_authorizer(sqlite3.SQLITE_PRAGMA, name, None,
+                                        "main", None),
+                sqlite3.SQLITE_OK,
+            )
+        for name in ("journal_mode", "writable_schema", "trusted_schema",
+                     "foreign_keys", "temp_store", "rekey"):
+            self.assertEqual(
+                _offline_sql_authorizer(sqlite3.SQLITE_PRAGMA, name, "ON",
+                                        "main", None),
+                sqlite3.SQLITE_DENY,
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
