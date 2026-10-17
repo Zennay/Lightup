@@ -20,13 +20,19 @@ Standalone full-source regression uses **only disposable local SQLite** and fict
 
 All duplicate cases require rejection **before** `DomainStore.session_context`. Denial must not change either live session or emit a `Set-Cookie`; one unambiguous credential plus unrelated cookies must continue to work. Denial must not depend on which duplicate appears first.
 
+### Test-only source-owner repair oracle (not runtime code)
+
+The expanded suite includes **10 deliberately unresolved original-source expectedFailures** and **8 ordinary passing test methods**. `test_owner_fix_rehearsal_turns_ten_original_source_reds_green` temporarily replaces only one *test app instance's* `_authenticate` binding with a minimal synthetic duplicate-occurrence gate. It calls **all 10 red method bodies directly** (so that the `expectedFailure` decorator cannot hide errors), retests valid operator/client authentication and repeated unrelated cookies, then checks **128 seeded adversarial duplicate combinations**. A deliberately incomplete values-only duplicate check must still fail on two equal session credentials.
+
+This is a **bounded behavioral repair rehearsal**, **not** a complete `Cookie` grammar parser, source-owner patch, installed middleware, real proxy evidence, or live consent. Its simplistic semicolon counting is confined to the fictional test fixture and MUST NOT be copied into production. Production parsing must independently handle RFC cookie quoting, controls, exact cookie-name identity, maximum sizes, malformed envelope types, and intermediary normalization, together with ingress owner #1169/#1170.
+
 Run:
 
 ```sh
 PYTHONPATH=src python3 -m unittest discover -s tests -p 'test_scope_686_duplicate_session_cookies.py' -v
 ```
 
-The eight expected failures are an explicit *source-owner TODO*, **not** evidence that the flaw is fixed. An actual source fix should remove the `expectedFailure` decorators and make all 14 (or more) ordinary PASS, with strict no-session-lookup assertion preserved. A future unexpected success under `expectedFailure` is a migration signal and must be reviewed, not silently accepted.
+The eight expected failures are an explicit *source-owner TODO*, **not** evidence that the flaw is fixed. An actual source fix should remove the `expectedFailure` decorators and make all 18 (or more) ordinary PASS, with strict no-session-lookup assertion preserved. A future unexpected success under `expectedFailure` is a migration signal and must be reviewed, not silently accepted.
 
 ## Source-owner handoff (do not implement here)
 
