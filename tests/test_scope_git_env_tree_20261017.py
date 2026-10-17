@@ -464,6 +464,52 @@ class OfflineTreeModesTests(unittest.TestCase):
             git("-c", "core.fsmonitor=false", "status", "--porcelain=v1")
             self.assertTrue(marker.exists())
 
+    def test_explicit_unspecified_filter_driver_is_not_absent(self):
+        """Git 'filter=unspecified' must never pass as absent filter metadata."""
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_filter_unspecified_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp)
+            def git(*args, data=None):
+                return subprocess.run(
+                    [guard.GIT_BINARY, *args], cwd=root, input=data,
+                    check=True, capture_output=True, timeout=6,
+                ).stdout
+            git("init", "-q")
+            attrs = root / ".gitattributes"
+            attrs.write_text("file.txt filter=unspecified\n")
+            tracked = root / "file.txt"
+            tracked.write_text("before\n")
+            git("add", ".gitattributes", "file.txt")
+            git("-c", "user.name=Offline", "-c",
+                "user.email=offline@example.invalid",
+                "commit", "-qm", "fictional ambiguous-filter fixture")
+            marker = root / "external-filter-ran"
+            hook = root / "filter.sh"
+            hook.write_text("#!/bin/sh\nprintf invoked > '" + str(marker) + "'\ncat\n")
+            hook.chmod(0o755)
+            git("config", "filter.unspecified.clean", str(hook))
+            tracked.write_text("AFTER!\n")
+            # This looks identical to a truly absent filter with check-attr
+            # without --all. The preflight must not trust that ambiguity.
+            self.assertEqual(
+                git("check-attr", "-z", "--stdin", "filter", data=b"file.txt\0"),
+                b"file.txt\0filter\0unspecified\0",
+            )
+            self.assertIn(
+                b"file.txt\0filter\0unspecified\0",
+                git("check-attr", "--all", "-z", "--stdin", data=b"file.txt\0"),
+            )
+            with patch.object(guard, "ROOT", root):
+                self.assertFalse(guard._tracked_files_have_no_filters())
+                result = guard.git("status", "--porcelain=v1", "-z")
+            self.assertEqual(result.returncode, 3)
+            self.assertFalse(marker.exists(), "guard ran explicit unspecified driver")
+            # Separate disposable red witness for the unprotected Git path.
+            git("-c", "core.fsmonitor=false", "status", "--porcelain=v1")
+            self.assertTrue(marker.exists())
+
     def test_status_allows_tracked_nonfilter_attributes(self):
         """Normal end-of-line settings are not external filter drivers."""
         import subprocess
