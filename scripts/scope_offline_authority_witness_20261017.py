@@ -10,6 +10,7 @@ import hashlib
 import json
 import re
 import sys
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,6 +25,29 @@ SCHEMA = "lightup.scope-offline-decision-witness.v1"
 # They are not source signatures, real consent, or release/merge authority.
 REFERENCE_FIXTURE_SHA256 = "b7f7d7595f7afc56605410fc3dce434da8ff2bad6900672a9890cc3cc176071a"
 REFERENCE_BEHAVIOR_SHA256 = "075c7598f4a01809cd19ef8a02d9380a2bdbde01e2a22fd8dfc940475386dcb1"
+# A context-local audit fence catches ordinary Python network/file/process I/O
+# accidentally added to ScopePolicy.decide(). Not an OS sandbox or defense against
+# native-code bypass: the witness remains PLAN/LAB ONLY, non-authorizing.
+_WITNESS_EVALUATION_ACTIVE: ContextVar[bool] = ContextVar("scope1565_audit", default=False)
+_DENIED_AUDIT_EVENTS = frozenset({
+    "open", "subprocess.Popen", "os.system", "os.fork", "os.forkpty",
+    "os.posix_spawn", "os.startfile", "ctypes.dlopen",
+})
+
+
+def _deny_witness_io(event: str, args: tuple[object, ...]) -> None:
+    if _WITNESS_EVALUATION_ACTIVE.get() and (
+        event in _DENIED_AUDIT_EVENTS
+        or event.startswith("socket.")
+        or event.startswith("os.exec")
+        or event.startswith("os.spawn")
+    ):
+        # Never include the event's potentially private arguments in receipts.
+        raise PermissionError("offline witness policy evaluation forbids Python I/O")
+
+
+sys.addaudithook(_deny_witness_io)
+
 FALSE_AUTHORITY = {
     "client_consent_verified": False,
     "operator_consent_verified": False,
@@ -169,7 +193,11 @@ def evaluate(cases: tuple[WitnessCase, ...] | None = None) -> dict[str, object]:
             return _receipt("HOLD", "reference_fixture_drift")
         observed: list[list[object]] = []
         for case in fixtures:
-            decision = case.policy.decide(case.target)
+            token = _WITNESS_EVALUATION_ACTIVE.set(True)
+            try:
+                decision = case.policy.decide(case.target)
+            finally:
+                _WITNESS_EVALUATION_ACTIVE.reset(token)
             if (
                 type(decision) is not ScopeDecision
                 or type(decision.allowed) is not bool
