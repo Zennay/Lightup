@@ -59,7 +59,7 @@ python3 -B scripts/scope_776_composition_check_20261017.py --full
 **First real VPS zSSH observations (original source vs disposable source):**
 
 - Local cached pinned #773 historical tests when forcibly transplanted onto #554: **38 tests; 16 FAIL and 8 unexpected successes**. Not a compatible or approved #773 source test suite. This is why import is prohibited.
-- Original parent #554 with #648/#775/#776 own inputs: **26 tests = 8 ordinary controls + 18 intentionally unresolved original source expectedFailures** (GREEN as an evidence runner only; actual original defects remain).
+- Original parent #554 with #648/#775/#776 own inputs: **26 tests = 8 ordinary controls + 18 intentionally unresolved original source expectedFailures** (GREEN as an evidence runner only; actual original defects remain). A second **strict original-source run** (no source patch at all) now verifies the **exact identities of all 18 source RED methods**, including the **26 individual failing subtest cases** (three combined invalid-shape variants, seven raw-risk variants, and sixteen other individual cases). If any of those original canaries disappear, change identity, turn into an unrelated exception, or acquire an unexpected success, the offline checker exits non-zero instead of reporting a false positive.
 - Disposable combined exact-type constructor guard: **26/26 ordinary strict PASS**. Partial/no-risk and partial/no-entry guards each **RED**.
 - First original whole suite with constructor-level risk check had **593 tests; one ERROR** due only to the early-constructor fixture above; independent real integration **86/86 PASS**.
 - With **fixture migrated in disposable copy only**: **593/593 whole unit tests PASS, 86/86 integration PASS**.
