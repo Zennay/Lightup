@@ -20,7 +20,7 @@ KNOWN_SOURCE_REDS = frozenset({
     "test_scope_literal_controls_20261016.InstalledSourceRedWitness.test_original_lab_activation_must_deny_control_char_authority",
     "test_scope_literal_controls_20261016.InstalledSourceRedWitness.test_original_scope_must_not_convert_newline_in_url",
 })
-MIN_TESTS = 99
+MIN_TESTS = 101
 REQUIRED_MODULES = frozenset({
     "test_scope_literal_adapter_errors_20261016",
     "test_scope_literal_aliases_20261016",
