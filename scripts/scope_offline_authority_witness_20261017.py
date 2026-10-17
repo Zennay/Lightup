@@ -89,7 +89,26 @@ def evaluate(cases: tuple[WitnessCase, ...] | None = None) -> dict[str, object]:
                 or not case.case_id
                 or case.case_id in ids
                 or type(case.target) is not Target
+                or type(case.target.value) is not str
+                or type(case.target.labels) is not tuple
+                or any(type(label) is not str for label in case.target.labels)
+                or (
+                    case.target.authorization is not None
+                    and (
+                        type(case.target.authorization) is not Authorization
+                        or type(case.target.authorization.owner) is not str
+                        or type(case.target.authorization.reference) is not str
+                        or case.target.authorization.valid_from is not None
+                        or case.target.authorization.valid_until is not None
+                    )
+                )
                 or type(case.policy) is not ScopePolicy
+                or type(case.policy.allow_private_lab) is not bool
+                or type(case.policy.require_authorization_for_public) is not bool
+                or type(case.policy.explicit_hosts) is not frozenset
+                or any(type(item) is not str for item in case.policy.explicit_hosts)
+                or type(case.policy.explicit_networks) is not tuple
+                or any(type(item) is not str for item in case.policy.explicit_networks)
                 or type(case.expected_allowed) is not bool
                 or (case.expected_host is not None and type(case.expected_host) is not str)
                 or type(case.expected_reason) is not ScopeReason
