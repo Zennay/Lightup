@@ -99,6 +99,47 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         self.assertEqual(parsed["reason"], "offline_witness_source_drift")
         self.assert_no_authority(parsed)
 
+    def test_modified_package_initializer_never_executes_side_effect(self):
+        with tempfile.TemporaryDirectory(prefix="lightup-init-marker-") as tmp:
+            marker = Path(tmp) / "imported-marker"
+            injected = (
+                "\nfrom pathlib import Path\n"
+                f"Path({str(marker)!r}).write_text('imported',encoding='utf8')\n"
+            )
+            done = self._isolated_source_child("__init__.py", injected)
+            self.assertFalse(marker.exists(), "modified package __init__ executed")
+        self.assertEqual(done.returncode, 2, done.stderr)
+        self.assertEqual(done.stderr, "")
+        result = json.loads(done.stdout)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "offline_witness_source_drift")
+        self.assert_no_authority(result)
+
+    def test_symlink_policy_source_is_rejected_before_import(self):
+        with tempfile.TemporaryDirectory(prefix="lightup-symlink-") as tmp:
+            base = Path(tmp)
+            scripts = base / "scripts"
+            source = base / "src" / "lightup"
+            scripts.mkdir(parents=True)
+            source.mkdir(parents=True)
+            script = scripts / "scope_offline_authority_witness_20261017.py"
+            shutil.copyfile(ROOT / "scripts" / script.name, script)
+            for name in ("__init__.py", "models.py"):
+                shutil.copyfile(ROOT / "src" / "lightup" / name, source / name)
+            alternate = base / "fictional-scope-copy.py"
+            shutil.copyfile(ROOT / "src" / "lightup" / "scope.py", alternate)
+            (source / "scope.py").symlink_to(alternate)
+            done = subprocess.run(
+                [sys.executable, str(script), "--offline-lab-only"],
+                capture_output=True, text=True, timeout=12, check=False,
+            )
+        self.assertEqual(done.returncode, 2, done.stderr)
+        self.assertEqual(done.stderr, "")
+        result = json.loads(done.stdout)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "offline_witness_source_drift")
+        self.assert_no_authority(result)
+
     def test_unchanged_source_cli_attests_both_real_sources_without_leaking_paths(self):
         expected = {
             "src/lightup/__init__.py": "24b02c39a8fe5041da81517a9aace8ba27161c5e020611d222755a6a6f429b01",
