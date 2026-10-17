@@ -27,6 +27,17 @@ class CountedStream(io.BytesIO):
         return super().read(*args, **kwargs)
 
 
+
+class GuardProbeHold(Exception):
+    """A review-only invariant failed; never issue a compatibility PASS."""
+
+
+def _require(condition: bool, invariant: str) -> None:
+    # Unlike 'assert', this invariant stays enforced under python -O/-OO.
+    if condition is not True:
+        raise GuardProbeHold("opt-in guard failed: " + invariant)
+
+
 def verify_guard() -> dict:
     with tempfile.TemporaryDirectory(prefix="lightup-686-sqlite-") as tmp:
         store = DomainStore(Path(tmp) / "disposable.sqlite3")
@@ -75,10 +86,10 @@ def verify_guard() -> dict:
         for header in negative:
             result, calls, reads = invoke(header, method="POST", route="/clients",
                                           body=b"name=ShouldNeverExist")
-            assert result["status"] == "400 Bad Request", "duplicate accepted"
-            assert calls == (0, 0, 0, 0), "prehandler store side effect"
-            assert reads == 0, "POST body parsed before guard"
-            assert "Set-Cookie" not in result["headers"], "cookie mutation"
+            _require(result.get("status") == "400 Bad Request", "duplicate denied")
+            _require(calls == (0, 0, 0, 0), "zero prehandler state effects")
+            _require(reads == 0, "no prehandler request-body reads")
+            _require("Set-Cookie" not in result.get("headers", {}), "no cookie mutation")
 
         payload = urlencode({
             "email": "guard686-operator@lightup.test",
@@ -86,9 +97,10 @@ def verify_guard() -> dict:
         }).encode("ascii")
         login, calls, reads = invoke(
             negative[1], method="POST", route="/login", body=payload)
-        assert login["status"] == "400 Bad Request"
-        assert calls == (0, 0, 0, 0)
-        assert reads == 0 and "Set-Cookie" not in login["headers"]
+        _require(login.get("status") == "400 Bad Request", "public login denied")
+        _require(calls == (0, 0, 0, 0), "no public login store effects")
+        _require(reads == 0 and "Set-Cookie" not in login.get("headers", {}),
+                 "no login request-body reads or Set-Cookie")
 
         cases = (
             (f"lightup_session={operator}", "200 OK"),
@@ -97,10 +109,10 @@ def verify_guard() -> dict:
         )
         for header, expected in cases:
             result, _, _ = invoke(header)
-            assert result["status"] == expected, ("legitimate role isolation", expected)
+            _require(result.get("status") == expected, "legitimate role isolation")
 
-        assert store.session_context(operator) is not None
-        assert store.session_context(tenant) is not None
+        _require(store.session_context(operator) is not None, "operator session retained")
+        _require(store.session_context(tenant) is not None, "client session retained")
         return {
             "status": "HOLD", "release_authorized": False,
             "guard_source": "opt-in owner #1169, not installed WSGI production entrypoint",
