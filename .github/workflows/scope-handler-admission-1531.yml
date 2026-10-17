@@ -6,6 +6,7 @@ on:
     paths:
       - scripts/scope_handler_admission_review_20261017.py
       - tests/test_scope_handler_admission_20261017.py
+      - tests/test_scope_handler_admission_boundary_20261017.py
       - docs/scope-handler-admission-20261017.md
       - .github/workflows/scope-handler-admission-1531.yml
   workflow_dispatch:
@@ -40,8 +41,9 @@ jobs:
           test "${{ github.ref_name }}" = "chatgpt/scope-1531-handler-admission-review-20261017-0247"
           test -f scripts/scope_handler_admission_review_20261017.py
           test -f tests/test_scope_handler_admission_20261017.py
+          test -f tests/test_scope_handler_admission_boundary_20261017.py
       - name: Execute purely offline admission tests (2 known source expected failures)
         shell: bash
         run: |
           set -euo pipefail
-          python -I -S -B -m unittest discover -s tests -p 'test_scope_handler_admission_20261017.py' -v
+          python -I -S -B -m unittest discover -s tests -p 'test_scope_handler_admission*20261017.py' -v
