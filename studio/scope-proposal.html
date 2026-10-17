@@ -71,6 +71,8 @@ const $ = id => document.getElementById(id);
 const fields = ['title','client','risk','mode','assets','excluded','purpose','start','end','passive','config','network'];
 const MAX_BYTES = 65536;
 let imported = false;
+let importedWindow=null;
+let importedWall=null;
 let renderRevision=0;
 function str(value,max) { return typeof value === 'string' && value.length <= max ? value : null; }
 function arrayLines(text) {
@@ -125,7 +127,9 @@ function read() {
   if ($('mode').value==='authorized_assessment') problems.push({fatal:false,message:'Public/real assets require independent authenticated consent, current revocation checks and an issued grant; none is provided by this draft.'});
   if ($('network').checked) problems.push({fatal:false,message:'Lab-only network checks require separate lab authorization and isolated environment.'});
   if (imported) problems.push({fatal:false,message:'Imported content is untrusted and must be reviewed independently.'});
-  const window=LightUpPlanningWindow.resolve($('start').value,$('end').value);
+  const wall={start:$('start').value||null,end:$('end').value||null};
+  const sourceUnchanged=!!(importedWindow&&importedWall&&wall.start===importedWall.start&&wall.end===importedWall.end);
+  const window=sourceUnchanged?importedWindow:LightUpPlanningWindow.resolve(wall.start,wall.end);
   if(['invalid','nonexistent_local_time','ambiguous_dst_hour','reverse_window'].includes(window.status))
     problems.push({fatal:true,message:'Planning time invalid or DST-ambiguous: '+window.status+'. Use unambiguous local times.'});
   if(window.status==='resolved')problems.push({fatal:false,message:'Review exact planned UTC interval '+window.start+' → '+window.end+' ('+window.timezone+'). Not an approved time window.'});
@@ -145,7 +149,7 @@ function read() {
       configuration_review:$('config').checked,
       private_lab_network_checks:$('network').checked
     },
-    proposed_window_local:{start:$('start').value||null,end:$('end').value||null},
+    proposed_window_local:wall,
     proposed_window_utc:window,
     exported_at_utc:now
   };
@@ -205,7 +209,7 @@ $('copy').addEventListener('click',async()=>{
 $('reset').addEventListener('click',()=>{
   if(!window.confirm('Clear all fields? This draft is not saved.'))return;
   fields.forEach(id=>{const el=$(id);if(el.type==='checkbox')el.checked=id==='passive';else el.value=id==='risk'?'1':id==='mode'?'authorized_assessment':'';});
-  imported=false; $('import').value=''; feedback('Cleared locally.');show();
+  imported=false; importedWindow=null;importedWall=null; $('import').value=''; feedback('Cleared locally.');show();
 });
 $('import').addEventListener('change',async(event)=>{
   const file=event.target.files[0];if(!file)return;
@@ -229,12 +233,8 @@ $('import').addEventListener('change',async(event)=>{
       if(!computed||data.scope_fingerprint_sha256!==computed)throw new Error('fingerprint mismatch');
     }
     if(!LightUpPlanningWindow.validateStored(data.proposed_window_local,data.proposed_window_utc))throw new Error('invalid UTC interval');
-    if(data.proposed_window_utc?.status==='resolved'){
-      const current=LightUpPlanningWindow.resolve(data.proposed_window_local.start,data.proposed_window_local.end);
-      if(data.proposed_window_utc.timezone!==current.timezone||current.status!=='resolved'||
-         current.start!==data.proposed_window_utc.start||current.end!==data.proposed_window_utc.end)
-        throw new Error('timezone mismatch: existing draft must be edited in original timezone');
-    }
+    // Keep original source-zone UTC evidence while wall-time inputs are unchanged.
+    // Any manual edit to the time fields explicitly recalculates in the current browser zone.
     const windowFields=data.proposed_window_local;
     if(!['start','end'].every(k=>windowFields[k]===null||(typeof windowFields[k]==='string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(windowFields[k]))))throw new Error('invalid window');
     $('title').value=data.proposal_name;$('client').value=data.client_label;$('purpose').value=data.notes;
@@ -244,7 +244,9 @@ $('import').addEventListener('change',async(event)=>{
     $('passive').checked=data.proposed_activities.passive_analysis;
     $('config').checked=data.proposed_activities.configuration_review;
     $('network').checked=data.proposed_activities.private_lab_network_checks;
-    imported=true;show();feedback('Imported as an untrusted draft. Review every field; no identity or authority was imported.');
+    importedWindow=data.proposed_window_utc||null;
+    importedWall={start:windowFields.start||null,end:windowFields.end||null};
+    imported=true;show();feedback('Imported untrusted draft; original UTC instants retained until planning times change. Browser timezone edits will recalculate the window.');
   } catch (error) {feedback('Import rejected: '+(error.message||'invalid draft')+'. Existing fields unchanged.');}
   event.target.value='';
 });
