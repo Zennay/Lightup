@@ -17,6 +17,22 @@ class OutputIdentityReview(Enum):
         # A review receipt must never accidentally serve as truthy authority.
         return False
 
+    @property
+    def authorized(self) -> bool:
+        return False
+
+    @property
+    def consent_verified(self) -> bool:
+        return False
+
+    @property
+    def dispatch_allowed(self) -> bool:
+        return False
+
+    @property
+    def release_allowed(self) -> bool:
+        return False
+
 
 def review_output_identity(summary: object, evidence_kind: object, evidence_payload: object) -> OutputIdentityReview:
     """Return REVIEW_ONLY for well-shaped plain builtins; otherwise HOLD.
