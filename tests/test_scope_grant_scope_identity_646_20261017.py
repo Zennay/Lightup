@@ -227,6 +227,9 @@ class CanonicalGrantScopeAcceptance(unittest.TestCase):
 
         def guarded(store, ctx, engagement_id, approved_by, reference,
                     scope, valid_from, valid_until, recurring_retest_allowed=False):
+            # Mirror the production authorization precedence: role check first,
+            # then canonical scope type, always before foreign field reads.
+            ctx.require_operator("record_authorization_grant")
             if type(scope) is not ScopeDefinition:
                 raise ValueError("exact ScopeDefinition required before any read")
             return original(
@@ -282,6 +285,50 @@ class CanonicalGrantScopeAcceptance(unittest.TestCase):
             valid = self.issue(canonical)
             self.assertIs(type(valid.scope), ScopeDefinition)
             self.assertEqual(self.durable_count(), 1)
+
+            # A denied malformed proposal cannot change an existing grant.
+            with closing(sqlite3.connect(self.store.path)) as connection:
+                before = connection.execute(
+                    "SELECT grant_id, max_risk, assets_json, "
+                    "allowed_capabilities_json FROM authorization_grants "
+                    "WHERE engagement_id=? ORDER BY grant_id",
+                    (self.engagement.engagement_id,),
+                ).fetchall()
+            for candidate in (None, Sneaky(), trap, subclass, duck):
+                with self.subTest(existing_grant=type(candidate).__name__):
+                    with self.assertRaises(ValueError):
+                        self.issue(candidate)
+                    with closing(sqlite3.connect(self.store.path)) as connection:
+                        after = connection.execute(
+                            "SELECT grant_id, max_risk, assets_json, "
+                            "allowed_capabilities_json FROM authorization_grants "
+                            "WHERE engagement_id=? ORDER BY grant_id",
+                            (self.engagement.engagement_id,),
+                        ).fetchall()
+                    self.assertEqual(after, before)
+
+            # Denied client role must win before any malicious scope inspection.
+            unauthenticated = AccessContext(
+                "fictional-client", Role.CLIENT_ADMIN, self.engagement.client_id
+            )
+            with self.assertRaises(RoleError):
+                self.store.record_authorization_grant(
+                    unauthenticated, self.engagement.engagement_id,
+                    "fake", "fake", trap, self.start, self.end,
+                )
+            self.assertEqual(trap.reads, 0)
+
+    def test_exact_identity_cannot_be_approximated_with_isinstance(self):
+        """An instanceof-style guard can be deceived by synthetic metadata."""
+        class FakeClass:
+            @property
+            def __class__(self):
+                return ScopeDefinition
+
+        fake = FakeClass()
+        self.assertTrue(isinstance(fake, ScopeDefinition))
+        self.assertIsNot(type(fake), ScopeDefinition)
+        self.assertEqual(self.durable_count(), 0)
 
 
 if __name__ == "__main__":
