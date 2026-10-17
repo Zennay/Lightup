@@ -33,7 +33,7 @@ function valid(d){
   typeof d.proposal_name==='string' && d.proposal_name.length<=120 &&
   typeof d.client_label==='string' && d.client_label.length<=100 &&
   typeof d.notes==='string' && d.notes.length<=3000 &&
-  (d.requested_mode==='authorized_assessment'||d.requested_mode==='lab_only') &&
+  (d.requested_mode==='authorized_assessment'||d.requested_mode==='analysis_only') &&
   Number.isInteger(d.requested_risk) && d.requested_risk>=1 && d.requested_risk<=4 &&
   Array.isArray(d.requested_assets) && d.requested_assets.length<=80 &&
   Array.isArray(d.excluded_assets) && d.excluded_assets.length<=80 &&
