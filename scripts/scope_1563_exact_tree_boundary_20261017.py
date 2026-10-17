@@ -32,7 +32,18 @@ class Hold(ValueError):
 
 
 def _git(root: Path, *args: str) -> bytes:
-    env = dict(os.environ, GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull)
+    # Ignore caller-supplied Git object/repository/config redirection, including
+    # GIT_DIR, GIT_WORK_TREE, GIT_CONFIG_COUNT and replace-object toggles. The
+    # review must inspect the repository at 'root', not an attacker-selected one.
+    env = {key: value for key, value in os.environ.items()
+           if not key.startswith("GIT_")}
+    env.update(
+        GIT_CONFIG_NOSYSTEM="1",
+        GIT_CONFIG_GLOBAL=os.devnull,
+        GIT_NO_REPLACE_OBJECTS="1",
+        GIT_OPTIONAL_LOCKS="0",
+        GIT_TERMINAL_PROMPT="0",
+    )
     command = [
         "git", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null",
         *args,
