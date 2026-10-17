@@ -56,9 +56,11 @@ jobs:
         run: python scripts/check_scope_git_env_tree_20261017.py
       - name: Compile and test ONLY separately owned offline files
         run: |
-          python -m compileall -q scripts/scope_git_env_attestation_20261017.py tests/test_scope_git_env_attestation_20261017.py scripts/check_scope_git_env_tree_20261017.py tests/test_scope_git_env_tree_20261017.py
-          python -m unittest discover -s tests -p test_scope_git_env_attestation_20261017.py -q
-          python -m unittest discover -s tests -p test_scope_git_env_tree_20261017.py -q
+          # Source compile only: compileall writes ignored bytecode and would
+          # defeat the strict ignored-file evidence fence below.
+          python -B -c 'from pathlib import Path; paths = ("scripts/scope_git_env_attestation_20261017.py", "tests/test_scope_git_env_attestation_20261017.py", "scripts/check_scope_git_env_tree_20261017.py", "tests/test_scope_git_env_tree_20261017.py"); [compile(Path(p).read_bytes(), p, "exec") for p in paths]'
+          python -B -m unittest discover -s tests -p test_scope_git_env_attestation_20261017.py -q
+          python -B -m unittest discover -s tests -p test_scope_git_env_tree_20261017.py -q
       - name: Reattest non-authorizing Git environment after tests
         run: |
           set +e
