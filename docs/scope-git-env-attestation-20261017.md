@@ -541,3 +541,24 @@ grant privileges, validate a permanent registered VPS runner, modify
 production source, trust external inputs, resolve preexisting source
 REDs or authorize a scan. Global/interpreter and privileged-runner
 integrity remain external assumptions to be independently reviewed.
+
+
+## W100–W102 — disable global site and .pth startup in owned CI (2026-10-17)
+
+The isolated runner already used `-I -B` to ignore Python
+environment variables, user-site imports and bytecode writes. Python
+`-I` alone still loads the global `site` initialization, where
+system-site `.pth` startup code could run before any source attestation.
+The dedicated workflow now runs **every Python command** with
+`python -I -S -B`: `-S` disables the site module's implicit
+startup and `.pth` processing, `-I` isolates user paths and ambient
+startup flags, and `-B` avoids ignored caches.
+
+Independent real zSSH testing of a disposable full-history clean-main
+checkout confirmed Python3.14 `-I -S -B` runs all 54 offline tests,
+the non-authorizing environment receipt (exit 2, all authority flags
+false), and the exact-head source/tree checker (PASS). The source-only
+workflow regression now rejects a return to `-I -B` or unisolated
+unittest commands. This does not independently certify a privileged
+Python installation, runtime client/operator permission or any
+permanent VPS CI agent; unchanged release HOLD applies.
