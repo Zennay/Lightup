@@ -11,6 +11,7 @@ import json
 import re
 import signal
 import threading
+import time
 import sys
 from contextvars import ContextVar
 from contextlib import redirect_stderr, redirect_stdout
@@ -239,7 +240,7 @@ def _fixture_snapshot(fixtures: object) -> list[list[object]] | None:
     return rows
 
 
-def _evaluate_pinned_cases(fixtures: tuple[WitnessCase, ...], fixture_digest: str, snapshot: list[list[object]]) -> dict[str, object]:
+def _evaluate_pinned_cases(fixtures: tuple[WitnessCase, ...], fixture_digest: str, snapshot: list[list[object]], deadline: float) -> dict[str, object]:
     """Called only under the exclusive deadline and after fixture-pin admission."""
     observed: list[list[object]] = []
     for case in fixtures:
@@ -249,6 +250,11 @@ def _evaluate_pinned_cases(fixtures: tuple[WitnessCase, ...], fixture_digest: st
                 decision = case.policy.decide(case.target)
         finally:
             _WITNESS_EVALUATION_ACTIVE.reset(token)
+        # A callback may catch BaseException, swallowing the one-shot SIGALRM
+        # and then returning plausible decisions. Independently check elapsed
+        # monotonic wall time before accepting *any* policy result.
+        if time.monotonic() >= deadline:
+            return _receipt("HOLD", "offline_witness_time_budget_exceeded")
         # Frozen dataclasses are not immutable against object.__setattr__.
         # A matching decision can conceal changes to the current or a FUTURE
         # fictional target, authorization, scope policy, or expected verdict.
@@ -271,7 +277,11 @@ def _evaluate_pinned_cases(fixtures: tuple[WitnessCase, ...], fixture_digest: st
         ):
             return _receipt("HOLD", "scope_policy_contract_drift")
         observed.append([case.case_id, decision.allowed, decision.normalized_host, decision.reason.value])
+    # Also check immediately before a positive receipt, including time spent
+    # on classification and digest construction after the final callback.
     digest = _hash_canonical_rows(observed)
+    if time.monotonic() >= deadline:
+        return _receipt("HOLD", "offline_witness_time_budget_exceeded")
     if digest != REFERENCE_BEHAVIOR_SHA256:
         return _receipt("HOLD", "reference_behavior_drift")
     receipt = _receipt("REVIEW_ONLY", "canonical_synthetic_matrix_matches", len(fixtures), digest)
@@ -301,10 +311,11 @@ def evaluate(cases: tuple[WitnessCase, ...] | None = None) -> dict[str, object]:
         ):
             return _receipt("HOLD", "offline_witness_time_fence_unavailable")
         prior_handler = signal.getsignal(signal.SIGALRM)
+        deadline = time.monotonic() + EVALUATION_DEADLINE_SECONDS
         try:
             signal.signal(signal.SIGALRM, _witness_alarm)
             signal.setitimer(signal.ITIMER_REAL, EVALUATION_DEADLINE_SECONDS)
-            return _evaluate_pinned_cases(fixtures, fixture_digest, snapshot)
+            return _evaluate_pinned_cases(fixtures, fixture_digest, snapshot, deadline)
         finally:
             # Restore both resources even if the policy crashed, returned
             # early or exceeded the wall-clock budget.
