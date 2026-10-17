@@ -171,7 +171,7 @@ def main() -> int:
         line = json.dumps(receipt, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n"
         count = sys.stdout.write(line)
         sys.stdout.flush()
-        if count != len(line):
+        if type(count) is not int or count != len(line):
             return 2
     except (OSError, ValueError, UnicodeError, TypeError):
         return 2
