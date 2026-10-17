@@ -7,6 +7,7 @@ ToolOutput contract remains owned by src/lightup/ai/orchestration.py.
 
 
 from enum import Enum
+from unicodedata import category
 
 
 class OutputIdentityReview(Enum):
@@ -50,6 +51,15 @@ def review_output_identity(summary: object, evidence_kind: object, evidence_payl
     if len(summary) > 16_384 or len(evidence_kind) > 80 or len(evidence_payload) > 4_194_304:
         return OutputIdentityReview.HOLD
     if not summary.strip() or not evidence_kind:
+        return OutputIdentityReview.HOLD
+    # A nonempty string can be visually blank (e.g. U+200B), or contain
+    # bidi/control characters that mislead an audit reviewer. Keep normal
+    # newlines/tabs for readable multiline summaries, but reject invisible
+    # format marks, surrogates, and embedded non-whitespace control bytes.
+    if any(category(char) in {"Cf", "Cs"} or
+           (category(char) == "Cc" and char not in "\\n\\r\\t") for char in summary):
+        return OutputIdentityReview.HOLD
+    if not any(not char.isspace() and category(char) not in {"Mn", "Me"} for char in summary):
         return OutputIdentityReview.HOLD
     # Evidence kind is an identifier, not an arbitrary display string.
     # Reject Unicode confusables, control characters and delimiter injection.
