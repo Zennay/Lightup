@@ -312,3 +312,46 @@ Independently authenticated separate client/operator consent with
 at-use revocation, security/privacy review, exact final release-SHA
 full hosted and permanently registered VPS GitHub Actions and explicit
 HUMAN GO remain necessary.
+
+
+## W12 · Generic HOLD on partial CLI receipt output (2026-10-17)
+
+Another entirely NEW own test module
+`tests/test_scope_git_path_stream_io_1541_20261017.py`
+uses injected, purely local fake stdin/stdout objects (no filesystem,
+network, Git command, real handler or source-authorization import).
+The initial real allowed zSSH Python3.14.4 run found **5 genuine failing
+cases** in our new offline synthetic stdin CLI: a short write,
+overreported count, and `True`, `None`, or zero-returning stdout
+acknowledgements could let `main()` still exit **3/REVIEW_ONLY** despite
+an incomplete/unverifiable output receipt.
+
+The independently owned CLI is now hardened in commit
+`f3571d8b11a8bd4585ccf1dd582150d686c5f05a`: only an **exact
+built-in integer** acknowledgement equal to the **entire fixed receipt
+byte length**, followed by a successful flush, can preserve the
+synthetic-only exit 3. Any malformed, short or exceptional stdout
+transport yields **HOLD exit2**, never an approval. This cannot recover
+a partially transmitted message, so consumers must validate both
+**complete fixed JSON and exact exit code**; even REVIEW_ONLY conveys
+zero authorization in any event. The same suite proves stdin read
+exceptions and extra CLI arguments yield fixed generic HOLD without
+echoing synthetic secrets. A valid subsequent or preceding request
+never inherits a previous review status.
+
+Actual connected zSSH isolated checkout SHA `f3571d8`:
+**8/8 new transport tests GREEN** (5 previously RED cases repaired)
+and **84/84 own Git path/test/CLI tests GREEN**, clean Git tree.
+No source owner, existing workflow, external worker, main branch,
+scan, grant, handler, target or deployment was changed.
+The previously recorded **cold** Python3.14 complete project test
+evidence at earlier code SHA `2f24d8f` remains precise: cold original
+1,349 had 2 independently owned #1535 FAIL; independent disposable
+composition with the #1536 fix was 1,349 OK. Do **not** substitute that
+old SHA evidence for a full current-HEAD release CI.
+
+**INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** Full exact
+approved release SHA hosted and permanently registered named VPS
+Actions, independently authenticated separate client/operator
+consent with at-use revocation, security/privacy and explicit
+human GO remain outstanding.
