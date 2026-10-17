@@ -137,10 +137,11 @@ def references_review_module(source: str, *, _depth: int = 0) -> bool:
                     resolve_name_names.add(alias.asname or alias.name)
     for node in nodes:
         if isinstance(node, ast.Import):
-            if any(name.name.split(".")[-1] == REVIEWER for name in node.names):
+            # Loading a dotted child necessarily loads its parent package.
+            if any(REVIEWER in name.name.split(".") for name in node.names):
                 return True
         elif isinstance(node, ast.ImportFrom):
-            if node.module and node.module.split(".")[-1] == REVIEWER:
+            if node.module and REVIEWER in node.module.split("."):
                 return True
             # Both "from lightup import reviewer" and "from . import reviewer"
             # can promote the module despite the module field not containing it.
@@ -500,6 +501,29 @@ class RuntimeIsolationStaticTests(unittest.TestCase):
             "exec(''.join(['import lightup.', dynamic]))",
         )
         for source in samples:
+            with self.subTest(source=source):
+                self.assertFalse(references_review_module(source))
+
+    def test_dotted_descendant_static_import_is_detected(self):
+        cases = (
+            "import lightup.scope_literal_control_review_20261016.child",
+            "import lightup.scope_literal_control_review_20261016.sub.another",
+            "from lightup.scope_literal_control_review_20261016.child import x",
+            "from lightup.scope_literal_control_review_20261016.sub.child import helper",
+            "from .scope_literal_control_review_20261016.child import x",
+        )
+        for source in cases:
+            with self.subTest(source=source):
+                self.assertTrue(references_review_module(source))
+
+    def test_dotted_descendant_names_are_not_overmatched(self):
+        cases = (
+            "import lightup.scope_literal_control_review_20261016_suffix.child",
+            "from lightup.scope_literal_control_review_20261016_suffix import x",
+            "import other.scope_literal_control_review_20261016_suffix",
+            "import lightup.scope_literal_control_review_20261016_backup",
+        )
+        for source in cases:
             with self.subTest(source=source):
                 self.assertFalse(references_review_module(source))
 
