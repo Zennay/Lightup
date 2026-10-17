@@ -73,6 +73,39 @@ class Scope649ReviewerTests(unittest.TestCase):
             ], [False] * 7
         )
 
+    def test_receipt_cannot_be_constructed_with_any_authority_claim(self):
+        # Frozen alone is not sufficient: the public dataclass constructor
+        # previously accepted authority=True while bool(receipt) stayed false.
+        flags = (
+            "authorization_verified", "consent_verified", "permit_issued",
+            "dispatch_allowed", "execution_enabled", "merge_approved",
+            "release_approved",
+        )
+        for field in flags:
+            for value in (True, 1, "true"):
+                with self.subTest(field=field, value=value):
+                    with self.assertRaises((ValueError, TypeError)):
+                        subject.ReviewReceipt(subject.ReviewStatus.REVIEW_ONLY, **{field: value})
+
+    def test_receipt_rejects_status_spoofing_and_dataclass_replacement(self):
+        from dataclasses import replace
+
+        for invalid in ("REVIEW_ONLY", "HOLD", None, 0, True):
+            with self.subTest(invalid=repr(invalid)):
+                with self.assertRaises((ValueError, TypeError)):
+                    subject.ReviewReceipt(invalid)
+        clean = subject.ReviewReceipt(subject.ReviewStatus.HOLD)
+        for name in (
+            "authorization_verified", "consent_verified", "permit_issued",
+            "dispatch_allowed", "execution_enabled", "merge_approved",
+            "release_approved",
+        ):
+            with self.subTest(replace=name):
+                with self.assertRaises((ValueError, TypeError)):
+                    replace(clean, **{name: True})
+        self.assertIs(replace(clean, status=subject.ReviewStatus.REVIEW_ONLY).status,
+                      subject.ReviewStatus.REVIEW_ONLY)
+
     def test_refuses_foreign_mapping_without_touching_foreign_iteration(self):
         self.assertIs(subject.review_batch(_TrapDict(packet())).status, subject.ReviewStatus.HOLD)
 
