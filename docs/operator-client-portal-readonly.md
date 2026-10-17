@@ -147,3 +147,18 @@ The operator desk and request detail now report an additional **decision-lineage
 - A present operator account is described as a **current-role observation**, never proof of role at decision time or of valid two-party consent.
 
 The record remains unchanged by this view. Nothing here reverses approvals or grants execution authorization; actual immutable approval provenance, independent consent and at-use revocation need their existing separately owned source and security gates.
+
+## Engagement-level grant/request dossier (issue #177 — observation only)
+
+The operator authorization desk now links each engagement to an actual, authenticated record view:
+
+- `GET /authorization-desk/engagements/<engagement_id>` renders a bounded read-only dossier with that engagement's recorded grants, time windows, requested assets, grant risk, lineage warnings and the client's assessment requests.
+- `GET /api/v1/operator/engagements/<engagement_id>/review` returns the same view as `lightup.operator-engagement-review.v1` JSON, limited to 40 grants/requests per section; overflow is explicitly signalled.
+- Both require an authenticated **operator**. The underlying `DomainStore` performs the original engagement and client lookups; neither a client session nor the URL can grant cross-tenant operator capabilities.
+- Possible counterpart request links are displayed solely where the stored request is `APPROVED`, has `AUTHORIZED_ASSESSMENT` mode, has exactly overlapping raw asset strings and requests at least the grant's risk. These are **textual coincidences**, not canonical identity verification, independent client consent or a persisted request-to-grant reference. They never raise any authorization flag.
+- Missing/mismatched client or engagement identifiers, unreadable scope, invalid windows, future and expired recorded windows, or missing corresponding requests are made visible for operator triage. There is no attempt to modify stored grants or enable live work.
+- The JSON contract fixes `request_binding_verified`, `client_consent_verified`, `operator_consent_verified`, `revocation_checked_at_use`, `execution_authorized` and `release_approved` to **false**. The disposition is always `REVIEW_ONLY`.
+
+**Critical boundary:** [issue #177](https://github.com/Zennay/Lightup/issues/177) requires the *domain* to persist and revalidate an immutable, approved-request-to-grant relationship. This UI makes absent provenance visible but **does not fix that domain invariant**. Existing owner [PR #1434](https://github.com/Zennay/Lightup/pull/1434) covers an independent offline review; no shared source or release paths are changed here.
+
+All features stay in the explicit opt-in guarded WSGI variant. No scanning, real-world target contact, consent grant, active handler, QA suite or production deployment is introduced.
