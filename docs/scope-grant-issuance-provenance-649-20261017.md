@@ -263,3 +263,68 @@ as the permanently registered runner. **INCUBATE M3/M7 · DRAFT/HOLD**:
 no merge, real targets, scans, grants, handlers, deploy or release; separate
 client/operator consent with revocation at use, security/privacy and HUMAN GO
 are mandatory.
+
+## W7 — sealed false-authority receipts and dual-field disposable SQLite proof
+
+**Scope ownership:** all changes remain confined to this branch's seven *new*
+review/test/docs/workflow paths stacked on unchanged #554 owner HEAD
+`4c8d5651fc0e23f94514daae56b4e5fe0549de37`. No modification to
+`src/lightup/domain.py`, production authorization, active handlers or
+another worker's branch. Release posture remains **INCUBATE M3/M7 / DRAFT/HOLD**.
+
+### Real own-code defects and owner-only fixes
+
+1. `ReviewReceipt` was a frozen dataclass but its public constructor still
+   accepted `consent_verified=True`, `permit_issued=True`,
+   `release_approved=True`, or any other false-authority field set to
+   truthy values, and also arbitrary non-enum `status`. This violates the
+   standalone review receipt's no-authority invariant, **not** a real
+   LightUp grant bypass. A new actual RED run on Python3.14.4 permitted
+   zSSH at own test HEAD `73687b2980dc3f72694ae07efe0b06323ae03b1c`:
+   **21 methods, 33 failing subtests**. Fixed on
+   `a72322a358d21e91adfb45339c9551caa5877ef2` by exact
+   `ReviewStatus` type validation, identity-only `False` flags, and
+   fail-closed `ValueError`; `dataclasses.replace()` and hostile values
+   are tested and cannot accidentally promote false authority.
+2. Python code could subclass `ReviewReceipt`, override
+   `__post_init__`, and suppress its validation. **Actually reproduced**:
+   own `116551933bd29be9fb96bee1445ed35012d1f177`, **23 methods / 1
+   genuine FAIL** on connected Python3.14.4. Fixed at
+   `2e26e63f5d0c4269f940b070f8b961b2557b1e17` by sealing receipt
+   subclass creation. This is a contract defense for cooperative review
+   consumers, **not a claim to defend against arbitrary hostile Python code
+   bypassing dataclass immutability**.
+3. Independently expanded real **temporary SQLite-only** source-to-HOLD
+   integration acceptance: both distorted `approved_by` and distorted
+   `reference` strings demonstrate the still-unfixed original
+   validation-then-durable-write double-`.strip()` discrepancy. Each
+   synthesized before/after comparison is `HOLD`, authority booleans
+   false; alternatively a future source-owner fixed input check may raise
+   `ValueError` with **zero persisted grant rows**. No live target, real
+   user identity, grant/handler dispatch or source mutation.
+4. Added offline hostile `__bool__`, `__eq__` and `__str__` trapping
+   assertions: invalid receipt constructor inputs are rejected without
+   invoking arbitrary foreign callbacks.
+
+### Evidence captured before this documentation change
+
+Exact own `2e26e63f5d0c4269f940b070f8b961b2557b1e17`:
+[own isolated GitHub Actions #39007582538](https://github.com/Zennay/Lightup/actions/runs/39007582538)
+**COMPLETED SUCCESS**, actual Python3.11 job `117323094246`,
+Python3.14 job `117323094398`, original logs independently checked:
+**23/23 ordinary standalone review tests PASS + 19/19 ordinary
+before/after review tests PASS + 18 original issuance methods
+(7 normal PASS and 11 deliberately unresolved expected source REDs)**.
+The workflow also verifies exact seven-file add-only ancestry and all 11
+strict original RED identities. This is **NOT** proof that the source was fixed.
+
+Allowed connected isolated `vps-bb300bba` Python3.14.4 exact same head:
+**627 full unit tests OK (11 expected original source failures) + 86
+integration tests OK**, clean own checkout. Strict
+`-W error::ResourceWarning` passes the own 23+19 reviewer suites.
+The original permanent registered GitHub self-hosted VPS runner proof,
+full integrated approved release baseline, independently authenticated
+client AND operator consents with at-use revocation, independent
+security/privacy signoff and explicit HUMAN GO remain separate gates.
+
+**NO MERGE / DEPLOY / REAL TARGET / SCAN / GRANT / HANDLER / RELEASE.**
