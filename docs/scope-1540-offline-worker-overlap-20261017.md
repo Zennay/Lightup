@@ -82,6 +82,20 @@ python3 -I -S -B scripts/review_scope_compare_snapshots_offline_1540.py < synthe
 # Exit 3 REVIEW_ONLY; exit 2 HOLD; NEVER 0, NEVER approval
 ```
 
+Two committed **purely fictional** ready-to-run compare snapshots exercise both
+paths without any GitHub token or external asset:
+
+```sh
+python3 -I -S -B scripts/review_scope_compare_snapshots_offline_1540.py < examples/scope1540-compare-review-only.json
+# -> REVIEW_ONLY, process exit 3, all six authority fields false
+python3 -I -S -B scripts/review_scope_compare_snapshots_offline_1540.py < examples/scope1540-compare-overlap-hold.json
+# -> HOLD, process exit 2, all six authority fields false
+```
+
+Both fixtures contain fake SHAs and no real client/operator credentials or
+approved assets. An independent end-to-end subprocess suite pins the
+canonical bytes, fixed no-echo receipts and both exit statuses.
+
 The exact canonical JSON root keys are `base_sha`, `snapshots`,
 `version:1`. Each of 2–32 `snapshots` must have exactly:
 `worker`, `branch`, `base_sha`, `head_sha`, `compare_status:"ahead"`,
@@ -147,7 +161,7 @@ interpreted as conflict-free, approval, permission to trigger handlers, or GO.
 ## Ownership and release gate
 
 This branch adds two unwired offline reviewers, independent acceptance suites
-and this document, solely under seven newly owned paths. No edits to
+and this document, solely under ten newly owned paths. No edits to
 existing source owners' `src/lightup/*`, other workers' branches, existing
 workflows, real clients/targets, live grants, execution handlers, scanning,
 remediation, or deployment.
