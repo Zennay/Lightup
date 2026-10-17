@@ -221,7 +221,7 @@ $('import').addEventListener('change',async(event)=>{
       data.authorization!==false||data.client_consent!==false||data.operator_consent!==false||data.grant!==false||data.execution!==false||
       !Array.isArray(data.requested_assets)||!Array.isArray(data.excluded_assets)||
       data.requested_assets.length>80||data.excluded_assets.length>80||
-      !data.requested_assets.every(v=>str(v,120))||!data.excluded_assets.every(v=>str(v,120))||
+      !data.requested_assets.every(v=>str(v,253))||!data.excluded_assets.every(v=>str(v,253))||
       !str(data.proposal_name,120)||!str(data.client_label,100)||!str(data.notes,3000)||
       !['authorized_assessment','analysis_only'].includes(data.requested_mode)||
       !Number.isInteger(data.requested_risk)||data.requested_risk<1||data.requested_risk>4||
