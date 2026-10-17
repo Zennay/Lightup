@@ -152,5 +152,65 @@ class HostedTriggerContractTests(unittest.TestCase):
         self.assertIn("persist-credentials: false", workflow)
 
 
+class MutationWitnessQualityTests(unittest.TestCase):
+    """An unrelated exception must never be mistaken for an auth rejection."""
+
+    @classmethod
+    def setUpClass(cls):
+        path = (pathlib.Path(__file__).resolve().parents[1] /
+                "scripts/scope_1563_membership_mutation_proof_20261017.py")
+        spec = importlib.util.spec_from_file_location("scope_1563_mutation_quality", path)
+        if spec is None or spec.loader is None:
+            raise AssertionError("mutation proof source unavailable")
+        cls.proof = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.proof)
+
+    @staticmethod
+    def result(*, assertion=True, error=False, expected=False, wrong=False):
+        class Case:
+            def __str__(self):
+                return ("test_other_case" if wrong else
+                        "test_invalid_target_cannot_be_rescued_by_grant_or_auth_flag")
+
+        result = unittest.TestResult()
+        result.testsRun = 7
+        case = Case()
+        if assertion:
+            result.failures.append((case, "Traceback: AssertionError: denied correctly"))
+        if error:
+            result.errors.append((case, "Traceback: RuntimeError: import crashed"))
+        if expected:
+            result.expectedFailures.append((case, "expected underlying source RED"))
+        return result
+
+    def test_real_assertion_and_matching_test_is_required(self):
+        self.assertTrue(self.proof.mutation_detected(
+            self.result(), "test_invalid_target"
+        ))
+
+    def test_exception_cannot_be_relabelled_mutation_detection(self):
+        self.assertFalse(self.proof.mutation_detected(
+            self.result(assertion=False, error=True), "test_invalid_target"
+        ))
+        self.assertFalse(self.proof.mutation_detected(
+            self.result(assertion=True, error=True), "test_invalid_target"
+        ))
+
+    def test_only_matching_security_case_counts(self):
+        self.assertFalse(self.proof.mutation_detected(
+            self.result(wrong=True), "test_invalid_target"
+        ))
+        self.assertFalse(self.proof.mutation_detected(
+            self.result(assertion=False), "test_invalid_target"
+        ))
+
+    def test_expected_red_or_exception_text_is_not_acceptance(self):
+        result = self.result(expected=True)
+        self.assertFalse(self.proof.mutation_detected(result, "test_invalid_target"))
+        result = self.result()
+        result.failures[0] = (result.failures[0][0], "Traceback: TypeError: broken")
+        self.assertFalse(self.proof.mutation_detected(result, "test_invalid_target"))
+
+
 if __name__ == "__main__":
     unittest.main()
