@@ -58,3 +58,20 @@ def review_output_identity(summary: object, evidence_kind: object, evidence_payl
     if any(not ("a" <= c <= "z" or "0" <= c <= "9" or c in "._-") for c in evidence_kind[1:]):
         return OutputIdentityReview.HOLD
     return OutputIdentityReview.REVIEW_ONLY
+
+
+def review_output_batch(rows: object) -> OutputIdentityReview:
+    """Atomic, bounded, synthetic output-shape preview with zero authority.
+
+    Accept only an exact tuple of 1..32 exact three-tuples. Never iterate
+    foreign containers, invoke any handler, coerce hostile values or produce
+    partial positive results. This is not at-use authorization.
+    """
+    if type(rows) is not tuple or not 1 <= len(rows) <= 32:
+        return OutputIdentityReview.HOLD
+    for row in rows:
+        if type(row) is not tuple or len(row) != 3:
+            return OutputIdentityReview.HOLD
+        if review_output_identity(row[0], row[1], row[2]) is not OutputIdentityReview.REVIEW_ONLY:
+            return OutputIdentityReview.HOLD
+    return OutputIdentityReview.REVIEW_ONLY
