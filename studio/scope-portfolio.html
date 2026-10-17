@@ -28,7 +28,7 @@
 <section class="card"><h2>Engagement planning board <span class="pill">DRAFT ONLY</span></h2>
 <div id="board">Import proposals to begin.</div></section>
 <section class="card">
-<h2>Conflicts and review attention</h2><p>Cross-proposal CIDR comparisons are numerical; DNS and actual ownership are never checked.</p>
+<h2>Conflicts and review attention</h2><p>Cross-proposal CIDR comparisons subtract proposed exclusions before looking for overlap; DNS and actual ownership are never checked.</p>
 <div id="warnings">No comparisons yet.</div>
 </section>
 </div>
@@ -81,8 +81,11 @@ function portfolioSummary(){
  }
  for(let i=0;i<portfolio.length;i++)for(let j=i+1;j<portfolio.length;j++){
   const a=portfolio[i],b=portfolio[j], da=a.draft,db=b.draft;
+  const effectiveA=LightUpScopeNetwork.effectiveCoverage(da.requested_assets,da.excluded_assets);
+  const effectiveB=LightUpScopeNetwork.effectiveCoverage(db.requested_assets,db.excluded_assets);
+  const shared=LightUpScopeNetwork.coverageOverlap(effectiveA,effectiveB);
   const matched=[];
-  outer:for(const av of da.requested_assets)for(const bv of db.requested_assets){
+  if(shared)outer:for(const av of da.requested_assets)for(const bv of db.requested_assets){
    if(LightUpScopeNetwork.overlaps(LightUpScopeNetwork.parse(av),LightUpScopeNetwork.parse(bv))){
      matched.push(av+' ↔ '+bv);if(matched.length===3)break outer;
    }
@@ -91,7 +94,7 @@ function portfolioSummary(){
   if(matched.length||windowOverlap)conflicts.push({
    first_revision_sha256:a.hash,second_revision_sha256:b.hash,
    first_proposal:da.proposal_name,second_proposal:db.proposal_name,
-   overlapping_proposed_asset_examples:matched,local_window_overlap:windowOverlap,
+   overlapping_proposed_asset_examples:matched,effective_nonexcluded_scope_overlap:shared,local_window_overlap:windowOverlap,
    explanation:'Human review of actual client ownership and canonical scope is required; this is not a permission or verified booking.'
   });
  }
@@ -135,11 +138,11 @@ function render(){
   appendText(box,'p','Requires independently authenticated consent, current revocation, grant and explicit authorization.','meta');
  }
  const warnings=$('warnings');warnings.replaceChildren();
- if(!r.possible_conflicts.length)appendText(warnings,'p','No exact-host/CIDR overlap or raw local-time overlap detected. That does not prove scopes are distinct or permitted.');
+ if(!r.possible_conflicts.length)appendText(warnings,'p','No shared non-excluded numeric/host scope or raw local-time overlap detected. That does not prove scopes are distinct or permitted.');
  for(const c of r.possible_conflicts){
   const box=document.createElement('div');box.className='warning';warnings.append(box);
   appendText(box,'strong',c.first_proposal+' ↔ '+c.second_proposal);
-  if(c.overlapping_proposed_asset_examples.length)appendText(box,'p','Potential shared scope: '+c.overlapping_proposed_asset_examples.join('; '));
+  if(c.overlapping_proposed_asset_examples.length)appendText(box,'p','Potential shared non-excluded scope (review exclusions): '+c.overlapping_proposed_asset_examples.join('; '));
   if(c.local_window_overlap)appendText(box,'p','Proposed local time windows intersect. Separate timezone and scheduling verification required.');
  }
  const high=portfolio.filter(p=>p.draft.requested_risk===4);
