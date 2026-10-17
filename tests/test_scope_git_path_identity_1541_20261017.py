@@ -125,5 +125,35 @@ class GitChangePathIdentityAcceptance(unittest.TestCase):
             self.review(base, head)
 
 
+
+class SourceRedIntegrityTests(unittest.TestCase):
+    RED_METHODS = (
+        "test_red_canonical_unicode_path_must_keep_patch_with_default_git_quoting",
+        "test_red_tab_in_path_must_not_silently_drop_changed_patch",
+        "test_red_distinct_undecodable_paths_must_hold_before_any_review",
+    )
+
+    def test_original_defects_are_three_real_assertion_failures_not_masked_errors(self):
+        for name in self.RED_METHODS:
+            self.assertTrue(
+                getattr(GitChangePathIdentityAcceptance.__dict__[name],
+                        "__unittest_expecting_failure__", False),
+                name,
+            )
+        result = unittest.TestResult()
+        unittest.TestSuite(
+            [GitChangePathIdentityAcceptance(name) for name in self.RED_METHODS]
+        ).run(result)
+        self.assertEqual(result.testsRun, len(self.RED_METHODS))
+        self.assertEqual(len(result.expectedFailures), len(self.RED_METHODS))
+        self.assertFalse(result.errors)
+        self.assertFalse(result.failures)
+        self.assertFalse(result.unexpectedSuccesses)
+        for _case, traceback in result.expectedFailures:
+            self.assertIn("AssertionError:", traceback)
+            self.assertNotIn("TypeError:", traceback)
+            self.assertNotIn("OSError:", traceback)
+            self.assertNotIn("ImportError:", traceback)
+
 if __name__ == "__main__":
     unittest.main()
