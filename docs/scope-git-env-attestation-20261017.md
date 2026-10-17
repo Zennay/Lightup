@@ -250,3 +250,40 @@ This is a conservative lab evidence integrity condition. It may reject
 benign Git warnings, intentionally requiring human investigation rather
 than treating them as authorization, and never claims all underlying
 Git operations or repository contents are trusted.
+
+
+## W53–W55 — local Git filter execution and nested submodule fence (2026-10-17)
+
+Source-confirmed offline risk: even read-only `git status --porcelain` can
+execute a repository-configured `filter.<driver>.clean` for tracked paths
+selected by `.gitattributes` when Git must compare equal-length modified
+content. Disabling `core.fsmonitor` alone did **not** close this execution
+surface. This does not establish an external exploit of LightUp.
+
+The separately owned, unwired `scripts/check_scope_git_env_tree_20261017.py`
+now reads tracked paths with `ls-files --cached -z` and reads all selected
+`filter` attributes through `check-attr -z --stdin filter` **before** calling
+`git status`. It requires exact unambiguous NUL triplets, a bounded set of
+distinct tracked paths, no Git warnings, and `unspecified` filter for every
+tracked entry. Any selected filter, malformed response, oversized listing or
+nonzero status causes HOLD **without executing status**. Ordinary attributes
+such as `text eol=lf` remain allowed. This deliberately conservative proof
+may HOLD on legitimate Git LFS repositories and is not a general Git sandbox.
+
+The actual `git status` evidence command also passes
+`--ignore-submodules=all` to avoid recursively walking untrusted nested Git
+repositories while reading branch-local evidence. The installed-submodule
+security posture is **not** attested by the helper; it simply refuses to
+interrogate submodules.
+
+Synthetic isolated regressions: a disposable local repo with a configured
+external clean-filter and an equal-length modified tracked file proves
+unprotected Git status runs the marker script; protected status returns HOLD
+and leaves the marker untouched. Additional negative tests check malformed
+Git responses; a separate non-filter attribute control remains green.
+This work modifies only this branch's previously owned scripts/tests/docs.
+It does not modify runtime permissions, deployment or release gates.
+
+**INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** Git-history evidence is
+review-only, not real client consent, at-use revocation or authorization.
+No scan, grant, handler dispatch, merge or deployment is permitted by it.
