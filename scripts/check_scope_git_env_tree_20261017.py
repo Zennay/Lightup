@@ -70,7 +70,13 @@ GIT_BINARY = "/usr/bin/git"
 
 
 def git(*args: str) -> subprocess.CompletedProcess[bytes]:
-    return subprocess.run([GIT_BINARY, *args], cwd=ROOT, capture_output=True, timeout=15)
+    # Untrusted repository config can register an external fsmonitor program
+    # that Git would otherwise execute even during innocent read-only status.
+    # The command-line config wins over repo/global config, without writing it.
+    return subprocess.run(
+        [GIT_BINARY, "-c", "core.fsmonitor=false", *args],
+        cwd=ROOT, capture_output=True, timeout=15,
+    )
 
 
 def main() -> int:

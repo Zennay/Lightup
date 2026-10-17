@@ -170,6 +170,39 @@ class OfflineTreeModesTests(unittest.TestCase):
             self.assertEqual(real.returncode, 0)
             self.assertTrue(real.stdout.startswith(b"git version "), real.stdout)
 
+    def test_git_status_does_not_execute_repo_fsmonitor(self):
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_fsmon_fixture_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp).resolve()
+            def setup_git(*argv):
+                return subprocess.run(
+                    [guard.GIT_BINARY, *argv], cwd=root, capture_output=True,
+                    check=True, timeout=5,
+                ).stdout
+            setup_git("init", "-q")
+            tracked = root / "fixture.txt"
+            tracked.write_text("fictional offline fixture")
+            setup_git("add", "fixture.txt")
+            setup_git("-c", "user.name=Reviewer",
+                      "-c", "user.email=reviewer@example.invalid",
+                      "commit", "-q", "-m", "synthetic fixture")
+            mark = root / "hook-was-executed.txt"
+            hook = root / "fsmonitor-fixture.sh"
+            hook.write_text("#!/bin/sh\nprintf invoked > " + str(mark) + "\n")
+            hook.chmod(0o755)
+            setup_git("config", "core.fsmonitor", str(hook))
+            # Verify this is a meaningful negative case: unprotected Git
+            # really executes the local fixture hook on git status.
+            setup_git("status", "--porcelain")
+            self.assertTrue(mark.is_file())
+            mark.unlink()
+            with patch.object(guard, "ROOT", root):
+                result = guard.git("status", "--porcelain")
+            self.assertEqual(result.returncode, 0)
+            self.assertFalse(mark.exists(), "offline proof invoked fsmonitor")
+
     def test_no_reusing_other_worker_paths(self):
         for item in ("src/lightup/scope.py", "tests/test_scope.py",
                      "scripts/check_scope_literal_branch_20261016.py"):

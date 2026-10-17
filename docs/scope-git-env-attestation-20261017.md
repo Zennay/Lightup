@@ -200,3 +200,22 @@ prevent altered libraries, guarantee safe inherited Git config or turn
 review-only evidence into release consent. The hosted path is a deliberate
 platform constraint; missing `/usr/bin/git` yields HOLD, not a fallback
 to `PATH`. No real Git config or production application was changed.
+
+## W10 — disable repository-configured fsmonitor execution
+
+A second disposable real-Git regression proved a more severe implicit
+side effect: merely invoking `git status --porcelain` inside a synthetic
+repository with `core.fsmonitor` set to a local hook **executed an
+external script**, even though the validator only requested read-only
+evidence. The test first reproduced a failing condition against this
+branch's proof wrapper. It now runs `/usr/bin/git -c
+core.fsmonitor=false` for every evidence command, overriding local,
+global and system fsmonitor configuration without modifying any Git
+settings or project files.
+
+In the test, the hook creates a marker only inside the disposable
+temporary fixture; after the fix the marker is absent during the guarded
+Git command. This proves the specifically configured fsmonitor route
+is disabled. It does not prove that every possible Git extension,
+binary, library or configuration is harmless, nor does it authorize a
+real scan or release. Production remains entirely untouched.
