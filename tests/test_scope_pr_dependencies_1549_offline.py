@@ -48,6 +48,21 @@ class DependencyReviewTests(unittest.TestCase):
         self.assertEqual(receipt["waves"], waves)
         self.assertTrue(all(receipt[k] is False for k in OFF_FLAGS))
 
+    def test_review_receipt_binds_exact_bytes_to_commit_claim(self):
+        import hashlib
+        source = manifest([item(1, B)])
+        receipt, code = evaluate(source)
+        self.assertEqual(code, 3)
+        self.assertEqual(receipt["input_sha256"], hashlib.sha256(source).hexdigest())
+        # Same advisory wave, but a different actual claimed head requires a
+        # different digest so a receipt cannot stand in for another snapshot.
+        changed = manifest([item(1, C)])
+        other, code2 = evaluate(changed)
+        self.assertEqual(code2, 3)
+        self.assertEqual(receipt["waves"], other["waves"])
+        self.assertNotEqual(receipt["input_sha256"], other["input_sha256"])
+        self.assertNotIn("input_sha256", evaluate(b"INVALID")[0])
+
     def test_stacked_three(self):
         self.review(manifest(), [[4], [2], [9]])
 
