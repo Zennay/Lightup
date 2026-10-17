@@ -282,6 +282,24 @@ class CanonicalGrantScopeAcceptance(unittest.TestCase):
             self.assertEqual(
                 object.__getattribute__(subclass, "_scope646_risk_reads"), 0
             )
+
+            # A malformed object is refused before opening even local SQLite:
+            # no transaction, no audit persistence and no foreign property I/O.
+            with patch.object(
+                self.store, "_connect",
+                side_effect=AssertionError("invalid scope opened SQLite"),
+            ):
+                with self.assertRaises(ValueError):
+                    self.issue(trap)
+            self.assertEqual(trap.reads, 0)
+
+            # Additional exact-type negative controls must be rejected without
+            # accidentally treating a truthy scalar or collection as a scope.
+            for candidate in (False, 0, "", "scope", [], {}, object()):
+                with self.subTest(primitive=type(candidate).__name__):
+                    with self.assertRaises(ValueError):
+                        self.issue(candidate)
+
             valid = self.issue(canonical)
             self.assertIs(type(valid.scope), ScopeDefinition)
             self.assertEqual(self.durable_count(), 1)
