@@ -71,6 +71,28 @@ class PairReview649Tests(unittest.TestCase):
             (False,) * 7,
         )
 
+    def test_two_snapshot_slots_must_not_be_same_python_object(self):
+        # If both fields point at a single mutable object, no independent
+        # before/after snapshots were actually represented.
+        one = record()
+        raw = packet([{"before": one, "after": one}])
+        self.assertIs(pair.review_pair_batch(raw).status, base.ReviewStatus.HOLD)
+        self.assertIs(
+            pair.review_pair_batch(packet([{"before": dict(one), "after": dict(one)}])).status,
+            base.ReviewStatus.REVIEW_ONLY,
+        )
+
+    def test_shared_records_across_entries_are_not_independent(self):
+        before = record()
+        first = {"before": before, "after": record()}
+        second = {"before": before, "after": record()}
+        self.assertIs(
+            pair.review_pair_batch(packet([first, second])).status, base.ReviewStatus.HOLD
+        )
+        self.assertIs(
+            pair.review_pair_batch(packet([first, first])).status, base.ReviewStatus.HOLD
+        )
+
     def test_actual_issuance_double_strip_shape_mismatch_holds(self):
         # Synthetic, not a DB read or evidence of an actual client.
         for before, after in (
