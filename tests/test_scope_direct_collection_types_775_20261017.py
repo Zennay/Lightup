@@ -92,9 +92,9 @@ class DirectScopeCollectionIdentityAcceptance(unittest.TestCase):
         scope = self.scope(excluded_assets=(), allowed_capabilities=())
         self.assertTrue(scope.allows_asset("allowed.invalid"))
         self.assertFalse(scope.allows_asset("outside.invalid"))
-        # Historical ScopeDefinition deliberately interprets empty caps as
-        # all capabilities; this test only preserves API behavior, not consent.
-        self.assertTrue(scope.allows_capability("web-baseline"))
+        # Original #554 source denies all capabilities for an empty tuple.
+        # This is a fail-closed control, not client/operator consent.
+        self.assertFalse(scope.allows_capability("web-baseline"))
 
     @_SOURCE_CONTRACT
     def test_source_red_asset_tuple_subclass_rejected_before_iteration(self):
