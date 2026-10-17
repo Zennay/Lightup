@@ -6,10 +6,10 @@ ToolOutput contract remains owned by src/lightup/ai/orchestration.py.
 """
 
 
-from enum import StrEnum
+from enum import Enum
 
 
-class OutputIdentityReview(StrEnum):
+class OutputIdentityReview(Enum):
     HOLD = "HOLD"
     REVIEW_ONLY = "REVIEW_ONLY"
 
@@ -29,6 +29,16 @@ def review_output_identity(summary: object, evidence_kind: object, evidence_payl
         return OutputIdentityReview.HOLD
     if type(evidence_payload) is not bytes:
         return OutputIdentityReview.HOLD
-    if not summary.strip() or not evidence_kind.strip():
+    # Advisory budgets only; no producer mutation or actual evidence processing.
+    # Constant-time length checks reject huge synthetic inputs without copying.
+    if len(summary) > 16_384 or len(evidence_kind) > 80 or len(evidence_payload) > 4_194_304:
+        return OutputIdentityReview.HOLD
+    if not summary.strip() or not evidence_kind:
+        return OutputIdentityReview.HOLD
+    # Evidence kind is an identifier, not an arbitrary display string.
+    # Reject Unicode confusables, control characters and delimiter injection.
+    if not ("a" <= evidence_kind[0] <= "z"):
+        return OutputIdentityReview.HOLD
+    if any(not ("a" <= c <= "z" or "0" <= c <= "9" or c in "._-") for c in evidence_kind[1:]):
         return OutputIdentityReview.HOLD
     return OutputIdentityReview.REVIEW_ONLY
