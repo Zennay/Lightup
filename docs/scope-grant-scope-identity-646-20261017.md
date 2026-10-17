@@ -32,6 +32,8 @@ PYTHONPATH=src python -B -m unittest discover -s tests -p 'test_scope_grant_scop
 LIGHTUP_SCOPE646_REQUIRE_SOURCE_FIX=1 PYTHONPATH=src python -B -m unittest discover -s tests -p 'test_scope_grant_scope_identity_646_20261017.py' -v
 ```
 
+An additional ordinary **disposable owner-guard oracle** temporarily wraps issuance in memory with `type(scope) is ScopeDefinition`, proves that five synthetic invalid forms are rejected without reading hostile fields or writing grants, and proves canonical issuance still persists. The original production source file is never modified. This oracle demonstrates a viable check, not completed source-owner remediation.
+
 Default successful tests with intentional `expectedFailure` do **not** constitute source remediation. Strict opt-in must become genuinely green with zero expected failures *after* owner repair.
 
 ## Ownership and release fence
