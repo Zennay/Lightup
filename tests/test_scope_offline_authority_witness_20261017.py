@@ -256,6 +256,43 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         self.assertEqual(result["reason"], "offline_witness_source_drift")
         self.assert_no_authority(result)
 
+    def test_valid_importlib_bytecode_cache_remains_review_only(self):
+        # The offline source fence must accept legitimate Python import caches:
+        # only an executable cache that differs from pinned source may HOLD.
+        with tempfile.TemporaryDirectory(prefix="lightup-valid-bytecode-") as tmp:
+            root = Path(tmp)
+            pkg = root / "src" / "lightup"
+            scripts = root / "scripts"
+            scripts.mkdir()
+            pkg.mkdir(parents=True)
+            script = scripts / "scope_offline_authority_witness_20261017.py"
+            shutil.copyfile(ROOT / "scripts" / script.name, script)
+            for filename in ("__init__.py", "models.py", "scope.py"):
+                src = pkg / filename
+                shutil.copyfile(ROOT / "src" / "lightup" / filename, src)
+                compiled = compile(
+                    src.read_bytes(), str(src), "exec",
+                    dont_inherit=True, optimize=sys.flags.optimize,
+                )
+                info = src.stat()
+                cache = Path(importlib.util.cache_from_source(str(src)))
+                cache.parent.mkdir(parents=True, exist_ok=True)
+                cache.write_bytes(
+                    importlib.util.MAGIC_NUMBER
+                    + struct.pack("<III", 0, int(info.st_mtime), info.st_size)
+                    + marshal.dumps(compiled)
+                )
+            done = subprocess.run(
+                [sys.executable, str(script), "--offline-lab-only"],
+                capture_output=True, text=True, timeout=12, check=False,
+            )
+        self.assertEqual(done.returncode, 3, done.stderr)
+        self.assertEqual(done.stderr, "")
+        result = json.loads(done.stdout)
+        self.assertEqual(result["status"], "REVIEW_ONLY")
+        self.assertEqual(result["checked"], 17)
+        self.assert_no_authority(result)
+
     def test_canonical_matrix_is_review_only_not_execution_permission(self):
         result = witness.evaluate()
         self.assertEqual(result["status"], "REVIEW_ONLY")
