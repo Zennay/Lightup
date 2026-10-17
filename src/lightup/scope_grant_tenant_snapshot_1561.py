@@ -25,9 +25,10 @@ _ALLOWED_REASON = frozenset({
     "coherent_offline_snapshot", "tenant_lineage_mismatch",
     "orphaned_engagement", "invalid_input", "unsafe_snapshot",
     "invalid_schema", "invalid_record", "too_many_grants",
-    "snapshot_changed",
+    "snapshot_changed", "orphaned_client",
 })
 _REQUIRED = {
+    "clients": ("client_id",),
     "engagements": ("engagement_id", "client_id"),
     "authorization_grants": ("grant_id", "engagement_id", "client_id"),
 }
@@ -50,7 +51,7 @@ class _HOLD(Exception):
 
 
 def _receipt(reason: str, coherent: int = 0, mismatch: int = 0,
-             orphan: int = 0) -> dict:
+             orphan: int = 0, missing_client: int = 0) -> dict:
     assert reason in _ALLOWED_REASON
     return {
         "status": "REVIEW_ONLY" if reason == "coherent_offline_snapshot" else "HOLD",
@@ -58,7 +59,8 @@ def _receipt(reason: str, coherent: int = 0, mismatch: int = 0,
         "coherent": coherent,
         "mismatch": mismatch,
         "orphan": orphan,
-        "total": coherent + mismatch + orphan,
+        "missing_client": missing_client,
+        "total": coherent + mismatch + orphan + missing_client,
         **_FLAGS,
     }
 
@@ -137,9 +139,9 @@ def _guard_schema(con: sqlite3.Connection) -> None:
     # any repair. With PKs, a join cannot multiply rows ambiguously.
     table_rows = con.execute(
         "SELECT name,type FROM sqlite_schema "
-        "WHERE name IN ('engagements','authorization_grants')"
+        "WHERE name IN ('clients','engagements','authorization_grants')"
     ).fetchall()
-    if len(table_rows) != 2 or any(kind != "table" for _, kind in table_rows):
+    if len(table_rows) != 3 or any(kind != "table" for _, kind in table_rows):
         raise _HOLD("invalid_schema")
     for table, columns in _REQUIRED.items():
         details = con.execute(f"PRAGMA table_info({table})").fetchall()
@@ -183,25 +185,37 @@ def inspect_offline_grant_tenants(snapshot_path: str) -> dict:
             _guard_schema(con)
             rows = con.execute(
                 "SELECT g.grant_id,g.engagement_id,g.client_id,"
-                "e.engagement_id,e.client_id "
+                "e.engagement_id,e.client_id,c.client_id "
                 "FROM authorization_grants AS g "
-                "LEFT JOIN engagements AS e ON e.engagement_id=g.engagement_id "
+                "LEFT JOIN engagements AS e ON "
+                "e.engagement_id COLLATE BINARY = g.engagement_id COLLATE BINARY "
+                "LEFT JOIN clients AS c ON "
+                "c.client_id COLLATE BINARY = e.client_id COLLATE BINARY "
                 "LIMIT ?",
                 (MAX_GRANTS + 1,),
             ).fetchall()
             if len(rows) > MAX_GRANTS:
                 raise _HOLD("too_many_grants")
-            coherent = mismatch = orphan = 0
-            for grant, engagement, client, owner_engagement, owner_client in rows:
+            coherent = mismatch = orphan = missing_client = 0
+            for (grant, engagement, client, owner_engagement, owner_client,
+                 actual_client) in rows:
                 if not all(type(v) is str and 0 < len(v) <= 1024
                            for v in (grant, engagement, client)):
                     raise _HOLD("invalid_record")
                 if owner_engagement is None:
                     orphan += 1
-                elif type(owner_engagement) is not str or (
-                    type(owner_client) is not str
+                elif (
+                    type(owner_engagement) is not str
+                    or owner_engagement != engagement
+                    or type(owner_client) is not str
                     or not owner_client or len(owner_client) > 1024
                 ):
+                    raise _HOLD("invalid_record")
+                elif actual_client is None:
+                    # A grant and engagement agreeing on an imaginary tenant
+                    # must never produce a false REVIEW_ONLY receipt.
+                    missing_client += 1
+                elif type(actual_client) is not str or actual_client != owner_client:
                     raise _HOLD("invalid_record")
                 elif client != owner_client:
                     mismatch += 1
@@ -214,10 +228,16 @@ def inspect_offline_grant_tenants(snapshot_path: str) -> dict:
         if _snapshot_sha256(path, before) != original_hash:
             raise _HOLD("snapshot_changed")
         if orphan:
-            return _receipt("orphaned_engagement", coherent, mismatch, orphan)
+            return _receipt("orphaned_engagement", coherent, mismatch,
+                            orphan, missing_client)
+        if missing_client:
+            return _receipt("orphaned_client", coherent, mismatch,
+                            orphan, missing_client)
         if mismatch:
-            return _receipt("tenant_lineage_mismatch", coherent, mismatch, orphan)
-        return _receipt("coherent_offline_snapshot", coherent, mismatch, orphan)
+            return _receipt("tenant_lineage_mismatch", coherent, mismatch,
+                            orphan, missing_client)
+        return _receipt("coherent_offline_snapshot", coherent, mismatch,
+                        orphan, missing_client)
     except _HOLD as error:
         return _receipt(error.reason)
     except (OSError, sqlite3.Error, ValueError, OverflowError,
