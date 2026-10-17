@@ -123,3 +123,30 @@ This still **does not** prove that caller-provided patch text matches the
 authenticated GitHub changed-file objects. A fully consistent *fictional*
 stream remains REVIEW_ONLY / exit 3 and never grants authority. Original
 source-owner #1538, dual consent, permanent CI and human GO remain open.
+
+## W5 — strict hosted proof receipt (no silent test losses)
+
+The isolated `.github/workflows/scope-1553-github-coverage-offline.yml`
+runs both owned regression modules on each Python 3.11 and 3.14 job and
+**hard-fails** unless the exact observed execution receipt is:
+
+```text
+tests=85
+expected_failures=1
+failures=0
+errors=0
+skipped=0
+unexpected_successes=0
+```
+
+Unlike only trusting the unittest exit code, this catches accidental file
+discovery omissions, skipped tests and unexpected success of the one
+deliberately unresolved original-source RED. It binds the proof to the
+workflow's exact checked-out PR head SHA. A future legitimate source-owner
+repair will require a conscious review and migration of the original-source
+canary, not a silent declaration that this independent preview is release
+ready. The receipt contains no customer input or raw patches.
+
+The additional **CI gate is not production CI**, no permanent VPS runner or
+actual grant authority is added or relaxed. All hard release HOLD conditions
+remain.
