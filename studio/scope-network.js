@@ -165,5 +165,57 @@ function coverageDifference(base,updated){
   caveat:'Non-authorizing, local exact hostname and numeric IP interval hints. DNS and ownership are never inspected.'};
 }
 
-global.LightUpScopeNetwork=Object.freeze({parse,overlaps,contains,inspect,expansion,effectiveCoverage,coverageOverlap,coverageDifference});
+
+function addressText(family,integer){
+ if(family==='ipv4'){
+  const items=[];
+  for(let shift=24n;shift>=0n;shift-=8n)items.push(Number((integer>>shift)&255n));
+  return items.join('.');
+ }
+ if(family!=='ipv6')return null;
+ const words=[];
+ for(let shift=112n;shift>=0n;shift-=16n)words.push(Number((integer>>shift)&65535n).toString(16));
+ // RFC 5952 longest leftmost zero compression; presentation only, not authority.
+ let bestStart=-1,bestLength=1;
+ for(let i=0;i<8;){
+  if(words[i]!=='0'){i++;continue;}
+  let j=i;while(j<8&&words[j]==='0')j++;
+  if(j-i>bestLength){bestStart=i;bestLength=j-i;}
+  i=j;
+ }
+ if(bestStart<0)return words.join(':');
+ const left=words.slice(0,bestStart).join(':'),right=words.slice(bestStart+bestLength).join(':');
+ return left+'::'+right;
+}
+function describeEffective(included,excluded,maxRows=180){
+ if(!Number.isSafeInteger(maxRows)||maxRows<1||maxRows>300)return null;
+ const coverage=effectiveCoverage(included,excluded);
+ if(!coverage)return null;
+ const groups=[],total={ipv4:'0',ipv6:'0',hostnames:String(coverage.hostname.size)};
+ let truncated=false;
+ for(const family of ['ipv4','ipv6']){
+  const bits=family==='ipv4'?32:128;
+  let count=0n;
+  for(const span of coverage[family]){
+   count+=span.end-span.start+1n;
+   let current=span.start;
+   while(current<=span.end){
+    if(groups.length>=maxRows){truncated=true;break;}
+    let size=1n,aligned=0;
+    while(aligned<bits && (current&((size<<1n)-1n))===0n){size<<=1n;aligned++;}
+    while(size>span.end-current+1n){size>>=1n;aligned--;}
+    groups.push({family,asset:addressText(family,current)+'/'+(bits-aligned),
+      start:addressText(family,current),end:addressText(family,current+size-1n),
+      address_count:size.toString()});
+    current+=size;
+   }
+  }
+  total[family]=count.toString();
+ }
+ const hostnames=[...coverage.hostname].map(h=>h.slice('hostname:'.length)).sort();
+ return {status:'REVIEW_ONLY',total,groups,hostnames,truncated,
+  warning:'Offline numerical preview after text-declared exclusions; does not resolve DNS, authenticate ownership, prove grant scope, evaluate authorization or permit execution.'};
+}
+
+global.LightUpScopeNetwork=Object.freeze({parse,overlaps,contains,inspect,expansion,effectiveCoverage,coverageOverlap,coverageDifference,addressText,describeEffective});
 })(window);
