@@ -128,16 +128,22 @@ def _review_change_command(args: argparse.Namespace) -> int:
         ChangeReviewPolicy, render_markdown, render_sarif, review_change,
     )
     from .changes import ChangeSourceKind
-    from .git_changes import GitChangeError, collect_git_range
+    from .change_review import POLICY_FILE
+    from .git_changes import GitChangeError, collect_git_range, read_file_at
 
     repo = Path(args.repo)
-    policy_path = Path(args.policy) if args.policy else repo / ".lightup-review.json"
-    try:
-        policy = (ChangeReviewPolicy.load(policy_path)
-                  if args.policy or policy_path.is_file() else ChangeReviewPolicy())
-    except (OSError, ValueError) as exc:
-        print(f"lightup: invalid review policy {policy_path}: {exc}", file=sys.stderr)
-        return 2
+
+    def _policy(base_revision: str | None) -> ChangeReviewPolicy:
+        # An explicit --policy wins. Otherwise the policy comes from the *base*
+        # revision, so a change can never relax the policy it is reviewed by.
+        if args.policy:
+            return ChangeReviewPolicy.load(args.policy)
+        if base_revision is not None:
+            text = read_file_at(repo, base_revision, POLICY_FILE)
+            return (ChangeReviewPolicy.from_mapping(json.loads(text))
+                    if text is not None else ChangeReviewPolicy())
+        local = repo / POLICY_FILE
+        return ChangeReviewPolicy.load(local) if local.is_file() else ChangeReviewPolicy()
 
     try:
         if args.compare_json:
@@ -150,7 +156,7 @@ def _review_change_command(args: argparse.Namespace) -> int:
                 base_revision=base, head_revision=head,
                 files=compare.get("files", []),
                 source_kind=ChangeSourceKind.GITHUB_COMMIT,
-                policy=policy,
+                policy=_policy(None),
             )
         else:
             git_range = collect_git_range(
@@ -164,7 +170,7 @@ def _review_change_command(args: argparse.Namespace) -> int:
                 head_revision=git_range.head_revision,
                 files=git_range.files,
                 structured_deltas=git_range.structured_deltas,
-                policy=policy,
+                policy=_policy(git_range.base_revision),
             )
     except (GitChangeError, KeyError, ValueError, OSError) as exc:
         print(f"lightup: change review failed: {exc}", file=sys.stderr)

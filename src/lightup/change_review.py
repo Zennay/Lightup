@@ -39,6 +39,7 @@ from .structured_changes import (
 from .twin import SecurityTwin
 
 REVIEW_SCHEMA_VERSION = "lightup.change_review.v1"
+POLICY_FILE = ".lightup-review.json"
 
 _RANK = {
     SecurityCIVerdict.PASS: 0,
@@ -298,6 +299,12 @@ def review_change(
         reasons.append(VerdictReason(
             policy.incomplete_coverage_verdict,
             f"{len(unanalyzed)} changed file(s) could not be analyzed (binary or too large)",
+        ))
+    if any(obj.path == POLICY_FILE or obj.previous_path == POLICY_FILE
+           for obj in changeset.objects):
+        reasons.append(VerdictReason(
+            SecurityCIVerdict.REVIEW_REQUIRED,
+            f"this change edits {POLICY_FILE}; the policy change itself needs human review",
         ))
     if "github_compare_too_large" in changeset.uncertainties:
         reasons.append(VerdictReason(

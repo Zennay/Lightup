@@ -76,6 +76,14 @@ Default mapping, overridable in `.lightup-review.json`:
 
 Unknown keys are rejected so a typo cannot silently weaken the policy.
 
+For a git range the policy is read from the **base** revision, never from the
+working tree or the head: a pull request cannot relax the policy it is
+reviewed by. A change that edits `.lightup-review.json` itself is always at
+least `REVIEW_REQUIRED`. `--policy PATH` overrides this explicitly.
+
+An inferred verdict, including `PASS` under any policy, is never approval or
+release authority; downstream gates must treat it as advisory.
+
 ## Safety and provenance
 
 - Every hypothesis is `provenance=inferred`; the report carries

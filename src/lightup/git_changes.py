@@ -149,6 +149,11 @@ def _show(repo: Path, revision: str, path: str) -> str | None:
     return _git(repo, "show", f"{revision}:{path}", check=False)
 
 
+def read_file_at(repo: str | Path, revision: str, path: str) -> str | None:
+    """Return a small text file at ``revision``, or ``None`` if it does not exist."""
+    return _show(Path(repo), _validate_ref(revision), path)
+
+
 def collect_git_range(
     repo: str | Path,
     base: str,

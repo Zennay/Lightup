@@ -303,17 +303,40 @@ class GitRangeEndToEndTests(unittest.TestCase):
         stored = DomainStore(db).list_change_reviews(operator, client.client_id)
         self.assertEqual([r.verdict for r in stored], ["BLOCK"])
 
-    def test_cli_policy_file_in_repo_is_honoured(self):
-        (self.repo / ".lightup-review.json").write_text(json.dumps(
-            {"ignore_rules": ["secret.aws-access-key"]}))
+    def _cli_json(self, *extra):
         out = io.StringIO()
         with redirect_stdout(out):
             code = cli.main(["review-change", "--repo", str(self.repo), "--base", "main",
-                             "--head", "feature", "--format", "json",
-                             "--fail-on", "block"])
-        self.assertEqual(code, 0)
-        self.assertEqual(json.loads(out.getvalue())["verdict"], "REVIEW_REQUIRED")
+                             "--head", "feature", "--format", "json", *extra])
+        return code, json.loads(out.getvalue())
 
+    def _policy_on(self, branch, policy):
+        _git(self.repo, "checkout", "-q", branch)
+        (self.repo / ".lightup-review.json").write_text(json.dumps(policy))
+        _git(self.repo, "add", "-A")
+        _git(self.repo, "commit", "-qm", f"policy on {branch}")
+        _git(self.repo, "checkout", "-q", "feature")
+
+    def test_cli_uses_policy_from_the_base_revision(self):
+        self._policy_on("main", {"ignore_rules": ["secret.aws-access-key"]})
+        _git(self.repo, "merge", "-q", "--no-edit", "main")
+        code, report = self._cli_json("--fail-on", "block")
+        self.assertEqual(code, 0)
+        self.assertEqual(report["verdict"], "REVIEW_REQUIRED")
+
+    def test_change_cannot_relax_its_own_policy(self):
+        # The feature branch tries to whitelist its own critical finding.
+        self._policy_on("feature", {"ignore_paths": ["app/*"],
+                                    "severity_verdicts": {"critical": "PASS"}})
+        code, report = self._cli_json("--fail-on", "block")
+        self.assertEqual(code, 1)
+        self.assertEqual(report["verdict"], "BLOCK")
+        self.assertTrue(any(".lightup-review.json" in r["reason"] for r in report["reasons"]))
+
+    def test_untracked_working_tree_policy_is_ignored_for_git_ranges(self):
+        (self.repo / ".lightup-review.json").write_text(json.dumps(
+            {"severity_verdicts": {"critical": "PASS"}}))
+        self.assertEqual(self._cli_json("--fail-on", "never")[1]["verdict"], "BLOCK")
 
 if __name__ == "__main__":
     unittest.main()
