@@ -117,6 +117,28 @@ raise SystemExit(code)
         self.assertEqual(child.stderr, b"")
         self.assertEqual(child.stdout, b"", "no output channel means no receipt")
 
+
+    def test_delayed_receipt_flush_error_does_not_exit_success(self):
+        # CPython may buffer stdout: write() can return normally even when
+        # the final flush cannot deliver the receipt. No authority or 0 exit.
+        program = """import runpy,sys
+entry=runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+class LateBrokenOutput:
+    def write(self, payload):
+        return len(payload)
+    def flush(self):
+        raise BrokenPipeError('SYNTHETIC_FLUSH_SECRET_NEVER_LEAK')
+sys.stdout=LateBrokenOutput()
+raise SystemExit(entry['main'](['--unsupported']))
+"""
+        child = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", program],
+            cwd=ROOT, input=b"", capture_output=True, timeout=8,
+        )
+        self.assertEqual(child.returncode, 2, child.stderr)
+        self.assertEqual(child.stderr, b"", "flush failure must not leak tracebacks")
+        self.assertEqual(child.stdout, b"")
+
     def test_real_cli_under_original_native_no_io_tripwire(self):
         # Reuse the existing owner's unchanged guard fixture. This is a
         # Python-level interposition test, not a kernel sandbox or consent.
