@@ -141,6 +141,24 @@ def _snapshot_sha256(path: Path, expected_metadata: tuple) -> bytes:
             os.close(fd)
 
 
+def _offline_sql_authorizer(
+    action: int, name: str | None, argument: str | None,
+    database: str | None, origin: str | None,
+) -> int:
+    """Allow only the static SQL reads and two inspection PRAGMA operations.
+
+    Additional defense beyond immutable SQLite + query_only; this callback
+    cannot by itself authenticate the database or guarantee atomicity.
+    """
+    if action in (sqlite3.SQLITE_SELECT, sqlite3.SQLITE_READ,
+                  sqlite3.SQLITE_FUNCTION):
+        return sqlite3.SQLITE_OK
+    if action == sqlite3.SQLITE_PRAGMA and type(name) is str:
+        if name.lower() in ("quick_check", "table_info"):
+            return sqlite3.SQLITE_OK
+    return sqlite3.SQLITE_DENY
+
+
 def _guard_schema(con: sqlite3.Connection) -> None:
     # Reject views, missing tables and schema variants without attempting
     # any repair. With PKs, a join cannot multiply rows ambiguously.
@@ -178,7 +196,15 @@ def inspect_offline_grant_tenants(snapshot_path: str) -> dict:
         uri = "file:" + quote(str(path), safe="/") + "?mode=ro&immutable=1"
         con = sqlite3.connect(uri, uri=True, timeout=0)
         try:
+            # Configure safety settings BEFORE the restrictive authorizer.
+            # Fail closed if this SQLite build does not support the expected
+            # defensive settings. Neither statement writes to the snapshot.
+            con.execute("PRAGMA trusted_schema=OFF")
             con.execute("PRAGMA query_only=ON")
+            if (con.execute("PRAGMA trusted_schema").fetchone() != (0,)
+                    or con.execute("PRAGMA query_only").fetchone() != (1,)):
+                raise _HOLD("unsafe_snapshot")
+            con.set_authorizer(_offline_sql_authorizer)
             ticks = [0]
 
             def bounded_sql():
