@@ -121,7 +121,7 @@ jobs:
           assert run.returncode != 0, "owner source changed; re-review needed"
           assert failures == expected_failures, ("source FAIL identity changed", sorted(failures))
           assert errors == expected_errors, ("source ERROR identity changed", sorted(errors))
-          assert "Ran 16 tests" in stderr, "unexpected test discovery"
+          assert "Ran 17 tests" in stderr, "unexpected test discovery"
           assert "FAILED (failures=9, errors=2)" in stderr, "source RED counts changed"
           assert not subprocess.check_output(
               ["git", "status", "--porcelain"], text=True
