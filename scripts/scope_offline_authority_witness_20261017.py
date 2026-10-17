@@ -20,10 +20,44 @@ from datetime import datetime, timezone
 from pathlib import Path
 from types import MappingProxyType
 
-# Import the installed checkout's real evaluator, not a lookalike test implementation.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from lightup.models import Authorization, Target  # noqa: E402
-from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason  # noqa: E402
+# Verify the *exact* checked-out installed source before Python is allowed
+# to execute lightup's package __init__, models or policy module at import time.
+# A changed module returns HOLD/2 instead of being imported and run.
+_CHECKOUT_ROOT = Path(__file__).resolve().parents[1]
+_PINNED_SOURCE_HASHES = MappingProxyType({
+    "src/lightup/__init__.py": "24b02c39a8fe5041da81517a9aace8ba27161c5e020611d222755a6a6f429b01",
+    "src/lightup/models.py": "f84779b55f193c2d0a143418cf569c3539ee2bdb92e76a542ffda39643d3b541",
+    "src/lightup/scope.py": "1bf081d0b85490466fbb4ad95b2d12917882ed51d05627139bdd5abf110018c0",
+})
+_SOURCE_STATUS = "offline_witness_source_drift"
+
+
+def _trusted_source_hashes() -> dict[str, str] | None:
+    """Read only three bounded, non-symlink files under the own checkout."""
+    try:
+        found: dict[str, str] = {}
+        for rel, expected in _PINNED_SOURCE_HASHES.items():
+            candidate = _CHECKOUT_ROOT / rel
+            if candidate.is_symlink() or not candidate.is_file():
+                return None
+            with candidate.open("rb") as handle:
+                chunk = handle.read(65537)
+            if len(chunk) > 65536:
+                return None
+            hashed = hashlib.sha256(chunk).hexdigest()
+            if hashed != expected:
+                return None
+            found[rel] = hashed
+        return found
+    except (OSError, ValueError):
+        return None
+
+
+_VERIFIED_SOURCE = _trusted_source_hashes()
+if _VERIFIED_SOURCE is not None:
+    sys.path.insert(0, str(_CHECKOUT_ROOT / "src"))
+    from lightup.models import Authorization, Target  # noqa: E402
+    from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason  # noqa: E402
 
 # A per-review 2.5-second real-time deadline on POSIX/Linux prevents a
 # stalled installed evaluator from denying a bounded offline HOLD receipt.
@@ -286,11 +320,14 @@ def _evaluate_pinned_cases(fixtures: tuple[WitnessCase, ...], fixture_digest: st
         return _receipt("HOLD", "reference_behavior_drift")
     receipt = _receipt("REVIEW_ONLY", "canonical_synthetic_matrix_matches", len(fixtures), digest)
     receipt["synthetic_fixture_sha256"] = fixture_digest
+    receipt["source_sha256"] = dict(_VERIFIED_SOURCE)
     return receipt
 
 
 def evaluate(cases: tuple[WitnessCase, ...] | None = None) -> dict[str, object]:
     """Only pin-matched, bounded fictional evaluation may yield REVIEW_ONLY."""
+    if _VERIFIED_SOURCE is None or _trusted_source_hashes() is None:
+        return _receipt("HOLD", _SOURCE_STATUS)
     try:
         fixtures = canonical_cases() if cases is None else cases
         snapshot = _fixture_snapshot(fixtures)
