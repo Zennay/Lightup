@@ -51,6 +51,12 @@ CRITICAL_HOLD_PATHS = (
     "scripts/review_scope_capability_registry_offline.py",
     "scripts/export_scope_capability_registry_offline.py",
     "scripts/render_scope_registry_history_offline.py",
+    # Never trust an advisory reviewer to bless modifications to itself
+    # or to the other modules on which its own verdict depends.
+    "scripts/review_scope_worker_overlap_offline_1540.py",
+    "scripts/review_scope_compare_snapshots_offline_1540.py",
+    "scripts/review_scope_pr_compare_pair_offline_1540.py",
+    "scripts/review_scope_worker_ownership_offline_1540.py",
 )
 
 
