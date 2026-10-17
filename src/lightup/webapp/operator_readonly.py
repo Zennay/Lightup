@@ -156,7 +156,10 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             'scope/grant checks, live revocation and release approval '
             'are independent gates.</p></div>'
             '<p><a href="/portal/' + _e(client_id) +
-            '">Back to client portal</a></p>'
+            '">Back to client portal</a> · '
+            '<a href="/api/v1/portal/' + _e(client_id) +
+            '/requests/' + _e(request.request_id) +
+            '">View machine-readable JSON status</a></p>'
         )
         return Response(_page("LightUp — Request receipt", "portal", body, auth,
                               portal_client=client_id))
