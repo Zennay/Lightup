@@ -138,6 +138,50 @@ def clean_index_flags(result: object) -> bool:
     return True
 
 
+_SOURCE_ROOTS = (
+    "src/lightup", "scripts", "tests",
+    ".github/workflows", "lab", "deploy",
+)
+_SOURCE_SUFFIXES = (
+    b".py", b".pyi", b".pyw", b".pth", b".so", b".pyd",
+    b".yml", b".yaml", b".sh", b".toml", b".json",
+)
+
+
+def no_ignored_source(result: object) -> bool:
+    """Detect executable/config sources hidden by ignore rules, not .pyc caches.
+
+    This is deliberately a conservative *source-like extension* check, not
+    a claim that all possible ignored runtime inputs have been inspected.
+    """
+    if (
+        not isinstance(result, subprocess.CompletedProcess)
+        or type(result.returncode) is not int or result.returncode != 0
+        or type(result.stdout) is not bytes
+        or len(result.stdout) > 131072
+    ):
+        return False
+    raw = result.stdout
+    if not raw:
+        return True
+    if not raw.endswith(b"\0"):
+        return False
+    seen: set[bytes] = set()
+    roots = tuple(root.encode("ascii") + b"/" for root in _SOURCE_ROOTS)
+    for path in raw[:-1].split(b"\0"):
+        if (
+            not path or path in seen or not path.startswith(roots)
+            or path.startswith(b"/")
+            or b"\x5c" in path
+            or any(part in (b"", b".", b"..") for part in path.split(b"/"))
+        ):
+            return False
+        seen.add(path)
+        if path.lower().endswith(_SOURCE_SUFFIXES):
+            return False
+    return True
+
+
 def branch_identity(
     symbolic: subprocess.CompletedProcess[bytes],
     head: subprocess.CompletedProcess[bytes],
@@ -183,7 +227,12 @@ def main() -> int:
         # not match the actual committed Git tree. Includes untracked files.
         status = _git("status", "--porcelain=v1", "--untracked-files=all", "-z")
         index_flags = _git("ls-files", "-v", "-z", "--cached")
+        ignored = _git(
+            "ls-files", "--others", "--ignored", "--exclude-standard", "-z",
+            "--", *_SOURCE_ROOTS,
+        )
         ok = (
+            no_ignored_source(ignored) and
             clean_index_flags(index_flags) and
             clean_worktree_status(status) and
             branch_identity(symbolic, head, os.environ) and

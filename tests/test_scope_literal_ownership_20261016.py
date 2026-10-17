@@ -97,7 +97,10 @@ class AdditiveOwnershipTests(unittest.TestCase):
                 "status": b" M src/lightup/scope.py\0",
                 "symbolic-ref": guard.EXPECTED_BRANCH.encode("ascii") + b"\n",
                 "ls-files": b"H src/lightup/scope.py\0",
+                "ignored": b"",
             }
+            if label == "ls-files" and "--ignored" in args:
+                return CompletedProcess(args, 0, b"", b"")
             return CompletedProcess(args, 0, out[label], b"")
         with patch.object(guard, "_git", side_effect=simulated):
             self.assertEqual(guard.main(), 1)
@@ -159,7 +162,10 @@ class AdditiveOwnershipTests(unittest.TestCase):
                 "status": b"",
                 "symbolic-ref": b"",
                 "ls-files": b"H src/lightup/scope.py\0",
+                "ignored": b"",
             }
+            if args[0] == "ls-files" and "--ignored" in args:
+                return CompletedProcess(args, 0, b"", b"")
             return CompletedProcess(args, 1 if args[0] == "symbolic-ref" else 0, values[args[0]], b"")
         good = {
             "GITHUB_ACTIONS": "true",
@@ -222,6 +228,8 @@ class AdditiveOwnershipTests(unittest.TestCase):
                 "status": b"",
                 "ls-files": b"h src/lightup/scope.py\0",
             }
+            if args[0] == "ls-files" and "--ignored" in args:
+                return CompletedProcess(args, 0, b"", b"")
             return CompletedProcess(args, 0, value[args[0]], b"")
         with patch.object(guard, "_git", side_effect=fake_git):
             with redirect_stdout(io.StringIO()):
@@ -262,6 +270,58 @@ class AdditiveOwnershipTests(unittest.TestCase):
                     ))
                     git("update-index", disable, sample.name)
             self.assertTrue(guard.clean_index_flags(git("ls-files", "-v", "-z", "--cached")))
+
+    def test_ignored_source_files_force_hold(self):
+        from subprocess import CompletedProcess
+        def ignored(raw: bytes, rc: int = 0):
+            return CompletedProcess(["git"], rc, raw, b"")
+        self.assertTrue(guard.no_ignored_source(ignored(b"")))
+        self.assertTrue(guard.no_ignored_source(ignored(
+            b"tests/__pycache__/test_scope.cpython-314.pyc\0"
+            b"src/lightup/__pycache__/scope.cpython-314.pyc\0"
+        )))
+        for raw in (
+            b"tests/hidden_runtime.py\0",
+            b"src/lightup/hidden_module.py\0",
+            b"scripts/hidden_job.py\0",
+            b"deploy/hidden_runtime.py\0",
+            b"lab/hidden_fixture.py\0",
+            b".github/workflows/hidden-release.yml\0",
+            b"tests/hidden_runtime.pyi\0",
+            b"tests/hook.pth\0",
+            b"src/lightup/native.so\0",
+            b"tests/hidden_runtime.py\0" * 2,
+            b"tests/hidden_runtime.py",
+        ):
+            with self.subTest(raw=raw):
+                self.assertFalse(guard.no_ignored_source(ignored(raw)))
+        self.assertFalse(guard.no_ignored_source(ignored(b"", rc=1)))
+        self.assertFalse(guard.no_ignored_source(ignored(b"x" * 132000)))
+
+    def test_ignored_python_file_is_invisible_to_git_status_but_not_to_new_fence(self):
+        import subprocess
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory(prefix=".scope-ignore-fixture-", dir=ROOT) as home:
+            work = Path(home)
+            def git(*args):
+                return subprocess.run(
+                    ["git", *args], cwd=work, capture_output=True,
+                    timeout=5, check=True,
+                )
+            git("init", "-q")
+            (work / ".gitignore").write_text("*.py\n", encoding="ascii")
+            git("add", ".gitignore")
+            git("-c", "user.name=Offline Test", "-c", "user.email=offline@example.test",
+                "commit", "-q", "-m", "fictional ignore fixture")
+            (work / "tests").mkdir()
+            (work / "tests" / "hidden_runtime.py").write_text("x = 1\n", encoding="ascii")
+            self.assertEqual(git("status", "--porcelain=v1", "-z").stdout, b"")
+            listing = git(
+                "ls-files", "--others", "--ignored", "--exclude-standard", "-z",
+                "--", "tests", "scripts", "src/lightup", ".github/workflows", "lab", "deploy",
+            )
+            self.assertIn(b"tests/hidden_runtime.py\0", listing.stdout)
+            self.assertFalse(guard.no_ignored_source(listing))
 
     def test_missing_required_worker_files_is_hold(self):
         for required in guard.OWNED_EXACT:
