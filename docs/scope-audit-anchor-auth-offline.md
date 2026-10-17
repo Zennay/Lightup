@@ -39,8 +39,22 @@ PYTHONPATH=src python -m unittest discover -s tests -p test_scope_audit_anchor_a
 
 Exit code **3** / `REVIEW_ONLY` means only that the fictional MAC and temporal shape validated against the provided key. Exit code **2** / `HOLD` means no approval. `consent_verified`, `authorization_granted` and `release_approved` are always literal `false`. Key material is not logged; there is no routine for copying or persisting it, and Python immutable byte buffers cannot be guaranteed wiped from memory. Use synthetic secrets exclusively for this incubating test.
 
+## Offline in-batch duplicate and chronology review
+
+The additional isolated `scope_audit_anchor_batch_offline.py` reviewer accepts a bounded object with exactly `schema: LIGHTUP-FICTIONAL-AUDIT-TIP-MAC-BATCH-V1` and `attestations: [receipt, ...]`, containing 1–32 individually MAC-verified fictional receipts. Maximum aggregate input is **266,240 UTF-8 bytes** (independent per-receipt 8 KiB bounds also apply). Every receipt must use the same externally pinned fictional HMAC key ID and caller-supplied symmetric key, have a valid unexpired MAC and canonical timestamp, and be strictly chronological by `issued_at`. A duplicated nonce, duplicated tip, replayed whole receipt, forged approval flag, bad MAC, expired record or ambiguous JSON produces atomic `HOLD` without any partial counts. Valid batch returns `REVIEW_ONLY` with count only; it never grants authority.
+
+**Important limit:** This detects duplicates **within one supplied batch only**. No durable/global replay nonce registry, real issuer authentication, monotonic live revocation state, trusted key rotation or content-chain validation exists. A replay in a different batch is not stopped; the signature test is not a complete authorization system.
+
+```bash
+PYTHONPATH=src python -m lightup.scope_audit_anchor_batch_offline \
+  --synthetic-only --expected-key-id fictional-batch-checker --key-fd 3 \
+  3< /secure/private/path/to/disposable-fictional-test-key.bin \
+  < fictional-mac-batch.json
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_audit_anchor*offline.py' -v
+```
+
 ## Worker ownership and release fence
 
-Only entirely new, independently owned source/tests/docs/isolated CI files on `chatgpt/scope-hmac-anchor-auth-20261017-w1` based on untouched `main`. Separate from active #1556 / PR #1557 checkpoint workers, #1551 two-party review and #554 durable source-owner. No changes to other workers' files, existing workflows, runner registration, production functionality, real grants or target access.
+Exactly six entirely new, independently owned source/tests/docs/isolated CI files on `chatgpt/scope-hmac-anchor-auth-20261017-w1` based on untouched `main`. Separate from active #1556 / PR #1557 checkpoint workers, #1551 two-party review and #554 durable source-owner. No changes to other workers' files, existing workflows, runner registration, production functionality, real grants or target access.
 
 **No merge, deploy, active scan, real consent, grant issuance, handler dispatch or release.** Independent privacy/security review, trusted key management and binding to an authenticated principal, real at-use revocation and real client/operator consent, named VPS exact-head CI, and explicit human GO remain required.
