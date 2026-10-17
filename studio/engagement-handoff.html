@@ -52,13 +52,14 @@
 <p class="help">Private local page: no backend, browser storage, external dependencies, remote JavaScript, API calls or network requests. Treat file exports as potentially sensitive; use an approved authenticated transfer channel.</p>
 </main>
 <script src="./scope-network.js"></script>
+<script src="./scope-fingerprint.js"></script>
 <script>
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
 const texts=['clientContact','operatorContact','stopContact','channel','stopProcedure','sensitiveData','limitations','rollback'];
 const checks=['assetEvidence','scopeReviewed','riskBriefed','windowProposed','privacyPrepared'];
-let draft=null,lastPacket=null;
+let draft=null,lastPacket=null,revisionFingerprint=null;
 function valid(d) {
  return d && !Array.isArray(d) && d.schema_version===1 && d.kind==='lightup.scope_proposal_draft'&&d.state==='DRAFT_ONLY'&&
  d.authorization===false&&d.client_consent===false&&d.operator_consent===false&&d.execution===false&&d.grant===false&&
@@ -103,6 +104,7 @@ function details(){
   kind:'lightup.engagement_preparation_draft',schema_version:1,state:'DISCUSSION_ONLY',readiness,
   authenticity_verified:false,asset_ownership_verified:false,client_consent:false,operator_consent:false,
   authorization:false,grant:false,risk_approved:false,revocation_checked:false,execution:false,scan:false,release:false,
+  unsigned_proposal_scope_sha256:revisionFingerprint,
   proposal:{
    kind:'lightup.scope_proposal_draft',schema_version:1,state:'DRAFT_ONLY',proposal_name:draft.proposal_name,
    client_label:draft.client_label,requested_assets:draft.requested_assets,
@@ -125,6 +127,7 @@ function details(){
  const brief=[
   'LIGHTUP ENGAGEMENT PREPARATION DOSSIER · DISCUSSION ONLY',
   'Proposal: '+draft.proposal_name,
+  'Unsigned scope revision SHA-256: '+(revisionFingerprint||'unavailable'),
   'Client label (NOT verified identity): '+(draft.client_label||'—'),
   'Mode: '+draft.requested_mode+' · requested risk '+draft.requested_risk,
   'Requested planning window, browser-local: '+(start||'?')+' → '+(end||'?'),
@@ -162,10 +165,13 @@ $('scopeFile').addEventListener('change',async event=>{
   if(file.size>65536)throw Error('too large');
   const data=JSON.parse(await file.text(),(key,value)=>['__proto__','constructor','prototype'].includes(key)?undefined:value);
   if(!valid(data))throw Error('invalid source');
+  const calculated=await LightUpScopeDigest.fingerprint(data);
+  if(data.scope_fingerprint_sha256!==undefined && (!calculated||data.scope_fingerprint_sha256!==calculated))throw Error('revision mismatch');
+  revisionFingerprint=calculated;
   draft=data;
   $('fileStatus').textContent='Scope draft imported for preparation: '+file.name+'. It is not authenticated or approved.';
   $('actionStatus').textContent='All preparation fields are local and remain unsaved until export.';
- }catch(_){draft=null;lastPacket=null;$('fileStatus').textContent='File rejected. Only safe LightUp scope proposal draft v1 files, 64 KiB maximum, are accepted.';$('actionStatus').textContent='Import a valid draft first.';$('brief').textContent='No source proposal imported.';$('packet').textContent='No preparation data.';$('headline').textContent='Import a scope to build this dossier.';$('assets').textContent='No assets.';$('reminders').replaceChildren();$('export').disabled=true;$('print').disabled=true;}
+ }catch(_){draft=null;lastPacket=null;revisionFingerprint=null;$('fileStatus').textContent='File rejected. Only safe LightUp scope proposal draft v1 files, 64 KiB maximum, are accepted.';$('actionStatus').textContent='Import a valid draft first.';$('brief').textContent='No source proposal imported.';$('packet').textContent='No preparation data.';$('headline').textContent='Import a scope to build this dossier.';$('assets').textContent='No assets.';$('reminders').replaceChildren();$('export').disabled=true;$('print').disabled=true;}
  event.target.value='';details();
 });
 $('export').addEventListener('click',()=>{
@@ -179,7 +185,7 @@ $('export').addEventListener('click',()=>{
 $('print').addEventListener('click',()=>{if(draft){details();window.print();}});
 $('clear').addEventListener('click',()=>{
  if(!window.confirm('Erase the imported proposal and all local preparation fields?'))return;
- draft=null;lastPacket=null;
+ draft=null;lastPacket=null;revisionFingerprint=null;
  for(const id of texts)$(id).value='';
  for(const id of checks)$(id).checked=false;
  $('fileStatus').textContent='No draft loaded.';
