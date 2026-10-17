@@ -503,6 +503,37 @@ class OfflineTreeModesTests(unittest.TestCase):
                     with patch.object(guard, "ROOT", root):
                         self.assertTrue(guard._ignored_worktree_is_empty())
 
+    def test_ignored_python_bytecode_is_not_clean_evidence(self):
+        """Ignored .pyc is still an unexpected executable checkout artifact."""
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_ignored_pyc_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp)
+            def raw_git(*argv):
+                return subprocess.run(
+                    [guard.GIT_BINARY, *argv], cwd=root, check=True,
+                    capture_output=True, timeout=6,
+                ).stdout
+            raw_git("init", "-q")
+            (root / ".gitignore").write_text("__pycache__/\n")
+            (root / "README").write_text("fictional python cache fixture")
+            raw_git("add", ".")
+            raw_git("-c", "user.name=Reviewer", "-c",
+                    "user.email=reviewer@example.invalid",
+                    "commit", "-qm", "offline baseline")
+            cache = root / "tests" / "__pycache__"
+            cache.mkdir(parents=True)
+            bytecode = cache / "test_shadow.cpython-314.pyc"
+            bytecode.write_bytes(b"fictional bytes, never imported")
+            self.assertEqual(raw_git("status", "--porcelain=v1", "-z"), b"")
+            with patch.object(guard, "ROOT", root):
+                self.assertFalse(guard._ignored_worktree_is_empty())
+                self.assertEqual(guard.git("status", "--porcelain=v1").returncode, 3)
+            bytecode.unlink()
+            with patch.object(guard, "ROOT", root):
+                self.assertTrue(guard._ignored_worktree_is_empty())
+
     def test_ignored_probe_fail_closed_on_malformed_git(self):
         from subprocess import CompletedProcess
         from unittest.mock import patch
