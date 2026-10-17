@@ -94,3 +94,35 @@ runtime permissions, or a complete release dependency graph.
 Tests: `python3 -I -S -B -m unittest discover -s tests -p 'test_scope_pr_*1549_offline.py' -v`.
 The exclusively owned hosted Python3.11/3.14 workflow checks **six**
 plain add-only Git mode-100644 files and this combined test suite.
+
+## W9 — byte-bound and canonical advisory receipt fingerprints
+
+The original fictional DAG reviewer now includes `input_sha256` in
+**REVIEW_ONLY** receipts: a SHA-256 hash of the *exact accepted raw input
+bytes*. It never appears in HOLD, so malformed or untrusted inputs are not
+echoed or committed. This fingerprint is useful only to compare snapshots of
+the exact same proposal; it is **not** an authentication, endorsement,
+authorization, complete graph, or safe-to-merge proof.
+
+The normalized PR-snapshot adapter includes two fingerprints on REVIEW_ONLY:
+
+- `input_sha256` hashes the exact snapshot bytes, including whitespace and
+  ordering; any byte-level change results in a different hash.
+- `derived_graph_sha256` hashes the **canonically ordered** inferred DAG
+  (entries sorted by exact numeric PR ID and JSON keys sorted). Equivalent
+  snapshots in a different row order have the same derived-graph fingerprint.
+  Any change to root, head, base or dependencies produces a different digest.
+
+The dedicated real-subprocess tests prove different head SHAs can produce the
+same advisory wave but different fingerprints. The first implementation
+produced different graph digests for reordered equivalent graphs; the
+independent negative test demonstrated the defect before the canonical sort
+fix. No keys, signatures, customer records or trusted data sources are used.
+All review/merge/authorization flags remain false.
+
+A read-only actual-metadata sanity check on 2026-10-17 projected the observed
+open draft [#1550](https://github.com/Zennay/Lightup/pull/1550) as an
+individual root candidate (REVIEW_ONLY/exit3) and the same candidate combined
+under that root with [#1548](https://github.com/Zennay/Lightup/pull/1548)
+as HOLD/exit2 because their historical base SHA claims differ. This does not
+prove present freshness or that either PR is safe to merge.
