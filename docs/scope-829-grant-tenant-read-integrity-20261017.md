@@ -166,3 +166,31 @@ connected zSSH Python 3.14.4 ran **31 methods** total, comprising
 unexpected success or unexpected failure. No production code, client
 asset, live network endpoint, actual grant, handler or worker-owned file
 was changed. The named self-hosted CI is not thereby certified.
+
+## W4 — foreign-tenant corrupt payload must not poison authorized reads
+
+Two additional original **source REDs** test a subtle ordering problem:
+a newer wrong-tenant grant can carry malformed `assets_json` or
+`valid_until` while an older, valid owner-bound grant exists. The current
+unfiltered `list_authorization_grants` parses every returned row **before**
+tenant-lineage verification; the corrupted foreign row therefore raises during
+JSON/datetime parsing and blocks an otherwise valid owner read. The safe
+joined owner predicate must drop the wrong-tenant row *in SQL* before
+deserialization. This is entirely synthetic SQLite, no installed endpoint.
+
+On exact W4 source commit `9a014706fd6cea92fb3d480cc444cc79db9bca6c`:
+- `27` genuine source-bound tests = 9 ordinary controls plus **18
+  deliberately unfixed source REDs** on original code.
+- Hermetic strict source-owner oracle: original source **18 RED**,
+  correctly owner/engagement joined predicate **27/27 ordinary PASS**,
+  while four weaker candidate fixes remain strictly red.
+- Combined scope-only test modules on real original source:
+  **33 tests, 15 ordinary PASS and 18 expected source failures**, zero
+  unexpected outcomes, Python 3.14.4 via connected zSSH, clean Git-tree.
+- Two new cases illustrate read/availability integrity, **not** an active
+  attack, unauthorized scan, exploitation of a live service or permission
+  grant. Do not promote a passing test harness into release approval.
+
+Owner must integrate the audited query and convert **all 18 current source
+REDs** to ordinary tests on real source before release. Earlier W3 figures
+are retained above as historical exact-head receipts, not overwritten.
