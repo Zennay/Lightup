@@ -18,7 +18,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from types import MappingProxyType
+from types import MappingProxyType, ModuleType
 
 # Verify the *exact* checked-out installed source before Python is allowed
 # to execute lightup's package __init__, models or policy module at import time.
@@ -53,7 +53,38 @@ def _trusted_source_hashes() -> dict[str, str] | None:
         return None
 
 
-_VERIFIED_SOURCE = _trusted_source_hashes()
+def _cached_imports_canonical() -> bool:
+    """Avoid sys.modules preloads masquerading as the pinned installed source."""
+    module_locations = {
+        "lightup": "src/lightup/__init__.py",
+        "lightup.models": "src/lightup/models.py",
+        "lightup.scope": "src/lightup/scope.py",
+    }
+    try:
+        for name, relative in module_locations.items():
+            existing = sys.modules.get(name)
+            if existing is None:
+                continue
+            if type(existing) is not ModuleType:
+                return False
+            attributes = vars(existing)
+            module_file = attributes.get("__file__")
+            if type(module_file) is not str:
+                return False
+            if Path(module_file).resolve() != (_CHECKOUT_ROOT / relative).resolve():
+                return False
+            if name == "lightup":
+                pkg_paths = attributes.get("__path__")
+                if (type(pkg_paths) is not list or len(pkg_paths) != 1
+                    or type(pkg_paths[0]) is not str
+                    or Path(pkg_paths[0]).resolve() != (_CHECKOUT_ROOT / "src/lightup").resolve()):
+                    return False
+        return True
+    except (OSError, ValueError, TypeError):
+        return False
+
+
+_VERIFIED_SOURCE = _trusted_source_hashes() if _cached_imports_canonical() else None
 if _VERIFIED_SOURCE is not None:
     sys.path.insert(0, str(_CHECKOUT_ROOT / "src"))
     from lightup.models import Authorization, Target  # noqa: E402
@@ -331,7 +362,8 @@ def evaluate(cases: tuple[WitnessCase, ...] | None = None) -> dict[str, object]:
     # an audited file-open and producing a misleading source-drift reason.
     if _WITNESS_EVALUATION_ACTIVE.get():
         return _receipt("HOLD", "offline_witness_time_fence_unavailable")
-    if _VERIFIED_SOURCE is None or _trusted_source_hashes() is None:
+    if (_VERIFIED_SOURCE is None or not _cached_imports_canonical()
+        or _trusted_source_hashes() is None):
         return _receipt("HOLD", _SOURCE_STATUS)
     try:
         fixtures = canonical_cases() if cases is None else cases
