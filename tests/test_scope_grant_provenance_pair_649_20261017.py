@@ -317,6 +317,36 @@ class PairReview649Tests(unittest.TestCase):
             with patch.object(pair.os, "write", side_effect=BrokenPipeError("SECRET")):
                 self.assertEqual(pair.main(), 2)
 
+    def test_both_unwired_parsers_perform_no_network_db_or_child_io(self):
+        import builtins
+        import socket
+        import sqlite3
+
+        base_data = {
+            "schema": base.SCHEMA,
+            "synthetic_only": True,
+            "items": [record()],
+        }
+        deny = AssertionError("fictional review unexpectedly requested I/O")
+        with (
+            patch.object(socket, "socket", side_effect=deny),
+            patch.object(socket, "getaddrinfo", side_effect=deny),
+            patch.object(sqlite3, "connect", side_effect=deny),
+            patch.object(subprocess, "Popen", side_effect=deny),
+            patch.object(builtins, "open", side_effect=deny),
+        ):
+            self.assertIs(base.review_batch(base_data).status, base.ReviewStatus.REVIEW_ONLY)
+            self.assertIs(base.parse_and_review(encode(base_data)).status,
+                          base.ReviewStatus.REVIEW_ONLY)
+            self.assertIs(pair.review_pair_batch(packet()).status,
+                          base.ReviewStatus.REVIEW_ONLY)
+            self.assertIs(pair.parse_and_compare(encode(packet())).status,
+                          base.ReviewStatus.REVIEW_ONLY)
+            self.assertIs(pair.parse_and_compare(b"not-json").status,
+                          base.ReviewStatus.HOLD)
+            self.assertIs(base.parse_and_review(b"not-json").status,
+                          base.ReviewStatus.HOLD)
+
     def test_no_prod_import_network_db_or_scan(self):
         text = PAIR_CLI.read_text()
         for banned in ("from lightup", "import lightup", "socket.", "requests.",
