@@ -132,6 +132,8 @@ class DependencyReviewTests(unittest.TestCase):
         class CountClaim(int):
             def __eq__(self, other):
                 return True
+            def __ne__(self, other):
+                return False
         class SpoofedSink:
             def write(self, text):
                 return CountClaim(0)
