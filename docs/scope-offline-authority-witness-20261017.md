@@ -9,7 +9,7 @@ LightUp remains **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD**. The witness i
 ## Execute locally in a disposable checkout
 
 ```sh
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v tests/test_scope_offline_authority_witness_20261017.py
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_scope_offline_authority_witness_20261017.py -v
 PYTHONDONTWRITEBYTECODE=1 python3 scripts/scope_offline_authority_witness_20261017.py --offline-lab-only
 ```
 
@@ -26,6 +26,12 @@ With missing/malformed opt-in, a changed decision (allow, reason, host), bad sha
 The fixed in-memory matrix uses loopback IP/hostname, private lab IP (allowed and lab-disabled), out-of-scope public IP, a synthetically allowlisted `.example.test` hostname with and without a **fictional, unsourced** `Authorization`, explicit public CIDR with and without that same fictional object, removed explicit-host allowlist, and blank-target denial.
 
 This is a deterministic **behavior witness**, not a proof that the policy is secure for all targets. Canonical examples with a synthetic authorization show existing `ScopePolicy` semantics in an **offline unit invocation only**. They do not create grants or prove that an actual human approved any asset. No DNS, socket, HTTP, scan, subprocess handler, credentials, database, production data or target-capable runner step occurs in the witness itself. The subprocess regression launches only another Python process running the same offline witness.
+
+## Verified execution (17 October 2026)
+
+On the connected authorized zSSH host, a dedicated disposable checkout at exact source head `d30a1e2e9deeacb4ba72c98a23b728488628d057` passed **16/16 dedicated unittest methods** on Python 3.14.4. Negative mutation controls rejected incorrect allow/host/reason/boolean return values, bad opt-in, identity-spoofing objects and evaluator crashes without yielding authority. The live CLI control produced `REVIEW_ONLY/3`, while the no-opt-in control produced `HOLD/2`, both with seven hard-coded `false` authority flags. Git status was clean; no other workers' paths were edited.
+
+The earlier, same-branch full original unit suite on head `705b525ec485f5779ad9a2846e10e036ccb7039d` ran 1,251 tests and returned **5 FAIL, 23 expected failures**. Failures included pre-existing #301 date-fixture and #1535 registry-history issues; other failures are not independently baseline-proven. This **does not** constitute full-project green or release evidence. The new two polymorphism tests added afterwards have dedicated green proof, not a new full-suite result.
 
 ## Gate interpretation
 
