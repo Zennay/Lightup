@@ -104,3 +104,55 @@ upgraded to ordinary PASS before integration.
 
 **HOLD persists. No default-branch merge/deploy, live targets, active scans,
 real consents, grants, handlers, or release.**
+
+
+## W5 · bronhouderfix ontvangen, drie originele REDs opgeheven en volledige compositie · 17-10-2026
+
+De oorspronkelijke eigenaar van [draft #1538](https://github.com/Zennay/Lightup/pull/1538)
+heeft op **zijn eigen branch**, onveranderd onder ons eigenaarschap, SHA
+`26dd88d33c8735658ae819c7e017b2f36493a039` gepusht met
+`--numstat -z` raw-byte, strict UTF-8 en expliciete numstat/name-status
+consistentiecontrole. In een **tijdelijke aparte checkout** waren de drie
+voorheen expected-RED acceptaties ineens **UNEXPECTED SUCCESS**: daadwerkelijk
+alle drie oorspronkelijke defecten in deze fixtures verholpen.
+
+Daarna heb ik uitsluitend op de eigen werkbranch:
+- alle drie de oorspronkelijke regressies omgezet naar **gewone strikte PASS**,
+  met metatest die geen gemaskeerde expectedFailures toestaat;
+- via GitHub Git Data een non-force tweeouder-mergecommit gemaakt
+  `d79854d5837f9b75cbb2691d60a4804bc1c20e77`, met alleen exact
+  twee byte-identieke upstream bronhouderblobs overgenomen, **zonder die
+  externe branch of originele productiebestanden autonoom te bewerken**;
+- de echte source-ownervergelijking gehouden op **uitsluitend vier volledig
+  nieuwe eigen bestanden** (zero behind, geen externe bestanden in PR-diff).
+
+**Exact nieuwe HEAD via de toegestane verbonden zSSH Python3.14.4**
+in eigen schone geheel tijdelijke checkout:
+- 28 eigen Git-name identity source-/oracle-tests **28/28 gewone PASS**;
+- 26 oorspronkelijke `test_change_review.py` **26/26 gewone PASS**;
+- 4 oorspronkelijke `test_change_review_store.py` **4/4 gewone PASS**.
+**Samen 58/58 normaal PASS, 0 expectedFailure/FAIL/ERROR.**
+
+**Echte volledige oorspronkelijke suite op exacte eigen HEAD** via zSSH en
+normale projectimports, Python3.14.4: **1.301 tests, 2 gewone FAIL** in
+uitsluitend reeds afzonderlijk bezeten #1535
+`render_scope_registry_history_offline.py` native-I/O warning cases;
+de nieuwe Git-scope-integriteitsfix zelf veroorzaakte geen nieuwe unitfailures.
+Deze eigen HEAD is **dus niet full-project groen**.
+
+Vervolgens uitsluitend lokaal, **niet gepusht of gemerged**, exact de
+ongewijzigde andere bronhouderfix uit
+[draft #1536](https://github.com/Zennay/Lightup/pull/1536)
+SHA `f8b91596d48f318cb75050b70ccbf5a50d2cd106`
+(`src/lightup/capability_registry_history_report.py`, de 2 Python
+SyntaxWarning-escapeplaatsen) in een disposable kopie opgenomen:
+**1.301 originele tests volledig OK, 0 FAIL/ERROR** op Python3.14.4,
+werkelijk getest via zSSH. Dat is een **composiet lokaal bewijs**, geen
+gepubliceerde gecombineerde release-commit, definitieve CI, officiële
+runner of gebruikersautorisatie.
+
+**DRAFT/HOLD — geen merge naar main, deployment, live scan, grant,
+handlerdispatch of release.** Voor echte GO blijven exacte release SHA
+complete hosted CI plus benoemde permanente VPS GitHub Actions,
+onafhankelijke privacy-/securityreview, authentieke gescheiden client- en
+operatorconsent met at-use intrekking, en expliciete menselijke GO vereist.
