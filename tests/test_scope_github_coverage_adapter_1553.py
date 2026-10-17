@@ -260,6 +260,7 @@ class InstalledBridgeTest(unittest.TestCase):
 
     def test_multihunk_diff_counts_match_real_installed_adapter(self):
         r = records()
+        r[0]["status"] = "modified"
         r[0]["additions"] = 2
         r[0]["patch"] = (
             "@@ -1 +1,2 @@\n+permissions: write-all\n context\n"
