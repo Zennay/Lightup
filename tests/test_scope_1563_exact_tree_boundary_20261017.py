@@ -367,10 +367,8 @@ class MutationWitnessQualityTests(unittest.TestCase):
             def __str__(self):
                 return self._testMethodName
 
-        result = MutationWitnessQualityTests.proof.CoverageResult(io.StringIO(), True, 0)
-        result.testsRun = 16
-        result.subtest_attempts.update(MutationWitnessQualityTests.proof.EXPECTED_CASE_COUNTS)
-        result.subtest_passes.update(MutationWitnessQualityTests.proof.EXPECTED_CASE_COUNTS)
+        result = MutationWitnessQualityTests.proof.run_suite()
+        assert MutationWitnessQualityTests.proof.baseline_is_strictly_green(result)
         case = Case()
         if assertion:
             result.failures.append((case, "Traceback: AssertionError: denied correctly"))
@@ -423,10 +421,7 @@ class MutationWitnessQualityTests(unittest.TestCase):
 
 
     def test_original_baseline_refuses_expected_failure_or_skip(self):
-        result = self.proof.CoverageResult(io.StringIO(), True, 0)
-        result.testsRun = len(self.proof.REQUIRED_TEST_METHODS)
-        result.subtest_attempts.update(self.proof.EXPECTED_CASE_COUNTS)
-        result.subtest_passes.update(self.proof.EXPECTED_CASE_COUNTS)
+        result = self.proof.run_suite()
         self.assertTrue(self.proof.baseline_is_strictly_green(result))
         result.expectedFailures.append((self, "synthetic unresolved safety RED"))
         self.assertTrue(result.wasSuccessful())  # unittest's misleading default
@@ -474,10 +469,7 @@ class MutationWitnessQualityTests(unittest.TestCase):
         self.assertEqual(dict(original.subtest_passes), self.proof.EXPECTED_CASE_COUNTS)
 
     def test_count_preserving_subcase_shift_must_fail_closed(self):
-        result = self.proof.CoverageResult(io.StringIO(), True, 0)
-        result.testsRun = len(self.proof.REQUIRED_TEST_METHODS)
-        result.subtest_attempts.update(self.proof.EXPECTED_CASE_COUNTS)
-        result.subtest_passes.update(self.proof.EXPECTED_CASE_COUNTS)
+        result = self.proof.run_suite()
         self.assertTrue(self.proof.baseline_is_strictly_green(result))
         from_name = "test_generated_global_ipv4_nonmembers_do_not_gain_scope"
         to_name = "test_ipv4_right_neighbor_of_declared_cidr_remains_unlisted"
@@ -512,6 +504,66 @@ class MutationWitnessQualityTests(unittest.TestCase):
         self.assertTrue(result.wasSuccessful())
         self.assertFalse(self.proof.all_subcases_covered(result))
         self.assertFalse(self.proof.baseline_is_strictly_green(result))
+
+
+    def test_each_grant_variant_is_a_distinct_subtest_identity(self):
+        for name in (
+            "test_unrelated_declared_hosts_cannot_change_membership",
+            "test_unrelated_declared_networks_cannot_change_membership",
+        ):
+            with self.subTest(method=name):
+                result = self.proof.run_suite()
+                self.assertEqual(result.subtest_attempts[name], 24)
+                self.assertEqual(len(set(result.subtest_tokens[name])), 24)
+                self.assertTrue(self.proof.baseline_is_strictly_green(result))
+
+    def test_all_730_case_identity_digests_are_stable(self):
+        result = self.proof.run_suite()
+        self.assertEqual(set(self.proof.EXPECTED_CASE_DIGESTS), self.proof.REQUIRED_TEST_METHODS)
+        self.assertTrue(self.proof.baseline_is_strictly_green(result))
+        for name, digest in self.proof.EXPECTED_CASE_DIGESTS.items():
+            with self.subTest(method=name):
+                self.assertEqual(self.proof._case_digest(result.subtest_tokens[name]), digest)
+                self.assertEqual(
+                    len(result.subtest_tokens[name]),
+                    self.proof.EXPECTED_CASE_COUNTS[name],
+                )
+                self.assertEqual(
+                    len(set(result.subtest_tokens[name])),
+                    self.proof.EXPECTED_CASE_COUNTS[name],
+                )
+
+    def test_256_duplicate_green_ipv4_cases_cannot_replace_original_matrix(self):
+        cls = self.proof.suite_module.ScopeMembershipMetamorphicTests
+        method = "test_generated_global_ipv4_nonmembers_do_not_gain_scope"
+
+        def superficial_repeat(self):
+            for _ in range(64):
+                for name in ("absent", "current", "expired", "future"):
+                    with self.subTest(ip="9.9.9.16", grant=name):
+                        self.assertTrue(True)
+
+        with patch.object(cls, method, superficial_repeat):
+            self.assertTrue(self.proof.suite_manifest_valid())
+            result = self.proof.run_suite()
+            self.assertTrue(result.wasSuccessful())
+            self.assertEqual(result.testsRun, 16)
+            self.assertEqual(result.subtest_attempts[method], 256)
+            self.assertEqual(sum(result.subtest_passes.values()), 730)
+            self.assertNotEqual(
+                self.proof._case_digest(result.subtest_tokens[method]),
+                self.proof.EXPECTED_CASE_DIGESTS[method],
+            )
+            self.assertFalse(self.proof.baseline_is_strictly_green(result))
+        self.assertTrue(self.proof.baseline_is_strictly_green(self.proof.run_suite()))
+
+    def test_mutation_in_unrelated_full_count_but_wrong_cases_is_hold(self):
+        result = self.result()
+        self.assertTrue(self.proof.mutation_detected(result, "test_invalid_target"))
+        name = "test_generated_global_ipv4_nonmembers_do_not_gain_scope"
+        result.subtest_tokens[name][0] = '{"grant":"absent","ip":"9.9.9.16-FAKE"}'
+        self.assertEqual(len(result.subtest_tokens[name]), 256)
+        self.assertFalse(self.proof.mutation_detected(result, "test_invalid_target"))
 
     def test_downstream_mutation_manifest_is_separate_and_exact(self):
         self.assertEqual(
