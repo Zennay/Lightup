@@ -222,7 +222,9 @@ def _ignored_worktree_is_empty() -> bool:
 
 
 def git(*args: str) -> subprocess.CompletedProcess[bytes]:
-    if args and args[0] == "status" and (\n        not _tracked_files_have_no_filters() or not _ignored_worktree_is_empty()\n    ):
+    if args and args[0] == "status" and (
+        not _tracked_files_have_no_filters() or not _ignored_worktree_is_empty()
+    ):
         # No status if an external filter or invisible ignored file exists.
         return subprocess.CompletedProcess(args, 3, b"", b"")
     return _git_raw(*args)
