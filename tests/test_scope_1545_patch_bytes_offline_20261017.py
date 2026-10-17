@@ -244,6 +244,19 @@ class ReviewBytesTests(unittest.TestCase):
         self.assertFalse(reviewer.check_patch(b"@@ -1,9999 +1,9999 @@\n-old\n+new"))
         self.assertFalse(reviewer.check_patch(b"@@ -1 +1 @@\n-old\n+" + b"x" * 8200))
 
+    def test_exact_bounded_hunk_and_batch_limits(self):
+        hunks=[]
+        for index in range(reviewer.MAX_HUNKS+1):
+            start=index*9+1
+            hunks.append(f"@@ -{start} +{start} @@\n-old\n+new_{index}".encode("ascii"))
+        valid=b"\n".join(hunks[:reviewer.MAX_HUNKS])
+        overflowing=b"\n".join(hunks)
+        self.assertTrue(reviewer.check_patch(valid))
+        self.assertFalse(reviewer.check_patch(overflowing))
+        valid_batch=[f"@@ -1 +1 @@\n-old\n+new_{i}".encode("ascii") for i in range(reviewer.MAX_PATCHES)]
+        self.assertEqual(reviewer.evaluate(encoded(document(*valid_batch))),reviewer.REVIEW_ONLY)
+        self.hold(encoded(document(*(valid_batch+[GOOD]))))
+
     def test_source_is_unwired_without_network_or_subprocess_imports(self):
         tree = ast.parse(SCRIPT.read_text(encoding="utf-8"))
         modules = []

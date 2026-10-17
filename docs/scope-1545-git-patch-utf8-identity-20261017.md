@@ -226,3 +226,18 @@ PASS + 1 original-source expectedFailure**. Initial five negative subcases
 were truly RED and are now GREEN. These isolated results and the corresponding
 GitHub-hosted checks must remain separate from entire original unit and
 permanent named VPS runner acceptance; no merge/release authority follows.
+
+## W10 — exact finite batch and hunk boundaries
+
+Additional executable boundary controls now verify that a valid single
+fictional patch with **exactly 64 ordered hunks** is accepted as REVIEW_ONLY,
+while the same payload expanded to **65 hunks** is atomically HOLD. A batch of
+**16 distinct synthetic patches** passes the documented closed-world bound;
+a 17th is refused. The controls use only generated source-shaped strings;
+no real file/asset, Git remote, target, authorization or network contact.
+
+VPS Python3.14.4 targeted latest suite: **34 test methods, 33 ordinary PASS
+and one intentionally unresolved original pinned-source expectedFailure**.
+All statuses remain non-authorizing and the entire full repo source, outside
+owner lanes, and permanent runner are unchanged. Hosted exact-head acceptance
+must be re-verified after this test addition rather than inherited from W9.
