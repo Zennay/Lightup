@@ -240,6 +240,57 @@ shell patterns). Both ancestor and descendant collisions are rejected;
 unrelated children in the same directory can still be reviewed. A
 path claimed as owned by a worker does **not** override a protected path.
 
+### Built-in, non-overridable high-risk HOLD list (new)
+
+The earlier policy relied *only* on caller-supplied `protected_paths`. That
+allowed a forged, incomplete inventory to classify new application source,
+CI workflow files and checkout safety controls as `REVIEW_ONLY`.
+Independent adversarial **RED** tests demonstrated **25 actual failing
+subcases** for core/application, `.github/` and build files. Another
+**14 actually failing subcases** were reproduced for checkout control and
+native safety evidence scripts. This has now been fixed in the standalone
+worker-ownership CLI; no live source or other-worker branch was edited.
+
+`CRITICAL_HOLD_PATHS` is a conservative, hard-coded review policy in the
+offline worker-ownership reviewer. It does **not** grant any permission.
+It always returns `HOLD` for the following paths, their affected
+descendants and casefold aliases, even if the caller omits them from the
+protected inventory and asserts that a worker owns the file:
+
+- **Application code:** all of `src/lightup/` (including ancestor/descendant
+  changes and both rename/copy identities).
+- **GitHub control plane:** the entire `.github/` subtree (not only CI
+  workflow YAML).
+- **Build/release:** `pyproject.toml`, `setup.py`, `setup.cfg`,
+  `tox.ini`, `uv.lock`, `poetry.lock`, `requirements.txt`,
+  `Dockerfile`, `Makefile`, `.pre-commit-config.yaml`.
+- **Checkout control:** `.gitattributes`, `.gitmodules`, `.lfsconfig`,
+  `.gitignore`. Git-internal `.git` segments are rejected upstream.
+- **Safety evidence scripts:** `scripts/check_safety_canaries.py`,
+  `scripts/review_scope_history_against_checkout_offline.py`,
+  `scripts/review_scope_registry_history_offline.py`,
+  `scripts/review_scope_capability_registry_offline.py`,
+  `scripts/export_scope_capability_registry_offline.py`,
+  `scripts/render_scope_registry_history_offline.py`.
+
+The reviewer checks exact path-segment ancestry, not indiscriminate string
+prefixes; e.g. `src/lightup_fake/file.py` and
+`pyproject.toml.backup` are distinct and do not trip these literal rules.
+A change is **only** considered for `REVIEW_ONLY` if it passes these
+conservative rules *and* the explicit caller-provided protections and all
+other PR/ownership consistency checks. The list is explicitly **not**
+complete: no claim is made about symlinks, Git file modes, credentials,
+provenance, authenticity, safe target scope, grants, or release eligibility.
+Protected source changes require independent review: `HOLD` is not a
+permanent denial or a substitute for human judgement.
+
+A fresh read-only compare of draft PR #1537 and #1539 shows they each
+touch at least one `.github/workflows/` file. The formerly
+`REVIEW_ONLY` non-overlap preview now **correctly reports HOLD/exit 2**
+even though their filenames do not conflict and the caller-provided
+protected list was deliberately unrelated. This does not edit those PRs
+or authorize their release.
+
 **Provenance limitations:** all ownership identities, protected paths,
 PR data, comparisons and SHAs are supplied by the caller. A malicious or
 mistaken caller can omit an important protected path or forge all inputs.
@@ -257,7 +308,9 @@ no-echo CLI receipts and oversized fail-closed input.
 ## Ownership and release gate
 
 This branch adds four unwired offline reviewers, independent acceptance suites,
-synthetic examples and this document, solely under twenty-one newly owned paths. No edits to
+synthetic examples and this document, exclusively in own new files. It
+never changes original source-owner production code, other-worker paths,
+existing workflow files or the system runner. No edits to
 existing source owners' `src/lightup/*`, other workers' branches, existing
 workflows, real clients/targets, live grants, execution handlers, scanning,
 remediation, or deployment.
