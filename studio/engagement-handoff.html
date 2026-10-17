@@ -52,7 +52,7 @@
 <p class="help">Private local page: no backend, browser storage, external dependencies, remote JavaScript, API calls or network requests. Treat file exports as potentially sensitive; use an approved authenticated transfer channel.</p>
 </main>
 <script src="./scope-network.js"></script>
-<script src="./scope-fingerprint.js"></script>
+<script src="./scope-fingerprint.js"></script><script src="./planning-window.js"></script>
 <script>
 (function(){
 'use strict';
@@ -70,6 +70,7 @@ function valid(d) {
  [...d.requested_assets,...d.excluded_assets].every(s=>typeof s==='string'&&s.length<=253&&LightUpScopeNetwork.parse(s)!==null)&&
  Number.isInteger(d.requested_risk)&&d.requested_risk>=1&&d.requested_risk<=4&&
  ['authorized_assessment','analysis_only'].includes(d.requested_mode)&&
+ LightUpPlanningWindow.validateStored(d.proposed_window_local,d.proposed_window_utc) &&
  d.proposed_window_local && typeof d.proposed_window_local==='object' &&
  ['start','end'].every(k=>d.proposed_window_local[k]===null||(typeof d.proposed_window_local[k]==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(d.proposed_window_local[k])))&&
  d.proposed_activities && typeof d.proposed_activities==='object' &&
@@ -95,6 +96,7 @@ function details(){
  const start=draft.proposed_window_local.start,end=draft.proposed_window_local.end;
  if(!start||!end)missing.push('Propose start and end of the time window.');
  if(start&&end&&end<=start)missing.push('Window end must be after its start.');
+ if(utc?.status!=='resolved')missing.push('Resolve an unambiguous UTC planning interval in the proposal composer before coordinating cross-timezone planning.');
  if(draft.requested_risk===4)missing.push('High-risk scope needs independent risk approval.');
  const overlap=LightUpScopeNetwork.inspect(draft.requested_assets,draft.excluded_assets);
  for(const problem of overlap.filter(p=>p.code==='exclusion_overlap'||p.code==='global_range'||p.code==='invalid'))missing.push(problem.message);
@@ -110,7 +112,8 @@ function details(){
    client_label:draft.client_label,requested_assets:draft.requested_assets,
    excluded_assets:draft.excluded_assets,requested_mode:draft.requested_mode,requested_risk:draft.requested_risk,
    notes:draft.notes,proposed_activities:draft.proposed_activities,
-   proposed_window_local:draft.proposed_window_local
+   proposed_window_local:draft.proposed_window_local,
+   proposed_window_utc:draft.proposed_window_utc||null
   },
   operational_contacts:{
    client:preparation.clientContact,operator:preparation.operatorContact,emergency_stop:preparation.stopContact,
@@ -130,7 +133,8 @@ function details(){
   'Unsigned scope revision SHA-256: '+(revisionFingerprint||'unavailable'),
   'Client label (NOT verified identity): '+(draft.client_label||'—'),
   'Mode: '+draft.requested_mode+' · requested risk '+draft.requested_risk,
-  'Requested planning window, browser-local: '+(start||'?')+' → '+(end||'?'),
+  'Requested planning window, source-local: '+(start||'?')+' → '+(end||'?'),
+  'Proposed UTC interval: '+(utc?.start||'?')+' → '+(utc?.end||'?')+' (source: '+(utc?.timezone||'unknown')+')',
   'PROPOSED assets:\n'+draft.requested_assets.map(s=>'  + '+s).join('\n'),
   'EXCLUDED proposals:\n'+(draft.excluded_assets.map(s=>'  - '+s).join('\n')||'  —'),
   'Purpose:\n'+(draft.notes||'—'),
