@@ -556,6 +556,47 @@ class OfflineTreeModesTests(unittest.TestCase):
                     git("-c", "core.fsmonitor=false", "status", "--porcelain=v1")
                     self.assertTrue(marker.exists())
                     
+    def test_attribute_macro_expands_hidden_unspecified_filter_to_hold(self):
+        """All resolved attributes, including a macro, are inspected atomically."""
+        import subprocess
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory(prefix="scope_macro_filter_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp)
+            def git(*args, data=None):
+                return subprocess.run(
+                    [guard.GIT_BINARY, *args], cwd=root, input=data,
+                    check=True, capture_output=True, timeout=6,
+                ).stdout
+            git("init", "-q")
+            (root / ".gitattributes").write_text(
+                "[attr]fictional filter=unspecified\nfile.txt fictional\n"
+            )
+            tracked = root / "file.txt"
+            tracked.write_text("before\n")
+            git("add", ".gitattributes", "file.txt")
+            git("-c", "user.name=Offline", "-c",
+                "user.email=offline@example.invalid",
+                "commit", "-qm", "synthetic macro only")
+            attrs = git("check-attr", "--all", "-z", "--stdin",
+                        data=b"file.txt\0")
+            self.assertIn(b"file.txt\0filter\0unspecified\0", attrs)
+            hook = root / "driver.sh"
+            marker = root / "external-filter-ran"
+            hook.write_text(
+                "#!/bin/sh\nprintf ran > '" + str(marker) + "'\ncat\n"
+            )
+            hook.chmod(0o755)
+            git("config", "filter.unspecified.clean", str(hook))
+            tracked.write_text("AFTER!\n")
+            with patch.object(guard, "ROOT", root):
+                self.assertFalse(guard._tracked_files_have_no_filters())
+                protected = guard.git("status", "--porcelain=v1", "-z")
+            self.assertEqual(protected.returncode, 3)
+            self.assertFalse(marker.exists())
+            git("-c", "core.fsmonitor=false", "status", "--porcelain=v1")
+            self.assertTrue(marker.exists())
+
     def test_status_allows_tracked_nonfilter_attributes(self):
         """Normal end-of-line settings are not external filter drivers."""
         import subprocess
