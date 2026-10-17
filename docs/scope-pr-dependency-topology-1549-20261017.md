@@ -23,3 +23,11 @@ Run tests: `python3 -I -S -B -m unittest discover -s tests -p test_scope_pr_depe
 ## Release hold
 
 A REVIEW_ONLY preview is **not permission to merge or deploy**. True source owner fixes, authenticated separate client/operator consent and at-use revocation, independent security/privacy review, full approved exact-SHA hosted and permanently registered named VPS CI, and explicit HUMAN GO remain required. Do not release, merge, grant, dispatch handlers, or scan real targets.
+
+## W3–W5 verified hardening (2026-10-17)
+
+- **Bounded complete-stream requirement:** reads continue after any positive short read, until genuine EOF. Trailing corrupt chunks, `OSError`, non-byte chunks and >128 KiB are atomic `HOLD`; no `REVIEW_ONLY` based on a valid input prefix. A successful input may be split over multiple reads.
+- **Exact admission identity:** zero OIDs (`000…000`) are invalid Git object identities and hold. All admitted keys and values are ASCII identities, so JSON `\\u`-escaped aliases are denied rather than silently canonicalized. Python subclasses of `bytes` are denied before calling user-overridable decode logic.
+- **Stress matrix:** 64-node maximum DAGs and multiple deterministic reordered synthetic topologies, malicious duplicated/cyclic/missing predecessor refs and exact 131072-byte positive/131073-byte HOLD boundaries.
+- **Dedicated hosted workflow hardening:** only the four explicitly owned new paths are allowed, and each must be an ordinary Git blob mode `100644`; executable `100755`, symlink `120000`, other missing/malformed path modes HOLD before any test. A no-remote/no-hook disposable Git fixture exercises actual regular/executable/symlink Git tree modes. No changes to shared CI or permanent runner.
+- These are strictly isolated tests of **fictional review metadata** and the own workflow. They are not client/operator consent or verification of real Git object ancestry and do not permit grants, merges, dispatch, scans or release.
