@@ -19,6 +19,16 @@ def _receipt(status: str) -> dict[str, bool | str]:
     }
 
 
+# Conservative runtime-loader interference list; no value inspection.
+# The interpreter/loader may already have processed these by script start,
+# so the result is only a NEGATIVE attestation, never process integrity proof.
+_HOST_RUNTIME_OVERRIDES = frozenset({
+    "LD_PRELOAD", "LD_LIBRARY_PATH", "LD_AUDIT", "LD_DEBUG",
+    "DYLD_INSERT_LIBRARIES", "DYLD_LIBRARY_PATH",
+    "PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP", "PYTHONINSPECT",
+})
+
+
 def review_environment(environment: object) -> dict[str, bool | str]:
     """HOLD on any Git override, even an empty or unknown future GIT_* key.
 
@@ -33,9 +43,11 @@ def review_environment(environment: object) -> dict[str, bool | str]:
                 return _receipt("HOLD")
             if len(key) > 4096 or len(value) > 8192:
                 return _receipt("HOLD")
-            if key.startswith("GIT_"):
+            if key.startswith("GIT_") or key in _HOST_RUNTIME_OVERRIDES:
                 return _receipt("HOLD")
-    except (TypeError, ValueError, RuntimeError):
+    except Exception:
+        # A hostile custom Mapping must not turn a bad environment into
+        # a traceback or an accidental REVIEW_ONLY approval marker.
         return _receipt("HOLD")
     return _receipt("REVIEW_ONLY")
 

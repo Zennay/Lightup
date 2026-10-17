@@ -180,6 +180,34 @@ class EnvironmentFenceTests(unittest.TestCase):
         self.assertIn("test \"$review_rc\" -eq 2", workflow)
         self.assertIn("test \"$review_out\" = ", workflow)
 
+    def test_runtime_loader_overrides_are_hold(self):
+        # Dynamic loader and Python module search overrides can compromise
+        # integrity of a Git or Python evidence process *before* its script runs.
+        for key in (
+            "LD_PRELOAD", "LD_LIBRARY_PATH", "LD_AUDIT", "LD_DEBUG",
+            "DYLD_INSERT_LIBRARIES", "DYLD_LIBRARY_PATH",
+            "PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP",
+            "PYTHONINSPECT",
+        ):
+            with self.subTest(name=key):
+                value = module().review_environment({key: "/fictional-only"})
+                self.assertEqual(value["status"], "HOLD")
+                self.assertFalse(value["authorized"])
+        self.assertEqual(module().review_environment(
+            {"LD_LIBRARY_PATH": "", "HOME": "/tmp"}
+        )["status"], "HOLD")
+
+    def test_untrusted_mapping_iterator_errors_fail_closed(self):
+        from collections.abc import Mapping
+        class BadValues(Mapping):
+            def __iter__(self):
+                raise IndexError("fictional mapping error")
+            def __len__(self):
+                return 2
+            def __getitem__(self, key):
+                raise KeyError(key)
+        self.assertEqual(module().review_environment(BadValues())["status"], "HOLD")
+
     def test_cli_disallows_grant_switch(self):
         child=subprocess.run(
             [sys.executable,str(SCRIPT),"--grant"],

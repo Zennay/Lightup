@@ -94,3 +94,23 @@ worktree bytes, index flags, ignored files, signed provenance or at-use
 environment stability. The other concurrently owned branch handles its own
 independent worktree/index attestation and remains unchanged. This report
 never authorizes LightUp execution or deployment. Continue DRAFT/HOLD.
+
+## W4 — conservative interpreter and loader override HOLD
+
+In addition to arbitrary `GIT_*` names, the self-contained reviewer now
+conservatively holds on explicit process-loader overrides:
+`LD_PRELOAD`, `LD_LIBRARY_PATH`, `LD_AUDIT`, `LD_DEBUG`,
+`DYLD_INSERT_LIBRARIES`, `DYLD_LIBRARY_PATH`, `PYTHONPATH`,
+`PYTHONHOME`, `PYTHONSTARTUP` and `PYTHONINSPECT`. Even *empty*
+values are not treated as environment proof. No optional user-provided
+module or library is loaded to test these names. A custom environment
+Mapping throwing ordinary Python exceptions also produces HOLD rather
+than a traceback. These changes address twelve newly reproduced
+synthetic test failures (11 negative-input failures and one error).
+
+**Important limitation:** shared libraries and module search paths can
+already have been processed *before* this Python reviewer starts.
+Therefore a REVIEW_ONLY result is not proof of trusted process startup,
+absence of shell hooks, safe HOME/XDG config or immutable future env.
+Only a non-authorizing negative policy report is emitted. The work is
+still isolated from production and any release authority.
