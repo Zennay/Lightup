@@ -53,6 +53,10 @@ jobs:
     # This runs only on GitHub-hosted Ubuntu, NEVER the permanent VPS runner.
     needs: offline
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -61,7 +65,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.14"
+          python-version: ${{ matrix.python }}
       - name: Check current source owner without writing to owner branch
         shell: bash
         run: |
