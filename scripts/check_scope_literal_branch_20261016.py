@@ -105,6 +105,39 @@ def clean_worktree_status(result: object) -> bool:
     )
 
 
+def clean_index_flags(result: object) -> bool:
+    """Refuse hidden tracked files despite a deceptively clean Git status.
+
+    In `git ls-files -v -z --cached`, a normal cached file starts with
+    `H `; lowercase h denotes assume-unchanged and S/s denotes skip-worktree.
+    Invalid, duplicate or non-NUL-terminated entries are never proof.
+    """
+    if (
+        not isinstance(result, subprocess.CompletedProcess)
+        or type(result.returncode) is not int or result.returncode != 0
+        or type(result.stdout) is not bytes
+        or not result.stdout or len(result.stdout) > 131072
+        or not result.stdout.endswith(b"\0")
+    ):
+        return False
+    seen: set[bytes] = set()
+    entries = result.stdout[:-1].split(b"\0")
+    if not 1 <= len(entries) <= 5000:
+        return False
+    for entry in entries:
+        if not entry.startswith(b"H "):
+            return False
+        path = entry[2:]
+        if (
+            not path or path.startswith(b"/") or b"\x5c" in path
+            or any(part in (b"", b".", b"..") for part in path.split(b"/"))
+            or path in seen
+        ):
+            return False
+        seen.add(path)
+    return True
+
+
 def branch_identity(
     symbolic: subprocess.CompletedProcess[bytes],
     head: subprocess.CompletedProcess[bytes],
@@ -149,7 +182,9 @@ def main() -> int:
         # Never report branch proof for a dirty checkout: source/tests might
         # not match the actual committed Git tree. Includes untracked files.
         status = _git("status", "--porcelain=v1", "--untracked-files=all", "-z")
+        index_flags = _git("ls-files", "-v", "-z", "--cached")
         ok = (
+            clean_index_flags(index_flags) and
             clean_worktree_status(status) and
             branch_identity(symbolic, head, os.environ) and
             base.returncode == 0 and head.returncode == 0

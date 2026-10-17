@@ -96,6 +96,7 @@ class AdditiveOwnershipTests(unittest.TestCase):
                 "ls-tree": tree,
                 "status": b" M src/lightup/scope.py\0",
                 "symbolic-ref": guard.EXPECTED_BRANCH.encode("ascii") + b"\n",
+                "ls-files": b"H src/lightup/scope.py\0",
             }
             return CompletedProcess(args, 0, out[label], b"")
         with patch.object(guard, "_git", side_effect=simulated):
@@ -157,6 +158,7 @@ class AdditiveOwnershipTests(unittest.TestCase):
                 "ls-tree": git_tree,
                 "status": b"",
                 "symbolic-ref": b"",
+                "ls-files": b"H src/lightup/scope.py\0",
             }
             return CompletedProcess(args, 1 if args[0] == "symbolic-ref" else 0, values[args[0]], b"")
         good = {
@@ -176,6 +178,54 @@ class AdditiveOwnershipTests(unittest.TestCase):
                     with patch.dict(guard.os.environ, altered, clear=True):
                         with redirect_stdout(io.StringIO()):
                             self.assertEqual(guard.main(), expected)
+
+    def test_index_flags_reject_assume_unchanged_and_skip_worktree(self):
+        from subprocess import CompletedProcess
+        def output(raw: bytes, rc: int = 0):
+            return CompletedProcess(("git", "ls-files"), rc, raw, b"")
+        normal = b"H src/lightup/scope.py\0H tests/test_scope.py\0"
+        self.assertTrue(guard.clean_index_flags(output(normal)))
+        for raw in (
+            b"h src/lightup/scope.py\0",
+            b"S src/lightup/scope.py\0",
+            b"s src/lightup/scope.py\0",
+            b"M src/lightup/scope.py\0",
+            normal + b"S docs/hidden.txt\0",
+            b"H src/lightup/scope.py\0h src/lightup/scope.py\0",
+            b"H src/lightup/scope.py\0H src/lightup/scope.py\0",
+            b"H src/lightup/scope.py", b"", b"H /absolute.py\0",
+            b"H src/../bad.py\0",
+        ):
+            with self.subTest(raw=raw):
+                self.assertFalse(guard.clean_index_flags(output(raw)))
+        self.assertFalse(guard.clean_index_flags(output(normal, 1)))
+        self.assertFalse(guard.clean_index_flags(CompletedProcess(("git",), 0, "H src/file\0", b"")))
+
+    def test_real_branch_checker_rejects_hidden_git_index_flags(self):
+        from unittest.mock import patch
+        from subprocess import CompletedProcess
+        from contextlib import redirect_stdout
+        import io
+        delta = evidence((("A", "tests/test_scope_literal_ownership_20261016.py"),))
+        paths = set(guard.OWNED_EXACT) | {"tests/test_scope_literal_ownership_20261016.py"}
+        tree = b"".join(
+            b"100644 blob " + b"a" * 40 + b"\t" + path.encode() + b"\0"
+            for path in sorted(paths)
+        )
+        def fake_git(*args):
+            value = {
+                "merge-base": b"",
+                "rev-parse": b"a" * 40 + b"\n",
+                "symbolic-ref": guard.EXPECTED_BRANCH.encode() + b"\n",
+                "diff": delta,
+                "ls-tree": tree,
+                "status": b"",
+                "ls-files": b"h src/lightup/scope.py\0",
+            }
+            return CompletedProcess(args, 0, value[args[0]], b"")
+        with patch.object(guard, "_git", side_effect=fake_git):
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(guard.main(), 1)
 
     def test_missing_required_worker_files_is_hold(self):
         for required in guard.OWNED_EXACT:
