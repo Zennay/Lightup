@@ -243,6 +243,26 @@ class EnvironmentFenceTests(unittest.TestCase):
                     "HOLD",
                 )
 
+    def test_deceptive_environment_mapping_is_hold(self):
+        from collections.abc import Mapping
+        class HiddenOverride(Mapping):
+            def __iter__(self):
+                return iter(("GIT_DIR",))
+            def __len__(self):
+                return 1
+            def __getitem__(self, name):
+                return "fictional-git-path"
+            def items(self):
+                # An untrusted object can lie about the keys it reports.
+                return {}.items()
+        self.assertEqual(module().review_environment(HiddenOverride())["status"], "HOLD")
+        class HiddenDict(dict):
+            def items(self):
+                return {}.items()
+        self.assertEqual(module().review_environment(
+            HiddenDict(GIT_DIR="fictional-git-path")
+        )["status"], "HOLD")
+
     def test_cli_disallows_grant_switch(self):
         child=subprocess.run(
             [sys.executable,str(SCRIPT),"--grant"],

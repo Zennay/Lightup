@@ -138,3 +138,15 @@ imitate the profile. The result still conveys only `REVIEW_ONLY` with
 all four authority flags false; it does not assert trusted binary/library
 provenance, clean worktree, client consent or any permission. Real
 source-owner authorization repairs and human release GO remain blocked.
+
+## W6 — reject deceptive mapping implementations
+
+An adversarial unit test demonstrated that a custom `Mapping.items()` could
+report no entries while `__iter__` and `__getitem__` exposed `GIT_DIR`.
+The old duck-typed reviewer would incorrectly return REVIEW_ONLY. An
+overridden `dict.items()` has the same problem. The new strictly offline
+admission accepts only an **exact Python dict snapshot** or the actual
+`os.environ` object; any subclass or custom Mapping receives HOLD.
+This tests the integrity of an in-memory representation only, not the
+origin or continuing immutability of a process environment. It does
+not confer consent or execution authority. DRAFT/HOLD remains.

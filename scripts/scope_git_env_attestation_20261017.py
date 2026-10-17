@@ -54,7 +54,10 @@ def review_environment(environment: object) -> dict[str, bool | str]:
     A clean result attests only that no Git-prefixed environment was passed;
     it never proves repository provenance, safe PATH, or consent.
     """
-    if not isinstance(environment, Mapping):
+    # Arbitrary Mapping/.items() implementations may suppress GIT_* keys.
+    # Accept only an exact inert dict snapshot or the actual os.environ.
+    # Subclassed dict and custom Mapping objects cannot supply proof.
+    if type(environment) is not dict and environment is not os.environ:
         return _receipt("HOLD")
     try:
         for count, (key, value) in enumerate(environment.items(), 1):
