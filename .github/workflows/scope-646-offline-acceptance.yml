@@ -1,0 +1,38 @@
+name: "LightUp #646 offline scope identity acceptance"
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-scope-identity:
+    # Hosted-only, opt-in, does NOT claim the permanent VPS gate.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Verify original owner base is ancestor
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e 4c8d5651fc0e23f94514daae56b4e5fe0549de37^{commit}
+          git merge-base --is-ancestor 4c8d5651fc0e23f94514daae56b4e5fe0549de37 HEAD
+      - name: Scope #646 offline acceptance (source REDs must remain visible)
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PYTHONPATH=src
+          python -B -m unittest discover -s tests -p 'test_scope_grant_scope_identity_646_20261017.py' -v
+      - name: Confirm tree remains untouched by tests
+        run: |
+          test -z "$(git status --porcelain)"
