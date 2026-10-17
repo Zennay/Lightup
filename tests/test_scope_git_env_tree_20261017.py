@@ -112,6 +112,50 @@ class OfflineTreeModesTests(unittest.TestCase):
                     self.assertEqual(guard.main(), 3)
                 self.assertEqual(output.getvalue().strip(), "scope_env_owned_tree=HOLD")
 
+    def test_real_disposable_git_mode_transitions(self):
+        """Read real Git object modes in a temporary, never-live repository."""
+        import os
+        import subprocess
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix="scope_env_git_modes_", dir=FILE.parents[1]) as tmp:
+            root = Path(tmp)
+            def git(*argv):
+                return subprocess.run(
+                    ["git", *argv], cwd=root, check=True,
+                    capture_output=True, timeout=6,
+                ).stdout
+            git("init", "-q")
+            for path in PATHS:
+                target = root / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("fictional, offline, no authority")
+            git("add", ".")
+            git("-c", "user.name=Offline Reviewer",
+                "-c", "user.email=offline@example.invalid",
+                "commit", "-q", "-m", "six regular blobs")
+            proof = git("ls-tree", "-r", "-z", "HEAD", "--", *PATHS)
+            self.assertTrue(guard.safe_tree(proof, delta()))
+            candidate = root / PATHS[-1]
+            candidate.unlink()
+            candidate.symlink_to("fictional-target.txt")
+            git("add", ".")
+            git("-c", "user.name=Offline Reviewer",
+                "-c", "user.email=offline@example.invalid",
+                "commit", "-q", "-m", "tracked symlink")
+            self.assertFalse(guard.safe_tree(
+                git("ls-tree", "-r", "-z", "HEAD", "--", *PATHS), delta()
+            ))
+            candidate.unlink()
+            candidate.write_text("fictional regular executable")
+            candidate.chmod(0o755)
+            git("-c", "core.fileMode=true", "add", ".")
+            git("-c", "user.name=Offline Reviewer",
+                "-c", "user.email=offline@example.invalid",
+                "commit", "-q", "-m", "tracked executable")
+            self.assertFalse(guard.safe_tree(
+                git("ls-tree", "-r", "-z", "HEAD", "--", *PATHS), delta()
+            ))
+
     def test_no_reusing_other_worker_paths(self):
         for item in ("src/lightup/scope.py", "tests/test_scope.py",
                      "scripts/check_scope_literal_branch_20261016.py"):

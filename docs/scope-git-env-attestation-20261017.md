@@ -150,3 +150,18 @@ admission accepts only an **exact Python dict snapshot** or the actual
 This tests the integrity of an in-memory representation only, not the
 origin or continuing immutability of a process environment. It does
 not confer consent or execution authority. DRAFT/HOLD remains.
+
+## W7 — real disposable Git file mode acceptance
+
+The byte-level Git tree validator now has an independent realistic fixture.
+A temporary repository is initialized with precisely the six separately
+owned paths as ordinary tracked Git files; its actual `git ls-tree -rz`
+output passes the validator. The same synthetic repository then records
+one path as a **symlink** (mode `120000`) and later as an **executable**
+(mode `100755`); both snapshots are correctly rejected. The temporary
+repository is deleted at test end and never touches a LightUp target,
+production source, another worker or live authorization state.
+
+The complete isolated suite now contains **23 tests** (16 process-environment
+and 7 Git-tree acceptance cases) on Python 3.11/3.14 when the final exact-head
+workflow completes. This is only diagnostic non-authorizing evidence.
