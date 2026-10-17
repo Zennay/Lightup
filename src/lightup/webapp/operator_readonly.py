@@ -44,10 +44,20 @@ class OperatorReadOnlyWebApp(LightUpWebApp):
             "GET", re.compile(r"^/authorization-desk$"),
             self.authorization_desk, "operator",
         ))
+        self.routes.append((
+            "GET", re.compile(r"^/authorization-desk/clients/(?P<client_id>[\\w-]+)$"),
+            self.authorization_client_desk, "operator",
+        ))
 
     def authorization_desk(self, auth: AuthState, form: dict[str, str]) -> Response:
         from .authorization_desk import render_authorization_desk
         return render_authorization_desk(self.store, auth)
+
+    def authorization_client_desk(
+        self, auth: AuthState, form: dict[str, str], client_id: str
+    ) -> Response:
+        from .authorization_desk import render_authorization_desk
+        return render_authorization_desk(self.store, auth, client_id=client_id)
 
     def overview(self, auth: AuthState, form: dict[str, str]) -> Response:
         page = super().overview(auth, form)
