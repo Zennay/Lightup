@@ -37,7 +37,7 @@ class ScopeRegistrySyntaxWarningTests(unittest.TestCase):
             cwd=ROOT, input=b"", capture_output=True, check=False, timeout=10,
         )
         self.assertEqual(child.returncode, 0, child.stderr)
-        self.assertEqual(child.stdout, b"offline-renderer-import-ok\\n")
+        self.assertEqual(child.stdout, b"offline-renderer-import-ok\n")
         self.assertEqual(child.stderr, b"")
 
     def test_source_diff_has_no_guard_disable_or_execution_hook(self):
