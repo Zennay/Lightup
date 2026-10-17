@@ -203,6 +203,9 @@ def main() -> int:
         root = Path(temp)
         shutil.copytree(PROJECT / "src", root / "src")
         shutil.copytree(PROJECT / "tests", root / "tests")
+        # Whole-suite provenance self-tests import this opt-in, pure offline script.
+        shutil.copytree(PROJECT / "scripts", root / "scripts")
+        shutil.copytree(PROJECT / "manifests", root / "manifests")
         # Original unit fixtures resolve repository-relative example config.
         if args.full:
             shutil.copytree(PROJECT / "config", root / "config")
