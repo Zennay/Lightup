@@ -216,6 +216,39 @@ class RuntimeIsolationStaticTests(unittest.TestCase):
             with self.subTest(source=source):
                 self.assertFalse(references_review_module(source))
 
+    def test_runpy_module_loader_forms_are_detected(self):
+        # runpy executes module code and must not silently wire a reviewer.
+        patterns = (
+            "import runpy\nrunpy.run_module('lightup.scope_literal_control_review_20261016')",
+            "import runpy as rp\nrp.run_module(mod_name='lightup.scope_literal_control_review_20261016')",
+            "from runpy import run_module as execute\nexecute('lightup.scope_literal_control_review_20261016')",
+            "import runpy as rp\ngetattr(rp, 'run_module')(mod_name='lightup.scope_literal_control_review_20261016')",
+        )
+        for source in patterns:
+            with self.subTest(source=source):
+                self.assertTrue(references_review_module(source))
+
+    def test_pkgutil_symbol_load_forms_are_detected(self):
+        # resolve_name can import before walking the member name.
+        patterns = (
+            "import pkgutil\npkgutil.resolve_name('lightup.scope_literal_control_review_20261016:review_literals')",
+            "import pkgutil as pk\npk.resolve_name(name='lightup.scope_literal_control_review_20261016.review_literals')",
+            "from pkgutil import resolve_name as look\nlook('lightup.scope_literal_control_review_20261016:review_literals')",
+            "import pkgutil as pk\ngetattr(pk, 'resolve_name')(name='lightup.scope_literal_control_review_20261016:review_literals')",
+        )
+        for source in patterns:
+            with self.subTest(source=source):
+                self.assertTrue(references_review_module(source))
+        controls = (
+            "import pkgutil\npkgutil.resolve_name('lightup.scope:other')",
+            "import runpy\nrunpy.run_module('lightup.scope')",
+            "import pkgutil\npkgutil.resolve_name(name=dynamic_name)",
+            "def run_module(*, mod_name): return mod_name\nrun_module(mod_name='lightup.scope_literal_control_review_20261016')",
+        )
+        for source in controls:
+            with self.subTest(source=source):
+                self.assertFalse(references_review_module(source))
+
     def test_does_not_flag_unrelated_imports_or_comments(self):
         samples = (
             "import lightup.scope\nfrom lightup import scope",
