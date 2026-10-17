@@ -130,6 +130,38 @@ Issue #1563's **existing isolated add-only branch** now checks a substantially l
 
 All work remains **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD**. A green negative oracle is NOT a positive real grant proof or test of source-owner fixes. Needed before release: source-owner integration, verified independent client/operator consent, action-time revocation, independent security/privacy review, true ordinary full-green exact-approved SHA hosted + permanently registered named VPS CI, explicit HUMAN GO. **No merge, release, dispatch, live permit, target scan or deployment.**
 
+## W24–W26 — offline deny-chain integration and strict ordinary PASS (2026-10-17)
+
+Expanded the exact original issue #1563 **negative-only, non-authorizing** acceptance across the installed **scope → planner → inactive permit-gate** chain, without modifying `src/lightup/**` or activating any handler.
+
+### New executable contract (three genuine additional methods; 13 → 16)
+
+1. `Planner.build` must produce an `AssessmentPlan` of exact type with `scope.allowed is False`, empty `capability_ids` and literal `execution_enabled is False` for undeclared hostname, IPv4 network-neighbor and IPv6 prefix-neighbor inputs. `get_capabilities` is a patched, observed sentinel and **must not be called**. The original target identity, labels and grant object remain unchanged.
+2. `ActivationGate.issue` must raise `PermissionError` **before** calling `token_urlsafe` for all three activation modes (`PLAN_ONLY`, `LAB_ONLY`, `AUTHORIZED`), both public authorization-configuration settings, all four **fictional** grant cases and all three undeclared identities. A patched `token_urlsafe` is an inert spy returning a dummy value, not a real permit; no token or grant is issued.
+3. Blank/invalid target identities likewise stop both planner discovery and permit-token creation, independent of grant and activation mode, with exact `INVALID_TARGET`.
+
+Scope-side network and `Authorization.is_current` entry points are patched and forbidden on all nonmember inputs, as before. This exercises **only the offline negative denial path** of existing code; it does not test successful authorization, authorize a target, invoke a handler, or create a real grant/permit.
+
+### Real unsafe-fix mutation sensitivity
+
+The previously nine dedicated `ScopePolicy.decide` mutants are preserved, plus **five new downstream mutants**: capabilities on a denied plan, premature capability discovery, `execution_enabled=True` for a denied plan, missing permit denial, and token allocation before scope check. The broken implementation is installed briefly through `unittest.mock.patch` and required to fail by matching **real assertion**, with no unexpected errors or `expectedFailure` credit. The temporary invalid-output mutants were narrowed to their intended pure-scope fixtures so that downstream exceptions cannot produce misleading mutation credit.
+
+`REQUIRED_TEST_METHODS` now explicitly pins **all 16 named** security methods, not merely the test count. Two new metadata tests enforce five independent downstream mutation entries and restored source identities.
+
+A further **real fail-closed bug** in the acceptance harness was reproduced and fixed: `unittest.TestResult.wasSuccessful()` treats an `expectedFailure` or `skip` as green, even when a named security method is silently disabled. New `baseline_is_strictly_green` requires 16 ordinarily successful tests and zero failures, errors, skips, expectedFailures or unexpected successes. Three additional regressions exercise fake result objects and **genuine decorated named methods**, proving a count-preserving `expectedFailure` or `skip` is HOLD, never a green baseline.
+
+### Observed evidence and unresolved gates
+
+Connected permitted zSSH against exact code-head `ed2fd95b3391893d64b188068d48c509c8f9f369` on isolated disposable checkout:
+- **16/16** scope/plan/permit negative real tests PASS.
+- **40/40** Git/CI/integrity synthetic methods PASS, including actual `expectedFailure` and `skip` false-green reproductions.
+- **14/14** deliberate fail-open source mutations rejected via matching assertion failures; all original methods restored.
+- **86/86** real producer integration tests PASS; **all six** original `check_safety_canaries.py` states correct.
+- The ordinary uncomposed full suite on earlier immediately preceding code-head `6dc86cc0472baf45ab3f22a6a195426beb59a1c2` still had **five pre-existing #301/#1535 real failures** and **23 deliberately expected source REDs** (1,290 tests). These defects belong to separate source owners and remain unresolved. Do not greenwash it.
+- Immutable-branch compare on code-head: **59 commits ahead/0 behind, exactly 7 completely added-only issue-owned paths**, no modification to source, other workers or runners. Dedicated GitHub-hosted Python3.11/3.14 [#39070099133](https://github.com/Zennay/Lightup/actions/runs/39070099133) SUCCESS 2/2. The independent composition and canonical original CI are separate; initial statuses were pending and require a fresh exact-head check.
+
+**Release posture stays INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD.** A deny-chain proof does not validate genuine independent client and operator consent, revocation-at-use, positive authorization, source-owner fixes, privacy/security, or permanent registered named-VPS CI. No merge, production scan, permit, handler, deployment, shared-runner mutation or release. Explicit human GO remains required.
+
 ## Stop conditions
 
 No existing `src/lightup` sources, `tests/test_scope.py`, shared workflows, state/database, activation, execution, target workers, deployment or peer-worker files are modified. Scope #364 and existing PR #1263 remain independent. A green negative unit suite **is not** evidence of usable positive authority, authenticated two-party consent, at-use revocation, independent security/privacy review, passing full exact-head hosted plus registered VPS CI or HUMAN GO.
