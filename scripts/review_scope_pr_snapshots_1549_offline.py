@@ -120,6 +120,7 @@ def _transform_two_read(doc: dict[str, object]) -> bytes:
 
 
 def evaluate(raw: bytes) -> tuple[dict[str, object], int]:
+    protocol = "PR_SNAPSHOT_V1"
     try:
         if type(raw) is not bytes or not raw or len(raw) > core.MAX_INPUT or b"\\u" in raw:
             raise core.InvalidManifest("bounded source bytes required")
@@ -127,21 +128,25 @@ def evaluate(raw: bytes) -> tuple[dict[str, object], int]:
                          object_pairs_hook=core._unique_pairs,
                          parse_constant=core._bad_constant)
         if type(doc) is dict and type(doc.get("version")) is int and doc["version"] == 2:
-            transformed = _transform_two_read(doc)
             protocol = "PR_SNAPSHOT_V2_DOUBLE_READ"
+            transformed = _transform_two_read(doc)
         else:
             transformed = _transform(raw)
             protocol = "PR_SNAPSHOT_V1"
         receipt, exit_code = core.evaluate(transformed)
         if exit_code != 3:
-            return _receipt("HOLD"), 2
+            denied = _receipt("HOLD")
+            denied["protocol"] = protocol
+            return denied, 2
         verified = _receipt("REVIEW_ONLY", receipt["waves"])
         verified["protocol"] = protocol
         verified["input_sha256"] = hashlib.sha256(raw).hexdigest()
         verified["derived_graph_sha256"] = receipt["input_sha256"]
         return verified, 3
     except (ValueError, TypeError, UnicodeError, RecursionError, OverflowError, MemoryError):
-        return _receipt("HOLD"), 2
+        denied = _receipt("HOLD")
+        denied["protocol"] = protocol
+        return denied, 2
 
 
 def main() -> int:
