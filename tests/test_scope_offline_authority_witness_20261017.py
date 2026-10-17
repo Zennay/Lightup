@@ -498,6 +498,57 @@ class OfflineAuthorityWitnessTests(unittest.TestCase):
         self.assertEqual(result["reason"], "offline_witness_fixture_mutated")
         self.assert_no_authority(result)
 
+    def test_unexpected_target_attribute_during_policy_is_fixture_mutation(self):
+        original = witness.ScopePolicy.decide
+        def inject(self, target):
+            result = original(self, target)
+            object.__setattr__(target, "fictional_hidden_permit", True)
+            return result
+        with patch.object(witness.ScopePolicy, "decide", inject):
+            result = witness.evaluate()
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "offline_witness_fixture_mutated")
+        self.assert_no_authority(result)
+
+    def test_unexpected_fictional_authorization_attribute_fails_closed(self):
+        original = witness.ScopePolicy.decide
+        def inject(self, target):
+            result = original(self, target)
+            if target.authorization is not None:
+                object.__setattr__(target.authorization, "fake_provenance", "not-approved")
+            return result
+        with patch.object(witness.ScopePolicy, "decide", inject):
+            result = witness.evaluate()
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "offline_witness_fixture_mutated")
+        self.assert_no_authority(result)
+
+    def test_unexpected_policy_and_case_attributes_are_rejected(self):
+        cases = witness.canonical_cases()
+        original = witness.ScopePolicy.decide
+        def inject(self, target):
+            result = original(self, target)
+            object.__setattr__(self, "fictional_external_scope", True)
+            object.__setattr__(cases[-1], "fictional_exception", True)
+            return result
+        with patch.object(witness.ScopePolicy, "decide", inject):
+            result = witness.evaluate(cases)
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "offline_witness_fixture_mutated")
+        self.assert_no_authority(result)
+
+    def test_unexpected_decision_attribute_is_invalid_shape(self):
+        original = witness.ScopePolicy.decide
+        def inject(self, target):
+            result = original(self, target)
+            object.__setattr__(result, "fake_dispatch_allowed", True)
+            return result
+        with patch.object(witness.ScopePolicy, "decide", inject):
+            result = witness.evaluate()
+        self.assertEqual(result["status"], "HOLD")
+        self.assertEqual(result["reason"], "invalid_decision_shape")
+        self.assert_no_authority(result)
+
     def test_no_network_socket_or_dns_is_necessary(self):
         with (patch.object(socket, "socket", side_effect=AssertionError("network invoked")),
               patch.object(socket, "getaddrinfo", side_effect=AssertionError("dns invoked"))):
