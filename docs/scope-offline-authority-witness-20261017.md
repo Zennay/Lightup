@@ -138,6 +138,21 @@ The offline witness must **never** allow an installed evaluator callback to sile
 
 **Actual zSSH verification:** Python 3.14.4 on own source SHA `93be44b645bb88d2f0c49561c061c43a8c94e71a`: **48/48 dedicated tests PASS**, **86/86 original producer integrations PASS**, including the former RED swallowed-signal regression. The signal/timer is restored and a subsequent clean offline invocation still yields `REVIEW_ONLY/3`. The deadline is still a cooperative Python-process-level measure, **not a kernel-enforced or native-code-resistant resource sandbox**: an infinite loop that deliberately suppresses Python signals can still hang the interpreter.
 
+## W12 — pinned installed Python source before module import (17 October 2026)
+
+**Previously missing verification:** the offline witness pinned its fictional input and resulting classifications but imported `lightup.models` and `lightup.scope` **before** checking their installed source bytes. A modified `scope.py` with top-level code could therefore perform import-time side effects before the witness even began its I/O audit fence. Additionally Python's `sys.modules` cache could serve a module from an unrelated path while the intended checkout files appeared unchanged.
+
+**New independent source-binding step:** *before importing* the LightUp package, the witness verifies exact, bounded-size, regular, non-symlink bytes of:
+- `src/lightup/__init__.py` → SHA-256 `24b02c39a8fe5041da81517a9aace8ba27161c5e020611d222755a6a6f429b01`
+- `src/lightup/models.py` → SHA-256 `f84779b55f193c2d0a143418cf569c3539ee2bdb92e76a542ffda39643d3b541`
+- `src/lightup/scope.py` → SHA-256 `1bf081d0b85490466fbb4ad95b2d12917882ed51d05627139bdd5abf110018c0`.
+
+If any source is missing, changed, oversized or is a symlink, imports are **skipped**, and the CLI emits sanitized `HOLD/offline_witness_source_drift` (exit 2, seven false authority flags). Previously imported `lightup`, `lightup.models` and `lightup.scope` must have canonical `__file__` and package path identities, otherwise the source check fails **before the import statement**. The same provenance is checked at every `evaluate()` invocation; an in-progress nested evaluator is instead rejected first with the existing time-fence reason. A successful REVIEW_ONLY receipt includes only the **three source hashes**, never local filesystem paths or customer inputs.
+
+**Executed RED→GREEN:** temp-checkout tests inject fictional filesystem-write actions into `scope.py` and `__init__.py` and confirm **no injected marker file is ever created**; they also test altered models, a symlinked scope file and a preloaded module with forged `__file__` (the latter was observed to incorrectly return `REVIEW_ONLY/3` before the fix). All mutations run in short-lived artificial temp checkouts, with no changes to original repo or active workers.
+
+**Actual connected zSSH proof:** Python 3.14.4 at intermediate exact source head `0319899d79a7e9181859d5673962b0051a5733cb`: **54/54 dedicated tests PASS**, **86/86 original producer integration tests PASS**, clean Git index and worktree. These local SHA pins are **not signatures, trusted build attestations, OS sandboxing, or verification of already-executed code**; source can still be altered concurrently, bytecode caches and native bypass remain outside the guarantee. Any legitimate source-owner update will intentionally make the witness HOLD until independently reviewed and repinned.
+
 ## Gate interpretation
 
 - Green unit tests validate the witness's own classification, deterministic receipt, zero-network boundary, no authority flags and mutation-detection sensitivities.
