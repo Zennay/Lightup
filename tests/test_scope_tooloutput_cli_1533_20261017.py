@@ -49,6 +49,31 @@ class OfflineToolOutputCliTests(unittest.TestCase):
         return receipt
 
 
+
+    def test_stream_read_oserrors_fail_closed_without_traceback(self):
+        # Inject a broken stdin source in an isolated interpreter, preserving
+        # the real CLI's entrypoint rather than replacing production checks.
+        program = """import runpy,sys
+class BrokenStream:
+    def read(self, _limit):
+        raise OSError('SYNTHETIC_STDIN_SECRET_NEVER_LEAK')
+class BrokenStdin:
+    buffer = BrokenStream()
+entry = runpy.run_path('scripts/review_scope_tooloutput_synthetic_1533.py')
+sys.stdin = BrokenStdin()
+raise SystemExit(entry['main']([]))
+"""
+        result = subprocess.run(
+            [sys.executable, "-I", "-S", "-B", "-c", program],
+            cwd=ROOT, input=b"", capture_output=True, timeout=8, check=False,
+        )
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertEqual(result.stderr, b"", "stdin failure should not expose traceback")
+        receipt = json.loads(result.stdout)
+        self.assertEqual(receipt["status"], "HOLD")
+        for flag in FALSE_KEYS:
+            self.assertIs(receipt[flag], False)
+
     def test_real_cli_under_original_native_no_io_tripwire(self):
         # Reuse the existing owner's unchanged guard fixture. This is a
         # Python-level interposition test, not a kernel sandbox or consent.
