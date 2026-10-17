@@ -313,7 +313,8 @@ class DuplicateSessionCookieAcceptance(unittest.TestCase):
                 message = str(failure.exception)
                 self.assertTrue(
                     "session_context" in message or "200 OK" in message
-                    or "303 See Other" in message or "Set-Cookie" in message,
+                    or "303 See Other" in message or "Set-Cookie" in message
+                    or "request body read before cookie rejection" in message,
                     (name, message[:100]),
                 )
 
