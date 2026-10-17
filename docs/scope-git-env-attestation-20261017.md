@@ -520,3 +520,24 @@ These diagnostics remain offline and non-authorizing. There is no
 claim of a race-free snapshot against privileged writers who can
 change file contents after validation, nor any permission to deploy,
 scan, grant, dispatch a handler or release LightUp.
+
+
+## W97–W99 — isolated interpreter for every hosted review step (2026-10-17)
+
+After proving the Python 3.14 suite and the exact-head offline tree
+checker pass in a separate full-history zSSH disposable checkout under
+`python -I -B`, the branch-owned no-secrets Python 3.11/3.14 workflow
+now runs its environment receipt, original SHA/tree preflight, source
+compilation, both unittest suites, and post-test receipts/tree
+preflight using `python -I -B` throughout. The `-I` interpreter
+option disables user-site packages, PYTHON environment influence and
+automatic current-directory insertion into import search paths.
+The `-B` option prevents ignored bytecode from contaminating the
+Git ignored-file evidence fence. Workflow-structure tests pin exact
+isolated commands and reject the earlier weaker test form.
+
+This change hardens only the isolated review runner and does not
+grant privileges, validate a permanent registered VPS runner, modify
+production source, trust external inputs, resolve preexisting source
+REDs or authorize a scan. Global/interpreter and privileged-runner
+integrity remain external assumptions to be independently reviewed.
