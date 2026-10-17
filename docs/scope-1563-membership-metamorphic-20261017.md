@@ -43,6 +43,19 @@ Run independently with `PYTHONDONTWRITEBYTECODE=1 python scripts/scope_1563_memb
 
 Connected zSSH on the independent temporary checkout at exact `bc946fc59e7fa070e54ca6b3416be688ec7ba2ad` reproduced all four detection gates (134 / 32 / 126 / 2 deliberately failing assertions, respectively) and the unmodified seven-test baseline PASS. The own hosted matrix executes the mutation controls on both Python 3.11 and 3.14 at each **exact PR head**; final-head run status must be observed separately and is not inferred from this earlier VPS proof. No DNS, sockets, client data, live assets, grant issuance or dispatch is involved.
 
+
+## Pinned sibling #301 fixture composition — hosted non-release gate
+
+Our original `main` still has the independently owned, calendar-expired *ordinary* #301 test fixture. Instead of editing the existing fixture in this PR, `.github/workflows/scope-1563-owner301-compat-offline.yml` **reads the immutable owner commit `89c7973a330550cd5b8fad23abb54e4a81f85639`** in a fresh ephemeral GitHub-hosted checkout and overlays exactly ONE existing file, `tests/test_scope_legacy_falsy_window_301_red_20261014.py`. The CI step refuses any additional modified path, verifies both SHAs, and uses only read permissions (no reusable checkout credentials).
+
+On the connected zSSH VPS, this exact-source overlay has already passed:
+- The owner #301 fixture acceptance: **39 tests OK, 20 known intentional expectedFailures**.
+- Our original seven no-authority regressions: **7 ordinary PASS**.
+- Our four fail-open mutation controls: **all correctly detected**.
+- The independently owned #1452 branch remains untouched; a temporary worktree is removed after the proof.
+
+The new hosted compatibility workflow separately runs **both Python 3.11 and 3.14** including full unit discovery, the real producer integration suite and canonical safety canaries, with the owner fixture temporarily overlaid. This is a **source-composition test only**, not permission to merge either PR or a green claim for unmodified `main`. Intentional expectedFailures still represent unresolved source defects. A hosted success must be verified on the exact SHA and cannot substitute for authentic client/operator consent, owner acceptance, or the permanent named-VPS gate.
+
 ## Stop conditions
 
 No existing `src/lightup` sources, `tests/test_scope.py`, shared workflows, state/database, activation, execution, target workers, deployment or peer-worker files are modified. Scope #364 and existing PR #1263 remain independent. A green negative unit suite **is not** evidence of usable positive authority, authenticated two-party consent, at-use revocation, independent security/privacy review, passing full exact-head hosted plus registered VPS CI or HUMAN GO.
