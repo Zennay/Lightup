@@ -130,7 +130,10 @@ def hide_unsafe_approval_buttons(
         action = '/assessments/requests/' + _e(request.request_id) + '/decision'
         open_form = '<form class="inline" method="post" action="' + action + '">'
         start = markup.find(open_form)
-        if start < 0 or markup.find(open_form, start + 1) >= 0:
+        # Parent renders BOTH Approve and Reject forms with the SAME action
+        # URL. The first is the approval action; the second must remain so an
+        # operator can safely reject a forged historical request.
+        if start < 0 or markup.count(open_form) != 2:
             return None
         end_marker = '<button>Approve</button></form>'
         end = markup.find(end_marker, start)
