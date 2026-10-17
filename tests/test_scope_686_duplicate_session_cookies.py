@@ -275,7 +275,7 @@ class DuplicateSessionCookieAcceptance(unittest.TestCase):
         )
         raw_validate = self.app.security.validate
 
-        def illustrative_wsgi_ingress_guard(environ):
+        def illustrative_wsgi_ingress_guard(_web_security, environ):
             raw = environ.get("HTTP_COOKIE", "")
             if isinstance(raw, str):
                 occurrences = sum(
@@ -287,7 +287,7 @@ class DuplicateSessionCookieAcceptance(unittest.TestCase):
             return raw_validate(environ)
 
         with patch.object(self.app, "_authenticate", side_effect=illustrative_prelookup_gate):
-            with patch.object(self.app.security, "validate", side_effect=illustrative_wsgi_ingress_guard):
+            with patch.object(type(self.app.security), "validate", illustrative_wsgi_ingress_guard):
                 for name in exact_red_cases:
                     with self.subTest(red_source_witness=name):
                         # Direct invocation intentionally bypasses the unittest
