@@ -54,3 +54,18 @@ The five historical owner-contract methods now use an explicit *source-grammar-a
 - The actual GitHub branch still contains **only four originally new owned paths**. Nothing from either owner source fix was committed or copied into a GitHub branch; no permanent runner, policy/authority or deployment changed.
 
 **Separate release gates** are unchanged: source-owner integration decision and exact approved combined SHA, independent privacy/security review, authenticated distinct client and operator consent and at-use revocation, complete exact-SHA hosted plus *permanently registered named VPS* CI, and explicit HUMAN GO. These offline tests are strong compatibility evidence **not** authorization/merging permission. Remain DRAFT/HOLD.
+
+
+## W10 — source owner regex end-anchor audit, actual newline RED and exhaustive score corpus
+
+On original source-owner draft #1538 exact SHA 19dcd928e4410ed6d9fb56dc992434d69a48c3a0, the status regex uses re.match with ^ and $. In Python, $ can also match immediately before a final newline, so synthetic corrupt NUL-delimited status tokens M+LF, A+LF, R100+LF and C001+LF are all accepted and classified as ordinary changed files in inferred offline review. Connected zSSH read-only Python3.14.4 independently reproduced all four cases on this exact unmodified owner checkout. A carriage-return followed by LF is rejected. This is review-integrity risk, NOT a demonstrated authorization bypass.
+
+Our own strictly fictional parser already rejects those four tokens. Its tests now exercise newline-negative cases, including actual stdin/CLI HOLD exit 2. The original historical parser source has five acknowledged expectedFailure contract cases; this adds a sixth original-source expectedFailure on the pinned old branch. An explicit opt-in source-owner strict test proves FOUR real failing newline subcases on the newer source owner, while its earlier five source fixes are independently GREEN. The source owner must fix the four residual newline cases.
+
+Independently tested a repair oracle in-memory only on unchanged source owner: replace the status matcher temporarily with a compiled full-string pattern anchored with backslash-A and backslash-Z. Four malformed tokens then HOLD and three genuine M/R001/R100 controls continue to parse; exiting the test restores the exact original matcher. Recommended source-owner review is to use fullmatch or the strict backslash-Z anchor. No production/source-owner file, branch or permanent runner was changed.
+
+Added complete canonical Git similarity corpus: 202 positive synthetic status controls covering 101 R000..R100 + 101 C000..C100 scores, plus abbreviated, out-of-range and newline-corrupted cases that must HOLD. The CLI and git fixture remain offline and non-authorizing.
+
+Actual connected zSSH own exact SHA 09e1072942c103a9822d5d4c7e477e016c0e62e6: 23 own test methods OK (six intended original-source expectedFailures, two opt-in strict-owner skips), 86 original producer-integration tests ordinary PASS, clean own worktree. Current owner strict test on a disposable own checkout overlaid temporarily with exactly original owner 19dcd Git parser: FOUR genuine FAIL until owner applies end-anchor repair. The in-memory exact end-anchor oracle passed and restored original matcher without touching any saved source.
+
+**RELEASE HOLD:** distinct authenticated client/operator consent with at-use revocation, independent privacy/security, original source-owner correction and approval, complete hosted and permanently registered named VPS CI on approved combined exact SHA, explicit HUMAN GO. No merge/deploy/scans/grants/handlers/release.
