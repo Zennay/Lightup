@@ -89,6 +89,7 @@ def main() -> int:
         branch = os.environ.get("GITHUB_REF", "")
         sha = os.environ.get("GITHUB_SHA", "")
         head = git("rev-parse", "HEAD")
+        top = git("rev-parse", "--show-toplevel")
         ancestor = git("merge-base", "--is-ancestor", BASE, "HEAD")
         diff = git("diff", "--name-status", "-z", "--no-renames", BASE, "HEAD")
         tree = git("ls-tree", "-r", "-z", "HEAD", "--", *sorted(OWNED))
@@ -99,6 +100,8 @@ def main() -> int:
             and SHA1.fullmatch(sha.encode("ascii")) is not None
             and status.returncode == 0 and status.stdout == b""
             and head.returncode == 0 and head.stdout.strip() == sha.encode("ascii")
+            and top.returncode == 0
+            and top.stdout == os.fsencode(str(ROOT.resolve())) + b"\n"
             and ancestor.returncode == 0 and diff.returncode == 0
             and tree.returncode == 0 and safe_tree(tree.stdout, diff.stdout)
         )

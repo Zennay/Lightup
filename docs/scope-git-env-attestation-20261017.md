@@ -219,3 +219,19 @@ Git command. This proves the specifically configured fsmonitor route
 is disabled. It does not prove that every possible Git extension,
 binary, library or configuration is harmless, nor does it authorize a
 real scan or release. Production remains entirely untouched.
+
+## W11 — assert reported Git worktree is this checkout
+
+A disposable real-Git fixture shows that `git config core.worktree
+/path/to/foreign` redirects `git rev-parse --show-toplevel` away from
+the repository used to invoke Git. Without checking the resolved root,
+a `git status` assertion may examine another worktree's files. The
+own, non-authorizing Git evidence validator now demands the exact
+absolute `--show-toplevel` output match its own script checkout path.
+A synthetic full-script test reproduced the previous erroneous PASS for
+a forged external root before the fix. Both forged and real temporary
+configuration cases are now covered by new tests.
+
+This is a narrow path-identity guard; it does not establish filesystem
+trust, prevent symlinks outside the own checkout, prove Git binary
+provenance, or confer any scan or release authority.

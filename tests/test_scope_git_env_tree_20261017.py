@@ -92,7 +92,12 @@ class OfflineTreeModesTests(unittest.TestCase):
         }
         def fake_git(*argv):
             name = argv[0]
-            return CompletedProcess(argv, 0, expected[name], b"")
+            data = (
+                str(guard.ROOT.resolve()).encode("utf8") + b"\n"
+                if argv[:2] == ("rev-parse", "--show-toplevel")
+                else expected[name]
+            )
+            return CompletedProcess(argv, 0, data, b"")
         with patch.object(guard, "git", side_effect=fake_git):
             with patch.dict(guard.os.environ, event, clear=True):
                 with redirect_stdout(io.StringIO()) as output:
@@ -202,6 +207,53 @@ class OfflineTreeModesTests(unittest.TestCase):
                 result = guard.git("status", "--porcelain")
             self.assertEqual(result.returncode, 0)
             self.assertFalse(mark.exists(), "offline proof invoked fsmonitor")
+
+    def test_main_rejects_config_redirected_worktree(self):
+        from subprocess import CompletedProcess
+        from unittest.mock import patch
+        from contextlib import redirect_stdout
+        import io
+        sha = "a" * 40
+        context = {
+            "GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "push",
+            "GITHUB_REF": "refs/heads/" + guard.BRANCH,
+            "GITHUB_SHA": sha,
+        }
+        def fake_git(*argv):
+            if argv[:2] == ("rev-parse", "--show-toplevel"):
+                output = b"/fictional/other-worktree\n"
+            else:
+                output = {
+                    "status": b"",
+                    "rev-parse": sha.encode() + b"\n",
+                    "merge-base": b"",
+                    "diff": delta(),
+                    "ls-tree": tree(),
+                }[argv[0]]
+            return CompletedProcess(argv, 0, output, b"")
+        with patch.object(guard, "git", side_effect=fake_git):
+            with patch.dict(guard.os.environ, context, clear=True):
+                with redirect_stdout(io.StringIO()) as out:
+                    self.assertEqual(guard.main(), 3)
+                self.assertEqual(out.getvalue().strip(), "scope_env_owned_tree=HOLD")
+
+    def test_disposable_git_config_worktree_rebind_is_observable(self):
+        import tempfile
+        import subprocess
+        with tempfile.TemporaryDirectory(prefix="scope_worktree_redirect_", dir=FILE.parents[1]) as tmp:
+            base = Path(tmp).resolve()
+            repo, foreign = base / "repo", base / "foreign"
+            repo.mkdir()
+            foreign.mkdir()
+            def git(*argv):
+                return subprocess.run(
+                    [guard.GIT_BINARY, *argv], cwd=repo,
+                    check=True, capture_output=True, timeout=5,
+                ).stdout.strip()
+            git("init", "-q")
+            self.assertEqual(git("rev-parse", "--show-toplevel").decode(), str(repo))
+            git("config", "core.worktree", str(foreign))
+            self.assertEqual(git("rev-parse", "--show-toplevel").decode(), str(foreign))
 
     def test_no_reusing_other_worker_paths(self):
         for item in ("src/lightup/scope.py", "tests/test_scope.py",
