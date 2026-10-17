@@ -46,7 +46,7 @@ def review_literals(candidates: object) -> LiteralReview:
             return LiteralReview("HOLD")
         # Conservative byte-exact HOLD for potential later URL/backslash
         # decoding; this is NOT a hostname validator or grant decision.
-        if "%" in value or "\\" in value or "@" in value:
+        if any(token in value for token in ("%", "\\", "@", "?", "#")):
             return LiteralReview("HOLD")
         # Strictly a conservative review-time alias heuristic, not DNS or
         # authorization canonicalization. Never collapse two visible entries.

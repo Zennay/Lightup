@@ -68,3 +68,7 @@ The dedicated branch-only GitHub-hosted matrix now compiles **all** `tests/test_
 ## W13 — no ignored authority-looking CLI flags
 
 An otherwise valid fictional stdin packet previously yielded REVIEW_ONLY when the caller supplied unknown CLI flags such as `--grant=true`, `--mode authorized` or `--dispatch`, because the opt-in executable silently ignored arguments. Its `__main__` gate now requires exactly the interpreter-provided script path in `argv`; any extra option/positional input yields the generic non-echoing HOLD with exit3 **before reading stdin**. New real-subprocess tests cover eleven representative confusing flags, an ordinary flag-free REVIEW_ONLY, and malformed stdin. No new commands or authority are enabled; the in-process unit API remains a narrow test seam, not a public CLI mode.
+
+## W14 — query/fragment text ambiguity cannot become review-eligible
+
+Added a conservative offline HOLD fence for `?` and `#` in exact fictional authority strings. A human review packet is not a URL parser, and query/fragment delimiters may disappear or change meaning in a later parser; accordingly the entire batch is rejected, with no candidate echo or authority/consent/dispatch/release. Three dedicated tests first reproduced ordinary REVIEW_ONLY on synthetic `fictional.example.test?mode=other` and `https://localhost/#allow`, then verified the stricter output and a still-eligible plain fictional control. This does not decide legitimate URL admission and does not modify source-owner #1289/#1290.
