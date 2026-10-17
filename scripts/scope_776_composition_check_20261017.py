@@ -200,6 +200,9 @@ def main() -> int:
         root = Path(temp)
         shutil.copytree(PROJECT / "src", root / "src")
         shutil.copytree(PROJECT / "tests", root / "tests")
+        # Original unit fixtures resolve repository-relative example config.
+        if args.full:
+            shutil.copytree(PROJECT / "config", root / "config")
         for commit, path, checksum in SOURCE_BLOBS.values():
             target = root / path
             if target.exists():
