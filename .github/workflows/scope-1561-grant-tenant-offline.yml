@@ -1,0 +1,72 @@
+name: LightUp #1561 offline tenant-grant snapshot acceptance (not release proof)
+
+on:
+  push:
+    branches:
+      - chatgpt/scope-1561-offline-grant-tenant-snapshot-20261017
+    paths:
+      - src/lightup/scope_grant_tenant_snapshot_1561.py
+      - tests/test_scope_1561_offline_grant_tenant_snapshot.py
+      - docs/scope-1561-grant-tenant-snapshot.md
+      - .github/workflows/scope-1561-grant-tenant-offline.yml
+  pull_request:
+    paths:
+      - src/lightup/scope_grant_tenant_snapshot_1561.py
+      - tests/test_scope_1561_offline_grant_tenant_snapshot.py
+      - docs/scope-1561-grant-tenant-snapshot.md
+      - .github/workflows/scope-1561-grant-tenant-offline.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scope-1561-offline-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  isolated-offline-acceptance:
+    name: "Offline only Python ${{ matrix.python-version }} (NOT VPS/release)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Pin non-authorizing module/test compile
+        shell: bash
+        run: |
+          python -m compileall -q src/lightup/scope_grant_tenant_snapshot_1561.py tests/test_scope_1561_offline_grant_tenant_snapshot.py
+      - name: Execute ONLY standalone synthetic SQLite/source-safe acceptance
+        shell: bash
+        env:
+          PYTHONPATH: src:tests
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m unittest discover -s tests -p 'test_scope_1561_offline_grant_tenant_snapshot.py' -v
+      - name: Assert production activation stays absent from this workflow
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import ast
+          code = ast.parse(Path("src/lightup/scope_grant_tenant_snapshot_1561.py").read_text())
+          imports = []
+          for node in ast.walk(code):
+              if isinstance(node, ast.Import):
+                  imports.extend(alias.name for alias in node.names)
+              elif isinstance(node, ast.ImportFrom):
+                  imports.append(node.module or "")
+          denied = ("socket", "requests", "http", "lightup.activation",
+                    "lightup.execution", "lightup.ai", "subprocess")
+          for name in imports:
+              assert not any(name == blocked or name.startswith(blocked + ".")
+                             for blocked in denied), f"active import forbidden: {name}"
+          print("ISOLATED_OFFLINE_ONLY: no authority implied; DO NOT MERGE/DEPLOY")
+          PY
