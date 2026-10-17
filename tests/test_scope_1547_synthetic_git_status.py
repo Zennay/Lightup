@@ -281,6 +281,17 @@ class SyntheticGate(unittest.TestCase):
             self.assertEqual(review.review_stream(stream), 1)
 
 
+def _original_red_until_owner_source_is_strict(method):
+    """Preserve source RED on the pinned old owner code, enforce normal GREEN
+    as soon as the source owner's canonical status/terminator parser is present.
+    Any incomplete repair with the new parser still fails the original tests.
+    """
+    original = (ROOT / "src" / "lightup" / "git_changes.py").read_text(encoding="utf-8")
+    if "_STATUS_CODE =" in original and "def _nul_records" in original:
+        return method
+    return unittest.expectedFailure(method)
+
+
 class OriginalOwnerContract(unittest.TestCase):
     """Expected RED documents original owner code, never patches it here."""
     @classmethod
@@ -291,27 +302,27 @@ class OriginalOwnerContract(unittest.TestCase):
         cls.parse_status = staticmethod(_parse_name_status)
         cls.parse_numstat = staticmethod(_parse_numstat)
 
-    @unittest.expectedFailure
+    @_original_red_until_owner_source_is_strict
     def test_owner_rejects_malformed_modify_status(self):
         with self.assertRaises(self.GitChangeError):
             self.parse_status(b"Mgarbage\0src/a.py\0")
 
-    @unittest.expectedFailure
+    @_original_red_until_owner_source_is_strict
     def test_owner_rejects_unknown_status(self):
         with self.assertRaises(self.GitChangeError):
             self.parse_status(b"Q\0src/a.py\0")
 
-    @unittest.expectedFailure
+    @_original_red_until_owner_source_is_strict
     def test_owner_rejects_malformed_similarity(self):
         with self.assertRaises(self.GitChangeError):
             self.parse_status(b"Rnotanumber\0old.py\0new.py\0")
 
-    @unittest.expectedFailure
+    @_original_red_until_owner_source_is_strict
     def test_owner_requires_terminator(self):
         with self.assertRaises(self.GitChangeError):
             self.parse_status(b"M\0src/a.py")
 
-    @unittest.expectedFailure
+    @_original_red_until_owner_source_is_strict
     def test_owner_numstat_requires_terminator(self):
         with self.assertRaises(self.GitChangeError):
             self.parse_numstat(b"1\t0\tsrc/a.py")
