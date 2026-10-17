@@ -15,8 +15,24 @@ REVIEWER = "scope_literal_control_review_20261016"
 SOURCE_DIR = ROOT / "src" / "lightup"
 
 
+def _constant_text(node: ast.AST) -> str | None:
+    """Bounded AST-only constant folding; never eval or import anything."""
+    if isinstance(node, ast.Constant) and type(node.value) is str:
+        text = node.value
+    elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left = _constant_text(node.left)
+        right = _constant_text(node.right)
+        text = left + right if left is not None and right is not None else None
+    elif isinstance(node, ast.JoinedStr):
+        parts = [_constant_text(part) for part in node.values]
+        text = "".join(parts) if all(part is not None for part in parts) else None
+    else:
+        return None
+    return text if text is not None and len(text) <= 256 else None
+
+
 def references_review_module(source: str) -> bool:
-    """Detect direct, from-list, and literal dynamic references to this module."""
+    """Detect imports and statically reconstructable calls, never eval code."""
     tree = ast.parse(source)
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -30,8 +46,8 @@ def references_review_module(source: str) -> bool:
             if any(name.name == REVIEWER for name in node.names):
                 return True
         elif isinstance(node, ast.Call) and node.args:
-            literal = node.args[0]
-            if not isinstance(literal, ast.Constant) or type(literal.value) is not str:
+            literal = _constant_text(node.args[0])
+            if literal is None:
                 continue
             called = node.func
             direct_import = isinstance(called, ast.Name) and called.id in (
@@ -41,7 +57,16 @@ def references_review_module(source: str) -> bool:
                 isinstance(called, ast.Attribute) and called.attr == "import_module"
                 and isinstance(called.value, ast.Name) and called.value.id == "importlib"
             )
-            if (direct_import or qualified_import) and literal.value.split(".")[-1] == REVIEWER:
+            getattr_import = (
+                isinstance(called, ast.Call)
+                and isinstance(called.func, ast.Name)
+                and called.func.id == "getattr"
+                and len(called.args) == 2
+                and isinstance(called.args[0], ast.Name)
+                and called.args[0].id == "importlib"
+                and _constant_text(called.args[1]) == "import_module"
+            )
+            if (direct_import or qualified_import or getattr_import) and literal.split(".")[-1] == REVIEWER:
                 return True
     return False
 
@@ -71,6 +96,18 @@ class RuntimeIsolationStaticTests(unittest.TestCase):
             "from importlib import import_module\nimport_module('lightup.scope_literal_control_review_20261016')",
             "import importlib\nimportlib.import_module('lightup.scope_literal_control_review_20261016')",
             "__import__('lightup.scope_literal_control_review_20261016')",
+        )
+        for source in patterns:
+            with self.subTest(source=source):
+                self.assertTrue(references_review_module(source))
+
+    def test_static_string_construction_is_detected(self):
+        patterns = (
+            "import importlib\nimportlib.import_module('lightup.' + 'scope_literal_control_review_20261016')",
+            "import importlib\nimportlib.import_module(f'lightup.scope_literal_control_review_20261016')",
+            "import importlib\ngetattr(importlib, 'import_module')('lightup.scope_literal_control_review_20261016')",
+            "__import__('lightup.' + 'scope_literal_' + 'control_review_20261016')",
+            "from importlib import import_module\nimport_module(f'lightup.scope_literal_control_review_20261016')",
         )
         for source in patterns:
             with self.subTest(source=source):

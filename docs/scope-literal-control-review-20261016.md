@@ -84,3 +84,7 @@ The branch added synthetic-only mutation proofs in `test_scope_literal_metamorph
 ## W16 — AST import-path isolation proof
 
 Added strictly offline `test_scope_literal_runtime_isolation_20261016.py`. It scans original application Python ASTs and rejects direct import, relative import, from-package imported module alias, literal `__import__`, and literal `importlib.import_module` loading of the owned offline reviewer. It includes synthetic positive and negative shape tests so a future from-list import cannot silently bypass the existing naive AST guard. It intentionally cannot prove safety against computed strings, runtime reflection or `eval`; static proof is NOT a sandbox, authorization fact or production integration approval. It never executes application modules or calls a network.
+
+## W17 — fold only statically literal module-name expressions
+
+Five test cases proved the earlier AST-only reviewer-import fence missed directly reconstructable module names: adjacent constant string concatenation, literal f-strings, and literal `getattr(importlib, 'import_module')`. The guard now reconstructs only bounded, fully static AST string expressions (maximum 256 chars) and checks these additional import-call shapes. It does NOT execute imports or evaluate expressions. Computed variables, reflective imports and `eval` are deliberately outside this static proof; no claim of comprehensive runtime isolation. Original source-owner files remain untouched.
