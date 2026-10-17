@@ -210,6 +210,17 @@ class Scope649ReviewerTests(unittest.TestCase):
         ok = packet([{"approved_by": "Synthetic Operator", "reference": "SYNTH 649"}])
         self.assertIs(subject.review_batch(ok).status, subject.ReviewStatus.REVIEW_ONLY)
 
+    def test_nonspacing_blank_hangul_and_braille_fillers_are_not_provenance(self):
+        # Some NFC-stable, non-control Unicode scalars render as blank glyphs
+        # but sit in "letter" or "symbol" categories.
+        fillers = ("\u115f", "\u1160", "\u3164", "\uffa0", "\u2800")
+        for mark in fillers:
+            for field in ("approved_by", "reference"):
+                with self.subTest(codepoint=hex(ord(mark)), field=field):
+                    raw = packet()
+                    raw["items"][0][field] = "SYNTH" + mark + "649"
+                    self.assertIs(subject.review_batch(raw).status, subject.ReviewStatus.HOLD)
+
     def test_allows_canonical_unicode_for_fictional_labels(self):
         value = packet([{"approved_by": "Élodie", "reference": "SYNTH-É"}])
         self.assertIs(subject.review_batch(value).status, subject.ReviewStatus.REVIEW_ONLY)
