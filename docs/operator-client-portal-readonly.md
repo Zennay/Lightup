@@ -220,3 +220,25 @@ The opt-in request dossier `GET /authorization-desk/requests/<request_id>` now p
 - These controls change **only** the stored administrative request status using the existing domain method. An `APPROVED` request never creates an execution grant or certifies actual written customer consent.
 
 The default `LightUpWebApp` and domain API still require their independently owned security and request/grant-binding fixes before production use; the guarded WSGI variant remains opt-in and DRAFT/HOLD.
+
+## Live client/operator clarification workflow (administrative only)
+
+The guarded LightUp portal now supports a real **two-party request clarification conversation**. This is a usable product workflow for resolving missing client details without opening target access or issuing grants.
+
+1. An authenticated operator opens an **open** request in `/authorization-desk/requests/<request_id>` and asks a bounded question using the CSRF-protected operator POST `/operator/requests/<request_id>/clarifications`.
+2. A genuinely signed-in client of that request's tenant sees the question and its time in `/portal/<client_id>/requests/<request_id>`. Only while a question is awaiting a client reply can that same client's session submit a response to `POST /portal/<client_id>/requests/<request_id>/clarifications`. Operator-as-client masquerading is never used for writes.
+3. The complete chronological thread is visible in each party's request detail. Its durable state is visible as **Awaiting client reply** or **Awaiting operator review** in both portals, the operator worklist and the existing single-request and request-index JSON.
+4. Unanswered questions **block administrative request approval server-side** (423 Locked) as well as hiding the operator Approve action. Once an eligible client responds, the operator can perform the existing guarded *administrative* decision. Following approval/rejection, all thread POSTs stop accepting new messages (409 Conflict).
+5. The operator gets a dedicated `GET /authorization-desk/clarifications` inbox and `GET /api/v1/operator/clarifications` status feed. Open conversations are grouped into **Needs operator follow-up** and **Waiting for client**, with links back to the proper request dossier. Clients see their own conversation state in their portal request cards.
+
+### Authentication, storage and API boundaries
+
+- The opt-in guarded WSGI factory initializes `assessment_clarifications` as a separate **additive SQLite table** in the existing `DomainStore.path`; original domain source, schema string and existing tables are not modified. Table-level FK references enforce the original request/client IDs. The append transaction uses `BEGIN IMMEDIATE` and checks the *current* pending request status and tenant lineage in the same write transaction; client replies additionally check the real client user's current DB role and tenant.
+- Each record stores a UUID message ID, tenant/request IDs, **actual author account ID/role**, question/reply kind, UTC timestamp and up to 2,400 printable characters. The service accepts at most 200 messages per request; HTML is escaped and newlines remain readable. Latest 60 messages appear in chronological order with explicit partial-history notice (older messages are retained).
+- JSON reads: `GET /api/v1/portal/<client_id>/requests/<request_id>/clarifications` and `GET /api/v1/operator/requests/<request_id>/clarifications`. Existing session and route access policies apply; the client route re-verifies matching tenant ownership. Output schema `lightup.request-clarifications.v1`, always `DISCUSSION_ONLY`, with consent/grant/execution flags permanently `false`. The queue JSON is `lightup.clarification-inbox.v1`, also `DISCUSSION_ONLY`.
+- Request history clients and operator request inbox now show a bounded **clarification_state** badge; it is never interpreted as a signed approval or a grant. The operator clarification inbox deliberately omits message bodies, referring the reviewer to the authenticated request dossier.
+- This is a planning discussion, not digitally signed proof of ownership, a client authorization letter, a legal consent record, or authority for active security scans. The existing independent two-party consent, immutable grant binding (#177), live revocation and release gates remain mandatory. No credentials or sensitive secrets should be pasted into these messages.
+
+### Direct implementation inspection
+
+Used connected zSSH in a disposable local SQLite checkout only (not a QA/regression suite). An operator question was saved and appeared in the client portal, blocked administrative approval (423), appeared as **waiting for client** in the operator JSON inbox; a genuine client reply was saved and moved the inbox to **waiting for operator**; the guarded administrative review subsequently returned 303. A different-tenant reply returned 403 and a post-decision reply returned 409. The JSON authority flags remained false and anonymous operator-inbox JSON returned 401. No real target interaction, scans, grant issuance, merge or deployment.
