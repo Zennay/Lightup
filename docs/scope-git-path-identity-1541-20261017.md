@@ -355,3 +355,42 @@ approved release SHA hosted and permanently registered named VPS
 Actions, independently authenticated separate client/operator
 consent with at-use revocation, security/privacy and explicit
 human GO remain outstanding.
+
+
+## W14 · Final *current code* SHA fresh-checkout full 1,357 test composition (2026-10-17)
+
+Previous W11 full test numbers were at an earlier code SHA; after
+adding the 8 stdout transport tests the actual current code SHA
+is `bdc0efc87dfac54e8483155f0f3e2425a9ceddcc`.
+Two **independently new and clean** /tmp Git clones of this
+**exact code SHA** were tested on connected zSSH `vps-bb300bba`
+Python3.14.4, each without inherited bytecode cache:
+
+1. Original unchanged own Git HEAD: **1,357 unit tests, exactly
+   TWO ordinary FAILS** from already-known independently owned #1535
+   native registry-history SyntaxWarning `exit 92`, and no other
+   failure. Git checkout was clean, original owner source unchanged.
+2. Another fresh disposable clone, **same exact own HEAD**, with
+   **only** independent #1536 owner SHA
+   `f8b91596d48f318cb75050b70ccbf5a50d2cd106`'s already
+   fixed source blob
+   `src/lightup/capability_registry_history_report.py` copied
+   locally **without commit or push**: strict warning-as-error
+   source compile **PASS**, whole Python3.14.4 unit suite
+   **1,357/1,357 ordinary PASS**, exit0, **exactly one local
+   dirty source path** in the *disposable* test tree.
+
+In addition, the last own exact head remains **200/200 targeted
+and original integration tests GREEN** (84 own Git path incl. CLI,
+30 original review/store and 86 producer integrations) in an
+independent clean checkout.
+
+**Do not confuse this with approved release CI**: full hosted
+and permanently registered named GitHub Actions VPS jobs on the
+final proposed **integrated release SHA** have not completed;
+current owner source still needs independent branch integration,
+real authenticated separate client/operator consent and at-use
+revocation, privacy/security review and explicit HUMAN GO.
+Own GH branch/source owners/main/services were **never modified**
+by the local composite. **INCUBATE M3/M7 · PLAN/LAB ONLY ·
+DRAFT/HOLD; NO MERGE, DEPLOY, SCAN, GRANT, DISPATCH OR RELEASE.**
