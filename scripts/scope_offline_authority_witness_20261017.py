@@ -219,7 +219,7 @@ def _fixture_snapshot(fixtures: object) -> list[list[object]] | None:
     return rows
 
 
-def _evaluate_pinned_cases(fixtures: tuple[WitnessCase, ...], fixture_digest: str) -> dict[str, object]:
+def _evaluate_pinned_cases(fixtures: tuple[WitnessCase, ...], fixture_digest: str, snapshot: list[list[object]]) -> dict[str, object]:
     """Called only under the exclusive deadline and after fixture-pin admission."""
     observed: list[list[object]] = []
     for case in fixtures:
@@ -229,6 +229,13 @@ def _evaluate_pinned_cases(fixtures: tuple[WitnessCase, ...], fixture_digest: st
                 decision = case.policy.decide(case.target)
         finally:
             _WITNESS_EVALUATION_ACTIVE.reset(token)
+        # Frozen dataclasses are not immutable against object.__setattr__.
+        # A matching decision can conceal changes to the current or a FUTURE
+        # fictional target, authorization, scope policy, or expected verdict.
+        # Check the *entire* fixed corpus after each policy call, not only
+        # after the last case, so a mutation stops further evaluation.
+        if _fixture_snapshot(fixtures) != snapshot:
+            return _receipt("HOLD", "offline_witness_fixture_mutated")
         if (
             type(decision) is not ScopeDecision
             or type(decision.allowed) is not bool
@@ -276,7 +283,7 @@ def evaluate(cases: tuple[WitnessCase, ...] | None = None) -> dict[str, object]:
         try:
             signal.signal(signal.SIGALRM, _witness_alarm)
             signal.setitimer(signal.ITIMER_REAL, EVALUATION_DEADLINE_SECONDS)
-            return _evaluate_pinned_cases(fixtures, fixture_digest)
+            return _evaluate_pinned_cases(fixtures, fixture_digest, snapshot)
         finally:
             # Restore both resources even if the policy crashed, returned
             # early or exceeded the wall-clock budget.
