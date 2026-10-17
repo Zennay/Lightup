@@ -96,6 +96,85 @@ class EnvironmentFenceTests(unittest.TestCase):
             def __getitem__(self, key): raise ValueError("broken lookup")
         self.assertEqual(module().review_environment(Broken())["status"], "HOLD")
 
+    def test_real_disposable_git_dir_redirection(self):
+        # Demonstrate, without altering a real project, that GIT_DIR and
+        # GIT_WORK_TREE can redirect a dirty repository to a clean one.
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix="scope_env_lab_", dir=ROOT) as dirname:
+            parent = Path(dirname)
+            dirty, clean = parent / "dirty", parent / "clean"
+            dirty.mkdir()
+            clean.mkdir()
+            def git(directory, *args, env=None):
+                return subprocess.run(
+                    ["git", *args], cwd=directory, env=env, capture_output=True,
+                    timeout=6, check=True,
+                ).stdout
+            for directory in (dirty, clean):
+                git(directory, "init", "--quiet")
+                git(directory, "-c", "user.name=Offline Reviewer",
+                    "-c", "user.email=offline@example.invalid",
+                    "commit", "-q", "--allow-empty", "-m", "fictional baseline")
+            (dirty / "changed.txt").write_text("original")
+            git(dirty, "add", "changed.txt")
+            git(dirty, "-c", "user.name=Offline Reviewer",
+                "-c", "user.email=offline@example.invalid",
+                "commit", "-q", "-m", "fictional fixture")
+            (dirty / "changed.txt").write_text("modified")
+            self.assertIn(b"changed.txt", git(dirty, "status", "--porcelain"))
+            redirect = dict(os.environ)
+            redirect.update(GIT_DIR=str(clean / ".git"), GIT_WORK_TREE=str(clean))
+            self.assertEqual(git(dirty, "status", "--porcelain", env=redirect), b"")
+            self.assertEqual(module().review_environment(redirect)["status"], "HOLD")
+
+    def test_static_source_has_no_executor_or_network_imports(self):
+        import ast
+        tree = ast.parse(SCRIPT.read_text(encoding="utf-8"))
+        imports = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imports.update(alias.name for alias in node.names)
+            if isinstance(node, ast.ImportFrom):
+                imports.add(node.module)
+            if isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Name):
+                    self.assertNotIn(node.func.id, {
+                        "eval", "exec", "open", "__import__", "compile",
+                    })
+                if isinstance(node.func, ast.Attribute):
+                    self.assertNotIn(node.func.attr, {
+                        "system", "popen", "run", "Popen", "urlopen",
+                        "write_text", "write_bytes",
+                    })
+        self.assertEqual(imports, {
+            "__future__", "json", "os", "sys", "collections.abc",
+        })
+
+    def test_dedicated_hosted_workflow_is_read_only(self):
+        content = (ROOT / ".github" / "workflows" /
+                   "scope-git-env-attestation-20261017.yml").read_text()
+        self.assertIn("contents: read", content)
+        self.assertIn("runs-on: ubuntu-latest", content)
+        self.assertIn("['3.11', '3.14']", content)
+        self.assertIn("persist-credentials: false", content)
+        self.assertIn("7b9142bb9e9d5403d7a3e41914edddef4511c8a8", content)
+        self.assertNotIn("workflow_dispatch", content)
+        self.assertNotIn("pull_request:", content)
+        self.assertNotIn("contents: write", content)
+        self.assertNotIn("self-hosted", content)
+
+    def test_ci_attests_real_environment_before_git_checks(self):
+        workflow = (ROOT / ".github" / "workflows" /
+                    "scope-git-env-attestation-20261017.yml").read_text()
+        check = "python scripts/scope_git_env_attestation_20261017.py"
+        self.assertEqual(workflow.count(check), 2)
+        first = workflow.index(check)
+        last = workflow.rindex(check)
+        self.assertLess(first, workflow.index("git rev-parse HEAD"))
+        self.assertGreater(last, workflow.index("python -m unittest discover"))
+        self.assertIn("test \"$review_rc\" -eq 2", workflow)
+        self.assertIn("test \"$review_out\" = ", workflow)
+
     def test_cli_disallows_grant_switch(self):
         child=subprocess.run(
             [sys.executable,str(SCRIPT),"--grant"],

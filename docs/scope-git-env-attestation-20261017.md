@@ -48,3 +48,24 @@ Nothing may be merged, deployed, activated, scanned, granted, dispatched or
 released without separate source-owner remediation, security/privacy review,
 verified consent and explicit human GO. Four open source-expectedFailures
 in the other lane are NOT repaired by this report.
+
+## Extended fixture and evidence continuity (W2)
+
+The test family now has **12 named tests**, including a real but wholly
+disposable Git demonstration: two repositories are created under a temporary
+directory in the isolated branch's worktree. A committed tracked file in one
+repository is changed; its native porcelain status shows that change. With
+`GIT_DIR` and `GIT_WORK_TREE` redirected to the other clean repository,
+the *same command in the dirty repository* reports no modifications.
+This is not an exploit of a live LightUp target or a scan; temporary
+repositories and files are deleted automatically by the test harness.
+
+A read-only AST check also pins the limited source imports and bans explicit
+system/exec/network/file-write calls in the tiny reviewer. This is a
+diagnostic lexical invariant, not proof against reflection or arbitrary
+interpreter compromise. The dedicated hosted workflow now demands fixed,
+non-authorizing REVIEW_ONLY JSON **before Git proof commands and again
+after the own tests**; a differing status, unauthorized field, output or
+exit code fails CI. These checks neither replace the active worker's
+original tree proof nor confer any authorization. Source owners and
+release review remain independent. **DRAFT/HOLD.**
