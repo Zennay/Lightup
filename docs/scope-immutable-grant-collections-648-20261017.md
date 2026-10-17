@@ -34,3 +34,28 @@ LIGHTUP_SCOPE648_REQUIRE_SOURCE_FIX=1 PYTHONPATH=src python3 -B -m unittest disc
 ```
 
 **Default green + six expected failures means the defect remains unfixed.** Strict opt-in must be genuinely green with zero expected source failures after implementation, original whole hosted and permanently registered VPS CI, independent security/privacy review, separate genuine client/operator authenticated authorization and at-use revocation, and explicit HUMAN GO. No authorization or release power is implied.
+
+## 2026-10-17 · actual connected zSSH proof (branch-only)
+
+The original installed source at own branch `1503ae5bfb7478f89deb3fcf626117938b99db2c` was executed in an isolated disposable checkout on `vps-bb300bba`, Python 3.14.4. **9 tests: 3 ordinary PASS, 6 original-source expectedFailures**, zero unexpected failures and clean own checkout. The source is still unpatched.
+
+A **separate temporary local clone** was then used to rehearse a minimal source-owner change to **`src/lightup/engagements.py` exclusively in that throwaway filesystem**. It inserts `__post_init__` into the dataclass and snapshots all three caller-owned lists with exact-list checks (no foreign iterator invocation):
+
+```python
+    def __post_init__(self) -> None:
+        for name in ("assets", "excluded_assets", "allowed_capabilities"):
+            value = object.__getattribute__(self, name)
+            if type(value) is list:
+                object.__setattr__(self, name, tuple(value))
+```
+
+Only this *disposable local copy* was modified, **nothing pushed to any production/source-owner branch**. On that local Python3.14 checkout with literal strict `LIGHTUP_SCOPE648_REQUIRE_SOURCE_FIX=1`:
+
+- **9/9 ordinary acceptance tests PASS**, zero expected failures;
+- **576/576 whole unit tests PASS**, zero expected failures;
+- **86/86 original integration tests PASS**;
+- original Git change listing shows only local `M src/lightup/engagements.py`, no external asset or target activity.
+
+To prevent an incomplete fix being mistaken for success, a second isolated weak test copy snapshotted **only `assets`**. Strict testing remained **RED: exactly four failures** for outstanding `excluded_assets` and `allowed_capabilities` aliases, proving that all three collections must be addressed. This is local proof-of-repair, not production-ready code, source-owner signoff, hosted matrix or a valid customer authorization.
+
+**Do not create another PR/hosted workflow solely for these known issue #648 expected-RED tests while [issue #776](https://github.com/Zennay/Lightup/issues/776) requires branch-only work due the registered runner saturation.** The source owner must decide whether to snapshot or reject lists and review interactions with #775 exact collection types and #646 canonical scope object identity. Release remains HOLD.
