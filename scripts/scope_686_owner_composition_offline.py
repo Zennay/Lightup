@@ -36,6 +36,16 @@ _OWNER = (
 )
 
 
+# Contract-specific coverage floor and deliberate RED inventory. A changing
+# test inventory is a review event, not implicit promotion to compatibility.
+_EXPECTED = {
+    "scope686": (23, 13),
+    "webapp": (23, 0),
+    "integration": (86, 0),
+    "full_unittest": (1297, 46),
+}
+
+
 class CompositionHold(Exception):
     """No trust or compatibility claim may be made."""
 
@@ -95,10 +105,19 @@ def _run_tests(checkout: Path, label: str, args: list[str]) -> dict:
     match = re.search(r"Ran (\d+) tests in", combined)
     expected = re.search(r"expected failures=(\d+)", combined)
     if p.returncode or not match or not re.search(r"\nOK(?: \(|\s*$)", combined):
-        raise CompositionHold("offline tests failed: " + label)
+        names = list(dict.fromkeys(re.findall(
+            r"^(?:FAIL|ERROR): (test_[A-Za-z0-9_]+)", combined, re.MULTILINE)))[:4]
+        # Exception names only: no exception values, request bodies or paths.
+        hint = " affected=" + ",".join(names) if names else ""
+        raise CompositionHold("offline tests failed: " + label + hint)
+    count = int(match.group(1))
+    red_count = int(expected.group(1)) if expected else 0
+    floor = _EXPECTED.get(label)
+    if floor is not None and (count < floor[0] or red_count != floor[1]):
+        raise CompositionHold("test coverage/RED inventory drift: " + label)
     return {
-        "name": label, "outcome": "PASS", "methods": int(match.group(1)),
-        "expected_source_failures": int(expected.group(1)) if expected else 0,
+        "name": label, "outcome": "PASS", "methods": count,
+        "expected_source_failures": red_count,
     }
 
 
