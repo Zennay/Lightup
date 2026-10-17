@@ -124,3 +124,7 @@ The previous branch ownership fence checked names and add-only status but did no
 ## W26 — newly introduced tree-mode checks become mandatory CI evidence
 
 After adding the independent `test_scope_literal_git_modes_20261016.py` module, the held branch's fixed evidence inventory was upgraded to **16 required owned test modules** and a strict minimum of 96 executed tests. A new negative check explicitly attempts to remove the Git-mode test module without lowering aggregate test count; the evidence gate now HOLDs. The 96-test Python 3.14 isolated local run passed with exactly 4 open original source expectedFailures. No runtime components were activated.
+
+## W27 — reject literal builtins import aliases in offline AST isolation
+
+Four new deliberately RED synthetic samples showed the offline AST proof had overlooked `builtins.__import__`, `import builtins as bi`, `from builtins import __import__ as loader`, and the static `getattr(bi, '__import__')` shape. The strictly non-executing guard now collects those directly imported aliases and recognizes fully literal target strings in their call shapes. This is **not** complete proof against arbitrary reflection/rebinding/computed imports; it does not wire the reviewer, touch production source, or authorize execution. The strict isolated suite minimum rises to 97 to account for the new regression method.

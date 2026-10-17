@@ -44,15 +44,20 @@ def references_review_module(source: str) -> bool:
     # conservative: it does not execute alias binding or Python expressions.
     nodes = tuple(ast.walk(tree))
     importlib_names = {"importlib"}
-    import_module_names = {"import_module"}
+    builtins_names = {"builtins"}
+    import_module_names = {"import_module", "__import__"}
     for node in nodes:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 if alias.name == "importlib":
                     importlib_names.add(alias.asname or alias.name)
-        elif isinstance(node, ast.ImportFrom) and node.module == "importlib":
+                if alias.name == "builtins":
+                    builtins_names.add(alias.asname or alias.name)
+        elif isinstance(node, ast.ImportFrom):
             for alias in node.names:
-                if alias.name == "import_module":
+                if node.module == "importlib" and alias.name == "import_module":
+                    import_module_names.add(alias.asname or alias.name)
+                if node.module == "builtins" and alias.name == "__import__":
                     import_module_names.add(alias.asname or alias.name)
     for node in nodes:
         if isinstance(node, ast.Import):
@@ -74,8 +79,12 @@ def references_review_module(source: str) -> bool:
                 "__import__", *import_module_names,
             )
             qualified_import = (
-                isinstance(called, ast.Attribute) and called.attr == "import_module"
-                and isinstance(called.value, ast.Name) and called.value.id in importlib_names
+                isinstance(called, ast.Attribute)
+                and isinstance(called.value, ast.Name)
+                and (
+                    (called.attr == "import_module" and called.value.id in importlib_names)
+                    or (called.attr == "__import__" and called.value.id in builtins_names)
+                )
             )
             getattr_import = (
                 isinstance(called, ast.Call)
@@ -83,8 +92,10 @@ def references_review_module(source: str) -> bool:
                 and called.func.id == "getattr"
                 and len(called.args) == 2
                 and isinstance(called.args[0], ast.Name)
-                and called.args[0].id in importlib_names
-                and _constant_text(called.args[1]) == "import_module"
+                and (
+                    (called.args[0].id in importlib_names and _constant_text(called.args[1]) == "import_module")
+                    or (called.args[0].id in builtins_names and _constant_text(called.args[1]) == "__import__")
+                )
             )
             if (direct_import or qualified_import or getattr_import) and literal.split(".")[-1] == REVIEWER:
                 return True
@@ -155,6 +166,17 @@ class RuntimeIsolationStaticTests(unittest.TestCase):
             "from importlib import import_module as load\nload('lightup.scope_literal_control_review_20261016')",
             "from importlib import import_module as load\nload('lightup.' + 'scope_literal_control_review_20261016')",
             "import importlib as il\ngetattr(il, 'import_module')('lightup.scope_literal_control_review_20261016')",
+        )
+        for source in patterns:
+            with self.subTest(source=source):
+                self.assertTrue(references_review_module(source))
+
+    def test_builtin_import_aliases_cannot_bypass_static_guard(self):
+        patterns = (
+            "import builtins\nbuiltins.__import__('lightup.scope_literal_control_review_20261016')",
+            "import builtins as bi\nbi.__import__('lightup.scope_literal_control_review_20261016')",
+            "from builtins import __import__ as loader\nloader('lightup.scope_literal_control_review_20261016')",
+            "import builtins as bi\ngetattr(bi, '__import__')('lightup.scope_literal_control_review_20261016')",
         )
         for source in patterns:
             with self.subTest(source=source):
