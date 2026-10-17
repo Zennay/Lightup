@@ -16,7 +16,7 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from lightup.models import Authorization, Target
-from lightup.scope import ScopePolicy, ScopeReason
+from lightup.scope import ScopeDecision, ScopePolicy, ScopeReason
 
 
 def _grant_variants():
@@ -70,8 +70,12 @@ class ScopeMembershipMetamorphicTests(unittest.TestCase):
         with ExitStack() as stack:
             _block_all_external_and_grant_admission(stack)
             decision = policy.decide(target)
+        self.assertIs(type(decision), ScopeDecision)
+        self.assertIs(type(decision.allowed), bool)
         self.assertIs(decision.allowed, False)
+        self.assertIs(type(decision.reason), ScopeReason)
         self.assertEqual(decision.reason, ScopeReason.OUT_OF_SCOPE)
+        self.assertIs(type(decision.normalized_host), str)
         if expected_host is not None:
             self.assertEqual(decision.normalized_host, expected_host)
         self.assertEqual((target.value, target.authorization, target.labels), before)
@@ -81,7 +85,10 @@ class ScopeMembershipMetamorphicTests(unittest.TestCase):
         with ExitStack() as stack:
             _block_all_external_and_grant_admission(stack)
             decision = policy.decide(target)
+        self.assertIs(type(decision), ScopeDecision)
+        self.assertIs(type(decision.allowed), bool)
         self.assertIs(decision.allowed, False)
+        self.assertIs(type(decision.reason), ScopeReason)
         self.assertEqual(decision.reason, ScopeReason.INVALID_TARGET)
         self.assertIsNone(decision.normalized_host)
         self.assertEqual((target.value, target.authorization, target.labels), before)
