@@ -58,6 +58,48 @@ class AdditiveOwnershipTests(unittest.TestCase):
         self.assertFalse(guard.safe_diff(baseline.replace(b"scripts", b"scr\xffpts")))
         self.assertFalse(guard.safe_diff(baseline + b"x" * 16385))
 
+    def test_worktree_must_be_proven_clean(self):
+        # Origin/main additivity does not attest the files actually tested.
+        # Git status porcelain -z must be exactly empty, not whitespace.
+        from subprocess import CompletedProcess
+        self.assertTrue(guard.clean_worktree_status(CompletedProcess(["git"], 0, b"", b"")))
+        for raw in (
+            b" M src/lightup/scope.py\0",
+            b"M  scripts/check_scope_literal_branch_20261016.py\0",
+            b"?? tests/untracked_payload.py\0",
+            b"?? docs/fake.md\0",
+            b"!! ignored.py\0",
+            b" ",
+        ):
+            with self.subTest(status=raw):
+                self.assertFalse(guard.clean_worktree_status(CompletedProcess(["git"], 0, raw, b"")))
+        self.assertFalse(guard.clean_worktree_status(CompletedProcess(["git"], 1, b"", b"")))
+        self.assertFalse(guard.clean_worktree_status(CompletedProcess(["git"], 0, "", b"")))
+        self.assertFalse(guard.clean_worktree_status(CompletedProcess(["git"], 0, bytearray(), b"")))
+
+    def test_real_branch_checker_rejects_dirty_checkout(self):
+        # Run the real control logic using only synthetic git outputs.
+        from unittest.mock import patch
+        from subprocess import CompletedProcess
+        good = evidence((("A", "tests/test_scope_literal_ownership_20261016.py"),))
+        paths = set(guard.OWNED_EXACT) | {"tests/test_scope_literal_ownership_20261016.py"}
+        tree = b"".join(
+            b"100644 blob " + b"a" * 40 + b"\t" + item.encode() + b"\0"
+            for item in sorted(paths)
+        )
+        def simulated(*args):
+            label = args[0]
+            out = {
+                "merge-base": b"",
+                "rev-parse": b"a" * 40 + b"\n",
+                "diff": good,
+                "ls-tree": tree,
+                "status": b" M src/lightup/scope.py\0",
+            }
+            return CompletedProcess(args, 0, out[label], b"")
+        with patch.object(guard, "_git", side_effect=simulated):
+            self.assertEqual(guard.main(), 1)
+
     def test_missing_required_worker_files_is_hold(self):
         for required in guard.OWNED_EXACT:
             with self.subTest(path=required):

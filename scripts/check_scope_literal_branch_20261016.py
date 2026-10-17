@@ -91,6 +91,17 @@ def _git(*args: str) -> subprocess.CompletedProcess[bytes]:
     )
 
 
+def clean_worktree_status(result: object) -> bool:
+    """Only exact zero-byte Git porcelain output proves the tested tree clean."""
+    return (
+        isinstance(result, subprocess.CompletedProcess)
+        and type(result.returncode) is int
+        and result.returncode == 0
+        and type(result.stdout) is bytes
+        and result.stdout == b""
+    )
+
+
 def main() -> int:
     try:
         # A remote main move must never silently change the held base.
@@ -102,7 +113,11 @@ def main() -> int:
         )
         owned = _owned_additions(diff.stdout) if diff.returncode == 0 else None
         tree = _git("ls-tree", "-r", "-z", "HEAD", "--", *sorted(owned)) if owned else None
+        # Never report branch proof for a dirty checkout: source/tests might
+        # not match the actual committed Git tree. Includes untracked files.
+        status = _git("status", "--porcelain=v1", "--untracked-files=all", "-z")
         ok = (
+            clean_worktree_status(status) and
             base.returncode == 0 and head.returncode == 0
             and re.fullmatch(rb"[0-9a-f]{40}", head.stdout.strip()) is not None
             and tree is not None and tree.returncode == 0
