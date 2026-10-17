@@ -282,3 +282,53 @@ and four intentionally open original-source expectedFailures. No real
 LightUp permission, handler, scanner, network or production source changed.
 **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD**; entire original CI,
 permanent named VPS runner and authentic two-party consent remain gated.
+
+
+## W41–W45 — exact checkout, ignored source and blob provenance (17 October 2026)
+
+This remains **INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD**. The
+additional checks affect only the separate scope-literal-review worker's
+already-new files. They do not touch installed admission, permits,
+ActivationGate, network tools, consent or deployment.
+
+- **W41:** `git ls-files -v -z --cached` is now required by the isolated
+  additive branch checker. Every tracked index entry must be exactly `H `
+  (ordinary tracked content) with unique safe paths. Hidden
+  `assume-unchanged` (`h`) and `skip-worktree` (`S`) bits, invalid
+  output or Git failure cause generic HOLD even if porcelain status is clean.
+  The ownership tests first reproduced missing-check failures.
+- **W42:** A disposable local *real Git* test initializes a synthetic repo,
+  toggles each of these flags, and confirms ordinary `git status` hides
+  modified content but the new index-fence rejects it. The fixture is
+  deleted after the test. No production repository or remote is changed.
+- **W43:** Git-ignored source/config lookalikes beneath `src/lightup`,
+  `scripts`, `tests`, `deploy`, `lab`, and the owned workflow directory
+  also cause HOLD. A disposable local Git repository reproduces a hidden
+  `*.py` file invisible to `git status`. Generated `*.pyc` caches alone
+  do not cause HOLD: this is an intentionally scoped *source-like extension*
+  control, not proof that ignored bytecode or arbitrary ignored file formats
+  could never influence execution.
+- **W44:** Even a clean Git index does not itself prove byte identity.
+  The reviewer now opens each added owned regular source/file path with
+  `O_NOFOLLOW`, caps reads at 1 MiB per file, and hashes actual bytes in
+  Git's `blob <length>\0<contents>` encoding. The digest must equal that
+  file's exact recorded `HEAD` blob object ID. Synthetic tests prove
+  unchanged bytes pass; silently edited, missing, symlinked, oversize or
+  tampered metadata fail. This checks Git SHA-1 object identity **only**,
+  not collision resistance, atomic runtime isolation, or cryptographic
+  provenance independent of the local Git object store.
+- **W45:** The strict isolated suite manifest now pins these additional
+  integrity sentinel test IDs (and a self-test), so replacing them with
+  dummy passing tests cannot preserve a false-positive CI result.
+
+The isolated Python 3.14 test baseline after W45 is **129 tests:
+125 ordinary PASS + four intentionally open original-source
+expectedFailures**. An uncommitted dirty checkout deliberately produces
+`scope_owned_additive_branch=HOLD`; after commit a clean checkout is
+required to return `PASS`. Independently inspect both hosted Python 3.11
+and 3.14 exact-head logs before claiming final hosted proof.
+
+**Hard boundary:** no real assets, scans, consent, grants, handler dispatch,
+merge, production deployment, or release. Original source-owner repairs,
+revocation-at-use, independent privacy/security, entire original hosted
+suite, named permanent VPS CI and explicit human GO remain unsatisfied.
