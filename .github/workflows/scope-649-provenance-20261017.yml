@@ -1,0 +1,143 @@
+name: Scope 649 provenance (non-authorizing, owner isolated)
+
+on:
+  pull_request:
+    branches:
+      - chatgpt/scope-authorization-resolver-durable-integrity-20261007
+    paths:
+      - tests/test_scope_grant_issuance_provenance_649_20261017.py
+      - tests/test_scope_grant_provenance_synthetic_review_649_20261017.py
+      - scripts/review_scope_grant_provenance_synthetic_649.py
+      - scripts/review_scope_grant_provenance_pair_synthetic_649.py
+      - tests/test_scope_grant_provenance_pair_649_20261017.py
+      - tests/test_scope_grant_issuance_owner_fix_oracle_649_20261017.py
+      - docs/scope-grant-issuance-provenance-649-20261017.md
+      - .github/workflows/scope-649-provenance-20261017.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scope649-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline:
+    name: Strict synthetic grant provenance Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - name: Checkout exact review head without persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Pin parent and owned-only changed paths
+        shell: bash
+        run: |
+          python - <<'PY'
+          import subprocess
+          base = "4c8d5651fc0e23f94514daae56b4e5fe0549de37"
+          expected = {
+              "tests/test_scope_grant_issuance_provenance_649_20261017.py",
+              "docs/scope-grant-issuance-provenance-649-20261017.md",
+              "tests/test_scope_grant_provenance_synthetic_review_649_20261017.py",
+              "scripts/review_scope_grant_provenance_synthetic_649.py",
+              "scripts/review_scope_grant_provenance_pair_synthetic_649.py",
+              "tests/test_scope_grant_provenance_pair_649_20261017.py",
+              "tests/test_scope_grant_issuance_owner_fix_oracle_649_20261017.py",
+              ".github/workflows/scope-649-provenance-20261017.yml",
+          }
+          def git(*args):
+              return subprocess.check_output(["git", *args], text=True).strip()
+          assert git("merge-base", "HEAD", base) == base, "base ancestry HOLD"
+          names = set(git("diff", "--name-only", base, "HEAD").splitlines())
+          assert names == expected, ("owned-only paths HOLD", sorted(names))
+          for path in sorted(expected):
+              mode, kind, blob = git("ls-tree", "HEAD", "--", path).split(None, 2)
+              assert mode == "100644" and kind == "blob", ("nonregular path HOLD", path)
+          assert not git("status", "--porcelain"), "dirty checkout HOLD"
+          print("scope649_parent_and_own_tree=PASS (not authorization)")
+          PY
+      - name: Isolated in-memory and disposable SQLite contract
+        shell: bash
+        run: |
+          python -I -S -B -m unittest discover -s tests \
+            -p 'test_scope_grant_issuance_provenance_649_20261017.py' -v
+      - name: Unwired synthetic review and real offline CLI boundary
+        shell: bash
+        run: |
+          python -I -S -B -m unittest discover -s tests \
+            -p 'test_scope_grant_provenance_synthetic_review_649_20261017.py' -v
+      - name: Atomic fictional before-after provenance coherence CLI
+        shell: bash
+        run: |
+          python -I -S -B -m unittest discover -s tests \
+            -p 'test_scope_grant_provenance_pair_649_20261017.py' -v
+      - name: Prove eleven source REDs are repairable using ephemeral child-only owner fixture
+        shell: bash
+        run: |
+          python -I -S -B -m unittest discover -s tests \
+            -p 'test_scope_grant_issuance_owner_fix_oracle_649_20261017.py' -v
+          echo "EPHEMERAL FIXTURE ONLY: source owner branch is unchanged."
+      - name: Verify exact unfixed source RED names, not just expectedFailure totals
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          import subprocess
+          import sys
+
+          expected_failures = {
+              "test_rejects_exactly_nonbuiltin_approver_str_subclass",
+              "test_rejects_exactly_nonbuiltin_reference_str_subclass",
+              "test_rejects_polymorphic_approver_before_two_reads",
+              "test_rejects_polymorphic_reference_before_two_reads",
+              "test_rejects_duck_approver_without_consulting_foreign_methods",
+              "test_rejects_duck_reference_without_consulting_foreign_methods",
+              "test_rejects_bytes_reference_with_deterministic_validation_error",
+              "test_bad_approver_does_not_create_a_second_grant",
+              "test_bad_reference_does_not_overwrite_healthy_provenance",
+          }
+          expected_errors = {
+              "test_nonstring_approver_is_rejected_as_validation_error",
+              "test_nonstring_reference_is_rejected_as_validation_error",
+          }
+          env = dict(os.environ)
+          env["LIGHTUP_SCOPE649_REQUIRE_SOURCE_FIX"] = "1"
+          run = subprocess.run(
+              [sys.executable, "-I", "-S", "-B", "-m", "unittest", "discover",
+               "-s", "tests", "-p",
+               "test_scope_grant_issuance_provenance_649_20261017.py", "-q"],
+              env=env, text=True, stdout=subprocess.PIPE,
+              stderr=subprocess.PIPE, timeout=35, check=False,
+          )
+          stderr = run.stderr
+          failures = set(re.findall(r"^FAIL: (test_[a-z0-9_]+) \(", stderr, re.M))
+          errors = set(re.findall(r"^ERROR: (test_[a-z0-9_]+) \(", stderr, re.M))
+          assert run.returncode != 0, "owner source changed; re-review needed"
+          assert failures == expected_failures, ("source FAIL identity changed", sorted(failures))
+          assert errors == expected_errors, ("source ERROR identity changed", sorted(errors))
+          assert "Ran 18 tests" in stderr, "unexpected test discovery"
+          assert "FAILED (failures=9, errors=2)" in stderr, "source RED counts changed"
+          assert not subprocess.check_output(
+              ["git", "status", "--porcelain"], text=True
+          ).strip(), "strict gate mutated checkout"
+          print("scope649_strict_source_RED_identity=PASS (11 still unfixed; no authority)")
+          PY
+      - name: Explain remaining source-owner gates
+        run: |
+          echo "Only ordinary controls count as PASS; all source expectedFailures remain unresolved."
+          echo "This matrix is NOT the original complete hosted or permanent registered VPS proof."
+          echo "DRAFT/HOLD. No merge, deploy, real target, scan, grant, handler dispatch or release."
