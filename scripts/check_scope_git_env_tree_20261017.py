@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import selectors
+import signal
 import subprocess
 import sys
 import time
@@ -69,6 +70,7 @@ def safe_tree(raw: object, delta: object) -> bool:
 # Hosted CI and the independent VPS checkout both use this absolute Git
 # executable. Never resolve an attacker-supplied basename through PATH.
 GIT_BINARY = "/usr/bin/git"
+GIT_TIMEOUT_SECONDS = 15
 
 
 def _git_raw(*args: str, data: bytes | None = None) -> subprocess.CompletedProcess[bytes]:
@@ -89,7 +91,7 @@ def _git_raw(*args: str, data: bytes | None = None) -> subprocess.CompletedProce
     out = bytearray()
     err = bytearray()
     offset = 0
-    deadline = time.monotonic() + 15
+    deadline = time.monotonic() + GIT_TIMEOUT_SECONDS
     try:
         with selectors.DefaultSelector() as streams:
             assert process.stdout is not None and process.stderr is not None
@@ -101,10 +103,10 @@ def _git_raw(*args: str, data: bytes | None = None) -> subprocess.CompletedProce
             while streams.get_map():
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
-                    raise subprocess.TimeoutExpired(command, 15)
+                    raise subprocess.TimeoutExpired(command, GIT_TIMEOUT_SECONDS)
                 ready = streams.select(remaining)
                 if not ready:
-                    raise subprocess.TimeoutExpired(command, 15)
+                    raise subprocess.TimeoutExpired(command, GIT_TIMEOUT_SECONDS)
                 for key, _ in ready:
                     channel = key.data
                     stream = key.fileobj
@@ -133,6 +135,13 @@ def _git_raw(*args: str, data: bytes | None = None) -> subprocess.CompletedProce
         result = process.wait(timeout=max(0.001, deadline - time.monotonic()))
         return subprocess.CompletedProcess(command, result, bytes(out), bytes(err))
     except BaseException:
+        # The Git process may exit before a malicious descendant closes the
+        # inherited pipes. Kill the entire dedicated session on any failure,
+        # not just its original (possibly already exited) leader.
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
         if process.poll() is None:
             process.kill()
         process.wait()
