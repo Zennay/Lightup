@@ -259,3 +259,26 @@ production source-authority repair, complete original hosted CI, permanent
 named runner attestation or human release GO. Still **INCUBATE M3/M7,
 PLAN/LAB ONLY, DRAFT/HOLD — NO MERGE / DEPLOY / REAL TARGETS / SCANS /
 GRANTS / HANDLER DISPATCH / RELEASE**.
+
+## W39–W40 — descendant and run-path module loading (17 October 2026)
+
+Two newly reproduced, strictly offline AST review gaps are now covered.
+Ordinary `import lightup.scope_literal_control_review_20261016.child` and
+`from lightup.scope_literal_control_review_20261016.child import x`
+load their parent package even though the old review only checked the
+*final* import name; five synthetic positive cases failed first. Exact
+name-segment matching now catches descendant imports while avoiding
+unrelated suffix identifiers.
+
+Separately, `runpy.run_path("src/lightup/scope_literal_control_review_20261016.py")`
+can execute the otherwise unwired reviewer directly without an import by
+module name. Five synthetic positive patterns (module/alias/direct import,
+`path_name=` and static path concatenation) first failed and now pass.
+The check folds only bounded exact literal strings; arbitrary dynamic path
+construction and runtime file I/O remain explicitly outside the proof.
+
+The isolated manifest now requires **121 tests**, locally 117 ordinary PASS
+and four intentionally open original-source expectedFailures. No real
+LightUp permission, handler, scanner, network or production source changed.
+**INCUBATE M3/M7 · PLAN/LAB ONLY · DRAFT/HOLD**; entire original CI,
+permanent named VPS runner and authentic two-party consent remain gated.

@@ -110,6 +110,7 @@ def references_review_module(source: str, *, _depth: int = 0) -> bool:
     runpy_names = {"runpy"}
     pkgutil_names = {"pkgutil"}
     run_module_names: set[str] = set()
+    run_path_names: set[str] = set()
     resolve_name_names: set[str] = set()
     for node in nodes:
         if isinstance(node, ast.Import):
@@ -133,6 +134,8 @@ def references_review_module(source: str, *, _depth: int = 0) -> bool:
                     code_loader_names.add(alias.asname or alias.name)
                 if node.module == "runpy" and alias.name == "run_module":
                     run_module_names.add(alias.asname or alias.name)
+                if node.module == "runpy" and alias.name == "run_path":
+                    run_path_names.add(alias.asname or alias.name)
                 if node.module == "pkgutil" and alias.name == "resolve_name":
                     resolve_name_names.add(alias.asname or alias.name)
     for node in nodes:
@@ -182,13 +185,13 @@ def references_review_module(source: str, *, _depth: int = 0) -> bool:
             # Only fold literal strings; never execute application code.
             literal = (
                 _constant_text(node.args[0]) if node.args else
-                next((_constant_text(kw.value) for kw in node.keywords if kw.arg in ("name", "mod_name")), None)
+                next((_constant_text(kw.value) for kw in node.keywords if kw.arg in ("name", "mod_name", "path_name")), None)
             )
             if literal is None:
                 continue
             called = node.func
             direct_import = isinstance(called, ast.Name) and called.id in (
-                "__import__", *import_module_names, *run_module_names, *resolve_name_names,
+                "__import__", *import_module_names, *run_module_names, *run_path_names, *resolve_name_names,
             )
             qualified_import = (
                 isinstance(called, ast.Attribute)
@@ -197,6 +200,7 @@ def references_review_module(source: str, *, _depth: int = 0) -> bool:
                     (called.attr == "import_module" and called.value.id in importlib_names)
                     or (called.attr == "__import__" and called.value.id in builtins_names)
                     or (called.attr == "run_module" and called.value.id in runpy_names)
+                    or (called.attr == "run_path" and called.value.id in runpy_names)
                     or (called.attr == "resolve_name" and called.value.id in pkgutil_names)
                 )
             )
@@ -210,6 +214,7 @@ def references_review_module(source: str, *, _depth: int = 0) -> bool:
                     (called.args[0].id in importlib_names and _constant_text(called.args[1]) == "import_module")
                     or (called.args[0].id in builtins_names and _constant_text(called.args[1]) == "__import__")
                     or (called.args[0].id in runpy_names and _constant_text(called.args[1]) == "run_module")
+                    or (called.args[0].id in runpy_names and _constant_text(called.args[1]) == "run_path")
                     or (called.args[0].id in pkgutil_names and _constant_text(called.args[1]) == "resolve_name")
                 )
             )
@@ -243,6 +248,10 @@ def references_review_module(source: str, *, _depth: int = 0) -> bool:
                 module_name = literal.split(":", 1)[0]
                 parts = module_name.split(".")
                 if REVIEWER in parts:
+                    return True
+                # run_path executes a Python file directly, bypassing module
+                # name imports. Lexically match only the exact owned filename.
+                if literal.replace(chr(92), "/").split("/")[-1] == REVIEWER + ".py":
                     return True
     return False
 
@@ -522,6 +531,30 @@ class RuntimeIsolationStaticTests(unittest.TestCase):
             "from lightup.scope_literal_control_review_20261016_suffix import x",
             "import other.scope_literal_control_review_20261016_suffix",
             "import lightup.scope_literal_control_review_20261016_backup",
+        )
+        for source in cases:
+            with self.subTest(source=source):
+                self.assertFalse(references_review_module(source))
+
+    def test_runpy_run_path_static_reviewer_script(self):
+        target = "src/lightup/scope_literal_control_review_20261016.py"
+        cases = (
+            "import runpy\nrunpy.run_path(" + repr(target) + ")",
+            "import runpy as rp\nrp.run_path(path_name=" + repr(target) + ")",
+            "from runpy import run_path as execute\nexecute(" + repr(target) + ")",
+            "import runpy as rp\ngetattr(rp, 'run_path')(" + repr(target) + ")",
+            "import runpy\nrunpy.run_path('src/lightup/' + 'scope_literal_control_review_20261016.py')",
+        )
+        for source in cases:
+            with self.subTest(source=source):
+                self.assertTrue(references_review_module(source))
+
+    def test_runpy_run_path_unrelated_scripts_not_flagged(self):
+        cases = (
+            "import runpy\nrunpy.run_path('src/lightup/activation.py')",
+            "import runpy\nrunpy.run_path(path_name=some_dynamic_file)",
+            "import runpy\nrunpy.run_module('lightup.scope')",
+            "from runpy import run_path\nrun_path('scripts/other.py')",
         )
         for source in cases:
             with self.subTest(source=source):
