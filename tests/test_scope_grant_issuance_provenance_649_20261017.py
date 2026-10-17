@@ -194,6 +194,49 @@ class GrantIssuanceProvenance649(unittest.TestCase):
             ).fetchall()
         self.assertEqual(pairs, [(original.approved_by, original.reference)])
 
+    def test_synthetic_durable_drift_is_denied_by_unwired_pair_reviewer(self):
+        """Integration of the real local-only source gap with a synthetic HOLD."""
+        scripts = str(Path(__file__).resolve().parents[1] / "scripts")
+        if scripts not in sys.path:
+            sys.path.insert(0, scripts)
+        import review_scope_grant_provenance_pair_synthetic_649 as compare
+        import review_scope_grant_provenance_synthetic_649 as audit
+
+        value = _ToggleStrip()
+        before_count = self._row_count()
+        try:
+            grant = self._issue(reference=value)
+        except ValueError:
+            # After the independent source owner fixes exact primitive typing,
+            # rejection without a durable row is the correct green route.
+            self.assertEqual(self._row_count(), before_count)
+            return
+        # Current unmodified owner source stores a second, blank .strip result.
+        with sqlite3.connect(self.path) as con:
+            row = con.execute(
+                "SELECT reference, approved_by FROM authorization_grants "
+                "WHERE grant_id=?", (grant.grant_id,),
+            ).fetchone()
+        self.assertIsNotNone(row)
+        self.assertGreaterEqual(value.calls, 2)
+        self.assertEqual(row[0], "")
+        self.assertEqual(self._row_count(), before_count + 1)
+        result = compare.review_pair_batch({
+            "schema": compare.PAIR_SCHEMA,
+            "synthetic_only": True,
+            "pairs": [{
+                "before": {
+                    "approved_by": "Synthetic operator",
+                    "reference": "VERIFIED-SYNTHETIC",
+                },
+                "after": {"approved_by": row[1], "reference": row[0]},
+            }],
+        })
+        self.assertIs(result.status, audit.ReviewStatus.HOLD)
+        self.assertFalse(result)
+        self.assertFalse(result.permit_issued)
+        self.assertFalse(result.authorization_verified)
+
     def test_canonical_approver_and_reference_repeated_grants_keep_provenance(self):
         first = self._issue()
         second = self._issue(approved_by="Synthetic reviewer B", reference="SYNTH-B")
