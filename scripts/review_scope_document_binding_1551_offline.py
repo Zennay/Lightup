@@ -24,10 +24,33 @@ def _hold() -> dict[str, object]:
             "reason": "UNTRUSTED_OR_DISCONTINUOUS", **timeline.claim.AUTHORITY_FLAGS}
 
 
-def _read_regular_document(path: str) -> bytes:
-    if type(path) is not str or not path or len(path) > 4096 or not hasattr(os, "O_NOFOLLOW"):
+
+def _open_regular_without_symlink_components(path: str) -> int:
+    if (type(path) is not str or not path or len(path) > 4096
+            or not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY")):
         raise ValueError("invalid path")
-    fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW | os.O_CLOEXEC)
+    segments = path.split("/")
+    absolute = path.startswith("/")
+    if absolute:
+        segments = segments[1:]
+    if not segments or any(not part or part in (".", "..") or chr(0) in part
+                           for part in segments):
+        raise ValueError("noncanonical path")
+    dirflags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+    parent = os.open("/" if absolute else ".", dirflags)
+    try:
+        for component in segments[:-1]:
+            child = os.open(component, dirflags, dir_fd=parent)
+            os.close(parent)
+            parent = child
+        fileflags = os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW | os.O_CLOEXEC
+        return os.open(segments[-1], fileflags, dir_fd=parent)
+    finally:
+        os.close(parent)
+
+
+def _read_regular_document(path: str) -> bytes:
+    fd = _open_regular_without_symlink_components(path)
     try:
         details = os.fstat(fd)
         if (not stat.S_ISREG(details.st_mode) or details.st_size < 1

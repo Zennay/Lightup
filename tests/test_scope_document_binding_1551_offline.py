@@ -151,5 +151,18 @@ class ScopeDocumentAcceptance(unittest.TestCase):
         self.assertTrue(switched[0])
 
 
+    def test_symlinked_parent_directory_is_also_rejected(self):
+        aliased_parent = Path(self.workspace.name) / "alias"
+        aliased_parent.symlink_to(self.path.parent, target_is_directory=True)
+        alias_path = aliased_parent / self.path.name
+        self.invoke(["--scope-document", str(alias_path)], expect=2)
+
+    def test_ambiguous_dot_and_parent_components_rejected(self):
+        for alias_path in (str(self.path.parent)+"/./"+self.path.name,
+                           str(self.path.parent)+"/other/../"+self.path.name):
+            with self.subTest(alias_path=alias_path):
+                self.invoke(["--scope-document",alias_path],expect=2)
+
+
 if __name__ == "__main__":
     unittest.main()
