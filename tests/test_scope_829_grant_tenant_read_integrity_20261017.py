@@ -11,6 +11,7 @@ from __future__ import annotations
 import sqlite3
 import tempfile
 import unittest
+from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -261,6 +262,55 @@ class GrantTenantReadIntegrity829(unittest.TestCase):
                 self.ctx_a, self.eng_a.engagement_id, now=self.now
             ).grant_id, newer.grant_id,
         )
+
+    @unittest.expectedFailure
+    def test_source_red_rebound_engagement_owner_cannot_leak_old_grant(self):
+        """An owner change between authorization and SELECT must HOLD."""
+        good = self.grant(self.eng_a)
+        original = self.store.get_engagement
+
+        def rebind_after_access_check(ctx, engagement_id):
+            checked = original(ctx, engagement_id)
+            with sqlite3.connect(self.db) as con:
+                con.execute(
+                    "UPDATE engagements SET client_id=? WHERE engagement_id=?",
+                    (self.b.client_id, engagement_id),
+                )
+            return checked
+
+        before = self.row_snapshot()
+        with patch.object(
+            self.store, "get_engagement", side_effect=rebind_after_access_check
+        ):
+            grants = self.store.list_authorization_grants(
+                self.ctx_a, self.eng_a.engagement_id
+            )
+        self.assertEqual(grants, [])
+        self.assertEqual(self.row_snapshot(), before)
+        self.assertNotEqual(good.client_id, self.b.client_id)
+
+    @unittest.expectedFailure
+    def test_source_red_operator_current_must_reject_rebound_engagement(self):
+        """Even an operator cannot treat a stale pre-rebind grant as current."""
+        self.grant(self.eng_a)
+        original = self.store.get_engagement
+
+        def rebind_after_access_check(ctx, engagement_id):
+            checked = original(ctx, engagement_id)
+            with sqlite3.connect(self.db) as con:
+                con.execute(
+                    "UPDATE engagements SET client_id=? WHERE engagement_id=?",
+                    (self.b.client_id, engagement_id),
+                )
+            return checked
+
+        with patch.object(
+            self.store, "get_engagement", side_effect=rebind_after_access_check
+        ):
+            current = self.store.get_current_grant(
+                self.operator, self.eng_a.engagement_id, now=self.now
+            )
+        self.assertIsNone(current)
 
 if __name__ == "__main__":
     unittest.main()
