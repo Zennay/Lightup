@@ -125,18 +125,26 @@ def append_message(
                 raise ClarificationDenied(
                     "This request is closed or its client lineage changed"
                 )
-            if not as_operator:
-                user = db.execute(
-                    "SELECT role,client_id FROM users WHERE user_id=?",
-                    (ctx.user_id,),
-                ).fetchone()
-                if (
-                    user is None or user[0] != ctx.role.value
-                    or user[1] != request.client_id
-                ):
+            # Validate the real account identity *inside the same write
+            # transaction* for both sides of the discussion. A stale
+            # session role or manufactured AccessContext cannot send a message.
+            user = db.execute(
+                "SELECT role,client_id FROM users WHERE user_id=?",
+                (ctx.user_id,),
+            ).fetchone()
+            if user is None or user[0] != ctx.role.value:
+                raise ClarificationDenied(
+                    "Author account is absent or its role has changed"
+                )
+            if as_operator:
+                if user[1] is not None:
                     raise ClarificationDenied(
-                        "Client account no longer belongs to this tenant"
+                        "Operator account cannot be bound to a client"
                     )
+            elif user[1] != request.client_id:
+                raise ClarificationDenied(
+                    "Client account no longer belongs to this tenant"
+                )
             count = db.execute(
                 "SELECT COUNT(*) FROM assessment_clarifications WHERE request_id=?",
                 (request_id,),
