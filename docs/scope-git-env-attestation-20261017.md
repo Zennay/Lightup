@@ -562,3 +562,17 @@ workflow regression now rejects a return to `-I -B` or unisolated
 unittest commands. This does not independently certify a privileged
 Python installation, runtime client/operator permission or any
 permanent VPS CI agent; unchanged release HOLD applies.
+
+
+### W103 — executable synthetic Python startup witness
+
+A new bounded disposable-repository-adjacent test places an inert
+`sitecustomize.py` in a temporary directory and launches an ordinary
+Python `-c` subprocess with `PYTHONPATH` pointing there. The control
+run writes a local marker, confirming that a plain Python invocation
+would execute the startup fixture *before* the requested script. The
+same `-c` command under the dedicated workflow's `-I -S -B` flags
+does not produce that marker. Only a synthetic temporary marker is
+created, and the disposable folder is automatically deleted.
+The result demonstrates an actual denied startup path; it does not
+establish trust in any deployed interpreter or the original full CI.
