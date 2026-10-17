@@ -101,6 +101,26 @@ class ScopeAuditMutationMatrixTests(unittest.TestCase):
                     corrupt["events"][index]["seq"] = forged
                     self.assertEqual("HOLD", verify_chain(pack(corrupt), tip)["status"])
 
+    def test_every_position_forged_authorization_field_64_subcases(self):
+        base, tip = make_chain(64)
+        for index in range(64):
+            with self.subTest(record=index):
+                corrupt = json.loads(pack(base))
+                corrupt["events"][index]["authorization_granted"] = True
+                receipt = verify_chain(pack(corrupt), tip)
+                self.assertEqual("HOLD", receipt["status"])
+                self.assertIs(receipt["authorization_granted"], False)
+
+    def test_every_position_unknown_kind_64_subcases(self):
+        base, tip = make_chain(64)
+        for index in range(64):
+            with self.subTest(record=index):
+                corrupt = json.loads(pack(base))
+                corrupt["events"][index]["kind"] = "REAL_CLIENT_CONSENT"
+                receipt = verify_chain(pack(corrupt), tip)
+                self.assertEqual("HOLD", receipt["status"])
+                self.assertIs(receipt["consent_verified"], False)
+
     def test_reanchored_rewritten_history_denied_at_each_position(self):
         before, old_tip = make_chain(20)
         for index in range(20):
