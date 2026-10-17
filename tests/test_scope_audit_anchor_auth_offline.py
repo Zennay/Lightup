@@ -240,5 +240,69 @@ class ScopeAuditAnchorAuthTests(unittest.TestCase):
         self.assertEqual("HOLD", json.loads(result.stdout)["status"])
 
 
+    def test_real_cli_open_pipe_without_eof_fails_closed_within_seconds(self):
+        now = datetime.now(timezone.utc)
+        record = receipt(
+            issued=now - timedelta(minutes=1),
+            expires=now + timedelta(minutes=2),
+        )
+        root = Path(__file__).resolve().parents[1]
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(root / "src")
+        reader, writer = os.pipe()
+        process = None
+        try:
+            os.write(writer, KEY)
+            # Deliberately keep writer open: parent stalls the EOF boundary.
+            # A safe CLI must terminate with generic HOLD without hanging.
+            process = subprocess.Popen(
+                [
+                    sys.executable, "-m", "lightup.scope_audit_anchor_auth_offline",
+                    "--synthetic-only", "--expected-key-id", ID,
+                    "--key-fd", str(reader),
+                ],
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, pass_fds=(reader,),
+                cwd=root, env=env,
+            )
+            output, errors = process.communicate(input=encode(record), timeout=8)
+            self.assertEqual(2, process.returncode, errors.decode())
+            self.assertEqual("HOLD", json.loads(output)["status"])
+            self.assertNotIn(KEY, output)
+        finally:
+            if process is not None and process.poll() is None:
+                process.kill()
+                process.wait(timeout=2)
+            os.close(reader)
+            os.close(writer)
+
+    def test_socket_descriptor_is_not_a_synthetic_key_source(self):
+        import socket
+        root = Path(__file__).resolve().parents[1]
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(root / "src")
+        now = datetime.now(timezone.utc)
+        record = receipt(
+            issued=now - timedelta(minutes=1),
+            expires=now + timedelta(minutes=2),
+        )
+        left, right = socket.socketpair()
+        try:
+            result = subprocess.run(
+                [
+                    sys.executable, "-m", "lightup.scope_audit_anchor_auth_offline",
+                    "--synthetic-only", "--expected-key-id", ID,
+                    "--key-fd", str(left.fileno()),
+                ],
+                input=encode(record), capture_output=True,
+                pass_fds=(left.fileno(),), cwd=root, env=env, timeout=7,
+            )
+            self.assertEqual(2, result.returncode)
+            self.assertEqual("HOLD", json.loads(result.stdout)["status"])
+        finally:
+            left.close()
+            right.close()
+
+
 if __name__ == "__main__":
     unittest.main()
