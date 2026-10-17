@@ -218,5 +218,80 @@ class ConsentRevocationContract(unittest.TestCase):
             self.assertNotIn(forbidden, source)
 
 
+    def test_unicode_escape_aliases_fail_closed(self):
+        good = raw(packet())
+        for canonical, alias in (
+            (b'"role":"client"', b'"role":"\\u0063lient"'),
+            (b'"scope_sha256"', b'"\\u0073cope_sha256"'),
+            (b'"proposal_sha":"aaaaaaaa', b'"proposal_sha":"\\u0061aaaaaaa'),
+        ):
+            with self.subTest(alias=alias):
+                self.assertIn(canonical, good)
+                mutated = good.replace(canonical, alias, 1)
+                self.assertNotEqual(good, mutated)
+                self.assertEqual("HOLD", mod.review(mutated)["status"])
+
+    def test_fragmented_input_and_bad_tail_never_partial_acceptance(self):
+        import io
+        from unittest.mock import patch
+
+        class FragmentStream:
+            def __init__(self, data):
+                self.data = data
+                self.offset = 0
+            def read(self, _size):
+                if self.offset >= len(self.data):
+                    return b""
+                b = self.data[self.offset:self.offset + 1]
+                self.offset += 1
+                return b
+
+        class FakeInput:
+            def __init__(self, data):
+                self.buffer = FragmentStream(data)
+
+        for data, expected in ((raw(packet()), "REVIEW_ONLY"),
+                               (raw(packet()) + b"x", "HOLD")):
+            out = io.StringIO()
+            with patch.object(mod.sys, "stdin", FakeInput(data)):
+                with patch.object(mod.sys, "stdout", out):
+                    exitcode = mod.main([])
+            self.assertEqual(3 if expected == "REVIEW_ONLY" else 2, exitcode)
+            result = json.loads(out.getvalue())
+            self.assertEqual(expected, result["status"])
+            self.assertTrue(all(result[k] is False for k in mod.AUTHORITY_FLAGS))
+
+
+    def test_exact_byte_size_boundary(self):
+        fixture = raw(packet())
+        at_limit = fixture + b" " * (mod.MAX_INPUT_BYTES - len(fixture))
+        self.assertEqual(len(at_limit), mod.MAX_INPUT_BYTES)
+        self.assertEqual("REVIEW_ONLY", mod.review(at_limit)["status"])
+        self.assertEqual("HOLD", mod.review(at_limit + b" ")["status"])
+
+    def test_stdout_partial_bool_type_and_io_failure_return_nonzero(self):
+        import io
+        from unittest.mock import patch
+        class FakeInput:
+            def __init__(self):
+                self.buffer = io.BytesIO(raw(packet()))
+        class Output:
+            def __init__(self, mode):
+                self.mode = mode
+            def write(self, s):
+                if self.mode == "short": return len(s) - 1
+                if self.mode == "bool": return True
+                if self.mode == "raise": raise OSError("synthetic stdout disconnected")
+                return len(s)
+            def flush(self):
+                if self.mode == "flush": raise OSError("synthetic stdout flush")
+        for mode in ("short", "bool", "raise", "flush"):
+            with self.subTest(mode=mode):
+                with patch.object(mod.sys, "stdin", FakeInput()):
+                    with patch.object(mod.sys, "stdout", Output(mode)):
+                        outcome = mod.main([])
+                self.assertEqual(2, outcome)
+
+
 if __name__ == "__main__":
     unittest.main()

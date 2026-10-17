@@ -91,6 +91,10 @@ def _claim(record: dict[str, object], proposal: str, scope: str) -> tuple[str, s
 def _parse(raw: bytes) -> dict[str, object]:
     if type(raw) is not bytes or not raw or len(raw) > MAX_INPUT_BYTES:
         _fail("unbounded or invalid input")
+    # All schema keys and permitted identity/timestamp values are printable ASCII;
+    # JSON escapes could alias different byte-level identities after decoding.
+    if b"\\" in raw:
+        _fail("escaped identity alias")
     try:
         payload = json.loads(raw.decode("utf-8", errors="strict"), object_pairs_hook=_pairs, parse_constant=_constant)
     except (UnicodeError, ValueError, TypeError, RecursionError):
