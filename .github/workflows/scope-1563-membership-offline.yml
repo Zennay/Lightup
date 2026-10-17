@@ -58,5 +58,11 @@ jobs:
           result=$?
           set -e
           test "$result" -eq 3
-      - name: Assert no leftover changes
-        run: git diff --exit-code
+      - name: Assert no leftover tracked/index/untracked changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          git diff --exit-code
+          git diff --cached --exit-code
+          test -z "$(git ls-files --others --exclude-standard)"
