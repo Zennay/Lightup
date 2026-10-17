@@ -94,7 +94,8 @@ Every file has exact keys `status` and `filename`; only `renamed` and
 
 Both the source and destination of renames/copies are included in the
 claim index; missing or ambiguous rename ancestry, stale/diverged bases,
-unknown status, oversized lists, any extra field, missing count, unexpected
+unknown status, oversized lists, any extra field, missing count, a
+replayed identical `head_sha` claimed by two independent workers, unexpected
 byte encoding or cross-worker collision => generic HOLD. The compare
 adapter imports **only the known local sibling reviewer** from its fixed
 script path. It neither fetches GitHub nor writes any result to disk.
@@ -145,7 +146,8 @@ interpreted as conflict-free, approval, permission to trigger handlers, or GO.
 
 ## Ownership and release gate
 
-This branch adds only a new reviewer, new tests and this document. No edits to
+This branch adds two unwired offline reviewers, independent acceptance suites
+and this document, solely under seven newly owned paths. No edits to
 existing source owners' `src/lightup/*`, other workers' branches, existing
 workflows, real clients/targets, live grants, execution handlers, scanning,
 remediation, or deployment.
