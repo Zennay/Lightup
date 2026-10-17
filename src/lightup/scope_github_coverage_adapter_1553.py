@@ -21,7 +21,7 @@ _MAX_CHANGED_LINES = 1_000_000
 _RECORD_REQUIRED = frozenset({"filename", "status", "additions", "deletions"})
 _RECORD_OPTIONAL = frozenset({"previous_filename", "patch"})
 _STATUSES = frozenset({"added", "modified", "removed", "renamed", "copied", "changed"})
-_HUNK = re.compile(r"@@ -[0-9]+(?:,[0-9]+)? \\+[0-9]+(?:,[0-9]+)? @@(?: .*)?\\Z")
+_HUNK = re.compile(r"@@ -[0-9]+(?:,[0-9]+)? \+[0-9]+(?:,[0-9]+)? @@(?: .*)?\Z")
 
 
 def _complete_patch_stats(patch: str) -> tuple[int, int] | None:
@@ -30,9 +30,9 @@ def _complete_patch_stats(patch: str) -> tuple[int, int] | None:
     Binary, omitted, partial or unknown/combined diffs HOLD. This is a
     consistency check for fictional inputs, never proof of authentic Git data.
     """
-    if not patch or "\\r" in patch:
+    if not patch or "\r" in patch:
         return None
-    lines = patch.split("\\n")
+    lines = patch.split("\n")
     if lines and lines[-1] == "":
         lines.pop()
     seen_hunk = False
@@ -48,7 +48,7 @@ def _complete_patch_stats(patch: str) -> tuple[int, int] | None:
             removals += 1
         elif line.startswith(" "):
             pass
-        elif line == "\\\\ No newline at end of file":
+        elif line == "\\ No newline at end of file":
             pass
         else:
             return None
