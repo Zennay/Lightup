@@ -5,8 +5,10 @@ on:
     paths:
       - 'src/lightup/scope_audit_anchor_auth_offline.py'
       - 'src/lightup/scope_audit_anchor_batch_offline.py'
+      - 'src/lightup/scope_audit_anchor_replay_update_offline.py'
       - 'tests/test_scope_audit_anchor_auth_offline.py'
       - 'tests/test_scope_audit_anchor_batch_offline.py'
+      - 'tests/test_scope_audit_anchor_replay_update_offline.py'
       - 'scripts/check_scope_1558_additive_proof.py'
       - 'tests/test_scope_1558_additive_proof.py'
       - '.github/workflows/lightup-scope-anchor-auth.yml'
@@ -44,7 +46,7 @@ jobs:
       - name: Verify ancestor and exact additive file ownership
         run: python scripts/check_scope_1558_additive_proof.py
       - name: Compile exclusive files
-        run: python -m compileall -q src/lightup/scope_audit_anchor_auth_offline.py src/lightup/scope_audit_anchor_batch_offline.py tests/test_scope_audit_anchor_auth_offline.py tests/test_scope_audit_anchor_batch_offline.py scripts/check_scope_1558_additive_proof.py tests/test_scope_1558_additive_proof.py
+        run: python -m compileall -q src/lightup/scope_audit_anchor_auth_offline.py src/lightup/scope_audit_anchor_batch_offline.py src/lightup/scope_audit_anchor_replay_update_offline.py tests/test_scope_audit_anchor_auth_offline.py tests/test_scope_audit_anchor_batch_offline.py tests/test_scope_audit_anchor_replay_update_offline.py scripts/check_scope_1558_additive_proof.py tests/test_scope_1558_additive_proof.py
       - name: Run real offline subprocess regressions
         env:
           PYTHONPATH: src
