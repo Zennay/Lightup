@@ -13,6 +13,7 @@ import os
 import sqlite3
 import tempfile
 import unittest
+from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -217,6 +218,69 @@ class CanonicalGrantScopeAcceptance(unittest.TestCase):
             self.issue(trap)
         self.assertEqual(trap.reads, 0)
         self.assertEqual(self.durable_count(), 0)
+
+
+    def test_disposable_owner_guard_oracle_rejects_foreign_before_read(self):
+        """Proof-of-repair only: temporary monkeypatch, never production source."""
+        original = DomainStore.record_authorization_grant
+
+        def guarded(store, ctx, engagement_id, approved_by, reference,
+                    scope, valid_from, valid_until, recurring_retest_allowed=False):
+            if type(scope) is not ScopeDefinition:
+                raise ValueError("exact ScopeDefinition required before any read")
+            return original(
+                store, ctx, engagement_id, approved_by, reference,
+                scope, valid_from, valid_until, recurring_retest_allowed,
+            )
+
+        class Sneaky:
+            assets = ("offline.example.invalid",)
+            max_risk = RiskLevel.STANDARD
+            allowed_capabilities = ("web-baseline",)
+            excluded_assets = ()
+
+            @property
+            def __class__(self):
+                return ScopeDefinition
+
+        class Trap:
+            def __init__(self):
+                object.__setattr__(self, "reads", 0)
+
+            def __getattribute__(self, name):
+                if name == "max_risk":
+                    object.__setattr__(
+                        self, "reads", object.__getattribute__(self, "reads") + 1
+                    )
+                    raise AssertionError("foreign scope field was evaluated")
+                return object.__getattribute__(self, name)
+
+        trap = Trap()
+        canonical = self.scope()
+        subclass = FlippingScope(
+            assets=canonical.assets, max_risk=canonical.max_risk,
+            allowed_capabilities=canonical.allowed_capabilities,
+            excluded_assets=canonical.excluded_assets,
+        )
+        object.__setattr__(subclass, "_scope646_risk_reads", 0)
+        duck = SimpleNamespace(
+            assets=canonical.assets, max_risk=canonical.max_risk,
+            allowed_capabilities=canonical.allowed_capabilities,
+            excluded_assets=canonical.excluded_assets,
+        )
+        with patch.object(DomainStore, "record_authorization_grant", guarded):
+            for candidate in (None, Sneaky(), trap, subclass, duck):
+                with self.subTest(candidate=type(candidate).__name__):
+                    with self.assertRaises(ValueError):
+                        self.issue(candidate)
+                    self.assertEqual(self.durable_count(), 0)
+            self.assertEqual(trap.reads, 0)
+            self.assertEqual(
+                object.__getattribute__(subclass, "_scope646_risk_reads"), 0
+            )
+            valid = self.issue(canonical)
+            self.assertIs(type(valid.scope), ScopeDefinition)
+            self.assertEqual(self.durable_count(), 1)
 
 
 if __name__ == "__main__":
