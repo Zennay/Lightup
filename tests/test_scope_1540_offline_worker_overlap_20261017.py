@@ -179,5 +179,25 @@ class OfflineWorkerOverlapTests(unittest.TestCase):
                           review.check(b"not-json")}, {"REVIEW_ONLY", "HOLD"})
 
 
+    def test_nonfinite_numeric_exponent_never_escapes_hold(self):
+        # JSON permits syntactically valid huge exponents; Python float is inf.
+        for raw in (b"1e9999", b'{"x":1e9999}', b'{"x":-1e9999}'):
+            with self.subTest(raw=raw):
+                self.assertEqual(review.check(raw), "HOLD")
+
+    def test_every_truncated_canonical_prefix_holds(self):
+        raw = encode(GOOD)
+        for n in range(len(raw)):
+            with self.subTest(prefix_length=n):
+                self.assertEqual(review.check(raw[:n]), "HOLD")
+
+    def test_pure_parser_cannot_leak_untrusted_paths(self):
+        secret = "private/sensitive/file.py"
+        doc = document(proposal("scope-a", "a", secret),
+                       proposal("scope-b", "b", secret))
+        self.assertEqual(review.check(encode(doc)), "HOLD")
+        self.assertNotIn(secret, review._receipt("HOLD"))
+
+
 if __name__ == "__main__":
     unittest.main()
