@@ -89,3 +89,7 @@ jobs:
           set -euo pipefail
           test "$(git diff --name-only)" = "$(printf 'src/lightup/capability_registry_history_report.py\ntests/test_scope_legacy_falsy_window_301_red_20261014.py')"
           git diff --check
+          # Owner files are overlaid unstaged only. Index changes or foreign
+          # untracked files must never be hidden by an unstaged-only diff.
+          git diff --cached --exit-code
+          test -z "$(git ls-files --others --exclude-standard)"
