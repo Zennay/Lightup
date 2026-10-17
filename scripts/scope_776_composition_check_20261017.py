@@ -39,6 +39,13 @@ REFERENCE_773 = (
 )
 OWNER_SHA = "4c8d5651fc0e23f94514daae56b4e5fe0549de37"
 OWN_FILE = "tests/test_scope_776_composed_identity_20261017.py"
+OWN_PATHS = (
+    "docs/scope-776-three-family-composition-20261017.md",
+    "manifests/scope-776-three-family-20261017.json",
+    "scripts/scope_776_composition_check_20261017.py",
+    "tests/test_scope_776_composed_identity_20261017.py",
+    "tests/test_scope_776_manifest_rules.py",
+)
 PATTERN = "test_scope_*_20261017.py"
 
 GIT_ENV = dict(os.environ, GIT_NO_REPLACE_OBJECTS="1",
@@ -101,6 +108,20 @@ def verify_manifest() -> dict:
                     OWNER_SHA, "HEAD"], env=GIT_ENV, check=True, timeout=20)
     for c, p, s in (*SOURCE_BLOBS.values(), REFERENCE_773):
         blob(c, p, s)
+    # Explicit collision boundary: every change is exactly one new own path.
+    expected = {"A\\t" + path for path in OWN_PATHS}
+    actual = set(git("diff", "--name-status", OWNER_SHA, "HEAD").decode(
+        "utf-8", "strict").splitlines())
+    if len(actual) != len(OWN_PATHS) or actual != expected:
+        raise RuntimeError("scope776_source_or_other_worker_path_changed")
+    for path in OWN_PATHS:
+        head_entry = git("ls-tree", "HEAD", "--", path).decode("utf-8", "strict")
+        original_entry = git("ls-tree", OWNER_SHA, "--", path)
+        if not head_entry.startswith("100644 blob ") or original_entry:
+            raise RuntimeError("scope776_modified_or_nonregular_path:" + path)
+    if git("status", "--porcelain", "--untracked-files=all").strip():
+        raise RuntimeError("scope776_git_worktree_not_clean")
+    print("scope776_exact_five_additive_owned_paths_and_clean_checkout=PASS")
     print("scope776_pinned_648_775_blobs_and_read_only_773_reference=PASS")
     return manifest
 
