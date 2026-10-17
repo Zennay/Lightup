@@ -239,7 +239,8 @@ def messages_for_request(
 
 
 def render_thread_html(snapshot: dict, auth: AuthState, *,
-                       operator: bool, action: str) -> str:
+                       operator: bool, action: str,
+                       allow_post: bool = True) -> str:
     cards = "".join(
         '<div class="card"><div class="row"><strong>'
         + ("Operator question" if item["kind"] == "question" else "Client reply")
@@ -248,7 +249,9 @@ def render_thread_html(snapshot: dict, auth: AuthState, *,
         + '</p></div>'
         for item in snapshot["messages"]
     ) or '<p class="empty">No questions or replies yet.</p>'
-    can_write = snapshot["request_status"] in ("submitted", "under_review")
+    can_write = allow_post and snapshot["request_status"] in (
+        "submitted", "under_review"
+    )
     if not operator and snapshot["awaiting"] != "Awaiting client reply":
         can_write = False
     if can_write:
@@ -267,6 +270,9 @@ def render_thread_html(snapshot: dict, auth: AuthState, *,
         )
     else:
         form = (
+            '<p class="meta">Operator client-portal browsing is strictly '
+            'read-only. Ask questions from the operator request dossier.</p>'
+            if not allow_post else
             '<p class="meta">Replies are not currently available. '
             'A request must be open and a client reply requires an '
             'unanswered operator question.</p>'
