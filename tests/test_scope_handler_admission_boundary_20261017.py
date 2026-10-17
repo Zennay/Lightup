@@ -186,6 +186,69 @@ class ReviewBoundaryTests(unittest.TestCase):
             decorated = source_red_until_owner_fix(trap)
         self.assertTrue(getattr(decorated, "__unittest_expecting_failure__", False))
 
+    def test_async_and_generator_code_substitution_forces_fresh_hold(self):
+        # A previously shape-valid Python function can acquire async or
+        # generator code without replacing the function object.
+        def candidate(context, arguments):
+            return None
+        async def coroutine(context, arguments):
+            return None
+        def generator(context, arguments):
+            yield None
+        async def async_generator(context, arguments):
+            yield None
+
+        original_code = candidate.__code__
+        self.assertEqual(review_handlers((("candidate", candidate),)).status, "REVIEW_ONLY")
+        try:
+            for alternate in (coroutine, generator, async_generator):
+                with self.subTest(code=alternate.__name__):
+                    candidate.__code__ = alternate.__code__
+                    receipt = review_handlers((("candidate", candidate),))
+                    self.assertEqual(receipt.status, "HOLD")
+                    self.assertFalse(receipt.authorized)
+                    self.assertFalse(receipt.consent_verified)
+                    self.assertFalse(receipt.dispatch_allowed)
+                    self.assertFalse(receipt.release_allowed)
+        finally:
+            candidate.__code__ = original_code
+        self.assertEqual(review_handlers((("candidate", candidate),)).status, "REVIEW_ONLY")
+
+    def test_keyword_defaults_mutation_forces_fresh_hold(self):
+        def candidate(context, arguments):
+            return None
+
+        original_defaults = candidate.__kwdefaults__
+        self.assertEqual(review_handlers((("candidate", candidate),)).status, "REVIEW_ONLY")
+        try:
+            candidate.__kwdefaults__ = {"arguments": None}
+            receipt = review_handlers((("candidate", candidate),))
+            self.assertEqual(receipt.status, "HOLD")
+            self.assertFalse(receipt.dispatch_allowed)
+        finally:
+            candidate.__kwdefaults__ = original_defaults
+        self.assertEqual(review_handlers((("candidate", candidate),)).status, "REVIEW_ONLY")
+
+    def test_opaque_annotations_are_not_reflected_or_executed(self):
+        class MetadataTrap:
+            def __getattribute__(self, key):
+                raise AssertionError("annotation reflection forbidden")
+            def __repr__(self):
+                raise AssertionError("annotation presentation forbidden")
+        def candidate(context, arguments):
+            return None
+        original_annotations = candidate.__annotations__
+        try:
+            candidate.__annotations__ = {"context": MetadataTrap()}
+            receipt = review_handlers((("candidate", candidate),))
+            self.assertEqual(receipt.status, "REVIEW_ONLY")
+            self.assertFalse(receipt.authorized)
+            self.assertFalse(receipt.consent_verified)
+            self.assertFalse(receipt.dispatch_allowed)
+            self.assertFalse(receipt.release_allowed)
+        finally:
+            candidate.__annotations__ = original_annotations
+
 
 if __name__ == "__main__":
     unittest.main()
