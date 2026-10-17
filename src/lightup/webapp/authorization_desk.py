@@ -223,7 +223,7 @@ def render_authorization_desk(
 def render_operator_request_detail(
     store: DomainStore, auth: AuthState, request_id: str,
 ) -> Response:
-    """Operator-only detail page, never a review decision or grant issuance."""
+    """Operator-only dossier with guarded administrative review controls."""
     ctx = auth.context
     if type(ctx) is not AccessContext or ctx.role is not Role.OPERATOR:
         return Response("<h1>Operator access required</h1>", status="403 Forbidden")
@@ -253,10 +253,47 @@ def render_operator_request_detail(
     ) or '<li>None recorded</li>'
     if len(request.requested_assets) > 100:
         assets += '<li>Additional requested assets omitted (partial view)</li>'
+    actions = '<p class="meta">No open administrative decision action.</p>'
+    if pending:
+        from .authorization_controls import approval_blockers
+
+        restrictions = approval_blockers(store, auth, request)
+        endpoint = (
+            '/assessments/requests/' + _e(request.request_id) + '/decision'
+        )
+        csrf_input = (
+            '<input type="hidden" name="csrf" value="'
+            + _e(auth.csrf or "") + '">'
+        )
+        rejection = (
+            '<form class="inline" method="post" action="' + endpoint + '">'
+            + csrf_input
+            + '<input type="hidden" name="decision" value="reject">'
+            '<button class="secondary">Reject request</button></form>'
+        )
+        if restrictions:
+            actions = (
+                '<span class="badge lock">Approval blocked</span>'
+                '<p class="meta">' + _e("; ".join(restrictions)) + '</p>'
+                + rejection
+            )
+        else:
+            approval = (
+                '<form class="inline" method="post" action="' + endpoint + '">'
+                + csrf_input
+                + '<input type="hidden" name="decision" value="approve">'
+                '<button>Approve administrative request</button></form> '
+            )
+            actions = (
+                '<p class="meta">This decision records an administrative '
+                'review only; it does NOT create a grant or verify written '
+                'client consent.</p>' + approval + rejection
+            )
     body = (
         '<h1>Request review details</h1>'
-        '<p class="sub">Read-only review of the submitted request record. '
-        'No action on this page grants or implies permission to test assets.</p>'
+        '<p class="sub">Review a request and, when eligible, record an '
+        'administrative decision. Neither approving nor rejecting creates '
+        'a grant or permits target testing.</p>'
         '<div class="card"><span class="badge lock">Execution locked</span> '
         '<span class="badge lock">Consent not established</span>'
         '<p><strong>Client:</strong> ' + _e(client.name)
@@ -281,6 +318,10 @@ def render_operator_request_detail(
         '<div class="card"><strong>Requested assets</strong><ul>' +
         assets + '</ul><details><summary>Original request notes</summary><p>'
         + _e(request.notes or "—") + '</p></details></div>'
+        '<div class="card"><strong>Administrative request review</strong>'
+        '<p class="meta">The decision endpoint independently enforces these '
+        'eligibility restrictions; another browser cannot bypass them.</p>'
+        + actions + '</div>'
         '<div class="card"><strong>Next steps</strong><p class="meta">'
         'Confirm authentic client ownership, signed consent and exact '
         'engagement/scope in the authoritative workflow. Check revocation '
