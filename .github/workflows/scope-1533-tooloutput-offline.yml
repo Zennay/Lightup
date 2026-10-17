@@ -8,6 +8,7 @@ on:
       - 'src/lightup/scope_tooloutput_shape_review_20261017.py'
       - 'tests/test_scope_tooloutput_shape_1533_20261017.py'
       - '.github/workflows/scope-1533-tooloutput-offline.yml'
+      - 'docs/scope-tooloutput-1533-20261017.md'
 permissions:
   contents: read
 concurrency:
@@ -33,6 +34,7 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
+          import os
           import subprocess
           base = "e73b7445c87ad239bdb03c50a99078ef93163b02"
           expected = {
@@ -43,9 +45,15 @@ jobs:
           }
           def git(*args):
               return subprocess.check_output(["git", *args], text=True).strip()
+          assert git("rev-parse", "HEAD") == os.environ["GITHUB_SHA"], "different checkout SHA"
           assert git("merge-base", base, "HEAD") == base, "wrong original main ancestor"
           changed = git("diff", "--name-status", base, "HEAD").splitlines()
           assert set(changed) == {"A\t" + x for x in expected}, changed
+          for path in sorted(expected):
+              mode, kind, sha, name = git("ls-tree", "HEAD", "--", path).split(None, 3)
+              assert (mode, kind, name) == ("100644", "blob", path), (mode, kind, name)
+              assert int(git("cat-file", "-s", sha)) <= 131_072, path
+          print("scope1533_regular_bounded_blobs=PASS")
           assert not git("status", "--porcelain=v1", "--untracked-files=all"), "dirty checkout"
           print("scope1533_owned_tree=PASS")
           PY
