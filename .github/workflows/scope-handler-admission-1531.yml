@@ -82,7 +82,7 @@ jobs:
             echo "Unexpected strict success: owner-source state changed; review expected RED markers"
             exit 1
           fi
-          grep -F 'Ran 34 tests' "$strict_log"
+          grep -F 'Ran 36 tests' "$strict_log"
           grep -Fx 'FAILED (failures=6)' "$strict_log"
           echo 'scope1531_strict_source_red=6'
           assert_owned_tree
