@@ -14,6 +14,8 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+# Isolated -I/-S CI has no installed LightUp package; resolve only repo source.
+sys.path.insert(0, str(ROOT / "src"))
 CHILD_ORACLE = r'''
 import os
 import sys
