@@ -59,7 +59,7 @@ jobs:
       - name: Warning-free original renderer import contract
         run: python -I -S -B -m unittest discover -s tests -p 'test_scope_registry_warning_1535_20261017.py' -v
       - name: Original report output regression contract
-        run: python -I -S -B -m unittest discover -s tests -p 'test_scope_registry_history_report.py' -v
+        run: PYTHONPATH=src python -S -B -m unittest discover -s tests -p 'test_scope_registry_history_report.py' -v
       - name: Actual eight native I/O guarded CLI integration
         run: python -I -S -B -m unittest discover -s tests -p 'test_scope_composed_native_offline_cli_20261014.py' -v
       - name: No checkout mutation after full admission checks
