@@ -31,6 +31,17 @@ def wire(entries=DEFAULT, **overrides):
     return json.dumps(data, separators=(",", ":"), ensure_ascii=True).encode()
 
 
+def repo_entry(n, head, base, base_ref, head_ref, repository="Zennay/Lightup"):
+    return dict(entry(n, head, base), base_repository=repository,
+                head_repository=repository, base_ref=base_ref, head_ref=head_ref)
+
+
+def wire_v3(first, second, repository="Zennay/Lightup", root_ref="main"):
+    return json.dumps({"version": 3, "repository": repository, "root_sha": A,
+                       "root_ref": root_ref, "first_read": first,
+                       "second_read": second}, separators=(",", ":")).encode()
+
+
 class SnapshotReviewTests(unittest.TestCase):
     def hold(self, raw):
         receipt, code = adapter.evaluate(raw)
@@ -77,6 +88,74 @@ class SnapshotReviewTests(unittest.TestCase):
 
     def test_independent_branches_parallel_wave(self):
         self.review(wire([entry(8, B), entry(2, C), entry(5, D)]), [[2, 5, 8]])
+
+    def test_v3_same_repository_and_refs_two_reads_advisory_only(self):
+        rows = [
+            repo_entry(10, B, A, "main", "scope-a"),
+            repo_entry(20, C, B, "scope-a", "scope-b"),
+            repo_entry(30, D, C, "scope-b", "scope-c"),
+        ]
+        first = wire_v3(rows, list(reversed(rows)))
+        second = wire_v3(list(reversed(rows)), rows)
+        a, code_a = adapter.evaluate(first)
+        b, code_b = adapter.evaluate(second)
+        self.assertEqual((code_a, code_b), (3, 3))
+        self.assertEqual(a["protocol"], "PR_SNAPSHOT_V3_REPO_BOUND_DOUBLE_READ")
+        self.assertEqual(a["waves"], [[10], [20], [30]])
+        self.assertEqual(a["derived_graph_sha256"], b["derived_graph_sha256"])
+        self.assertNotEqual(a["input_sha256"], b["input_sha256"])
+        self.assertTrue(all(a[k] is False for k in adapter.OFF_FLAGS))
+
+    def test_v3_repository_fork_ref_and_cross_read_drift_hold(self):
+        root = repo_entry(10, B, A, "main", "scope-a")
+        mutations = [
+            {"base_repository": "Other/Repo"},
+            {"head_repository": "Other/Repo"},
+            {"base_ref": "release"},
+            {"head_ref": "scope-renamed"},  # Same SHA, wrong branch identity
+            {"base_ref": "MAIN"},
+            {"head_ref": "../scope"},
+            {"head_ref": "scope..a"},
+            {"head_ref": "scope/a.lock"},
+        ]
+        for attrs in mutations:
+            changed = dict(root, **attrs)
+            with self.subTest(changed=attrs):
+                raw = wire_v3([root], [changed])
+                receipt, code = adapter.evaluate(raw)
+                self.assertEqual((receipt["status"], code), ("HOLD", 2))
+                self.assertEqual(receipt["protocol"],
+                                 "PR_SNAPSHOT_V3_REPO_BOUND_DOUBLE_READ")
+                self.assertEqual(receipt["waves"], [])
+                self.assertTrue(all(receipt[k] is False for k in adapter.OFF_FLAGS))
+        self.assertEqual(adapter.evaluate(wire_v3([root], [root],
+                                                   repository="Other/Repo"))[1], 2)
+
+    def test_v3_missing_or_malformed_context_and_stacked_base_ref_hold(self):
+        first = [repo_entry(10, B, A, "main", "scope-a"),
+                 repo_entry(20, C, B, "scope-a", "scope-b")]
+        good = wire_v3(first, first)
+        self.assertEqual(adapter.evaluate(good)[1], 3)
+        for key in ("head_repository", "base_repository", "base_ref", "head_ref"):
+            changed = [dict(first[0]), dict(first[1])]
+            changed[1].pop(key)
+            with self.subTest(missing=key):
+                self.assertEqual(adapter.evaluate(wire_v3(first, changed))[1], 2)
+        inconsistent = [dict(first[0]), dict(first[1], base_ref="main")]
+        self.assertEqual(adapter.evaluate(wire_v3(inconsistent, inconsistent))[1], 2)
+        alias = [dict(first[0]), dict(first[1], head_ref="scope-a")]
+        self.assertEqual(adapter.evaluate(wire_v3(alias, alias))[1], 2)
+        self.assertEqual(adapter.evaluate(wire_v3(first, first,
+                                                  root_ref="../main"))[1], 2)
+
+    def test_v3_head_ref_changes_fingerprint_without_head_sha_change(self):
+        row = repo_entry(10, B, A, "main", "scope-a")
+        renamed = dict(row, head_ref="scope-new")
+        a, ca = adapter.evaluate(wire_v3([row], [row]))
+        b, cb = adapter.evaluate(wire_v3([renamed], [renamed]))
+        self.assertEqual((ca, cb), (3, 3))
+        self.assertEqual(a["waves"], b["waves"])
+        self.assertNotEqual(a["derived_graph_sha256"], b["derived_graph_sha256"])
 
     def test_two_read_consistent_snapshot_accepts_reordered_rows_only(self):
         rows = [entry(10, B), entry(20, C, B), entry(30, D, C)]
