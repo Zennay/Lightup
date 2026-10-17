@@ -21,6 +21,8 @@ At the issuance boundary, after operator authorization but **before reading any 
 - intentionally unresolved **original source RED**: harmless ScopeDefinition subclass accepted incorrectly;
 - intentionally unresolved **original source RED**: synthetic subclass changes observed max_risk from STANDARD at validation to DESTRUCTIVE_LAB_ONLY at persistence;
 - intentionally unresolved **original source RED**: `None` triggers `AttributeError` instead of canonical input validation.
+- intentionally unresolved **original source RED**: forged `__class__` metadata on a foreign object must not bypass an `isinstance`-only check.
+- intentionally unresolved **original source RED**: foreign property trap must not be accessed even once before canonical type denial.
 
 Run (against this branch using the repository's Python environment):
 
