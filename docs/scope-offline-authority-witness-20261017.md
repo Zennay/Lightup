@@ -33,6 +33,16 @@ On the connected authorized zSSH host, a dedicated disposable checkout at exact 
 
 The earlier, same-branch full original unit suite on head `705b525ec485f5779ad9a2846e10e036ccb7039d` ran 1,251 tests and returned **5 FAIL, 23 expected failures**. Failures included pre-existing #301 date-fixture and #1535 registry-history issues; other failures are not independently baseline-proven. This **does not** constitute full-project green or release evidence. The new two polymorphism tests added afterwards have dedicated green proof, not a new full-suite result.
 
+## Independent original-main regression comparison
+
+On the connected zSSH VPS, two separate clean, isolated checkouts were used for the same original RED tests: untouched main `e73b7445c87ad239bdb03c50a99078ef93163b02` and this branch at `cea9050c9f85fe41aa7db45f088a51aa6c692741`. The **same five precise failing subtests** occurred in both, across 34 top-level unittest methods:
+
+- `test_scope_composed_native_offline_cli_20261014.py`: 3 unittest methods; two fail because registry-history CLI returns 92 instead of 2/3.
+- `test_scope_legacy_falsy_window_301_red_20261014.py`: 19 methods; one time-fixture assertion fails on both heads.
+- `test_scope_offline_cli_socket_fleet_20261014.py`: 12 methods; two registry-history CLI subprocess cases return 92 instead of 2/3.
+
+This directly reproduces pre-existing defects for those exact failing testcases; it is **not** a claim of a complete original-main full-suite pass or a source-owner repair. Own new witness remains **16/16 PASS**. No extra named LightUp self-hosted runner workflow was started.
+
 ## Gate interpretation
 
 - Green unit tests validate the witness's own classification, deterministic receipt, zero-network boundary, no authority flags and mutation-detection sensitivities.
