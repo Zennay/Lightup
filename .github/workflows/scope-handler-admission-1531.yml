@@ -73,3 +73,16 @@ jobs:
           assert_owned_tree
           python -I -S -B -m unittest discover -s tests -p 'test_scope_handler_admission*20261017.py' -v
           assert_owned_tree
+          # Deliberately require the original-source strict suite to be RED
+          # until the original production owner repairs handler admission.
+          # Never mistake six recorded source regressions for source approval.
+          strict_log="$(mktemp)"
+          trap 'rm -f "$strict_log"' EXIT
+          if LIGHTUP_SCOPE1531_REQUIRE_SOURCE_FIX=1 python -I -S -B -m unittest discover -s tests -p 'test_scope_handler_admission*20261017.py' -q >"$strict_log" 2>&1; then
+            echo "Unexpected strict success: owner-source state changed; review expected RED markers"
+            exit 1
+          fi
+          grep -F 'Ran 34 tests' "$strict_log"
+          grep -Fx 'FAILED (failures=6)' "$strict_log"
+          echo 'scope1531_strict_source_red=6'
+          assert_owned_tree
