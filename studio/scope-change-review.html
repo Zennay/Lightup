@@ -16,17 +16,19 @@
 <h2>Human review summary <span class="pill">REVIEW_ONLY</span></h2>
 <p id="status" role="status" aria-live="polite">Load two drafts to compare.</p>
 <div class="buttons"><button class="primary" id="export" disabled>Export review notes</button><button id="print" disabled>Print comparison</button><button id="swap" disabled>Swap baseline / update</button></div>
+<p id="checksums" class="muted" style="overflow-wrap:anywhere">Unsigned revision fingerprints will appear after both drafts are loaded.</p>
 <div id="results" class="results" aria-live="polite"></div>
 <h3>Structured review (non-authorizing)</h3><pre id="json">No review yet.</pre>
 </section>
 <p class="muted">Everything happens in this browser tab. Files are parsed in memory (64 KiB per file), never uploaded or stored. No remote scripts, telemetry, endpoints or network access are used.</p>
 </main>
 <script src="./scope-network.js"></script>
+<script src="./scope-fingerprint.js"></script>
 <script>
 (function(){
 'use strict';
 const $=id=>document.getElementById(id), MAX=65536;
-let baseline=null, proposed=null, review=null;
+let baseline=null, proposed=null, review=null, revision=0;
 function valid(d){
  return d && !Array.isArray(d) && d.schema_version===1 && d.kind==='lightup.scope_proposal_draft' &&
   d.state==='DRAFT_ONLY' && d.authorization===false && d.client_consent===false &&
@@ -50,6 +52,10 @@ function read(file){
   try{
    const t=await file.text(), d=JSON.parse(t,(k,v)=>['__proto__','constructor','prototype'].includes(k)?undefined:v);
    if(!valid(d))throw new Error('Unsupported/unsafe draft schema');
+   if(d.scope_fingerprint_sha256!==undefined){
+     const computed=await LightUpScopeDigest.fingerprint(d);
+     if(!computed || d.scope_fingerprint_sha256!==computed)throw new Error('scope revision mismatch');
+   }
    resolve(d);
   }catch(e){reject(e);}
  });
@@ -107,9 +113,16 @@ function addRow(container,level,title,content){
 }
 function show(){
  $('results').replaceChildren();review=null;
+ const current=++revision;
  $('swap').disabled=!(baseline&&proposed);$('print').disabled=true;$('export').disabled=true;
- if(!baseline||!proposed){$('status').textContent='Load two drafts to compare.';$('json').textContent='No review yet.';return;}
+ if(!baseline||!proposed){$('status').textContent='Load two drafts to compare.';$('checksums').textContent='Unsigned revision fingerprints will appear after both drafts are loaded.';$('json').textContent='No review yet.';return;}
  review=diff(baseline,proposed);
+ Promise.all([LightUpScopeDigest.fingerprint(baseline),LightUpScopeDigest.fingerprint(proposed)]).then(([before,after])=>{
+   if(current!==revision||!review)return;
+   review.baseline_scope_sha256=before;review.proposed_scope_sha256=after;
+   $('checksums').textContent='Unsigned baseline: '+(before||'unavailable')+' · proposed: '+(after||'unavailable')+'. Digests show draft revision identity only, never consent.';
+   $('json').textContent=JSON.stringify(review,null,2);
+ }).catch(()=>{if(current===revision)$('checksums').textContent='Revision fingerprints unavailable in this browser.';});
  const s=review.summary;
  $('status').textContent='Found '+s.expansion_flags+' possible expansion(s), '+s.restriction_flags+' restriction(s) and '+s.context_flags+' manual-context item(s). No permission is implied.';
  const results=$('results');
@@ -137,8 +150,10 @@ $('swap').addEventListener('click',()=>{
  $('beforeName').textContent='Swapped draft loaded';$('afterName').textContent='Swapped draft loaded';show();
 });
 $('print').addEventListener('click',()=>{if(review)window.print();});
-$('export').addEventListener('click',()=>{
- if(!review)return;
+$('export').addEventListener('click',async()=>{
+ if(!review||!baseline||!proposed)return;
+ try {const [before,after]=await Promise.all([LightUpScopeDigest.fingerprint(baseline),LightUpScopeDigest.fingerprint(proposed)]);
+   review.baseline_scope_sha256=before;review.proposed_scope_sha256=after;}catch(_){}
  const blob=new Blob([JSON.stringify(review,null,2)+'\n'],{type:'application/json'});
  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='lightup-scope-change-review.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),500);
 });
