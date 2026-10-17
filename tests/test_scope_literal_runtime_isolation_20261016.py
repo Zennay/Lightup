@@ -182,6 +182,32 @@ class RuntimeIsolationStaticTests(unittest.TestCase):
             with self.subTest(source=source):
                 self.assertTrue(references_review_module(source))
 
+    def test_keyword_only_imports_are_detected(self):
+        # importlib.import_module and __import__ accept a keyword "name".
+        # A lexical check must not mistake these calls for unwired source.
+        patterns = (
+            "import importlib\\nimportlib.import_module(name='lightup.scope_literal_control_review_20261016')",
+            "import importlib as il\\nil.import_module(name='lightup.scope_literal_control_review_20261016')",
+            "from importlib import import_module as load\\nload(name='lightup.scope_literal_control_review_20261016')",
+            "import builtins as bi\\nbi.__import__(name='lightup.scope_literal_control_review_20261016')",
+            "from builtins import __import__ as loader\\nloader(name='lightup.scope_literal_control_review_20261016')",
+            "import importlib as il\\ngetattr(il, 'import_module')(name='lightup.scope_literal_control_review_20261016')",
+        )
+        for source in patterns:
+            with self.subTest(source=source):
+                self.assertTrue(references_review_module(source))
+
+    def test_keyword_import_false_positive_controls(self):
+        patterns = (
+            "import importlib\\nimportlib.import_module(name='lightup.scope')",
+            "import importlib\\nimportlib.import_module(package='lightup.scope_literal_control_review_20261016', name='lightup.scope')",
+            "def import_module(*, name): return name\\nimport_module(name='lightup.scope_literal_control_review_20261016')",
+            "import importlib\\nimportlib.import_module(name=variable)",
+        )
+        for source in patterns:
+            with self.subTest(source=source):
+                self.assertFalse(references_review_module(source))
+
     def test_does_not_flag_unrelated_imports_or_comments(self):
         samples = (
             "import lightup.scope\nfrom lightup import scope",
