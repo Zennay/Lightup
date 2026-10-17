@@ -162,23 +162,23 @@ class ByteExactGitPathOracleTests(unittest.TestCase):
             git("config", "user.email", "local@example.invalid")
             git("config", "core.hooksPath", str(no_hooks))
             git("config", "core.quotePath", "true")
-            names = (b"caf\\xc3\\xa9.py", b"part\\tname.py")
+            names = (b"caf\xc3\xa9.py", b"part\tname.py")
             for name in names:
                 with open(os.fsencode(repo) + b"/" + name, "wb") as fp:
-                    fp.write(b"safe = 1\\n")
+                    fp.write(b"safe = 1\n")
             git("add", "-A")
             git("commit", "-qm", "synthetic before")
             base = git("rev-parse", "HEAD").strip().decode("ascii")
             for name in names:
                 with open(os.fsencode(repo) + b"/" + name, "wb") as fp:
-                    fp.write(b"safe = 2\\n")
+                    fp.write(b"safe = 2\n")
             git("add", "-A")
             git("commit", "-qm", "synthetic after")
             head = git("rev-parse", "HEAD").strip().decode("ascii")
             stat = git("diff", "--numstat", "-z", "-M", "--no-color", base, head)
             status = git("diff", "--name-status", "-z", "-M", "--no-color", base, head)
             files = parse_git_path_outputs(status, stat)
-            self.assertEqual({x.path for x in files}, {"café.py", "part\\tname.py"})
+            self.assertEqual({x.path for x in files}, {"café.py", "part\tname.py"})
             self.assertTrue(all((x.additions, x.deletions) == (1, 1) for x in files))
             self.assertEqual(len(files), 2)
 
@@ -200,15 +200,15 @@ class ByteExactGitPathOracleTests(unittest.TestCase):
             git("config", "user.name", "Local Fixture")
             git("config", "user.email", "local@example.invalid")
             git("config", "core.hooksPath", os.devnull)
-            for name in (b"\\xfe.py", b"\\xff.py"):
+            for name in (b"\xfe.py", b"\xff.py"):
                 with open(os.fsencode(repo) + b"/" + name, "wb") as fp:
-                    fp.write(b"safe = 1\\n")
+                    fp.write(b"safe = 1\n")
             git("add", "-A")
             git("commit", "-qm", "synthetic before")
             base = git("rev-parse", "HEAD").strip().decode("ascii")
-            for name in (b"\\xfe.py", b"\\xff.py"):
+            for name in (b"\xfe.py", b"\xff.py"):
                 with open(os.fsencode(repo) + b"/" + name, "wb") as fp:
-                    fp.write(b"safe = 2\\n")
+                    fp.write(b"safe = 2\n")
             git("add", "-A")
             git("commit", "-qm", "synthetic after")
             head = git("rev-parse", "HEAD").strip().decode("ascii")
