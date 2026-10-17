@@ -30,6 +30,29 @@ PYTHONPATH=src python -m unittest tests.test_scope_audit_chain_offline -v
 
 Only `--synthetic-only` enables reviewing records. **Exit 3 + REVIEW_ONLY** means a fictional chain matches the supplied anchor; **exit 2 + HOLD** covers invalid/incomplete/ambiguous inputs. Both return `consent_verified:false`, `authorization_granted:false`, and `release_approved:false`. This module is not wired into normal CLI and does not confer any live authority.
 
+## Append-only export continuity (independent old and new anchors)
+
+The second **standalone, unwired** entry point checks that a newly received fictional audit export strictly extends a previously anchored one; it must neither mutate any historical record nor reopen a terminal withdrawal.
+
+STDIN is one UTF-8 JSON object with exactly three keys:
+
+```json
+{"schema":"LIGHTUP-FICTIONAL-SCOPE-AUDIT-TRANSITION-V1","before":{"schema":"LIGHTUP-FICTIONAL-SCOPE-AUDIT-CHAIN-V1","events":[]},"after":{"schema":"LIGHTUP-FICTIONAL-SCOPE-AUDIT-CHAIN-V1","events":[]}}
+```
+
+The arrays above are *shape illustrations only*. Real fictional test input needs at least one fully hashed old event and at least one **additional** fully hashed new event. Each old/new packet independently satisfies the earlier complete-chain grammar, plus both caller-supplied 64-hex anchors. The entire original event sequence must remain an **identical prefix** of the proposed sequence; the new sequence must be strictly longer. A replayed/no-op candidate, truncated history, changed original field, rewritten chain with a newly calculated tip, schema downgrade, duplicate JSON keys, unknown authority field, addition after withdrawal, changed scope, altered clock ordering or unanchored old/new stream all produce atomic `HOLD`. Maximum aggregate stdin size is **69,632 bytes**, with original 32,768-byte / 64-event bounds applied independently to both packets.
+
+```bash
+PYTHONPATH=src python -m lightup.scope_audit_chain_transition_offline \
+  --synthetic-only \
+  --expected-old-tip <64-lowercase-hex-old-trusted-tip> \
+  --expected-new-tip <64-lowercase-hex-new-trusted-tip> < fictional-transition.json
+
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_scope_audit_chain*offline.py' -v
+```
+
+The CLI emits only `REVIEW_ONLY` (exit code **3**, with counts of old/new/newly appended records) or `HOLD` (exit code **2**, all counts zero). `consent_verified`, `authorization_granted`, and `release_approved` are always `false`. Even two apparently valid anchors are **not** proof of source provenance if both were provided by the same untrusted actor. Importantly, this tool verifies offline *history continuity*, not live revocation, real human consent, digital signature, deployability, or a durable authorization record.
+
 ## Ownership and integration
 
-Four entirely new owned paths only: `src/lightup/scope_audit_chain_offline.py`, `tests/test_scope_audit_chain_offline.py`, this document, and `.github/workflows/lightup-scope-audit-chain.yml`. The new hosted-only dual-Python isolated proof is supplementary; it does **not** replace the existing full preflight or named permanent VPS CI. Existing concurrent review (#1551), consent/scope digest (#1507/#1505), revocation (#554/#100) and CI/provenance (#1309) owners remain untouched. The operator has to independently authenticate a trustworthy anchor before relying on content integrity. No merge, release or real-world scope use is permitted without separate approved source-owner/security/privacy review, exact-release validation and human GO.
+Six entirely new owned paths only: `src/lightup/scope_audit_chain_offline.py`, `tests/test_scope_audit_chain_offline.py`, `src/lightup/scope_audit_chain_transition_offline.py`, `tests/test_scope_audit_chain_transition_offline.py`, this document, and `.github/workflows/lightup-scope-audit-chain.yml`. The new hosted-only dual-Python isolated proof is supplementary; it does **not** replace the existing full preflight or named permanent VPS CI. Existing concurrent review (#1551), consent/scope digest (#1507/#1505), revocation (#554/#100) and CI/provenance (#1309) owners remain untouched. The operator has to independently authenticate a trustworthy anchor before relying on content integrity. No merge, release or real-world scope use is permitted without separate approved source-owner/security/privacy review, exact-release validation and human GO.
