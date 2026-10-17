@@ -95,9 +95,15 @@ def main() -> int:
     except Exception:
         result = False
     try:
-        sys.stdout.buffer.write(_REVIEW if result else _HOLD)
+        receipt = _REVIEW if result else _HOLD
+        written = sys.stdout.buffer.write(receipt)
+        # A broken/short/implausible output transport cannot carry a
+        # complete and verifiable receipt. Even REVIEW_ONLY is never safe
+        # to report as exit 3 if stdout did not acknowledge every byte.
+        if type(written) is not int or written != len(receipt):
+            return 2
         sys.stdout.buffer.flush()
-    except OSError:
+    except Exception:
         return 2
     return 3 if result else 2
 
