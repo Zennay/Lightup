@@ -46,6 +46,22 @@ class SnapshotReviewTests(unittest.TestCase):
         self.assertEqual(receipt["protocol"], "PR_SNAPSHOT_V1")
         self.assertTrue(all(receipt[name] is False for name in adapter.OFF_FLAGS))
 
+    def test_snapshot_receipt_binds_exact_input_and_inferred_graph(self):
+        import hashlib
+        raw = wire([entry(1550, B)])
+        receipt, code = adapter.evaluate(raw)
+        self.assertEqual(code, 3)
+        self.assertEqual(receipt["input_sha256"], hashlib.sha256(raw).hexdigest())
+        self.assertRegex(receipt["derived_graph_sha256"], r"^[0-9a-f]{64}$")
+        variant = wire([entry(1550, C)])
+        changed, code2 = adapter.evaluate(variant)
+        self.assertEqual(code2, 3)
+        self.assertEqual(receipt["waves"], changed["waves"])
+        self.assertNotEqual(receipt["input_sha256"], changed["input_sha256"])
+        self.assertNotEqual(receipt["derived_graph_sha256"], changed["derived_graph_sha256"])
+        self.assertNotIn("input_sha256", adapter.evaluate(b"BAD")[0])
+        self.assertNotIn("derived_graph_sha256", adapter.evaluate(b"BAD")[0])
+
     def test_chain_inferred_from_base_and_head(self):
         self.review(wire(), [[10], [20], [30]])
 
